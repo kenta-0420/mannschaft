@@ -10,6 +10,9 @@ const props = defineProps<{ teamId: string }>()
 const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 管理タブ名・件数バッジに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 const activeTab = ref(0)
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
@@ -177,9 +180,24 @@ function onPolicyChanged(
   }
 }
 
+/**
+ * 呼称設定（ReservationResourceNameSettings）の保存成功時: 予約設定キャッシュを最新化し、
+ * 同一テーブル上で独立フェッチしている他コンポーネント（LineManager・SlotMatrixPicker・
+ * SlotGridPicker）の呼称表示も再読込する（各コンポーネントの useResourceName は独立フェッチのため
+ * 明示的に refresh を連鎖させないと画面上の呼称表示が古いまま残る）。
+ */
+function onResourceNameChanged() {
+  void loadReservationSettings()
+  void loadResourceName()
+  void lineManagerRef.value?.refresh()
+  void slotMatrixPickerRef.value?.refresh()
+  void slotGridPickerRef.value?.refresh()
+}
+
 onMounted(async () => {
   await loadPermissions()
   await loadReservationSettings()
+  await loadResourceName()
 })
 </script>
 
@@ -202,7 +220,7 @@ onMounted(async () => {
         <!-- 非管理者（SUPPORTER含む）は「自分の予約」に改名（表示のみ・認可挙動は不変）。
              管理者/副管理者（mode=team）は従来通り「予約一覧」。 -->
         <Tab :value="1">{{ isAdminOrDeputy ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
-        <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
+        <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
         <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
@@ -317,14 +335,21 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- ②予約対象（LineManager） -->
+            <!-- ②予約対象（呼称設定＋LineManager。呼称設定は F03.4.5 §5.1: セクション先頭に配置） -->
             <AccordionPanel value="lines">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title'), n: lineCount }) }}
+                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title', { resourceName }), n: lineCount }) }}
                 </span>
               </AccordionHeader>
               <AccordionContent>
+                <div class="mb-4">
+                  <ReservationResourceNameSettings
+                    :team-id="props.teamId"
+                    :disabled="!isAdmin"
+                    @changed="onResourceNameChanged"
+                  />
+                </div>
                 <LineManager ref="lineManagerRef" :team-id="props.teamId" />
               </AccordionContent>
             </AccordionPanel>
@@ -476,6 +501,7 @@ onMounted(async () => {
 
     <TeamReservationGuideModal
       v-model:visible="showGuide"
+      :team-id="props.teamId"
       :is-admin="isAdmin"
       :is-admin-or-deputy="isAdminOrDeputy"
       :active-tab="activeTab"

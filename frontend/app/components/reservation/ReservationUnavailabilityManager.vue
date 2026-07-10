@@ -33,6 +33,14 @@ const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 const { userTimezone } = useDatetime()
 
+/**
+ * 呼称の動的差し込み（F03.4.5 §5.2・要確認事項の判断）: targetLabel() の STAFF フォールバック
+ * （resource.resourceName 未設定時の表示）に使う。scope.staff（「担当者」固定文言）自体は対象スコープ
+ * 選択の意味論として残すが、一覧表示上の「呼称の欠落を埋める」フォールバックとしては動的呼称のほうが
+ * 一貫する（家老指摘・殿の判断: 含める）。
+ */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 // === テンプレート種別 ===
 type TemplateKey = 'FULL_DAY' | 'LATE' | 'EARLY_LEAVE' | 'MIDDAY' | 'CUSTOM'
 
@@ -329,7 +337,7 @@ async function remove(item: BlockedTimeResponse) {
 // === 表示ヘルパー ===
 function targetLabel(item: BlockedTimeResponse): string {
   if (item.resource?.resourceType === 'STAFF') {
-    return item.resource.resourceName ?? t('reservation.unavailability.scope.staff')
+    return item.resource.resourceName ?? resourceName.value
   }
   return t('reservation.unavailability.scope.team')
 }
@@ -343,7 +351,7 @@ function timeRangeLabel(item: BlockedTimeResponse): string {
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadBlockedTimes(), loadLines(), loadBusinessHours()])
+  await Promise.all([loadBlockedTimes(), loadLines(), loadBusinessHours(), loadResourceName()])
   applyTemplate(template.value)
   await refreshImpact()
 })

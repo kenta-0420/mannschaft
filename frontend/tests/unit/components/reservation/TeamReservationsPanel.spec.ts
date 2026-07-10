@@ -229,7 +229,9 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(tabs[0]!.text()).toBe('Book')
     // 管理者/副管理者（mode=team）はラベル改名の対象外で従来の「予約一覧」のまま
     expect(tabs[1]!.text()).toBe('Reservations')
-    expect(tabs[2]!.text()).toBe('Manage Bookable Items')
+    // F03.4.5 §5.2: 呼称の動的差し込み。resourceNameType 未設定（DEFAULT）は
+    // 従来どおり「Bookable Item」相当のフォールバックのため、テキストは実質不変。
+    expect(tabs[2]!.text()).toBe('Bookable Item Management')
     expect(tabs[3]!.text()).toBe('緊急休業')
   })
 
@@ -278,9 +280,11 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await flushPromises()
 
     // テスト環境の既定ロケールは en（写経元 WeeklyScheduleManager.spec.ts と同じ前提）。
+    // F03.4.5 §5.2 により②予約対象の badge とタブ2ラベルが同一文言（"Bookable Item Management"）に
+    // なったため、badge を件数サフィックス付きの文字列で特定してタブ位置と誤認しないようにする。
     const text = wrapper.text()
     const idxBusinessHours = text.indexOf('Business hours')
-    const idxLines = text.indexOf('Bookable Item Management')
+    const idxLines = text.indexOf('Bookable Item Management (1)')
     const idxMenus = text.indexOf('Menu Management')
     const idxWeekly = text.indexOf('Weekly Templates')
     const idxException = text.indexOf('Exception day calendar')

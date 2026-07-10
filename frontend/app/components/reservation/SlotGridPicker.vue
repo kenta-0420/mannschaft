@@ -26,6 +26,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 絞り込みラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 type ViewMode = 'single' | 'week'
 
 interface LineOption { id: number; name: string }
@@ -255,7 +258,7 @@ function dayLabel(date: string): string {
 // loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
 watch([selectedDate, viewMode], () => loadGrid())
 onMounted(async () => {
-  await loadLines()
+  await Promise.all([loadLines(), loadResourceName()])
   await loadGrid()
 })
 
@@ -273,7 +276,13 @@ onActivated(() => {
 
 // 予約直後に親（TeamReservationsPanel）からグリッドの空き状況を再読込させるための公開メソッド。
 // 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
-defineExpose({ refresh: () => loadGrid() })
+// 呼称設定変更後の再読込（onResourceNameChanged）からも呼ばれるため、呼称表示も合わせて最新化する。
+defineExpose({
+  refresh: async () => {
+    await loadResourceName()
+    await loadGrid()
+  },
+})
 </script>
 
 <template>
@@ -285,7 +294,7 @@ defineExpose({ refresh: () => loadGrid() })
         <DatePicker v-model="selectedDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ t('reservation.grid.staff_filter.label') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.grid.staff_filter.label', { resourceName }) }}</label>
         <MultiSelect
           v-model="selectedStaffIds"
           :options="staffOptions"

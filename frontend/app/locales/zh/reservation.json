@@ -169,7 +169,7 @@
       "book": "预约",
       "list": "预约列表",
       "my_reservations": "我的预约",
-      "line_manage": "预约对象管理",
+      "line_manage": "{resourceName}管理",
       "emergency_closure": "緊急休業",
       "team_page": "预约"
     },
@@ -213,8 +213,8 @@
       "full": "已满"
     },
     "button": {
-      "add_line": "添加预约对象",
-      "add_line_long": "添加预约对象",
+      "add_line": "添加{resourceName}",
+      "add_line_long": "添加{resourceName}",
       "save": "保存",
       "cancel": "取消",
       "reserve": "预约",
@@ -228,8 +228,8 @@
       "title": "确认",
       "line_create": "创建预约对象",
       "line_edit": "编辑预约对象",
-      "line_create_long": "添加预约对象",
-      "line_edit_long": "编辑预约对象",
+      "line_create_long": "添加{resourceName}",
+      "line_edit_long": "编辑{resourceName}",
       "reserve_confirm": "预约确认",
       "cancel_confirm": "要取消此预约吗？",
       "line_delete_confirm": "要删除此预约对象吗？",
@@ -281,9 +281,20 @@
         "member_no_slots_hint": "请选择其他日期再试"
       }
     },
-    "line_manage_title": "预约对象管理",
+    "line_manage_title": "{resourceName}管理",
     "line": {
       "delete_guide": "删除后，该对象的时段模板将停止使用，且没有预约的未来时段将被自动删除。如果存在有效预约，请先进行改期或取消。"
+    },
+    "resource_name": {
+      "DEFAULT": "预约对象",
+      "STAFF": "员工",
+      "SEAT": "座位",
+      "COURT": "球场",
+      "BED": "床位",
+      "LANE": "球道",
+      "setting_title": "预约对象的称呼",
+      "custom_label": "自定义称呼",
+      "custom_required": "请输入自定义称呼"
     },
     "settings": {
       "advanced": {
@@ -588,7 +599,7 @@
         "time": "时间"
       },
       "staff_filter": {
-        "label": "按预约对象筛选",
+        "label": "按{resourceName}筛选",
         "placeholder": "全部预约对象"
       },
       "state": {
@@ -618,7 +629,7 @@
       "view_matrix": "矩阵视图",
       "view_list": "列表视图",
       "view_staff_grid": "按员工分栏视图",
-      "date_line_header": "日期・预约对象",
+      "date_line_header": "日期・{resourceName}",
       "help_toggle": "查看使用说明",
       "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的对象。",
       "slot_unavailable_conflict": "该时段目前不接受预约，请尝试其他时间"
@@ -647,7 +658,7 @@
       "book": {
         "matrix_title": "矩阵表的看法",
         "matrix_steps": {
-          "0": "纵向是「日期×预约对象」，横向是「时间」。",
+          "0": "纵向是「日期×{resourceName}」，横向是「时间」。",
           "1": "颜色含义：绿色「空闲」＝可预约／「已预约」＝已被占用／斜线＝「不可预约」／浅灰色＝「已截止」。"
         },
         "filter_title": "用菜单筛选",
@@ -664,7 +675,7 @@
         },
         "conflict_title": "满员或冲突时",
         "conflict_steps": {
-          "0": "灰色的时段（已预约・已截止・不可预约）无法选择，请选择其他时间或预约对象。",
+          "0": "灰色的时段（已预约・已截止・不可预约）无法选择，请选择其他时间或{resourceName}。",
           "1": "如果在确认前被其他人抢先预约，会出现错误提示，画面会自动刷新为最新空位状态，请重新选择空闲时段。"
         }
       },
@@ -697,15 +708,15 @@
           "0": "在「营业时间」中按星期设置营业的时间段。这是生成预约时段的基础。",
           "1": "保存后会立即自动创建未来28天内的时段。"
         },
-        "setup1_title": "② 创建预约对象",
+        "setup1_title": "② 创建{resourceName}",
         "setup1_steps": {
-          "0": "在此标签页上方通过「添加预约对象」登记座位、员工、窗口等可预约的对象。",
-          "1": "没有预约对象时，用户的「预约」标签页将不会显示任何内容。"
+          "0": "在此标签页上方通过「添加{resourceName}」登记座位、员工、窗口等可预约的对象。",
+          "1": "没有{resourceName}时，用户的「预约」标签页将不会显示任何内容。"
         },
         "setup2_title": "③ 创建菜单",
         "setup2_steps": {
           "0": "在下方的「菜单管理」中登记具有所需时长（以30分钟为单位）的菜单。",
-          "1": "如只想限定特定预约对象，可在「预约对象」中选择「仅限所选预约对象」（默认对所有预约对象提供）。"
+          "1": "如只想限定特定{resourceName}，可在「{resourceName}」中选择「仅限所选{resourceName}」（默认对所有{resourceName}提供）。"
         },
         "setup3_title": "④ 创建每周排程",
         "setup3_steps": {
@@ -722,7 +733,7 @@
         "exception_steps": {
           "0": "如需将特定日期设为休业或临时营业，请使用例外日历中的「将此日设为休业」「设为临时营业」。如需精细调整个别时段，可在「详细设置」的「手动管理个别时段」中创建、编辑或关闭（结束受理）。",
           "1": "只想在特定时间段停止接受预约时，可使用高级设置中的「不可预约时段」。",
-          "2": "删除预约对象后，该模板将停止使用，没有预约的未来时段会自动删除。如仍有生效中的预约，请先改约或取消。"
+          "2": "删除{resourceName}后，该模板将停止使用，没有预约的未来时段会自动删除。如仍有生效中的预约，请先改约或取消。"
         }
       },
       "emergency_closure": {
