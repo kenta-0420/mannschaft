@@ -30,3 +30,9 @@ cloudflare_zone_id    = "fedcba9876543210fedcba9876543210"
 #   SPRING_PROFILES_ACTIVE = "prod"
 # }
 # pages_env_extra = {}
+
+# --- WebSocket 外部ブローカー化（Valkey Pub/Sub relay）§1.3・§8.6 ---
+# 既定 false。段階 1（desired_count=1 のまま relay ON で検証）着手時に true へ切替える。
+# 適用前提: ElastiCache 転送時暗号化（transit_encryption_enabled）が有効化済みであること
+# （本 apply では data module 側で常時 true・別変数化なし）。
+# websocket_relay_enabled = true

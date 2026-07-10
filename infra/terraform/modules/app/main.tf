@@ -337,6 +337,23 @@ resource "aws_ecs_task_definition" "app" {
             name  = "SPRING_REDIS_PORT"
             value = "6379"
           },
+          # WebSocket 外部ブローカー化（Valkey Pub/Sub relay）§8.6: ElastiCache の転送時暗号化
+          # （transit_encryption_enabled = true・data module）に追随する Lettuce 側 TLS 有効化。
+          # 単一の LettuceConnectionFactory を全用途（キャッシュ・レート制限・presence TTL・relay）が
+          # 共有するため、この 1 設定で全 Redis 接続が TLS 化される。ローカル/開発は
+          # application.yml 側で ssl.enabled 未設定（既定 false）のため無変更。
+          {
+            name  = "SPRING_REDIS_SSL_ENABLED"
+            value = "true"
+          },
+          # WebSocket 外部ブローカー化（設計 §1.3）: relay 部品（Publisher/Subscriber/
+          # RedisMessageListenerContainer）の Bean 生成を切り替える feature flag。
+          # 既定 false（段階 1 で true へ切替。variable 化: modules/app/variables.tf
+          # websocket_relay_enabled → envs/prod/variables.tf 経由で tfvars から上書き可能）。
+          {
+            name  = "MANNSCHAFT_WEBSOCKET_RELAY_ENABLED"
+            value = tostring(var.websocket_relay_enabled)
+          },
           # F09.6 Phase 8a: SES バウンス/苦情通知の SQS リスナー入口。
           # spring-cloud-aws の @SqsListener はキュー名（URL でなく名前）を受け取る。
           # MANNSCHAFT_SQS_ENABLED は application-prod.yml で既定 true のため明示不要だが、
@@ -458,12 +475,25 @@ resource "aws_ecs_service" "app" {
   # health_check_grace_period_seconds は LB 前提の設定のため削除し、
   # コンテナ healthCheck の startPeriod（タスク定義側 180 秒）で初回 migrate を待つ。
 
-  # minimum 0 / maximum 100: WebSocket インメモリブローカー（SockJS/STOMP）を使用しているため
-  # 同時に 2 タスクが動くとセッションが別タスクに分散してしまい接続が切れる。
-  # ローリングアップデート中に一時的に 0 タスク（数十秒の断）になることを許容して
-  # 2 タスク並走を完全に防ぐ設定とする。
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # ローリングデプロイ解禁（2026-07-11 隊3・設計: docs/architecture/websocket_external_broker_valkey.md §8.6）:
+  # WebSocket は SimpleBroker（ノードローカル）を維持しつつ、Valkey Pub/Sub による
+  # ノード間中継 relay（PR #2231 で BE 中核実装済み・feature flag
+  # MANNSCHAFT_WEBSOCKET_RELAY_ENABLED で ON/OFF）を新設した。relay が ON の間は
+  # 新旧タスクが並走してもノードを跨いだ配信が揃うため、2 タスク並走が安全になった。
+  # minimum 100 / maximum 200: ローリング中も旧タスクを維持したまま新タスクを追加起動し、
+  # ヘルシーになってから旧タスクを落とす（断ゼロ）。desired_count は段階移行に従い
+  # 段階 1 では 1 のまま（relay ON の単一ノード検証）。段階 2 で 2 以上へ引き上げる
+  # （設計 §1.3）。relay OFF のままこの設定に変更しても、単一タスク運用である限り
+  # 旧来と同じくデプロイ中の瞬断は起きうるため、relay ON 後の運用を前提とする。
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  # デプロイ失敗時（新タスクが継続的に unhealthy 等）は自動でロールバックする。
+  # ローリング解禁（新旧並走）に伴い、失敗検知と自動復旧を明示的に持たせる。
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
 
   lifecycle {
     # Terraform はインフラの「器」（クラスタ・サービス設定）を管理する。
