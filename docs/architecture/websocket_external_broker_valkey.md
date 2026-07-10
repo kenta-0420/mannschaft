@@ -53,9 +53,11 @@ Mannschaft は現在、WebSocket（STOMP over SockJS）のリアルタイム配�
 feature flag `mannschaft.websocket.relay.enabled`（既定 `false`）で relay の ON/OFF を切り替える。
 
 1. **段階 1**: `desired_count = 1` のまま relay を ON にして検証（単一ノードでも publish→自ノード購読→再注入のループが健全に回る＝ループ防止が効くことを本番相当で確認）。
-2. **段階 2**: `desired_count` を 2 以上に増やし、`deployment_*` を無停止設定へ変更（§6）。
+2. **段階 2**: `desired_count` を 2 以上に増やし、`deployment_*` を無停止設定へ変更（§8.6）。
 
-flag OFF なら relay 部品は publish も subscribe もせず、現行 SimpleBroker 挙動と完全同一（非回帰）。
+flag OFF 時は `@ConditionalOnProperty` で relay 部品（`WebSocketRelayPublisher`・`WebSocketRelaySubscriber`・relay 用 `RedisMessageListenerContainer`）を **Bean ごと生成しない**（「生成して購読だけしない」方式は不可 — 購読接続・スレッドが残り、現行との完全同一挙動＝非回帰にならない）。OFF 時の挙動は現行 SimpleBroker と完全同一。
+
+> **flag OFF→ON 切替の注意（段階 1 の検証条件）**: Principal 配線（§2.3）は relay flag に**依存しない常時有効の修正**（既存バグの根治）だが、CONNECT 時にのみ行われるため、配線を含むリリース適用前から接続し続けているセッションには**遡及できない**。ユーザー宛配信が有効になるのは**再接続後**。段階 1 の AC-5 検証は「リリース/切替後に再接続したセッション」で行うこと。
 
 ---
 
@@ -79,7 +81,7 @@ flag OFF なら relay 部品は publish も subscribe もせず、現行 SimpleB
 
 **→ 中継（relay）の適用範囲**: relay は「単一の brokerChannel／SimpleBroker」を対象にするため、**サイネージ（`/topic/signage/...`）を含む全配信が自動的に中継対象**になる。サイネージ専用の追加中継実装は不要。
 
-> **潜在的脆弱性（実装スコープで是正）**: `configureMessageBroker` は両 Configurer で呼ばれ、**同一の `MessageBrokerRegistry` を二重に変更**する。`enableSimpleBroker(...)` は registry 内の登録を上書きするため、`WebSocketConfig`（`/topic`+`/queue`）と `SignageWebSocketConfig`（`/topic` のみ）の**呼び出し順序で最終的なブローカー設定が変わる**（順序依存・`@Order` 未指定で非決定的）。仮にサイネージ側が後勝ちすると `/queue` がブローカーに登録されず、`convertAndSendToUser` の `/queue/...` 配信が壊れうる。実装隊は**起動時に実 Configurer 順序を列挙して現挙動を確定**し（家訓「憶測修正禁止」）、**設定を単一 Config に集約するか、サイネージ側の `configureMessageBroker` 二重宣言を排除**して順序依存を根絶すること。Javadoc「本番は Valkey 想定」（`WebSocketConfig`）は実態と乖離しているため、実装時に是正する。
+> **潜在的脆弱性（実装スコープで是正）**: `configureMessageBroker` は両 Configurer で呼ばれ、**同一の `MessageBrokerRegistry` を二重に変更**する。`enableSimpleBroker(...)` は registry 内の登録を上書きするため、`WebSocketConfig`（`/topic`+`/queue`）と `SignageWebSocketConfig`（`/topic` のみ）の**呼び出し順序で最終的なブローカー設定が変わる**（順序依存・`@Order` 未指定で非決定的）。仮にサイネージ側が後勝ちすると `/queue` がブローカーに登録されず、`convertAndSendToUser` の `/queue/...` 配信が壊れうる。実装隊は**起動時に実 Configurer 順序を列挙して現挙動を確定**し（家訓「憶測修正禁止」）、以下の**具体形で集約**して順序依存を根絶すること: **`SignageWebSocketConfig` から `configureMessageBroker` を削除**し、ブローカー設定（`enableSimpleBroker("/topic","/queue")`・`/app`・`/user`）は `WebSocketConfig` の**単一 Registry 宣言に一本化**する（Signage 側には `registerStompEndpoints`（`/ws/signage`）のみ残す）。あわせて Signage の `setAllowedOriginPatterns("*")` と `WebSocketConfig` のオリジン制限（`mannschaft.allowed-origins`）の**食い違いも同集約タスクで統一**する（`"*"` は CSRF 対策方針と不整合のため許可オリジン方式へ寄せる）。Javadoc「本番は Valkey 想定」（`WebSocketConfig`）は実態と乖離しているため、実装時に是正する。
 
 ### 2.2 配信箇所の全数（relay の対象）
 
@@ -99,6 +101,8 @@ flag OFF なら relay 部品は publish も subscribe もせず、現行 SimpleB
 | 9b | 同上（48 行）| `/topic/signage/{screenId}/update` | 揮発シグナル（`type=SLIDE_UPDATE`＝クライアント再取得トリガ・データ本体なし）| 揮発許容・再取得可能 |
 
 > **配信保証**: 中継は **at-most-once（fire-and-forget）**。全配信先が「DB 永続済み・再取得可能」または「揮発許容」のいずれかであることを上表で確認済み。WebSocket は best-effort 配信であり、正本は HTTP（07 §J.1）という既存原則と整合する。
+>
+> **presence（#5）は relay 必須**: 入退室イベント（特に切断による退室）は**接続していたノードでしか発生しない**ため、relay しないと他ノード接続の購読者の在席表示が恒久的にズレる（次の TTL 失効/再入室まで腐る）。§8.3 の中継除外候補は presence を含まず**タイピング（#3）のみ**。
 
 ### 2.3 前提課題: STOMP Principal 未配線（重大・本スコープで根治）
 
@@ -123,6 +127,8 @@ messagingTemplate.convertAndSendToUser(
 2. これにより **`SimpUserRegistry` に接続ユーザーが登録**され、`convertAndSendToUser` が `/user/{userId}/queue/...` を当該ユーザーの全セッションへ解決できるようになる。
 3. 既存の `sessionAttributes` の userId は購読認可インターセプタ（`MatchLiveSubscriptionInterceptor` 等・07 §J.3）が参照しているため**併存を維持**（後方互換）。Principal 追加は副作用なく上乗せできる。
 4. マルチノード時のユーザー宛配信は、relay が `/user/...` 解決後の実 destination（セッション固有）ではなく **ユーザー宛の論理 destination を中継**することで、受信ノード側の `SimpUserRegistry`（そのノードに接続中のセッション）で解決する（§4.3 参照）。
+5. **同一ソース原則（AC-5 でアサート）**: `sessionAttributes` の userId と Principal 名（`getName()`）は、**同一の JWT 検証結果から同時に設定**する（別経路から取らない）。`/user/{userId}/queue/notifications` には SUBSCRIBE 認可インターセプタが存在せず、**Principal の正当性がユーザー宛配信の唯一の防壁**であるため、両値の一致を不変条件とする。
+6. **匿名接続（CONNECT フェイルオープン）**: Authorization ヘッダなし/無効の接続には Principal を設定しない（現行の匿名許容方針は不変）。Principal 不在セッションは `SimpUserRegistry` に登録されず、`/user` 宛解決 0 件で**無害**（匿名者にユーザー宛通知が漏れることはない）。
 
 ### 2.4 Valkey 現状（pub/sub 未使用 → 新設が必要）
 
@@ -130,7 +136,7 @@ messagingTemplate.convertAndSendToUser(
 
 キャッシュのキー規約は `mannschaft:cache:{name}:`。本設計の Pub/Sub チャネルは同規約に合わせ **`mannschaft:ws:relay:*`** 系を用いる（§4.2）。
 
-ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`・`num_cache_clusters = 1`・`automatic_failover_enabled = false`・port 6379・at-rest 暗号化 ON / transit 暗号化 OFF）。**単一ノードを維持**（本設計で構成変更なし）。接続は Spring `spring.data.redis`（Lettuce）・`SPRING_REDIS_HOST/PORT` 環境変数（terraform 供給）。
+ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`・`num_cache_clusters = 1`・`automatic_failover_enabled = false`・port 6379・at-rest 暗号化 ON / **transit 暗号化 OFF**）。**単一ノードを維持**（ノード数の構成変更なし。ただし transit 暗号化は **relay 有効化の前提として ON 化**する — PII 平文経路の遮断・§8.6）。接続は Spring `spring.data.redis`（Lettuce）・`SPRING_REDIS_HOST/PORT` 環境変数（terraform 供給）。
 
 ---
 
@@ -141,6 +147,8 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 3. **ElastiCache Valkey は単一ノード維持**（追加費用ゼロ）。Valkey 断は**フェイルオープン**（リアルタイム中継のみ一時停止・アプリ継続・自動復旧）。将来レプリカ追加可能（§8）。
 4. **段階移行**（feature flag `mannschaft.websocket.relay.enabled`）。①`desired_count=1` のまま relay ON→検証 → ②2 タスク化。安全側既定（既定 OFF）。
 
+> **追加前提（精査第 1 パスで確定）**: relay 有効化より前に **Valkey の転送時暗号化（TLS）を有効化**する（§8.6）。現状 `transit_encryption_enabled = false` のため、relay を先に ON にするとチャット本文・通知本文（PII）が**平文で Valkey を流れる新経路**が生まれる。TLS 化は隊 3（IaC）のスコープ。
+
 ---
 
 ## 4. 中継設計（relay）
@@ -150,11 +158,13 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 | コンポーネント | 責務 |
 |---|---|
 | `WebSocketRelayProperties` | `mannschaft.websocket.relay.*`（`enabled`・チャネル名・`nodeId` 等）の束ね |
-| `WebSocketRelayPublisher` | 自ノードの brokerChannel（アウトバウンド配信）に流れたメッセージを捕捉し、`RelayEnvelope` にラップして Valkey チャネルへ publish |
+| `WebSocketRelayPublisher` | 自ノードの brokerChannel（アウトバウンド配信）に流れたメッセージを捕捉し、`RelayEnvelope` にラップして Valkey チャネルへ publish（捕捉規則は §4.2.1 — (iii) 解決済みユーザー宛は対象外）|
 | `WebSocketRelaySubscriber` | `RedisMessageListenerContainer` で Valkey チャネルを購読し、受信 `RelayEnvelope` を自ノードの SimpleBroker に再注入 |
 | `RelayEnvelope` | 中継メッセージの封筒（後述フィールド）。ループ防止用の発信ノード ID を含む |
 | `StompPrincipal` | `java.security.Principal` 実装（`getName()` = userId 文字列）。§2.3 の Principal 配線用 |
 | `RedisMessageListenerContainer`（Bean 新設）| Lettuce の購読専用接続。`WebSocketRelaySubscriber` を購読者として登録 |
+
+配置は **`com.mannschaft.app.websocket.relay` 新規パッケージ**とする（`config` パッケージの肥大回避）。`StompPrincipal` は Principal 配線の一部として `com.mannschaft.app.websocket` に置き、`WebSocketAuthChannelInterceptor` から参照する。relay 部品（Publisher / Subscriber / ListenerContainer）は `@ConditionalOnProperty(prefix = "mannschaft.websocket.relay", name = "enabled", havingValue = "true")` で **flag OFF 時は Bean 不生成**（§1.3）。
 
 ### 4.2 メッセージフロー
 
@@ -186,21 +196,37 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 
 > 単一チャネル集約とするか destination プレフィックス別チャネルに分けるかは、実装隊が **配信量メトリクスを見て決定**（初期は 2 チャネルで開始）。全ノード購読のため、チャネル分割は不要フィルタリングの削減が目的（機能差はない）。
 
+### 4.2.1 捕捉点の厳密化 — ユーザー宛先解決との衝突回避【必須】
+
+brokerChannel には **3 種のメッセージ**が流れる。素朴に「brokerChannel を全部捕捉」すると (ii)(iii) を二重に拾い、**二重配信＋他ノードへのセッション固有 destination のばら撒き**になる:
+
+| 種別 | destination 例 | 発生元 | relay 対象 |
+|---|---|---|---|
+| (i) broadcast | `/topic/channels/42` | `convertAndSend` | **中継する**（BROADCAST）|
+| (ii) ユーザー宛・未解決 | `/user/123/queue/notifications` | `convertAndSendToUser` 直後 | **中継する**（USER）|
+| (iii) ユーザー宛・解決済み | `/queue/notifications-user{sessionId}` | `UserDestinationMessageHandler` が `SimpUserRegistry` で解決し brokerChannel へ**再送**したもの | **中継しない（無視）** |
+
+- (iii) の sessionId は**発信ノードローカル**であり、他ノードでは無意味。中継すると (ii) と (iii) の両方が飛んで二重配信になる。
+- **判定規則（固定）**: destination が `/topic/` 始まり → BROADCAST 中継。`/user/` 始まり（未解決）→ USER 中継。**それ以外（解決済み `/queue/...-user*` を含む）→ 中継しない**。
+- **実装点と登録順**: 捕捉は brokerChannel の `ChannelInterceptor`（`preSend`・メッセージ非改変）で行い、`@Order(Ordered.LOWEST_PRECEDENCE)` を明示して**既存インターセプタの最終段**に固定する（暗黙順序に依存しない）。
+
 ### 4.3 ユーザー宛（`convertAndSendToUser`）の中継
 
 ユーザー宛は destination 解決の性質が異なる。`convertAndSendToUser(userId, "/queue/notifications", payload)` は、発信ノードで `SimpUserRegistry`（そのノードに接続中のセッションのみ）を引いてセッション固有 destination に解決する。**ユーザーが別ノードに接続している場合、発信ノードの registry には存在せず解決先 0 件**になる。
 
 中継設計:
 - `WebSocketRelayPublisher` は、ユーザー宛の**論理 destination（`/user/{userId}/queue/...` 相当の userId + サブ destination）** を `RelayEnvelope` に載せて `mannschaft:ws:relay:user` へ publish。
-- 各ノードの `WebSocketRelaySubscriber` は受信後、**自ノードの `SimpMessagingTemplate.convertAndSendToUser(userId, subDestination, body)` を再実行**する。自ノードにそのユーザーのセッションがあれば解決・配信され、なければ 0 件（無害）。
+- 各ノードの `WebSocketRelaySubscriber` は受信後、自ノードで `convertAndSendToUser` を**再実行**する。ただし**素の再実行は禁止** — 新規メッセージが生成されて relay マーカーが載らず、そのノードの Publisher が (ii) 未解決メッセージとして再捕捉→再 publish する**ループ**になる。**必ず `convertAndSendToUser(userId, subDestination, body, headersWithRelayMarker)` のヘッダ付きオーバーロードで relay マーカーを明示的に載せて再実行**する（§4.4）。自ノードにそのユーザーのセッションがあれば解決・配信され、なければ 0 件（無害）。
 - 発信ノードは originNodeId 一致で二重配信を防ぐ（発信ノードでは既に §4.2 の SimpleBroker 経路で配信済みのため）。
 - **前提**: §2.3 の Principal 配線が全ノードで有効であること（各ノードの `SimpUserRegistry` が自ノード接続ユーザーを持つ）。→ Principal 根治は relay のユーザー宛配信の**必須前提**。
 
 ### 4.4 ループ防止（必須）
 
-- `RelayEnvelope.originNodeId` に**発信ノードの一意 ID**（起動時生成 UUID または ECS タスク ID）を入れる。
-- 受信側は `originNodeId == 自ノード ID` なら**破棄**（自分が publish したものを再注入しない）。
-- 再注入したメッセージには**リレーマーカー**（メッセージヘッダ `X-Relay-Injected=true` 相当）を付与し、`WebSocketRelayPublisher` は**リレーマーカー付きメッセージを再 publish しない**（二重の安全弁：発信ノード ID 判定＋マーカー判定）。単一ノードで relay ON の段階 1 検証でも、この二重防止でループしないことを確認する。
+- `RelayEnvelope.originNodeId` に**発信ノードの一意 ID**（起動時生成 UUID または ECS タスク ID）を入れ、受信側は `originNodeId == 自ノード ID` なら**破棄**（自分が publish したものを再注入しない）。
+- **リレーマーカー**（メッセージヘッダ `X-Relay-Injected=true` 相当）を再注入メッセージに必ず付与し、`WebSocketRelayPublisher` は**マーカー付きメッセージを publish しない**。付与は**二経路それぞれで仕様化**する:
+  - **broadcast 経路**: SimpleBroker への直接再注入メッセージにマーカーヘッダを付与して送出する。
+  - **user 経路**: 再実行は `convertAndSendToUser(..., headersWithRelayMarker)` の**ヘッダ付きオーバーロード**で行う（素の再実行では新規生成メッセージにマーカーが載らず再捕捉ループになる・§4.3）。マーカーは (ii) 未解決メッセージの段階で Publisher に検知され publish が抑止される。`UserDestinationMessageHandler` の解決ホップ後もヘッダが保持されるかは実装時にテストで確認する（仮に保持されなくても、(iii) 解決済みメッセージは §4.2.1 の destination 判定で無条件に中継対象外のため防御は破れない）。
+- 防御は**三重**（originNodeId 判定・リレーマーカー判定・§4.2.1 の destination 判定）。単一ノードで relay ON の段階 1 検証でも、この防止でループ・二重配信しないことを確認する（AC-6）。
 
 ### 4.5 メッセージ封筒（`RelayEnvelope`）
 
@@ -218,19 +244,21 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 
 ## 5. 受け入れ条件（テスト可能・正常/異常/境界）
 
-- **AC-1（マルチノード broadcast）**: 2 ノード相当環境で、ノード A に接続した購読者が、**ノード B 発の `convertAndSend`**（全 `/topic` 配信先・チャット/マッチ/コルクボード/緊急休業/サイネージ）を受信できる。
-- **AC-2（マルチノード user・認可）**: `convertAndSendToUser` が、対象ユーザーの**接続ノードに関わらず**到達する。かつ**他ユーザーには漏洩しない**（ユーザー A 宛がユーザー B のセッションに届かない）。
-- **AC-3（非回帰）**: relay flag OFF 時は、現行 SimpleBroker 挙動と**完全同一**（publish/subscribe を一切行わず、単一ノード配信のみ）。既存配信 UT が全て green のまま。
+- **AC-1（マルチノード broadcast）**: 2 ノード相当環境で、ノード A に接続した購読者が、**ノード B 発の `convertAndSend`**（全 `/topic` 配信先・チャット/マッチ/コルクボード/緊急休業/**村ロビー presence**/サイネージ）を受信できる。presence は中継除外不可（§2.2 注記）。
+- **AC-2（マルチノード user・認可）**: `convertAndSendToUser` が、対象ユーザーの**接続ノードに関わらず**到達する。かつ**他ユーザーには漏洩しない**。検証手順を固定する: ユーザー A を**ノード B のみ**に接続し、**ノード A から** A 宛に送信 → ノード A 上の別ユーザー（受信者 C）には届かず、ノード B の A に届くこと。
+- **AC-3（非回帰）**: relay flag OFF 時は、現行 SimpleBroker 挙動と**完全同一**（relay 部品は `@ConditionalOnProperty` で Bean 不生成・publish/subscribe を一切行わない）。既存配信 UT が全て green のまま。
 - **AC-4（フェイルオープン）**: Valkey 断（接続喪失）でアプリは**落ちず**、当該ノード内のローカル配信は**継続**する。Valkey 復旧後に中継が**自動再開**する（購読コンテナの再接続）。
-- **AC-5（Principal 配線）**: CONNECT 後、`SimpUserRegistry` に接続ユーザーが**登録**される（§2.3 の欠陥実証テストが red→green 化）。`convertAndSendToUser` が単一ノードで対象ユーザーに到達する。
-- **AC-6（ループ防止）**: 単一ノードで relay ON でも、自ノード publish の再注入で**無限ループ・二重配信が発生しない**（originNodeId 判定＋リレーマーカーで破棄）。
+- **AC-5（Principal 配線）**: CONNECT 後、`SimpUserRegistry` に接続ユーザーが**登録**される（§2.3 の欠陥実証テストが red→green 化）。`convertAndSendToUser` が単一ノードで対象ユーザーに到達する。あわせて `sessionAttributes` の userId と Principal 名（`getName()`）が**同一の JWT 検証結果由来で必ず一致**することをアサートする（§2.3 是正設計 5 — `/user` 宛には SUBSCRIBE 認可が無く Principal 正当性が唯一の防壁のため）。
+- **AC-6（ループ防止）**: 単一ノードで relay ON でも、自ノード publish の再注入で**無限ループ・二重配信が発生しない**（originNodeId 判定＋リレーマーカー＋destination 判定の三重防御・§4.4）。user 経路の再実行（ヘッダ付きオーバーロード）も再捕捉されないこと。
 - **AC-7（境界: サイネージ）**: `/topic/signage/...` 配信もマルチノードで届く（単一ブローカーマージにより relay 対象に含まれることの確認）。
+- **AC-8（無停止デプロイの観測）**: 段階 2 の設定変更後、ローリングデプロイ中に維持していた WS 接続で「切断→クライアント自動再接続」以外の断が発生しない。デプロイ中の HTTP 5xx ゼロ・deployment circuit breaker 非発火。
 
 ---
 
 ## 6. API 契約 / DDL / エラーコード / i18n
 
 - **API 契約**: **REST 変更なし**。クライアントの購読 destination（`/topic/...`・`/user/.../queue/...`）は**全て不変**。STOMP エンドポイント（`/ws`・`/ws/signage`）・SockJS も不変。**FE 改修ゼロ**。OpenAPI（`docs/openapi.json`）への影響なし。
+  - **ただし挙動変化の周知（FE 隊・実機 E2E）**: Principal 根治により、**これまで実際には届いていなかった `/user/queue/notifications` のリアルタイム通知が初めて実配信される**。FE は購読済みで改修不要だが、通知トースト・バッジ等の表示頻度が実際に変わるため FE 隊へ周知し、実機 E2E の確認項目に含める（AC-5 と対）。
 - **DDL / 状態遷移**: **不要**（Valkey Pub/Sub のみ・永続化なし）。**Flyway: 不要**（マイグレーション追加なし）。
 - **エラーコード**: **新規業務エラーコード不要**。内部障害（Valkey 断・publish 失敗・再注入失敗）は**ログ＋メトリクス**で観測し、**フェイルオープン**（例外を握りつぶさず warn ログに記録するが HTTP/配信経路は巻き戻さない。既存 `NotificationDispatchService` の配信失敗ハンドリングと同じ best-effort 方針）。
 - **i18n**: **不要**（ユーザー可視文言なし。中継は完全にバックエンド内部処理）。
@@ -241,23 +269,28 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 
 ## 7. テスト戦略
 
-### 7.1 結合テスト（既存パターン踏襲）
+### 7.1 結合テスト — 二方式の役割分担
 
-既存の Valkey/Redis 結合テスト（`common/ratelimit/ValkeyRateLimiterIntegrationTest`）の**手組みパターンを踏襲**する。この既存テストは意図的に `@SpringBootTest` を**使わず**（`AbstractMySqlIntegrationTest` との TestContext キャッシュ分裂回避のため）、以下を手動で組む:
+手組み Lettuce 流儀（rate limiter パターン）では **SimpleBroker + SimpUserRegistry + UserDestinationMessageHandler を含む実 STOMP スタックの 2 ノード構成は組めない**（これらは `@EnableWebSocketMessageBroker` の構成一式として起動する必要がある）。方式を AC ごとに分担する。
 
-- `private static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379)...`（`@Container` アノテーションは使わず static フィールド保持）。
-- `@BeforeAll` で `REDIS.start()`、Docker 不在時は `@EnabledIf` + `Assumptions.abort(...)` でスキップ、`@AfterAll` で `stop()`、`@BeforeEach` で `flushAll()`。
-- 接続は `new RedisStandaloneConfiguration(REDIS.getHost(), REDIS.getFirstMappedPort())` → `new LettuceConnectionFactory(...)` → `afterPropertiesSet()` を手動配線。
+#### 7.1.1 AC-1 / AC-6（broadcast relay 経路の中核部品）— 手組み検証
 
-本 relay の結合テストは、この接続先に対して **2 つの `RedisMessageListenerContainer` / relay 部品（Publisher/Subscriber）を別 `nodeId` で 2 セット手組み**し、「ノード A 発 → Valkey → ノード B の SimpleBroker 再注入まで」を結合検証する（実 SimpleBroker への再注入まで含める）。
+既存 `common/ratelimit/ValkeyRateLimiterIntegrationTest` の手組みパターンを踏襲（`@SpringBootTest` 不使用の理由 = `AbstractMySqlIntegrationTest` との TestContext キャッシュ分裂回避）:
 
-> この手組みは CLAUDE.md の一般的な試練規約（`@SpringBootTest(RANDOM_PORT)` + Testcontainers 自動採番）から**意図的に外れる**が、既存 Valkey 結合テストと同じ理由（TestContext キャッシュ分裂回避）による確立パターンであり、`ValkeyRateLimiterIntegrationTest` / `AdFrequencyCapIntegrationTest` と同流儀。ポートは `getFirstMappedPort()` で動的採番するため並行実行衝突はしない。
+- `GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379)`（static フィールド保持・`@Container` 不使用）。`@BeforeAll` で start、Docker 不在時は `@EnabledIf` + `Assumptions.abort(...)` でスキップ、`@AfterAll` で stop、`@BeforeEach` で `flushAll()`。
+- `new RedisStandaloneConfiguration(host, getFirstMappedPort())` → `new LettuceConnectionFactory(...)` → `afterPropertiesSet()` を手動配線（ポート動的採番のため並行実行衝突なし）。
+- この接続先に relay 部品（Publisher / Subscriber + `RedisMessageListenerContainer`）を**別 nodeId で 2 セット手組み**し、「ノード A 発 publish → Valkey → ノード B 受信 → 再注入呼び出し」を検証する。SimpleBroker 本体はモックとし、**再注入の呼び出し内容（destination・ヘッダ・リレーマーカー）まで**を検証範囲とする。originNodeId 破棄・マーカー付きメッセージの publish 抑止（AC-6）・`RelayEnvelope` シリアライズもここで検証。
 
-- ユーザー宛（AC-2）は、ノード B にのみ対象ユーザーのセッション/Principal がある状況を作り、到達と非漏洩を確認。
+#### 7.1.2 AC-2 / AC-5 / AC-7（user 宛・Principal・実 STOMP スタック）— 2 コンテキスト @SpringBootTest
+
+- 単一 JVM 内で `@SpringBootTest(webEnvironment = RANDOM_PORT)` 相当のフルコンテキストを **2 つ**（`mannschaft.websocket.relay.node-id` を別値・ポートは RANDOM_PORT 自動採番）起動し、**1 個の Valkey Testcontainer を共有**する（両コンテキストに同一の Valkey 接続先を注入）。
+- 実 STOMP クライアント（`WebSocketStompClient`）で各ノードに CONNECT し、`UserDestinationMessageHandler` / `SimpUserRegistry` / SimpleBroker を含む**実スタック**で検証する: AC-2（到達＋非漏洩・手順は §5 AC-2 の固定手順）・AC-5（registry 登録＋同一ソース一致）・AC-7（サイネージ topic のマルチノード到達）。
+- **TestContext キャッシュへの配慮**: 1 つ目はフレームワーク管理のコンテキストとしてよいが、**2 つ目は `SpringApplicationBuilder` 等で明示起動・テスト終了時に明示 close** し、フレームワークの TestContext キャッシュに残さない。テストクラス全体も `@DirtiesContext(classMode = AFTER_CLASS)` で後始末し、他テスト（`AbstractMySqlIntegrationTest` 系）へのキャッシュ分裂波及を防ぐ。
 
 ### 7.2 Principal 欠陥の実証（red 先行）
 
 §2.3 の欠陥は**先に red テストで実証**する（憶測修正禁止）:
+- **原因切り分けの独立アサート**: 同テスト内で、まず「`/queue` プレフィックスがブローカーに登録済みであること」を独立に確認する（§2.1 の `configureMessageBroker` 順序依存が原因でないことの切り分け）。その上で配信をアサートし、red の原因を **Principal 未配線単独**に固定する。
 - **2 セッションテスト**: 実 STOMP クライアント 2 本で CONNECT し、一方の userId 宛に `convertAndSendToUser` を送る。**修正前は届かない（red）**ことを確認 → Principal 配線後に**届く（green）**。
 - `SimpUserRegistry` に接続ユーザーが登録されることを直接アサート（`SimpUserRegistry.getUser(userId)` 非 null）。
 
@@ -274,6 +307,7 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 - `RedisMessageListenerContainer` は接続喪失時に例外を投げず（Lettuce の再接続 + Spring の container 再起動）、購読を自動復旧。
 - `WebSocketRelayPublisher` の publish 失敗は warn ログ + メトリクスのみ（配信経路を巻き戻さない）。
 - **結果**: Valkey 断中は「マルチノード中継のみ停止」し、各ノードのローカル SimpleBroker 配信は継続。復旧後、購読再開で中継が自動的に戻る。アプリの可用性は Valkey に依存しない（キャッシュ層と同じ耐性設計思想）。
+- **認証はフェイルオープンの対象外**: WS の JWT 検証（`AuthTokenService.parseAccessToken` = トークン署名検証）は現状 Valkey に依存しない。フェイルオープン方針が適用されるのは **relay（配信中継）のみ**であり、認証・購読認可の判断を緩めることはない。
 
 ### 8.2 ループ防止
 
@@ -282,15 +316,15 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 ### 8.3 ファンアウト帯域見積り（N 倍配信の許容規模）
 
 - ある配信 1 件は Valkey で N ノードに fan-out され、各ノードが自ノード購読者へ配る。Valkey pub/sub トラフィックは概ね **（配信件数 × N ノード × 平均ペイロードサイズ）**。
-- 現状 destination の大半はチーム/チャネル/試合単位の限定購読で、1 配信あたりの購読者・配信頻度は限定的（07 §J.5「観戦者はチーム関係者中心で限定的」）。単一 Valkey ノードの pub/sub スループット（数十万 msg/s オーダー）に対し、当面のノード数 N（2〜数台）・配信頻度では**十分に余裕**。
-- 揮発配信（タイピング・presence）は件数が出やすいため、**必要ならタイピング/presence を中継対象から除外**する設定余地を残す（揮発かつローカル体感で十分な場合、ノード跨ぎ中継を省く選択。段階 2 で計測して判断）。
+- 現状 destination の大半はチーム/チャネル/試合単位の限定購読で、1 配信あたりの購読者・配信頻度は限定的（07 §J.5「観戦者はチーム関係者中心で限定的」）。スループット上限は**本番ノードタイプ（最小・バースト型の `cache.t4g.micro` 級）の実値前提で保守的に見積もる**: 公表された確定値はないため、桁感として**数千 msg/s 程度を設計上の上限目安**とし、段階 1 で `relay.publish.count` を実測して見積りを更新する。当面のノード数 N（2〜数台）・現配信頻度に対しては十分に余裕。
+- **presence は中継必須で除外不可**（§2.2 注記 — 切断由来の退室 broadcast は接続していたノードでしか発生しないため、除外すると他ノードの在席表示が恒久的に腐る）。中継除外の設定余地を残すのは**タイピング（§2.2 表 #3）のみ**。除外した場合の劣化 =「別ノード接続ユーザーのタイピング表示が出ない」という明示的な機能劣化であり、採用にはマスター判断を要する（段階 2 で配信量を計測して判断）。
 
 ### 8.4 監視メトリクス
 
 - `relay.publish.count` / `relay.publish.failure`（発信側）
 - `relay.receive.count` / `relay.receive.dropped`（自ノード発の破棄数）
 - `relay.reinject.count` / `relay.reinject.failure`
-- `relay.latency`（publish→他ノード再注入までの遅延。相関 ID で計測）
+- 遅延の直接計測（publish→他ノード再注入の片道時間）は**ノード間クロックスキューで不正確なため採用しない**。代替: `relay.publish.count` 対 `relay.receive.count` の**突合（件数整合・滞留検知）** ＋ **Valkey RTT**（PING レイテンシ）を監視する。補助として同一ノード内 self-roundtrip（自ノード publish→自ノード受信を同一クロックで計測）を用いてよい
 - Valkey 接続状態（container 稼働・再接続回数）
 - 既存の Micrometer/監視基盤に載せる（新規ダッシュボードは運用整備時）。
 
@@ -312,8 +346,12 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 | コメント（460-463 行の「WebSocket インメモリブローカーのため 2 タスク不可」）| — | **全面書き換え** | relay 導入で 2 タスク並走が可能になった旨に更新 |
 
 - `desired_count` は段階移行に従い、段階 1 では `1` のまま（relay ON 検証）、段階 2 で `2` 以上へ。
-- ElastiCache（`modules/data/main.tf` の `aws_elasticache_replication_group.valkey`）は**変更なし**（単一ノード維持）。
-- 変更は Cloudflare Tunnel 隊と協調（同じ ECS サービス定義に触れるため、隊間で main への取り込み順序を調整）。
+- **relay 有効化の前提条件（セキュリティ・必須）**: 現状 `transit_encryption_enabled = false`（`modules/data/main.tf` 198 行）。relay を有効化すると**チャット本文・通知本文（PII）が平文で Valkey を流れる新経路**が生まれるため、**relay ON より前に転送時暗号化を有効化**する（隊 3 スコープに含める）:
+  1. ElastiCache: `transit_encryption_enabled = true`（in-place 変更可否・`transit_encryption_mode` の段階適用要否は実装時に AWS 仕様を確認）
+  2. Spring 側: `application-prod.yml` に `spring.data.redis.ssl.enabled: true`（Lettuce TLS）を追加
+  - 影響範囲: 接続は単一の `LettuceConnectionFactory` のため、既存の**キャッシュ・レート制限・presence TTL キーの接続もまとめて TLS 化**される（設定一箇所・アプリコード変更なし）。ローカル開発（docker-compose の valkey）は TLS 無しのままとする（prod/staging プロファイル限定の設定）。
+- ElastiCache のノード構成（`aws_elasticache_replication_group.valkey`）は**単一ノード維持で変更なし**（上記 TLS 化のみ）。
+- **取り込み順の協調**: 同じ ECS タスク定義/サービスに触れる **Graviton 化 PR #2219**（`runtime_platform` 変更）を**先行**させ、本件の IaC 変更（`deployment_*`・circuit breaker・TLS）は**その上に積む**。Cloudflare Tunnel 隊とも同様に main への取り込み順序を調整する。
 
 ### 8.7 1000 万ユーザー / シャーディング方針との整合
 
@@ -331,8 +369,8 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 | 隊 | 担当 | 主な成果物 |
 |---|---|---|
 | **隊 1: BE 中核** | relay 部品 + Principal 配線 + WebSocketConfig 是正 | `WebSocketRelayPublisher` / `WebSocketRelaySubscriber` / `RelayEnvelope` / `WebSocketRelayProperties` / `RedisMessageListenerContainer` Bean / `StompPrincipal` / `WebSocketAuthChannelInterceptor` への `setUser` 追加 / feature flag / §2.1 の順序依存是正（Config 集約）|
-| **隊 2: 試練（テスト先行）** | 受け入れ条件 → red テスト | §7.2 の Principal 2 セッション red / §7.1 の 2 ノード結合テスト（`redis:7-alpine` Testcontainer 手組み）/ 非回帰確認 |
-| **隊 3: IaC** | ECS deployment 設定 | §8.6 の `deployment_*` 変更 + circuit breaker + コメント書き換え（Cloudflare Tunnel 隊と協調）|
+| **隊 2: 試練（テスト先行）** | 受け入れ条件 → red テスト | §7.2 の Principal red（`/queue` 登録済みの切り分けアサート含む）/ §7.1.1 手組み結合（broadcast・ループ防止）/ §7.1.2 2 コンテキスト実スタック（user 宛・Principal・サイネージ）/ 非回帰確認 |
+| **隊 3: IaC** | ECS deployment 設定 + Valkey TLS 化 | §8.6 の `deployment_*` 変更 + circuit breaker + コメント書き換え + **`transit_encryption_enabled=true` 化と `spring.data.redis.ssl` 有効化（relay ON の前提条件・§8.6）**。Graviton #2219 先行の上に積む・Cloudflare Tunnel 隊と協調 |
 | **隊 4: サイネージ系統の確定対応** | §2.1 の実挙動確定 | 起動時 Configurer 順序の実測確定 → 単一ブローカーマージ前提の妥当性確認。設定集約が隊 1 に吸収できるなら隊 1 に統合（調査結果次第）|
 
 > 順序: **隊 2（試練 red）→ 隊 1（green）→ 隊 3（IaC）**。Principal 根治は隊 1 の中核であり、隊 2 の red 実証が前提（BE/API テスト先行・`feedback_test_first_be_api`）。
@@ -344,5 +382,7 @@ ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`
 - **A.1** `configureMessageBroker` 二重呼び出しの順序依存（§2.1）— 実測で現挙動を確定し、単一 Config へ集約して根絶。
 - **A.2**（確定済み）`SignageWebSocketPublisher` は 2 destination（`/emergency`・`/update`）。`/emergency` は `SignageEmergencyMessageEntity` として DB 永続（timestamp のみ揮発）、`/update` は再取得トリガの揮発シグナル。いずれも**再描画可能**で at-most-once 許容（§2.2 表 #9a/#9b で確定）。
 - **A.3** relay チャネルを単一集約 / destination 別分割のどちらにするか — 配信量メトリクスで決定（初期 2 チャネル）。
-- **A.4** 揮発配信（タイピング・presence）を中継対象に含めるか除外可能にするか — 段階 2 で計測判断（§8.3）。
+- **A.4** タイピング（§2.2 表 #3）の中継除外オプションを実装するか — **presence は中継必須で確定**（§2.2 注記・§8.3）。タイピング除外は明示的な機能劣化（別ノードのタイピング表示欠落）を伴うため、段階 2 の計測後にマスター判断（§8.3）。
 - **A.5** relay 再注入で購読認可（07 §J.3 の SUBSCRIBE インターセプタ）を**二重に通さない**こと — 再注入はブローカー配信（アウトバウンド）であり SUBSCRIBE フレームではないため認可は購読時に既に済んでいる。ただし送信時フィルタ（07 §J.3.3 の機微情報非包含）は relay 経路でも維持されることを確認（ペイロードは発信元で既にフィルタ済みのまま中継されるため追加対応不要の見込み・実装時確認）。
+- **A.6** user 経路のリレーマーカーが `UserDestinationMessageHandler` の解決ホップを経てもヘッダ保持されるか — 実装時にテストで確認（保持されなくても §4.2.1 の destination 判定で二重配信は防止される・§4.4）。
+- **A.7** ElastiCache `transit_encryption_enabled` の in-place 変更可否（`transit_encryption_mode` によるオンライン段階適用が必要か）— 隊 3 が AWS 仕様を確認して適用手順（要ダウンタイムの有無含む）を確定（§8.6）。
