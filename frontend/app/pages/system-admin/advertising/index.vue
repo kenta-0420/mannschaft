@@ -11,6 +11,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const systemAdminAdApi = useSystemAdminAdCampaignApi()
+const operationalApi = useSystemAdminOperationalCampaignApi()
 const notification = useNotification()
 const router = useRouter()
 
@@ -21,6 +22,8 @@ const autoFlaggedCount = ref(0)
 const userReports = ref<AdUserReport[]>([])
 const userReportsTotal = ref(0)
 const autoSuspendCandidateCount = ref(0)
+// F09.19.4b 運用型キャンペーン審査待ち件数
+const operationalPendingTotal = ref(0)
 
 /**
  * 概況用に審査キュー + 通報を並列取得する。
@@ -32,9 +35,10 @@ const autoSuspendCandidateCount = ref(0)
 async function load() {
   loading.value = true
   try {
-    const [queueRes, reportsRes] = await Promise.all([
+    const [queueRes, reportsRes, operationalRes] = await Promise.all([
       systemAdminAdApi.listReviewQueue({ page: 0, size: 5 }),
       systemAdminAdApi.listUserReports({ page: 0, size: 5 }),
+      operationalApi.listQueue({ status: 'PENDING_REVIEW', page: 0, size: 1 }),
     ])
     reviewQueue.value = queueRes.data
     reviewQueueTotal.value = queueRes.meta.totalElements
@@ -46,6 +50,7 @@ async function load() {
     autoSuspendCandidateCount.value = reportsRes.data.filter(
       (r) => r.autoSuspendCandidate,
     ).length
+    operationalPendingTotal.value = operationalRes.meta?.total ?? 0
   } catch {
     notification.error(t('advertising.pages.system_admin_dashboard.load_failed'))
   } finally {
@@ -61,6 +66,10 @@ function goReviewQueue() {
 
 function goUserReports() {
   router.push('/system-admin/advertising/user-reports')
+}
+
+function goOperationalQueue() {
+  router.push('/system-admin/advertising/operational-queue')
 }
 </script>
 
@@ -155,6 +164,45 @@ function goUserReports() {
           <p class="mt-2 text-3xl font-bold text-surface-500 dark:text-surface-300">
             —
           </p>
+        </div>
+      </div>
+
+      <!-- F09.19.4b 運用型キャンペーン審査カード -->
+      <div
+        class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800"
+        data-testid="operational-review-card"
+      >
+        <div class="flex items-center gap-4">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+            <i class="pi pi-megaphone text-xl" />
+          </div>
+          <div>
+            <p class="font-semibold text-surface-800 dark:text-surface-100">
+              {{ t('advertising.operational_campaigns.review.card_title') }}
+            </p>
+            <p class="text-sm text-surface-500">
+              {{ t('advertising.operational_campaigns.review.card_description') }}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-center">
+            <p class="text-xs text-surface-500">
+              {{ t('advertising.operational_campaigns.review.pending_count') }}
+            </p>
+            <p
+              class="text-2xl font-bold text-primary-700 dark:text-primary-300"
+              data-testid="operational-pending-count"
+            >
+              {{ operationalPendingTotal }}
+            </p>
+          </div>
+          <Button
+            :label="t('advertising.operational_campaigns.review.open_queue')"
+            icon="pi pi-arrow-right"
+            icon-pos="right"
+            @click="goOperationalQueue"
+          />
         </div>
       </div>
 

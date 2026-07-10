@@ -547,6 +547,154 @@
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
       }
+    },
+    "operational_campaigns": {
+      "title": "Banner-Werbekampagnen",
+      "entry_tile": {
+        "title": "Banner-Werbekampagnen",
+        "description": "Erstelle und verwalte operative Kampagnen, die Bildbanner in Werbeplätzen ausliefern."
+      },
+      "list": {
+        "description": "Erstelle Bildbanner-Auslieferungskampagnen und verwalte Prüfung, Auslieferung und Pausieren. Das Tagesbudget ist eine Richtobergrenze.",
+        "create_button": "Erstellen",
+        "empty": "Noch keine operativen Kampagnen. Erstelle deine erste Kampagne.",
+        "no_end_date": "Unbegrenzt",
+        "report_suspended_badge": "Durch Meldung gesperrt",
+        "reject_reason_label": "Ablehnungsgrund",
+        "link_creatives": "Creatives",
+        "link_report": "Bericht",
+        "tab": {
+          "all": "Alle",
+          "draft": "Entwurf",
+          "pending_review": "In Prüfung",
+          "active": "Aktiv",
+          "paused": "Pausiert",
+          "ended": "Beendet"
+        },
+        "col": {
+          "name": "Kampagnenname",
+          "status": "Status",
+          "pricing_model": "Preismodell",
+          "daily_budget": "Tagesbudget",
+          "period": "Zeitraum",
+          "unit_price": "Stückpreis",
+          "actions": "Aktionen"
+        }
+      },
+      "status": {
+        "draft": "Entwurf",
+        "pending_review": "In Prüfung",
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "ended": "Beendet"
+      },
+      "actions": {
+        "submit": "Zur Prüfung einreichen",
+        "pause": "Pausieren",
+        "resume": "Fortsetzen",
+        "end": "Beenden",
+        "edit": "Bearbeiten"
+      },
+      "confirm": {
+        "submit": "Diese Kampagne zur Prüfung einreichen?",
+        "pause": "Die Auslieferung dieser Kampagne pausieren?",
+        "resume": "Die Auslieferung dieser Kampagne fortsetzen?",
+        "end": "Diese Kampagne beenden? Nach dem Beenden kann sie nicht fortgesetzt werden (unumkehrbar)."
+      },
+      "toast": {
+        "submit": "Zur Prüfung eingereicht",
+        "pause": "Auslieferung pausiert",
+        "resume": "Auslieferung fortgesetzt",
+        "end": "Kampagne beendet",
+        "created": "Kampagne erstellt",
+        "updated": "Kampagne aktualisiert"
+      },
+      "form": {
+        "create_title": "Banner-Werbekampagne erstellen",
+        "edit_title": "Banner-Werbekampagne bearbeiten",
+        "name": "Kampagnenname",
+        "pricing_model": "Preismodell",
+        "rate_card": "Preiskarte",
+        "rate_card_placeholder": "Preiskarte auswählen",
+        "no_rate_cards": "Für das ausgewählte Preismodell sind keine Preiskarten verfügbar.",
+        "daily_budget": "Tagesbudget",
+        "min_daily_budget": "Mindest-Tagesbudget",
+        "start_date": "Startdatum",
+        "end_date": "Enddatum",
+        "end_date_hint": "Leer lassen für unbegrenzte Laufzeit.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "Kann im pausierten Zustand nicht geändert werden.",
+        "daily_budget_notice": "Das Tagesbudget ist eine Richtobergrenze fürs Pacing. Es ist keine strikte Garantie; die Abrechnung erfolgt anhand der tatsächlich gemessenen Auslieferung.",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "errors": {
+        "load_failed": "Kampagne konnte nicht geladen werden",
+        "save_failed": "Speichern fehlgeschlagen",
+        "transition_failed": "Vorgang fehlgeschlagen",
+        "rate_cards_load_failed": "Preiskarten konnten nicht geladen werden",
+        "name_required": "Bitte einen Kampagnennamen eingeben",
+        "name_max": "Der Kampagnenname darf höchstens 200 Zeichen lang sein",
+        "rate_card_required": "Bitte eine Preiskarte auswählen",
+        "daily_budget_required": "Bitte ein Tagesbudget eingeben",
+        "daily_budget_min": "Das Tagesbudget muss mindestens dem Minimum ({min}) entsprechen",
+        "start_date_required": "Bitte ein Startdatum eingeben",
+        "start_in_past": "Das Startdatum muss heute oder später sein",
+        "end_before_start": "Das Enddatum muss am oder nach dem Startdatum liegen"
+      },
+      "guide": {
+        "title": "So verwendest du Banner-Werbekampagnen",
+        "what": {
+          "title": "Was sind Banner-Werbekampagnen?",
+          "body": "Operative Anzeigen, die Bildbanner in Plätzen wie Dashboards und Feeds ausliefern. Wähle ein Preismodell (CPM/CPC) und eine Preiskarte, lege ein Tagesbudget fest und liefere nach der Prüfung aus."
+        },
+        "flow": {
+          "title": "Veröffentlichungsablauf",
+          "step1": "Erstelle eine Kampagne (Entwurf) mit Preiskarte und Tagesbudget",
+          "step2": "Reiche Creatives (Bildbanner) ein",
+          "step3": "Zur Prüfung einreichen (Kampagne und Creatives müssen beide genehmigt sein, um förderfähig zu sein)",
+          "step4": "Auslieferung startet. Bei Bedarf pausieren, fortsetzen oder beenden"
+        },
+        "pricing": {
+          "title": "Preise und Tagesbudget",
+          "body": "Die Preiskarte bestimmt den Stückpreis (CPM = pro 1000 Impressionen, CPC = pro Klick). Der Stückpreis wird bei der Erstellung eingefroren, sodass spätere Preisänderungen nicht gelten. Das Tagesbudget ist eine Richtobergrenze fürs Pacing."
+        },
+        "status": {
+          "title": "Status und Vorgänge",
+          "body": "Die Übergänge sind Entwurf -> In Prüfung -> Aktiv -> Pausiert. Im pausierten Zustand können abrechnungsrelevante Felder (Preismodell, Preiskarte, Startdatum) nicht geändert werden. Beendete Kampagnen können nicht fortgesetzt werden."
+        }
+      },
+      "review": {
+        "title": "Prüfung operativer Kampagnen",
+        "description": "Prüfe ausstehende Banner-Werbekampagnen und genehmige oder lehne sie ab.",
+        "card_title": "Prüfung operativer Kampagnen",
+        "card_description": "Sieh dir Banner-Werbekampagnen an, die auf Prüfung warten.",
+        "pending_count": "Ausstehend",
+        "open_queue": "Prüfungswarteschlange öffnen",
+        "open_detail": "Detail ansehen",
+        "back_to_dashboard": "Zurück zum Prüfungs-Dashboard",
+        "empty": "Keine Kampagnen warten auf Prüfung.",
+        "load_failed": "Prüfungswarteschlange konnte nicht geladen werden",
+        "detail_load_failed": "Prüfungsdetail konnte nicht geladen werden",
+        "detail_title": "Kampagnen-Prüfungsdetail",
+        "advertiser": "Werbetreibender",
+        "scope": "Bereich",
+        "scope_organization": "Organisation",
+        "scope_team": "Team",
+        "unit_price": "Stückpreis",
+        "creatives": "Creatives",
+        "no_creatives": "Es wurden keine Creatives eingereicht.",
+        "approve": "Genehmigen",
+        "approve_confirm": "Diese Kampagne genehmigen und für die Auslieferung freigeben?",
+        "approved_toast": "Kampagne genehmigt",
+        "reject": "Ablehnen",
+        "reject_submit": "Ablehnen",
+        "reject_reason_label": "Ablehnungsgrund",
+        "reject_reason_placeholder": "Gib den Ablehnungsgrund ein (1-500 Zeichen)",
+        "rejected_toast": "Kampagne abgelehnt",
+        "action_failed": "Vorgang fehlgeschlagen"
+      }
     }
   }
 }

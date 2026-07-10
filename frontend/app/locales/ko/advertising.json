@@ -547,6 +547,154 @@
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
       }
+    },
+    "operational_campaigns": {
+      "title": "배너 광고 캠페인",
+      "entry_tile": {
+        "title": "배너 광고 캠페인",
+        "description": "이미지 배너를 게재면에 배포하는 운영형 캠페인을 생성하고 관리합니다."
+      },
+      "list": {
+        "description": "이미지 배너 배포 캠페인을 생성하고 심사, 배포, 일시 정지를 관리합니다. 일일 예산은 참고 상한입니다.",
+        "create_button": "새로 만들기",
+        "empty": "운영형 캠페인이 아직 없습니다. 첫 캠페인을 만들어 보세요.",
+        "no_end_date": "무기한",
+        "report_suspended_badge": "신고로 중지됨",
+        "reject_reason_label": "반려 사유",
+        "link_creatives": "크리에이티브",
+        "link_report": "리포트",
+        "tab": {
+          "all": "전체",
+          "draft": "임시저장",
+          "pending_review": "심사 중",
+          "active": "배포 중",
+          "paused": "일시 정지",
+          "ended": "종료"
+        },
+        "col": {
+          "name": "캠페인명",
+          "status": "상태",
+          "pricing_model": "과금 방식",
+          "daily_budget": "일일 예산",
+          "period": "게재 기간",
+          "unit_price": "단가",
+          "actions": "작업"
+        }
+      },
+      "status": {
+        "draft": "임시저장",
+        "pending_review": "심사 중",
+        "active": "배포 중",
+        "paused": "일시 정지",
+        "ended": "종료"
+      },
+      "actions": {
+        "submit": "심사 제출",
+        "pause": "일시 정지",
+        "resume": "재개",
+        "end": "종료",
+        "edit": "편집"
+      },
+      "confirm": {
+        "submit": "이 캠페인을 심사에 제출하시겠습니까?",
+        "pause": "이 캠페인의 배포를 일시 정지하시겠습니까?",
+        "resume": "이 캠페인의 배포를 재개하시겠습니까?",
+        "end": "이 캠페인을 종료하시겠습니까? 종료하면 재개할 수 없습니다(불가역)."
+      },
+      "toast": {
+        "submit": "심사에 제출했습니다",
+        "pause": "배포를 일시 정지했습니다",
+        "resume": "배포를 재개했습니다",
+        "end": "캠페인을 종료했습니다",
+        "created": "캠페인을 생성했습니다",
+        "updated": "캠페인을 수정했습니다"
+      },
+      "form": {
+        "create_title": "배너 광고 캠페인 생성",
+        "edit_title": "배너 광고 캠페인 편집",
+        "name": "캠페인명",
+        "pricing_model": "과금 방식",
+        "rate_card": "요금 카드",
+        "rate_card_placeholder": "요금 카드 선택",
+        "no_rate_cards": "선택한 과금 방식에 사용 가능한 요금 카드가 없습니다.",
+        "daily_budget": "일일 예산",
+        "min_daily_budget": "최소 일일 예산",
+        "start_date": "게재 시작일",
+        "end_date": "게재 종료일",
+        "end_date_hint": "비워 두면 무기한 게재됩니다.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "일시 정지 중에는 변경할 수 없습니다.",
+        "daily_budget_notice": "일일 예산은 소진 페이싱의 참고 상한이며 엄격한 보장이 아닙니다. 실측값을 기준으로 과금됩니다.",
+        "save": "저장",
+        "cancel": "취소"
+      },
+      "errors": {
+        "load_failed": "캠페인을 불러오지 못했습니다",
+        "save_failed": "저장하지 못했습니다",
+        "transition_failed": "작업에 실패했습니다",
+        "rate_cards_load_failed": "요금 카드를 불러오지 못했습니다",
+        "name_required": "캠페인명을 입력하세요",
+        "name_max": "캠페인명은 200자 이내로 입력하세요",
+        "rate_card_required": "요금 카드를 선택하세요",
+        "daily_budget_required": "일일 예산을 입력하세요",
+        "daily_budget_min": "일일 예산은 최소값({min}) 이상이어야 합니다",
+        "start_date_required": "게재 시작일을 입력하세요",
+        "start_in_past": "게재 시작일은 오늘 이후여야 합니다",
+        "end_before_start": "게재 종료일은 시작일 이후여야 합니다"
+      },
+      "guide": {
+        "title": "배너 광고 캠페인 사용법",
+        "what": {
+          "title": "배너 광고 캠페인이란",
+          "body": "대시보드나 피드 같은 게재면에 이미지 배너를 배포하는 운영형 광고입니다. 과금 방식(CPM/CPC)과 요금 카드를 선택하고 일일 예산을 설정한 뒤 심사를 거쳐 배포합니다."
+        },
+        "flow": {
+          "title": "게재 흐름",
+          "step1": "요금 카드와 일일 예산을 지정해 캠페인 생성(임시저장)",
+          "step2": "크리에이티브(이미지 배너) 입고",
+          "step3": "심사 제출(캠페인과 크리에이티브 모두 승인되어야 배포 대상)",
+          "step4": "배포 시작. 필요에 따라 일시 정지·재개·종료"
+        },
+        "pricing": {
+          "title": "요금과 일일 예산",
+          "body": "요금 카드로 단가(CPM=노출 1000회당, CPC=클릭 1회당)가 정해집니다. 생성 시 단가가 고정되어 이후 요금 개정의 영향을 받지 않습니다. 일일 예산은 페이싱 참고 상한입니다."
+        },
+        "status": {
+          "title": "상태와 작업",
+          "body": "임시저장→심사 중→배포 중→일시 정지 순으로 전이합니다. 일시 정지 중에는 과금 단가 관련 항목(과금 방식·요금 카드·시작일)을 변경할 수 없습니다. 종료하면 재개할 수 없습니다."
+        }
+      },
+      "review": {
+        "title": "운영형 캠페인 심사",
+        "description": "심사 대기 중인 배너 광고 캠페인을 확인하고 승인 또는 반려합니다.",
+        "card_title": "운영형 캠페인 심사",
+        "card_description": "심사 대기 중인 배너 광고 캠페인을 확인합니다.",
+        "pending_count": "심사 대기",
+        "open_queue": "심사 큐 열기",
+        "open_detail": "상세 보기",
+        "back_to_dashboard": "심사 대시보드로 돌아가기",
+        "empty": "심사 대기 중인 캠페인이 없습니다.",
+        "load_failed": "심사 큐를 불러오지 못했습니다",
+        "detail_load_failed": "심사 상세를 불러오지 못했습니다",
+        "detail_title": "캠페인 심사 상세",
+        "advertiser": "광고주",
+        "scope": "범위",
+        "scope_organization": "조직",
+        "scope_team": "팀",
+        "unit_price": "단가",
+        "creatives": "크리에이티브",
+        "no_creatives": "입고된 크리에이티브가 없습니다.",
+        "approve": "승인",
+        "approve_confirm": "이 캠페인을 승인하여 배포 가능하게 하시겠습니까?",
+        "approved_toast": "캠페인을 승인했습니다",
+        "reject": "반려",
+        "reject_submit": "반려",
+        "reject_reason_label": "반려 사유",
+        "reject_reason_placeholder": "반려 사유를 입력하세요(1~500자)",
+        "rejected_toast": "캠페인을 반려했습니다",
+        "action_failed": "작업에 실패했습니다"
+      }
     }
   }
 }
