@@ -236,9 +236,31 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     const manageTab = page.getByRole('tab', { name: '予約対象の管理' })
     await expect(manageTab).toBeVisible({ timeout: 20_000 })
     await manageTab.click()
-    await expect(page.getByRole('button', { name: '予約対象を追加' })).toBeVisible({
+    // 【F03.4.5 §3.2 タブ6段再編・第一隊 c043bd9e8 追従】
+    // 「予約対象の管理」タブの中身は Accordion 化され、初期は全閉（ADHD配慮）。
+    // タブ切替直後に見えるのは各セクションのヘッダーボタン（営業時間/予約対象の管理(n)/
+    // メニュー管理(n)/週間テンプレート(n)/例外日カレンダー/詳細設定）であり、
+    // 「予約対象を追加」等の中身ボタンはセクションを展開するまで現れない。
+    await expect(
+      page.getByRole('button', { name: /^予約対象の管理(\s*\(\d+\))?$/ }),
+      '予約対象の管理セクションのヘッダーが表示されること',
+    ).toBeVisible({ timeout: 15_000 })
+  }
+
+  /**
+   * 管理タブ内 Accordion セクションを展開する（初期は全閉のため必須）。
+   * ヘッダー文言は section_count で「{label} ({n})」形式（例外日カレンダー/営業時間は件数無し）。
+   */
+  async function openAccordionSection(page: Page, labelPrefix: string): Promise<void> {
+    const header = page.getByRole('button', {
+      name: new RegExp(`^${labelPrefix}(\\s*\\(\\d+\\))?$`),
+    })
+    await expect(header, `${labelPrefix} セクションのヘッダーが表示されること`).toBeVisible({
       timeout: 15_000,
     })
+    if ((await header.getAttribute('aria-expanded')) !== 'true') {
+      await header.click()
+    }
   }
 
   test('STEP-1: 営業時間を全曜日 10:00-18:00 に設定できる（UIなし→API PUT）', async ({
@@ -284,6 +306,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
   test('STEP-2: ライン「席A」をUIから作成できる', async ({ page, tokens }) => {
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, '予約対象の管理')
 
     await page.getByRole('button', { name: '予約対象を追加' }).click()
     const dialog = page.getByRole('dialog')
@@ -308,6 +331,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
   }) => {
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, 'メニュー管理')
 
     await page.getByTestId('menu-add').click()
     const dialog = page.getByRole('dialog')
@@ -345,6 +369,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
   }) => {
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, '週間テンプレート')
 
     await page.getByTestId('template-add').click()
     const dialog = page.getByRole('dialog')
@@ -395,6 +420,10 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await gotoReservations(page, tokens)
 
     await page.getByRole('tab', { name: '予約する' }).click()
+    // 【F03.4.5 W2-1第二隊 PR#2191/984279dcc 追従】「予約する」タブの既定表示は
+    // マトリックス表示（SlotMatrixPicker）に変更され、DatePicker(.p-datepicker-input)は
+    // リスト表示（SlotPicker）でのみ描画される。明示的にリスト表示へ切り替える。
+    await page.getByRole('button', { name: 'リスト表示' }).click()
     // DatePicker を明日に変更（date-format yy/mm/dd）
     const dateInput = page.locator('.p-datepicker-input').first()
     await expect(dateInput).toBeVisible({ timeout: 15_000 })
@@ -423,6 +452,8 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await gotoReservations(page, tokens)
 
     await page.getByRole('tab', { name: '予約する' }).click()
+    // 既定表示はマトリックス表示のため、リスト表示（DatePicker/箇条書き枠）へ明示的に切り替える。
+    await page.getByRole('button', { name: 'リスト表示' }).click()
     const dateInput = page.locator('.p-datepicker-input').first()
     await expect(dateInput).toBeVisible({ timeout: 15_000 })
     await dateInput.fill(tmr.slash)
@@ -478,9 +509,13 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     // （F03.4.5 §3.1・W2-1追従）。
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, '週間テンプレート')
 
+    // 【F03.4.5 §3.2 タブ6段再編・第一隊 c043bd9e8 追従】
+    // WeeklyScheduleManager の行表示は「{曜日} {開始}-{終了} {ライン名}」の1段落に統合され、
+    // 単独で「10:00 - 12:00」だけの要素にはならない（exact一致は不合格になる）。
     const templateRow = page
-      .locator('div.flex.items-center', { has: page.getByText('10:00 - 12:00', { exact: true }) })
+      .locator('div.flex.items-center', { has: page.getByText('10:00 - 12:00') })
       .first()
     await expect(templateRow, '作成済みテンプレ行が表示されること').toBeVisible({ timeout: 15_000 })
     await templateRow.locator('button:has(.pi-pencil)').click()
@@ -529,7 +564,11 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
       },
     )
     expect(tplRes.ok(), `席Bテンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`).toBeTruthy()
-    const tplB = (await tplRes.json()).data as { id: string }
+    // 【根治】F03.4.5 §3.1 のテンプレ保存＝同期自動生成統合により、レスポンスは
+    // SlotTemplateSaveResponse{ template, generation } にネストされた（旧: data.id 直下）。
+    // 直下参照のままだと tplB.id が undefined になり、実機ログで実際に
+    // "tplId=undefined" として検出された（以降の裏取りに使う ID が取れず不正確になる）。
+    const tplB = ((await tplRes.json()).data as { template: { id: string } }).template
 
     // 予約なし未来枠（手動作成・席B紐付け）
     const slotRes = await request.post(`${BE}/api/v1/teams/${teamSlug}/reservation-slots`, {
@@ -544,9 +583,14 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     // 新仕様の説明（テンプレ停止＋未来枠purgeのガイド文言）が確認ダイアログに含まれることも確認する）
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, '予約対象の管理')
 
+    // 【根治】'div.flex.items-center' だけだと SlotMatrixPicker のスティッキー列
+    // （予約するタブ側・非表示だが keep-alive で DOM 残留）にも一致し33要素中の隠れた
+    // 誤爬取（hidden）を先頭で拾ってしまう。LineManager.vue の実クラス
+    // （flex items-center gap-3 rounded-lg）まで指定して一意化する。
     const lineRow = page
-      .locator('div.flex.items-center', { has: page.getByText('席B', { exact: true }) })
+      .locator('div.flex.items-center.gap-3.rounded-lg', { has: page.getByText('席B', { exact: true }) })
       .first()
     await expect(lineRow).toBeVisible({ timeout: 15_000 })
     await lineRow.locator('button:has(.pi-trash)').click()
