@@ -1,6 +1,24 @@
 {
   "advertising": {
     "ad_label": "广告",
+    "spotlight": {
+      "hide_advertiser": "隐藏该广告主",
+      "hide_advertiser_done": "已隐藏该广告主的广告",
+      "report": "举报",
+      "upgrade_cta": "无广告使用 →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "在亚马逊选购团队用品",
+          "description": "以优惠价格备齐活动所需的各类物品。",
+          "cta": "立即查看"
+        },
+        "rakuten": {
+          "title": "在乐天选购团队用品",
+          "description": "边购物边赚积分，实惠备齐所需物品。",
+          "cta": "前往乐天"
+        }
+      }
+    },
     "status": {
       "draft": "草稿",
       "review": "审核中",

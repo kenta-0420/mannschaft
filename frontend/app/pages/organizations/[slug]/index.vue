@@ -31,6 +31,7 @@ const {
       :key="orgSlug"
       scope-type="organization"
       :scope-id="orgSlug"
+      :scope-numeric-id="org?.id"
       :scope-name="displayName"
       :scope-template="org?.hierarchy?.orgType"
       :viewer-role="effectiveViewerRole"
