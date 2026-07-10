@@ -3,8 +3,10 @@ import type { AdvertiserAccountResponse, AdvertiserOverviewResponse } from '~/ty
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
+const { t } = useI18n()
 const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
+const toast = useNotification()
 const account = ref<AdvertiserAccountResponse | null>(null)
 const overview = ref<AdvertiserOverviewResponse | null>(null)
 const loading = ref(true)
@@ -25,6 +27,42 @@ async function load() {
   }
   finally {
     loading.value = false
+  }
+}
+
+// F09.19.7 §10.3: アカウント設定（companyName / contactEmail）編集ダイアログ
+const editDialogVisible = ref(false)
+const editForm = ref<{ companyName: string; contactEmail: string }>({
+  companyName: '',
+  contactEmail: '',
+})
+const savingAccount = ref(false)
+
+function openEditDialog() {
+  if (!account.value) return
+  editForm.value = {
+    companyName: account.value.companyName,
+    contactEmail: account.value.contactEmail,
+  }
+  editDialogVisible.value = true
+}
+
+async function saveAccount() {
+  savingAccount.value = true
+  try {
+    const res = await advertiserApi.updateAccount(orgSlug, {
+      companyName: editForm.value.companyName,
+      contactEmail: editForm.value.contactEmail,
+    })
+    account.value = res.data
+    editDialogVisible.value = false
+    toast.success(t('advertising.account_settings.saved'))
+  }
+  catch {
+    toast.error(t('advertising.account_settings.save_failed'))
+  }
+  finally {
+    savingAccount.value = false
   }
 }
 
@@ -120,6 +158,62 @@ onMounted(load)
           </Column>
         </DataTable>
       </SectionCard>
+
+      <!-- F09.19.7 §10.3: アカウント設定 -->
+      <SectionCard class="mt-6">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">{{ t('advertising.account_settings.title') }}</h2>
+            <Button
+              icon="pi pi-pencil"
+              :label="t('advertising.account_settings.edit')"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="openEditDialog"
+            />
+          </div>
+        </template>
+        <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          <dt class="text-surface-500">{{ t('advertising.account_settings.company_name') }}</dt>
+          <dd>{{ account.companyName }}</dd>
+          <dt class="text-surface-500">{{ t('advertising.account_settings.contact_email') }}</dt>
+          <dd>{{ account.contactEmail }}</dd>
+        </dl>
+      </SectionCard>
+
+      <Dialog
+        v-model:visible="editDialogVisible"
+        modal
+        :header="t('advertising.account_settings.title')"
+        :style="{ width: '32rem' }"
+      >
+        <div class="space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium">{{ t('advertising.account_settings.company_name') }}</label>
+            <InputText v-model="editForm.companyName" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium">{{ t('advertising.account_settings.contact_email') }}</label>
+            <InputText v-model="editForm.contactEmail" type="email" class="w-full" />
+          </div>
+        </div>
+        <template #footer>
+          <Button
+            :label="t('advertising.account_settings.cancel')"
+            severity="secondary"
+            text
+            @click="editDialogVisible = false"
+          />
+          <Button
+            :label="t('advertising.account_settings.save')"
+            icon="pi pi-check"
+            :loading="savingAccount"
+            :disabled="!editForm.companyName || !editForm.contactEmail"
+            @click="saveAccount"
+          />
+        </template>
+      </Dialog>
 
       <!-- ナビゲーション -->
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
