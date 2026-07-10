@@ -42,6 +42,8 @@ const confirmDialog = useConfirm()
 // 直前直後は避け、該当時は次のアイテム後ろへ繰り下げる（設計 §8.3）。
 const spotlightApi = useSpotlightApi()
 const spotlightItems = ref<SpotlightItem[]>([])
+/** 差し込む IN_FEED 枠のアイテム（存在時のみ描画）。 */
+const spotlightInfeedItem = computed(() => spotlightItems.value[0])
 
 async function loadSpotlight() {
   // scopeId には数値のチーム ID が必要。フィード項目の scopeId が数値のチーム ID（BE の Long）。
@@ -221,12 +223,12 @@ function onDeleteConfirm(id: number) {
             />
             <!-- IN_FEED 掲載面（非 pinned 3 件目直後・1 ページ 1 枠・CLS 防止の固定枠） -->
             <div
-              v-if="idx === spotlightInsertIndex - 1 && spotlightItems[0]"
+              v-if="idx === spotlightInsertIndex - 1 && spotlightInfeedItem"
               class="spotlight-infeed py-2"
               data-testid="spotlight-infeed"
               :style="spotlightInfeedStyle"
             >
-              <SpotlightSlot :item="spotlightItems[0]" placement="IN_FEED" />
+              <SpotlightSlot :item="spotlightInfeedItem" placement="IN_FEED" />
             </div>
           </template>
         </div>

@@ -66,6 +66,9 @@ const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useD
 // KEYS/linkTo には登録しない（結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
 const spotlightApi = useSpotlightApi()
 const spotlightItems = ref<SpotlightItem[]>([])
+// 候補なしは枠ごと非表示: primary=items[0] / secondary=items[1]（存在時のみ描画）
+const spotlightPrimary = computed(() => spotlightItems.value[0])
+const spotlightSecondary = computed(() => spotlightItems.value[1])
 
 async function loadSpotlight() {
   spotlightItems.value = await spotlightApi.fetchContent('DASHBOARD_TILE', 2, {
@@ -428,16 +431,16 @@ function onDragEnd() {
         <!-- 候補なしは枠ごと非表示（items.length=1→Secondary 非描画・0→両方非描画）。スケルトンも確保しない（末尾のため CLS 許容）。 -->
         <!-- key は placement 値ベース（spotlight-primary/spotlight-secondary）。KEYS/linkTo には登録しない固定描画。 -->
         <WidgetSpotlightPrimary
-          v-if="spotlightItems[0]"
+          v-if="spotlightPrimary"
           key="spotlight-primary"
           class="order-last"
-          :item="spotlightItems[0]"
+          :item="spotlightPrimary"
         />
         <WidgetSpotlightSecondary
-          v-if="spotlightItems[1]"
+          v-if="spotlightSecondary"
           key="spotlight-secondary"
           class="order-last"
-          :item="spotlightItems[1]"
+          :item="spotlightSecondary"
         />
       </TransitionGroup>
 
