@@ -186,6 +186,34 @@ describe('ReservationBusinessHoursManager.vue', () => {
     expect(mockNotifyWarn).not.toHaveBeenCalled()
   })
 
+  it('AC-FE8: generatedCount=0 かつ skippedOutsideHoursCount>0 で generated_zero_hint（原因明示）を warn する（S-11・成功トーストにしない）', async () => {
+    // 営業時間 PUT 自体は成立（failed=false）だが、営業時間外/定休日により枠が1件も生成されなかったケース。
+    // 「保存したのに0件」の無言の混乱を防ぐため、成功トーストではなく原因を明示する警告トーストを出す
+    // （ReservationBusinessHoursManager.vue:140-143 の分岐。WeeklyScheduleManager 側 AC-FE8 と対称の番人）。
+    mockGetBusinessHours.mockResolvedValue({ data: [] })
+    mockUpdateBusinessHours.mockResolvedValue({
+      data: {
+        hours: [],
+        generation: { generatedCount: 0, skippedExistingCount: 0, skippedClosedDayCount: 0, skippedOutsideHoursCount: 4, failed: false },
+      },
+    })
+
+    const wrapper = await mountSuspended(ReservationBusinessHoursManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+    findInWrapper<HTMLButtonElement>(wrapper, 'business-hours-save')!.click()
+    await flush()
+
+    expect(mockUpdateBusinessHours).toHaveBeenCalledTimes(1)
+    // 成功トーストではなく警告トーストで原因（営業時間外/定休日）を明示する
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyWarn.mock.calls[0] as [string, string]
+    // en ロケールの generated_zero_hint 本文（原因明示）で呼ばれること
+    expect(message.toLowerCase()).toContain('business hours')
+  })
+
   it('AC-FE4: generation.failed=true は保存成立の上で警告トースト（黙殺しない）', async () => {
     mockGetBusinessHours.mockResolvedValue({ data: [] })
     mockUpdateBusinessHours.mockResolvedValue({
