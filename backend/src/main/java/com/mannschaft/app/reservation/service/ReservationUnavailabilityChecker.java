@@ -94,10 +94,14 @@ public class ReservationUnavailabilityChecker {
      * <b>拡張コア</b>（F03.4.5 §4.2 併載）。
      *
      * <p>既存の 9 引数コア {@link #isBlocked(LocalDate, LocalTime, LocalTime, Long, LocalDate, LocalTime,
-     * LocalTime, ReservationBlockedResourceType, Long)} は<b>無変更</b>のまま残し、本メソッドを新規オーバーロード
-     * として追加する（回帰なし・別実装厳禁の原則は「TEAM/STAFF の判定ロジックを複製しない」ことで担保）。
-     * {@code slotLineId} 引数を追加したことで {@link ReservationBlockedResourceType#LINE} 軸を
-     * 実 enforce できるようになる（従来は MVP 未 enforce だった・F03.4.2 §5.7 の予告分）。</p>
+     * LocalTime, ReservationBlockedResourceType, Long)} の<b>メソッド本体は一切改変せず</b>そのまま残し、
+     * 本メソッドを新規オーバーロードとして追加する（R-16 回帰の合格条件）。TEAM/STAFF 分岐は
+     * 9 引数版と本 10 引数版に存在するが、9 引数版のロジックには手を入れず、<b>本 10 引数版に
+     * {@code slotLineId} を用いた LINE 分岐だけを追加</b>することで {@link ReservationBlockedResourceType#LINE}
+     * 軸を実 enforce できるようにした（従来は MVP 未 enforce だった・F03.4.2 §5.7 の予告分）。
+     * 既存 3 箇所の呼び出しは 9 引数版へ委譲する 2 引数エンティティ版
+     * {@link #isBlocked(ReservationSlotEntity, ReservationBlockedTimeEntity)} を経由するため、
+     * この 2 引数版のみ本 10 引数版へ配線し直して LINE 軸 enforce に乗せている。</p>
      *
      * @param slotLineId slot のライン軸（共通枠は null）
      * @see #isBlocked(LocalDate, LocalTime, LocalTime, Long, LocalDate, LocalTime, LocalTime,
