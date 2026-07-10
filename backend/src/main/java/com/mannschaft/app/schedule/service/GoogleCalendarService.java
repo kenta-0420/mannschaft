@@ -325,6 +325,28 @@ public class GoogleCalendarService {
     }
 
     /**
+     * メンバーシップ終了（退会・サポータ解除）に連動して、当該ユーザー×スコープの
+     * カレンダー同期設定を無効化し、Google 側のイベントを削除する（堅牢化フェーズ AC-7）。
+     *
+     * <p>{@code com.mannschaft.app.membership.event.MembershipEndedEvent} を購読する
+     * schedule ドメインのリスナーから {@code AFTER_COMMIT} + {@code REQUIRES_NEW} で
+     * 呼び出される想定（手本: {@link com.mannschaft.app.schedule.listener.ScheduleDelegationMembershipListener}）。
+     * 退会後も Google カレンダーへスケジュールが push され続ける穴を塞ぐ。</p>
+     *
+     * <p><b>未実装（堅牢化フェーズ 試練の red 用スケルトン）</b>: 受け入れテスト（AC-7）が参照する
+     * シグネチャのみ先行定義したもので、ロジックは出陣フェーズで実装する。</p>
+     *
+     * @param userId    退会したユーザーID
+     * @param scopeType スコープ種別（"TEAM" / "ORGANIZATION"）
+     * @param scopeId   スコープID（team_id または organization_id）
+     */
+    @Transactional
+    public void handleMembershipEnded(Long userId, String scopeType, Long scopeId) {
+        throw new UnsupportedOperationException(
+                "未実装: GoogleCalendarService.handleMembershipEnded（Google カレンダー同期 堅牢化フェーズ 出陣で実装）");
+    }
+
+    /**
      * 手動再同期を実行する。
      */
     @Transactional

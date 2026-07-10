@@ -177,6 +177,26 @@ public class GoogleApiClient {
     }
 
     /**
+     * Google Calendar のイベントを削除する（堅牢化フェーズ: トグルOFF / 退会連動 / キャンセル同期用）。
+     *
+     * <p><b>べき等性</b>: 対象イベントが既に存在しない（HTTP 404/410 相当）場合は「削除成功」として扱い、
+     * 例外を送出しない。それ以外の API エラーは {@link BusinessException}
+     * （{@link GoogleCalendarErrorCode#GOOGLE_API_ERROR}）を送出し、症状を握り潰さない
+     * （CLAUDE.md 障害対応の原則）。</p>
+     *
+     * <p><b>未実装（堅牢化フェーズ 試練の red 用スケルトン）</b>: 本メソッドは受け入れテスト
+     * （AC-6 / AC-8 / AC-9）が参照するシグネチャのみ先行定義したもので、ロジックは出陣フェーズで実装する。</p>
+     *
+     * @param accessToken アクセストークン
+     * @param calendarId  カレンダー ID（"primary" 等）
+     * @param eventId     削除対象の Google イベント ID
+     */
+    public void deleteEvent(String accessToken, String calendarId, String eventId) {
+        throw new UnsupportedOperationException(
+                "未実装: GoogleApiClient.deleteEvent（Google カレンダー同期 堅牢化フェーズ 出陣で実装）");
+    }
+
+    /**
      * Google Calendar Watch API でプッシュ通知チャンネルを登録する。
      *
      * @param calendarId  カレンダー ID（"primary" 等）
