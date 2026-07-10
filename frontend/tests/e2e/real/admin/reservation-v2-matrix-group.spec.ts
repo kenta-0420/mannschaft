@@ -5,8 +5,14 @@
  * フロントエンド http://localhost:3001（検証用 dev server。BASE_URL 環境変数で上書き可）
  *
  * 写経元: reservation-v2-menu-template.spec.ts（ログイン機構・CORS APIブリッジ・
- * 使い捨てチーム作成・予約モジュール有効化・営業時間設定・ライン/メニュー/テンプレ作成・
- * 「今すぐ枠を作成」までのセットアップ）。単一セッション設計・総当りログイン禁止。
+ * 使い捨てチーム作成・予約モジュール有効化・営業時間設定・ライン/メニュー/テンプレ作成の
+ * セットアップ）。単一セッション設計・総当りログイン禁止。
+ *
+ * 【F03.4.5 W2-1 追従（例外日カレンダー第二隊）】
+ *   「今すぐ枠を作成」ボタンは撤去され、テンプレ保存＝即同期自動生成に統合された（§3.1）。
+ *   本 spec の STEP-1 セットアップは旧UI（generate-now testid・「テンプレートを作成しました」
+ *   単独トースト）を参照しており新設計で実走すると赤化するため、保存時自動生成トースト
+ *   （reservation.template.auto_generated）に追従させた。
  *
  * 対象コンポーネント（PR #2191 / commit 984279dcc）:
  *   - SlotMatrixPicker.vue（マトリックス本体。既定表示 bookDisplayMode='matrix'）
@@ -357,25 +363,20 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     await dialog.getByRole('combobox').nth(2).click()
     await page.getByRole('option', { name: '13:00', exact: true }).last().click()
     await page.getByTestId('template-save').click()
-    await expect(page.getByText('テンプレートを作成しました')).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText('10:00 - 13:00')).toBeVisible()
 
-    // 今すぐ枠を作成: 6セル(10:00-13:00)×4週 = 24枠 期待
-    const generateBtn = page.getByTestId('generate-now')
-    await expect(generateBtn).toBeVisible({ timeout: 15_000 })
-    await generateBtn.click()
-    const resultToast = page.getByText(/\d+枠を作成・\d+枠は作成済み/)
+    // テンプレ保存＝同期自動生成（F03.4.5 §3.1）。「今すぐ枠を作成」ボタンは撤去済みで、
+    // 保存直後に生成結果込みのトースト1本が出る（6セル(10:00-13:00)×該当曜日4回=24枠 期待）。
+    const resultToast = page.getByText(/保存し、28日先までの枠を\d+件作成しました/)
     await expect(resultToast).toBeVisible({ timeout: 20_000 })
     const text = (await resultToast.textContent()) ?? ''
-    const m = text.match(/(\d+)枠を作成・(\d+)枠は作成済み/)
+    const m = text.match(/保存し、28日先までの枠を(\d+)件作成しました/)
     const generated = Number(m?.[1] ?? -1)
-    const skipped = Number(m?.[2] ?? -1)
-    console.log(`[STEP-1] generate結果: generated=${generated} skipped=${skipped} (raw="${text}")`)
+    console.log(`[STEP-1] 保存時自動生成結果: generated=${generated} (raw="${text}")`)
+    await expect(page.getByText('10:00 - 13:00')).toBeVisible()
     await page.screenshot({ path: 'test-results/rsv-v2b-01-setup-generated.png', fullPage: true })
 
     expect(generated, '生成0件は不合格').toBeGreaterThan(0)
     expect(generated, '6セル(10:00-13:00)×該当曜日4回=24枠').toBe(24)
-    expect(skipped, '初回生成でスキップは0のはず').toBe(0)
   })
 
   test('STEP-2: 事前準備 — 12:30枠をAPIで予約済みにする（延長disabled検証用）', async ({ tokens }) => {
