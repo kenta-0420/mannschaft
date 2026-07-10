@@ -1,27 +1,47 @@
 <script setup lang="ts">
 /**
- * 予約枠 週間テンプレート管理（F03.4.2 §10）ADMIN限定
+ * 週間スケジュール管理（旧 SlotTemplateManager・F03.4.5 §3.2/§4.5）ADMIN限定
  *
- * - 曜日×時間帯×ライン（共通枠含む）×定員のテンプレート CRUD ＋「今すぐ枠を作成」動線。
+ * 【F03.4.5 W2-1 第一隊 改訂点（営業スケジュール中心モデル・マスターの実使用フィードバック起点）】
+ * - テンプレ保存＝**即自動生成**（§3.1）。保存レスポンスは `SlotTemplateSaveResponse`
+ *   （`data.template` ＋ `data.generation`）で、「今すぐ枠を作成」ボタン・`weeks` Select は撤去した
+ *   （保存＝反映になるため操作の存在意義が消える。API 自体は BE 側 `@Deprecated` で残置）。
+ * - 複数曜日の新規作成（W1 由来の `selectedDays` ループ）は、各呼びの `generation` を**合算して1トースト**
+ *   で報告する（§3.1 集約規則）。部分失敗（一部曜日で `generation.failed=true`、または呼び自体が
+ *   4xx/5xx）も「N曜日中M曜日で失敗」の1トーストに集約する（曜日ごとにN連トーストを出さない）。
+ * - `hasBusinessHours=false` のチームでは空状態に「先に営業時間を設定してください」導線を表示し、
+ *   ①営業時間セクションへスクロールする `focus-business-hours` を親（TeamReservationsPanel）へ emit する。
+ *
  * - 曜日トグルの見た目は ScheduleEventRecurrenceInput.vue の写経。
  *   **ただし写経元は 'MONDAY' フルネームを emit するため、value は必ず3文字大文字
  *   'MON'..'SUN'（BE の ReservationDayOfWeek enum）へ変換して API に送る**
- *   （フルネーム送信は Jackson デシリアライズ失敗で 400 — 設計書 §4/§10 明記）。
- * - テンプレ保存の成功後は regenerate_guide を表示し、「今すぐ枠を作成」
- *   （POST /reservation-slot-templates/generate・冪等）へ誘導する。
- * - エラーは BE コードで判定して表示（握りつぶし禁止）:
- *     RESERVATION_037(400) 上限500行 / RESERVATION_044(429) generate レートリミット。
+ *   （フルネーム送信は Jackson デシリアライズ失敗で 400 — 設計書 §3.1/§4/§10 明記）。
+ * - エラーは BE コードで判定して表示（握りつぶし禁止）: RESERVATION_037(400) 上限500行。
+ *
+ * §4 の定期予約不可枠（赤系・事由ラベル付き併記表示）は W2-2（第二隊以降）でこのファイルへ統合する。
  *
  * 金型: LineManager.vue（CRUDダイアログ型）。最終ゲートは BE。
  */
 import type { components } from '~/types/generated'
 import type { ReservationDayOfWeekCode } from '~/composables/useReservationApi'
+import { RESERVATION_DAY_OPTIONS, buildHalfHourTimeOptions, toHm } from '~/composables/useReservationDayOptions'
 
 type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
+type SlotGenerationResultDto = components['schemas']['SlotGenerationResultDto']
 
 const props = defineProps<{
   teamId: string
+  /**
+   * `ReservationSettingsResponse.hasBusinessHours`（実測フィールド）。未ロード中は暫定 true とし、
+   * ロード完了後に false へ切り替わったら空状態の初回体験ガイドを出す（S-11・§3.2）。
+   */
+  hasBusinessHours?: boolean
+}>()
+
+const emit = defineEmits<{
+  /** 空状態の「営業時間を設定する」導線クリック時。親が①営業時間セクションを開いてスクロールする。 */
+  'focus-business-hours': []
 }>()
 
 const { t } = useI18n()
@@ -32,20 +52,6 @@ const { handleApiError } = useErrorHandler()
 // ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
 const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
-/**
- * 曜日トグルの選択肢。ラベルは既存 schedule.recurrence.days.* を再利用（新設しない）。
- * value は BE 正準の3文字大文字コード（'MONDAY' 等のフルネームは送らない）。
- */
-const DAY_OPTIONS: ReadonlyArray<{ value: ReservationDayOfWeekCode; labelKey: string }> = [
-  { value: 'SUN', labelKey: 'schedule.recurrence.days.SUNDAY' },
-  { value: 'MON', labelKey: 'schedule.recurrence.days.MONDAY' },
-  { value: 'TUE', labelKey: 'schedule.recurrence.days.TUESDAY' },
-  { value: 'WED', labelKey: 'schedule.recurrence.days.WEDNESDAY' },
-  { value: 'THU', labelKey: 'schedule.recurrence.days.THURSDAY' },
-  { value: 'FRI', labelKey: 'schedule.recurrence.days.FRIDAY' },
-  { value: 'SAT', labelKey: 'schedule.recurrence.days.SATURDAY' },
-]
-
 /** 共通枠（lineId なし）を表すフォーム用センチネル値 */
 const COMMON_LINE = -1
 
@@ -53,13 +59,10 @@ const templates = ref<SlotTemplateResponse[]>([])
 const lines = ref<ReservationLineResponse[]>([])
 const loading = ref(true)
 const saving = ref(false)
-const generating = ref(false)
 const showDialog = ref(false)
 const editingTemplate = ref<SlotTemplateResponse | null>(null)
-/** 保存直後に「今すぐ枠を作成」への誘導ガイドを出す */
+/** 保存直後に表示する自動反映の補足ガイド（§11 regenerate_guide 改訂値）。 */
 const showRegenerateGuide = ref(false)
-
-const generateWeeks = ref(4)
 
 interface TemplateForm {
   lineId: number
@@ -89,20 +92,7 @@ const form = ref<TemplateForm>(defaultForm())
 const selectedDays = ref<ReservationDayOfWeekCode[]>([])
 
 /** 30分刻みの時刻オプション（00:00〜23:30） */
-const timeOptions = computed(() => {
-  const opts: Array<{ label: string; value: string }> = []
-  for (let h = 0; h < 24; h++) {
-    for (const m of [0, 30]) {
-      const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-      opts.push({ label: v, value: v })
-    }
-  }
-  return opts
-})
-
-const generateWeeksOptions = computed(() =>
-  [1, 2, 3, 4].map(w => ({ label: String(w), value: w })),
-)
+const timeOptions = computed(() => buildHalfHourTimeOptions())
 
 /** 対象ラインの選択肢（共通枠 + active ライン） */
 const lineOptions = computed(() => [
@@ -124,15 +114,8 @@ const saveDisabled = computed(() =>
   || form.value.capacity > 99,
 )
 
-/** active テンプレが1件もない場合は generate を実行できない（BE も 400） */
-const hasActiveTemplates = computed(() => templates.value.some(tp => tp.isActive !== false))
-
-function toHm(value?: string | null): string {
-  return value ? value.slice(0, 5) : ''
-}
-
 function dayLabel(code?: string | null): string {
-  const opt = DAY_OPTIONS.find(d => d.value === code)
+  const opt = RESERVATION_DAY_OPTIONS.find(d => d.value === code)
   return opt ? t(opt.labelKey) : (code ?? '')
 }
 
@@ -192,7 +175,7 @@ function openEdit(template: SlotTemplateResponse) {
     capacity: template.capacity ?? 1,
     isActive: template.isActive ?? true,
   }
-  const day = DAY_OPTIONS.find(d => d.value === template.dayOfWeek)?.value
+  const day = RESERVATION_DAY_OPTIONS.find(d => d.value === template.dayOfWeek)?.value
   selectedDays.value = day ? [day] : []
   showDialog.value = true
 }
@@ -205,6 +188,42 @@ function notifySaveError(err: unknown) {
     return
   }
   handleApiError(err)
+}
+
+/**
+ * 保存成功後の同期自動生成結果（1件 or N件合算）をトーストへ集約する（§3.1 集約規則・AC-FE7★）。
+ *
+ * - いずれかの `generation.failed` が true → 「{total}曜日中{failed}曜日で失敗」の警告トースト1本
+ *   （§11 auto_generated_partial）。
+ * - 生成0件かつ営業時間外/定休日スキップが原因 → 原因を明示する警告トースト（§11 generated_zero_hint・S-11）。
+ * - それ以外 → 合算件数の成功トースト（§11 auto_generated）。
+ */
+function reportGenerationOutcome(generations: SlotGenerationResultDto[]) {
+  if (generations.length === 0) return
+
+  const failedCount = generations.filter(g => g.failed).length
+  if (failedCount > 0) {
+    notification.warn(
+      t('reservation.template.title'),
+      t('reservation.template.auto_generated_partial', { total: generations.length, failed: failedCount }),
+    )
+    return
+  }
+
+  const totalGenerated = generations.reduce((sum, g) => sum + (g.generatedCount ?? 0), 0)
+  const totalSkippedOutside = generations.reduce((sum, g) => sum + (g.skippedOutsideHoursCount ?? 0), 0)
+  const totalSkippedClosed = generations.reduce((sum, g) => sum + (g.skippedClosedDayCount ?? 0), 0)
+
+  if (totalGenerated === 0 && (totalSkippedOutside > 0 || totalSkippedClosed > 0)) {
+    // 「保存したのに0件」の無言の混乱を防ぐ（S-11・原因を明示）
+    notification.warn(t('reservation.template.title'), t('reservation.template.generated_zero_hint'))
+    return
+  }
+
+  notification.success(
+    t('reservation.template.title'),
+    t('reservation.template.auto_generated', { days: 28, generated: totalGenerated }),
+  )
 }
 
 async function save() {
@@ -222,7 +241,7 @@ async function save() {
       const day = selectedDays.value[0]
       if (!day) return
       // PATCH: 共通枠へ戻す場合は clearLineId で明示（null 据え置きと区別）
-      await reservationApi.updateSlotTemplate(props.teamId, editingTemplate.value.id, {
+      const res = await reservationApi.updateSlotTemplate(props.teamId, editingTemplate.value.id, {
         ...base,
         dayOfWeek: day,
         ...(form.value.lineId === COMMON_LINE
@@ -230,51 +249,50 @@ async function save() {
           : { lineId: form.value.lineId }),
         isActive: form.value.isActive,
       })
-      notification.success(t('reservation.message.template_update_success'))
+      if (res.data.generation) reportGenerationOutcome([res.data.generation])
     }
     else {
       // 選択曜日ぶん createSlotTemplate を順に呼び、曜日ごとのテンプレ行に展開する（DDL/API変更なし）
       const total = selectedDays.value.length
       const succeeded: ReservationDayOfWeekCode[] = []
+      const generations: SlotGenerationResultDto[] = []
       try {
         for (const day of selectedDays.value) {
-          await reservationApi.createSlotTemplate(props.teamId, {
+          const res = await reservationApi.createSlotTemplate(props.teamId, {
             ...base,
             dayOfWeek: day,
             ...(form.value.lineId === COMMON_LINE ? {} : { lineId: form.value.lineId }),
           })
           succeeded.push(day)
+          if (res.data.generation) generations.push(res.data.generation)
         }
       }
       catch (err) {
         // 部分失敗の根治処理（RESERVATION_037 上限到達の途中失敗が現実的な発生経路）:
         // (1) 成功済み曜日を選択から除去 — ダイアログを開いたまま再試行しても成功分を再作成して
-        //     重複行＋「今すぐ枠を作成」での枠二重生成にならないようにする（失敗曜日のみ残す）
-        // (2) 部分成功（{succeeded}/{total}件作成済み・残りは失敗）を warn トーストで伝達
+        //     重複行にならないようにする（失敗曜日のみ残す）
+        // (2) 部分成功は「N曜日中M曜日で失敗」の警告トースト1本に集約する（§3.1 集約規則・AC-FE7★）
         // (3) 一覧を実状態（成功分のみ作成済み）へ同期
         selectedDays.value = selectedDays.value.filter(d => !succeeded.includes(d))
         if (succeeded.length > 0) {
           notification.warn(
             t('reservation.template.title'),
-            t('reservation.message.template_create_partial', { succeeded: succeeded.length, total }),
+            t('reservation.template.auto_generated_partial', { total, failed: total - succeeded.length }),
           )
-          // 成功分のテンプレは存在するため、反映には「今すぐ枠を作成」が必要なことを案内する
           showRegenerateGuide.value = true
         }
-        notifySaveError(err)
+        else {
+          // 1件も保存できていない（全滅）場合のみ、BEエラーの詳細を個別トーストで伝える
+          notifySaveError(err)
+        }
         await loadTemplates()
         // ダイアログは閉じない（失敗曜日のみ選択された状態で再試行できる）
         return
       }
-      if (total > 1) {
-        notification.success(t('reservation.message.template_create_success_multi', { n: total }))
-      }
-      else {
-        notification.success(t('reservation.message.template_create_success'))
-      }
+      reportGenerationOutcome(generations)
     }
     showDialog.value = false
-    // 保存 → 生成は別操作。反映には「今すぐ枠を作成」が必要なことを案内する（§5.4 regenerate_guide 統合）
+    // 自動生成は保存に統合済みだが、既存の未予約枠を新定義に合わせたい場合の手順は残す（§11 regenerate_guide 改訂）
     showRegenerateGuide.value = true
     await loadTemplates()
   }
@@ -301,48 +319,6 @@ async function remove(template: SlotTemplateResponse) {
   }
 }
 
-/** 今すぐ枠を作成（一括生成・冪等）。結果カウントをトーストで報告する。 */
-async function generateNow() {
-  if (generating.value || !hasActiveTemplates.value) return
-  generating.value = true
-  try {
-    const res = await reservationApi.generateSlotsFromTemplates(props.teamId, {
-      weeks: generateWeeks.value,
-    })
-    const d = res.data
-    notification.success(
-      t('reservation.template.generate'),
-      t('reservation.template.generate_result', {
-        generated: d.generatedCount ?? 0,
-        skipped: d.skippedExistingCount ?? 0,
-      }),
-    )
-    if ((d.skippedClosedDayCount ?? 0) > 0) {
-      notification.info(
-        t('reservation.template.generate'),
-        t('reservation.template.generate_skipped_closed', { n: d.skippedClosedDayCount }),
-      )
-    }
-    showRegenerateGuide.value = false
-  }
-  catch (err) {
-    const apiError = err as { data?: { error?: { code?: string } }; statusCode?: number }
-    if (apiError?.data?.error?.code === 'RESERVATION_044' || apiError?.statusCode === 429) {
-      // generate レートリミット（RESERVATION_044・429）
-      notification.warn(
-        t('reservation.template.generate'),
-        t('reservation.template.generate_rate_limited'),
-      )
-    }
-    else {
-      handleApiError(err)
-    }
-  }
-  finally {
-    generating.value = false
-  }
-}
-
 onMounted(async () => {
   await loadPermissions()
   await Promise.all([loadTemplates(), loadLines()])
@@ -366,36 +342,10 @@ defineExpose({ refresh: loadTemplates, items: templates })
       />
     </div>
 
-    <!-- 保存直後の反映ガイド（regenerate_guide 統合・§5.4） -->
+    <!-- 保存直後の自動反映ガイド（regenerate_guide 改訂値・§11） -->
     <Message v-if="showRegenerateGuide && isAdmin" severity="info" :closable="true" class="mb-3 text-sm">
       {{ t('reservation.template.regenerate_guide') }}
     </Message>
-
-    <!-- 今すぐ枠を作成（一括生成・冪等） -->
-    <div
-      v-if="isAdmin && templates.length > 0"
-      class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
-    >
-      <label class="text-sm text-surface-600 dark:text-surface-400">
-        {{ t('reservation.template.generate_weeks') }}
-      </label>
-      <Select
-        v-model="generateWeeks"
-        :options="generateWeeksOptions"
-        option-label="label"
-        option-value="value"
-        class="w-20"
-      />
-      <Button
-        :label="t('reservation.template.generate')"
-        icon="pi pi-bolt"
-        size="small"
-        :loading="generating"
-        :disabled="!hasActiveTemplates"
-        data-testid="generate-now"
-        @click="generateNow"
-      />
-    </div>
 
     <!-- 一覧 -->
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
@@ -430,15 +380,29 @@ defineExpose({ refresh: loadTemplates, items: templates })
       v-else
       icon="pi pi-calendar-plus"
       :message="t('reservation.template.empty_state')"
-      :sub-message="isAdmin ? t('reservation.template.empty_state_hint') : undefined"
+      :sub-message="isAdmin
+        ? (props.hasBusinessHours === false ? t('reservation.template.need_business_hours_hint') : t('reservation.template.empty_state_hint'))
+        : undefined"
     >
       <template v-if="isAdmin" #action>
-        <Button
-          :label="t('reservation.template.add')"
-          icon="pi pi-plus"
-          size="small"
-          @click="openCreate"
-        />
+        <div class="flex flex-wrap justify-center gap-2">
+          <Button
+            v-if="props.hasBusinessHours === false"
+            :label="t('reservation.business_hours.title')"
+            icon="pi pi-clock"
+            size="small"
+            severity="secondary"
+            outlined
+            data-testid="focus-business-hours"
+            @click="emit('focus-business-hours')"
+          />
+          <Button
+            :label="t('reservation.template.add')"
+            icon="pi pi-plus"
+            size="small"
+            @click="openCreate"
+          />
+        </div>
       </template>
     </DashboardEmptyState>
 
@@ -470,7 +434,7 @@ defineExpose({ refresh: loadTemplates, items: templates })
           </label>
           <div class="flex flex-wrap gap-1.5">
             <button
-              v-for="d in DAY_OPTIONS"
+              v-for="d in RESERVATION_DAY_OPTIONS"
               :key="d.value"
               type="button"
               :data-day="d.value"

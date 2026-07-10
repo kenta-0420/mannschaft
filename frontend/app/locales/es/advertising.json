@@ -1,6 +1,24 @@
 {
   "advertising": {
     "ad_label": "Anuncio",
+    "spotlight": {
+      "hide_advertiser": "Ocultar este anunciante",
+      "hide_advertiser_done": "Los anuncios de este anunciante ya están ocultos",
+      "report": "Denunciar",
+      "upgrade_cta": "Usar sin anuncios →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "Material de equipo en Amazon",
+          "description": "Consigue todo lo que tu equipo necesita a buen precio.",
+          "cta": "Ver ahora"
+        },
+        "rakuten": {
+          "title": "Material de equipo en Rakuten",
+          "description": "Abastécete de lo esencial y acumula puntos al comprar.",
+          "cta": "Comprar en Rakuten"
+        }
+      }
+    },
     "status": {
       "draft": "Borrador",
       "review": "En revisión",

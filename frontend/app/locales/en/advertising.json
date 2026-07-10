@@ -1,6 +1,24 @@
 {
   "advertising": {
     "ad_label": "Ad",
+    "spotlight": {
+      "hide_advertiser": "Hide this advertiser",
+      "hide_advertiser_done": "Ads from this advertiser are now hidden",
+      "report": "Report",
+      "upgrade_cta": "Go ad-free →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "Team supplies on Amazon",
+          "description": "Get everything your team needs at great prices.",
+          "cta": "Shop now"
+        },
+        "rakuten": {
+          "title": "Team supplies on Rakuten",
+          "description": "Stock up on essentials and earn points as you shop.",
+          "cta": "Shop on Rakuten"
+        }
+      }
+    },
     "status": {
       "draft": "Draft",
       "review": "In review",

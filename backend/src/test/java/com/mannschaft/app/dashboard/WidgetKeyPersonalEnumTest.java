@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <ul>
  *   <li>WidgetFamilyHub (v-if hasFamilyTeam) → 条件付き固定パネル（案A固定2種）</li>
  *   <li>WidgetAdminBusinessAlert (v-if hasAdminOrDeputyRole) → 条件付き固定パネル（案A固定2種）</li>
- *   <li>WidgetAmazonAd / WidgetRakutenAd → 広告（固定・非表示不可）</li>
+ *   <li>WidgetSpotlightPrimary / WidgetSpotlightSecondary → 広告掲載面（F09.19.4 Spotlight・固定・非表示不可）</li>
  * </ul>
  * </p>
  */

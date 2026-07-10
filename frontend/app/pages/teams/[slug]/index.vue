@@ -31,6 +31,7 @@ const {
       :key="teamSlug"
       scope-type="team"
       :scope-id="teamSlug"
+      :scope-numeric-id="team?.id"
       :scope-name="displayName"
       :scope-template="team?.location?.template"
       :viewer-role="effectiveViewerRole"
