@@ -11467,6 +11467,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/pause": {
         parameters: {
             query?: never;
@@ -15334,6 +15350,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/pause": {
         parameters: {
             query?: never;
@@ -17497,7 +17529,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織メールプレビュー */
-        post: operations["preview_2"];
+        post: operations["preview_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -56733,6 +56765,14 @@ export interface components {
             startsAt: string;
             /** Format: int64 */
             totalBudgetYen: number;
+        };
+        ApiResponseEstimatedReachRangeResponse: {
+            data?: components["schemas"]["EstimatedReachRangeResponse"];
+        };
+        EstimatedReachRangeResponse: {
+            label?: string;
+            /** @enum {string} */
+            range?: "UNDER_100" | "RANGE_100_500" | "RANGE_500_1K" | "RANGE_1K_5K" | "RANGE_5K_10K" | "RANGE_10K_50K" | "RANGE_50K_100K" | "OVER_100K";
         };
         AudienceConfigRequest: {
             segments: components["schemas"]["AudienceSegmentRequest"][];
@@ -102848,6 +102888,29 @@ export interface operations {
             };
         };
     };
+    preview_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEstimatedReachRangeResponse"];
+                };
+            };
+        };
+    };
     pause: {
         parameters: {
             query?: never;
@@ -110094,6 +110157,29 @@ export interface operations {
             };
         };
     };
+    preview_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEstimatedReachRangeResponse"];
+                };
+            };
+        };
+    };
     pause_2: {
         parameters: {
             query?: never;
@@ -114440,7 +114526,7 @@ export interface operations {
             };
         };
     };
-    preview_2: {
+    preview_4: {
         parameters: {
             query?: never;
             header?: never;

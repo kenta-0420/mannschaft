@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "広告",
+    "account_settings": {
+      "title": "アカウント設定",
+      "company_name": "会社名・団体名",
+      "contact_email": "連絡先メールアドレス",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "saved": "アカウント設定を保存しました。",
+      "save_failed": "保存に失敗しました。"
+    },
     "spotlight": {
       "hide_advertiser": "この広告主を非表示",
       "hide_advertiser_done": "この広告主の広告を非表示にしました",
@@ -135,7 +145,8 @@
         "step_audience": "ターゲット設定",
         "step_review": "確認・提出",
         "submitted": "キャンペーンを審査に提出しました。",
-        "saved": "下書きを保存しました。"
+        "saved": "下書きを保存しました。",
+        "draft_saved": "下書きとして保存されました。"
       },
       "advertiser_campaign_detail": {
         "title": "キャンペーン詳細",

@@ -47634,6 +47634,46 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview": {
+      "post": {
+        "tags": [
+          "team-advertiser-messaging-campaign-controller"
+        ],
+        "operationId": "preview_2",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEstimatedReachRangeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/pause": {
       "post": {
         "tags": [
@@ -58921,6 +58961,46 @@
         }
       }
     },
+    "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview": {
+      "post": {
+        "tags": [
+          "organization-advertiser-messaging-campaign-controller"
+        ],
+        "operationId": "preview_3",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEstimatedReachRangeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/pause": {
       "post": {
         "tags": [
@@ -66941,7 +67021,7 @@
           "組織ダイレクトメール"
         ],
         "summary": "組織メールプレビュー",
-        "operationId": "preview_2",
+        "operationId": "preview_4",
         "parameters": [
           {
             "name": "orgId",
@@ -171377,6 +171457,35 @@
           "startsAt",
           "totalBudgetYen"
         ]
+      },
+      "ApiResponseEstimatedReachRangeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EstimatedReachRangeResponse"
+          }
+        }
+      },
+      "EstimatedReachRangeResponse": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "range": {
+            "type": "string",
+            "enum": [
+              "UNDER_100",
+              "RANGE_100_500",
+              "RANGE_500_1K",
+              "RANGE_1K_5K",
+              "RANGE_5K_10K",
+              "RANGE_10K_50K",
+              "RANGE_50K_100K",
+              "OVER_100K"
+            ]
+          }
+        }
       },
       "AudienceConfigRequest": {
         "type": "object",
