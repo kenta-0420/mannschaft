@@ -95,6 +95,26 @@ public class BillingContractEntity extends UuidV7Entity {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    /**
+     * Stripe Customer ID（{@code cus_xxx}・論理参照）。決済フローの契約のみ非 NULL（D-1・設計書 01 §3.1）。
+     * <p>更新は {@code @Setter} 由来のミューテータで行う（{@code toBuilder()} 禁止・UuidV7Entity の id 喪失事故回避）。</p>
+     */
+    @Column(name = "psp_customer_ref", length = 64)
+    private String pspCustomerRef;
+
+    /**
+     * Stripe Subscription ID（{@code sub_xxx}・論理参照）。webhook（invoice.* / subscription.deleted）の
+     * 逆引きキー（{@code uk_bc_psp_subscription}・D-2 で F08.9 会費と分離）。決済フローの契約のみ非 NULL。
+     */
+    @Column(name = "psp_subscription_ref", length = 64)
+    private String pspSubscriptionRef;
+
+    /**
+     * 現サイクル終了（{@code valid_until} の上限／期末解約の失効時刻）。webhook（invoice.paid / subscription.*）で更新。
+     */
+    @Column(name = "current_period_end")
+    private LocalDateTime currentPeriodEnd;
+
     /** 契約操作者（論理参照。シスアド手動付与時はシスアドの userId）。 */
     @Column(name = "created_by")
     private Long createdBy;

@@ -34,6 +34,13 @@ public interface BillingContractRepository
     /** 主キーで取得する（deleted_at 除外）。取消・プラン変更時の対象契約解決に使用。 */
     java.util.Optional<BillingContractEntity> findByIdAndDeletedAtIsNull(UUID id);
 
+    /**
+     * Stripe Subscription ID（{@code psp_subscription_ref}）で契約を逆引きする（実決済 D-2・webhook ルーティング）。
+     * {@code uk_bc_psp_subscription} により最大 1 件。invoice.* / customer.subscription.deleted の billing/membership
+     * 分離判定に使用する（ヒットすれば billing 所有・なければ F08.9 会費側）。
+     */
+    java.util.Optional<BillingContractEntity> findByPspSubscriptionRefAndDeletedAtIsNull(String pspSubscriptionRef);
+
     /** 指定プランを参照する当該状態の契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
     boolean existsByPlanKeyAndStatusAndDeletedAtIsNull(String planKey, ContractStatus status);
 

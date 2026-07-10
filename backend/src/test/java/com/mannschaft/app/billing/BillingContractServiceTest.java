@@ -49,6 +49,7 @@ class BillingContractServiceTest {
     @Mock private PlanPriceBandRepository planPriceBandRepository;
     @Mock private ScopeMemberCountService scopeMemberCountService;
     @Mock private EntitlementCacheEvictor cacheEvictor;
+    @Mock private BillingPaymentGateway billingPaymentGateway;
 
     private BillingContractService service;
 
@@ -57,7 +58,7 @@ class BillingContractServiceTest {
         service = new BillingContractService(
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
-                scopeMemberCountService, cacheEvictor, FIXED_CLOCK);
+                scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway);
     }
 
     private PlanEntity plan(String key, boolean enabled) {

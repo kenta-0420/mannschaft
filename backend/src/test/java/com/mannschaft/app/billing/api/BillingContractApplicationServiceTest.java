@@ -51,13 +51,18 @@ class BillingContractApplicationServiceTest {
     private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @Mock
     private BillingIdempotencyService idempotencyService;
+    @Mock
+    private com.mannschaft.app.billing.BillingPriceResolver priceResolver;
+    @Mock
+    private com.mannschaft.app.billing.BillingCheckoutService checkoutService;
 
     @InjectMocks
     private BillingContractApplicationService appService;
 
     private ContractResult planResult(EntitlementScopeKind kind, Long scopeId, UUID id) {
+        // 無償フロー（priceResolver は既定で null を返す＝createContract 経路）を前提とした ACTIVE 結果。
         return new ContractResult(id, kind, scopeId, ContractKind.PLAN, "FULL", null,
-                ContractStatus.ACTIVE, 34, (short) 2, LocalDateTime.now(),
+                ContractStatus.ACTIVE, 34, (short) 2, null, LocalDateTime.now(), null, null,
                 List.of("ads.hide"), List.of());
     }
 

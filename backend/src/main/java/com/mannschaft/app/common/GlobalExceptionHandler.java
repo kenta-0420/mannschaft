@@ -808,7 +808,10 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),            // CONTRACT_NOT_CANCELLABLE
             Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),            // PLAN_MASTER_IN_USE
             Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),            // DUPLICATE_ENTITLEMENT（uk_ent_grant）
-            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST)          // INVALID_CONTRACT_KIND（contractKind 不正）
+            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),         // INVALID_CONTRACT_KIND（contractKind 不正）
+            // F20.1 実決済（D-1〜D-4・2026-07-10 御裁可）追補
+            Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
+            Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT)            // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
     );
 
     /**

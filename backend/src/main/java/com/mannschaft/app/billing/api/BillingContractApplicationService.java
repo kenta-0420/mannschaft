@@ -38,6 +38,10 @@ public class BillingContractApplicationService {
     private final EntitlementRepository entitlementRepository;
     private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     private final BillingIdempotencyService idempotencyService;
+    /** F20.1 実決済（D-4）: 月額をマスタから解決（NULL=無償フロー / 非 NULL=決済フロー）。 */
+    private final com.mannschaft.app.billing.BillingPriceResolver priceResolver;
+    /** F20.1 実決済（D-4）: 決済フローのオーケストレーション（PENDING 起票→Checkout 生成→補償）。 */
+    private final com.mannschaft.app.billing.BillingCheckoutService checkoutService;
 
     // ============================================================
     // 作成（PLAN / ADDON）— Idempotency-Key 必須
@@ -69,12 +73,26 @@ public class BillingContractApplicationService {
         ContractKind contractKind = BillingApiSupport.parseContractKind(request.contractKind());
         Long organizationId = resolveOrganizationId(scopeKind, scopeId);
 
-        ContractResult result = billingContractService.createContract(
-                scopeKind, scopeId, organizationId, contractKind,
-                request.planKey(), request.featureKey(), operatorUserId);
+        // D-4: 価格をマスタから解決。NULL=無償ワンクリック（即 ACTIVE＋発行）／非 NULL=Checkout 決済フロー
+        // （PENDING＋entitlements 未発行・入金 webhook で ACTIVE 化）。既存無償契約には遡及しない。
+        Integer priceJpy = priceResolver.resolveMonthlyPriceJpy(
+                scopeKind, scopeId, contractKind, request.planKey(), request.featureKey());
 
-        idempotencyService.store(operatorUserId, idempotencyKey, result.contractId());
-        return toResponse(result);
+        if (priceJpy == null) {
+            // 無償フロー（P1 のまま）。
+            ContractResult result = billingContractService.createContract(
+                    scopeKind, scopeId, organizationId, contractKind,
+                    request.planKey(), request.featureKey(), operatorUserId);
+            idempotencyService.store(operatorUserId, idempotencyKey, result.contractId());
+            return toResponse(result, null);
+        }
+
+        // 決済フロー: PENDING 起票→Checkout 生成。冪等キーには PENDING 契約 ID を紐付ける。
+        com.mannschaft.app.billing.BillingCheckoutService.PaidCheckoutResult paid =
+                checkoutService.startPaidContract(scopeKind, scopeId, organizationId, contractKind,
+                        request.planKey(), request.featureKey(), priceJpy, operatorUserId);
+        idempotencyService.store(operatorUserId, idempotencyKey, paid.pending().contractId());
+        return toResponse(paid.pending(), paid.checkoutUrl());
     }
 
     // ============================================================
@@ -85,7 +103,7 @@ public class BillingContractApplicationService {
     public ContractResponse cancel(
             EntitlementScopeKind scopeKind, Long scopeId, UUID contractId, Long operatorUserId) {
         ContractResult result = billingContractService.cancelContract(scopeKind, scopeId, contractId, operatorUserId);
-        return toResponse(result);
+        return toResponse(result, null);
     }
 
     // ============================================================
@@ -98,7 +116,7 @@ public class BillingContractApplicationService {
             ChangePlanRequest request, Long operatorUserId) {
         ContractResult result = billingContractService.changePlan(
                 scopeKind, scopeId, contractId, request.planKey(), operatorUserId);
-        return toResponse(result);
+        return toResponse(result, null);
     }
 
     // ============================================================
@@ -132,7 +150,7 @@ public class BillingContractApplicationService {
         return keys;
     }
 
-    private ContractResponse toResponse(ContractResult r) {
+    private ContractResponse toResponse(ContractResult r, String checkoutUrl) {
         return ContractResponse.builder()
                 .contractId(r.contractId().toString())
                 .scopeKind(r.scopeKind().name())
@@ -143,9 +161,11 @@ public class BillingContractApplicationService {
                 .status(r.status().name())
                 .memberCountSnapshot(r.memberCountSnapshot())
                 .bandNoSnapshot(r.bandNoSnapshot())
-                .priceJpySnapshot(null) // ベータ中は無償（NULL）。
+                .priceJpySnapshot(r.priceJpySnapshot())
                 .contractedAt(r.contractedAt())
                 .grantedFeatureKeys(r.grantedFeatureKeys())
+                .checkoutUrl(checkoutUrl)
+                .currentPeriodEnd(r.currentPeriodEnd())
                 .build();
     }
 
@@ -163,6 +183,7 @@ public class BillingContractApplicationService {
                 .priceJpySnapshot(c.getPriceJpySnapshot())
                 .contractedAt(c.getContractedAt())
                 .grantedFeatureKeys(grantedKeys)
+                .currentPeriodEnd(c.getCurrentPeriodEnd())
                 .build();
     }
 }

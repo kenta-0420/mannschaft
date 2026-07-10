@@ -657,4 +657,66 @@ public interface StripePaymentProvider {
                             BigDecimal amountReceived, String receiptUrl, String refundId,
                             BigDecimal refundAmount, BigDecimal paymentIntentAmount,
                             Long notificationCreditPurchaseId) {}
+
+    // ========================================
+    // F20.1 実決済（自社受取×月額サブスク・D-1〜D-4・2026-07-10 御裁可。既存メソッドは破壊しない追加）
+    // ========================================
+
+    /**
+     * 月額サブスクの Stripe Checkout Session を作成する（{@code Mode.SUBSCRIPTION}・<b>Connect 不使用</b>・設計書 02）。
+     *
+     * <p>F08.9 会費（Connect destination charge）と異なり、{@code transfer_data}/{@code on_behalf_of}/
+     * {@code application_fee} を<b>一切含めない</b>（自社受取・D-2）。Price は毎月の recurring をインライン
+     * {@code price_data}（{@code product_data.name}＝表示名・{@code unit_amount}＝円額・{@code recurring.interval=month}）で
+     * 生成する（F09.13 の Product/Price 遅延生成の思想を Checkout インライン化）。{@code metadata.billingContractId} に
+     * 契約 ID を焼き付け、{@code checkout.session.completed} webhook で PENDING→ACTIVE を突合する。</p>
+     *
+     * @param stripeCustomerId 決済者の Stripe Customer ID（{@code cus_xxx}・get-or-create 済み）
+     * @param priceJpy         月額（円・ゼロ decimal 通貨のため乗算不要）
+     * @param productName      Stripe Product 表示名（プラン/機能の表示名）
+     * @param billingContractId {@code billing_contracts.id}（{@code metadata.billingContractId}）
+     * @param successUrl       決済成功時の遷移先
+     * @param cancelUrl        決済中断時の遷移先
+     * @return Checkout Session 情報（sessionId / checkoutUrl / expiresAt）
+     */
+    CheckoutSessionInfo createBillingSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName, String billingContractId,
+            String successUrl, String cancelUrl);
+
+    /**
+     * F20.1 実決済の Webhook イベントを検証・パースする（{@code checkout.session.completed}/{@code .expired}・
+     * {@code invoice.paid}/{@code invoice.payment_failed}・{@code customer.subscription.deleted}）。
+     *
+     * <p>platform 署名シークレット（{@link #constructEvent} と同一）で検証する。billing 固有の突合に必要な
+     * {@code billingContractId}（session.metadata）・{@code subscriptionId}（逆引きキー）・{@code customerId}・
+     * {@code currentPeriodEndEpochSec}（valid_until 延長/失効時刻）を抽出した専用 record を返す。既存の
+     * {@code WebhookEventInfo}/{@code InvoiceWebhookEventInfo} は billing 固有フィールドを持たないため専用パースを設ける。</p>
+     *
+     * @param payload   生リクエストボディ
+     * @param sigHeader {@code Stripe-Signature} ヘッダー
+     * @return billing 決済イベント情報
+     */
+    BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader);
+
+    /**
+     * F20.1 実決済 Webhook イベント情報（設計書 02）。
+     *
+     * <p>{@code eventId} は冪等キー（{@code evt_xxx}）。{@code checkout.session.*} では {@code sessionId}/
+     * {@code billingContractId}（metadata）/{@code subscriptionId}/{@code customerId} を、{@code invoice.*} /
+     * {@code customer.subscription.deleted} では {@code subscriptionId}/{@code currentPeriodEndEpochSec} を格納する
+     * （非該当フィールドは null）。</p>
+     *
+     * @param eventId                  Stripe イベント ID（{@code evt_xxx}・冪等キー）
+     * @param type                     イベント種別
+     * @param livemode                 本番/テスト区分
+     * @param sessionId                Checkout Session ID（{@code cs_xxx}・{@code checkout.session.*} のみ）
+     * @param billingContractId        {@code session.metadata.billingContractId}（billing 所有判定・{@code checkout.session.*} のみ）
+     * @param subscriptionId           Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
+     * @param customerId               Stripe Customer ID（{@code cus_xxx}・焼付用・{@code checkout.session.completed} のみ）
+     * @param currentPeriodEndEpochSec 現サイクル終了の unix 秒（valid_until 延長/失効時刻・null 可）
+     */
+    record BillingSubscriptionWebhookEventInfo(
+            String eventId, String type, boolean livemode,
+            String sessionId, String billingContractId, String subscriptionId, String customerId,
+            Long currentPeriodEndEpochSec) {}
 }

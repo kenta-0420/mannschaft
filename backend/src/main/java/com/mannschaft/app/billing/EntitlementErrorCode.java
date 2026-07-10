@@ -64,7 +64,25 @@ public enum EntitlementErrorCode implements ErrorCode {
      * （{@code INVALID_SCOPE_KIND}=009 は「scopeKind 不正」の意味であり contractKind 不正には意味が
      * 合わないため流用しない）。CreateContractRequest の {@code contractKind} 検証（02 §3.1）に対応する。</p>
      */
-    INVALID_CONTRACT_KIND("ENTITLEMENT_014", "契約種別の指定が不正です", Severity.WARN);
+    INVALID_CONTRACT_KIND("ENTITLEMENT_014", "契約種別の指定が不正です", Severity.WARN),
+
+    /**
+     * Stripe Checkout Session 生成失敗（PSP 呼び出しエラー）→ 502。
+     *
+     * <p>実決済（D-1〜D-4・2026-07-10 御裁可）で追補採番。PENDING 契約を起票後に Stripe API が失敗した場合、
+     * 当該 PENDING 契約は補償（CANCELLED＋pointer 物理 DELETE）して本コードを投げる（孤児 PENDING を残さない）。
+     * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に 502 を明示登録する。</p>
+     */
+    CHECKOUT_SESSION_FAILED("ENTITLEMENT_015", "決済手続きの開始に失敗しました", Severity.ERROR),
+
+    /**
+     * 決済フローの契約が PENDING（入金前）のスロットを占有中の再契約 → 409。
+     *
+     * <p>{@code active_contract_pointers.uk_acp_slot} が PENDING 契約でスロットを確保している状態での
+     * 二重契約試行。既存が ACTIVE なら {@link #CONTRACT_ALREADY_ACTIVE}（006）、PENDING なら本コード（016）で
+     * 「入金前の契約が進行中」を明示する（再挑戦は Checkout 完了/失効後）。</p>
+     */
+    CONTRACT_PENDING_PAYMENT("ENTITLEMENT_016", "入金前の契約が進行中です。完了または失効後に再度お試しください", Severity.WARN);
 
     private final String code;
     private final String message;

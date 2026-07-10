@@ -50,4 +50,18 @@ public class ContractResponse {
 
     @Schema(description = "この契約で発行された機能キー集合")
     private final List<String> grantedFeatureKeys;
+
+    /**
+     * F20.1 実決済（D-4）: 決済フロー（価格設定済み）で作成した契約の Stripe Checkout URL。
+     * 無償フロー（価格 NULL・即 ACTIVE）や解約/変更レスポンスでは null。FE はこの URL へ遷移して決済させる。
+     */
+    @Schema(description = "決済フロー時の Stripe Checkout URL（無償フロー・解約時は null）", nullable = true)
+    private final String checkoutUrl;
+
+    /**
+     * F20.1 実決済（D-3）: 決済フロー契約の現サイクル終了（有償解約の「いつまで使えるか」・期末失効時刻）。
+     * 無償契約や PENDING/未決済では null。
+     */
+    @Schema(description = "現サイクル終了（有償解約の利用可能期限・ISO-8601）", nullable = true)
+    private final LocalDateTime currentPeriodEnd;
 }
