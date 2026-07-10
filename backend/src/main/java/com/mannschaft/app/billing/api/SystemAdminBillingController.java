@@ -37,7 +37,8 @@ import java.util.List;
  * {@code /api/v1/system-admin/**} パスルール（hasRole SYSTEM_ADMIN）とメソッドガードの二重で担保する。
  * {@code fee_policies} シスアド CRUD と同じ設計様式（自然キー PATH・{@code @Builder} DTO）。</p>
  */
-@RestController
+@RestController("entitlementSystemAdminBillingController") // 明示 Bean 名: promotion.SystemAdminBillingController と
+// 単純クラス名が衝突するため（memory feedback_spring_bean_name_collision_same_simplename）。
 @RequestMapping("/api/v1/system-admin/billing")
 @Tag(name = "システム管理 - 課金", description = "F20.1 プラン/機能マスタ CRUD・手動付与・契約検索（SYSTEM_ADMIN専用）")
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")

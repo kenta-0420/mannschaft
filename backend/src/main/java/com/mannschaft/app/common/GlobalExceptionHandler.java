@@ -941,6 +941,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 必須リクエストヘッダの欠落（例: F20.1 契約作成の {@code Idempotency-Key} 必須）。
+     *
+     * <p>{@code @RestControllerAdvice} の catch-all が先に拾って 500 になるのを防ぎ、
+     * クライアントエラーとして 400 を返す（{@link MissingServletRequestParameterException} と同型）。</p>
+     */
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(
+            org.springframework.web.bind.MissingRequestHeaderException ex) {
+        log.warn("Missing header: {}", ex.getHeaderName());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /**
      * 不正な HTTP メソッド（PUT に対して GET でアクセスするなど）。
      * デフォルトでは Spring が {@link Exception} に流して 500 を返してしまうため、
      * 明示的に 405 METHOD_NOT_ALLOWED へマッピングする。
