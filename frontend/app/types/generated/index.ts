@@ -1897,6 +1897,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/billing/contracts/{contractId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * チームのプラン変更
+         * @description TEAM スコープ。ADMIN のみ。
+         */
+        put: operations["changeForTeam"];
+        post?: never;
+        /**
+         * チームの契約解約
+         * @description TEAM スコープ。ADMIN のみ。
+         */
+        delete: operations["cancelForTeam"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/announcement-templates/{id}": {
         parameters: {
             query?: never;
@@ -2414,6 +2438,110 @@ export interface paths {
         put: operations["updateFlag"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/plans/{planKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * プラン詳細
+         * @description 不在は 404（ENTITLEMENT_001）。
+         */
+        get: operations["getPlan"];
+        /**
+         * プラン更新
+         * @description 不在は 404。
+         */
+        put: operations["updatePlan"];
+        /**
+         * プラン新規
+         * @description 既存キーは 400（更新は PUT）。
+         */
+        post: operations["createPlan"];
+        /**
+         * プラン削除
+         * @description 参照中（ACTIVE 契約・plan_features 登録）は 409（ENTITLEMENT_012）。
+         */
+        delete: operations["deletePlan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/plans/{planKey}/price-bands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 人数バンド一括置換
+         * @description band_no 昇順・min=前 max+1・最終のみ max=null 違反は 400。
+         */
+        put: operations["replacePriceBands"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/plans/{planKey}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * プラン→機能一括置換
+         * @description 実在しない機能キーは 400（ENTITLEMENT_010）。
+         */
+        put: operations["replacePlanFeatures"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/features/{featureKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 機能詳細
+         * @description 不在は 404（ENTITLEMENT_002）。
+         */
+        get: operations["getFeature"];
+        /**
+         * 機能更新
+         * @description REVENUE×非営利無料は 400。不在は 404。
+         */
+        put: operations["updateFeature"];
+        /**
+         * 機能新規
+         * @description REVENUE×非営利無料は 400（ENTITLEMENT_010）。既存キーは 400。
+         */
+        post: operations["createFeature"];
+        /**
+         * 機能削除
+         * @description 参照中は 409（ENTITLEMENT_012）。
+         */
+        delete: operations["deleteFeature"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3901,6 +4029,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/billing/contracts/{contractId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 組織のプラン変更
+         * @description ORG スコープ。ADMIN のみ。
+         */
+        put: operations["changeForOrg"];
+        post?: never;
+        /**
+         * 組織の契約解約
+         * @description ORG スコープ。ADMIN のみ。
+         */
+        delete: operations["cancelForOrg"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/announcement-templates/{id}": {
         parameters: {
             query?: never;
@@ -4283,6 +4435,30 @@ export interface paths {
         put: operations["togglePersonalSync"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/contracts/{contractId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 自分のプラン変更
+         * @description USER スコープ。
+         */
+        put: operations["changeForMe"];
+        post?: never;
+        /**
+         * 自分の契約解約
+         * @description USER スコープ。
+         */
+        delete: operations["cancelForMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -10926,6 +11102,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/billing/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チームの契約作成
+         * @description TEAM スコープ。ADMIN のみ。Idempotency-Key 必須。
+         */
+        post: operations["createForTeam_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/attendance/transition-alerts/{alertId}/resolve": {
         parameters: {
             query?: never;
@@ -11265,6 +11461,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12444,6 +12656,26 @@ export interface paths {
          * @description PENDING 状態のエントリを CANCELLED に遷移させる。
          */
         post: operations["cancelPending"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 手動付与
+         * @description 契約行を作って発行（created_by=シスアド・REVENUE イベント非発火）。
+         */
+        post: operations["grant_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15118,6 +15350,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/pause": {
         parameters: {
             query?: never;
@@ -17281,7 +17529,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織メールプレビュー */
-        post: operations["preview_2"];
+        post: operations["preview_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17546,6 +17794,26 @@ export interface paths {
          * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。
          */
         post: operations["broadcastToOrg"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/billing/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織の契約作成
+         * @description ORG スコープ。ADMIN のみ。Idempotency-Key 必須。
+         */
+        post: operations["createForOrg_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18653,6 +18921,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 自分の契約作成
+         * @description USER スコープ。Idempotency-Key 必須。
+         */
+        post: operations["createForMe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/attendance/notices": {
         parameters: {
             query?: never;
@@ -18671,6 +18959,26 @@ export interface paths {
          * @description 保護者が欠席・遅刻・早退連絡を送信する。ケアリンクが ACTIVE な生徒のみ送信可能。
          */
         post: operations["submitNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ad-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 広告を通報する
+         * @description campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。
+         */
+        post: operations["create_62"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19575,7 +19883,7 @@ export interface paths {
          * 代理指定
          * @description F03.10 §4.2: 委任者が代理人を指定する
          */
-        post: operations["create_62"];
+        post: operations["create_63"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19646,7 +19954,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** エラーレポート送信 */
-        post: operations["create_63"];
+        post: operations["create_64"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20847,7 +21155,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_64"];
+        post: operations["create_65"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20943,7 +21251,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_2"];
         put?: never;
-        post: operations["create_65"];
+        post: operations["create_66"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22086,7 +22394,7 @@ export interface paths {
          * 同義語新規登録
          * @description synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。
          */
-        post: operations["create_66"];
+        post: operations["create_67"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22137,7 +22445,7 @@ export interface paths {
         };
         get: operations["listAll_2"];
         put?: never;
-        post: operations["create_67"];
+        post: operations["create_68"];
         delete?: never;
         options?: never;
         head?: never;
@@ -25215,6 +25523,26 @@ export interface paths {
         patch: operations["approveAdvertiser"];
         trace?: never;
     };
+    "/api/v1/system-admin/ad-user-reports/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 通報の状態遷移
+         * @description NEW→REVIEWING→RESOLVED/DISMISSED。不正遷移は 409 / AD_027、不存在は 404。
+         */
+        patch: operations["updateStatus"];
+        trace?: never;
+    };
     "/api/v1/system-admin/ad-invoices/{id}/mark-paid": {
         parameters: {
             query?: never;
@@ -25293,6 +25621,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["approve_10"];
+        trace?: never;
+    };
+    "/api/v1/system-admin/ad-campaigns-operational/{id}/unsuspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 通報自動停止の解除
+         * @description 通報 3 件による自動停止を解除する。report_suspended_at を NULL に戻し、自動停止で ACTIVE→PAUSED 遷移していた場合のみ ACTIVE へ復帰する。既に停止中でない対象は 409 / AD_027。
+         */
+        patch: operations["unsuspend"];
         trace?: never;
     };
     "/api/v1/system-admin/ad-campaigns-operational/{id}/reject": {
@@ -31981,6 +32329,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームの権利サマリ
+         * @description 当該チームのメンバー以上が閲覧可。
+         */
+        get: operations["team"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirmations": {
         parameters: {
             query?: never;
@@ -33566,6 +33934,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * プラン一覧
+         * @description enabled=false 含む全件・sort_order 昇順。
+         */
+        get: operations["listPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 機能一覧
+         * @description enabled=false 含む全件・sort_order 昇順。
+         */
+        get: operations["listFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 契約横断検索
+         * @description scopeKind / scopeId / status は任意フィルタ・contracted_at 降順。
+         */
+        get: operations["searchContracts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/batch": {
         parameters: {
             query?: never;
@@ -33874,6 +34302,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/ad-user-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 通報一覧
+         * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
+         */
+        get: operations["list_73"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/ad-segments": {
         parameters: {
             query?: never;
@@ -33913,7 +34361,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_73"];
+        get: operations["list_74"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33949,7 +34397,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_74"];
+        get: operations["list_75"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34468,7 +34916,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_75"];
+        get: operations["list_76"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37470,7 +37918,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_76"];
+        get: operations["list_77"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37719,6 +38167,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の権利サマリ
+         * @description 当該組織のメンバー以上が閲覧可。
+         */
+        get: operations["organization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/direct-mails/{id}/stats": {
         parameters: {
             query?: never;
@@ -37828,7 +38296,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_77"];
+        get: operations["list_78"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37979,7 +38447,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_78"];
+        get: operations["list_79"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38309,7 +38777,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_79"];
+        get: operations["list_80"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38377,7 +38845,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_80"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39145,6 +39613,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の権利サマリ
+         * @description USER スコープ（scopeId=本人固定）の契約・有効機能を返す。
+         */
+        get: operations["me_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/dashboard/timetable-today": {
         parameters: {
             query?: never;
@@ -39726,7 +40214,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_81"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39831,7 +40319,7 @@ export interface paths {
          * 自分の代理状況
          * @description F03.10 §4.2: 委任者/代理人としての自分の代理状況を取得する
          */
-        get: operations["me_1"];
+        get: operations["me_2"];
         put?: never;
         post?: never;
         /**
@@ -41174,6 +41662,46 @@ export interface paths {
         };
         /** RSS/Atomフィード取得 */
         get: operations["getFeed_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * プランカタログ
+         * @description enabled なプラン・機能を sort_order 昇順で返す。
+         */
+        get: operations["plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/entitlements/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 単一機能の判定
+         * @description FE ゲート補助（BE が正）。呼び出し元のスコープ可読性を検証してから isEntitled を返す。
+         */
+        get: operations["check_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -47291,6 +47819,77 @@ export interface components {
             scopeId?: number;
             scopeType?: string;
         };
+        /** @description F20.1 プラン変更リクエスト */
+        BillingChangePlanRequest: {
+            /**
+             * @description 変更後のプランキー
+             * @example FULL
+             */
+            planKey: string;
+        };
+        ApiResponseBillingContractResponse: {
+            data?: components["schemas"]["BillingContractResponse"];
+        };
+        /** @description F20.1 契約操作のレスポンス */
+        BillingContractResponse: {
+            /**
+             * Format: int32
+             * @description 契約時バンド番号スナップショット
+             * @example 2
+             */
+            bandNoSnapshot?: number;
+            /** @description 契約 ID（UUID） */
+            contractId?: string;
+            /**
+             * @description 契約種別（PLAN / ADDON）
+             * @example PLAN
+             */
+            contractKind?: string;
+            /**
+             * Format: date-time
+             * @description 契約日時（ISO-8601）
+             */
+            contractedAt?: string;
+            /**
+             * @description 機能キー（PLAN 時 null）
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /** @description この契約で発行された機能キー集合 */
+            grantedFeatureKeys?: string[];
+            /**
+             * Format: int32
+             * @description 契約時アクティブ人数スナップショット（USER 時 null）
+             * @example 34
+             */
+            memberCountSnapshot?: number;
+            /**
+             * @description プランキー（ADDON 時 null）
+             * @example FULL
+             */
+            planKey?: string;
+            /**
+             * Format: int32
+             * @description 契約時単価スナップショット（ベータ中 null＝無償）
+             */
+            priceJpySnapshot?: number;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+            /**
+             * @description 契約ステータス
+             * @example ACTIVE
+             */
+            status?: string;
+        };
         AnnouncementRangeTemplateRequest: {
             isDefault?: boolean;
             name?: string;
@@ -47955,6 +48554,166 @@ export interface components {
             updatedAt?: string;
             /** Format: int64 */
             updatedBy?: number;
+        };
+        /** @description F20.1 シスアド プランマスタ upsert */
+        BillingPlanUpsertRequest: {
+            /**
+             * Format: int32
+             * @example 2000
+             */
+            baseMonthlyPriceJpy?: number;
+            /** @example billing.plans.full.description */
+            descriptionKey: string;
+            /** @example billing.plans.full.name */
+            displayNameKey: string;
+            /** @example true */
+            enabled?: boolean;
+            /**
+             * Format: int32
+             * @example 10
+             */
+            sortOrder?: number;
+        };
+        ApiResponseBillingPlanAdminResponse: {
+            data?: components["schemas"]["BillingPlanAdminResponse"];
+        };
+        /** @description F20.1 シスアド プランマスタ */
+        BillingPlanAdminResponse: {
+            /**
+             * Format: int32
+             * @description 基準月額（円）。未定は null
+             * @example 2000
+             */
+            baseMonthlyPriceJpy?: number;
+            /** @description 説明 i18n キー */
+            descriptionKey?: string;
+            /** @description 表示名 i18n キー */
+            displayNameKey?: string;
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description プランキー（自然キー）
+             * @example FULL
+             */
+            planKey?: string;
+            /**
+             * Format: int32
+             * @description 表示順
+             * @example 10
+             */
+            sortOrder?: number;
+        };
+        /** @description F20.1 バンド 1 件の入力 */
+        BillingPriceBandInput: {
+            /**
+             * Format: int32
+             * @example 1
+             */
+            bandNo?: number;
+            /**
+             * Format: int32
+             * @example 20
+             */
+            maxMembers?: number;
+            /**
+             * Format: int32
+             * @example 1
+             */
+            minMembers?: number;
+            /**
+             * Format: int32
+             * @example 3000
+             */
+            monthlyPriceJpy?: number;
+            /** @example TEAM */
+            scopeKind: string;
+        };
+        /** @description F20.1 人数バンド一括置換 */
+        BillingPriceBandsReplaceRequest: {
+            bands: components["schemas"]["BillingPriceBandInput"][];
+        };
+        /** @description F20.1 プラン→機能一括置換 */
+        BillingPlanFeaturesReplaceRequest: {
+            /**
+             * @example [
+             *       "ads.hide",
+             *       "template.premium_modules"
+             *     ]
+             */
+            featureKeys: string[];
+        };
+        /** @description F20.1 シスアド 機能カタログ upsert */
+        BillingFeatureUpsertRequest: {
+            /** @example true */
+            addonAvailable?: boolean;
+            /**
+             * Format: int32
+             * @example 300
+             */
+            addonPriceJpy?: number;
+            /** @example INTERNAL */
+            category: string;
+            descriptionKey: string;
+            displayNameKey: string;
+            /** @example true */
+            enabled?: boolean;
+            /** @example false */
+            freeForNonprofit?: boolean;
+            /**
+             * Format: int32
+             * @example 10
+             */
+            sortOrder?: number;
+        };
+        ApiResponseBillingFeatureAdminResponse: {
+            data?: components["schemas"]["BillingFeatureAdminResponse"];
+        };
+        /** @description F20.1 シスアド 機能カタログ */
+        BillingFeatureAdminResponse: {
+            /**
+             * @description アドオン単体契約可否
+             * @example true
+             */
+            addonAvailable?: boolean;
+            /**
+             * Format: int32
+             * @description アドオン月額（円）。未定は null
+             * @example 300
+             */
+            addonPriceJpy?: number;
+            /**
+             * @description 区分（INTERNAL / REVENUE）
+             * @example REVENUE
+             */
+            category?: string;
+            /** @description 説明 i18n キー */
+            descriptionKey?: string;
+            /** @description 表示名 i18n キー */
+            displayNameKey?: string;
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description 機能キー（自然キー）
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /**
+             * @description 非営利無料開放
+             * @example false
+             */
+            freeForNonprofit?: boolean;
+            /**
+             * Format: int32
+             * @description 表示順
+             * @example 10
+             */
+            sortOrder?: number;
         };
         UpdateBetaRestrictionRequest: {
             isEnabled: boolean;
@@ -55626,6 +56385,24 @@ export interface components {
             targetRole?: string;
             targetTeamIds?: number[];
         };
+        /** @description F20.1 契約作成リクエスト */
+        BillingCreateContractRequest: {
+            /**
+             * @description 契約種別（PLAN / ADDON）
+             * @example PLAN
+             */
+            contractKind: string;
+            /**
+             * @description 機能キー（ADDON 時必須）
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /**
+             * @description プランキー（PLAN 時必須）
+             * @example FULL
+             */
+            planKey?: string;
+        };
         TransitionAlertResolveRequest: {
             note?: string;
         };
@@ -55988,6 +56765,14 @@ export interface components {
             startsAt: string;
             /** Format: int64 */
             totalBudgetYen: number;
+        };
+        ApiResponseEstimatedReachRangeResponse: {
+            data?: components["schemas"]["EstimatedReachRangeResponse"];
+        };
+        EstimatedReachRangeResponse: {
+            label?: string;
+            /** @enum {string} */
+            range?: "UNDER_100" | "RANGE_100_500" | "RANGE_500_1K" | "RANGE_1K_5K" | "RANGE_5K_10K" | "RANGE_10K_50K" | "RANGE_50K_100K" | "OVER_100K";
         };
         AudienceConfigRequest: {
             segments: components["schemas"]["AudienceSegmentRequest"][];
@@ -56674,6 +57459,24 @@ export interface components {
             /** Format: int64 */
             teamId?: number;
             teamName?: string;
+        };
+        /** @description F20.1 シスアド 手動付与 */
+        BillingManualGrantRequest: {
+            /** @example PLAN */
+            contractKind: string;
+            /** @example ads.hide */
+            featureKey?: string;
+            /** @example ベータ検証のため付与 */
+            note?: string;
+            /** @example FULL */
+            planKey?: string;
+            /**
+             * Format: int64
+             * @example 123
+             */
+            scopeId: number;
+            /** @example TEAM */
+            scopeKind: string;
         };
         ApiResponseBatchTriggerResponse: {
             data?: components["schemas"]["BatchTriggerResponse"];
@@ -60139,6 +60942,28 @@ export interface components {
             studentUserId: number;
             /** Format: int64 */
             teamId: number;
+        };
+        CreateAdReportRequest: {
+            /** Format: uuid */
+            campaignId?: string;
+            /** @enum {string} */
+            channelType: "ANNOUNCEMENT" | "EMAIL" | "PUSH" | "BANNER";
+            comment?: string;
+            /** Format: int64 */
+            operationalCampaignId?: number;
+            /** @enum {string} */
+            reasonCode: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+        };
+        AdReportCreatedResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+        };
+        ApiResponseAdReportCreatedResponse: {
+            data?: components["schemas"]["AdReportCreatedResponse"];
         };
         CreateReviewRequest: {
             comment?: string;
@@ -63631,6 +64456,31 @@ export interface components {
         };
         UpdateCreditLimitRequest: {
             creditLimit: number;
+        };
+        UpdateAdReportStatusRequest: {
+            /** @enum {string} */
+            status: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+        };
+        AdUserReportAdminResponse: {
+            autoSuspendCandidate?: boolean;
+            /** Format: uuid */
+            campaignId?: string;
+            detail?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            operationalCampaignId?: number;
+            /** @enum {string} */
+            reason?: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+            /** Format: date-time */
+            reportedAt?: string;
+            /** @enum {string} */
+            status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+            /** Format: int64 */
+            userId?: number;
+        };
+        ApiResponseAdUserReportAdminResponse: {
+            data?: components["schemas"]["AdUserReportAdminResponse"];
         };
         MarkInvoicePaidRequest: {
             note?: string;
@@ -67412,6 +68262,75 @@ export interface components {
             /** Format: int64 */
             totalTemplatesTeams?: number;
         };
+        ApiResponseBillingEntitlementSummaryResponse: {
+            data?: components["schemas"]["BillingEntitlementSummaryResponse"];
+        };
+        /** @description F20.1 権利サマリ内のアクティブ契約 */
+        BillingActiveContract: {
+            /**
+             * @description 契約 ID（UUID）
+             * @example 0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+             */
+            contractId?: string;
+            /**
+             * Format: date-time
+             * @description 契約日時（ISO-8601）
+             */
+            contractedAt?: string;
+            /**
+             * @description 機能キー（ADDON 契約時）。PLAN 時は null
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /**
+             * @description プランキー（PLAN 契約時）。ADDON 時は null
+             * @example FULL
+             */
+            planKey?: string;
+            /**
+             * Format: int32
+             * @description 契約時単価スナップショット（円）。ベータ中は null（無償）
+             */
+            priceJpySnapshot?: number;
+        };
+        /** @description F20.1 利用できる 1 機能 */
+        BillingEntitledFeature: {
+            /**
+             * @description 機能キー
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /**
+             * @description 由来（PLAN / ADDON / BETA_GRANT / FREE / NONPROFIT_FREE）
+             * @example PLAN
+             */
+            sourceKind?: string;
+            /**
+             * Format: date-time
+             * @description 有効終了（ISO-8601）。無期限・virtual は null
+             */
+            validUntil?: string;
+        };
+        /** @description F20.1 スコープの権利サマリ */
+        BillingEntitlementSummaryResponse: {
+            /** @description 現在アクティブな ADDON 契約一覧（空配列可） */
+            activeAddons?: components["schemas"]["BillingActiveContract"][];
+            /** @description 現在アクティブな PLAN 契約。無契約は null */
+            activePlan?: components["schemas"]["BillingActiveContract"];
+            /** @description 利用できる機能一覧（isEntitled=true の集合・virtual 合成込み） */
+            entitledFeatures?: components["schemas"]["BillingEntitledFeature"][];
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+        };
         ApiResponseListEmergencyClosureResponse: {
             data?: components["schemas"]["EmergencyClosureResponse"][];
         };
@@ -69158,6 +70077,38 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
+        ApiResponseListBillingPlanAdminResponse: {
+            data?: components["schemas"]["BillingPlanAdminResponse"][];
+        };
+        ApiResponseListBillingFeatureAdminResponse: {
+            data?: components["schemas"]["BillingFeatureAdminResponse"][];
+        };
+        ApiResponseBillingPagedContractResponse: {
+            data?: components["schemas"]["BillingPagedContractResponse"];
+        };
+        /** @description F20.1 シスアド 契約横断検索結果 */
+        BillingPagedContractResponse: {
+            /** @description 契約一覧（当該ページ） */
+            content?: components["schemas"]["BillingContractResponse"][];
+            /**
+             * Format: int32
+             * @description 現在ページ番号（0 始まり）
+             * @example 0
+             */
+            page?: number;
+            /**
+             * Format: int32
+             * @description ページサイズ
+             * @example 20
+             */
+            size?: number;
+            /**
+             * Format: int64
+             * @description 総件数
+             * @example 42
+             */
+            totalElements?: number;
+        };
         ApiResponseListBatchEndpointSummary: {
             data?: components["schemas"]["BatchEndpointSummary"][];
         };
@@ -69512,6 +70463,10 @@ export interface components {
         };
         PagedResponseAdvertiserAccountDetailResponse: {
             data?: components["schemas"]["AdvertiserAccountDetailResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        PagedResponseAdUserReportAdminResponse: {
+            data?: components["schemas"]["AdUserReportAdminResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
         AdSegmentResponse: {
@@ -73946,6 +74901,143 @@ export interface components {
             /** Format: int32 */
             revisionNumber?: number;
             title?: string;
+        };
+        ApiResponseBillingPlanCatalogResponse: {
+            data?: components["schemas"]["BillingPlanCatalogResponse"];
+        };
+        /** @description F20.1 機能カタログの 1 機能 */
+        BillingFeatureItem: {
+            /**
+             * @description アドオン単体契約が可能か
+             * @example true
+             */
+            addonAvailable?: boolean;
+            /**
+             * Format: int32
+             * @description アドオン月額（円）。未定は null
+             * @example 300
+             */
+            addonPriceJpy?: number;
+            /**
+             * @description 区分（INTERNAL / REVENUE）
+             * @example INTERNAL
+             */
+            category?: string;
+            /** @description 説明の i18n キー */
+            descriptionKey?: string;
+            /** @description 表示名の i18n キー */
+            displayNameKey?: string;
+            /**
+             * @description 機能キー
+             * @example reservation.notification_recipients_extended
+             */
+            featureKey?: string;
+            /**
+             * Format: int32
+             * @description 表示順（昇順）
+             * @example 10
+             */
+            sortOrder?: number;
+        };
+        /** @description F20.1 プランカタログ（利用者向け・読み取り） */
+        BillingPlanCatalogResponse: {
+            /** @description 提示プラン一覧（sort_order 昇順・enabled のみ） */
+            plans?: components["schemas"]["BillingPlanItem"][];
+        };
+        /** @description F20.1 カタログ内の 1 プラン */
+        BillingPlanItem: {
+            /**
+             * Format: int32
+             * @description 基準月額（円）。未定は null（ベータ計測後に決定）
+             * @example 2000
+             */
+            baseMonthlyPriceJpy?: number;
+            /**
+             * @description 説明の i18n キー
+             * @example billing.plans.full.description
+             */
+            descriptionKey?: string;
+            /**
+             * @description 表示名の i18n キー（FE が $t で解決）
+             * @example billing.plans.full.name
+             */
+            displayNameKey?: string;
+            /** @description このプランで解放される機能一覧 */
+            features?: components["schemas"]["BillingFeatureItem"][];
+            /**
+             * @description プランキー（自然キー）
+             * @example FULL
+             */
+            planKey?: string;
+            /** @description 人数バンド別単価（TEAM/ORG のみ・空配列可） */
+            priceBands?: components["schemas"]["BillingPriceBand"][];
+        };
+        /** @description F20.1 人数バンド別単価の 1 バンド */
+        BillingPriceBand: {
+            /**
+             * Format: int32
+             * @description バンド番号（1〜・昇順）
+             * @example 2
+             */
+            bandNo?: number;
+            /**
+             * Format: int32
+             * @description アクティブ人数上限（この値以下）。無制限は null
+             * @example 50
+             */
+            maxMembers?: number;
+            /**
+             * Format: int32
+             * @description アクティブ人数下限（この値以上）
+             * @example 21
+             */
+            minMembers?: number;
+            /**
+             * Format: int32
+             * @description 月額（円）。未定は null
+             * @example 5000
+             */
+            monthlyPriceJpy?: number;
+            /**
+             * @description スコープ種別（TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+        };
+        ApiResponseBillingEntitlementCheckResponse: {
+            data?: components["schemas"]["BillingEntitlementCheckResponse"];
+        };
+        /** @description F20.1 単一機能の判定結果（表示出し分け専用） */
+        BillingEntitlementCheckResponse: {
+            /**
+             * Format: int32
+             * @description アドオン月額（円）。addon 不可・未定は null
+             * @example 300
+             */
+            addonPriceJpy?: number;
+            /**
+             * @description 権利があるか（BE 判定と一致）
+             * @example false
+             */
+            entitled?: boolean;
+            /**
+             * @description 判定した機能キー
+             * @example ads.hide
+             */
+            featureKey?: string;
+            /**
+             * @description この機能を掲載する購入可能プランのキー一覧（空配列可）
+             * @example [
+             *       "BASIC",
+             *       "FULL"
+             *     ]
+             */
+            plansContaining?: string[];
+            /**
+             * @description 購入手段があるか（アドオン/有料プラン掲載）
+             * @example true
+             */
+            purchasable?: boolean;
         };
         ApiResponseListWebAuthnCredentialResponse: {
             data?: components["schemas"]["WebAuthnCredentialResponse"][];
@@ -80542,6 +81634,56 @@ export interface operations {
             };
         };
     };
+    changeForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    cancelForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
     updateTeamTemplate_1: {
         parameters: {
             query?: never;
@@ -81820,6 +82962,242 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseFeatureFlagResponse"];
                 };
+            };
+        };
+    };
+    getPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPlanAdminResponse"];
+                };
+            };
+        };
+    };
+    updatePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPlanUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPlanAdminResponse"];
+                };
+            };
+        };
+    };
+    createPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPlanUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPlanAdminResponse"];
+                };
+            };
+        };
+    };
+    deletePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    replacePriceBands: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPriceBandsReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    replacePlanFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPlanFeaturesReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                featureKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingFeatureAdminResponse"];
+                };
+            };
+        };
+    };
+    updateFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                featureKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingFeatureUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingFeatureAdminResponse"];
+                };
+            };
+        };
+    };
+    createFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                featureKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingFeatureUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingFeatureAdminResponse"];
+                };
+            };
+        };
+    };
+    deleteFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                featureKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -86117,6 +87495,56 @@ export interface operations {
             };
         };
     };
+    changeForOrg: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    cancelForOrg: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
     updateOrgTemplate_1: {
         parameters: {
             query?: never;
@@ -87028,6 +88456,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePersonalSyncToggleResponse"];
+                };
+            };
+        };
+    };
+    changeForMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    cancelForMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
                 };
             };
         };
@@ -100813,6 +102289,34 @@ export interface operations {
             };
         };
     };
+    createForTeam_3: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCreateContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
     resolveAlert: {
         parameters: {
             query?: never;
@@ -101380,6 +102884,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCampaignDetailResponse"];
+                };
+            };
+        };
+    };
+    preview_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEstimatedReachRangeResponse"];
                 };
             };
         };
@@ -103551,6 +105078,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    grant_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingManualGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
             };
         };
     };
@@ -108606,6 +110157,29 @@ export interface operations {
             };
         };
     };
+    preview_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEstimatedReachRangeResponse"];
+                };
+            };
+        };
+    };
     pause_2: {
         parameters: {
             query?: never;
@@ -112952,7 +114526,7 @@ export interface operations {
             };
         };
     };
-    preview_2: {
+    preview_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -113537,6 +115111,34 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBroadcastResponseDto"];
+                };
+            };
+        };
+    };
+    createForOrg_3: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCreateContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
                 };
             };
         };
@@ -115400,6 +117002,32 @@ export interface operations {
             };
         };
     };
+    createForMe: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCreateContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
     getMyNotices: {
         parameters: {
             query: {
@@ -115443,6 +117071,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseFamilyAttendanceNoticeResponse"];
+                };
+            };
+        };
+    };
+    create_62: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdReportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdReportCreatedResponse"];
                 };
             };
         };
@@ -117194,7 +118846,7 @@ export interface operations {
             };
         };
     };
-    create_62: {
+    create_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -117291,7 +118943,7 @@ export interface operations {
             };
         };
     };
-    create_63: {
+    create_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -119412,7 +121064,7 @@ export interface operations {
             };
         };
     };
-    create_64: {
+    create_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -119607,7 +121259,7 @@ export interface operations {
             };
         };
     };
-    create_65: {
+    create_66: {
         parameters: {
             query: {
                 scopeId: number;
@@ -121504,7 +123156,7 @@ export interface operations {
             };
         };
     };
-    create_66: {
+    create_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -121620,7 +123272,7 @@ export interface operations {
             };
         };
     };
-    create_67: {
+    create_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -127637,6 +129289,32 @@ export interface operations {
             };
         };
     };
+    updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdReportStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdUserReportAdminResponse"];
+                };
+            };
+        };
+    };
     markInvoicePaid: {
         parameters: {
             query?: never;
@@ -127751,6 +129429,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseAdCreativeResponse"];
+                };
+            };
+        };
+    };
+    unsuspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOperationalCampaignResponse"];
                 };
             };
         };
@@ -138932,6 +140632,28 @@ export interface operations {
             };
         };
     };
+    team: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingEntitlementSummaryResponse"];
+                };
+            };
+        };
+    };
     getConfirmations: {
         parameters: {
             query?: never;
@@ -141035,6 +142757,72 @@ export interface operations {
             };
         };
     };
+    listPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBillingPlanAdminResponse"];
+                };
+            };
+        };
+    };
+    listFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBillingFeatureAdminResponse"];
+                };
+            };
+        };
+    };
+    searchContracts: {
+        parameters: {
+            query?: {
+                scopeKind?: string;
+                scopeId?: number;
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPagedContractResponse"];
+                };
+            };
+        };
+    };
     listBatches: {
         parameters: {
             query?: never;
@@ -141494,6 +143282,31 @@ export interface operations {
             };
         };
     };
+    list_73: {
+        parameters: {
+            query?: {
+                status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+                reason?: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseAdUserReportAdminResponse"];
+                };
+            };
+        };
+    };
     getSegments_1: {
         parameters: {
             query: {
@@ -141542,7 +143355,7 @@ export interface operations {
             };
         };
     };
-    list_73: {
+    list_74: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -141587,7 +143400,7 @@ export interface operations {
             };
         };
     };
-    list_74: {
+    list_75: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -142296,7 +144109,7 @@ export interface operations {
             };
         };
     };
-    list_75: {
+    list_76: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -146418,7 +148231,7 @@ export interface operations {
             };
         };
     };
-    list_76: {
+    list_77: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -146781,6 +148594,28 @@ export interface operations {
             };
         };
     };
+    organization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingEntitlementSummaryResponse"];
+                };
+            };
+        };
+    };
     getStats_14: {
         parameters: {
             query?: never;
@@ -146920,7 +148755,7 @@ export interface operations {
             };
         };
     };
-    list_77: {
+    list_78: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -147137,7 +148972,7 @@ export interface operations {
             };
         };
     };
-    list_78: {
+    list_79: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -147574,7 +149409,7 @@ export interface operations {
             };
         };
     };
-    list_79: {
+    list_80: {
         parameters: {
             query?: never;
             header?: never;
@@ -147658,7 +149493,7 @@ export interface operations {
             };
         };
     };
-    list_80: {
+    list_81: {
         parameters: {
             query?: never;
             header?: never;
@@ -148744,6 +150579,26 @@ export interface operations {
             };
         };
     };
+    me_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingEntitlementSummaryResponse"];
+                };
+            };
+        };
+    };
     today_2: {
         parameters: {
             query?: never;
@@ -149502,7 +151357,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_82: {
         parameters: {
             query?: never;
             header?: never;
@@ -149647,7 +151502,7 @@ export interface operations {
             };
         };
     };
-    me_1: {
+    me_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -151454,6 +153309,50 @@ export interface operations {
                     "application/xml": string;
                     "application/rss+xml": string;
                     "application/atom+xml": string;
+                };
+            };
+        };
+    };
+    plans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPlanCatalogResponse"];
+                };
+            };
+        };
+    };
+    check_1: {
+        parameters: {
+            query: {
+                scopeKind: string;
+                scopeId: number;
+                featureKey: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingEntitlementCheckResponse"];
                 };
             };
         };
