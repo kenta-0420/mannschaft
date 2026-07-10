@@ -57,6 +57,10 @@ const feedbackModalVisible = ref(false)
 
 let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
+// F10.7 WebSocket 通知連動（隊5・AC-9前段）: 認証済みセッションの間だけグローバルに1本、
+// /user/queue/notifications を購読する（BE の Principal 配線完了後に個別通知が実配信される）。
+const userNotificationSocket = useUserNotificationSocket()
+
 onMounted(() => {
   isMounted.value = true
   // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
@@ -65,11 +69,29 @@ onMounted(() => {
   inboxPollTimer = setInterval(() => {
     inboxStore.fetchSummary().catch(() => {})
   }, 60_000)
+
+  if (authStore.isAuthenticated) {
+    userNotificationSocket.start()
+  }
 })
 
 onUnmounted(() => {
   if (inboxPollTimer) clearInterval(inboxPollTimer)
+  userNotificationSocket.stop()
 })
+
+// ログイン/ログアウトでの認証状態遷移に追随して購読を開始/停止する
+// （レイアウト自体は unmount せずに済むセッション途中の状態変化にも対応）。
+watch(
+  () => authStore.isAuthenticated,
+  (authenticated) => {
+    if (authenticated) {
+      userNotificationSocket.start()
+    } else {
+      userNotificationSocket.stop()
+    }
+  },
+)
 
 watch(
   () => route.path,
