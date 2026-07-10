@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
@@ -192,8 +193,28 @@ public class GoogleApiClient {
      * @param eventId     削除対象の Google イベント ID
      */
     public void deleteEvent(String accessToken, String calendarId, String eventId) {
-        throw new UnsupportedOperationException(
-                "未実装: GoogleApiClient.deleteEvent（Google カレンダー同期 堅牢化フェーズ 出陣で実装）");
+        try {
+            restClient.delete()
+                    .uri(calendarApiBase + "/calendars/{calendarId}/events/{eventId}", calendarId, eventId)
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.debug("Google Calendar event delete完了: eventId={}", eventId);
+        } catch (HttpClientErrorException e) {
+            int status = e.getStatusCode().value();
+            // 404（Not Found）/ 410（Gone）は「既に削除済み」= べき等成功として扱い、例外を送出しない。
+            if (status == 404 || status == 410) {
+                log.info("Google Calendar event は既に不在（べき等成功として続行）: eventId={}, status={}",
+                        eventId, status);
+                return;
+            }
+            // それ以外の 4xx は症状を握り潰さず伝播させる（CLAUDE.md 障害対応の原則）。
+            log.error("Google Calendar event delete失敗: eventId={}, status={}", eventId, status, e);
+            throw new BusinessException(GoogleCalendarErrorCode.GOOGLE_API_ERROR, e);
+        } catch (Exception e) {
+            log.error("Google Calendar event delete失敗: eventId={}", eventId, e);
+            throw new BusinessException(GoogleCalendarErrorCode.GOOGLE_API_ERROR, e);
+        }
     }
 
     /**

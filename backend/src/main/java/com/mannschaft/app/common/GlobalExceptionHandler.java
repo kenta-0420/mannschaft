@@ -145,6 +145,8 @@ public class GlobalExceptionHandler {
             //   （Severity.WARN 既定の 400 を上書き）。
             Map.entry("AUTH_026", HttpStatus.UNAUTHORIZED), // リプレイ検出・全セッション無効化 → 401
             Map.entry("AUTH_039", HttpStatus.UNAUTHORIZED), // 全デバイスセッション無効化後のアクセス → 401
+            // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
+            Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
