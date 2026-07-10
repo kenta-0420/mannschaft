@@ -552,8 +552,17 @@
     },
     "exception_day": {
       "title": "Calendario de días excepcionales",
-      "coming_soon": "El calendario de días excepcionales estará disponible próximamente",
-      "coming_soon_hint": "Por ahora puedes configurar cierres y aperturas especiales desde \"Gestionar franjas individuales manualmente\" en Configuración avanzada, más abajo"
+      "help": "Elige una fecha en el calendario para cerrarla, o para abrir especialmente un día que normalmente está cerrado.",
+      "close_day": "Cerrar este día",
+      "open_special": "Abrir especialmente",
+      "close_day_impact_warning": "Hay {n} reservas activas este día",
+      "goto_reservations": "Gestionar en la lista de reservas",
+      "notify_hint": "Si necesitas avisar a quienes tienen reservas, usa el cierre de emergencia",
+      "special_source_day": "Horario semanal a aplicar",
+      "special_done": "Se crearon {generated} franjas para el {date}",
+      "blocked_conflict": "Este día está configurado como cerrado. Cancela el cierre antes de ejecutar esto",
+      "date_range_hint": "Las aperturas especiales se pueden programar desde mañana hasta 90 días después",
+      "goto_book": "Comprobar en la pestaña Reservar"
     },
     "slot_manage": {
       "advanced_label": "Gestionar franjas individuales manualmente (excepciones)"
@@ -711,7 +720,7 @@
         },
         "exception_title": "Casos excepcionales",
         "exception_steps": {
-          "0": "Para añadir o cambiar franjas solo un día concreto, usa \"Gestionar franjas individuales manualmente\" en Configuración avanzada para crear, editar o cerrar franjas individuales (los cierres/aperturas especiales con un clic desde el calendario de días excepcionales llegarán próximamente).",
+          "0": "Para cerrar un día concreto o abrirlo especialmente, usa \"Cerrar este día\" / \"Abrir especialmente\" en el calendario de días excepcionales. Para ajustar franjas individuales con más detalle, usa \"Gestionar franjas individuales manualmente\" en Configuración avanzada para crearlas, editarlas o cerrarlas.",
           "1": "Para bloquear un rango horario concreto, usa \"Franjas no disponibles\" en los ajustes avanzados.",
           "2": "Al eliminar un objetivo de reserva se detiene su plantilla y se eliminan automáticamente sus franjas futuras sin reservas. Si aún tiene reservas activas, reasígnalas o cancélalas antes."
         }

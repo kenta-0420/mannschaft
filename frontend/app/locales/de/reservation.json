@@ -552,8 +552,17 @@
     },
     "exception_day": {
       "title": "Kalender für Ausnahmetage",
-      "coming_soon": "Der Kalender für Ausnahmetage ist in Vorbereitung",
-      "coming_soon_hint": "Schließungen und Sondertermine können Sie derzeit unter \"Erweiterte Einstellungen\" über \"Einzelne Slots manuell verwalten\" festlegen"
+      "help": "Wähle ein Datum im Kalender, um diesen Tag zu schließen oder an einem normalerweise geschlossenen Tag ausnahmsweise zu öffnen.",
+      "close_day": "Diesen Tag schließen",
+      "open_special": "Sonderöffnung",
+      "close_day_impact_warning": "An diesem Tag gibt es {n} aktive Reservierungen",
+      "goto_reservations": "In der Reservierungsliste bearbeiten",
+      "notify_hint": "Falls du Reservierende benachrichtigen musst, verwende stattdessen die Notfallschließung",
+      "special_source_day": "Anzuwendender Wochentagsplan",
+      "special_done": "{generated} Slots für {date} erstellt",
+      "blocked_conflict": "Dieser Tag ist als geschlossen markiert. Hebe die Schließung auf, bevor du dies ausführst",
+      "date_range_hint": "Sonderöffnungen können ab morgen bis zu 90 Tage im Voraus festgelegt werden",
+      "goto_book": "Im Tab \"Buchen\" prüfen"
     },
     "slot_manage": {
       "advanced_label": "Einzelne Slots manuell verwalten (Ausnahmen)"
@@ -711,7 +720,7 @@
         },
         "exception_title": "Ausnahmefälle",
         "exception_steps": {
-          "0": "Um Zeitfenster nur für einen einzelnen Tag hinzuzufügen oder zu ändern, verwende \"Einzelne Slots manuell verwalten\" unter Erweiterte Einstellungen, um einzelne Zeitfenster zu erstellen, zu bearbeiten oder zu schließen (Schließungen/Sondertermine per Klick über den Kalender für Ausnahmetage folgen in Kürze).",
+          "0": "Um einen bestimmten Tag zu schließen oder ausnahmsweise zu öffnen, verwende \"Diesen Tag schließen\" / \"Sonderöffnung\" im Kalender für Ausnahmetage. Um einzelne Zeitfenster im Detail anzupassen, nutze \"Einzelne Slots manuell verwalten\" unter Erweiterte Einstellungen, um sie zu erstellen, zu bearbeiten oder zu schließen.",
           "1": "Um einen bestimmten Zeitraum für Buchungen zu sperren, nutze \"Nicht verfügbare Zeiträume\" in den erweiterten Einstellungen.",
           "2": "Beim Löschen eines Reservierungsziels wird dessen Vorlage gestoppt und zukünftige Zeitfenster ohne Reservierungen werden automatisch gelöscht. Bestehen noch aktive Reservierungen, verschiebe oder storniere sie vorher."
         }

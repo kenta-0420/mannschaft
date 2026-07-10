@@ -267,4 +267,44 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     // サイレント＝skeleton へ切り替わらない（loading を立てない）ため、マトリックス本体は表示されたまま
     expect(wrapper.findComponent(SlotMatrixPicker).findAllComponents({ name: 'Skeleton' })).toHaveLength(0)
   })
+
+  it('AC-FE11（F03.4.5 W2-1第二隊の番人）: 管理タブは①営業時間→②予約対象→③メニュー→④週間スケジュール→⑤例外日カレンダー→⑥詳細設定（個別の枠を手動管理）の順で構成される', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    // テスト環境の既定ロケールは en（写経元 WeeklyScheduleManager.spec.ts と同じ前提）。
+    const text = wrapper.text()
+    const idxBusinessHours = text.indexOf('Business hours')
+    const idxLines = text.indexOf('Bookable Item Management')
+    const idxMenus = text.indexOf('Menu Management')
+    const idxWeekly = text.indexOf('Weekly Templates')
+    const idxException = text.indexOf('Exception day calendar')
+    const idxAdvanced = text.indexOf('Advanced Settings')
+    // SlotManager が⑥詳細設定内で「個別の枠を手動管理（例外操作）」ラベルを持つこと（F03.4.5 §3.2）
+    const idxSlotManageLabel = text.indexOf('Manually manage individual slots (exceptions)')
+
+    for (const [label, idx] of [
+      ['business_hours', idxBusinessHours],
+      ['lines', idxLines],
+      ['menus', idxMenus],
+      ['weekly_schedule', idxWeekly],
+      ['exception_day', idxException],
+      ['advanced', idxAdvanced],
+      ['slot_manage_label', idxSlotManageLabel],
+    ] as const) {
+      expect(idx, `${label} の見出し/ラベルが描画されていること`).toBeGreaterThan(-1)
+    }
+
+    expect(idxBusinessHours, '①営業時間 → ②予約対象 の順').toBeLessThan(idxLines)
+    expect(idxLines, '②予約対象 → ③メニュー の順').toBeLessThan(idxMenus)
+    expect(idxMenus, '③メニュー → ④週間スケジュール の順').toBeLessThan(idxWeekly)
+    expect(idxWeekly, '④週間スケジュール → ⑤例外日カレンダー の順').toBeLessThan(idxException)
+    expect(idxException, '⑤例外日カレンダー → ⑥詳細設定 の順').toBeLessThan(idxAdvanced)
+    expect(idxAdvanced, '⑥詳細設定の内側に「個別の枠を手動管理」ラベル（SlotManager）がある').toBeLessThan(idxSlotManageLabel)
+  })
 })
