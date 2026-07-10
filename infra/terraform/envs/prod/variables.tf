@@ -14,6 +14,9 @@
 # |                                    |                                            | put-secret-value で手動。手順は bootstrap/README §7） |
 # | AWS 認証（CI）                     | なし（GitHub OIDC で短期クレデンシャル）   | bootstrap 層の IAM ロール 3 種                           |
 # | SES SMTP/API 認証                  | ECS タスクロール（IAM ロール）             | 鍵不要。タスクロールに ses:SendEmail を付与             |
+# | Cloudflare Tunnel シークレット     | Terraform state（random_id 自動生成）      | edge module が生成しトンネルに設定。人手管理不要        |
+# | cloudflared run トークン           | AWS Secrets Manager（箱は Terraform 作成） | apply 後に tunnel_token 出力を手動投入 → ECS サイドカー |
+# |                                    |                                            | が TUNNEL_TOKEN として参照（手順は bootstrap/README §7-5）|
 #
 # 非秘密の実行時 env（APP_BASE_URL 等）は本ファイル下部 + main.tf の locals で管理する。
 # =============================================================================
@@ -83,6 +86,13 @@ variable "task_memory" {
   description = "ECS Fargate タスクのメモリ（MiB）。task_cpu と組合せ制約あり（512cpu→1024〜4096 等）"
   type        = number
   default     = 1024
+}
+
+variable "cloudflared_image" {
+  description = "cloudflared サイドカーのイメージ（固定タグ必須。:latest を prod に適用しない）。更新時は Docker Hub cloudflare/cloudflared で linux/arm64 対応の最新安定タグを確認してから上げる"
+  type        = string
+  # 2026-07-10 時点の最新安定タグ（linux/arm64 対応を Docker Hub で確認済み）
+  default = "cloudflare/cloudflared:2026.7.1"
 }
 
 # -----------------------------------------------------------------------------

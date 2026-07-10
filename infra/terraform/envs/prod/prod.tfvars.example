@@ -21,6 +21,10 @@ cloudflare_zone_id    = "fedcba9876543210fedcba9876543210"
 # task_memory       = 1024
 # vpc_cidr          = "10.0.0.0/16"
 
+# --- cloudflared サイドカーのイメージ（既定は variables.tf の固定タグ）---
+# 更新時は Docker Hub cloudflare/cloudflared の linux/arm64 対応の安定タグを確認して指定する
+# cloudflared_image = "cloudflare/cloudflared:2026.7.1"
+
 # --- 非秘密 env の追加・上書き（標準セットは envs/prod/main.tf の locals 参照）---
 # app_env_extra = {
 #   SPRING_PROFILES_ACTIVE = "prod"

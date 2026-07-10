@@ -167,6 +167,19 @@ app:
 | `MANNSCHAFT_STRIPE_CONNECT_RETURN_URL` | Connect 戻り URL |
 | `MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL` | Connect リフレッシュ URL |
 
+#### Cloudflare Tunnel（本番の入口 — ECS の cloudflared サイドカー用）
+
+本番（AWS ECS）は ALB を使わず、ECS タスク内の cloudflared サイドカーが張る **Cloudflare Tunnel** が
+`/api/**`・`/ws` の入口になる（2026-07-10 コスト削減で ALB → Tunnel 化）。
+
+| 環境変数 | 用途 |
+|---|---|
+| `TUNNEL_TOKEN` | cloudflared サイドカーの run トークン。**Spring Boot ではなく cloudflared コンテナに注入**。AWS Secrets Manager の `<prefix>/cloudflared-tunnel-token`（箱は Terraform 作成・値は手動投入）から ECS タスク定義の `secrets` で参照される |
+
+値の取得と投入手順は `infra/terraform/bootstrap/README.md` §7-5 を参照
+（`terraform output -raw cloudflared_tunnel_token` → `aws secretsmanager put-secret-value` → ECS 再デプロイ）。
+トンネル本体・DNS・ingress（`http://localhost:8080`）は Terraform（`infra/terraform/modules/edge`）が管理するため手動設定は不要。
+
 ---
 
 ## フロントエンド（Nuxt 3）
