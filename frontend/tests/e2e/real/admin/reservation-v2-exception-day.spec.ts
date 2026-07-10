@@ -377,25 +377,30 @@ test.describe('RSV-V2: 例外日カレンダー（休業/臨時営業・impact�
   })
 
   /**
-   * 【実機E2Eで発見したBEバグ・2026-07-10】GET .../blocked-times/impact および
-   * createBlockedTime の 409 ガード（RESERVATION_027）は、共通ヘルパー
+   * 【実機E2Eで発見したBEバグ・2026-07-10 → 根治済み】GET .../blocked-times/impact および
+   * createBlockedTime の 409 ガード（RESERVATION_027）は、かつて共通ヘルパー
    * ReservationBusinessHourService#findActiveOverlappingReservations が「全日」判定のため
-   * startTime/endTime を LocalTime.MIN/LocalTime.MAX に展開する実装になっているが、
+   * startTime/endTime を LocalTime.MIN/LocalTime.MAX に展開しており、
    * LocalTime.MAX（23:59:59.999999999）を JDBC 経由で TIME 型パラメータへバインドする際に
    * 丸め/繰り上がりが発生し、ReservationRepository#findActiveReservationsOverlappingUnavailability
    * の overlap 条件 `s.startTime < :endTimeExclusive` が全 slot で false になる（affectedCount が
    * 常に 0 になる）ため、全日休業（startTime/endTime 未指定）を選ぶと有効な予約があっても
-   * 警告が出ず、409 ガードも発動せずに休業登録が成立してしまう。
+   * 警告が出ず、409 ガードも発動せずに休業登録が成立してしまうバグがあった。
    *
-   * 実機裏取り（curl）:
-   *   - GET impact?date=D&resourceType=TEAM（null/null＝全日）→ affectedCount=0（誤り）
+   * 根治（commit a93b5a667）: 全日ブロックは時刻トリック（LocalTime.MIN/MAX 展開）を完全排除し、
+   * ReservationRepository#findActiveReservationsOnDate（時刻条件なし・teamId + slotDate + 対象軸 +
+   * status のみ）でその日の active 予約を引くようにした。部分休業（時刻あり）は従来の半開区間クエリ維持。
+   * これにより下記の当時の誤挙動は解消され、AC-FE14 は green になる（本テストで検証する）。
+   *
+   * 当時の実機裏取り（curl・バグ再現時の記録）:
+   *   - GET impact?date=D&resourceType=TEAM（null/null＝全日）→ affectedCount=0（誤り・根治前）
    *   - GET impact?date=D&resourceType=TEAM&startTime=00:00:00&endTime=23:59:59
    *     （明示的な終日範囲）→ affectedCount=1（正しく検出）
-   *   - POST blocked-times（全日）→ 有効な予約が残っているのに 201 で成功してしまう
+   *   - POST blocked-times（全日）→ 有効な予約が残っているのに 201 で成功してしまう（根治前）
    *     （本来は 409=RESERVATION_027 になるべき）
    *
    * 本テストは受け入れ条件（impact警告＋登録disabled）をそのまま検証する（対処療法で緩めない）。
-   * 現状の実装では赤化する＝バグの実機的な固定化として扱う。修正は殿が別途手配。
+   * 根治後は green になる前提の番人テストであり、再び赤化したら全日休業impactの回帰を意味する。
    */
   test('AC-FE14: 予約が残る日は「休業にする」で impact 警告カード＋登録ボタンdisabledになる', async ({ page, tokens }) => {
     await gotoReservations(page, tokens)
