@@ -42,33 +42,43 @@ const confirmDialog = useConfirm()
 // 直前直後は避け、該当時は次のアイテム後ろへ繰り下げる（設計 §8.3）。
 const spotlightApi = useSpotlightApi()
 const spotlightItems = ref<SpotlightItem[]>([])
+/** 掲載面の取得中フラグ（ロード中は差込位置に固定スケルトンを確保して CLS を防ぐ）。 */
+const spotlightLoading = ref(true)
 /** 差し込む IN_FEED 枠のアイテム（存在時のみ描画）。 */
 const spotlightInfeedItem = computed(() => spotlightItems.value[0])
 
 async function loadSpotlight() {
-  // scopeId には数値のチーム ID が必要。フィード項目の scopeId が数値のチーム ID（BE の Long）。
-  const numericTeamId = feed.value[0]?.scopeId
-  if (numericTeamId == null) {
-    spotlightItems.value = []
-    return
+  spotlightLoading.value = true
+  try {
+    // scopeId には数値のチーム ID が必要。フィード項目の scopeId が数値のチーム ID（BE の Long）。
+    const numericTeamId = feed.value[0]?.scopeId
+    if (numericTeamId == null) {
+      spotlightItems.value = []
+      return
+    }
+    const n = Number(numericTeamId)
+    if (!Number.isFinite(n)) {
+      spotlightItems.value = []
+      return
+    }
+    spotlightItems.value = await spotlightApi.fetchContent('IN_FEED', 1, {
+      scopeType: 'TEAM',
+      scopeId: n,
+    })
+  } finally {
+    spotlightLoading.value = false
   }
-  const n = Number(numericTeamId)
-  if (!Number.isFinite(n)) {
-    spotlightItems.value = []
-    return
-  }
-  spotlightItems.value = await spotlightApi.fetchContent('IN_FEED', 1, {
-    scopeType: 'TEAM',
-    scopeId: n,
-  })
 }
 
 /**
  * IN_FEED 枠を差し込むフラット配列インデックス（この位置のアイテムの「直前」に描画）。
  * 差し込まない場合は -1。
+ *
+ * <p>差込位置はフィード（非 pinned 3 件目 + 広告カード隣接回避）だけで一意に定まり、
+ * 掲載面の取得結果には依存しない。これにより取得中も差込位置にスケルトンを予約でき、
+ * item 解決後に差し替える（設計 §8.3 の CLS 防止）。</p>
  */
 const spotlightInsertIndex = computed<number>(() => {
-  if (spotlightItems.value.length === 0) return -1
   const items = feed.value
   const pinnedCount = items.filter((i) => i.isPinned).length
   const nonPinnedCount = items.length - pinnedCount
@@ -221,14 +231,26 @@ function onDeleteConfirm(id: number) {
               @pin="onTogglePin"
               @delete="onDeleteConfirm"
             />
-            <!-- IN_FEED 掲載面（非 pinned 3 件目直後・1 ページ 1 枠・CLS 防止の固定枠） -->
+            <!-- IN_FEED 掲載面（非 pinned 3 件目直後・1 ページ 1 枠） -->
+            <!-- CLS 防止: 取得中は 96px 固定スケルトンで枠を確保し、解決後に slot へ差し替える。 -->
+            <!-- 取得完了かつ候補なし（item 無し）のときのみ枠を畳む。 -->
             <div
-              v-if="idx === spotlightInsertIndex - 1 && spotlightInfeedItem"
+              v-if="idx === spotlightInsertIndex - 1 && (spotlightLoading || spotlightInfeedItem)"
               class="spotlight-infeed py-2"
               data-testid="spotlight-infeed"
               :style="spotlightInfeedStyle"
             >
-              <SpotlightSlot :item="spotlightInfeedItem" placement="IN_FEED" />
+              <div
+                v-if="spotlightLoading"
+                class="spotlight-infeed-skeleton w-full animate-pulse rounded-xl bg-surface-100 dark:bg-surface-700"
+                style="min-height: 96px"
+                data-testid="spotlight-infeed-skeleton"
+              />
+              <SpotlightSlot
+                v-else-if="spotlightInfeedItem"
+                :item="spotlightInfeedItem"
+                placement="IN_FEED"
+              />
             </div>
           </template>
         </div>

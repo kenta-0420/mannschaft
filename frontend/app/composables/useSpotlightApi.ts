@@ -81,8 +81,10 @@ export function useSpotlightApi() {
         params,
       })
       return res.data.items ?? []
-    } catch {
+    } catch (e) {
       // 設計 §7.5 / AC-4.9: 広告取得の失敗はページ描画をブロックしない（枠を出さないだけ）。
+      // ただし握りつぶさず「劣化を記録して継続」する（観測性の確保）。
+      console.warn('[spotlight] fetchContent failed', e)
       return []
     }
   }
