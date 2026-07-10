@@ -1,21 +1,14 @@
 # =============================================================================
 # app module — 実装済み
 # =============================================================================
-# 責務: アプリ実行層（ALB + ACM + ECR + ECS Fargate / Spring Boot desired 1）。
+# 責務: アプリ実行層（ECR + ECS Fargate / Spring Boot + cloudflared サイドカー, desired 1）。
 #
-# ACM 証明書の検証フロー:
-#   1. 本 module が aws_acm_certificate を作成し domain_validation_options を出力
-#   2. edge module がその情報で Cloudflare に検証 CNAME を作成し、
-#      acm_validation_record_fqdns を出力
-#   3. ルート（envs/prod/main.tf）が aws_acm_certificate_validation で
-#      検証完了を待ち、その certificate_arn を var.listener_certificate_arn として
-#      本 module に渡す
-#   → HTTPS リスナーは検証済み証明書を参照するため循環依存なし
-#
-# 依存グラフ（循環なし）:
-#   app（cert 作成）→ edge（DNS 検証レコード作成）
-#   → ルートの validation リソース（検証完了待機）
-#   → app（var.listener_certificate_arn としてリスナーへ渡す）
+# 2026-07-10 コスト削減: 入口を ALB → Cloudflare Tunnel へ移行した。
+#   - ALB / ターゲットグループ / HTTPS リスナー / ACM 証明書は撤去（固定費 約$20/月削減）
+#   - トンネル本体・DNS・ingress は edge module（Cloudflare）が管理
+#   - 本 module は cloudflared サイドカーと、その run トークンを入れる
+#     Secrets Manager の箱（値は手動投入）を持つ
+#   - app ↔ edge の module 依存はなし（トークンの受け渡しは apply 後の手動投入で疎結合）
 # =============================================================================
 
 terraform {
@@ -66,83 +59,27 @@ resource "aws_ecr_lifecycle_policy" "backend" {
 # CloudWatch Logs
 # =============================================================================
 
-# 注意: デフォルトは無期限保存でコストが膨らむ。必ず retention_in_days を明示すること
+# 注意: デフォルトは無期限保存でコストが膨らむ。必ず retention_in_days を明示すること。
+# コスト削減（2026-07-10）: 90 日 → 30 日に短縮。ECS/cloudflared のアプリログは
+# 直近 1 ヶ月あれば障害調査に十分で、長期保存は CloudWatch Logs のストレージ課金を押し上げるだけ。
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.prefix}"
-  retention_in_days = 90
+  retention_in_days = 30
 }
 
 # =============================================================================
-# ACM 証明書（DNS 検証）
+# 入口構成（ALB → Cloudflare Tunnel 化・2026-07-10 コスト削減）
 # =============================================================================
-
-resource "aws_acm_certificate" "this" {
-  domain_name       = var.domain_name
-  validation_method = "DNS"
-
-  lifecycle {
-    # 証明書の更新時に新旧並存して ALB の切り替えを無停止にする
-    create_before_destroy = true
-  }
-}
-
-# 注意: aws_acm_certificate_validation はこの module では定義しない。
-# 理由: edge module（Cloudflare）が同一 apply 内で検証 CNAME を作成するため、
-# ルート（envs/prod/main.tf）で validation リソースを定義することで
-# 一発 apply 中に検証完了を待てる。
-# HTTPS リスナーは var.listener_certificate_arn（ルートが validation 完了後に渡す値）
-# を使うことで、検証済み証明書のみが ALB にアタッチされることを保証する。
-
-# =============================================================================
-# ALB / ターゲットグループ / リスナー
-# =============================================================================
-
-resource "aws_lb" "this" {
-  name               = "${var.prefix}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [var.alb_sg_id]
-  subnets            = var.public_subnet_ids
-}
-
-resource "aws_lb_target_group" "app" {
-  name        = "${var.prefix}-app-tg"
-  port        = 8080
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    path                = "/actuator/health"
-    interval            = 30
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 10
-    matcher             = "200"
-  }
-}
-
-# HTTPS リスナー（TLS 1.2 以上のみ許可。Cloudflare がオリジンへ HTTPS で接続する）
-# certificate_arn は var.listener_certificate_arn を使う。
-# これはルートの aws_acm_certificate_validation.certificate_arn（検証済み）が渡される。
-# 直接 aws_acm_certificate.this.arn を参照しないのは、検証未完了の証明書が
-# リスナーにアタッチされて ALB が HTTPS を受け付けられない状態を防ぐため。
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.this.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.listener_certificate_arn
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
-  }
-}
-
-# HTTP(80) リスナーは作成しない。
-# 理由: Cloudflare が常時 HTTPS で接続するため、ポート 80 を開放する意味がない。
-# Cloudflare の「Always Use HTTPS」設定でクライアント→Cloudflare 間も強制される。
+# ALB（月 $20 前後の固定費）・ACM 証明書・HTTPS リスナー・ターゲットグループは撤去した。
+# 代わりに ECS タスク内に cloudflared サイドカー（下の task_definition 参照）を同居させ、
+# Cloudflare Tunnel（アウトバウンドのみ）で Cloudflare エッジ → localhost:8080 へ到達する。
+#
+# これにより:
+#   - ALB / ACM が不要（TLS は Cloudflare エッジと Tunnel 転送で担保。AWS 側の証明書ゼロ）
+#   - 外部インバウンド不要（app_sg はアウトバウンドのみ。network module 参照）
+#   - トンネル本体・DNS・ingress は edge module（Cloudflare）が Terraform 管理
+#
+# ヘルスチェックは ALB ターゲットグループから ECS タスク定義の container healthCheck へ移設した。
 
 # =============================================================================
 # IAM ロール
@@ -186,7 +123,8 @@ resource "aws_iam_role_policy" "task_exec_secrets" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        # mannschaft/* プレフィクス配下のシークレット（JWT / Stripe / 内部トークン等）
+        # mannschaft/* プレフィクス配下のシークレット（JWT / Stripe / 内部トークン
+        # / cloudflared-tunnel-token 等はすべてこのワイルドカードで包含される）
         # + RDS 管理シークレット（rds!db-... 名で mannschaft/* プレフィクス外）を許可
         Resource = [
           "arn:aws:secretsmanager:*:*:secret:${var.prefix}/*",
@@ -293,6 +231,18 @@ resource "aws_secretsmanager_secret" "app_keys" {
   recovery_window_in_days = 7
 }
 
+# cloudflared サイドカーの Tunnel トークン（`cloudflared tunnel run` が TUNNEL_TOKEN で読む）。
+# 箱だけ Terraform 管理・値は手動投入（jwt-secret 等と同じ方針）。
+# 値は edge module の tunnel_token 出力（Cloudflare が発行）を運用者が put-secret-value で流し込む:
+#   terraform -chdir=infra/terraform/envs/prod output -raw cloudflared_tunnel_token
+#     | aws secretsmanager put-secret-value --secret-id "${prefix}/cloudflared-tunnel-token" --secret-string ...
+# 手順は infra/terraform/bootstrap/README.md §7-5 を参照。
+resource "aws_secretsmanager_secret" "cloudflared_tunnel_token" {
+  name                    = "${var.prefix}/cloudflared-tunnel-token"
+  description             = "Cloudflare Tunnel run token for the cloudflared ECS sidecar"
+  recovery_window_in_days = 7
+}
+
 # =============================================================================
 # ECS クラスタ
 # =============================================================================
@@ -301,8 +251,11 @@ resource "aws_ecs_cluster" "this" {
   name = "${var.prefix}-cluster"
 
   setting {
+    # コスト削減（2026-07-10）: Container Insights を無効化。
+    # 追加メトリクス/ダッシュボードの CloudWatch 課金（数ドル/月）を止める。
+    # 基本的な CPU/メモリ監視は無料のサービスメトリクスで足り、詳細計測が必要になったら再有効化する。
     name  = "containerInsights"
-    value = "enabled"
+    value = "disabled"
   }
 }
 
@@ -310,11 +263,13 @@ resource "aws_ecs_cluster" "this" {
 # ECS タスク定義
 # =============================================================================
 
-# アーキテクチャ選定根拠:
-# backend/Dockerfile のベースイメージが eclipse-temurin:21-jdk-jammy（linux/amd64 前提）。
-# jammy 系の eclipse-temurin は arm64 ビルドも存在するが、
-# Dockerfile に PLATFORM 指定がなく、ローカル開発環境が amd64 前提でビルドされているため
-# X86_64 を採用する。ARM64（Graviton）を使いたい場合はマルチアーキテクチャビルドが必要。
+# アーキテクチャ選定根拠（2026-07-10 コスト削減で ARM64 / Graviton へ移行）:
+# Fargate は Graviton（ARM64）で同スペック比 約2割安い。
+# backend/Dockerfile のベースイメージ eclipse-temurin:21-jdk-jammy / 21-jre-jammy は
+# arm64 マルチアーキテクチャイメージが公式に存在するため、Dockerfile 変更なしで arm64 ビルド可能。
+# CD（.github/workflows/backend-deploy.yml）は docker buildx --platform linux/arm64 で
+# arm64 イメージを push する構成に更新済み。
+# cloudflared サイドカー（cloudflare/cloudflared）も linux/arm64 を含むマルチアーキイメージ。
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.prefix}-app"
   requires_compatibilities = ["FARGATE"]
@@ -324,10 +279,10 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.task_exec.arn
   task_role_arn            = aws_iam_role.task.arn
 
-  # X86_64: eclipse-temurin:21-jdk-jammy が linux/amd64 前提のため（上記コメント参照）
+  # ARM64（Graviton）: eclipse-temurin / cloudflared とも arm64 マルチアーキイメージあり。
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture        = "X86_64"
+    cpu_architecture        = "ARM64"
   }
 
   container_definitions = jsonencode([
@@ -342,6 +297,17 @@ resource "aws_ecs_task_definition" "app" {
           protocol      = "tcp"
         }
       ]
+
+      # ヘルスチェック（旧 ALB ターゲットグループから移設）。
+      # cloudflared サイドカーはこの healthCheck が HEALTHY になるまで起動を待つ（dependsOn）。
+      # runtime イメージ（jre-jammy）に wget が入っているため wget で actuator を叩く。
+      healthCheck = {
+        command     = ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+        interval    = 30
+        timeout     = 10
+        retries     = 3
+        startPeriod = 180 # Flyway 初回 migrate 完了までの猶予（旧 health_check_grace_period_seconds 相当）
+      }
 
       # 非秘密の環境変数（var.app_env + DB/Valkey 接続先）
       environment = concat(
@@ -422,6 +388,45 @@ resource "aws_ecs_task_definition" "app" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+    },
+    # -------------------------------------------------------------------------
+    # cloudflared サイドカー（Cloudflare Tunnel。旧 ALB の入口を置き換える）
+    # -------------------------------------------------------------------------
+    # 同一タスク内なので app へは localhost:8080 で到達（awsvpc: 同一 ENI・ループバック共有）。
+    # アウトバウンドのみで Cloudflare エッジへ接続するため外部インバウンド SG は不要。
+    # トークンは Secrets Manager の箱（値は手動投入）から TUNNEL_TOKEN として注入する。
+    {
+      name      = "${var.prefix}-cloudflared"
+      image     = var.cloudflared_image
+      essential = true # トンネルが落ちたら入口が消えるためタスクごと再作成させる
+
+      # `cloudflared tunnel run`（トークンは環境変数 TUNNEL_TOKEN から読む）。
+      # --no-autoupdate: イメージ更新は CD/Terraform で管理し、実行中の自動更新を止める。
+      command = ["tunnel", "--no-autoupdate", "run"]
+
+      # app が HEALTHY になってからトンネルを張る（起動直後の 5xx を Cloudflare に晒さない）
+      dependsOn = [
+        {
+          containerName = "${var.prefix}-app"
+          condition     = "HEALTHY"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "TUNNEL_TOKEN"
+          valueFrom = aws_secretsmanager_secret.cloudflared_tunnel_token.arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
+          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-stream-prefix" = "cloudflared"
+        }
+      }
     }
   ])
 }
@@ -442,20 +447,16 @@ resource "aws_ecs_service" "app" {
 
   network_configuration {
     subnets = var.public_subnet_ids
-    # public IP 付与: NAT Gateway を使わず ECR/Secrets Manager 等に直接アクセスするため
+    # public IP 付与: NAT Gateway を使わず ECR/Secrets Manager 等に直接アクセスするため。
+    # cloudflared のアウトバウンド（Cloudflare エッジへの接続）にも公開 IP 経由の egress を使う。
     assign_public_ip = true
     security_groups  = [var.app_sg_id]
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.app.arn
-    container_name   = "${var.prefix}-app"
-    container_port   = 8080
-  }
-
-  # B9: HTTPS リスナーがターゲットグループを関連付けた後にサービスを作成する。
-  # リスナーが存在しない状態で CreateService すると ALB 結合に失敗するため。
-  depends_on = [aws_lb_listener.https]
+  # ALB 撤去（Cloudflare Tunnel 化）に伴い load_balancer ブロックは削除した。
+  # 入口は cloudflared サイドカーが張るトンネルで、ECS サービスはロードバランサに紐づかない。
+  # health_check_grace_period_seconds は LB 前提の設定のため削除し、
+  # コンテナ healthCheck の startPeriod（タスク定義側 180 秒）で初回 migrate を待つ。
 
   # minimum 0 / maximum 100: WebSocket インメモリブローカー（SockJS/STOMP）を使用しているため
   # 同時に 2 タスクが動くとセッションが別タスクに分散してしまい接続が切れる。
@@ -463,9 +464,6 @@ resource "aws_ecs_service" "app" {
   # 2 タスク並走を完全に防ぐ設定とする。
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
-
-  # Flyway の初回 migrate が完了するまでヘルスチェックを猶予する（最大 3 分）
-  health_check_grace_period_seconds = 180
 
   lifecycle {
     # Terraform はインフラの「器」（クラスタ・サービス設定）を管理する。
@@ -577,6 +575,8 @@ resource "aws_sqs_queue_policy" "ses_notifications" {
 #       contract 拡張（edge outputs に dkim_tokens を追加）と同時に実装すること。
 #       SES Identity 整備時に、Bounce/Complaint 通知先を aws_sns_topic.ses_notifications に
 #       結線する（aws_ses_identity_notification_topic もしくは Configuration Set Event Destination）。
+#       注意: ALB→Tunnel 化（2026-07-10）で var.domain_name を app module から削除した。
+#       下記を有効化する際は variables.tf に domain_name を再追加すること。
 #
 # # resource "aws_ses_domain_identity" "this" {
 # #   domain = var.domain_name

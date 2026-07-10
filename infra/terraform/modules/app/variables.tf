@@ -7,28 +7,13 @@ variable "prefix" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "配置先 VPC の ID（network module の vpc_id）"
-  type        = string
-}
-
 variable "public_subnet_ids" {
-  description = "ALB / ECS タスクを配置する public subnet の ID 一覧（2 AZ）"
+  description = "ECS タスクを配置する public subnet の ID 一覧（2 AZ）"
   type        = list(string)
 }
 
-variable "alb_sg_id" {
-  description = "ALB に付与するセキュリティグループ ID（network module の alb_sg_id）"
-  type        = string
-}
-
 variable "app_sg_id" {
-  description = "ECS タスクに付与するセキュリティグループ ID（network module の app_sg_id）"
-  type        = string
-}
-
-variable "domain_name" {
-  description = "本番ドメイン名（ACM 証明書の対象。例: mannschaft.example.com）"
+  description = "ECS タスクに付与するセキュリティグループ ID（network module の app_sg_id。Tunnel 化後はアウトバウンドのみ）"
   type        = string
 }
 
@@ -57,9 +42,10 @@ variable "valkey_endpoint" {
   type        = string
 }
 
-variable "listener_certificate_arn" {
-  description = "ALB HTTPS リスナーにアタッチする ACM 証明書 ARN。ルートの aws_acm_certificate_validation.certificate_arn（検証済み）を渡すこと。検証未完了の証明書を直接渡さないよう注意"
+variable "cloudflared_image" {
+  description = "cloudflared サイドカーのコンテナイメージ（linux/arm64 を含むマルチアーキイメージ）。安定運用のためタグ固定を推奨"
   type        = string
+  default     = "cloudflare/cloudflared:latest"
 }
 
 variable "app_env" {

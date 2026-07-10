@@ -1,21 +1,23 @@
 # =============================================================================
 # envs/prod — 司令塔（module 結線の正・契約確定済み）
 # =============================================================================
-# 本番構成の全体像:
+# 本番構成の全体像（2026-07-10 コスト削減: ALB → Cloudflare Tunnel）:
 #
 #   利用者 → Cloudflare（FE = Pages / DNS / R2 / 同一オリジン入口）
 #               ├─ 静的・SSR: Cloudflare Pages（Nuxt）
-#               └─ /api/** ・ /ws: AWS ALB（HTTPS, ACM 証明書）
-#                       └─ ECS Fargate（Spring Boot, desired 1）
+#               └─ /api/** ・ /ws: Cloudflare Tunnel（Origin Rule でオリジン差替）
+#                       └─ ECS Fargate（Spring Boot + cloudflared サイドカー, desired 1）
 #                               ├─ RDS MySQL 8.0（private subnet）
 #                               ├─ ElastiCache Valkey（private subnet）
 #                               └─ SES（メール送信）
 #
-# module 4 つの責務と結線（このファイルが契約の正。二番隊は modules/ を実装する）:
+# ALB / ACM 証明書は撤去（固定費 約$20/月削減）。TLS は Cloudflare エッジ + Tunnel 転送で担保。
+#
+# module 4 つの責務と結線:
 #   network → data/app へ subnet・SG を供給
 #   data    → app へ DB/Valkey の接続情報を供給
-#   app     → edge へ ALB DNS 名・ACM DNS 検証レコードを供給
-#   edge    → Cloudflare 側（DNS / Pages / R2）を構成
+#   app     → ECR/ECS（cloudflared サイドカー同居）。外部インバウンドなし
+#   edge    → Cloudflare 側（DNS / Pages / R2 / Tunnel 本体・ingress）を構成
 # =============================================================================
 
 locals {
@@ -67,19 +69,15 @@ module "data" {
 }
 
 # -----------------------------------------------------------------------------
-# app: ALB + ACM + ECR + ECS Fargate（Spring Boot）
-# 注意: listener_certificate_arn は下記の acm_certificate_validation から渡す。
-#       module.edge（検証 CNAME 作成）より後に解決されるため apply の順序は自動制御される。
+# app: ECR + ECS Fargate（Spring Boot + cloudflared サイドカー）
+# 2026-07-10 コスト削減: ALB / ACM を撤去し、入口は edge の Cloudflare Tunnel が担う。
 # -----------------------------------------------------------------------------
 module "app" {
   source = "../../modules/app"
 
   prefix                    = var.prefix
-  vpc_id                    = module.network.vpc_id
   public_subnet_ids         = module.network.public_subnet_ids
-  alb_sg_id                 = module.network.alb_sg_id
   app_sg_id                 = module.network.app_sg_id
-  domain_name               = var.domain_name
   db_endpoint               = module.data.db_endpoint
   db_name                   = module.data.db_name
   db_username               = module.data.db_username
@@ -88,40 +86,16 @@ module "app" {
   app_env                   = local.app_env
   task_cpu                  = var.task_cpu
   task_memory               = var.task_memory
-  listener_certificate_arn  = aws_acm_certificate_validation.this.certificate_arn
 }
 
 # -----------------------------------------------------------------------------
-# edge: Cloudflare DNS / Pages（Nuxt） / R2
+# edge: Cloudflare DNS / Pages（Nuxt） / R2 / Tunnel（cloudflared 入口）
 # -----------------------------------------------------------------------------
 module "edge" {
   source = "../../modules/edge"
 
-  cloudflare_account_id         = var.cloudflare_account_id
-  cloudflare_zone_id            = var.cloudflare_zone_id
-  domain_name                   = var.domain_name
-  alb_dns_name                  = module.app.alb_dns_name
-  acm_domain_validation_options = module.app.acm_domain_validation_options
-  pages_env                     = local.pages_env
-}
-
-# -----------------------------------------------------------------------------
-# ACM 証明書の検証完了待機（B8 根治）
-# -----------------------------------------------------------------------------
-# 依存グラフ（循環なし）:
-#   module.app → aws_acm_certificate（証明書作成・domain_validation_options 出力）
-#   module.edge → cloudflare_record.acm_validation（検証 CNAME 作成）
-#              → acm_validation_record_fqdns 出力
-#   本リソース → 上記 CNAME が伝播したことを ACM が確認するまで待機
-#   module.app.listener_certificate_arn ← 本リソースの certificate_arn（検証済み）
-#
-# この構成により一発 apply で:
-#   1. ACM 証明書作成
-#   2. Cloudflare に検証 CNAME 作成
-#   3. ACM が検証完了を確認（最大数分）
-#   4. 検証済み証明書 ARN を ALB HTTPS リスナーにアタッチ
-# が自動的に順序通り実行される。
-resource "aws_acm_certificate_validation" "this" {
-  certificate_arn         = module.app.acm_certificate_arn
-  validation_record_fqdns = module.edge.acm_validation_record_fqdns
+  cloudflare_account_id = var.cloudflare_account_id
+  cloudflare_zone_id    = var.cloudflare_zone_id
+  domain_name           = var.domain_name
+  pages_env             = local.pages_env
 }

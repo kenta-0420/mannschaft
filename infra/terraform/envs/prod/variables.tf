@@ -14,6 +14,9 @@
 # |                                    |                                            | put-secret-value で手動。手順は bootstrap/README §7） |
 # | AWS 認証（CI）                     | なし（GitHub OIDC で短期クレデンシャル）   | bootstrap 層の IAM ロール 3 種                           |
 # | SES SMTP/API 認証                  | ECS タスクロール（IAM ロール）             | 鍵不要。タスクロールに ses:SendEmail を付与             |
+# | Cloudflare Tunnel シークレット     | Terraform state（random_id 自動生成）      | edge module が生成しトンネルに設定。人手管理不要        |
+# | cloudflared run トークン           | AWS Secrets Manager（箱は Terraform 作成） | apply 後に tunnel_token 出力を手動投入 → ECS サイドカー |
+# |                                    |                                            | が TUNNEL_TOKEN として参照（手順は bootstrap/README §7-5）|
 #
 # 非秘密の実行時 env（APP_BASE_URL 等）は本ファイル下部 + main.tf の locals で管理する。
 # =============================================================================
