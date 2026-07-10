@@ -18677,6 +18677,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/ad-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 広告を通報する
+         * @description campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。
+         */
+        post: operations["create_62"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matching/reviews": {
         parameters: {
             query?: never;
@@ -19575,7 +19595,7 @@ export interface paths {
          * 代理指定
          * @description F03.10 §4.2: 委任者が代理人を指定する
          */
-        post: operations["create_62"];
+        post: operations["create_63"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19646,7 +19666,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** エラーレポート送信 */
-        post: operations["create_63"];
+        post: operations["create_64"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20847,7 +20867,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_64"];
+        post: operations["create_65"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20943,7 +20963,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_2"];
         put?: never;
-        post: operations["create_65"];
+        post: operations["create_66"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22086,7 +22106,7 @@ export interface paths {
          * 同義語新規登録
          * @description synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。
          */
-        post: operations["create_66"];
+        post: operations["create_67"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22137,7 +22157,7 @@ export interface paths {
         };
         get: operations["listAll_2"];
         put?: never;
-        post: operations["create_67"];
+        post: operations["create_68"];
         delete?: never;
         options?: never;
         head?: never;
@@ -25215,6 +25235,26 @@ export interface paths {
         patch: operations["approveAdvertiser"];
         trace?: never;
     };
+    "/api/v1/system-admin/ad-user-reports/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 通報の状態遷移
+         * @description NEW→REVIEWING→RESOLVED/DISMISSED。不正遷移は 409 / AD_027、不存在は 404。
+         */
+        patch: operations["updateStatus"];
+        trace?: never;
+    };
     "/api/v1/system-admin/ad-invoices/{id}/mark-paid": {
         parameters: {
             query?: never;
@@ -25293,6 +25333,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["approve_10"];
+        trace?: never;
+    };
+    "/api/v1/system-admin/ad-campaigns-operational/{id}/unsuspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 通報自動停止の解除
+         * @description 通報 3 件による自動停止を解除する。report_suspended_at を NULL に戻し、自動停止で ACTIVE→PAUSED 遷移していた場合のみ ACTIVE へ復帰する。既に停止中でない対象は 409 / AD_027。
+         */
+        patch: operations["unsuspend"];
         trace?: never;
     };
     "/api/v1/system-admin/ad-campaigns-operational/{id}/reject": {
@@ -33874,6 +33934,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/ad-user-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 通報一覧
+         * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
+         */
+        get: operations["list_73"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/ad-segments": {
         parameters: {
             query?: never;
@@ -33913,7 +33993,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_73"];
+        get: operations["list_74"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33949,7 +34029,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_74"];
+        get: operations["list_75"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34468,7 +34548,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_75"];
+        get: operations["list_76"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37470,7 +37550,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_76"];
+        get: operations["list_77"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37828,7 +37908,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_77"];
+        get: operations["list_78"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37979,7 +38059,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_78"];
+        get: operations["list_79"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38309,7 +38389,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_79"];
+        get: operations["list_80"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38377,7 +38457,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_80"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39726,7 +39806,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_81"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -60140,6 +60220,28 @@ export interface components {
             /** Format: int64 */
             teamId: number;
         };
+        CreateAdReportRequest: {
+            /** Format: uuid */
+            campaignId?: string;
+            /** @enum {string} */
+            channelType: "ANNOUNCEMENT" | "EMAIL" | "PUSH" | "BANNER";
+            comment?: string;
+            /** Format: int64 */
+            operationalCampaignId?: number;
+            /** @enum {string} */
+            reasonCode: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+        };
+        AdReportCreatedResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+        };
+        ApiResponseAdReportCreatedResponse: {
+            data?: components["schemas"]["AdReportCreatedResponse"];
+        };
         CreateReviewRequest: {
             comment?: string;
             isPublic?: boolean;
@@ -63631,6 +63733,31 @@ export interface components {
         };
         UpdateCreditLimitRequest: {
             creditLimit: number;
+        };
+        UpdateAdReportStatusRequest: {
+            /** @enum {string} */
+            status: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+        };
+        AdUserReportAdminResponse: {
+            autoSuspendCandidate?: boolean;
+            /** Format: uuid */
+            campaignId?: string;
+            detail?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            operationalCampaignId?: number;
+            /** @enum {string} */
+            reason?: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+            /** Format: date-time */
+            reportedAt?: string;
+            /** @enum {string} */
+            status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+            /** Format: int64 */
+            userId?: number;
+        };
+        ApiResponseAdUserReportAdminResponse: {
+            data?: components["schemas"]["AdUserReportAdminResponse"];
         };
         MarkInvoicePaidRequest: {
             note?: string;
@@ -69512,6 +69639,10 @@ export interface components {
         };
         PagedResponseAdvertiserAccountDetailResponse: {
             data?: components["schemas"]["AdvertiserAccountDetailResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        PagedResponseAdUserReportAdminResponse: {
+            data?: components["schemas"]["AdUserReportAdminResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
         AdSegmentResponse: {
@@ -115447,6 +115578,30 @@ export interface operations {
             };
         };
     };
+    create_62: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdReportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdReportCreatedResponse"];
+                };
+            };
+        };
+    };
     createReview_1: {
         parameters: {
             query?: never;
@@ -117194,7 +117349,7 @@ export interface operations {
             };
         };
     };
-    create_62: {
+    create_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -117291,7 +117446,7 @@ export interface operations {
             };
         };
     };
-    create_63: {
+    create_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -119412,7 +119567,7 @@ export interface operations {
             };
         };
     };
-    create_64: {
+    create_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -119607,7 +119762,7 @@ export interface operations {
             };
         };
     };
-    create_65: {
+    create_66: {
         parameters: {
             query: {
                 scopeId: number;
@@ -121504,7 +121659,7 @@ export interface operations {
             };
         };
     };
-    create_66: {
+    create_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -121620,7 +121775,7 @@ export interface operations {
             };
         };
     };
-    create_67: {
+    create_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -127637,6 +127792,32 @@ export interface operations {
             };
         };
     };
+    updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdReportStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdUserReportAdminResponse"];
+                };
+            };
+        };
+    };
     markInvoicePaid: {
         parameters: {
             query?: never;
@@ -127751,6 +127932,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseAdCreativeResponse"];
+                };
+            };
+        };
+    };
+    unsuspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOperationalCampaignResponse"];
                 };
             };
         };
@@ -141494,6 +141697,31 @@ export interface operations {
             };
         };
     };
+    list_73: {
+        parameters: {
+            query?: {
+                status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+                reason?: "OFFENSIVE" | "MISLEADING" | "SPAM" | "IRRELEVANT" | "OTHER";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseAdUserReportAdminResponse"];
+                };
+            };
+        };
+    };
     getSegments_1: {
         parameters: {
             query: {
@@ -141542,7 +141770,7 @@ export interface operations {
             };
         };
     };
-    list_73: {
+    list_74: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -141587,7 +141815,7 @@ export interface operations {
             };
         };
     };
-    list_74: {
+    list_75: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -142296,7 +142524,7 @@ export interface operations {
             };
         };
     };
-    list_75: {
+    list_76: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -146418,7 +146646,7 @@ export interface operations {
             };
         };
     };
-    list_76: {
+    list_77: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -146920,7 +147148,7 @@ export interface operations {
             };
         };
     };
-    list_77: {
+    list_78: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -147137,7 +147365,7 @@ export interface operations {
             };
         };
     };
-    list_78: {
+    list_79: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -147574,7 +147802,7 @@ export interface operations {
             };
         };
     };
-    list_79: {
+    list_80: {
         parameters: {
             query?: never;
             header?: never;
@@ -147658,7 +147886,7 @@ export interface operations {
             };
         };
     };
-    list_80: {
+    list_81: {
         parameters: {
             query?: never;
             header?: never;
@@ -149502,7 +149730,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_82: {
         parameters: {
             query?: never;
             header?: never;
