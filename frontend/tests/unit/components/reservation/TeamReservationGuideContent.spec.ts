@@ -34,8 +34,10 @@ describe('TeamReservationGuideContent.vue タブ別ガイド', () => {
       props: { isAdmin: true, isAdminOrDeputy: true, activeTab: 2 },
     })
 
-    expect(wrapper.text()).toContain('1. Create reservation targets')
-    expect(wrapper.text()).toContain('Create a weekly template')
+    // F03.4.5 §3.2 管理タブ再編: ①営業時間（新設）→②予約対象→③メニュー→④週間スケジュール
+    expect(wrapper.text()).toContain('1. Set business hours')
+    expect(wrapper.text()).toContain('2. Create reservation targets')
+    expect(wrapper.text()).toContain('Create a weekly schedule')
     // 予約するタブの見出しは描画されない（タブ連動の裏取り）
     expect(wrapper.text()).not.toContain('Reading the matrix')
   })

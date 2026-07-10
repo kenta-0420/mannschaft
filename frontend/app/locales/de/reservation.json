@@ -523,26 +523,43 @@
       "line": "Reservierungsziel",
       "line_common": "Gemeinsamer Slot",
       "capacity": "Kapazität",
-      "staff": "Mitarbeiter",
-      "staff_none": "Kein Mitarbeiter",
       "is_active": "Aktiv",
       "cell_count": "{n} Slots/Tag (je 30 Min.)",
       "price": "Preis (optional)",
       "slot_title": "Titel (optional)",
       "generate": "Slots jetzt erzeugen",
-      "generate_weeks": "Wie viele Wochen im Voraus",
       "generate_result": "{generated} Slots erstellt, {skipped} existierten bereits",
       "generate_rate_limited": "Bitte warten Sie einen Moment, bevor Sie es erneut versuchen (die Erzeugung wurde zu kürzlich ausgeführt)",
-      "generate_no_active_templates": "Keine aktiven Vorlagen vorhanden. Bitte erstellen Sie zuerst eine Vorlage",
-      "regenerate_guide": "Vorlage gespeichert. Klicken Sie auf \"Slots jetzt erzeugen\", um die Änderung anzuwenden",
+      "generate_no_active_templates": "Für diesen Wochentag gibt es keine Vorlage",
+      "regenerate_guide": "Änderungen werden beim Speichern automatisch übernommen (nur neu hinzugefügte Slots). Wenn bereits vorhandene, nicht gebuchte Slots an die neuen Einstellungen angepasst werden sollen, löschen Sie sie und speichern Sie erneut",
       "limit_reached": "Sie können bis zu 500 Vorlagen registrieren",
       "empty_state": "Noch keine Wochenvorlagen registriert",
-      "empty_state_hint": "Über \"Vorlage hinzufügen\" legen Sie Wochentag und Zeitraum fest und erzeugen Slots gesammelt",
+      "empty_state_hint": "Über \"Vorlage hinzufügen\" legen Sie Wochentag und Zeitraum fest – die Slots werden dann direkt beim Speichern automatisch erzeugt",
       "error": {
         "day_required": "Bitte wählen Sie einen Wochentag",
         "time_range_invalid": "Die Startzeit muss vor der Endzeit liegen, in 30-Minuten-Schritten"
       },
-      "generate_skipped_closed": "{n} Slots wurden wegen Ruhetagen übersprungen"
+      "generate_skipped_closed": "{n} Slots wurden wegen Ruhetagen übersprungen",
+      "auto_generated": "Gespeichert. {generated} Slots wurden für die nächsten {days} Tage erstellt",
+      "auto_generated_partial": "Bei {failed} von {total} Wochentagen ist die Slot-Erzeugung fehlgeschlagen (die gespeicherten Tage bleiben gültig)",
+      "need_business_hours_hint": "Bitte legen Sie zuerst die Geschäftszeiten fest",
+      "generated_zero_hint": "Es wurden keine Slots erstellt (außerhalb der Geschäftszeiten oder an einem Ruhetag). Bitte prüfen Sie die Geschäftszeiten"
+    },
+    "business_hours": {
+      "title": "Geschäftszeiten",
+      "day_open": "Geöffnet",
+      "save_success": "Gespeichert. {generated} Slots wurden aktualisiert",
+      "generating": "Slots werden aktualisiert…",
+      "generation_failed": "Die Geschäftszeiten wurden gespeichert, aber die automatische Slot-Aktualisierung ist fehlgeschlagen. Sie wird morgen früh automatisch nachgeholt",
+      "shrink_note": "Bereits erzeugte zukünftige Slots für diesen Tag bleiben unverändert bestehen (sie werden nicht rückwirkend geschlossen). Um ein bestimmtes Datum dauerhaft zu schließen, verwenden Sie \"Diesen Tag schließen\" im Kalender für Ausnahmetage"
+    },
+    "exception_day": {
+      "title": "Kalender für Ausnahmetage",
+      "coming_soon": "Der Kalender für Ausnahmetage ist in Vorbereitung",
+      "coming_soon_hint": "Schließungen und Sondertermine können Sie derzeit unter \"Erweiterte Einstellungen\" über \"Einzelne Slots manuell verwalten\" festlegen"
+    },
+    "slot_manage": {
+      "advanced_label": "Einzelne Slots manuell verwalten (Ausnahmen)"
     },
     "grid": {
       "title": "Verfügbarkeitsraster",
@@ -669,30 +686,35 @@
         }
       },
       "line_manage": {
-        "setup1_title": "1. Reservierungsziele erstellen",
+        "setup0_title": "1. Geschäftszeiten festlegen",
+        "setup0_steps": {
+          "0": "Lege unter \"Geschäftszeiten\" für jeden Wochentag die Öffnungszeiten fest. Das ist die Grundlage, auf der die Zeitfenster erzeugt werden.",
+          "1": "Sobald du speicherst, werden die Zeitfenster für die nächsten 28 Tage automatisch erstellt."
+        },
+        "setup1_title": "2. Reservierungsziele erstellen",
         "setup1_steps": {
           "0": "Registriere oben in diesem Tab mit \"Reservierungsziel hinzufügen\" buchbare Plätze, Mitarbeiter oder Schalter.",
           "1": "Ohne Reservierungsziel zeigt der Tab \"Reservieren\" den Mitgliedern nichts an."
         },
-        "setup2_title": "2. Menüs erstellen",
+        "setup2_title": "3. Menüs erstellen",
         "setup2_steps": {
           "0": "Registriere unten unter \"Menüs verwalten\" Menüs mit einer Dauer (in 30-Minuten-Schritten).",
           "1": "Um ein Menü auf bestimmte Ziele zu beschränken, wähle unter \"Buchbares Element\" die Option \"Nur ausgewählte Reservierungsziele\" und wähle sie aus (standardmäßig wird es für alle angeboten)."
         },
-        "setup3_title": "3. Eine Wochenvorlage erstellen",
+        "setup3_title": "4. Einen Wochenplan erstellen",
         "setup3_steps": {
-          "0": "Lege unten in \"Wochenvorlage\" Wochentag, Zeitspanne und Kapazität fest — diese Zeitspanne entspricht praktisch deinen Öffnungszeiten.",
-          "1": "Klicke nach dem Speichern auf \"Zeitfenster jetzt erstellen\", damit die nächsten Zeitfenster sofort verfügbar sind.",
-          "2": "Auch ohne diesen Klick werden die Zeitfenster ab morgen jeden Tag automatisch verlängert — es ist keine Aktion nötig."
+          "0": "Lege unten im \"Wochenplan\" Wochentag, Zeitspanne und Kapazität fest — liegt das innerhalb der Geschäftszeiten, werden die Zeitfenster direkt beim Speichern automatisch erstellt.",
+          "1": "Sobald du speicherst, werden die Zeitfenster für die nächsten 28 Tage automatisch erstellt.",
+          "2": "Danach verlängern sich die Zeitfenster jeden Tag automatisch — es ist keine Aktion nötig."
         },
         "daily_title": "Täglicher Betrieb",
         "daily_steps": {
-          "0": "Sobald die Wochenvorlage eingerichtet ist, verlängern sich die Zeitfenster jeden Tag automatisch — normalerweise ist nichts weiter zu tun.",
-          "1": "Bearbeite die Wochenvorlage nur, wenn du Wochentag oder Zeitspanne ändern möchtest."
+          "0": "Sobald der Wochenplan eingerichtet ist, verlängern sich die Zeitfenster jeden Tag automatisch — normalerweise ist nichts weiter zu tun.",
+          "1": "Bearbeite den Wochenplan nur, wenn du Wochentag oder Zeitspanne ändern möchtest."
         },
         "exception_title": "Ausnahmefälle",
         "exception_steps": {
-          "0": "Um Zeitfenster nur für einen einzelnen Tag hinzuzufügen oder zu ändern, verwende unten \"Zeitfenster verwalten\", um einzelne Zeitfenster zu erstellen, zu bearbeiten oder zu schließen.",
+          "0": "Um Zeitfenster nur für einen einzelnen Tag hinzuzufügen oder zu ändern, verwende \"Einzelne Slots manuell verwalten\" unter Erweiterte Einstellungen, um einzelne Zeitfenster zu erstellen, zu bearbeiten oder zu schließen (Schließungen/Sondertermine per Klick über den Kalender für Ausnahmetage folgen in Kürze).",
           "1": "Um einen bestimmten Zeitraum für Buchungen zu sperren, nutze \"Nicht verfügbare Zeiträume\" in den erweiterten Einstellungen.",
           "2": "Beim Löschen eines Reservierungsziels wird dessen Vorlage gestoppt und zukünftige Zeitfenster ohne Reservierungen werden automatisch gelöscht. Bestehen noch aktive Reservierungen, verschiebe oder storniere sie vorher."
         }

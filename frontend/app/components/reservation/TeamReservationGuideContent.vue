@@ -67,12 +67,17 @@ const listMemberCards: GuideCard[] = [
   { key: 'cancel', icon: 'pi pi-times-circle', colorClass: COLOR.amber, titleKey: 'reservation.team_guide.list.member_cancel_title', stepsKey: 'reservation.team_guide.list.member_cancel_steps' },
 ]
 
-/** タブ2「予約対象の管理」: 初期セットアップ①②③→日常運用（基本なにもしなくてよい）→例外時の対応。 */
+/**
+ * タブ2「予約対象の管理」: 初期セットアップ①営業時間→②予約対象→③メニュー→④週間スケジュール
+ * →日常運用（基本なにもしなくてよい）→例外時の対応（F03.4.5 §3.2 管理タブ再編に合わせた並び）。
+ * setup0（営業時間）は F03.4.5 で新設した最初の手順（手助け・BusinessHoursManager 追記）。
+ */
 const lineManageCards: GuideCard[] = [
-  { key: 'setup1', icon: 'pi pi-list', colorClass: COLOR.blue, titleKey: 'reservation.team_guide.line_manage.setup1_title', stepsKey: 'reservation.team_guide.line_manage.setup1_steps' },
-  { key: 'setup2', icon: 'pi pi-book', colorClass: COLOR.green, titleKey: 'reservation.team_guide.line_manage.setup2_title', stepsKey: 'reservation.team_guide.line_manage.setup2_steps' },
-  { key: 'setup3', icon: 'pi pi-calendar-plus', colorClass: COLOR.amber, titleKey: 'reservation.team_guide.line_manage.setup3_title', stepsKey: 'reservation.team_guide.line_manage.setup3_steps' },
-  { key: 'daily', icon: 'pi pi-refresh', colorClass: COLOR.purple, titleKey: 'reservation.team_guide.line_manage.daily_title', stepsKey: 'reservation.team_guide.line_manage.daily_steps' },
+  { key: 'setup0', icon: 'pi pi-clock', colorClass: COLOR.blue, titleKey: 'reservation.team_guide.line_manage.setup0_title', stepsKey: 'reservation.team_guide.line_manage.setup0_steps' },
+  { key: 'setup1', icon: 'pi pi-list', colorClass: COLOR.green, titleKey: 'reservation.team_guide.line_manage.setup1_title', stepsKey: 'reservation.team_guide.line_manage.setup1_steps' },
+  { key: 'setup2', icon: 'pi pi-book', colorClass: COLOR.amber, titleKey: 'reservation.team_guide.line_manage.setup2_title', stepsKey: 'reservation.team_guide.line_manage.setup2_steps' },
+  { key: 'setup3', icon: 'pi pi-calendar-plus', colorClass: COLOR.purple, titleKey: 'reservation.team_guide.line_manage.setup3_title', stepsKey: 'reservation.team_guide.line_manage.setup3_steps' },
+  { key: 'daily', icon: 'pi pi-refresh', colorClass: COLOR.blue, titleKey: 'reservation.team_guide.line_manage.daily_title', stepsKey: 'reservation.team_guide.line_manage.daily_steps' },
   { key: 'exception', icon: 'pi pi-info-circle', colorClass: COLOR.red, titleKey: 'reservation.team_guide.line_manage.exception_title', stepsKey: 'reservation.team_guide.line_manage.exception_steps' },
 ]
 

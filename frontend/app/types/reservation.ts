@@ -204,6 +204,8 @@ export interface ReservationSettingsResponse {
   cancelDeadlineHours?: number
   /** リマインド送信タイミングの CSV 文字列（例: "24,1"）*/
   remindBeforeHours?: string
+  /** 営業時間が設定済みか（F03.4.5 §3.2・実測フィールド）。false=週間スケジュール画面に初回体験ガイドを表示 */
+  hasBusinessHours?: boolean
 }
 
 // === リクエスト DTO ===
