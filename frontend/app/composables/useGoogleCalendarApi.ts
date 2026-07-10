@@ -1,6 +1,10 @@
 import type { components } from '~/types/generated'
 
 type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusResponse']
+type PersonalSyncToggleResponse = components['schemas']['PersonalSyncToggleResponse']
+type CalendarSyncToggleRequest = components['schemas']['CalendarSyncToggleRequest']
+type CalendarSyncToggleResponse = components['schemas']['CalendarSyncToggleResponse']
+type CalendarSyncSettingsResponse = components['schemas']['CalendarSyncSettingsResponse']
 
 export function useGoogleCalendarApi() {
   const api = useApi()
@@ -54,8 +58,11 @@ export function useGoogleCalendarApi() {
     return api<{ data: PersonalSyncStatusResponse }>('/api/v1/me/google-calendar/personal-sync')
   }
 
-  async function updatePersonalSync(body: Record<string, unknown>) {
-    return api('/api/v1/me/google-calendar/personal-sync', { method: 'PUT', body })
+  async function updatePersonalSync(body: CalendarSyncToggleRequest) {
+    return api<{ data: PersonalSyncToggleResponse }>('/api/v1/me/google-calendar/personal-sync', {
+      method: 'PUT',
+      body,
+    })
   }
 
   async function manualSync() {
@@ -63,16 +70,22 @@ export function useGoogleCalendarApi() {
   }
 
   // === Team / Org Sync ===
-  async function toggleTeamSync(teamId: string, body: Record<string, unknown>) {
-    return api(`/api/v1/me/teams/${teamId}/calendar-sync`, { method: 'PUT', body })
+  async function toggleTeamSync(teamId: string, body: CalendarSyncToggleRequest) {
+    return api<{ data: CalendarSyncToggleResponse }>(`/api/v1/me/teams/${teamId}/calendar-sync`, {
+      method: 'PUT',
+      body,
+    })
   }
 
-  async function toggleOrgSync(orgId: string, body: Record<string, unknown>) {
-    return api(`/api/v1/me/organizations/${orgId}/calendar-sync`, { method: 'PUT', body })
+  async function toggleOrgSync(orgId: string, body: CalendarSyncToggleRequest) {
+    return api<{ data: CalendarSyncToggleResponse }>(`/api/v1/me/organizations/${orgId}/calendar-sync`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   async function getSyncSettings() {
-    return api<{ data: unknown }>('/api/v1/me/calendar-sync-settings')
+    return api<{ data: CalendarSyncSettingsResponse }>('/api/v1/me/calendar-sync-settings')
   }
 
   // === iCal ===

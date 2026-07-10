@@ -61,9 +61,9 @@ async function toggleSync(enabled: boolean) {
   syncing.value = true
   try {
     if (scopeType.value === 'team') {
-      await toggleTeamSync(scopeId.value, { enabled })
+      await toggleTeamSync(scopeId.value, { isEnabled: enabled })
     } else {
-      await toggleOrgSync(scopeId.value, { enabled })
+      await toggleOrgSync(scopeId.value, { isEnabled: enabled })
     }
     syncEnabled.value = enabled
     success(enabled ? '同期を有効にしました' : '同期を無効にしました')
