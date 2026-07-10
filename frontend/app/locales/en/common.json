@@ -2065,8 +2065,8 @@
         "monthly_desc": "Shows monthly aggregated values. Useful for understanding long-term trends."
       },
       "top_content": {
-        "title": "Popular Content (Coming in Phase 2)",
-        "body": "This feature will rank content by number of views. Currently under development. It will appear automatically once data is available."
+        "title": "Popular Content",
+        "body": "Shows a ranking of content by number of views. If no access data is available yet, \"No data available\" is shown, and the ranking appears automatically once views are recorded."
       }
     }
   },
