@@ -60,6 +60,8 @@ public class OperationalAdCampaignService {
     public static final String AUDIT_PAUSED = "OPERATIONAL_CAMPAIGN_PAUSED";
     public static final String AUDIT_RESUMED = "OPERATIONAL_CAMPAIGN_RESUMED";
     public static final String AUDIT_ENDED = "OPERATIONAL_CAMPAIGN_ENDED";
+    /** 通報自動停止の解除（F09.19.9・§6.1）。 */
+    public static final String AUDIT_UNSUSPENDED = "OPERATIONAL_CAMPAIGN_UNSUSPENDED";
 
     private static final int MAX_PAGE_SIZE = 100;
 
@@ -243,6 +245,25 @@ public class OperationalAdCampaignService {
         requireStatus(campaign, CampaignStatus.PENDING_REVIEW);
         campaign.approve();
         recordAudit(AUDIT_APPROVED, adminUserId, auditOrgIdFromCampaign(campaign),
+                auditMetadata(campaign.getId(), null));
+        return toResponse(campaign);
+    }
+
+    /**
+     * 通報自動停止の解除（SYSTEM_ADMIN 専用。§6.1・F09.19.9）。
+     *
+     * <p>{@code report_suspended_at} が NULL の対象は AD_027（409）。非 NULL なら NULL に戻し、
+     * 自動停止で {@code ACTIVE→PAUSED} 遷移していた場合（{@code report_auto_paused=TRUE}）のみ ACTIVE へ復帰する。
+     * 監査ログ {@link #AUDIT_UNSUSPENDED}。メッセージ型の unblock に相当する運用型アクション。</p>
+     */
+    @Transactional
+    public OperationalCampaignResponse unsuspend(Long campaignId, Long adminUserId) {
+        AdCampaignEntity campaign = findById(campaignId);
+        if (campaign.getReportSuspendedAt() == null) {
+            throw new BusinessException(AdvertisingErrorCode.AD_027);
+        }
+        campaign.unsuspendFromReport();
+        recordAudit(AUDIT_UNSUSPENDED, adminUserId, auditOrgIdFromCampaign(campaign),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
