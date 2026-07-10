@@ -552,8 +552,17 @@
     },
     "exception_day": {
       "title": "Exception day calendar",
-      "coming_soon": "The exception day calendar is coming soon",
-      "coming_soon_hint": "You can set closures and special openings from \"Manually manage individual slots\" under Advanced settings below"
+      "help": "Pick a date on the calendar to close it, or to open specially on a day that is normally closed.",
+      "close_day": "Close this day",
+      "open_special": "Open specially",
+      "close_day_impact_warning": "There are {n} active reservations on this day",
+      "goto_reservations": "Handle in reservations list",
+      "notify_hint": "If you need to notify reservers, use emergency closure instead",
+      "special_source_day": "Day-of-week schedule to apply",
+      "special_done": "Created {generated} slots for {date}",
+      "blocked_conflict": "This day is set to closed. Cancel the closure before running this",
+      "date_range_hint": "Special openings can be set from tomorrow up to 90 days ahead",
+      "goto_book": "Check in the Book tab"
     },
     "slot_manage": {
       "advanced_label": "Manually manage individual slots (exceptions)"
@@ -711,7 +720,7 @@
         },
         "exception_title": "Exceptions",
         "exception_steps": {
-          "0": "To add or change slots for a single day only, use \"Manually manage individual slots\" under Advanced settings to create, edit, or close individual slots (one-click closures/special openings from the exception day calendar are coming soon).",
+          "0": "To close a specific day or open it specially, use \"Close this day\" / \"Open specially\" in the exception day calendar. To fine-tune individual slots, use \"Manually manage individual slots\" under Advanced settings to create, edit, or close them.",
           "1": "To block a specific time range from being booked, use \"Unavailable ranges\" in advanced settings.",
           "2": "Deleting a reservation target stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
         }
