@@ -113,6 +113,8 @@ public class GlobalExceptionHandler {
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
+            // F09.19.1b: キャンペーン不在は「見つからない」ため 404（審査詳細等。Severity.WARN 既定 400 を上書き）
+            Map.entry("AD_021", HttpStatus.NOT_FOUND),
             // F09.19.1 運用型キャンペーン CRUD（正本 §15）: Severity.WARN 既定の 400 を上書き
             Map.entry("AD_027", HttpStatus.CONFLICT),          // 状態遷移違反・編集不可状態/フィールド → 409
             Map.entry("AD_029", HttpStatus.TOO_MANY_REQUESTS), // visit/click の IP レート制限 → 429
