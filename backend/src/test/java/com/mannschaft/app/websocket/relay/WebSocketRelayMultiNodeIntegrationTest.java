@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -69,12 +70,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.websocket.relay.WebSocketRelayMultiNodeIntegrationTest#isDockerAvailable")
 @DisplayName("§7.1.2 2 コンテキスト 実 STOMP マルチノード relay（AC-1 実到達 / AC-2 / AC-7）")
+// 環境注記: デフォルト（PER_METHOD）のテストインスタンスライフサイクルでは、静的 @BeforeAll は
+// SpringExtension による Node A の ApplicationContext 準備（postProcessTestInstance）より先に実行される。
+// そのため startNodeB() 実行時点では Node A の ddl-auto=create によるスキーマ作成が未完了で、
+// Node B（ddl-auto=none）がテーブル未作成エラーで起動失敗する。PER_CLASS に変更すると
+// テストインスタンス生成・SpringExtension のコンテキスト準備が @BeforeAll より先に走るため、
+// Node A のスキーマ作成完了後に Node B が起動する順序を保証できる。
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WebSocketRelayMultiNodeIntegrationTest {
 
+    // 環境注記: Wait.forListeningPort() は docker exec 経由の内部ポート確認を伴うが、
+    // 開発機の Docker TCP プロキシ環境では exec のストリームハイジャックが正しく中継されず
+    // ContainerLaunchException（内部チェックのみタイムアウト）が発生する（外部からの TCP 到達性は問題ない）。
+    // ログメッセージ待機（docker logs 経由・exec 不要）に切り替えて回避する（CI の素の Docker でも問題なく動作）。
     @SuppressWarnings("resource")
     static final GenericContainer<?> VALKEY = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379)
-            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)));
+            .waitingFor(Wait.forLogMessage(".*Ready to accept connections tcp.*\\n", 1)
+                    .withStartupTimeout(Duration.ofSeconds(120)));
 
     @SuppressWarnings("resource")
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -131,18 +144,21 @@ class WebSocketRelayMultiNodeIntegrationTest {
             return;
         }
         // 2 つ目のコンテキストを明示起動（同一 Valkey / 同一 MySQL・スキーマはノード A が作成済みのため ddl-auto=none）
+        // 環境注記: SpringApplicationBuilder#properties(...) は最低優先度（defaultProperties）で登録されるため、
+        // application.yml の明示的な server.port: 8080 に上書きされ PortInUseException になる。
+        // コマンドライン引数（--server.port=0 等）は Spring Boot の設定ソース優先順位が最も高く、
+        // application.yml の値を確実に上書きできるため run(String...) 引数として渡す。
         nodeBContext = new SpringApplicationBuilder(MannschaftApplication.class)
                 .profiles("test")
-                .properties(
-                        "server.port=0",
-                        "spring.datasource.url=" + MYSQL.getJdbcUrl(),
-                        "spring.datasource.username=" + MYSQL.getUsername(),
-                        "spring.datasource.password=" + MYSQL.getPassword(),
-                        "spring.jpa.hibernate.ddl-auto=none",
-                        "spring.data.redis.host=" + VALKEY.getHost(),
-                        "spring.data.redis.port=" + VALKEY.getFirstMappedPort(),
-                        "mannschaft.websocket.relay.enabled=true")
-                .run();
+                .run(
+                        "--server.port=0",
+                        "--spring.datasource.url=" + MYSQL.getJdbcUrl(),
+                        "--spring.datasource.username=" + MYSQL.getUsername(),
+                        "--spring.datasource.password=" + MYSQL.getPassword(),
+                        "--spring.jpa.hibernate.ddl-auto=none",
+                        "--spring.data.redis.host=" + VALKEY.getHost(),
+                        "--spring.data.redis.port=" + VALKEY.getFirstMappedPort(),
+                        "--mannschaft.websocket.relay.enabled=true");
         nodeBPort = Integer.parseInt(nodeBContext.getEnvironment().getProperty("local.server.port", "0"));
     }
 

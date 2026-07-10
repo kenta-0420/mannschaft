@@ -63,10 +63,15 @@ class WebSocketRelayCoreIntegrationTest {
 
     private static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
 
+    // 環境注記: Wait.forListeningPort() は docker exec 経由の内部ポート確認を伴うが、
+    // 開発機の Docker TCP プロキシ環境では exec のストリームハイジャックが正しく中継されず
+    // ContainerLaunchException（内部チェックのみタイムアウト）が発生する（外部からの TCP 到達性は問題ない）。
+    // ログメッセージ待機（docker logs 経由・exec 不要）に切り替えて回避する（CI の素の Docker でも問題なく動作）。
     @SuppressWarnings("resource")
     private static final GenericContainer<?> REDIS = new GenericContainer<>(REDIS_IMAGE)
             .withExposedPorts(6379)
-            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)));
+            .waitingFor(Wait.forLogMessage(".*Ready to accept connections tcp.*\\n", 1)
+                    .withStartupTimeout(Duration.ofSeconds(120)));
 
     private static final String NODE_A = "node-A";
     private static final String NODE_B = "node-B";
