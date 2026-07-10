@@ -322,6 +322,7 @@ function statusLabel(status?: string | null): string {
     >
       <div class="flex flex-col gap-3">
         <Button
+          data-testid="exception-choice-close"
           :label="t('reservation.exception_day.close_day')"
           icon="pi pi-ban"
           severity="danger"
@@ -329,6 +330,7 @@ function statusLabel(status?: string | null): string {
           @click="openCloseDialog"
         />
         <Button
+          data-testid="exception-choice-special"
           :label="t('reservation.exception_day.open_special')"
           icon="pi pi-sun"
           outlined
@@ -368,6 +370,7 @@ function statusLabel(status?: string | null): string {
                 <span class="text-surface-500">{{ toHm(r.startTime) }} - {{ toHm(r.endTime) }}</span>
                 <span class="text-surface-500">({{ statusLabel(r.status) }})</span>
                 <Button
+                  data-testid="exception-close-goto-list"
                   :label="t('reservation.exception_day.goto_reservations')"
                   size="small"
                   text
@@ -385,6 +388,7 @@ function statusLabel(status?: string | null): string {
           </label>
           <InputText
             v-model="closeReason"
+            data-testid="exception-close-reason"
             maxlength="200"
             :placeholder="t('reservation.unavailability.field.reason_placeholder')"
             class="w-full"
@@ -394,6 +398,7 @@ function statusLabel(status?: string | null): string {
 
         <!-- 緊急休業（会員告知）への誘導 -->
         <Button
+          data-testid="exception-close-goto-emergency"
           :label="t('reservation.exception_day.notify_hint')"
           icon="pi pi-megaphone"
           text
@@ -410,6 +415,7 @@ function statusLabel(status?: string | null): string {
           @click="showCloseDialog = false"
         />
         <Button
+          data-testid="exception-close-submit"
           :label="t('reservation.exception_day.close_day')"
           icon="pi pi-ban"
           severity="danger"
@@ -443,6 +449,7 @@ function statusLabel(status?: string | null): string {
               {{ t('reservation.exception_day.blocked_conflict') }}
             </p>
             <Button
+              data-testid="exception-conflict-delete"
               :label="t('reservation.unavailability.button.delete')"
               icon="pi pi-trash"
               severity="danger"
@@ -460,6 +467,7 @@ function statusLabel(status?: string | null): string {
           </label>
           <Select
             v-model="sourceDayOfWeek"
+            data-testid="exception-special-day-select"
             :options="dayOfWeekOptions"
             option-label="label"
             option-value="value"
@@ -479,6 +487,7 @@ function statusLabel(status?: string | null): string {
             {{ t('reservation.exception_day.special_done', { date: chosenDateStr, generated: specialGeneratedCount }) }}
           </p>
           <Button
+            data-testid="exception-special-goto-book"
             :label="t('reservation.exception_day.goto_book')"
             icon="pi pi-calendar"
             size="small"
@@ -496,6 +505,7 @@ function statusLabel(status?: string | null): string {
         />
         <Button
           v-if="!specialDone"
+          data-testid="exception-special-submit"
           :label="t('reservation.exception_day.open_special')"
           icon="pi pi-sun"
           :loading="specialSubmitting"
