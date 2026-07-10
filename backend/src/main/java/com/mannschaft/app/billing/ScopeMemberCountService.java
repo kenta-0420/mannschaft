@@ -4,7 +4,6 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * F20.1: 契約時アクティブ人数の解決（人数バンド・スナップショット用・設計書 01 §3.4）。
@@ -25,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ScopeMemberCountService {
 
     private final MembershipRepository membershipRepository;
