@@ -8,6 +8,7 @@ import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.event.MessagingCampaignBudgetConsumedEvent;
 import com.mannschaft.app.advertising.campaign.repository.AdAnnouncementDeliveryRepository;
+import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdEmailDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdPushDeliveryRepository;
@@ -67,6 +68,8 @@ class AdMessagingBillingBridgeTest {
     private AdEmailDeliveryRepository emailDeliveryRepository;
     @Mock
     private AdPushDeliveryRepository pushDeliveryRepository;
+    @Mock
+    private AdBannerDeliveryRepository bannerDeliveryRepository;
     @Mock
     private AdInvoiceRepository invoiceRepository;
     @Mock
@@ -197,6 +200,85 @@ class AdMessagingBillingBridgeTest {
         assertThat(ev.totalConsumedBudgetYen()).isEqualTo(99L);
         assertThat(ev.totalBudgetYen()).isEqualTo(50_000L);
         assertThat(ev.month()).isEqualTo(targetMonth);
+    }
+
+    /**
+     * F09.19.3 §16 AC-3.6: BANNER 課金は served 済み予約のみ ¥3/view。クリック有無は金額不変。
+     */
+    @Test
+    @DisplayName("BANNER 課金: served 5 行のみ ¥3×5=¥15 の 1 行が計上され、未表示予約は課金されない")
+    void billOneCampaign_banner_billsServedViewsOnly() {
+        // ANN/EMAIL/PUSH はゼロ、BANNER のみ served=5（未表示 3 は count 対象外）
+        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        // served_at IS NOT NULL の予約行のみを数える（未表示予約 3 は含まれない）
+        given(bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey))
+                .willReturn(5L);
+
+        given(invoiceItemRepository.findByMessagingCampaignIdAndChannelTypeAndMonthKey(
+                any(), any(), eq(monthKey))).willReturn(Optional.empty());
+        given(invoiceRepository.findByAdvertiserAccountIdAndInvoiceMonth(eq(100L), any()))
+                .willReturn(Optional.empty());
+        given(invoiceRepository.count()).willReturn(0L);
+        AdInvoiceEntity savedInvoice = AdInvoiceEntity.builder()
+                .advertiserAccountId(100L)
+                .invoiceNumber("INV-202604-00001")
+                .invoiceMonth(targetMonth.atDay(1))
+                .build();
+        ReflectionTestUtils.setField(savedInvoice, "id", 999L);
+        given(invoiceRepository.save(any(AdInvoiceEntity.class))).willReturn(savedInvoice);
+        given(invoiceItemRepository.findByInvoiceId(999L)).willReturn(List.of());
+
+        // when
+        bridge.billOneCampaign(campaign, targetMonth, monthKey);
+
+        // then BANNER 行のみ 1 件
+        ArgumentCaptor<AdInvoiceItemEntity> itemCaptor =
+                ArgumentCaptor.forClass(AdInvoiceItemEntity.class);
+        verify(invoiceItemRepository, times(1)).save(itemCaptor.capture());
+        AdInvoiceItemEntity banner = itemCaptor.getValue();
+        assertThat(banner.getChannelType()).isEqualTo("BANNER");
+        assertThat(banner.getImpressions()).isEqualTo(5L);
+        assertThat(banner.getSubtotal()).isEqualByComparingTo(BigDecimal.valueOf(15)); // ¥3 × 5
+        assertThat(banner.getMessagingCampaignId()).isEqualTo(campaignId);
+        assertThat(banner.getCampaignId()).isNull();
+        assertThat(banner.getMonthKey()).isEqualTo(monthKey);
+
+        // 消費予算 15 加算
+        assertThat(campaign.getConsumedBudgetYen()).isEqualTo(15L);
+    }
+
+    /**
+     * F09.19.3 §16 AC-3.6: BANNER 課金は既存 UNIQUE で冪等（再実行で行が増えない）。
+     */
+    @Test
+    @DisplayName("BANNER 冪等: 既存 BANNER 明細があれば再実行で行が増えない")
+    void billOneCampaign_banner_idempotent() {
+        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(List.of());
+        given(bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey))
+                .willReturn(5L);
+        // 既存 BANNER 明細あり → skip
+        AdInvoiceItemEntity existing = AdInvoiceItemEntity.builder()
+                .invoiceId(1L).campaignName("dup")
+                .pricingModel(com.mannschaft.app.advertising.PricingModel.CPM)
+                .unitPrice(BigDecimal.valueOf(3)).build();
+        given(invoiceItemRepository.findByMessagingCampaignIdAndChannelTypeAndMonthKey(
+                any(), any(), eq(monthKey))).willReturn(Optional.of(existing));
+
+        bridge.billOneCampaign(campaign, targetMonth, monthKey);
+
+        verify(invoiceItemRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+        assertThat(campaign.getConsumedBudgetYen()).isEqualTo(0L);
     }
 
     /**

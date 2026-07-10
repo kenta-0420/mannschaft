@@ -225,6 +225,67 @@ class AdFrequencyCapServiceTest {
     }
 
     @Nested
+    @DisplayName("releaseSlot（F09.19.3 §10.4 / AC-3.8 予約 EXPIRED 返却）")
+    class ReleaseSlot {
+
+        private final java.time.LocalDate weekStart = java.time.LocalDate.of(2026, 5, 11); // 月曜
+
+        @Test
+        @DisplayName("正常系: 消費週の total / per-advertiser キーが両方デクリメントされる")
+        void releaseSlot_両キーをデクリメント() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            // GET は正の値を返す（消費済みで > 0）
+            given(valueOperations.get(anyString())).willReturn("2");
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            // total・per-advertiser の 2 キーで DECR
+            verify(valueOperations, times(1)).decrement(argStartsWith(AdFrequencyCapService.KEY_PREFIX_TOTAL));
+            verify(valueOperations, times(1)).decrement(argStartsWith(AdFrequencyCapService.KEY_PREFIX_PER_ADV));
+        }
+
+        @Test
+        @DisplayName("0 未満禁止: キー不在（TTL 失効）なら no-op でデクリメントしない")
+        void releaseSlot_キー不在_noop() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn(null);
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            verify(valueOperations, never()).decrement(anyString());
+        }
+
+        @Test
+        @DisplayName("0 未満禁止: 値が 0 ならデクリメントしない（負値に落とさない）")
+        void releaseSlot_値ゼロ_デクリメントしない() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("0");
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            verify(valueOperations, never()).decrement(anyString());
+        }
+
+        @Test
+        @DisplayName("異常系: weekStart が null なら IllegalArgumentException")
+        void releaseSlot_weekStart_null_例外() {
+            assertThatThrownBy(() -> service.releaseSlot(USER_ID, ADVERTISER_ID, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("weekStartOf: 週内の任意日から月曜を返す")
+        void weekStartOf_月曜を返す() {
+            // 2026-05-13(水) → 2026-05-11(月)
+            assertThat(AdFrequencyCapService.weekStartOf(java.time.LocalDate.of(2026, 5, 13)))
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 11));
+            // 月曜はそのまま
+            assertThat(AdFrequencyCapService.weekStartOf(java.time.LocalDate.of(2026, 5, 11)))
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 11));
+        }
+    }
+
+    @Nested
     @DisplayName("週境界計算（ユーザー TZ）")
     class WeekBoundary {
 

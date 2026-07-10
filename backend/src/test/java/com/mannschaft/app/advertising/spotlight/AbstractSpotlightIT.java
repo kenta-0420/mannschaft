@@ -96,6 +96,14 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
             return nv;
         });
 
+        // DECR key（F09.19.3 releaseSlot / decrementIfPositive の IT 用）
+        lenient().when(vops.decrement(anyString())).thenAnswer(inv -> {
+            String k = inv.getArgument(0);
+            long nv = Long.parseLong(redisStore.getOrDefault(k, "0")) - 1;
+            redisStore.put(k, Long.toString(nv));
+            return nv;
+        });
+
         // DELETE / hasKey / getExpire / expire（TTL は本テストでは満了させない）
         lenient().when(redisTemplate.delete(anyString()))
                 .thenAnswer(inv -> redisStore.remove(inv.getArgument(0)) != null);

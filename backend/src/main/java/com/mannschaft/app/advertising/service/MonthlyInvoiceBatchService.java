@@ -45,19 +45,35 @@ public class MonthlyInvoiceBatchService {
     private BigDecimal taxRate;
 
     /**
-     * 月次請求バッチ。毎月1日 AM 5:00 (JST) に実行。
+     * 月次請求バッチ。毎月1日 AM 5:00 (JST) に実行（前月固定）。
+     *
+     * <p>cron / {@code @BatchEndpoint}（パラメータ無し実行）は本 no-arg 側に維持し、
+     * 対象月を指定するリラン（F09.19.3 {@code POST /spotlight/invoices/run}）は
+     * {@link #generateMonthlyInvoices(YearMonth)} を直接呼ぶ。</p>
      */
     @BatchEndpoint(name = "advertising-invoice-monthly-generate", description = "前月分の広告主月次請求書を毎月 1 日 05:00 に生成する")
     @Scheduled(cron = "0 0 5 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyInvoiceGenerate", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Transactional
     public void generateMonthlyInvoices() {
-        YearMonth lastMonth = YearMonth.now().minusMonths(1);
-        LocalDate monthStart = lastMonth.atDay(1);
-        LocalDate monthEnd = lastMonth.atEndOfMonth();
+        generateMonthlyInvoices(YearMonth.now().minusMonths(1));
+    }
+
+    /**
+     * 指定月を対象に月次請求書を生成する（F09.19.3 §16 AC-3.7。当日中の E2E クローズを可能にする）。
+     *
+     * <p>冪等性は既存の「DRAFT のみ再生成・ISSUED/PAID/OVERDUE 不変」規則に従う。cost の再丸めは行わず、
+     * {@code ad_daily_stats.cost} の単純合算で明細金額を確定する（正本 §7.3・§16 AC-3.2）。</p>
+     *
+     * @param targetMonth 集計対象月
+     */
+    @Transactional
+    public void generateMonthlyInvoices(YearMonth targetMonth) {
+        LocalDate monthStart = targetMonth.atDay(1);
+        LocalDate monthEnd = targetMonth.atEndOfMonth();
         LocalDate invoiceMonth = monthStart;
 
-        log.info("月次請求バッチ開始: 対象月={}", lastMonth);
+        log.info("月次請求バッチ開始: 対象月={}", targetMonth);
 
         List<AdvertiserAccountEntity> activeAccounts =
                 advertiserAccountRepository.findByStatus(AdvertiserAccountStatus.ACTIVE, org.springframework.data.domain.Pageable.unpaged()).getContent();

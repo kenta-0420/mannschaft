@@ -1315,6 +1315,10 @@
       "description": "F01.7 公開範囲テンプレートの作成・管理・評価"
     },
     {
+      "name": "システム管理 - spotlight バッチ",
+      "description": "F09.19.3 日次集計・月次請求の手動トリガー"
+    },
+    {
       "name": "Google Calendar Webhook",
       "description": "Google Calendar 双方向同期 Webhook 受信"
     },
@@ -49259,6 +49263,71 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMapStringString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/spotlight/invoices/run": {
+      "post": {
+        "tags": [
+          "システム管理 - spotlight バッチ"
+        ],
+        "summary": "月次請求の手動実行",
+        "description": "指定月の広告主請求書を生成する（DRAFT のみ再生成・冪等）",
+        "operationId": "runInvoices",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/spotlight/daily-stats/run": {
+      "post": {
+        "tags": [
+          "システム管理 - spotlight バッチ"
+        ],
+        "summary": "日次集計の手動実行",
+        "description": "指定日（未指定なら前日）の運用型 imp/click を集計して ad_daily_stats へ UPSERT する（冪等）",
+        "operationId": "runDailyStats",
+        "parameters": [
+          {
+            "name": "targetDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
                 }
               }
             }
