@@ -32,6 +32,15 @@ const teamSlug = String(route.params.slug)
           </p>
         </div>
       </NuxtLink>
+      <NuxtLink :to="`/teams/${teamSlug}/advertiser/operational-campaigns`">
+        <div class="cursor-pointer rounded-lg border border-surface-300 p-4 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700" data-testid="operational-campaigns-tile">
+          <i class="pi pi-megaphone mb-2 text-2xl text-primary" />
+          <p class="text-sm font-medium">{{ t('advertising.operational_campaigns.entry_tile.title') }}</p>
+          <p class="mt-1 text-xs text-surface-500">
+            {{ t('advertising.operational_campaigns.entry_tile.description') }}
+          </p>
+        </div>
+      </NuxtLink>
     </div>
 
     <!-- 将来対応のお知らせ -->

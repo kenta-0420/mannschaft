@@ -1,6 +1,10 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,4 +33,25 @@ public interface BillingContractRepository
 
     /** 主キーで取得する（deleted_at 除外）。取消・プラン変更時の対象契約解決に使用。 */
     java.util.Optional<BillingContractEntity> findByIdAndDeletedAtIsNull(UUID id);
+
+    /** 指定プランを参照する当該状態の契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
+    boolean existsByPlanKeyAndStatusAndDeletedAtIsNull(String planKey, ContractStatus status);
+
+    /** 指定機能を参照する当該状態の ADDON 契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
+    boolean existsByFeatureKeyAndStatusAndDeletedAtIsNull(String featureKey, ContractStatus status);
+
+    /**
+     * シスアド 契約横断検索（設計書 02 §4）。scopeKind / scopeId / status は任意フィルタ（null=無条件）。
+     * 契約日時の新しい順で返す。
+     */
+    @Query("SELECT c FROM BillingContractEntity c WHERE c.deletedAt IS NULL "
+            + "AND (:scopeKind IS NULL OR c.scopeKind = :scopeKind) "
+            + "AND (:scopeId IS NULL OR c.scopeId = :scopeId) "
+            + "AND (:status IS NULL OR c.status = :status) "
+            + "ORDER BY c.contractedAt DESC")
+    Page<BillingContractEntity> searchContracts(
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId,
+            @Param("status") ContractStatus status,
+            Pageable pageable);
 }
