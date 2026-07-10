@@ -125,4 +125,33 @@ public class EntitlementEntity extends UuidV7Entity {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    /**
+     * この権利行が指定時刻に有効か（正準の判定式・設計書 01 §3.3）。
+     *
+     * <p>{@link EntitlementRepository#existsActiveGrant} の JPQL と<b>同一の意味論</b>を持つ純粋述語
+     * （DB 側クエリと二重化して半開区間の境界を JVM 側でも検証可能にする）。条件:</p>
+     * <ul>
+     *   <li>{@code revoked_at IS NULL}（取消済みは期間内でも false・AC-07）。</li>
+     *   <li>{@code valid_from <= now}（開始は含む・未来開始は false・AC-08）。</li>
+     *   <li>{@code valid_until IS NULL OR now < valid_until}（終了は含まない・半開区間 [from, until)・AC-06）。
+     *       {@code now == valid_until} ちょうどは false／{@code now == valid_until - 1 秒} は true。</li>
+     * </ul>
+     *
+     * @param now 判定時刻
+     * @return 有効なら true
+     */
+    public boolean isActiveAt(LocalDateTime now) {
+        if (now == null) {
+            return false;
+        }
+        if (this.revokedAt != null) {
+            return false;
+        }
+        if (this.validFrom == null || now.isBefore(this.validFrom)) {
+            return false; // valid_from <= now（開始は含む）
+        }
+        // valid_until IS NULL OR now < valid_until（終了は含まない・半開区間）
+        return this.validUntil == null || now.isBefore(this.validUntil);
+    }
 }

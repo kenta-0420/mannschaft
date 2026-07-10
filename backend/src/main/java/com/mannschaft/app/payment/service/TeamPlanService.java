@@ -1,5 +1,8 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.payment.repository.TeamSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -9,6 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * チームプラン状態確認サービス。
  * 有料プラン加入判定を一元管理し、モジュール有効化等の各サービスから参照する。
+ *
+ * <p>F20.1（課金・エンタイトルメント基盤）の Expand 期移行: {@link #hasPaidPlan(Long)} は既存
+ * {@code team_subscriptions} 判定に加え、{@code isEntitled(TEAM, teamId, "legacy.paid_plan_bundle")} の
+ * OR 委譲でエンタイトルメント発行の有料プランも true にする（後方互換ブリッジ・README §4.1・AC-14）。
+ * シグネチャ・{@code @Cacheable("teamPlan")} は<b>変更しない</b>（呼び出し元 3 箇所を壊さない）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -16,17 +24,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamPlanService {
 
     private final TeamSubscriptionRepository teamSubscriptionRepository;
+    private final EntitlementQueryService entitlementQueryService;
 
     /**
      * チームが有料プランに加入しているか判定する。
      * Valkey キャッシュで高速化する。
+     *
+     * <p>Expand 期: {@code team_subscriptions} 判定 OR エンタイトルメントブリッジ
+     * （{@code legacy.paid_plan_bundle}）のどちらかで true（README §4.1・AC-14）。</p>
      *
      * @param teamId チームID
      * @return 有料プラン加入中なら true
      */
     @Cacheable(value = "teamPlan", key = "#teamId")
     public boolean hasPaidPlan(Long teamId) {
-        return teamSubscriptionRepository.hasActivePaidPlan(teamId);
+        return teamSubscriptionRepository.hasActivePaidPlan(teamId)
+                || entitlementQueryService.isEntitled(
+                        EntitlementScopeKind.TEAM, teamId, FeatureKeys.LEGACY_PAID_PLAN_BUNDLE);
     }
 
     /**
