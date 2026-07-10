@@ -1,7 +1,7 @@
 # F20.1 課金・エンタイトルメント基盤（プラン提示 × feature_key 単位の権利管理）
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
-> **最終更新**: 2026-07-08
+> **ステータス**: 🟢 設計完了（マスター御裁可済／P1 main 済・**Phase 2b 実決済 実施中**／営利自動切替・オーナー変更は Phase 2 保留）
+> **最終更新**: 2026-07-10
 > **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告配信](../F09.19_ad_slot_serving.md)（有料プラン広告非表示の結線先・同 §7.5）
 
 ---
@@ -271,6 +271,16 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-28 | 正常（H-1） | 同一スコープへの ACTIVE PLAN 契約の**並行 2 リクエスト**は、`active_contract_pointers` の UNIQUE により 1 件のみ成功・他は `ENTITLEMENT_006` 409（TOCTOU 二重契約が作れない） |
 | AC-29 | 正常（M-5） | 退会申請（猶予中）では契約・entitlements は revoke されず権利維持。退会確定（purge）で失効。撤回時は権利維持のまま |
 | AC-30 | 境界（L2） | 契約作成の**完全同時再送**では冪等キー check-then-set の非原子により片方が `active_contract_pointers` UNIQUE で `ENTITLEMENT_006`(409) になる。二重契約・二重発行は生じない（FE は 409 を「契約済み」として再取得） |
+| AC-31 | 正常（実決済 D-4） | **価格 NULL**（マスタ未設定）の契約 POST → 決済なし無償契約（従来 P1 フロー・即 ACTIVE＋entitlements 発行・`checkoutUrl=null`）。既存フローの回帰なし |
+| AC-32 | 正常（実決済 D-4） | **価格設定済み**の契約 POST → `checkoutUrl` 返却・契約は `PENDING`＋`price_jpy_snapshot` 焼付・**entitlements 未発行**。PENDING スロット占有中の再契約は `ENTITLEMENT_016`(409) |
+| AC-33 | 正常（実決済） | `checkout.session.completed`（`metadata.billingContractId`）到達で初めて `PENDING→ACTIVE`＋PSP 参照焼付＋entitlements 発行。未達なら未発行のまま |
+| AC-34 | 冪等（実決済） | 同一 webhook イベントの再送は冪等（`WebhookIdempotencyService` の event_id ゲート＋status 済チェックの**二層**・二重発行ゼロ） |
+| AC-35 | 正常（実決済 D-3） | 有償解約＝`cancel_at_period_end`。契約は ACTIVE のまま `cancelled_at` セット・由来 entitlements の `valid_until`＝`current_period_end`（半開区間・期末ちょうど false）。`customer.subscription.deleted` で `EXPIRED`＋pointer DELETE＋残 revoke |
+| AC-36 | 正常（実決済 D-3） | 無償解約＝即時失効（既存フロー不変・PSP 呼び出しなし） |
+| AC-37 | 正常（実決済） | `invoice.payment_failed` → `PAST_DUE`（**権利は触らない**＝`current_period_end` まで利用可）。`invoice.paid` で期末延長＋`PAST_DUE→ACTIVE` 回復 |
+| AC-38 | 境界（実決済 D-2） | F08.9 会費の `invoice.*`（billing に無い subscriptionId）は membership 側へ・billing は関与しない。billing の subscriptionId（`psp_subscription_ref` 逆引きヒット）は membership が処理しない（**相互 no-op**） |
+| AC-39 | 異常（実決済） | webhook 署名なし/不正 → 400・未処理（既存 `StripeWebhookController` の検証が billing イベントでも有効） |
+| AC-40 | 境界（実決済 D-4） | 価格入力後の**新規契約のみ**決済必須へ切替。入力前に結ばれた無償契約（`price_jpy_snapshot=NULL`）は不変（解約も即時のまま・遡及なし） |
 
 ---
 
@@ -282,7 +292,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | **P2** | ベータ特典接続 | **M** | P1・F20.3 | `source_kind=BETA_GRANT` の発行・取消（F20.3 が主管） |
 | **P3** | FE 課金 UI | **M** | P1 | プラン一覧・ペイウォールモーダル・課金管理画面（04） |
 | **Phase 2a** | 営利自動切替（org_type 自動変異一式） | **M** | P1・organization/notification/audit ドメイン | `RevenueFeatureActivatedEvent`・org_type 自動更新・確認必須通知・差し戻し API・監査・R-1 自動判定（§3.3・02 §7・**別軍議**）。または「運営レビューのキューに積むソフトなシグナル」への再設計 |
-| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | `billing_contracts` へ PSP 列 Expand・請求・領収書・F22.1 連携可否確定（**別軍議**） |
+| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | **🚧 実施中（2026-07-10 御裁可・D-1〜D-4 前倒し）**: `billing_contracts` へ PSP 列 Expand（V151）・Stripe Checkout `Mode.SUBSCRIPTION`（**自社受取・Connect 不使用**）・webhook（completed/expired/invoice.*/subscription.deleted）・期末解約。請求書・領収書・F22.1 連携可否確定は残（**別軍議**） |
 
 > BE/API はテスト先行（memory `feedback_test_first_be_api`）: 軍議 AC → `/試練` red → `/出陣` green → `/検分` 照合。
 
@@ -312,4 +322,5 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 
 | 日付 | 内容 |
 |---|---|
+| 2026-07-10 | **実決済（Phase 2b）前倒し実装**（マスター御裁可 D-1〜D-4）。D-1: PSP 列（`psp_customer_ref`/`psp_subscription_ref`/`current_period_end`・V151）前倒し／D-2: Stripe Checkout `Mode.SUBSCRIPTION`・**自社受取（Connect 不使用）**・webhook は `psp_subscription_ref` 逆引きで F08.9 会費と分離／D-3: 無償解約=即時失効・有償解約=期末解約（`cancel_at_period_end`＋valid_until 保険）／D-4: 価格マスタ NULL=無償ワンクリック（既存 P1 フロー）・価格設定済み=Checkout 決済フロー（PENDING→入金で ACTIVE）・既存無償契約に遡及しない。`ContractStatus` に `PENDING`/`PAST_DUE` 追加・AC-31〜40 追補・`ENTITLEMENT_015`/`016` 採番 |
 | 2026-07-08 | 初版。マスター合意済み要求仕様（3プラン提示×feature_key エンタイトルメント・スコープ判定・BE ゲート必須・営利/非営利イベント駆動・既存機構温存＋内部委譲・資金決済法回避・PSP 非依存先行）を反映して起草。origin/main 実機棚卸し（`ScopeKind`/`TeamSubscriptionEntity`/`TeamPlanService`/`ModuleService`/`ReservationNotificationRecipientService`/`organizations.org_type` V9.091/`team_org_memberships` V2.011/`teams` V2.004 区分列なし）を一次ソースに設計 |

@@ -204,17 +204,25 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 
 > ADDON 契約も同型（`active_contract_pointers` に `contract_kind='ADDON'`・`addon_feature_key=featureKey` で INSERT。`uk_acp_slot` が同一 scope×feature の二重 ADDON を物理拒否＝`ENTITLEMENT_006` 409）。REVENUE な feature の ADDON 契約は §7 イベントを発火（`sourceKind=ADDON`）**【Phase 2 保留・初期スコープでは発火しない】**（§7 冒頭）。
 
-処理（PLAN の場合・擬似コード）:
+処理（PLAN の場合・擬似コード。**2026-07-10 実決済 D-4: 冒頭に価格解決の分岐を追加**）:
 
 ```
-@Transactional
-createPlanContract(scopeKind, scopeId, planKey, operatorUserId, idempotencyKey):
+createContract(scopeKind, scopeId, request, operatorUserId, idempotencyKey):     # BillingContractApplicationService
   if idempotencyKey seen (billing:idem): return 既存結果                         # M-1 二重送信の吸収
+  priceJpy = BillingPriceResolver.resolveMonthlyPriceJpy(...)                    # ★D-4 価格解決
+  #   PLAN・USER = plans.base_monthly_price_jpy / PLAN・TEAM|ORG = plan_price_bands のバンド価格優先（NULL は base）
+  #   / ADDON = feature_catalog.addon_price_jpy
+  if priceJpy == NULL:  → 無償フロー（従来 P1・下記 @Transactional）             # AC-31・遡及なし（AC-40）
+  else:                 → 決済フロー（BillingCheckoutService.startPaidContract）  # AC-32
+
+【無償フロー（従来 P1・不変）】
+@Transactional
+createPlanContract(scopeKind, scopeId, planKey, operatorUserId):
   assertScopeOwnership(...)                                   # @PreAuthorize 済みだが Service 層でも再検証（二重防御・03 §2）
   memberCount = activeMemberCount(scopeKind, scopeId)          # 01 §3.4 の既存メソッド再利用（USER=1）
   band = resolveBand(planKey, scopeKind, memberCount)          # TEAM/ORG のみ。バンド未定義なら NULL
   contract = INSERT billing_contracts(PLAN, planKey, status=ACTIVE,
-             member_count_snapshot, band_no_snapshot, price_jpy_snapshot=NULL(ベータ), contracted_at=now)
+             member_count_snapshot, band_no_snapshot, price_jpy_snapshot=NULL(無償), contracted_at=now)
   try:
       INSERT active_contract_pointers(scopeKind, scopeId, PLAN, addon_feature_key='', contract_id=contract.id)
   catch DataIntegrityViolationException (uk_acp_slot):        # H-1 TOCTOU 二重契約を DB が物理拒否
@@ -228,6 +236,19 @@ createPlanContract(scopeKind, scopeId, planKey, operatorUserId, idempotencyKey):
   if plan_features(planKey) に category=REVENUE の機能が含まれる:      # 【Phase 2】
       publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys, sourceKind=PLAN)   # §7【Phase 2】
   return ContractResponse
+
+【決済フロー（2026-07-10 実決済 D-2/D-4・BillingCheckoutService）】
+startPaidContract(scopeKind, scopeId, ..., priceJpy, operatorUserId):
+  # tx1: PENDING 契約＋pointer を起票（entitlements は★未発行）。price_jpy_snapshot=priceJpy 焼付（遡及防止）
+  pending = BillingContractService.createPendingPaidContract(...)   # @Transactional
+  #   pointer UNIQUE 競合時: 既存スロットが PENDING なら ENTITLEMENT_016(409)・ACTIVE なら ENTITLEMENT_006(409)
+  # tx 外: Stripe Checkout 生成（Mode.SUBSCRIPTION・Connect 不使用・metadata.billingContractId=契約ID・
+  #        Price はインライン price_data 月次 recurring・Customer は stripe_customers get-or-create）
+  try:  checkoutUrl = BillingPaymentGateway.createSubscriptionCheckout(...)
+  catch: abandonPendingContract(pending)（CANCELLED＋pointer DELETE の補償・孤児 PENDING を残さない）
+         → throw ENTITLEMENT_015(502)
+  return ContractResponse(status=PENDING, checkoutUrl)
+  # ACTIVE 化＋entitlements 発行は checkout.session.completed webhook（§3.4）で行う（AC-33）
 ```
 
 レスポンス `ContractResponse`:
@@ -242,9 +263,11 @@ createPlanContract(scopeKind, scopeId, planKey, operatorUserId, idempotencyKey):
 | `status` | string | 不可 | `"ACTIVE"` |
 | `memberCountSnapshot` | number | **可**（USER 時 null） | `34` |
 | `bandNoSnapshot` | number | **可** | `2` |
-| `priceJpySnapshot` | number | **可**（ベータ中 null＝無償） | `null` |
+| `priceJpySnapshot` | number | **可**（null＝無償契約） | `null` |
 | `contractedAt` | string(ISO-8601) | 不可 | `"2026-07-08T12:00:00"` |
-| `grantedFeatureKeys` | string[] | 不可 | `["ads.hide", ...]` |
+| `grantedFeatureKeys` | string[] | 不可 | `["ads.hide", ...]`（**PENDING 時は空**＝未発行） |
+| `checkoutUrl` | string | **可**（**決済フローの作成応答のみ非 null**・2026-07-10 実決済） | `"https://checkout.stripe.com/c/cs_..."` |
+| `currentPeriodEnd` | string(ISO-8601) | **可**（決済フロー契約のみ・有償解約応答の「いつまで使えるか」） | `"2026-08-10T00:00:00"` |
 
 ### 3.2 解約
 
@@ -256,9 +279,9 @@ DELETE /api/v1/organizations/{orgId}/billing/contracts/{contractId}
       （不一致は ENTITLEMENT_007 404 秘匿・IDOR 03 §2）
 ```
 
-- 処理: `status=CANCELLED`＋`cancelled_at=now`、**`active_contract_pointers` の該当行を DELETE**（一意スロットを解放・次回契約を可能に）、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。scope キャッシュ evict（M-8）。
-- ベータ中は**即時解約**（無償ゆえ期末概念なし）。Phase 2 で期末解約（`cancel_at_period_end` 相当）へ拡張（注記のみ）。
-- 既に CANCELLED → `ENTITLEMENT_011` 409。
+- **無償契約（`price_jpy_snapshot=NULL`・D-3/AC-36）**: `status=CANCELLED`＋`cancelled_at=now`、**`active_contract_pointers` の該当行を DELETE**（一意スロットを解放・次回契約を可能に）、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。scope キャッシュ evict（M-8）。即時失効。
+- **有償契約（`price_jpy_snapshot` 非 NULL＋`psp_subscription_ref` あり・D-3/AC-35・2026-07-10 実決済）**: `gateway.cancelAtPeriodEnd`（Stripe `cancel_at_period_end=true`）→ 契約は **ACTIVE のまま** `cancelled_at`＋`current_period_end` セット → 由来 entitlements の **`valid_until`＝`current_period_end`**（revoke しない・webhook 未達でも期末に自動失効する保険・半開区間）。pointer は残置（EXPIRED 確定まで再契約不可）。EXPIRED 化＋pointer DELETE＋残 revoke は `customer.subscription.deleted` webhook（§3.4）。**応答の `currentPeriodEnd` が「いつまで使えるか」**。
+- 既に CANCELLED/EXPIRED → `ENTITLEMENT_011` 409。
 
 ### 3.3 プラン変更
 
@@ -270,6 +293,22 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 
 - 処理: 単一トランザクションで「旧契約 CANCELLED＋由来 entitlements revoke → 新契約 ACTIVE＋新 entitlements 発行 → **`active_contract_pointers.contract_id` を新契約へ UPDATE**（ポインタは付け替えるだけで行を増やさない）」（AC-19）。同一 planKey への変更は `ENTITLEMENT_006` 409。
 - ダウングレード（FULL→BASIC）で対象外となった機能は即 false（キャッシュ evict 込み）。
+
+### 3.4 決済 Webhook（2026-07-10 実決済・D-2）
+
+エンドポイントは既存の `POST /api/v1/webhooks/stripe`（platform・署名検証は既存 `StripeWebhookController`/`StripePaymentProvider.constructEvent` のまま・AC-39）。`StripeWebhookService` のルーティングに billing 分岐を追加した（`MembershipSubscriptionWebhookService` 本体は不変・F08.9 テスト全緑維持）:
+
+| イベント | billing 所有判定 | billing 側処理（`BillingSubscriptionWebhookService`） |
+|---|---|---|
+| `checkout.session.completed` | `session.metadata.billingContractId` あり | 契約 `PENDING→ACTIVE`・`psp_customer_ref`/`psp_subscription_ref`/`current_period_end` 焼付・**entitlements 発行**・evict。冪等（既に ACTIVE なら no-op・AC-33/34） |
+| `checkout.session.expired` | 同上 | `PENDING→CANCELLED`＋pointer 物理 DELETE（再挑戦可能に） |
+| `invoice.paid` | `psp_subscription_ref` 逆引きヒット | `current_period_end` 延長・`PAST_DUE→ACTIVE` 回復（AC-37） |
+| `invoice.payment_failed` | 同上 | `ACTIVE→PAST_DUE`（**entitlements は触らない**＝期末まで利用可・AC-37） |
+| `customer.subscription.deleted` | 同上 | `→EXPIRED`・pointer 物理 DELETE・由来 entitlements revoke・evict（AC-35） |
+
+- **冪等の二層（AC-34）**: 全イベントを既存 `WebhookIdempotencyService`（`stripe_webhook_events` の event_id UNIQUE ゲート・FAILED は再処理可）に通し、さらに各状態遷移メソッドが status 済みチェックで no-op（二重発行ゼロ）。F09.13 の `checkout.session.completed` 経路（ゲート非経由）とは異なり billing は必ずゲートを通す。
+- **F08.9 との分離（D-2・AC-38）**: `invoice.*`/`customer.subscription.deleted` は先に billing の `psp_subscription_ref` 逆引きを試み、**ヒットすれば billing・なければ従来どおり membership へ**（相互 no-op）。billing 非所有なら冪等ゲートも消費しない（membership 側が自分の event_id ゲートを通せる）。
+- **失敗の握り潰し禁止**: billing ハンドラ失敗は `markFailed`＋再送出（Stripe at-least-once 再送でリカバリ・F08.9 と同流儀）。
 
 ---
 
@@ -470,6 +509,9 @@ public class OrgTypeAutoUpgradeListener {
 | `CONTRACT_NOT_CANCELLABLE` | `ENTITLEMENT_011` | 409 | WARN | 既に CANCELLED/EXPIRED の契約への解約・変更 |
 | `PLAN_MASTER_IN_USE` | `ENTITLEMENT_012` | 409 | WARN | 参照中マスタの DELETE（enabled=false を案内） |
 | `DUPLICATE_ENTITLEMENT` | `ENTITLEMENT_013` | 409 | WARN | uk_ent_grant 違反（同一発行元×同時刻の二重発行・AC-21） |
+| `INVALID_CONTRACT_KIND` | `ENTITLEMENT_014` | 400 | WARN | contractKind が PLAN/ADDON 以外（P1 実装で追補採番） |
+| `CHECKOUT_SESSION_FAILED` | `ENTITLEMENT_015` | **502** | ERROR | Stripe Checkout 生成失敗（2026-07-10 実決済。PENDING 契約は補償済み＝孤児なし） |
+| `CONTRACT_PENDING_PAYMENT` | `ENTITLEMENT_016` | 409 | WARN | PENDING（入金前）スロット占有中の再契約（2026-07-10 実決済・AC-32） |
 
 `GlobalExceptionHandler` への追記（設計に含む）:
 
@@ -487,6 +529,9 @@ Map.entry("ENTITLEMENT_010", HttpStatus.BAD_REQUEST),
 Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),
 Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),
 Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),
+Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),
+Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),    // 2026-07-10 実決済
+Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),       // 2026-07-10 実決済
 ```
 
 ---
