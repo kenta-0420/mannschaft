@@ -173,11 +173,13 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-2-1a: 未認証でプリセット一覧を叩くと 401")
     void listPresets_byUnauthenticated_unauthorized() throws Exception {
+        // 401 は SecurityConfig(認証層)の認証エントリポイントの責務であり、
+        // ドメイン認可(403 COMMON_002)とは別レイヤ。401 ボディにはアプリの
+        // error エンベロープ($.error.code)が存在しないため、ステータスのみ検証する。
         mockMvc.perform(get("/api/v1/admin/receipt-presets")
                         .param("scopeType", "TEAM")
                         .param("scopeId", String.valueOf(teamAId)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("COMMON_000"));
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
