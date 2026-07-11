@@ -60,7 +60,7 @@ public class ProxyVoteMotionController {
     public ResponseEntity<ApiResponse<MotionResponse>> addMotion(
             @PathVariable Long id, @Valid @RequestBody MotionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(sessionService.addMotion(id, request)));
+                .body(ApiResponse.of(sessionService.addMotion(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -70,7 +70,7 @@ public class ProxyVoteMotionController {
     @Operation(summary = "議案更新")
     public ResponseEntity<ApiResponse<MotionResponse>> updateMotion(
             @PathVariable Long motionId, @Valid @RequestBody MotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.updateMotion(motionId, request)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.updateMotion(motionId, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -79,7 +79,7 @@ public class ProxyVoteMotionController {
     @DeleteMapping("/motions/{motionId}")
     @Operation(summary = "議案削除")
     public ResponseEntity<Void> deleteMotion(@PathVariable Long motionId) {
-        sessionService.deleteMotion(motionId);
+        sessionService.deleteMotion(motionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
