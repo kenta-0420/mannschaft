@@ -51,13 +51,18 @@ class BillingContractApplicationServiceTest {
     private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @Mock
     private BillingIdempotencyService idempotencyService;
+    @Mock
+    private com.mannschaft.app.billing.BillingPriceResolver priceResolver;
+    @Mock
+    private com.mannschaft.app.billing.BillingCheckoutService checkoutService;
 
     @InjectMocks
     private BillingContractApplicationService appService;
 
     private ContractResult planResult(EntitlementScopeKind kind, Long scopeId, UUID id) {
+        // 無償フロー（priceResolver は既定で null を返す＝createContract 経路）を前提とした ACTIVE 結果。
         return new ContractResult(id, kind, scopeId, ContractKind.PLAN, "FULL", null,
-                ContractStatus.ACTIVE, 34, (short) 2, LocalDateTime.now(),
+                ContractStatus.ACTIVE, 34, (short) 2, null, LocalDateTime.now(), null, null,
                 List.of("ads.hide"), List.of());
     }
 
@@ -66,6 +71,9 @@ class BillingContractApplicationServiceTest {
     void create_firstTime_delegatesAndStores() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-1")).willReturn(null);
+        // D-4: 価格 NULL＝無償フロー（Mockito の Integer 既定値は 0＝決済フロー扱いになるため明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.USER), eq(9L), isNull(), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
@@ -109,6 +117,9 @@ class BillingContractApplicationServiceTest {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-t")).willReturn(null);
         given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of(77L, 88L));
+        // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.TEAM, 123L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.TEAM), eq(123L), eq(77L), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
@@ -127,6 +138,9 @@ class BillingContractApplicationServiceTest {
     void create_org_resolvesSelf() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-o")).willReturn(null);
+        // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.ORG, 55L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.ORG), eq(55L), eq(55L), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
@@ -138,5 +152,60 @@ class BillingContractApplicationServiceTest {
         verify(billingContractService).createContract(
                 eq(EntitlementScopeKind.ORG), eq(55L), eq(55L), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L));
+    }
+
+    // ============================================================
+    // F20.1 実決済（D-4）: 価格 NULL=無償フロー / 非 NULL=決済フロー
+    // ============================================================
+
+    @Test
+    @DisplayName("AC-31: 価格 NULL の契約 POST は決済なし無償契約（即 ACTIVE・checkoutUrl なし・決済フロー不関与）")
+    void ac31_priceNull_freeFlow() {
+        UUID id = UUID.randomUUID();
+        given(idempotencyService.findStoredContractId(9L, "idem-free")).willReturn(null);
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FULL", null)).willReturn(null);
+        given(billingContractService.createContract(
+                eq(EntitlementScopeKind.USER), eq(9L), isNull(), eq(ContractKind.PLAN),
+                eq("FULL"), isNull(), eq(9L)))
+                .willReturn(planResult(EntitlementScopeKind.USER, 9L, id));
+
+        ContractResponse resp = appService.create(EntitlementScopeKind.USER, 9L, 9L,
+                new CreateContractRequest("PLAN", "FULL", null), "idem-free");
+
+        // 既存の無償フロー回帰: 即 ACTIVE＋発行済みキーあり・checkoutUrl なし。
+        assertThat(resp.getStatus()).isEqualTo("ACTIVE");
+        assertThat(resp.getCheckoutUrl()).isNull();
+        assertThat(resp.getGrantedFeatureKeys()).containsExactly("ads.hide");
+        verify(checkoutService, never()).startPaidContract(any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("AC-32: 価格設定済みの契約 POST は checkoutUrl 返却・PENDING・entitlements 未発行")
+    void ac32_priced_checkoutFlow() {
+        UUID id = UUID.randomUUID();
+        given(idempotencyService.findStoredContractId(9L, "idem-paid")).willReturn(null);
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FULL", null)).willReturn(2000);
+        ContractResult pending = new ContractResult(id, EntitlementScopeKind.USER, 9L,
+                ContractKind.PLAN, "FULL", null, ContractStatus.PENDING, null, null, 2000,
+                LocalDateTime.now(), null, null, List.of(), List.of());
+        given(checkoutService.startPaidContract(
+                EntitlementScopeKind.USER, 9L, null, ContractKind.PLAN, "FULL", null, 2000, 9L))
+                .willReturn(new com.mannschaft.app.billing.BillingCheckoutService.PaidCheckoutResult(
+                        pending, "https://checkout.stripe.com/c/cs_test"));
+
+        ContractResponse resp = appService.create(EntitlementScopeKind.USER, 9L, 9L,
+                new CreateContractRequest("PLAN", "FULL", null), "idem-paid");
+
+        assertThat(resp.getStatus()).isEqualTo("PENDING");
+        assertThat(resp.getCheckoutUrl()).isEqualTo("https://checkout.stripe.com/c/cs_test");
+        assertThat(resp.getPriceJpySnapshot()).isEqualTo(2000);
+        // ★PENDING 時点では entitlements 未発行（grantedFeatureKeys 空）。
+        assertThat(resp.getGrantedFeatureKeys()).isEmpty();
+        // 無償フロー（即発行）は呼ばれない。
+        verify(billingContractService, never()).createContract(any(), any(), any(), any(), any(), any(), any());
+        // 冪等キーには PENDING 契約 ID を保存（再送吸収）。
+        verify(idempotencyService).store(9L, "idem-paid", id);
     }
 }

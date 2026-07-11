@@ -286,6 +286,118 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public CheckoutSessionInfo createBillingSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName, String billingContractId,
+            String successUrl, String cancelUrl) {
+        try {
+            // F20.1 実決済: 自社受取×月額サブスク（Mode.SUBSCRIPTION）。Connect 項目
+            // （transfer_data/on_behalf_of/application_fee）は一切含めない（D-2）。Price はインライン price_data
+            // （月次 recurring・JPY はゼロ decimal 通貨で乗算不要）で遅延生成する。
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("jpy")
+                                    .setUnitAmount(priceJpy)
+                                    .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                                            .build())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(productName)
+                                            .build())
+                                    .build())
+                            .build())
+                    .putMetadata("billingContractId", billingContractId)
+                    .build();
+            Session session = Session.create(params);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    ZoneId.systemDefault());
+
+            log.info("F20.1 サブスク Checkout Session 作成: sessionId={}, billingContractId={}, priceJpy={}",
+                    session.getId(), billingContractId, priceJpy);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク Checkout Session 作成失敗: customerId={}, billingContractId={}, priceJpy={}",
+                    stripeCustomerId, billingContractId, priceJpy, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // 退会 purge 連動（AC-45）: 期末解約ではなくその場で cancel（課金継続の即時停止）。
+            Subscription canceled = subscription.cancel(
+                    com.stripe.param.SubscriptionCancelParams.builder().build(), options);
+            log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("F20.1 サブスク Webhook 署名検証失敗", e);
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = resolveStripeObject(deserializer);
+
+        String sessionId = null;
+        String billingContractId = null;
+        String subscriptionId = null;
+        String customerId = null;
+        Long currentPeriodEndEpochSec = null;
+
+        if (stripeObject instanceof Session session) {
+            sessionId = session.getId();
+            subscriptionId = session.getSubscription();
+            customerId = session.getCustomer();
+            if (session.getMetadata() != null) {
+                billingContractId = session.getMetadata().get("billingContractId");
+            }
+            // checkout.session.completed: 現サイクル終了を焼き付けるため subscription を retrieve する。
+            if (subscriptionId != null) {
+                try {
+                    Subscription sub = Subscription.retrieve(subscriptionId);
+                    currentPeriodEndEpochSec = sub.getCurrentPeriodEnd();
+                } catch (StripeException e) {
+                    log.warn("F20.1 サブスク retrieve 失敗（current_period_end 省略）: subscriptionId={}", subscriptionId);
+                }
+            }
+        } else if (stripeObject instanceof Invoice invoice) {
+            subscriptionId = invoice.getSubscription();
+            currentPeriodEndEpochSec = invoice.getPeriodEnd();
+        } else if (stripeObject instanceof Subscription subscription) {
+            subscriptionId = subscription.getId();
+            currentPeriodEndEpochSec = subscription.getCurrentPeriodEnd();
+        }
+
+        log.info("F20.1 サブスク Webhook 受信: id={}, type={}, sessionId={}, billingContractId={}, subscriptionId={}",
+                event.getId(), eventType, sessionId, billingContractId, subscriptionId);
+        return new BillingSubscriptionWebhookEventInfo(event.getId(), eventType, livemode,
+                sessionId, billingContractId, subscriptionId, customerId, currentPeriodEndEpochSec);
+    }
+
+    @Override
     public String createRefund(String stripePaymentIntentId, Long memberPaymentId, Long refundedBy) {
         try {
             RefundCreateParams params = RefundCreateParams.builder()

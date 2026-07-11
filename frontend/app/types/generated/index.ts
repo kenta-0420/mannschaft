@@ -47998,6 +47998,8 @@ export interface components {
              * @example 2
              */
             bandNoSnapshot?: number;
+            /** @description 決済フロー時の Stripe Checkout URL（無償フロー・解約時は null） */
+            checkoutUrl?: string;
             /** @description 契約 ID（UUID） */
             contractId?: string;
             /**
@@ -48010,6 +48012,11 @@ export interface components {
              * @description 契約日時（ISO-8601）
              */
             contractedAt?: string;
+            /**
+             * Format: date-time
+             * @description 現サイクル終了（有償解約の利用可能期限・ISO-8601）
+             */
+            currentPeriodEnd?: string;
             /**
              * @description 機能キー（PLAN 時 null）
              * @example ads.hide
