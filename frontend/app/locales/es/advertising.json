@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "Anuncio",
+    "account_settings": {
+      "title": "Configuración de la cuenta",
+      "company_name": "Nombre de empresa / organización",
+      "contact_email": "Correo de contacto",
+      "edit": "Editar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "saved": "Configuración de la cuenta guardada.",
+      "save_failed": "Error al guardar."
+    },
     "spotlight": {
       "hide_advertiser": "Ocultar este anunciante",
       "hide_advertiser_done": "Los anuncios de este anunciante ya están ocultos",
@@ -135,7 +145,8 @@
         "step_audience": "Audiencia",
         "step_review": "Revisar y enviar",
         "submitted": "Campaña enviada a revisión.",
-        "saved": "Borrador guardado."
+        "saved": "Borrador guardado.",
+        "draft_saved": "Guardado como borrador."
       },
       "advertiser_campaign_detail": {
         "title": "Detalle de la campaña",
@@ -251,7 +262,13 @@
         "column_status": "Estado",
         "auto_suspend_candidate": "Concentración de reportes",
         "auto_suspend_candidate_tooltip": "Se recibieron varios reportes en poco tiempo: candidata a suspensión automática.",
-        "go_campaign": "Ver detalle de la campaña"
+        "go_campaign": "Ver detalle de la campaña",
+        "type_messaging": "Mensajería",
+        "type_operational": "Operativo",
+        "status_update_failed": "Error al actualizar el estado",
+        "mark_reviewing": "Marcar en revisión",
+        "mark_resolved": "Marcar como resuelto",
+        "mark_dismissed": "Descartar"
       },
       "advertiser_campaign_report": {
         "title": "Informe de rendimiento de la campaña",

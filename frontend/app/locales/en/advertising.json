@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "Ad",
+    "account_settings": {
+      "title": "Account Settings",
+      "company_name": "Company / Organization Name",
+      "contact_email": "Contact Email",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Account settings saved.",
+      "save_failed": "Failed to save."
+    },
     "spotlight": {
       "hide_advertiser": "Hide this advertiser",
       "hide_advertiser_done": "Ads from this advertiser are now hidden",
@@ -135,7 +145,8 @@
         "step_audience": "Audience",
         "step_review": "Review & submit",
         "submitted": "Campaign submitted for review.",
-        "saved": "Draft saved."
+        "saved": "Draft saved.",
+        "draft_saved": "Saved as draft."
       },
       "advertiser_campaign_detail": {
         "title": "Campaign detail",
@@ -251,7 +262,13 @@
         "column_status": "Status",
         "auto_suspend_candidate": "Reports burst",
         "auto_suspend_candidate_tooltip": "Multiple reports received in a short period — auto-suspend candidate.",
-        "go_campaign": "Open campaign"
+        "go_campaign": "Open campaign",
+        "type_messaging": "Messaging",
+        "type_operational": "Operational",
+        "status_update_failed": "Failed to update status",
+        "mark_reviewing": "Mark reviewing",
+        "mark_resolved": "Mark resolved",
+        "mark_dismissed": "Dismiss"
       },
       "advertiser_campaign_report": {
         "title": "Campaign performance report",

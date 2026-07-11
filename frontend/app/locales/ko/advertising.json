@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "광고",
+    "account_settings": {
+      "title": "계정 설정",
+      "company_name": "회사 / 단체명",
+      "contact_email": "연락처 이메일",
+      "edit": "편집",
+      "save": "저장",
+      "cancel": "취소",
+      "saved": "계정 설정을 저장했습니다.",
+      "save_failed": "저장에 실패했습니다."
+    },
     "spotlight": {
       "hide_advertiser": "이 광고주 숨기기",
       "hide_advertiser_done": "이 광고주의 광고를 숨겼습니다",
@@ -135,7 +145,8 @@
         "step_audience": "타겟 설정",
         "step_review": "확인 및 제출",
         "submitted": "캠페인을 심사에 제출했습니다.",
-        "saved": "초안을 저장했습니다."
+        "saved": "초안을 저장했습니다.",
+        "draft_saved": "초안으로 저장되었습니다."
       },
       "advertiser_campaign_detail": {
         "title": "캠페인 상세",
@@ -251,7 +262,13 @@
         "column_status": "상태",
         "auto_suspend_candidate": "신고 집중",
         "auto_suspend_candidate_tooltip": "단기간에 여러 건의 신고가 모여 자동 중지 후보입니다.",
-        "go_campaign": "캠페인 상세로"
+        "go_campaign": "캠페인 상세로",
+        "type_messaging": "메시지형",
+        "type_operational": "운영형",
+        "status_update_failed": "상태 업데이트에 실패했습니다",
+        "mark_reviewing": "검토 중으로 변경",
+        "mark_resolved": "해결됨으로 변경",
+        "mark_dismissed": "기각"
       },
       "advertiser_campaign_report": {
         "title": "캠페인 성과 리포트",

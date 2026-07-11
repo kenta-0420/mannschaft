@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "Anzeige",
+    "account_settings": {
+      "title": "Kontoeinstellungen",
+      "company_name": "Firmen- / Organisationsname",
+      "contact_email": "Kontakt-E-Mail",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "saved": "Kontoeinstellungen gespeichert.",
+      "save_failed": "Speichern fehlgeschlagen."
+    },
     "spotlight": {
       "hide_advertiser": "Diesen Werbetreibenden ausblenden",
       "hide_advertiser_done": "Anzeigen dieses Werbetreibenden sind jetzt ausgeblendet",
@@ -135,7 +145,8 @@
         "step_audience": "Zielgruppe",
         "step_review": "Prüfen & einreichen",
         "submitted": "Kampagne zur Prüfung eingereicht.",
-        "saved": "Entwurf gespeichert."
+        "saved": "Entwurf gespeichert.",
+        "draft_saved": "Als Entwurf gespeichert."
       },
       "advertiser_campaign_detail": {
         "title": "Kampagnendetails",
@@ -251,7 +262,13 @@
         "column_status": "Status",
         "auto_suspend_candidate": "Beschwerden-Häufung",
         "auto_suspend_candidate_tooltip": "Mehrere Beschwerden in kurzer Zeit – Kandidat für automatische Aussetzung.",
-        "go_campaign": "Zur Kampagne"
+        "go_campaign": "Zur Kampagne",
+        "type_messaging": "Nachricht",
+        "type_operational": "Betrieb",
+        "status_update_failed": "Statusaktualisierung fehlgeschlagen",
+        "mark_reviewing": "Als in Prüfung markieren",
+        "mark_resolved": "Als gelöst markieren",
+        "mark_dismissed": "Ablehnen"
       },
       "advertiser_campaign_report": {
         "title": "Kampagnen-Performance-Bericht",

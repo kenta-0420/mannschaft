@@ -45,7 +45,7 @@ const notificationStore = useNotificationStore()
 watch(
   () => notificationStore.latestNotification,
   (notification) => {
-    if (notification && ALERT_TYPES.includes(notification.notificationType)) {
+    if (notification?.notificationType && ALERT_TYPES.includes(notification.notificationType)) {
       fetchSummary()
     }
   },

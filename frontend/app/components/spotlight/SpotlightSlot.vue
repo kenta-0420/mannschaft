@@ -150,6 +150,20 @@ function closeMenu() {
   menuOpen.value = false
 }
 
+// ── 通報（HOUSE のみ・F09.19.9） ──────────────────────────────
+const reportModalVisible = ref(false)
+
+/** メッセージ型予約バナーは messagingCampaignId(UUID)、運用型は operationalCampaignId(=campaignId) を送る。 */
+const reportCampaignId = computed<string | null>(() => house.value?.messagingCampaignId ?? null)
+const reportOperationalCampaignId = computed<number | null>(() =>
+  house.value?.messagingCampaignId ? null : (house.value?.campaignId ?? null),
+)
+
+function openReport() {
+  closeMenu()
+  reportModalVisible.value = true
+}
+
 /**
  * 「この広告主を非表示」: 受信設定の blockedAdvertiserAccountIds に追加し、自枠を即時非表示にする。
  * 現在のブロック一覧を取得してから追記する（部分更新 API は現値を維持するため）。
@@ -249,8 +263,25 @@ async function hideAdvertiser() {
               {{ t('advertising.spotlight.hide_advertiser') }}
             </button>
           </li>
+          <li>
+            <button
+              type="button"
+              class="spotlight-menu-item block w-full px-3 py-1.5 text-left text-xs text-surface-700 hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-700"
+              data-testid="spotlight-report"
+              @click.stop.prevent="openReport"
+            >
+              {{ t('advertising.spotlight.report') }}
+            </button>
+          </li>
         </ul>
       </div>
+
+      <!-- 通報モーダル（F09.19.9） -->
+      <AdReportModal
+        v-model:visible="reportModalVisible"
+        :campaign-id="reportCampaignId"
+        :operational-campaign-id="reportOperationalCampaignId"
+      />
     </template>
 
     <!-- ══════════ AFFILIATE ══════════ -->

@@ -89,6 +89,28 @@ const quickLinks: QuickLink[] = [
     color: 'text-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-900/20',
   },
+  // F09.19.7 §10.1: 広告 admin 孤立ページのナビ接続
+  {
+    label: t('admin.quickLinks.adRateCards'),
+    icon: 'pi pi-money-bill',
+    to: '/admin/ad-rate-cards',
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+  },
+  {
+    label: t('admin.quickLinks.adCreditLimitRequests'),
+    icon: 'pi pi-credit-card',
+    to: '/admin/ad-credit-limit-requests',
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+  },
+  {
+    label: t('admin.quickLinks.affiliateSettings'),
+    icon: 'pi pi-link',
+    to: '/admin/affiliate-settings',
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+  },
   {
     label: t('admin.quickLinks.auditLogs'),
     icon: 'pi pi-list',

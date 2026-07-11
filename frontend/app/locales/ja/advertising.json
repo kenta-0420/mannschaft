@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "広告",
+    "account_settings": {
+      "title": "アカウント設定",
+      "company_name": "会社名・団体名",
+      "contact_email": "連絡先メールアドレス",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "saved": "アカウント設定を保存しました。",
+      "save_failed": "保存に失敗しました。"
+    },
     "spotlight": {
       "hide_advertiser": "この広告主を非表示",
       "hide_advertiser_done": "この広告主の広告を非表示にしました",
@@ -135,7 +145,8 @@
         "step_audience": "ターゲット設定",
         "step_review": "確認・提出",
         "submitted": "キャンペーンを審査に提出しました。",
-        "saved": "下書きを保存しました。"
+        "saved": "下書きを保存しました。",
+        "draft_saved": "下書きとして保存されました。"
       },
       "advertiser_campaign_detail": {
         "title": "キャンペーン詳細",
@@ -251,7 +262,13 @@
         "column_status": "状態",
         "auto_suspend_candidate": "通報集中",
         "auto_suspend_candidate_tooltip": "短期間に複数件の通報が集まったため、自動停止候補です。",
-        "go_campaign": "キャンペーン詳細へ"
+        "go_campaign": "キャンペーン詳細へ",
+        "type_messaging": "メッセージ型",
+        "type_operational": "運用型",
+        "status_update_failed": "状態の更新に失敗しました",
+        "mark_reviewing": "確認中にする",
+        "mark_resolved": "対応済みにする",
+        "mark_dismissed": "却下する"
       },
       "advertiser_campaign_report": {
         "title": "キャンペーン パフォーマンスレポート",

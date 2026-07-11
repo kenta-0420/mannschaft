@@ -1,6 +1,16 @@
 {
   "advertising": {
     "ad_label": "广告",
+    "account_settings": {
+      "title": "账户设置",
+      "company_name": "公司 / 团体名称",
+      "contact_email": "联系邮箱",
+      "edit": "编辑",
+      "save": "保存",
+      "cancel": "取消",
+      "saved": "账户设置已保存。",
+      "save_failed": "保存失败。"
+    },
     "spotlight": {
       "hide_advertiser": "隐藏该广告主",
       "hide_advertiser_done": "已隐藏该广告主的广告",
@@ -135,7 +145,8 @@
         "step_audience": "受众设置",
         "step_review": "确认并提交",
         "submitted": "广告活动已提交审核。",
-        "saved": "草稿已保存。"
+        "saved": "草稿已保存。",
+        "draft_saved": "已保存为草稿。"
       },
       "advertiser_campaign_detail": {
         "title": "活动详情",
@@ -251,7 +262,13 @@
         "column_status": "状态",
         "auto_suspend_candidate": "举报集中",
         "auto_suspend_candidate_tooltip": "短时间内收到多次举报，是自动停止的候选。",
-        "go_campaign": "查看广告活动详情"
+        "go_campaign": "查看广告活动详情",
+        "type_messaging": "消息型",
+        "type_operational": "运营型",
+        "status_update_failed": "状态更新失败",
+        "mark_reviewing": "标记为审查中",
+        "mark_resolved": "标记为已解决",
+        "mark_dismissed": "驳回"
       },
       "advertiser_campaign_report": {
         "title": "广告活动绩效报告",
