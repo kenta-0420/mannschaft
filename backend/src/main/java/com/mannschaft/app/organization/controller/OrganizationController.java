@@ -184,7 +184,10 @@ public class OrganizationController {
             @PathVariable String slug, @PathVariable Long userId,
             @Valid @RequestBody RoleChangeRequest req) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.changeRole(id, SCOPE_TYPE, userId, req, SecurityUtils.getCurrentUserId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 当該組織の ADMIN/DEPUTY_ADMIN のみロール変更可。
+        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
+        roleService.changeRole(id, SCOPE_TYPE, userId, req, currentUserId);
         return ResponseEntity.ok().build();
     }
 
@@ -194,7 +197,10 @@ public class OrganizationController {
     public ResponseEntity<Void> removeMember(
             @PathVariable String slug, @PathVariable Long userId) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.removeMember(id, SCOPE_TYPE, userId);
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 当該組織の ADMIN/DEPUTY_ADMIN のみ除名可。
+        accessControlService.checkAdminOrAbove(operatorUserId, id, SCOPE_TYPE);
+        roleService.removeMember(id, SCOPE_TYPE, userId, operatorUserId);
         return ResponseEntity.noContent().build();
     }
 
@@ -339,7 +345,8 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        return ResponseEntity.ok(ApiResponse.of(inviteService.getInviteTokens(id, SCOPE_TYPE)));
+        return ResponseEntity.ok(ApiResponse.of(
+                inviteService.getInviteTokens(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/{slug}/invite-tokens/{tokenId}")
@@ -347,7 +354,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "失効成功")
     public ResponseEntity<Void> revokeInviteToken(
             @PathVariable String slug, @PathVariable Long tokenId) {
-        inviteService.revokeInviteToken(tokenId);
+        inviteService.revokeInviteToken(tokenId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -381,7 +388,8 @@ public class OrganizationController {
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
             @PathVariable String slug, @PathVariable Long groupId,
             @Valid @RequestBody PermissionGroupRequest req) {
-        return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(groupId, req));
+        return ResponseEntity.ok(
+                permissionGroupService.updatePermissionGroup(groupId, req, SecurityUtils.getCurrentUserId()));
     }
 
     @DeleteMapping("/{slug}/permission-groups/{groupId}")
@@ -389,7 +397,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
             @PathVariable String slug, @PathVariable Long groupId) {
-        permissionGroupService.deletePermissionGroup(groupId);
+        permissionGroupService.deletePermissionGroup(groupId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -414,7 +422,8 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        return ResponseEntity.ok(ApiResponse.of(blockService.getBlocks(id, SCOPE_TYPE)));
+        return ResponseEntity.ok(ApiResponse.of(
+                blockService.getBlocks(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{slug}/blocks")
