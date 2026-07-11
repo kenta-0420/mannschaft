@@ -817,7 +817,20 @@ public class GlobalExceptionHandler {
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
             Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.3 parking の *_NOT_FOUND は、対象エンティティが
+            // 自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PARKING_001", HttpStatus.NOT_FOUND),              // SPACE_NOT_FOUND
+            Map.entry("PARKING_002", HttpStatus.NOT_FOUND),              // VEHICLE_NOT_FOUND
+            Map.entry("PARKING_003", HttpStatus.NOT_FOUND),              // ASSIGNMENT_NOT_FOUND
+            Map.entry("PARKING_004", HttpStatus.NOT_FOUND),              // APPLICATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_005", HttpStatus.NOT_FOUND),              // LISTING_NOT_FOUND
+            Map.entry("PARKING_006", HttpStatus.NOT_FOUND),              // VISITOR_RESERVATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_007", HttpStatus.NOT_FOUND),              // WATCHLIST_NOT_FOUND
+            Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
+            Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
+            Map.entry("PARKING_026", HttpStatus.NOT_FOUND)               // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
     );
 
     /**

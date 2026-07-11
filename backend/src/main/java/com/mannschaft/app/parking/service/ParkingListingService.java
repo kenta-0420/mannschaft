@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.parking.ApplicationSourceType;
 import com.mannschaft.app.parking.ListingStatus;
 import com.mannschaft.app.parking.ParkingErrorCode;
@@ -28,6 +29,9 @@ import java.util.List;
 
 /**
  * 譲渡希望サービス。譲渡希望のCRUD・申込・譲渡確定を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: update/delete は作成者（{@code listedBy}）以外の
+ * 第三者が他人の譲渡希望を書き換え/削除できる欠陥があったため、作成者一致検証を敷設した。</p>
  */
 @Slf4j
 @Service
@@ -97,9 +101,12 @@ public class ParkingListingService {
      * 譲渡希望を更新する。
      */
     @Transactional
-    public ListingResponse update(List<Long> spaceIds, Long id, UpdateListingRequest request) {
+    public ListingResponse update(List<Long> spaceIds, Long id, UpdateListingRequest request, Long actorUserId) {
         ParkingListingEntity entity = listingRepository.findByIdAndSpaceIdIn(id, spaceIds)
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.LISTING_NOT_FOUND));
+        if (!entity.getListedBy().equals(actorUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
         if (entity.getStatus() != ListingStatus.OPEN) {
             throw new BusinessException(ParkingErrorCode.INVALID_LISTING_STATUS);
         }
@@ -113,9 +120,12 @@ public class ParkingListingService {
      * 譲渡希望を削除する。
      */
     @Transactional
-    public void delete(List<Long> spaceIds, Long id) {
+    public void delete(List<Long> spaceIds, Long id, Long actorUserId) {
         ParkingListingEntity entity = listingRepository.findByIdAndSpaceIdIn(id, spaceIds)
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.LISTING_NOT_FOUND));
+        if (!entity.getListedBy().equals(actorUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
         entity.softDelete();
         listingRepository.save(entity);
         log.info("譲渡希望削除: id={}", id);
