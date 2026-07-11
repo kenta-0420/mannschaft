@@ -72,6 +72,23 @@ public class PaymentMethodService {
     }
 
     /**
+     * ユーザーの Stripe Customer を get-or-create し、その ID（{@code cus_xxx}）を返す
+     * （F20.1 billing 等の<b>他ドメイン向け公開 API</b>・ArchUnit D-1 対応）。
+     *
+     * <p>クロスドメイン Entity 依存の禁止（CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」・
+     * {@code CrossDomainEntityImportArchTest}）のため、{@link StripeCustomerEntity} ではなく ID 文字列を返す。
+     * get-or-create の実体は {@link #getOrCreateStripeCustomer(Long)}（email プレースホルダの P1 既知負債を含め
+     * payment ドメイン内に集約）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return Stripe Customer ID（{@code cus_xxx}）
+     */
+    @Transactional
+    public String getOrCreateStripeCustomerId(Long userId) {
+        return getOrCreateStripeCustomer(userId).getStripeCustomerId();
+    }
+
+    /**
      * ユーザーの Stripe Customer を取得、無ければ作成する（P1 {@code MemberPaymentService.getOrCreateStripeCustomer} と
      * 同一挙動・email プレースホルダは P1 既知負債を踏襲して直さない）。
      */
