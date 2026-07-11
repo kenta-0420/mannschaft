@@ -40,8 +40,16 @@ public class CsvExportService {
      */
     public byte[] exportCampaignPerformance(Long campaignId, Long organizationId,
                                              LocalDate from, LocalDate to) {
+        return exportCampaignPerformance(campaignId, ScopeType.ORGANIZATION, organizationId, from, to);
+    }
+
+    /**
+     * キャンペーンのパフォーマンスデータをCSV形式でエクスポートする（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    public byte[] exportCampaignPerformance(Long campaignId, ScopeType scopeType, Long scopeId,
+                                             LocalDate from, LocalDate to) {
         AdvertiserAccountEntity account = advertiserAccountRepository
-                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));

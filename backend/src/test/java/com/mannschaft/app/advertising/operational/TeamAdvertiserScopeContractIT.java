@@ -23,7 +23,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,6 +80,10 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminBId;
     private Long sysAdminId;
     private Long rateCardId;
+    /** チーム A の広告主アカウント配下の運用型キャンペーン（creatives/breakdown/export 用）。 */
+    private Long teamACampaignId;
+    /** チーム A のレポートスケジュール（DELETE 越境検証用）。 */
+    private Long teamAScheduleId;
 
     private static final BigDecimal UNIT_PRICE = new BigDecimal("500.0000");
     private static final BigDecimal MIN_DAILY_BUDGET = new BigDecimal("1000.00");
@@ -105,9 +111,13 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
 
         // scope 化済み広告主アカウント（ORG = overview 用・TEAM A = チーム対 API 用）
         insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "INVOICE");
-        insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "INVOICE");
+        Long teamAAccountId = insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "INVOICE");
 
         rateCardId = insertRateCard("CPM", UNIT_PRICE, MIN_DAILY_BUDGET, -30, null);
+
+        // チーム A アカウント配下のキャンペーン・レポートスケジュール（帰属検証 / 越境 403 の対象）
+        teamACampaignId = insertCampaign(teamAAccountId, "チームAキャンペーン");
+        teamAScheduleId = insertReportSchedule(teamAAccountId);
 
         em.flush();
         em.clear();
@@ -184,6 +194,195 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(adminBId);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/invoices", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // AC-5.2b（F09.19.5b）dashboard 薄皮の追加 endpoint パリティ・越境 403
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("AC-5.2b F09.19.5b 追加 team endpoint のパリティと越境 403")
+    class Ac5_2b_DashboardParity {
+
+        @Test
+        @DisplayName("ac5_2b: team account GET が 200 で ApiResponse 形式（data.id）で応答")
+        void ac5_2b_チームアカウント取得が応答する() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/account", teamAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").exists())
+                    .andExpect(jsonPath("$.data.companyName").value("チームA広告主"));
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team account PATCH が 200 で会社名を更新できる")
+        void ac5_2b_チームアカウント更新ができる() throws Exception {
+            setAuthentication(adminAId);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("companyName", "チームA広告主（改称）");
+
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/advertiser/account", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.companyName").value("チームA広告主（改称）"));
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team overview が 200 で ApiResponse 形式（data）で応答")
+        void ac5_2b_チーム概要が応答する() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/overview", teamAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").exists());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team credit-limit-requests POST が 201 で申請を作成できる")
+        void ac5_2b_チーム増額申請を作成できる() throws Exception {
+            setAuthentication(adminAId);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("requestedLimit", new BigDecimal("200000"));
+            body.put("reason", "夏季キャンペーンの拡大");
+
+            mockMvc.perform(post("/api/v1/teams/{teamId}/advertiser/credit-limit-requests", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.id").exists());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team report-schedules POST が 201・DELETE が 204")
+        void ac5_2b_チームレポートスケジュールを作成し削除できる() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/advertiser/report-schedules/{id}",
+                            teamAId, teamAScheduleId))
+                    .andExpect(status().isNoContent());
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("frequency", "WEEKLY");
+            body.put("recipients", List.of("owner@example.com"));
+
+            mockMvc.perform(post("/api/v1/teams/{teamId}/advertiser/report-schedules", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.id").exists());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team campaigns/{id}/creatives（比較）が 200 で応答")
+        void ac5_2b_チームクリエイティブ比較が応答する() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/campaigns/{cid}/creatives",
+                            teamAId, teamACampaignId)
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").exists());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team campaigns/{id}/breakdown が 200 で応答")
+        void ac5_2b_チーム内訳が応答する() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/campaigns/{cid}/breakdown",
+                            teamAId, teamACampaignId)
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").exists());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: team campaigns/{id}/export が 200 で CSV を返す")
+        void ac5_2b_チームエクスポートがCSVを返す() throws Exception {
+            setAuthentication(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/campaigns/{cid}/export",
+                            teamAId, teamACampaignId)
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
+        }
+    }
+
+    @Nested
+    @DisplayName("AC-5.2b 越境 IDOR（teamB ADMIN が teamA 資産へアクセス → 403）")
+    class Ac5_2b_CrossTenantForbidden {
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team overview → 403")
+        void ac5_2b_他チームの概要は403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/overview", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team account PATCH → 403")
+        void ac5_2b_他チームのアカウント更新は403() throws Exception {
+            setAuthentication(adminBId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("companyName", "乗っ取り");
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/advertiser/account", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team credit-limit POST → 403")
+        void ac5_2b_他チームの増額申請は403() throws Exception {
+            setAuthentication(adminBId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("requestedLimit", new BigDecimal("200000"));
+            body.put("reason", "越境");
+            mockMvc.perform(post("/api/v1/teams/{teamId}/advertiser/credit-limit-requests", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team report-schedule DELETE → 403")
+        void ac5_2b_他チームのスケジュール削除は403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/advertiser/report-schedules/{id}",
+                            teamAId, teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team campaigns/{id}/creatives → 403")
+        void ac5_2b_他チームのクリエイティブ比較は403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/campaigns/{cid}/creatives",
+                            teamAId, teamACampaignId)
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team campaigns/{id}/export → 403")
+        void ac5_2b_他チームのエクスポートは403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/campaigns/{cid}/export",
+                            teamAId, teamACampaignId)
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
                     .andExpect(status().isForbidden());
         }
     }
@@ -287,7 +486,7 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
                 .executeUpdate();
     }
 
-    private void insertAdvertiserAccount(String scopeType, Long scopeId, String companyName, String billingMethod) {
+    private Long insertAdvertiserAccount(String scopeType, Long scopeId, String companyName, String billingMethod) {
         em.createNativeQuery(
                         "INSERT INTO advertiser_accounts (scope_type, scope_id, status, company_name, "
                                 + "contact_email, billing_method, credit_limit, created_at, updated_at) "
@@ -297,6 +496,36 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("cn", companyName)
                 .setParameter("bm", billingMethod)
                 .executeUpdate();
+        return ((Number) em.createNativeQuery(
+                        "SELECT id FROM advertiser_accounts WHERE scope_type = :st AND scope_id = :sid")
+                .setParameter("st", scopeType)
+                .setParameter("sid", scopeId)
+                .getSingleResult()).longValue();
+    }
+
+    private Long insertCampaign(Long advertiserAccountId, String name) {
+        em.createNativeQuery(
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
+                                + "daily_budget, start_date, end_date, created_at, updated_at) "
+                                + "VALUES (:aid, :name, 'DRAFT', 'CPM', :budget, "
+                                + "DATE_ADD(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
+                                + "NOW(), NOW())")
+                .setParameter("aid", advertiserAccountId)
+                .setParameter("name", name)
+                .setParameter("budget", new BigDecimal("1000.00"))
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_campaigns").getSingleResult()).longValue();
+    }
+
+    private Long insertReportSchedule(Long advertiserAccountId) {
+        em.createNativeQuery(
+                        "INSERT INTO ad_report_schedules (advertiser_account_id, frequency, recipients, "
+                                + "enabled, created_by, created_at, updated_at) "
+                                + "VALUES (:aid, 'WEEKLY', '[\"ads@example.com\"]', 1, :uid, NOW(), NOW())")
+                .setParameter("aid", advertiserAccountId)
+                .setParameter("uid", adminAId)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_report_schedules").getSingleResult()).longValue();
     }
 
     private Long insertRateCard(String pricingModel, BigDecimal unitPrice, BigDecimal minDailyBudget,
