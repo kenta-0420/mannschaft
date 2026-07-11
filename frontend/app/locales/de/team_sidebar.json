@@ -41,6 +41,7 @@
       "audit_logs": "Audit-Protokolle",
       "settings": "Einstellungen",
       "faqSettings": "FAQ-Einstellungen",
+      "billing": "Abrechnung & Planverwaltung",
       "leagueTransfers": "Liga-Transfers",
       "adminConsole": "Administrationskonsole"
     }
