@@ -337,7 +337,8 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .setIdempotencyKey(idempotencyKey)
                     .build();
             // 退会 purge 連動（AC-45）: 期末解約ではなくその場で cancel（課金継続の即時停止）。
-            Subscription canceled = subscription.cancel((com.stripe.param.SubscriptionCancelParams) null, options);
+            Subscription canceled = subscription.cancel(
+                    com.stripe.param.SubscriptionCancelParams.builder().build(), options);
             log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
         } catch (StripeException e) {
             log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
