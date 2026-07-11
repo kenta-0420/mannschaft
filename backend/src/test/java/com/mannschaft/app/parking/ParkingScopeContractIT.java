@@ -492,9 +492,14 @@ class ParkingScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertParkingApplication(Long spaceId, Long userId, Long vehicleId, String status) {
+        // test プロファイルは ddl-auto=create のため、parking_applications のスキーマは
+        // ParkingApplicationEntity から生成される。source_type / priority は @Column(nullable=false)
+        // だが @Builder.Default は DB デフォルトを生成しないため、native INSERT では明示指定が必須。
+        // （is_proxy_input は columnDefinition="TINYINT(1) DEFAULT 0" で DB デフォルトを持つため省略可）
         em.createNativeQuery(
-                        "INSERT INTO parking_applications (space_id, user_id, vehicle_id, status, created_at) "
-                                + "VALUES (:spaceId, :userId, :vehicleId, :status, NOW())")
+                        "INSERT INTO parking_applications (space_id, user_id, vehicle_id, source_type, priority, "
+                                + "status, created_at) "
+                                + "VALUES (:spaceId, :userId, :vehicleId, 'VACANCY', 0, :status, NOW())")
                 .setParameter("spaceId", spaceId)
                 .setParameter("userId", userId)
                 .setParameter("vehicleId", vehicleId)
