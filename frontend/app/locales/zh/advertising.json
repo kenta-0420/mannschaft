@@ -588,7 +588,7 @@
         "dialog_title": "レポートスケジュール作成",
         "form_frequency_label": "配信頻度",
         "form_recipients_label": "配信先メール（カンマ区切り）",
-        "form_recipients_placeholder": "ads@example.com, manager@example.com",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
         "submit_button": "作成",
         "created_toast": "レポートスケジュールを作成しました",
         "create_failed_toast": "作成に失敗しました",

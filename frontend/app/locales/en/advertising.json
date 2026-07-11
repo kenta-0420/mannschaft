@@ -588,7 +588,7 @@
         "dialog_title": "Create report schedule",
         "form_frequency_label": "Frequency",
         "form_recipients_label": "Recipient emails (comma-separated)",
-        "form_recipients_placeholder": "ads@example.com, manager@example.com",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
         "submit_button": "Create",
         "created_toast": "Report schedule created",
         "create_failed_toast": "Failed to create the schedule",
