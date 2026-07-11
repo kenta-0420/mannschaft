@@ -47,6 +47,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 行ヘッダに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 interface DayGrid { date: string; columns: GridColumnDto[] }
 interface MatrixRowVM {
   date: string
@@ -300,7 +303,7 @@ watch([weekStart, filterMenuId], () => loadGrid())
 
 onMounted(async () => {
   thisWeek()
-  await Promise.all([loadLines(), loadMenus()])
+  await Promise.all([loadLines(), loadMenus(), loadResourceName()])
   await loadGrid()
 })
 
@@ -316,8 +319,14 @@ onActivated(() => {
   void loadGrid({ silent: true })
 })
 
-// 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）
-defineExpose({ refresh: () => loadGrid() })
+// 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）。
+// 呼称設定変更後の再読込（onResourceNameChanged）からも呼ばれるため、呼称表示も合わせて最新化する。
+defineExpose({
+  refresh: async () => {
+    await loadResourceName()
+    await loadGrid()
+  },
+})
 </script>
 
 <template>
@@ -386,7 +395,7 @@ defineExpose({ refresh: () => loadGrid() })
       <div class="inline-grid min-w-full gap-1" :style="gridStyle(header.length)">
         <!-- ヘッダー行: 左上コーナー（両軸 sticky・最前面）+ 時間見出し（sticky top） -->
         <div class="sticky left-0 top-0 z-20 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
-          {{ t('reservation.matrix.date_line_header') }}
+          {{ t('reservation.matrix.date_line_header', { resourceName }) }}
         </div>
         <div
           v-for="(h, hi) in header"
