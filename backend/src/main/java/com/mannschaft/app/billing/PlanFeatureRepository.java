@@ -33,4 +33,16 @@ public interface PlanFeatureRepository extends JpaRepository<PlanFeatureEntity, 
             + "WHERE pf.planKey = p.planKey AND pf.featureKey = :featureKey "
             + "AND p.enabled = true AND pf.planKey <> 'FREE'")
     boolean existsPurchasablePlanContaining(@Param("featureKey") String featureKey);
+
+    /**
+     * 指定 feature_key を掲載する<b>購入可能な</b>プラン（enabled=true かつ FREE 以外）のキー一覧
+     * （{@code EntitlementGuard} の 402 details {@code plansContaining}・設計書 02 §1.2）。
+     *
+     * <p>{@link #existsPurchasablePlanContaining} と同一述語のリスト版。402 の失敗パスでのみ呼ばれる
+     * （ホットパスではない）ため個別キャッシュは持たない（plan_features/plans は小さなマスタ表）。</p>
+     */
+    @Query("SELECT pf.planKey FROM PlanFeatureEntity pf, PlanEntity p "
+            + "WHERE pf.planKey = p.planKey AND pf.featureKey = :featureKey "
+            + "AND p.enabled = true AND pf.planKey <> 'FREE' ORDER BY pf.planKey")
+    List<String> findPurchasablePlanKeysContaining(@Param("featureKey") String featureKey);
 }

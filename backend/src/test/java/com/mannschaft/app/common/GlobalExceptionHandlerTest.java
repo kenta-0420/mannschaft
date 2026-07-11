@@ -142,6 +142,72 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody().getError().getFieldErrors()).hasSize(1);
             assertThat(response.getBody().getError().getFieldErrors().get(0).getField()).isEqualTo("email");
         }
+
+        // ========================================
+        // F20.1: ENTITLEMENT_003(402) の購入導線 details（設計書 02 §1.2 取りこぼし根治）
+        // ========================================
+
+        @Test
+        @DisplayName("F20.1 契約: ENTITLEMENT_003 は 402 Payment Required＋details が応答に透過される")
+        void handleBusinessException_ENTITLEMENT003_402_detailsPassthrough() {
+            // Given: EntitlementGuard が添付する購入導線 details（featureKey / plansContaining 等）
+            com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails details =
+                    new com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails(
+                            "ads.hide", true, 300, List.of("BASIC", "FULL"));
+            BusinessException ex = BusinessException.withDetails(
+                    com.mannschaft.app.billing.EntitlementErrorCode.FEATURE_NOT_ENTITLED, details);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then: 402 ＋ details がそのまま error.details に載る（FE ペイウォールの発火情報）
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ENTITLEMENT_003");
+            assertThat(response.getBody().getError().getDetails())
+                    .isInstanceOf(com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails.class);
+            com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails actual =
+                    (com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails)
+                            response.getBody().getError().getDetails();
+            assertThat(actual.featureKey()).isEqualTo("ads.hide");
+            assertThat(actual.plansContaining()).containsExactly("BASIC", "FULL");
+        }
+
+        @Test
+        @DisplayName("F20.1 契約: ENTITLEMENT_004(403) など details なしの BusinessException は details=null（後方互換）")
+        void handleBusinessException_ENTITLEMENT004_403_noDetails() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.billing.EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ENTITLEMENT_004");
+            assertThat(response.getBody().getError().getDetails()).isNull();
+        }
+
+        @Test
+        @DisplayName("F20.1 後方互換: details=null は JSON から完全に省略される（既存エラー応答の JSON 不変）")
+        void errorResponse_detailsNull_omittedFromJson() throws Exception {
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                    new com.fasterxml.jackson.databind.ObjectMapper();
+
+            // details なし（既存コード全経路）: JSON に details キー自体が現れない
+            ErrorResponse legacy = ErrorResponse.of(CommonErrorCode.COMMON_001);
+            String legacyJson = mapper.writeValueAsString(legacy);
+            assertThat(legacyJson).doesNotContain("\"details\"");
+            assertThat(legacyJson).contains("\"code\":\"COMMON_001\"");
+
+            // details あり（ENTITLEMENT_003 のみ）: details が JSON に含まれる
+            ErrorResponse with402 = new ErrorResponse(new ErrorResponse.ErrorDetail(
+                    "ENTITLEMENT_003", "msg", List.of(),
+                    new com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails(
+                            "ads.hide", false, null, List.of("FULL"))));
+            String withJson = mapper.writeValueAsString(with402);
+            assertThat(withJson).contains("\"details\"");
+            assertThat(withJson).contains("\"featureKey\":\"ads.hide\"");
+            assertThat(withJson).contains("\"plansContaining\":[\"FULL\"]");
+        }
     }
 
     // ========================================

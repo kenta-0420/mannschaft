@@ -1,8 +1,11 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * F20.1: BE ゲート（設計書 02 §1.2・03 §4）。
@@ -33,31 +36,44 @@ public class EntitlementGuard {
     /**
      * 権利を要求する。未充足なら 402（購入可能）/403（購入不可）の {@link BusinessException} を投げる。
      *
+     * <p><b>402 の details（設計書 02 §1.2・取りこぼし根治）:</b> 402 には購入導線情報
+     * {@link EntitlementNotEntitledDetails}（featureKey / addonAvailable / addonPriceJpy /
+     * plansContaining）を {@code BusinessException.withDetails} で添付する。FE ペイウォールモーダルは
+     * これで「どの機能で 402 になったか」を特定し、ベータ中は「無料で有効にする」ワンクリック CTA を
+     * 描画する（04 §2 U-2/L-1）。<b>403 には添付しない</b>（購入不可の場合は導線を出さない・AC-18）。</p>
+     *
+     * <p><b>キャッシュ配慮:</b> details の解決（feature_catalog 1 行＋plan_features/plans の掲載一覧）は
+     * <b>未充足の失敗パスでのみ</b>実行される（充足時は isEntitled のキャッシュ済み判定のみで即 return）。
+     * 対象は行数の少ないマスタ表であり、402 はユーザー操作起点の低頻度イベントのため個別キャッシュは
+     * 持たない（{@code BillingEntitlementQueryService#check} と同方針）。</p>
+     *
      * @param scopeKind  USER / TEAM / ORG
      * @param scopeId    users.id / teams.id / organizations.id
      * @param featureKey feature_catalog.feature_key
-     * @throws BusinessException {@code FEATURE_NOT_ENTITLED}（402）または {@code FEATURE_FORBIDDEN_FOR_SCOPE}（403）
+     * @throws BusinessException {@code FEATURE_NOT_ENTITLED}（402・details 付き）または
+     *                           {@code FEATURE_FORBIDDEN_FOR_SCOPE}（403・details なし）
      */
     public void require(EntitlementScopeKind scopeKind, Long scopeId, String featureKey) {
         if (entitlementQueryService.isEntitled(scopeKind, scopeId, featureKey)) {
             return;
         }
-        if (isPurchasable(featureKey)) {
-            throw new BusinessException(EntitlementErrorCode.FEATURE_NOT_ENTITLED);      // → 402（AC-09）
-        }
-        throw new BusinessException(EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE);   // → 403（AC-09/18）
-    }
-
-    /**
-     * 機能が購入可能か（enabled かつ [addon_available または enabled な非 FREE プランに掲載]）。
-     * 不明/無効キーは購入不可＝403 側（fail-safe・AC-18）。
-     */
-    private boolean isPurchasable(String featureKey) {
+        // 不明/無効キーは購入不可＝403 側（fail-safe・AC-18）。
         FeatureCatalogEntity feature = featureCatalogRepository.findById(featureKey).orElse(null);
         if (feature == null || !Boolean.TRUE.equals(feature.getEnabled())) {
-            return false;
+            throw new BusinessException(EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE);  // → 403（AC-09/18）
         }
-        return Boolean.TRUE.equals(feature.getAddonAvailable())
-                || planFeatureRepository.existsPurchasablePlanContaining(featureKey);
+        boolean addonAvailable = Boolean.TRUE.equals(feature.getAddonAvailable());
+        List<String> plansContaining = planFeatureRepository.findPurchasablePlanKeysContaining(featureKey);
+        if (addonAvailable || !plansContaining.isEmpty()) {
+            // → 402（AC-09）: 購入導線 details を添付（addonPriceJpy は addon 可のときのみ・check() と同方針）。
+            throw BusinessException.withDetails(
+                    EntitlementErrorCode.FEATURE_NOT_ENTITLED,
+                    new EntitlementNotEntitledDetails(
+                            featureKey,
+                            addonAvailable,
+                            addonAvailable ? feature.getAddonPriceJpy() : null,
+                            plansContaining));
+        }
+        throw new BusinessException(EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE);      // → 403（AC-09/18）
     }
 }

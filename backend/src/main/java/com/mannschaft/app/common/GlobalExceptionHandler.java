@@ -837,14 +837,11 @@ public class GlobalExceptionHandler {
             recordBackendException(ex, request, ErrorReportSeverity.MEDIUM);
         }
 
-        ErrorResponse body;
-        if (ex.getFieldErrors().isEmpty()) {
-            body = new ErrorResponse(
-                    new ErrorResponse.ErrorDetail(errorCode.getCode(), message, List.of()));
-        } else {
-            body = new ErrorResponse(
-                    new ErrorResponse.ErrorDetail(errorCode.getCode(), message, ex.getFieldErrors()));
-        }
+        // F20.1: details は completely additive（null なら @JsonInclude(NON_NULL) で JSON から省略され
+        // 従来応答と不変）。ENTITLEMENT_003(402) の購入導線等を透過する（設計書 02 §1.2）。
+        ErrorResponse body = new ErrorResponse(
+                new ErrorResponse.ErrorDetail(
+                        errorCode.getCode(), message, ex.getFieldErrors(), ex.getDetails()));
         return ResponseEntity
                 .status(status)
                 .body(body);

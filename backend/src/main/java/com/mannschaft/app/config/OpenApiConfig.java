@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.reflection.RecallDirection;
+import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
@@ -70,6 +71,35 @@ public class OpenApiConfig {
                         .collect(Collectors.toList()));
                 openApi.getComponents().addSchemas("RecallDirection", schema);
             }
+        };
+    }
+
+    /**
+     * F20.1: {@code ENTITLEMENT_003}(402) の購入導線 details
+     * （{@link com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails}）を
+     * named component として登録する。
+     *
+     * <p>この details はエラー応答 {@code ErrorResponse.error.details}（型は自由形式 Object）に
+     * 載って返るため、springdoc が API シグネチャから到達できず、放置すると components/schemas に
+     * 出力されない。FE の {@code generate:types} で具象型
+     * （{@code components['schemas']['EntitlementNotEntitledDetails']}）を使えるようにするため、
+     * {@link ModelConverters} でクラスからスキーマを導出して手動登録する
+     * （{@link #recallDirectionSchemaCustomizer()} と同じ「到達不能スキーマの手動登録」前例）。</p>
+     */
+    @Bean
+    public OpenApiCustomizer entitlementNotEntitledDetailsSchemaCustomizer() {
+        return openApi -> {
+            if (openApi.getComponents() == null) {
+                openApi.components(new Components());
+            }
+            Map<String, Schema> schemas = ModelConverters.getInstance()
+                    .readAll(com.mannschaft.app.billing.api.dto.EntitlementNotEntitledDetails.class);
+            schemas.forEach((name, schema) -> {
+                if (openApi.getComponents().getSchemas() == null
+                        || !openApi.getComponents().getSchemas().containsKey(name)) {
+                    openApi.getComponents().addSchemas(name, schema);
+                }
+            });
         };
     }
 
