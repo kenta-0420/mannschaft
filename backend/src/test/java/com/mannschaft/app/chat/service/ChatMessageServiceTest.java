@@ -236,6 +236,28 @@ class ChatMessageServiceTest {
             verify(chatAttachmentService).recordAttachmentUpload(
                     eq(channel), any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class), eq(SENDER_ID));
         }
+
+        @Test
+        @DisplayName("【未読カウント根治・red先行】メッセージ送信で送信者以外の全メンバーの未読カウントが一括インクリメントされる")
+        void 送信者以外のメンバーの未読カウントが一括インクリメントされる() {
+            // given
+            SendMessageRequest req = new SendMessageRequest("未読カウント検証", null, null, null);
+            ChatChannelEntity channel = createChannel();
+            ChatMessageEntity saved = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: dead code 化していた incrementUnreadCount() の代わりに、
+            // 送信者以外の全メンバーの unread_count を一括 UPDATE するリポジトリメソッドが呼ばれること
+            // （N+1 回避のためメンバー数に依存しない1クエリで実装する設計）
+            verify(memberRepository).incrementUnreadCountForOthers(CHANNEL_ID, SENDER_ID);
+        }
     }
 
     // ========================================
