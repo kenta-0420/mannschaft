@@ -1,10 +1,14 @@
 package com.mannschaft.app.resident;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.dto.CreateInquiryRequest;
 import com.mannschaft.app.resident.dto.InquiryResponse;
+import com.mannschaft.app.resident.entity.DwellingUnitEntity;
+import com.mannschaft.app.resident.entity.PropertyListingEntity;
 import com.mannschaft.app.resident.entity.PropertyListingInquiryEntity;
 import com.mannschaft.app.resident.mapper.ResidentMapper;
+import com.mannschaft.app.resident.repository.DwellingUnitRepository;
 import com.mannschaft.app.resident.repository.PropertyListingInquiryRepository;
 import com.mannschaft.app.resident.repository.PropertyListingRepository;
 import com.mannschaft.app.resident.service.PropertyListingService;
@@ -32,9 +36,20 @@ class PropertyListingServiceTest {
 
     @Mock private PropertyListingRepository listingRepository;
     @Mock private PropertyListingInquiryRepository inquiryRepository;
+    @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private ResidentMapper residentMapper;
+    @Mock private AccessControlService accessControlService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private PropertyListingService service;
+
+    private static PropertyListingEntity listingOf(Long dwellingUnitId) {
+        return PropertyListingEntity.builder()
+                .dwellingUnitId(dwellingUnitId).listedBy(100L).listingType("SALE").title("テスト物件").build();
+    }
+
+    private static DwellingUnitEntity unit() {
+        return DwellingUnitEntity.builder().scopeType("TEAM").teamId(1L).unitNumber("101").build();
+    }
 
     @Nested
     @DisplayName("getByTeam")
@@ -47,7 +62,7 @@ class PropertyListingServiceTest {
             given(listingRepository.findByIdAndTeamId(1L, 1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getByTeam(1L, 1L))
+            assertThatThrownBy(() -> service.getByTeam(100L, 1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_005"));
@@ -62,6 +77,8 @@ class PropertyListingServiceTest {
         @DisplayName("正常系: 問い合わせが作成される")
         void 作成_正常_保存() {
             // Given
+            given(listingRepository.findById(1L)).willReturn(Optional.of(listingOf(1L)));
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit()));
             given(inquiryRepository.existsByListingIdAndUserId(1L, 100L)).willReturn(false);
             given(inquiryRepository.save(any(PropertyListingInquiryEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -81,6 +98,8 @@ class PropertyListingServiceTest {
         @DisplayName("異常系: 問い合わせ重複でRESIDENT_006例外")
         void 作成_重複_例外() {
             // Given
+            given(listingRepository.findById(1L)).willReturn(Optional.of(listingOf(1L)));
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit()));
             given(inquiryRepository.existsByListingIdAndUserId(1L, 100L)).willReturn(true);
 
             // When / Then

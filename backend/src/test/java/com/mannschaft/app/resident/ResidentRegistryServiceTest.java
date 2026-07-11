@@ -1,5 +1,6 @@
 package com.mannschaft.app.resident;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.resident.dto.CreateResidentRequest;
@@ -35,6 +36,7 @@ class ResidentRegistryServiceTest {
     @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private ResidentMapper residentMapper;
     @Mock private EncryptionService encryptionService;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ResidentRegistryService service;
 
     @Nested
@@ -60,7 +62,7 @@ class ResidentRegistryServiceTest {
                     LocalDate.now(), null, false, null);
 
             // When
-            ResidentResponse result = service.create(1L, req);
+            ResidentResponse result = service.create(100L, 1L, req);
 
             // Then
             assertThat(result.getLastName()).isEqualTo("田中");
@@ -74,7 +76,7 @@ class ResidentRegistryServiceTest {
             given(dwellingUnitRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.create(1L, new CreateResidentRequest(
+            assertThatThrownBy(() -> service.create(100L, 1L, new CreateResidentRequest(
                     null, "OWNER", "田中", "太郎", null, null, null, null, null,
                     LocalDate.now(), null, false, null)))
                     .isInstanceOf(BusinessException.class)
@@ -100,6 +102,9 @@ class ResidentRegistryServiceTest {
                 field.set(entity, true);
             } catch (Exception ignored) {}
             given(residentRepository.findById(1L)).willReturn(Optional.of(entity));
+            DwellingUnitEntity unit = DwellingUnitEntity.builder()
+                    .scopeType("TEAM").teamId(1L).unitNumber("101").build();
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit));
 
             // When / Then
             assertThatThrownBy(() -> service.verify(1L, 100L))
@@ -125,9 +130,12 @@ class ResidentRegistryServiceTest {
                 field.set(entity, LocalDate.now());
             } catch (Exception ignored) {}
             given(residentRepository.findById(1L)).willReturn(Optional.of(entity));
+            DwellingUnitEntity unit = DwellingUnitEntity.builder()
+                    .scopeType("TEAM").teamId(1L).unitNumber("101").build();
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit));
 
             // When / Then
-            assertThatThrownBy(() -> service.moveOut(1L, null))
+            assertThatThrownBy(() -> service.moveOut(100L, 1L, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_008"));
