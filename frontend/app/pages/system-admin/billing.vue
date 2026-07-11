@@ -143,7 +143,8 @@ function openEditBands(plan: BillingPlanAdminResponse) {
 
 function addBandRow() {
   const nextNo = bandsForm.value.length > 0 ? Math.max(...bandsForm.value.map(b => b.bandNo ?? 0)) + 1 : 1
-  bandsForm.value.push({ scopeKind: 'TEAM', bandNo: nextNo, minMembers: 1, maxMembers: null, monthlyPriceJpy: null })
+  // 生成型 BillingPriceBandInput の任意項目は number | undefined（null 非許容）。未入力は undefined で表す。
+  bandsForm.value.push({ scopeKind: 'TEAM', bandNo: nextNo, minMembers: 1, maxMembers: undefined, monthlyPriceJpy: undefined })
 }
 
 function removeBandRow(index: number) {
