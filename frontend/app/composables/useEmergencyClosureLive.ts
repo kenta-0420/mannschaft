@@ -231,8 +231,10 @@ export function useEmergencyClosureLive(ctx: EmergencyClosureLiveContext) {
     if (ctx.teamId.value === null) return
 
     const auth = useAuthStore()
+    // BE の /ws は SockJS 登録のみのため、生 WebSocket は /ws/websocket でしか接続できない
+    // （bare /ws は 400。共通ヘルパー useWsUrl 経由で apiBase 込みの URL を解決する）。
     const stomp = new StompClient({
-      webSocketFactory: () => new WebSocket('/ws'),
+      webSocketFactory: () => new WebSocket(useWsUrl()),
       connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
       beforeConnect: () => {
         // 再接続時に最新トークンへ差し替える（リフレッシュ対応・match と同作法）。
