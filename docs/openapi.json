@@ -147199,6 +147199,10 @@
             "description": "契約時バンド番号スナップショット",
             "example": 2
           },
+          "checkoutUrl": {
+            "type": "string",
+            "description": "決済フロー時の Stripe Checkout URL（無償フロー・解約時は null）"
+          },
           "contractId": {
             "type": "string",
             "description": "契約 ID（UUID）"
@@ -147212,6 +147216,11 @@
             "type": "string",
             "format": "date-time",
             "description": "契約日時（ISO-8601）"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "現サイクル終了（有償解約の利用可能期限・ISO-8601）"
           },
           "featureKey": {
             "type": "string",
