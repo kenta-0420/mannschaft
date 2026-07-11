@@ -817,7 +817,15 @@ public class GlobalExceptionHandler {
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
             Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
+            // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PERF_001", HttpStatus.NOT_FOUND),                 // METRIC_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_002", HttpStatus.NOT_FOUND),                 // RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_011", HttpStatus.NOT_FOUND),                 // SCHEDULE_NOT_FOUND（scheduleId スコープ整合 → 404）
+            Map.entry("PERF_013", HttpStatus.NOT_FOUND),                 // ACTIVITY_NOT_FOUND
+            Map.entry("PERF_014", HttpStatus.NOT_FOUND)                  // TEAM_NOT_FOUND
     );
 
     /**

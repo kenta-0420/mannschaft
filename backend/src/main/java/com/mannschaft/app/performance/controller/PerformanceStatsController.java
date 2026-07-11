@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * パフォーマンス統計コントローラー。チーム統計・メンバー統計・スケジュール/活動記録紐付き一覧APIを提供する。
@@ -38,7 +39,8 @@ public class PerformanceStatsController {
             @RequestParam(required = false) Long metricId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
-        TeamStatsResponse response = statsService.getTeamStats(teamId, metricId, dateFrom, dateTo);
+        TeamStatsResponse response = statsService.getTeamStats(
+                teamId, SecurityUtils.getCurrentUserId(), metricId, dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -53,7 +55,8 @@ public class PerformanceStatsController {
             @PathVariable Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
-        MemberPerformanceResponse response = statsService.getMemberPerformance(teamId, userId, dateFrom, dateTo);
+        MemberPerformanceResponse response = statsService.getMemberPerformance(
+                teamId, userId, SecurityUtils.getCurrentUserId(), dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -66,7 +69,8 @@ public class PerformanceStatsController {
     public ResponseEntity<ApiResponse<SchedulePerformanceResponse>> getSchedulePerformance(
             @PathVariable Long teamId,
             @PathVariable Long scheduleId) {
-        SchedulePerformanceResponse response = statsService.getSchedulePerformance(teamId, scheduleId);
+        SchedulePerformanceResponse response = statsService.getSchedulePerformance(
+                teamId, scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -79,7 +83,8 @@ public class PerformanceStatsController {
     public ResponseEntity<ApiResponse<SchedulePerformanceResponse>> getActivityPerformance(
             @PathVariable Long teamId,
             @PathVariable Long activityId) {
-        SchedulePerformanceResponse response = statsService.getActivityPerformance(teamId, activityId);
+        SchedulePerformanceResponse response = statsService.getActivityPerformance(
+                teamId, activityId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
