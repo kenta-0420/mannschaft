@@ -812,7 +812,12 @@ public class GlobalExceptionHandler {
             // F20.1 実決済（D-1〜D-4・2026-07-10 御裁可）追補
             Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
             Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
-            Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT)            // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            // 認可根治戦役 Wave 2 トランシェ2A #3: F09.15 succession（法的手続き・エスカレーション）は
+            // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
