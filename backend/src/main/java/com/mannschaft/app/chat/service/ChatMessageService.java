@@ -245,7 +245,8 @@ public class ChatMessageService {
                         channelId,
                         channel.getName() != null ? channel.getName() : "問い合わせ",
                         senderId,
-                        senderDisplayName
+                        senderDisplayName,
+                        saved.getId()
                 ));
             }
         }
