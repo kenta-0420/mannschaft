@@ -296,42 +296,7 @@
     "product": {
       "title": "Producto Mannschaft",
       "desc": "Una plataforma de gestión todo en uno con todo lo que tu equipo u organización necesita",
-      "features_heading": "Funciones principales",
-      "pricing_heading": "Planes de precios",
-      "pricing": {
-        "free": {
-          "name": "Gratis",
-          "price": "€0",
-          "desc": "Para individuos y equipos pequeños",
-          "features": [
-            "Todas las funciones básicas",
-            "Hasta 10 miembros",
-            "1GB de almacenamiento"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/mes",
-          "desc": "Para equipos en crecimiento",
-          "features": [
-            "Todas las funciones gratuitas",
-            "Miembros ilimitados",
-            "50GB de almacenamiento",
-            "Soporte prioritario"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contáctanos",
-          "desc": "Para grandes organizaciones",
-          "features": [
-            "Todas las funciones Pro",
-            "Integraciones personalizadas",
-            "Soporte dedicado",
-            "Garantía SLA"
-          ]
-        }
-      }
+      "features_heading": "Funciones principales"
     },
     "legal": {
       "terms": {

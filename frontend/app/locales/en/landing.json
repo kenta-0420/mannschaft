@@ -296,42 +296,7 @@
     "product": {
       "title": "Mannschaft Product",
       "desc": "An all-in-one management platform with everything your team or organization needs",
-      "features_heading": "Key Features",
-      "pricing_heading": "Pricing Plans",
-      "pricing": {
-        "free": {
-          "name": "Free",
-          "price": "$0",
-          "desc": "For individuals & small teams",
-          "features": [
-            "All basic features",
-            "Up to 10 members",
-            "1GB storage"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "$9.80/mo",
-          "desc": "For growing teams",
-          "features": [
-            "All Free features",
-            "Unlimited members",
-            "50GB storage",
-            "Priority support"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contact us",
-          "desc": "For large organizations",
-          "features": [
-            "All Pro features",
-            "Custom integrations",
-            "Dedicated support",
-            "SLA guarantee"
-          ]
-        }
-      }
+      "features_heading": "Key Features"
     },
     "legal": {
       "terms": {
