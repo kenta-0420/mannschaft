@@ -533,8 +533,8 @@ onMounted(async () => {
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" text @click="planDialogVisible = false" />
-        <Button :label="planEditingKey ? '更新する' : '作成する'" :loading="planSubmitting" :disabled="!planForm.planKey.trim()" @click="submitPlan" />
+        <Button :label="t('button.cancel')" severity="secondary" text @click="planDialogVisible = false" />
+        <Button :label="planEditingKey ? t('button.update') : t('button.create')" :loading="planSubmitting" :disabled="!planForm.planKey.trim()" @click="submitPlan" />
       </template>
     </Dialog>
 
@@ -568,8 +568,8 @@ onMounted(async () => {
         <Button :label="t('billing.admin.priceBandsTab.addBand')" icon="pi pi-plus" text @click="addBandRow" />
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" text @click="bandsDialogVisible = false" />
-        <Button label="保存する" :loading="bandsSubmitting" @click="submitBands" />
+        <Button :label="t('button.cancel')" severity="secondary" text @click="bandsDialogVisible = false" />
+        <Button :label="t('button.save')" :loading="bandsSubmitting" @click="submitBands" />
       </template>
     </Dialog>
 
@@ -586,8 +586,8 @@ onMounted(async () => {
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" text @click="planFeaturesDialogVisible = false" />
-        <Button label="保存する" :loading="planFeaturesSubmitting" @click="submitPlanFeatures" />
+        <Button :label="t('button.cancel')" severity="secondary" text @click="planFeaturesDialogVisible = false" />
+        <Button :label="t('button.save')" :loading="planFeaturesSubmitting" @click="submitPlanFeatures" />
       </template>
     </Dialog>
 
@@ -640,9 +640,9 @@ onMounted(async () => {
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" text @click="featureDialogVisible = false" />
+        <Button :label="t('button.cancel')" severity="secondary" text @click="featureDialogVisible = false" />
         <Button
-          :label="featureEditingKey ? '更新する' : '作成する'"
+          :label="featureEditingKey ? t('button.update') : t('button.create')"
           :loading="featureSubmitting"
           :disabled="!featureForm.featureKey.trim() || featureFreeForNonprofitBlocked"
           @click="submitFeature"
