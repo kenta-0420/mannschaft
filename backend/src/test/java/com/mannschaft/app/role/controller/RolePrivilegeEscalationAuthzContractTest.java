@@ -47,15 +47,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <h2>攻撃者と被害者スコープは別 ID（userID==teamID すり抜けの排除）</h2>
  * <ul>
- *   <li>ADMIN_A(2001): teamA / orgA の ADMIN（正当な管理者）</li>
- *   <li>MEMBER_A(2002): teamA / orgA の非 ADMIN メンバー（攻撃者）</li>
- *   <li>VICTIM(2003): teamA / orgA の一般メンバー（昇格対象の被害者）</li>
- *   <li>ADMIN_B(2004): teamB の ADMIN（別スコープ管理者 = 越境攻撃者）</li>
+ *   <li>ADMIN_A(920245101): teamA / orgA の ADMIN（正当な管理者）</li>
+ *   <li>MEMBER_A(920245102): teamA / orgA の非 ADMIN メンバー（攻撃者）</li>
+ *   <li>VICTIM(920245103): teamA / orgA の一般メンバー（昇格対象の被害者）</li>
+ *   <li>ADMIN_B(920245104): teamB の ADMIN（別スコープ管理者 = 越境攻撃者）</li>
  * </ul>
  *
  * <p>テスト環境は {@code ddl-auto=create} + {@code flyway.enabled=false} で {@code roles} が
  * seed されないため、{@link MeControllerMembershipIntegrationTest} と同様に固定 6 ロールを
  * 本番 seed（V2.014）と同一 priority で各テスト冒頭に投入する。</p>
+ *
+ * <h2>userId は専用の高位ネームスペースを使う（co-shard 汚染耐性・CI 実障害の根治）</h2>
+ * <p>{@code userId=2001〜2004} は本コードベースの他の統合テスト（{@code AbstractMySqlIntegrationTest}
+ * を継承し共有 Testcontainer を使う十数ファイル）で「汎用テストユーザー/スコープID」として広く
+ * 再利用されており、その一部（例: {@code PageViewAnalyticsServiceTest}）は {@code @Transactional}
+ * を持たず、seed した行がテスト間で永続（コミット）する。本クラス自身は {@code team_id}/{@code org_id}
+ * を毎回 DB の AUTO_INCREMENT で新規発番するため、フルシャード実行では既存行数の累積により
+ * 稀に 2001 番台の値を引き当てることがある。userId も 2001〜2004 のような小さい固定値のままだと、
+ * co-shard の他テストがコミット済みの {@code user_roles}/{@code memberships} 行と
+ * (userId, scopeType, scopeId) が一致し、{@code MembershipService#join} の冪等チェックが
+ * 想定外の {@code MEMBERSHIP_ACTIVE_EXISTS} 等を投げて 500 になりうる
+ * （未マッピングの {@code ErrorCode} は {@code GlobalExceptionHandler#handleBusinessException}
+ * が HTTP 500 にフォールバックする設計のため、本来 409 になるべき衝突が 500 として顕在化する）。
+ * 実際に main 統合直後のフルシャード CI で AC-1-1d が 500 で落ち、他 PR の CI まで巻き込んで
+ * 赤化した（本クラス javadoc 改訂時点の既知障害）。そのため本クラス専用の 9 桁高位 ID
+ * （{@code 920245101}〜{@code 920245104}）を用い、他テストの小さい固定 ID と
+ * 絶対に衝突しない名前空間に隔離する。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -63,10 +80,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationTest {
 
-    private static final Long ADMIN_A = 2001L;
-    private static final Long MEMBER_A = 2002L;
-    private static final Long VICTIM = 2003L;
-    private static final Long ADMIN_B = 2004L;
+    // 束1 CI 実障害根治: co-shard の非トランザクションテスト（例: PageViewAnalyticsServiceTest）が
+    // コミットした user_roles/memberships 行と (userId, scopeType, scopeId) が衝突しないよう、
+    // 本クラス専用の 9 桁高位ネームスペースを使う（詳細はクラス javadoc 参照）。
+    private static final Long ADMIN_A = 920_245_101L;
+    private static final Long MEMBER_A = 920_245_102L;
+    private static final Long VICTIM = 920_245_103L;
+    private static final Long ADMIN_B = 920_245_104L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -209,7 +229,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     // ───────────────────────────── AC-1-1: 権限昇格（changeRole） ─────────────────────────────
 
     @Test
-    @WithMockUser(username = "2002")
+    @WithMockUser(username = "920245102")
     @DisplayName("AC-1-1a: 非ADMINメンバーがチームの他メンバーを昇格 → 403")
     void teamChangeRole_byNonAdminMember_forbidden() throws Exception {
         mockMvc.perform(patch("/api/v1/teams/" + teamASlug + "/members/" + VICTIM + "/role")
@@ -220,7 +240,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @WithMockUser(username = "2002")
+    @WithMockUser(username = "920245102")
     @DisplayName("AC-1-1b: 非ADMINメンバーが組織の他メンバーを昇格 → 403")
     void orgChangeRole_byNonAdminMember_forbidden() throws Exception {
         mockMvc.perform(patch("/api/v1/organizations/" + orgASlug + "/members/" + VICTIM + "/role")
@@ -231,7 +251,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @WithMockUser(username = "2004")
+    @WithMockUser(username = "920245104")
     @DisplayName("AC-1-1c: 別スコープADMINが AdminDashboard で他スコープのロールを変更 → 403")
     void adminDashboardUpdateRole_byCrossScopeAdmin_forbidden() throws Exception {
         mockMvc.perform(patch("/api/v1/admin/dashboard/users/" + VICTIM + "/role")
@@ -243,7 +263,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @WithMockUser(username = "2001")
+    @WithMockUser(username = "920245101")
     @DisplayName("AC-1-1d(正常系): 正当なチームADMINはメンバーを昇格できる → 200")
     void teamChangeRole_byValidAdmin_ok() throws Exception {
         mockMvc.perform(patch("/api/v1/teams/" + teamASlug + "/members/" + VICTIM + "/role")
@@ -255,7 +275,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     // ───────────────────────────── AC-1-2: BOLA（権限グループ） ─────────────────────────────
 
     @Test
-    @WithMockUser(username = "2004")
+    @WithMockUser(username = "920245104")
     @DisplayName("AC-1-2a: 別スコープADMINが他スコープの権限グループを更新 → 403")
     void permissionGroupUpdate_byCrossScopeAdmin_forbidden() throws Exception {
         mockMvc.perform(put("/api/v1/admin/permission-groups/" + pgAId)
@@ -266,7 +286,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @WithMockUser(username = "2004")
+    @WithMockUser(username = "920245104")
     @DisplayName("AC-1-2b: 別スコープADMINが他スコープの権限グループを削除 → 403")
     void permissionGroupDelete_byCrossScopeAdmin_forbidden() throws Exception {
         mockMvc.perform(delete("/api/v1/admin/permission-groups/" + pgAId))
@@ -275,7 +295,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @WithMockUser(username = "2001")
+    @WithMockUser(username = "920245101")
     @DisplayName("AC-1-2c(正常系): 当該スコープADMINは権限グループを削除できる → 204")
     void permissionGroupDelete_byValidScopeAdmin_ok() throws Exception {
         mockMvc.perform(delete("/api/v1/admin/permission-groups/" + pgAId))
@@ -285,7 +305,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     // ───────────────────────────── AC-1-7: ROLE_004 非回帰 ─────────────────────────────
 
     @Test
-    @WithMockUser(username = "2001")
+    @WithMockUser(username = "920245101")
     @DisplayName("AC-1-7: 最後のADMINは自身を除名できない（ROLE_004 維持）")
     void removeLastAdmin_stillBlockedByRole004() throws Exception {
         mockMvc.perform(delete("/api/v1/teams/" + teamASlug + "/members/" + ADMIN_A))
