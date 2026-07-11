@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.entity.TimetablePeriodTemplateEntity;
@@ -26,11 +27,16 @@ public class TimetablePeriodTemplateService {
     private static final int MAX_PERIODS = 15;
 
     private final TimetablePeriodTemplateRepository periodTemplateRepository;
+    private final AccessControlService accessControlService;
+
+    /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（組織）。 */
+    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
 
     /**
      * 組織の時限テンプレート一覧を取得する。
      */
-    public List<TimetablePeriodTemplateEntity> getByOrganization(Long orgId) {
+    public List<TimetablePeriodTemplateEntity> getByOrganization(Long orgId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, orgId, SCOPE_ORGANIZATION);
         return periodTemplateRepository.findByOrganizationIdOrderByPeriodNumber(orgId);
     }
 
@@ -39,7 +45,9 @@ public class TimetablePeriodTemplateService {
      * 既存レコードを全削除し、新しいテンプレートを一括登録する。
      */
     @Transactional
-    public List<TimetablePeriodTemplateEntity> replaceAll(Long orgId, List<PeriodTemplateData> periods) {
+    public List<TimetablePeriodTemplateEntity> replaceAll(Long orgId, List<PeriodTemplateData> periods,
+                                                           Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, orgId, SCOPE_ORGANIZATION);
         validatePeriods(periods);
 
         periodTemplateRepository.deleteByOrganizationId(orgId);

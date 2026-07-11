@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.TimetableErrorCode;
@@ -32,6 +33,21 @@ public class TimetableChangeService {
     private final TimetableChangeRepository changeRepository;
     private final TimetableRepository timetableRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
+
+    /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
+
+    /**
+     * 時間割IDから所属チームを解決する内部ヘルパー。
+     *
+     * <p>★BOLA厳禁★: このコントローラー群の path には teamId が無いため、
+     * 必ず timetableId から entity を fetch し、entity 由来の teamId で認可する。</p>
+     */
+    private TimetableEntity findTimetableOrThrow(Long timetableId) {
+        return timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+    }
 
     /**
      * 臨時変更一覧を取得する。
@@ -40,9 +56,13 @@ public class TimetableChangeService {
      * @param from         検索開始日
      * @param to           検索終了日
      * @param changeType   変更種別（nullの場合はフィルタなし）
+     * @param actorUserId  操作者ユーザーID
      */
     public List<TimetableChangeEntity> getChanges(Long timetableId, LocalDate from, LocalDate to,
-                                                   TimetableChangeType changeType) {
+                                                   TimetableChangeType changeType, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        accessControlService.checkMembership(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
+
         List<TimetableChangeEntity> changes =
                 changeRepository.findByTimetableIdAndTargetDateBetweenOrderByTargetDateAscPeriodNumberAsc(
                         timetableId, from, to);
@@ -59,10 +79,11 @@ public class TimetableChangeService {
      * 臨時変更を作成する。時間割が ACTIVE 状態の場合のみ登録可能。
      */
     @Transactional
-    public TimetableChangeEntity createChange(Long timetableId, CreateChangeData data) {
+    public TimetableChangeEntity createChange(Long timetableId, CreateChangeData data, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        // 変更系は entity 由来 scope で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         // ACTIVE状態チェック（設計書要件: 臨時変更はACTIVEの時間割のみ）
-        TimetableEntity timetable = timetableRepository.findById(timetableId)
-                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
         if (!timetable.isActive()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ACTIVE);
         }
@@ -106,7 +127,11 @@ public class TimetableChangeService {
      */
     @Transactional
     public TimetableChangeEntity updateChange(Long changeId, Long timetableId,
-                                               UpdateChangeData data) {
+                                               UpdateChangeData data, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        // 変更系は entity 由来 scope で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
+
         TimetableChangeEntity entity = changeRepository.findByIdAndTimetableId(changeId, timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.CHANGE_NOT_FOUND));
 
@@ -136,7 +161,11 @@ public class TimetableChangeService {
      * 臨時変更を削除する。
      */
     @Transactional
-    public void deleteChange(Long changeId, Long timetableId) {
+    public void deleteChange(Long changeId, Long timetableId, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        // 変更系は entity 由来 scope で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
+
         TimetableChangeEntity entity = changeRepository.findByIdAndTimetableId(changeId, timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.CHANGE_NOT_FOUND));
         changeRepository.delete(entity);
