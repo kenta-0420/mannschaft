@@ -1905,7 +1905,7 @@ if (!snapshot.isSystemAdmin() && snapshot.isParentOrgInactive(scope)) {
 | Phase | 状態 | 完了/着手日 | 備考 |
 |---|---|---|---|
 | **A** | ✅ 完了 | 2026-05-04 | 基盤クラス・Mapper・MembershipBatchQueryService・ArchUnit 等 |
-| **B** | ✅ 完了 | 2026-05-04〜05 | priority 1 全 6 機能 (BLOG_POST/EVENT/ACTIVITY_RESULT/SCHEDULE/TIMELINE_POST/CHAT_MESSAGE) |
+| **B** | ✅ 完了 | 2026-05-04〜05 / CHAT_MESSAGE は 2026-07-11 | priority 1 機能 (BLOG_POST/EVENT/ACTIVITY_RESULT/SCHEDULE)。**⚠️ 是正**: CHAT_MESSAGE / TIMELINE_POST は当時「完了」と記載されたが実際は Resolver 未実装だった。**CHAT_MESSAGE は実機 E2E で「問い合わせ通知が全 deny」障害を捕捉し本 PR で実装（§12.3.1 最小実装＝SCOPE_AFFILIATED 固定）**。**TIMELINE_POST は依然未実装**（`NotificationSourceTypeMapper` に登録済のため通知経路では fail-closed になる地雷。ただし現状 `createNotification` の直接呼び出し元に TIMELINE_POST を渡す箇所は無い） |
 | **C** | 🔵 着手中 | 2026-05-05〜 | priority 2 全 7 機能 (§12.4) |
 | **D** | 🟡 未着手 | — | priority 3 機能 (PHOTO_ALBUM/FILE_ATTACHMENT/TEAM/ORGANIZATION) |
 | **E** | 🟡 未着手 | — | 重複コード削除・既存 Service の Resolver 経由化 |

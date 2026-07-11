@@ -1,12 +1,14 @@
 package com.mannschaft.app.chat.repository;
 
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.visibility.ChatMessageVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -159,4 +161,38 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     long countByChannelIdAndKeyword(
             @Param("channelId") Long channelId,
             @Param("q") String q);
+
+    // ====================================================================
+    // F00 Phase B（積み残し根治） — CHAT_MESSAGE 可視性判定用 Projection
+    // ====================================================================
+
+    /**
+     * {@link ChatMessageVisibilityResolver} 用の可視性 Projection を 1 SQL で取得する。
+     *
+     * <p>メッセージ自身は scope を持たないため、所属チャンネル（{@code chat_channels}）を
+     * 結合して scope（{@code "TEAM"}/{@code "ORGANIZATION"}）と scopeId を導出する。
+     * {@link ChatMessageEntity} / {@code ChatChannelEntity} 双方の
+     * {@code @SQLRestriction("deleted_at IS NULL")} により、論理削除済のメッセージ・チャンネルは
+     * 射影段階で自動除外される（取得不可 → fail-closed）。DM・村ロビー等 team/org を持たない
+     * チャンネルは scopeType/scopeId が null となり、基底の SCOPE_AFFILIATED 判定で不可視になる。</p>
+     *
+     * <p>{@code AbstractContentVisibilityResolver#loadProjections} からのみ呼ばれ、
+     * 戻り値の順序は保証しない。</p>
+     *
+     * @param ids 取得対象 chat_messages.id 集合（空の場合は空 List を返す）
+     * @return 実存するメッセージの可視性 Projection リスト
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.chat.visibility.ChatMessageVisibilityProjection(
+                m.id,
+                CASE WHEN c.teamId IS NOT NULL THEN 'TEAM'
+                     WHEN c.organizationId IS NOT NULL THEN 'ORGANIZATION'
+                     ELSE NULL END,
+                COALESCE(c.teamId, c.organizationId),
+                m.senderId)
+            FROM ChatMessageEntity m, ChatChannelEntity c
+            WHERE m.id IN :ids AND c.id = m.channelId
+            """)
+    List<ChatMessageVisibilityProjection> findVisibilityProjectionsByIdIn(
+            @Param("ids") Collection<Long> ids);
 }
