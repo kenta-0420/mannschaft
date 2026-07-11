@@ -1,6 +1,7 @@
 package com.mannschaft.app.signage.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.signage.service.SignageSlotService;
 import com.mannschaft.app.signage.service.SignageSlotService.AddSignageSlotRequest;
 import com.mannschaft.app.signage.service.SignageSlotService.SignageSlotResponse;
@@ -39,7 +40,8 @@ public class SignageSlotController {
     public ResponseEntity<ApiResponse<SignageSlotResponse>> addSlot(
             @PathVariable Long screenId,
             @RequestBody AddSignageSlotRequest request) {
-        SignageSlotResponse response = slotService.addSlot(screenId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        SignageSlotResponse response = slotService.addSlot(screenId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -63,7 +65,8 @@ public class SignageSlotController {
             @PathVariable Long screenId,
             @PathVariable Long id,
             @RequestBody UpdateSignageSlotRequest request) {
-        return ApiResponse.of(slotService.updateSlot(id, request));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(slotService.updateSlot(id, userId, request));
     }
 
     /**
@@ -75,7 +78,8 @@ public class SignageSlotController {
     public ResponseEntity<Void> removeSlot(
             @PathVariable Long screenId,
             @PathVariable Long id) {
-        slotService.removeSlot(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        slotService.removeSlot(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -89,7 +93,8 @@ public class SignageSlotController {
     public ApiResponse<Void> reorderSlots(
             @PathVariable Long screenId,
             @RequestBody List<Long> orderedIds) {
-        slotService.reorderSlots(screenId, orderedIds);
+        Long userId = SecurityUtils.getCurrentUserId();
+        slotService.reorderSlots(screenId, userId, orderedIds);
         return ApiResponse.of(null);
     }
 }
