@@ -32,6 +32,13 @@ export const useErrorHandler = () => {
     // バックエンドへ静かに送信（4xx含む全エラーを記録）
     errorReport.captureQuiet(error, { context })
 
+    // F20.1: ENTITLEMENT_003（402）は useApi の共通ハンドラが既にグローバルペイウォール
+    // モーダルを開いている（usePaywallStore）。ここで追加のトーストを出すと二重表示になるため
+    // 明示的にスキップする（設計書 04 §2）。
+    if (apiError?.data?.error?.code === 'ENTITLEMENT_003') {
+      return
+    }
+
     if (apiError?.data?.error?.code) {
       const message = resolveMessage(apiError.data.error.code, apiError.data.error.message)
       notification.error(t('dialog.error'), message)

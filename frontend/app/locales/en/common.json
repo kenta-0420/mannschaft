@@ -1557,7 +1557,8 @@
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
       "gdprPurge": "GDPR Purge Status",
-      "feedbackInbox": "Feedback Inbox (Global)"
+      "feedbackInbox": "Feedback Inbox (Global)",
+      "billing": "Billing master data"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",

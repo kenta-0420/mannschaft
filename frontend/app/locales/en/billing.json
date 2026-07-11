@@ -1,0 +1,229 @@
+{
+  "billing": {
+    "plans": {
+      "title": "Pricing plans",
+      "subtitle": "Choose only the features you need. Everything is free during the beta period.",
+      "free": { "name": "Free", "description": "Use the core features for free" },
+      "basic": { "name": "Basic", "description": "A plan bundling the most commonly used features" },
+      "full": { "name": "Full", "description": "Access every feature" },
+      "currentPlan": "Current plan",
+      "priceUndecided": "Price to be decided after the beta ends",
+      "betaFree": "Free to try during the beta period",
+      "perMonth": "/month",
+      "memberBand": "Pricing by member count",
+      "memberBandToggle": "View pricing by member count",
+      "memberBandUndecided": "Price undecided",
+      "memberBandUnlimited": "or more",
+      "memberBandRange": "{min}–{max} members",
+      "selectCta": "Choose this plan",
+      "currentCta": "Currently active",
+      "comingSoon": "Coming soon",
+      "comingSoonDesc": "Details are being finalized. We'll announce them once ready.",
+      "featuresHeading": "Included features",
+      "changeConfirmTitle": "Change plan?",
+      "changeConfirmGained": "Features you'll gain",
+      "changeConfirmLost": "Features you'll lose",
+      "changeConfirmNone": "No changes",
+      "changeConfirmCta": "Confirm change",
+      "changeConfirmCancel": "Cancel",
+      "checkoutRedirecting": "Redirecting to checkout…",
+      "freeInstantTitle": "This plan is free and available instantly",
+      "contractSuccessTitle": "Plan updated",
+      "contractSuccessBody": "The {plan} plan is now active",
+      "checkoutCancelledTitle": "Checkout cancelled",
+      "checkoutCancelledBody": "No payment was made. You can resume anytime",
+      "checkoutReflectingTitle": "Confirming your payment…",
+      "checkoutReflectingBody": "It may take a few seconds for the payment to be reflected",
+      "loadError": "Failed to load plan information",
+      "contractError": "Failed to process the contract",
+      "alreadyActiveError": "This plan is already active",
+      "scopeBandLabel": "{scope} member count",
+      "scopeTeam": "team",
+      "scopeOrg": "organization",
+      "help": {
+        "title": "Guide to plans and pricing",
+        "plan": {
+          "title": "What is a plan?",
+          "body": "A plan is a bundle of available features. There are three plans — Free, Basic, and Full — and higher plans unlock more features. Contracting a plan for a team or organization makes the features available to everyone in that team or organization."
+        },
+        "addon": {
+          "title": "What is an add-on?",
+          "body": "Add-ons let you add a single feature individually instead of an entire plan. If you only need one feature, an add-on can be more economical than a full plan. Availability of add-ons varies by feature."
+        },
+        "beta": {
+          "title": "During the beta period",
+          "body": "During the beta period, any plan or add-on with an undecided price is free to use. Official pricing will be decided after the beta ends and will be announced in advance. Free contracts made during the beta will never automatically switch to a paid contract."
+        },
+        "betaGrant": {
+          "title": "Difference from beta perks",
+          "body": "A \"beta perk\" granted individually by the operator is a separate mechanism from the plan/add-on contracts here. Beta perks are granted by the operator, not something you contract yourself. You can check the expiration of a perk on the billing management page."
+        }
+      }
+    },
+    "features": {
+      "template_premium_modules": { "name": "Premium modules", "description": "Enable paid modules" },
+      "reservation_notification_recipients_extended": { "name": "Extended notification recipients", "description": "Register 4 or more recipients for reservation notification emails" },
+      "ads_hide": { "name": "Hide ads", "description": "Hide ads throughout the app" },
+      "monetization_paywall": { "name": "Paywall", "description": "Open paid content" },
+      "monetization_membership_fee": { "name": "Membership fees", "description": "Collect membership fees from members" }
+    },
+    "paywall": {
+      "title": "This feature requires a paid plan",
+      "description": "This isn't available on your current plan. See the plan list for details.",
+      "betaTitle": "Free to try during the beta period",
+      "betaDescription": "This feature can be enabled for free during the beta period. Official pricing will be decided after the beta ends.",
+      "betaCta": "Enable for free",
+      "addonCta": "Add just this feature",
+      "planCta": "See all plans",
+      "notAvailable": "This feature isn't currently available",
+      "activating": "Activating…",
+      "activateSuccess": "Feature enabled",
+      "activateError": "Failed to enable. Please try again later",
+      "close": "Close"
+    },
+    "manage": {
+      "title": "Billing & plan management",
+      "personalTitle": "Billing & plan management",
+      "teamTitle": "Team billing & plan management",
+      "orgTitle": "Organization billing & plan management",
+      "activeContract": "Active plan",
+      "addons": "Add-ons",
+      "entitledFeatures": "Available features",
+      "noContract": "No active plan (Free)",
+      "noAddons": "No active add-ons",
+      "contractedAt": "Contracted on {date}",
+      "cancelCta": "Cancel",
+      "cancelConfirmTitle": "Cancel this contract?",
+      "cancelConfirmBodyFree": "Cancelling will immediately disable the affected features. Are you sure?",
+      "cancelConfirmBodyPaid": "You'll keep access until the end of your current billing period, after which the affected features will be disabled. Are you sure?",
+      "cancelConfirmFeaturesLabel": "Features you'll lose",
+      "cancelConfirmCta": "Cancel contract",
+      "cancelConfirmCancel": "Keep it",
+      "cancelSuccessFree": "Cancelled. The affected features are now disabled",
+      "cancelSuccessPaid": "Cancellation received. You can keep using it until {date}",
+      "cancelError": "Failed to cancel",
+      "sourceBadge": { "plan": "Plan", "addon": "Add-on", "betaGrant": "Beta perk", "free": "Free", "nonprofitFree": "Nonprofit free tier" },
+      "validUntil": "Valid until {date}",
+      "noExpiry": "Free for the duration of the service",
+      "periodEndNotice": "Available until {date}",
+      "adminOnlyNotice": "Only admins can change or cancel plans",
+      "loadError": "Failed to load billing information",
+      "viewPlansCta": "See all plans",
+      "help": {
+        "title": "Guide to billing & plan management",
+        "plan": {
+          "title": "What is a plan?",
+          "body": "See your current plan and the features it unlocks. To change plans, use \"See all plans\" to pick a new one."
+        },
+        "addon": {
+          "title": "What is an add-on?",
+          "body": "If you added a single feature individually rather than a whole plan, it appears here. You can cancel an add-on individually when it's no longer needed."
+        },
+        "beta": {
+          "title": "During the beta period",
+          "body": "Contracts labeled \"Free during beta\" are free until official pricing is decided. We'll announce it in advance when pricing is set."
+        },
+        "betaGrant": {
+          "title": "Difference from beta perks",
+          "body": "Features labeled \"Beta perk\" were granted by the operator. They're separate from plans/add-ons you contracted yourself and may have their own expiration date."
+        }
+      }
+    },
+    "admin": {
+      "title": "Billing master data management",
+      "tabs": { "plans": "Plans", "features": "Feature catalog", "priceBands": "Member bands", "grants": "Manual grant", "contracts": "Contract search" },
+      "priceWarning": "Setting a price will make payment mandatory for new contracts going forward",
+      "plansTab": {
+        "planKey": "Plan key",
+        "displayNameKey": "Display name key",
+        "descriptionKey": "Description key",
+        "baseMonthlyPriceJpy": "Base monthly price (JPY)",
+        "priceUndecided": "Undecided (free during beta)",
+        "sortOrder": "Sort order",
+        "enabled": "Enabled",
+        "newPlan": "Create new plan",
+        "editPlan": "Edit plan",
+        "editPriceBands": "Edit member bands",
+        "editFeatures": "Edit features",
+        "createSuccess": "Plan created",
+        "updateSuccess": "Plan updated",
+        "deleteSuccess": "Plan deleted",
+        "deleteConfirm": "Delete this plan? (Cannot delete if still referenced)",
+        "planKeyExistsNote": "An existing plan key will be updated (PUT) instead"
+      },
+      "featuresTab": {
+        "featureKey": "Feature key",
+        "category": "Category",
+        "categoryInternal": "Internal",
+        "categoryRevenue": "Revenue",
+        "addonAvailable": "Purchasable as add-on",
+        "addonPriceJpy": "Add-on monthly price (JPY)",
+        "freeForNonprofit": "Free for nonprofits",
+        "freeForNonprofitRevenueWarning": "Revenue features cannot be free for nonprofits",
+        "newFeature": "Create new feature",
+        "editFeature": "Edit feature",
+        "createSuccess": "Feature created",
+        "updateSuccess": "Feature updated"
+      },
+      "priceBandsTab": {
+        "scopeKind": "Scope",
+        "bandNo": "Band no.",
+        "minMembers": "Min members",
+        "maxMembers": "Max members",
+        "maxMembersUnlimited": "Unlimited",
+        "monthlyPriceJpy": "Monthly price (JPY)",
+        "addBand": "Add band",
+        "removeBand": "Remove",
+        "saveSuccess": "Member bands saved",
+        "validationNote": "Bands must be ordered, with each min = previous max + 1 (only the last band may be unlimited)"
+      },
+      "planFeaturesTab": {
+        "title": "Features included in the plan",
+        "saveSuccess": "Plan feature composition saved"
+      },
+      "grantsTab": {
+        "scopeKind": "Scope kind",
+        "scopeId": "Scope ID",
+        "contractKind": "Contract kind",
+        "contractKindPlan": "Plan",
+        "contractKindAddon": "Add-on",
+        "planKey": "Plan key",
+        "featureKey": "Feature key",
+        "note": "Note",
+        "notePlaceholder": "e.g. Granted for beta verification",
+        "submit": "Grant",
+        "submitSuccess": "Granted"
+      },
+      "contractsTab": {
+        "scopeKind": "Scope kind",
+        "scopeId": "Scope ID",
+        "status": "Status",
+        "search": "Search",
+        "contractId": "Contract ID",
+        "planOrFeature": "Plan / feature",
+        "contractedAt": "Contracted at",
+        "priceJpySnapshot": "Price at contract time",
+        "priceFree": "Free",
+        "empty": "No matching contracts"
+      },
+      "loadError": "Failed to load master data"
+    },
+    "lp": {
+      "heading": "Pricing",
+      "betaBadge": "Free during beta",
+      "betaNotice": "We're currently in beta, so every plan is free to try. Official pricing will be decided after the beta ends and announced in advance.",
+      "priceUndecidedNote": "Official pricing is undecided",
+      "viewPlansCta": "View plans",
+      "getStartedCta": "Get started"
+    },
+    "errors": {
+      "notEntitled": "You don't have access to this feature",
+      "scopeForbidden": "You don't have permission for this action",
+      "contractAlreadyActive": "A contract is already active",
+      "contractNotFound": "Contract not found",
+      "addonNotAvailable": "This feature can't be added individually",
+      "changeRequiresPayment": "Changes involving a paid plan aren't allowed. Please cancel first, then contract the new plan",
+      "generic": "The request failed. Please try again later"
+    }
+  }
+}
