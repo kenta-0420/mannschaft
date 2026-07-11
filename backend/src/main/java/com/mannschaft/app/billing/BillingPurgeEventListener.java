@@ -3,17 +3,15 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
-import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,13 +47,21 @@ public class BillingPurgeEventListener {
 
     private final BillingContractService billingContractService;
     private final BillingPaymentGateway billingPaymentGateway;
-    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
+    /**
+     * gdpr ドメインの完了報告サービス（残債1・ArchUnit D-3 是正）。
+     * gdpr の Repository/Entity へ直接依存すると凍結 ArchUnit
+     * {@code CrossDomainTransactionalArchTest}（D-3）/{@code CrossDomainEntityImportArchTest}（D-1）の
+     * <b>新規</b>クロスドメイン違反になるため、必ず Service 経由で報告する
+     * （CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」）。
+     */
+    private final AccountPurgeCompletionService accountPurgeCompletionService;
 
     /**
      * 退会確定（purge）: USER スコープ契約の全解約＋有償分の Stripe サブスク即時解約（AC-45）。
      *
      * <p><b>残債1（gdpr purge 完了トラッキング登録）:</b> DB 全解約＋Stripe 全件解約が両方成功した場合のみ
-     * {@code account_purge_completion_status} を SUCCESS に更新する（payment ドメイン前例と同じ責務分担）。
+     * {@code account_purge_completion_status} を SUCCESS に更新する（gdpr の
+     * {@link AccountPurgeCompletionService} 経由・tx 境界も gdpr 側の REQUIRES_NEW）。
      * 1 件でも Stripe 解約に失敗した場合は PENDING のまま残し、{@code GdprPurgeAuditBatchService} の
      * 2 時間アラート検出→{@code GdprPurgeRetryService} 経由の管理者手動 retry（{@link #retryPurge}）で
      * 拾えるようにする（従来は billing が未登録だったため、この再試行導線が存在しなかった）。</p>
@@ -88,7 +94,7 @@ public class BillingPurgeEventListener {
                 userId, paidSubscriptionRefs.size(), stripeAllSucceeded);
 
         if (stripeAllSucceeded) {
-            completionStatusRepository.markSuccess(userId, "billing", LocalDateTime.now());
+            accountPurgeCompletionService.markDomainSuccess(userId, "billing");
         }
     }
 
@@ -111,7 +117,7 @@ public class BillingPurgeEventListener {
 
     /**
      * 管理者からの手動 retry 用（残債1）。{@link #onAccountPurged} と同じドメイン操作を再実行するが、
-     * {@code completionStatusRepository} の SUCCESS 更新は {@code GdprPurgeRetryService} が担う
+     * completion status の SUCCESS 更新は呼び出し元の {@code GdprPurgeRetryService} が担う
      * （payment ドメイン前例 {@code PaymentPurgeEventListener#retryPurge} と同じ責務分担）。
      *
      * <p><b>Stripe リトライの穴埋め:</b> {@link BillingContractService#cancelAllUserContractsForPurge} は
@@ -122,17 +128,17 @@ public class BillingPurgeEventListener {
      * {@code StripeBillingPaymentGateway#cancelImmediately} 実装側で Stripe の「既に解約済み」状態を
      * 冪等スキップするため、同じ subscriptionRef を複数回 retry しても二重解約にはならない。</p>
      *
-     * <p><b>トランザクション方針:</b> {@link #onAccountPurged} と異なり本メソッドは
-     * {@code @Transactional} を付与する。呼び出し元 {@code GdprPurgeRetryService#retryDomainPurge} が
-     * 既に {@code @Transactional} で本メソッド呼び出しを含む一連の処理を包んでいる（既存 6 ドメイン共通の
-     * 管理者手動 retry 導線）ため、本メソッド単独を non-transactional にしても Stripe 呼び出しが
-     * 外側のトランザクションから抜け出せるわけではない。管理者操作は低頻度（自動 purge の AFTER_COMMIT
-     * 経路とは異なりホットパスではない）ため、この既存導線と同じ制約を許容する。</p>
+     * <p><b>トランザクション方針（ArchUnit D-3 是正）:</b> 本メソッドに {@code @Transactional} は
+     * 付与しない。本メソッド自身は直接の DB 書き込みを持たず、DB 遷移は
+     * {@link BillingContractService#cancelAllUserContractsForPurge}（{@code REQUIRES_NEW}）が、
+     * 読み取りは {@code @Transactional(readOnly)} の各サービスメソッドが、それぞれ自前の tx 境界を
+     * 所有するためリスナー側の tx は不要（{@link #onAccountPurged} と同構成）。なお呼び出し元
+     * {@code GdprPurgeRetryService#retryDomainPurge}（gdpr）は既存 6 ドメイン共通の管理者手動 retry
+     * 導線として {@code @Transactional} を持つが、管理者操作は低頻度でありこの既存導線の制約を許容する。</p>
      *
      * @param userId retry 対象ユーザー ID
      * @return true=全操作成功、false=1 件以上失敗
      */
-    @Transactional
     public boolean retryPurge(Long userId) {
         boolean dbCancelFailed = false;
         Set<String> subscriptionRefs = new LinkedHashSet<>();

@@ -3,7 +3,7 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
-import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +16,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -35,7 +34,7 @@ class BillingPurgeEventListenerTest {
 
     @Mock private BillingContractService billingContractService;
     @Mock private BillingPaymentGateway billingPaymentGateway;
-    @Mock private AccountPurgeCompletionStatusRepository completionStatusRepository;
+    @Mock private AccountPurgeCompletionService accountPurgeCompletionService;
 
     @InjectMocks private BillingPurgeEventListener listener;
 
@@ -63,7 +62,8 @@ class BillingPurgeEventListenerTest {
 
         listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
 
-        verify(completionStatusRepository).markSuccess(eq(9L), eq("billing"), any());
+        // ArchUnit D-3 是正: gdpr の Repository 直接更新ではなく Service 経由で報告する。
+        verify(accountPurgeCompletionService).markDomainSuccess(9L, "billing");
     }
 
     @Test
@@ -90,7 +90,7 @@ class BillingPurgeEventListenerTest {
 
         listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
 
-        verify(completionStatusRepository, never()).markSuccess(any(), anyString(), any());
+        verify(accountPurgeCompletionService, never()).markDomainSuccess(any(), anyString());
     }
 
     @Test
@@ -112,7 +112,7 @@ class BillingPurgeEventListenerTest {
 
         listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
 
-        verifyNoInteractions(completionStatusRepository);
+        verifyNoInteractions(accountPurgeCompletionService);
     }
 
     @Test

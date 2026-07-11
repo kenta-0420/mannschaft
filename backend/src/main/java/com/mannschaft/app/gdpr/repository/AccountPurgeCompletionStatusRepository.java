@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -100,28 +99,21 @@ public interface AccountPurgeCompletionStatusRepository
      * 指定ユーザー・ドメインの完了ステータスを SUCCESS に更新する（bulk update・残債1）。
      *
      * <p>他の {@code *PurgeEventListener} は {@link #findByUserIdAndDomainName} で取得した
-     * {@link AccountPurgeCompletionStatusEntity} を直接ミューテートして SUCCESS 更新する（Phase D-8 前例）。
-     * {@code BillingPurgeEventListener} はこの方式を採らず本メソッド経由で更新する。理由:
-     * 凍結 ArchUnit {@code CrossDomainEntityImportArchTest}（D-1）は既存 6 ドメインの直接ミューテートを
-     * 既存違反として凍結済みだが、billing ドメインは今回新規登録のため、同じ direct-mutate 方式を billing で
-     * 行うと {@code BillingPurgeEventListener → gdpr.entity.AccountPurgeCompletionStatusEntity} という
-     * <b>新規</b>のクロスドメイン Entity 依存が発生し番人テストが fail する。本メソッドは Entity 型を
-     * 一切公開しない bulk update のため、呼び出し側（billing ドメイン）は Entity に一切触れず番人テストに
-     * 抵触しない。</p>
+     * {@link AccountPurgeCompletionStatusEntity} を直接ミューテートして SUCCESS 更新する（Phase D-8 前例・
+     * 凍結 ArchUnit で凍結済みの負債）。billing ドメインからの完了報告はこの方式を採らず、gdpr ドメインの
+     * {@code AccountPurgeCompletionService#markDomainSuccess} だけが本メソッドを呼ぶ。これにより
+     * 他ドメインは gdpr の Repository/Entity に一切触れず、凍結 ArchUnit
+     * {@code CrossDomainEntityImportArchTest}（D-1）/{@code CrossDomainTransactionalArchTest}（D-3）に
+     * 新規違反を作らない（CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」）。</p>
      *
-     * <p>{@code @Transactional} を本メソッドに直接付与する: 呼び出し元（{@code BillingPurgeEventListener
-     * #onAccountPurged}）は Stripe への外部 HTTP 呼び出しをトランザクション外で行う設計（DB 接続の長時間占有
-     * 回避）のため、呼び出し元メソッド全体を {@code @Transactional} にできない。Spring Data のリポジトリは
-     * それ自体が別 Bean としてプロキシされるため、ここに {@code @Transactional} を付けることで
-     * 「この 1 回の bulk update だけ」を独立した小さなトランザクションで実行できる
-     * （self-invocation 問題は発生しない・Spring Data の標準対応パターン）。</p>
+     * <p>トランザクション境界は呼び出し側サービス（{@code AccountPurgeCompletionService}・
+     * {@code REQUIRES_NEW}）が所有する。</p>
      *
      * @param userId      対象ユーザー ID
      * @param domainName  ドメイン識別子（例: {@code "billing"}）
      * @param completedAt 完了日時
      * @return 更新件数（0 = 対象レコードなし、1 = 更新成功）
      */
-    @Transactional
     @Modifying
     @Query("UPDATE AccountPurgeCompletionStatusEntity e SET e.status = 'SUCCESS', e.completedAt = :completedAt "
             + "WHERE e.userId = :userId AND e.domainName = :domainName")
