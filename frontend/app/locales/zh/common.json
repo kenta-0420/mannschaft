@@ -1557,7 +1557,8 @@
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态",
-      "feedbackInbox": "意见箱（全体）"
+      "feedbackInbox": "意见箱（全体）",
+      "billing": "课金主数据管理"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",

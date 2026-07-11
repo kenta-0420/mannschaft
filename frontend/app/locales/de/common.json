@@ -1557,7 +1557,8 @@
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
-      "feedbackInbox": "Feedback-Posteingang (Global)"
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
