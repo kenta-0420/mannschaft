@@ -31,6 +31,19 @@
  *   beforeAll で既存の問い合わせチャンネルを一旦解除してから作成する）。afterAll で解除・削除する。
  *
  * 前提: backend/scripts/seed-e2e-data.js 実行済み。BE(8080)/FE(3000 or BASE_URL) 起動済み。
+ *
+ * 【既知 red（2026-07-11 実走で発見・アプリ側バグ2件による。修正は殿の裁可待ち）】
+ *   本テストは実UI観測の失敗（inquiryButton 不可視）で red になる。原因はスペックではなく
+ *   アプリ側の以下 2 バグ（実測裏取り済み）。両者の根治で green 化する見込み:
+ *   (A) FE の WS 接続 URL 不一致 — `useChatWebSocket.buildWsUrl` は bare `/ws` に接続するが、
+ *       BE は SockJS エンドポイントのみ登録のため bare `/ws` へのアップグレードは HTTP 400。
+ *       実ブラウザで `WebSocket connection to 'ws://localhost:8080/ws' failed: 400` の無限再接続
+ *       ループを確認（useMatchLiveSpectator / useCorkboardEventListener / useEmergencyClosureLive の
+ *       `new WebSocket('/ws')` も同罪）。raw transport は `/ws/websocket` でのみ成立（node 実測）。
+ *       → 通知はそもそも FE に到達しない（pinia latestNotification は 20 秒待っても null）。
+ *   (B) WidgetAdminBusinessAlert の応答二重ネスト読み違い — サマリー API の実応答は
+ *       `{data:{data:{teams,totalPending}}}` だが、ウィジェットは `res.data.teams`（=undefined）を
+ *       読むため、チーム行・問い合わせバッジが構造的に一切描画されない（curl + page snapshot で裏取り）。
  */
 
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'

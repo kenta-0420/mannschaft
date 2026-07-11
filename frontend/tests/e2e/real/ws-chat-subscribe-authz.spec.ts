@@ -8,9 +8,9 @@
  * 【検証内容】
  *   実ブラウザコンテキスト経由で（API 直叩きだけでなく、本物のブラウザの WebSocket 実装 / 同一オリジン
  *   条件下で）本番同等の経路の認可が効くことを確認する。ページの実 STOMP クライアントは、アプリの
- *   `useChatWebSocket` 内部シングルトンを流用せず、`page.evaluate` 内で SockJS を介さない生
- *   WebSocket + 最小限の STOMP テキストフレームを直接組み立てる（アプリの `/ws` 直結パターンと同一
- *   エンドポイント・同一 Origin から接続する）。
+ *   `useChatWebSocket` 内部シングルトンを流用せず、`page.evaluate` 内で sockjs-client を使わない生
+ *   WebSocket + 最小限の STOMP テキストフレームを直接組み立て、SockJS raw-websocket transport
+ *   （`/ws/websocket`）へ同一 Origin から接続する（WS_URL 定数のコメント参照）。
  *   - メンバー（チャンネル作成者）: 購読が成立し、自分が送信したメッセージを受信できる。
  *   - 非メンバー: 購読が ERROR フレーム（または直後の WebSocket CLOSE）で拒否され、
  *     その後にメンバーがメッセージを送信しても一切受信しない（漏洩なしの確認）。
@@ -35,8 +35,13 @@ test.setTimeout(120_000)
 
 const BE = process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const BE_API = `${BE}/api/v1`
-// アプリ本体と同一の接続パターン（§8.5: 生 new WebSocket() で /ws に直結。SockJS 未使用）。
-const WS_URL = `${BE.replace(/^http/, 'ws')}/ws`
+// SockJS raw-websocket transport（/ws/websocket）に生 WebSocket で接続する。
+// 実測（2026-07-11）: BE は SockJS エンドポイントのみ登録しており、bare `/ws` への
+// WebSocket アップグレードは HTTP 400 で拒否される（f0810-live-spectator-ws.spec.ts と同知見）。
+// ※ FE アプリ本体（useChatWebSocket.buildWsUrl）は bare `/ws` に接続しており接続不能
+//   （アプリ側バグとして別途報告済み）。本 spec は SUBSCRIBE 認可インターセプタの検証が目的のため、
+//   実際に成立する本番同等 STOMP 経路（SockJS raw transport）で検証する。
+const WS_URL = `${BE.replace(/^http/, 'ws')}/ws/websocket`
 
 const MEMBER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 const MEMBER_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'

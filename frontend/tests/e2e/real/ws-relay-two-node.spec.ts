@@ -46,6 +46,7 @@ const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 let api: APIRequestContext
 let adminToken: string
 let channelId: number
+let teamSlug: string
 /** 環境（2ノード稼働・relay ON 前提）が揃っているか。揃っていなければ各テストで skip する。 */
 let envReady = false
 let skipReason = ''
@@ -66,10 +67,17 @@ async function isReachable(origin: string): Promise<boolean> {
   }
 }
 
-/** /actuator/info の nodeId を取得する（§7.4.2・WebSocketNodeIdProvider が公開する値）。 */
-async function fetchNodeId(origin: string): Promise<string | null> {
+/**
+ * /actuator/info の nodeId を取得する（§7.4.2・WebSocketNodeIdProvider が公開する値）。
+ * /actuator/info は認証必須（無認証は 401）のため Bearer トークンを付与して取得する
+ * （検証意図＝「両ノードの nodeId が異なることの裏取り」は不変）。
+ */
+async function fetchNodeId(origin: string, token: string): Promise<string | null> {
   try {
-    const res = await api.get(`${origin}/actuator/info`, { timeout: 3_000 })
+    const res = await api.get(`${origin}/actuator/info`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 3_000,
+    })
     if (!res.ok()) return null
     const body = await res.json() as { nodeId?: string }
     return body.nodeId ?? null
@@ -170,8 +178,20 @@ test.beforeAll(async () => {
     return
   }
 
-  const nodeIdA = await fetchNodeId(NODE_A)
-  const nodeIdB = await fetchNodeId(NODE_B)
+  // ログイン（ノードAのAPI経由。同一DBのためどちらのノード経由でも良い）。
+  // /actuator/info は認証必須のため、nodeId 前提確認より先にトークンを取得する。
+  const loginRes = await api.post(`${NODE_A}/api/v1/auth/login`, {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  })
+  if (!loginRes.ok()) {
+    skipReason = `admin ログインに失敗(${loginRes.status()})したためskipします。`
+    console.warn(`[ws-relay-two-node] SKIP: ${skipReason}`)
+    return
+  }
+  adminToken = (await loginRes.json() as { data: { accessToken: string } }).data.accessToken
+
+  const nodeIdA = await fetchNodeId(NODE_A, adminToken)
+  const nodeIdB = await fetchNodeId(NODE_B, adminToken)
   if (!nodeIdA || !nodeIdB) {
     skipReason = 'nodeId を /actuator/info から取得できないためskipします。'
     console.warn(`[ws-relay-two-node] SKIP: ${skipReason}`)
@@ -184,23 +204,12 @@ test.beforeAll(async () => {
   }
   console.warn(`[ws-relay-two-node] 2ノード確認OK: nodeIdA=${nodeIdA}, nodeIdB=${nodeIdB}`)
 
-  // ログイン + 使い捨てチーム/チャンネル作成（ノードAのAPI経由。同一DBのためどちらのノード経由でも良い）。
-  const loginRes = await api.post(`${NODE_A}/api/v1/auth/login`, {
-    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-  })
-  if (!loginRes.ok()) {
-    skipReason = `admin ログインに失敗(${loginRes.status()})したためskipします。`
-    console.warn(`[ws-relay-two-node] SKIP: ${skipReason}`)
-    return
-  }
-  adminToken = (await loginRes.json() as { data: { accessToken: string } }).data.accessToken
-
   const createTeam = await api.post(`${NODE_A}/api/v1/teams`, {
     headers: authHeaders(adminToken),
     data: { name: `E2E-WSRelay-${Date.now()}`, template: 'SPORTS', visibility: 'PUBLIC' },
   })
   expect(createTeam.status(), `使い捨てチーム作成は 201。応答: ${await createTeam.text()}`).toBe(201)
-  const teamSlug = (await createTeam.json() as { data: { slug: string } }).data.slug
+  teamSlug = (await createTeam.json() as { data: { slug: string } }).data.slug
 
   const myTeamsRes = await api.get(`${NODE_A}/api/v1/me/teams?limit=200`, { headers: authHeaders(adminToken) })
   const myTeams = (await myTeamsRes.json() as { data: Array<{ id: number; slug: string }> }).data
@@ -220,6 +229,9 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (envReady && channelId) {
     await api.delete(`${NODE_A}/api/v1/chat/channels/${channelId}`, { headers: authHeaders(adminToken) }).catch(() => {})
+  }
+  if (envReady && teamSlug) {
+    await api.delete(`${NODE_A}/api/v1/teams/${teamSlug}`, { headers: authHeaders(adminToken) }).catch(() => {})
   }
   await api?.dispose()
 })
