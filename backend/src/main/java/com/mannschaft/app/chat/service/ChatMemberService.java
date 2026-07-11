@@ -137,18 +137,32 @@ public class ChatMemberService {
     /**
      * メンバーのロールを変更する。
      *
-     * @param channelId    チャンネルID
-     * @param targetUserId 対象ユーザーID
-     * @param request      ロール変更リクエスト
+     * <p>認可根治 Wave 1 束2: 従来は操作者が誰であるかを一切検証しておらず、
+     * 一般 MEMBER が自分自身を OWNER に昇格させる権限昇格（権限昇格 IDOR）が可能だった。
+     * 手本 {@link #removeMember(Long, Long, Long)} と同型で、操作者が当該チャンネルの
+     * OWNER/ADMIN であることを確認してから変更を許可する。</p>
+     *
+     * @param channelId      チャンネルID
+     * @param targetUserId   対象ユーザーID
+     * @param request        ロール変更リクエスト
+     * @param operatorUserId 操作者ユーザーID（認可チェック用）
      * @return 更新されたメンバーレスポンス
      */
     @Transactional
-    public MemberResponse changeRole(Long channelId, Long targetUserId, ChangeRoleRequest request) {
+    public MemberResponse changeRole(Long channelId, Long targetUserId, ChangeRoleRequest request, Long operatorUserId) {
+        // 操作者がチャンネルのOWNER/ADMINであることを確認（一般MEMBERによる権限昇格・他人のロール変更を禁止）
+        ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+        if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
         ChannelMemberRole newRole = ChannelMemberRole.valueOf(request.getRole());
         member.changeRole(newRole);
         ChatChannelMemberEntity saved = memberRepository.save(member);
-        log.info("ロール変更完了: channelId={}, userId={}, newRole={}", channelId, targetUserId, newRole);
+        log.info("ロール変更完了: channelId={}, userId={}, newRole={}, operatorUserId={}",
+                channelId, targetUserId, newRole, operatorUserId);
         return chatMapper.toMemberResponse(saved);
     }
 
