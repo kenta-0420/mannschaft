@@ -104,7 +104,7 @@ public class ProxyVoteSessionController {
     @DeleteMapping("/{id}")
     @Operation(summary = "セッション削除")
     public ResponseEntity<Void> deleteSession(@PathVariable Long id) {
-        sessionService.deleteSession(id);
+        sessionService.deleteSession(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -163,7 +163,7 @@ public class ProxyVoteSessionController {
     @GetMapping("/{id}/results")
     @Operation(summary = "投票結果")
     public ResponseEntity<ApiResponse<VoteResultsResponse>> getResults(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.getResults(id)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.getResults(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -188,7 +188,7 @@ public class ProxyVoteSessionController {
     @PostMapping("/{id}/remind")
     @Operation(summary = "リマインド送信")
     public ResponseEntity<ApiResponse<RemindResponse>> remind(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.remind(id)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.remind(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**

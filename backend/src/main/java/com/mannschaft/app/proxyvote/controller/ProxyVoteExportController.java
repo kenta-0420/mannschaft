@@ -46,7 +46,7 @@ public class ProxyVoteExportController {
     @GetMapping("/{id}/results/csv")
     @Operation(summary = "投票結果 CSV エクスポート")
     public ResponseEntity<byte[]> exportResultsCsv(@PathVariable Long id) {
-        byte[] csv = exportService.exportResultsCsv(id);
+        byte[] csv = exportService.exportResultsCsv(id, SecurityUtils.getCurrentUserId());
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -61,7 +61,7 @@ public class ProxyVoteExportController {
     @GetMapping("/{id}/minutes-pdf")
     @Operation(summary = "議事録 PDF エクスポート")
     public ResponseEntity<byte[]> exportMinutesPdf(@PathVariable Long id) {
-        byte[] pdf = exportService.exportMinutesPdf(id);
+        byte[] pdf = exportService.exportMinutesPdf(id, SecurityUtils.getCurrentUserId());
 
         String fileName = PdfFileNameBuilder.of("議事録")
                 .date(LocalDate.now())
