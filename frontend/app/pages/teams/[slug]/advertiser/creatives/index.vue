@@ -1,7 +1,12 @@
 <script setup lang="ts">
+// F09.19.6 チームスコープ 広告クリエイティブ一覧ページ。
+// 組織版 (pages/organizations/[slug]/advertiser/creatives/index.vue) を team scope で読み替えたもの。
+// creatives CRUD（ad-campaigns/{campaignId}/creatives）は useAdvertiserApi の scope 化により
+// /api/v1/teams/{teamId}/advertiser/ad-campaigns/{campaignId}/creatives を呼ぶ。
+
 import type { AdCreativeResponse, CreateAdCreativeRequest, UpdateAdCreativeRequest } from '~/types/advertiser'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
@@ -10,7 +15,7 @@ const confirm = useConfirm()
 const advertiserApi = useAdvertiserApi()
 const { formatDate } = useDatetime()
 
-const orgSlug = String(route.params.slug)
+const teamSlug = String(route.params.slug)
 // クエリパラメータからキャンペーンIDを取得
 const campaignId = Number(route.query.campaignId)
 
@@ -39,7 +44,7 @@ const statusSeverityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' |
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.listCreatives('ORGANIZATION', orgSlug, campaignId)
+    const res = await advertiserApi.listCreatives('TEAM', teamSlug, campaignId)
     creatives.value = res.data
   }
   catch {
@@ -76,7 +81,7 @@ async function handleSubmit() {
         imageUrl: form.value.imageUrl || undefined,
         destinationUrl: form.value.destinationUrl || undefined,
       }
-      const res = await advertiserApi.updateCreative('ORGANIZATION', orgSlug, campaignId, editingCreative.value.id, body)
+      const res = await advertiserApi.updateCreative('TEAM', teamSlug, campaignId, editingCreative.value.id, body)
       const idx = creatives.value.findIndex(c => c.id === editingCreative.value!.id)
       if (idx !== -1) {
         creatives.value[idx] = res.data
@@ -90,7 +95,7 @@ async function handleSubmit() {
         imageUrl: form.value.imageUrl || undefined,
         destinationUrl: form.value.destinationUrl,
       }
-      const res = await advertiserApi.createCreative('ORGANIZATION', orgSlug, campaignId, body)
+      const res = await advertiserApi.createCreative('TEAM', teamSlug, campaignId, body)
       creatives.value.unshift(res.data)
       toast.add({ severity: 'success', summary: t('advertising.creative.created_toast'), life: 3000 })
     }
@@ -116,7 +121,7 @@ function confirmDelete(creative: AdCreativeResponse) {
 
 async function handleDelete(creative: AdCreativeResponse) {
   try {
-    await advertiserApi.deleteCreative('ORGANIZATION', orgSlug, campaignId, creative.id)
+    await advertiserApi.deleteCreative('TEAM', teamSlug, campaignId, creative.id)
     const idx = creatives.value.findIndex(c => c.id === creative.id)
     if (idx !== -1) {
       const current = creatives.value[idx]!
@@ -137,7 +142,7 @@ onMounted(load)
     <!-- ヘッダー -->
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <PageHeader :title="t('advertising.creative.title')" :back-to="`/organizations/${orgSlug}/advertiser`" />
+        <PageHeader :title="t('advertising.creative.title')" :back-to="`/teams/${teamSlug}/advertiser`" />
         <p class="text-sm text-surface-500">
           {{ t('advertising.creative.description') }}
         </p>
