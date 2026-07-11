@@ -36,9 +36,10 @@ import static org.mockito.Mockito.when;
  * <p>実機 E2E で「問い合わせ通知が一件も作成されない（visibility deny）」障害を捕捉した。
  * 真因は {@code CHAT_MESSAGE} が {@code NotificationSourceTypeMapper} に登録されているのに
  * 対応 Resolver が実装されておらず、{@code ContentVisibilityChecker.canView(CHAT_MESSAGE, …)} が
- * fail-closed で必ず false を返していたこと。本テストはその Resolver（§12.3.1 の最小実装＝
- * SCOPE_AFFILIATED 固定）が「チャンネルのスコープ（TEAM/ORGANIZATION）直接所属者は閲覧可・
- * 非所属者は不可・不存在は fail-closed」を満たすことを検証する。</p>
+ * fail-closed で必ず false を返していたこと。本テストはその Resolver（§12.3.1 の最小実装）が
+ * 「公開チャンネル＝スコープ（TEAM/ORGANIZATION）直接所属者は閲覧可・非所属者は不可・
+ * 問い合わせチャンネル＝ADMIN/DEPUTY_ADMIN 限定・PRIVATE チャンネル＝fail-closed・
+ * 不存在は fail-closed」を満たすことを検証する（粒度は検分是正 2026-07-11）。</p>
  *
  * <p>抽象基底側の挙動（status × visibility 合成・SystemAdmin 高速パス）は
  * {@code AbstractContentVisibilityResolverTest} で網羅済のため、本テストでは CHAT_MESSAGE 固有の
@@ -194,6 +195,82 @@ class ChatMessageVisibilityResolverTest {
     }
 
     @Nested
+    @DisplayName("粒度是正（検分指摘）: PRIVATE チャンネルと問い合わせチャンネル")
+    class GranularityFix {
+
+        @Test
+        @DisplayName("PRIVATE チャンネル（非 inquiry）のメッセージはスコープ所属メンバーにも fail-closed で不可視")
+        void private_channel_denied_even_to_scope_member() {
+            when(messageRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(privateProjection(MSG_ID, "TEAM", TEAM_ID, SENDER_ID)));
+            when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", TEAM_ID), "MEMBER"),
+                            Map.of(), Set.of(), Set.of()));
+
+            assertThat(resolver.canView(MSG_ID, 10L))
+                    .as("isPrivate=true（非 inquiry）はチャンネルメンバーシップ判定を持たない現段階では fail-closed")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("問い合わせチャンネルのメッセージは一般メンバー（MEMBER）に不可視")
+        void inquiry_channel_denied_to_regular_member() {
+            when(messageRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(inquiryProjection(MSG_ID, "TEAM", TEAM_ID, SENDER_ID)));
+            when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", TEAM_ID), "MEMBER"),
+                            Map.of(), Set.of(), Set.of()));
+
+            assertThat(resolver.canView(MSG_ID, 10L))
+                    .as("問い合わせは管理者宛の内容のため一般メンバーには開かない")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("問い合わせチャンネルのメッセージはチーム ADMIN に可視（通知受信者・回帰ガード）")
+        void inquiry_channel_allowed_to_admin() {
+            when(messageRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(inquiryProjection(MSG_ID, "TEAM", TEAM_ID, SENDER_ID)));
+            when(membershipBatchQueryService.snapshotForUser(eq(20L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", TEAM_ID), "ADMIN"),
+                            Map.of(), Set.of(), Set.of()));
+
+            assertThat(resolver.canView(MSG_ID, 20L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("問い合わせチャンネルのメッセージはチーム DEPUTY_ADMIN にも可視（受信者集合と完全一致）")
+        void inquiry_channel_allowed_to_deputy_admin() {
+            when(messageRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(inquiryProjection(MSG_ID, "TEAM", TEAM_ID, SENDER_ID)));
+            when(membershipBatchQueryService.snapshotForUser(eq(21L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", TEAM_ID), "DEPUTY_ADMIN"),
+                            Map.of(), Set.of(), Set.of()));
+
+            // 注意: RolePriority.isAtLeast("DEPUTY_ADMIN","ADMIN") は false（3<=2 不成立）のため
+            // ADMINS_AND_ABOVE（閾値 "ADMIN"）経路では DEPUTY_ADMIN が deny になる。
+            // 受信者集合（ADMIN/DEPUTY_ADMIN）との完全一致には閾値 "DEPUTY_ADMIN" の判定が必要
+            // （本テストがその実装選択を固定する）。
+            assertThat(resolver.canView(MSG_ID, 21L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("問い合わせチャンネルは非所属ユーザーに不可視")
+        void inquiry_channel_denied_to_non_member() {
+            when(messageRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(inquiryProjection(MSG_ID, "TEAM", TEAM_ID, SENDER_ID)));
+            when(membershipBatchQueryService.snapshotForUser(eq(30L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(MSG_ID, 30L)).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("バッチ呼び出し")
     class Batch {
 
@@ -218,8 +295,24 @@ class ChatMessageVisibilityResolverTest {
         }
     }
 
+    /** 公開チャンネル（isPrivate=false / isInquiryChannel=false）の Projection。 */
     private static ChatMessageVisibilityProjection projection(
             Long id, String scopeType, Long scopeId, Long authorUserId) {
-        return new ChatMessageVisibilityProjection(id, scopeType, scopeId, authorUserId);
+        return new ChatMessageVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, false, false);
+    }
+
+    /** PRIVATE チャンネル（isPrivate=true / 非 inquiry）の Projection。 */
+    private static ChatMessageVisibilityProjection privateProjection(
+            Long id, String scopeType, Long scopeId, Long authorUserId) {
+        return new ChatMessageVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, true, false);
+    }
+
+    /** 問い合わせチャンネル（isInquiryChannel=true）の Projection。 */
+    private static ChatMessageVisibilityProjection inquiryProjection(
+            Long id, String scopeType, Long scopeId, Long authorUserId) {
+        return new ChatMessageVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, false, true);
     }
 }

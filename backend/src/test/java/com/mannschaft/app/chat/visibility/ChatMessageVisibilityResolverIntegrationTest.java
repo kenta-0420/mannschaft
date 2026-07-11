@@ -43,9 +43,13 @@ class ChatMessageVisibilityResolverIntegrationTest extends AbstractMySqlIntegrat
 
     private Long memberRoleId;
     private Long systemAdminRoleId;
+    private Long adminRoleId;
+    private Long deputyAdminRoleId;
     private Long memberUserId;
     private Long nonMemberUserId;
     private Long sysAdminUserId;
+    private Long teamAdminUserId;
+    private Long deputyAdminUserId;
     private Long teamId;
     private Long orgId;
 
@@ -59,16 +63,30 @@ class ChatMessageVisibilityResolverIntegrationTest extends AbstractMySqlIntegrat
                 "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
                 .executeUpdate();
+        em.createNativeQuery(
+                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES ('ADMIN', '管理者', 2, 0, NOW(), NOW())")
+                .executeUpdate();
+        em.createNativeQuery(
+                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES ('DEPUTY_ADMIN', '副管理者', 3, 0, NOW(), NOW())")
+                .executeUpdate();
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
                 "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
         systemAdminRoleId = ((Number) em.createNativeQuery(
                 "SELECT id FROM roles WHERE name = 'SYSTEM_ADMIN'").getSingleResult()).longValue();
+        adminRoleId = ((Number) em.createNativeQuery(
+                "SELECT id FROM roles WHERE name = 'ADMIN'").getSingleResult()).longValue();
+        deputyAdminRoleId = ((Number) em.createNativeQuery(
+                "SELECT id FROM roles WHERE name = 'DEPUTY_ADMIN'").getSingleResult()).longValue();
 
         memberUserId    = insertUser("chatvis.member@example.com", "山田", "太郎");
         nonMemberUserId = insertUser("chatvis.nonmember@example.com", "鈴木", "花子");
         sysAdminUserId  = insertUser("chatvis.sysadmin@example.com", "管理", "者");
+        teamAdminUserId = insertUser("chatvis.teamadmin@example.com", "佐藤", "隊長");
+        deputyAdminUserId = insertUser("chatvis.deputy@example.com", "田中", "副長");
 
         orgId  = insertOrganization("CHATVIS 組織");
         teamId = insertTeam("CHATVIS チーム");
@@ -76,6 +94,8 @@ class ChatMessageVisibilityResolverIntegrationTest extends AbstractMySqlIntegrat
 
         insertUserRole(memberUserId, memberRoleId, teamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
+        insertUserRole(teamAdminUserId, adminRoleId, teamId, null);
+        insertUserRole(deputyAdminUserId, deputyAdminRoleId, teamId, null);
 
         em.flush();
         em.clear();
@@ -157,18 +177,25 @@ class ChatMessageVisibilityResolverIntegrationTest extends AbstractMySqlIntegrat
      * NOT NULL 全列を明示する（Builder.Default 由来の値も DB INSERT では明示しないと NOT NULL 違反になる）。
      */
     private Long insertChannel(String channelType, Long teamIdParam, Long orgIdParam, String name) {
+        return insertChannel(channelType, teamIdParam, orgIdParam, name, false, false);
+    }
+
+    private Long insertChannel(String channelType, Long teamIdParam, Long orgIdParam, String name,
+                               boolean isPrivate, boolean isInquiryChannel) {
         em.createNativeQuery(
                 "INSERT INTO chat_channels ("
                         + "channel_type, team_id, organization_id, name, "
                         + "is_private, is_archived, is_inquiry_channel, active_thread_count, version, "
                         + "created_at, updated_at) "
                         + "VALUES (:ctype, :tid, :oid, :name, "
-                        + "0, 0, 0, 0, 0, "
+                        + ":priv, 0, :inq, 0, 0, "
                         + "NOW(), NOW())")
                 .setParameter("ctype", channelType)
                 .setParameter("tid", teamIdParam)
                 .setParameter("oid", orgIdParam)
                 .setParameter("name", name)
+                .setParameter("priv", isPrivate ? 1 : 0)
+                .setParameter("inq", isInquiryChannel ? 1 : 0)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
                 "SELECT id FROM chat_channels WHERE name = :name")
@@ -289,6 +316,52 @@ class ChatMessageVisibilityResolverIntegrationTest extends AbstractMySqlIntegrat
 
         assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, memberUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, sysAdminUserId)).isFalse();
+    }
+
+    // =========================================================================
+    // 粒度是正（検分指摘）: PRIVATE チャンネル / 問い合わせチャンネル
+    // =========================================================================
+
+    @Test
+    @DisplayName("TEAM_PRIVATE チャンネル（is_private=1）はチーム所属だがチャンネル非メンバーの一般メンバーに不可視（fail-closed）")
+    void team_private_channel_denied_to_scope_member_not_channel_member() {
+        Long channelId = insertChannel("TEAM_PRIVATE", teamId, null, "team-private-ch", true, false);
+        Long msgId = insertMessage(channelId, teamAdminUserId, "private-msg-body");
+        em.flush();
+        em.clear();
+
+        // memberUserId はチーム所属だがチャンネルメンバーではない → deny
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, memberUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, nonMemberUserId)).isFalse();
+        // SystemAdmin 高速パスは可視
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, sysAdminUserId)).isTrue();
+    }
+
+    @Test
+    @DisplayName("問い合わせチャンネル（is_inquiry_channel=1）は一般メンバーに不可視")
+    void inquiry_channel_denied_to_regular_member() {
+        Long channelId = insertChannel("TEAM_PUBLIC", teamId, null, "inquiry-ch-member", false, true);
+        Long msgId = insertMessage(channelId, memberUserId, "inquiry-msg-member");
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, memberUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, nonMemberUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("問い合わせチャンネルはチーム ADMIN / DEPUTY_ADMIN に可視（通知受信者・回帰ガード）")
+    void inquiry_channel_allowed_to_team_admin_and_deputy() {
+        Long channelId = insertChannel("TEAM_PUBLIC", teamId, null, "inquiry-ch-admin", false, true);
+        Long msgId = insertMessage(channelId, memberUserId, "inquiry-msg-admin");
+        em.flush();
+        em.clear();
+
+        // 今回根治した「管理者への問い合わせ通知作成」の canView 前提（回帰ガード）
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, teamAdminUserId)).isTrue();
+        // 受信者集合は ADMIN + DEPUTY_ADMIN（InquiryChatEventListener と完全一致）
+        assertThat(checker.canView(ReferenceType.CHAT_MESSAGE, msgId, deputyAdminUserId)).isTrue();
     }
 
     @Test

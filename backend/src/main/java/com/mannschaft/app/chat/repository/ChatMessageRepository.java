@@ -176,6 +176,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
      * 射影段階で自動除外される（取得不可 → fail-closed）。DM・村ロビー等 team/org を持たない
      * チャンネルは scopeType/scopeId が null となり、基底の SCOPE_AFFILIATED 判定で不可視になる。</p>
      *
+     * <p>チャンネルの {@code is_private} / {@code is_inquiry_channel} も射影し、Resolver 側で
+     * PRIVATE=fail-closed / 問い合わせ=管理者限定の粒度制御に用いる（検分是正 2026-07-11）。</p>
+     *
      * <p>{@code AbstractContentVisibilityResolver#loadProjections} からのみ呼ばれ、
      * 戻り値の順序は保証しない。</p>
      *
@@ -189,7 +192,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
                      WHEN c.organizationId IS NOT NULL THEN 'ORGANIZATION'
                      ELSE NULL END,
                 COALESCE(c.teamId, c.organizationId),
-                m.senderId)
+                m.senderId,
+                c.isPrivate,
+                c.isInquiryChannel)
             FROM ChatMessageEntity m, ChatChannelEntity c
             WHERE m.id IN :ids AND c.id = m.channelId
             """)
