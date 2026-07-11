@@ -333,6 +333,17 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     public void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey) {
         try {
             Subscription subscription = Subscription.retrieve(subscriptionId);
+            // 【残債1 冪等対応】既に canceled 済み（前回 purge retry 等で成功済み）なら再送しない。
+            // GDPR purge の管理者手動 retry（GdprPurgeRetryService）は「DB は解約済みだが Stripe 解約が
+            // 未確認」な契約を毎回再スキャンして cancelImmediately を呼び直す設計のため、Stripe 側で
+            // 既に解約済みの subscription に対して重ねて cancel を呼ぶケースが起こり得る。Stripe の
+            // subscription.cancel は「既に canceled」に対して呼ぶと StripeException（invalid_request_error）
+            // になるため、事前に状態を見て安全にスキップする（二重解約にはならないが、無駄なエラーログ・
+            // retry 失敗誤検知を防ぐ）。
+            if ("canceled".equals(subscription.getStatus())) {
+                log.info("F20.1 サブスク即時解約（purge 連動）: 既に解約済みのためスキップ id={}", subscriptionId);
+                return;
+            }
             RequestOptions options = RequestOptions.builder()
                     .setIdempotencyKey(idempotencyKey)
                     .build();

@@ -568,6 +568,40 @@ class BillingContractServicePaymentTest {
     }
 
     // ============================================================
+    // 残債1: GDPR purge retry の Stripe リトライ穴埋め
+    // ============================================================
+
+    @Test
+    @DisplayName("残債1: findPurgedPaidSubscriptionRefsPendingStripeCancel は CANCELLED＋psp_subscription_ref 非NULLの USER 契約の subscriptionRef を返す")
+    void 残債1_findPurgedPaidSubscriptionRefsPendingStripeCancel_returnsRefs() {
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        BillingContractEntity purged1 = contract(id1, ContractStatus.CANCELLED, 2000, "sub_pending_1");
+        BillingContractEntity purged2 = contract(id2, ContractStatus.CANCELLED, 2000, "sub_pending_2");
+        given(billingContractRepository
+                .findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
+                        EntitlementScopeKind.USER, 9L, ContractStatus.CANCELLED))
+                .willReturn(List.of(purged1, purged2));
+
+        List<String> refs = service.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L);
+
+        assertThat(refs).containsExactlyInAnyOrder("sub_pending_1", "sub_pending_2");
+    }
+
+    @Test
+    @DisplayName("残債1: 対象なしなら空リストを返す")
+    void 残債1_findPurgedPaidSubscriptionRefsPendingStripeCancel_empty() {
+        given(billingContractRepository
+                .findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
+                        EntitlementScopeKind.USER, 9L, ContractStatus.CANCELLED))
+                .willReturn(List.of());
+
+        List<String> refs = service.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L);
+
+        assertThat(refs).isEmpty();
+    }
+
+    // ============================================================
     // AC-46: 有償契約の二重解約ガード（検分差し戻し3番）
     // ============================================================
 

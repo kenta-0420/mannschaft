@@ -20,7 +20,9 @@ import java.util.UUID;
  * payment の {@code StripeCustomerEntity}／auth の {@code UserEntity} を直接参照してはならない
  * （{@code CrossDomainEntityImportArchTest}・CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」）。
  * Customer の get-or-create は {@link PaymentMethodService#getOrCreateStripeCustomerId(Long)}（payment ドメイン内に
- * Entity/Repository 依存をカプセル化・email プレースホルダの P1 既知負債も同所に集約）だけを呼ぶ。</p>
+ * Entity/Repository 依存をカプセル化）だけを呼ぶ。【残債2】Customer 新規作成時の email は
+ * {@code PaymentMethodService} 側で実メールへ根治済み（P1 {@code MemberPaymentService} 側のプレースホルダ
+ * 既知負債は本修正のスコープ外）。</p>
  */
 @Slf4j
 @Service
