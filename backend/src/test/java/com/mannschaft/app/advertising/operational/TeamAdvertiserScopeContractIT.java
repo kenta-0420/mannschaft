@@ -385,6 +385,22 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
                             .param("to", LocalDate.now().toString()))
                     .andExpect(status().isForbidden());
         }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team invoices/{id} 詳細 → 403（invoice 参照前に認可で遮断）")
+        void ac5_2b_他チームの請求書詳細は403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/invoices/{iid}", teamAId, 1L))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("ac5_2b: 他チーム ADMIN の team invoices/{id}/pdf → 403")
+        void ac5_2b_他チームの請求書PDFは403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/advertiser/invoices/{iid}/pdf", teamAId, 1L))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
