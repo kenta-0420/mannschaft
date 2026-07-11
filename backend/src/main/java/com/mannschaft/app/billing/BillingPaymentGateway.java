@@ -49,6 +49,16 @@ public interface BillingPaymentGateway {
     Instant cancelAtPeriodEnd(String subscriptionRef);
 
     /**
+     * 継続課金の Stripe Subscription を<b>即時解約</b>する（退会 purge 連動・AC-45）。
+     *
+     * <p>期末解約（{@link #cancelAtPeriodEnd}）と異なり、退会確定（purge）ユーザーへの課金継続を
+     * その場で止める。失敗は例外で上申し、呼び出し側（purge リスナー）が ERROR ログ＋手動照合に委ねる。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     */
+    void cancelImmediately(String subscriptionRef);
+
+    /**
      * Checkout Session 情報（sessionId / url）。
      */
     record CheckoutSessionInfo(String sessionId, String url) {}

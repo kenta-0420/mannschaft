@@ -10,7 +10,6 @@ import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -31,8 +30,11 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
     private final StripeCustomerRepository stripeCustomerRepository;
     private final UserRepository userRepository;
 
+    // 【検分4番対応】@Transactional を付けない: 本メソッドは外部 HTTP を最大2回
+    // （Customer 生成＋Checkout Session 生成）呼ぶため、DB トランザクションに抱えると
+    // 接続を長時間占有する。stripe_customers の保存は getOrCreateStripeCustomer 内の
+    // repository.save（Spring Data 既定の最小 tx）のみで完結する。
     @Override
-    @Transactional
     public CheckoutSessionInfo createSubscriptionCheckout(
             Long operatorUserId, int priceJpy, String displayName, UUID contractId,
             String successUrl, String cancelUrl) {
@@ -51,6 +53,12 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
                 subscriptionRef, "billing-cancel-" + subscriptionRef);
         Long currentPeriodEnd = info.currentPeriodEnd();
         return currentPeriodEnd == null ? null : Instant.ofEpochSecond(currentPeriodEnd);
+    }
+
+    @Override
+    public void cancelImmediately(String subscriptionRef) {
+        stripePaymentProvider.cancelBillingSubscriptionImmediately(
+                subscriptionRef, "billing-purge-" + subscriptionRef);
     }
 
     /**

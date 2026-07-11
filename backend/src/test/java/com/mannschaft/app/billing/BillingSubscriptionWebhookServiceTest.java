@@ -112,8 +112,8 @@ class BillingSubscriptionWebhookServiceTest {
     }
 
     @Test
-    @DisplayName("AC-33 補: expired（billingContractId あり）は abandonPendingContract（PENDING→CANCELLED・再挑戦可）")
-    void ac33_checkoutExpired_abandons() {
+    @DisplayName("AC-47: checkout.session.expired（billingContractId あり）は abandonPendingContract（PENDING→CANCELLED・スロット解放で再挑戦可）")
+    void ac47_checkoutExpired_abandons() {
         UUID contractId = UUID.randomUUID();
         given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
                 .willReturn(event("checkout.session.expired", contractId.toString(), null, null));

@@ -330,6 +330,22 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // 退会 purge 連動（AC-45）: 期末解約ではなくその場で cancel（課金継続の即時停止）。
+            Subscription canceled = subscription.cancel((com.stripe.param.SubscriptionCancelParams) null, options);
+            log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
     public BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader) {
         Event event;
         try {

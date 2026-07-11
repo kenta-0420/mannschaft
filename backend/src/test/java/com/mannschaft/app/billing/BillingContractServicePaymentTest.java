@@ -61,6 +61,7 @@ class BillingContractServicePaymentTest {
     @Mock private ScopeMemberCountService scopeMemberCountService;
     @Mock private EntitlementCacheEvictor cacheEvictor;
     @Mock private BillingPaymentGateway billingPaymentGateway;
+    @Mock private BillingPriceResolver billingPriceResolver;
 
     private BillingContractService service;
 
@@ -69,7 +70,8 @@ class BillingContractServicePaymentTest {
         service = new BillingContractService(
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
-                scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway);
+                scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
+                billingPriceResolver);
     }
 
     // ============================================================
@@ -247,7 +249,7 @@ class BillingContractServicePaymentTest {
     }
 
     @Test
-    @DisplayName("AC-33 補: 未達なら未発行のまま（PENDING の契約に対して発行系は一切走らない前提の確認）")
+    @DisplayName("AC-33/AC-47: 未達なら未発行のまま・expired 放棄で pointer スロット解放（再挑戦可能）")
     void ac33_notDelivered_noEntitlements() {
         // activatePaidContract を呼ばない限り entitlements は発行されない（AC-32 の検証と対）。
         // ここでは abandonPendingContract（期限切れ放棄）でも発行されないことを確認する。
@@ -266,7 +268,7 @@ class BillingContractServicePaymentTest {
     }
 
     @Test
-    @DisplayName("AC-34 補: abandonPendingContract は冪等（PENDING 以外は no-op）")
+    @DisplayName("AC-34/AC-47 冪等: abandonPendingContract は PENDING 以外 no-op（expired 再送安全）")
     void ac34_abandon_idempotent() {
         UUID id = UUID.randomUUID();
         given(billingContractRepository.findByIdAndDeletedAtIsNull(id))
@@ -432,5 +434,158 @@ class BillingContractServicePaymentTest {
         service.markContractPastDue("sub_1");
 
         verify(billingContractRepository, never()).save(any());
+    }
+
+    // ============================================================
+    // AC-44: changePlan の決済ガード（検分差し戻し1番・御裁可済み簡潔案A）
+    // ============================================================
+
+    @Test
+    @DisplayName("AC-44: 有償 ACTIVE 契約（psp_subscription_ref あり）の changePlan は 409（Stripe サブスク孤児化防止）")
+    void ac44_paidContract_changePlan_rejected() {
+        UUID id = UUID.randomUUID();
+        BillingContractEntity paid = contract(id, ContractStatus.ACTIVE, 2000, "sub_1");
+        given(billingContractRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(paid));
+
+        assertThatThrownBy(() -> service.changePlan(EntitlementScopeKind.USER, 9L, id, "BASIC", 9L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+
+        // 旧契約は無変更（CANCELLED 化しない＝孤児サブスクを作らない）・revoke も発行も走らない。
+        assertThat(paid.getStatus()).isEqualTo(ContractStatus.ACTIVE);
+        verify(billingContractRepository, never()).save(any());
+        verify(entitlementRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("AC-44: 無償契約→有償プラン（価格設定済み）への changePlan は 409（Checkout を経ない無償すり抜け防止）")
+    void ac44_freeToPaidPlan_rejected() {
+        UUID id = UUID.randomUUID();
+        BillingContractEntity free = contract(id, ContractStatus.ACTIVE, null, null);
+        given(billingContractRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(free));
+        given(billingPriceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "PREMIUM", null)).willReturn(3000);
+
+        assertThatThrownBy(() -> service.changePlan(EntitlementScopeKind.USER, 9L, id, "PREMIUM", 9L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+
+        assertThat(free.getStatus()).isEqualTo(ContractStatus.ACTIVE);
+        verify(billingContractRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("AC-44 回帰: 無償→無償プランの changePlan は従来どおり成功（旧 revoke＋新発行）")
+    void ac44_freeToFree_succeeds() {
+        UUID oldId = UUID.randomUUID();
+        BillingContractEntity free = contract(oldId, ContractStatus.ACTIVE, null, null); // plan FULL
+        given(billingContractRepository.findByIdAndDeletedAtIsNull(oldId)).willReturn(Optional.of(free));
+        given(billingPriceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "BASIC", null)).willReturn(null);
+        given(planRepository.findById("BASIC")).willReturn(Optional.of(plan("BASIC")));
+        given(planFeatureRepository.findByPlanKey("BASIC")).willReturn(List.of(pf("BASIC", "ads.hide")));
+        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                EntitlementSourceKind.PLAN, oldId)).willReturn(List.of(ent("old.feature")));
+        given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> {
+            BillingContractEntity e = inv.getArgument(0);
+            if (e.getId() == null) {
+                e.setId(UUID.randomUUID());
+            }
+            return e;
+        });
+        given(entitlementRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
+        ActiveContractPointerEntity pointer = ActiveContractPointerEntity.builder()
+                .scopeKind(EntitlementScopeKind.USER).scopeId(9L).contractKind(ContractKind.PLAN)
+                .addonFeatureKey("").contractId(oldId).build();
+        given(activeContractPointerRepository.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "")).willReturn(Optional.of(pointer));
+
+        BillingContractService.ContractResult result =
+                service.changePlan(EntitlementScopeKind.USER, 9L, oldId, "BASIC", 9L);
+
+        assertThat(result.status()).isEqualTo(ContractStatus.ACTIVE);
+        assertThat(result.planKey()).isEqualTo("BASIC");
+        assertThat(free.getStatus()).isEqualTo(ContractStatus.CANCELLED);
+        assertThat(pointer.getContractId()).isNotEqualTo(oldId);
+    }
+
+    // ============================================================
+    // AC-45: 退会 purge 連動（サービス層・DB 遷移）
+    // ============================================================
+
+    @Test
+    @DisplayName("AC-45: cancelAllUserContractsForPurge は USER 契約を全 CANCELLED＋pointer DELETE＋revoke し有償 ref を返す")
+    void ac45_purge_cancelsAllAndReturnsPaidRefs() {
+        UUID paidId = UUID.randomUUID();
+        UUID addonId = UUID.randomUUID();
+        BillingContractEntity paid = contract(paidId, ContractStatus.ACTIVE, 2000, "sub_paid");
+        // 無償 ADDON 契約（PENDING）: PLAN スロットは uk_acp_slot で 1 本のため 2 本目は ADDON にする（実データ整合）。
+        BillingContractEntity freeAddon = BillingContractEntity.builder()
+                .scopeKind(EntitlementScopeKind.USER).scopeId(9L)
+                .contractKind(ContractKind.ADDON).featureKey("extra.feature")
+                .status(ContractStatus.PENDING).contractedAt(NOW).build();
+        freeAddon.setId(addonId);
+        given(billingContractRepository.findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(EntitlementScopeKind.USER), eq(9L), any()))
+                .willReturn(List.of(paid, freeAddon));
+        given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> inv.getArgument(0));
+        EntitlementEntity e1 = ent("ads.hide");
+        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                EntitlementSourceKind.PLAN, paidId)).willReturn(List.of(e1));
+        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                EntitlementSourceKind.ADDON, addonId)).willReturn(List.of());
+        given(entitlementRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
+
+        List<String> refs = service.cancelAllUserContractsForPurge(9L);
+
+        // 有償契約の subscription ref のみ返す（Stripe 即時解約はリスナーが tx 外で行う）。
+        assertThat(refs).containsExactly("sub_paid");
+        assertThat(paid.getStatus()).isEqualTo(ContractStatus.CANCELLED);
+        assertThat(freeAddon.getStatus()).isEqualTo(ContractStatus.CANCELLED);
+        assertThat(e1.getRevokedAt()).isEqualTo(NOW);
+        // PLAN スロット＋ADDON スロットの双方を解放。
+        verify(activeContractPointerRepository).hardDeleteBySlot(
+                eq(EntitlementScopeKind.USER), eq(9L), eq(ContractKind.PLAN), eq(""));
+        verify(activeContractPointerRepository).hardDeleteBySlot(
+                eq(EntitlementScopeKind.USER), eq(9L), eq(ContractKind.ADDON), eq("extra.feature"));
+        verify(cacheEvictor).evictScopeFeatures(eq(EntitlementScopeKind.USER), eq(9L), any());
+    }
+
+    @Test
+    @DisplayName("AC-45: 対象契約なし（無契約ユーザーの purge）は no-op・空リスト")
+    void ac45_purge_noContracts_noop() {
+        given(billingContractRepository.findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(EntitlementScopeKind.USER), eq(9L), any()))
+                .willReturn(List.of());
+
+        List<String> refs = service.cancelAllUserContractsForPurge(9L);
+
+        assertThat(refs).isEmpty();
+        verify(billingContractRepository, never()).save(any());
+        verify(cacheEvictor, never()).evictScopeFeatures(any(), any(), any());
+    }
+
+    // ============================================================
+    // AC-46: 有償契約の二重解約ガード（検分差し戻し3番）
+    // ============================================================
+
+    @Test
+    @DisplayName("AC-46: 期末解約予約済み（ACTIVE のまま cancelled_at セット済み）契約の再解約は 409")
+    void ac46_alreadyScheduledCancel_rejected() {
+        UUID id = UUID.randomUUID();
+        BillingContractEntity scheduled = contract(id, ContractStatus.ACTIVE, 2000, "sub_1");
+        scheduled.setCancelledAt(NOW.minusDays(1)); // 期末解約予約済み。
+        given(billingContractRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(scheduled));
+
+        assertThatThrownBy(() -> service.cancelContract(EntitlementScopeKind.USER, 9L, id, 9L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
+
+        // Stripe cancel_at_period_end の再送・valid_until の再上書きは走らない。
+        verify(billingPaymentGateway, never()).cancelAtPeriodEnd(any());
+        verify(entitlementRepository, never()).saveAll(anyList());
     }
 }

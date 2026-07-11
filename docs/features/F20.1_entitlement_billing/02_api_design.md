@@ -282,7 +282,7 @@ DELETE /api/v1/organizations/{orgId}/billing/contracts/{contractId}
 
 - **無償契約（`price_jpy_snapshot=NULL`・D-3/AC-36）**: `status=CANCELLED`＋`cancelled_at=now`、**`active_contract_pointers` の該当行を DELETE**（一意スロットを解放・次回契約を可能に）、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。scope キャッシュ evict（M-8）。即時失効。
 - **有償契約（`price_jpy_snapshot` 非 NULL＋`psp_subscription_ref` あり・D-3/AC-35・2026-07-10 実決済）**: `gateway.cancelAtPeriodEnd`（Stripe `cancel_at_period_end=true`）→ 契約は **ACTIVE のまま** `cancelled_at`＋`current_period_end` セット → 由来 entitlements の **`valid_until`＝`current_period_end`**（revoke しない・webhook 未達でも期末に自動失効する保険・半開区間）。pointer は残置（EXPIRED 確定まで再契約不可）。EXPIRED 化＋pointer DELETE＋残 revoke は `customer.subscription.deleted` webhook（§3.4）。**応答の `currentPeriodEnd` が「いつまで使えるか」**。
-- 既に CANCELLED/EXPIRED → `ENTITLEMENT_011` 409。
+- 既に CANCELLED/EXPIRED → `ENTITLEMENT_011` 409。**期末解約予約済み**（有償・ACTIVE のまま `cancelled_at` セット済み）への再解約も `ENTITLEMENT_011` 409（AC-46・cancel_at_period_end 再送/valid_until 再上書きの防止）。
 
 ### 3.3 プラン変更
 
@@ -293,6 +293,7 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 ```
 
 - 処理: 単一トランザクションで「旧契約 CANCELLED＋由来 entitlements revoke → 新契約 ACTIVE＋新 entitlements 発行 → **`active_contract_pointers.contract_id` を新契約へ UPDATE**（ポインタは付け替えるだけで行を増やさない）」（AC-19）。同一 planKey への変更は `ENTITLEMENT_006` 409。
+- **決済ガード（AC-44・検分差し戻し1番・御裁可済み簡潔案A）**: changePlan は決済レール（Checkout/サブスク差し替え）を持たないため、入口で二重ガード — (a) 既存契約が有償（`psp_subscription_ref` 非 NULL）は 409（旧契約だけ CANCELLED になり Stripe サブスクが孤児化して課金継続するため）／(b) 変更先プランの解決価格（`BillingPriceResolver`）が有償は 409（Checkout を経ない無償すり抜け＝D-4 の抜け穴）。いずれも `ENTITLEMENT_017 CONTRACT_CHANGE_REQUIRES_PAYMENT` で「一度解約してから新プランを契約」へ誘導。無償→無償のみ従来どおり成功。
 - ダウングレード（FULL→BASIC）で対象外となった機能は即 false（キャッシュ evict 込み）。
 
 ### 3.4 決済 Webhook（2026-07-10 実決済・D-2）
@@ -310,6 +311,19 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 - **冪等の二層（AC-34）**: 全イベントを既存 `WebhookIdempotencyService`（`stripe_webhook_events` の event_id UNIQUE ゲート・FAILED は再処理可）に通し、さらに各状態遷移メソッドが status 済みチェックで no-op（二重発行ゼロ）。F09.13 の `checkout.session.completed` 経路（ゲート非経由）とは異なり billing は必ずゲートを通す。
 - **F08.9 との分離（D-2・AC-38）**: `invoice.*`/`customer.subscription.deleted` は先に billing の `psp_subscription_ref` 逆引きを試み、**ヒットすれば billing・なければ従来どおり membership へ**（相互 no-op）。billing 非所有なら冪等ゲートも消費しない（membership 側が自分の event_id ゲートを通せる）。
 - **失敗の握り潰し禁止**: billing ハンドラ失敗は `markFailed`＋再送出（Stripe at-least-once 再送でリカバリ・F08.9 と同流儀）。
+
+### 3.5 退会 purge 連動（AC-45・03 §8・検分差し戻し2番）
+
+`BillingPurgeEventListener`（billing ドメイン）が退会イベントを購読する:
+
+| イベント | 処理 |
+|---|---|
+| `WithdrawalRequestedEvent`（申請・猶予開始） | **明示 no-op**（revoke は復活不可のため猶予中は権利維持・01 §10 M-5） |
+| `WithdrawalCancelledEvent`（撤回） | **明示 no-op**（権利維持のまま） |
+| `AccountPurgedEvent`（確定・30日後物理削除） | `BillingContractService.cancelAllUserContractsForPurge`（**REQUIRES_NEW**・memory の掟）で USER スコープの PENDING/ACTIVE/PAST_DUE 契約を CANCELLED＋pointer 物理 DELETE＋entitlements revoke＋evict → **tx 外**で有償契約の Stripe サブスクを**即時解約**（`Subscription.cancel`・期末解約ではない・退会後の課金継続事故防止） |
+
+- 順序は「DB 確定 → Stripe 即時解約」: Stripe 失敗時も GDPR 上必須の権利失効は完了済み（revoke 済みのため invoice webhook が届いても権利は復活しない）。Stripe 側の課金継続のみ ERROR ログで手動照合に上申する。
+- 例外はイベント基盤へ伝播させない（他ドメインの purge リスナーを妨げない・`ChartPurgeEventListener` 前例）。
 
 ---
 
@@ -513,6 +527,7 @@ public class OrgTypeAutoUpgradeListener {
 | `INVALID_CONTRACT_KIND` | `ENTITLEMENT_014` | 400 | WARN | contractKind が PLAN/ADDON 以外（P1 実装で追補採番） |
 | `CHECKOUT_SESSION_FAILED` | `ENTITLEMENT_015` | **502** | ERROR | Stripe Checkout 生成失敗（2026-07-10 実決済。PENDING 契約は補償済み＝孤児なし） |
 | `CONTRACT_PENDING_PAYMENT` | `ENTITLEMENT_016` | 409 | WARN | PENDING（入金前）スロット占有中の再契約（2026-07-10 実決済・AC-32） |
+| `CONTRACT_CHANGE_REQUIRES_PAYMENT` | `ENTITLEMENT_017` | 409 | WARN | 有償が絡む changePlan の拒否（検分差し戻し・AC-44。解約→新規契約へ誘導） |
 
 `GlobalExceptionHandler` への追記（設計に含む）:
 
@@ -533,6 +548,7 @@ Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),
 Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),
 Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),    // 2026-07-10 実決済
 Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),       // 2026-07-10 実決済
+Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),       // AC-44 changePlan 決済ガード
 ```
 
 ---

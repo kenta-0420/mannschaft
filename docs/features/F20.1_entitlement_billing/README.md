@@ -281,6 +281,10 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-38 | 境界（実決済 D-2） | F08.9 会費の `invoice.*`（billing に無い subscriptionId）は membership 側へ・billing は関与しない。billing の subscriptionId（`psp_subscription_ref` 逆引きヒット）は membership が処理しない（**相互 no-op**） |
 | AC-39 | 異常（実決済） | webhook 署名なし/不正 → 400・未処理（既存 `StripeWebhookController` の検証が billing イベントでも有効） |
 | AC-40 | 境界（実決済 D-4） | 価格入力後の**新規契約のみ**決済必須へ切替。入力前に結ばれた無償契約（`price_jpy_snapshot=NULL`）は不変（解約も即時のまま・遡及なし） |
+| AC-44 | 異常（実決済 検分差し戻し1番） | changePlan は決済レールを持たないため有償が絡む変更を 409（`ENTITLEMENT_017`）で拒否: (a) 既存契約が有償（`psp_subscription_ref` 非 NULL・Stripe サブスク孤児化防止）(b) 変更先プランが有償（Checkout を経ない無償すり抜け防止）。無償→無償は従来どおり成功 |
+| AC-45 | 正常（実決済 検分差し戻し2番） | 退会 purge 確定（`AccountPurgedEvent`）で USER スコープの PENDING/ACTIVE/PAST_DUE 契約を CANCELLED＋pointer DELETE＋entitlements revoke＋evict し、有償契約は Stripe サブスクを**即時解約**（期末解約ではない・課金継続事故防止）。申請（猶予中）・撤回は明示 no-op（権利維持） |
+| AC-46 | 異常（実決済 検分差し戻し3番） | 期末解約予約済み（ACTIVE のまま `cancelled_at` セット済み）の有償契約への再解約 DELETE は `ENTITLEMENT_011`(409)（cancel_at_period_end 再送・valid_until 再上書きの防止） |
+| AC-47 | 正常（実決済） | `checkout.session.expired` で PENDING 契約は CANCELLED＋pointer 物理 DELETE（`uk_acp_slot` スロット解放＝同一スコープで再挑戦可能）。PENDING 以外への再送は no-op（冪等） |
 
 ---
 

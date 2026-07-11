@@ -82,7 +82,18 @@ public enum EntitlementErrorCode implements ErrorCode {
      * 二重契約試行。既存が ACTIVE なら {@link #CONTRACT_ALREADY_ACTIVE}（006）、PENDING なら本コード（016）で
      * 「入金前の契約が進行中」を明示する（再挑戦は Checkout 完了/失効後）。</p>
      */
-    CONTRACT_PENDING_PAYMENT("ENTITLEMENT_016", "入金前の契約が進行中です。完了または失効後に再度お試しください", Severity.WARN);
+    CONTRACT_PENDING_PAYMENT("ENTITLEMENT_016", "入金前の契約が進行中です。完了または失効後に再度お試しください", Severity.WARN),
+
+    /**
+     * 決済を要するプラン変更 → 409（実決済 検分差し戻し・AC-44）。
+     *
+     * <p>changePlan は決済レール（Checkout / Stripe サブスク差し替え）を持たないため、
+     * (a) 既存契約が有償（{@code psp_subscription_ref} 非 NULL）＝旧サブスクが解約されず課金継続する孤児化、
+     * (b) 変更先プランが有償（価格設定済み）＝Checkout を経ない無償すり抜け（D-4 の抜け穴）、
+     * のいずれも 409 で拒否し「一度解約してから新プランを契約」する導線へ誘導する。</p>
+     */
+    CONTRACT_CHANGE_REQUIRES_PAYMENT("ENTITLEMENT_017",
+            "有償プランが関わる変更はできません。一度解約してから新プランを契約してください", Severity.WARN);
 
     private final String code;
     private final String message;

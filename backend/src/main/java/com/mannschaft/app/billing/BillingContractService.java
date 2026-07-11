@@ -53,6 +53,8 @@ public class BillingContractService {
     private final Clock clock;
     /** F20.1 実決済（D-3）: 有償解約の期末解約予約に用いる決済ゲートウェイ（自社受取サブスク）。 */
     private final BillingPaymentGateway billingPaymentGateway;
+    /** F20.1 実決済（AC-44）: changePlan の変更先プラン価格解決（有償なら 409 拒否）。 */
+    private final BillingPriceResolver billingPriceResolver;
 
     /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
@@ -186,6 +188,11 @@ public class BillingContractService {
         if (contract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
+        // ★AC-46: 期末解約予約済み（有償・status=ACTIVE のまま cancelled_at セット済み）への再解約は 409。
+        // status チェックだけでは素通りし、Stripe cancel_at_period_end の再送・valid_until の再上書きが起こるため。
+        if (contract.getCancelledAt() != null) {
+            throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
+        }
 
         // D-3: 有償契約（price_jpy_snapshot 非 NULL＋PSP 紐付あり）は期末解約（cancel_at_period_end）。
         // 無償契約は従来どおり即時失効。
@@ -242,6 +249,22 @@ public class BillingContractService {
         if (newPlanKey != null && newPlanKey.equals(oldContract.getPlanKey())) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_ALREADY_ACTIVE);
         }
+
+        // ★AC-44（検分差し戻し・御裁可済み簡潔案A）: changePlan は決済レールを持たないため、有償が絡む変更は
+        // 二重ガードで 409 拒否し「解約→新規契約」へ誘導する。
+        // (a) 既存契約が有償（psp_subscription_ref 非 NULL）: 旧契約を CANCELLED にしても Stripe サブスクは
+        //     解約されず課金継続する（孤児化）ため拒否。
+        if (oldContract.getPspSubscriptionRef() != null) {
+            throw new BusinessException(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+        }
+        // (b) 変更先プランが有償（価格設定済み）: Checkout を経ず priceJpySnapshot=NULL で即 ACTIVE になると
+        //     有料機能の無償付与（D-4 の抜け穴）になるため拒否。
+        Integer newPlanPrice = billingPriceResolver.resolveMonthlyPriceJpy(
+                scopeKind, scopeId, ContractKind.PLAN, newPlanKey, null);
+        if (newPlanPrice != null && newPlanPrice > 0) {
+            throw new BusinessException(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+        }
+
         List<String> newKeys = validatePlanAndResolveFeatures(newPlanKey);
 
         // 旧契約 CANCELLED＋由来 entitlements revoke。
@@ -493,6 +516,48 @@ public class BillingContractService {
     }
 
     /**
+     * 退会 purge 確定時の USER スコープ契約一括解約（AC-45・設計書 03 §8）。
+     *
+     * <p>PENDING/ACTIVE/PAST_DUE の USER スコープ契約を全て CANCELLED＋pointer 物理 DELETE＋
+     * 由来 entitlements revoke＋evict する（撤回窓は閉じており復活不可で問題ない）。
+     * <b>Stripe サブスクの即時解約は本メソッドの外</b>（{@link BillingPurgeEventListener}・tx 外）で行うため、
+     * 有償契約の {@code psp_subscription_ref} 集合を返す。</p>
+     *
+     * <p>{@code REQUIRES_NEW}: {@code @TransactionalEventListener(AFTER_COMMIT)} から呼ばれる書き込みは
+     * 完了済み tx への参加では silent no-op になるため独立 tx で行う（memory
+     * {@code feedback_transactional_event_listener_requires_new} の掟）。</p>
+     *
+     * @return 即時解約すべき有償契約の Stripe Subscription ID 集合
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public List<String> cancelAllUserContractsForPurge(Long userId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<BillingContractEntity> contracts = billingContractRepository
+                .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                        EntitlementScopeKind.USER, userId,
+                        List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE));
+        List<String> paidSubscriptionRefs = new ArrayList<>();
+        Set<String> revokedKeys = new LinkedHashSet<>();
+        for (BillingContractEntity contract : contracts) {
+            if (contract.getPspSubscriptionRef() != null) {
+                paidSubscriptionRefs.add(contract.getPspSubscriptionRef());
+            }
+            contract.setStatus(ContractStatus.CANCELLED);
+            contract.setCancelledAt(now);
+            billingContractRepository.save(contract);
+            String slotAddonKey = contract.getContractKind() == ContractKind.ADDON
+                    ? contract.getFeatureKey() : "";
+            activeContractPointerRepository.hardDeleteBySlot(
+                    EntitlementScopeKind.USER, userId, contract.getContractKind(), slotAddonKey);
+            revokedKeys.addAll(revokeEntitlementsOfContract(contract, null, now));
+        }
+        if (!contracts.isEmpty()) {
+            evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
+        }
+        return paidSubscriptionRefs;
+    }
+
+    /**
      * D-3 有償解約: 期末解約予約（{@code cancel_at_period_end}）＋entitlements の {@code valid_until} を
      * {@code current_period_end} へ（webhook 未達でも期末に自動失効する保険・半開区間）。契約は ACTIVE のまま
      * {@code cancelled_at} をセットする（{@code customer.subscription.deleted} で EXPIRED＋残 revoke）。
@@ -501,6 +566,14 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, BillingContractEntity contract,
             Long operatorUserId, LocalDateTime now) {
 
+        // 【設計注記（検分5番・判断済み）】gateway 呼び出しは cancelContract の @Transactional 内で行う。
+        // 「Stripe 呼び出し→tx 更新」への再構成は、無償/有償が共有する cancelContract 経路（IDOR 検証→
+        // ガード→分岐）の分解を要し P1 経路の回帰リスクが高いため現状維持とする。整合性は以下で担保される:
+        //  - Stripe 失敗 → 例外で tx ロールバック（DB 無変更・再実行可能・不整合なし）。
+        //  - Stripe 成功後に tx ロールバック → DB は解約予約なしのままだが、Stripe の cancel_at_period_end は
+        //    有効なため期末に customer.subscription.deleted webhook が届き、expireSubscriptionContract が
+        //    EXPIRED＋pointer DELETE＋残 revoke で自己修復する（webhook 自己修復）。
+        //  - cancelAtPeriodEnd は Stripe 冪等キー付きで再送安全（AC-46 の二重解約ガードとも二層）。
         Instant periodEnd = billingPaymentGateway.cancelAtPeriodEnd(contract.getPspSubscriptionRef());
         LocalDateTime periodEndLdt = periodEnd != null
                 ? LocalDateTime.ofInstant(periodEnd, clock.getZone())

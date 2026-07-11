@@ -684,6 +684,19 @@ public interface StripePaymentProvider {
             String successUrl, String cancelUrl);
 
     /**
+     * Stripe Subscription を<b>即時解約</b>する（F20.1 実決済・退会 purge 連動 AC-45）。
+     *
+     * <p>{@link #cancelSubscriptionAtPeriodEnd} の期末解約と異なり、その場で subscription を cancel する
+     * （退会確定＝purge 後のユーザーへの課金継続を止める・日割り返金なし）。失敗は
+     * {@code STRIPE_API_ERROR} で上申し、呼び出し側（purge リスナー）が ERROR ログで手動照合に委ねる
+     * （症状を隠さない）。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-purge-{subscriptionId}}）
+     */
+    void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey);
+
+    /**
      * F20.1 実決済の Webhook イベントを検証・パースする（{@code checkout.session.completed}/{@code .expired}・
      * {@code invoice.paid}/{@code invoice.payment_failed}・{@code customer.subscription.deleted}）。
      *
