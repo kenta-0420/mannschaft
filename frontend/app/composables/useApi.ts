@@ -286,6 +286,16 @@ export function useApi() {
         return
       }
 
+      // 402: F20.1 課金・エンタイトルメント基盤の共通ペイウォール検知（設計書 04 §2）。
+      // ENTITLEMENT_003（購入手段あり・402）はここでグローバルにペイウォールモーダルを開く。
+      // 呼び出し元は個別に握りつぶさず通常どおりエラーを catch できる（モーダル表示は副作用のみ）。
+      if (response.status === 402) {
+        const body = response._data as { error?: { code?: string; message?: string } } | undefined
+        if (body?.error?.code === 'ENTITLEMENT_003') {
+          usePaywallStore().open(body.error.message)
+        }
+      }
+
       // 5xx: トースト集約 + エラー報告
       if (response.status >= 500) {
         const requestId = response.headers.get('X-Request-ID') ?? undefined

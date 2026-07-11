@@ -40,20 +40,23 @@ async function load() {
   try {
     const [perfRes, creativeRes, breakdownRes] = await Promise.all([
       advertiserApi.getCampaignPerformance(
-        campaignId,
+        'ORGANIZATION',
         orgSlug,
+        campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getCreativeComparison(
-        campaignId,
+        'ORGANIZATION',
         orgSlug,
+        campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getBreakdown(
-        campaignId,
+        'ORGANIZATION',
         orgSlug,
+        campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
@@ -72,8 +75,9 @@ async function handleExportCsv() {
   exportingCsv.value = true
   try {
     const blob = await advertiserApi.exportCampaignCsv(
-      campaignId,
+      'ORGANIZATION',
       orgSlug,
+      campaignId,
       formatDate(dateFrom.value),
       formatDate(dateTo.value),
     )

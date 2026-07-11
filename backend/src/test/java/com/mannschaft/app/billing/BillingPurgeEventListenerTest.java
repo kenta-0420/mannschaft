@@ -3,6 +3,7 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -31,6 +34,7 @@ class BillingPurgeEventListenerTest {
 
     @Mock private BillingContractService billingContractService;
     @Mock private BillingPaymentGateway billingPaymentGateway;
+    @Mock private AccountPurgeCompletionService accountPurgeCompletionService;
 
     @InjectMocks private BillingPurgeEventListener listener;
 
@@ -51,6 +55,18 @@ class BillingPurgeEventListenerTest {
     }
 
     @Test
+    @DisplayName("残債1: DB＋Stripe が両方成功したら completion_status を billing SUCCESS に更新する")
+    void 残債1_purge_allSucceeded_marksSuccess() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L))
+                .willReturn(List.of("sub_a"));
+
+        listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
+
+        // ArchUnit D-3 是正: gdpr の Repository 直接更新ではなく Service 経由で報告する。
+        verify(accountPurgeCompletionService).markDomainSuccess(9L, "billing");
+    }
+
+    @Test
     @DisplayName("AC-45: Stripe 即時解約の失敗は他契約の解約を妨げない（ERROR ログ＋続行・手動照合）")
     void ac45_purge_stripeFailure_continuesOthers() {
         given(billingContractService.cancelAllUserContractsForPurge(9L))
@@ -65,6 +81,19 @@ class BillingPurgeEventListenerTest {
     }
 
     @Test
+    @DisplayName("残債1: Stripe 解約が 1 件でも失敗したら completion_status は SUCCESS 更新しない（PENDING のまま残しリトライ対象にする）")
+    void 残債1_purge_stripeFailure_doesNotMarkSuccess() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L))
+                .willReturn(List.of("sub_fail"));
+        willThrow(new IllegalStateException("stripe down"))
+                .given(billingPaymentGateway).cancelImmediately("sub_fail");
+
+        listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
+
+        verify(accountPurgeCompletionService, never()).markDomainSuccess(any(), anyString());
+    }
+
+    @Test
     @DisplayName("AC-45: DB 全解約の失敗時は Stripe 解約に進まない（ERROR ログ・手動確認）")
     void ac45_purge_dbFailure_skipsStripe() {
         given(billingContractService.cancelAllUserContractsForPurge(9L))
@@ -72,6 +101,72 @@ class BillingPurgeEventListenerTest {
 
         listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
 
+        verifyNoInteractions(billingPaymentGateway);
+    }
+
+    @Test
+    @DisplayName("残債1: DB 全解約の失敗時は completion_status を更新しない（PENDING のまま残す）")
+    void 残債1_purge_dbFailure_doesNotMarkSuccess() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L))
+                .willThrow(new IllegalStateException("db down"));
+
+        listener.onAccountPurged(new AccountPurgedEvent(9L, "hash"));
+
+        verifyNoInteractions(accountPurgeCompletionService);
+    }
+
+    @Test
+    @DisplayName("残債1 retryPurge: DB 再解約（冪等・空返却）＋Stripe 未確認解約契約の両方を retry する")
+    void 残債1_retryPurge_retriesDbAndPendingStripeCancel() {
+        // DB は既に全て CANCELLED 済み（冪等・空返却）。
+        given(billingContractService.cancelAllUserContractsForPurge(9L)).willReturn(List.of());
+        // 前回 Stripe 解約が失敗した契約が 1 件残っている。
+        given(billingContractService.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L))
+                .willReturn(List.of("sub_pending"));
+
+        boolean result = listener.retryPurge(9L);
+
+        assertThat(result).isTrue();
+        verify(billingPaymentGateway).cancelImmediately("sub_pending");
+    }
+
+    @Test
+    @DisplayName("残債1 retryPurge: Stripe 解約が失敗したら false を返す（PENDING 継続・GdprPurgeRetryService が反映）")
+    void 残債1_retryPurge_stripeFailure_returnsFalse() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L)).willReturn(List.of());
+        given(billingContractService.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L))
+                .willReturn(List.of("sub_still_fails"));
+        willThrow(new IllegalStateException("stripe still down"))
+                .given(billingPaymentGateway).cancelImmediately("sub_still_fails");
+
+        boolean result = listener.retryPurge(9L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("残債1 retryPurge: DB 再解約が失敗したら false を返す")
+    void 残債1_retryPurge_dbFailure_returnsFalse() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L))
+                .willThrow(new IllegalStateException("db still down"));
+        given(billingContractService.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L))
+                .willReturn(List.of());
+
+        boolean result = listener.retryPurge(9L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("残債1 retryPurge: DB・Stripe 未確認解約とも対象なしなら true（何もしなくて成功扱い）")
+    void 残債1_retryPurge_nothingToDo_returnsTrue() {
+        given(billingContractService.cancelAllUserContractsForPurge(9L)).willReturn(List.of());
+        given(billingContractService.findPurgedPaidSubscriptionRefsPendingStripeCancel(9L))
+                .willReturn(List.of());
+
+        boolean result = listener.retryPurge(9L);
+
+        assertThat(result).isTrue();
         verifyNoInteractions(billingPaymentGateway);
     }
 

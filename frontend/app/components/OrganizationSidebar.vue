@@ -122,6 +122,8 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
+      // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
+      { labelKey: 'orgSidebar.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
 ]

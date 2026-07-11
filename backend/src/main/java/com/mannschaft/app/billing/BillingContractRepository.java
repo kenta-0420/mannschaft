@@ -48,6 +48,20 @@ public interface BillingContractRepository
      */
     java.util.Optional<BillingContractEntity> findByPspSubscriptionRefAndDeletedAtIsNull(String pspSubscriptionRef);
 
+    /**
+     * 退会 purge で CANCELLED 済みだが Stripe 即時解約の成否が未確認の USER スコープ有償契約を取得する
+     * （残債1: {@code BillingPurgeEventListener#retryPurge} の Stripe リトライ穴埋め用）。
+     *
+     * <p>現行の契約遷移ロジック上、USER スコープの契約が {@code status=CANCELLED} かつ
+     * {@code psp_subscription_ref} が非 NULL のまま残るのは
+     * {@code BillingContractService#cancelAllUserContractsForPurge}（退会 purge）経由のみである
+     * （無償解約は {@code psp_subscription_ref} が常に NULL・有償の通常解約
+     * {@code cancelPaidAtPeriodEnd} は status を ACTIVE のまま維持し CANCELLED にしない）。この一意性を
+     * 利用し、「DB は解約済みだが Stripe 側の解約成否が未確認」な契約を安全に抽出できる。</p>
+     */
+    List<BillingContractEntity> findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
+            EntitlementScopeKind scopeKind, Long scopeId, ContractStatus status);
+
     /** 指定プランを参照する当該状態の契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
     boolean existsByPlanKeyAndStatusAndDeletedAtIsNull(String planKey, ContractStatus status);
 

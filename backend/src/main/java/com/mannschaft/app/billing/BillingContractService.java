@@ -558,6 +558,33 @@ public class BillingContractService {
     }
 
     /**
+     * 残債1（GDPR purge retry）: 退会 purge で CANCELLED 済みだが Stripe 即時解約が未確認の USER スコープ
+     * 有償契約の Subscription ID 一覧を返す。
+     *
+     * <p>{@link #cancelAllUserContractsForPurge} は status IN (PENDING, ACTIVE, PAST_DUE) の契約のみを
+     * 対象にするため、DB 遷移が既に完了した（＝status=CANCELLED になった）契約は 2 回目以降の呼び出しで
+     * 対象外になる（意図した冪等性）。しかし「DB は CANCELLED 済みだが直前の Stripe 即時解約 API 呼び出しが
+     * 失敗した」契約は、その冪等性ゆえに再度 {@link #cancelAllUserContractsForPurge} を呼んでも
+     * subscriptionRef を再取得できない（Stripe だけ取り残される穴）。本メソッドは
+     * {@link BillingContractRepository#findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull}
+     * でこの「Stripe だけ取り残された」契約を発見し、{@code BillingPurgeEventListener#retryPurge} が
+     * Stripe 解約を再試行できるようにする。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return Stripe 解約が未確認の Subscription ID 一覧（重複なし）
+     */
+    @Transactional(readOnly = true)
+    public List<String> findPurgedPaidSubscriptionRefsPendingStripeCancel(Long userId) {
+        return billingContractRepository
+                .findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
+                        EntitlementScopeKind.USER, userId, ContractStatus.CANCELLED)
+                .stream()
+                .map(BillingContractEntity::getPspSubscriptionRef)
+                .distinct()
+                .toList();
+    }
+
+    /**
      * D-3 有償解約: 期末解約予約（{@code cancel_at_period_end}）＋entitlements の {@code valid_until} を
      * {@code current_period_end} へ（webhook 未達でも期末に自動失効する保険・半開区間）。契約は ACTIVE のまま
      * {@code cancelled_at} をセットする（{@code customer.subscription.deleted} で EXPIRED＋残 revoke）。
