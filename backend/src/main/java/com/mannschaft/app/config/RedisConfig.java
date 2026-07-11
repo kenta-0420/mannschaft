@@ -6,9 +6,12 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -95,6 +98,7 @@ public class RedisConfig {
      * F15.4 Phase 3: 組織内チーム（店舗）検索キャッシュ（team-search: 60秒）を追加。</p>
      */
     @Bean
+    @Profile("!test")
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         // デフォルト設定（30分TTL）
         RedisCacheConfiguration defaultConfig = redisCacheConfiguration();
@@ -141,5 +145,39 @@ public class RedisConfig {
                 .withCacheConfiguration("entitlement:check",
                         redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
                 .build();
+    }
+
+    /**
+     * テストプロファイル専用のプロセス内キャッシュマネージャー（Redis 非依存）。
+     *
+     * <p><b>背景（認可根治戦役 AC-1-1d 500 の真因）</b>: 統合テスト用の
+     * {@code application-test.yml} は {@code spring.cache.type: none} を指定しているが、
+     * 本クラスが {@code @Bean RedisCacheManager cacheManager} を明示定義しているため、
+     * Spring Boot の {@code CacheAutoConfiguration}（{@code @ConditionalOnMissingBean(CacheManager.class)}）が
+     * バックオフし、{@code type: none} が無効化されて<b>テストでも Redis-backed キャッシュが有効</b>に
+     * なっていた。その結果 {@code RoleService.changeRole} 等の {@code @CacheEvict("role-permissions")} が
+     * 実 Redis（{@code localhost:6379}）へ接続し、full-shard（shard3）の並行負荷で Redis 接続が
+     * 枯渇・失敗すると {@code RedisConnectionFailureException} を送出 → 正常系ミューテーションだけが
+     * 非決定的に 500 になっていた（403/BOLA 系はキャッシュ処理へ到達する前に弾かれるため無傷、
+     * 単独 shard は Redis に余裕があり緑）。</p>
+     *
+     * <p><b>是正</b>: 上の {@code RedisCacheManager} を {@code @Profile("!test")} に限定し、
+     * テストプロファイルでは本 {@link ConcurrentMapCacheManager}（プロセス内 Map）を CacheManager として
+     * 用いる。これにより {@code @Cacheable}/{@code @CacheEvict} のキャッシュ意味論（put/get/evict）は
+     * 従来どおり動作しつつ、テストは Redis 接続に一切依存しなくなり、shard 並行負荷でも安定する。
+     * キャッシュ名は未登録でも動的生成されるため、アプリ全キャッシュ名（role-permissions 等）が
+     * そのまま機能する。</p>
+     *
+     * <p><b>本番挙動は不変</b>: 本 Bean は {@code test} プロファイルでのみ有効化され、本番／開発では
+     * 従来どおり {@link RedisCacheManager}（Valkey）が使われる。テスト以外に一切影響しない。
+     * なお「Redis 断で {@code @CacheEvict} が書き込みを巻き込んで失敗する」本番の耐障害性課題は
+     * 本修正の対象外（別バックログとして切り出す）。</p>
+     */
+    @Bean
+    @Profile("test")
+    public CacheManager testInMemoryCacheManager() {
+        // 名前を渡さない ConcurrentMapCacheManager は要求されたキャッシュ名を動的生成する
+        // （アプリで使う全キャッシュ名を列挙せずに済む）。
+        return new ConcurrentMapCacheManager();
     }
 }

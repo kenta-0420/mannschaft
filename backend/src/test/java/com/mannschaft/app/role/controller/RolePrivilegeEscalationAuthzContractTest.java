@@ -6,14 +6,12 @@ import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.PermissionGroupRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -31,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -74,9 +70,6 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private RoleService roleService;
 
     @Autowired
     private RoleRepository roleRepository;
@@ -249,44 +242,14 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
     }
 
-    /**
-     * AC-1-1d 正常系「正当なチーム ADMIN はメンバーを昇格できる」の検証。
-     *
-     * <p><b>この 1 ケースのみ HTTP MockMvc 経路ではなく Service 層で直接検証する</b>
-     * （他の AC-1-1a/b/c・AC-1-2・AC-1-7 は HTTP MockMvc のまま維持し、Controller→Service→認可の
-     * 結線とスコープ越境遮断を実 HTTP で担保する）。</p>
-     *
-     * <h3>なぜ Service 層へ移設するか（マスクではない根拠）</h3>
-     * <ul>
-     *   <li>本番実装（{@code RoleService.changeRole}）は単独 shard 実行では 5 回連続で緑＝正しい。
-     *       正常系のみが full-shard の shard3 で非決定的に 500 になるのは、shard 並行負荷による
-     *       コネクションプール枯渇性フレークであり本番バグではない。サーバ例外は
-     *       {@code GlobalExceptionHandler} に握られ CI ログに残らず追跡不能で、個別要因
-     *       （REQUIRES_NEW 二次コネクション増幅の除去等）を潰しても消えなかった。</li>
-     *   <li>「正当 ADMIN は昇格できる」という検証意図は、{@code changeRole} を直接呼んで例外が飛ばないこと＋
-     *       {@code user_roles} が新ロールへ変わったことを repository で DB 照合することで完全に保持できる。
-     *       HTTP + MockMvc + フィルタ chain + 非同期監査 fanout の競合に正常系を晒す必要はない。</li>
-     *   <li>Controller 結線の正当性（認可ゲート・越境遮断）は AC-1-1a/b/c・AC-1-2 の実 HTTP 403/BOLA が
-     *       引き続き担保する。よって本移設で失われる検証カバレッジは無い。</li>
-     * </ul>
-     */
     @Test
-    @DisplayName("AC-1-1d(正常系): 正当なチームADMINはメンバーを昇格できる（Service層でDB照合）")
-    void teamChangeRole_byValidAdmin_ok() {
-        // 事前条件: VICTIM は teamA の MEMBER（setUp で付与済み）。
-        UserRoleEntity before = userRoleRepository.findByUserIdAndTeamId(VICTIM, teamAId)
-                .orElseThrow(() -> new AssertionError("前提: VICTIM の user_roles 行が存在するはず"));
-        assertThat(before.getRoleId()).isEqualTo(memberRoleId);
-
-        // 正当な ADMIN（ADMIN_A）が VICTIM を ADMIN へ昇格 → 例外が飛ばないこと。
-        assertThatCode(() -> roleService.changeRole(
-                teamAId, "TEAM", VICTIM, new RoleChangeRequest(adminRoleId), ADMIN_A))
-                .doesNotThrowAnyException();
-
-        // DB 照合: VICTIM の teamA ロールが新ロール（ADMIN）へ変わっていること。
-        UserRoleEntity after = userRoleRepository.findByUserIdAndTeamId(VICTIM, teamAId)
-                .orElseThrow(() -> new AssertionError("昇格後: VICTIM の user_roles 行が存在するはず"));
-        assertThat(after.getRoleId()).isEqualTo(adminRoleId);
+    @WithMockUser(username = "2001")
+    @DisplayName("AC-1-1d(正常系): 正当なチームADMINはメンバーを昇格できる → 200")
+    void teamChangeRole_byValidAdmin_ok() throws Exception {
+        mockMvc.perform(patch("/api/v1/teams/" + teamASlug + "/members/" + VICTIM + "/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(roleChangeBody(adminRoleId)))
+                .andExpect(status().isOk());
     }
 
     // ───────────────────────────── AC-1-2: BOLA（権限グループ） ─────────────────────────────
