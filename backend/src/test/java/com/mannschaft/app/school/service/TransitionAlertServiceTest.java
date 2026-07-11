@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.entity.AttendanceTransitionAlertEntity;
+import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.repository.AttendanceTransitionAlertRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,11 +48,24 @@ class TransitionAlertServiceTest {
     private TransitionAlertService transitionAlertService;
 
     private static final Long TEAM_ID = 1L;
+    /** 攻撃者が ADMIN でない別テナントのチーム（BOLA クロステナント検証用）。 */
+    private static final Long OTHER_TEAM_ID = 777L;
     private static final Long MEMBER_USER_ID = 100L;
     private static final Long ADMIN_USER_ID = 200L;
     private static final Long OUTSIDER_USER_ID = 999L;
     private static final Long ALERT_ID = 10L;
     private static final LocalDate ATTENDANCE_DATE = LocalDate.of(2026, 7, 1);
+
+    /** 指定チームに属する未解決アラート（id 付き）を生成する。 */
+    private AttendanceTransitionAlertEntity buildAlert(Long teamId) {
+        AttendanceTransitionAlertEntity entity = AttendanceTransitionAlertEntity.builder()
+                .teamId(teamId)
+                .studentUserId(300L)
+                .attendanceDate(ATTENDANCE_DATE)
+                .build();
+        ReflectionTestUtils.setField(entity, "id", ALERT_ID);
+        return entity;
+    }
 
     @Nested
     @DisplayName("getAlerts（閲覧＝所属者のみ）")
@@ -94,6 +108,8 @@ class TransitionAlertServiceTest {
         @Test
         @DisplayName("red→green: 非ADMINが POST 移動検知アラート解決 → 403 (COMMON_002)")
         void nonAdmin_forbidden() {
+            // entity由来scope認可: alert を先に fetch → path teamId 一致 → checkAdminOrAbove が拒否。
+            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
                     .when(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM");
 
@@ -103,21 +119,64 @@ class TransitionAlertServiceTest {
                     .extracting(ex -> ((BusinessException) ex).getErrorCode())
                     .isEqualTo(CommonErrorCode.COMMON_002);
 
-            verify(alertRepository, never()).findById(any());
+            verify(alertRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("非回帰: ADMINは従来どおりアラートを解決可能")
-        void admin_success() {
-            doNothing().when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
+        @DisplayName("BOLA red→green: 自チームADMINが path=自team で他チームのalertIdを解決 → 404存在秘匿（認可到達前に遮断）")
+        void crossTenant_pathOwnTeam_notFound() {
+            // 攻撃: /teams/{自team=TEAM_ID}/…/{他teamのalertId}/resolve。
+            // alert の実所属は OTHER_TEAM_ID なので path(TEAM_ID) と不一致 → 404 で存在秘匿。
+            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(OTHER_TEAM_ID)));
 
-            AttendanceTransitionAlertEntity entity = AttendanceTransitionAlertEntity.builder()
-                    .teamId(TEAM_ID)
-                    .studentUserId(300L)
-                    .attendanceDate(ATTENDANCE_DATE)
-                    .build();
-            ReflectionTestUtils.setField(entity, "id", ALERT_ID);
-            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(entity));
+            assertThatThrownBy(() -> transitionAlertService
+                    .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "他チームを握り潰す"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
+
+            // 存在秘匿のため認可判定にも解決処理にも到達しない。
+            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+            verify(alertRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("BOLA red→green: 他チームADMINが path=victim team で他チームのalertを解決 → 403（entity由来scopeで認可）")
+        void crossTenant_pathVictimTeam_forbidden() {
+            // 攻撃: path=victim team(OTHER_TEAM_ID) を正しく指定しても、
+            // 攻撃者は OTHER_TEAM_ID の ADMIN ではないため entity由来scope認可で 403。
+            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(OTHER_TEAM_ID)));
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> transitionAlertService
+                    .resolveAlert(OTHER_TEAM_ID, ALERT_ID, ADMIN_USER_ID, "他チームを握り潰す"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            verify(alertRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("red→green: 存在しない alertId → 404")
+        void notFound() {
+            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> transitionAlertService
+                    .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "解決しました"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
+
+            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("非回帰: ADMIN（path=自team・alertも自team）は従来どおりアラートを解決可能")
+        void admin_success() {
+            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
+            doNothing().when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
             given(alertRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             var response = transitionAlertService

@@ -95,10 +95,20 @@ public class TransitionAlertService {
      */
     public TransitionAlertResponse resolveAlert(
             Long teamId, Long alertId, Long resolverUserId, String note) {
-        accessControlService.checkAdminOrAbove(resolverUserId, teamId, "TEAM");
-
+        // BOLA封鎖（アンチパターンE・path値の鵜呑み禁止）:
+        // path の teamId で認可すると、自チーム ADMIN が
+        // /teams/{自team}/…/{他teamのalertId}/resolve で他チームのアラートを握り潰せる。
+        // よって先に alert を fetch し、entity 由来 scope（alert.teamId）で照合・認可する（束1と同型）。
         AttendanceTransitionAlertEntity entity = alertRepository.findById(alertId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND));
+
+        // path の teamId 配下でない alert は存在秘匿のため 404 を返す（他テナントの存在を漏らさない）。
+        if (!entity.getTeamId().equals(teamId)) {
+            throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
+        }
+
+        // 認可: entity 由来 scope（= path と一致確認済みの teamId）の ADMIN／DEPUTY_ADMIN のみ。
+        accessControlService.checkAdminOrAbove(resolverUserId, entity.getTeamId(), "TEAM");
 
         if (entity.getResolvedAt() != null) {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_ALREADY_RESOLVED);
