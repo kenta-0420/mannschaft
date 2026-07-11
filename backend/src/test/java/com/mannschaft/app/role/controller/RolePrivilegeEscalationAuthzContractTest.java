@@ -24,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 本番 seed（V2.014）と同一 priority で各テスト冒頭に投入する。</p>
  */
 @AutoConfigureMockMvc
+@Transactional
 @DisplayName("権限昇格根治 API 契約テスト（束1・AC-1-1/1-2/1-7）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationTest {
@@ -100,13 +102,11 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
 
     @BeforeEach
     void setUp() {
-        permissionGroupRepository.deleteAll();
-        userRoleRepository.deleteAll();
-        membershipRepository.deleteAll();
-        teamRepository.deleteAll();
-        organizationRepository.deleteAll();
-        roleRepository.deleteAll();
-        seedRoles();
+        // roles はグローバル参照テーブル（本番は V2.014 で seed）。共有 Testcontainer を汚さないため、
+        // 削除・再INSERT せず name で既存を引く（無ければ idempotent に作成）。本クラスは @Transactional なので
+        // 全 seed はテスト毎にロールバックされ、同一 Testcontainer を共有する他テスト
+        // （例: ScheduleVisibilityResolverIntegrationTest の無条件 INSERT MEMBER）と衝突しない。
+        ensureRoles();
 
         TeamEntity teamA = saveTeam("チームA");
         TeamEntity teamB = saveTeam("チームB");
@@ -137,27 +137,33 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
                 .build()).getId();
     }
 
-    private void seedRoles() {
-        saveRole("SYSTEM_ADMIN", 1);
-        adminRoleId = saveRole("ADMIN", 2);
-        saveRole("DEPUTY_ADMIN", 3);
-        memberRoleId = saveRole("MEMBER", 4);
-        saveRole("SUPPORTER", 5);
-        saveRole("GUEST", 6);
+    private void ensureRoles() {
+        ensureRole("SYSTEM_ADMIN", 1);
+        adminRoleId = ensureRole("ADMIN", 2);
+        ensureRole("DEPUTY_ADMIN", 3);
+        memberRoleId = ensureRole("MEMBER", 4);
+        ensureRole("SUPPORTER", 5);
+        ensureRole("GUEST", 6);
     }
 
-    private Long saveRole(String name, int priority) {
-        return roleRepository.save(RoleEntity.builder()
-                .name(name)
-                .displayName(name)
-                .priority(priority)
-                .isSystem("SYSTEM_ADMIN".equals(name))
-                .build()).getId();
+    /**
+     * roles を name で引き、無ければ本番 V2.014 と同一 priority で作成して id を返す
+     * （idempotent・グローバル参照テーブルを破壊しない）。
+     */
+    private Long ensureRole(String name, int priority) {
+        return roleRepository.findByName(name)
+                .map(RoleEntity::getId)
+                .orElseGet(() -> roleRepository.save(RoleEntity.builder()
+                        .name(name)
+                        .displayName(name)
+                        .priority(priority)
+                        .isSystem("SYSTEM_ADMIN".equals(name))
+                        .build()).getId());
     }
 
     private TeamEntity saveTeam(String name) {
         return teamRepository.save(TeamEntity.builder()
-                .slug("team-" + SLUG_SEQ.incrementAndGet())
+                .slug("rpe-team-" + SLUG_SEQ.incrementAndGet())
                 .name(name)
                 .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                 .supporterEnabled(true)
@@ -166,7 +172,7 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
 
     private OrganizationEntity saveOrg(String name) {
         return organizationRepository.save(OrganizationEntity.builder()
-                .slug("org-" + SLUG_SEQ.incrementAndGet())
+                .slug("rpe-org-" + SLUG_SEQ.incrementAndGet())
                 .name(name)
                 .orgType(OrganizationEntity.OrgType.OTHER)
                 .visibility(OrganizationEntity.Visibility.PUBLIC)
