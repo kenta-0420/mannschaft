@@ -62,7 +62,8 @@ public class WebhookEndpointController {
     public ApiResponse<List<WebhookEndpointResponse>> listEndpoints(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        return webhookEndpointService.listEndpoints(scopeType, scopeId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        return webhookEndpointService.listEndpoints(userId, scopeType, scopeId);
     }
 
     /**
@@ -74,7 +75,8 @@ public class WebhookEndpointController {
     @GetMapping("/{id}")
     public ApiResponse<WebhookEndpointResponse> getEndpoint(
             @PathVariable Long id) {
-        return webhookEndpointService.getEndpoint(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        return webhookEndpointService.getEndpoint(userId, id);
     }
 
     /**
@@ -88,7 +90,8 @@ public class WebhookEndpointController {
     public ApiResponse<WebhookEndpointResponse> updateEndpoint(
             @PathVariable Long id,
             @Valid @RequestBody UpdateWebhookEndpointRequest request) {
-        return webhookEndpointService.updateEndpoint(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        return webhookEndpointService.updateEndpoint(userId, id, request);
     }
 
     /**
@@ -100,7 +103,8 @@ public class WebhookEndpointController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEndpoint(
             @PathVariable Long id) {
-        webhookEndpointService.deleteEndpoint(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        webhookEndpointService.deleteEndpoint(userId, id);
         return ResponseEntity.noContent().build();
     }
 }

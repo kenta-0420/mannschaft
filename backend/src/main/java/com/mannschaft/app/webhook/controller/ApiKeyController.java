@@ -59,7 +59,8 @@ public class ApiKeyController {
     public ApiResponse<List<ApiKeyResponse>> listApiKeys(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        return apiKeyService.listApiKeys(scopeType, scopeId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        return apiKeyService.listApiKeys(userId, scopeType, scopeId);
     }
 
     /**
@@ -71,7 +72,8 @@ public class ApiKeyController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> revokeApiKey(
             @PathVariable Long id) {
-        apiKeyService.revokeApiKey(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        apiKeyService.revokeApiKey(userId, id);
         return ResponseEntity.noContent().build();
     }
 }
