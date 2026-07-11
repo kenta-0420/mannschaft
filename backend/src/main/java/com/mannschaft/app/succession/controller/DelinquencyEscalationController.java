@@ -1,6 +1,7 @@
 package com.mannschaft.app.succession.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.succession.dto.DelinquencyEscalationResponse;
 import com.mannschaft.app.succession.dto.FreezeEscalationRequest;
 import com.mannschaft.app.succession.dto.ResolveEscalationRequest;
@@ -30,8 +31,9 @@ import java.util.UUID;
  * 一覧取得・詳細取得・凍結・解決のエンドポイントを提供する。
  * 操作は ADMIN 権限以上のユーザーのみ実行可能。
  *
- * <p>認可は Service 層に委譲し、本 Controller では
- * パスパラメータの組織 ID と escalationId の引き渡しのみを行う。
+ * <p>認可（{@code checkAdminOrAbove}）は Service 層で行う。本 Controller は
+ * パスパラメータの組織 ID・escalationId と {@link com.mannschaft.app.common.SecurityUtils#getCurrentUserId()}
+ * で解決した操作ユーザー ID の引き渡しのみを行う。
  */
 @RestController
 @Tag(name = "滞納エスカレーション（F09.15）", description = "F09.15 居住者継承支援 - 滞納エスカレーション管理 API")
@@ -55,8 +57,9 @@ public class DelinquencyEscalationController {
     )
     public ResponseEntity<ApiResponse<List<DelinquencyEscalationResponse>>> listActive(
             @PathVariable Long orgId) {
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
         List<DelinquencyEscalationResponse> responses = delinquencyEscalationService
-                .listActive(orgId)
+                .listActive(orgId, requestingUserId)
                 .stream()
                 .map(DelinquencyEscalationResponse::fromEntity)
                 .toList();
@@ -78,8 +81,9 @@ public class DelinquencyEscalationController {
     public ResponseEntity<ApiResponse<DelinquencyEscalationResponse>> getById(
             @PathVariable Long orgId,
             @PathVariable UUID escalationId) {
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
         DelinquencyEscalationEntity entity =
-                delinquencyEscalationService.getById(escalationId, orgId);
+                delinquencyEscalationService.getById(escalationId, orgId, requestingUserId);
         return ResponseEntity.ok(ApiResponse.of(DelinquencyEscalationResponse.fromEntity(entity)));
     }
 
@@ -103,7 +107,8 @@ public class DelinquencyEscalationController {
             @PathVariable Long orgId,
             @PathVariable UUID escalationId,
             @Valid @RequestBody FreezeEscalationRequest request) {
-        delinquencyEscalationService.freeze(escalationId, orgId, request.getReason());
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
+        delinquencyEscalationService.freeze(escalationId, orgId, request.getReason(), requestingUserId);
         return ResponseEntity.ok(ApiResponse.of(Map.of("status", "frozen")));
     }
 
@@ -127,7 +132,8 @@ public class DelinquencyEscalationController {
             @PathVariable Long orgId,
             @PathVariable UUID escalationId,
             @Valid @RequestBody ResolveEscalationRequest request) {
-        delinquencyEscalationService.resolve(escalationId, orgId, request.getResolvedReason());
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
+        delinquencyEscalationService.resolve(escalationId, orgId, request.getResolvedReason(), requestingUserId);
         return ResponseEntity.ok(ApiResponse.of(Map.of("status", "resolved")));
     }
 }
