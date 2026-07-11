@@ -202,13 +202,13 @@ public class SafetyCheckService {
      * 未回答ユーザー一覧を取得する。
      *
      * @param safetyCheckId 安否確認ID
-     * @param userId        操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
+     * @param actorUserId   操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
      * @return 未回答ユーザー一覧
      */
-    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId, Long userId) {
+    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId, Long actorUserId) {
         SafetyCheckEntity safetyCheck = findSafetyCheckOrThrow(safetyCheckId);
         // 束3 AC-1-4: 未回答者（安否不明者）の氏名一覧はスコープ管理者のみ閲覧可
-        accessControlService.checkAdminOrAbove(userId, safetyCheck.getScopeId(), safetyCheck.getScopeType().name());
+        accessControlService.checkAdminOrAbove(actorUserId, safetyCheck.getScopeId(), safetyCheck.getScopeType().name());
 
         // 回答済みユーザーIDを取得
         Set<Long> respondedUserIds = new HashSet<>(
