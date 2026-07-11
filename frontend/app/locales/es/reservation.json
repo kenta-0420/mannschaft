@@ -169,7 +169,7 @@
       "book": "Reservar",
       "list": "Reservas",
       "my_reservations": "Mis reservas",
-      "line_manage": "Gestionar elementos reservables",
+      "line_manage": "Gestión de {resourceName}",
       "emergency_closure": "緊急休業",
       "team_page": "Reservas"
     },
@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "Fecha",
-      "line": "Elemento reservable",
+      "line": "{resourceName}",
       "name": "Nombre",
       "description": "Descripción",
       "display_order": "Orden de visualización",
@@ -213,8 +213,8 @@
       "full": "Completo"
     },
     "button": {
-      "add_line": "Agregar elemento reservable",
-      "add_line_long": "Agregar elemento reservable",
+      "add_line": "Agregar {resourceName}",
+      "add_line_long": "Agregar {resourceName}",
       "save": "Guardar",
       "cancel": "Cancelar",
       "reserve": "Reservar",
@@ -228,8 +228,8 @@
       "title": "Confirmar",
       "line_create": "Crear elemento reservable",
       "line_edit": "Editar elemento reservable",
-      "line_create_long": "Agregar elemento reservable",
-      "line_edit_long": "Editar elemento reservable",
+      "line_create_long": "Agregar {resourceName}",
+      "line_edit_long": "Editar {resourceName}",
       "reserve_confirm": "Confirmar reserva",
       "cancel_confirm": "¿Cancelar esta reserva?",
       "line_delete_confirm": "¿Eliminar este elemento reservable?",
@@ -281,9 +281,21 @@
         "member_no_slots_hint": "Prueba con otro día"
       }
     },
-    "line_manage_title": "Gestión de elementos reservables",
+    "line_manage_title": "Gestión de {resourceName}",
     "line": {
       "delete_guide": "Al eliminarlo, se detendrá la plantilla de franjas de esta línea y las franjas futuras sin reservas se eliminarán automáticamente. Si hay reservas activas, cámbielas de fecha o cancélelas primero."
+    },
+    "resource_name": {
+      "DEFAULT": "elemento reservable",
+      "STAFF": "personal",
+      "SEAT": "asiento",
+      "COURT": "cancha",
+      "BED": "cama",
+      "LANE": "carril",
+      "setting_title": "Cómo llamar a los elementos reservables",
+      "custom_label": "Nombre personalizado",
+      "custom_required": "Introduzca un nombre personalizado",
+      "deputy_hint": "Los subadministradores solo pueden cambiar cómo se llaman los elementos reservables. La gestión de líneas, menús, etc. la realizan los administradores."
     },
     "settings": {
       "advanced": {
@@ -569,7 +581,7 @@
     },
     "grid": {
       "title": "Cuadrícula de disponibilidad",
-      "help": "Las filas son franjas horarias y las columnas son objetivos de reserva. Toca una celda verde \"Libre\" para reservar. Las celdas grises o rayadas no se pueden reservar. Usa la pestaña \"Semana\" para ver siete días a la vez.",
+      "help": "Las filas son franjas horarias y las columnas son {resourceName}. Toca una celda verde \"Libre\" para reservar. Las celdas grises o rayadas no se pueden reservar. Usa la pestaña \"Semana\" para ver siete días a la vez.",
       "display_toggle": {
         "list": "Vista de lista",
         "grid": "Vista de cuadrícula"
@@ -588,7 +600,7 @@
         "time": "Hora"
       },
       "staff_filter": {
-        "label": "Filtrar por objetivo",
+        "label": "Filtrar por {resourceName}",
         "placeholder": "Todos los objetivos"
       },
       "state": {
@@ -618,9 +630,9 @@
       "view_matrix": "Vista de matriz",
       "view_list": "Vista de lista",
       "view_staff_grid": "Vista de cuadrícula por personal",
-      "date_line_header": "Fecha / objetivo",
+      "date_line_header": "Fecha / {resourceName}",
       "help_toggle": "Ver cómo usar esto",
-      "help_body": "Toca una franja libre (verde) y elige un menú; se seleccionará automáticamente el número de franjas necesario. Usa \"+30 min\" para añadir más. Si eliges una franja compartida, elige a qué objetivo reservarla.",
+      "help_body": "Toca una franja libre (verde) y elige un menú; se seleccionará automáticamente el número de franjas necesario. Usa \"+30 min\" para añadir más. Si eliges una franja compartida, elige a qué {resourceName} reservarla.",
       "slot_unavailable_conflict": "Esta franja horaria no acepta reservas en este momento. Prueba con otro horario"
     },
     "group": {
@@ -647,7 +659,7 @@
       "book": {
         "matrix_title": "Cómo leer la matriz",
         "matrix_steps": {
-          "0": "Las filas son \"fecha × objetivo de reserva\" y las columnas son \"hora\".",
+          "0": "Las filas son \"fecha × {resourceName}\" y las columnas son \"hora\".",
           "1": "Colores: verde = disponible / gris = reservado / rayas diagonales = no disponible / gris claro = cerrado."
         },
         "filter_title": "Filtrar por menú",
@@ -664,7 +676,7 @@
         },
         "conflict_title": "Cuando está completo o hay un conflicto",
         "conflict_steps": {
-          "0": "Las celdas grises (reservado, cerrado o no disponible) no se pueden seleccionar. Elige otra hora u objetivo.",
+          "0": "Las celdas grises (reservado, cerrado o no disponible) no se pueden seleccionar. Elige otra hora u otro elemento ({resourceName}).",
           "1": "Si alguien reserva la misma franja justo antes de que confirmes, verás un error y la pantalla se actualizará automáticamente con la disponibilidad más reciente. Vuelve a elegir una franja libre."
         }
       },
@@ -697,15 +709,15 @@
           "0": "En \"Horario comercial\" define las horas de apertura de cada día de la semana. Es la base sobre la que se generan las franjas.",
           "1": "En cuanto guardes, se crearán automáticamente las franjas de los próximos 28 días."
         },
-        "setup1_title": "2. Crear objetivos de reserva",
+        "setup1_title": "2. Crear {resourceName}",
         "setup1_steps": {
-          "0": "Usa \"Añadir objetivo de reserva\" en la parte superior de esta pestaña para registrar asientos, personal o mostradores reservables.",
-          "1": "Sin un objetivo de reserva, la pestaña \"Reservar\" no muestra nada a los miembros."
+          "0": "Usa \"Añadir {resourceName}\" en la parte superior de esta pestaña para registrar asientos, personal o mostradores reservables.",
+          "1": "Sin {resourceName}, la pestaña \"Reservar\" no muestra nada a los miembros."
         },
         "setup2_title": "3. Crear menús",
         "setup2_steps": {
           "0": "En \"Gestionar menús\" de abajo, registra menús con una duración (en unidades de 30 minutos).",
-          "1": "Para limitar un menú a objetivos concretos, elige \"Solo objetivos de reserva seleccionados\" en \"Elemento reservable\" y selecciónalos (por defecto se ofrece en todos)."
+          "1": "Para limitar un menú a {resourceName} concretos, elige \"Solo {resourceName} seleccionados\" en \"Elemento reservable\" y selecciónalos (por defecto se ofrece en todos)."
         },
         "setup3_title": "4. Crear un horario semanal",
         "setup3_steps": {
@@ -722,7 +734,7 @@
         "exception_steps": {
           "0": "Para cerrar un día concreto o abrirlo especialmente, usa \"Cerrar este día\" / \"Abrir especialmente\" en el calendario de días excepcionales. Para ajustar franjas individuales con más detalle, usa \"Gestionar franjas individuales manualmente\" en Configuración avanzada para crearlas, editarlas o cerrarlas.",
           "1": "Para bloquear un rango horario concreto, usa \"Franjas no disponibles\" en los ajustes avanzados.",
-          "2": "Al eliminar un objetivo de reserva se detiene su plantilla y se eliminan automáticamente sus franjas futuras sin reservas. Si aún tiene reservas activas, reasígnalas o cancélalas antes."
+          "2": "Al eliminar {resourceName} se detiene su plantilla y se eliminan automáticamente sus franjas futuras sin reservas. Si aún tiene reservas activas, reasígnalas o cancélalas antes."
         }
       },
       "emergency_closure": {

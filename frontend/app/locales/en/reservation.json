@@ -169,7 +169,7 @@
       "book": "Book",
       "list": "Reservations",
       "my_reservations": "My Reservations",
-      "line_manage": "Manage Bookable Items",
+      "line_manage": "{resourceName} Management",
       "emergency_closure": "緊急休業",
       "team_page": "Reservations"
     },
@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "Date",
-      "line": "Bookable Item",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Description",
       "display_order": "Display Order",
@@ -213,8 +213,8 @@
       "full": "Full"
     },
     "button": {
-      "add_line": "Add Bookable Item",
-      "add_line_long": "Add Bookable Item",
+      "add_line": "Add {resourceName}",
+      "add_line_long": "Add {resourceName}",
       "save": "Save",
       "cancel": "Cancel",
       "reserve": "Reserve",
@@ -228,8 +228,8 @@
       "title": "Confirm",
       "line_create": "Create Bookable Item",
       "line_edit": "Edit Bookable Item",
-      "line_create_long": "Add Bookable Item",
-      "line_edit_long": "Edit Bookable Item",
+      "line_create_long": "Add {resourceName}",
+      "line_edit_long": "Edit {resourceName}",
       "reserve_confirm": "Confirm Reservation",
       "cancel_confirm": "Cancel this reservation?",
       "line_delete_confirm": "Delete this bookable item?",
@@ -281,9 +281,21 @@
         "member_no_slots_hint": "Please try another day"
       }
     },
-    "line_manage_title": "Bookable Item Management",
+    "line_manage_title": "{resourceName} Management",
     "line": {
       "delete_guide": "Deleting this will stop the slot template for this line, and any future slots without reservations will be removed automatically. If there are active reservations, please reschedule or cancel them first."
+    },
+    "resource_name": {
+      "DEFAULT": "Bookable Item",
+      "STAFF": "Staff member",
+      "SEAT": "Seat",
+      "COURT": "Court",
+      "BED": "Bed",
+      "LANE": "Lane",
+      "setting_title": "What to call bookable items",
+      "custom_label": "Custom name",
+      "custom_required": "Please enter a custom name",
+      "deputy_hint": "Deputy admins can only change what bookable items are called. Managing lines, menus, and so on is done by admins."
     },
     "settings": {
       "advanced": {
@@ -569,7 +581,7 @@
     },
     "grid": {
       "title": "Availability grid",
-      "help": "Rows are time slots and columns are reservation targets. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
+      "help": "Rows are time slots and columns are {resourceName}. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
       "display_toggle": {
         "list": "List view",
         "grid": "Grid view"
@@ -588,7 +600,7 @@
         "time": "Time"
       },
       "staff_filter": {
-        "label": "Filter by target",
+        "label": "Filter by {resourceName}",
         "placeholder": "All targets"
       },
       "state": {
@@ -618,9 +630,9 @@
       "view_matrix": "Matrix view",
       "view_list": "List view",
       "view_staff_grid": "Staff grid view",
-      "date_line_header": "Date / target",
+      "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
-      "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which target to book it for.",
+      "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",
       "slot_unavailable_conflict": "This time slot isn't accepting bookings right now. Please try another time"
     },
     "group": {
@@ -647,7 +659,7 @@
       "book": {
         "matrix_title": "Reading the matrix",
         "matrix_steps": {
-          "0": "Rows are \"date × reservation target\", columns are \"time\".",
+          "0": "Rows are \"date × {resourceName}\", columns are \"time\".",
           "1": "Colors: green \"Available\" = bookable / \"Booked\" = taken / diagonal stripes = \"Unavailable\" / pale gray = \"Closed\"."
         },
         "filter_title": "Filter by menu",
@@ -664,7 +676,7 @@
         },
         "conflict_title": "When it's full or conflicts",
         "conflict_steps": {
-          "0": "Gray cells (\"Booked\", \"Closed\", or \"Unavailable\") can't be selected. Choose another time or target.",
+          "0": "Gray cells (\"Booked\", \"Closed\", or \"Unavailable\") can't be selected. Choose another time or {resourceName}.",
           "1": "If someone else takes the same slot right before you confirm, you'll see an error and the screen auto-refreshes to the latest availability. Please choose an open slot again."
         }
       },
@@ -697,15 +709,15 @@
           "0": "In \"Business hours\" set the hours you're open for each day of the week. This is the foundation slots are built on.",
           "1": "As soon as you save, slots for the next 28 days are created automatically."
         },
-        "setup1_title": "2. Create reservation targets",
+        "setup1_title": "2. Create {resourceName}",
         "setup1_steps": {
-          "0": "Use \"Add reservation target\" at the top of this tab to register seats, staff, or counters that can be booked.",
-          "1": "Without a reservation target, the \"Reserve\" tab shows nothing to members."
+          "0": "Use \"Add {resourceName}\" at the top of this tab to register seats, staff, or counters that can be booked.",
+          "1": "Without {resourceName}, the \"Reserve\" tab shows nothing to members."
         },
         "setup2_title": "3. Create menus",
         "setup2_steps": {
           "0": "In \"Manage menus\" below, register menus with a duration (in 30-minute units).",
-          "1": "To limit a menu to specific targets, choose \"Only selected reservation targets\" under \"Bookable Item\" and pick them (the default offers it on every target)."
+          "1": "To limit a menu to specific {resourceName}, choose \"Only selected {resourceName}\" under \"Bookable Item\" and pick them (the default offers it on every {resourceName})."
         },
         "setup3_title": "4. Create a weekly schedule",
         "setup3_steps": {
@@ -722,7 +734,7 @@
         "exception_steps": {
           "0": "To close a specific day or open it specially, use \"Close this day\" / \"Open specially\" in the exception day calendar. To fine-tune individual slots, use \"Manually manage individual slots\" under Advanced settings to create, edit, or close them.",
           "1": "To block a specific time range from being booked, use \"Unavailable ranges\" in advanced settings.",
-          "2": "Deleting a reservation target stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
+          "2": "Deleting {resourceName} stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
         }
       },
       "emergency_closure": {
