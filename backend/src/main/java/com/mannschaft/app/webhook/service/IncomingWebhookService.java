@@ -1,5 +1,6 @@
 package com.mannschaft.app.webhook.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.webhook.WebhookErrorCode;
@@ -30,6 +31,7 @@ public class IncomingWebhookService {
     private static final int MAX_TOKENS_PER_SCOPE = 5;
 
     private final IncomingWebhookTokenRepository tokenRepository;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -77,6 +79,9 @@ public class IncomingWebhookService {
      */
     @Transactional
     public ApiResponse<IncomingWebhookTokenResponse> createToken(Long createdBy, CreateIncomingWebhookRequest req) {
+        // 認可: 作成先スコープの ADMIN/DEPUTY_ADMIN のみ発行可能
+        accessControlService.checkAdminOrAbove(createdBy, req.scopeId(), req.scopeType());
+
         // スコープ内トークン数チェック（論理削除済みを除く）
         int count = tokenRepository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(req.scopeType(), req.scopeId());
         if (count >= MAX_TOKENS_PER_SCOPE) {
@@ -103,16 +108,22 @@ public class IncomingWebhookService {
 
     /**
      * スコープに紐づくIncoming Webhookトークン一覧を取得する。
+     * 生トークンは平文露出防止のためprefix/suffixのみのマスク済み文字列で返す
+     * （発行直後（{@link #createToken}）のみ生トークンを1回返す方針）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @return トークン一覧
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @return トークン一覧（tokenはマスク済み）
      */
-    public ApiResponse<List<IncomingWebhookTokenResponse>> listTokens(String scopeType, Long scopeId) {
+    public ApiResponse<List<IncomingWebhookTokenResponse>> listTokens(Long actorUserId, String scopeType, Long scopeId) {
+        // 認可: 一覧取得先スコープの ADMIN/DEPUTY_ADMIN のみ閲覧可能（クエリ引数のscopeがそのまま照会対象）
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         // スコープに紐づくトークン一覧を直接取得（論理削除済みを除く）
         List<IncomingWebhookTokenEntity> entities = tokenRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
         List<IncomingWebhookTokenResponse> responses = entities.stream()
-                .map(e -> toResponse(e, null))
+                .map(e -> toMaskedResponse(e, null))
                 .collect(Collectors.toList());
         return ApiResponse.of(responses);
     }
@@ -120,11 +131,15 @@ public class IncomingWebhookService {
     /**
      * Incoming Webhookトークンを失効（論理削除）する。
      *
-     * @param id トークンID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param id          トークンID
      */
     @Transactional
-    public void revokeToken(Long id) {
+    public void revokeToken(Long actorUserId, Long id) {
+        // ★BOLA対策: pathのidから対象entityを先にfetchし、entity由来のscopeで認可する
         IncomingWebhookTokenEntity entity = findTokenOrThrow(id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
+
         entity.softDelete();
         tokenRepository.save(entity);
         log.info("Incoming Webhookトークン失効: id={}", id);
@@ -174,7 +189,7 @@ public class IncomingWebhookService {
     }
 
     /**
-     * エンティティをレスポンスDTOに変換する。
+     * エンティティをレスポンスDTOに変換する（token含む・発行直後の1回のみ使用）。
      */
     private IncomingWebhookTokenResponse toResponse(IncomingWebhookTokenEntity e, String description) {
         return new IncomingWebhookTokenResponse(
@@ -187,5 +202,36 @@ public class IncomingWebhookService {
                 description,
                 e.getCreatedAt()
         );
+    }
+
+    /**
+     * エンティティをレスポンスDTOに変換する（tokenはマスク済み・一覧取得専用）。
+     * 平文の生トークン露出を是正するため、先頭8文字+末尾4文字のみ表示し中間を "****" に置換する。
+     */
+    private IncomingWebhookTokenResponse toMaskedResponse(IncomingWebhookTokenEntity e, String description) {
+        return new IncomingWebhookTokenResponse(
+                e.getId(),
+                e.getScopeType(),
+                e.getScopeId(),
+                e.getName(),
+                maskToken(e.getToken()),
+                e.isActive(),
+                description,
+                e.getCreatedAt()
+        );
+    }
+
+    /**
+     * トークン文字列をマスクする。先頭8文字+末尾4文字のみ表示し、中間は "****" に置換する。
+     * 短いトークン（12文字未満）は全体をマスクする。
+     */
+    private String maskToken(String token) {
+        if (token == null) {
+            return null;
+        }
+        if (token.length() < 12) {
+            return "*".repeat(token.length());
+        }
+        return token.substring(0, 8) + "****" + token.substring(token.length() - 4);
     }
 }
