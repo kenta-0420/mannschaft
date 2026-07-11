@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptScopeType;
@@ -37,12 +38,26 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReceiptExportService {
 
     private final ReceiptRepository receiptRepository;
+    private final AccessControlService accessControlService;
 
     /** ZIP ジョブの進捗管理（本番では Redis 等に移行） */
     private final Map<String, DownloadZipResponse> zipJobs = new ConcurrentHashMap<>();
 
     /**
+     * ZIP ジョブが属するスコープ（認可の entity 由来化用。ジョブは request 由来のため
+     * 作成時点でスコープを固定し、状態確認時はここから導出したスコープで再検証する）。
+     */
+    private final Map<String, ZipJobScope> zipJobScopes = new ConcurrentHashMap<>();
+
+    /**
+     * ZIP ジョブのスコープ情報（認可専用の内部保持データ。API レスポンスには含めない）。
+     */
+    private record ZipJobScope(ReceiptScopeType scopeType, Long scopeId) {
+    }
+
+    /**
      * 領収書一覧を CSV エクスポートする（BOM付き UTF-8）。
+     * 認可: 指定スコープのメンバーのみエクスポート可能。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
@@ -50,10 +65,13 @@ public class ReceiptExportService {
      * @param issuedFrom    発行日の開始
      * @param issuedTo      発行日の終了
      * @param includeVoided 無効化済みを含むか
+     * @param actorUserId   操作者ユーザーID
      * @return CSV のバイト配列
      */
     public byte[] exportCsv(ReceiptScopeType scopeType, Long scopeId, Integer year,
-                            LocalDate issuedFrom, LocalDate issuedTo, boolean includeVoided) {
+                            LocalDate issuedFrom, LocalDate issuedTo, boolean includeVoided, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+
         Specification<ReceiptEntity> spec = buildSpecification(scopeType, scopeId, year, issuedFrom, issuedTo, includeVoided);
         List<ReceiptEntity> receipts = receiptRepository.findAll(spec);
 
@@ -103,14 +121,18 @@ public class ReceiptExportService {
 
     /**
      * ZIP 一括ダウンロードジョブを作成する。
+     * 認可: request で指定されたスコープのメンバーのみジョブ作成可能。
      *
-     * @param request ZIP ダウンロードリクエスト
+     * @param request     ZIP ダウンロードリクエスト
+     * @param actorUserId 操作者ユーザーID
      * @return ZIP ジョブレスポンス
      */
-    public DownloadZipResponse createZipJob(DownloadZipRequest request) {
+    public DownloadZipResponse createZipJob(DownloadZipRequest request, Long actorUserId) {
+        ReceiptScopeType scopeType = ReceiptScopeType.valueOf(request.getScopeType());
+        accessControlService.checkMembership(actorUserId, request.getScopeId(), scopeType.name());
+
         String jobId = UUID.randomUUID().toString().substring(0, 8);
 
-        ReceiptScopeType scopeType = ReceiptScopeType.valueOf(request.getScopeType());
         Specification<ReceiptEntity> spec = buildSpecification(
                 scopeType, request.getScopeId(), null,
                 request.getIssuedFrom(), request.getIssuedTo(), false);
@@ -123,6 +145,7 @@ public class ReceiptExportService {
                 .build();
 
         zipJobs.put(jobId, response);
+        zipJobScopes.put(jobId, new ZipJobScope(scopeType, request.getScopeId()));
 
         // 非同期で ZIP を生成
         generateZipAsync(jobId, scopeType, request.getScopeId(),
@@ -135,28 +158,37 @@ public class ReceiptExportService {
 
     /**
      * ZIP ダウンロードジョブの状態を取得する。
+     * 認可: ジョブ作成時に固定したスコープ（entity由来。呼び出し側の自己申告を信用しない）の
+     * メンバーのみ状態確認可能（他スコープのジョブID推測によるダウンロードURL漏洩を防止）。
      *
-     * @param jobId ジョブID
+     * @param jobId       ジョブID
+     * @param actorUserId 操作者ユーザーID
      * @return ZIP ジョブレスポンス
      */
-    public DownloadZipResponse getZipJob(String jobId) {
+    public DownloadZipResponse getZipJob(String jobId, Long actorUserId) {
         DownloadZipResponse response = zipJobs.get(jobId);
-        if (response == null) {
+        ZipJobScope scope = zipJobScopes.get(jobId);
+        if (response == null || scope == null) {
             throw new BusinessException(ReceiptErrorCode.ZIP_JOB_NOT_FOUND);
         }
+        accessControlService.checkMembership(actorUserId, scope.scopeId(), scope.scopeType().name());
         return response;
     }
 
     /**
      * 但し書きの自動生成候補を取得する。
+     * 認可: 指定スコープのメンバーのみ取得可能。
      *
      * @param scopeType       スコープ種別
      * @param scopeId         スコープID
      * @param memberPaymentId 支払い実績 ID（任意）
+     * @param actorUserId     操作者ユーザーID
      * @return 但し書き候補レスポンス
      */
     public DescriptionSuggestionResponse getDescriptionSuggestions(ReceiptScopeType scopeType, Long scopeId,
-                                                                    Long memberPaymentId) {
+                                                                    Long memberPaymentId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+
         // 将来実装: schedules / payment_items の実績データから但し書き候補を自動生成
         List<DescriptionSuggestionResponse.Suggestion> suggestions = new ArrayList<>();
 

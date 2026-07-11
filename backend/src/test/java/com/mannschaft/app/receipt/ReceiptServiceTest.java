@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -43,6 +44,7 @@ class ReceiptServiceTest {
     @Mock private ReceiptPdfGenerator pdfGenerator;
     @Mock private NameResolverService nameResolverService;
     @Mock private MemberPaymentRepository memberPaymentRepository;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ReceiptService service;
