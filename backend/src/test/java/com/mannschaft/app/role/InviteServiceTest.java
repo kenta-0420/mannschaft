@@ -1,5 +1,6 @@
 package com.mannschaft.app.role;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -76,6 +77,9 @@ class InviteServiceTest {
 
     @Mock
     private MembershipService membershipService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private InviteService inviteService;
@@ -206,7 +210,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM");
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -224,7 +228,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION");
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -249,7 +253,7 @@ class InviteServiceTest {
             given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.of(token));
 
             // When
-            inviteService.revokeInviteToken(TOKEN_ID);
+            inviteService.revokeInviteToken(TOKEN_ID, USER_ID);
 
             // Then
             assertThat(token.getRevokedAt()).isNotNull();
@@ -262,7 +266,7 @@ class InviteServiceTest {
             given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> inviteService.revokeInviteToken(TOKEN_ID))
+            assertThatThrownBy(() -> inviteService.revokeInviteToken(TOKEN_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_002"));
