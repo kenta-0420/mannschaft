@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxyvote.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import com.mannschaft.app.proxyvote.dto.AttachmentResponse;
@@ -38,11 +39,6 @@ public class ProxyVoteExportController {
 
     private final ProxyVoteExportService exportService;
     private final ProxyVoteAttachmentService attachmentService;
-
-    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 投票結果を CSV でダウンロードする。
@@ -85,7 +81,7 @@ public class ProxyVoteExportController {
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "attachment_type", required = false) String attachmentType) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(attachmentService.addSessionAttachment(id, file, attachmentType, getCurrentUserId())));
+                .body(ApiResponse.of(attachmentService.addSessionAttachment(id, file, attachmentType, SecurityUtils.getCurrentUserId())));
     }
 
     /**

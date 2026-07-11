@@ -354,6 +354,17 @@ public class SecurityConfig {
                 ).permitAll()
                 // F01.9 年齢区分設定管理（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 束A（Wave 0）: SYSTEM_ADMIN 専用の admin 系 API（docs/security/01 §4）。
+                // requestMatcher 登録漏れにより、認証済みなら誰でも到達できていた（deny-by-default は
+                // 未認証しか弾かない）。以下 6 系統を SYSTEM_ADMIN 予約に格上げする。
+                // ※ per-scope（dashboard / permission-groups / business-alerts 等）はスコープ内 ADMIN が
+                //   使うため authenticated() を維持し、認可は Controller/Service 層（Wave1）で行う。
+                .requestMatchers("/api/v1/admin/stripe/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/reports/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/moderation/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/warning-re-reviews/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/users/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/onboarding/presets/**").hasRole("SYSTEM_ADMIN")
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
                 // F09.19.2 スポットライト配信（サービング/計測。content|view|visit すべて認証必須。§6.1/§11）
