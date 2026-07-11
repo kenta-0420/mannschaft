@@ -123,7 +123,8 @@ public class SafetyCheckController {
     public ResponseEntity<ApiResponse<List<SafetyResponseResponse>>> bulkRespond(
             @PathVariable Long safetyCheckId,
             @Valid @RequestBody BulkRespondRequest request) {
-        List<SafetyResponseResponse> responses = responseService.bulkRespond(safetyCheckId, request);
+        List<SafetyResponseResponse> responses = responseService.bulkRespond(
+                safetyCheckId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 
@@ -135,7 +136,8 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SafetyCheckResultsResponse>> getResults(
             @PathVariable Long safetyCheckId) {
-        SafetyCheckResultsResponse response = safetyCheckService.getResults(safetyCheckId);
+        SafetyCheckResultsResponse response = safetyCheckService.getResults(
+                safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -147,7 +149,8 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<UnrespondedUserResponse>>> getUnrespondedUsers(
             @PathVariable Long safetyCheckId) {
-        List<UnrespondedUserResponse> responses = safetyCheckService.getUnrespondedUsers(safetyCheckId);
+        List<UnrespondedUserResponse> responses = safetyCheckService.getUnrespondedUsers(
+                safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 

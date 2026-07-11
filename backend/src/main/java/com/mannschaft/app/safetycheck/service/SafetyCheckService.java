@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -51,6 +52,7 @@ public class SafetyCheckService {
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
     private final NotificationHelper notificationHelper;
+    private final AccessControlService accessControlService;
 
     /**
      * 安否確認を発信する。
@@ -63,6 +65,9 @@ public class SafetyCheckService {
     // TODO: SafetycheckドメインとRoleドメイン・Notificationドメインをまたいでいる。将来はMemberCountResolvedEventとNotificationRequestedEventで分離予定
     public SafetyCheckResponse createSafetyCheck(CreateSafetyCheckRequest req, Long userId) {
         SafetyCheckScopeType scopeType = parseScopeType(req.getScopeType());
+
+        // 束3 AC-1-4: 安否確認の発信はスコープの ADMIN/DEPUTY_ADMIN のみ許可（生命安全の偽発信防止）
+        accessControlService.checkAdminOrAbove(userId, req.getScopeId(), scopeType.name());
 
         SafetyCheckEntity.SafetyCheckEntityBuilder builder = SafetyCheckEntity.builder()
                 .scopeType(scopeType)
@@ -151,6 +156,8 @@ public class SafetyCheckService {
     @Transactional
     public SafetyCheckResponse closeSafetyCheck(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: クローズはスコープの ADMIN/DEPUTY_ADMIN のみ許可
+        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
         validateActive(entity);
 
         entity.close(userId);
@@ -164,10 +171,13 @@ public class SafetyCheckService {
      * 安否確認の結果集計を取得する。
      *
      * @param safetyCheckId 安否確認ID
+     * @param userId        操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
      * @return 結果集計
      */
-    public SafetyCheckResultsResponse getResults(Long safetyCheckId) {
+    public SafetyCheckResultsResponse getResults(Long safetyCheckId, Long userId) {
         SafetyCheckEntity check = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: 回答状況（誰が安全/要支援か）はスコープ管理者のみ閲覧可
+        accessControlService.checkAdminOrAbove(userId, check.getScopeId(), check.getScopeType().name());
 
         List<SafetyResponseEntity> responses = safetyResponseRepository
                 .findBySafetyCheckIdOrderByRespondedAtAsc(safetyCheckId);
@@ -192,10 +202,13 @@ public class SafetyCheckService {
      * 未回答ユーザー一覧を取得する。
      *
      * @param safetyCheckId 安否確認ID
+     * @param userId        操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
      * @return 未回答ユーザー一覧
      */
-    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId) {
+    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId, Long userId) {
         SafetyCheckEntity safetyCheck = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: 未回答者（安否不明者）の氏名一覧はスコープ管理者のみ閲覧可
+        accessControlService.checkAdminOrAbove(userId, safetyCheck.getScopeId(), safetyCheck.getScopeType().name());
 
         // 回答済みユーザーIDを取得
         Set<Long> respondedUserIds = new HashSet<>(
@@ -253,6 +266,8 @@ public class SafetyCheckService {
     // TODO: SafetycheckドメインとNotificationドメインをまたいでいる。将来はReminderRequestedEventで分離予定
     public void sendReminder(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: リマインド送信はスコープの ADMIN/DEPUTY_ADMIN のみ許可
+        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
         validateActive(entity);
 
         // リマインド間隔チェック
