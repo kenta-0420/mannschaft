@@ -1,14 +1,22 @@
 <script setup lang="ts">
+// F09.19.6 チームスコープ キャンペーン詳細（実績レポート）ページ。
+// 組織版 (pages/organizations/[slug]/advertiser/campaigns/[campaignId].vue) を team scope で読み替えたもの。
+// F09.19.5b で新設された team scope の performance/creatives(比較)/breakdown/export API を使う。
+//
+// 組織版は PageHeader を使わず BackButton を手組みしていたが、本ページは新規作成のため
+// /統一 方針（PageHeader の badge スロット + actions スロット）に合わせて構成する。
+
 import type {
   CampaignPerformanceResponse,
   CreativeComparisonResponse,
   BreakdownResponse,
 } from '~/types/advertiser'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
-const orgSlug = String(route.params.slug)
+const teamSlug = String(route.params.slug)
 const campaignId = Number(route.params.campaignId)
 const advertiserApi = useAdvertiserApi()
 
@@ -40,22 +48,22 @@ async function load() {
   try {
     const [perfRes, creativeRes, breakdownRes] = await Promise.all([
       advertiserApi.getCampaignPerformance(
-        'ORGANIZATION',
-        orgSlug,
+        'TEAM',
+        teamSlug,
         campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getCreativeComparison(
-        'ORGANIZATION',
-        orgSlug,
+        'TEAM',
+        teamSlug,
         campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getBreakdown(
-        'ORGANIZATION',
-        orgSlug,
+        'TEAM',
+        teamSlug,
         campaignId,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
@@ -64,9 +72,11 @@ async function load() {
     performance.value = perfRes.data
     creatives.value = creativeRes.data
     breakdown.value = breakdownRes.data
-  } catch {
+  }
+  catch {
     // エラー時は空のまま
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -75,8 +85,8 @@ async function handleExportCsv() {
   exportingCsv.value = true
   try {
     const blob = await advertiserApi.exportCampaignCsv(
-      'ORGANIZATION',
-      orgSlug,
+      'TEAM',
+      teamSlug,
       campaignId,
       formatDate(dateFrom.value),
       formatDate(dateTo.value),
@@ -87,9 +97,11 @@ async function handleExportCsv() {
     a.download = `campaign-${campaignId}-report.csv`
     a.click()
     URL.revokeObjectURL(url)
-  } catch {
+  }
+  catch {
     // ignore
-  } finally {
+  }
+  finally {
     exportingCsv.value = false
   }
 }
@@ -100,35 +112,29 @@ watch([dateFrom, dateTo], load)
 
 <template>
   <div>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton :to="`/organizations/${orgSlug}/advertiser`" />
-        <div>
-          <h1 class="text-2xl font-bold">
-            {{ performance?.campaignName ?? 'キャンペーン詳細' }}
-          </h1>
-          <Tag
-            v-if="performance"
-            :value="performance.status"
-            :severity="statusSeverityMap[performance.status] ?? 'secondary'"
-            class="mt-1"
-          />
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <DatePicker v-model="dateFrom" date-format="yy-mm-dd" placeholder="開始日" class="w-36" />
+    <PageHeader
+      :title="performance?.campaignName ?? t('advertising.teams_page.campaign_detail.default_title')"
+      :back-to="`/teams/${teamSlug}/advertiser`"
+    >
+      <Tag
+        v-if="performance"
+        :value="performance.status"
+        :severity="statusSeverityMap[performance.status] ?? 'secondary'"
+      />
+      <template #actions>
+        <DatePicker v-model="dateFrom" date-format="yy-mm-dd" :placeholder="t('advertising.teams_page.campaign_detail.date_from_placeholder')" class="w-36" />
         <span class="text-surface-400">〜</span>
-        <DatePicker v-model="dateTo" date-format="yy-mm-dd" placeholder="終了日" class="w-36" />
+        <DatePicker v-model="dateTo" date-format="yy-mm-dd" :placeholder="t('advertising.teams_page.campaign_detail.date_to_placeholder')" class="w-36" />
         <Button
           icon="pi pi-download"
-          label="CSV"
+          :label="t('advertising.teams_page.campaign_detail.csv_button')"
           severity="secondary"
           size="small"
           :loading="exportingCsv"
           @click="handleExportCsv"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
@@ -143,10 +149,10 @@ watch([dateFrom, dateTo], load)
 
     <div v-else class="py-20 text-center">
       <i class="pi pi-chart-bar mb-4 text-6xl text-surface-400" />
-      <p class="text-surface-500">キャンペーンデータを取得できませんでした。</p>
-      <NuxtLink :to="`/organizations/${orgSlug}/advertiser`">
+      <p class="text-surface-500">{{ t('advertising.teams_page.campaign_detail.load_failed') }}</p>
+      <NuxtLink :to="`/teams/${teamSlug}/advertiser`">
         <Button
-          label="ダッシュボードに戻る"
+          :label="t('advertising.teams_page.campaign_detail.back_to_dashboard')"
           icon="pi pi-arrow-left"
           severity="secondary"
           class="mt-4"
