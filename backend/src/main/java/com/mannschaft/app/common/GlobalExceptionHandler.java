@@ -817,7 +817,16 @@ public class GlobalExceptionHandler {
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
             Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.2 promotion（プロモーション・クーポン・セグメントプリセット）は
+            // (id, scopeType, scopeId) 複合条件で取得するため、他スコープの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("PROMOTION_001", HttpStatus.NOT_FOUND),            // PROMOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_005", HttpStatus.NOT_FOUND),            // COUPON_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
