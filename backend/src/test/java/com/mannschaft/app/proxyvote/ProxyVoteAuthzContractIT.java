@@ -240,7 +240,10 @@ class ProxyVoteAuthzContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別チーム ADMIN のセッション更新は 403")
         void 別チームADMINのupdateは403() throws Exception {
             setAuthentication(adminBId);
-            String body = objectMapper.writeValueAsString(java.util.Map.of("title", "乗っ取り"));
+            // UpdateSessionRequest は title(@NotBlank)/version(@NotNull) 必須。
+            // これらを満たさないと @Valid が 400 を返し認可(403)まで到達しないため、両方を含める。
+            String body = objectMapper.writeValueAsString(java.util.Map.of(
+                    "title", "乗っ取り", "version", 0));
             mockMvc.perform(put("/api/v1/proxy-votes/{id}", draftSessionId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
