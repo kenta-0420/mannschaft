@@ -817,7 +817,12 @@ public class GlobalExceptionHandler {
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
             Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.3 equipment（備品管理）は
+            // (id, teamId)/(id, organizationId) 複合キーで取得するため、他スコープの ID 指定は
+            // IDOR 秘匿のため 404 とする（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("EQUIPMENT_001", HttpStatus.NOT_FOUND),            // ITEM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("EQUIPMENT_002", HttpStatus.NOT_FOUND)             // ASSIGNMENT_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
