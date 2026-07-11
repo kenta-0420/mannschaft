@@ -294,7 +294,8 @@
       "LANE": "Lane",
       "setting_title": "What to call bookable items",
       "custom_label": "Custom name",
-      "custom_required": "Please enter a custom name"
+      "custom_required": "Please enter a custom name",
+      "deputy_hint": "Deputy admins can only change what bookable items are called. Managing lines, menus, and so on is done by admins."
     },
     "settings": {
       "advanced": {

@@ -294,7 +294,8 @@
       "LANE": "carril",
       "setting_title": "Cómo llamar a los elementos reservables",
       "custom_label": "Nombre personalizado",
-      "custom_required": "Introduzca un nombre personalizado"
+      "custom_required": "Introduzca un nombre personalizado",
+      "deputy_hint": "Los subadministradores solo pueden cambiar cómo se llaman los elementos reservables. La gestión de líneas, menús, etc. la realizan los administradores."
     },
     "settings": {
       "advanced": {

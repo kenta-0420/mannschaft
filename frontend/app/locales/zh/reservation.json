@@ -294,7 +294,8 @@
       "LANE": "球道",
       "setting_title": "预约对象的称呼",
       "custom_label": "自定义称呼",
-      "custom_required": "请输入自定义称呼"
+      "custom_required": "请输入自定义称呼",
+      "deputy_hint": "副管理员只能修改预约对象的称呼。线路、菜单等管理由管理员负责。"
     },
     "settings": {
       "advanced": {

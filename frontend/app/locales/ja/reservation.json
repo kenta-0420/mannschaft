@@ -294,7 +294,8 @@
       "LANE": "レーン",
       "setting_title": "予約対象の呼び方",
       "custom_label": "自由入力の呼称",
-      "custom_required": "自由入力の呼称を入力してください"
+      "custom_required": "自由入力の呼称を入力してください",
+      "deputy_hint": "副管理者は予約対象の呼び方のみ変更できます。ライン・メニューなどの管理は管理者が行います。"
     },
     "settings": {
       "advanced": {

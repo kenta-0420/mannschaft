@@ -294,7 +294,8 @@
       "LANE": "레인",
       "setting_title": "예약 대상의 명칭",
       "custom_label": "사용자 지정 명칭",
-      "custom_required": "사용자 지정 명칭을 입력해 주세요"
+      "custom_required": "사용자 지정 명칭을 입력해 주세요",
+      "deputy_hint": "부관리자는 예약 대상의 명칭만 변경할 수 있습니다. 라인・메뉴 등의 관리는 관리자가 수행합니다."
     },
     "settings": {
       "advanced": {

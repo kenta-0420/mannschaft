@@ -220,7 +220,8 @@ onMounted(async () => {
         <!-- 非管理者（SUPPORTER含む）は「自分の予約」に改名（表示のみ・認可挙動は不変）。
              管理者/副管理者（mode=team）は従来通り「予約一覧」。 -->
         <Tab :value="1">{{ isAdminOrDeputy ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
-        <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
+        <!-- ②予約対象タブ: ADMIN は全機能、DEPUTY_ADMIN は呼称のみ（マスター裁可 2026-07-11）。タブ自体は両者に開放 -->
+        <Tab v-if="isAdminOrDeputy" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
         <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
@@ -311,8 +312,11 @@ onMounted(async () => {
           />
         </TabPanel>
 
-        <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
-        <TabPanel v-if="isAdmin" :value="2">
+        <!-- ②予約対象タブ: ADMIN=全管理機能 / DEPUTY_ADMIN=呼称設定のみ（マスター裁可 2026-07-11）。
+             タブ自体は isAdminOrDeputy に開放し、中身をロールで出し分ける（ライン/メニュー管理は ADMIN 限定を維持）。 -->
+        <TabPanel v-if="isAdminOrDeputy" :value="2">
+          <!-- ADMIN: ライン管理 + メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン（従来どおり） -->
+          <template v-if="isAdmin">
           <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き）
                並び順は初期セットアップの思考順（F03.4.5 §3.2 確定）:
                ①営業時間 → ②予約対象 → ③メニュー → ④週間スケジュール → ⑤例外日カレンダー → ⑥詳細設定（Accordion外・下部）。 -->
@@ -344,9 +348,10 @@ onMounted(async () => {
               </AccordionHeader>
               <AccordionContent>
                 <div class="mb-4">
+                  <!-- 呼称設定は ADMIN・DEPUTY_ADMIN とも編集可（マスター裁可 2026-07-11・設計§2）。ライン管理は ADMIN のみ -->
                   <ReservationResourceNameSettings
                     :team-id="props.teamId"
-                    :disabled="!isAdmin"
+                    :disabled="!isAdminOrDeputy"
                     @changed="onResourceNameChanged"
                   />
                 </div>
@@ -479,6 +484,22 @@ onMounted(async () => {
               </AccordionPanel>
             </Accordion>
           </div>
+          </template>
+
+          <!-- DEPUTY_ADMIN: 呼称設定のみ（ライン/メニュー/営業時間等の管理は ADMIN 限定のため非表示）。
+               タブラベルは「{resourceName}の管理」だが副管理者は呼称のみ変更可のため、その旨を明示する。 -->
+          <template v-else>
+            <div class="space-y-3">
+              <p class="text-sm text-surface-600 dark:text-surface-300">
+                {{ t('reservation.resource_name.deputy_hint') }}
+              </p>
+              <ReservationResourceNameSettings
+                :team-id="props.teamId"
+                :disabled="!isAdminOrDeputy"
+                @changed="onResourceNameChanged"
+              />
+            </div>
+          </template>
         </TabPanel>
 
         <TabPanel v-if="isAdminOrDeputy" :value="3">

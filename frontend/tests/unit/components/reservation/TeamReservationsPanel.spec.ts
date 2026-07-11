@@ -8,6 +8,8 @@ import ReservationList from '~/components/reservation/ReservationList.vue'
 import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 import SlotPicker from '~/components/reservation/SlotPicker.vue'
 import SlotGridPicker from '~/components/reservation/SlotGridPicker.vue'
+import ReservationResourceNameSettings from '~/components/reservation/ReservationResourceNameSettings.vue'
+import LineManager from '~/components/reservation/LineManager.vue'
 
 /**
  * TeamReservationsPanel.vue ユニットテスト — 予約直後の再読込結線ガード（実機E2E発見バグの根治）
@@ -310,5 +312,63 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(idxWeekly, '④週間スケジュール → ⑤例外日カレンダー の順').toBeLessThan(idxException)
     expect(idxException, '⑤例外日カレンダー → ⑥詳細設定 の順').toBeLessThan(idxAdvanced)
     expect(idxAdvanced, '⑥詳細設定の内側に「個別の枠を手動管理」ラベル（SlotManager）がある').toBeLessThan(idxSlotManageLabel)
+  })
+
+  it('AC-DEPUTY-1（マスター裁可2026-07-11）: DEPUTY_ADMIN は②予約対象タブが見える（呼称設定のためタブ開放）', async () => {
+    // 副管理者: isAdmin=false・isAdminOrDeputy=true。②タブが表示され、タブ数は
+    // 予約する/予約一覧/②予約対象/緊急休業 の4つ（緊急休業も isAdminOrDeputy 表示）。
+    roleOverride.isAdmin = false
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'DEPUTY_ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    // 予約する / 予約一覧 / ②予約対象(呼称) / 緊急休業
+    expect(tabs).toHaveLength(4)
+    // 管理者/副管理者は予約一覧ラベル（自分の予約ではない）
+    expect(tabs[1]!.text()).toBe('Reservations')
+    // ②タブが存在し「Bookable Item Management」ラベル（DEFAULT フォールバック）
+    expect(tabs[2]!.text()).toBe('Bookable Item Management')
+  })
+
+  it('AC-DEPUTY-2（マスター裁可2026-07-11）: DEPUTY_ADMIN の②タブは呼称設定のみ編集可・ライン/メニュー管理は非表示（ADMIN限定維持）', async () => {
+    roleOverride.isAdmin = false
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'DEPUTY_ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    // 呼称設定コンポーネントが描画され、disabled=false（=編集可）で渡っている
+    const resourceNameSettings = wrapper.findComponent(ReservationResourceNameSettings)
+    expect(resourceNameSettings.exists()).toBe(true)
+    expect(resourceNameSettings.props('disabled')).toBe(false)
+
+    // ライン管理は ADMIN 限定のため DEPUTY_ADMIN には描画されない（物理的に非表示＝閲覧すら不可）
+    expect(wrapper.findComponent(LineManager).exists()).toBe(false)
+    // 副管理者向けの注意文（呼称のみ変更可）が表示される
+    expect(wrapper.text()).toContain('Deputy admins can only change')
+  })
+
+  it('AC-DEPUTY-3: ADMIN は従来どおり②タブでライン管理＋呼称設定の両方が編集可（回帰確認）', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    // ADMIN はライン管理・呼称設定の両方が存在し、呼称は編集可（disabled=false）
+    expect(wrapper.findComponent(LineManager).exists()).toBe(true)
+    const resourceNameSettings = wrapper.findComponent(ReservationResourceNameSettings)
+    expect(resourceNameSettings.exists()).toBe(true)
+    expect(resourceNameSettings.props('disabled')).toBe(false)
+    // ADMIN には副管理者向け注意文は出さない（DEPUTY 専用ビューではないため）
+    expect(wrapper.text()).not.toContain('Deputy admins can only change')
   })
 })

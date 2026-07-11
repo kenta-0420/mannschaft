@@ -294,7 +294,8 @@
       "LANE": "Bahn",
       "setting_title": "Bezeichnung für buchbare Elemente",
       "custom_label": "Benutzerdefinierte Bezeichnung",
-      "custom_required": "Bitte geben Sie eine benutzerdefinierte Bezeichnung ein"
+      "custom_required": "Bitte geben Sie eine benutzerdefinierte Bezeichnung ein",
+      "deputy_hint": "Stellvertretende Administratoren können nur die Bezeichnung buchbarer Elemente ändern. Die Verwaltung von Linien, Menüs usw. übernehmen Administratoren."
     },
     "settings": {
       "advanced": {
