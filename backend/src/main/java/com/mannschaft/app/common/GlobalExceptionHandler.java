@@ -830,7 +830,15 @@ public class GlobalExceptionHandler {
             Map.entry("PARKING_007", HttpStatus.NOT_FOUND),              // WATCHLIST_NOT_FOUND
             Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
             Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
-            Map.entry("PARKING_026", HttpStatus.NOT_FOUND)               // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
+            // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PERF_001", HttpStatus.NOT_FOUND),                 // METRIC_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_002", HttpStatus.NOT_FOUND),                 // RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_011", HttpStatus.NOT_FOUND),                 // SCHEDULE_NOT_FOUND（scheduleId スコープ整合 → 404）
+            Map.entry("PERF_013", HttpStatus.NOT_FOUND),                 // ACTIVITY_NOT_FOUND
+            Map.entry("PERF_014", HttpStatus.NOT_FOUND)                  // TEAM_NOT_FOUND
     );
 
     /**
