@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
@@ -35,6 +36,9 @@ class PerformanceExportServiceTest {
     @Mock
     private PerformanceMetricService metricService;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private PerformanceExportService performanceExportService;
 
@@ -45,6 +49,7 @@ class PerformanceExportServiceTest {
     private static final Long TEAM_ID = 1L;
     private static final Long METRIC_ID = 100L;
     private static final Long USER_ID = 10L;
+    private static final Long ACTOR_USER_ID = 999L;
     private static final LocalDate DATE_FROM = LocalDate.of(2026, 1, 1);
     private static final LocalDate DATE_TO = LocalDate.of(2026, 3, 31);
 
@@ -90,7 +95,8 @@ class PerformanceExportServiceTest {
                     .willReturn(42L);
 
             // When
-            long count = performanceExportService.countExportRecords(TEAM_ID, METRIC_ID, USER_ID, DATE_FROM, DATE_TO);
+            long count = performanceExportService.countExportRecords(
+                    TEAM_ID, ACTOR_USER_ID, METRIC_ID, USER_ID, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(count).isEqualTo(42L);
@@ -104,7 +110,8 @@ class PerformanceExportServiceTest {
                     .willReturn(0L);
 
             // When
-            long count = performanceExportService.countExportRecords(TEAM_ID, null, null, null, null);
+            long count = performanceExportService.countExportRecords(
+                    TEAM_ID, ACTOR_USER_ID, null, null, null, null);
 
             // Then
             assertThat(count).isEqualTo(0L);
@@ -135,7 +142,7 @@ class PerformanceExportServiceTest {
             PrintWriter writer = new PrintWriter(stringWriter);
 
             // When
-            performanceExportService.exportCsv(writer, TEAM_ID, METRIC_ID, USER_ID, DATE_FROM, DATE_TO);
+            performanceExportService.exportCsv(writer, TEAM_ID, ACTOR_USER_ID, METRIC_ID, USER_ID, DATE_FROM, DATE_TO);
             writer.flush();
 
             // Then
@@ -162,7 +169,7 @@ class PerformanceExportServiceTest {
             PrintWriter writer = new PrintWriter(stringWriter);
 
             // When
-            performanceExportService.exportCsv(writer, TEAM_ID, null, null, null, null);
+            performanceExportService.exportCsv(writer, TEAM_ID, ACTOR_USER_ID, null, null, null, null);
             writer.flush();
 
             // Then
@@ -187,7 +194,7 @@ class PerformanceExportServiceTest {
             PrintWriter writer = new PrintWriter(stringWriter);
 
             // When
-            performanceExportService.exportCsv(writer, TEAM_ID, null, null, DATE_FROM, DATE_TO);
+            performanceExportService.exportCsv(writer, TEAM_ID, ACTOR_USER_ID, null, null, DATE_FROM, DATE_TO);
             writer.flush();
 
             // Then
@@ -212,7 +219,7 @@ class PerformanceExportServiceTest {
             PrintWriter writer = new PrintWriter(stringWriter);
 
             // When
-            performanceExportService.exportCsv(writer, TEAM_ID, METRIC_ID, null, DATE_FROM, DATE_TO);
+            performanceExportService.exportCsv(writer, TEAM_ID, ACTOR_USER_ID, METRIC_ID, null, DATE_FROM, DATE_TO);
             writer.flush();
 
             // Then
@@ -237,7 +244,7 @@ class PerformanceExportServiceTest {
             PrintWriter writer = new PrintWriter(stringWriter);
 
             // When
-            performanceExportService.exportCsv(writer, TEAM_ID, METRIC_ID, null, null, null);
+            performanceExportService.exportCsv(writer, TEAM_ID, ACTOR_USER_ID, METRIC_ID, null, null, null);
             writer.flush();
 
             // Then
