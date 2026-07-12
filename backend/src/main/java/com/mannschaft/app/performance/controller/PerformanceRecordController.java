@@ -71,7 +71,7 @@ public class PerformanceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecordRequest request) {
-        RecordResponse response = recordService.updateRecord(teamId, id, request);
+        RecordResponse response = recordService.updateRecord(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -84,7 +84,7 @@ public class PerformanceRecordController {
     public ResponseEntity<Void> deleteRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        recordService.deleteRecord(teamId, id);
+        recordService.deleteRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -127,8 +127,9 @@ public class PerformanceRecordController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             HttpServletResponse response) throws Exception {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
 
-        long count = exportService.countExportRecords(teamId, metricId, userId, dateFrom, dateTo);
+        long count = exportService.countExportRecords(teamId, actorUserId, metricId, userId, dateFrom, dateTo);
 
         if (count > 1000) {
             String jobId = "export-perf-" + System.currentTimeMillis();
@@ -144,7 +145,7 @@ public class PerformanceRecordController {
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
 
         PrintWriter writer = response.getWriter();
-        exportService.exportCsv(writer, teamId, metricId, userId, dateFrom, dateTo);
+        exportService.exportCsv(writer, teamId, actorUserId, metricId, userId, dateFrom, dateTo);
         writer.flush();
 
         return ResponseEntity.ok().build();
