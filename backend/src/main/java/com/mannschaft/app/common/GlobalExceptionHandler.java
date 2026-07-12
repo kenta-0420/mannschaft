@@ -852,7 +852,12 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F09.6 directmail の *_NOT_FOUND は、対象エンティティが
+            // 自スコープ外（BOLA）の場合にも (id, scopeType, scopeId) 複合フェッチで同一コードを返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("DM_001", HttpStatus.NOT_FOUND),                   // MAIL_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("DM_002", HttpStatus.NOT_FOUND)                    // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**

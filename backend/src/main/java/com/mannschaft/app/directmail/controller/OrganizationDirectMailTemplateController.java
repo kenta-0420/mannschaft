@@ -43,7 +43,8 @@ public class OrganizationDirectMailTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<DirectMailTemplateResponse>>> listTemplates(
             @PathVariable Long orgId) {
-        List<DirectMailTemplateResponse> responses = templateService.listTemplates("ORGANIZATION", orgId);
+        List<DirectMailTemplateResponse> responses =
+                templateService.listTemplates("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -68,7 +69,8 @@ public class OrganizationDirectMailTemplateController {
     public ResponseEntity<ApiResponse<DirectMailTemplateResponse>> updateTemplate(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdateDirectMailTemplateRequest request) {
-        DirectMailTemplateResponse response = templateService.updateTemplate("ORGANIZATION", orgId, id, request);
+        DirectMailTemplateResponse response =
+                templateService.updateTemplate("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -79,7 +81,7 @@ public class OrganizationDirectMailTemplateController {
     @Operation(summary = "組織DMテンプレート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long orgId, @PathVariable Long id) {
-        templateService.deleteTemplate("ORGANIZATION", orgId, id);
+        templateService.deleteTemplate("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 }
