@@ -366,6 +366,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_103", HttpStatus.NOT_FOUND),       // SHARE_TARGET_TEAM_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_104", HttpStatus.NOT_FOUND),       // SHARE_TARGET_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_105", HttpStatus.CONFLICT),        // SHARE_TARGET_DUPLICATED
+            // F03.9 チーム時間割（認可根治Wave2: IDOR対策で 404 統一。従来 WARN 既定の 400 のまま未マップだった欠陥を根治）
+            Map.entry("TIMETABLE_001", HttpStatus.NOT_FOUND),                // TIMETABLE_NOT_FOUND
+            Map.entry("TIMETABLE_002", HttpStatus.NOT_FOUND),                // TERM_NOT_FOUND
+            Map.entry("TIMETABLE_003", HttpStatus.NOT_FOUND),                // SLOT_NOT_FOUND
+            Map.entry("TIMETABLE_004", HttpStatus.NOT_FOUND),                // CHANGE_NOT_FOUND
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED

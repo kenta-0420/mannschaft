@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1/timetable-terms/{termId}")
@@ -33,7 +34,7 @@ public class TimetableTermCommonController {
         var data = new TimetableTermService.UpdateTermData(
                 request.getName(), request.getStartDate(), request.getEndDate(),
                 request.getSortOrder());
-        var entity = termService.updateTerm(termId, data);
+        var entity = termService.updateTerm(termId, data, SecurityUtils.getCurrentUserId());
         var response = new TimetableTermResponse(entity.getId(), entity.getName(),
                 entity.getStartDate(), entity.getEndDate(), entity.getAcademicYear(),
                 entity.getTeamId() != null ? "TEAM" : "ORGANIZATION", entity.getCreatedAt());
@@ -44,7 +45,7 @@ public class TimetableTermCommonController {
     @Operation(summary = "学期削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTerm(@PathVariable Long termId) {
-        termService.deleteTerm(termId);
+        termService.deleteTerm(termId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

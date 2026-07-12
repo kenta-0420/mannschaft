@@ -9,6 +9,7 @@ import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
 import com.mannschaft.app.timetable.service.TimetableSlotService;
 import com.mannschaft.app.timetable.service.TimetableSlotService.ResolvedSlot;
 import com.mannschaft.app.timetable.service.TimetableSlotService.SlotData;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,7 +34,10 @@ class TimetableSlotServiceTest {
     @Mock private TimetableSlotRepository slotRepository;
     @Mock private TimetableChangeRepository changeRepository;
     @Mock private TimetableRepository timetableRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private TimetableSlotService service;
+
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("applyChanges")
@@ -119,7 +123,7 @@ class TimetableSlotServiceTest {
                     new SlotData("MON", 1, WeekPattern.A, "体育", null, null, null, null));
 
             // When / Then
-            assertThatThrownBy(() -> service.replaceSlots(1L, slots, null))
+            assertThatThrownBy(() -> service.replaceSlots(1L, slots, null, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_050"));
