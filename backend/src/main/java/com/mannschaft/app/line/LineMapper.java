@@ -19,9 +19,29 @@ public interface LineMapper {
 
     /**
      * LINE BOT設定エンティティからレスポンスに変換する。
+     *
+     * <p>webhookSecret はシークレット平文露出是正（認可根治戦役 Wave2 トランシェ2C）のため
+     * {@link #maskSecret(String)} でprefixマスクして返す。生値はクライアントが作成/更新リクエストで
+     * 自ら送信した値のみであり、応答で平文をエコーバックする必要はない
+     * （先行 #2259 webhook ドメインの listTokens マスク化と同方針）。</p>
      */
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
+    @Mapping(target = "webhookSecret", expression = "java(maskSecret(entity.getWebhookSecret()))")
     LineBotConfigResponse toLineBotConfigResponse(LineBotConfigEntity entity);
+
+    /**
+     * シークレット文字列をマスクする。先頭8文字+末尾4文字のみ表示し、中間は "****" に置換する。
+     * 短いシークレット（12文字未満）は全体をマスクする（#2259 webhook ドメインの maskToken と同仕様）。
+     */
+    default String maskSecret(String secret) {
+        if (secret == null) {
+            return null;
+        }
+        if (secret.length() < 12) {
+            return "*".repeat(secret.length());
+        }
+        return secret.substring(0, 8) + "****" + secret.substring(secret.length() - 4);
+    }
 
     /**
      * メッセージログエンティティからレスポンスに変換する。
