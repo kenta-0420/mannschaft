@@ -89,6 +89,12 @@ public class TimetableChangeService {
         }
         validateChangeData(timetableId, data);
 
+        // notifyMembers はリクエストで省略可能（DTO に @NotNull なし）。省略時は
+        // DDL の DEFAULT TRUE / entity の @Builder.Default true と同義の true に正規化する。
+        // ビルダーへ null を明示セットすると Lombok の @Builder.Default が無効化され、
+        // NOT NULL 制約違反（500）になるため、null のまま渡してはならない。
+        boolean notifyMembers = data.notifyMembers() == null || data.notifyMembers();
+
         TimetableChangeEntity entity = TimetableChangeEntity.builder()
                 .timetableId(timetableId)
                 .targetDate(data.targetDate())
@@ -98,13 +104,13 @@ public class TimetableChangeService {
                 .teacherName(data.teacherName())
                 .roomName(data.roomName())
                 .reason(data.reason())
-                .notifyMembers(data.notifyMembers())
+                .notifyMembers(notifyMembers)
                 .createdBy(data.createdBy())
                 .build();
 
         TimetableChangeEntity saved = changeRepository.save(entity);
 
-        if (Boolean.TRUE.equals(data.notifyMembers())) {
+        if (notifyMembers) {
             eventPublisher.publishEvent(new TimetableChangeCreatedEvent(
                     saved.getId(),
                     timetableId,
