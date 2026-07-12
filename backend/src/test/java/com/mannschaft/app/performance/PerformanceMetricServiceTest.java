@@ -1,6 +1,7 @@
 package com.mannschaft.app.performance;
 
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.CreateMetricRequest;
 import com.mannschaft.app.performance.dto.FromTemplateRequest;
@@ -33,11 +34,13 @@ class PerformanceMetricServiceTest {
     @Mock private PerformanceMetricTemplateRepository templateRepository;
     @Mock private ActivityTemplateFieldRepository activityTemplateFieldRepository;
     @Mock private PerformanceMapper performanceMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private PerformanceMetricService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final Long ADMIN_USER_ID = 100L;
 
     @Nested
     @DisplayName("createMetric")
@@ -49,7 +52,7 @@ class PerformanceMetricServiceTest {
             CreateMetricRequest request = new CreateMetricRequest(
                     "新指標", null, null, null, null, null, null, null, null, null, null, null, null);
 
-            assertThatThrownBy(() -> service.createMetric(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createMetric(TEAM_ID, ADMIN_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_003"));
@@ -74,7 +77,7 @@ class PerformanceMetricServiceTest {
                     .audit(new MetricResponse.MetricAuditDto(null, null))
                     .build());
 
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
             assertThat(result).isNotNull();
         }
     }
@@ -86,7 +89,7 @@ class PerformanceMetricServiceTest {
         @DisplayName("異常系: 指標不在でPERF_001例外")
         void 無効化_不在_例外() {
             given(metricRepository.findByIdAndTeamId(99L, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deactivateMetric(TEAM_ID, 99L))
+            assertThatThrownBy(() -> service.deactivateMetric(TEAM_ID, 99L, ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_001"));
@@ -102,7 +105,7 @@ class PerformanceMetricServiceTest {
             given(templateRepository.findBySportCategoryOrderBySortOrderAsc("UNKNOWN")).willReturn(List.of());
             FromTemplateRequest request = new FromTemplateRequest("UNKNOWN", null);
 
-            assertThatThrownBy(() -> service.createFromTemplate(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createFromTemplate(TEAM_ID, ADMIN_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_010"));
