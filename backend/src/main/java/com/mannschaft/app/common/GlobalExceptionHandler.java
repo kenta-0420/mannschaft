@@ -817,7 +817,16 @@ public class GlobalExceptionHandler {
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
             Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND)            // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.4 chart（要配慮個人情報：健康記録）の
+            // NOT_FOUND 系は teamId を跨いだ存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("CHART_001", HttpStatus.NOT_FOUND),                 // CHART_NOT_FOUND
+            Map.entry("CHART_002", HttpStatus.NOT_FOUND),                 // PHOTO_NOT_FOUND
+            Map.entry("CHART_003", HttpStatus.NOT_FOUND),                 // FORMULA_NOT_FOUND
+            Map.entry("CHART_004", HttpStatus.NOT_FOUND),                 // CUSTOM_FIELD_NOT_FOUND
+            Map.entry("CHART_005", HttpStatus.NOT_FOUND),                 // INTAKE_FORM_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_006", HttpStatus.NOT_FOUND),                 // RECORD_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_019", HttpStatus.NOT_FOUND)                  // INTAKE_FORM_NOT_FOUND
     );
 
     /**
