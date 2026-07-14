@@ -18,6 +18,9 @@
       "collapse": "サイドバーをたたむ",
       "openDrawer": "メニューを開く",
       "closeDrawer": "メニューを閉じる"
+    },
+    "autoCollapse": {
+      "chip": "自動収縮中"
     }
   }
 }

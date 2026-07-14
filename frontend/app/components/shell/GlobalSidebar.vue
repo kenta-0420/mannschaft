@@ -18,6 +18,11 @@ const route = useRoute()
 
 const rail = computed(() => !props.forceWide && appShellStore.isRail)
 
+// Phase2 AC-14: スコープページ（チーム/組織）の自動レール収縮中のみレール最下部に表示する
+// 説明チップ（sidebar-prototype.html の .gnav-bottom / .auto-chip 相当）。
+// 一時展開中（scopeExpanded=true）は isRail が false になるため rail 判定と自然に連動する。
+const showAutoCollapseChip = computed(() => rail.value && appShellStore.forceRail)
+
 // default.vue の isActive(path) と同一ロジック（exact 引数は既存呼び出し側で未使用のため簡略化）。
 // 現在ルートがいずれかのナビパスと完全一致する場合、prefix match は採用しない。
 function isItemActive(path: string): boolean {
@@ -56,6 +61,18 @@ function isItemActive(path: string): boolean {
           :active="isItemActive(item.path)"
         />
       </template>
+    </div>
+
+    <!-- Phase2 AC-14: 自動収縮中の説明チップ（スコープページのレール収縮時のみ・レール最下部） -->
+    <div
+      v-if="showAutoCollapseChip"
+      class="flex justify-center border-t border-surface-100 px-1.5 pb-2.5 pt-2 dark:border-surface-800"
+    >
+      <span
+        class="rounded-md bg-primary/10 px-1.5 py-1 text-center text-[10px] font-bold leading-tight text-primary"
+      >
+        {{ $t('global_nav.autoCollapse.chip') }}
+      </span>
     </div>
   </nav>
 </template>

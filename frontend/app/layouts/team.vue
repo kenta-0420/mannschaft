@@ -13,6 +13,18 @@ const teamId = computed(() => {
 watch(() => route.path, () => {
   showSidebar.value = false
 })
+
+// サイドバー化 Phase2 AC-14: チーム画面に滞在中はグローバルサイドバーを
+// 自動でレール(68px)収縮させる（新シェル＝app-shell-enabled時のみ意味を持つ。
+// 旧シェルでは appShellStore は未参照のため無害）。
+// この <aside>＋TeamSidebar／sticky top-16／calc(100vh - 4rem) 自体は無改修（既存仕様のまま）。
+const appShellStore = useAppShellStore()
+onMounted(() => {
+  appShellStore.setForceRail(true)
+})
+onUnmounted(() => {
+  appShellStore.setForceRail(false)
+})
 </script>
 
 <template>

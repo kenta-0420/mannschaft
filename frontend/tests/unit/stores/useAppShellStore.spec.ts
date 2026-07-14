@@ -149,4 +149,94 @@ describe('useAppShellStore', () => {
       expect(store.userCollapsed).toBe(false)
     })
   })
+
+  describe('Phase2 AC-13/AC-14: isRail — scopeExpanded ＞ forceRail ＞ userCollapsed の優先順位（全8象限）', () => {
+    it.each([
+      // [userCollapsed, forceRail, scopeExpanded, expected isRail, 説明]
+      [false, false, false, false, '個人ページ・展開のまま'],
+      [true, false, false, true, '個人ページの手動記憶のみでレール'],
+      [false, true, false, true, 'スコープページの自動レール（既定）'],
+      [true, true, false, true, '自動レールが手動記憶と一致してレール'],
+      [false, true, true, false, 'スコープページの一時展開で自動レールを上書き'],
+      [true, true, true, false, '一時展開は userCollapsed=true でも forceRail より優先して展開'],
+      [false, false, true, false, 'forceRail=false 時は scopeExpanded を無視（personalCollapsed=falseのまま展開）'],
+      [true, false, true, true, 'forceRail=false 時は scopeExpanded を無視し userCollapsed の記憶が勝つ'],
+    ])(
+      'userCollapsed=%s, forceRail=%s, scopeExpanded=%s → isRail=%s（%s）',
+      (userCollapsed, forceRail, scopeExpanded, expected) => {
+        const store = useAppShellStore()
+        store.userCollapsed = userCollapsed
+        store.forceRail = forceRail
+        store.scopeExpanded = scopeExpanded
+        expect(store.isRail).toBe(expected)
+      },
+    )
+  })
+
+  describe('Phase2: setForceRail はスコープ出入りのたび scopeExpanded をリセットする', () => {
+    it('true をセットすると scopeExpanded は false に戻る（自動収縮が既定で再開される）', () => {
+      const store = useAppShellStore()
+      store.scopeExpanded = true
+      store.setForceRail(true)
+      expect(store.forceRail).toBe(true)
+      expect(store.scopeExpanded).toBe(false)
+    })
+
+    it('false をセットしても scopeExpanded は false に戻る（スコープ退出時の取り残し防止）', () => {
+      const store = useAppShellStore()
+      store.forceRail = true
+      store.scopeExpanded = true
+      store.setForceRail(false)
+      expect(store.forceRail).toBe(false)
+      expect(store.scopeExpanded).toBe(false)
+    })
+
+    it('setForceRail は永続化しない', () => {
+      const store = useAppShellStore()
+      store.setForceRail(true)
+      expect(localStorageMock.setItem).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Phase2: toggleScopeExpanded / setScopeExpanded — 一時展開は永続化しない', () => {
+    it('toggleScopeExpanded は scopeExpanded を反転し永続化しない', () => {
+      const store = useAppShellStore()
+      expect(store.scopeExpanded).toBe(false)
+      store.toggleScopeExpanded()
+      expect(store.scopeExpanded).toBe(true)
+      store.toggleScopeExpanded()
+      expect(store.scopeExpanded).toBe(false)
+      expect(localStorageMock.setItem).not.toHaveBeenCalled()
+    })
+
+    it('setScopeExpanded は指定値をそのまま反映する', () => {
+      const store = useAppShellStore()
+      store.setScopeExpanded(true)
+      expect(store.scopeExpanded).toBe(true)
+      expect(localStorageMock.setItem).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Phase2 AC-14: togglePanel — ヘッダーのパネルボタンから呼ぶ統一エントリ', () => {
+    it('forceRail=false（個人ページ）のときは userCollapsed をトグルし永続化する', () => {
+      const store = useAppShellStore()
+      store.togglePanel()
+      expect(store.userCollapsed).toBe(true)
+      expect(store.scopeExpanded).toBe(false)
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('app-shell', JSON.stringify({ userCollapsed: true }))
+    })
+
+    it('forceRail=true（スコープページ）のときは scopeExpanded をトグルし永続化しない', () => {
+      const store = useAppShellStore()
+      store.forceRail = true
+      store.togglePanel()
+      expect(store.scopeExpanded).toBe(true)
+      expect(store.userCollapsed).toBe(false)
+      expect(localStorageMock.setItem).not.toHaveBeenCalled()
+      // もう一度押すと一時展開が閉じてレールに戻る
+      store.togglePanel()
+      expect(store.scopeExpanded).toBe(false)
+      expect(store.isRail).toBe(true)
+    })
+  })
 })
