@@ -36,10 +36,18 @@ export interface OrgTimestampsDto {
 }
 
 export interface OrganizationResponse {
-  /** BIGINT 内部 ID（数値を string で表現）。 */
+  /**
+   * URL 識別子（カスタムスラッグ）。実体は slug と同値の string 型。BE slug 移行対応。
+   * 数値ではない（旧コメントは誤り。数値 ID が必要な場合は numericId を使う）。
+   */
   id: string
   /** カスタムスラッグ。URLに使用する string 型。BE slug 移行対応 */
   slug: string
+  /**
+   * 組織の内部 BIGINT ID（F09.19.10）。URL には使わない（URL 識別子は上記 id/slug が正準）。
+   * Spotlight 掲載面など BE が Long スコープ ID を要求する内部連携専用に使用する。
+   */
+  numericId?: number
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto
