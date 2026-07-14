@@ -55,6 +55,11 @@ const isMounted = ref(false)
 const showMobileMenu = ref(false)
 const feedbackModalVisible = ref(false)
 
+// サイドバー化 Phase1: localStorage['app-shell-enabled'] === 'true' の場合のみ新シェル
+// （AppShell/AppHeader/GlobalSidebar）を描画する。既定OFF＝全ユーザー現行のまま。
+// isMounted ガード後（クライアント確定後）に評価し、SSR/初回描画のフラッシュを防ぐ。
+const appShellEnabled = ref(false)
+
 let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
 // F10.7 WebSocket 通知連動（隊5・AC-9前段）: 認証済みセッションの間だけグローバルに1本、
@@ -63,6 +68,11 @@ const userNotificationSocket = useUserNotificationSocket()
 
 onMounted(() => {
   isMounted.value = true
+  try {
+    appShellEnabled.value = localStorage.getItem('app-shell-enabled') === 'true'
+  } catch {
+    appShellEnabled.value = false
+  }
   // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
   // 60 秒ごとのポーリングで毎回トーストを出さないよう、ここでは再 throw のみ握りつぶす。
   inboxStore.fetchSummary().catch(() => {})
@@ -166,6 +176,40 @@ function isActive(path: string, exact = false): boolean {
   </div>
 
   <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">
+    <!--
+      サイドバー化 Phase1: app-shell-enabled フラグで新シェルと現行マークアップを併存させる。
+      v-else 側（現行マークアップ）は1バイトも変更しない（<template> はDOMを生成しないため
+      分岐追加自体は既存の描画結果に影響しない）。
+    -->
+    <template v-if="appShellEnabled">
+      <AppShell
+        @open-quick-memo="quickMemoModalVisible = true"
+        @open-feedback="feedbackModalVisible = true"
+        @open-ios-install="iosInstallModalVisible = true"
+      >
+        <template #header-actions>
+          <slot name="header-actions" />
+        </template>
+        <template #banners>
+          <ClientOnly>
+            <OfflineStatusBanner />
+            <!-- 後見切替中バナー -->
+            <div
+              v-if="guardianshipSwitchStore.isActingAs"
+              class="bg-orange-100 border-b border-orange-300 text-orange-800 text-sm py-1 px-4 flex items-center justify-between dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300"
+            >
+              <span>{{ $t('proxy.guardianship.switch.actingAs', { name: guardianshipSwitchStore.activeChild?.displayName ?? '' }) }}</span>
+              <button class="text-xs underline hover:no-underline" @click="handleEndSwitch">
+                {{ $t('proxy.guardianship.switch.end') }}
+              </button>
+            </div>
+          </ClientOnly>
+        </template>
+        <slot />
+      </AppShell>
+    </template>
+
+    <template v-else>
     <!-- ヘッダー -->
     <header class="sticky top-0 z-50 bg-surface-0 border-b border-surface shadow-sm dark:bg-surface-900 dark:border-surface-700">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
@@ -354,7 +398,9 @@ function isActive(path: string, exact = false): boolean {
     <main class="mx-auto max-w-screen-2xl p-4">
       <slot />
     </main>
+    </template>
 
+    <!-- モーダル群・バナー群は分岐の外（両モード共通・単一インスタンス） -->
     <ClientOnly>
       <ErrorReportDialog />
       <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
@@ -363,8 +409,8 @@ function isActive(path: string, exact = false): boolean {
       <!-- F10.1: 管理者変身中バナー -->
       <AdminImpersonationBanner />
 
-      <!-- モバイルメニュー Drawer -->
-      <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">
+      <!-- モバイルメニュー Drawer（現行専用。新シェルは GlobalSidebar 自身がモバイルDrawerを持つ） -->
+      <Drawer v-if="!appShellEnabled" v-model:visible="showMobileMenu" position="left" class="w-72">
         <template #header>
           <span class="text-xl font-bold text-primary">Mannschaft</span>
         </template>

@@ -1,0 +1,23 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "Inicio",
+      "connections": "Conexiones",
+      "living": "Vida diaria",
+      "work": "Trabajo",
+      "account": "Cuenta",
+      "admin": "Administración",
+      "other": "Otros"
+    },
+    "item": {
+      "dashboard": "Panel",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "Expandir barra lateral",
+      "collapse": "Contraer barra lateral",
+      "openDrawer": "Abrir menú",
+      "closeDrawer": "Cerrar menú"
+    }
+  }
+}

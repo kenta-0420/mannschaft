@@ -1,0 +1,23 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "ホーム",
+      "connections": "つながり",
+      "living": "くらし",
+      "work": "しごと",
+      "account": "アカウント",
+      "admin": "管理",
+      "other": "その他"
+    },
+    "item": {
+      "dashboard": "ダッシュボード",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "サイドバーをひろげる",
+      "collapse": "サイドバーをたたむ",
+      "openDrawer": "メニューを開く",
+      "closeDrawer": "メニューを閉じる"
+    }
+  }
+}

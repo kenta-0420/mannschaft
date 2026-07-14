@@ -1,0 +1,23 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "主页",
+      "connections": "社交",
+      "living": "生活",
+      "work": "工作",
+      "account": "账户",
+      "admin": "管理",
+      "other": "其他"
+    },
+    "item": {
+      "dashboard": "仪表盘",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "展开侧边栏",
+      "collapse": "收起侧边栏",
+      "openDrawer": "打开菜单",
+      "closeDrawer": "关闭菜单"
+    }
+  }
+}

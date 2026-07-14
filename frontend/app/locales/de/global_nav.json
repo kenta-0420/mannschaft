@@ -1,0 +1,23 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "Start",
+      "connections": "Verbindungen",
+      "living": "Alltag",
+      "work": "Arbeit",
+      "account": "Konto",
+      "admin": "Verwaltung",
+      "other": "Sonstiges"
+    },
+    "item": {
+      "dashboard": "Übersicht",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "Seitenleiste ausklappen",
+      "collapse": "Seitenleiste einklappen",
+      "openDrawer": "Menü öffnen",
+      "closeDrawer": "Menü schließen"
+    }
+  }
+}
