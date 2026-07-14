@@ -19,17 +19,18 @@ watch(() => route.path, () => {
 // 本レイアウトでの onMounted/onUnmounted 結線は行わない — 永続シェル
 // （pages/organizations/[slug].vue・ScopePageShell）とのレイアウト切替時に unmount の
 // setForceRail(false) が正しい状態を上書きする順序競合を生むため。
-// この <aside>＋OrganizationSidebar／sticky top-16／calc(100vh - 4rem) 自体は無改修。
+// この <aside>＋OrganizationSidebar は無改修。sticky位置／高さ計算は Phase3 で
+// --app-header-h（既定 4rem）を参照するよう CSS 変数化した（見た目は無変更）。
 </script>
 
 <template>
   <NuxtLayout name="default">
-    <div class="flex" style="min-height: calc(100vh - 4rem)">
+    <div class="flex" style="min-height: calc(100vh - var(--app-header-h))">
       <!-- デスクトップサイドバー（lg以上で常時表示） -->
       <aside
         v-if="orgId"
-        class="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-surface-200 bg-surface-0 sticky top-16 overflow-y-auto"
-        style="height: calc(100vh - 4rem)"
+        class="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-surface-200 bg-surface-0 sticky top-[var(--app-header-h)] overflow-y-auto"
+        style="height: calc(100vh - var(--app-header-h))"
       >
         <OrganizationSidebar :org-id="orgId" />
       </aside>
