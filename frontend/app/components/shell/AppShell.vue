@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * サイドバー化 Phase1: 新シェル（ヘッダー＋グローバルサイドバー＋main）。
+ * サイドバー化 Phase1/2: 新シェル（ヘッダー＋グローバルサイドバー＋main）。
  *
- * layouts/default.vue から localStorage['app-shell-enabled'] === 'true' の場合のみ
- * 描画される（既定OFF・現行 default.vue マークアップは無傷のまま併存）。
+ * layouts/default.vue から localStorage['app-shell-enabled'] !== 'false' の場合に
+ * 描画される（Phase2で既定ON化・'false'でオプトアウト可・Phase3でフラグ除去予定）。
  *
  * スロット:
  * - default: ページ本体
@@ -17,6 +17,18 @@ defineEmits<{
 }>()
 
 const appShellStore = useAppShellStore()
+const route = useRoute()
+
+// Phase2 AC-14: スコープ（チーム/組織）ページ滞在中の自動レール収縮。
+// 「現在ルートがスコープ配下か」を単一の判定源として forceRail を同期する
+// （mount/unmount 結線の順序競合を避ける。詳細は useScopeAutoRail.ts のコメント参照）。
+useScopeAutoRail()
+
+// Phase2 AC-5: ルート遷移でモバイルDrawerを自動クローズする
+// （現行 default.vue の showMobileMenu と同型。遷移後に開きっぱなしになる回帰の根治）。
+watch(() => route.path, () => {
+  appShellStore.closeMobileDrawer()
+})
 
 // モバイル（<md）判定。GlobalSidebar を「デスクトップ常時表示」と「モバイルDrawer内描画」の
 // どちらか一方だけマウントするために使う（両方を同時にマウントすると
