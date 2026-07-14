@@ -18,6 +18,9 @@
       "collapse": "사이드바 접기",
       "openDrawer": "메뉴 열기",
       "closeDrawer": "메뉴 닫기"
+    },
+    "autoCollapse": {
+      "chip": "자동 축소 중"
     }
   }
 }

@@ -55,10 +55,12 @@ const isMounted = ref(false)
 const showMobileMenu = ref(false)
 const feedbackModalVisible = ref(false)
 
-// サイドバー化 Phase1: localStorage['app-shell-enabled'] === 'true' の場合のみ新シェル
-// （AppShell/AppHeader/GlobalSidebar）を描画する。既定OFF＝全ユーザー現行のまま。
+// サイドバー化 Phase2: localStorage['app-shell-enabled'] !== 'false' の場合に新シェル
+// （AppShell/AppHeader/GlobalSidebar）を描画する。既定ON＝全ユーザー新シェル、
+// 'false' を明示保存したユーザーのみ現行マークアップにオプトアウトできる。
+// Phase3 でフラグ自体を除去し、旧マークアップ（v-else 側）を削除する予定。
 // isMounted ガード後（クライアント確定後）に評価し、SSR/初回描画のフラッシュを防ぐ。
-const appShellEnabled = ref(false)
+const appShellEnabled = ref(true)
 
 let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -69,9 +71,9 @@ const userNotificationSocket = useUserNotificationSocket()
 onMounted(() => {
   isMounted.value = true
   try {
-    appShellEnabled.value = localStorage.getItem('app-shell-enabled') === 'true'
+    appShellEnabled.value = localStorage.getItem('app-shell-enabled') !== 'false'
   } catch {
-    appShellEnabled.value = false
+    appShellEnabled.value = true
   }
   // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
   // 60 秒ごとのポーリングで毎回トーストを出さないよう、ここでは再 throw のみ握りつぶす。

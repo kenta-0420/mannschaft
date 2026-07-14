@@ -18,6 +18,9 @@
       "collapse": "Collapse sidebar",
       "openDrawer": "Open menu",
       "closeDrawer": "Close menu"
+    },
+    "autoCollapse": {
+      "chip": "Auto-collapsed"
     }
   }
 }

@@ -13,6 +13,13 @@ const orgId = computed(() => {
 watch(() => route.path, () => {
   showSidebar.value = false
 })
+
+// サイドバー化 Phase2 AC-14: 組織画面滞在中のグローバルサイドバー自動レール収縮は
+// AppShell 内の useScopeAutoRail()（「現在ルートがスコープ配下か」の単一判定源）が担う。
+// 本レイアウトでの onMounted/onUnmounted 結線は行わない — 永続シェル
+// （pages/organizations/[slug].vue・ScopePageShell）とのレイアウト切替時に unmount の
+// setForceRail(false) が正しい状態を上書きする順序競合を生むため。
+// この <aside>＋OrganizationSidebar／sticky top-16／calc(100vh - 4rem) 自体は無改修。
 </script>
 
 <template>

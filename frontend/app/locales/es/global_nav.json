@@ -18,6 +18,9 @@
       "collapse": "Contraer barra lateral",
       "openDrawer": "Abrir menú",
       "closeDrawer": "Cerrar menú"
+    },
+    "autoCollapse": {
+      "chip": "Contracción automática"
     }
   }
 }

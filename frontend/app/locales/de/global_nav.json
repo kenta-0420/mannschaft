@@ -18,6 +18,9 @@
       "collapse": "Seitenleiste einklappen",
       "openDrawer": "Menü öffnen",
       "closeDrawer": "Menü schließen"
+    },
+    "autoCollapse": {
+      "chip": "Automatisch eingeklappt"
     }
   }
 }

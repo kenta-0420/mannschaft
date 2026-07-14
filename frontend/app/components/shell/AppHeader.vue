@@ -67,7 +67,7 @@ function handleLogoClick() {
         class="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:inline-flex dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100"
         :aria-label="appShellStore.isRail ? t('global_nav.toggle.expand') : t('global_nav.toggle.collapse')"
         :title="appShellStore.isRail ? t('global_nav.toggle.expand') : t('global_nav.toggle.collapse')"
-        @click="appShellStore.toggleUserCollapsed()"
+        @click="appShellStore.togglePanel()"
       >
         <svg viewBox="0 0 24 24" class="h-5 w-5" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="16" rx="2" />

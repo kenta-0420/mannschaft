@@ -17,6 +17,7 @@ import { useNavSettingsStore } from '~/stores/useNavSettingsStore'
 import { useTeamStore } from '~/stores/useTeamStore'
 import { useAuthStore } from '~/stores/useAuthStore'
 import { useSyncStore } from '~/stores/useSyncStore'
+import { useInboxStore } from '~/stores/useInboxStore'
 import type { NavFeatureItem } from '~/types/nav'
 
 function makeFeature(overrides: Partial<NavFeatureItem> = {}): NavFeatureItem {
@@ -183,6 +184,35 @@ describe('useAppNavGroups', () => {
       expect(showSyncNav.value).toBe(false)
       const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
       expect(groupedKeys).not.toContain('sync')
+    })
+  })
+
+  describe('Phase2 AC-21: 受信箱バッジ — inboxStore.inboxCount が inbox 項目の badgeCount に結線される', () => {
+    it('inboxStore.summaryByState.INBOX 件数が inbox 項目の badgeCount に反映される', () => {
+      const navSettingsStore = useNavSettingsStore()
+      navSettingsStore.features = [makeFeature({ key: 'inbox', path: '/inbox' })]
+      const inboxStore = useInboxStore()
+      inboxStore.summaryByState = { INBOX: 7 }
+
+      const { groups } = useAppNavGroups()
+      const groupedItems = groups.value.flatMap(g => g.items)
+      const inboxItem = groupedItems.find(i => i.key === 'inbox')
+      expect(inboxItem?.badgeCount).toBe(7)
+    })
+
+    it('件数0のときは badgeCount が undefined 相当になり、他項目は影響を受けない', () => {
+      const navSettingsStore = useNavSettingsStore()
+      navSettingsStore.features = [
+        makeFeature({ key: 'inbox', path: '/inbox' }),
+        makeFeature({ key: 'todo', path: '/todos' }),
+      ]
+
+      const { groups } = useAppNavGroups()
+      const groupedItems = groups.value.flatMap(g => g.items)
+      const inboxItem = groupedItems.find(i => i.key === 'inbox')
+      const todoItem = groupedItems.find(i => i.key === 'todo')
+      expect(inboxItem?.badgeCount).toBe(0)
+      expect(todoItem?.badgeCount).toBeUndefined()
     })
   })
 })

@@ -8,12 +8,18 @@ import { NAV_GROUP_LABEL_KEYS, NAV_GROUP_ORDER, resolveNavGroup } from '~/consta
  * 現 default.vue 108-131行のロジック（固定ダッシュボード・代理入力デスク・SYSTEM・同期の
  * 合流条件）をそのまま移植する。挙動は1ビットも変えない（表示条件・パスは既存と同一）。
  * 追加の API 呼び出しは行わない（各ストアは既存プラグイン/認証フローで既にフェッチ済み）。
+ *
+ * Phase2 AC-21: 受信箱バッジ — inboxStore.inboxCount（layouts/default.vue が既に60秒間隔で
+ * fetchSummary() をポーリング済み）を 'inbox' キーの項目に結線する。追加のポーリングは発生しない。
+ * チャット未読・TODO残数は、全ページ共通で参照できるグローバルなカウント源が現状存在しない
+ * （chatStore/todoStore とも特定ページ限定のフェッチのみ）ため、Phase2 では未結線のまま据え置く。
  */
 export function useAppNavGroups() {
   const navSettingsStore = useNavSettingsStore()
   const teamStore = useTeamStore()
   const authStore = useAuthStore()
   const syncStore = useSyncStore()
+  const inboxStore = useInboxStore()
 
   /** NEIGHBORHOOD/CONDO テンプレートかつ DEPUTY_ADMIN 以上のチームが1つでもあれば表示 */
   const showProxyDeskNav = computed(() =>
@@ -46,6 +52,8 @@ export function useAppNavGroups() {
         labelKey: feature.labelKey,
         icon: feature.icon,
         path: feature.path,
+        // Phase2 AC-21: 受信箱のみ既存のグローバルポーリング元（inboxStore）と結線する
+        badgeCount: feature.key === 'inbox' ? inboxStore.inboxCount : undefined,
       })
     }
 

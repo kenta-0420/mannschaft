@@ -18,6 +18,9 @@
       "collapse": "收起侧边栏",
       "openDrawer": "打开菜单",
       "closeDrawer": "关闭菜单"
+    },
+    "autoCollapse": {
+      "chip": "自动收起中"
     }
   }
 }
