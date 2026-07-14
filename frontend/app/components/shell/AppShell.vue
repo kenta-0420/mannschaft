@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /**
- * サイドバー化 Phase1/2: 新シェル（ヘッダー＋グローバルサイドバー＋main）。
+ * サイドバー化 Phase3: 新シェル（ヘッダー＋グローバルサイドバー＋main）。
  *
- * layouts/default.vue から localStorage['app-shell-enabled'] !== 'false' の場合に
- * 描画される（Phase2で既定ON化・'false'でオプトアウト可・Phase3でフラグ除去予定）。
+ * layouts/default.vue から常時描画される（Phase1/2 の app-shell-enabled フラグ・
+ * 旧上部ナビ〔横スクロールnav/旧モバイルDrawer〕は Phase3 で撤去済み）。
  *
  * スロット:
  * - default: ページ本体
- * - scope-sidebar: Phase2 用（チーム/組織の2本目サイドバー）。Phase1 では未使用
+ * - scope-sidebar: チーム/組織の2本目サイドバー用に予約済みだが、現状 team.vue/organization.vue
+ *   は自前の <aside> を this の default スロット内（NuxtLayout name="default" 経由）に描画しており未使用
  * - header-actions: ヘッダー右端の追加アクション（既存 default.vue の同名スロットを中継）
  */
 defineEmits<{
@@ -65,7 +66,7 @@ onUnmounted(() => {
     <!-- バナー類（オフライン通知・後見切替中バナー等）。ヘッダー直下・本体グリッドの上 -->
     <slot name="banners" />
 
-    <div class="flex items-stretch" style="min-height: calc(100vh - 4rem)">
+    <div class="flex items-stretch" style="min-height: calc(100vh - var(--app-header-h))">
       <GlobalSidebar v-if="!isMobileViewport" />
       <ClientOnly>
         <Drawer
