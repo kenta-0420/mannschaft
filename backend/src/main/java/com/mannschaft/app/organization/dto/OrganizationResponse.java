@@ -16,10 +16,19 @@ import java.time.LocalDateTime;
 @Getter
 public class OrganizationResponse {
 
-    /** URL 識別子（カスタムスラッグ）。 */
+    /** URL 識別子（カスタムスラッグ）。実体は {@code slug} と同値。 */
     private String id;
     /** 組織スラッグ（URL ルーティング用）。{@code /organizations/{slug}} に使用する。 */
     private String slug;
+    /**
+     * 組織の内部 BIGINT ID（F09.19.10）。
+     *
+     * <p>URL には使用しない（URL 識別子は上記 {@code id}/{@code slug} が正準）。
+     * Spotlight 掲載面 API（{@code GET /api/v1/spotlight/content?scopeType=ORGANIZATION&scopeId=}）等、
+     * BE が Long スコープ ID を要求する内部連携専用に公開する。露出先はチーム同様に
+     * 当該組織を閲覧可能な者（visibility ラダー準拠）に限られ、cross-domain FK には使わない。</p>
+     */
+    private Long numericId;
     private OrgBasicInfoDto basicInfo;
     private OrgHierarchyDto hierarchy;
     private OrgLocationDto location;
