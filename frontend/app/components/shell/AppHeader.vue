@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * サイドバー化 Phase1: 薄型ヘッダー（高さ64px = 既存 top-16 互換）。
+ * サイドバー化 Phase3: 薄型ヘッダー（高さ = --app-header-h。既定 4rem/64px で旧ヘッダーと同一）。
  *
  * 左端に常設のパネル型トグル（デスクトップ=レール開閉／モバイル=ドロワー開閉を、
  * 既存コードベースの慣行〔hidden md:.../md:hidden の2ボタン切替〕に合わせて実装）。
  * ロゴ長押し600ms・PWAインストール・目安箱はモーダル表示のトリガーのみ担い、
- * 実際のモーダルコンポーネントは default.vue 側の共有インスタンス（分岐の外・両モード共通）
- * を開閉させるため、イベントとして親へ emit する。
+ * 実際のモーダルコンポーネントは layouts/default.vue 側の共有インスタンスを
+ * 開閉させるため、イベントとして親へ emit する。
  */
 const emit = defineEmits<{
   'open-quick-memo': []
@@ -59,7 +59,7 @@ function handleLogoClick() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 h-16 border-b border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
+  <header class="sticky top-0 z-50 h-[var(--app-header-h)] border-b border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
     <div class="flex h-full items-center gap-2 px-4">
       <!-- パネル型トグル（デスクトップ: レール開閉） -->
       <button
