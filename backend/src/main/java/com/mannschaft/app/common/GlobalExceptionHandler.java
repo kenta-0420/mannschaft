@@ -25,10 +25,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * グローバル例外ハンドラー。
@@ -968,10 +970,68 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
+        ResponseStatusException rse = findResponseStatusExceptionCause(ex);
+        boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
+
+        // (2) team/organization のスコープ識別子パス変数に非数値 slug が渡り、解決に失敗したケース。
+        //     {@link ScopeSlugIdConverter} は不在 slug で 404 を投げるが、Spring の型変換フォールバック
+        //     （既定 Long エディタ）が例外を握り潰して NumberFormatException 化するため、原因連鎖からは
+        //     404 意図が失われる。ここでパス変数名と値から補完し、400 でなく 404 を返す。
+        if (!notFound && isUnresolvedScopeSlug(ex)) {
+            notFound = true;
+        }
+
+        if (notFound) {
+            log.debug("スコープ識別子の解決失敗（404）: parameter={}, value={}", ex.getName(), ex.getValue());
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
+        }
         log.warn("Type mismatch: parameter={}, value={}", ex.getName(), ex.getValue());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /** team / organization のスラッグ解決に使うパス変数名。 */
+    private static final Set<String> SCOPE_ID_PATH_VARS = Set.of("organizationId", "orgId", "teamId");
+
+    /**
+     * スコープ識別子（team/organization）のパス変数に非数値 slug が渡り、解決不能だったかを判定する。
+     * 数値であれば本来変換可能（＝別要因の 400）なので false。
+     */
+    private boolean isUnresolvedScopeSlug(MethodArgumentTypeMismatchException ex) {
+        if (!SCOPE_ID_PATH_VARS.contains(ex.getName())) {
+            return false;
+        }
+        Class<?> required = ex.getRequiredType();
+        if (required != Long.class && required != long.class) {
+            return false;
+        }
+        if (!(ex.getValue() instanceof String s)) {
+            return false;
+        }
+        try {
+            Long.parseLong(s);
+            return false;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    /**
+     * 例外の原因連鎖を辿り、最初に見つかった {@link ResponseStatusException} を返す。見つからなければ null。
+     */
+    private ResponseStatusException findResponseStatusExceptionCause(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof ResponseStatusException rse) {
+                return rse;
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
     /**
