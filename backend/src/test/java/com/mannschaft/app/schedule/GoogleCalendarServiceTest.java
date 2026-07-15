@@ -269,9 +269,34 @@ class GoogleCalendarServiceTest {
         }
 
         @Test
-        @DisplayName("AC-4_連携解除_deleteEventが401失効を投げてもdisconnectは例外にならずdeactivateまで完了する")
-        void AC4_deleteEventが401を投げても_disconnectは完了しdeactivateされる() {
-            // given: deleteEvent が 401（トークン失効）を投げる
+        @DisplayName("AC-4_連携解除_deleteEventが本番同様BusinessExceptionを投げてもdisconnectは例外にならずdeactivateまで完了する")
+        void AC4_deleteEventがBusinessExceptionを投げても_disconnectは完了しdeactivateされる() {
+            // given: 本番の GoogleApiClient.deleteEvent は 404/410 以外を
+            //        BusinessException(GOOGLE_API_ERROR) にラップして投げる（401 を原因に包む形）。
+            //        テストも本番実態と同じ例外型で検証し「テスト緑=本番も握る」を保証する。
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-1")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+            lenient().doThrow(new BusinessException(GoogleCalendarErrorCode.GOOGLE_API_ERROR,
+                            new HttpClientErrorException(HttpStatus.UNAUTHORIZED)))
+                    .when(googleApiClient).deleteEvent(any(), any(), any());
+
+            // when & then: disconnect 自体は例外にならない（失敗は正当理由・ベストエフォート削除を諦めて解除は通す）
+            assertThatCode(() -> googleCalendarService.disconnect(USER_ID))
+                    .doesNotThrowAnyException();
+
+            // deleteEvent は実際に呼ばれ（red の要因）、失敗でも deactivate まで到達する
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-1"));
+            verify(connectionRepository).deactivate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-4b_連携解除_deleteEventが生のRestClientException(401)を投げてもdisconnectは完了しdeactivateされる")
+        void AC4b_deleteEventが生のHttpClientErrorExceptionを投げても_disconnectは完了しdeactivateされる() {
+            // given: 低層が BusinessException にラップし損ねて生の HttpClientErrorException
+            //        （RestClientException のサブクラス）を漏らしても握れることを担保する。
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
             lenient().when(googleEventRepository.findByUserId(USER_ID))
@@ -280,11 +305,9 @@ class GoogleCalendarServiceTest {
             lenient().doThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED))
                     .when(googleApiClient).deleteEvent(any(), any(), any());
 
-            // when & then: disconnect 自体は例外にならない（失効は正当理由・ベストエフォート削除を諦めて解除は通す）
+            // when & then
             assertThatCode(() -> googleCalendarService.disconnect(USER_ID))
                     .doesNotThrowAnyException();
-
-            // deleteEvent は実際に呼ばれ（red の要因）、失効でも deactivate まで到達する
             verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-1"));
             verify(connectionRepository).deactivate(USER_ID);
         }

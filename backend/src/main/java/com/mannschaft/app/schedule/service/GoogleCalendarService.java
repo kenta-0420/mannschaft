@@ -276,8 +276,12 @@ public class GoogleCalendarService {
             for (UserScheduleGoogleEventEntity mapping : mappings) {
                 googleApiClient.deleteEvent(accessToken, calendarId, mapping.getGoogleEventId());
             }
-        } catch (RuntimeException e) {
+        } catch (org.springframework.web.client.RestClientException | BusinessException e) {
             // AC-4: 失効等で Google 側削除が続行不能でも連携解除は通す（ベストエフォート）。
+            // 本番の deleteEvent / refreshAccessToken は Google/OAuth 失敗を BusinessException
+            //（GOOGLE_API_ERROR / GOOGLE_OAUTH_FAILED）にラップし、テストや低層漏れは
+            // RestClientException（HttpClientErrorException を含む）で来る。この 2 種のみ握り、
+            // 自前の NPE/IllegalState 等のバグは伝播させる（CLAUDE.md 障害対応の原則）。
             log.warn("連携解除時のGoogle側イベント削除を打ち切り（ベストエフォート・連携解除は継続）: userId={}, reason={}",
                     userId, e.toString());
         }
