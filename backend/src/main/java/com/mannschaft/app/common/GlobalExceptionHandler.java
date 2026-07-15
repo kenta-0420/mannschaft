@@ -852,7 +852,17 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F05.6 workflow（稟議/申請ワークフロー）は
+            // entity 由来の scopeType/scopeId で認可判定するため、path/リクエストの scope 不一致・
+            // 非所属者アクセスは同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("WORKFLOW_001", HttpStatus.NOT_FOUND),             // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_002", HttpStatus.NOT_FOUND),             // REQUEST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_005", HttpStatus.NOT_FOUND),             // COMMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_006", HttpStatus.NOT_FOUND),             // ATTACHMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 承認判断は「指定承認者でない」という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN)              // NOT_APPROVER → 403
     );
 
     /**

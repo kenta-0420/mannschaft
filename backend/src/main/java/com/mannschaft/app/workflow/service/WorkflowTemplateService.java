@@ -1,11 +1,13 @@
 package com.mannschaft.app.workflow.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.ApprovalType;
 import com.mannschaft.app.workflow.ApproverType;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowFieldType;
 import com.mannschaft.app.workflow.WorkflowMapper;
+import com.mannschaft.app.workflow.WorkflowScopes;
 import com.mannschaft.app.workflow.dto.CreateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.TemplateFieldRequest;
 import com.mannschaft.app.workflow.dto.TemplateStepRequest;
@@ -39,16 +41,22 @@ public class WorkflowTemplateService {
     private final WorkflowTemplateStepRepository stepRepository;
     private final WorkflowTemplateFieldRepository fieldRepository;
     private final WorkflowMapper workflowMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * スコープ内のテンプレート一覧をページング取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param pageable  ページング情報
+     * <p>認可: スコープメンバーのみ（Wave 2 トランシェ2C。非メンバーは 403）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 操作者ユーザーID
+     * @param pageable    ページング情報
      * @return テンプレートレスポンスのページ
      */
-    public Page<WorkflowTemplateResponse> listTemplates(String scopeType, Long scopeId, Pageable pageable) {
+    public Page<WorkflowTemplateResponse> listTemplates(String scopeType, Long scopeId, Long actorUserId,
+                                                        Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, scopeId, WorkflowScopes.canonical(scopeType));
         return templateRepository.findByScopeTypeAndScopeIdOrderBySortOrderAsc(scopeType, scopeId, pageable)
                 .map(entity -> {
                     List<WorkflowTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderByStepOrderAsc(entity.getId());
@@ -78,12 +86,16 @@ public class WorkflowTemplateService {
     /**
      * テンプレート詳細を取得する。
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param templateId テンプレートID
+     * <p>認可: スコープメンバーのみ（403）。パスと不一致の templateId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param templateId  テンプレートID
+     * @param actorUserId 操作者ユーザーID
      * @return テンプレートレスポンス
      */
-    public WorkflowTemplateResponse getTemplate(String scopeType, Long scopeId, Long templateId) {
+    public WorkflowTemplateResponse getTemplate(String scopeType, Long scopeId, Long templateId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, WorkflowScopes.canonical(scopeType));
         WorkflowTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
         List<WorkflowTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderByStepOrderAsc(templateId);
         List<WorkflowTemplateFieldEntity> fields = fieldRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
@@ -92,6 +104,8 @@ public class WorkflowTemplateService {
 
     /**
      * テンプレートを作成する。
+     *
+     * <p>認可: スコープの ADMIN/DEPUTY_ADMIN のみ（非ADMINは 403）。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -102,6 +116,7 @@ public class WorkflowTemplateService {
     @Transactional
     public WorkflowTemplateResponse createTemplate(String scopeType, Long scopeId, Long userId,
                                                     CreateWorkflowTemplateRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, WorkflowScopes.canonical(scopeType));
         WorkflowTemplateEntity entity = WorkflowTemplateEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -126,16 +141,21 @@ public class WorkflowTemplateService {
     /**
      * テンプレートを更新する。
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param templateId テンプレートID
-     * @param request    更新リクエスト
+     * <p>認可: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の templateId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param templateId  テンプレートID
+     * @param actorUserId 操作者ユーザーID
+     * @param request     更新リクエスト
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
     public WorkflowTemplateResponse updateTemplate(String scopeType, Long scopeId, Long templateId,
-                                                    UpdateWorkflowTemplateRequest request) {
+                                                    Long actorUserId, UpdateWorkflowTemplateRequest request) {
         WorkflowTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
+        checkAdminOnEntityScope(actorUserId, entity);
 
         entity.update(
                 request.getName(),
@@ -160,13 +180,18 @@ public class WorkflowTemplateService {
     /**
      * テンプレートを論理削除する。
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param templateId テンプレートID
+     * <p>認可: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の templateId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param templateId  テンプレートID
+     * @param actorUserId 操作者ユーザーID
      */
     @Transactional
-    public void deleteTemplate(String scopeType, Long scopeId, Long templateId) {
+    public void deleteTemplate(String scopeType, Long scopeId, Long templateId, Long actorUserId) {
         WorkflowTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
+        checkAdminOnEntityScope(actorUserId, entity);
         entity.softDelete();
         templateRepository.save(entity);
         log.info("ワークフローテンプレート削除: templateId={}", templateId);
@@ -175,14 +200,19 @@ public class WorkflowTemplateService {
     /**
      * テンプレートを有効化する。
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param templateId テンプレートID
+     * <p>認可: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param templateId  テンプレートID
+     * @param actorUserId 操作者ユーザーID
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
-    public WorkflowTemplateResponse activateTemplate(String scopeType, Long scopeId, Long templateId) {
+    public WorkflowTemplateResponse activateTemplate(String scopeType, Long scopeId, Long templateId,
+                                                     Long actorUserId) {
         WorkflowTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
+        checkAdminOnEntityScope(actorUserId, entity);
         entity.activate();
         WorkflowTemplateEntity saved = templateRepository.save(entity);
         List<WorkflowTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderByStepOrderAsc(templateId);
@@ -194,14 +224,19 @@ public class WorkflowTemplateService {
     /**
      * テンプレートを無効化する。
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param templateId テンプレートID
+     * <p>認可: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param templateId  テンプレートID
+     * @param actorUserId 操作者ユーザーID
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
-    public WorkflowTemplateResponse deactivateTemplate(String scopeType, Long scopeId, Long templateId) {
+    public WorkflowTemplateResponse deactivateTemplate(String scopeType, Long scopeId, Long templateId,
+                                                       Long actorUserId) {
         WorkflowTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
+        checkAdminOnEntityScope(actorUserId, entity);
         entity.deactivate();
         WorkflowTemplateEntity saved = templateRepository.save(entity);
         List<WorkflowTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderByStepOrderAsc(templateId);
@@ -219,6 +254,17 @@ public class WorkflowTemplateService {
     public WorkflowTemplateEntity getTemplateEntity(Long templateId) {
         return templateRepository.findById(templateId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.TEMPLATE_NOT_FOUND));
+    }
+
+    /**
+     * entity 由来のスコープで ADMIN/DEPUTY_ADMIN であることを検証する（★BOLA厳禁★）。
+     *
+     * <p>path で渡された scopeId をそのまま信用せず、取得済み entity の scopeType/scopeId で
+     * 認可する（Wave 2 トランシェ2C）。違反時は 403（COMMON_002）。</p>
+     */
+    private void checkAdminOnEntityScope(Long actorUserId, WorkflowTemplateEntity entity) {
+        accessControlService.checkAdminOrAbove(
+                actorUserId, entity.getScopeId(), WorkflowScopes.canonical(entity.getScopeType()));
     }
 
     /**
