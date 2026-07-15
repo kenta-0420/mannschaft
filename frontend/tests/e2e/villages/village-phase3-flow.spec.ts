@@ -16,7 +16,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import type {
-  VillageChronicleListResponse,
   VillageChronicleResponse,
   VillageMeetupCandidateDateResponse,
   VillageMeetupResponse,
@@ -130,41 +129,47 @@ const MOCK_VOTE_SUMMARY: VillageMeetupVoteSummary = {
   ],
 }
 
-/** 村史 月別 3 件 */
+/**
+ * 村史 月別 3 件。
+ *
+ * BE の実契約に一致させること（`yearMonth` は LocalDate の `YYYY-MM-DD`、
+ * トピックは `{name, count}` の配列）。以前は FE 側の誤った想定
+ * （`{items,total}` エンベロープ・`topicTags: string[]`・`YYYY-MM`）を
+ * そのままモックしていたため、実 API では白画面になる不具合を検出できなかった。
+ */
 const MOCK_CHRONICLES: VillageChronicleResponse[] = [
   {
     id: '01900000-0000-7000-8300-000000000001',
     villageId: MOCK_VILLAGE_ID,
-    yearMonth: '2026-04',
+    yearMonth: '2026-04-01',
     generatedAt: '2026-05-01T00:00:00Z',
     postCount: 42,
     newMemberCount: 3,
-    topicTags: ['たまねぎ', '収穫', '春'],
+    topics: [
+      { name: 'たまねぎ', count: 5 },
+      { name: '収穫', count: 3 },
+      { name: '春', count: 2 },
+    ],
   },
   {
     id: '01900000-0000-7000-8300-000000000002',
     villageId: MOCK_VILLAGE_ID,
-    yearMonth: '2026-03',
+    yearMonth: '2026-03-01',
     generatedAt: '2026-04-01T00:00:00Z',
     postCount: 31,
     newMemberCount: 1,
-    topicTags: ['花見'],
+    topics: [{ name: '花見', count: 4 }],
   },
   {
     id: '01900000-0000-7000-8300-000000000003',
     villageId: MOCK_VILLAGE_ID,
-    yearMonth: '2026-02',
+    yearMonth: '2026-02-01',
     generatedAt: '2026-03-01T00:00:00Z',
     postCount: 28,
     newMemberCount: 2,
-    topicTags: ['新年会'],
+    topics: [{ name: '新年会', count: 6 }],
   },
 ]
-
-const MOCK_CHRONICLE_LIST: VillageChronicleListResponse = {
-  items: MOCK_CHRONICLES,
-  total: MOCK_CHRONICLES.length,
-}
 
 /** 巡礼推薦 */
 const MOCK_PILGRIMAGE_RECOMMENDATION: VillagePilgrimageRecommendationResponse = {
@@ -372,7 +377,8 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
       `**/api/v1/villages/${MOCK_VILLAGE_ID}/chronicles**`,
       async (route) => {
         if (route.request().method() === 'GET') {
-          await fulfillJson(route, MOCK_CHRONICLE_LIST)
+          // BE: ApiResponse<List<ChronicleResponse>> → {"data":[...]}（素の配列）
+          await fulfillJson(route, { data: MOCK_CHRONICLES })
         }
         else {
           await route.continue()

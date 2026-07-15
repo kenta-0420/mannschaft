@@ -833,22 +833,29 @@ export interface VillageMeetupListParams {
 // F17 Phase 3 — 村史 (village_chronicles)
 // -----------------------------------------------------------------------------
 
+/**
+ * 村史の TOP トピック 1 件。
+ *
+ * BE: `ChronicleResponse.TopicItem`（`{ name, count }`）。
+ */
+export interface VillageChronicleTopicItem {
+  name: string
+  count: number
+}
+
 /** 村史エントリ */
 export interface VillageChronicleResponse {
   id: string
   villageId: string
-  /** YYYY-MM 形式 */
+  /**
+   * YYYY-MM-DD 形式（BE は `LocalDate` / OpenAPI `format: date`）。
+   * 当該月の 1 日に正規化済みのため、常に `YYYY-MM-01` が返る。
+   */
   yearMonth: string
   generatedAt: string
   postCount: number
   newMemberCount: number
-  topicTags: string[]
-}
-
-/** 村史一覧 */
-export interface VillageChronicleListResponse {
-  items: VillageChronicleResponse[]
-  total: number
+  topics: VillageChronicleTopicItem[]
 }
 
 // -----------------------------------------------------------------------------
