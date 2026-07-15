@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
 import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
@@ -73,6 +75,9 @@ class GoogleCalendarServiceTest {
 
     @Mock
     private com.mannschaft.app.schedule.service.GoogleCalendarWebhookService webhookService;
+
+    @Mock
+    private MembershipService membershipService;
 
     @InjectMocks
     private GoogleCalendarService googleCalendarService;
@@ -189,6 +194,7 @@ class GoogleCalendarServiceTest {
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(conn));
+            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
             given(googleEventRepository.countUnsyncedSchedules(USER_ID, "TEAM", 10L)).willReturn(5);
 
             // when
@@ -203,7 +209,8 @@ class GoogleCalendarServiceTest {
         @Test
         @DisplayName("チーム同期_未連携_例外スロー")
         void チーム同期_未連携_例外スロー() {
-            // given
+            // given: 所属チェックは通過させ、連携チェック（後段）で例外になることを検証する
+            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
             // when & then
@@ -308,6 +315,7 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
             given(googleEventRepository.countUnsyncedSchedules(USER_ID, "ORGANIZATION", 20L)).willReturn(10);
 
             // when
@@ -325,6 +333,7 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
 
             // when
             CalendarSyncToggleResponse result = googleCalendarService.toggleOrgSync(20L, false, USER_ID);
@@ -337,7 +346,8 @@ class GoogleCalendarServiceTest {
         @Test
         @DisplayName("組織同期_未連携_例外スロー")
         void 組織同期_未連携_例外スロー() {
-            // given
+            // given: 所属チェックは通過させ、連携チェック（後段）で例外になることを検証する
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
             // when & then
@@ -507,6 +517,7 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
 
             // when
             CalendarSyncToggleResponse result = googleCalendarService.toggleTeamSync(10L, false, USER_ID);
