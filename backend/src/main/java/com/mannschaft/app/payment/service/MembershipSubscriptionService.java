@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -92,6 +93,31 @@ public class MembershipSubscriptionService {
     private final StripePaymentProvider stripePaymentProvider;
     private final MemberPaymentService memberPaymentService;
     private final UserRepository userRepository;
+
+    /**
+     * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
+     *
+     * <p>{@link PaymentMethodService#getOrCreateStripeCustomer} が Stripe Customer 新規作成時に渡す
+     * 実メールを取得するために呼び出す。本メソッドは payment ドメイン内で唯一 {@link UserEntity}/
+     * {@link UserRepository} を直接参照する既存の凍結済みクラス（凍結 ArchUnit
+     * {@code CrossDomainEntityImportArchTest}・D-1 の既存違反）に集約する。他クラス（例:
+     * {@code PaymentMethodService}）が新規に {@code UserEntity} を直接参照すると
+     * {@code BillingPurgeEventListener → gdpr.entity.AccountPurgeCompletionStatusEntity} と同様に
+     * <b>新規</b>のクロスドメイン Entity 依存となり番人テストが fail するため、既存の凍結済み参照範囲を再利用する。</p>
+     *
+     * <p><b>退会済みユーザーは空を返す（{@code deletedAt} 非 null）。</b>
+     * ユーザーが存在しない場合も空を返す。呼び出し側（{@code PaymentMethodService}）はこの場合
+     * Stripe Customer の新規作成自体を拒否する方針とする（判断理由は呼び出し側の Javadoc 参照）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return メールアドレス（退会済み/不在なら空）
+     */
+    @Transactional(readOnly = true)
+    public Optional<String> resolveEmailForStripeCustomer(Long userId) {
+        return userRepository.findById(userId)
+                .filter(u -> u.getDeletedAt() == null)
+                .map(UserEntity::getEmail);
+    }
 
     /**
      * 払い手視点の継続課金一覧を取得する（「自分が払い手の継続課金一覧」API の本体・02_api §4.1）。

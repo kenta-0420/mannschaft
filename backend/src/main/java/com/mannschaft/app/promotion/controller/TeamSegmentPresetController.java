@@ -34,7 +34,7 @@ public class TeamSegmentPresetController {
     @GetMapping("/api/v1/teams/{teamId}/segment-presets")
     @Operation(summary = "プリセット一覧")
     public ResponseEntity<ApiResponse<List<SegmentPresetResponse>>> list(@PathVariable Long teamId) {
-        return ResponseEntity.ok(ApiResponse.of(presetService.list("TEAM", teamId)));
+        return ResponseEntity.ok(ApiResponse.of(presetService.list("TEAM", teamId, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/segment-presets")
@@ -51,13 +51,13 @@ public class TeamSegmentPresetController {
     public ResponseEntity<ApiResponse<SegmentPresetResponse>> update(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody CreateSegmentPresetRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(presetService.update("TEAM", teamId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(presetService.update("TEAM", teamId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/segment-presets/{id}")
     @Operation(summary = "プリセット削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
-        presetService.delete("TEAM", teamId, id);
+        presetService.delete("TEAM", teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

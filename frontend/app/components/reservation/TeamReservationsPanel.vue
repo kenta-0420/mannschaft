@@ -10,6 +10,9 @@ const props = defineProps<{ teamId: string }>()
 const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 管理タブ名・件数バッジに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 const activeTab = ref(0)
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
@@ -177,9 +180,24 @@ function onPolicyChanged(
   }
 }
 
+/**
+ * 呼称設定（ReservationResourceNameSettings）の保存成功時: 予約設定キャッシュを最新化し、
+ * 同一テーブル上で独立フェッチしている他コンポーネント（LineManager・SlotMatrixPicker・
+ * SlotGridPicker）の呼称表示も再読込する（各コンポーネントの useResourceName は独立フェッチのため
+ * 明示的に refresh を連鎖させないと画面上の呼称表示が古いまま残る）。
+ */
+function onResourceNameChanged() {
+  void loadReservationSettings()
+  void loadResourceName()
+  void lineManagerRef.value?.refresh()
+  void slotMatrixPickerRef.value?.refresh()
+  void slotGridPickerRef.value?.refresh()
+}
+
 onMounted(async () => {
   await loadPermissions()
   await loadReservationSettings()
+  await loadResourceName()
 })
 </script>
 
@@ -202,7 +220,8 @@ onMounted(async () => {
         <!-- 非管理者（SUPPORTER含む）は「自分の予約」に改名（表示のみ・認可挙動は不変）。
              管理者/副管理者（mode=team）は従来通り「予約一覧」。 -->
         <Tab :value="1">{{ isAdminOrDeputy ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
-        <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
+        <!-- ②予約対象タブ: ADMIN は全機能、DEPUTY_ADMIN は呼称のみ（マスター裁可 2026-07-11）。タブ自体は両者に開放 -->
+        <Tab v-if="isAdminOrDeputy" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
         <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
@@ -293,8 +312,11 @@ onMounted(async () => {
           />
         </TabPanel>
 
-        <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
-        <TabPanel v-if="isAdmin" :value="2">
+        <!-- ②予約対象タブ: ADMIN=全管理機能 / DEPUTY_ADMIN=呼称設定のみ（マスター裁可 2026-07-11）。
+             タブ自体は isAdminOrDeputy に開放し、中身をロールで出し分ける（ライン/メニュー管理は ADMIN 限定を維持）。 -->
+        <TabPanel v-if="isAdminOrDeputy" :value="2">
+          <!-- ADMIN: ライン管理 + メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン（従来どおり） -->
+          <template v-if="isAdmin">
           <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き）
                並び順は初期セットアップの思考順（F03.4.5 §3.2 確定）:
                ①営業時間 → ②予約対象 → ③メニュー → ④週間スケジュール → ⑤例外日カレンダー → ⑥詳細設定（Accordion外・下部）。 -->
@@ -317,14 +339,22 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- ②予約対象（LineManager） -->
+            <!-- ②予約対象（呼称設定＋LineManager。呼称設定は F03.4.5 §5.1: セクション先頭に配置） -->
             <AccordionPanel value="lines">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title'), n: lineCount }) }}
+                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title', { resourceName }), n: lineCount }) }}
                 </span>
               </AccordionHeader>
               <AccordionContent>
+                <div class="mb-4">
+                  <!-- 呼称設定は ADMIN・DEPUTY_ADMIN とも編集可（マスター裁可 2026-07-11・設計§2）。ライン管理は ADMIN のみ -->
+                  <ReservationResourceNameSettings
+                    :team-id="props.teamId"
+                    :disabled="!isAdminOrDeputy"
+                    @changed="onResourceNameChanged"
+                  />
+                </div>
                 <LineManager ref="lineManagerRef" :team-id="props.teamId" />
               </AccordionContent>
             </AccordionPanel>
@@ -454,6 +484,22 @@ onMounted(async () => {
               </AccordionPanel>
             </Accordion>
           </div>
+          </template>
+
+          <!-- DEPUTY_ADMIN: 呼称設定のみ（ライン/メニュー/営業時間等の管理は ADMIN 限定のため非表示）。
+               タブラベルは「{resourceName}の管理」だが副管理者は呼称のみ変更可のため、その旨を明示する。 -->
+          <template v-else>
+            <div class="space-y-3">
+              <p class="text-sm text-surface-600 dark:text-surface-300">
+                {{ t('reservation.resource_name.deputy_hint') }}
+              </p>
+              <ReservationResourceNameSettings
+                :team-id="props.teamId"
+                :disabled="!isAdminOrDeputy"
+                @changed="onResourceNameChanged"
+              />
+            </div>
+          </template>
         </TabPanel>
 
         <TabPanel v-if="isAdminOrDeputy" :value="3">
@@ -476,6 +522,7 @@ onMounted(async () => {
 
     <TeamReservationGuideModal
       v-model:visible="showGuide"
+      :team-id="props.teamId"
       :is-admin="isAdmin"
       :is-admin-or-deputy="isAdminOrDeputy"
       :active-tab="activeTab"

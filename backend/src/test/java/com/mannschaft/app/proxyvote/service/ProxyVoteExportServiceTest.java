@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
@@ -32,9 +33,12 @@ class ProxyVoteExportServiceTest {
     @Mock private ProxyVoteMotionRepository motionRepository;
     @Mock private ProxyVoteRepository voteRepository;
     @Mock private PdfGeneratorService pdfGeneratorService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ProxyVoteExportService service;
+
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("exportResultsCsv")
@@ -47,7 +51,7 @@ class ProxyVoteExportServiceTest {
                     .status(SessionStatus.OPEN).build();
             given(sessionService.findSessionOrThrow(1L)).willReturn(session);
 
-            assertThatThrownBy(() -> service.exportResultsCsv(1L))
+            assertThatThrownBy(() -> service.exportResultsCsv(1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.STATUS_MUST_BE_CLOSED_OR_FINALIZED);
@@ -61,7 +65,7 @@ class ProxyVoteExportServiceTest {
             given(sessionService.findSessionOrThrow(1L)).willReturn(session);
             given(motionRepository.findBySessionIdOrderByMotionNumberAsc(1L)).willReturn(List.of());
 
-            byte[] result = service.exportResultsCsv(1L);
+            byte[] result = service.exportResultsCsv(1L, USER_ID);
 
             assertThat(result).isNotEmpty();
         }
@@ -78,7 +82,7 @@ class ProxyVoteExportServiceTest {
                     .status(SessionStatus.CLOSED).build();
             given(sessionService.findSessionOrThrow(1L)).willReturn(session);
 
-            assertThatThrownBy(() -> service.exportMinutesPdf(1L))
+            assertThatThrownBy(() -> service.exportMinutesPdf(1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.STATUS_MUST_BE_FINALIZED);

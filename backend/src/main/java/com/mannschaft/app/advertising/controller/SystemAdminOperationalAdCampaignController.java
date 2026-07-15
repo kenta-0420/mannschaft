@@ -85,4 +85,18 @@ public class SystemAdminOperationalAdCampaignController {
         Long adminUserId = requireSystemAdmin();
         return ApiResponse.of(operationalAdCampaignService.reject(id, adminUserId, request.reason()));
     }
+
+    /**
+     * 通報自動停止の解除（F09.19.9・§6.1）。{@code report_suspended_at=NULL} + 自動 PAUSED 時のみ ACTIVE 復帰。
+     * {@code report_suspended_at} が NULL の対象は 409 / AD_027。
+     */
+    @PatchMapping("/{id}/unsuspend")
+    @Operation(summary = "通報自動停止の解除",
+            description = "通報 3 件による自動停止を解除する。report_suspended_at を NULL に戻し、"
+                    + "自動停止で ACTIVE→PAUSED 遷移していた場合のみ ACTIVE へ復帰する。"
+                    + "既に停止中でない対象は 409 / AD_027。")
+    public ApiResponse<OperationalCampaignResponse> unsuspend(@PathVariable Long id) {
+        Long adminUserId = requireSystemAdmin();
+        return ApiResponse.of(operationalAdCampaignService.unsuspend(id, adminUserId));
+    }
 }

@@ -61,3 +61,9 @@ variable "task_memory" {
   description = "Fargate タスクのメモリ MiB（例: 1024）"
   type        = number
 }
+
+variable "websocket_relay_enabled" {
+  description = "WebSocket 外部ブローカー化（Valkey Pub/Sub relay）の feature flag。既定 false（段階 1 で true に切替）。ECS タスク定義の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED として注入する。設計: docs/architecture/websocket_external_broker_valkey.md §1.3・§8.6"
+  type        = bool
+  default     = false
+}

@@ -3,6 +3,7 @@ package com.mannschaft.app.performance.service;
 import com.mannschaft.app.activity.FieldType;
 import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.MetricDataType;
@@ -44,18 +45,25 @@ public class PerformanceMetricService {
 
     private static final int MAX_ACTIVE_METRICS = 30;
 
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
+
     private final PerformanceMetricRepository metricRepository;
     private final PerformanceMetricTemplateRepository templateRepository;
     private final ActivityTemplateFieldRepository activityTemplateFieldRepository;
     private final PerformanceMapper performanceMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * チームの指標定義一覧を取得する。
      *
-     * @param teamId チームID
+     * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
      * @return 指標レスポンスリスト
      */
-    public List<MetricResponse> listMetrics(Long teamId) {
+    public List<MetricResponse> listMetrics(Long teamId, Long actorUserId) {
+        // 閲覧系: checkMembership。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         List<PerformanceMetricEntity> metrics = metricRepository.findByTeamIdOrderBySortOrderAsc(teamId);
         return performanceMapper.toMetricResponseList(metrics);
     }
@@ -64,11 +72,15 @@ public class PerformanceMetricService {
      * 指標定義を作成する。
      *
      * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
      * @param request     作成リクエスト
      * @return 作成した指標レスポンス
      */
     @Transactional
-    public MetricResponse createMetric(Long teamId, CreateMetricRequest request) {
+    public MetricResponse createMetric(Long teamId, Long actorUserId, CreateMetricRequest request) {
+        // 変更系（作成）: 作成先スコープ（path の teamId）で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         long activeCount = metricRepository.countByTeamIdAndIsActiveTrue(teamId);
         if (activeCount >= MAX_ACTIVE_METRICS) {
             throw new BusinessException(PerformanceErrorCode.METRIC_LIMIT_EXCEEDED);
@@ -98,15 +110,19 @@ public class PerformanceMetricService {
     /**
      * 指標定義を更新する。
      *
-     * @param teamId チームID
-     * @param id     指標ID
-     * @param request 更新リクエスト
+     * @param teamId      チームID
+     * @param id          指標ID
+     * @param actorUserId 操作ユーザーID
+     * @param request     更新リクエスト
      * @return 更新した指標レスポンス
      */
     @Transactional
-    public MetricResponse updateMetric(Long teamId, Long id, UpdateMetricRequest request) {
+    public MetricResponse updateMetric(Long teamId, Long id, Long actorUserId, UpdateMetricRequest request) {
+        // BOLA厳禁: findByIdAndTeamId で対象チーム配下の指標のみ取得（他チームの指標IDは404で秘匿）。
         PerformanceMetricEntity entity = metricRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(PerformanceErrorCode.METRIC_NOT_FOUND));
+        // 変更系（更新）: entity 由来（fetch 済み）の teamId で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         entity.update(
                 request.getName(),
@@ -131,13 +147,17 @@ public class PerformanceMetricService {
     /**
      * 指標定義を無効化する（論理削除）。
      *
-     * @param teamId チームID
-     * @param id     指標ID
+     * @param teamId      チームID
+     * @param id          指標ID
+     * @param actorUserId 操作ユーザーID
      */
     @Transactional
-    public void deactivateMetric(Long teamId, Long id) {
+    public void deactivateMetric(Long teamId, Long id, Long actorUserId) {
+        // BOLA厳禁: findByIdAndTeamId で対象チーム配下の指標のみ取得（他チームの指標IDは404で秘匿）。
         PerformanceMetricEntity entity = metricRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(PerformanceErrorCode.METRIC_NOT_FOUND));
+        // 変更系（無効化）: entity 由来の teamId で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         entity.deactivate();
         metricRepository.save(entity);
     }
@@ -145,12 +165,16 @@ public class PerformanceMetricService {
     /**
      * テンプレートから指標を一括作成する。
      *
-     * @param teamId  チームID
-     * @param request テンプレート適用リクエスト
+     * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
+     * @param request     テンプレート適用リクエスト
      * @return 作成結果レスポンス
      */
     @Transactional
-    public FromTemplateResponse createFromTemplate(Long teamId, FromTemplateRequest request) {
+    public FromTemplateResponse createFromTemplate(Long teamId, Long actorUserId, FromTemplateRequest request) {
+        // 変更系（テンプレ一括適用）: 作成先スコープ（path の teamId）で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceMetricTemplateEntity> templates =
                 templateRepository.findBySportCategoryOrderBySortOrderAsc(request.getSportCategory());
         if (templates.isEmpty()) {
@@ -201,12 +225,17 @@ public class PerformanceMetricService {
     /**
      * 指標の並び順を一括更新する。
      *
-     * @param teamId  チームID
-     * @param request 並び順更新リクエスト
+     * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
+     * @param request     並び順更新リクエスト
      * @return 更新結果レスポンス
      */
     @Transactional
-    public SortOrderResponse updateSortOrder(Long teamId, SortOrderRequest request) {
+    public SortOrderResponse updateSortOrder(Long teamId, Long actorUserId, SortOrderRequest request) {
+        // 変更系（並び順一括更新）: checkAdminOrAbove。個々のIDは下のループ内 findByIdAndTeamId で
+        // 対象チーム配下のものだけに絞られる（他チームの指標IDは404）。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         Map<Long, Integer> orderMap = request.getOrders().stream()
                 .collect(Collectors.toMap(SortOrderRequest.SortOrderEntry::getId, SortOrderRequest.SortOrderEntry::getSortOrder));
 
@@ -255,10 +284,14 @@ public class PerformanceMetricService {
      * 活動記録連携可能なカスタムフィールド一覧を取得する。
      * チームの活動テンプレートから NUMBER 型フィールドを取得し、既に連携済みのフィールドを除外する。
      *
-     * @param teamId チームID
+     * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
      * @return 連携可能フィールドリスト
      */
-    public List<LinkableFieldResponse> listLinkableFields(Long teamId) {
+    public List<LinkableFieldResponse> listLinkableFields(Long teamId, Long actorUserId) {
+        // 閲覧系: checkMembership。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         // チームの活動テンプレートから NUMBER 型フィールドを取得
         List<ActivityTemplateFieldEntity> numberFields =
                 activityTemplateFieldRepository.findByTeamIdAndFieldType(teamId, FieldType.NUMBER);

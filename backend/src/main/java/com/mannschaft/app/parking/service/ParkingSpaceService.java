@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.AllocationMethod;
 import com.mannschaft.app.parking.ParkingErrorCode;
@@ -42,6 +43,11 @@ import java.util.List;
 
 /**
  * 駐車区画サービス。区画のCRUD・統計・料金履歴・メンテナンス切替・交換を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: 全メソッドに {@link AccessControlService} による
+ * スコープ認可を敷設した。閲覧系は {@code checkMembership}、変更系は {@code checkAdminOrAbove}。
+ * update/delete 等の対象ID指定操作は、必ず対象エンティティを先にfetchし、
+ * entity 由来の scopeType/scopeId で認可する（path 由来 scopeId の単純鵜呑みを避けBOLAを防止）。</p>
  */
 @Slf4j
 @Service
@@ -56,12 +62,14 @@ public class ParkingSpaceService {
     private final ParkingSubleaseRepository subleaseRepository;
     private final ParkingSpacePriceHistoryRepository priceHistoryRepository;
     private final ParkingMapper parkingMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 区画一覧をページング取得する。
      */
     public Page<SpaceResponse> list(String scopeType, Long scopeId, String status,
-                                     String spaceType, String floor, Pageable pageable) {
+                                     String spaceType, String floor, Pageable pageable, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
         Page<ParkingSpaceEntity> page;
         if (status != null) {
             page = spaceRepository.findByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SpaceStatus.valueOf(status), pageable);
@@ -78,7 +86,8 @@ public class ParkingSpaceService {
     /**
      * 空き区画一覧を取得する。
      */
-    public List<SpaceResponse> listVacant(String scopeType, Long scopeId) {
+    public List<SpaceResponse> listVacant(String scopeType, Long scopeId, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
         List<ParkingSpaceEntity> spaces = spaceRepository.findByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SpaceStatus.VACANT);
         return parkingMapper.toSpaceResponseList(spaces);
     }
@@ -86,8 +95,9 @@ public class ParkingSpaceService {
     /**
      * 区画詳細を取得する。
      */
-    public SpaceDetailResponse getDetail(String scopeType, Long scopeId, Long id) {
+    public SpaceDetailResponse getDetail(String scopeType, Long scopeId, Long id, Long currentUserId) {
         ParkingSpaceEntity space = findScopeSpaceOrThrow(scopeType, scopeId, id);
+        accessControlService.checkMembership(currentUserId, space.getScopeId(), space.getScopeType());
         ParkingAssignmentEntity assignment = assignmentRepository.findBySpaceIdAndReleasedAtIsNull(id).orElse(null);
         AssignmentResponse assignmentResponse = assignment != null ? parkingMapper.toAssignmentResponse(assignment) : null;
         return new SpaceDetailResponse(
@@ -105,6 +115,7 @@ public class ParkingSpaceService {
      */
     @Transactional
     public SpaceResponse create(String scopeType, Long scopeId, CreateSpaceRequest request, Long currentUserId) {
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         ParkingSpaceEntity entity = ParkingSpaceEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -126,6 +137,7 @@ public class ParkingSpaceService {
      */
     @Transactional
     public List<SpaceResponse> bulkCreate(String scopeType, Long scopeId, BulkCreateSpaceRequest request, Long currentUserId) {
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         List<ParkingSpaceEntity> entities = new ArrayList<>();
         for (CreateSpaceRequest req : request.getSpaces()) {
             entities.add(ParkingSpaceEntity.builder()
@@ -151,6 +163,7 @@ public class ParkingSpaceService {
     @Transactional
     public SpaceResponse update(String scopeType, Long scopeId, Long id, UpdateSpaceRequest request, Long currentUserId) {
         ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         BigDecimal oldPrice = entity.getPricePerMonth();
         entity.update(request.getSpaceNumber(), SpaceType.valueOf(request.getSpaceType()),
                 request.getSpaceTypeLabel(), request.getPricePerMonth(), request.getFloor(), request.getNotes());
@@ -175,8 +188,9 @@ public class ParkingSpaceService {
      * 区画を論理削除する。
      */
     @Transactional
-    public void delete(String scopeType, Long scopeId, Long id) {
+    public void delete(String scopeType, Long scopeId, Long id, Long currentUserId) {
         ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         if (entity.getStatus() == SpaceStatus.OCCUPIED) {
             throw new BusinessException(ParkingErrorCode.SPACE_ALREADY_OCCUPIED);
         }
@@ -189,8 +203,9 @@ public class ParkingSpaceService {
      * メンテナンスモードを切り替える。
      */
     @Transactional
-    public SpaceResponse toggleMaintenance(String scopeType, Long scopeId, Long id, MaintenanceToggleRequest request) {
+    public SpaceResponse toggleMaintenance(String scopeType, Long scopeId, Long id, MaintenanceToggleRequest request, Long currentUserId) {
         ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         if (Boolean.TRUE.equals(request.getMaintenance())) {
             if (entity.getStatus() == SpaceStatus.OCCUPIED) {
                 throw new BusinessException(ParkingErrorCode.SPACE_ALREADY_OCCUPIED);
@@ -208,8 +223,9 @@ public class ParkingSpaceService {
      * 申請受付を開始する。
      */
     @Transactional
-    public SpaceResponse acceptApplications(String scopeType, Long scopeId, Long id, AcceptApplicationsRequest request) {
+    public SpaceResponse acceptApplications(String scopeType, Long scopeId, Long id, AcceptApplicationsRequest request, Long currentUserId) {
         ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         if (entity.getStatus() != SpaceStatus.VACANT) {
             throw new BusinessException(ParkingErrorCode.SPACE_NOT_VACANT);
         }
@@ -222,8 +238,9 @@ public class ParkingSpaceService {
     /**
      * 割り当て履歴を取得する。
      */
-    public Page<AssignmentResponse> getHistory(String scopeType, Long scopeId, Long spaceId, Pageable pageable) {
-        findScopeSpaceOrThrow(scopeType, scopeId, spaceId);
+    public Page<AssignmentResponse> getHistory(String scopeType, Long scopeId, Long spaceId, Pageable pageable, Long currentUserId) {
+        ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, spaceId);
+        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
         Page<ParkingAssignmentEntity> page = assignmentRepository.findBySpaceId(spaceId, pageable);
         return page.map(parkingMapper::toAssignmentResponse);
     }
@@ -233,8 +250,9 @@ public class ParkingSpaceService {
      */
     @Transactional
     public void swap(String scopeType, Long scopeId, SwapRequest request, Long currentUserId) {
-        findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdA());
-        findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdB());
+        ParkingSpaceEntity spaceA = findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdA());
+        ParkingSpaceEntity spaceB = findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdB());
+        accessControlService.checkAdminOrAbove(currentUserId, spaceA.getScopeId(), spaceA.getScopeType());
 
         ParkingAssignmentEntity assignA = assignmentRepository.findBySpaceIdAndReleasedAtIsNull(request.getSpaceIdA())
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.INVALID_SWAP_TARGET));
@@ -272,8 +290,9 @@ public class ParkingSpaceService {
     /**
      * 料金履歴を取得する。
      */
-    public Page<PriceHistoryResponse> getPriceHistory(String scopeType, Long scopeId, Long spaceId, Pageable pageable) {
-        findScopeSpaceOrThrow(scopeType, scopeId, spaceId);
+    public Page<PriceHistoryResponse> getPriceHistory(String scopeType, Long scopeId, Long spaceId, Pageable pageable, Long currentUserId) {
+        ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, spaceId);
+        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
         Page<ParkingSpacePriceHistoryEntity> page = priceHistoryRepository.findBySpaceId(spaceId, pageable);
         return page.map(parkingMapper::toPriceHistoryResponse);
     }
@@ -281,7 +300,8 @@ public class ParkingSpaceService {
     /**
      * 統計を取得する。
      */
-    public ParkingStatsResponse getStats(String scopeType, Long scopeId) {
+    public ParkingStatsResponse getStats(String scopeType, Long scopeId, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
         long total = spaceRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
         long vacant = spaceRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SpaceStatus.VACANT);
         long occupied = spaceRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SpaceStatus.OCCUPIED);
@@ -300,6 +320,10 @@ public class ParkingSpaceService {
 
     /**
      * スコープ内の全区画IDを取得する（内部用）。
+     *
+     * <p>他ドメインサービス（application/listing/sublease/visitor）が自スコープの
+     * spaceId 一覧を得るための内部ヘルパー。呼び出し元コントローラーが認可を担う構成のため、
+     * 本メソッド自体には認可チェックを持たせない（呼び出し元が Wave3 以降で対応予定）。</p>
      */
     public List<Long> getSpaceIds(String scopeType, Long scopeId) {
         return spaceRepository.findByScopeTypeAndScopeId(scopeType, scopeId, Pageable.unpaged())

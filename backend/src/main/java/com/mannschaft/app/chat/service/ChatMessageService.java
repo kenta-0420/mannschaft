@@ -221,10 +221,9 @@ public class ChatMessageService {
                 : request.getBody();
         channel.updateLastMessage(LocalDateTime.now(), preview);
 
-        // チャンネルメンバーにリアルタイム通知（送信者自身を除く）
-        // NOTE: チャンネルメンバー一覧取得はChannelMemberRepository連携後に拡張
-        // 現時点ではNotificationHelperで通知レコード作成+WebSocket配信
-        // 未読カウントのインクリメントはNotificationService側で管理
+        // 未読カウント根治: 送信者以外の全チャンネルメンバーの unread_count を一括インクリメントする。
+        // メンバー数に依存しない1回のUPDATE文で実施し、N+1を避ける（ChatChannelMemberRepository参照）。
+        memberRepository.incrementUnreadCountForOthers(channelId, senderId);
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
         // 送信者情報を 1 回だけ解決し、レスポンスの sender 付与と問い合わせ通知の displayName に共用する。
@@ -245,7 +244,8 @@ public class ChatMessageService {
                         channelId,
                         channel.getName() != null ? channel.getName() : "問い合わせ",
                         senderId,
-                        senderDisplayName
+                        senderDisplayName,
+                        saved.getId()
                 ));
             }
         }

@@ -183,6 +183,22 @@
       "widget_notices_tab_platform": "Anuncios",
       "widget_notices_platform_empty": "No hay anuncios en este momento"
     },
+    "commandCenter": {
+      "title": "Ahora mismo",
+      "unresolvedCount": "{count} pendientes",
+      "chipCirculation": "Circulación",
+      "chipSurvey": "Encuesta",
+      "chipAttendance": "Asistencia",
+      "chipOverdueTodo": "Tareas vencidas",
+      "deadlineOverdue": "Vencido",
+      "deadlineToday": "Hoy",
+      "emptyTitle": "Nada pendiente 🎉",
+      "emptyMessage": "No hay elementos que requieran su atención",
+      "partialLoadError": "No se pudieron cargar algunos datos",
+      "todoCompleteAria": "Marcar como completada",
+      "todoCompleteSuccess": "Tarea completada",
+      "todoCompleteError": "Error al completar la tarea"
+    },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",
       "viewAll": "Ver todo",

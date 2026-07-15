@@ -39,9 +39,11 @@ public interface ReceiptQueueRepository extends JpaRepository<ReceiptQueueEntity
     boolean existsByMemberPaymentId(Long memberPaymentId);
 
     /**
-     * 複数 ID でキューアイテムを取得する。
+     * 複数 ID とスコープでキューアイテムを取得する（BOLA遮断: 指定スコープ外のIDは除外される）。
+     * 旧 {@code findByIdIn}（スコープ横断で取得できBOLAの原因だった）はこれに置き換えた。
      */
-    List<ReceiptQueueEntity> findByIdIn(List<Long> ids);
+    List<ReceiptQueueEntity> findByIdInAndScopeTypeAndScopeId(
+            List<Long> ids, ReceiptScopeType scopeType, Long scopeId);
 
     /**
      * スコープ内の PENDING 件数を取得する。

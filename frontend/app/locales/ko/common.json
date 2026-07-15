@@ -1549,12 +1549,16 @@
       "feedback": "피드백",
       "reports": "리포트",
       "advertisers": "광고주 관리",
+      "adRateCards": "광고 요금 카드",
+      "adCreditLimitRequests": "광고 여신 한도 신청",
+      "affiliateSettings": "제휴 설정",
       "auditLogs": "감사 로그",
       "shiftBudget": "교대 예산",
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서",
       "gdprPurge": "GDPR 삭제 현황",
-      "feedbackInbox": "의견함 (전체)"
+      "feedbackInbox": "의견함 (전체)",
+      "billing": "결제 마스터 관리"
     },
     "impersonation": {
       "banner": "관리자 위장 중: {label}",

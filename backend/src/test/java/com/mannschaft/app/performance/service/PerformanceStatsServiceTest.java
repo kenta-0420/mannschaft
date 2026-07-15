@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.dto.MemberPerformanceResponse;
@@ -47,6 +48,9 @@ class PerformanceStatsServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private PerformanceStatsService performanceStatsService;
 
@@ -58,6 +62,7 @@ class PerformanceStatsServiceTest {
     private static final Long METRIC_ID = 100L;
     private static final Long USER_ID_1 = 10L;
     private static final Long USER_ID_2 = 20L;
+    private static final Long ACTOR_USER_ID = 999L;
     private static final LocalDate DATE_FROM = LocalDate.of(2026, 1, 1);
     private static final LocalDate DATE_TO = LocalDate.of(2026, 3, 31);
 
@@ -111,7 +116,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(records);
 
             // When
-            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, null, DATE_FROM, DATE_TO);
+            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, ACTOR_USER_ID, null, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(response.getMetrics()).hasSize(1);
@@ -134,7 +139,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(List.of());
 
             // When
-            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, METRIC_ID, DATE_FROM, DATE_TO);
+            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, ACTOR_USER_ID, METRIC_ID, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(response.getMetrics()).hasSize(1);
@@ -148,7 +153,7 @@ class PerformanceStatsServiceTest {
             given(metricService.getActiveMetrics(TEAM_ID)).willReturn(List.of());
 
             // When
-            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, null, null, null);
+            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, ACTOR_USER_ID, null, null, null);
 
             // Then
             assertThat(response.getPeriod().getFrom()).isEqualTo(LocalDate.now().minusMonths(3));
@@ -165,7 +170,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(List.of());
 
             // When
-            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, null, DATE_FROM, DATE_TO);
+            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, ACTOR_USER_ID, null, DATE_FROM, DATE_TO);
 
             // Then
             TeamStatsResponse.MetricStats stats = response.getMetrics().get(0);
@@ -188,7 +193,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(records);
 
             // When
-            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, null, DATE_FROM, DATE_TO);
+            TeamStatsResponse response = performanceStatsService.getTeamStats(TEAM_ID, ACTOR_USER_ID, null, DATE_FROM, DATE_TO);
 
             // Then
             List<TeamStatsResponse.RankingEntry> ranking = response.getMetrics().get(0).getRanking();
@@ -222,7 +227,7 @@ class PerformanceStatsServiceTest {
 
             // When
             MemberPerformanceResponse response = performanceStatsService.getMemberPerformance(
-                    TEAM_ID, USER_ID_1, DATE_FROM, DATE_TO);
+                    TEAM_ID, USER_ID_1, ACTOR_USER_ID, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(response.getUserId()).isEqualTo(USER_ID_1);
@@ -248,7 +253,7 @@ class PerformanceStatsServiceTest {
 
             // When
             MemberPerformanceResponse response = performanceStatsService.getMemberPerformance(
-                    TEAM_ID, USER_ID_1, DATE_FROM, DATE_TO);
+                    TEAM_ID, USER_ID_1, ACTOR_USER_ID, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(response.getMetrics()).isEmpty();
@@ -269,7 +274,7 @@ class PerformanceStatsServiceTest {
 
             // When
             MemberPerformanceResponse response = performanceStatsService.getMemberPerformance(
-                    TEAM_ID, USER_ID_1, DATE_FROM, DATE_TO);
+                    TEAM_ID, USER_ID_1, ACTOR_USER_ID, DATE_FROM, DATE_TO);
 
             // Then
             assertThat(response.getMetrics()).hasSize(1);
@@ -365,7 +370,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(records);
 
             // When
-            SchedulePerformanceResponse response = performanceStatsService.getSchedulePerformance(TEAM_ID, scheduleId);
+            SchedulePerformanceResponse response = performanceStatsService.getSchedulePerformance(TEAM_ID, scheduleId, ACTOR_USER_ID);
 
             // Then
             assertThat(response.getScheduleId()).isEqualTo(scheduleId);
@@ -384,7 +389,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(List.of());
 
             // When
-            SchedulePerformanceResponse response = performanceStatsService.getSchedulePerformance(TEAM_ID, scheduleId);
+            SchedulePerformanceResponse response = performanceStatsService.getSchedulePerformance(TEAM_ID, scheduleId, ACTOR_USER_ID);
 
             // Then
             assertThat(response.getRecordedDate()).isNull();
@@ -415,7 +420,7 @@ class PerformanceStatsServiceTest {
                     .willReturn(records);
 
             // When
-            SchedulePerformanceResponse response = performanceStatsService.getActivityPerformance(TEAM_ID, activityId);
+            SchedulePerformanceResponse response = performanceStatsService.getActivityPerformance(TEAM_ID, activityId, ACTOR_USER_ID);
 
             // Then
             assertThat(response.getScheduleId()).isNull();

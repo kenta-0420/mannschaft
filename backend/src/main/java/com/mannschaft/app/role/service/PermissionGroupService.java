@@ -9,6 +9,7 @@ import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.PermissionRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.RoleErrorCode;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
@@ -34,6 +35,7 @@ public class PermissionGroupService {
     private final PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     private final PermissionRepository permissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 権限グループを作成する。
@@ -41,6 +43,9 @@ public class PermissionGroupService {
     @Transactional
     public ApiResponse<PermissionGroupResponse> createPermissionGroup(Long scopeId, String scopeType,
                                                                        PermissionGroupRequest req, Long createdBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを作成できる。
+        accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
+
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
 
@@ -67,9 +72,13 @@ public class PermissionGroupService {
      * 権限グループを更新する。
      */
     @Transactional
-    public ApiResponse<PermissionGroupResponse> updatePermissionGroup(Long groupId, PermissionGroupRequest req) {
+    public ApiResponse<PermissionGroupResponse> updatePermissionGroup(Long groupId, PermissionGroupRequest req,
+                                                                       Long actorUserId) {
         PermissionGroupEntity group = permissionGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
+
+        // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ更新できる（別スコープ ADMIN の越境改変を遮断）。
+        checkScopeAdmin(group, actorUserId);
 
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
@@ -97,6 +106,9 @@ public class PermissionGroupService {
         PermissionGroupEntity original = permissionGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
+        // 束1 BOLA 根治: 複製元が属するスコープの ADMIN/DEPUTY_ADMIN のみ複製できる。
+        checkScopeAdmin(original, createdBy);
+
         // 複製エンティティ作成
         var dupBuilder = PermissionGroupEntity.builder()
                 .name(original.getName() + " (コピー)")
@@ -122,9 +134,13 @@ public class PermissionGroupService {
      * 権限グループを論理削除する。
      */
     @Transactional
-    public void deletePermissionGroup(Long groupId) {
+    public void deletePermissionGroup(Long groupId, Long actorUserId) {
         PermissionGroupEntity group = permissionGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
+
+        // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ削除できる。
+        checkScopeAdmin(group, actorUserId);
+
         permissionGroupRepository.delete(group);
         log.info("権限グループ削除完了: groupId={}", groupId);
     }
@@ -203,6 +219,9 @@ public class PermissionGroupService {
     @Transactional
     public void assignUserPermissionGroups(Long userId, Long scopeId, String scopeType,
                                            UserPermissionGroupAssignRequest req, Long assignedBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを割り当てられる。
+        accessControlService.checkAdminOrAbove(assignedBy, scopeId, scopeType);
+
         // 既存の割当を削除
         List<PermissionGroupEntity> scopeGroups = findByScope(scopeId, scopeType);
         List<Long> scopeGroupIds = scopeGroups.stream()
@@ -231,6 +250,19 @@ public class PermissionGroupService {
     // ========================================
     // ヘルパー（private）
     // ========================================
+
+    /**
+     * 束1 BOLA 根治: 権限グループが属するスコープ（teamId or organizationId）を entity から導出し、
+     * そのスコープの ADMIN/DEPUTY_ADMIN であることを要求する。別スコープの ADMIN が groupId 指定で
+     * 越境改変（BOLA）するのを遮断する。
+     */
+    private void checkScopeAdmin(PermissionGroupEntity group, Long actorUserId) {
+        if (group.getTeamId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, group.getTeamId(), "TEAM");
+        } else {
+            accessControlService.checkAdminOrAbove(actorUserId, group.getOrganizationId(), "ORGANIZATION");
+        }
+    }
 
     private void validatePermissionIds(List<Long> permissionIds) {
         List<PermissionEntity> found = permissionRepository.findByIdIn(permissionIds);

@@ -25,7 +25,7 @@ async function loadInvoices() {
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await advertiserApi.getInvoices(orgSlug, params)
+    const res = await advertiserApi.getInvoices('ORGANIZATION', orgSlug, params)
     invoices.value = res.data
   }
   catch { invoices.value = [] }
@@ -34,7 +34,7 @@ async function loadInvoices() {
 
 async function viewDetail(invoice: InvoiceSummaryResponse) {
   try {
-    const res = await advertiserApi.getInvoiceDetail(invoice.id, orgSlug)
+    const res = await advertiserApi.getInvoiceDetail('ORGANIZATION', orgSlug, invoice.id)
     selectedInvoice.value = res.data
     showDetail.value = true
   }
@@ -43,7 +43,7 @@ async function viewDetail(invoice: InvoiceSummaryResponse) {
 
 async function downloadPdf(invoiceId: number) {
   try {
-    const blob = await advertiserApi.downloadInvoicePdf(invoiceId, orgSlug)
+    const blob = await advertiserApi.downloadInvoicePdf('ORGANIZATION', orgSlug, invoiceId)
     const url = URL.createObjectURL(blob as Blob)
     const a = document.createElement('a')
     a.href = url

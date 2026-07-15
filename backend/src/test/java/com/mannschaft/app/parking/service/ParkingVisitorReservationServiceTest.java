@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.SpaceType;
@@ -55,6 +56,9 @@ class ParkingVisitorReservationServiceTest {
 
     @Mock
     private ParkingMapper parkingMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private ParkingVisitorReservationService parkingVisitorReservationService;
@@ -115,6 +119,16 @@ class ParkingVisitorReservationServiceTest {
         ParkingVisitorReservationEntity entity = createConfirmedReservation();
         entity.checkIn();
         return entity;
+    }
+
+    private ParkingSpaceEntity createSpaceInScope() {
+        return ParkingSpaceEntity.builder()
+                .scopeType(SCOPE_TYPE)
+                .scopeId(SCOPE_ID)
+                .spaceNumber("V-001")
+                .spaceType(SpaceType.VISITOR)
+                .createdBy(1L)
+                .build();
     }
 
     // ========================================
@@ -187,10 +201,12 @@ class ParkingVisitorReservationServiceTest {
             // Given
             given(reservationRepository.findById(RESERVATION_ID))
                     .willReturn(Optional.of(createPendingReservation()));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
             given(parkingMapper.toVisitorReservationResponse(any())).willReturn(null);
 
             // When
-            parkingVisitorReservationService.getDetail(RESERVATION_ID);
+            parkingVisitorReservationService.getDetail(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, USER_ID);
 
             // Then
             verify(reservationRepository).findById(RESERVATION_ID);
@@ -203,7 +219,23 @@ class ParkingVisitorReservationServiceTest {
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.getDetail(RESERVATION_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.getDetail(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PARKING_006"));
+        }
+
+        @Test
+        @DisplayName("異常系: 他スコープの予約はPARKING_006例外（BOLA・PII越境防止）")
+        void getDetail_他スコープ_PARKING006例外() {
+            // Given
+            given(reservationRepository.findById(RESERVATION_ID))
+                    .willReturn(Optional.of(createPendingReservation()));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            // When / Then
+            assertThatThrownBy(() -> parkingVisitorReservationService.getDetail(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_006"));
@@ -417,11 +449,13 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createPendingReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
             given(reservationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toVisitorReservationResponse(any())).willReturn(null);
 
             // When
-            parkingVisitorReservationService.approve(RESERVATION_ID, APPROVER_ID);
+            parkingVisitorReservationService.approve(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.CONFIRMED);
@@ -434,9 +468,11 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createConfirmedReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.approve(RESERVATION_ID, APPROVER_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.approve(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_023"));
@@ -449,7 +485,7 @@ class ParkingVisitorReservationServiceTest {
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.approve(RESERVATION_ID, APPROVER_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.approve(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_006"));
@@ -470,11 +506,13 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createPendingReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
             given(reservationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toVisitorReservationResponse(any())).willReturn(null);
 
             // When
-            parkingVisitorReservationService.reject(RESERVATION_ID, APPROVER_ID, "理由");
+            parkingVisitorReservationService.reject(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID, "理由");
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.REJECTED);
@@ -487,9 +525,11 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createConfirmedReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.reject(RESERVATION_ID, APPROVER_ID, "理由"))
+            assertThatThrownBy(() -> parkingVisitorReservationService.reject(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID, "理由"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_023"));
@@ -510,11 +550,13 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createConfirmedReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
             given(reservationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toVisitorReservationResponse(any())).willReturn(null);
 
             // When
-            parkingVisitorReservationService.checkIn(RESERVATION_ID);
+            parkingVisitorReservationService.checkIn(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.CHECKED_IN);
@@ -526,9 +568,11 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createPendingReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.checkIn(RESERVATION_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.checkIn(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_023"));
@@ -549,11 +593,13 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createCheckedInReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
             given(reservationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toVisitorReservationResponse(any())).willReturn(null);
 
             // When
-            parkingVisitorReservationService.complete(RESERVATION_ID);
+            parkingVisitorReservationService.complete(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.COMPLETED);
@@ -565,9 +611,11 @@ class ParkingVisitorReservationServiceTest {
             // Given
             ParkingVisitorReservationEntity entity = createConfirmedReservation();
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.complete(RESERVATION_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.complete(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, APPROVER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_023"));
@@ -583,18 +631,38 @@ class ParkingVisitorReservationServiceTest {
     class Cancel {
 
         @Test
-        @DisplayName("正常系: 予約がキャンセルされる")
+        @DisplayName("正常系: 予約者本人がキャンセルできる")
         void cancel_正常_キャンセル() {
             // Given
-            ParkingVisitorReservationEntity entity = createPendingReservation();
+            ParkingVisitorReservationEntity entity = createPendingReservation(); // reservedBy=USER_ID
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
 
             // When
-            parkingVisitorReservationService.cancel(RESERVATION_ID);
+            parkingVisitorReservationService.cancel(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, USER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.CANCELLED);
             verify(reservationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("正常系: 本人以外でもADMIN以上ならキャンセルできる")
+        void cancel_ADMIN_キャンセルできる() {
+            // Given
+            ParkingVisitorReservationEntity entity = createPendingReservation(); // reservedBy=USER_ID
+            Long adminUserId = 999L;
+            given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope()));
+
+            // When
+            parkingVisitorReservationService.cancel(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, adminUserId);
+
+            // Then
+            verify(accessControlService).checkAdminOrAbove(adminUserId, SCOPE_ID, SCOPE_TYPE);
+            assertThat(entity.getStatus()).isEqualTo(VisitorReservationStatus.CANCELLED);
         }
 
         @Test
@@ -604,7 +672,7 @@ class ParkingVisitorReservationServiceTest {
             given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingVisitorReservationService.cancel(RESERVATION_ID))
+            assertThatThrownBy(() -> parkingVisitorReservationService.cancel(SCOPE_TYPE, SCOPE_ID, RESERVATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_006"));

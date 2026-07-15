@@ -1,5 +1,6 @@
 package com.mannschaft.app.admin.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
@@ -36,6 +37,7 @@ import java.util.List;
 public class AdminPermissionGroupController {
 
     private final PermissionGroupService permissionGroupService;
+    private final AccessControlService accessControlService;
 
     /**
      * 権限グループ一覧を取得する。
@@ -61,6 +63,8 @@ public class AdminPermissionGroupController {
             @RequestParam Long scopeId,
             @Valid @RequestBody PermissionGroupRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみ作成可。
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         ApiResponse<PermissionGroupResponse> response =
                 permissionGroupService.createPermissionGroup(scopeId, scopeType, request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -75,7 +79,8 @@ public class AdminPermissionGroupController {
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
             @PathVariable Long id,
             @Valid @RequestBody PermissionGroupRequest request) {
-        return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(id, request));
+        return ResponseEntity.ok(
+                permissionGroupService.updatePermissionGroup(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -85,7 +90,7 @@ public class AdminPermissionGroupController {
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(@PathVariable Long id) {
-        permissionGroupService.deletePermissionGroup(id);
+        permissionGroupService.deletePermissionGroup(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -113,6 +118,8 @@ public class AdminPermissionGroupController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみ割当可。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         var request = new UserPermissionGroupAssignRequest(List.of(id));
         permissionGroupService.assignUserPermissionGroups(userId, scopeId, scopeType, request, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(null));
@@ -130,6 +137,8 @@ public class AdminPermissionGroupController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみ解除可。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         // 空リストで割当を解除（既存の割当を全削除して空に）
         var request = new UserPermissionGroupAssignRequest(List.of());
         permissionGroupService.assignUserPermissionGroups(userId, scopeId, scopeType, request, currentUserId);

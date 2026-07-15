@@ -130,7 +130,8 @@ public class ReceiptAdminController {
             @PathVariable Long id,
             @Valid @RequestBody ReissueReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptPreviewResponse response = receiptService.reissuePreview(type, scopeId, id, request);
+        ReceiptPreviewResponse response = receiptService.reissuePreview(
+                type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -175,7 +176,8 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @Valid @RequestBody CreateReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptPreviewResponse response = receiptService.previewReceipt(type, scopeId, request);
+        ReceiptPreviewResponse response = receiptService.previewReceipt(
+                type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -191,7 +193,8 @@ public class ReceiptAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        PagedResponse<ReceiptSummaryResponse> response = receiptService.listReceipts(type, scopeId, page, size);
+        PagedResponse<ReceiptSummaryResponse> response = receiptService.listReceipts(
+                type, scopeId, page, size, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -206,7 +209,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptResponse response = receiptService.getReceipt(type, scopeId, id);
+        ReceiptResponse response = receiptService.getReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -221,7 +224,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id);
+        byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
@@ -242,7 +245,8 @@ public class ReceiptAdminController {
             @RequestParam(required = false) LocalDate issuedTo,
             @RequestParam(defaultValue = "false") boolean includeVoided) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        byte[] csv = exportService.exportCsv(type, scopeId, year, issuedFrom, issuedTo, includeVoided);
+        byte[] csv = exportService.exportCsv(
+                type, scopeId, year, issuedFrom, issuedTo, includeVoided, SecurityUtils.getCurrentUserId());
         String filename = "receipts_" + scopeType + "_" + scopeId +
                 (year != null ? "_" + year : "") + ".csv";
         return ResponseEntity.ok()
@@ -259,7 +263,7 @@ public class ReceiptAdminController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "ジョブ作成成功")
     public ResponseEntity<ApiResponse<DownloadZipResponse>> createZipDownload(
             @Valid @RequestBody DownloadZipRequest request) {
-        DownloadZipResponse response = exportService.createZipJob(request);
+        DownloadZipResponse response = exportService.createZipJob(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
     }
 
@@ -271,7 +275,7 @@ public class ReceiptAdminController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<DownloadZipResponse>> getZipDownloadStatus(
             @PathVariable String jobId) {
-        DownloadZipResponse response = exportService.getZipJob(jobId);
+        DownloadZipResponse response = exportService.getZipJob(jobId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -286,7 +290,8 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @RequestParam(required = false) Long memberPaymentId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        DescriptionSuggestionResponse response = exportService.getDescriptionSuggestions(type, scopeId, memberPaymentId);
+        DescriptionSuggestionResponse response = exportService.getDescriptionSuggestions(
+                type, scopeId, memberPaymentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -302,7 +307,8 @@ public class ReceiptAdminController {
             @PathVariable Long id,
             @Valid @RequestBody SendEmailRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        SendEmailResponse response = receiptService.sendEmail(type, scopeId, id, request);
+        SendEmailResponse response = receiptService.sendEmail(
+                type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
     }
 }

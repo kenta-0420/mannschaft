@@ -5,6 +5,7 @@
  * そのタブの実務手順を表示する（isAdmin/isAdminOrDeputy で予約一覧タブの内容を出し分け）。
  */
 const props = defineProps<{
+  teamId: string
   isAdmin: boolean
   /** 予約一覧タブの管理者向け内容を出すかどうか（DEPUTY_ADMIN も含む）。 */
   isAdminOrDeputy: boolean
@@ -14,6 +15,10 @@ const props = defineProps<{
 const visible = defineModel<boolean>('visible', { default: false })
 
 const { t } = useI18n()
+
+/** 呼称の動的差し込み（F03.4.5 §5.2）: タブ2のヘッダー・ガイド本文（Content）双方で使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+watch(visible, (v) => { if (v) void loadResourceName() })
 
 /** タブ番号 → 既存 reservation.tab.* ラベルキー（Panel のタブ表記と一致させる）。 */
 const TAB_LABEL_KEYS: Record<number, string> = {
@@ -31,7 +36,7 @@ const headerLabel = computed(() => {
   const tabKey = props.activeTab === 1 && !props.isAdminOrDeputy
     ? 'reservation.tab.my_reservations'
     : (TAB_LABEL_KEYS[props.activeTab] ?? 'reservation.tab.book')
-  return `${t('reservation.team_guide.title')}（${t(tabKey)}）`
+  return `${t('reservation.team_guide.title')}（${t(tabKey, { resourceName: resourceName.value })}）`
 })
 </script>
 
@@ -48,6 +53,7 @@ const headerLabel = computed(() => {
         :is-admin="isAdmin"
         :is-admin-or-deputy="isAdminOrDeputy"
         :active-tab="activeTab"
+        :resource-name="resourceName"
       />
     </div>
     <template #footer>

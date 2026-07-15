@@ -59,7 +59,8 @@ public class IncomingWebhookController {
     public ApiResponse<List<IncomingWebhookTokenResponse>> listTokens(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        return incomingWebhookService.listTokens(scopeType, scopeId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        return incomingWebhookService.listTokens(userId, scopeType, scopeId);
     }
 
     /**
@@ -71,7 +72,8 @@ public class IncomingWebhookController {
     @DeleteMapping("/api/webhooks/incoming/{id}")
     public ResponseEntity<Void> revokeToken(
             @PathVariable Long id) {
-        incomingWebhookService.revokeToken(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        incomingWebhookService.revokeToken(userId, id);
         return ResponseEntity.noContent().build();
     }
 

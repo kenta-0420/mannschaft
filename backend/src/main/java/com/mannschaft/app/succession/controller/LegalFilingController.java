@@ -34,8 +34,8 @@ import java.util.UUID;
  *   <li>法的手続き一覧・詳細・居住者別履歴の取得</li>
  * </ul>
  *
- * <p>すべての操作は ADMIN 権限以上のユーザーのみ実行可能（Service 層で認可を行う想定）。
- * 認証ユーザー ID は {@link SecurityUtils#getCurrentUserId()} 経由で取得する。
+ * <p>すべての操作は ADMIN 権限以上のユーザーのみ実行可能（Service 層の {@code checkAdminOrAbove} で認可）。
+ * 認証ユーザー ID は {@link SecurityUtils#getCurrentUserId()} 経由で取得し、認可判定のため Service に渡す。
  */
 @RestController
 @Tag(name = "法的手続き準備（F09.15）", description = "F09.15 居住者継承支援 - 法的手続き準備 API")
@@ -57,7 +57,8 @@ public class LegalFilingController {
     )
     public ResponseEntity<ApiResponse<List<LegalFilingResponse>>> listByOrganization(
             @PathVariable Long orgId) {
-        List<LegalFilingResponse> responses = legalFilingService.listByOrganization(orgId).stream()
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
+        List<LegalFilingResponse> responses = legalFilingService.listByOrganization(orgId, requestingUserId).stream()
                 .map(LegalFilingResponse::fromEntity)
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(responses));
@@ -78,7 +79,9 @@ public class LegalFilingController {
     public ResponseEntity<ApiResponse<List<LegalFilingResponse>>> listByResident(
             @PathVariable Long orgId,
             @PathVariable Long residentRegistryId) {
-        List<LegalFilingResponse> responses = legalFilingService.listByResident(residentRegistryId, orgId).stream()
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
+        List<LegalFilingResponse> responses = legalFilingService
+                .listByResident(residentRegistryId, orgId, requestingUserId).stream()
                 .map(LegalFilingResponse::fromEntity)
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(responses));
@@ -127,7 +130,8 @@ public class LegalFilingController {
     public ResponseEntity<ApiResponse<LegalFilingResponse>> getById(
             @PathVariable Long orgId,
             @PathVariable UUID legalFilingId) {
-        LegalFilingEntity entity = legalFilingService.getById(legalFilingId, orgId);
+        Long requestingUserId = SecurityUtils.getCurrentUserId();
+        LegalFilingEntity entity = legalFilingService.getById(legalFilingId, orgId, requestingUserId);
         return ResponseEntity.ok(ApiResponse.of(LegalFilingResponse.fromEntity(entity)));
     }
 

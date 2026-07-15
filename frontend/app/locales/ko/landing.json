@@ -296,42 +296,7 @@
     "product": {
       "title": "Mannschaft 제품",
       "desc": "팀·조직 운영에 필요한 모든 기능을 하나로 묶은 올인원 관리 플랫폼",
-      "features_heading": "주요 기능",
-      "pricing_heading": "요금 플랜",
-      "pricing": {
-        "free": {
-          "name": "무료",
-          "price": "₩0",
-          "desc": "개인·소규모 팀용",
-          "features": [
-            "기본 기능 전체",
-            "최대 10명",
-            "1GB 스토리지"
-          ]
-        },
-        "pro": {
-          "name": "프로",
-          "price": "₩11,800/월",
-          "desc": "성장 중인 팀용",
-          "features": [
-            "무료 기능 전체",
-            "멤버 수 무제한",
-            "50GB 스토리지",
-            "우선 지원"
-          ]
-        },
-        "enterprise": {
-          "name": "엔터프라이즈",
-          "price": "문의",
-          "desc": "대규모 조직용",
-          "features": [
-            "프로 기능 전체",
-            "커스텀 통합",
-            "전담 지원",
-            "SLA 보장"
-          ]
-        }
-      }
+      "features_heading": "주요 기능"
     },
     "legal": {
       "terms": {

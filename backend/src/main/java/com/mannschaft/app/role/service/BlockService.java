@@ -7,6 +7,7 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationBlockEntity;
@@ -41,6 +42,7 @@ public class BlockService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * ユーザーをブロックする。上位ロールのユーザーはブロック不可。ブロック時は自動除名。
@@ -48,6 +50,9 @@ public class BlockService {
     @Transactional
     public ApiResponse<BlockResponse> blockUser(Long scopeId, String scopeType,
                                                  BlockRequest req, Long blockedBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみブロックできる。
+        accessControlService.checkAdminOrAbove(blockedBy, scopeId, scopeType);
+
         // 上位ロール不可チェック
         checkCanBlock(scopeId, scopeType, req.getUserId(), blockedBy);
 
@@ -97,6 +102,9 @@ public class BlockService {
      */
     @Transactional
     public void unblockUser(Long scopeId, String scopeType, Long userId, Long unblockedBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみブロック解除できる。
+        accessControlService.checkAdminOrAbove(unblockedBy, scopeId, scopeType);
+
         if ("TEAM".equals(scopeType)) {
             teamBlockRepository.findByTeamIdAndUserId(scopeId, userId)
                     .ifPresent(teamBlockRepository::delete);
@@ -116,7 +124,10 @@ public class BlockService {
     /**
      * スコープ内のブロック一覧を取得する。
      */
-    public List<BlockResponse> getBlocks(Long scopeId, String scopeType) {
+    public List<BlockResponse> getBlocks(Long scopeId, String scopeType, Long actorUserId) {
+        // 束1 権限昇格根治: ブロック一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         if ("TEAM".equals(scopeType)) {
             return teamBlockRepository.findByTeamId(scopeId).stream()
                     .map(b -> toBlockResponse(b.getId(), b.getUserId(), b.getBlockedBy(),

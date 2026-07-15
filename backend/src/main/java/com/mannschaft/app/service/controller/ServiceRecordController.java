@@ -99,7 +99,7 @@ public class ServiceRecordController {
         });
 
         Page<ServiceRecordResponse> result = recordService.listRecords(
-                teamId, memberUserId, staffUserId, serviceDateFrom, serviceDateTo,
+                teamId, SecurityUtils.getCurrentUserId(), memberUserId, staffUserId, serviceDateFrom, serviceDateTo,
                 titleLike, status, customFieldFilters, PageRequest.of(page, size, sortObj));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -149,7 +149,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<ServiceRecordResponse>> getRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ServiceRecordResponse response = recordService.getRecord(teamId, id);
+        ServiceRecordResponse response = recordService.getRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -165,7 +165,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateServiceRecordRequest request) {
-        ServiceRecordResponse response = recordService.updateRecord(teamId, id, request);
+        ServiceRecordResponse response = recordService.updateRecord(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -180,7 +181,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<ConfirmResponse>> confirmRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ConfirmResponse response = recordService.confirmRecord(teamId, id);
+        ConfirmResponse response = recordService.confirmRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -195,7 +196,7 @@ public class ServiceRecordController {
     public ResponseEntity<Void> deleteRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        recordService.deleteRecord(teamId, id);
+        recordService.deleteRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -228,7 +229,8 @@ public class ServiceRecordController {
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ServiceRecordResponse> result = recordService.getMemberHistory(teamId, userId, PageRequest.of(page, size));
+        Page<ServiceRecordResponse> result = recordService.getMemberHistory(
+                teamId, userId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -246,7 +248,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long userId,
             @RequestParam(defaultValue = "6") int months) {
-        ServiceHistorySummaryResponse response = recordService.getMemberSummary(teamId, userId, months);
+        ServiceHistorySummaryResponse response = recordService.getMemberSummary(
+                teamId, userId, SecurityUtils.getCurrentUserId(), months);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -312,7 +315,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UploadUrlRequest request) {
-        UploadUrlResponse response = recordService.generateUploadUrl(teamId, id, request);
+        UploadUrlResponse response = recordService.generateUploadUrl(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -328,7 +332,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody RegisterAttachmentRequest request) {
-        AttachmentResponse response = recordService.registerAttachment(teamId, id, request);
+        AttachmentResponse response = recordService.registerAttachment(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -344,7 +349,7 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @PathVariable Long attachmentId) {
-        recordService.deleteAttachment(teamId, id, attachmentId);
+        recordService.deleteAttachment(teamId, id, attachmentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -362,7 +367,9 @@ public class ServiceRecordController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceDateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceDateTo,
             HttpServletResponse httpResponse) {
-        ExportResponse asyncResult = exportService.exportOrNull(teamId, memberUserId, serviceDateFrom, serviceDateTo);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ExportResponse asyncResult = exportService.exportOrNull(
+                teamId, currentUserId, memberUserId, serviceDateFrom, serviceDateTo);
 
         if (asyncResult != null) {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(asyncResult));
@@ -372,7 +379,7 @@ public class ServiceRecordController {
         httpResponse.setContentType("text/csv; charset=UTF-8");
         httpResponse.setHeader("Content-Disposition", "attachment; filename=service_records.csv");
         try {
-            exportService.writeCsv(teamId, memberUserId, serviceDateFrom, serviceDateTo,
+            exportService.writeCsv(teamId, currentUserId, memberUserId, serviceDateFrom, serviceDateTo,
                     httpResponse.getOutputStream());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();

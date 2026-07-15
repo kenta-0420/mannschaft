@@ -16,7 +16,7 @@ const form = ref({ requestedLimit: 0, reason: '' })
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getCreditLimitRequests(orgSlug)
+    const res = await advertiserApi.getCreditLimitRequests('ORGANIZATION', orgSlug)
     requests.value = res.data
   }
   catch { requests.value = [] }
@@ -27,7 +27,7 @@ async function create() {
   if (!form.value.requestedLimit || !form.value.reason) return
   creating.value = true
   try {
-    await advertiserApi.createCreditLimitRequest(orgSlug, form.value)
+    await advertiserApi.createCreditLimitRequest('ORGANIZATION', orgSlug, form.value)
     success('増額申請を送信しました')
     showCreate.value = false
     form.value = { requestedLimit: 0, reason: '' }
