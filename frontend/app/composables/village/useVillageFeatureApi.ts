@@ -130,14 +130,10 @@ export function useVillageFeatureApi() {
   // かつて「Backend Controller は未実装のため URL は推測」というコメントが
   // 置かれていたが、`VillageRepresentativeController` は実装済みであり誤りのため撤去した。
   //
-  // BE の実契約:
+  // BE の実契約（`VillageRepresentativeController` 実物で裏取り済み）:
   //   GET    /representatives                    （?includeRevoked=false）
   //   POST   /representatives                    → 201
-  //   DELETE /representatives/{representativeId} （body は任意）
-  //
-  // FIXME(村ドメイン契約不一致): 下の revokeRepresentative は
-  //   `POST /representatives/{id}/revoke` を叩いており BE に存在しない。
-  //   正は `DELETE /representatives/{id}`。本 PR の担当範囲外のため未修正。
+  //   DELETE /representatives/{representativeId} （body は `@RequestBody(required=false)` で任意）
   // =====================================================================
 
   /** 代表委任一覧 */
@@ -160,15 +156,22 @@ export function useVillageFeatureApi() {
     return res.data
   }
 
-  /** 代表委任を取消 */
+  /**
+   * 代表委任を取消
+   *
+   * BE は `POST /representatives/{id}/revoke` ではなく
+   * `DELETE /representatives/{representativeId}`（`VillageRepresentativeController#revoke`）。
+   * 取消理由メモ（`{note}`・200 文字以内）は `@RequestBody(required = false)` で任意のため、
+   * 指定が無いときは body を付けずに送る。
+   */
   async function revokeRepresentative(
     villageId: string,
     id: string,
-    body: VillageRepresentativeRevokeRequest,
+    body?: VillageRepresentativeRevokeRequest,
   ) {
     const res = await api<{ data: VillageRepresentativeResponse }>(
-      `/api/v1/villages/${villageId}/representatives/${id}/revoke`,
-      { method: 'POST', body },
+      `/api/v1/villages/${villageId}/representatives/${id}`,
+      body ? { method: 'DELETE', body } : { method: 'DELETE' },
     )
     return res.data
   }
