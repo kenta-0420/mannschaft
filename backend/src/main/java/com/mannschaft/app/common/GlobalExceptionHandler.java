@@ -852,7 +852,18 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F08.7 tournament の *_NOT_FOUND は、対象エンティティが
+            // 親大会/親ディビジョン配下に無い（BOLA・divId/matchId/pId/templateId の親子束縛不一致）場合にも
+            // 同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例
+            // （TOUR_001 と同流儀）に反するため 404 へ上書きする。
+            Map.entry("TOUR_002", HttpStatus.NOT_FOUND),                 // DIVISION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_003", HttpStatus.NOT_FOUND),                 // MATCH_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_013", HttpStatus.NOT_FOUND),                 // TEMPLATE_NOT_FOUND（org 束縛・IDOR 秘匿 → 404）
+            Map.entry("TOUR_014", HttpStatus.NOT_FOUND),                 // PRESET_NOT_FOUND（存在しない ID → 404）
+            Map.entry("TOUR_018", HttpStatus.NOT_FOUND),                 // PARTICIPANT_NOT_FOUND（div 束縛・IDOR 秘匿 → 404）
+            Map.entry("TOUR_061", HttpStatus.NOT_FOUND),                 // MATCHDAY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_062", HttpStatus.NOT_FOUND)                  // FIXTURE_ROSTER_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**

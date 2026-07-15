@@ -146,6 +146,20 @@ public class TournamentService {
     }
 
     /**
+     * divId が tournamentId 配下であることを束縛検証する（認可根治戦役 Wave2 トランシェ2C）。
+     *
+     * <p>公開大会（PUBLIC）の tId を踏み台に、非公開大会（MEMBERS_AND_ABOVE 等）の divId を
+     * 閲覧できてしまう穴（台帳指摘）を閉塞する。{@link #verifyPublicAccess}（tId 単位の可視性）と
+     * 併用し、公開/埋め込み系の divId 引数を持つ EP から必ず呼ぶこと。</p>
+     *
+     * @throws BusinessException DIVISION_NOT_FOUND（404・IDOR 対策で存在秘匿）
+     */
+    public void verifyDivisionInTournament(Long tournamentId, Long divId) {
+        divisionRepository.findByIdAndTournamentId(divId, tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
+    }
+
+    /**
      * 公開大会詳細を取得する。visibility = PUBLIC のみ返却。
      */
     public TournamentResponse getPublicTournament(Long orgId, Long tournamentId) {
