@@ -19,6 +19,7 @@ import type {
   VillageChronicleResponse,
   VillageMeetupCandidateDateResponse,
   VillageMeetupResponse,
+  VillageMeetupVoteSummary,
   VillageNewsletterSettingsResponse,
   VillagePilgrimageRecommendationResponse,
   VillageResponse,
@@ -55,20 +56,26 @@ const MOCK_VILLAGE: VillageResponse = {
   version: 1,
 }
 
-/** 候補日サンプル */
+/**
+ * 候補日サンプル。
+ *
+ * BE `MeetupCandidateDateResponse` は `{id, meetupId, candidateDate, sortOrder}` のみ。
+ * 時刻・票数・確定フラグは含まれない（票数は投票集計 API から供給される）。
+ */
 const MOCK_CANDIDATE_DATE: VillageMeetupCandidateDateResponse = {
   id: '01900000-0000-7000-8100-000000000001',
   meetupId: '01900000-0000-7000-8200-000000000001',
   candidateDate: '2026-06-01',
-  candidateTimeStart: '18:00',
-  candidateTimeEnd: '20:00',
-  voteCountYes: 2,
-  voteCountNo: 0,
-  voteCountMaybe: 1,
-  isConfirmed: false,
+  sortOrder: 0,
 }
 
-/** 寄合 3 件 */
+/**
+ * 寄合 3 件。
+ *
+ * BE `MeetupResponse` は `location`（venue ではない）/ `confirmedDate`（LocalDate。
+ * confirmedDateId ではない）を持ち、participantCount / updatedAt は持たない。
+ * status は PLANNING / CONFIRMED / CANCELLED の 3 値のみ。
+ */
 const MOCK_MEETUPS: VillageMeetupResponse[] = [
   {
     id: '01900000-0000-7000-8200-000000000001',
@@ -76,13 +83,11 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     organizerUserId: 1,
     title: 'たまねぎ収穫祭の打ち合わせ',
     description: '今年の収穫祭について語り合いましょう',
-    venue: '集会所',
-    status: 'OPEN',
-    confirmedDateId: null,
+    location: '集会所',
+    status: 'PLANNING',
+    confirmedDate: null,
     candidateDates: [MOCK_CANDIDATE_DATE],
-    participantCount: 3,
     createdAt: '2026-05-14T00:00:00Z',
-    updatedAt: '2026-05-14T00:00:00Z',
   },
   {
     id: '01900000-0000-7000-8200-000000000002',
@@ -90,13 +95,11 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     organizerUserId: 1,
     title: '春の例祭準備会',
     description: null,
-    venue: 'オンライン',
+    location: 'オンライン',
     status: 'CONFIRMED',
-    confirmedDateId: '01900000-0000-7000-8100-000000000002',
+    confirmedDate: '2026-05-20',
     candidateDates: [],
-    participantCount: 5,
     createdAt: '2026-05-10T00:00:00Z',
-    updatedAt: '2026-05-12T00:00:00Z',
   },
   {
     id: '01900000-0000-7000-8200-000000000003',
@@ -104,15 +107,27 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     organizerUserId: 2,
     title: '新年会反省会',
     description: null,
-    venue: null,
-    status: 'CLOSED',
-    confirmedDateId: null,
+    location: null,
+    status: 'CANCELLED',
+    confirmedDate: null,
     candidateDates: [],
-    participantCount: 8,
     createdAt: '2026-02-01T00:00:00Z',
-    updatedAt: '2026-02-15T00:00:00Z',
   },
 ]
+
+/** 投票集計。BE `MeetupVoteSummaryResponse`（`GET /meetups/{id}/votes`）。 */
+const MOCK_VOTE_SUMMARY: VillageMeetupVoteSummary = {
+  meetupId: '01900000-0000-7000-8200-000000000001',
+  candidates: [
+    {
+      candidateDateId: MOCK_CANDIDATE_DATE.id,
+      candidateDate: MOCK_CANDIDATE_DATE.candidateDate,
+      availableCount: 2,
+      maybeCount: 1,
+      unavailableCount: 0,
+    },
+  ],
+}
 
 /**
  * 村史 月別 3 件。
@@ -243,11 +258,12 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
     await setupVillageDetailMocks(page)
 
     // GET /api/v1/villages/{id}/meetups
+    // 注: BE は ApiResponse でラップして `{ data: [...] }` を返す（素の配列ではない）。
     await page.route(
       `**/api/v1/villages/${MOCK_VILLAGE_ID}/meetups**`,
       async (route) => {
         if (route.request().method() === 'GET') {
-          await fulfillJson(route, MOCK_MEETUPS)
+          await fulfillJson(route, { data: MOCK_MEETUPS })
         }
         else {
           await route.continue()
@@ -255,6 +271,7 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
       },
     )
 
+    // 本モックは status クエリに関わらず 3 件返すため、既定フィルタ(PLANNING)のままでよい。
     await page.goto(`/villages/${MOCK_VILLAGE_ID}/meetups`)
     await waitForHydration(page)
 
@@ -266,22 +283,25 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
     await expect(page.getByText('新年会反省会')).toBeVisible()
   })
 
-  test('VILLAGE-P3-002: 寄合の候補日に投票できる', async ({ page }) => {
-    let voteCalled = false
+  test('VILLAGE-P3-002: 寄合の候補日に AVAILABLE 投票できる', async ({ page }) => {
+    let voteMethod: string | null = null
+    let voteBody: unknown = null
+    let summaryFetchCount = 0
     const meetup = MOCK_MEETUPS[0]!
     const meetupId = meetup.id
+    const candidateDateId = MOCK_CANDIDATE_DATE.id
 
     await setupVillageDetailMocks(page)
 
-    // 一覧モック
+    // Playwright は「後から登録した route が優先」される。
+    // そのため 一覧 → 詳細 → 集計 → 投票 の順に登録し、より具体的な URL を後勝ちさせる。
+
+    // 一覧 GET
     await page.route(
       `**/api/v1/villages/${MOCK_VILLAGE_ID}/meetups**`,
       async (route) => {
-        const url = route.request().url()
-        const method = route.request().method()
-        // /meetups/{id} の単体 GET には触らない
-        if (method === 'GET' && !url.includes(`/meetups/${meetupId}`)) {
-          await fulfillJson(route, MOCK_MEETUPS)
+        if (route.request().method() === 'GET') {
+          await fulfillJson(route, { data: MOCK_MEETUPS })
         }
         else {
           await route.continue()
@@ -289,12 +309,12 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
       },
     )
 
-    // 詳細 GET
+    // 詳細 GET（候補日込み）
     await page.route(
       `**/api/v1/villages/${MOCK_VILLAGE_ID}/meetups/${meetupId}`,
       async (route) => {
         if (route.request().method() === 'GET') {
-          await fulfillJson(route, meetup)
+          await fulfillJson(route, { data: meetup })
         }
         else {
           await route.continue()
@@ -302,45 +322,51 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
       },
     )
 
-    // 投票 POST
+    // 投票集計 GET（BE のパスは /votes。/votes/summary ではない）
     await page.route(
       `**/api/v1/villages/${MOCK_VILLAGE_ID}/meetups/${meetupId}/votes`,
       async (route) => {
-        if (route.request().method() === 'POST') {
-          voteCalled = true
-          await fulfillJson(route, {
-            ...meetup,
-            candidateDates: [
-              {
-                ...MOCK_CANDIDATE_DATE,
-                voteCountYes: MOCK_CANDIDATE_DATE.voteCountYes + 1,
-              },
-            ],
-          })
+        if (route.request().method() === 'GET') {
+          summaryFetchCount += 1
+          await fulfillJson(route, { data: MOCK_VOTE_SUMMARY })
         }
         else {
           await route.continue()
         }
+      },
+    )
+
+    // 投票 PUT（candidateDateId はパス変数・BE は 204 No Content で本体を返さない）
+    await page.route(
+      `**/api/v1/villages/${MOCK_VILLAGE_ID}/meetups/${meetupId}/candidate-dates/${candidateDateId}/vote`,
+      async (route) => {
+        voteMethod = route.request().method()
+        voteBody = route.request().postDataJSON()
+        await route.fulfill({ status: 204, body: '' })
       },
     )
 
     await page.goto(`/villages/${MOCK_VILLAGE_ID}/meetups`)
     await waitForHydration(page)
 
-    // 寄合カードをクリック → 候補日が見える
+    // 寄合カードをクリック → 詳細ダイアログが開く
     await page.getByText(meetup.title).click()
 
-    // 候補日リストが表示される（YYYY-MM-DD いずれかのフォーマット）
-    await expect(page.getByText(/2026-06-01|6月1日/)).toBeVisible({ timeout: 10_000 })
+    // 候補日が表示される
+    await expect(page.getByText('2026-06-01')).toBeVisible({ timeout: 10_000 })
 
-    // 「参加できる」「YES」「○」相当のいずれかのボタンをクリック
-    const yesButton = page
-      .getByRole('button', { name: /参加|YES|参加できる|○/i })
-      .first()
-    await yesButton.click()
+    // 集計 API 由来の票数が表示されること（AVAILABLE=2 / MAYBE=1 / UNAVAILABLE=0）
+    await expect.poll(() => summaryFetchCount, { timeout: 5_000 }).toBeGreaterThan(0)
 
-    // POST モックが呼ばれたこと
-    await expect.poll(() => voteCalled, { timeout: 5_000 }).toBe(true)
+    // 「行ける」(AVAILABLE) ボタンをクリック
+    await page.getByRole('button', { name: '行ける', exact: true }).click()
+
+    // PUT が正しい verb / body で呼ばれたこと（body は voteType のみ）
+    await expect.poll(() => voteMethod, { timeout: 5_000 }).toBe('PUT')
+    expect(voteBody).toEqual({ voteType: 'AVAILABLE' })
+
+    // 投票後は 204 のため再取得で最新化される（詳細 + 集計を再フェッチ）
+    await expect.poll(() => summaryFetchCount, { timeout: 5_000 }).toBeGreaterThan(1)
   })
 
   test('VILLAGE-P3-003: 村史タブが月別カードで表示できる', async ({ page }) => {

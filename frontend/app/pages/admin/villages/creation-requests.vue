@@ -65,7 +65,7 @@ async function load() {
   try {
     const params = statusFilter.value === 'ALL' ? undefined : { status: statusFilter.value }
     const res = await listAdminCreationRequests(params)
-    requests.value = Array.isArray(res) ? res : []
+    requests.value = res.content
   }
   catch {
     requests.value = []

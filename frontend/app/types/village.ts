@@ -9,7 +9,17 @@
  *     フロント型でも一切定義しない。
  *   - 日時はすべて ISO 8601 文字列。
  *   - UUIDv7 は string で扱う（Java 側は java.util.UUID）。
+ *
+ * 契約の権威（この順に優先する）:
+ *   1. Backend 実コード（backend/src/main/java/com/mannschaft/app/village/）と Flyway DDL
+ *   2. app/types/generated/index.ts（openapi-typescript 自動生成）
+ *   3. 本ファイル（手書き。権威ではない）
+ *
+ * 本ファイルの型は `village.contract.ts` の適合アサーションで生成型と機械的に照合される。
+ * フィールド名・形状を変えたらそちらも合わせて更新すること。
  */
+
+import type { SpringPage } from './api'
 
 // =============================================================================
 // Enum 型 — Backend (entity.enums.*) と完全一致
@@ -124,6 +134,15 @@ export interface JoinRequestResponse {
   createdAt: string
 }
 
+/**
+ * §4.5 村参加申請一覧レスポンス。
+ * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>` を返す。
+ *
+ * Spring の `Page` をそのまま露出する意図的な設計（`VillageJoinRequestControllerTest#list_success` が
+ * `$.data.content[0].status` で固定済み）。
+ */
+export type JoinRequestPageResponse = SpringPage<JoinRequestResponse>
+
 /** §4.6 村作成申請 */
 export interface VillageCreationRequestResponse {
   id: string
@@ -139,6 +158,16 @@ export interface VillageCreationRequestResponse {
   createdVillageId: string | null
   createdAt: string
 }
+
+/**
+ * §4.6 村作成申請一覧（運営向け）。
+ * BE: `GET /api/v1/admin/village-creation-requests` は `ApiResponse<Page<VillageCreationRequestResponse>>`。
+ *
+ * 自分の申請一覧（`GET /api/v1/me/village-creation-requests`）は素の配列
+ * （`ApiResponse<List<...>>`）を返す。この非対称は MockMvc テストで固定済みのため、
+ * 型でもそのまま非対称に表現する（無理に揃えないこと）。
+ */
+export type VillageCreationRequestPageResponse = SpringPage<VillageCreationRequestResponse>
 
 /** §4.7 村ニックネーム */
 export interface VillageNicknameResponse {
@@ -184,20 +213,6 @@ export interface LobbyChannelResponse {
   channelType: string
   villageId: string
   todayThreadId: string | null
-}
-
-/** §4.10.5 ロビー在席メンバー */
-export interface PresenceMember {
-  userId: number
-  displayName: string
-  avatarR2Key: string | null
-  joinedAt: string
-}
-
-/** §4.10.5 ロビー在席状況レスポンス */
-export interface LobbyPresenceResponse {
-  count: number
-  members: PresenceMember[]
 }
 
 export interface DailyThreadResponse {
@@ -465,7 +480,22 @@ export interface VillageCalendarEventResponse {
   /** 色（#RRGGBB） */
   colorHex: string | null
   createdByUserId: number
+  /** 作成者表示名。BE は現状 null 固定（将来 PostingIdentity 連携で埋める予約フィールド） */
+  createdByDisplayName: string | null
   createdAt: string
+}
+
+/**
+ * 歳時記カレンダー月別一覧レスポンス。BE: `CalendarEventListResponse`。
+ *
+ * 一覧 API は配列ではなく本エンベロープを返す。
+ */
+export interface VillageCalendarEventListResponse {
+  items: VillageCalendarEventResponse[]
+  /** 対象年 */
+  year: number
+  /** 対象月（1〜12） */
+  month: number
 }
 
 export interface VillageCalendarEventCreateRequest {
@@ -473,7 +503,8 @@ export interface VillageCalendarEventCreateRequest {
   description?: string | null
   eventDate: string
   eventEndDate?: string | null
-  isAnnualRecurring?: boolean
+  /** BE は @NotNull のため必須 */
+  isAnnualRecurring: boolean
   iconEmoji?: string | null
   colorHex?: string | null
 }
@@ -488,14 +519,17 @@ export interface VillageCalendarEventUpdateRequest {
   colorHex?: string | null
 }
 
-/** 歳時記カレンダー一覧クエリ */
+/**
+ * 歳時記カレンダー一覧クエリ。BE: `VillageCalendarController#listByMonth`。
+ *
+ * BE の @RequestParam は year / month のみ。期間指定・年中行事フィルタは存在しない。
+ * 未指定時は BE 側が現在の年月を既定値にする。
+ */
 export interface VillageCalendarEventListParams {
-  /** 期間絞り込み開始日 (YYYY-MM-DD) */
-  from?: string
-  /** 期間絞り込み終了日 (YYYY-MM-DD) */
-  to?: string
-  /** 年中行事のみフィルタ */
-  annualOnly?: boolean
+  /** 対象年（未指定なら BE 側で現在年） */
+  year?: number
+  /** 対象月 1〜12（未指定なら BE 側で現在月） */
+  month?: number
 }
 
 // -----------------------------------------------------------------------------
@@ -557,8 +591,12 @@ export interface VillageMatchRecruitResponse {
   id: string
   villageId: string
   postedByUserId: number
+  /** 投稿者表示名（BE 解決後のスナップショット） */
+  postedByDisplayName: string | null
   /** チーム代表として投稿した場合のチーム ID */
   postedByTeamId: number | null
+  /** チーム名（BE 解決後のスナップショット） */
+  postedByTeamName: string | null
   category: VillageMatchRecruitCategory
   title: string
   description: string | null
@@ -583,7 +621,8 @@ export interface VillageMatchRecruitCreateRequest {
   category: VillageMatchRecruitCategory
   title: string
   description?: string | null
-  matchDate?: string | null
+  /** BE は @NotNull のため必須 (YYYY-MM-DD) */
+  matchDate: string
   matchTimeStart?: string | null
   matchTimeEnd?: string | null
   venue?: string | null
@@ -605,12 +644,30 @@ export interface VillageMatchRecruitUpdateRequest {
   requiredCount?: number | null
   contactMethod?: string | null
   applicationDeadline?: string | null
+  /** チームとして投稿する場合のチーム ID */
+  postedByTeamId?: number | null
+}
+
+/**
+ * 練習試合・審判募集一覧レスポンス。BE: `MatchRecruitListResponse`。
+ *
+ * 一覧 API は配列ではなく本エンベロープを返す（Spring の `Page` 形状ではない独自形状）。
+ */
+export interface VillageMatchRecruitListResponse {
+  items: VillageMatchRecruitResponse[]
+  page: number
+  size: number
+  total: number
 }
 
 /** 練習試合募集一覧クエリ */
 export interface VillageMatchRecruitListParams {
   category?: VillageMatchRecruitCategory
   status?: VillageMatchRecruitStatus
+  /** 試合日の絞り込み開始日 (YYYY-MM-DD) */
+  fromDate?: string
+  /** 試合日の絞り込み終了日 (YYYY-MM-DD) */
+  toDate?: string
   page?: number
   size?: number
 }
@@ -627,11 +684,14 @@ export type VillageMatchApplicationStatus =
 
 export interface VillageMatchApplicationResponse {
   id: string
-  villageId: string
   recruitId: string
   applicantUserId: number
+  /** 応募者表示名（BE 解決後のスナップショット） */
+  applicantDisplayName: string | null
   /** チームとして応募した場合のチーム ID */
   applicantTeamId: number | null
+  /** チーム名（BE 解決後のスナップショット） */
+  applicantTeamName: string | null
   message: string | null
   status: VillageMatchApplicationStatus
   reviewedByUserId: number | null
@@ -646,7 +706,15 @@ export interface VillageMatchApplicationCreateRequest {
   applicantTeamId?: number | null
 }
 
+/**
+ * 練習試合募集への応募審査リクエスト。BE: `MatchApplicationReviewRequest`。
+ *
+ * BE は `action` ではなく `status` を受け取る。ACCEPTED / REJECTED のみ許容され、
+ * それ以外は Service 層で VILLAGE_068 (MATCH_APPLICATION_INVALID_STATUS) となる。
+ * 生成型の status は enum 全 4 値だが、ここは BE の実許容値に絞って表現する。
+ */
 export interface VillageMatchApplicationReviewRequest {
+  status: Extract<VillageMatchApplicationStatus, 'ACCEPTED' | 'REJECTED'>
   reviewComment?: string | null
 }
 
@@ -654,96 +722,104 @@ export interface VillageMatchApplicationReviewRequest {
 // F17 Phase 3 — 寄合 (village_meetups)
 // -----------------------------------------------------------------------------
 
-export type VillageMeetupStatus =
-  | 'DRAFT'
-  | 'OPEN'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'CLOSED'
+/**
+ * 寄合の状態。BE: `entity.enums.VillageMeetupStatus`（3 値のみ）。
+ * DDL: `V9.154__create_village_meetups.sql` — `DEFAULT 'PLANNING'`。
+ */
+export type VillageMeetupStatus = 'PLANNING' | 'CONFIRMED' | 'CANCELLED'
 
-export type VillageMeetupVoteType =
-  | 'YES'
-  | 'NO'
-  | 'MAYBE'
+/** 寄合投票の選択肢。BE: `entity.enums.VillageMeetupVoteType`。 */
+export type VillageMeetupVoteType = 'AVAILABLE' | 'MAYBE' | 'UNAVAILABLE'
 
-/** 寄合候補日 */
+/**
+ * 寄合候補日。BE: `MeetupCandidateDateResponse`。
+ *
+ * 時刻・投票集計は本 DTO に含まれない（日付のみ）。
+ * 集計値は投票集計 API（{@link VillageMeetupVoteSummary}）から取得すること。
+ */
 export interface VillageMeetupCandidateDateResponse {
   id: string
   meetupId: string
+  /** 候補日 (YYYY-MM-DD) */
   candidateDate: string
-  candidateTimeStart: string | null
-  candidateTimeEnd: string | null
-  voteCountYes: number
-  voteCountNo: number
-  voteCountMaybe: number
-  isConfirmed: boolean
+  /** 表示順 */
+  sortOrder: number
 }
 
-/** 寄合 */
+/** 寄合。BE: `MeetupResponse`。 */
 export interface VillageMeetupResponse {
   id: string
   villageId: string
-  organizerUserId: number
   title: string
   description: string | null
-  venue: string | null
+  organizerUserId: number
   status: VillageMeetupStatus
-  confirmedDateId: string | null
-  candidateDates: VillageMeetupCandidateDateResponse[]
-  participantCount: number
+  /** 確定日 (YYYY-MM-DD)。CONFIRMED 時のみセットされる */
+  confirmedDate: string | null
+  /** 集合場所（BE のフィールド名は venue ではなく location） */
+  location: string | null
   createdAt: string
-  updatedAt: string
+  /** 詳細取得時のみ詰められる。一覧取得時は null */
+  candidateDates: VillageMeetupCandidateDateResponse[] | null
 }
 
-/** 寄合投票 */
-export interface VillageMeetupVoteResponse {
-  id: string
-  meetupId: string
+/** 寄合投票集計の候補日別内訳。BE: `MeetupVoteSummaryResponse.CandidateDateSummary`。 */
+export interface VillageMeetupVoteSummaryCandidate {
   candidateDateId: string
-  voterUserId: number
-  voteType: VillageMeetupVoteType
-  comment: string | null
-  votedAt: string
+  /** 候補日 (YYYY-MM-DD) */
+  candidateDate: string
+  availableCount: number
+  maybeCount: number
+  unavailableCount: number
 }
 
-/** 寄合投票集計 */
+/** 寄合投票集計。BE: `MeetupVoteSummaryResponse`。 */
 export interface VillageMeetupVoteSummary {
   meetupId: string
-  totalVoters: number
-  candidateSummaries: VillageMeetupCandidateDateResponse[]
+  candidates: VillageMeetupVoteSummaryCandidate[]
 }
 
-/** 寄合作成リクエスト */
+/**
+ * 寄合作成リクエスト。BE: `MeetupCreateRequest`。
+ *
+ * `candidateDates` は素の日付配列（`List<LocalDate>`）。1〜30 件。
+ */
 export interface VillageMeetupCreateRequest {
   title: string
   description?: string | null
-  venue?: string | null
-  candidateDates: Array<{
-    candidateDate: string
-    candidateTimeStart?: string | null
-    candidateTimeEnd?: string | null
-  }>
+  location?: string | null
+  /** 候補日 (YYYY-MM-DD) の配列 */
+  candidateDates: string[]
 }
 
-/** 寄合更新リクエスト */
+/** 寄合更新リクエスト。BE: `MeetupUpdateRequest`（部分更新・全 optional）。 */
 export interface VillageMeetupUpdateRequest {
-  title?: string
+  title?: string | null
   description?: string | null
-  venue?: string | null
+  location?: string | null
 }
 
-/** 寄合投票リクエスト */
-export interface VillageMeetupVoteRequest {
+/** 寄合確定リクエスト。BE: `MeetupConfirmRequest`。 */
+export interface VillageMeetupConfirmRequest {
   candidateDateId: string
-  voteType: VillageMeetupVoteType
-  comment?: string | null
 }
 
-/** 寄合候補日追加リクエスト */
+/**
+ * 寄合投票リクエスト。BE: `MeetupVoteRequest`。
+ *
+ * 候補日は `PUT /villages/{villageId}/meetups/{meetupId}/candidate-dates/{candidateDateId}/vote`
+ * のパス変数で渡すため body には含めない。BE にコメント欄は存在しない。
+ * レスポンスは 204 No Content（投票 DTO は返らない）。
+ */
+export interface VillageMeetupVoteRequest {
+  voteType: VillageMeetupVoteType
+}
+
+/** 寄合候補日追加リクエスト。BE: `MeetupCandidateDateAddRequest`。 */
 export interface VillageMeetupCandidateDateAddRequest {
+  /** 候補日 (YYYY-MM-DD) */
   candidateDate: string
-  candidateTimeStart?: string | null
-  candidateTimeEnd?: string | null
+  sortOrder?: number | null
 }
 
 /** 寄合一覧クエリ */
@@ -876,7 +952,14 @@ export interface VillageNewsletterSendLogResponse {
 // F17.1 Phase 2 — ロビー在席インジケーター (lobby presence)
 // -----------------------------------------------------------------------------
 
-/** ロビー在席メンバー */
+/**
+ * ロビー在席メンバー。BE: `LobbyPresenceResponse.PresenceMember`。
+ *
+ * 以前は §4.10 ブロックにも同名の別形状（displayName / avatarR2Key / joinedAt を持つ）が
+ * 宣言されており、TypeScript の interface 宣言マージで両者が合体して
+ * 「存在しないフィールドにアクセスしてもコンパイルが通る」状態になっていた。
+ * BE 実装に存在しない側を削除して本宣言に一本化した。
+ */
 export interface PresenceMember {
   userId: number
   nickname: string
