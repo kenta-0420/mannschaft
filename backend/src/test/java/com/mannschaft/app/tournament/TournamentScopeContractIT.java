@@ -516,6 +516,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
 
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", "TOUR92C乗っ取り改名");
+            body.put("version", 0);
 
             mockMvc.perform(patch("/api/v1/organizations/{orgId}/tournament-templates/{templateId}",
                             orgAId, templateAId)
