@@ -1,6 +1,8 @@
 package com.mannschaft.app.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -30,14 +32,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -94,6 +101,10 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
+    /** R2 は外部依存（テスト環境にエンドポイント未設定）のため mock（presign 成功パスの検証に使用）。 */
+    @MockitoBean
+    private R2StorageService r2StorageService;
+
     private Long teamAId;
     private Long teamBId;
     private Long orgAId;
@@ -121,6 +132,9 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        given(r2StorageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
+                .willReturn(new PresignedUploadResult("https://r2.example.com/signed-upload", "workflow-attachments/dummy.bin", 900L));
+
         teamAId = insertTeam("WFAUTHZ チームA");
         teamBId = insertTeam("WFAUTHZ チームB");
         orgAId = insertOrganization("WFAUTHZ 組織A");
