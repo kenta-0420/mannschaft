@@ -463,38 +463,31 @@
       "editTitle": "Editar reunión",
       "meetupTitle": "Nombre de la reunión",
       "description": "Descripción",
-      "venue": "Lugar",
+      "location": "Lugar",
       "candidateDates": "Fechas candidatas",
       "addCandidateDate": "Agregar fecha candidata",
       "removeCandidateDate": "Eliminar fecha candidata",
       "candidateDate": "Fecha candidata",
-      "candidateTimeStart": "Hora de inicio",
-      "candidateTimeEnd": "Hora de fin",
       "vote": "Votar",
-      "voteComment": "Comentario (opcional)",
-      "voteSubmit": "Enviar voto",
       "confirm": "Confirmar esta fecha",
       "confirmedDate": "Fecha confirmada",
       "cancel": "Cancelar reunión",
       "confirmCancel": "¿Cancelar esta reunión?",
       "empty": "No hay reuniones planificadas",
-      "participantCount": "Asistentes esperados",
       "saveSuccess": "Reunión guardada",
       "voteSuccess": "Voto enviado",
       "confirmSuccess": "Fecha confirmada",
       "cancelSuccess": "Reunión cancelada",
       "loadFailed": "Error al cargar las reuniones",
       "voteType": {
-        "YES": "Asistiré",
-        "NO": "No asistiré",
-        "MAYBE": "Indeciso"
+        "AVAILABLE": "Puedo asistir",
+        "MAYBE": "Quizás",
+        "UNAVAILABLE": "No puedo asistir"
       },
       "status": {
-        "DRAFT": "Borrador",
-        "OPEN": "Votación abierta",
+        "PLANNING": "Votación abierta",
         "CONFIRMED": "Confirmado",
-        "CANCELLED": "Cancelado",
-        "CLOSED": "Cerrado"
+        "CANCELLED": "Cancelado"
       }
     },
     "chronicle": {
