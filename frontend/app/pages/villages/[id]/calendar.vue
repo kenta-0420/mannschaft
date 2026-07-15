@@ -58,20 +58,15 @@ function formatYmd(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-function lastDayOfMonth(y: number, m: number): number {
-  return new Date(y, m, 0).getDate()
-}
-
 async function loadEvents() {
   eventsLoading.value = true
   try {
-    const from = formatYmd(currentYear.value, currentMonth.value, 1)
-    const to = formatYmd(
-      currentYear.value,
-      currentMonth.value,
-      lastDayOfMonth(currentYear.value, currentMonth.value),
-    )
-    events.value = await villageApi.listCalendarEvents(villageId.value, { from, to })
+    // BE の @RequestParam は year/month のみ（from/to は存在しない。年中行事は月のみで判定するため）
+    const result = await villageApi.listCalendarEvents(villageId.value, {
+      year: currentYear.value,
+      month: currentMonth.value,
+    })
+    events.value = result.items
   }
   catch (error) {
     events.value = []
