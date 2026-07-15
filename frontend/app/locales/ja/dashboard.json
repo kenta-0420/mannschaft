@@ -183,6 +183,22 @@
       "widget_notices_tab_platform": "運営お知らせ",
       "widget_notices_platform_empty": "現在お知らせはありません"
     },
+    "commandCenter": {
+      "title": "今やること",
+      "unresolvedCount": "未対応 {count}件",
+      "chipCirculation": "回覧",
+      "chipSurvey": "アンケート",
+      "chipAttendance": "出欠",
+      "chipOverdueTodo": "期限切れTODO",
+      "deadlineOverdue": "期限切れ",
+      "deadlineToday": "今日",
+      "emptyTitle": "取りこぼしなし🎉",
+      "emptyMessage": "対応が必要な項目はありません",
+      "partialLoadError": "一部のデータを取得できませんでした",
+      "todoCompleteAria": "完了にする",
+      "todoCompleteSuccess": "TODOを完了しました",
+      "todoCompleteError": "TODOの完了に失敗しました"
+    },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",
       "viewAll": "すべて見る",
