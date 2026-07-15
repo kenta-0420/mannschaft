@@ -12,7 +12,6 @@ import type {
   VillageRepresentativeGrantRequest,
   VillageRepresentativeResponse,
   VillageRepresentativeRevokeRequest,
-  VillageResponse,
 } from '~/types/village'
 
 /**
@@ -128,9 +127,17 @@ export function useVillageFeatureApi() {
   // Phase 2: 代表委任 (VillageRepresentativeController)
   // /api/v1/villages/{villageId}/representatives
   //
-  // 注意: Phase 2 の Backend Controller は未実装。
-  // ここでの URL は設計書 §3.11 / §13.2 に基づく推測であり、
-  // Backend 完成後に微調整する可能性がある。
+  // かつて「Backend Controller は未実装のため URL は推測」というコメントが
+  // 置かれていたが、`VillageRepresentativeController` は実装済みであり誤りのため撤去した。
+  //
+  // BE の実契約:
+  //   GET    /representatives                    （?includeRevoked=false）
+  //   POST   /representatives                    → 201
+  //   DELETE /representatives/{representativeId} （body は任意）
+  //
+  // FIXME(村ドメイン契約不一致): 下の revokeRepresentative は
+  //   `POST /representatives/{id}/revoke` を叩いており BE に存在しない。
+  //   正は `DELETE /representatives/{id}`。本 PR の担当範囲外のため未修正。
   // =====================================================================
 
   /** 代表委任一覧 */
@@ -167,23 +174,16 @@ export function useVillageFeatureApi() {
   }
 
   // =====================================================================
-  // Phase 2: 村紋アップロード (VillageMonshoController)
-  // /api/v1/villages/{villageId}/monsho
+  // Phase 2: 村紋 (VillageMonshoController)
   //
-  // 設計書 §13.2: villages.monsho_r2_key 用。
-  // multipart/form-data で画像をアップロードし、R2 キーを村本体に紐付ける。
+  // 村紋の「アップロード」関数はここには置かない。
+  // BE は multipart を一切受け取らず（`PUT /monsho` に JSON `{r2Key}` を渡す契約のみ）、
+  // R2 への実体アップロードは「別経路のプリサインド URL 発行 API」に委ねる設計だが、
+  // その委ね先が村ドメインに存在しない（2026-07-15 時点で BE 側の欠落）。
+  // かつて存在した `uploadMonsho` は `POST /monsho` に FormData を送る実装で、
+  // 実測 405・呼び出し元ゼロの死蔵コードだったため撤去した。
+  // 村紋アップロード UI は BE のプリサインド発行エンドポイント新設が前提となる。
   // =====================================================================
-
-  /** 村紋画像をアップロード（multipart/form-data） */
-  async function uploadMonsho(villageId: string, file: File) {
-    const form = new FormData()
-    form.append('file', file)
-    const res = await api<{ data: VillageResponse }>(
-      `/api/v1/villages/${villageId}/monsho`,
-      { method: 'POST', body: form },
-    )
-    return res.data
-  }
 
   return {
     // ニックネーム
@@ -204,7 +204,5 @@ export function useVillageFeatureApi() {
     listRepresentatives,
     grantRepresentative,
     revokeRepresentative,
-    // Phase 2: 村紋
-    uploadMonsho,
   }
 }
