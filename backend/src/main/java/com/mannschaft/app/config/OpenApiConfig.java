@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -26,6 +27,17 @@ import java.util.stream.Collectors;
  */
 @Configuration
 public class OpenApiConfig {
+
+    static {
+        // 課題 #12・案A: 型付きパス変数 OrgScopeId / TeamScopeId は OpenAPI 上では素の Long
+        // （integer int64）として扱う。これを行わないと springdoc が record を object スキーマ
+        // （{ value: integer }）としてモデル化し、{orgId}/{teamId} の型が integer から object へ
+        // ドリフトして docs/openapi.json に差分が生じる。replaceWithClass で Long に置換して
+        // 従来の integer 表現を維持し、生成物のドリフトを根治する。
+        SpringDocUtils.getConfig()
+                .replaceWithClass(OrgScopeId.class, Long.class)
+                .replaceWithClass(TeamScopeId.class, Long.class);
+    }
 
     /**
      * servers フィールドを相対パス {@code "/"} に正規化する。
