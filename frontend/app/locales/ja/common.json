@@ -463,7 +463,15 @@
     "writeReply": "返信を書く",
     "replySubmit": "返信する",
     "noReplies": "返信はまだありません",
-    "loadMoreReplies": "もっと見る"
+    "loadMoreReplies": "もっと見る",
+    "composerPlaceholder": {
+      "TEAM": "チームに投稿...",
+      "VILLAGE": "村に投稿...",
+      "ORGANIZATION": "組織に投稿...",
+      "PUBLIC": "今どうしてる？"
+    },
+    "submitLabel": "投稿",
+    "pollOptionsCount": "{count}択"
   },
   "gallery": {
     "title": "ギャラリー",
