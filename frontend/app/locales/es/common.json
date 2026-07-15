@@ -463,7 +463,15 @@
     "writeReply": "Escribir una respuesta",
     "replySubmit": "Responder",
     "noReplies": "Aún no hay respuestas",
-    "loadMoreReplies": "Ver más"
+    "loadMoreReplies": "Ver más",
+    "composerPlaceholder": {
+      "TEAM": "Publicar en el equipo...",
+      "VILLAGE": "Publicar en el pueblo...",
+      "ORGANIZATION": "Publicar en la organización...",
+      "PUBLIC": "¿Qué está pasando?"
+    },
+    "submitLabel": "Publicar",
+    "pollOptionsCount": "{count} opciones"
   },
   "gallery": {
     "title": "Galería",
