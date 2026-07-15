@@ -52,8 +52,8 @@ public class TournamentEntryTemplateController {
     @GetMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates")
     @Operation(summary = "エントリーテンプレート一覧")
     public ResponseEntity<ApiResponse<List<EntryTemplateResponse>>> getTemplates(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId) {
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         List<EntryTemplateResponse> result = entryTemplateService.getTemplates(orgId.value(), teamId.value(), currentUserId);
         return ResponseEntity.ok(ApiResponse.of(result));
