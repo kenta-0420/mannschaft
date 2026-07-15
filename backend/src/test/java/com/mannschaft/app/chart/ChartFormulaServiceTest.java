@@ -5,6 +5,7 @@ import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartFormulaRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.service.ChartFormulaService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +29,7 @@ class ChartFormulaServiceTest {
     @Mock private ChartFormulaRepository formulaRepository;
     @Mock private ChartRecordRepository recordRepository;
     @Mock private ChartMapper chartMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartFormulaService service;
@@ -35,6 +37,7 @@ class ChartFormulaServiceTest {
     private static final Long TEAM_ID = 1L;
     private static final Long CHART_ID = 10L;
     private static final Long FORMULA_ID = 20L;
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("createFormula")
@@ -43,7 +46,7 @@ class ChartFormulaServiceTest {
         @DisplayName("異常系: カルテ不在でCHART_001例外")
         void 作成_カルテ不在_例外() {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.createFormula(TEAM_ID, CHART_ID,
+            assertThatThrownBy(() -> service.createFormula(TEAM_ID, CHART_ID, USER_ID,
                     new CreateFormulaRequest("テスト", null, null, null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
@@ -58,7 +61,7 @@ class ChartFormulaServiceTest {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.of(record));
             given(formulaRepository.countByChartRecordId(CHART_ID)).willReturn(20L);
 
-            assertThatThrownBy(() -> service.createFormula(TEAM_ID, CHART_ID,
+            assertThatThrownBy(() -> service.createFormula(TEAM_ID, CHART_ID, USER_ID,
                     new CreateFormulaRequest("テスト", null, null, null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
@@ -73,7 +76,7 @@ class ChartFormulaServiceTest {
         @DisplayName("異常系: レシピ不在でCHART_003例外")
         void 削除_不在_例外() {
             given(formulaRepository.findById(FORMULA_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteFormula(TEAM_ID, FORMULA_ID))
+            assertThatThrownBy(() -> service.deleteFormula(TEAM_ID, FORMULA_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_003"));

@@ -1,5 +1,6 @@
 package com.mannschaft.app.line;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.dto.CreateSnsFeedConfigRequest;
@@ -43,6 +44,8 @@ class SnsFeedConfigServiceTest {
     private EncryptionService encryptionService;
     @Mock
     private SnsFeedApiClient snsFeedApiClient;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SnsFeedConfigService service;
@@ -69,11 +72,12 @@ class SnsFeedConfigServiceTest {
             given(lineMapper.toSnsFeedConfigResponse(entity)).willReturn(response);
 
             // When
-            List<SnsFeedConfigResponse> result = service.findAll(SCOPE_TYPE, SCOPE_ID);
+            List<SnsFeedConfigResponse> result = service.findAll(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getProvider()).isEqualTo("INSTAGRAM");
+            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
         }
 
         @Test
@@ -84,7 +88,7 @@ class SnsFeedConfigServiceTest {
                     .willReturn(List.of());
 
             // When
-            List<SnsFeedConfigResponse> result = service.findAll(SCOPE_TYPE, SCOPE_ID);
+            List<SnsFeedConfigResponse> result = service.findAll(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result).isEmpty();
@@ -156,11 +160,12 @@ class SnsFeedConfigServiceTest {
             given(lineMapper.toSnsFeedConfigResponse(entity)).willReturn(response);
 
             // When
-            SnsFeedConfigResponse result = service.update(1L, SCOPE_TYPE, SCOPE_ID, req);
+            SnsFeedConfigResponse result = service.update(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req);
 
             // Then
             assertThat(result.getAccountUsername()).isEqualTo("newUser");
             verify(encryptionService).encryptBytes(any(byte[].class));
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
         }
 
         @Test
@@ -178,7 +183,7 @@ class SnsFeedConfigServiceTest {
             given(lineMapper.toSnsFeedConfigResponse(entity)).willReturn(response);
 
             // When
-            SnsFeedConfigResponse result = service.update(1L, SCOPE_TYPE, SCOPE_ID, req);
+            SnsFeedConfigResponse result = service.update(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req);
 
             // Then
             assertThat(result).isNotNull();
@@ -195,7 +200,7 @@ class SnsFeedConfigServiceTest {
             given(snsFeedConfigRepository.findById(1L)).willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.update(1L, SCOPE_TYPE, SCOPE_ID, req))
+            assertThatThrownBy(() -> service.update(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("LINE_007"));
@@ -216,7 +221,7 @@ class SnsFeedConfigServiceTest {
             given(snsFeedConfigRepository.findById(1L)).willReturn(Optional.of(entity));
 
             // When
-            service.delete(1L, SCOPE_TYPE, SCOPE_ID);
+            service.delete(1L, SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then — softDeleteが呼ばれたことを間接確認
             assertThat(entity).isNotNull();
@@ -229,7 +234,7 @@ class SnsFeedConfigServiceTest {
             given(snsFeedConfigRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(1L, SCOPE_TYPE, SCOPE_ID))
+            assertThatThrownBy(() -> service.delete(1L, SCOPE_TYPE, SCOPE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("LINE_007"));
@@ -245,7 +250,7 @@ class SnsFeedConfigServiceTest {
             given(snsFeedConfigRepository.findById(1L)).willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(1L, SCOPE_TYPE, SCOPE_ID))
+            assertThatThrownBy(() -> service.delete(1L, SCOPE_TYPE, SCOPE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("LINE_007"));
@@ -269,7 +274,7 @@ class SnsFeedConfigServiceTest {
             given(snsFeedApiClient.fetchInstagramFeed("token", 6)).willReturn(List.of());
 
             // When
-            SnsFeedPreviewResponse result = service.preview(1L, SCOPE_TYPE, SCOPE_ID);
+            SnsFeedPreviewResponse result = service.preview(1L, SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result.getProvider()).isEqualTo("INSTAGRAM");
