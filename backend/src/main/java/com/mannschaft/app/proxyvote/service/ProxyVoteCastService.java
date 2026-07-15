@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.DelegationStatus;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
@@ -40,6 +41,7 @@ public class ProxyVoteCastService {
     private final ProxyVoteMotionRepository motionRepository;
     private final ProxyVoteRepository voteRepository;
     private final ProxyDelegationRepository delegationRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 投票する。
@@ -47,6 +49,8 @@ public class ProxyVoteCastService {
     @Transactional
     public CastVoteResponse castVote(Long sessionId, CastVoteRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(sessionId);
+        // 認可: 議決権 = セッションスコープの会員であること（票の水増し防止・直接投票経路でも検証）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }
@@ -129,6 +133,8 @@ public class ProxyVoteCastService {
     @Transactional
     public CastVoteResponse updateVote(Long sessionId, CastVoteRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(sessionId);
+        // 認可: 議決権 = セッションスコープの会員であること（票の水増し防止・直接投票経路でも検証）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }

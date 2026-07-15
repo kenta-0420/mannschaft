@@ -18,6 +18,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: ライン選択ラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 interface LineOption { id: number; name: string }
 
 const lines = ref<LineOption[]>([])
@@ -43,9 +46,13 @@ async function loadLines() {
   }
 }
 
-async function loadSlots() {
+/**
+ * 枠取得。`silent: true` は KeepAlive 復帰時のサイレント再取得用で、loading フラグを
+ * 立てない（skeleton へ切り替わらない＝表示中の枠一覧を保持したまま裏でデータだけ更新する）。
+ */
+async function loadSlots(opts?: { silent?: boolean }) {
   if (!selectedDate.value || !selectedLineId.value) return
-  loading.value = true
+  if (!opts?.silent) loading.value = true
   try {
     // BE のスロット一覧は from/to（取得期間）が必須。単日表示なので from=to=選択日 を渡す。
     // スロットは BE 上でライン非依存のため、ラインは予約作成時の lineId としてのみ使う。
@@ -56,7 +63,9 @@ async function loadSlots() {
     )
   }
   catch { slots.value = [] }
-  finally { loading.value = false }
+  finally {
+    if (!opts?.silent) loading.value = false
+  }
 }
 
 function isAvailable(slot: ReservationSlotResponse): boolean {
@@ -76,8 +85,25 @@ function selectSlot(slot: ReservationSlotResponse) {
   )
 }
 
-watch([selectedDate, selectedLineId], loadSlots)
-onMounted(async () => { await loadLines(); await loadSlots() })
+// loadSlots が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
+watch([selectedDate, selectedLineId], () => loadSlots())
+onMounted(async () => { await Promise.all([loadLines(), loadResourceName()]); await loadSlots() })
+
+// KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
+// 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
+// 1回発火するため、onMounted 経路との二重fetchをフラグでガードする。
+let initialActivationDone = false
+onActivated(() => {
+  if (!initialActivationDone) {
+    initialActivationDone = true
+    return
+  }
+  void loadSlots({ silent: true })
+})
+
+// 予約直後に親（TeamReservationsPanel）から枠の空き状況を再読込させるための公開メソッド。
+// 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
+defineExpose({ refresh: () => loadSlots() })
 </script>
 
 <template>
@@ -88,7 +114,7 @@ onMounted(async () => { await loadLines(); await loadSlots() })
         <DatePicker v-model="selectedDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line', { resourceName }) }}</label>
         <Select
           v-model="selectedLineId"
           :options="lines"

@@ -16,6 +16,7 @@ import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -35,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -56,6 +58,35 @@ public class RoleService {
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MembershipService membershipService;
+
+    /** 束1 権限昇格根治: 操作者が持つべき権限ロール（user_roles 由来）。 */
+    private static final Set<String> ADMIN_ROLE_NAMES = Set.of("ADMIN", "DEPUTY_ADMIN");
+
+    /**
+     * 束1 権限昇格根治（Service 層二重防御）: ロール変更・除名の操作者が当該スコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する。違反時は 403（COMMON_002）。
+     *
+     * <p>本メソッドは {@link com.mannschaft.app.common.AccessControlService} を注入せずに
+     * {@code user_roles}＋{@code roles} を直接引く「ローカル私設ヘルパー」である。
+     * AccessControlService は RoleService に依存するため、逆に注入すると DI 循環が発生する。
+     * ADMIN/DEPUTY_ADMIN は {@code user_roles} 由来の権限ロールであり判定に memberships は不要
+     * （所属ロール MEMBER/SUPPORTER では権限昇格・除名を許可しない）。</p>
+     *
+     * @param scopeId     スコープ ID（チーム ID or 組織 ID）
+     * @param scopeType   スコープ種別（{@code TEAM} or {@code ORGANIZATION}）
+     * @param actorUserId 操作者ユーザー ID
+     * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
+     */
+    private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
+        boolean isAdmin = findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter(ADMIN_ROLE_NAMES::contains)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
 
     /**
      * ユーザーにロールを割り当てる。
@@ -105,6 +136,9 @@ public class RoleService {
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
+        // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
+        requireActorAdmin(scopeId, scopeType, changedBy);
+
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -167,7 +201,10 @@ public class RoleService {
      */
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
-    public void removeMember(Long scopeId, String scopeType, Long targetUserId) {
+    public void removeMember(Long scopeId, String scopeType, Long targetUserId, Long operatorUserId) {
+        // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
+        requireActorAdmin(scopeId, scopeType, operatorUserId);
+
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -187,7 +224,7 @@ public class RoleService {
      *
      * <p><b>⚠️ AccountPurgeService 等の管理者操作専用。通常の API からは呼ばないこと。</b></p>
      *
-     * <p>本メソッドは {@link #removeMember(Long, String, Long)} と同等のロジックを実行するが、
+     * <p>本メソッドは {@link #removeMember(Long, String, Long, Long)} と同等のロジックを実行するが、
      * {@link #checkLastAdmin(Long, String, UserRoleEntity)} を呼ばないため、
      * 「最後の ADMIN を除名」しても {@link RoleErrorCode#ROLE_004} を投げない。
      * 退会済ユーザーの 30 日後物理削除（{@code AccountPurgeService#purgeUser}）の経路で
@@ -239,6 +276,21 @@ public class RoleService {
         // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
         eventPublisher.publishEvent(new MembershipChangedEvent(
                 userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+    }
+
+    /**
+     * 指定組織に所属する（user_roles で organization_id が一致する）チーム ID 一覧を返す。
+     *
+     * <p>他ドメイン（例: advertising の広告非表示ゲート F09.19.2）が {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路（D-3 ArchUnit 準拠:
+     * {@code @Transactional} クラスは別ドメイン Repository に直接依存しない）。プリミティブ
+     * （{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @return 当該組織配下のチーム ID 一覧
+     */
+    public List<Long> getTeamIdsByOrganizationId(Long organizationId) {
+        return userRoleRepository.findTeamIdsByOrganizationId(organizationId);
     }
 
     /**

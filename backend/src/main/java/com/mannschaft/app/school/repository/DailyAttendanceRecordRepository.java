@@ -18,6 +18,18 @@ public interface DailyAttendanceRecordRepository extends JpaRepository<DailyAtte
     Optional<DailyAttendanceRecordEntity> findByTeamIdAndStudentUserIdAndAttendanceDate(
             Long teamId, Long studentUserId, LocalDate attendanceDate);
 
+    /**
+     * 生徒の日次出欠をチーム指定なしで取得する（認可根治 束4: 生徒→所属チーム解決用）。
+     *
+     * <p>タイムライン閲覧（{@code AttendanceLocationService#getTimeline}）の認可判定で、
+     * 呼び出し元が studentUserId しか持たない場合に「その生徒が当日在籍するチーム」を
+     * 逆引きするために使用する。同一生徒・同一日で複数チームの記録が存在する運用は
+     * 想定しないが、万一存在しても認可判定用の代表値として先頭1件で足りるため
+     * {@code findFirst} で取得する。</p>
+     */
+    Optional<DailyAttendanceRecordEntity> findFirstByStudentUserIdAndAttendanceDate(
+            Long studentUserId, LocalDate attendanceDate);
+
     /** 生徒の期間内日次出欠履歴を取得する。 */
     List<DailyAttendanceRecordEntity> findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(
             Long studentUserId, LocalDate from, LocalDate to);

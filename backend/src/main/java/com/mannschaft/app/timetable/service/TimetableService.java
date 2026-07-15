@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.TimetableStatus;
@@ -41,42 +42,61 @@ public class TimetableService {
     private final TimetableSlotRepository slotRepository;
     private final TimetableTermRepository termRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
+
+    /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * チームの時間割一覧を取得する。
      */
-    public List<TimetableEntity> getByTeamId(Long teamId) {
+    public List<TimetableEntity> getByTeamId(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return timetableRepository.findByTeamIdOrderByEffectiveFromDesc(teamId);
     }
 
     /**
      * 時間割を取得する。見つからない場合は例外をスローする。
+     *
+     * <p>{@code findByIdAndTeamId} で teamId 込みで検索するため path の teamId 鵜呑みにはならないが、
+     * それだけでは「非メンバーが自チームの teamId を渡して閲覧する」ケースを防げないため、
+     * 取得後に entity 由来の teamId で {@code checkMembership} する。</p>
      */
-    public TimetableEntity getById(Long timetableId, Long teamId) {
-        return timetableRepository.findByIdAndTeamId(timetableId, teamId)
+    public TimetableEntity getById(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = timetableRepository.findByIdAndTeamId(timetableId, teamId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        return entity;
     }
 
     /**
-     * 時間割をIDのみで取得する。チーム検証なし（内部API用）。
+     * 時間割をIDのみで取得する（teamId が path に無い内部API用: スロット系エンドポイント等）。
+     *
+     * <p>★BOLA厳禁★: teamId を path から受け取れないため、必ず entity を先に fetch し、
+     * entity 由来の teamId で {@code checkMembership} する（他チームの時間割IDを直接指定した閲覧を防ぐ）。</p>
      */
-    public TimetableEntity getByIdWithoutTeam(Long timetableId) {
-        return timetableRepository.findById(timetableId)
+    public TimetableEntity getByIdWithoutTeam(Long timetableId, Long actorUserId) {
+        TimetableEntity entity = timetableRepository.findById(timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        return entity;
     }
 
     /**
      * 指定日に有効な時間割を取得する。
      */
-    public Optional<TimetableEntity> getEffective(Long teamId, LocalDate date) {
+    public Optional<TimetableEntity> getEffective(Long teamId, LocalDate date, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return timetableRepository.findEffective(teamId, date).stream().findFirst();
     }
 
     /**
-     * 時間割を作成する。
+     * 時間割を作成する。createは作成先スコープ（path teamId）で checkAdminOrAbove する。
      */
     @Transactional
-    public TimetableEntity create(Long teamId, CreateTimetableData data) {
+    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         // 学期範囲チェック
         TimetableTermEntity term = termRepository.findById(data.termId())
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
@@ -104,8 +124,10 @@ public class TimetableService {
      * 時間割を更新する。DRAFT状態のみ更新可能。
      */
     @Transactional
-    public TimetableEntity update(Long timetableId, Long teamId, UpdateTimetableData data) {
-        TimetableEntity entity = getById(timetableId, teamId);
+    public TimetableEntity update(Long timetableId, Long teamId, UpdateTimetableData data, Long actorUserId) {
+        // 変更系は entity 由来 scope で checkAdminOrAbove（getById が checkMembership 済みだが admin 昇格チェックを別途行う）。
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         if (!entity.isDraft()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
         }
@@ -132,8 +154,9 @@ public class TimetableService {
      * 時間割を削除する（論理削除）。DRAFT状態のみ削除可能。
      */
     @Transactional
-    public void delete(Long timetableId, Long teamId) {
-        TimetableEntity entity = getById(timetableId, teamId);
+    public void delete(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         if (!entity.isDraft()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
         }
@@ -146,8 +169,9 @@ public class TimetableService {
      * 既存のACTIVEな時間割は自動的にARCHIVEDに変更される。
      */
     @Transactional
-    public TimetableEntity activate(Long timetableId, Long teamId) {
-        TimetableEntity entity = getById(timetableId, teamId);
+    public TimetableEntity activate(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         if (!entity.isDraft()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
         }
@@ -173,8 +197,9 @@ public class TimetableService {
      * 時間割をアーカイブする（ACTIVE → ARCHIVED）。
      */
     @Transactional
-    public TimetableEntity archive(Long timetableId, Long teamId) {
-        TimetableEntity entity = getById(timetableId, teamId);
+    public TimetableEntity archive(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         if (!entity.isActive()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ACTIVE);
         }
@@ -186,8 +211,9 @@ public class TimetableService {
      * 時間割を下書きに戻す（ARCHIVED → DRAFT）。
      */
     @Transactional
-    public TimetableEntity revertToDraft(Long timetableId, Long teamId) {
-        TimetableEntity entity = getById(timetableId, teamId);
+    public TimetableEntity revertToDraft(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         if (!entity.isArchived()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ARCHIVED);
         }
@@ -199,8 +225,9 @@ public class TimetableService {
      * 時間割を複製する。時間割本体と全スロットをコピーし、DRAFT状態で作成する。
      */
     @Transactional
-    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data) {
-        TimetableEntity source = getById(timetableId, teamId);
+    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId) {
+        TimetableEntity source = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, source.getTeamId(), SCOPE_TEAM);
 
         // 学期範囲チェック
         Long newTermId = data.termId() != null ? data.termId() : source.getTermId();

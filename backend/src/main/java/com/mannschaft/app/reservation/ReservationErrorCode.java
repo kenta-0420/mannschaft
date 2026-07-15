@@ -240,6 +240,63 @@ public enum ReservationErrorCode implements ErrorCode {
      */
     SLOT_LINE_MISMATCH("RESERVATION_038", "選択した枠とラインが一致しません", Severity.WARN),
 
+    // ===== F03.4.3 機能G: 予約グループ（複数枠・連続枠予約 / v2 第二弾）=====
+
+    /**
+     * グループ内のいずれかの枠が満席/CLOSED で確保失敗（リソース競合・409）。
+     *
+     * <p>F03.4.3 §5.2: 確保は {@code incrementBookedCountIfAvailable} のリポジトリ直呼び×N
+     * （slotId 昇順・確保 UPDATE → INSERT の順）。0 行更新 = 確保失敗で本コードを throw し、
+     * {@code @Transactional} が先行確保分も含めて全ロールバックする（部分成功禁止）。
+     * SLOT_FULL(004・400) ではなく本コード（409）を使い「グループの一部枠が確保できなかった」ことを
+     * FE が区別する（§5.2 の 4）。稀な InnoDB デッドロック
+     * （{@code PessimisticLockingFailureException}）も同じ「選び直し」契約として本コードへマップする（§5.2）。
+     * {@code GlobalExceptionHandler} の個別マッピングで HTTP 409。</p>
+     */
+    GROUP_SLOT_UNAVAILABLE("RESERVATION_039",
+            "選択した枠のいずれかが確保できませんでした。空き状況を更新して選び直してください", Severity.WARN),
+
+    /**
+     * 予約グループ不存在・権限なし（存在秘匿・404）。
+     *
+     * <p>F03.4.3 §4/§6: 存在しない / 他チーム / 他人（非 ADMIN）の groupId はすべて本コードで
+     * 404 に統一する（UUID 列挙攻撃に対して存在自体を隠す IDOR 秘匿）。
+     * {@code GlobalExceptionHandler} の個別マッピングで HTTP 404。</p>
+     */
+    GROUP_NOT_FOUND("RESERVATION_040", "予約グループが見つかりません", Severity.WARN),
+
+    /**
+     * グループ枠数上限（16 枠）超過（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §5.2-e: {@code 1 <= slotIds.length <= 16}。17 枠以上の指定は買い占め防止の観点から拒否する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    GROUP_SIZE_EXCEEDED("RESERVATION_041", "予約グループは最大16枠までです", Severity.WARN),
+
+    /**
+     * グループ所属行への単票操作の拒否（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §4: グループ所属行（{@code group_id IS NOT NULL}）への単票状態遷移 API
+     * （cancel/confirm/complete/no-show/reschedule）は部分遷移によるグループ状態の分裂・
+     * booked_count 不整合を構造的に防ぐため全行で拒否する。非代表行へのメモ更新
+     * （admin-note）も一覧に浮上せず事実上消失するため拒否する（代表行のみ許可）。
+     * Severity.WARN のため既定マッピングで 400。</p>
+     */
+    GROUP_ROW_DIRECT_OPERATION_NOT_ALLOWED("RESERVATION_042",
+            "この予約はグループの一部です。グループ単位で操作してください", Severity.WARN),
+
+    /**
+     * <b>予約時</b>に選択メニューが対象ラインで提供されていない（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §5.2-f: {@code reservation_menu_lines} が 1 件以上列挙されているメニューで、
+     * 列挙に {@code request.lineId} が含まれない場合（0 件 = 全ライン可）。
+     * F03.4.1 の 035（メニュー<b>定義時</b>の lineIds 不正）とは発生文脈・利用者・FE 導線が
+     * 異なるため別コードに分離する（意味衝突回避・精査第1パス指摘12）。
+     * Severity.WARN のため既定マッピングで 400。</p>
+     */
+    GROUP_MENU_LINE_NOT_OFFERED("RESERVATION_043",
+            "選択したメニューはこの予約対象では提供されていません", Severity.WARN),
+
     /**
      * 一括生成（generate）のレートリミット超過（429 Too Many Requests）。
      *
@@ -259,7 +316,57 @@ public enum ReservationErrorCode implements ErrorCode {
      * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
      */
     LINE_HAS_ACTIVE_RESERVATIONS("RESERVATION_045",
-            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN);
+            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN),
+
+    // ===== F03.4.5 §6.1 D群: キャンセル待ち（waitlist）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_045）の次から連番で確定した（2026-07-08）。
+    // 設計書 §10 は 048〜053 を仮置きしていたが、§10 注記「D 群着手時に enum 実物の最大値から再採番」に
+    // 従い 046 起点で確定する（W2-4 が ErrorCode を追記する唯一の隊・マージ直前に再確認済み）。
+    // 052（RECURRING_RESERVATION_LIMIT_EXCEEDED）・053（RESERVATION_CREATE_RATE_LIMITED）は
+    // W2-5/W2-6 着手時にそれぞれ実物の最大値から再採番する。
+
+    /**
+     * キャンセル待ちエントリ不存在（本人取消の対象なし・IDOR 秘匿含む・404）。
+     *
+     * <p>§6.1/§7: 取消は (slot, 本人) で解決するため他人のエントリは構造的に掴めない。
+     * 自分の WAITING が無い場合も同一の 404 で秘匿する。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    WAITLIST_ENTRY_NOT_FOUND("RESERVATION_046", "キャンセル待ちが見つかりません", Severity.WARN),
+
+    /**
+     * 同一枠への二重登録（リソース競合・409）。
+     *
+     * <p>§6.1: {@code existsBySlotIdAndUserIdAndStatus(WAITING)} で事前に弾く。
+     * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
+     */
+    WAITLIST_ALREADY_REGISTERED("RESERVATION_047", "すでにキャンセル待ちに登録されています", Severity.WARN),
+
+    /**
+     * 満席でない枠へのキャンセル待ち登録（入力不正・400）。
+     *
+     * <p>§6.1: AVAILABLE 枠はそのまま予約すべきなので待ち登録を拒否する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    WAITLIST_SLOT_NOT_FULL("RESERVATION_048", "空きがあるためそのまま予約してください", Severity.WARN),
+
+    /**
+     * キャンセル待ち上限超過（1 ユーザー同時 10 件 / 1 枠 50 件・入力上限超過・400）。
+     *
+     * <p>§6.1: Service 層で担保する。Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    WAITLIST_LIMIT_EXCEEDED("RESERVATION_049",
+            "キャンセル待ちの登録上限に達しています", Severity.WARN),
+
+    /**
+     * キャンセル待ち登録のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>§6.4: 登録は zone {@code reservation-waitlist}（1 ユーザー 1 分 10 回）で保護する。
+     * 予約作成バケット（W2-6 で採番予定の 053）とは別 zone・別コード（登録は軽量操作のため
+     * 予約バケットを消費させない）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    WAITLIST_RATE_LIMITED("RESERVATION_050",
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
 
     private final String code;
     private final String message;

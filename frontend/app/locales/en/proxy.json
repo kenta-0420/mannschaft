@@ -116,6 +116,7 @@
         "linkTooltip": "Open the watch screen (view only)",
         "readonlyNotice": "This screen is view-only. You cannot take actions or respond here.",
         "loadError": "Failed to load watch data",
+        "retryButton": "Retry",
         "sections": {
           "schedules": {
             "title": "Upcoming schedules",

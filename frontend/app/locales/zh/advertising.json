@@ -1,6 +1,34 @@
 {
   "advertising": {
     "ad_label": "广告",
+    "account_settings": {
+      "title": "账户设置",
+      "company_name": "公司 / 团体名称",
+      "contact_email": "联系邮箱",
+      "edit": "编辑",
+      "save": "保存",
+      "cancel": "取消",
+      "saved": "账户设置已保存。",
+      "save_failed": "保存失败。"
+    },
+    "spotlight": {
+      "hide_advertiser": "隐藏该广告主",
+      "hide_advertiser_done": "已隐藏该广告主的广告",
+      "report": "举报",
+      "upgrade_cta": "无广告使用 →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "在亚马逊选购团队用品",
+          "description": "以优惠价格备齐活动所需的各类物品。",
+          "cta": "立即查看"
+        },
+        "rakuten": {
+          "title": "在乐天选购团队用品",
+          "description": "边购物边赚积分，实惠备齐所需物品。",
+          "cta": "前往乐天"
+        }
+      }
+    },
     "status": {
       "draft": "草稿",
       "review": "审核中",
@@ -117,7 +145,8 @@
         "step_audience": "受众设置",
         "step_review": "确认并提交",
         "submitted": "广告活动已提交审核。",
-        "saved": "草稿已保存。"
+        "saved": "草稿已保存。",
+        "draft_saved": "已保存为草稿。"
       },
       "advertiser_campaign_detail": {
         "title": "活动详情",
@@ -233,7 +262,13 @@
         "column_status": "状态",
         "auto_suspend_candidate": "举报集中",
         "auto_suspend_candidate_tooltip": "短时间内收到多次举报，是自动停止的候选。",
-        "go_campaign": "查看广告活动详情"
+        "go_campaign": "查看广告活动详情",
+        "type_messaging": "消息型",
+        "type_operational": "运营型",
+        "status_update_failed": "状态更新失败",
+        "mark_reviewing": "标记为审查中",
+        "mark_resolved": "标记为已解决",
+        "mark_dismissed": "驳回"
       },
       "advertiser_campaign_report": {
         "title": "广告活动绩效报告",
@@ -475,7 +510,124 @@
       "nav": {
         "messaging_campaigns_description": "为团队成员创建消息型广告活动。"
       },
-      "future_features_notice": "发票管理・与信额度申请・定期报告将在未来阶段支持。",
+      "dashboard": {
+        "not_registered_title": "広告主ダッシュボード",
+        "not_registered_description": "広告を出稿するには、まず広告主として登録してください。",
+        "register_button": "広告主登録",
+        "rate_simulator_button": "料金シミュレーター",
+        "pending_notice": "アカウントは審査中です。承認後に広告の配信を開始できます。",
+        "suspended_notice": "アカウントが停止されています。管理者にお問い合わせください。",
+        "kpi_campaigns": "キャンペーン",
+        "kpi_impressions": "インプレッション",
+        "kpi_clicks_ctr": "クリック / CTR",
+        "kpi_cost": "広告費（税抜）",
+        "budget_used_label": "予算消化 {pct}%",
+        "campaigns_section_title": "キャンペーン",
+        "column_campaign_name": "キャンペーン名",
+        "column_status": "ステータス",
+        "column_impressions": "imp",
+        "column_clicks": "click",
+        "column_ctr": "CTR",
+        "column_cost": "費用",
+        "nav_invoices": "請求書",
+        "nav_rate_simulator": "料金シミュレーター",
+        "nav_report_schedules": "定期レポート",
+        "nav_credit_limit_requests": "与信枠申請"
+      },
+      "invoices": {
+        "title": "請求書",
+        "status_all": "すべて",
+        "status_draft": "下書き",
+        "status_issued": "発行済み",
+        "status_paid": "支払済み",
+        "status_overdue": "期限超過",
+        "status_filter_placeholder": "ステータス",
+        "column_invoice_number": "請求書番号",
+        "column_invoice_month": "対象月",
+        "column_total_with_tax": "税込合計",
+        "column_status": "ステータス",
+        "column_due_date": "支払期限",
+        "detail_title": "請求書詳細",
+        "detail_invoice_number": "請求書番号:",
+        "detail_invoice_month": "対象月:",
+        "detail_status": "ステータス:",
+        "detail_due_date": "支払期限:",
+        "detail_column_campaign": "キャンペーン",
+        "detail_column_pricing_model": "課金",
+        "detail_column_impressions": "imp",
+        "detail_column_clicks": "click",
+        "detail_column_subtotal": "小計",
+        "subtotal_label": "小計:",
+        "tax_label": "消費税（{rate}%）:",
+        "total_label": "合計:"
+      },
+      "credit_limit_requests": {
+        "title": "与信枠 増額申請",
+        "create_button": "新規申請",
+        "column_requested_limit": "希望額",
+        "column_current_limit": "申請時の限度額",
+        "column_reason": "理由",
+        "column_status": "ステータス",
+        "column_review_note": "審査メモ",
+        "column_created_at": "申請日",
+        "dialog_title": "与信枠 増額申請",
+        "form_requested_limit_label": "希望額（円）",
+        "form_reason_label": "申請理由",
+        "form_reason_placeholder": "増額が必要な理由を記入してください",
+        "submit_button": "申請",
+        "created_toast": "増額申請を送信しました",
+        "create_failed_toast": "申請に失敗しました"
+      },
+      "report_schedules": {
+        "title": "定期レポート",
+        "create_button": "新規作成",
+        "empty": "定期レポートはまだ設定されていません。",
+        "frequency_weekly": "週次（毎週月曜）",
+        "frequency_monthly": "月次（毎月1日）",
+        "last_sent_label": "最終配信: {date}",
+        "dialog_title": "レポートスケジュール作成",
+        "form_frequency_label": "配信頻度",
+        "form_recipients_label": "配信先メール（カンマ区切り）",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
+        "submit_button": "作成",
+        "created_toast": "レポートスケジュールを作成しました",
+        "create_failed_toast": "作成に失敗しました",
+        "deleted_toast": "削除しました",
+        "delete_failed_toast": "削除に失敗しました"
+      },
+      "rate_simulator": {
+        "title": "料金シミュレーター",
+        "pricing_model_label": "課金モデル",
+        "pricing_model_cpm": "CPM（インプレッション課金）",
+        "pricing_model_cpc": "CPC（クリック課金）",
+        "days_label": "掲載日数",
+        "impressions_label": "インプレッション数",
+        "clicks_label": "クリック数",
+        "prefecture_label": "都道府県（任意）",
+        "prefecture_placeholder": "例: 東京都",
+        "template_label": "テンプレート（任意）",
+        "template_placeholder": "例: SPORTS",
+        "run_button": "シミュレーション実行",
+        "result_title": "見積もり結果",
+        "unit_price_label": "単価",
+        "total_cost_label": "税抜合計",
+        "total_with_tax_label": "税込合計",
+        "tax_amount_label": "消費税",
+        "daily_cost_label": "日次費用",
+        "min_daily_budget_label": "最低日予算",
+        "comparison_title": "他の料金との比較",
+        "comparison_column_label": "条件",
+        "comparison_column_unit_price": "単価",
+        "comparison_column_total_cost": "合計費用"
+      },
+      "campaign_detail": {
+        "default_title": "キャンペーン詳細",
+        "csv_button": "CSV",
+        "date_from_placeholder": "開始日",
+        "date_to_placeholder": "終了日",
+        "load_failed": "キャンペーンデータを取得できませんでした。",
+        "back_to_dashboard": "ダッシュボードに戻る"
+      },
       "register": {
         "title": "广告主注册",
         "submit": "提交申请",
@@ -528,6 +680,154 @@
           "step2": "ページ右下の「保存」ボタンをクリックする",
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
+      }
+    },
+    "operational_campaigns": {
+      "title": "横幅广告活动",
+      "entry_tile": {
+        "title": "横幅广告活动",
+        "description": "创建和管理将图片横幅投放到广告位的运营型活动。"
+      },
+      "list": {
+        "description": "创建图片横幅投放活动，管理审核、投放和暂停。每日预算为参考上限。",
+        "create_button": "新建",
+        "empty": "还没有运营型活动。来创建第一个活动吧。",
+        "no_end_date": "无限期",
+        "report_suspended_badge": "因举报暂停",
+        "reject_reason_label": "退回原因",
+        "link_creatives": "素材",
+        "link_report": "报表",
+        "tab": {
+          "all": "全部",
+          "draft": "草稿",
+          "pending_review": "审核中",
+          "active": "投放中",
+          "paused": "暂停",
+          "ended": "结束"
+        },
+        "col": {
+          "name": "活动名称",
+          "status": "状态",
+          "pricing_model": "计费方式",
+          "daily_budget": "每日预算",
+          "period": "投放期间",
+          "unit_price": "单价",
+          "actions": "操作"
+        }
+      },
+      "status": {
+        "draft": "草稿",
+        "pending_review": "审核中",
+        "active": "投放中",
+        "paused": "暂停",
+        "ended": "结束"
+      },
+      "actions": {
+        "submit": "提交审核",
+        "pause": "暂停",
+        "resume": "恢复",
+        "end": "结束",
+        "edit": "编辑"
+      },
+      "confirm": {
+        "submit": "要将此活动提交审核吗？",
+        "pause": "要暂停此活动的投放吗？",
+        "resume": "要恢复此活动的投放吗？",
+        "end": "要结束此活动吗？结束后无法恢复（不可逆）。"
+      },
+      "toast": {
+        "submit": "已提交审核",
+        "pause": "已暂停投放",
+        "resume": "已恢复投放",
+        "end": "活动已结束",
+        "created": "活动已创建",
+        "updated": "活动已更新"
+      },
+      "form": {
+        "create_title": "创建横幅广告活动",
+        "edit_title": "编辑横幅广告活动",
+        "name": "活动名称",
+        "pricing_model": "计费方式",
+        "rate_card": "价目卡",
+        "rate_card_placeholder": "选择价目卡",
+        "no_rate_cards": "所选计费方式没有可用的价目卡。",
+        "daily_budget": "每日预算",
+        "min_daily_budget": "最低每日预算",
+        "start_date": "开始日期",
+        "end_date": "结束日期",
+        "end_date_hint": "留空则无限期投放。",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "暂停期间无法更改。",
+        "daily_budget_notice": "每日预算是投放节奏的参考上限，并非严格保证；按实际测量的投放量计费。",
+        "save": "保存",
+        "cancel": "取消"
+      },
+      "errors": {
+        "load_failed": "获取活动失败",
+        "save_failed": "保存失败",
+        "transition_failed": "操作失败",
+        "rate_cards_load_failed": "获取价目卡失败",
+        "name_required": "请输入活动名称",
+        "name_max": "活动名称请控制在200字符以内",
+        "rate_card_required": "请选择价目卡",
+        "daily_budget_required": "请输入每日预算",
+        "daily_budget_min": "每日预算须不低于最低值（{min}）",
+        "start_date_required": "请输入开始日期",
+        "start_in_past": "开始日期须为今天或之后",
+        "end_before_start": "结束日期须不早于开始日期"
+      },
+      "guide": {
+        "title": "横幅广告活动使用说明",
+        "what": {
+          "title": "什么是横幅广告活动",
+          "body": "将图片横幅投放到仪表盘和信息流等广告位的运营型广告。选择计费方式（CPM/CPC）和价目卡，设置每日预算，经审核后投放。"
+        },
+        "flow": {
+          "title": "投放流程",
+          "step1": "指定价目卡和每日预算创建活动（草稿）",
+          "step2": "上传素材（图片横幅）",
+          "step3": "提交审核（活动和素材均需通过才可投放）",
+          "step4": "开始投放。可根据需要暂停、恢复或结束"
+        },
+        "pricing": {
+          "title": "计费与每日预算",
+          "body": "价目卡决定单价（CPM=每千次展示，CPC=每次点击）。创建时单价被锁定，之后的调价不受影响。每日预算是节奏参考上限。"
+        },
+        "status": {
+          "title": "状态与操作",
+          "body": "按 草稿→审核中→投放中→暂停 流转。暂停期间无法更改与计费相关的项目（计费方式、价目卡、开始日期）。结束后无法恢复。"
+        }
+      },
+      "review": {
+        "title": "运营型活动审核",
+        "description": "查看待审核的横幅广告活动，进行批准或退回。",
+        "card_title": "运营型活动审核",
+        "card_description": "查看待审核的横幅广告活动。",
+        "pending_count": "待审核",
+        "open_queue": "打开审核队列",
+        "open_detail": "查看详情",
+        "back_to_dashboard": "返回审核仪表盘",
+        "empty": "没有待审核的活动。",
+        "load_failed": "获取审核队列失败",
+        "detail_load_failed": "获取审核详情失败",
+        "detail_title": "活动审核详情",
+        "advertiser": "广告主",
+        "scope": "范围",
+        "scope_organization": "组织",
+        "scope_team": "团队",
+        "unit_price": "单价",
+        "creatives": "素材",
+        "no_creatives": "尚未上传素材。",
+        "approve": "批准",
+        "approve_confirm": "批准此活动并使其可投放？",
+        "approved_toast": "活动已批准",
+        "reject": "退回",
+        "reject_submit": "退回",
+        "reject_reason_label": "退回原因",
+        "reject_reason_placeholder": "请输入退回原因（1-500字符）",
+        "rejected_toast": "活动已退回",
+        "action_failed": "操作失败"
       }
     }
   }

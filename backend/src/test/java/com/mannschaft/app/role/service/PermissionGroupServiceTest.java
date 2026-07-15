@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
@@ -50,6 +51,9 @@ class PermissionGroupServiceTest {
 
     @Mock
     private UserPermissionGroupRepository userPermissionGroupRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private PermissionGroupService permissionGroupService;
@@ -183,7 +187,7 @@ class PermissionGroupServiceTest {
 
             // When
             ApiResponse<PermissionGroupResponse> response =
-                    permissionGroupService.updatePermissionGroup(GROUP_ID, req);
+                    permissionGroupService.updatePermissionGroup(GROUP_ID, req, CREATED_BY);
 
             // Then
             assertThat(response.getData().getName()).isEqualTo("新グループ名");
@@ -198,7 +202,7 @@ class PermissionGroupServiceTest {
             PermissionGroupRequest req = createRequest();
 
             // When / Then
-            assertThatThrownBy(() -> permissionGroupService.updatePermissionGroup(GROUP_ID, req))
+            assertThatThrownBy(() -> permissionGroupService.updatePermissionGroup(GROUP_ID, req, CREATED_BY))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_006"));
@@ -221,7 +225,7 @@ class PermissionGroupServiceTest {
             given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(existing));
 
             // When
-            permissionGroupService.deletePermissionGroup(GROUP_ID);
+            permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY);
 
             // Then
             verify(permissionGroupRepository).delete(existing);
@@ -234,7 +238,7 @@ class PermissionGroupServiceTest {
             given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> permissionGroupService.deletePermissionGroup(GROUP_ID))
+            assertThatThrownBy(() -> permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_006"));

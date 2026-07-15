@@ -17,11 +17,6 @@ output "private_subnet_ids" {
   value       = [aws_subnet.private_1a.id, aws_subnet.private_1c.id]
 }
 
-output "alb_sg_id" {
-  description = "ALB 用セキュリティグループ ID"
-  value       = aws_security_group.alb.id
-}
-
 output "app_sg_id" {
   description = "ECS（Spring Boot）タスク用セキュリティグループ ID"
   value       = aws_security_group.app.id

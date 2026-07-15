@@ -12,6 +12,7 @@ import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -71,6 +72,7 @@ public class InviteService {
     private final MyScopeFolderRepository myScopeFolderRepository;
     private final MembershipService membershipService;
     private final BrandedQrImageWriter brandedQrImageWriter;
+    private final AccessControlService accessControlService;
 
     /**
      * 招待トークンを作成する。
@@ -78,6 +80,9 @@ public class InviteService {
     @Transactional
     public ApiResponse<InviteTokenResponse> createInviteToken(Long scopeId, String scopeType,
                                                                CreateInviteTokenRequest req, Long createdBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
+        accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
+
         RoleEntity role = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -113,7 +118,10 @@ public class InviteService {
     /**
      * スコープ内の有効な招待トークン一覧を取得する。
      */
-    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType) {
+    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
+        // 束1 権限昇格根治: 招待トークン一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         List<InviteTokenEntity> tokens;
         if ("TEAM".equals(scopeType)) {
             tokens = inviteTokenRepository.findByTeamIdAndRevokedAtIsNull(scopeId);
@@ -133,9 +141,14 @@ public class InviteService {
      * 招待トークンを失効させる。
      */
     @Transactional
-    public void revokeInviteToken(Long tokenId) {
+    public void revokeInviteToken(Long tokenId, Long actorUserId) {
         InviteTokenEntity token = inviteTokenRepository.findById(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+
+        // 束1 BOLA 根治: トークンが属するスコープ（team/org）を entity から導出し、
+        // そのスコープの ADMIN/DEPUTY_ADMIN のみ失効できる（別スコープ ADMIN の tokenId 越境失効を遮断）。
+        accessControlService.checkAdminOrAbove(actorUserId, resolveScopeId(token), resolveScopeType(token));
+
         token.revoke();
         log.info("招待トークン失効完了: tokenId={}", tokenId);
     }

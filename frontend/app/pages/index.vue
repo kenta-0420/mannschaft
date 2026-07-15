@@ -48,6 +48,7 @@ useHead({
     <LpFeatureChips />
     <LpUseCaseRow />
     <LpPwaInstall />
+    <LpTrustBadges />
     <LpFinalCta />
   </div>
 </template>

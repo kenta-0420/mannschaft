@@ -1,5 +1,8 @@
 package com.mannschaft.app.template.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
@@ -59,6 +62,7 @@ public class ModuleService {
     private final TemplateModuleRepository templateModuleRepository;
     private final TeamTemplateRepository teamTemplateRepository;
     private final TeamPlanService teamPlanService;
+    private final EntitlementQueryService entitlementQueryService;
 
     /**
      * 選択式モジュールカタログを取得する（OPTIONAL + is_active のみ）。
@@ -252,8 +256,11 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 有料プランチェック
-            if (module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)) {
+            // 有料プランチェック（F20.1: 有料判定を isEntitled に置換・TMPL_004 は不変で維持し FE 後方互換を保つ）。
+            // 既存有料チームは後方互換ブリッジ（team_subscriptions ACTIVE → FULL 契約 → plan_features 全キー）で
+            // premium entitlement を保持するため機能は失われない。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.TEAM, teamId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 

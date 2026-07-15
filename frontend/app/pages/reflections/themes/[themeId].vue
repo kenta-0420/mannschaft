@@ -228,6 +228,5 @@ async function doRestore() {
       :entry="dialogEntry"
       @saved="onSaved"
     />
-    <ConfirmDialog />
   </div>
 </template>

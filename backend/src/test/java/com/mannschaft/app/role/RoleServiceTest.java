@@ -148,6 +148,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("正常変更_ロールが変更される")
         void 正常変更_ロールが変更される() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -169,6 +172,9 @@ class RoleServiceTest {
             // flush を挟まないと Hibernate の write-behind が INSERT を先に発行し、
             // user_roles の uq_user_roles_user_scope(user_id, scope_key) ユニーク制約に
             // 旧行と衝突して 500 になる（実機 E2E + general_log で実証済みのバグ）。
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -188,6 +194,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("最後のADMIN変更_ROLE_004例外")
         void 最後のADMIN変更_ROLE_004例外() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -214,13 +223,17 @@ class RoleServiceTest {
         @Test
         @DisplayName("正常除名_ユーザーロールが削除される")
         void 正常除名_ユーザーロールが削除される() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
 
-            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID);
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
 
             verify(userRoleRepository).delete(current);
         }
@@ -228,6 +241,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("最後のADMIN除名_ROLE_004例外")
         void 最後のADMIN除名_ROLE_004例外() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -235,7 +251,7 @@ class RoleServiceTest {
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
 
-            assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID))
+            assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
@@ -484,5 +500,15 @@ class RoleServiceTest {
     private RoleEntity createMemberRole() {
         return RoleEntity.builder()
                 .id(MEMBER_ROLE_ID).name("MEMBER").displayName("メンバー").priority(4).isSystem(true).build();
+    }
+
+    /**
+     * 束1 権限昇格根治: 操作者(USER_ID)が当該スコープの ADMIN であることを表す user_roles 行。
+     * requireActorAdmin が {@code findUserRole(actor) → roleRepository.findById(roleId=ADMIN_ROLE_ID)} で
+     * ADMIN 判定するために用いる。
+     */
+    private UserRoleEntity operatorAdminRole() {
+        return UserRoleEntity.builder()
+                .id(99L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
     }
 }

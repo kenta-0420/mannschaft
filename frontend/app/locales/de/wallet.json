@@ -229,6 +229,8 @@
       "hint_brightness": "Maximale Helligkeit für bessere Lesbarkeit einstellen",
       "close": "Schließen",
       "reload": "Neu laden",
+      "prev_card": "Vorherige Karte",
+      "next_card": "Nächste Karte",
       "biometric_required": "Authentifizierung erforderlich, um den Präsentationsmodus zu starten",
       "biometric_failed": "Authentifizierung fehlgeschlagen",
       "no_cards": "Diese Gruppe hat keine Karten",

@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.repository.ReceiptRepository;
 import com.mannschaft.app.receipt.service.ReceiptExportService;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ReceiptExportServiceTest {
 
     @Mock private ReceiptRepository receiptRepository;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ReceiptExportService service;
@@ -33,7 +35,7 @@ class ReceiptExportServiceTest {
         @Test
         @DisplayName("異常系: 存在しないジョブIDはエラー")
         void ジョブ不存在() {
-            assertThatThrownBy(() -> service.getZipJob("nonexistent"))
+            assertThatThrownBy(() -> service.getZipJob("nonexistent", 100L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.ZIP_JOB_NOT_FOUND);
@@ -47,7 +49,7 @@ class ReceiptExportServiceTest {
         @Test
         @DisplayName("正常系: 候補が返却される")
         void 候補返却() {
-            var result = service.getDescriptionSuggestions(ReceiptScopeType.TEAM, 1L, null);
+            var result = service.getDescriptionSuggestions(ReceiptScopeType.TEAM, 1L, null, 100L);
 
             assertThat(result.getSuggestions()).isNotEmpty();
             assertThat(result.getTemplate()).contains("{item_name}");

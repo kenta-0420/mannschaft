@@ -24,6 +24,8 @@ import javax.sql.DataSource;
  *   <li>{@code accountPurgeBatch} / {@code exportRecoveryBatch} — F10.7 GDPR</li>
  *   <li>{@code emergencyClosureReminderBatch} — F09.x 臨時休業リマインド</li>
  *   <li>{@code adFrequencyCapFlush} / {@code adCampaignDelivery} — F09.17 広告配信</li>
+ *   <li>{@code adDailyStatsAggregation} — F09.19.3 広告日次集計（毎日 01:30）</li>
+ *   <li>{@code adBannerReservationExpiry} — F09.19.3 予約 EXPIRED + FreqCap 返却（毎日 02:15）</li>
  *   <li>{@code corkboardAutoArchiveBatch} 他 — F09.8 コルクボード</li>
  *   <li>{@code chatMessageArchiveBatch} — F04.2 チャット archive</li>
  *   <li>{@code shift_auto_archive} / {@code shift_preference_reminder} — F08.7 シフト</li>

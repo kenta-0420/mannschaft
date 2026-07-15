@@ -91,6 +91,23 @@ public class ScheduleService {
     }
 
     /**
+     * 指定スケジュールが指定チームに属するかどうかを返す（越境窓口）。
+     *
+     * <p>認可根治戦役 Wave 2 トランシェ2B: performance ドメイン
+     * （{@code PerformanceRecordService.createScheduleBulkRecords}）が、スケジュール連携の
+     * 一括記録入力で受け取った {@code scheduleId} が path の {@code teamId} 配下かどうかを検証するための
+     * 窓口。schedule ドメインの {@link ScheduleEntity} を他ドメインへ直接公開せず、
+     * boolean のみを返すことでドメイン境界（CLAUDE.md）を保つ。</p>
+     *
+     * @param scheduleId スケジュールID
+     * @param teamId     チームID
+     * @return 当該チームに属するスケジュールが存在すれば true
+     */
+    public boolean existsByIdAndTeamId(Long scheduleId, Long teamId) {
+        return scheduleRepository.findByIdAndTeamId(scheduleId, teamId).isPresent();
+    }
+
+    /**
      * 閲覧権限チェック付きでスケジュールを取得する。
      *
      * <p>F00 Phase E: {@link ContentVisibilityChecker} 経由の判定を正規化完了

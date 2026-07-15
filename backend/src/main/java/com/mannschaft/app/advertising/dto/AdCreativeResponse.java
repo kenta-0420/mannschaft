@@ -13,6 +13,15 @@ public record AdCreativeResponse(
         String destinationUrl,
         String status,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        // ─── F09.19.1 拡張（骨格） ───
+        /** 掲載面。 */
+        com.mannschaft.app.advertising.AdPlacement placement,
+        /** バナー幅 px。 */
+        Integer width,
+        /** バナー高さ px。 */
+        Integer height,
+        /** 代替テキスト。 */
+        String altText
 ) {
 }

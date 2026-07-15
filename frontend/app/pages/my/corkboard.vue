@@ -590,9 +590,6 @@ onMounted(() => load(false))
       </template>
     </Dialog>
 
-    <!-- 確認ダイアログ（削除用、useConfirmDialog 経由） -->
-    <ConfirmDialog />
-
     <!-- 使い方モーダル -->
     <CorkboardGuideModal v-model:visible="showGuide" />
   </div>

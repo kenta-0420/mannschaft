@@ -229,6 +229,8 @@
       "hint_brightness": "Setting your screen to maximum brightness improves scan reliability",
       "close": "Close",
       "reload": "Reload",
+      "prev_card": "Previous card",
+      "next_card": "Next card",
       "biometric_required": "Authentication is required to start presentation mode",
       "biometric_failed": "Authentication failed",
       "no_cards": "This group has no cards",

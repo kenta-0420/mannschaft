@@ -44,6 +44,8 @@ java -jar -Dspring.profiles.active=prod backend.jar
 | 環境変数 | 用途 | デフォルト |
 |---|---|---|
 | `SPRING_REDIS_PORT` | Redis ポート | `6379` |
+| `SPRING_REDIS_SSL_ENABLED` | Redis/Valkey 接続の TLS 有効化（Lettuce）。ElastiCache `transit_encryption_enabled=true` に追随（WebSocket 外部ブローカー化 §8.6） | `false` |
+| `MANNSCHAFT_WEBSOCKET_RELAY_ENABLED` | WebSocket 外部ブローカー化（Valkey Pub/Sub relay）の feature flag。段階 1 着手時に `true` へ切替（設計: `docs/architecture/websocket_external_broker_valkey.md` §1.3） | `false` |
 | `SERVER_PORT` | アプリ Listen ポート | `8080` |
 | `MANNSCHAFT_JWT_ACCESS_EXPIRATION` | アクセストークン有効期限（秒） | `900`（15分） |
 | `MANNSCHAFT_JWT_REFRESH_EXPIRATION` | リフレッシュトークン有効期限（秒） | `604800`（7日） |
@@ -166,6 +168,19 @@ app:
 | `MANNSCHAFT_STRIPE_SECRET_KEY` | Stripe シークレットキー（`sk_live_...`） |
 | `MANNSCHAFT_STRIPE_CONNECT_RETURN_URL` | Connect 戻り URL |
 | `MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL` | Connect リフレッシュ URL |
+
+#### Cloudflare Tunnel（本番の入口 — ECS の cloudflared サイドカー用）
+
+本番（AWS ECS）は ALB を使わず、ECS タスク内の cloudflared サイドカーが張る **Cloudflare Tunnel** が
+`/api/**`・`/ws` の入口になる（2026-07-10 コスト削減で ALB → Tunnel 化）。
+
+| 環境変数 | 用途 |
+|---|---|
+| `TUNNEL_TOKEN` | cloudflared サイドカーの run トークン。**Spring Boot ではなく cloudflared コンテナに注入**。AWS Secrets Manager の `<prefix>/cloudflared-tunnel-token`（箱は Terraform 作成・値は手動投入）から ECS タスク定義の `secrets` で参照される |
+
+値の取得と投入手順は `infra/terraform/bootstrap/README.md` §7-5 を参照
+（`terraform output -raw cloudflared_tunnel_token` → `aws secretsmanager put-secret-value` → ECS 再デプロイ）。
+トンネル本体・DNS・ingress（`http://localhost:8080`）は Terraform（`infra/terraform/modules/edge`）が管理するため手動設定は不要。
 
 ---
 

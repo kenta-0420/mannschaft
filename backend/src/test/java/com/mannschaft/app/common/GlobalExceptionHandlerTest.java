@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Set;
@@ -315,6 +317,30 @@ class GlobalExceptionHandlerTest {
     }
 
     // ========================================
+    // handleNoResourceFound
+    // ========================================
+
+    @Nested
+    @DisplayName("HandleNoResourceFound")
+    class HandleNoResourceFound {
+
+        @Test
+        @DisplayName("未マップパスへのリクエストが 404 NOT_FOUND + COMMON_005 で返る")
+        void noResourceFound_returns404WithCommon005() {
+            // Given
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleNoResourceFound(ex, null);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_005");
+        }
+    }
+
+    // ========================================
     // resolveHttpStatus
     // ========================================
 
@@ -432,6 +458,45 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_007");
+        }
+
+        @Test
+        @DisplayName("F09.19.1 AC-1.5/1.4: AD_027（状態遷移違反・編集不可）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_027_409() {
+            // 状態遷移違反・編集不可状態・編集不可フィールドの変更（F09.19 §15）。
+            // Severity.WARN 既定（400）のため ERROR_CODE_STATUS_MAP で 409 に上書きが必要。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_027);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_029（visit/click IP レート制限）は個別マッピングで 429 TooManyRequests になる")
+        void resolveHttpStatus_AD_029_429() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_029);
+
+            assertThat(result).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_033（通報自動停止中の resume 拒否）は個別マッピングで 403 Forbidden になる")
+        void resolveHttpStatus_AD_033_403() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_033);
+
+            assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("F09.19.1 AC-1.12: AD_034（参照中の料金カード削除拒否）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_034_409() {
+            // FK violation 500 回帰防御（F09.19 §5.2 V144.002）。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_034);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
         }
 
         @Test
@@ -801,6 +866,24 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler unwired = new GlobalExceptionHandler(messageSource);
             ResponseEntity<ErrorResponse> resp = unwired.handleUnexpectedException(new RuntimeException("x"));
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        @Test
+        @DisplayName("handleNoResourceFound: 404 NOT_FOUND が返り recordBackendException は呼ばれない")
+        void noResourceFound_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+            HttpServletRequest req = mock(HttpServletRequest.class);
+
+            ResponseEntity<ErrorResponse> resp = handler.handleNoResourceFound(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_005");
+            // エラー集約へ通報しない（ノイズ根絶）
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
         }
 
         @Test

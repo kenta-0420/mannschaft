@@ -79,7 +79,8 @@ class AdCreativeServiceTest {
             // Given
             Long campaignId = 10L;
             CreateAdCreativeRequest req = new CreateAdCreativeRequest(
-                    "テスト広告", "https://example.com/image.png", "https://example.com/landing");
+                    "テスト広告", "https://example.com/image.png", "https://example.com/landing",
+                    null, null, null, null);
             AdEntity saved = buildEntity(1L, campaignId, AdEntity.AdStatus.DRAFT);
             given(adEntityRepository.save(any(AdEntity.class))).willReturn(saved);
 
@@ -106,7 +107,7 @@ class AdCreativeServiceTest {
             Long campaignId = 10L;
             AdEntity entity = buildEntity(adId, campaignId, AdEntity.AdStatus.DRAFT);
             given(adEntityRepository.findByIdAndCampaignId(adId, campaignId)).willReturn(Optional.of(entity));
-            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null);
+            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null, null, null, null, null);
 
             // When
             AdCreativeResponse result = adCreativeService.update(adId, campaignId, req);
@@ -123,7 +124,7 @@ class AdCreativeServiceTest {
             Long campaignId = 10L;
             AdEntity entity = buildEntity(adId, campaignId, AdEntity.AdStatus.ENDED);
             given(adEntityRepository.findByIdAndCampaignId(adId, campaignId)).willReturn(Optional.of(entity));
-            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null);
+            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> adCreativeService.update(adId, campaignId, req))
@@ -137,7 +138,7 @@ class AdCreativeServiceTest {
             Long adId = 1L;
             Long campaignId = 10L;
             given(adEntityRepository.findByIdAndCampaignId(adId, campaignId)).willReturn(Optional.empty());
-            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null);
+            UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> adCreativeService.update(adId, campaignId, req))

@@ -13,9 +13,11 @@ import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,8 @@ public class ReservationSlotService {
     private final com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
     /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
     private final Clock clock;
+    /** F03.4.5 §6.1: 満席→空き復帰時にキャンセル待ち一斉通知を起動するためのイベント発行者。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -323,7 +327,19 @@ public class ReservationSlotService {
      */
     @Transactional
     public void decrementAndReopen(ReservationSlotEntity entity) {
-        slotRepository.decrementBookedCountAndReopen(entity.getId());
+        Long slotId = entity.getId();
+        // 根治（F03.4.5 §6.1・lost wakeup / 二重発火）: イベント発火可否を in-memory スナップショット
+        // （wasFull）ではなく「DB が実際に FULL→AVAILABLE 遷移を起こしたか」で判定する。
+        // まず booked_count を減算し（ステータスは変えない）、次に reopen 専用 UPDATE を打つ。
+        slotRepository.decrementBookedCount(slotId);
+        int reopened = slotRepository.reopenSlotIfFull(slotId);
+        if (reopened == 1) {
+            // 遷移を起こしたのは（WHERE slot_status='FULL' の直列化ガードにより）唯一の tx のみ。
+            // AFTER_COMMIT リスナー（ReservationWaitlistNotificationEventListener）が購読する。
+            // 単枠/グループ/リスケ/緊急休業の全キャンセル経路がこの単一点を通るため通知漏れも二重発火もない。
+            // グループ一括キャンセルは枠ごとに本メソッドが呼ばれるため枠単位で最大 1 イベント（重複なし）。
+            eventPublisher.publishEvent(new ReservationSlotReopenedEvent(entity.getTeamId(), slotId));
+        }
     }
 
     /**

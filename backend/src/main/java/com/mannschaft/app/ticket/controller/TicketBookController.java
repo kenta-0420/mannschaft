@@ -2,6 +2,7 @@ package com.mannschaft.app.ticket.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
@@ -57,11 +58,6 @@ public class TicketBookController {
     private final TicketBookService bookService;
     private final PdfGeneratorService pdfGeneratorService;
 
-    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     /**
      * 手動発行（現地決済。ADMIN / DEPUTY_ADMIN）。
      */
@@ -71,7 +67,7 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<IssueResultResponse>> issueTicketBook(
             @PathVariable Long teamId,
             @Valid @RequestBody IssueTicketBookRequest request) {
-        IssueResultResponse response = bookService.issueTicketBook(teamId, getCurrentUserId(), request);
+        IssueResultResponse response = bookService.issueTicketBook(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -115,7 +111,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ConsumeTicketRequest request) {
-        ConsumeResultResponse response = bookService.consumeTicket(teamId, id, getCurrentUserId(), request);
+        ConsumeResultResponse response = bookService.consumeTicket(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -129,7 +125,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @PathVariable Long consumptionId) {
-        VoidResultResponse response = bookService.voidConsumption(teamId, id, consumptionId, getCurrentUserId());
+        VoidResultResponse response = bookService.voidConsumption(teamId, id, consumptionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -143,7 +139,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody RefundRequest request) {
-        TicketBookDetailResponse response = bookService.refund(teamId, id, getCurrentUserId(), request);
+        TicketBookDetailResponse response = bookService.refund(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -171,7 +167,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @Valid @RequestBody ConsumeByQrRequest request) {
         ConsumeResultResponse response = bookService.consumeByQr(
-                teamId, getCurrentUserId(), request.getQrPayload(), request.getNote());
+                teamId, SecurityUtils.getCurrentUserId(), request.getQrPayload(), request.getNote());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -184,7 +180,7 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<BulkConsumeResponse>> bulkConsume(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkConsumeRequest request) {
-        BulkConsumeResponse response = bookService.bulkConsume(teamId, getCurrentUserId(), request);
+        BulkConsumeResponse response = bookService.bulkConsume(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

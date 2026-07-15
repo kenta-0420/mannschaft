@@ -384,7 +384,5 @@ const hasFilter = computed(() =>
         />
       </div>
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>

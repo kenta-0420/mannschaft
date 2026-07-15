@@ -296,42 +296,7 @@
     "product": {
       "title": "Producto Mannschaft",
       "desc": "Una plataforma de gestión todo en uno con todo lo que tu equipo u organización necesita",
-      "features_heading": "Funciones principales",
-      "pricing_heading": "Planes de precios",
-      "pricing": {
-        "free": {
-          "name": "Gratis",
-          "price": "€0",
-          "desc": "Para individuos y equipos pequeños",
-          "features": [
-            "Todas las funciones básicas",
-            "Hasta 10 miembros",
-            "1GB de almacenamiento"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/mes",
-          "desc": "Para equipos en crecimiento",
-          "features": [
-            "Todas las funciones gratuitas",
-            "Miembros ilimitados",
-            "50GB de almacenamiento",
-            "Soporte prioritario"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contáctanos",
-          "desc": "Para grandes organizaciones",
-          "features": [
-            "Todas las funciones Pro",
-            "Integraciones personalizadas",
-            "Soporte dedicado",
-            "Garantía SLA"
-          ]
-        }
-      }
+      "features_heading": "Funciones principales"
     },
     "legal": {
       "terms": {
@@ -371,7 +336,10 @@
             "title": "Artículo 4 (Uso por menores)",
             "content": [
               "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. El registro de una persona menor de 18 años solo surte efecto una vez completada la vinculación con la cuenta del representante legal (aprobación del consentimiento), y el Servicio no podrá utilizarse hasta que dicha vinculación se complete. La Compañía podrá solicitar la confirmación del consentimiento cuando sea necesario.",
-              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad."
+              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad.",
+              "Respecto de un menor de 18 años que curse educación primaria o inferior (en el sistema de edad escolar japonés, hasta el último día del año escolar en que el menor cumple 12 años), el representante legal (padre, madre o tutor) podrá, por el método que la Compañía establezca, consultar y supervisar el calendario, la asistencia, las afiliaciones y los avisos de la Compañía del menor, y también realizar, en nombre del menor, el pago de cuotas de membresía y otras operaciones dentro del alcance que la Compañía muestre en el Servicio.",
+              "La facultad de supervisión y de actuación en representación conforme al párrafo anterior finalizará automáticamente el primer día (1 de abril) del año escolar en que el menor ingrese a la escuela secundaria.",
+              "El representante legal será responsable de los resultados de las operaciones que realice en representación del menor, y la Compañía no será responsable de los resultados de dichas operaciones salvo en casos de dolo o culpa grave de la Compañía."
             ]
           },
           {
@@ -559,7 +527,7 @@
         "section12_title": "Artículo 12: Transferencias internacionales de datos",
         "section12_content": "El Servicio utiliza AWS, Cloudflare y otros proveedores con sede en los Estados Unidos, por lo que su información personal puede ser transferida y almacenada fuera de Japón.\n\nPara los datos de residentes de la UE/EEE, las transferencias se realizan bajo Cláusulas Contractuales Estándar (SCC) de conformidad con el RGPD Art. 46, u otras salvaguardas apropiadas.",
         "section13_title": "Artículo 13: Información personal de menores",
-        "section13_content": "Los menores pueden usar el Servicio conforme al artículo 4 de los Términos del Servicio: se requieren el consentimiento previo de un representante legal (padres o tutores) y la vinculación con la cuenta del tutor (aprobación del consentimiento).\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que el Servicio se usa sin el consentimiento del representante legal, podremos suspender el uso o adoptar otras medidas apropiadas\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria",
+        "section13_content": "Los menores pueden usar el Servicio conforme al artículo 4 de los Términos del Servicio: se requieren el consentimiento previo de un representante legal (padres o tutores) y la vinculación con la cuenta del tutor (aprobación del consentimiento).\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que el Servicio se usa sin el consentimiento del representante legal, podremos suspender el uso o adoptar otras medidas apropiadas\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria\n\nRespecto de un menor que curse educación primaria o inferior (en el sistema de edad escolar japonés, hasta el último día del año escolar en que el menor cumple 12 años), el representante legal (padre, madre o tutor) podrá consultar y supervisar el calendario, la asistencia, las afiliaciones y los avisos de la Compañía del menor, y realizar, en nombre del menor, el pago de cuotas de membresía y otras operaciones dentro del alcance que la Compañía muestre en el Servicio (artículo 4 de los Términos de Servicio). Para esta supervisión y actuación en representación, divulgamos los datos personales del menor al representante legal en la medida necesaria para la finalidad de la supervisión y la actuación en representación. Esta facultad finaliza automáticamente el primer día (1 de abril) del año escolar en que el menor ingrese a la escuela secundaria.",
         "section14_title": "Artículo 14: Cambios a esta Política",
         "section14_content": "Podemos actualizar esta Política de vez en cuando en respuesta a cambios legales o actualizaciones del servicio.\n\n- Los cambios materiales (nuevos propósitos, nueva recopilación de datos, nuevo intercambio con terceros, etc.) se notificarán con anticipación mediante aviso en el servicio o correo electrónico\n- Los cambios menores se indicarán actualizando la fecha de «Última actualización» en esta página\n- El uso continuo del Servicio después de cualquier revisión constituye su aceptación de la Política actualizada",
         "section15_title": "Artículo 15: Contáctenos",
@@ -887,6 +855,16 @@
           "7": {
             "q": "¿Y si falta una función que quiero?",
             "a": "Envíanos tu petición por el formulario de contacto. Mannschaft es una plataforma en crecimiento que añade funciones según las opiniones de sus usuarios."
+          },
+          "8": {
+            "q": "¿Pueden usarlo los menores de 18 años?",
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria).",
+            "a_terms_note": "Consulta {link} para más detalles.",
+            "a_terms_link": "el artículo 4 de los Términos del servicio"
+          },
+          "9": {
+            "q": "¿Puedo cuidar de un familiar mayor?",
+            "a": "Sí. Con el consentimiento de la persona o de su familia, puedes registrar a un «supervisor», y su familia recibe avisos automáticos de la asistencia, la llegada y la salida en los eventos, así como una alerta de ausencia cuando alguien que se espera que asista no puede confirmarse como presente. No hay registro automático por edad; siempre se configura con el consentimiento de la persona y de su familia."
           }
         },
         "retro_hint": "🎮 A veces la pantalla se vuelve retro… ¿tal vez?",
@@ -1107,6 +1085,18 @@
           "desktop_step3": "O elige “Instalar aplicación” en el menú",
           "desktop_step4": "Haz clic en “Instalar” para terminar",
           "close": "Cerrar"
+        }
+      },
+      "trust": {
+        "heading": "Nuestro compromiso con la seguridad",
+        "badges": {
+          "minor": "Vínculo parental obligatorio para menores de 18",
+          "auth": "Autenticación en dos pasos y passkeys",
+          "i18n": "6 idiomas",
+          "encryption": "Comunicación y datos cifrados",
+          "gdpr": "Conforme al RGPD",
+          "watch": "Supervisión de niños y familiares mayores",
+          "safety": "Comprobación de seguridad colectiva en emergencias"
         }
       }
     }

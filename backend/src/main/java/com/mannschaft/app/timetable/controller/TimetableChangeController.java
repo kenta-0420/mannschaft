@@ -47,7 +47,8 @@ public class TimetableChangeController {
         LocalDate fromDate = from != null ? from : LocalDate.now();
         LocalDate toDate = to != null ? to : fromDate.plusDays(30);
         TimetableChangeType type = changeType != null ? TimetableChangeType.valueOf(changeType) : null;
-        List<TimetableChangeResponse> changes = changeService.getChanges(timetableId, fromDate, toDate, type)
+        List<TimetableChangeResponse> changes = changeService
+                .getChanges(timetableId, fromDate, toDate, type, SecurityUtils.getCurrentUserId())
                 .stream().map(this::toResponse).toList();
         return ResponseEntity.ok(ApiResponse.of(changes));
     }
@@ -65,7 +66,7 @@ public class TimetableChangeController {
                 request.getRoomName(), request.getReason(),
                 request.getNotifyMembers(), request.getCreateSchedule(),
                 SecurityUtils.getCurrentUserId());
-        TimetableChangeEntity entity = changeService.createChange(timetableId, data);
+        TimetableChangeEntity entity = changeService.createChange(timetableId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
 
@@ -80,7 +81,8 @@ public class TimetableChangeController {
                 request.getSubjectName(), request.getTeacherName(),
                 request.getRoomName(), request.getReason(),
                 request.getNotifyMembers());
-        TimetableChangeEntity entity = changeService.updateChange(changeId, timetableId, data);
+        TimetableChangeEntity entity =
+                changeService.updateChange(changeId, timetableId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -90,7 +92,7 @@ public class TimetableChangeController {
     public ResponseEntity<Void> deleteChange(
             @PathVariable Long timetableId,
             @PathVariable Long changeId) {
-        changeService.deleteChange(changeId, timetableId);
+        changeService.deleteChange(changeId, timetableId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

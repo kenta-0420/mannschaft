@@ -154,7 +154,25 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker image to ECR
+      # ECS Fargate は Graviton(ARM64) 化済み（コスト約2割減）。
+      # GitHub runner は amd64 のため QEMU + buildx で linux/arm64 イメージを作るが、
+      # QEMU 下で gradle をフルビルドすると 15〜40 分かかり SIGSEGV/OOM の懸念があるため、
+      # JAR（アーキ非依存）は上の「Build JAR」ステップ（host amd64）で事前ビルドし、
+      # Dockerfile.deploy（runtime-only）で COPY するだけにする。
+      # arm64 側の処理はベースイメージ pull と COPY のみ（QEMU 負荷ほぼゼロ）。
+      # ローカル開発用のマルチステージ Dockerfile は docker-compose（profile:
+      # dev-docker）が使用するため変更しない。
+      - name: Set up QEMU (arm64 emulation)
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push Docker image to ECR (linux/arm64, runtime-only)
         if: steps.aws-check.outputs.skip != 'true'
         id: build-image
         env:
@@ -163,14 +181,17 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker build \
+          # Dockerfile.deploy: 事前ビルド済み JAR を COPY する runtime-only 構成
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.deploy \
             --tag "${IMAGE_URI}" \
             --tag "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
             --label "git-commit=${GITHUB_SHA}" \
             --label "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --provenance=false \
+            --push \
             .
-          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
           echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
       - name: Download current ECS task definition

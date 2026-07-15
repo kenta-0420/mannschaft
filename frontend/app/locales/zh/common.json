@@ -1549,12 +1549,16 @@
       "feedback": "反馈",
       "reports": "报告",
       "advertisers": "广告主管理",
+      "adRateCards": "广告费率卡",
+      "adCreditLimitRequests": "广告信用额度申请",
+      "affiliateSettings": "联盟营销设置",
       "auditLogs": "审计日志",
       "shiftBudget": "班次预算",
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态",
-      "feedbackInbox": "意见箱（全体）"
+      "feedbackInbox": "意见箱（全体）",
+      "billing": "课金主数据管理"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",
@@ -2012,5 +2016,66 @@
         "step4": "点击「保存设置」"
       }
     }
+  },
+  "analytics": {
+    "title": "访问分析",
+    "loadError": "获取访问分析数据失败",
+    "empty": "暂无访问数据",
+    "summary": {
+      "totalViews": "总 PV",
+      "uniqueVisitors": "独立访客",
+      "memberViews": "成员浏览",
+      "guestViews": "访客浏览"
+    },
+    "export": "导出数据",
+    "topContent": {
+      "title": "热门内容",
+      "empty": "暂无数据"
+    },
+    "chart": {
+      "views": "页面浏览量",
+      "daily": "按日",
+      "monthly": "按月",
+      "toggle": "切换显示",
+      "recentDays": "最近30天的访问统计",
+      "monthlyTrend": "月度访问趋势统计"
+    },
+    "period": {
+      "allTime": "全部时间"
+    },
+    "guide": {
+      "page_title": "如何使用访问分析",
+      "what": {
+        "title": "什么是访问分析？",
+        "body": "访问分析可以查看团队或组织页面的浏览情况。了解成员和访客的访问模式，有助于改善内容。"
+      },
+      "metrics": {
+        "title": "统计数据说明",
+        "total_views": "总 PV：页面被显示的总次数",
+        "unique_visitors": "独立访客：去重后的访客数",
+        "member_views": "成员浏览：成员的页面浏览次数",
+        "guest_views": "访客浏览：访客（非成员）的页面浏览次数"
+      },
+      "timing": {
+        "title": "数据更新时间",
+        "body": "访问数据通过每日批量处理进行统计。当天数据将于次日清晨反映。由于不是实时统计，最近几小时的访问将在次日后显示。"
+      },
+      "chart": {
+        "title": "图表说明",
+        "body": "图表可以在「按天」和「按月」之间切换显示。",
+        "daily_title": "日别图表",
+        "daily_desc": "显示过去30天的每日页面浏览量变化。",
+        "monthly_title": "月别图表",
+        "monthly_desc": "显示每月汇总值，有助于了解长期趋势。"
+      },
+      "top_content": {
+        "title": "热门内容",
+        "body": "按浏览量对内容进行排名显示。如果尚无访问数据，将显示「暂无数据」，一旦记录到浏览数据，排行榜就会自动显示。"
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "即将推出",
+    "description": "此功能目前正在开发中。请稍后再来查看。"
   }
 }

@@ -1549,12 +1549,16 @@
       "feedback": "Feedback",
       "reports": "Berichte",
       "advertisers": "Werbeverwaltung",
+      "adRateCards": "Anzeigen-Preiskarten",
+      "adCreditLimitRequests": "Anzeigen-Kreditlimit-Anträge",
+      "affiliateSettings": "Affiliate-Einstellungen",
       "auditLogs": "Audit-Protokolle",
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
-      "feedbackInbox": "Feedback-Posteingang (Global)"
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -2012,5 +2016,66 @@
         "step4": "Klicken Sie auf 'Einstellungen speichern'"
       }
     }
+  },
+  "analytics": {
+    "title": "Zugriffsanalyse",
+    "loadError": "Zugriffsanalysedaten konnten nicht geladen werden",
+    "empty": "Noch keine Zugriffsdaten vorhanden",
+    "summary": {
+      "totalViews": "Gesamt-PV",
+      "uniqueVisitors": "Eindeutige Besucher",
+      "memberViews": "Mitgliederaufrufe",
+      "guestViews": "Gastaufrufe"
+    },
+    "export": "Daten exportieren",
+    "topContent": {
+      "title": "Beliebte Inhalte",
+      "empty": "Keine Daten verfügbar"
+    },
+    "chart": {
+      "views": "Seitenaufrufe",
+      "daily": "Täglich",
+      "monthly": "Monatlich",
+      "toggle": "Ansicht wechseln",
+      "recentDays": "Zugriffsstatistiken der letzten 30 Tage",
+      "monthlyTrend": "Monatliche Zugriffstrendstatistiken"
+    },
+    "period": {
+      "allTime": "Gesamtzeitraum"
+    },
+    "guide": {
+      "page_title": "Verwendung von Analytics",
+      "what": {
+        "title": "Was ist Analytics?",
+        "body": "Mit Analytics können Sie sehen, wie oft die Seiten Ihres Teams oder Ihrer Organisation aufgerufen werden. Nutzen Sie es, um Besuchsmuster von Mitgliedern und Gästen zu verstehen und Inhalte zu verbessern."
+      },
+      "metrics": {
+        "title": "Gemessene Daten",
+        "total_views": "Gesamt-PV: Gesamtzahl der Seitenaufrufe",
+        "unique_visitors": "Eindeutige Besucher: Besucherzahl ohne Duplikate",
+        "member_views": "Mitglieder-Aufrufe: Seitenaufrufe durch Mitglieder",
+        "guest_views": "Gast-Aufrufe: Seitenaufrufe durch Gäste (Nicht-Mitglieder)"
+      },
+      "timing": {
+        "title": "Datenaktualisierungszeit",
+        "body": "Zugriffsdaten werden in einem täglichen Batch aggregiert. Daten vom selben Tag werden am nächsten Morgen angezeigt. Da es sich nicht um Echtzeit handelt, werden Zugriffe der letzten Stunden ab dem nächsten Tag angezeigt."
+      },
+      "chart": {
+        "title": "Diagramm verstehen",
+        "body": "Sie können das Diagramm zwischen «Täglich» und «Monatlich» umschalten.",
+        "daily_title": "Tägliches Diagramm",
+        "daily_desc": "Zeigt tägliche Seitenaufruf-Trends der letzten 30 Tage.",
+        "monthly_title": "Monatliches Diagramm",
+        "monthly_desc": "Zeigt monatlich aggregierte Werte. Nützlich zum Verstehen langfristiger Trends."
+      },
+      "top_content": {
+        "title": "Beliebte Inhalte",
+        "body": "Zeigt eine Rangliste der Inhalte nach Anzahl der Aufrufe. Solange noch keine Zugriffsdaten vorliegen, wird \"Keine Daten verfügbar\" angezeigt. Die Rangliste erscheint automatisch, sobald Aufrufe erfasst wurden."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Demnächst verfügbar",
+    "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
   }
 }

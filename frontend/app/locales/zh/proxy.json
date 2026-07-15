@@ -116,6 +116,7 @@
         "linkTooltip": "打开守护画面（仅供浏览）",
         "readonlyNotice": "本画面仅供浏览，无法进行操作或回复。",
         "loadError": "获取守护数据失败",
+        "retryButton": "重试",
         "sections": {
           "schedules": {
             "title": "近期日程",

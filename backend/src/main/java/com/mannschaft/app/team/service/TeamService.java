@@ -794,6 +794,7 @@ public class TeamService {
         return TeamResponse.builder()
                 .id(team.getSlug())
                 .slug(team.getSlug())
+                .numericId(team.getId())
                 .basicInfo(new TeamResponse.TeamBasicInfoDto(
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))

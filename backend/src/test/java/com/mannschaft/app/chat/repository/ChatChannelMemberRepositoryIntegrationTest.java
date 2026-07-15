@@ -124,4 +124,51 @@ class ChatChannelMemberRepositoryIntegrationTest extends AbstractMySqlIntegratio
             assertThat(counts).containsEntry(DM_CHANNEL, 2L).containsEntry(TEAM_CHANNEL, 3L);
         }
     }
+
+    /**
+     * 【未読カウント根治・red先行】{@link ChatChannelMemberRepository#incrementUnreadCountForOthers} 番人テスト。
+     *
+     * <p>{@code ChatChannelMemberEntity.incrementUnreadCount()} が dead code 化していた根治対応。
+     * N+1 回避のため、メンバー数に依存しない 1 回の一括 UPDATE で「送信者以外」全員の
+     * {@code unread_count} をインクリメントする。</p>
+     */
+    @Nested
+    @DisplayName("incrementUnreadCountForOthers（未読カウント根治）")
+    class IncrementUnreadCountForOthers {
+
+        @Test
+        @DisplayName("送信者以外の全メンバーのunread_countが+1され、送信者自身は増えない")
+        void 送信者以外のunread_countのみ増える() {
+            persistMember(TEAM_CHANNEL, CALLER, ChannelMemberRole.OWNER);
+            persistMember(TEAM_CHANNEL, PARTNER, ChannelMemberRole.MEMBER);
+            persistMember(TEAM_CHANNEL, OTHER, ChannelMemberRole.MEMBER);
+            em.clear();
+
+            int updated = repository.incrementUnreadCountForOthers(TEAM_CHANNEL, CALLER);
+            em.clear();
+
+            assertThat(updated).isEqualTo(2);
+            assertThat(repository.findByChannelIdAndUserId(TEAM_CHANNEL, CALLER).orElseThrow().getUnreadCount())
+                    .isEqualTo(0);
+            assertThat(repository.findByChannelIdAndUserId(TEAM_CHANNEL, PARTNER).orElseThrow().getUnreadCount())
+                    .isEqualTo(1);
+            assertThat(repository.findByChannelIdAndUserId(TEAM_CHANNEL, OTHER).orElseThrow().getUnreadCount())
+                    .isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("複数回呼び出すとunread_countが累積する")
+        void 複数回呼び出すと累積する() {
+            persistMember(TEAM_CHANNEL, CALLER, ChannelMemberRole.OWNER);
+            persistMember(TEAM_CHANNEL, PARTNER, ChannelMemberRole.MEMBER);
+            em.clear();
+
+            repository.incrementUnreadCountForOthers(TEAM_CHANNEL, CALLER);
+            repository.incrementUnreadCountForOthers(TEAM_CHANNEL, CALLER);
+            em.clear();
+
+            assertThat(repository.findByChannelIdAndUserId(TEAM_CHANNEL, PARTNER).orElseThrow().getUnreadCount())
+                    .isEqualTo(2);
+        }
+    }
 }

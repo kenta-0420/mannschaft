@@ -1,5 +1,6 @@
 package com.mannschaft.app.signage.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.signage.SignageErrorCode;
 import com.mannschaft.app.signage.SignageLayout;
@@ -27,6 +28,7 @@ public class SignageScreenService {
     private static final int MAX_SCREENS_PER_SCOPE = 10;
 
     private final SignageScreenRepository screenRepository;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTO 定義
@@ -86,6 +88,9 @@ public class SignageScreenService {
      */
     @Transactional
     public SignageScreenResponse createScreen(Long createdBy, CreateSignageScreenRequest req) {
+        // 認可: 対象スコープの ADMIN/DEPUTY_ADMIN のみ画面作成可能
+        accessControlService.checkAdminOrAbove(createdBy, req.scopeId(), req.scopeType());
+
         // スコープ内10画面制限チェック
         List<SignageScreenEntity> existing = screenRepository
                 .findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(req.scopeType(), req.scopeId());
@@ -137,13 +142,17 @@ public class SignageScreenService {
     /**
      * 画面を更新する。
      *
-     * @param id  画面ID
-     * @param req 更新リクエスト
+     * @param id     画面ID
+     * @param actor  操作者ユーザーID
+     * @param req    更新リクエスト
      * @return 更新後画面レスポンス
      */
     @Transactional
-    public SignageScreenResponse updateScreen(Long id, UpdateSignageScreenRequest req) {
+    public SignageScreenResponse updateScreen(Long id, Long actor, UpdateSignageScreenRequest req) {
         SignageScreenEntity entity = findScreenOrThrow(id);
+
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみ更新可能
+        accessControlService.checkAdminOrAbove(actor, entity.getScopeId(), entity.getScopeType());
 
         // managed entity を直接ミューテートして save することで id=null INSERT を防ぐ。
         // toBuilder().build() では @Builder が BaseEntity の id を引き継がず id=null になるため使用禁止。
@@ -163,11 +172,16 @@ public class SignageScreenService {
     /**
      * 画面を論理削除する。
      *
-     * @param id 画面ID
+     * @param id    画面ID
+     * @param actor 操作者ユーザーID
      */
     @Transactional
-    public void deleteScreen(Long id) {
+    public void deleteScreen(Long id, Long actor) {
         SignageScreenEntity entity = findScreenOrThrow(id);
+
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみ削除可能
+        accessControlService.checkAdminOrAbove(actor, entity.getScopeId(), entity.getScopeType());
+
         entity.softDelete();
         screenRepository.save(entity);
         log.info("サイネージ画面論理削除: id={}", id);

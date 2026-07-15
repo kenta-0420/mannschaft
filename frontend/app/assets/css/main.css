@@ -4,6 +4,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * サイドバー化 Phase3: AppShell/AppHeader のヘッダー高さトークン。
+ * team.vue/organization.vue の sticky位置・calc(100vh - ...) 計算もこの値を参照する
+ * （Tailwind の任意値記法 `h-[var(--app-header-h)]` 経由）。値そのものは旧固定値 4rem(64px)
+ * のまま据え置き、見た目は1pxも変えない。
+ */
+:root {
+  --app-header-h: 4rem;
+}
+
 html {
   scroll-behavior: smooth;
 }

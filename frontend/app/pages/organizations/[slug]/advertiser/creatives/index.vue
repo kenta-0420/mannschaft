@@ -39,7 +39,7 @@ const statusSeverityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' |
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.listCreatives(orgSlug, campaignId)
+    const res = await advertiserApi.listCreatives('ORGANIZATION', orgSlug, campaignId)
     creatives.value = res.data
   }
   catch {
@@ -76,7 +76,7 @@ async function handleSubmit() {
         imageUrl: form.value.imageUrl || undefined,
         destinationUrl: form.value.destinationUrl || undefined,
       }
-      const res = await advertiserApi.updateCreative(orgSlug, campaignId, editingCreative.value.id, body)
+      const res = await advertiserApi.updateCreative('ORGANIZATION', orgSlug, campaignId, editingCreative.value.id, body)
       const idx = creatives.value.findIndex(c => c.id === editingCreative.value!.id)
       if (idx !== -1) {
         creatives.value[idx] = res.data
@@ -90,7 +90,7 @@ async function handleSubmit() {
         imageUrl: form.value.imageUrl || undefined,
         destinationUrl: form.value.destinationUrl,
       }
-      const res = await advertiserApi.createCreative(orgSlug, campaignId, body)
+      const res = await advertiserApi.createCreative('ORGANIZATION', orgSlug, campaignId, body)
       creatives.value.unshift(res.data)
       toast.add({ severity: 'success', summary: t('advertising.creative.created_toast'), life: 3000 })
     }
@@ -116,7 +116,7 @@ function confirmDelete(creative: AdCreativeResponse) {
 
 async function handleDelete(creative: AdCreativeResponse) {
   try {
-    await advertiserApi.deleteCreative(orgSlug, campaignId, creative.id)
+    await advertiserApi.deleteCreative('ORGANIZATION', orgSlug, campaignId, creative.id)
     const idx = creatives.value.findIndex(c => c.id === creative.id)
     if (idx !== -1) {
       const current = creatives.value[idx]!
@@ -273,8 +273,5 @@ onMounted(load)
         />
       </template>
     </Dialog>
-
-    <!-- 削除確認ダイアログ -->
-    <ConfirmDialog />
   </div>
 </template>

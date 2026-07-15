@@ -26,6 +26,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 絞り込みラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 type ViewMode = 'single' | 'week'
 
 interface LineOption { id: number; name: string }
@@ -217,9 +220,13 @@ async function loadLines() {
     .map(l => ({ id: l.id ?? 0, name: l.meta?.name ?? '' }))
 }
 
-async function loadGrid() {
+/**
+ * グリッド取得。`silent: true` は KeepAlive 復帰時のサイレント再取得用で、loading フラグを
+ * 立てない（skeleton へ切り替わらない＝表示中のグリッドを保持したまま裏でデータだけ更新する）。
+ */
+async function loadGrid(opts?: { silent?: boolean }) {
   if (!selectedDate.value) return
-  loading.value = true
+  if (!opts?.silent) loading.value = true
   errorMsg.value = ''
   try {
     const start = dayjs(selectedDate.value).tz(userTimezone.value)
@@ -236,7 +243,7 @@ async function loadGrid() {
     errorMsg.value = t('reservation.grid.load_error')
   }
   finally {
-    loading.value = false
+    if (!opts?.silent) loading.value = false
   }
 }
 
@@ -248,10 +255,33 @@ function dayLabel(date: string): string {
   return dayjs(date).format('YYYY/MM/DD (ddd)')
 }
 
-watch([selectedDate, viewMode], loadGrid)
+// loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
+watch([selectedDate, viewMode], () => loadGrid())
 onMounted(async () => {
-  await loadLines()
+  await Promise.all([loadLines(), loadResourceName()])
   await loadGrid()
+})
+
+// KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
+// 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
+// 1回発火するため、onMounted 経路との二重fetchをフラグでガードする。
+let initialActivationDone = false
+onActivated(() => {
+  if (!initialActivationDone) {
+    initialActivationDone = true
+    return
+  }
+  void loadGrid({ silent: true })
+})
+
+// 予約直後に親（TeamReservationsPanel）からグリッドの空き状況を再読込させるための公開メソッド。
+// 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
+// 呼称設定変更後の再読込（onResourceNameChanged）からも呼ばれるため、呼称表示も合わせて最新化する。
+defineExpose({
+  refresh: async () => {
+    await loadResourceName()
+    await loadGrid()
+  },
 })
 </script>
 
@@ -264,7 +294,7 @@ onMounted(async () => {
         <DatePicker v-model="selectedDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ t('reservation.grid.staff_filter.label') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.grid.staff_filter.label', { resourceName }) }}</label>
         <MultiSelect
           v-model="selectedStaffIds"
           :options="staffOptions"
@@ -302,7 +332,7 @@ onMounted(async () => {
     <div class="rounded-lg bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
       <p class="flex items-start gap-1.5">
         <i class="pi pi-info-circle mt-0.5" />
-        <span>{{ t('reservation.grid.help') }}</span>
+        <span>{{ t('reservation.grid.help', { resourceName }) }}</span>
       </p>
       <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm border border-surface-200 text-green-600 dark:border-surface-600"><i class="pi pi-check text-[8px]" /></span>{{ t('reservation.grid.state.available') }}</span>

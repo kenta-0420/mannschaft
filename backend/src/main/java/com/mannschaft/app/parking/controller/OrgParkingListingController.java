@@ -74,7 +74,7 @@ public class OrgParkingListingController {
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody UpdateListingRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
-        ListingResponse result = listingService.update(spaceIds, id, request);
+        ListingResponse result = listingService.update(spaceIds, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -82,7 +82,7 @@ public class OrgParkingListingController {
     @Operation(summary = "組織譲渡希望削除")
     public ResponseEntity<Void> delete(@PathVariable Long organizationId, @PathVariable Long id) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
-        listingService.delete(spaceIds, id);
+        listingService.delete(spaceIds, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

@@ -23,6 +23,12 @@ const {
   isAdminOrDeputy,
   widgetVisibilitySettings,
 } = useOrgShellContext()
+
+// F09.19.10: Spotlight 掲載面用の数値スコープ ID。org.id は URL 識別子（slug）で数値化できないため、
+// BE が内部連携専用に公開する numericId（BIGINT）を文字列化して渡す（team 側の scopeNumericId と同型）。
+const orgScopeNumericId = computed(() =>
+  org.value?.numericId != null ? String(org.value.numericId) : undefined,
+)
 </script>
 
 <template>
@@ -31,6 +37,7 @@ const {
       :key="orgSlug"
       scope-type="organization"
       :scope-id="orgSlug"
+      :scope-numeric-id="orgScopeNumericId"
       :scope-name="displayName"
       :scope-template="org?.hierarchy?.orgType"
       :viewer-role="effectiveViewerRole"

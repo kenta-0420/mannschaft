@@ -88,7 +88,8 @@ public class SignageScreenController {
     public ApiResponse<SignageScreenResponse> updateScreen(
             @PathVariable Long id,
             @RequestBody UpdateSignageScreenRequest request) {
-        return ApiResponse.of(screenService.updateScreen(id, request));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(screenService.updateScreen(id, userId, request));
     }
 
     /**
@@ -98,7 +99,8 @@ public class SignageScreenController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteScreen(@PathVariable Long id) {
-        screenService.deleteScreen(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        screenService.deleteScreen(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -127,7 +129,8 @@ public class SignageScreenController {
      */
     @GetMapping("/{id}/tokens")
     public ApiResponse<List<SignageAccessTokenResponse>> listTokens(@PathVariable Long id) {
-        return ApiResponse.of(tokenService.listTokens(id));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(tokenService.listTokens(id, userId));
     }
 
     /**
@@ -137,7 +140,8 @@ public class SignageScreenController {
      */
     @DeleteMapping("/tokens/{tokenId}")
     public ResponseEntity<Void> revokeToken(@PathVariable Long tokenId) {
-        tokenService.revokeToken(tokenId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        tokenService.revokeToken(tokenId, userId);
         return ResponseEntity.noContent().build();
     }
 

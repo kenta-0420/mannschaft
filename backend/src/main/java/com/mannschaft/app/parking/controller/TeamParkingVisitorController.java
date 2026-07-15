@@ -77,7 +77,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約詳細")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> getReservation(
             @PathVariable Long teamId, @PathVariable Long id) {
-        VisitorReservationResponse result = reservationService.getDetail(id);
+        VisitorReservationResponse result = reservationService.getDetail(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -85,7 +85,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約承認")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> approveReservation(
             @PathVariable Long teamId, @PathVariable Long id) {
-        VisitorReservationResponse result = reservationService.approve(id, SecurityUtils.getCurrentUserId());
+        VisitorReservationResponse result = reservationService.approve(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -94,7 +94,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> rejectReservation(
             @PathVariable Long teamId, @PathVariable Long id,
             @RequestParam(required = false) String adminComment) {
-        VisitorReservationResponse result = reservationService.reject(id, SecurityUtils.getCurrentUserId(), adminComment);
+        VisitorReservationResponse result = reservationService.reject(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId(), adminComment);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -102,7 +102,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者チェックイン")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> checkIn(
             @PathVariable Long teamId, @PathVariable Long id) {
-        VisitorReservationResponse result = reservationService.checkIn(id);
+        VisitorReservationResponse result = reservationService.checkIn(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -110,14 +110,14 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約完了")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> complete(
             @PathVariable Long teamId, @PathVariable Long id) {
-        VisitorReservationResponse result = reservationService.complete(id);
+        VisitorReservationResponse result = reservationService.complete(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @DeleteMapping("/visitor-reservations/{id}")
     @Operation(summary = "チーム来場者予約キャンセル")
     public ResponseEntity<Void> cancelReservation(@PathVariable Long teamId, @PathVariable Long id) {
-        reservationService.cancel(id);
+        reservationService.cancel(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

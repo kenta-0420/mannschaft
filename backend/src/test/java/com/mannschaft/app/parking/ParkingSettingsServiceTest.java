@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.parking.dto.ParkingSettingsResponse;
 import com.mannschaft.app.parking.dto.UpdateSettingsRequest;
 import com.mannschaft.app.parking.entity.ParkingSettingsEntity;
@@ -26,7 +27,10 @@ class ParkingSettingsServiceTest {
 
     @Mock private ParkingSettingsRepository settingsRepository;
     @Mock private ParkingMapper parkingMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ParkingSettingsService service;
+
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("getSettings")
@@ -41,7 +45,7 @@ class ParkingSettingsServiceTest {
                     .willReturn(new ParkingSettingsResponse(null, "TEAM", 1L, 1, 3, 14, false));
 
             // When
-            ParkingSettingsResponse result = service.getSettings("TEAM", 1L);
+            ParkingSettingsResponse result = service.getSettings("TEAM", 1L, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -67,7 +71,7 @@ class ParkingSettingsServiceTest {
             UpdateSettingsRequest req = new UpdateSettingsRequest(2, 5, 30, true);
 
             // When
-            ParkingSettingsResponse result = service.updateSettings("TEAM", 1L, req);
+            ParkingSettingsResponse result = service.updateSettings("TEAM", 1L, req, USER_ID);
 
             // Then
             assertThat(result).isNotNull();

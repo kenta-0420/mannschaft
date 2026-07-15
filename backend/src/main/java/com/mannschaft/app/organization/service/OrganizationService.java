@@ -617,6 +617,7 @@ public class OrganizationService {
         return OrganizationResponse.builder()
                 .id(org.getSlug())
                 .slug(org.getSlug())
+                .numericId(org.getId())
                 .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
                         org.getName(), org.getNameKana(),
                         org.getNickname1(), org.getNickname2()))

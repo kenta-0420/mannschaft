@@ -8,9 +8,12 @@
  * 閲覧専用で表示する。書き込み・操作系ボタンは一切置かない（後見切替＝acting-as とは別の軽量導線）。
  *
  * 認可は BE 側で GuardianshipSwitchService.evaluateSwitch を再利用（12歳未満のみ許可）。
- * - 403 GUARDIANSHIP_SWITCH_AGE_LOCKED: 12歳以上（自立段階）で対象外
- * - 403 GUARDIANSHIP_LINK_NOT_FOUND: 保護者リンクなし（列挙不可のため他人の子も同一エラー）
+ * BE の実際の error.code は MembershipBillingErrorCode（F08.9）の wire code であり、
+ * enum 名（GUARDIANSHIP_SWITCH_AGE_LOCKED 等）ではなく MEMBERSHIP_BILLING_xxx が返る。
+ * - 403 MEMBERSHIP_BILLING_004（enum: GUARDIANSHIP_SWITCH_AGE_LOCKED）: 12歳以上（自立段階）で対象外
+ * - 403 MEMBERSHIP_BILLING_005（enum: GUARDIANSHIP_LINK_NOT_FOUND）: 保護者リンクなし（列挙不可のため他人の子も同一エラー）
  * いずれも握りつぶさず、専用の案内 UI で正直に表示する（対処療法禁止）。
+ * 旧 enum 名での照合も後方互換として残す（将来 BE がコード種別を変更しても壊れないため）。
  */
 import dayjs from 'dayjs'
 import type {
@@ -54,6 +57,14 @@ const proxyActions = ref<GuardianProxyActionItem[]>([])
 function extractErrorCode(err: unknown): string | null {
   return (err as { data?: { error?: { code?: string } } })?.data?.error?.code ?? null
 }
+
+/**
+ * BE 実コード（MembershipBillingErrorCode の wire code）を正として写像する。
+ * 旧 enum 名（GUARDIANSHIP_SWITCH_AGE_LOCKED 等）も後方互換として残す（将来 BE 側の
+ * コード種別変更に追随できるよう二重で受ける。対処療法ではなく実コード優先の根治写像）。
+ */
+const AGE_LOCKED_ERROR_CODES = new Set(['MEMBERSHIP_BILLING_004', 'GUARDIANSHIP_SWITCH_AGE_LOCKED'])
+const LINK_NOT_FOUND_ERROR_CODES = new Set(['MEMBERSHIP_BILLING_005', 'GUARDIANSHIP_LINK_NOT_FOUND'])
 
 function attendanceStatusLabel(status: string | undefined): string {
   if (!status) return ''
@@ -100,9 +111,9 @@ async function load() {
     proxyActions.value = proxyRes.data?.items ?? []
   } catch (err) {
     const code = extractErrorCode(err)
-    if (code === 'GUARDIANSHIP_SWITCH_AGE_LOCKED') {
+    if (code && AGE_LOCKED_ERROR_CODES.has(code)) {
       forbiddenReason.value = 'AGE_LOCKED'
-    } else if (code === 'GUARDIANSHIP_LINK_NOT_FOUND') {
+    } else if (code && LINK_NOT_FOUND_ERROR_CODES.has(code)) {
       forbiddenReason.value = 'LINK_NOT_FOUND'
     } else {
       // 想定外のエラーは症状を隠さず、画面上にも明示したうえでトースト表示する。
@@ -161,7 +172,7 @@ onMounted(load)
       <div class="flex flex-col items-center gap-3 py-8 text-center">
         <i class="pi pi-exclamation-triangle text-3xl text-surface-400" aria-hidden="true" />
         <p class="text-sm text-surface-500">{{ $t('proxy.guardianship.watch.loadError') }}</p>
-        <Button :label="$t('proxy.guardianship.switch.startButton')" icon="pi pi-refresh" text @click="load" />
+        <Button :label="$t('proxy.guardianship.watch.retryButton')" icon="pi pi-refresh" text @click="load" />
       </div>
     </SectionCard>
 

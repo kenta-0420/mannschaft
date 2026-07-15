@@ -46,7 +46,8 @@ public class OrgPropertyListingController {
             @RequestParam(required = false) String listingType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PropertyListingResponse> result = listingService.listByOrganization(orgId, status, listingType, PageRequest.of(page, Math.min(size, 50)));
+        Page<PropertyListingResponse> result = listingService.listByOrganization(
+                SecurityUtils.getCurrentUserId(), orgId, status, listingType, PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -65,7 +66,7 @@ public class OrgPropertyListingController {
     @Operation(summary = "物件詳細")
     public ResponseEntity<ApiResponse<PropertyListingResponse>> get(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.getByOrganization(orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(listingService.getByOrganization(SecurityUtils.getCurrentUserId(), orgId, id)));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/property-listings/{id}")
@@ -73,13 +74,14 @@ public class OrgPropertyListingController {
     public ResponseEntity<ApiResponse<PropertyListingResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdatePropertyListingRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.updateForOrganization(orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                listingService.updateForOrganization(SecurityUtils.getCurrentUserId(), orgId, id, request)));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/property-listings/{id}")
     @Operation(summary = "物件削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        listingService.deleteForOrganization(orgId, id);
+        listingService.deleteForOrganization(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -96,6 +98,6 @@ public class OrgPropertyListingController {
     @Operation(summary = "問い合わせ一覧")
     public ResponseEntity<ApiResponse<List<InquiryResponse>>> listInquiries(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.listInquiries(id)));
+        return ResponseEntity.ok(ApiResponse.of(listingService.listInquiries(SecurityUtils.getCurrentUserId(), id)));
     }
 }

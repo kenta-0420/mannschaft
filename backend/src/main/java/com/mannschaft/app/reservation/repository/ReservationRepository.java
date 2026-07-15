@@ -12,8 +12,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 予約リポジトリ。
@@ -21,31 +23,53 @@ import java.util.Optional;
 public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
 
     /**
-     * チームの予約をステータス指定でページング取得する。
+     * チームの予約をステータス指定でページング取得する（代表行のみ・F03.4.3 §5.6 #10）。
+     *
+     * <p>グループの兄弟行を N 行並べず「グループ=1 件」で返すため {@code is_group_primary = TRUE} に絞る。
+     * 単枠予約（group_id NULL）は常に TRUE のため従来どおり全件現れる（挙動後退ゼロ）。</p>
      */
-    Page<ReservationEntity> findByTeamIdAndStatusOrderByBookedAtDesc(
+    Page<ReservationEntity> findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
             Long teamId, ReservationStatus status, Pageable pageable);
 
     /**
-     * チームの予約をページング取得する。
+     * チームの予約をページング取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    Page<ReservationEntity> findByTeamIdOrderByBookedAtDesc(Long teamId, Pageable pageable);
+    Page<ReservationEntity> findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(Long teamId, Pageable pageable);
 
     /**
-     * ユーザーの予約をステータス指定で取得する。
+     * ユーザーの予約をステータス指定で取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    List<ReservationEntity> findByUserIdAndStatusOrderByBookedAtDesc(
+    List<ReservationEntity> findByUserIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
             Long userId, ReservationStatus status);
 
     /**
-     * ユーザーの予約一覧を取得する。
+     * ユーザーの予約一覧を取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    List<ReservationEntity> findByUserIdOrderByBookedAtDesc(Long userId);
+    List<ReservationEntity> findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(Long userId);
 
     /**
      * IDとチームIDで予約を取得する。
      */
     Optional<ReservationEntity> findByIdAndTeamId(Long id, Long teamId);
+
+    // ===== F03.4.3 機能G: 予約グループ（案(b) 兄弟行方式）=====
+
+    /**
+     * グループの兄弟行をチームスコープで取得する（F03.4.3 §5.1。
+     * 他チームの groupId は空 → 404 = RESERVATION_040 で存在秘匿）。
+     */
+    List<ReservationEntity> findByGroupIdAndTeamIdOrderById(UUID groupId, Long teamId);
+
+    /**
+     * 複数グループの「枠数・末尾枠終了時刻」を 1 クエリで集約する
+     * （一覧の {@code GroupSummaryDto} 一括解決・N+1 回避・F03.4.3 §5.6 #10）。
+     *
+     * @return {@code [groupId(UUID), count(Long), maxEndTime(LocalTime)]} の配列リスト
+     */
+    @Query("SELECT r.groupId, COUNT(r), MAX(s.endTime) FROM ReservationEntity r, ReservationSlotEntity s "
+            + "WHERE r.reservationSlotId = s.id AND r.groupId IN :groupIds "
+            + "GROUP BY r.groupId")
+    List<Object[]> aggregateGroupSummaries(@Param("groupIds") Collection<UUID> groupIds);
 
     /**
      * IDとユーザーIDで予約を取得する。
@@ -88,16 +112,17 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("statuses") List<ReservationStatus> statuses);
 
     /**
-     * チームの予約統計: ステータス別件数を取得する。
+     * チームの予約統計: ステータス別件数を取得する（代表行のみ・F03.4.3 §5.6 #4。
+     * グループ=1 予約で数え、兄弟行による件数水増しを防ぐ）。
      */
-    long countByTeamIdAndStatus(Long teamId, ReservationStatus status);
+    long countByTeamIdAndStatusAndIsGroupPrimaryTrue(Long teamId, ReservationStatus status);
 
     /**
      * F10.1.1 / P3b: 指定チームの「指定時刻以降に作成された」指定ステータス予約の件数を取得する
-     * （管理者レンズ ⑤ ADMIN_TEAM_ALERT の「新規予約」用・本日 CONFIRMED）。
+     * （管理者レンズ ⑤ ADMIN_TEAM_ALERT の「新規予約」用・本日 CONFIRMED。代表行のみ・F03.4.3 §5.6 #4）。
      * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
      */
-    long countByTeamIdAndStatusAndCreatedAtGreaterThanEqual(
+    long countByTeamIdAndStatusAndIsGroupPrimaryTrueAndCreatedAtGreaterThanEqual(
             Long teamId, ReservationStatus status, LocalDateTime createdAtFrom);
 
     /**
@@ -119,6 +144,8 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
             "WHERE r.reservationSlotId = s.id " +
             "AND r.userId = :userId AND r.status = 'CONFIRMED' " +
+            // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ（単枠は常に TRUE で従来どおり）
+            "AND r.isGroupPrimary = TRUE " +
             "AND (s.slotDate > :today OR (s.slotDate = :today AND s.startTime >= :nowTime)) " +
             "ORDER BY s.slotDate ASC, s.startTime ASC")
     List<ReservationEntity> findUpcomingByUserId(
@@ -127,9 +154,9 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("nowTime") LocalTime nowTime);
 
     /**
-     * 指定期間内のチームの予約件数を取得する。
+     * 指定期間内のチームの予約件数を取得する（代表行のみ・F03.4.3 §5.6 #4）。
      */
-    long countByTeamIdAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
+    long countByTeamIdAndIsGroupPrimaryTrueAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
 
     /**
      * F10.1.1 / P3b Wave2: 指定チームの「指定ステータス群」かつ「booked_at が半開区間 [from, to) 内」の
@@ -140,6 +167,8 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     @Query("SELECT COUNT(r) FROM ReservationEntity r " +
             "WHERE r.teamId = :teamId AND r.status IN :statuses " +
+            // F03.4.3 §5.6 #4: グループ=1 予約で数える（代表行絞り）
+            "AND r.isGroupPrimary = TRUE " +
             "AND r.bookedAt >= :from AND r.bookedAt < :to")
     long countByTeamIdAndStatusInAndBookedAtRange(
             @Param("teamId") Long teamId,
@@ -165,6 +194,7 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             "WHERE r.team_id IN (:teamIds) " +
             "AND r.status = 'CONFIRMED' " +
             "AND r.created_at >= :todayStart " +
+            "AND r.is_group_primary = TRUE " + // F03.4.3 §5.6 #4: グループ=1 予約で数える
             "AND r.deleted_at IS NULL " +
             "GROUP BY r.team_id",
             nativeQuery = true)
@@ -181,6 +211,7 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             "SELECT r.team_id, COUNT(*) as cnt FROM reservations r " +
             "WHERE r.team_id IN (:teamIds) " +
             "AND r.status = 'PENDING' " +
+            "AND r.is_group_primary = TRUE " + // F03.4.3 §5.6 #4: グループ=1 予約で数える
             "AND r.deleted_at IS NULL " +
             "GROUP BY r.team_id",
             nativeQuery = true)
@@ -226,5 +257,41 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("resourceId") Long resourceId,
             @Param("startTimeInclusive") LocalTime startTimeInclusive,
             @Param("endTimeExclusive") LocalTime endTimeExclusive,
+            @Param("statuses") List<ReservationStatus> statuses);
+
+    /**
+     * 機能B（§5.B・§4.B）: <b>全日</b>予約不可枠と該当する active 予約を取得する（時刻条件なし）。
+     *
+     * <p>全日ブロック（{@code start/end 両 null}）は「その日・その軸の全 slot」に一致するため、
+     * 時間帯 overlap 判定を一切行わず {@code teamId × blockedDate × 対象軸 × status} だけで引く。</p>
+     *
+     * <h2>なぜ時刻条件付きクエリと分けるのか（実機E2E発見バグ・2026-07-10 根治）</h2>
+     * <p>従来は全日ブロックを {@code [LocalTime.MIN, LocalTime.MAX]} に展開して
+     * {@link #findActiveReservationsOverlappingUnavailability} の半開区間判定
+     * （{@code s.startTime < :endTimeExclusive}）に渡していた。だが {@code reservation_slots.start_time}
+     * /{@code end_time} は MySQL の {@code TIME} 型（<b>小数秒精度 0</b>）であり、
+     * バインドされた {@code LocalTime.MAX}（{@code 23:59:59.999999999}）が実 DB で秒に丸められ
+     * （繰り上がり）、{@code s.startTime < :endTimeExclusive} が全 slot で {@code false} になって
+     * <b>overlap を検出できない</b>（impact の affectedCount が常に 0・409 ガードすり抜け）バグがあった。
+     * 全日は時刻トリックを完全に排除し、日付＋軸一致だけで引くことで根治する。</p>
+     *
+     * <p>{@code ReservationEntity} / {@code ReservationSlotEntity} 双方の {@code @SQLRestriction}
+     * （{@code deleted_at IS NULL}）により論理削除済みは自動除外される。</p>
+     *
+     * @param teamId      チームID
+     * @param blockedDate 予約不可にしたい日（全日）
+     * @param resourceId  STAFF 軸のときの対象スタッフ user_id。TEAM 軸のときは null（全 slot）
+     * @param statuses    active とみなすステータス（PENDING / CONFIRMED）
+     * @return その日の全 slot に紐づく active 予約のリスト
+     */
+    @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.teamId = :teamId AND r.status IN :statuses " +
+            "AND s.slotDate = :blockedDate " +
+            "AND (:resourceId IS NULL OR s.staffUserId = :resourceId)")
+    List<ReservationEntity> findActiveReservationsOnDate(
+            @Param("teamId") Long teamId,
+            @Param("blockedDate") LocalDate blockedDate,
+            @Param("resourceId") Long resourceId,
             @Param("statuses") List<ReservationStatus> statuses);
 }

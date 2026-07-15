@@ -1,5 +1,6 @@
 package com.mannschaft.app.webhook.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.webhook.ApiKeyScopePermission;
@@ -38,6 +39,7 @@ public class ApiKeyService {
     // 既存の @Bean passwordEncoder (AuthConfig) を注入
     private final PasswordEncoder passwordEncoder;
     private final ApiKeyRepository apiKeyRepository;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -115,6 +117,9 @@ public class ApiKeyService {
      */
     @Transactional
     public ApiResponse<ApiKeyIssuedResponse> issueApiKey(Long createdBy, IssueApiKeyRequest req) {
+        // 認可: 作成先スコープの ADMIN/DEPUTY_ADMIN のみ発行可能
+        accessControlService.checkAdminOrAbove(createdBy, req.scopeId(), req.scopeType());
+
         // スコープ内APIキー数チェック
         int count = apiKeyRepository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(req.scopeType(), req.scopeId());
         if (count >= MAX_API_KEYS_PER_SCOPE) {
@@ -157,11 +162,15 @@ public class ApiKeyService {
     /**
      * スコープに紐づくAPIキー一覧を取得する（keyHashは除外）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
      * @return APIキー一覧
      */
-    public ApiResponse<List<ApiKeyResponse>> listApiKeys(String scopeType, Long scopeId) {
+    public ApiResponse<List<ApiKeyResponse>> listApiKeys(Long actorUserId, String scopeType, Long scopeId) {
+        // 認可: 一覧取得先スコープの ADMIN/DEPUTY_ADMIN のみ閲覧可能（クエリ引数のscopeがそのまま照会対象）
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         // スコープに紐づくAPIキー一覧を直接取得（論理削除済みを除く）
         List<ApiKeyEntity> entities = apiKeyRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
         List<ApiKeyResponse> responses = entities.stream()
@@ -173,11 +182,15 @@ public class ApiKeyService {
     /**
      * APIキーを失効（論理削除）する。
      *
-     * @param id APIキーID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param id          APIキーID
      */
     @Transactional
-    public void revokeApiKey(Long id) {
+    public void revokeApiKey(Long actorUserId, Long id) {
+        // ★BOLA対策: pathのidから対象entityを先にfetchし、entity由来のscopeで認可する
         ApiKeyEntity entity = findApiKeyOrThrow(id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
+
         entity.softDelete();
         apiKeyRepository.save(entity);
         log.info("APIキー失効: id={}", id);

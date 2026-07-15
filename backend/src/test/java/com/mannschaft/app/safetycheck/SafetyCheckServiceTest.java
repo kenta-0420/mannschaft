@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -61,6 +62,9 @@ class SafetyCheckServiceTest {
 
     @Mock
     private NotificationHelper notificationHelper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;
@@ -399,7 +403,7 @@ class SafetyCheckServiceTest {
                     .willReturn(1L);
 
             // When
-            SafetyCheckResultsResponse result = safetyCheckService.getResults(SAFETY_CHECK_ID);
+            SafetyCheckResultsResponse result = safetyCheckService.getResults(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result.getSafetyCheckId()).isEqualTo(SAFETY_CHECK_ID);
@@ -430,7 +434,7 @@ class SafetyCheckServiceTest {
                     .willReturn(List.of(1L, 2L));
 
             // When
-            List<UnrespondedUserResponse> result = safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID);
+            List<UnrespondedUserResponse> result = safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result).isEmpty();
@@ -443,7 +447,7 @@ class SafetyCheckServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID))
+            assertThatThrownBy(() -> safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

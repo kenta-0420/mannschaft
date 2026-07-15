@@ -5,6 +5,7 @@ import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourEntry;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
@@ -157,10 +158,10 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
             // Then
-            assertThat(result).hasSize(1);
+            assertThat(result.hours()).hasSize(1);
             verify(businessHourRepository).save(existingEntity);
         }
 
@@ -190,10 +191,11 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
-            // Then
-            assertThat(result).hasSize(1);
+            // Then: 新規行は変更扱い（生成対象）。TUE が changedDays に含まれる。
+            assertThat(result.hours()).hasSize(1);
+            assertThat(result.changedDays()).containsExactly(ReservationDayOfWeek.TUE);
             verify(businessHourRepository).save(any(ReservationBusinessHourEntity.class));
         }
 
@@ -235,11 +237,57 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
             // Then
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getBusinessStatus().isOpen()).isFalse();
+            assertThat(result.hours()).hasSize(1);
+            assertThat(result.hours().get(0).getBusinessStatus().isOpen()).isFalse();
+        }
+
+        @Test
+        @DisplayName("S-6②: 変更のなかった曜日は changedDays に含めない（差分生成 scope の観測点）")
+        void 営業時間更新_無変更曜日は差分に含めない() {
+            // Given: 現行 MON 10:00-19:00 と<b>完全一致</b>する PUT（isOpen/open/close すべて不変）
+            ReservationBusinessHourEntity existing = ReservationBusinessHourEntity.builder()
+                    .teamId(TEAM_ID).dayOfWeek("MON").isOpen(true)
+                    .openTime(LocalTime.of(10, 0)).closeTime(LocalTime.of(19, 0)).build();
+            BusinessHourEntry entry = new BusinessHourEntry(
+                    "MON", true, LocalTime.of(10, 0), LocalTime.of(19, 0));
+            BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of(entry));
+            given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "MON"))
+                    .willReturn(Optional.of(existing));
+            given(businessHourRepository.save(existing)).willReturn(existing);
+            given(reservationMapper.toBusinessHourResponseList(any()))
+                    .willReturn(List.of(createBusinessHourResponse()));
+
+            // When
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
+
+            // Then: 差分なし → changedDays 空（当該曜日の生成は走らない）
+            assertThat(result.changedDays()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("S-6②: 時間帯を変更した曜日のみ changedDays に入る（拡大の自動追い付き対象）")
+        void 営業時間更新_変更曜日のみ差分に入る() {
+            // Given: 現行 MON 10:00-18:00 → PUT で 9:00-18:00 に拡大（open_time 変更）
+            ReservationBusinessHourEntity existing = ReservationBusinessHourEntity.builder()
+                    .teamId(TEAM_ID).dayOfWeek("MON").isOpen(true)
+                    .openTime(LocalTime.of(10, 0)).closeTime(LocalTime.of(18, 0)).build();
+            BusinessHourEntry entry = new BusinessHourEntry(
+                    "MON", true, LocalTime.of(9, 0), LocalTime.of(18, 0));
+            BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of(entry));
+            given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "MON"))
+                    .willReturn(Optional.of(existing));
+            given(businessHourRepository.save(existing)).willReturn(existing);
+            given(reservationMapper.toBusinessHourResponseList(any()))
+                    .willReturn(List.of(createBusinessHourResponse()));
+
+            // When
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
+
+            // Then
+            assertThat(result.changedDays()).containsExactly(ReservationDayOfWeek.MON);
         }
     }
 
@@ -525,15 +573,14 @@ class ReservationBusinessHourServiceTest {
         @Test
         @DisplayName("B-6: overlap する active 予約が存在すると RESERVATION_027（409）で拒否し blocked_times に書き込まない")
         void B6_409ガード() {
-            // Given: 全日 TEAM 枠 → [MIN, MAX] で query → active 予約 1 件ヒット。
+            // Given: 全日 TEAM 枠 → 時刻条件なしの findActiveReservationsOnDate で active 予約 1 件ヒット。
+            // （全日は LocalTime.MAX を使わない根治後の経路。実DBの TIME 型丸め問題を排除・2026-07-10）
             BlockedTimeRequest request = new BlockedTimeRequest(
                     LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
-            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
+            given(reservationRepository.findActiveReservationsOnDate(
                     org.mockito.ArgumentMatchers.eq(TEAM_ID),
                     org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 4, 2)),
                     org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.eq(LocalTime.MIN),
-                    org.mockito.ArgumentMatchers.eq(LocalTime.MAX),
                     org.mockito.ArgumentMatchers.eq(ACTIVE)))
                     .willReturn(List.of(reservation(10L, 1L, 789L, ReservationStatus.CONFIRMED)));
 
@@ -551,9 +598,10 @@ class ReservationBusinessHourServiceTest {
         void B6_終端状態は登録可() {
             BlockedTimeRequest request = new BlockedTimeRequest(
                     LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
+            // 全日ブロックは時刻条件なしの findActiveReservationsOnDate を通る（根治後の経路）。
             // ACTIVE(PENDING/CONFIRMED) のクエリは 0 件（終端状態は observ 点である本クエリに含まれない）。
-            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
-                    any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any()))
+            given(reservationRepository.findActiveReservationsOnDate(
+                    any(), any(), org.mockito.ArgumentMatchers.isNull(), any()))
                     .willReturn(List.of());
             ReservationBlockedTimeEntity saved = createBlockedTimeEntity();
             given(blockedTimeRepository.save(any(ReservationBlockedTimeEntity.class))).willReturn(saved);

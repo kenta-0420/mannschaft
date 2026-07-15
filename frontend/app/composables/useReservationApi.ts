@@ -8,8 +8,17 @@ type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+type BusinessHoursUpdateRequest = components['schemas']['BusinessHoursUpdateRequest']
 // 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
+// F03.4.4（機能H・#2189）で axis=LINE・from/to レンジ・menuId フィルターへ拡張済み（後方互換）。
 type ReservationGridResponse = components['schemas']['ReservationGridResponse']
+/** グリッドの列軸。既定 STAFF（従来動作）／LINE（列=予約対象）。 */
+export type GridAxis = 'STAFF' | 'LINE'
+// F03.4.3（機能G・予約グループ・#2190）は BE で CRUD API を追加済み。
+type CreateReservationGroupRequest = components['schemas']['CreateReservationGroupRequest']
+type ReservationGroupResponse = components['schemas']['ReservationGroupResponse']
+type CancelReservationGroupRequest = components['schemas']['CancelReservationGroupRequest']
+type ReservationGroupCancelResponse = components['schemas']['ReservationGroupCancelResponse']
 // 機能D（予約通知メール宛先）は BE #2110 でフリーミアム件数ゲート付きの CRUD を追加済み。
 type NotificationRecipientListResponse = components['schemas']['NotificationRecipientListResponse']
 type NotificationRecipientResponse = components['schemas']['NotificationRecipientResponse']
@@ -21,13 +30,17 @@ type CreateReservationMenuRequest = components['schemas']['CreateReservationMenu
 type UpdateReservationMenuRequest = components['schemas']['UpdateReservationMenuRequest']
 type ReservationMenuDeleteResponse = components['schemas']['ReservationMenuDeleteResponse']
 // 週間テンプレート・一括生成は BE #2161 で追加済み（F03.4.2）。
-type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type SlotTemplateListResponse = components['schemas']['SlotTemplateListResponse']
 type CreateSlotTemplateRequest = components['schemas']['CreateSlotTemplateRequest']
 type UpdateSlotTemplateRequest = components['schemas']['UpdateSlotTemplateRequest']
 type DeleteSlotTemplateResponse = components['schemas']['DeleteSlotTemplateResponse']
 type GenerateSlotsRequest = components['schemas']['GenerateSlotsRequest']
 type GenerateSlotsResponse = components['schemas']['GenerateSlotsResponse']
+// F03.4.5 §3.1/§3.3.2（BE #2204）: テンプレ保存＝同期自動生成の統合レスポンス・単日テンプレ適用。
+type SlotTemplateSaveResponse = components['schemas']['SlotTemplateSaveResponse']
+type GenerateSingleDayRequest = components['schemas']['GenerateSingleDayRequest']
+// F03.4.5 §3.2（BE #2204）: 営業時間 PUT の保存＋同期自動生成の統合レスポンス（GET は BusinessHourResponse[] のまま不変）。
+type BusinessHoursSaveResponse = components['schemas']['BusinessHoursSaveResponse']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -39,6 +52,18 @@ export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']
  * （写経元 ScheduleEventRecurrenceInput.vue の曜日トグルは 'MONDAY' フルネームを emit するため注意）。
  */
 export type ReservationDayOfWeekCode = NonNullable<CreateSlotTemplateRequest['dayOfWeek']>
+
+/**
+ * 営業時間一括更新の1曜日分入力。BE `BusinessHoursUpdateRequest.hours[]`（= `{hours:[...]}` でラップ）と
+ * 揃える。dayOfWeek は `ReservationDayOfWeekCode`（3文字大文字 'MON'..'SUN'）を使う。
+ * isClosed ではなく isOpen（BE の実フィールド名）で表現する点に注意。
+ */
+export interface BusinessHoursUpdateHourInput {
+  dayOfWeek: ReservationDayOfWeekCode
+  isOpen: boolean
+  openTime?: string
+  closeTime?: string
+}
 
 export function useReservationApi() {
   const api = useApi()
@@ -122,11 +147,19 @@ export function useReservationApi() {
   }
 
   // 機能C: 複数予約対象の空きグリッド（列=予約対象／セル=時間帯 state）。
-  // BE: GET /reservation-slots/grid は date（単日・必須）＋ staffUserIds（CSV・任意）。
-  // 週表示は FE がこの単日 API を7日分呼び出して構成する（レスポンスDTOは2次元を保つ）。
-  async function getSlotGrid(teamId: string, params: { date: string; staffUserIds?: number[] }) {
+  // BE: GET /reservation-slots/grid は date（単日）または from/to（レンジ・最大7日・排他）＋
+  // axis（STAFF既定/LINE）＋ menuId（axis=LINE時のみ）＋ staffUserIds（CSV・任意）。
+  // F03.4.4（機能H）で axis=LINE・from/to レンジ・menuId フィルターへ拡張（既存 date 単日呼びは無変更で後方互換）。
+  async function getSlotGrid(
+    teamId: string,
+    params: { date?: string; from?: string; to?: string; axis?: GridAxis; menuId?: string; staffUserIds?: number[] },
+  ) {
     const query = new URLSearchParams()
-    query.set('date', params.date)
+    if (params.date) query.set('date', params.date)
+    if (params.from) query.set('from', params.from)
+    if (params.to) query.set('to', params.to)
+    if (params.axis) query.set('axis', params.axis)
+    if (params.menuId) query.set('menuId', params.menuId)
     if (params.staffUserIds && params.staffUserIds.length > 0) {
       query.set('staffUserIds', params.staffUserIds.join(','))
     }
@@ -190,6 +223,40 @@ export function useReservationApi() {
     return api(`${base(teamId)}/reservations/${reservationId}/no-show`, { method: 'POST' })
   }
 
+  // === 予約グループ（F03.4.3・機能G）===
+  // マトリックスUI（F03.4.4）のメニュー選択→連続枠確保からのみ呼ばれる。単枠（N=1・メニューなし）は
+  // 従来どおり createReservation を使う（グループAPIは使わない。§5.3 の確定フロー）。
+  async function createGroup(teamId: string, body: CreateReservationGroupRequest) {
+    return api<{ data: ReservationGroupResponse }>(`${base(teamId)}/reservation-groups`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function getGroup(teamId: string, groupId: string) {
+    return api<{ data: ReservationGroupResponse }>(`${base(teamId)}/reservation-groups/${groupId}`)
+  }
+
+  /**
+   * グループ全枠の一括キャンセル。グループ所属行（group_id 非 null）への単票キャンセルは
+   * 400=RESERVATION_042 で拒否されるため、一覧（ReservationList）はグループ行の操作を必ずこちらへ回す。
+   */
+  async function cancelGroup(teamId: string, groupId: string, cancelReason?: string) {
+    const body: CancelReservationGroupRequest = { cancelReason: cancelReason ?? undefined }
+    return api<{ data: ReservationGroupCancelResponse }>(
+      `${base(teamId)}/reservation-groups/${groupId}/cancel`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** グループ全枠の手動承認（PENDING→CONFIRMED）。理由は cancelGroup と同じく単票 400=042 回避。 */
+  async function confirmGroup(teamId: string, groupId: string) {
+    return api<{ data: ReservationGroupResponse }>(
+      `${base(teamId)}/reservation-groups/${groupId}/confirm`,
+      { method: 'POST' },
+    )
+  }
+
   async function updateAdminNote(teamId: string, reservationId: number, body: { note: string }) {
     return api(`${base(teamId)}/reservations/${reservationId}/admin-note`, {
       method: 'PATCH',
@@ -234,19 +301,22 @@ export function useReservationApi() {
   }
 
   async function getBusinessHours(teamId: string) {
+    // GET は F03.4.5 §3.2 で不変（BusinessHourResponse[] のまま）。PUT のみ応答型が変わる。
     return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`)
   }
 
-  async function updateBusinessHours(
-    teamId: string,
-    body: Array<{
-      dayOfWeek: number
-      openTime: string | null
-      closeTime: string | null
-      isClosed: boolean
-    }>,
-  ) {
-    return api(`${base(teamId)}/reservation-settings/business-hours`, { method: 'PUT', body })
+  /**
+   * 営業時間を一括更新する（ADMIN限定）。F03.4.5 §3.2: 保存＋「変更のあった曜日」の同期自動生成結果を
+   * `BusinessHoursSaveResponse{ hours, generation }` で受け取る（旧 `BusinessHourResponse[]` 直返しではない）。
+   */
+  async function updateBusinessHours(teamId: string, hours: BusinessHoursUpdateHourInput[]) {
+    // BE DTO は配列直渡しではなく { hours: [...] } でラップし、dayOfWeek は3文字大文字（'MON'..'SUN'）、
+    // 開閉フラグは isOpen（isClosed ではない）。生成型 BusinessHoursUpdateRequest と構造一致させる。
+    const body: BusinessHoursUpdateRequest = { hours }
+    return api<{ data: BusinessHoursSaveResponse }>(`${base(teamId)}/reservation-settings/business-hours`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   // BE: GET /reservation-settings/blocked-times は from/to（取得期間。ISO DATE）が必須クエリ。
@@ -374,15 +444,21 @@ export function useReservationApi() {
     return api<{ data: SlotTemplateListResponse }>(`${base(teamId)}/reservation-slot-templates`)
   }
 
+  /**
+   * テンプレを作成する（ADMIN限定）。F03.4.5 §3.1: 保存＋当該テンプレの同期自動生成（horizon 28日）の
+   * 結果を `SlotTemplateSaveResponse{ template, generation }` で受け取る（旧 `SlotTemplateResponse`
+   * 単体返しではない。「今すぐ枠を作成」を押さずに枠が生成される契約）。
+   */
   async function createSlotTemplate(teamId: string, body: CreateSlotTemplateRequest) {
-    return api<{ data: SlotTemplateResponse }>(`${base(teamId)}/reservation-slot-templates`, {
+    return api<{ data: SlotTemplateSaveResponse }>(`${base(teamId)}/reservation-slot-templates`, {
       method: 'POST',
       body,
     })
   }
 
+  /** テンプレを部分更新する（ADMIN限定）。応答は createSlotTemplate と同型の SlotTemplateSaveResponse。 */
   async function updateSlotTemplate(teamId: string, templateId: string, body: UpdateSlotTemplateRequest) {
-    return api<{ data: SlotTemplateResponse }>(
+    return api<{ data: SlotTemplateSaveResponse }>(
       `${base(teamId)}/reservation-slot-templates/${templateId}`,
       { method: 'PATCH', body },
     )
@@ -402,6 +478,18 @@ export function useReservationApi() {
   async function generateSlotsFromTemplates(teamId: string, body: GenerateSlotsRequest) {
     return api<{ data: GenerateSlotsResponse }>(
       `${base(teamId)}/reservation-slot-templates/generate`,
+      { method: 'POST', body },
+    )
+  }
+
+  /**
+   * 臨時営業（単日テンプレ適用・F03.4.5 §3.3.2）: 指定日に、指定曜日ダイヤ（省略時=実曜日）の
+   * active テンプレ構成で枠を一括生成する（営業時間突合をスキップ・冪等）。
+   * 例外日カレンダー（⑤タブ・第二隊 W2-1 後段）から呼ばれる想定のため、ここでは API 結線のみ用意する。
+   */
+  async function generateSingleDaySlots(teamId: string, body: GenerateSingleDayRequest) {
+    return api<{ data: GenerateSlotsResponse }>(
+      `${base(teamId)}/reservation-slot-templates/generate-single-day`,
       { method: 'POST', body },
     )
   }
@@ -450,6 +538,10 @@ export function useReservationApi() {
     completeReservation,
     rescheduleReservation,
     markNoShow,
+    createGroup,
+    getGroup,
+    cancelGroup,
+    confirmGroup,
     updateAdminNote,
     listReminders,
     createReminder,
@@ -476,6 +568,7 @@ export function useReservationApi() {
     updateSlotTemplate,
     deleteSlotTemplate,
     generateSlotsFromTemplates,
+    generateSingleDaySlots,
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,

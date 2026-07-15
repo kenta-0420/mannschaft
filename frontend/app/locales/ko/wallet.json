@@ -229,6 +229,8 @@
       "hint_brightness": "화면을 최대 밝기로 설정하면 읽기 쉬워집니다",
       "close": "닫기",
       "reload": "새로 고침",
+      "prev_card": "이전 카드",
+      "next_card": "다음 카드",
       "biometric_required": "제시 모드 시작에는 인증이 필요합니다",
       "biometric_failed": "인증에 실패했습니다",
       "no_cards": "이 그룹에 카드가 없습니다",

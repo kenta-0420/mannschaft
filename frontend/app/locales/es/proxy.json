@@ -116,6 +116,7 @@
         "linkTooltip": "Abrir la pantalla de cuidado (solo lectura)",
         "readonlyNotice": "Esta pantalla es solo de lectura. No se pueden realizar acciones ni respuestas aquí.",
         "loadError": "No se pudieron cargar los datos de cuidado",
+        "retryButton": "Reintentar",
         "sections": {
           "schedules": {
             "title": "Próximos horarios",

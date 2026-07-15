@@ -32,6 +32,11 @@ import java.util.List;
 
 /**
  * サブリースサービス。サブリースのCRUD・申請・承認・終了・決済一覧を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: approve は {@code request.getApplicationId()} を
+ * {@code subleaseApplicationRepository.findById} で無条件取得しており、対象 applicationId が
+ * 自スコープ外・別サブリースの申請でも紐付け検証なく承認・照合（scope串刺しBOLA兼データ破損）できた欠陥を
+ * 修正した。取得した申請の {@code subleaseId} が対象 subleaseId と一致するかを検証する。</p>
  */
 @Slf4j
 @Service
@@ -167,6 +172,7 @@ public class ParkingSubleaseService {
         }
 
         ParkingSubleaseApplicationEntity application = subleaseApplicationRepository.findById(request.getApplicationId())
+                .filter(app -> app.getSubleaseId().equals(subleaseId))
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.SUBLEASE_APPLICATION_NOT_FOUND));
         if (application.getStatus() != SubleaseApplicationStatus.PENDING) {
             throw new BusinessException(ParkingErrorCode.INVALID_SUBLEASE_APPLICATION_STATUS);

@@ -220,6 +220,5 @@ async function doArchive(theme: ReflectionThemeResponse) {
       :top-level-themes="topLevelThemes"
       @saved="onSaved"
     />
-    <ConfirmDialog />
   </div>
 </template>

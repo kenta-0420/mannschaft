@@ -41,6 +41,7 @@
       "audit_logs": "Registros de auditoría",
       "settings": "Configuración",
       "faqSettings": "Configuración de FAQ",
+      "billing": "Facturación y gestión de planes",
       "leagueTransfers": "Ascensos y descensos",
       "adminConsole": "Consola de administración"
     }

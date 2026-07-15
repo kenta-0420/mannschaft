@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
+import com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter;
 import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
@@ -55,6 +56,7 @@ public class SecurityConfig {
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final PublicApiRateLimitFilter publicApiRateLimitFilter;
     private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
+    private final PageViewBeaconRateLimitFilter pageViewBeaconRateLimitFilter;
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
@@ -115,6 +117,20 @@ public class SecurityConfig {
             adPublicEndpointRateLimitFilterRegistration() {
         FilterRegistrationBean<AdPublicEndpointRateLimitFilter> registration =
                 new FilterRegistrationBean<>(adPublicEndpointRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F10.8 計測ビーコン: PageViewBeaconRateLimitFilter の @Component 由来の
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterBefore）のみで動作させる。
+     */
+    @Bean
+    public FilterRegistrationBean<PageViewBeaconRateLimitFilter>
+            pageViewBeaconRateLimitFilterRegistration() {
+        FilterRegistrationBean<PageViewBeaconRateLimitFilter> registration =
+                new FilterRegistrationBean<>(pageViewBeaconRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -209,6 +225,9 @@ public class SecurityConfig {
                 // F02.10 §391 郵便番号検証ポリシー（認証不要・register 画面が未ログインで参照）
                 // フォーマット規則のみで機微情報なし。FE の単一真実源。
                 .requestMatchers(HttpMethod.GET, "/api/v1/postal-code/policies").permitAll()
+                // F10.8 アクセス解析 計測ビーコン（未認証ゲスト計測を許可・IP レート制限あり）。
+                // これが無いと Spring Security 既定 authenticated() で未ログイン POST が 401 になる（AC-02）。
+                .requestMatchers(HttpMethod.POST, "/api/v1/page-views").permitAll()
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
@@ -335,8 +354,21 @@ public class SecurityConfig {
                 ).permitAll()
                 // F01.9 年齢区分設定管理（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 束A（Wave 0）: SYSTEM_ADMIN 専用の admin 系 API（docs/security/01 §4）。
+                // requestMatcher 登録漏れにより、認証済みなら誰でも到達できていた（deny-by-default は
+                // 未認証しか弾かない）。以下 6 系統を SYSTEM_ADMIN 予約に格上げする。
+                // ※ per-scope（dashboard / permission-groups / business-alerts 等）はスコープ内 ADMIN が
+                //   使うため authenticated() を維持し、認可は Controller/Service 層（Wave1）で行う。
+                .requestMatchers("/api/v1/admin/stripe/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/reports/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/moderation/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/warning-re-reviews/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/users/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/onboarding/presets/**").hasRole("SYSTEM_ADMIN")
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
+                // F09.19.2 スポットライト配信（サービング/計測。content|view|visit すべて認証必須。§6.1/§11）
+                .requestMatchers("/api/v1/spotlight/**").authenticated()
                 // Phase E: GDPR パージ状況管理 API（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")
                 // 外部 webhook（署名検証で認証＝JWT 非依存。docs/security/01 §3.6）
@@ -412,6 +444,8 @@ public class SecurityConfig {
         http
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            // F10.8 計測ビーコン（IP・60req/分）。未認証を許容する公開 POST のため JWT 認証より前段で制限する。
+            .addFilterBefore(pageViewBeaconRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class)
             // F10.1 管理者変身: JWT 認証後に動かし、SYSTEM_ADMIN 判定後に principal を置き換える
             .addFilterAfter(adminImpersonationFilter, ProxyInputContextFilter.class)

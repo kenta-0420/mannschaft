@@ -1,6 +1,34 @@
 {
   "advertising": {
     "ad_label": "광고",
+    "account_settings": {
+      "title": "계정 설정",
+      "company_name": "회사 / 단체명",
+      "contact_email": "연락처 이메일",
+      "edit": "편집",
+      "save": "저장",
+      "cancel": "취소",
+      "saved": "계정 설정을 저장했습니다.",
+      "save_failed": "저장에 실패했습니다."
+    },
+    "spotlight": {
+      "hide_advertiser": "이 광고주 숨기기",
+      "hide_advertiser_done": "이 광고주의 광고를 숨겼습니다",
+      "report": "신고",
+      "upgrade_cta": "광고 없이 사용하기 →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "아마존에서 팀 용품 준비",
+          "description": "활동에 필요한 아이템을 합리적인 가격에 한번에 준비하세요.",
+          "cta": "지금 확인"
+        },
+        "rakuten": {
+          "title": "라쿠텐에서 팀 용품 준비",
+          "description": "포인트를 적립하며 필요한 물품을 알뜰하게 준비하세요.",
+          "cta": "라쿠텐에서 보기"
+        }
+      }
+    },
     "status": {
       "draft": "초안",
       "review": "심사 중",
@@ -117,7 +145,8 @@
         "step_audience": "타겟 설정",
         "step_review": "확인 및 제출",
         "submitted": "캠페인을 심사에 제출했습니다.",
-        "saved": "초안을 저장했습니다."
+        "saved": "초안을 저장했습니다.",
+        "draft_saved": "초안으로 저장되었습니다."
       },
       "advertiser_campaign_detail": {
         "title": "캠페인 상세",
@@ -233,7 +262,13 @@
         "column_status": "상태",
         "auto_suspend_candidate": "신고 집중",
         "auto_suspend_candidate_tooltip": "단기간에 여러 건의 신고가 모여 자동 중지 후보입니다.",
-        "go_campaign": "캠페인 상세로"
+        "go_campaign": "캠페인 상세로",
+        "type_messaging": "메시지형",
+        "type_operational": "운영형",
+        "status_update_failed": "상태 업데이트에 실패했습니다",
+        "mark_reviewing": "검토 중으로 변경",
+        "mark_resolved": "해결됨으로 변경",
+        "mark_dismissed": "기각"
       },
       "advertiser_campaign_report": {
         "title": "캠페인 성과 리포트",
@@ -475,7 +510,124 @@
       "nav": {
         "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다."
       },
-      "future_features_notice": "청구서 관리·신용 한도 신청·정기 보고서는 향후 단계에서 지원할 예정입니다.",
+      "dashboard": {
+        "not_registered_title": "広告主ダッシュボード",
+        "not_registered_description": "広告を出稿するには、まず広告主として登録してください。",
+        "register_button": "広告主登録",
+        "rate_simulator_button": "料金シミュレーター",
+        "pending_notice": "アカウントは審査中です。承認後に広告の配信を開始できます。",
+        "suspended_notice": "アカウントが停止されています。管理者にお問い合わせください。",
+        "kpi_campaigns": "キャンペーン",
+        "kpi_impressions": "インプレッション",
+        "kpi_clicks_ctr": "クリック / CTR",
+        "kpi_cost": "広告費（税抜）",
+        "budget_used_label": "予算消化 {pct}%",
+        "campaigns_section_title": "キャンペーン",
+        "column_campaign_name": "キャンペーン名",
+        "column_status": "ステータス",
+        "column_impressions": "imp",
+        "column_clicks": "click",
+        "column_ctr": "CTR",
+        "column_cost": "費用",
+        "nav_invoices": "請求書",
+        "nav_rate_simulator": "料金シミュレーター",
+        "nav_report_schedules": "定期レポート",
+        "nav_credit_limit_requests": "与信枠申請"
+      },
+      "invoices": {
+        "title": "請求書",
+        "status_all": "すべて",
+        "status_draft": "下書き",
+        "status_issued": "発行済み",
+        "status_paid": "支払済み",
+        "status_overdue": "期限超過",
+        "status_filter_placeholder": "ステータス",
+        "column_invoice_number": "請求書番号",
+        "column_invoice_month": "対象月",
+        "column_total_with_tax": "税込合計",
+        "column_status": "ステータス",
+        "column_due_date": "支払期限",
+        "detail_title": "請求書詳細",
+        "detail_invoice_number": "請求書番号:",
+        "detail_invoice_month": "対象月:",
+        "detail_status": "ステータス:",
+        "detail_due_date": "支払期限:",
+        "detail_column_campaign": "キャンペーン",
+        "detail_column_pricing_model": "課金",
+        "detail_column_impressions": "imp",
+        "detail_column_clicks": "click",
+        "detail_column_subtotal": "小計",
+        "subtotal_label": "小計:",
+        "tax_label": "消費税（{rate}%）:",
+        "total_label": "合計:"
+      },
+      "credit_limit_requests": {
+        "title": "与信枠 増額申請",
+        "create_button": "新規申請",
+        "column_requested_limit": "希望額",
+        "column_current_limit": "申請時の限度額",
+        "column_reason": "理由",
+        "column_status": "ステータス",
+        "column_review_note": "審査メモ",
+        "column_created_at": "申請日",
+        "dialog_title": "与信枠 増額申請",
+        "form_requested_limit_label": "希望額（円）",
+        "form_reason_label": "申請理由",
+        "form_reason_placeholder": "増額が必要な理由を記入してください",
+        "submit_button": "申請",
+        "created_toast": "増額申請を送信しました",
+        "create_failed_toast": "申請に失敗しました"
+      },
+      "report_schedules": {
+        "title": "定期レポート",
+        "create_button": "新規作成",
+        "empty": "定期レポートはまだ設定されていません。",
+        "frequency_weekly": "週次（毎週月曜）",
+        "frequency_monthly": "月次（毎月1日）",
+        "last_sent_label": "最終配信: {date}",
+        "dialog_title": "レポートスケジュール作成",
+        "form_frequency_label": "配信頻度",
+        "form_recipients_label": "配信先メール（カンマ区切り）",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
+        "submit_button": "作成",
+        "created_toast": "レポートスケジュールを作成しました",
+        "create_failed_toast": "作成に失敗しました",
+        "deleted_toast": "削除しました",
+        "delete_failed_toast": "削除に失敗しました"
+      },
+      "rate_simulator": {
+        "title": "料金シミュレーター",
+        "pricing_model_label": "課金モデル",
+        "pricing_model_cpm": "CPM（インプレッション課金）",
+        "pricing_model_cpc": "CPC（クリック課金）",
+        "days_label": "掲載日数",
+        "impressions_label": "インプレッション数",
+        "clicks_label": "クリック数",
+        "prefecture_label": "都道府県（任意）",
+        "prefecture_placeholder": "例: 東京都",
+        "template_label": "テンプレート（任意）",
+        "template_placeholder": "例: SPORTS",
+        "run_button": "シミュレーション実行",
+        "result_title": "見積もり結果",
+        "unit_price_label": "単価",
+        "total_cost_label": "税抜合計",
+        "total_with_tax_label": "税込合計",
+        "tax_amount_label": "消費税",
+        "daily_cost_label": "日次費用",
+        "min_daily_budget_label": "最低日予算",
+        "comparison_title": "他の料金との比較",
+        "comparison_column_label": "条件",
+        "comparison_column_unit_price": "単価",
+        "comparison_column_total_cost": "合計費用"
+      },
+      "campaign_detail": {
+        "default_title": "キャンペーン詳細",
+        "csv_button": "CSV",
+        "date_from_placeholder": "開始日",
+        "date_to_placeholder": "終了日",
+        "load_failed": "キャンペーンデータを取得できませんでした。",
+        "back_to_dashboard": "ダッシュボードに戻る"
+      },
       "register": {
         "title": "광고주 등록",
         "submit": "등록 신청",
@@ -528,6 +680,154 @@
           "step2": "ページ右下の「保存」ボタンをクリックする",
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
+      }
+    },
+    "operational_campaigns": {
+      "title": "배너 광고 캠페인",
+      "entry_tile": {
+        "title": "배너 광고 캠페인",
+        "description": "이미지 배너를 게재면에 배포하는 운영형 캠페인을 생성하고 관리합니다."
+      },
+      "list": {
+        "description": "이미지 배너 배포 캠페인을 생성하고 심사, 배포, 일시 정지를 관리합니다. 일일 예산은 참고 상한입니다.",
+        "create_button": "새로 만들기",
+        "empty": "운영형 캠페인이 아직 없습니다. 첫 캠페인을 만들어 보세요.",
+        "no_end_date": "무기한",
+        "report_suspended_badge": "신고로 중지됨",
+        "reject_reason_label": "반려 사유",
+        "link_creatives": "크리에이티브",
+        "link_report": "리포트",
+        "tab": {
+          "all": "전체",
+          "draft": "임시저장",
+          "pending_review": "심사 중",
+          "active": "배포 중",
+          "paused": "일시 정지",
+          "ended": "종료"
+        },
+        "col": {
+          "name": "캠페인명",
+          "status": "상태",
+          "pricing_model": "과금 방식",
+          "daily_budget": "일일 예산",
+          "period": "게재 기간",
+          "unit_price": "단가",
+          "actions": "작업"
+        }
+      },
+      "status": {
+        "draft": "임시저장",
+        "pending_review": "심사 중",
+        "active": "배포 중",
+        "paused": "일시 정지",
+        "ended": "종료"
+      },
+      "actions": {
+        "submit": "심사 제출",
+        "pause": "일시 정지",
+        "resume": "재개",
+        "end": "종료",
+        "edit": "편집"
+      },
+      "confirm": {
+        "submit": "이 캠페인을 심사에 제출하시겠습니까?",
+        "pause": "이 캠페인의 배포를 일시 정지하시겠습니까?",
+        "resume": "이 캠페인의 배포를 재개하시겠습니까?",
+        "end": "이 캠페인을 종료하시겠습니까? 종료하면 재개할 수 없습니다(불가역)."
+      },
+      "toast": {
+        "submit": "심사에 제출했습니다",
+        "pause": "배포를 일시 정지했습니다",
+        "resume": "배포를 재개했습니다",
+        "end": "캠페인을 종료했습니다",
+        "created": "캠페인을 생성했습니다",
+        "updated": "캠페인을 수정했습니다"
+      },
+      "form": {
+        "create_title": "배너 광고 캠페인 생성",
+        "edit_title": "배너 광고 캠페인 편집",
+        "name": "캠페인명",
+        "pricing_model": "과금 방식",
+        "rate_card": "요금 카드",
+        "rate_card_placeholder": "요금 카드 선택",
+        "no_rate_cards": "선택한 과금 방식에 사용 가능한 요금 카드가 없습니다.",
+        "daily_budget": "일일 예산",
+        "min_daily_budget": "최소 일일 예산",
+        "start_date": "게재 시작일",
+        "end_date": "게재 종료일",
+        "end_date_hint": "비워 두면 무기한 게재됩니다.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "일시 정지 중에는 변경할 수 없습니다.",
+        "daily_budget_notice": "일일 예산은 소진 페이싱의 참고 상한이며 엄격한 보장이 아닙니다. 실측값을 기준으로 과금됩니다.",
+        "save": "저장",
+        "cancel": "취소"
+      },
+      "errors": {
+        "load_failed": "캠페인을 불러오지 못했습니다",
+        "save_failed": "저장하지 못했습니다",
+        "transition_failed": "작업에 실패했습니다",
+        "rate_cards_load_failed": "요금 카드를 불러오지 못했습니다",
+        "name_required": "캠페인명을 입력하세요",
+        "name_max": "캠페인명은 200자 이내로 입력하세요",
+        "rate_card_required": "요금 카드를 선택하세요",
+        "daily_budget_required": "일일 예산을 입력하세요",
+        "daily_budget_min": "일일 예산은 최소값({min}) 이상이어야 합니다",
+        "start_date_required": "게재 시작일을 입력하세요",
+        "start_in_past": "게재 시작일은 오늘 이후여야 합니다",
+        "end_before_start": "게재 종료일은 시작일 이후여야 합니다"
+      },
+      "guide": {
+        "title": "배너 광고 캠페인 사용법",
+        "what": {
+          "title": "배너 광고 캠페인이란",
+          "body": "대시보드나 피드 같은 게재면에 이미지 배너를 배포하는 운영형 광고입니다. 과금 방식(CPM/CPC)과 요금 카드를 선택하고 일일 예산을 설정한 뒤 심사를 거쳐 배포합니다."
+        },
+        "flow": {
+          "title": "게재 흐름",
+          "step1": "요금 카드와 일일 예산을 지정해 캠페인 생성(임시저장)",
+          "step2": "크리에이티브(이미지 배너) 입고",
+          "step3": "심사 제출(캠페인과 크리에이티브 모두 승인되어야 배포 대상)",
+          "step4": "배포 시작. 필요에 따라 일시 정지·재개·종료"
+        },
+        "pricing": {
+          "title": "요금과 일일 예산",
+          "body": "요금 카드로 단가(CPM=노출 1000회당, CPC=클릭 1회당)가 정해집니다. 생성 시 단가가 고정되어 이후 요금 개정의 영향을 받지 않습니다. 일일 예산은 페이싱 참고 상한입니다."
+        },
+        "status": {
+          "title": "상태와 작업",
+          "body": "임시저장→심사 중→배포 중→일시 정지 순으로 전이합니다. 일시 정지 중에는 과금 단가 관련 항목(과금 방식·요금 카드·시작일)을 변경할 수 없습니다. 종료하면 재개할 수 없습니다."
+        }
+      },
+      "review": {
+        "title": "운영형 캠페인 심사",
+        "description": "심사 대기 중인 배너 광고 캠페인을 확인하고 승인 또는 반려합니다.",
+        "card_title": "운영형 캠페인 심사",
+        "card_description": "심사 대기 중인 배너 광고 캠페인을 확인합니다.",
+        "pending_count": "심사 대기",
+        "open_queue": "심사 큐 열기",
+        "open_detail": "상세 보기",
+        "back_to_dashboard": "심사 대시보드로 돌아가기",
+        "empty": "심사 대기 중인 캠페인이 없습니다.",
+        "load_failed": "심사 큐를 불러오지 못했습니다",
+        "detail_load_failed": "심사 상세를 불러오지 못했습니다",
+        "detail_title": "캠페인 심사 상세",
+        "advertiser": "광고주",
+        "scope": "범위",
+        "scope_organization": "조직",
+        "scope_team": "팀",
+        "unit_price": "단가",
+        "creatives": "크리에이티브",
+        "no_creatives": "입고된 크리에이티브가 없습니다.",
+        "approve": "승인",
+        "approve_confirm": "이 캠페인을 승인하여 배포 가능하게 하시겠습니까?",
+        "approved_toast": "캠페인을 승인했습니다",
+        "reject": "반려",
+        "reject_submit": "반려",
+        "reject_reason_label": "반려 사유",
+        "reject_reason_placeholder": "반려 사유를 입력하세요(1~500자)",
+        "rejected_toast": "캠페인을 반려했습니다",
+        "action_failed": "작업에 실패했습니다"
       }
     }
   }

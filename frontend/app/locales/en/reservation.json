@@ -168,9 +168,13 @@
     "tab": {
       "book": "Book",
       "list": "Reservations",
-      "line_manage": "Manage Bookable Items",
+      "my_reservations": "My Reservations",
+      "line_manage": "{resourceName} Management",
       "emergency_closure": "緊急休業",
       "team_page": "Reservations"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "Date & Time",
@@ -185,7 +189,7 @@
     },
     "field": {
       "date": "Date",
-      "line": "Bookable Item",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Description",
       "display_order": "Display Order",
@@ -209,22 +213,23 @@
       "full": "Full"
     },
     "button": {
-      "add_line": "Add Bookable Item",
-      "add_line_long": "Add Bookable Item",
+      "add_line": "Add {resourceName}",
+      "add_line_long": "Add {resourceName}",
       "save": "Save",
       "cancel": "Cancel",
       "reserve": "Reserve",
       "cancel_reservation": "Cancel",
       "back": "Back",
       "go_to_line_manage": "Go to manage reservation targets",
-      "manage_slots": "Manage slots"
+      "manage_slots": "Manage slots",
+      "delete_line": "Delete"
     },
     "dialog": {
       "title": "Confirm",
       "line_create": "Create Bookable Item",
       "line_edit": "Edit Bookable Item",
-      "line_create_long": "Add Bookable Item",
-      "line_edit_long": "Edit Bookable Item",
+      "line_create_long": "Add {resourceName}",
+      "line_edit_long": "Edit {resourceName}",
       "reserve_confirm": "Confirm Reservation",
       "cancel_confirm": "Cancel this reservation?",
       "line_delete_confirm": "Delete this bookable item?",
@@ -253,11 +258,11 @@
       "menu_delete_success": "Menu deleted",
       "menu_save_failed": "Failed to save",
       "menu_load_failed": "Failed to load menus",
-      "template_create_success": "Template created",
-      "template_update_success": "Template updated",
+      "template_create_partial": "{succeeded}/{total} templates created; the rest failed",
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
-      "template_load_failed": "Failed to load templates"
+      "template_load_failed": "Failed to load templates",
+      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator"
     },
     "empty": {
       "no_reservations": "No reservations",
@@ -276,7 +281,22 @@
         "member_no_slots_hint": "Please try another day"
       }
     },
-    "line_manage_title": "Bookable Item Management",
+    "line_manage_title": "{resourceName} Management",
+    "line": {
+      "delete_guide": "Deleting this will stop the slot template for this line, and any future slots without reservations will be removed automatically. If there are active reservations, please reschedule or cancel them first."
+    },
+    "resource_name": {
+      "DEFAULT": "Bookable Item",
+      "STAFF": "Staff member",
+      "SEAT": "Seat",
+      "COURT": "Court",
+      "BED": "Bed",
+      "LANE": "Lane",
+      "setting_title": "What to call bookable items",
+      "custom_label": "Custom name",
+      "custom_required": "Please enter a custom name",
+      "deputy_hint": "Deputy admins can only change what bookable items are called. Managing lines, menus, and so on is done by admins."
+    },
     "settings": {
       "advanced": {
         "title": "Advanced Settings"
@@ -512,30 +532,56 @@
       "line": "Reservation target",
       "line_common": "Common slot",
       "capacity": "Capacity",
-      "staff": "Staff",
-      "staff_none": "No staff",
       "is_active": "Active",
       "cell_count": "{n} slots/day (30 min each)",
       "price": "Price (optional)",
       "slot_title": "Title (optional)",
       "generate": "Generate slots now",
-      "generate_weeks": "How many weeks ahead",
       "generate_result": "{generated} slots created, {skipped} already existed",
       "generate_rate_limited": "Please wait a moment before trying again (generation was run too recently)",
-      "generate_no_active_templates": "There are no active templates. Please create a template first",
-      "regenerate_guide": "Template saved. Click \"Generate slots now\" to apply the change",
+      "generate_no_active_templates": "There is no template for this day of week",
+      "regenerate_guide": "Changes take effect automatically when you save (newly added slots only). If you want existing unbooked slots to match the new settings, delete them and save again",
       "limit_reached": "You can register up to 500 templates",
       "empty_state": "No weekly templates registered yet",
-      "empty_state_hint": "Use \"Add template\" to set a day of week and time range, then generate slots in bulk",
+      "empty_state_hint": "Use \"Add template\" to set a day of week and time range — slots are created automatically as soon as you save",
       "error": {
         "day_required": "Please select a day of week",
         "time_range_invalid": "Start time must be before end time, in 30-minute increments"
       },
-      "generate_skipped_closed": "{n} slots were skipped because of closed days"
+      "generate_skipped_closed": "{n} slots were skipped because of closed days",
+      "auto_generated": "Saved. {generated} slots were created for the next {days} days",
+      "auto_generated_partial": "Slot creation failed for {failed} of {total} days (the saved days are still active)",
+      "need_business_hours_hint": "Please set business hours first",
+      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours"
+    },
+    "business_hours": {
+      "title": "Business hours",
+      "day_open": "Open",
+      "save_success": "Saved. {generated} slots were updated",
+      "generating": "Updating slots…",
+      "generation_failed": "Business hours were saved, but the automatic slot update failed. It will catch up automatically tomorrow morning",
+      "shrink_note": "Already-created future slots for this day will remain as they are (they will not be closed retroactively). To permanently close a specific date, use \"Close this day\" in the exception day calendar"
+    },
+    "exception_day": {
+      "title": "Exception day calendar",
+      "help": "Pick a date on the calendar to close it, or to open specially on a day that is normally closed.",
+      "close_day": "Close this day",
+      "open_special": "Open specially",
+      "close_day_impact_warning": "There are {n} active reservations on this day",
+      "goto_reservations": "Handle in reservations list",
+      "notify_hint": "If you need to notify reservers, use emergency closure instead",
+      "special_source_day": "Day-of-week schedule to apply",
+      "special_done": "Created {generated} slots for {date}",
+      "blocked_conflict": "This day is set to closed. Cancel the closure before running this",
+      "date_range_hint": "Special openings can be set from tomorrow up to 90 days ahead",
+      "goto_book": "Check in the Book tab"
+    },
+    "slot_manage": {
+      "advanced_label": "Manually manage individual slots (exceptions)"
     },
     "grid": {
       "title": "Availability grid",
-      "help": "Rows are time slots and columns are reservation targets. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
+      "help": "Rows are time slots and columns are {resourceName}. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
       "display_toggle": {
         "list": "List view",
         "grid": "Grid view"
@@ -554,7 +600,7 @@
         "time": "Time"
       },
       "staff_filter": {
-        "label": "Filter by target",
+        "label": "Filter by {resourceName}",
         "placeholder": "All targets"
       },
       "state": {
@@ -566,49 +612,141 @@
       "empty": "No slots for this day",
       "load_error": "Failed to load the grid"
     },
+    "matrix": {
+      "title": "Availability matrix",
+      "legend_available": "Available",
+      "legend_booked": "Booked",
+      "legend_unavailable": "Unavailable",
+      "legend_closed": "Closed",
+      "legend_none": "No slot",
+      "menu_filter": "Filter by menu",
+      "menu_filter_all": "No filter",
+      "cannot_start_here": "You can't book {menu} starting here (not enough consecutive slots)",
+      "cannot_extend": "You can't extend any further (the next slot isn't open, or you've reached the 8-hour limit)",
+      "select_menu_title": "Choose a menu",
+      "no_menu_single": "Book just 30 minutes without a menu",
+      "preview_title": "Confirm this booking",
+      "extend_30": "+30 min",
+      "view_matrix": "Matrix view",
+      "view_list": "List view",
+      "view_staff_grid": "Staff grid view",
+      "date_line_header": "Date / {resourceName}",
+      "help_toggle": "How to use this",
+      "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",
+      "slot_unavailable_conflict": "This time slot isn't accepting bookings right now. Please try another time"
+    },
+    "group": {
+      "title": "Group booking",
+      "slot_count": "30 min × {n} slots",
+      "time_range": "Time range",
+      "auto_selected": "Automatically selected {n} slots needed for {menu}",
+      "extend": "Extend slots",
+      "extend_hint": "You can extend if the following slot is open",
+      "confirm": "Confirm this booking",
+      "cancel": "Cancel",
+      "cancel_confirm": "All {n} slots will be cancelled",
+      "conflict_retry": "Someone else booked first. We've refreshed availability — please choose again",
+      "not_consecutive": "The selected slots aren't consecutive or don't match the target",
+      "size_exceeded": "A booking group can have at most 16 slots",
+      "row_locked": "This is a group booking. Please manage it as a group",
+      "deadline_passed": "The cancellation deadline has passed, so this can't be cancelled",
+      "own_overlap": "You already have another booking in the selected time slot. Please check the time"
+    },
     "team_guide": {
       "title": "How reservations work",
       "help_button": "How to use",
-      "admin": {
-        "lines_title": "1. Create reservation targets",
-        "lines_steps": {
-          "0": "Open the \"Manage reservation targets\" tab.",
-          "1": "Use \"Add reservation target\" to register staff, counters, or other bookable targets.",
-          "2": "Without a reservation target, no slots appear on the member's \"Reserve\" screen."
+      "event_link": "See event recruiting",
+      "book": {
+        "matrix_title": "Reading the matrix",
+        "matrix_steps": {
+          "0": "Rows are \"date × {resourceName}\", columns are \"time\".",
+          "1": "Colors: green \"Available\" = bookable / \"Booked\" = taken / diagonal stripes = \"Unavailable\" / pale gray = \"Closed\"."
         },
-        "slots_title": "2. Create reservation slots",
-        "slots_steps": {
-          "0": "In the same \"Manage reservation targets\" tab, press \"Add slot\".",
-          "1": "Set the date, start/end time, and capacity, then save.",
-          "2": "The saved slots appear on the member's \"Reserve\" screen."
+        "filter_title": "Filter by menu",
+        "filter_steps": {
+          "0": "Use the menu filter at the top to highlight the exact number of slots that menu needs.",
+          "1": "Without a menu, you can book single 30-minute slots one at a time."
         },
-        "publish_title": "3. Decide who can book",
-        "publish_steps": {
-          "0": "In advanced settings \"Public reservations\", choose members-only or open to the public.",
-          "1": "Set the approval mode to auto-confirm or manual approval."
+        "flow_title": "Booking flow",
+        "flow_steps": {
+          "0": "Press an \"Available\" (green) cell.",
+          "1": "Choosing a menu automatically groups the required number of slots (skipped automatically if a menu filter is already applied).",
+          "2": "Press \"+30 min\" if you want to extend the time.",
+          "3": "Review the date/details, fill in \"Notes (optional)\", and press \"Confirm this booking\" to finish."
         },
-        "manage_title": "Check reservations & emergency closures",
-        "manage_steps": {
-          "0": "The \"Reservations\" tab lets you review, approve, and cancel the whole team's reservations.",
-          "1": "For sudden closures, use the \"Emergency closure\" tab to close a period and notify affected people at once."
+        "conflict_title": "When it's full or conflicts",
+        "conflict_steps": {
+          "0": "Gray cells (\"Booked\", \"Closed\", or \"Unavailable\") can't be selected. Choose another time or {resourceName}.",
+          "1": "If someone else takes the same slot right before you confirm, you'll see an error and the screen auto-refreshes to the latest availability. Please choose an open slot again."
         }
       },
-      "member": {
-        "book_title": "How to book",
-        "book_steps": {
-          "0": "Choose a date and reservation target to see the open slots for that day.",
-          "1": "Pick an \"Available\" slot, review the details, and book."
+      "list": {
+        "admin_overview_title": "Viewing the whole team's reservations",
+        "admin_overview_steps": {
+          "0": "Filter by status (pending, approved, cancelled, completed, no show).",
+          "1": "Multi-slot \"group bookings\" appear as a single row that shows the slot count."
         },
-        "status_title": "Reading the status",
+        "admin_manage_title": "Approve, reject, and cancel",
+        "admin_manage_steps": {
+          "0": "In teams with manual approval, approve or reject pending reservations.",
+          "1": "Confirmed reservations can also be cancelled. Group bookings are managed as a group.",
+          "2": "These actions instantly update availability on the \"Reserve\" tab."
+        },
+        "member_mine_title": "Checking your own reservations",
+        "member_mine_steps": {
+          "0": "Only your own reservations appear here (other members' reservations are never shown).",
+          "1": "Filter by status to check them."
+        },
+        "member_cancel_title": "Cancelling",
+        "member_cancel_steps": {
+          "0": "Press \"Cancel\" on the reservation row you want to withdraw, then press \"Cancel\" again on the confirmation screen.",
+          "1": "Past the cancellation deadline an error is shown and you can't cancel it yourself — contact a team administrator if you need a change."
+        }
+      },
+      "line_manage": {
+        "setup0_title": "1. Set business hours",
+        "setup0_steps": {
+          "0": "In \"Business hours\" set the hours you're open for each day of the week. This is the foundation slots are built on.",
+          "1": "As soon as you save, slots for the next 28 days are created automatically."
+        },
+        "setup1_title": "2. Create {resourceName}",
+        "setup1_steps": {
+          "0": "Use \"Add {resourceName}\" at the top of this tab to register seats, staff, or counters that can be booked.",
+          "1": "Without {resourceName}, the \"Reserve\" tab shows nothing to members."
+        },
+        "setup2_title": "3. Create menus",
+        "setup2_steps": {
+          "0": "In \"Manage menus\" below, register menus with a duration (in 30-minute units).",
+          "1": "To limit a menu to specific {resourceName}, choose \"Only selected {resourceName}\" under \"Bookable Item\" and pick them (the default offers it on every {resourceName})."
+        },
+        "setup3_title": "4. Create a weekly schedule",
+        "setup3_steps": {
+          "0": "In \"Weekly schedule\" below, set the day of week, time range, and capacity — slots are created automatically as long as it's within business hours.",
+          "1": "As soon as you save, slots for the next 28 days are created automatically.",
+          "2": "After that, slots keep extending automatically every day — no action needed."
+        },
+        "daily_title": "Day-to-day operation",
+        "daily_steps": {
+          "0": "Once the weekly schedule is set up, slots keep extending automatically every day, so there's normally nothing to do.",
+          "1": "Edit the weekly schedule only when you want to change the day or time range."
+        },
+        "exception_title": "Exceptions",
+        "exception_steps": {
+          "0": "To close a specific day or open it specially, use \"Close this day\" / \"Open specially\" in the exception day calendar. To fine-tune individual slots, use \"Manually manage individual slots\" under Advanced settings to create, edit, or close them.",
+          "1": "To block a specific time range from being booked, use \"Unavailable ranges\" in advanced settings.",
+          "2": "Deleting {resourceName} stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
+        }
+      },
+      "emergency_closure": {
+        "send_title": "What happens when you send it",
+        "send_steps": {
+          "0": "Everyone with a reservation in the affected period/time range gets an email and in-app notification about the closure.",
+          "1": "Checking \"Cancel affected reservations\" also automatically cancels the reservations in the affected period."
+        },
+        "status_title": "Reading the confirmation status",
         "status_steps": {
-          "0": "\"Pending\" ... awaiting administrator approval.",
-          "1": "\"Approved\" ... your reservation is confirmed.",
-          "2": "\"Completed\" ... the visit has finished."
-        },
-        "cancel_title": "How to cancel",
-        "cancel_steps": {
-          "0": "Open your reservation from the \"Reservations\" tab.",
-          "1": "If within the cancellation deadline, use \"Cancel\" to withdraw it."
+          "0": "Open the send history to see, in real time, who has confirmed (read) the notice.",
+          "1": "The \"n/m confirmed\" display means n out of m recipients have confirmed."
         }
       }
     }

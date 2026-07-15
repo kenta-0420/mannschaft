@@ -229,6 +229,8 @@
       "hint_brightness": "画面を最大の明るさに設定すると読み取りやすくなります",
       "close": "閉じる",
       "reload": "再読み込み",
+      "prev_card": "前のカード",
+      "next_card": "次のカード",
       "biometric_required": "提示モードの開始には認証が必要です",
       "biometric_failed": "認証に失敗しました",
       "no_cards": "このグループにカードがありません",

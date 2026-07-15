@@ -25,9 +25,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * グローバル例外ハンドラー。
@@ -88,6 +91,8 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
+            Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // F19.1 公開ページ Public API（IDOR / レート制限）
@@ -110,6 +115,14 @@ public class GlobalExceptionHandler {
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
+            // F09.19.1b: キャンペーン不在は「見つからない」ため 404（審査詳細等。Severity.WARN 既定 400 を上書き）
+            Map.entry("AD_021", HttpStatus.NOT_FOUND),
+            // F09.19.1 運用型キャンペーン CRUD（正本 §15）: Severity.WARN 既定の 400 を上書き
+            Map.entry("AD_027", HttpStatus.CONFLICT),          // 状態遷移違反・編集不可状態/フィールド → 409
+            Map.entry("AD_029", HttpStatus.TOO_MANY_REQUESTS), // visit/click の IP レート制限 → 429
+            Map.entry("AD_033", HttpStatus.FORBIDDEN),         // 通報自動停止中の resume 拒否 → 403
+            Map.entry("AD_034", HttpStatus.CONFLICT),          // 参照中料金カードの削除拒否 → 409
+            Map.entry("AD_035", HttpStatus.NOT_FOUND),         // serve 証跡なし / deliveryId 帰属不一致 → 404
             // F09.17 メッセージ型キャンペーン (DRAFT CRUD)
             Map.entry("AD_CAMPAIGN_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("AD_CAMPAIGN_INVALID_STATE", HttpStatus.CONFLICT),
@@ -355,6 +368,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_103", HttpStatus.NOT_FOUND),       // SHARE_TARGET_TEAM_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_104", HttpStatus.NOT_FOUND),       // SHARE_TARGET_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_105", HttpStatus.CONFLICT),        // SHARE_TARGET_DUPLICATED
+            // F03.9 チーム時間割（認可根治Wave2: IDOR対策で 404 統一。従来 WARN 既定の 400 のまま未マップだった欠陥を根治）
+            Map.entry("TIMETABLE_001", HttpStatus.NOT_FOUND),                // TIMETABLE_NOT_FOUND
+            Map.entry("TIMETABLE_002", HttpStatus.NOT_FOUND),                // TERM_NOT_FOUND
+            Map.entry("TIMETABLE_003", HttpStatus.NOT_FOUND),                // SLOT_NOT_FOUND
+            Map.entry("TIMETABLE_004", HttpStatus.NOT_FOUND),                // CHANGE_NOT_FOUND
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
@@ -746,8 +764,17 @@ public class GlobalExceptionHandler {
             // F03.4.2 機能F 週間テンプレート: 不在（IDOR 秘匿含む）→ 404、generate レート制限 → 429、
             // ライン削除ガード（active 予約あり）→ 409。037（上限500行）/038（ライン不一致）は WARN 既定の 400。
             Map.entry("RESERVATION_036", HttpStatus.NOT_FOUND),              // TEMPLATE_NOT_FOUND
+            // F03.4.3 機能G 予約グループ: 確保失敗（満席/CLOSED・全ロールバック済み）→ 409、
+            // グループ不在（IDOR 秘匿含む）→ 404。041（枠数上限）/042（単票操作拒否）/043（提供不可ライン）は
+            // WARN 既定の 400 のまま（個別 map 不要）。
+            Map.entry("RESERVATION_039", HttpStatus.CONFLICT),               // GROUP_SLOT_UNAVAILABLE
+            Map.entry("RESERVATION_040", HttpStatus.NOT_FOUND),              // GROUP_NOT_FOUND
             Map.entry("RESERVATION_044", HttpStatus.TOO_MANY_REQUESTS),      // TEMPLATE_GENERATE_RATE_LIMITED
             Map.entry("RESERVATION_045", HttpStatus.CONFLICT),               // LINE_HAS_ACTIVE_RESERVATIONS
+            // F03.4.5 §6.1 キャンセル待ち（048/049 は既定 400・046→404・047→409・050→429）
+            Map.entry("RESERVATION_046", HttpStatus.NOT_FOUND),              // WAITLIST_ENTRY_NOT_FOUND（IDOR 秘匿）
+            Map.entry("RESERVATION_047", HttpStatus.CONFLICT),               // WAITLIST_ALREADY_REGISTERED
+            Map.entry("RESERVATION_050", HttpStatus.TOO_MANY_REQUESTS),      // WAITLIST_RATE_LIMITED
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
@@ -768,7 +795,66 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST),          // DATE_RANGE_INVALID（期間幅 366 日超）
             // F02.12 Phase 4: Google Calendar Webhook 検証（Severity.WARN 既定 400 を上書き）
             Map.entry("GCAL_008", HttpStatus.NOT_FOUND),                  // GOOGLE_WEBHOOK_CHANNEL_NOT_FOUND → 404
-            Map.entry("GCAL_009", HttpStatus.FORBIDDEN)                   // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            Map.entry("GCAL_009", HttpStatus.FORBIDDEN),                  // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            // F10.8 チーム/組織アクセス解析（TEAMANALYTICS_xxx）
+            Map.entry("TEAMANALYTICS_001", HttpStatus.NOT_FOUND),         // 非メンバー/不在スコープ → 404（IDOR 秘匿）
+            Map.entry("TEAMANALYTICS_002", HttpStatus.BAD_REQUEST),       // 日付範囲不正（dateFrom > dateTo）→ 400
+            Map.entry("TEAMANALYTICS_003", HttpStatus.BAD_REQUEST),       // ビーコン body 不正（ENUM 外・絶対 URL 等）→ 400
+            // F20.1 課金・エンタイトルメント基盤（ENTITLEMENT_xxx・設計書 02 §9）。
+            // 402（支払えば解決）は 003 のみ。403 は 004/005。IDOR 秘匿は 007（404）。
+            Map.entry("ENTITLEMENT_001", HttpStatus.NOT_FOUND),           // PLAN_NOT_FOUND
+            Map.entry("ENTITLEMENT_002", HttpStatus.NOT_FOUND),           // FEATURE_NOT_FOUND
+            Map.entry("ENTITLEMENT_003", HttpStatus.PAYMENT_REQUIRED),    // FEATURE_NOT_ENTITLED（購入導線あり・RESERVATION_029 と同型）
+            Map.entry("ENTITLEMENT_004", HttpStatus.FORBIDDEN),           // FEATURE_FORBIDDEN_FOR_SCOPE
+            Map.entry("ENTITLEMENT_005", HttpStatus.FORBIDDEN),           // SCOPE_FORBIDDEN（IDOR）
+            Map.entry("ENTITLEMENT_006", HttpStatus.CONFLICT),            // CONTRACT_ALREADY_ACTIVE
+            Map.entry("ENTITLEMENT_007", HttpStatus.NOT_FOUND),           // CONTRACT_NOT_FOUND（スコープ不一致は 404 秘匿）
+            Map.entry("ENTITLEMENT_008", HttpStatus.UNPROCESSABLE_ENTITY),// ADDON_NOT_AVAILABLE
+            Map.entry("ENTITLEMENT_009", HttpStatus.BAD_REQUEST),         // INVALID_SCOPE_KIND
+            Map.entry("ENTITLEMENT_010", HttpStatus.BAD_REQUEST),         // PLAN_MASTER_VALIDATION_FAILED
+            Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),            // CONTRACT_NOT_CANCELLABLE
+            Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),            // PLAN_MASTER_IN_USE
+            Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),            // DUPLICATE_ENTITLEMENT（uk_ent_grant）
+            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),         // INVALID_CONTRACT_KIND（contractKind 不正）
+            // F20.1 実決済（D-1〜D-4・2026-07-10 御裁可）追補
+            Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
+            Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
+            Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            // 認可根治戦役 Wave 2 トランシェ2A #3: F09.15 succession（法的手続き・エスカレーション）は
+            // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.3 parking の *_NOT_FOUND は、対象エンティティが
+            // 自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PARKING_001", HttpStatus.NOT_FOUND),              // SPACE_NOT_FOUND
+            Map.entry("PARKING_002", HttpStatus.NOT_FOUND),              // VEHICLE_NOT_FOUND
+            Map.entry("PARKING_003", HttpStatus.NOT_FOUND),              // ASSIGNMENT_NOT_FOUND
+            Map.entry("PARKING_004", HttpStatus.NOT_FOUND),              // APPLICATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_005", HttpStatus.NOT_FOUND),              // LISTING_NOT_FOUND
+            Map.entry("PARKING_006", HttpStatus.NOT_FOUND),              // VISITOR_RESERVATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_007", HttpStatus.NOT_FOUND),              // WATCHLIST_NOT_FOUND
+            Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
+            Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
+            Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
+            // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PERF_001", HttpStatus.NOT_FOUND),                 // METRIC_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_002", HttpStatus.NOT_FOUND),                 // RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_011", HttpStatus.NOT_FOUND),                 // SCHEDULE_NOT_FOUND（scheduleId スコープ整合 → 404）
+            Map.entry("PERF_013", HttpStatus.NOT_FOUND),                 // ACTIVITY_NOT_FOUND
+            Map.entry("PERF_014", HttpStatus.NOT_FOUND),                 // TEAM_NOT_FOUND
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.2 promotion（プロモーション・クーポン・セグメントプリセット）は
+            // (id, scopeType, scopeId) 複合条件で取得するため、他スコープの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("PROMOTION_001", HttpStatus.NOT_FOUND),            // PROMOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_005", HttpStatus.NOT_FOUND),            // COUPON_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
@@ -884,10 +970,68 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
+        ResponseStatusException rse = findResponseStatusExceptionCause(ex);
+        boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
+
+        // (2) team/organization のスコープ識別子パス変数に非数値 slug が渡り、解決に失敗したケース。
+        //     {@link ScopeSlugIdConverter} は不在 slug で 404 を投げるが、Spring の型変換フォールバック
+        //     （既定 Long エディタ）が例外を握り潰して NumberFormatException 化するため、原因連鎖からは
+        //     404 意図が失われる。ここでパス変数名と値から補完し、400 でなく 404 を返す。
+        if (!notFound && isUnresolvedScopeSlug(ex)) {
+            notFound = true;
+        }
+
+        if (notFound) {
+            log.debug("スコープ識別子の解決失敗（404）: parameter={}, value={}", ex.getName(), ex.getValue());
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
+        }
         log.warn("Type mismatch: parameter={}, value={}", ex.getName(), ex.getValue());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /** team / organization のスラッグ解決に使うパス変数名。 */
+    private static final Set<String> SCOPE_ID_PATH_VARS = Set.of("organizationId", "orgId", "teamId");
+
+    /**
+     * スコープ識別子（team/organization）のパス変数に非数値 slug が渡り、解決不能だったかを判定する。
+     * 数値であれば本来変換可能（＝別要因の 400）なので false。
+     */
+    private boolean isUnresolvedScopeSlug(MethodArgumentTypeMismatchException ex) {
+        if (!SCOPE_ID_PATH_VARS.contains(ex.getName())) {
+            return false;
+        }
+        Class<?> required = ex.getRequiredType();
+        if (required != Long.class && required != long.class) {
+            return false;
+        }
+        if (!(ex.getValue() instanceof String s)) {
+            return false;
+        }
+        try {
+            Long.parseLong(s);
+            return false;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    /**
+     * 例外の原因連鎖を辿り、最初に見つかった {@link ResponseStatusException} を返す。見つからなければ null。
+     */
+    private ResponseStatusException findResponseStatusExceptionCause(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof ResponseStatusException rse) {
+                return rse;
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
     /**
@@ -897,6 +1041,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMissingParam(
             MissingServletRequestParameterException ex) {
         log.warn("Missing parameter: {}", ex.getParameterName());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /**
+     * 必須リクエストヘッダの欠落（例: F20.1 契約作成の {@code Idempotency-Key} 必須）。
+     *
+     * <p>{@code @RestControllerAdvice} の catch-all が先に拾って 500 になるのを防ぎ、
+     * クライアントエラーとして 400 を返す（{@link MissingServletRequestParameterException} と同型）。</p>
+     */
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(
+            org.springframework.web.bind.MissingRequestHeaderException ex) {
+        log.warn("Missing header: {}", ex.getHeaderName());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
@@ -913,6 +1072,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_004));
+    }
+
+    /**
+     * 未マップAPIパスや static リソース不在（Spring Boot 3.x の
+     * {@link NoResourceFoundException}）。
+     *
+     * <p>Spring Boot 3.x では、ディスパッチャが一致するハンドラを見つけられない場合に
+     * {@code NoResourceFoundException} が投げられる。デフォルトでは catch-all
+     * {@link #handleUnexpectedException} に落ちて 500 + HIGH 記録されてしまうため、
+     * 明示的に 404 NOT_FOUND へマッピングし、エラー集約へは記録しない。</p>
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex,
+                                                               HttpServletRequest request) {
+        log.debug("リソース未検出: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
     }
 
     /**

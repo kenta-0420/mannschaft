@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-const faqIds = [0, 1, 2, 3, 4, 5, 6, 7]
+const faqIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const faqIds = [0, 1, 2, 3, 4, 5, 6, 7]
         </p>
       </div>
 
-      <!-- FAQ（アコーディオン閉状態で8件・シンプルさは維持） -->
+      <!-- FAQ（アコーディオン閉状態で10件・シンプルさは維持） -->
       <div class="mt-14 text-left">
         <h3 class="mb-4 text-center text-lg font-bold text-surface-800 dark:text-surface-100">
           {{ t('landing.v2.cta.faq_heading') }}
@@ -51,6 +51,15 @@ const faqIds = [0, 1, 2, 3, 4, 5, 6, 7]
             </summary>
             <p class="mt-2.5 text-sm leading-relaxed text-surface-500">
               {{ t(`landing.v2.cta.faq.${id}.a`) }}
+              <template v-if="id === 8">
+                <i18n-t keypath="landing.v2.cta.faq.8.a_terms_note" tag="span" scope="global">
+                  <template #link>
+                    <NuxtLink to="/terms#terms-sec-4" class="font-medium text-primary hover:underline">
+                      {{ t('landing.v2.cta.faq.8.a_terms_link') }}
+                    </NuxtLink>
+                  </template>
+                </i18n-t>
+              </template>
             </p>
           </details>
         </div>

@@ -102,7 +102,10 @@ public enum PaymentErrorCode implements ErrorCode {
     PAYMENT_ACCESS_DENIED("PAYMENT_030", "この支払い記録へのアクセス権限がありません", Severity.WARN),
 
     /** STRIPE は手動記録では指定不可（オンライン決済の手動詐称防止・F08.9 手段拡張） */
-    STRIPE_NOT_ALLOWED_FOR_MANUAL("PAYMENT_031", "STRIPE は手動記録では指定できません", Severity.WARN);
+    STRIPE_NOT_ALLOWED_FOR_MANUAL("PAYMENT_031", "STRIPE は手動記録では指定できません", Severity.WARN),
+
+    /** Stripe Customer 新規作成対象ユーザーが退会済み/不在（残債2: 実メール化に伴う防御的拒否） */
+    STRIPE_CUSTOMER_TARGET_USER_WITHDRAWN("PAYMENT_032", "退会済みのため決済情報を新規作成できません", Severity.WARN);
 
     private final String code;
     private final String message;

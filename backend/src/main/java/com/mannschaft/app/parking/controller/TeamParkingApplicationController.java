@@ -65,7 +65,7 @@ public class TeamParkingApplicationController {
     @Operation(summary = "チーム申請承認")
     public ResponseEntity<ApiResponse<ApplicationResponse>> approve(
             @PathVariable Long teamId, @PathVariable Long id) {
-        ApplicationResponse result = applicationService.approve(id);
+        ApplicationResponse result = applicationService.approve(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -74,14 +74,14 @@ public class TeamParkingApplicationController {
     public ResponseEntity<ApiResponse<ApplicationResponse>> reject(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody RejectApplicationRequest request) {
-        ApplicationResponse result = applicationService.reject(id, request);
+        ApplicationResponse result = applicationService.reject(SCOPE_TYPE, teamId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "チーム申請取消")
     public ResponseEntity<Void> cancel(@PathVariable Long teamId, @PathVariable Long id) {
-        applicationService.cancel(id, SecurityUtils.getCurrentUserId());
+        applicationService.cancel(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -90,7 +90,7 @@ public class TeamParkingApplicationController {
     public ResponseEntity<ApiResponse<List<ApplicationResponse>>> lottery(
             @PathVariable Long teamId,
             @RequestParam Long spaceId) {
-        List<ApplicationResponse> result = applicationService.executeLottery(spaceId);
+        List<ApplicationResponse> result = applicationService.executeLottery(SCOPE_TYPE, teamId, spaceId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 }
