@@ -34,9 +34,14 @@ type StatusFilter = VillageRequestStatus | 'ALL'
 
 const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'ALL']
 
+/** サーバーサイドページングの1ページあたり件数（BE Pageable 既定 size=20 に合わせる） */
+const PAGE_SIZE = 20
+
 const statusFilter = ref<StatusFilter>('PENDING')
 const requests = ref<VillageCreationRequestResponse[]>([])
 const loading = ref(false)
+const totalRecords = ref(0)
+const page = ref(0)
 
 // 詳細 Dialog
 const detailVisible = ref(false)
@@ -63,17 +68,29 @@ async function load() {
   if (!isAllowed.value) return
   loading.value = true
   try {
-    const params = statusFilter.value === 'ALL' ? undefined : { status: statusFilter.value }
+    const params = {
+      ...(statusFilter.value === 'ALL' ? {} : { status: statusFilter.value }),
+      page: page.value,
+      size: PAGE_SIZE,
+    }
     const res = await listAdminCreationRequests(params)
     requests.value = res.content
+    totalRecords.value = res.totalElements
   }
   catch {
     requests.value = []
+    totalRecords.value = 0
     showError(t('village.creationRequest.loadFailed'))
   }
   finally {
     loading.value = false
   }
+}
+
+/** ページ送り — BE に page を送って該当ページのみ取得する（サーバーサイドページング） */
+function onPage(event: { page: number }) {
+  page.value = event.page
+  void load()
 }
 
 // =====================================================================
@@ -188,7 +205,10 @@ function truncate(text: string | null | undefined, max = 60): string {
 // ライフサイクル
 // =====================================================================
 
-watch(statusFilter, () => load())
+watch(statusFilter, () => {
+  page.value = 0
+  void load()
+})
 onMounted(() => {
   if (isAllowed.value) load()
 })
@@ -225,9 +245,13 @@ onMounted(() => {
         :loading="loading"
         data-key="id"
         striped-rows
-        paginator
-        :rows="20"
+        :lazy="true"
+        :paginator="true"
+        :rows="PAGE_SIZE"
+        :total-records="totalRecords"
+        :first="page * PAGE_SIZE"
         row-hover
+        @page="onPage"
         @row-click="(e) => openDetail(e.data as VillageCreationRequestResponse)"
       >
         <template #empty>
