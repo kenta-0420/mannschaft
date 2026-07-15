@@ -41,6 +41,7 @@ function actionItem(overrides: Partial<PersonalActionItem> = {}): PersonalAction
     scopeName: 'チームA',
     itemId: '100',
     title: '回覧板タイトル',
+    circulatedAt: null,
     deadline: null,
     startsAt: null,
     ...overrides,
@@ -204,8 +205,20 @@ describe('mergeCommandCenterData', () => {
 })
 
 describe('モーダル変換関数', () => {
-  it('CC-011: toCirculationActionItemはcirculatedAtを空文字で埋める', () => {
-    const item = actionItem({ itemType: 'CIRCULATION', itemId: '42', title: '回覧', deadline: '2026-07-20T00:00:00' })
+  it('CC-011: toCirculationActionItemは実データのcirculatedAtをそのまま渡す', () => {
+    const item = actionItem({
+      itemType: 'CIRCULATION',
+      itemId: '42',
+      title: '回覧',
+      circulatedAt: '2026-07-01T09:00:00',
+      deadline: '2026-07-20T00:00:00',
+    })
+    const result = toCirculationActionItem(item)
+    expect(result).toEqual({ id: '42', title: '回覧', circulatedAt: '2026-07-01T09:00:00', deadline: '2026-07-20T00:00:00' })
+  })
+
+  it('CC-011b: toCirculationActionItemはcirculatedAtがnullのとき空文字にフォールバックする', () => {
+    const item = actionItem({ itemType: 'CIRCULATION', itemId: '42', title: '回覧', circulatedAt: null, deadline: '2026-07-20T00:00:00' })
     const result = toCirculationActionItem(item)
     expect(result).toEqual({ id: '42', title: '回覧', circulatedAt: '', deadline: '2026-07-20T00:00:00' })
   })
