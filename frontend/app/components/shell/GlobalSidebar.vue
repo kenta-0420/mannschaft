@@ -37,9 +37,20 @@ function isItemActive(path: string): boolean {
     aria-label="グローバルナビゲーション"
     data-testid="global-sidebar"
     class="flex flex-shrink-0 flex-col overflow-visible border-r border-surface-200 bg-surface-0 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] dark:border-surface-700 dark:bg-surface-900 motion-reduce:transition-none"
-    :class="rail ? 'w-[68px]' : 'w-[260px]'"
+    :class="[
+      rail ? 'w-[68px]' : 'w-[260px]',
+      /* Phase4: 独立スクロール。デスクトップ（forceWide=false）ではヘッダー直下に sticky 固定し、
+         高さをビューポートに束ねる。ページ本文のスクロールとは独立に、ナビ項目リスト（下の div）
+         だけが内部 overflow-y でスクロールする（ドキュメントサイトの左ナビと同じ挙動）。
+         モバイル Drawer 内（forceWide=true）では Drawer が高さを持つため h-full で全高に合わせる。 */
+      forceWide
+        ? 'h-full'
+        : 'sticky top-[var(--app-header-h)] h-[calc(100vh-var(--app-header-h))] self-start',
+    ]"
   >
-    <div class="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-visible px-2 py-2.5">
+    <div
+      class="scrollbar-thin-sidebar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-visible px-2 py-2.5"
+    >
       <template v-for="group in groups" :key="group.key">
         <!-- グループ見出し（レール時は罫線のみ・ラベル非表示） -->
         <div
