@@ -35,7 +35,9 @@ import static org.mockito.Mockito.verify;
  *   <li>AC-12: 特定スコープでエラーが起きても他スコープのデータは正常に返る（縮退）</li>
  *   <li>AC-13: 所属していないスコープのデータは含まれない（Service 層が保証・本テストでは委譲確認）</li>
  *   <li>AC-14: 全件数 0 の場合、空配列と {@code totalCount: 0} を返す</li>
- *   <li>AC-15: 各アイテムに {@code scopeType/scopeSlug/scopeName/itemType/itemId/title/deadline} が含まれる</li>
+ *   <li>AC-15: 各アイテムに {@code scopeType/scopeSlug/scopeName/itemType/itemId/title/circulatedAt/deadline} が含まれる</li>
+ *   <li>AC-16: circulation アイテムには回覧日時（circulatedAt）が per-scope facade の値そのまま含まれる
+ *       （個人横断集計で破棄されない）</li>
  * </ul>
  *
  * <p>純 Mockito {@code @InjectMocks} 方式でコントローラー層の責務のみをテストする。
@@ -177,6 +179,55 @@ class PersonalActionRequiredControllerTest {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // AC-16: circulation アイテムには回覧日時（circulatedAt）が含まれる
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("AC-16: 回覧日時（circulatedAt）の通過")
+    class Ac16CirculatedAtPassthrough {
+
+        @Test
+        @DisplayName("CIRCULATION アイテムには per-scope facade の circulatedAt がそのまま含まれる")
+        void circulation_containsCirculatedAt() {
+            // Given
+            java.time.LocalDateTime circulatedAt = java.time.LocalDateTime.parse("2026-07-01T09:00:00");
+            PersonalActionRequiredResponse.ActionItem item = buildItem(
+                    "CIRCULATION", "TEAM", 10L, "team-alpha", "チームA", "abc-uuid", "回覧: 月次報告",
+                    circulatedAt, null, null);
+            given(personalActionRequiredService.getPersonalActionRequired(USER_ID))
+                    .willReturn(new PersonalActionRequiredResponse(List.of(item), 1));
+
+            // When
+            ResponseEntity<com.mannschaft.app.common.ApiResponse<PersonalActionRequiredResponse>> res =
+                    controller.getPersonalActionRequired();
+
+            // Then
+            PersonalActionRequiredResponse.ActionItem first = res.getBody().getData().items().get(0);
+            assertThat(first.circulatedAt()).isEqualTo(circulatedAt);
+        }
+
+        @Test
+        @DisplayName("SURVEY / ATTENDANCE アイテムの circulatedAt は null のまま")
+        void surveyAndAttendance_circulatedAtIsNull() {
+            // Given
+            List<PersonalActionRequiredResponse.ActionItem> items = List.of(
+                    buildItem("SURVEY", "TEAM", 10L, "team-alpha", "チームA", "101", "アンケート", null, null),
+                    buildItem("ATTENDANCE", "ORGANIZATION", 20L, "org-beta", "組織B", "202", "イベント", null, null)
+            );
+            given(personalActionRequiredService.getPersonalActionRequired(USER_ID))
+                    .willReturn(new PersonalActionRequiredResponse(items, 2));
+
+            // When
+            ResponseEntity<com.mannschaft.app.common.ApiResponse<PersonalActionRequiredResponse>> res =
+                    controller.getPersonalActionRequired();
+
+            // Then
+            List<PersonalActionRequiredResponse.ActionItem> resultItems = res.getBody().getData().items();
+            assertThat(resultItems).allSatisfy(i -> assertThat(i.circulatedAt()).isNull());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // AC-14: 全件数 0 → 空配列と totalCount=0
     // ─────────────────────────────────────────────────────────────
 
@@ -240,7 +291,14 @@ class PersonalActionRequiredControllerTest {
             String itemType, String scopeType, Long scopeId, String scopeSlug, String scopeName,
             String itemId, String title,
             java.time.LocalDateTime deadline, java.time.LocalDateTime startsAt) {
+        return buildItem(itemType, scopeType, scopeId, scopeSlug, scopeName, itemId, title, null, deadline, startsAt);
+    }
+
+    private PersonalActionRequiredResponse.ActionItem buildItem(
+            String itemType, String scopeType, Long scopeId, String scopeSlug, String scopeName,
+            String itemId, String title, java.time.LocalDateTime circulatedAt,
+            java.time.LocalDateTime deadline, java.time.LocalDateTime startsAt) {
         return new PersonalActionRequiredResponse.ActionItem(
-                itemType, scopeType, scopeId, scopeSlug, scopeName, itemId, title, deadline, startsAt);
+                itemType, scopeType, scopeId, scopeSlug, scopeName, itemId, title, circulatedAt, deadline, startsAt);
     }
 }
