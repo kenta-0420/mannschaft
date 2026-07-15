@@ -69,11 +69,28 @@ onUnmounted(() => {
     <div class="flex items-stretch" style="min-height: calc(100vh - var(--app-header-h))">
       <GlobalSidebar v-if="!isMobileViewport" />
       <ClientOnly>
+        <!-- UX改善: モバイルDrawerはヘッダー直下から出す（ヘッダーを覆わない）。
+             理由: PrimeVue Drawer既定はマスク/パネルが top:0 ・ z-index 1100+ で全画面を覆い、
+             sticky z-50 のヘッダー（開閉トグルボタン含む）がその下に埋もれてクリック不能になる
+             （aria-label「メニューを閉じる」なのに再クリックで閉じられない回帰）。
+             base-z-index をヘッダーの z-50 未満にし、mask の top/height を pt で上書きして
+             ヘッダー分だけ開始位置を下げることで、ヘッダー（トグルボタン）を常時可視・操作可能に保つ。
+             他のDrawer（team.vue/organization.vue/ScopePageShell 等）はヘッダー常設トグルを
+             持たないため対象外（Escape/マスククリック/自身のXボタンで閉じられる既存動作のまま）。 -->
         <Drawer
           v-if="isMobileViewport"
           v-model:visible="appShellStore.mobileDrawerOpen"
           position="left"
           class="!w-72"
+          :base-z-index="10"
+          :pt="{
+            mask: {
+              style: {
+                top: 'var(--app-header-h)',
+                height: 'calc(100% - var(--app-header-h))',
+              },
+            },
+          }"
         >
           <GlobalSidebar force-wide />
         </Drawer>
