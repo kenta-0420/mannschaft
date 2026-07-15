@@ -38,7 +38,7 @@ public class RoleAliasController {
     @Operation(summary = "ロール呼称一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<RoleAliasResponse>>> getAliases(@PathVariable Long teamId) {
-        return ResponseEntity.ok(roleAliasService.getAliases(teamId));
+        return ResponseEntity.ok(roleAliasService.getAliases(teamId, SecurityUtils.getCurrentUserId()));
     }
 
     /**
