@@ -4,6 +4,11 @@
  * - AC1-2: visibleFeatures は BE が返した features 配列順を尊重し、visible のみ絞り込む
  * - AC1-1: reorderNav の楽観更新 → updateNavSettings に並び順が渡る
  * - AC1-6: reorderNav 失敗時は元の順序にロールバックしトースト表示
+ * - 根治(2026-07-15): loadFromServer が応答の features を無検証で代入していたため、
+ *   features が配列でない不正応答（スキーマドリフト等）を受け取ると
+ *   visibleFeatures/visibleMobileFeatures getter が `state.features.filter is not a function`
+ *   でクラッシュし、サイドバー全体が死ぬ（全ページ影響）バグがあった。
+ *   features が配列でない場合は既存の localStorage フォールバック値を温存する。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
@@ -128,6 +133,68 @@ describe('useNavSettingsStore', () => {
       // ロールバックで元の順序に戻る
       expect(store.features.map(f => f.key)).toEqual(['a', 'b', 'c'])
       expect(showErrorMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('loadFromServer（根治: features 不正応答での visibleFeatures クラッシュ防止）', () => {
+    it('features が配列の正常応答では従来通り上書きされ localStorage にも永続化される', async () => {
+      const store = useNavSettingsStore()
+      store.features = [makeFeature({ key: 'old' })]
+      getNavSettingsMock.mockResolvedValueOnce({
+        features: [makeFeature({ key: 'new' })],
+      })
+
+      await store.loadFromServer()
+
+      expect(store.features.map(f => f.key)).toEqual(['new'])
+      expect(store.loaded).toBe(true)
+    })
+
+    it('features が undefined の不正応答では localStorage フォールバック値を維持しクラッシュしない', async () => {
+      const store = useNavSettingsStore()
+      const fallback = [makeFeature({ key: 'fallback-a' }), makeFeature({ key: 'fallback-b' })]
+      store.features = fallback
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      getNavSettingsMock.mockResolvedValueOnce({ features: undefined })
+
+      await expect(store.loadFromServer()).resolves.toBeUndefined()
+
+      // フォールバック値を温存（上書きしない）
+      expect(store.features).toEqual(fallback)
+      expect(store.loaded).toBe(true)
+      // クラッシュせず空配列/フォールバック値を返す
+      expect(() => store.visibleFeatures).not.toThrow()
+      expect(store.visibleFeatures.map(f => f.key)).toEqual(['fallback-a', 'fallback-b'])
+      // エラーは握りつぶさず記録する
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      warnSpy.mockRestore()
+    })
+
+    it('features が null / 非配列（オブジェクト）の不正応答でも同様にフォールバックする', async () => {
+      const store = useNavSettingsStore()
+      const fallback = [makeFeature({ key: 'fallback-a' })]
+      store.features = fallback
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // BE スキーマドリフトを想定した非配列応答（object）
+      getNavSettingsMock.mockResolvedValueOnce({ features: { unexpected: 'shape' } })
+
+      await store.loadFromServer()
+
+      expect(store.features).toEqual(fallback)
+      expect(() => store.visibleFeatures).not.toThrow()
+      warnSpy.mockRestore()
+    })
+
+    it('features が空配列の応答時は fallback を維持せず素直に空配列を採用する', async () => {
+      const store = useNavSettingsStore()
+      store.features = [makeFeature({ key: 'old' })]
+      getNavSettingsMock.mockResolvedValueOnce({ features: [] })
+
+      await store.loadFromServer()
+
+      // 空配列は Array.isArray なので正常応答として採用される（機能が0件という正当な状態）
+      expect(store.features).toEqual([])
+      expect(() => store.visibleFeatures).not.toThrow()
     })
   })
 })

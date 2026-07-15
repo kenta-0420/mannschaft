@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler, type ChartConfiguration } from 'chart.js'
+import { Chart as ChartJS, BarController, LineController, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler, type ChartConfiguration } from 'chart.js'
 import type { DailyPageView, MonthlyPageView } from '~/types/analytics'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
+// Chart.js v4 は tree-shaking のため使用する Controller も明示登録が必須。
+// 本コンポーネントは viewMode で 'line'（日次）/ 'bar'（月次）を切り替えるため、
+// 両方の Controller を登録する（AdReportChart.vue と同じ登録パターン）。
+ChartJS.register(BarController, LineController, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
 
 const props = defineProps<{
   daily: DailyPageView[]

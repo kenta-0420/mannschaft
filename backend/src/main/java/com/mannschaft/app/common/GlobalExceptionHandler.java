@@ -840,6 +840,15 @@ public class GlobalExceptionHandler {
             Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
             Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
             Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.4 chart（要配慮個人情報：健康記録）の
+            // NOT_FOUND 系は teamId を跨いだ存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("CHART_001", HttpStatus.NOT_FOUND),                 // CHART_NOT_FOUND
+            Map.entry("CHART_002", HttpStatus.NOT_FOUND),                 // PHOTO_NOT_FOUND
+            Map.entry("CHART_003", HttpStatus.NOT_FOUND),                 // FORMULA_NOT_FOUND
+            Map.entry("CHART_004", HttpStatus.NOT_FOUND),                 // CUSTOM_FIELD_NOT_FOUND
+            Map.entry("CHART_005", HttpStatus.NOT_FOUND),                 // INTAKE_FORM_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_006", HttpStatus.NOT_FOUND),                 // RECORD_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_019", HttpStatus.NOT_FOUND),                 // INTAKE_FORM_NOT_FOUND
             // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
             // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
             // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
@@ -856,7 +865,38 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F08.7 tournament の *_NOT_FOUND は、対象エンティティが
+            // 親大会/親ディビジョン配下に無い（BOLA・divId/matchId/pId/templateId の親子束縛不一致）場合にも
+            // 同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例
+            // （TOUR_001 と同流儀）に反するため 404 へ上書きする。
+            Map.entry("TOUR_002", HttpStatus.NOT_FOUND),                 // DIVISION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_003", HttpStatus.NOT_FOUND),                 // MATCH_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_013", HttpStatus.NOT_FOUND),                 // TEMPLATE_NOT_FOUND（org 束縛・IDOR 秘匿 → 404）
+            Map.entry("TOUR_014", HttpStatus.NOT_FOUND),                 // PRESET_NOT_FOUND（存在しない ID → 404）
+            Map.entry("TOUR_018", HttpStatus.NOT_FOUND),                 // PARTICIPANT_NOT_FOUND（div 束縛・IDOR 秘匿 → 404）
+            Map.entry("TOUR_061", HttpStatus.NOT_FOUND),                 // MATCHDAY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("TOUR_062", HttpStatus.NOT_FOUND),                 // FIXTURE_ROSTER_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.3 equipment（備品管理）は
+            // (id, teamId)/(id, organizationId) 複合キーで取得するため、他スコープの ID 指定は
+            // IDOR 秘匿のため 404 とする（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("EQUIPMENT_001", HttpStatus.NOT_FOUND),            // ITEM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("EQUIPMENT_002", HttpStatus.NOT_FOUND),            // ASSIGNMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F06.3 digest（タイムラインダイジェスト）の *_NOT_FOUND。
+            // ID 直指定 URL（/timeline-digest/{id}）のため、不在 ID と越境 ID を区別しない存在秘匿の要
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("DIGEST_011", HttpStatus.NOT_FOUND),               // DIGEST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("DIGEST_014", HttpStatus.NOT_FOUND),               // CONFIG_NOT_FOUND → 404
+            // 認可根治戦役 Wave 2 トランシェ2C: F09.6 directmail の *_NOT_FOUND は、対象エンティティが
+            // 自スコープ外（BOLA）の場合にも (id, scopeType, scopeId) 複合フェッチで同一コードを返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("DM_001", HttpStatus.NOT_FOUND),                   // MAIL_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("DM_002", HttpStatus.NOT_FOUND),                   // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: line（LINE連携 BotConfig / SnsFeed）の *_NOT_FOUND は、
+            // 対象エンティティが自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のまま だと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("LINE_001", HttpStatus.NOT_FOUND),                 // BOT_CONFIG_NOT_FOUND
+            Map.entry("LINE_007", HttpStatus.NOT_FOUND)                  // SNS_FEED_CONFIG_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
