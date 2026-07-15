@@ -254,7 +254,7 @@ class VillageNewsletterServiceTest {
                 .role(role)
                 .joinedAt(LocalDateTime.now())
                 .build();
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, userId))
                 .willReturn(Optional.of(m));
     }

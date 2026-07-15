@@ -186,7 +186,7 @@ class VillageFestivalServiceTest {
     @DisplayName("create: 村人でない → 403 MODERATION_FORBIDDEN")
     void create_not_member_forbidden() {
         givenActiveVillage();
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
                 .willReturn(Optional.empty());
         LocalDateTime starts = LocalDateTime.now().plusDays(1);
@@ -410,7 +410,7 @@ class VillageFestivalServiceTest {
                 .joinedAt(LocalDateTime.now().minusDays(10))
                 .build();
         m.setId(UUID.randomUUID());
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
                 .willReturn(Optional.of(m));
     }

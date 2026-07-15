@@ -8,14 +8,18 @@ import com.mannschaft.app.village.dto.FestivalCreateRequest;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
 import com.mannschaft.app.village.dto.RepresentativeGrantRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.VillageMatchRecruitEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
+import com.mannschaft.app.village.entity.enums.VillageMatchRecruitCategory;
+import com.mannschaft.app.village.entity.enums.VillageMatchRecruitStatus;
 import com.mannschaft.app.village.entity.enums.VillageRequestStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
+import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,6 +95,12 @@ class VillageBannedMemberAuthzIntegrationTest extends AbstractVillageIntegration
 
     @Autowired
     private VillageMeetupService meetupService;
+
+    @Autowired
+    private VillageMatchRecruitService matchRecruitService;
+
+    @Autowired
+    private VillageMatchRecruitRepository matchRecruitRepository;
 
     /** 代表委任のチーム所属判定は他ドメイン依存ゆえモック化（テストコスト圧縮）。 */
     @MockitoBean
@@ -170,6 +180,23 @@ class VillageBannedMemberAuthzIntegrationTest extends AbstractVillageIntegration
         return new RepresentativeGrantRequest(headmanMembershipId, HEADMAN_USER_ID, "検証");
     }
 
+    /** 指定ユーザーを投稿者とする OPEN な試合募集を 1 件作る。 */
+    private UUID saveOpenRecruit(Long postedByUserId) {
+        LocalDateTime now = LocalDateTime.now();
+        return matchRecruitRepository.save(VillageMatchRecruitEntity.builder()
+                .villageId(villageId)
+                .postedByUserId(postedByUserId)
+                .category(VillageMatchRecruitCategory.PRACTICE_MATCH)
+                .title("練習試合相手募集")
+                .description("土曜午後で1チーム")
+                .matchDate(LocalDate.now().plusDays(14))
+                .status(VillageMatchRecruitStatus.OPEN)
+                .createdAt(now)
+                .updatedAt(now)
+                .version(0L)
+                .build()).getId();
+    }
+
     // ========================================================================
     // AC1 — BAN された ELDER のモデレーション操作は拒否される
     // ========================================================================
@@ -207,6 +234,22 @@ class VillageBannedMemberAuthzIntegrationTest extends AbstractVillageIntegration
                     .extracting("errorCode")
                     .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
         }
+
+        /**
+         * ensureRecruitReviewer は「投稿者本人なら即 return」をメンバーシップ照会より前に置いていたため、
+         * BAN された投稿者が自分の募集の状態遷移を続行できた（BAN 逃れの抜け道）。
+         * 検査順序を入れ替えた根治の回帰防止柵。
+         */
+        @Test
+        @DisplayName("BAN された投稿者は自分の募集でも締切できない（ensureRecruitReviewer の本人バイパス）")
+        void closeOwnRecruitAsBannedAuthor() {
+            UUID recruitId = saveOpenRecruit(BANNED_ELDER_USER_ID);
+            assertThatThrownBy(() -> matchRecruitService.closeRecruit(
+                    villageId, recruitId, BANNED_ELDER_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+        }
     }
 
     // ========================================================================
@@ -238,6 +281,16 @@ class VillageBannedMemberAuthzIntegrationTest extends AbstractVillageIntegration
         void createMeetup() {
             assertThatCode(() -> meetupService.createMeetup(
                     villageId, meetupRequest(), ACTIVE_ELDER_USER_ID))
+                    .doesNotThrowAnyException();
+        }
+
+        /** 本人バイパスの検査順序を入れ替えた影響で、現役の投稿者まで塞いでいないことの裏取り。 */
+        @Test
+        @DisplayName("BAN されていない投稿者は自分の募集を締切できる")
+        void closeOwnRecruitAsActiveAuthor() {
+            UUID recruitId = saveOpenRecruit(ACTIVE_ELDER_USER_ID);
+            assertThatCode(() -> matchRecruitService.closeRecruit(
+                    villageId, recruitId, ACTIVE_ELDER_USER_ID))
                     .doesNotThrowAnyException();
         }
     }
