@@ -17,6 +17,7 @@ import type {
   VillageMeetupCreateRequest,
   VillageMeetupResponse,
   VillageMeetupStatus,
+  VillageMeetupVoteSummary,
   VillageMeetupVoteType,
 } from '~/types/village'
 import { useVillageContext } from '~/composables/useVillageContext'
@@ -41,14 +42,16 @@ const { perms, currentUserId } = useVillageContext()
 
 type StatusFilter = VillageMeetupStatus | 'ALL'
 
-const statusFilter = ref<StatusFilter>('OPEN')
+// BE の VillageMeetupStatus は PLANNING / CONFIRMED / CANCELLED の 3 値のみ。
+// 既定は PLANNING（投票受付中）。
+const statusFilter = ref<StatusFilter>('PLANNING')
 const meetups = ref<VillageMeetupResponse[]>([])
 const meetupsLoading = ref(false)
 
 const isVillager = computed(() => perms.value.isMember)
 
 const statusFilterTabs: { value: StatusFilter, i18nKey: string }[] = [
-  { value: 'OPEN', i18nKey: 'village.meetup.status.OPEN' },
+  { value: 'PLANNING', i18nKey: 'village.meetup.status.PLANNING' },
   { value: 'CONFIRMED', i18nKey: 'village.meetup.status.CONFIRMED' },
   { value: 'CANCELLED', i18nKey: 'village.meetup.status.CANCELLED' },
   { value: 'ALL', i18nKey: 'village.matchRecruit.filterAllStatus' },
@@ -82,16 +85,21 @@ function setStatusFilter(value: StatusFilter) {
 // 寄合作成 Dialog
 // =====================================================================
 
+/**
+ * 候補日フォーム行。
+ *
+ * BE (`MeetupCreateRequest.candidateDates`) は `List<LocalDate>` ＝ 日付のみ。
+ * 時刻（開始 / 終了）は BE に保持先が無いため、フォームからも撤去している。
+ */
 interface CandidateDateForm {
   candidateDate: string
-  candidateTimeStart: string
-  candidateTimeEnd: string
 }
 
 interface MeetupFormState {
   title: string
   description: string
-  venue: string
+  /** BE のフィールド名は venue ではなく location */
+  location: string
   candidateDates: CandidateDateForm[]
 }
 
@@ -99,8 +107,8 @@ function emptyForm(): MeetupFormState {
   return {
     title: '',
     description: '',
-    venue: '',
-    candidateDates: [{ candidateDate: '', candidateTimeStart: '', candidateTimeEnd: '' }],
+    location: '',
+    candidateDates: [{ candidateDate: '' }],
   }
 }
 
@@ -115,7 +123,7 @@ const meetupDraftKey = computed(
 const meetupFormSnapshot = computed<MeetupFormState>(() => ({
   title: createForm.value.title,
   description: createForm.value.description,
-  venue: createForm.value.venue,
+  location: createForm.value.location,
   // candidateDates は配列なのでシャローコピー
   candidateDates: [...createForm.value.candidateDates.map(d => ({ ...d }))],
 }))
@@ -132,9 +140,9 @@ function openCreateDialog() {
     createForm.value = {
       title: saved.title ?? '',
       description: saved.description ?? '',
-      venue: saved.venue ?? '',
+      location: saved.location ?? '',
       candidateDates: saved.candidateDates?.length
-        ? saved.candidateDates
+        ? saved.candidateDates.map(d => ({ candidateDate: d.candidateDate ?? '' }))
         : emptyForm().candidateDates,
     }
   }
@@ -142,11 +150,7 @@ function openCreateDialog() {
 }
 
 function addCandidateDateRow() {
-  createForm.value.candidateDates.push({
-    candidateDate: '',
-    candidateTimeStart: '',
-    candidateTimeEnd: '',
-  })
+  createForm.value.candidateDates.push({ candidateDate: '' })
 }
 
 function removeCandidateDateRow(index: number) {
@@ -160,12 +164,9 @@ async function submitCreate() {
   const body: VillageMeetupCreateRequest = {
     title: createForm.value.title,
     description: createForm.value.description || null,
-    venue: createForm.value.venue || null,
-    candidateDates: validDates.map(d => ({
-      candidateDate: d.candidateDate,
-      candidateTimeStart: d.candidateTimeStart || null,
-      candidateTimeEnd: d.candidateTimeEnd || null,
-    })),
+    location: createForm.value.location || null,
+    // BE は素の日付配列（List<LocalDate>）を受け取る
+    candidateDates: validDates.map(d => d.candidateDate),
   }
   try {
     await villageApi.createMeetup(villageId.value, body)
@@ -185,30 +186,49 @@ async function submitCreate() {
 
 const showDetailDialog = ref(false)
 const detailMeetup = ref<VillageMeetupResponse | null>(null)
+/**
+ * 投票集計。候補日 DTO には票数が含まれない（BE: MeetupCandidateDateResponse は
+ * `{id, meetupId, candidateDate, sortOrder}` のみ）ため、票数表示は投票集計 API
+ * (`GET /meetups/{id}/votes`) から供給する。
+ */
+const voteSummary = ref<VillageMeetupVoteSummary | null>(null)
 
 const isDetailOrganizer = computed(() => {
   if (!detailMeetup.value || !currentUserId.value) return false
   return detailMeetup.value.organizerUserId === currentUserId.value
 })
 
+/** 寄合詳細と投票集計をまとめて読み込む。 */
+async function loadDetail(meetupId: string) {
+  const [meetup, summary] = await Promise.all([
+    villageApi.getMeetup(villageId.value, meetupId),
+    villageApi.getVoteSummary(villageId.value, meetupId),
+  ])
+  detailMeetup.value = meetup
+  voteSummary.value = summary
+}
+
 async function openDetailDialog(m: VillageMeetupResponse) {
+  // 一覧 API は候補日を省略する（candidateDates=null）ため、詳細は必ず再取得する。
+  detailMeetup.value = null
+  voteSummary.value = null
+  showDetailDialog.value = true
   try {
-    detailMeetup.value = await villageApi.getMeetup(villageId.value, m.id)
+    await loadDetail(m.id)
   }
   catch (error) {
     detailMeetup.value = m
     handleApiError(error, t('village.meetup.loadFailed'))
   }
-  showDetailDialog.value = true
 }
 
 async function castVoteOn(candidate: VillageMeetupCandidateDateResponse, voteType: VillageMeetupVoteType) {
   if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
   try {
-    detailMeetup.value = await villageApi.castVote(villageId.value, detailMeetup.value.id, {
-      candidateDateId: candidate.id,
-      voteType,
-    })
+    // BE は 204 No Content（本体なし）。投票後の最新状態は再取得して反映する。
+    await villageApi.castVote(villageId.value, meetupId, candidate.id, { voteType })
+    await loadDetail(meetupId)
     success(t('village.meetup.voteSuccess'))
   }
   catch (error) {
@@ -284,6 +304,7 @@ onMounted(() => {
     <VillageMeetupDetailDialog
       v-model:visible="showDetailDialog"
       :detail-meetup="detailMeetup"
+      :vote-summary="voteSummary"
       :is-villager="isVillager"
       :is-detail-organizer="isDetailOrganizer"
       @cast-vote="castVoteOn"

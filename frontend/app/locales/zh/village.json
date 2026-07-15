@@ -463,38 +463,31 @@
       "editTitle": "编辑聚会",
       "meetupTitle": "聚会名称",
       "description": "说明",
-      "venue": "地点",
+      "location": "地点",
       "candidateDates": "候选日期",
       "addCandidateDate": "添加候选日期",
       "removeCandidateDate": "删除候选日期",
       "candidateDate": "候选日期",
-      "candidateTimeStart": "开始时间",
-      "candidateTimeEnd": "结束时间",
       "vote": "投票",
-      "voteComment": "评论（可选）",
-      "voteSubmit": "提交投票",
       "confirm": "确定此日期",
       "confirmedDate": "确定日期",
       "cancel": "取消聚会",
       "confirmCancel": "取消此聚会？",
       "empty": "暂无计划中的聚会",
-      "participantCount": "预计参加人数",
       "saveSuccess": "聚会已保存",
       "voteSuccess": "投票已提交",
       "confirmSuccess": "日期已确定",
       "cancelSuccess": "聚会已取消",
       "loadFailed": "获取聚会信息失败",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参与",
-        "MAYBE": "未定"
+        "AVAILABLE": "可以参加",
+        "MAYBE": "可能参加",
+        "UNAVAILABLE": "无法参加"
       },
       "status": {
-        "DRAFT": "草稿",
-        "OPEN": "投票中",
+        "PLANNING": "投票中",
         "CONFIRMED": "已确定",
-        "CANCELLED": "已取消",
-        "CLOSED": "已结束"
+        "CANCELLED": "已取消"
       }
     },
     "chronicle": {

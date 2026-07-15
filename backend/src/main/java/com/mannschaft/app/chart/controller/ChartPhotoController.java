@@ -3,6 +3,7 @@ package com.mannschaft.app.chart.controller;
 import com.mannschaft.app.chart.dto.ChartPhotoResponse;
 import com.mannschaft.app.chart.service.ChartPhotoService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,8 @@ public class ChartPhotoController {
             @RequestParam("photo_type") String photoType,
             @RequestParam(value = "note", required = false) String note,
             @RequestParam(value = "is_shared_to_customer", required = false) Boolean isSharedToCustomer) {
-        ChartPhotoResponse response = chartPhotoService.uploadPhoto(teamId, id, file, photoType, note, isSharedToCustomer);
+        ChartPhotoResponse response = chartPhotoService.uploadPhoto(
+                teamId, id, SecurityUtils.getCurrentUserId(), file, photoType, note, isSharedToCustomer);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -56,7 +58,7 @@ public class ChartPhotoController {
     public ResponseEntity<Void> deletePhoto(
             @PathVariable Long teamId,
             @PathVariable Long photoId) {
-        chartPhotoService.deletePhoto(teamId, photoId);
+        chartPhotoService.deletePhoto(teamId, photoId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

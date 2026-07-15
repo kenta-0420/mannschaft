@@ -463,38 +463,31 @@
       "editTitle": "Edit meetup",
       "meetupTitle": "Meetup name",
       "description": "Description",
-      "venue": "Venue",
+      "location": "Venue",
       "candidateDates": "Candidate dates",
       "addCandidateDate": "Add candidate date",
       "removeCandidateDate": "Remove candidate date",
       "candidateDate": "Candidate date",
-      "candidateTimeStart": "Start time",
-      "candidateTimeEnd": "End time",
       "vote": "Vote",
-      "voteComment": "Comment (optional)",
-      "voteSubmit": "Submit vote",
       "confirm": "Confirm this date",
       "confirmedDate": "Confirmed date",
       "cancel": "Cancel meetup",
       "confirmCancel": "Cancel this meetup?",
       "empty": "No upcoming meetups",
-      "participantCount": "Expected attendees",
       "saveSuccess": "Meetup saved",
       "voteSuccess": "Vote submitted",
       "confirmSuccess": "Date confirmed",
       "cancelSuccess": "Meetup cancelled",
       "loadFailed": "Failed to load meetups",
       "voteType": {
-        "YES": "Attending",
-        "NO": "Not attending",
-        "MAYBE": "Undecided"
+        "AVAILABLE": "Available",
+        "MAYBE": "Maybe",
+        "UNAVAILABLE": "Unavailable"
       },
       "status": {
-        "DRAFT": "Draft",
-        "OPEN": "Voting open",
+        "PLANNING": "Voting open",
         "CONFIRMED": "Confirmed",
-        "CANCELLED": "Cancelled",
-        "CLOSED": "Closed"
+        "CANCELLED": "Cancelled"
       }
     },
     "chronicle": {

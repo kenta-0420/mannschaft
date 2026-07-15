@@ -148712,6 +148712,10 @@
           "metadata": {
             "$ref": "#/components/schemas/TeamMetadataDto"
           },
+          "numericId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "slug": {
             "type": "string"
           },
@@ -152453,6 +152457,10 @@
           },
           "metadata": {
             "$ref": "#/components/schemas/OrgMetadataDto"
+          },
+          "numericId": {
+            "type": "integer",
+            "format": "int64"
           },
           "slug": {
             "type": "string"

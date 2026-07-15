@@ -463,38 +463,31 @@
       "editTitle": "모임 편집",
       "meetupTitle": "모임 이름",
       "description": "설명",
-      "venue": "장소",
+      "location": "장소",
       "candidateDates": "후보 날짜",
       "addCandidateDate": "후보 날짜 추가",
       "removeCandidateDate": "후보 날짜 삭제",
       "candidateDate": "후보 날짜",
-      "candidateTimeStart": "시작 시간",
-      "candidateTimeEnd": "종료 시간",
       "vote": "투표",
-      "voteComment": "댓글（선택 사항）",
-      "voteSubmit": "투표하기",
       "confirm": "이 날짜로 확정",
       "confirmedDate": "확정 날짜",
       "cancel": "모임 취소",
       "confirmCancel": "이 모임을 취소하시겠습니까?",
       "empty": "예정된 모임이 없습니다",
-      "participantCount": "참가 예정 인원",
       "saveSuccess": "모임이 저장되었습니다",
       "voteSuccess": "투표가 제출되었습니다",
       "confirmSuccess": "날짜가 확정되었습니다",
       "cancelSuccess": "모임이 취소되었습니다",
       "loadFailed": "모임 정보를 가져오는 데 실패했습니다",
       "voteType": {
-        "YES": "참가",
-        "NO": "불참",
-        "MAYBE": "미정"
+        "AVAILABLE": "참가 가능",
+        "MAYBE": "아마 참가",
+        "UNAVAILABLE": "참가 불가"
       },
       "status": {
-        "DRAFT": "초안",
-        "OPEN": "투표 접수 중",
+        "PLANNING": "투표 접수 중",
         "CONFIRMED": "개최 확정",
-        "CANCELLED": "취소",
-        "CLOSED": "종료"
+        "CANCELLED": "취소"
       }
     },
     "chronicle": {

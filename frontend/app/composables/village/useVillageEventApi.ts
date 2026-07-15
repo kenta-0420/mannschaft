@@ -1,6 +1,7 @@
 import type {
   VillageCalendarEventCreateRequest,
   VillageCalendarEventListParams,
+  VillageCalendarEventListResponse,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageFestivalCreateRequest,
@@ -34,12 +35,12 @@ export function useVillageEventApi() {
   // /api/v1/villages/{villageId}/calendar-events
   // =====================================================================
 
-  /** 歳時記カレンダー一覧 */
+  /** 歳時記カレンダー月別一覧（BE は `{items, year, month}` エンベロープを返す） */
   async function listCalendarEvents(
     villageId: string,
     params?: VillageCalendarEventListParams,
   ) {
-    const res = await api<{ data: VillageCalendarEventResponse[] }>(
+    const res = await api<{ data: VillageCalendarEventListResponse }>(
       `/api/v1/villages/${villageId}/calendar-events${qs(params)}`,
     )
     return res.data

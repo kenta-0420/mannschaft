@@ -11,8 +11,16 @@ import type {
 
 // Wave 3-B: OrganizationResponse ネスト構造に対応
 export interface OrgDetail {
-  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  /**
+   * URL 識別子（カスタムスラッグ）。実体は slug と同値の string 型。
+   * BE #1547 slug移行対応（旧 UUID public_id 方式は廃止済み・project_url_identifier_slug_canonical）。
+   */
   id: string
+  /**
+   * 組織の内部 BIGINT ID（F09.19.10）。URL には使わない（URL 識別子は上記 id/slug が正準）。
+   * Spotlight 掲載面など BE が Long スコープ ID を要求する内部連携専用に使用する。
+   */
+  numericId?: number
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto
