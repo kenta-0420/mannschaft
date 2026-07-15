@@ -1,5 +1,6 @@
 package com.mannschaft.app.equipment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
@@ -37,12 +38,14 @@ class EquipmentItemServiceTest {
     @Mock private QrCodeGenerator qrCodeGenerator;
     @Mock private StorageService storageService;
     @Mock private DomainEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private EquipmentItemService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long ITEM_ID = 10L;
+    private static final Long ACTOR_USER_ID = 999L;
 
     @Nested
     @DisplayName("createForTeam")
@@ -59,7 +62,7 @@ class EquipmentItemServiceTest {
             given(equipmentMapper.toItemResponse(saved)).willReturn(new EquipmentItemResponse(
                     null, TEAM_ID, null, "ボール", null, null, null, null, null, null, null, null, null, null, null, "QR-001", null, null));
 
-            EquipmentItemResponse result = service.createForTeam(TEAM_ID, request);
+            EquipmentItemResponse result = service.createForTeam(TEAM_ID, ACTOR_USER_ID, request);
             assertThat(result).isNotNull();
         }
     }
@@ -71,7 +74,7 @@ class EquipmentItemServiceTest {
         @DisplayName("異常系: 備品不在でEQUIPMENT_001例外")
         void 取得_不在_例外() {
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.getByTeam(TEAM_ID, ITEM_ID))
+            assertThatThrownBy(() -> service.getByTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("EQUIPMENT_001"));
@@ -89,7 +92,7 @@ class EquipmentItemServiceTest {
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.of(entity));
             given(assignmentRepository.existsByEquipmentItemIdAndReturnedAtIsNull(any())).willReturn(true);
 
-            assertThatThrownBy(() -> service.deleteForTeam(TEAM_ID, ITEM_ID))
+            assertThatThrownBy(() -> service.deleteForTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("EQUIPMENT_008"));
@@ -107,7 +110,7 @@ class EquipmentItemServiceTest {
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.of(entity));
             given(itemRepository.save(entity)).willReturn(entity);
 
-            service.deleteImageForTeam(TEAM_ID, ITEM_ID);
+            service.deleteImageForTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID);
 
             verify(eventPublisher).publish(any(com.mannschaft.app.common.event.DomainEvent.class));
         }
@@ -124,7 +127,7 @@ class EquipmentItemServiceTest {
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.of(entity));
             PresignedUrlRequest request = new PresignedUrlRequest("text/plain", 1000L);
 
-            assertThatThrownBy(() -> service.getPresignedUrlForTeam(TEAM_ID, ITEM_ID, request))
+            assertThatThrownBy(() -> service.getPresignedUrlForTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("EQUIPMENT_010"));
@@ -138,7 +141,7 @@ class EquipmentItemServiceTest {
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.of(entity));
             PresignedUrlRequest request = new PresignedUrlRequest("image/jpeg", 6 * 1024 * 1024L);
 
-            assertThatThrownBy(() -> service.getPresignedUrlForTeam(TEAM_ID, ITEM_ID, request))
+            assertThatThrownBy(() -> service.getPresignedUrlForTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("EQUIPMENT_011"));

@@ -24,8 +24,6 @@ async function handleDeleteAccount(currentPassword: string | null) {
 
 const authStore = useAuthStore()
 const appearanceStore = useAppearanceStore()
-const teamStore = useTeamStore()
-const orgStore = useOrganizationStore()
 
 const loading = ref(true)
 // SSR/CSR 初期マークアップを一致させるためのマウントフラグ。
@@ -121,18 +119,7 @@ const {
   handleSaveDefaults,
 } = useAccountSeals()
 
-const {
-  gcalStatus,
-  gcalSyncSettings,
-  gcalSyncing,
-  loadGcal,
-  connectGoogle,
-  disconnectGoogle,
-  saveGcalSettings,
-  manualGcalSync,
-  toggleTeamSync,
-  toggleOrgSync,
-} = useAccountGcal()
+const { gcalStatus, loadGcal } = useAccountGcal()
 
 onMounted(async () => {
   isMounted.value = true
@@ -146,8 +133,6 @@ onMounted(async () => {
     loadSeals(userId.value),
     loadGcal(),
     appearanceStore.loadFromServer(),
-    teamStore.fetchMyTeams(),
-    orgStore.fetchMyOrganizations(),
   ])
   loading.value = false
 })
@@ -277,19 +262,7 @@ onMounted(async () => {
         @load-more="loadLoginHistory"
       />
 
-      <SettingsGcalSection
-        v-model:gcal-sync-settings="gcalSyncSettings"
-        :gcal-status="gcalStatus"
-        :gcal-syncing="gcalSyncing"
-        :teams="teamStore.myTeams"
-        :organizations="orgStore.myOrganizations"
-        @connect="connectGoogle"
-        @disconnect="disconnectGoogle"
-        @save-settings="saveGcalSettings"
-        @manual-sync="manualGcalSync"
-        @toggle-team-sync="toggleTeamSync"
-        @toggle-org-sync="toggleOrgSync"
-      />
+      <SettingsGcalSection :gcal-status="gcalStatus" />
 
       <SettingsDataExportSection />
 

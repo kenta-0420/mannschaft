@@ -463,7 +463,15 @@
     "writeReply": "Write a reply",
     "replySubmit": "Reply",
     "noReplies": "No replies yet",
-    "loadMoreReplies": "Show more"
+    "loadMoreReplies": "Show more",
+    "composerPlaceholder": {
+      "TEAM": "Post to your team...",
+      "VILLAGE": "Post to your village...",
+      "ORGANIZATION": "Post to your organization...",
+      "PUBLIC": "What's happening?"
+    },
+    "submitLabel": "Post",
+    "pollOptionsCount": "{count} options"
   },
   "gallery": {
     "title": "Gallery",

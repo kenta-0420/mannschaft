@@ -1,5 +1,6 @@
 package com.mannschaft.app.equipment.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
@@ -48,6 +49,7 @@ public class EquipmentItemService {
     private final QrCodeGenerator qrCodeGenerator;
     private final StorageService storageService;
     private final DomainEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     @Value("${app.domain-base:https://app.mannschaft.example}")
     private String domainBase;
@@ -61,8 +63,9 @@ public class EquipmentItemService {
     /**
      * チーム備品一覧をページング取得する。
      */
-    public Page<EquipmentItemResponse> listByTeam(Long teamId, String category, String status,
+    public Page<EquipmentItemResponse> listByTeam(Long teamId, Long actorUserId, String category, String status,
                                                    String nameLike, Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, "TEAM");
         Page<EquipmentItemEntity> page = resolveTeamPage(teamId, category, status, nameLike, pageable);
         return page.map(equipmentMapper::toItemResponse);
     }
@@ -70,8 +73,9 @@ public class EquipmentItemService {
     /**
      * 組織備品一覧をページング取得する。
      */
-    public Page<EquipmentItemResponse> listByOrganization(Long orgId, String category, String status,
+    public Page<EquipmentItemResponse> listByOrganization(Long orgId, Long actorUserId, String category, String status,
                                                            String nameLike, Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, orgId, "ORGANIZATION");
         Page<EquipmentItemEntity> page = resolveOrgPage(orgId, category, status, nameLike, pageable);
         return page.map(equipmentMapper::toItemResponse);
     }
@@ -81,16 +85,18 @@ public class EquipmentItemService {
     /**
      * チーム備品の詳細を取得する。
      */
-    public EquipmentItemResponse getByTeam(Long teamId, Long id) {
+    public EquipmentItemResponse getByTeam(Long teamId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), "TEAM");
         return equipmentMapper.toItemResponse(entity);
     }
 
     /**
      * 組織備品の詳細を取得する。
      */
-    public EquipmentItemResponse getByOrganization(Long orgId, Long id) {
+    public EquipmentItemResponse getByOrganization(Long orgId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        accessControlService.checkMembership(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
         return equipmentMapper.toItemResponse(entity);
     }
 
@@ -100,7 +106,8 @@ public class EquipmentItemService {
      * チーム備品を作成する。
      */
     @Transactional
-    public EquipmentItemResponse createForTeam(Long teamId, CreateEquipmentItemRequest request) {
+    public EquipmentItemResponse createForTeam(Long teamId, Long actorUserId, CreateEquipmentItemRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, "TEAM");
         String qrCode = qrCodeGenerator.generate(EquipmentScopeType.TEAM, teamId);
         EquipmentItemEntity entity = buildEntity(request, teamId, null, qrCode);
         EquipmentItemEntity saved = itemRepository.save(entity);
@@ -112,7 +119,8 @@ public class EquipmentItemService {
      * 組織備品を作成する。
      */
     @Transactional
-    public EquipmentItemResponse createForOrganization(Long orgId, CreateEquipmentItemRequest request) {
+    public EquipmentItemResponse createForOrganization(Long orgId, Long actorUserId, CreateEquipmentItemRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, orgId, "ORGANIZATION");
         String qrCode = qrCodeGenerator.generate(EquipmentScopeType.ORGANIZATION, orgId);
         EquipmentItemEntity entity = buildEntity(request, null, orgId, qrCode);
         EquipmentItemEntity saved = itemRepository.save(entity);
@@ -126,8 +134,9 @@ public class EquipmentItemService {
      * チーム備品を更新する。
      */
     @Transactional
-    public EquipmentItemResponse updateForTeam(Long teamId, Long id, UpdateEquipmentItemRequest request) {
+    public EquipmentItemResponse updateForTeam(Long teamId, Long id, Long actorUserId, UpdateEquipmentItemRequest request) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
         applyUpdate(entity, request);
         EquipmentItemEntity saved = itemRepository.save(entity);
         log.info("備品更新（チーム）: teamId={}, itemId={}", teamId, id);
@@ -138,8 +147,9 @@ public class EquipmentItemService {
      * 組織備品を更新する。
      */
     @Transactional
-    public EquipmentItemResponse updateForOrganization(Long orgId, Long id, UpdateEquipmentItemRequest request) {
+    public EquipmentItemResponse updateForOrganization(Long orgId, Long id, Long actorUserId, UpdateEquipmentItemRequest request) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
         applyUpdate(entity, request);
         EquipmentItemEntity saved = itemRepository.save(entity);
         log.info("備品更新（組織）: orgId={}, itemId={}", orgId, id);
@@ -152,8 +162,9 @@ public class EquipmentItemService {
      * チーム備品を論理削除する。
      */
     @Transactional
-    public void deleteForTeam(Long teamId, Long id) {
+    public void deleteForTeam(Long teamId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
         validateNoActiveAssignments(entity);
         entity.softDelete();
         itemRepository.save(entity);
@@ -164,8 +175,9 @@ public class EquipmentItemService {
      * 組織備品を論理削除する。
      */
     @Transactional
-    public void deleteForOrganization(Long orgId, Long id) {
+    public void deleteForOrganization(Long orgId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
         validateNoActiveAssignments(entity);
         entity.softDelete();
         itemRepository.save(entity);
@@ -177,14 +189,16 @@ public class EquipmentItemService {
     /**
      * チーム内のカテゴリ一覧をDISTINCTで取得する。
      */
-    public List<String> getCategoriesByTeam(Long teamId) {
+    public List<String> getCategoriesByTeam(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, "TEAM");
         return itemRepository.findDistinctCategoriesByTeamId(teamId);
     }
 
     /**
      * 組織内のカテゴリ一覧をDISTINCTで取得する。
      */
-    public List<String> getCategoriesByOrganization(Long orgId) {
+    public List<String> getCategoriesByOrganization(Long orgId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, orgId, "ORGANIZATION");
         return itemRepository.findDistinctCategoriesByOrganizationId(orgId);
     }
 
@@ -194,8 +208,9 @@ public class EquipmentItemService {
      * 備品画像アップロード用 Pre-signed URL を取得する（チーム）。
      */
     @Transactional
-    public PresignedUrlResponse getPresignedUrlForTeam(Long teamId, Long id, PresignedUrlRequest request) {
+    public PresignedUrlResponse getPresignedUrlForTeam(Long teamId, Long id, Long actorUserId, PresignedUrlRequest request) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
         return generatePresignedUrl(entity, "teams", teamId, request);
     }
 
@@ -203,8 +218,9 @@ public class EquipmentItemService {
      * 備品画像アップロード用 Pre-signed URL を取得する（組織）。
      */
     @Transactional
-    public PresignedUrlResponse getPresignedUrlForOrganization(Long orgId, Long id, PresignedUrlRequest request) {
+    public PresignedUrlResponse getPresignedUrlForOrganization(Long orgId, Long id, Long actorUserId, PresignedUrlRequest request) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
         return generatePresignedUrl(entity, "organizations", orgId, request);
     }
 
@@ -212,8 +228,9 @@ public class EquipmentItemService {
      * 備品画像を削除する（チーム）。
      */
     @Transactional
-    public void deleteImageForTeam(Long teamId, Long id) {
+    public void deleteImageForTeam(Long teamId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
         String oldS3Key = entity.getS3Key();
         entity.updateS3Key(null);
         itemRepository.save(entity);
@@ -227,8 +244,9 @@ public class EquipmentItemService {
      * 備品画像を削除する（組織）。
      */
     @Transactional
-    public void deleteImageForOrganization(Long orgId, Long id) {
+    public void deleteImageForOrganization(Long orgId, Long id, Long actorUserId) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
         String oldS3Key = entity.getS3Key();
         entity.updateS3Key(null);
         itemRepository.save(entity);
@@ -243,8 +261,9 @@ public class EquipmentItemService {
     /**
      * チーム備品のQRコード一覧を取得する。
      */
-    public List<QrCodeResponse> getQrCodesByTeam(Long teamId, String ids, String category,
+    public List<QrCodeResponse> getQrCodesByTeam(Long teamId, Long actorUserId, String ids, String category,
                                                   String status, String nameLike) {
+        accessControlService.checkMembership(actorUserId, teamId, "TEAM");
         List<EquipmentItemEntity> items;
         if (ids != null && !ids.isBlank()) {
             List<Long> idList = parseIds(ids);
@@ -273,8 +292,9 @@ public class EquipmentItemService {
     /**
      * 組織備品のQRコード一覧を取得する。
      */
-    public List<QrCodeResponse> getQrCodesByOrganization(Long orgId, String ids, String category,
+    public List<QrCodeResponse> getQrCodesByOrganization(Long orgId, Long actorUserId, String ids, String category,
                                                           String status, String nameLike) {
+        accessControlService.checkMembership(actorUserId, orgId, "ORGANIZATION");
         List<EquipmentItemEntity> items;
         if (ids != null && !ids.isBlank()) {
             List<Long> idList = parseIds(ids);

@@ -142,7 +142,7 @@ export interface EmergencyClosureLiveContext {
    */
   teamId: Ref<number | null>
   /**
-   * HTTP API 呼び出しに使うチーム識別子（slug or 数値文字列・BE TeamIdConverter が両対応）。
+   * HTTP API 呼び出しに使うチーム識別子（slug or 数値文字列・BE ScopeSlugIdConverter が両対応）。
    * getConfirmations のパスに使う。
    */
   apiTeamRef: Ref<string>

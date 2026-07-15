@@ -4,6 +4,7 @@ import type {
   VillageMatchApplicationReviewRequest,
   VillageMatchRecruitCreateRequest,
   VillageMatchRecruitListParams,
+  VillageMatchRecruitListResponse,
   VillageMatchRecruitResponse,
   VillageMatchRecruitUpdateRequest,
 } from '~/types/village'
@@ -33,12 +34,17 @@ export function useVillageMatchApi() {
   // /api/v1/villages/{villageId}/match-recruits
   // =====================================================================
 
-  /** 練習試合募集一覧 */
+  /**
+   * 練習試合募集一覧
+   *
+   * BE は配列ではなく `{items, page, size, total}` のエンベロープを返す
+   * （`MatchRecruitListResponse`。Spring の `Page` 形状ではない独自形状）。
+   */
   async function listMatchRecruits(
     villageId: string,
     params?: VillageMatchRecruitListParams,
   ) {
-    const res = await api<{ data: VillageMatchRecruitResponse[] }>(
+    const res = await api<{ data: VillageMatchRecruitListResponse }>(
       `/api/v1/villages/${villageId}/match-recruits${qs(params)}`,
     )
     return res.data
@@ -112,17 +118,22 @@ export function useVillageMatchApi() {
     return res.data
   }
 
-  /** 応募を審査（ACCEPT/REJECT） */
+  /**
+   * 応募を審査（承認 / 却下）
+   *
+   * BE は `/accept` `/reject` のような動詞パスではなく、単一の `/review` に
+   * `{status: 'ACCEPTED' | 'REJECTED', reviewComment?}` を渡す契約
+   * （`VillageMatchRecruitController#review` / `MatchApplicationReviewRequest`）。
+   */
   async function reviewApplication(
     villageId: string,
     recruitId: string,
     applicationId: string,
-    body: VillageMatchApplicationReviewRequest & { action: 'accept' | 'reject' },
+    body: VillageMatchApplicationReviewRequest,
   ) {
-    const { action, ...reviewBody } = body
     const res = await api<{ data: VillageMatchApplicationResponse }>(
-      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/${action}`,
-      { method: 'POST', body: reviewBody },
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/review`,
+      { method: 'POST', body },
     )
     return res.data
   }

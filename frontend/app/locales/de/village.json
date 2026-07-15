@@ -463,38 +463,31 @@
       "editTitle": "Treffen bearbeiten",
       "meetupTitle": "Treffenname",
       "description": "Beschreibung",
-      "venue": "Ort",
+      "location": "Ort",
       "candidateDates": "Kandidatentermine",
       "addCandidateDate": "Kandidatentermin hinzufügen",
       "removeCandidateDate": "Kandidatentermin entfernen",
       "candidateDate": "Kandidatentermin",
-      "candidateTimeStart": "Startzeit",
-      "candidateTimeEnd": "Endzeit",
       "vote": "Abstimmen",
-      "voteComment": "Kommentar (optional)",
-      "voteSubmit": "Abstimmung abschicken",
       "confirm": "Diesen Termin bestätigen",
       "confirmedDate": "Bestätigter Termin",
       "cancel": "Treffen absagen",
       "confirmCancel": "Dieses Treffen absagen?",
       "empty": "Keine geplanten Treffen",
-      "participantCount": "Erwartete Teilnehmer",
       "saveSuccess": "Treffen gespeichert",
       "voteSuccess": "Abstimmung eingereicht",
       "confirmSuccess": "Termin bestätigt",
       "cancelSuccess": "Treffen abgesagt",
       "loadFailed": "Treffen konnten nicht geladen werden",
       "voteType": {
-        "YES": "Teilnehmen",
-        "NO": "Nicht teilnehmen",
-        "MAYBE": "Vielleicht"
+        "AVAILABLE": "Kann teilnehmen",
+        "MAYBE": "Vielleicht",
+        "UNAVAILABLE": "Kann nicht"
       },
       "status": {
-        "DRAFT": "Entwurf",
-        "OPEN": "Abstimmung offen",
+        "PLANNING": "Abstimmung offen",
         "CONFIRMED": "Bestätigt",
-        "CANCELLED": "Abgesagt",
-        "CLOSED": "Geschlossen"
+        "CANCELLED": "Abgesagt"
       }
     },
     "chronicle": {

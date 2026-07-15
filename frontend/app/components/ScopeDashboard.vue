@@ -8,8 +8,10 @@ const props = withDefaults(
     scopeId?: string
     /**
      * F09.19.4 Spotlight 掲載面用のスコープ数値 ID（BE は scopeId に Long を要求する）。
-     * team は数値 BIGINT の文字列（team.id）、organization は現状 UUID public_id のため
-     * 数値化できない（数値化できないスコープでは掲載面を取得しない・後述コメント参照）。
+     * team/organization とも URL 識別子（scopeId プロパティ）は slug 文字列であり数値化できないため、
+     * TeamResponse.numericId / OrgDetail.numericId（F09.19.10・BE 内部 BIGINT ID）を
+     * 親ページが文字列化して渡す。未解決（null/undefined）の場合は掲載面を取得しない
+     * （誤った ID を送らない・後述コメント参照）。
      */
     scopeNumericId?: string
     scopeName?: string
@@ -65,8 +67,9 @@ onMounted(() => {
 // 親が 1 回だけ count=2 で取得し items[0]→Primary・items[1]→Secondary に配る。
 // spotlightPrimary/Secondary は v-for 外の固定 order-last 描画であり KEYS/linkTo には登録しない
 // （結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
-// scopeId には数値 ID が必須（BE Long）。organization は現状 UUID public_id しか FE に無いため
-// 数値化できず、その場合は掲載面を取得しない（誤った ID を送らない）。team は team.id が数値文字列。
+// scopeId には数値 ID が必須（BE Long）。team/organization とも URL 識別子（scopeId プロパティ）は
+// slug 文字列で数値化できないため、親ページが numericId（F09.19.10）由来の scopeNumericId を渡す。
+// 未解決の場合は掲載面を取得しない（誤った ID を送らない）。
 const spotlightApi = useSpotlightApi()
 const spotlightItems = ref<SpotlightItem[]>([])
 // 候補なしは枠ごと非表示: primary=items[0] / secondary=items[1]（存在時のみ描画）

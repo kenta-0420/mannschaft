@@ -48327,6 +48327,8 @@ export interface components {
             id?: string;
             location?: components["schemas"]["TeamLocationDto"];
             metadata?: components["schemas"]["TeamMetadataDto"];
+            /** Format: int64 */
+            numericId?: number;
             slug?: string;
             social?: components["schemas"]["TeamSocialDto"];
             timestamps?: components["schemas"]["TeamTimestampsDto"];
@@ -49742,6 +49744,8 @@ export interface components {
             id?: string;
             location?: components["schemas"]["OrgLocationDto"];
             metadata?: components["schemas"]["OrgMetadataDto"];
+            /** Format: int64 */
+            numericId?: number;
             slug?: string;
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];
