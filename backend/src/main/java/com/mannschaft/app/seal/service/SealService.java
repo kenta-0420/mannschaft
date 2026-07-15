@@ -83,16 +83,30 @@ public class SealService {
         String svgData = sealGenerator.generateSvg(request.getDisplayText(), variant);
         String sealHash = sealGenerator.computeHash(svgData);
 
-        ElectronicSealEntity entity = ElectronicSealEntity.builder()
-                .userId(userId)
-                .variant(variant)
-                .displayText(request.getDisplayText())
-                .svgData(svgData)
-                .sealHash(sealHash)
-                .build();
+        // 論理削除済みの同一 (user_id, variant) 行が UNIQUE 制約上に残っている場合、
+        // 通常の INSERT は DataIntegrityViolationException（→ COMMON_999/500）になる。
+        // seal_stamp_logs が同一ドメイン内 FK(ON DELETE RESTRICT) で sealId を参照し続けている
+        // 可能性があるため物理削除はせず、同じ行を「復活（undelete）+ 内容更新」する。
+        // 詳細: ElectronicSealRepository#reviveDeleted の Javadoc 参照。
+        int revivedCount = sealRepository.reviveDeleted(
+                userId, variant.name(), request.getDisplayText(), svgData, sealHash);
 
-        ElectronicSealEntity saved = sealRepository.save(entity);
-        log.info("印鑑作成: userId={}, sealId={}, variant={}", userId, saved.getId(), variant);
+        ElectronicSealEntity saved;
+        if (revivedCount > 0) {
+            saved = sealRepository.findByUserIdAndVariant(userId, variant)
+                    .orElseThrow(() -> new BusinessException(SealErrorCode.SEAL_NOT_FOUND));
+            log.info("印鑑作成（論理削除済み行を復活）: userId={}, sealId={}, variant={}", userId, saved.getId(), variant);
+        } else {
+            ElectronicSealEntity entity = ElectronicSealEntity.builder()
+                    .userId(userId)
+                    .variant(variant)
+                    .displayText(request.getDisplayText())
+                    .svgData(svgData)
+                    .sealHash(sealHash)
+                    .build();
+            saved = sealRepository.save(entity);
+            log.info("印鑑作成: userId={}, sealId={}, variant={}", userId, saved.getId(), variant);
+        }
         return sealMapper.toSealResponse(saved);
     }
 
