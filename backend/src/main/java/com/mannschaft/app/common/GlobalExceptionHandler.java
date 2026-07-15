@@ -856,7 +856,12 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.3 equipment（備品管理）は
+            // (id, teamId)/(id, organizationId) 複合キーで取得するため、他スコープの ID 指定は
+            // IDOR 秘匿のため 404 とする（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("EQUIPMENT_001", HttpStatus.NOT_FOUND),            // ITEM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("EQUIPMENT_002", HttpStatus.NOT_FOUND)             // ASSIGNMENT_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
