@@ -182,10 +182,10 @@ export function toCirculationActionItem(item: PersonalActionItem): CirculationAc
   return {
     id: item.itemId,
     title: item.title,
-    // 個人横断集計 API（/dashboard/action-required）は circulated_at を保持しないため空文字で埋める。
-    // CirculationConfirmModal の formatDate は falsy 値を '-' 表示するため実害はない
-    // （実データが必要なら BE 側に circulated_at 追加が必要・本戦役は FE のみのスコープ）。
-    circulatedAt: '',
+    // 個人横断集計 API（/dashboard/action-required）は circulated_at を PersonalActionRequiredService
+    // 経由で実値のまま返す（BE の fetchAndConvert で per-scope facade の値を通す）。
+    // CirculationConfirmModal の formatDate は falsy 値を '-' 表示するため、万一 null でも実害はない。
+    circulatedAt: item.circulatedAt ?? '',
     deadline: item.deadline,
   }
 }

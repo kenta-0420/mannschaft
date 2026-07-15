@@ -74887,6 +74887,8 @@ export interface components {
         };
         ActionItem: {
             /** Format: date-time */
+            circulated_at?: string;
+            /** Format: date-time */
             deadline?: string;
             item_id?: string;
             item_type?: string;
