@@ -211,7 +211,19 @@ public enum TournamentErrorCode implements ErrorCode {
     SCOREKEEPER_MANAGE_FORBIDDEN("TOUR_059", "スコアキーパーを管理する権限がありません", Severity.WARN),
 
     /** スコアキーパー指名が見つからない（IDOR 対策で 404 に統一） */
-    SCOREKEEPER_NOT_FOUND("TOUR_060", "スコアキーパー指名が見つかりません", Severity.WARN);
+    SCOREKEEPER_NOT_FOUND("TOUR_060", "スコアキーパー指名が見つかりません", Severity.WARN),
+
+    // ========================================================================
+    // 認可根治戦役 Wave 2 トランシェ2C（tournament）
+    // path で渡された ID をそのまま信用せず、親エンティティ（大会/ディビジョン）との
+    // 束縛を検証して不一致は 404 で存在秘匿する（BOLA 是正）
+    // ========================================================================
+
+    /** 節（matchday）が指定ディビジョン配下に見つからない（IDOR 対策で 404 に統一） */
+    MATCHDAY_NOT_FOUND("TOUR_061", "節が見つかりません", Severity.WARN),
+
+    /** 出場メンバー（fixture roster）が指定大会配下に見つからない（IDOR 対策で 404 に統一） */
+    FIXTURE_ROSTER_NOT_FOUND("TOUR_062", "出場メンバーが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
