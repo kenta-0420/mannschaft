@@ -463,7 +463,15 @@
     "writeReply": "写回复",
     "replySubmit": "回复",
     "noReplies": "还没有回复",
-    "loadMoreReplies": "查看更多"
+    "loadMoreReplies": "查看更多",
+    "composerPlaceholder": {
+      "TEAM": "发布到团队...",
+      "VILLAGE": "发布到村子...",
+      "ORGANIZATION": "发布到组织...",
+      "PUBLIC": "在想什么？"
+    },
+    "submitLabel": "发布",
+    "pollOptionsCount": "{count}个选项"
   },
   "gallery": {
     "title": "相册",

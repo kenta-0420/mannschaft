@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.config.OrgScopeIdConverter;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
@@ -25,6 +27,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.StaticMessageSource;
+import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -81,10 +85,24 @@ class MatchRecordControllerContractTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setConversionService(scopeConversionService())
                 .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))
                 .build();
         securityUtils = mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(ACTOR);
+    }
+
+    /**
+     * 型付きパス変数 {@code OrgScopeId}/{@code TeamScopeId}（課題 #12・案A）の変換器を登録した
+     * 変換サービス。本テストは数値 ID のみを渡すため slug 解決 Service は呼ばれない（高速パス）。
+     */
+    private FormattingConversionService scopeConversionService() {
+        FormattingConversionService cs = new DefaultFormattingConversionService();
+        cs.addConverter(new OrgScopeIdConverter(org.mockito.Mockito.mock(
+                com.mannschaft.app.organization.service.OrganizationService.class)));
+        cs.addConverter(new TeamScopeIdConverter(org.mockito.Mockito.mock(
+                com.mannschaft.app.team.service.TeamService.class)));
+        return cs;
     }
 
     @AfterEach

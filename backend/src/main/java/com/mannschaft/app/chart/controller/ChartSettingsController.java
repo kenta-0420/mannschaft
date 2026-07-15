@@ -10,6 +10,7 @@ import com.mannschaft.app.chart.dto.UpdateRecordTemplateRequest;
 import com.mannschaft.app.chart.dto.UpdateSectionSettingsRequest;
 import com.mannschaft.app.chart.service.ChartSettingsService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,7 +52,7 @@ public class ChartSettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SectionSettingResponse>>> getSectionSettings(
             @PathVariable Long teamId) {
-        List<SectionSettingResponse> response = settingsService.getSectionSettings(teamId);
+        List<SectionSettingResponse> response = settingsService.getSectionSettings(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -65,7 +66,8 @@ public class ChartSettingsController {
     public ResponseEntity<ApiResponse<List<SectionSettingResponse>>> updateSectionSettings(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateSectionSettingsRequest request) {
-        List<SectionSettingResponse> response = settingsService.updateSectionSettings(teamId, request);
+        List<SectionSettingResponse> response = settingsService.updateSectionSettings(
+                teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -82,7 +84,7 @@ public class ChartSettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CustomFieldResponse>>> listCustomFields(
             @PathVariable Long teamId) {
-        List<CustomFieldResponse> response = settingsService.listCustomFields(teamId);
+        List<CustomFieldResponse> response = settingsService.listCustomFields(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +98,8 @@ public class ChartSettingsController {
     public ResponseEntity<ApiResponse<CustomFieldResponse>> createCustomField(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCustomFieldRequest request) {
-        CustomFieldResponse response = settingsService.createCustomField(teamId, request);
+        CustomFieldResponse response = settingsService.createCustomField(
+                teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -111,7 +114,8 @@ public class ChartSettingsController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateCustomFieldRequest request) {
-        CustomFieldResponse response = settingsService.updateCustomField(teamId, id, request);
+        CustomFieldResponse response = settingsService.updateCustomField(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -125,7 +129,7 @@ public class ChartSettingsController {
     public ResponseEntity<Void> deactivateCustomField(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        settingsService.deactivateCustomField(teamId, id);
+        settingsService.deactivateCustomField(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -142,7 +146,8 @@ public class ChartSettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<RecordTemplateResponse>>> listRecordTemplates(
             @PathVariable Long teamId) {
-        List<RecordTemplateResponse> response = settingsService.listRecordTemplates(teamId);
+        List<RecordTemplateResponse> response = settingsService.listRecordTemplates(
+                teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -156,7 +161,8 @@ public class ChartSettingsController {
     public ResponseEntity<ApiResponse<RecordTemplateResponse>> createRecordTemplate(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateRecordTemplateRequest request) {
-        RecordTemplateResponse response = settingsService.createRecordTemplate(teamId, request);
+        RecordTemplateResponse response = settingsService.createRecordTemplate(
+                teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -171,7 +177,8 @@ public class ChartSettingsController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecordTemplateRequest request) {
-        RecordTemplateResponse response = settingsService.updateRecordTemplate(teamId, id, request);
+        RecordTemplateResponse response = settingsService.updateRecordTemplate(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -185,7 +192,7 @@ public class ChartSettingsController {
     public ResponseEntity<Void> deleteRecordTemplate(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        settingsService.deleteRecordTemplate(teamId, id);
+        settingsService.deleteRecordTemplate(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

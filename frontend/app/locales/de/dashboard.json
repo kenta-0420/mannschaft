@@ -183,6 +183,22 @@
       "widget_notices_tab_platform": "Ankündigungen",
       "widget_notices_platform_empty": "Keine Ankündigungen"
     },
+    "commandCenter": {
+      "title": "Jetzt zu erledigen",
+      "unresolvedCount": "{count} offen",
+      "chipCirculation": "Umlaufmappe",
+      "chipSurvey": "Umfrage",
+      "chipAttendance": "Anwesenheit",
+      "chipOverdueTodo": "Überfällige Aufgaben",
+      "deadlineOverdue": "Überfällig",
+      "deadlineToday": "Heute",
+      "emptyTitle": "Nichts übersehen 🎉",
+      "emptyMessage": "Keine Elemente erfordern Ihre Aufmerksamkeit",
+      "partialLoadError": "Einige Daten konnten nicht geladen werden",
+      "todoCompleteAria": "Als erledigt markieren",
+      "todoCompleteSuccess": "Aufgabe erledigt",
+      "todoCompleteError": "Aufgabe konnte nicht abgeschlossen werden"
+    },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",
       "viewAll": "Alle anzeigen",

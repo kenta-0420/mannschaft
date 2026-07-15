@@ -25,10 +25,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * グローバル例外ハンドラー。
@@ -145,6 +147,8 @@ public class GlobalExceptionHandler {
             //   （Severity.WARN 既定の 400 を上書き）。
             Map.entry("AUTH_026", HttpStatus.UNAUTHORIZED), // リプレイ検出・全セッション無効化 → 401
             Map.entry("AUTH_039", HttpStatus.UNAUTHORIZED), // 全デバイスセッション無効化後のアクセス → 401
+            // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
+            Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
@@ -836,6 +840,15 @@ public class GlobalExceptionHandler {
             Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
             Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
             Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.4 chart（要配慮個人情報：健康記録）の
+            // NOT_FOUND 系は teamId を跨いだ存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("CHART_001", HttpStatus.NOT_FOUND),                 // CHART_NOT_FOUND
+            Map.entry("CHART_002", HttpStatus.NOT_FOUND),                 // PHOTO_NOT_FOUND
+            Map.entry("CHART_003", HttpStatus.NOT_FOUND),                 // FORMULA_NOT_FOUND
+            Map.entry("CHART_004", HttpStatus.NOT_FOUND),                 // CUSTOM_FIELD_NOT_FOUND
+            Map.entry("CHART_005", HttpStatus.NOT_FOUND),                 // INTAKE_FORM_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_006", HttpStatus.NOT_FOUND),                 // RECORD_TEMPLATE_NOT_FOUND
+            Map.entry("CHART_019", HttpStatus.NOT_FOUND),                 // INTAKE_FORM_NOT_FOUND
             // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
             // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
             // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
@@ -853,6 +866,11 @@ public class GlobalExceptionHandler {
             Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND),            // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.3 equipment（備品管理）は
+            // (id, teamId)/(id, organizationId) 複合キーで取得するため、他スコープの ID 指定は
+            // IDOR 秘匿のため 404 とする（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("EQUIPMENT_001", HttpStatus.NOT_FOUND),            // ITEM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("EQUIPMENT_002", HttpStatus.NOT_FOUND),            // ASSIGNMENT_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave 2 トランシェ2C: F01.4/F03.12 family の *_NOT_FOUND は、対象エンティティが
             // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
             // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
@@ -979,10 +997,68 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
+        ResponseStatusException rse = findResponseStatusExceptionCause(ex);
+        boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
+
+        // (2) team/organization のスコープ識別子パス変数に非数値 slug が渡り、解決に失敗したケース。
+        //     {@link ScopeSlugIdConverter} は不在 slug で 404 を投げるが、Spring の型変換フォールバック
+        //     （既定 Long エディタ）が例外を握り潰して NumberFormatException 化するため、原因連鎖からは
+        //     404 意図が失われる。ここでパス変数名と値から補完し、400 でなく 404 を返す。
+        if (!notFound && isUnresolvedScopeSlug(ex)) {
+            notFound = true;
+        }
+
+        if (notFound) {
+            log.debug("スコープ識別子の解決失敗（404）: parameter={}, value={}", ex.getName(), ex.getValue());
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
+        }
         log.warn("Type mismatch: parameter={}, value={}", ex.getName(), ex.getValue());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /** team / organization のスラッグ解決に使うパス変数名。 */
+    private static final Set<String> SCOPE_ID_PATH_VARS = Set.of("organizationId", "orgId", "teamId");
+
+    /**
+     * スコープ識別子（team/organization）のパス変数に非数値 slug が渡り、解決不能だったかを判定する。
+     * 数値であれば本来変換可能（＝別要因の 400）なので false。
+     */
+    private boolean isUnresolvedScopeSlug(MethodArgumentTypeMismatchException ex) {
+        if (!SCOPE_ID_PATH_VARS.contains(ex.getName())) {
+            return false;
+        }
+        Class<?> required = ex.getRequiredType();
+        if (required != Long.class && required != long.class) {
+            return false;
+        }
+        if (!(ex.getValue() instanceof String s)) {
+            return false;
+        }
+        try {
+            Long.parseLong(s);
+            return false;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    /**
+     * 例外の原因連鎖を辿り、最初に見つかった {@link ResponseStatusException} を返す。見つからなければ null。
+     */
+    private ResponseStatusException findResponseStatusExceptionCause(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof ResponseStatusException rse) {
+                return rse;
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
     /**

@@ -1,0 +1,26 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "Home",
+      "connections": "Connections",
+      "living": "Living",
+      "work": "Work",
+      "account": "Account",
+      "admin": "Admin",
+      "other": "Other"
+    },
+    "item": {
+      "dashboard": "Dashboard",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "Expand sidebar",
+      "collapse": "Collapse sidebar",
+      "openDrawer": "Open menu",
+      "closeDrawer": "Close menu"
+    },
+    "autoCollapse": {
+      "chip": "Auto-collapsed"
+    }
+  }
+}

@@ -36,8 +36,8 @@ defineOptions({ inheritAttrs: false })
 
 const titleClass = computed(() =>
   props.size === 'sm'
-    ? 'text-2xl font-bold text-surface-900 dark:text-surface-200'
-    : 'text-4xl font-bold text-surface-900 dark:text-surface-200',
+    ? 'text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200'
+    : 'text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200',
 )
 </script>
 
@@ -45,7 +45,7 @@ const titleClass = computed(() =>
   <div>
     <!-- 戻るリンクはタイトル行の上に描画する。既存 slot（アクション/バッジ）はタイトル行に並ぶため干渉しない -->
     <BackButton v-if="back" :to="backTo" :label="backLabel" />
-    <div class="mb-6 flex items-end gap-3" v-bind="$attrs">
+    <div class="mb-5 flex items-end gap-3" v-bind="$attrs">
       <h1 :class="titleClass">{{ title }}</h1>
       <!-- 既定スロットはタイトルのすぐ右（インラインのバッジ/タグ用。後方互換のため位置・挙動を変えない） -->
       <slot />

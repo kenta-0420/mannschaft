@@ -6,6 +6,7 @@ import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartBodyMarkRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.service.ChartBodyMarkService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,12 +33,14 @@ class ChartBodyMarkServiceTest {
     @Mock private ChartBodyMarkRepository bodyMarkRepository;
     @Mock private ChartRecordRepository recordRepository;
     @Mock private ChartMapper chartMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartBodyMarkService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long CHART_ID = 10L;
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("updateBodyMarks")
@@ -46,7 +49,7 @@ class ChartBodyMarkServiceTest {
         @DisplayName("異常系: カルテ不在でCHART_001例外")
         void 更新_カルテ不在_例外() {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.updateBodyMarks(TEAM_ID, CHART_ID, new UpdateBodyMarksRequest(List.of())))
+            assertThatThrownBy(() -> service.updateBodyMarks(TEAM_ID, CHART_ID, USER_ID, new UpdateBodyMarksRequest(List.of())))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_001"));
@@ -65,7 +68,7 @@ class ChartBodyMarkServiceTest {
             }
             UpdateBodyMarksRequest request = new UpdateBodyMarksRequest(marks);
 
-            assertThatThrownBy(() -> service.updateBodyMarks(TEAM_ID, CHART_ID, request))
+            assertThatThrownBy(() -> service.updateBodyMarks(TEAM_ID, CHART_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_010"));

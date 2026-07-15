@@ -7,6 +7,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.Sport;
@@ -67,7 +69,7 @@ public class MatchStatsController {
     @GetMapping("/users/{userId}/match-stats")
     @Operation(summary = "個人キャリア統計（本人のみ・チーム横断）")
     public ResponseEntity<ApiResponse<UserMatchStatsResponse>> getUserStats(
-            @PathVariable Long orgId,
+            @PathVariable OrgScopeId orgId,
             @PathVariable Long userId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to,
@@ -79,13 +81,13 @@ public class MatchStatsController {
             throw new BusinessException(MatchErrorCode.MATCH_010);
         }
         return ResponseEntity.ok(ApiResponse.of(
-                aggregationService.aggregateUserStats(orgId, userId, null, from, to, kind, sport)));
+                aggregationService.aggregateUserStats(orgId.value(), userId, null, from, to, kind, sport)));
     }
 
     @GetMapping("/users/{userId}/match-stats/timeline")
     @Operation(summary = "個人タイムライン（本人のみ・チーム横断・ページング）")
     public ResponseEntity<PagedResponse<UserMatchTimelineEntry>> getUserTimeline(
-            @PathVariable Long orgId,
+            @PathVariable OrgScopeId orgId,
             @PathVariable Long userId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to,
@@ -97,7 +99,7 @@ public class MatchStatsController {
         if (!viewer.equals(userId)) {
             throw new BusinessException(MatchErrorCode.MATCH_010);
         }
-        return timelineResponse(orgId, userId, null, from, to, kind, sport, page, size);
+        return timelineResponse(orgId.value(), userId, null, from, to, kind, sport, page, size);
     }
 
     // ─────────────────────────────────────────────
@@ -107,25 +109,25 @@ public class MatchStatsController {
     @GetMapping("/users/{userId}/teams/{teamId}/match-stats")
     @Operation(summary = "個人キャリア統計（team スコープ・他者閲覧）")
     public ResponseEntity<ApiResponse<UserMatchStatsResponse>> getUserTeamStats(
-            @PathVariable Long orgId,
+            @PathVariable OrgScopeId orgId,
             @PathVariable Long userId,
-            @PathVariable Long teamId,
+            @PathVariable TeamScopeId teamId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to,
             @RequestParam(required = false) MatchKind kind,
             @RequestParam(required = false) Sport sport) {
         Long viewer = SecurityUtils.getCurrentUserId();
-        assertCanViewOtherUserStats(viewer, userId, teamId);
+        assertCanViewOtherUserStats(viewer, userId, teamId.value());
         return ResponseEntity.ok(ApiResponse.of(
-                aggregationService.aggregateUserStats(orgId, userId, teamId, from, to, kind, sport)));
+                aggregationService.aggregateUserStats(orgId.value(), userId, teamId.value(), from, to, kind, sport)));
     }
 
     @GetMapping("/users/{userId}/teams/{teamId}/match-stats/timeline")
     @Operation(summary = "個人タイムライン（team スコープ・他者閲覧・ページング）")
     public ResponseEntity<PagedResponse<UserMatchTimelineEntry>> getUserTeamTimeline(
-            @PathVariable Long orgId,
+            @PathVariable OrgScopeId orgId,
             @PathVariable Long userId,
-            @PathVariable Long teamId,
+            @PathVariable TeamScopeId teamId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to,
             @RequestParam(required = false) MatchKind kind,
@@ -133,8 +135,8 @@ public class MatchStatsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long viewer = SecurityUtils.getCurrentUserId();
-        assertCanViewOtherUserStats(viewer, userId, teamId);
-        return timelineResponse(orgId, userId, teamId, from, to, kind, sport, page, size);
+        assertCanViewOtherUserStats(viewer, userId, teamId.value());
+        return timelineResponse(orgId.value(), userId, teamId.value(), from, to, kind, sport, page, size);
     }
 
     // ─────────────────────────────────────────────
@@ -143,24 +145,24 @@ public class MatchStatsController {
 
     @GetMapping("/teams/{teamId}/match-stats")
     @Operation(summary = "チーム統計（メンバー以上・ランキングは MEMBER 以上＝SUPPORTER 除外）")
-    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId.value(), 'TEAM')")
     public ResponseEntity<ApiResponse<TeamMatchStatsResponse>> getTeamStats(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId,
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to,
             @RequestParam(required = false) MatchKind kind,
             @RequestParam(required = false) Sport sport) {
         Long viewer = SecurityUtils.getCurrentUserId();
         // 第一防御（Service 層相当の明示判定）: メンバー以上であること
-        if (!accessControlService.isMember(viewer, teamId, SCOPE_TEAM)) {
+        if (!accessControlService.isMember(viewer, teamId.value(), SCOPE_TEAM)) {
             throw new BusinessException(MatchErrorCode.MATCH_010);
         }
         // playerRankings は MEMBER 以上（SUPPORTER 除外・02 §F.3）。SUPPORTER はランキングを隠す。
-        boolean includeRankings = accessControlService.hasRoleOrAbove(viewer, teamId, SCOPE_TEAM, "MEMBER");
+        boolean includeRankings = accessControlService.hasRoleOrAbove(viewer, teamId.value(), SCOPE_TEAM, "MEMBER");
         return ResponseEntity.ok(ApiResponse.of(
                 aggregationService.aggregateTeamStats(
-                        orgId, teamId, from, to, kind, sport, includeRankings, DEFAULT_RANKING_LIMIT)));
+                        orgId.value(), teamId.value(), from, to, kind, sport, includeRankings, DEFAULT_RANKING_LIMIT)));
     }
 
     // ─────────────────────────────────────────────

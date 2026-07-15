@@ -63,6 +63,30 @@ export function useDashboardApi() {
     }>('/api/v1/todos/my')
   }
 
+  /**
+   * 司令塔ウィジェット（WidgetCommandCenter）向け: 個人TODOの未完了一覧＋期限切れ件数。
+   * BE (DashboardService#getPersonalTodos) が overdue_count をタイムゾーン考慮済みで算出する。
+   * `getPersonalTodos` という名前は `/api/v1/todos/my`（getMyTodos）で既に使用しているため、
+   * URL に対応した名前として区別する。
+   */
+  async function getDashboardTodoSummary() {
+    return api<{
+      data: {
+        items: Array<{
+          id: number
+          title: string
+          status: string
+          priority: string
+          due_date: string | null
+          parent_id: number | null
+          depth: number
+        }>
+        overdue_count: number
+        total_incomplete: number
+      }
+    }>('/api/v1/dashboard/todos')
+  }
+
   async function getActivity(params?: { cursor?: string; limit?: number }) {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
@@ -185,6 +209,7 @@ export function useDashboardApi() {
     getNotices,
     getUpcomingEvents,
     getPersonalTodos,
+    getDashboardTodoSummary,
     getActivity,
     getUnreadThreads,
     getPlatformAnnouncements,
