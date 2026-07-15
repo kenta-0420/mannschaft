@@ -287,7 +287,7 @@ class ParkingListingServiceTest {
             given(parkingMapper.toListingResponse(any())).willReturn(createListingResponse());
 
             // When
-            ListingResponse result = parkingListingService.update(spaceIds, LISTING_ID, request);
+            ListingResponse result = parkingListingService.update(spaceIds, LISTING_ID, request, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -304,10 +304,27 @@ class ParkingListingServiceTest {
             given(listingRepository.findByIdAndSpaceIdIn(LISTING_ID, spaceIds)).willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> parkingListingService.update(spaceIds, LISTING_ID, request))
+            assertThatThrownBy(() -> parkingListingService.update(spaceIds, LISTING_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_022"));
+        }
+
+        @Test
+        @DisplayName("異常系: 作成者以外が更新するとCOMMON_002例外（他人の譲渡希望の書き換え防止）")
+        void update_作成者以外_COMMON002例外() {
+            // Given
+            List<Long> spaceIds = List.of(SPACE_ID);
+            ParkingListingEntity entity = createOpenListing(); // listedBy=USER_ID
+            UpdateListingRequest request = new UpdateListingRequest("新しい理由", null);
+            Long otherUserId = 999L;
+            given(listingRepository.findByIdAndSpaceIdIn(LISTING_ID, spaceIds)).willReturn(Optional.of(entity));
+
+            // When / Then
+            assertThatThrownBy(() -> parkingListingService.update(spaceIds, LISTING_ID, request, otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
     }
 
@@ -328,7 +345,7 @@ class ParkingListingServiceTest {
             given(listingRepository.findByIdAndSpaceIdIn(LISTING_ID, spaceIds)).willReturn(Optional.of(entity));
 
             // When
-            parkingListingService.delete(spaceIds, LISTING_ID);
+            parkingListingService.delete(spaceIds, LISTING_ID, USER_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -343,10 +360,26 @@ class ParkingListingServiceTest {
             given(listingRepository.findByIdAndSpaceIdIn(LISTING_ID, spaceIds)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingListingService.delete(spaceIds, LISTING_ID))
+            assertThatThrownBy(() -> parkingListingService.delete(spaceIds, LISTING_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_005"));
+        }
+
+        @Test
+        @DisplayName("異常系: 作成者以外が削除するとCOMMON_002例外（他人の譲渡希望の削除防止）")
+        void delete_作成者以外_COMMON002例外() {
+            // Given
+            List<Long> spaceIds = List.of(SPACE_ID);
+            ParkingListingEntity entity = createOpenListing(); // listedBy=USER_ID
+            Long otherUserId = 999L;
+            given(listingRepository.findByIdAndSpaceIdIn(LISTING_ID, spaceIds)).willReturn(Optional.of(entity));
+
+            // When / Then
+            assertThatThrownBy(() -> parkingListingService.delete(spaceIds, LISTING_ID, otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
     }
 

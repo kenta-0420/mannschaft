@@ -45,7 +45,8 @@ public class TeamPromotionController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PromotionResponse> result = promotionService.list("TEAM", teamId, status, PageRequest.of(page, Math.min(size, 50)));
+        Page<PromotionResponse> result = promotionService.list("TEAM", teamId, status,
+                PageRequest.of(page, Math.min(size, 50)), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -64,7 +65,7 @@ public class TeamPromotionController {
     @Operation(summary = "プロモーション詳細")
     public ResponseEntity<ApiResponse<PromotionResponse>> get(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.get("TEAM", teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.get("TEAM", teamId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PutMapping("/api/v1/teams/{teamId}/promotions/{id}")
@@ -72,13 +73,13 @@ public class TeamPromotionController {
     public ResponseEntity<ApiResponse<PromotionResponse>> update(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdatePromotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.update("TEAM", teamId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.update("TEAM", teamId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/promotions/{id}")
     @Operation(summary = "プロモーション削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
-        promotionService.delete("TEAM", teamId, id);
+        promotionService.delete("TEAM", teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -86,7 +87,7 @@ public class TeamPromotionController {
     @Operation(summary = "即時配信")
     public ResponseEntity<ApiResponse<PromotionResponse>> publish(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.publish("TEAM", teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.publish("TEAM", teamId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/promotions/{id}/schedule")
@@ -94,14 +95,14 @@ public class TeamPromotionController {
     public ResponseEntity<ApiResponse<PromotionResponse>> schedule(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody SchedulePromotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.schedule("TEAM", teamId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.schedule("TEAM", teamId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/promotions/{id}/cancel")
     @Operation(summary = "配信キャンセル")
     public ResponseEntity<ApiResponse<PromotionResponse>> cancel(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.cancel("TEAM", teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.cancel("TEAM", teamId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/promotions/{id}/approve")
@@ -115,7 +116,7 @@ public class TeamPromotionController {
     @Operation(summary = "効果測定")
     public ResponseEntity<ApiResponse<PromotionStatsResponse>> getStats(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.getStats("TEAM", teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.getStats("TEAM", teamId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/promotions/estimate-audience")
@@ -123,6 +124,6 @@ public class TeamPromotionController {
     public ResponseEntity<ApiResponse<AudienceEstimateResponse>> estimateAudience(
             @PathVariable Long teamId,
             @RequestBody EstimateAudienceRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.estimateAudience("TEAM", teamId, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.estimateAudience("TEAM", teamId, request, SecurityUtils.getCurrentUserId())));
     }
 }

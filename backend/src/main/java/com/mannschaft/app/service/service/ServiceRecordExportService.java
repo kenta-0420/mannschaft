@@ -1,5 +1,6 @@
 package com.mannschaft.app.service.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.service.dto.ExportResponse;
 import com.mannschaft.app.service.entity.ServiceRecordEntity;
 import com.mannschaft.app.service.entity.ServiceRecordFieldEntity;
@@ -36,6 +37,10 @@ public class ServiceRecordExportService {
     private final ServiceRecordRepository recordRepository;
     private final ServiceRecordFieldRepository fieldRepository;
     private final ServiceRecordValueRepository valueRepository;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     private static final int STREAMING_THRESHOLD = 1000;
     private static final byte[] UTF8_BOM = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
@@ -45,8 +50,11 @@ public class ServiceRecordExportService {
      *
      * @return ストリーミング可能な場合は null、非同期の場合は ExportResponse
      */
-    public ExportResponse exportOrNull(Long teamId, Long memberUserId,
+    public ExportResponse exportOrNull(Long teamId, Long actorUserId, Long memberUserId,
                                         LocalDate serviceDateFrom, LocalDate serviceDateTo) {
+        // 閲覧系（export）: checkMembership。teamId はエクスポート対象スコープそのもの（path由来で正当）。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<ServiceRecordEntity> records = recordRepository.findConfirmedByTeamId(teamId);
 
         // フィルタ
@@ -69,7 +77,7 @@ public class ServiceRecordExportService {
         if (records.size() > STREAMING_THRESHOLD) {
             String jobId = "export_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
             log.info("非同期CSVエクスポート開始: teamId={}, jobId={}, count={}", teamId, jobId, records.size());
-            generateCsvAsync(jobId, teamId, memberUserId, serviceDateFrom, serviceDateTo);
+            generateCsvAsync(jobId, teamId, actorUserId, memberUserId, serviceDateFrom, serviceDateTo);
             return ExportResponse.builder()
                     .jobId(jobId)
                     .status("PROCESSING")
@@ -83,9 +91,12 @@ public class ServiceRecordExportService {
     /**
      * CSV をストリーミング書き出しする。
      */
-    public void writeCsv(Long teamId, Long memberUserId,
+    public void writeCsv(Long teamId, Long actorUserId, Long memberUserId,
                           LocalDate serviceDateFrom, LocalDate serviceDateTo,
                           OutputStream outputStream) {
+        // 閲覧系（export）: checkMembership。teamId はエクスポート対象スコープそのもの（path由来で正当）。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<ServiceRecordEntity> records = recordRepository.findConfirmedByTeamId(teamId);
 
         if (memberUserId != null) {
@@ -159,11 +170,11 @@ public class ServiceRecordExportService {
      * NOTE: 本番ではS3にアップロードしダウンロードURLを通知する。
      */
     @Async
-    protected void generateCsvAsync(String jobId, Long teamId, Long memberUserId,
+    protected void generateCsvAsync(String jobId, Long teamId, Long actorUserId, Long memberUserId,
                                      LocalDate serviceDateFrom, LocalDate serviceDateTo) {
         try {
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            writeCsv(teamId, memberUserId, serviceDateFrom, serviceDateTo, baos);
+            writeCsv(teamId, actorUserId, memberUserId, serviceDateFrom, serviceDateTo, baos);
             log.info("非同期CSVエクスポート完了: jobId={}, bytes={}", jobId, baos.size());
             // NOTE: 本番ではS3アップロード + 通知送信
         } catch (Exception e) {

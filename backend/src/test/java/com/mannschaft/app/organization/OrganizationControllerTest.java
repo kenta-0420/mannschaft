@@ -201,7 +201,7 @@ class OrganizationControllerTest {
     void removeMember_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.removeMember(ORG_SLUG, 200L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(roleService).removeMember(ORG_ID, "ORGANIZATION", 200L);
+        verify(roleService).removeMember(ORG_ID, "ORGANIZATION", 200L, USER_ID);
     }
 
     @Test
@@ -252,7 +252,7 @@ class OrganizationControllerTest {
     @DisplayName("getInviteTokens: 200 OK")
     void getInviteTokens_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(inviteService.getInviteTokens(ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID)).willReturn(List.of());
         assertThat(controller.getInviteTokens(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -260,7 +260,7 @@ class OrganizationControllerTest {
     @DisplayName("revokeInviteToken: 204 No Content")
     void revokeInviteToken_204() {
         assertThat(controller.revokeInviteToken(ORG_SLUG, 99L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(inviteService).revokeInviteToken(99L);
+        verify(inviteService).revokeInviteToken(99L, USER_ID);
     }
 
     @Test
@@ -286,7 +286,7 @@ class OrganizationControllerTest {
     void updatePermissionGroup_200() {
         PermissionGroupRequest req = new PermissionGroupRequest("更新", "ADMIN", List.of(1L));
         PermissionGroupResponse resp = new PermissionGroupResponse(50L, "更新", null, List.of(), LocalDateTime.now());
-        given(permissionGroupService.updatePermissionGroup(50L, req)).willReturn(ApiResponse.of(resp));
+        given(permissionGroupService.updatePermissionGroup(50L, req, USER_ID)).willReturn(ApiResponse.of(resp));
         assertThat(controller.updatePermissionGroup(ORG_SLUG, 50L, req).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -294,7 +294,7 @@ class OrganizationControllerTest {
     @DisplayName("deletePermissionGroup: 204 No Content")
     void deletePermissionGroup_204() {
         assertThat(controller.deletePermissionGroup(ORG_SLUG, 50L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(permissionGroupService).deletePermissionGroup(50L);
+        verify(permissionGroupService).deletePermissionGroup(50L, USER_ID);
     }
 
     @Test
@@ -310,7 +310,7 @@ class OrganizationControllerTest {
     @DisplayName("getBlocks: 200 OK")
     void getBlocks_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(blockService.getBlocks(ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(blockService.getBlocks(ORG_ID, "ORGANIZATION", USER_ID)).willReturn(List.of());
         assertThat(controller.getBlocks(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 

@@ -1549,12 +1549,16 @@
       "feedback": "フィードバック",
       "reports": "レポート",
       "advertisers": "広告主管理",
+      "adRateCards": "広告料金カード",
+      "adCreditLimitRequests": "広告与信枠申請",
+      "affiliateSettings": "アフィリエイト設定",
       "auditLogs": "監査ログ",
       "shiftBudget": "シフト予算",
       "betaRestriction": "ベータ制限",
       "errorReports": "エラーレポート",
       "gdprPurge": "GDPR パージ状況",
-      "feedbackInbox": "目安箱（全体）"
+      "feedbackInbox": "目安箱（全体）",
+      "billing": "課金マスタ管理"
     },
     "impersonation": {
       "banner": "管理者変身中: {label} のアカウントで操作しています",

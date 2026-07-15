@@ -1549,12 +1549,16 @@
       "feedback": "Comentarios",
       "reports": "Informes",
       "advertisers": "Gestión de anunciantes",
+      "adRateCards": "Tarifas de anuncios",
+      "adCreditLimitRequests": "Solicitudes de límite de crédito",
+      "affiliateSettings": "Configuración de afiliados",
       "auditLogs": "Registros de auditoría",
       "shiftBudget": "Presupuesto de turno",
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
       "gdprPurge": "Estado de Purga GDPR",
-      "feedbackInbox": "Buzón de comentarios (Global)"
+      "feedbackInbox": "Buzón de comentarios (Global)",
+      "billing": "Datos maestros de facturación"
     },
     "impersonation": {
       "banner": "Suplantando a: {label}",

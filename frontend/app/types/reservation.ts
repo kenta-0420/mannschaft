@@ -187,6 +187,13 @@ export interface BusinessHourResponse {
   businessStatus?: BusinessStatusDto
 }
 
+/**
+ * 予約対象の呼称プリセット（F03.4.5 §5.1・BE enum `ReservationResourceNameType`）。
+ * DEFAULT=未設定チームの従来表示「予約対象」への後方互換フォールバック。CUSTOM は
+ * `resourceNameCustom` の自由入力文字列を全ロケール共通でそのまま表示する（翻訳しない）。
+ */
+export type ReservationResourceNameTypeCode = 'DEFAULT' | 'STAFF' | 'SEAT' | 'COURT' | 'BED' | 'LANE' | 'CUSTOM'
+
 // === ReservationSettingsResponse（予約設定）===
 // 真実のソースは generated/index.ts の ReservationSettingsResponse。
 // こちらは composable の import 先として残し、生成型と整合を保つ。
@@ -206,6 +213,10 @@ export interface ReservationSettingsResponse {
   remindBeforeHours?: string
   /** 営業時間が設定済みか（F03.4.5 §3.2・実測フィールド）。false=週間スケジュール画面に初回体験ガイドを表示 */
   hasBusinessHours?: boolean
+  /** 予約対象の呼称プリセット（F03.4.5 §5.1）。DEFAULT=未設定（従来の『予約対象』表示） */
+  resourceNameType?: ReservationResourceNameTypeCode
+  /** 自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null） */
+  resourceNameCustom?: string
 }
 
 // === リクエスト DTO ===
@@ -217,6 +228,10 @@ export interface UpdateReservationSettingRequest {
   cancelDeadlineHours?: number
   /** リマインドタイミングの CSV 文字列変更時に指定（例: "24,1"）*/
   remindBeforeHours?: string
+  /** 予約対象の呼称プリセット変更時に指定（null=据え置き） */
+  resourceNameType?: ReservationResourceNameTypeCode
+  /** 自由入力の呼称変更時に指定（CUSTOM 選択時のみ有効・30文字以内・null=据え置き） */
+  resourceNameCustom?: string
 }
 
 export interface CreateReservationRequest {

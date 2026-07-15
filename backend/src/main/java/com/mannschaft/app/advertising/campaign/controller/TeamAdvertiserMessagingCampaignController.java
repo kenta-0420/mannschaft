@@ -7,6 +7,7 @@ import com.mannschaft.app.advertising.campaign.dto.CampaignChannelResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignDetailResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignListItemResponse;
 import com.mannschaft.app.advertising.campaign.dto.CreateCampaignRequest;
+import com.mannschaft.app.advertising.campaign.dto.EstimatedReachRangeResponse;
 import com.mannschaft.app.advertising.campaign.dto.UpdateCampaignRequest;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.service.AdMessagingCampaignService;
@@ -180,5 +181,16 @@ public class TeamAdvertiserMessagingCampaignController {
         verifyTeamAccess(teamId);
         return ApiResponse.of(campaignService.setAudience(
                 id, ScopeType.TEAM, teamId, request));
+    }
+
+    /**
+     * F09.19.7 §10.2 / AC-7.2: 推定リーチのレンジを返す（ウィザード Step4 用）。
+     */
+    @PostMapping("/{id}/preview")
+    public ApiResponse<EstimatedReachRangeResponse> preview(
+            @PathVariable Long teamId,
+            @PathVariable UUID id) {
+        verifyTeamAccess(teamId);
+        return ApiResponse.of(campaignService.preview(id, ScopeType.TEAM, teamId));
     }
 }

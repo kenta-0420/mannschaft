@@ -13,9 +13,11 @@ import TeamReservationGuideContent from '~/components/reservation/TeamReservatio
  * 観点:
  *   AC-1: activeTab=0（予約する）で「マトリックスの見方」系の見出しが描画される
  *   AC-2: activeTab=2（予約対象の管理）で「予約対象を作る」系の初期セットアップ見出しが描画される
+ *   AC-3（F03.4.5 §5.2）: resourceName prop が呼称差し込み箇所（setup1_title 等）に反映される
  *
  * 注: テスト環境の既定ロケールは en。i18n 実解決の描画文字列（英語）で検証する
  *     （MenuManager.spec.ts 等の既存パターンを踏襲）。
+ *     resourceName 未指定時は「Bookable Item」相当のフォールバック（呼称差し込み前と文言が一致）。
  */
 describe('TeamReservationGuideContent.vue タブ別ガイド', () => {
   it('AC-1: activeTab=0（予約する）でマトリックスの見方セクションが描画される', async () => {
@@ -26,19 +28,30 @@ describe('TeamReservationGuideContent.vue タブ別ガイド', () => {
     expect(wrapper.text()).toContain('Reading the matrix')
     expect(wrapper.text()).toContain('Booking flow')
     // 予約一覧・予約対象の管理タブの見出しは描画されない（タブ連動の裏取り）
-    expect(wrapper.text()).not.toContain('Create reservation targets')
+    expect(wrapper.text()).not.toContain('Create Bookable Item')
   })
 
-  it('AC-2: activeTab=2（予約対象の管理）で初期セットアップ①のセクションが描画される', async () => {
+  it('AC-2: activeTab=2（予約対象の管理）で初期セットアップ①のセクションが描画される（resourceName未指定=DEFAULTフォールバック）', async () => {
     const wrapper = await mountSuspended(TeamReservationGuideContent, {
       props: { isAdmin: true, isAdminOrDeputy: true, activeTab: 2 },
     })
 
     // F03.4.5 §3.2 管理タブ再編: ①営業時間（新設）→②予約対象→③メニュー→④週間スケジュール
     expect(wrapper.text()).toContain('1. Set business hours')
-    expect(wrapper.text()).toContain('2. Create reservation targets')
+    expect(wrapper.text()).toContain('2. Create Bookable Item')
     expect(wrapper.text()).toContain('Create a weekly schedule')
     // 予約するタブの見出しは描画されない（タブ連動の裏取り）
     expect(wrapper.text()).not.toContain('Reading the matrix')
+  })
+
+  it('AC-3（F03.4.5 §5.2）: resourceName="Seat" 指定時、初期セットアップ見出し・手順に「Seat」が差し込まれる', async () => {
+    const wrapper = await mountSuspended(TeamReservationGuideContent, {
+      props: { isAdmin: true, isAdminOrDeputy: true, activeTab: 2, resourceName: 'Seat' },
+    })
+
+    expect(wrapper.text()).toContain('2. Create Seat')
+    expect(wrapper.text()).toContain('Add Seat')
+    // DEFAULT フォールバック文言が漏れて残っていないこと（差し込み漏れの検出）
+    expect(wrapper.text()).not.toContain('Create Bookable Item')
   })
 })

@@ -75,13 +75,11 @@ describe('AdReportModal.vue', () => {
   })
 
   it('ARM-003: reason 選択 + 送信 → createReport を所定引数で呼ぶ + success トースト', async () => {
+    // F09.19.9: レスポンスは { id, status, createdAt }
     mockCreateReport.mockResolvedValueOnce({
       data: {
         id: 'rep-1',
-        campaignId: 'cmp-1',
-        userId: 1,
-        reason: 'MISLEADING',
-        detail: '実態と異なる',
+        status: 'NEW',
         createdAt: '2026-05-17T00:00:00Z',
       },
     })
@@ -100,10 +98,13 @@ describe('AdReportModal.vue', () => {
     vm.detail = '実態と異なる'
     await vm.handleSubmit()
 
+    // F09.19.9: BE 契約（campaignId / operationalCampaignId の XOR + channelType + reasonCode + comment）
     expect(mockCreateReport).toHaveBeenCalledWith({
       campaignId: 'cmp-1',
-      reason: 'MISLEADING',
-      detail: '実態と異なる',
+      operationalCampaignId: undefined,
+      channelType: 'BANNER',
+      reasonCode: 'MISLEADING',
+      comment: '実態と異なる',
     })
     expect(mockToastSuccess).toHaveBeenCalled()
   })
@@ -112,10 +113,7 @@ describe('AdReportModal.vue', () => {
     mockCreateReport.mockResolvedValueOnce({
       data: {
         id: 'rep-1',
-        campaignId: 'cmp-1',
-        userId: 1,
-        reason: 'SPAM',
-        detail: null,
+        status: 'NEW',
         createdAt: '',
       },
     })

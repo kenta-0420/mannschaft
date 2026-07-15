@@ -2,6 +2,7 @@ package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.admin.dto.AdminDashboardResponse;
 import com.mannschaft.app.admin.service.AdminDashboardService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
@@ -33,6 +34,7 @@ public class AdminDashboardController {
     private final AdminDashboardService dashboardService;
     private final UserRoleRepository userRoleRepository;
     private final RoleService roleService;
+    private final AccessControlService accessControlService;
 
     /**
      * ダッシュボード情報を取得する。
@@ -75,6 +77,9 @@ public class AdminDashboardController {
             @RequestParam Long scopeId,
             @RequestParam Long roleId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみロール変更可
+        // （別スコープ ADMIN が scopeType/scopeId を差し替えて越境するのを遮断）。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         roleService.changeRole(scopeId, scopeType, userId, new RoleChangeRequest(roleId), currentUserId);
         return ResponseEntity.ok().build();
     }

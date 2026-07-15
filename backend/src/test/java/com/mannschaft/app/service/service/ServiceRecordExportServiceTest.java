@@ -1,5 +1,6 @@
 package com.mannschaft.app.service.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.service.dto.ExportResponse;
 import com.mannschaft.app.service.entity.ServiceRecordEntity;
 import com.mannschaft.app.service.entity.ServiceRecordFieldEntity;
@@ -41,6 +42,9 @@ class ServiceRecordExportServiceTest {
     @Mock
     private ServiceRecordValueRepository valueRepository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private ServiceRecordExportService serviceRecordExportService;
 
@@ -49,6 +53,7 @@ class ServiceRecordExportServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long ACTOR_USER_ID = 999L;
     private static final Long MEMBER_USER_ID = 10L;
     private static final LocalDate SERVICE_DATE = LocalDate.of(2026, 2, 15);
 
@@ -89,7 +94,8 @@ class ServiceRecordExportServiceTest {
             given(recordRepository.findConfirmedByTeamId(TEAM_ID)).willReturn(createRecords(500));
 
             // When
-            ExportResponse result = serviceRecordExportService.exportOrNull(TEAM_ID, null, null, null);
+            ExportResponse result = serviceRecordExportService.exportOrNull(
+                    TEAM_ID, ACTOR_USER_ID, null, null, null);
 
             // Then
             assertThat(result).isNull();
@@ -102,7 +108,8 @@ class ServiceRecordExportServiceTest {
             given(recordRepository.findConfirmedByTeamId(TEAM_ID)).willReturn(createRecords(1001));
 
             // When
-            ExportResponse result = serviceRecordExportService.exportOrNull(TEAM_ID, null, null, null);
+            ExportResponse result = serviceRecordExportService.exportOrNull(
+                    TEAM_ID, ACTOR_USER_ID, null, null, null);
 
             // Then
             assertThat(result).isNotNull();
@@ -120,7 +127,8 @@ class ServiceRecordExportServiceTest {
             given(recordRepository.findConfirmedByTeamId(TEAM_ID)).willReturn(records);
 
             // When
-            ExportResponse result = serviceRecordExportService.exportOrNull(TEAM_ID, MEMBER_USER_ID, null, null);
+            ExportResponse result = serviceRecordExportService.exportOrNull(
+                    TEAM_ID, ACTOR_USER_ID, MEMBER_USER_ID, null, null);
 
             // Then
             assertThat(result).isNull(); // 1件のみなのでストリーミング可能
@@ -137,7 +145,7 @@ class ServiceRecordExportServiceTest {
 
             // When
             ExportResponse result = serviceRecordExportService.exportOrNull(
-                    TEAM_ID, null, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 4, 1));
+                    TEAM_ID, ACTOR_USER_ID, null, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 4, 1));
 
             // Then
             assertThat(result).isNull(); // 1件のみ
@@ -150,7 +158,8 @@ class ServiceRecordExportServiceTest {
             given(recordRepository.findConfirmedByTeamId(TEAM_ID)).willReturn(createRecords(1000));
 
             // When
-            ExportResponse result = serviceRecordExportService.exportOrNull(TEAM_ID, null, null, null);
+            ExportResponse result = serviceRecordExportService.exportOrNull(
+                    TEAM_ID, ACTOR_USER_ID, null, null, null);
 
             // Then
             assertThat(result).isNull();
@@ -177,7 +186,7 @@ class ServiceRecordExportServiceTest {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             // When
-            serviceRecordExportService.writeCsv(TEAM_ID, null, null, null, baos);
+            serviceRecordExportService.writeCsv(TEAM_ID, ACTOR_USER_ID, null, null, null, baos);
 
             // Then
             String csv = baos.toString(StandardCharsets.UTF_8);
@@ -205,7 +214,7 @@ class ServiceRecordExportServiceTest {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             // When
-            serviceRecordExportService.writeCsv(TEAM_ID, null, null, null, baos);
+            serviceRecordExportService.writeCsv(TEAM_ID, ACTOR_USER_ID, null, null, null, baos);
 
             // Then
             String csv = baos.toString(StandardCharsets.UTF_8);
@@ -226,7 +235,7 @@ class ServiceRecordExportServiceTest {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             // When
-            serviceRecordExportService.writeCsv(TEAM_ID, null, null, null, baos);
+            serviceRecordExportService.writeCsv(TEAM_ID, ACTOR_USER_ID, null, null, null, baos);
 
             // Then
             String csv = baos.toString(StandardCharsets.UTF_8);
@@ -243,7 +252,7 @@ class ServiceRecordExportServiceTest {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             // When
-            serviceRecordExportService.writeCsv(TEAM_ID, null, null, null, baos);
+            serviceRecordExportService.writeCsv(TEAM_ID, ACTOR_USER_ID, null, null, null, baos);
 
             // Then
             String csv = baos.toString(StandardCharsets.UTF_8);

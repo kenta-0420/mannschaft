@@ -2,6 +2,7 @@ package com.mannschaft.app.chat.repository;
 
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -83,4 +84,24 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
            "WHERE m.userId = :userId AND m.channelId IN :channelIds")
     int sumUnreadCountByUserIdAndChannelIds(@Param("userId") Long userId,
                                             @Param("channelIds") List<Long> channelIds);
+
+    /**
+     * チャンネル内の「送信者以外」全メンバーの {@code unread_count} を一括インクリメントする
+     * （未読カウント根治）。
+     *
+     * <p>{@code ChatChannelMemberEntity.incrementUnreadCount()} がプロダクションコード全域で
+     * 呼び出し元ゼロの dead code だったため、メッセージ送信で受信者の未読カウントが一切増えず
+     * {@link #sumUnreadCountByUserIdAndChannelIds} が常に 0 を返す構造的バグの根治対応。
+     * メンバー数分の SELECT + entity 更新（N+1）を避けるため、1 回の一括 UPDATE 文で実装する。
+     * {@link ChatChannelMemberEntity} 側の entity メソッドは使わない（1 件ずつの save が
+     * 前提の設計であり、一括更新には向かないため）。</p>
+     *
+     * @param channelId チャンネルID
+     * @param senderId  送信者ユーザーID（このユーザーの unread_count は増やさない）
+     * @return 更新された行数
+     */
+    @Modifying
+    @Query("UPDATE ChatChannelMemberEntity m SET m.unreadCount = m.unreadCount + 1 " +
+           "WHERE m.channelId = :channelId AND m.userId <> :senderId")
+    int incrementUnreadCountForOthers(@Param("channelId") Long channelId, @Param("senderId") Long senderId);
 }

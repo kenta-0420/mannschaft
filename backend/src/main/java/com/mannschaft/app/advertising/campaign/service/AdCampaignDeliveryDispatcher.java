@@ -230,18 +230,24 @@ public class AdCampaignDeliveryDispatcher {
     }
 
     /**
-     * FreqCap ロールバック。{@code AdFrequencyCapService} は外向きに DECR API を公開して
-     * いないため、現状は best-effort のログ出力にとどめる。
+     * FreqCap ロールバック（F09.19.7 §10.4 / AC-7.4）。
      *
-     * <p>TODO(F09.17 ε-C): {@code AdFrequencyCapService.releaseSlot} を新設してロールバックを完遂する。
-     * 現状の挙動: FreqCap は「先取りした分」が残るため、ユーザーは本日の枠を 1 件分損する。
-     * 0 件配信ケースは「全チャネル opt-out + channel 未登録」など稀少ケースのため、
-     * v1 では運用上許容範囲と判断（設計書 §5 末尾「途中失敗時のロールバックを成立させるため」
-     * の精緻な実装は ε-C 検討事項）。</p>
+     * <p>全チャネル skip（0 件配信）となった場合に、直前の {@link AdFrequencyCapService#tryConsume}
+     * で先取りした total / per-advertiser 両カウンタを {@link AdFrequencyCapService#releaseSlot} で
+     * 返却する。消費週は「今回消費した週」＝配信時点の現在週（受信者 TZ）であり、これは
+     * {@code tryConsume} が INCR したキーと同一週になる。{@code releaseSlot} は
+     * {@code decrementIfPositive} により 0 未満へは下げないため冪等・安全。</p>
+     *
+     * <p>受信者 TZ の現在週を対象にするため {@code resolveUserZone}（同パッケージ）で TZ を解決し、
+     * {@link AdFrequencyCapService#weekStartOf} で週開始（月曜）に丸める。これにより
+     * {@code tryConsume} が使う {@code currentWeekStart(userZone)} と同一キーを DECR できる。</p>
      */
     private void rollbackFreqCap(Long userId, AdMessagingCampaign campaign) {
-        log.warn("AD_FREQ_CAP_ROLLBACK_PENDING userId={} campaignId={}"
-                        + " (TODO: AdFrequencyCapService.releaseSlot を ε-C で実装予定)",
-                userId, campaign.getId());
+        java.time.ZoneId userZone = frequencyCapService.resolveUserZone(userId);
+        java.time.LocalDate consumptionWeekStart =
+                AdFrequencyCapService.weekStartOf(java.time.LocalDate.now(userZone));
+        frequencyCapService.releaseSlot(userId, campaign.getAdvertiserAccountId(), consumptionWeekStart);
+        log.debug("AD_FREQ_CAP_ROLLBACK userId={} campaignId={} weekStart={}",
+                userId, campaign.getId(), consumptionWeekStart);
     }
 }

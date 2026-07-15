@@ -296,42 +296,7 @@
     "product": {
       "title": "Mannschaft 产品",
       "desc": "集合了团队运营所需一切功能的一站式管理平台",
-      "features_heading": "主要功能",
-      "pricing_heading": "价格方案",
-      "pricing": {
-        "free": {
-          "name": "免费",
-          "price": "¥0",
-          "desc": "适合个人与小型团队",
-          "features": [
-            "所有基础功能",
-            "最多10名成员",
-            "1GB存储"
-          ]
-        },
-        "pro": {
-          "name": "专业版",
-          "price": "¥980/月",
-          "desc": "适合成长中的团队",
-          "features": [
-            "所有免费功能",
-            "无限成员",
-            "50GB存储",
-            "优先支持"
-          ]
-        },
-        "enterprise": {
-          "name": "企业版",
-          "price": "联系我们",
-          "desc": "适合大型组织",
-          "features": [
-            "所有专业版功能",
-            "自定义集成",
-            "专属支持",
-            "SLA保证"
-          ]
-        }
-      }
+      "features_heading": "主要功能"
     },
     "legal": {
       "terms": {

@@ -30,6 +30,9 @@ const { handleApiError } = useErrorHandler()
 // ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
 const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: メニューの提供先ライン選択ラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 const menus = ref<ReservationMenuResponse[]>([])
 const lines = ref<ReservationLineResponse[]>([])
 const loading = ref(true)
@@ -213,7 +216,7 @@ async function remove(menu: ReservationMenuResponse) {
 
 onMounted(async () => {
   await loadPermissions()
-  await Promise.all([loadMenus(), loadLines()])
+  await Promise.all([loadMenus(), loadLines(), loadResourceName()])
 })
 
 // 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
@@ -329,7 +332,7 @@ defineExpose({ refresh: loadMenus, items: menus })
 
         <!-- 提供可否（全ライン / 選択ライン） -->
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line', { resourceName }) }}</label>
           <SelectButton
             v-model="form.lineScope"
             :options="lineScopeOptions"

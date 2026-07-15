@@ -77,8 +77,11 @@ export interface AdCampaignModerationLog {
  */
 export interface AdUserReport {
   id: string
-  campaignId: string
-  userId: number
+  /** メッセージ型キャンペーン ID（運用型通報時は null）。F09.19.9 で nullable 化 */
+  campaignId: string | null
+  /** 運用型キャンペーン ID（メッセージ型通報時は null）。F09.19.9 で追加 */
+  operationalCampaignId: number | null
+  userId: number | null
   reason: AdReportReason
   detail: string | null
   status: 'NEW' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED'

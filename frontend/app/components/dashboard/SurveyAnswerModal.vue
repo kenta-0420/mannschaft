@@ -53,6 +53,11 @@ function onSubmitted() {
   close()
 }
 
+// immediate: true が必須。利用側（ScopeActionRequiredWidget / WidgetCommandCenter）は
+// v-if="item" と visible=true を同時にセットするため、初回マウント時に visible の
+// false→true 遷移が発生せず、immediate なしでは watch が不発になりアンケート詳細が
+// ロードされない（CirculationConfirmModal と同型の初回マウント不発バグ）。
+// visible=false でマウントされた場合は else 分岐（null クリア）のみでロードしない。
 watch(
   () => props.visible,
   (val) => {
@@ -62,6 +67,7 @@ watch(
       surveyDetail.value = null
     }
   },
+  { immediate: true },
 )
 </script>
 

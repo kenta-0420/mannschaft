@@ -19,6 +19,11 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 予約確認の予約対象ラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+// ダイアログを開くたびに最新の呼称を取得する（設定変更が即時反映されるように）。
+watch(() => props.visible, (v) => { if (v) void loadResourceName() }, { immediate: true })
+
 const submitting = ref(false)
 const serviceNotes = ref('')
 
@@ -50,7 +55,7 @@ function close() {
     <div class="space-y-4">
       <div class="rounded-lg bg-surface-50 p-4 dark:bg-surface-700/50">
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.line') }}</span><span class="font-medium">{{ lineName }}</span></div>
+          <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.line', { resourceName }) }}</span><span class="font-medium">{{ lineName }}</span></div>
           <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.date') }}</span><span class="font-medium">{{ date }}</span></div>
           <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.time') }}</span><span class="font-medium">{{ startTime }} - {{ endTime }}</span></div>
         </div>

@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.safetycheck.dto.BulkRespondRequest;
 import com.mannschaft.app.safetycheck.dto.RespondRequest;
@@ -53,6 +54,9 @@ class SafetyResponseServiceTest {
     @Mock
     private SafetyCheckMapper mapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private SafetyResponseService safetyResponseService;
 
@@ -63,6 +67,7 @@ class SafetyResponseServiceTest {
     private static final Long SAFETY_CHECK_ID = 100L;
     private static final Long USER_ID = 10L;
     private static final Long RESPONSE_ID = 200L;
+    private static final Long OPERATOR_ID = 5L;
 
     private SafetyCheckEntity createActiveCheck() {
         return SafetyCheckEntity.builder()
@@ -263,7 +268,8 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            List<SafetyResponseResponse> result = safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            List<SafetyResponseResponse> result =
+                    safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -291,7 +297,8 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            List<SafetyResponseResponse> result = safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            List<SafetyResponseResponse> result =
+                    safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             assertThat(result).hasSize(1); // 新規の1件のみ
@@ -311,7 +318,7 @@ class SafetyResponseServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
 
             // When & Then
-            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req))
+            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED));
@@ -329,7 +336,7 @@ class SafetyResponseServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
 
             // When & Then
-            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req))
+            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.SAFETY_CHECK_ALREADY_CLOSED));
@@ -359,7 +366,7 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             verify(followupRepository).save(any(SafetyResponseFollowupEntity.class));

@@ -1549,12 +1549,16 @@
       "feedback": "Feedback",
       "reports": "Reports",
       "advertisers": "Advertiser Management",
+      "adRateCards": "Ad Rate Cards",
+      "adCreditLimitRequests": "Ad Credit Limit Requests",
+      "affiliateSettings": "Affiliate Settings",
       "auditLogs": "Audit Logs",
       "shiftBudget": "Shift Budget",
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
       "gdprPurge": "GDPR Purge Status",
-      "feedbackInbox": "Feedback Inbox (Global)"
+      "feedbackInbox": "Feedback Inbox (Global)",
+      "billing": "Billing master data"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",

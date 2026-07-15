@@ -131,6 +131,12 @@ const individualItems = [
     icon: 'pi pi-database',
     to: '/settings/storage',
   },
+  {
+    label: '課金・プラン管理',
+    description: '契約中のプラン・アドオン・利用できる機能の確認',
+    icon: 'pi pi-credit-card',
+    to: '/settings/billing',
+  },
 ]
 
 const searchQuery = ref('')

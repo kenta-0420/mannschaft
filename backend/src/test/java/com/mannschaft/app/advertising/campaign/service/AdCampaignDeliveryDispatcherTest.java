@@ -177,6 +177,52 @@ class AdCampaignDeliveryDispatcherTest {
     }
 
     @Test
+    @DisplayName("F09.19.7 AC-7.4: channel 未登録（0 件配信）で releaseSlot が消費週で呼ばれ FreqCap を返却する")
+    void deliverForUser_no_channels_releasesFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        // channel 未登録 → 全チャネル skip → rollbackFreqCap 経路
+        given(channelRepository.findByCampaignId(campaign.getId())).willReturn(List.of());
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+
+        boolean result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isFalse();
+        java.time.LocalDate expectedWeek = com.mannschaft.app.advertising.campaign.service.AdFrequencyCapService
+                .weekStartOf(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")));
+        verify(frequencyCapService, times(1)).releaseSlot(42L, 100L, expectedWeek);
+    }
+
+    @Test
+    @DisplayName("F09.19.7 AC-7.4: 全チャネル opt-out（0 件配信）でも releaseSlot が呼ばれる")
+    void deliverForUser_all_opt_out_releasesFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        AdMessagingCampaignChannel email = buildChannel(campaign.getId(), AdChannelType.EMAIL, "ja");
+
+        UserAdPreference pref = prefAllAccept();
+        pref.setAcceptAnnouncementAds(Boolean.FALSE);
+        pref.setAcceptEmailAds(Boolean.FALSE);
+        pref.setAcceptPushAds(Boolean.FALSE);
+        pref.setAcceptBannerAds(Boolean.FALSE);
+
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(pref);
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(channelRepository.findByCampaignId(campaign.getId())).willReturn(List.of(email));
+        given(userRepository.findLocaleById(42L)).willReturn(Optional.of("ja"));
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+
+        boolean result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isFalse();
+        verify(frequencyCapService, times(1)).releaseSlot(eq(42L), eq(100L), any());
+    }
+
+    @Test
     @DisplayName("pickLocaleChannelByType: users.locale 一致が最優先される")
     void pickLocaleChannelByType_locale_match() {
         UUID cid = UUID.randomUUID();

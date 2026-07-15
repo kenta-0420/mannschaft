@@ -1,8 +1,10 @@
 package com.mannschaft.app.signage.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.signage.SignageErrorCode;
 import com.mannschaft.app.signage.entity.SignageAccessTokenEntity;
+import com.mannschaft.app.signage.entity.SignageScreenEntity;
 import com.mannschaft.app.signage.repository.SignageAccessTokenRepository;
 import com.mannschaft.app.signage.repository.SignageScreenRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class SignageAccessTokenService {
 
     private final SignageAccessTokenRepository tokenRepository;
     private final SignageScreenRepository screenRepository;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTO 定義
@@ -72,8 +75,11 @@ public class SignageAccessTokenService {
     @Transactional
     public SignageAccessTokenResponse issueToken(Long screenId, Long createdBy, IssueSignageTokenRequest req) {
         // 画面の存在確認
-        screenRepository.findByIdAndDeletedAtIsNull(screenId)
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
                 .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみトークン発行可能
+        accessControlService.checkAdminOrAbove(createdBy, screen.getScopeId(), screen.getScopeType());
 
         // UUID v4 トークン生成
         String token = UUID.randomUUID().toString();
@@ -98,9 +104,13 @@ public class SignageAccessTokenService {
      * 画面に紐づくトークン一覧を取得する。
      *
      * @param screenId 画面ID
+     * @param actor    操作者ユーザーID
      * @return トークンレスポンス一覧
      */
-    public List<SignageAccessTokenResponse> listTokens(Long screenId) {
+    public List<SignageAccessTokenResponse> listTokens(Long screenId, Long actor) {
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみトークン一覧取得可能
+        checkScreenAdmin(screenId, actor);
+
         return tokenRepository.findByScreenId(screenId)
                 .stream()
                 .map(e -> toResponse(e, null))
@@ -110,11 +120,16 @@ public class SignageAccessTokenService {
     /**
      * トークンを論理無効化する（isActive=false に更新）。
      *
-     * @param id トークンID
+     * @param id    トークンID
+     * @param actor 操作者ユーザーID
      */
     @Transactional
-    public void revokeToken(Long id) {
+    public void revokeToken(Long id, Long actor) {
         SignageAccessTokenEntity entity = findTokenOrThrow(id);
+
+        // 認可: トークンが属する画面スコープの ADMIN/DEPUTY_ADMIN のみ無効化可能（BOLA遮断）
+        checkScreenAdmin(entity.getScreenId(), actor);
+
         entity.deactivate();
         tokenRepository.save(entity);
         log.info("サイネージトークン無効化: id={}", id);
@@ -139,6 +154,19 @@ public class SignageAccessTokenService {
     // ========================================
     // 内部メソッド
     // ========================================
+
+    /**
+     * 指定画面のスコープに対し、操作者が ADMIN/DEPUTY_ADMIN であることを検証する。
+     * 画面が存在しなければ SIGNAGE_001、権限が無ければ COMMON_002（403）をスローする。
+     *
+     * @param screenId 画面ID
+     * @param actor    操作者ユーザーID
+     */
+    private void checkScreenAdmin(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
+                .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+        accessControlService.checkAdminOrAbove(actor, screen.getScopeId(), screen.getScopeType());
+    }
 
     /**
      * IDでトークンを取得する。見つからない場合は SIGNAGE_005 例外をスローする。

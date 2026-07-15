@@ -1,8 +1,10 @@
 package com.mannschaft.app.signage.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.signage.SignageErrorCode;
 import com.mannschaft.app.signage.SignageSlotType;
+import com.mannschaft.app.signage.entity.SignageScreenEntity;
 import com.mannschaft.app.signage.entity.SignageSlotEntity;
 import com.mannschaft.app.signage.repository.SignageSlotRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ import java.util.List;
 public class SignageSlotService {
 
     private final SignageSlotRepository slotRepository;
+    private final SignageScreenService screenService;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTO 定義
@@ -72,11 +76,15 @@ public class SignageSlotService {
      * スロットを追加する。slotOrderは既存最大値+1を自動設定する。
      *
      * @param screenId 画面ID
+     * @param actor    操作者ユーザーID
      * @param req      追加リクエスト
      * @return 追加したスロットレスポンス
      */
     @Transactional
-    public SignageSlotResponse addSlot(Long screenId, AddSignageSlotRequest req) {
+    public SignageSlotResponse addSlot(Long screenId, Long actor, AddSignageSlotRequest req) {
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみスロット追加可能
+        checkScreenAdmin(screenId, actor);
+
         // 既存スロットの最大slotOrderを取得し、+1を次の順序とする
         int nextOrder = slotRepository.findMaxSlotOrderByScreenId(screenId)
                 .map(max -> max + 1)
@@ -113,13 +121,17 @@ public class SignageSlotService {
     /**
      * スロットを更新する。
      *
-     * @param id  スロットID
-     * @param req 更新リクエスト
+     * @param id    スロットID
+     * @param actor 操作者ユーザーID
+     * @param req   更新リクエスト
      * @return 更新後スロットレスポンス
      */
     @Transactional
-    public SignageSlotResponse updateSlot(Long id, UpdateSignageSlotRequest req) {
+    public SignageSlotResponse updateSlot(Long id, Long actor, UpdateSignageSlotRequest req) {
         SignageSlotEntity entity = findSlotOrThrow(id);
+
+        // 認可: スロットが属する画面スコープの ADMIN/DEPUTY_ADMIN のみ更新可能
+        checkScreenAdmin(entity.getScreenId(), actor);
 
         // managed entity を直接ミューテートして save することで id=null INSERT を防ぐ。
         // toBuilder().build() では @Builder が BaseEntity の id を引き継がず id=null になるため使用禁止。
@@ -137,12 +149,17 @@ public class SignageSlotService {
     /**
      * スロットを物理削除する。
      *
-     * @param id スロットID
+     * @param id    スロットID
+     * @param actor 操作者ユーザーID
      */
     @Transactional
-    public void removeSlot(Long id) {
+    public void removeSlot(Long id, Long actor) {
         // 存在確認
-        findSlotOrThrow(id);
+        SignageSlotEntity entity = findSlotOrThrow(id);
+
+        // 認可: スロットが属する画面スコープの ADMIN/DEPUTY_ADMIN のみ削除可能
+        checkScreenAdmin(entity.getScreenId(), actor);
+
         slotRepository.deleteById(id);
         log.info("サイネージスロット物理削除: id={}", id);
     }
@@ -152,10 +169,14 @@ public class SignageSlotService {
      * orderedIds の順番がそのまま slotOrder (1始まり) に反映される。
      *
      * @param screenId  画面ID
+     * @param actor     操作者ユーザーID
      * @param orderedIds 並び替え後のスロットID順リスト
      */
     @Transactional
-    public void reorderSlots(Long screenId, List<Long> orderedIds) {
+    public void reorderSlots(Long screenId, Long actor, List<Long> orderedIds) {
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみ並び替え可能
+        checkScreenAdmin(screenId, actor);
+
         // 画面に紐づく全スロットを取得
         List<SignageSlotEntity> slots = slotRepository.findByScreenIdOrderBySlotOrderAsc(screenId);
 
@@ -179,6 +200,18 @@ public class SignageSlotService {
     // ========================================
     // 内部メソッド
     // ========================================
+
+    /**
+     * 指定画面のスコープに対し、操作者が ADMIN/DEPUTY_ADMIN であることを検証する。
+     * 画面が存在しなければ SIGNAGE_001、権限が無ければ COMMON_002（403）をスローする。
+     *
+     * @param screenId 画面ID
+     * @param actor    操作者ユーザーID
+     */
+    private void checkScreenAdmin(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenService.findScreenOrThrow(screenId);
+        accessControlService.checkAdminOrAbove(actor, screen.getScopeId(), screen.getScopeType());
+    }
 
     /**
      * IDでスロットを取得する。見つからない場合は SIGNAGE_003 例外をスローする。

@@ -23,8 +23,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * F09.17 ユーザー通報。通報 3 件で自動 SUSPEND 判定。保持期間 3 年。
+ * F09.17 / F09.19.9 ユーザー通報。通報 3 件で自動停止判定。保持期間 3 年。
  * 退会時は reporter_user_id を NULL 化。
+ *
+ * <p>F09.19.9 で運用型キャンペーン（{@code operational_campaign_id}）対応を追加。
+ * {@code campaign_id}（メッセージ型）と {@code operational_campaign_id}（運用型）は XOR
+ * （DB CHECK {@code chk_aur_target} + Service 層 AD_032 の二重防御）。</p>
  */
 @Entity
 @Table(name = "ad_user_reports")
@@ -36,8 +40,13 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class AdUserReport extends UuidV7Entity {
 
-    @Column(name = "campaign_id", nullable = false)
+    /** メッセージ型キャンペーン（ad_messaging_campaigns.id）。運用型通報時は NULL（XOR）。 */
+    @Column(name = "campaign_id")
     private UUID campaignId;
+
+    /** 運用型キャンペーン（F09.7 ad_campaigns.id）。メッセージ型通報時は NULL（XOR）。F09.19.9。 */
+    @Column(name = "operational_campaign_id")
+    private Long operationalCampaignId;
 
     /** 通報者 (退会時 NULL 化・FK なし) */
     @Column(name = "reporter_user_id")

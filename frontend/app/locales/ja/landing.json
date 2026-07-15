@@ -92,28 +92,7 @@
     "product": {
       "title": "Mannschaft プロダクト",
       "desc": "チーム・組織の運営に必要なすべての機能をひとつにまとめたオールインワン管理プラットフォーム",
-      "features_heading": "主要機能",
-      "pricing_heading": "料金プラン",
-      "pricing": {
-        "free": {
-          "name": "フリー",
-          "price": "¥0",
-          "desc": "個人・小規模チーム向け",
-          "features": ["基本機能すべて利用可", "最大10名まで", "1GB ストレージ"]
-        },
-        "pro": {
-          "name": "プロ",
-          "price": "¥980/月",
-          "desc": "成長中のチーム向け",
-          "features": ["すべてのフリー機能", "メンバー数無制限", "50GB ストレージ", "優先サポート"]
-        },
-        "enterprise": {
-          "name": "エンタープライズ",
-          "price": "要相談",
-          "desc": "大規模組織向け",
-          "features": ["すべてのプロ機能", "カスタム統合", "専任サポート", "SLA保証"]
-        }
-      }
+      "features_heading": "主要機能"
     },
     "legal": {
       "terms": {

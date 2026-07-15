@@ -2,6 +2,7 @@ package com.mannschaft.app.ticket.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
@@ -50,11 +51,6 @@ public class MyTicketController {
     private final TicketProductRepository ticketProductRepository;
     private final TicketBookRepository ticketBookRepository;
 
-    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     /**
      * 自分のチケット一覧を取得する（MEMBER / SUPPORTER）。
      */
@@ -64,7 +60,7 @@ public class MyTicketController {
     public ResponseEntity<ApiResponse<List<TicketBookResponse>>> getMyTickets(
             @PathVariable Long teamId,
             @RequestParam(required = false) String status) {
-        List<TicketBookResponse> tickets = bookService.getMyTickets(teamId, getCurrentUserId(), status);
+        List<TicketBookResponse> tickets = bookService.getMyTickets(teamId, SecurityUtils.getCurrentUserId(), status);
         return ResponseEntity.ok(ApiResponse.of(tickets));
     }
 
@@ -170,7 +166,7 @@ public class MyTicketController {
     public ResponseEntity<ApiResponse<QrCodeResponse>> getQrCode(
             @PathVariable Long teamId,
             @PathVariable Long bookId) {
-        QrCodeResponse response = bookService.generateQrCode(teamId, bookId, getCurrentUserId());
+        QrCodeResponse response = bookService.generateQrCode(teamId, bookId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -182,7 +178,7 @@ public class MyTicketController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TicketWidgetResponse>> getWidget(
             @PathVariable Long teamId) {
-        TicketWidgetResponse response = bookService.getWidget(teamId, getCurrentUserId());
+        TicketWidgetResponse response = bookService.getWidget(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

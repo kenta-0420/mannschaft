@@ -25,10 +25,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * グローバル例外ハンドラー。
@@ -366,6 +368,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_103", HttpStatus.NOT_FOUND),       // SHARE_TARGET_TEAM_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_104", HttpStatus.NOT_FOUND),       // SHARE_TARGET_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_105", HttpStatus.CONFLICT),        // SHARE_TARGET_DUPLICATED
+            // F03.9 チーム時間割（認可根治Wave2: IDOR対策で 404 統一。従来 WARN 既定の 400 のまま未マップだった欠陥を根治）
+            Map.entry("TIMETABLE_001", HttpStatus.NOT_FOUND),                // TIMETABLE_NOT_FOUND
+            Map.entry("TIMETABLE_002", HttpStatus.NOT_FOUND),                // TERM_NOT_FOUND
+            Map.entry("TIMETABLE_003", HttpStatus.NOT_FOUND),                // SLOT_NOT_FOUND
+            Map.entry("TIMETABLE_004", HttpStatus.NOT_FOUND),                // CHANGE_NOT_FOUND
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
@@ -808,7 +815,46 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),            // CONTRACT_NOT_CANCELLABLE
             Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),            // PLAN_MASTER_IN_USE
             Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),            // DUPLICATE_ENTITLEMENT（uk_ent_grant）
-            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST)          // INVALID_CONTRACT_KIND（contractKind 不正）
+            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),         // INVALID_CONTRACT_KIND（contractKind 不正）
+            // F20.1 実決済（D-1〜D-4・2026-07-10 御裁可）追補
+            Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
+            Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
+            Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            // 認可根治戦役 Wave 2 トランシェ2A #3: F09.15 succession（法的手続き・エスカレーション）は
+            // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("SUCCESSION_016", HttpStatus.NOT_FOUND),           // ESCALATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("SUCCESSION_021", HttpStatus.NOT_FOUND),           // LEGAL_FILING_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.3 parking の *_NOT_FOUND は、対象エンティティが
+            // 自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PARKING_001", HttpStatus.NOT_FOUND),              // SPACE_NOT_FOUND
+            Map.entry("PARKING_002", HttpStatus.NOT_FOUND),              // VEHICLE_NOT_FOUND
+            Map.entry("PARKING_003", HttpStatus.NOT_FOUND),              // ASSIGNMENT_NOT_FOUND
+            Map.entry("PARKING_004", HttpStatus.NOT_FOUND),              // APPLICATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_005", HttpStatus.NOT_FOUND),              // LISTING_NOT_FOUND
+            Map.entry("PARKING_006", HttpStatus.NOT_FOUND),              // VISITOR_RESERVATION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PARKING_007", HttpStatus.NOT_FOUND),              // WATCHLIST_NOT_FOUND
+            Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
+            Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
+            Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2B: F07.2 performance の *_NOT_FOUND は、対象エンティティが
+            // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PERF_001", HttpStatus.NOT_FOUND),                 // METRIC_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_002", HttpStatus.NOT_FOUND),                 // RECORD_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PERF_011", HttpStatus.NOT_FOUND),                 // SCHEDULE_NOT_FOUND（scheduleId スコープ整合 → 404）
+            Map.entry("PERF_013", HttpStatus.NOT_FOUND),                 // ACTIVITY_NOT_FOUND
+            Map.entry("PERF_014", HttpStatus.NOT_FOUND),                 // TEAM_NOT_FOUND
+            // 認可根治戦役 Wave 2 トランシェ2B: F09.2 promotion（プロモーション・クーポン・セグメントプリセット）は
+            // (id, scopeType, scopeId) 複合条件で取得するため、他スコープの ID 指定は IDOR 秘匿のため 404 とする
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("PROMOTION_001", HttpStatus.NOT_FOUND),            // PROMOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_005", HttpStatus.NOT_FOUND),            // COUPON_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_007", HttpStatus.NOT_FOUND),            // DISTRIBUTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_010", HttpStatus.NOT_FOUND),            // DELIVERY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_011", HttpStatus.NOT_FOUND),            // PRESET_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROMOTION_015", HttpStatus.NOT_FOUND)             // BILLING_RECORD_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
@@ -924,10 +970,68 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
+        ResponseStatusException rse = findResponseStatusExceptionCause(ex);
+        boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
+
+        // (2) team/organization のスコープ識別子パス変数に非数値 slug が渡り、解決に失敗したケース。
+        //     {@link ScopeSlugIdConverter} は不在 slug で 404 を投げるが、Spring の型変換フォールバック
+        //     （既定 Long エディタ）が例外を握り潰して NumberFormatException 化するため、原因連鎖からは
+        //     404 意図が失われる。ここでパス変数名と値から補完し、400 でなく 404 を返す。
+        if (!notFound && isUnresolvedScopeSlug(ex)) {
+            notFound = true;
+        }
+
+        if (notFound) {
+            log.debug("スコープ識別子の解決失敗（404）: parameter={}, value={}", ex.getName(), ex.getValue());
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
+        }
         log.warn("Type mismatch: parameter={}, value={}", ex.getName(), ex.getValue());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /** team / organization のスラッグ解決に使うパス変数名。 */
+    private static final Set<String> SCOPE_ID_PATH_VARS = Set.of("organizationId", "orgId", "teamId");
+
+    /**
+     * スコープ識別子（team/organization）のパス変数に非数値 slug が渡り、解決不能だったかを判定する。
+     * 数値であれば本来変換可能（＝別要因の 400）なので false。
+     */
+    private boolean isUnresolvedScopeSlug(MethodArgumentTypeMismatchException ex) {
+        if (!SCOPE_ID_PATH_VARS.contains(ex.getName())) {
+            return false;
+        }
+        Class<?> required = ex.getRequiredType();
+        if (required != Long.class && required != long.class) {
+            return false;
+        }
+        if (!(ex.getValue() instanceof String s)) {
+            return false;
+        }
+        try {
+            Long.parseLong(s);
+            return false;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    /**
+     * 例外の原因連鎖を辿り、最初に見つかった {@link ResponseStatusException} を返す。見つからなければ null。
+     */
+    private ResponseStatusException findResponseStatusExceptionCause(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof ResponseStatusException rse) {
+                return rse;
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
     /**

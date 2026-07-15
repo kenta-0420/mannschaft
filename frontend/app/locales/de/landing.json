@@ -296,42 +296,7 @@
     "product": {
       "title": "Mannschaft Produkt",
       "desc": "Eine All-in-One-Verwaltungsplattform mit allem, was dein Team oder deine Organisation braucht",
-      "features_heading": "Hauptfunktionen",
-      "pricing_heading": "Preispläne",
-      "pricing": {
-        "free": {
-          "name": "Kostenlos",
-          "price": "€0",
-          "desc": "Für Einzelpersonen & kleine Teams",
-          "features": [
-            "Alle Grundfunktionen",
-            "Bis zu 10 Mitglieder",
-            "1GB Speicher"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/Mo.",
-          "desc": "Für wachsende Teams",
-          "features": [
-            "Alle kostenlosen Funktionen",
-            "Unbegrenzte Mitglieder",
-            "50GB Speicher",
-            "Prioritätssupport"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Kontakt",
-          "desc": "Für große Organisationen",
-          "features": [
-            "Alle Pro-Funktionen",
-            "Benutzerdefinierte Integrationen",
-            "Dedizierter Support",
-            "SLA-Garantie"
-          ]
-        }
-      }
+      "features_heading": "Hauptfunktionen"
     },
     "legal": {
       "terms": {

@@ -5,6 +5,8 @@ import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -36,9 +38,16 @@ public class AdCampaignStateTransitionScheduler {
     /** 予約 EXPIRED しきい値（日）。served_at IS NULL のまま経過したら serve 対象外化 + FreqCap 返却。 */
     private static final int RESERVATION_EXPIRY_DAYS = 14;
 
+    /** F09.19.7 §10.5: スケジューラ起因（ユーザー操作なし）イベントの actor = システムユーザー（V1.012 seed）。 */
+    private static final Long SYSTEM_USER_ID = 1L;
+
+    static final String AUDIT_CAMPAIGN_DELIVERING_STARTED = "CAMPAIGN_DELIVERING_STARTED";
+    static final String AUDIT_CAMPAIGN_COMPLETED = "CAMPAIGN_COMPLETED";
+
     private final AdMessagingCampaignRepository campaignRepository;
     private final AdBannerDeliveryRepository bannerDeliveryRepository;
     private final AdFrequencyCapService frequencyCapService;
+    private final AuditLogService auditLogService;
 
     /**
      * 5 分間隔 (Asia/Tokyo) で起動する状態遷移本体。
@@ -71,7 +80,7 @@ public class AdCampaignStateTransitionScheduler {
             campaign.setStatus(AdCampaignStatus.DELIVERING);
             campaignRepository.save(campaign);
             log.info("CAMPAIGN_DELIVERING_STARTED campaignId={}", campaign.getId());
-            // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_DELIVERING_STARTED を発火する
+            fireAudit(AUDIT_CAMPAIGN_DELIVERING_STARTED, campaign);
         }
         return targets.size();
     }
@@ -90,9 +99,20 @@ public class AdCampaignStateTransitionScheduler {
             campaign.setStatus(AdCampaignStatus.COMPLETED);
             campaignRepository.save(campaign);
             log.info("CAMPAIGN_COMPLETED campaignId={}", campaign.getId());
-            // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_COMPLETED を発火する
+            fireAudit(AUDIT_CAMPAIGN_COMPLETED, campaign);
         }
         return targets.size();
+    }
+
+    /**
+     * F09.19.7 §10.5 / AC-7.5: スケジューラ自動遷移の監査ログを fire-and-forget で記録する。
+     * actor はシステムユーザー（{@link #SYSTEM_USER_ID}）。metadata は {@code {"campaign_id":"<uuid>"}}。
+     */
+    private void fireAudit(String eventType, AdMessagingCampaign campaign) {
+        Long teamId = campaign.getScopeType() == ScopeType.TEAM ? campaign.getScopeId() : null;
+        Long orgId = campaign.getScopeType() == ScopeType.ORGANIZATION ? campaign.getScopeId() : null;
+        String metadata = "{\"campaign_id\":\"" + campaign.getId() + "\"}";
+        auditLogService.record(eventType, SYSTEM_USER_ID, null, teamId, orgId, null, null, null, metadata);
     }
 
     /**

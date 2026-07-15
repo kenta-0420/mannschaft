@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.safetycheck.FollowupStatus;
 import com.mannschaft.app.safetycheck.MessageSource;
@@ -40,6 +41,7 @@ public class SafetyResponseService {
     private final SafetyResponseRepository responseRepository;
     private final SafetyResponseFollowupRepository followupRepository;
     private final SafetyCheckMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 安否確認に回答する。
@@ -90,13 +92,20 @@ public class SafetyResponseService {
     /**
      * 安否確認に一括回答する（管理者用）。
      *
-     * @param safetyCheckId 安否確認ID
-     * @param req           一括回答リクエスト
+     * <p>生命安全に直結するため、操作者（{@code operatorUserId}）がスコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する（束3 AC-1-4）。非ADMINが他人の安否を
+     * 「安全」と偽装登録できてしまう欠陥の根治。</p>
+     *
+     * @param safetyCheckId  安否確認ID
+     * @param req            一括回答リクエスト
+     * @param operatorUserId 操作者（管理者）のユーザーID
      * @return 回答レスポンス一覧
      */
     @Transactional
-    public List<SafetyResponseResponse> bulkRespond(Long safetyCheckId, BulkRespondRequest req) {
+    public List<SafetyResponseResponse> bulkRespond(Long safetyCheckId, BulkRespondRequest req,
+                                                      Long operatorUserId) {
         SafetyCheckEntity check = findCheckOrThrow(safetyCheckId);
+        accessControlService.checkAdminOrAbove(operatorUserId, check.getScopeId(), check.getScopeType().name());
         validateActive(check);
 
         if (req.getItems().size() > BULK_RESPOND_LIMIT) {

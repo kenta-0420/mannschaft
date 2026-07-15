@@ -185,7 +185,7 @@ public class ChatChannelController {
             @PathVariable Long channelId,
             @PathVariable Long userId,
             @Valid @RequestBody ChangeRoleRequest request) {
-        MemberResponse response = memberService.changeRole(channelId, userId, request);
+        MemberResponse response = memberService.changeRole(channelId, userId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

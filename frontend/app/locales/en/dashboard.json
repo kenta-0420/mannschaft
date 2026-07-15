@@ -183,6 +183,22 @@
       "widget_notices_tab_platform": "Announcements",
       "widget_notices_platform_empty": "No announcements at this time"
     },
+    "commandCenter": {
+      "title": "Right Now",
+      "unresolvedCount": "{count} unresolved",
+      "chipCirculation": "Circulation",
+      "chipSurvey": "Survey",
+      "chipAttendance": "Attendance",
+      "chipOverdueTodo": "Overdue TODO",
+      "deadlineOverdue": "Overdue",
+      "deadlineToday": "Today",
+      "emptyTitle": "Nothing missed 🎉",
+      "emptyMessage": "No items require your attention",
+      "partialLoadError": "Some data could not be loaded",
+      "todoCompleteAria": "Mark as complete",
+      "todoCompleteSuccess": "TODO completed",
+      "todoCompleteError": "Failed to complete the TODO"
+    },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",
       "viewAll": "View all",

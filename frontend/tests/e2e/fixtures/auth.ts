@@ -108,7 +108,11 @@ export async function loginAs(
   await passwordInput.click()
   await passwordInput.pressSequentially(credentials.password, { delay: 10 })
 
-  await page.getByRole('button', { name: 'ログイン' }).click()
+  // exact: true が必須。login.vue には「Googleでログイン」ボタンも存在し、
+  // exact 指定なしだと部分一致で2要素にマッチして strict mode violation になる
+  // （2026-07-14 F09.19 実機E2E作成時に発見。module-settings-catalog.spec.ts は
+  // 独自ログイン関数で exact: true 済みだったが、共有ヘルパーの本箇所は未修正だった）。
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
   // ログイン成功後は '/' にリダイレクトされる（login.vue の navigateTo(redirect) デフォルト値）
   // dev サーバーはダッシュボード SSR が重いため commit まで待ち、タイムアウトを 30s に延ばす
   await page.waitForURL((url) => !url.pathname.includes('/login'), {

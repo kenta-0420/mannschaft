@@ -38,7 +38,15 @@ public class AdCreditLimitRequestService {
      */
     @Transactional
     public CreditLimitRequestResponse create(Long organizationId, CreateCreditLimitRequest request) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return create(ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    /**
+     * 増額申請を作成する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    @Transactional
+    public CreditLimitRequestResponse create(ScopeType scopeType, Long scopeId, CreateCreditLimitRequest request) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         if (request.requestedLimit().compareTo(account.getCreditLimit()) <= 0) {
