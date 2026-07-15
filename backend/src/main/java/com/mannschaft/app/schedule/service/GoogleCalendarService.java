@@ -232,11 +232,15 @@ public class GoogleCalendarService {
         UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED));
 
+        // AC-1〜AC-4: Mannschaft が作成した Google 側の実イベントを先に削除する（孤児予定の根治）。
+        // revokeToken の後ではトークンが無効化され deleteEvent が失効するため、必ず revoke より前に実行する。
+        deleteGoogleSideEventsBestEffort(userId, connection);
+
         // Google Token Revoke
         String refreshToken = encryptionService.decrypt(connection.getRefreshToken());
         googleApiClient.revokeToken(refreshToken);
 
-        // Googleイベントマッピングを全件削除
+        // AC-2: Google 側削除の後に、Googleイベントマッピングを全件削除
         googleEventRepository.deleteAllByUserId(userId);
 
         // 接続を無効化
@@ -246,6 +250,41 @@ public class GoogleCalendarService {
         stopWebhookChannelIfExists(userId);
 
         log.info("Google Calendar連携解除完了: userId={}", userId);
+    }
+
+    /**
+     * 連携解除に伴い、当該ユーザーの同期済み Google イベントを Google カレンダーから削除する（AC-1〜AC-4）。
+     *
+     * <p>本人（{@code userId}）スコープのマッピングのみを対象とし、他ユーザーの予定には一切触れない。
+     * 個別削除の 404/410 は {@link GoogleApiClient#deleteEvent} 側でべき等成功として無視されるため、
+     * そのまま次のイベント削除へ継続する（AC-3）。</p>
+     *
+     * <p>トークン失効（401）等で Google 側削除が続行不能になった場合でも、連携解除自体はユーザーの
+     * 明示的な終了操作であり通す必要があるため、ここではベストエフォートで打ち切り後続処理へ進む（AC-4）。
+     * これは症状の握り潰しではなく「失効済みトークンでは Google 側削除が原理的に不能」という
+     * 正当理由に基づく設計判断であり、理由を warn ログに残す。</p>
+     */
+    private void deleteGoogleSideEventsBestEffort(Long userId, UserGoogleCalendarConnectionEntity connection) {
+        List<UserScheduleGoogleEventEntity> mappings = googleEventRepository.findByUserId(userId);
+        if (mappings.isEmpty()) {
+            // AC-6: 同期済みイベントが無ければ Google 側削除は不要。
+            return;
+        }
+        String calendarId = connection.getGoogleCalendarId();
+        try {
+            String accessToken = getValidAccessToken(connection);
+            for (UserScheduleGoogleEventEntity mapping : mappings) {
+                googleApiClient.deleteEvent(accessToken, calendarId, mapping.getGoogleEventId());
+            }
+        } catch (org.springframework.web.client.RestClientException | BusinessException e) {
+            // AC-4: 失効等で Google 側削除が続行不能でも連携解除は通す（ベストエフォート）。
+            // 本番の deleteEvent / refreshAccessToken は Google/OAuth 失敗を BusinessException
+            //（GOOGLE_API_ERROR / GOOGLE_OAUTH_FAILED）にラップし、テストや低層漏れは
+            // RestClientException（HttpClientErrorException を含む）で来る。この 2 種のみ握り、
+            // 自前の NPE/IllegalState 等のバグは伝播させる（CLAUDE.md 障害対応の原則）。
+            log.warn("連携解除時のGoogle側イベント削除を打ち切り（ベストエフォート・連携解除は継続）: userId={}, reason={}",
+                    userId, e.toString());
+        }
     }
 
     /**

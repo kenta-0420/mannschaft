@@ -12,6 +12,7 @@ import com.mannschaft.app.schedule.dto.ManualSyncResponse;
 import com.mannschaft.app.schedule.dto.PersonalSyncStatusResponse;
 import com.mannschaft.app.schedule.entity.UserCalendarSyncSettingEntity;
 import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
+import com.mannschaft.app.schedule.entity.UserScheduleGoogleEventEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
@@ -28,14 +29,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -176,6 +184,162 @@ class GoogleCalendarServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED);
+        }
+    }
+
+    // ========================================
+    // disconnect — Google側イベント削除（受け入れ条件 AC-1〜AC-6）
+    //
+    // 連携解除時に、同期済みの Google カレンダーイベントを Google 側からも削除する。
+    // 現状 disconnect() は deleteEvent を一切呼ばないため、AC-1 / AC-3 / AC-4 は
+    // 「deleteEvent が呼ばれる」verify で red になる（実装は出陣部隊の仕事）。
+    // AC-2 / AC-5 / AC-6 は既存挙動の維持を保証するリグレッションガード。
+    // ========================================
+
+    @Nested
+    @DisplayName("disconnect — Google側イベント削除")
+    class DisconnectGoogleSideDeletion {
+
+        /** Google イベントマッピングのテストダブルを生成する。 */
+        private UserScheduleGoogleEventEntity mapping(String googleEventId) {
+            return UserScheduleGoogleEventEntity.builder()
+                    .userId(USER_ID)
+                    .scheduleId(1L)
+                    .googleEventId(googleEventId)
+                    .lastSyncedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        @Test
+        @DisplayName("AC-1_連携解除_全同期イベントのgoogleEventIdごとにdeleteEventが呼ばれる")
+        void AC1_連携解除時_全マッピングのgoogleEventIdでdeleteEventが呼ばれる() {
+            // given: スコープ横断で 3 件の同期済みイベント
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-personal-1"), mapping("evt-team-2"), mapping("evt-org-3")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+
+            // when
+            googleCalendarService.disconnect(USER_ID);
+
+            // then: 各 googleEventId に対し connection の calendarId("primary") で deleteEvent が呼ばれる
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-personal-1"));
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-team-2"));
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-org-3"));
+        }
+
+        @Test
+        @DisplayName("AC-2_連携解除_Google削除後にマッピング全削除とdeactivateが呼ばれる（既存挙動維持）")
+        void AC2_連携解除時_deleteAllByUserIdとdeactivateが呼ばれる() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-1")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+
+            // when
+            googleCalendarService.disconnect(USER_ID);
+
+            // then
+            verify(googleEventRepository).deleteAllByUserId(USER_ID);
+            verify(connectionRepository).deactivate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-3_連携解除_個別deleteが正常返却でも残イベント削除と後続処理が継続する")
+        void AC3_個別delete正常時_残りの削除と後続処理が継続する() {
+            // given: 3 件。deleteEvent は 404/410 を内部で握るためモックは正常返却（no-op）
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-1"), mapping("evt-2"), mapping("evt-3")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+
+            // when
+            googleCalendarService.disconnect(USER_ID);
+
+            // then: 全件の deleteEvent が呼ばれ、後続の全削除・無効化まで到達する
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-1"));
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-2"));
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-3"));
+            verify(googleEventRepository).deleteAllByUserId(USER_ID);
+            verify(connectionRepository).deactivate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-4_連携解除_deleteEventが本番同様BusinessExceptionを投げてもdisconnectは例外にならずdeactivateまで完了する")
+        void AC4_deleteEventがBusinessExceptionを投げても_disconnectは完了しdeactivateされる() {
+            // given: 本番の GoogleApiClient.deleteEvent は 404/410 以外を
+            //        BusinessException(GOOGLE_API_ERROR) にラップして投げる（401 を原因に包む形）。
+            //        テストも本番実態と同じ例外型で検証し「テスト緑=本番も握る」を保証する。
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-1")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+            lenient().doThrow(new BusinessException(GoogleCalendarErrorCode.GOOGLE_API_ERROR,
+                            new HttpClientErrorException(HttpStatus.UNAUTHORIZED)))
+                    .when(googleApiClient).deleteEvent(any(), any(), any());
+
+            // when & then: disconnect 自体は例外にならない（失敗は正当理由・ベストエフォート削除を諦めて解除は通す）
+            assertThatCode(() -> googleCalendarService.disconnect(USER_ID))
+                    .doesNotThrowAnyException();
+
+            // deleteEvent は実際に呼ばれ（red の要因）、失敗でも deactivate まで到達する
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-1"));
+            verify(connectionRepository).deactivate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-4b_連携解除_deleteEventが生のRestClientException(401)を投げてもdisconnectは完了しdeactivateされる")
+        void AC4b_deleteEventが生のHttpClientErrorExceptionを投げても_disconnectは完了しdeactivateされる() {
+            // given: 低層が BusinessException にラップし損ねて生の HttpClientErrorException
+            //        （RestClientException のサブクラス）を漏らしても握れることを担保する。
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(mapping("evt-1")));
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+            lenient().doThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED))
+                    .when(googleApiClient).deleteEvent(any(), any(), any());
+
+            // when & then
+            assertThatCode(() -> googleCalendarService.disconnect(USER_ID))
+                    .doesNotThrowAnyException();
+            verify(googleApiClient).deleteEvent(any(), eq("primary"), eq("evt-1"));
+            verify(connectionRepository).deactivate(USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-5_連携解除_未接続ならGCAL_001で例外・Google削除は一切呼ばれない")
+        void AC5_未接続_GCAL001例外でdeleteEventは呼ばれない() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> googleCalendarService.disconnect(USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED);
+            verify(googleApiClient, never()).deleteEvent(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-6_連携解除_マッピング0件でも正常完了しdeleteEventは呼ばれずdeactivateされる")
+        void AC6_マッピング0件_deleteEventは呼ばれず正常完了する() {
+            // given: 同期済みイベントが 0 件
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            lenient().when(googleEventRepository.findByUserId(USER_ID)).thenReturn(List.of());
+            lenient().when(encryptionService.decrypt(any())).thenReturn("raw_token");
+
+            // when & then
+            assertThatCode(() -> googleCalendarService.disconnect(USER_ID))
+                    .doesNotThrowAnyException();
+            verify(googleApiClient, never()).deleteEvent(any(), any(), any());
+            verify(connectionRepository).deactivate(USER_ID);
         }
     }
 
