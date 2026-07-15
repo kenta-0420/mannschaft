@@ -28,9 +28,6 @@ useVillageContext()
 
 const chronicles = ref<VillageChronicleResponse[]>([])
 const chroniclesLoading = ref(false)
-const totalChronicles = ref(0)
-const page = ref(0)
-const PAGE_SIZE = 12
 
 // 年セレクタ — 全件取得後にフロントで絞り込み（件数が少ない前提）
 const selectedYear = ref<number | 'ALL'>('ALL')
@@ -58,13 +55,11 @@ const yearOptions = computed(() => [
 async function loadChronicles() {
   chroniclesLoading.value = true
   try {
-    const res = await villageApi.listChronicles(villageId.value, page.value, PAGE_SIZE)
-    chronicles.value = res.items
-    totalChronicles.value = res.total
+    // BE は素の配列を返す（ページング未対応）。
+    chronicles.value = await villageApi.listChronicles(villageId.value)
   }
   catch (error) {
     chronicles.value = []
-    totalChronicles.value = 0
     handleApiError(error, t('village.chronicle.loadFailed'))
   }
   finally {
@@ -73,14 +68,14 @@ async function loadChronicles() {
 }
 
 function formatYearMonth(yearMonth: string): string {
-  // YYYY-MM 形式
+  // YYYY-MM-DD 形式（BE は LocalDate。当該月の 1 日に正規化済み）
   const [y, m] = yearMonth.split('-')
   if (!y || !m) return yearMonth
   return `${y}年${Number.parseInt(m, 10)}月`
 }
 
 function topTags(chronicle: VillageChronicleResponse): string[] {
-  return chronicle.topicTags.slice(0, 3)
+  return chronicle.topics.slice(0, 3).map(topic => topic.name)
 }
 
 onMounted(() => {

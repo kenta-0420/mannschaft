@@ -6,7 +6,6 @@ import type {
   VillageMeetupCandidateDateAddRequest,
   VillageMeetupVoteRequest,
   VillageMeetupVoteSummary,
-  VillageChronicleListResponse,
   VillageChronicleResponse,
   VillageSerendipityRankingResponse,
   VillageSerendipityScoreResponse,
@@ -147,16 +146,28 @@ export function useVillagePhase3Api() {
   // 村史
   // ==========================================================================
 
-  async function listChronicles(villageId: string, page?: number, size?: number) {
-    const res = await api<{ data: VillageChronicleListResponse }>(
-      `/api/v1/villages/${villageId}/chronicles${qs({ page, size })}`,
+  /**
+   * 村史一覧（年月降順）を取得する。
+   *
+   * BE は `ApiResponse<List<ChronicleResponse>>` を返す（`{ items, total }` の
+   * エンベロープではなく素の配列）。ページングも未対応のため引数は villageId のみ。
+   */
+  async function listChronicles(villageId: string) {
+    const res = await api<{ data: VillageChronicleResponse[] }>(
+      `/api/v1/villages/${villageId}/chronicles`,
     )
     return res.data
   }
 
-  async function getChronicle(villageId: string, chronicleId: string) {
+  /**
+   * 指定月の村史を取得する。
+   *
+   * @param yearMonth ISO `YYYY-MM-DD` 形式（BE は `LocalDate` を受ける）。
+   *                  村史の ID（UUID）ではないので注意。
+   */
+  async function getChronicle(villageId: string, yearMonth: string) {
     const res = await api<{ data: VillageChronicleResponse }>(
-      `/api/v1/villages/${villageId}/chronicles/${chronicleId}`,
+      `/api/v1/villages/${villageId}/chronicles/${yearMonth}`,
     )
     return res.data
   }
