@@ -396,6 +396,8 @@ export interface MembershipListParams {
 /** §4.6 管理者向け村作成申請一覧クエリ */
 export interface CreationRequestListParams {
   status?: VillageRequestStatus
+  page?: number
+  size?: number
 }
 
 /** §4.11 通報一覧クエリ */
