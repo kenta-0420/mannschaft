@@ -12,16 +12,20 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 
+/**
+ * 候補日フォーム行。
+ *
+ * BE (`MeetupCreateRequest.candidateDates`) は `List<LocalDate>` ＝ 日付のみを受け取り、
+ * 開始 / 終了時刻を保持する項目を持たない。そのため時刻入力は提供しない。
+ */
 interface CandidateDateForm {
   candidateDate: string
-  candidateTimeStart: string
-  candidateTimeEnd: string
 }
 
 interface MeetupFormState {
   title: string
   description: string
-  venue: string
+  location: string
   candidateDates: CandidateDateForm[]
 }
 
@@ -66,9 +70,9 @@ const { t } = useI18n()
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">
-          {{ t('village.meetup.venue') }}
+          {{ t('village.meetup.location') }}
         </label>
-        <InputText v-model="form.venue" class="w-full" />
+        <InputText v-model="form.location" class="w-full" />
       </div>
       <div>
         <div class="flex items-center justify-between mb-2">
@@ -87,21 +91,11 @@ const { t } = useI18n()
           <div
             v-for="(c, idx) in form.candidateDates"
             :key="idx"
-            class="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end"
+            class="grid grid-cols-[1fr_auto] gap-2 items-end"
           >
             <InputText
               v-model="c.candidateDate"
               type="date"
-              class="w-full"
-            />
-            <InputText
-              v-model="c.candidateTimeStart"
-              type="time"
-              class="w-full"
-            />
-            <InputText
-              v-model="c.candidateTimeEnd"
-              type="time"
               class="w-full"
             />
             <Button

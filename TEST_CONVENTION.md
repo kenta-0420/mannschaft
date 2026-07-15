@@ -116,6 +116,65 @@ assertThat(LocalDate.now()).isBefore(LocalDate.of(2026, 12, 31));     // 2026/12
 - **原則として `@SpringBootTest` + `@AutoConfigureMockMvc` を使用する**。Service をモックする `@WebMvcTest` は、Controller 層に固有のロジック（リクエストマッピング、バリデーション等）を個別に検証したい場合のみ使用する
 - **理由**: 本プロジェクトの Controller は薄い設計（§.claudecode.md 原則4）であり、Service をモックしても検証価値が低い。実 DB を含めた一気通貫テストのほうが信頼性が高い
 
+### 3.1.1 Controller テストは MockMvc 経由必須（Bean 直呼び禁止）**【必須】**
+
+**Controller のテストは必ず MockMvc で HTTP リクエストを発行して検証すること。**
+**Controller を `@Autowired` して、そのメソッドを Java から直接呼ぶ流儀を禁止する。**
+
+```java
+// ❌ 禁止 — HTTP 層を迂回する「偽の統合テスト」
+@Autowired
+private VillageMeetupController controller;
+
+@Test
+void listMeetups() {
+    ApiResponse<List<MeetupResponse>> res = controller.list(villageId, PLANNING, 0, 20);
+    assertThat(res.getData()).hasSize(1);
+}
+
+// ✅ 必須 — HTTP を通す
+mockMvc.perform(get("/api/v1/villages/{villageId}/meetups", villageId)
+                .param("status", "PLANNING"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].status").value("PLANNING"));
+```
+
+#### 理由
+
+Controller Bean の直呼びは、**Java の型検査が通る範囲しか検証しない**。以下は Controller が担う契約でありながら、直呼びでは **一切検証されない**:
+
+| 検証されない項目 | 具体例 |
+|---|---|
+| **URL パス** | `@RequestMapping` のパスが FE の叩く URL と一致しているか |
+| **HTTP メソッド** | `PUT` か `POST` か（FE が POST を送り BE は PUT のみ、等） |
+| **`@RequestParam` の enum バインド** | `?status=OPEN` が `VillageMeetupStatus` に束縛できず 400 になる |
+| **リクエスト JSON の形状** | `List<LocalDate>` に object 配列を送ると 400 になる |
+| **レスポンス JSON のエンベロープ形状** | `{items, page, size, total}` か `Page` の `{content, totalElements}` か |
+| **Bean Validation** | `@Valid` は HTTP 経由でしか発火しない（直呼びは素通り） |
+| **例外 → HTTP ステータス変換** | `GlobalExceptionHandler` を経由しないため 403/404/409 の別が出ない |
+
+**この規約は実害から生まれた。** 2026-07-15 の実機精査で、村ドメインに FE/BE の契約不一致が **17 件** 確定した。その分布は Controller テストの流儀と完全に一致していた:
+
+- `*ControllerIntegrationTest`（Bean 直呼び。Calendar / Monsho / MatchRecruit / Festival / Representative）→ パス・メソッド・形状バグを **素通し**
+- **Controller テスト皆無**（寄合 / Meetup。`VillageMeetupServiceTest` のみ）→ 判明分だけで **6 件破損**（投票パス・集計パス・status enum・voteType・作成リクエスト・レスポンス形状）
+- `*ControllerTest`（MockMvc。参加申請 / 村作成申請）→ **BE は正しく pin 済**。FE のみ逸脱していた
+
+つまり **Bean 直呼びのテストが緑であること自体が、契約が守られている証拠にならない**。むしろ「テストがある」という誤った安心を与える点で、テストが無いより有害である。
+
+#### 導入コスト
+
+MockMvc は本プロジェクトで既に **196 ファイル・3531 箇所** で使われている確立した多数派パターンであり、**新規導入コストはゼロ**である。金型は `VillageJoinRequestControllerTest` を参照すること。
+
+#### 既存テストの扱い
+
+- **新規 Controller テストは MockMvc 必須**（本規約の適用対象）
+- **既存の Bean 直呼びテストは順次移行する**。一斉書き換えは他ドメインへの影響調査が必要なため行わない
+- 既存の `*ControllerIntegrationTest` に MockMvc 版を**追加**する場合、既存側は挙動の回帰検知として**残置してよい**（置き換えではなく補完）
+
+#### characterization test（現契約の固定）について
+
+既に正しく実装済みの Controller に後追いで MockMvc テストを足す場合、それは **red → green の red テストではなく、現契約を固定する characterization test（回帰防止柵）**である。**初回実行から green になるのが正常**であり、「試練が red にならない」ことは異常ではない。この性質はテストクラスの Javadoc と PR 説明に明記し、検分官が誤判定しないようにすること。
+
 ### 3.2 結合テスト基底クラス
 
 Testcontainers の設定を毎回書く冗長さを排除するため、基底クラスを用意する。
@@ -656,3 +715,4 @@ void setUp() {
 | テスト専用の `if (isTest)` 分岐をプロダクションコードに入れる | DI やプロファイルで切り替える |
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
 | 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
+| **Controller を `@Autowired` して直接メソッド呼び出しでテストする** | HTTP 層を迂回し、URL パス・HTTP メソッド・enum バインド・JSON 形状・`@Valid`・例外→ステータス変換を一切検証できない。村ドメインで契約不一致 17 件を素通しにした実害あり。MockMvc を使うこと（**§3.1.1** に詳細）|

@@ -1,6 +1,7 @@
 import type {
   CreationRequestListParams,
   JoinRequestCreateRequest,
+  JoinRequestPageResponse,
   JoinRequestResponse,
   JoinRequestReviewRequest,
   MembershipBanRequest,
@@ -10,6 +11,7 @@ import type {
   MembershipResponse,
   RoleChangeRequest,
   VillageCreationRequestCreateRequest,
+  VillageCreationRequestPageResponse,
   VillageCreationRequestResponse,
   VillageCreationRequestReviewRequest,
   VillageRequestStatus,
@@ -99,9 +101,15 @@ export function useVillageMembershipApi() {
     return res.data
   }
 
-  /** §4.6.3 管理者向け一覧 */
+  /**
+   * §4.6.3 管理者向け一覧。
+   *
+   * BE: `GET /api/v1/admin/village-creation-requests` は `ApiResponse<Page<VillageCreationRequestResponse>>`
+   * を返す（Spring の `Page` をそのまま露出。`VillageCreationRequestControllerTest` で固定済み）。
+   * 自分の申請一覧（{@link listMyCreationRequests}）とは非対称（あちらは素の配列）。
+   */
   async function listAdminCreationRequests(params?: CreationRequestListParams) {
-    const res = await api<{ data: VillageCreationRequestResponse[] }>(
+    const res = await api<{ data: VillageCreationRequestPageResponse }>(
       `/api/v1/admin/village-creation-requests${qs(params)}`,
     )
     return res.data
@@ -167,9 +175,14 @@ export function useVillageMembershipApi() {
     return res.data
   }
 
-  /** §4.5.2 申請一覧（村長/長老向け） */
+  /**
+   * §4.5.2 申請一覧（村長/長老向け）。
+   *
+   * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>`
+   * を返す（Spring の `Page` をそのまま露出。`VillageJoinRequestControllerTest#list_success` で固定済み）。
+   */
   async function listJoinRequests(villageId: string, status?: VillageRequestStatus) {
-    const res = await api<{ data: JoinRequestResponse[] }>(
+    const res = await api<{ data: JoinRequestPageResponse }>(
       `/api/v1/villages/${villageId}/join-requests${qs({ status })}`,
     )
     return res.data

@@ -13,7 +13,7 @@ const emit = defineEmits<{
 
 const { createPost, getImageUploadUrl } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 // お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
 const displayInAnnouncement = ref(false)
@@ -35,6 +35,12 @@ const videoFileSize = ref<number | null>(null)
 const videoContentType = ref<string | null>(null)
 
 const maxLength = computed(() => props.scopeType === 'PUBLIC' ? 280 : 5000)
+
+// スコープ別のプレースホルダ（未知のscopeTypeはTEAM文言にフォールバック）
+const composerPlaceholder = computed(() => {
+  const key = `timeline.composerPlaceholder.${props.scopeType}`
+  return te(key) ? t(key) : t('timeline.composerPlaceholder.TEAM')
+})
 
 const canSubmit = computed(() => {
   return content.value.trim().length > 0
@@ -192,7 +198,7 @@ async function onSubmit() {
   <div class="rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:bg-surface-800">
     <Textarea
       v-model="content"
-      :placeholder="scopeType === 'PUBLIC' ? '今どうしてる？' : 'チームに投稿...'"
+      :placeholder="composerPlaceholder"
       auto-resize
       rows="3"
       class="mb-2 w-full"
@@ -247,7 +253,7 @@ async function onSubmit() {
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium">{{ poll.question }}</p>
-          <p class="text-xs text-surface-400">{{ poll.options.length }}択</p>
+          <p class="text-xs text-surface-400">{{ $t('timeline.pollOptionsCount', { count: poll.options.length }) }}</p>
         </div>
         <Button icon="pi pi-times" text rounded severity="danger" size="small" @click="removePoll" />
       </div>
@@ -281,7 +287,7 @@ async function onSubmit() {
         />
       </div>
       <Button
-        label="投稿"
+        :label="$t('timeline.submitLabel')"
         size="small"
         :loading="submitting"
         :disabled="!canSubmit"

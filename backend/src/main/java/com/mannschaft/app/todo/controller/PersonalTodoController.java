@@ -146,7 +146,10 @@ public class PersonalTodoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePersonalTodo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        todoService.assertTodoScope(id, TodoScopeType.PERSONAL, null);
+        // 個人TODOのscopeIdはuserId（非null）で保存されるため、assertTodoScope(id, PERSONAL, null)は
+        // Objects.equals(userId, null)=false で常に TODO_NOT_FOUND を投げる誤りがある。
+        // 認可は deletePersonalTodo 内の existsByTodoIdAndUserId で担保しているため、
+        // コントローラー側の assertTodoScope 呼び出しは不要（かつ誤り）。
         todoService.deletePersonalTodo(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -159,8 +162,9 @@ public class PersonalTodoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
     public ResponseEntity<ApiResponse<TodoResponse>> restorePersonalTodo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        // IDOR対策: path scope（PERSONAL）と削除済み todo の scope 整合確認
-        todoService.assertDeletedTodoScope(id, TodoScopeType.PERSONAL, null);
+        // 個人TODOのscopeIdはuserId（非null）で保存されるため、assertDeletedTodoScope(id, PERSONAL, null)は
+        // Objects.equals(userId, null)=false で常に TODO_NOT_FOUND を投げる誤りがある。
+        // 認可は restorePersonalTodo 内の existsByTodoIdAndUserId で担保しているため削除する。
         todoService.restorePersonalTodo(id, userId);
         return ResponseEntity.ok(todoService.getTodo(id));
     }

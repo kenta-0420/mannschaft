@@ -7,6 +7,7 @@ import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartIntakeFormRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.service.ChartIntakeFormService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,12 +33,14 @@ class ChartIntakeFormServiceTest {
     @Mock private ChartIntakeFormRepository intakeFormRepository;
     @Mock private ChartRecordRepository recordRepository;
     @Mock private ChartMapper chartMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartIntakeFormService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long CHART_ID = 10L;
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("getIntakeForms")
@@ -46,7 +49,7 @@ class ChartIntakeFormServiceTest {
         @DisplayName("異常系: カルテ不在でCHART_001例外")
         void 取得_カルテ不在_例外() {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.getIntakeForms(TEAM_ID, CHART_ID))
+            assertThatThrownBy(() -> service.getIntakeForms(TEAM_ID, CHART_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_001"));
@@ -61,7 +64,7 @@ class ChartIntakeFormServiceTest {
             given(intakeFormRepository.findByChartRecordId(CHART_ID)).willReturn(List.of());
             given(chartMapper.toIntakeFormResponseList(any())).willReturn(List.of());
 
-            List<IntakeFormResponse> result = service.getIntakeForms(TEAM_ID, CHART_ID);
+            List<IntakeFormResponse> result = service.getIntakeForms(TEAM_ID, CHART_ID, USER_ID);
             assertThat(result).isEmpty();
         }
     }
@@ -84,7 +87,7 @@ class ChartIntakeFormServiceTest {
                     new IntakeFormResponse(null, null, null, null, null, null, null, null, null));
 
             UpdateIntakeFormRequest request = new UpdateIntakeFormRequest("GENERAL", "問診内容", null, null);
-            IntakeFormResponse result = service.updateIntakeForm(TEAM_ID, CHART_ID, request);
+            IntakeFormResponse result = service.updateIntakeForm(TEAM_ID, CHART_ID, USER_ID, request);
             assertThat(result).isNotNull();
         }
     }

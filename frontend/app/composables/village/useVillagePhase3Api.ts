@@ -4,9 +4,9 @@ import type {
   VillageMeetupResponse,
   VillageMeetupUpdateRequest,
   VillageMeetupCandidateDateAddRequest,
+  VillageMeetupCandidateDateResponse,
   VillageMeetupVoteRequest,
   VillageMeetupVoteSummary,
-  VillageChronicleListResponse,
   VillageChronicleResponse,
   VillageSerendipityRankingResponse,
   VillageSerendipityScoreResponse,
@@ -100,45 +100,52 @@ export function useVillagePhase3Api() {
     return res.data
   }
 
+  /** 候補日追加。BE は追加された候補日単体（MeetupCandidateDateResponse）を 201 で返す。 */
   async function addCandidateDate(
     villageId: string,
     meetupId: string,
     body: VillageMeetupCandidateDateAddRequest,
   ) {
-    const res = await api<{ data: VillageMeetupResponse }>(
+    const res = await api<{ data: VillageMeetupCandidateDateResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/candidate-dates`,
       { method: 'POST', body },
     )
     return res.data
   }
 
+  /** 候補日削除。BE は 204 No Content（本体なし）。 */
   async function removeCandidateDate(
     villageId: string,
     meetupId: string,
     candidateDateId: string,
-  ) {
-    const res = await api<{ data: VillageMeetupResponse }>(
+  ): Promise<void> {
+    await api(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/candidate-dates/${candidateDateId}`,
       { method: 'DELETE' },
     )
-    return res.data
   }
 
+  /**
+   * 候補日への投票。BE は `PUT /candidate-dates/{candidateDateId}/vote` で
+   * candidateDateId を**パス変数**として受け取り、204 No Content を返す（本体なし）。
+   * 投票後の最新状態が必要な場合は呼び出し側で再取得すること。
+   */
   async function castVote(
     villageId: string,
     meetupId: string,
+    candidateDateId: string,
     body: VillageMeetupVoteRequest,
-  ) {
-    const res = await api<{ data: VillageMeetupResponse }>(
-      `/api/v1/villages/${villageId}/meetups/${meetupId}/votes`,
-      { method: 'POST', body },
+  ): Promise<void> {
+    await api(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/candidate-dates/${candidateDateId}/vote`,
+      { method: 'PUT', body },
     )
-    return res.data
   }
 
+  /** 投票集計。BE のパスは `/votes`（`/votes/summary` ではない）。 */
   async function getVoteSummary(villageId: string, meetupId: string) {
     const res = await api<{ data: VillageMeetupVoteSummary }>(
-      `/api/v1/villages/${villageId}/meetups/${meetupId}/votes/summary`,
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/votes`,
     )
     return res.data
   }
@@ -147,16 +154,28 @@ export function useVillagePhase3Api() {
   // 村史
   // ==========================================================================
 
-  async function listChronicles(villageId: string, page?: number, size?: number) {
-    const res = await api<{ data: VillageChronicleListResponse }>(
-      `/api/v1/villages/${villageId}/chronicles${qs({ page, size })}`,
+  /**
+   * 村史一覧（年月降順）を取得する。
+   *
+   * BE は `ApiResponse<List<ChronicleResponse>>` を返す（`{ items, total }` の
+   * エンベロープではなく素の配列）。ページングも未対応のため引数は villageId のみ。
+   */
+  async function listChronicles(villageId: string) {
+    const res = await api<{ data: VillageChronicleResponse[] }>(
+      `/api/v1/villages/${villageId}/chronicles`,
     )
     return res.data
   }
 
-  async function getChronicle(villageId: string, chronicleId: string) {
+  /**
+   * 指定月の村史を取得する。
+   *
+   * @param yearMonth ISO `YYYY-MM-DD` 形式（BE は `LocalDate` を受ける）。
+   *                  村史の ID（UUID）ではないので注意。
+   */
+  async function getChronicle(villageId: string, yearMonth: string) {
     const res = await api<{ data: VillageChronicleResponse }>(
-      `/api/v1/villages/${villageId}/chronicles/${chronicleId}`,
+      `/api/v1/villages/${villageId}/chronicles/${yearMonth}`,
     )
     return res.data
   }
