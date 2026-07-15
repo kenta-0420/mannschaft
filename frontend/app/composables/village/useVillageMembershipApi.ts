@@ -1,6 +1,7 @@
 import type {
   CreationRequestListParams,
   JoinRequestCreateRequest,
+  JoinRequestListParams,
   JoinRequestPageResponse,
   JoinRequestResponse,
   JoinRequestReviewRequest,
@@ -180,10 +181,18 @@ export function useVillageMembershipApi() {
    *
    * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>`
    * を返す（Spring の `Page` をそのまま露出。`VillageJoinRequestControllerTest#list_success` で固定済み）。
+   *
+   * `status` 未指定時は BE 側が PENDING で絞り込む（`VillageJoinRequestService#listForReviewers`）。
+   * 「全ステータス」は BE が提供していないため、呼び出し側は常に具体的な status を渡すこと。
+   * `params` 未指定時の BE 既定は page=0 / size=20。
    */
-  async function listJoinRequests(villageId: string, status?: VillageRequestStatus) {
+  async function listJoinRequests(
+    villageId: string,
+    status?: VillageRequestStatus,
+    params?: JoinRequestListParams,
+  ) {
     const res = await api<{ data: JoinRequestPageResponse }>(
-      `/api/v1/villages/${villageId}/join-requests${qs({ status })}`,
+      `/api/v1/villages/${villageId}/join-requests${qs({ status, ...params })}`,
     )
     return res.data
   }
