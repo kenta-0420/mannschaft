@@ -871,6 +871,11 @@ public class GlobalExceptionHandler {
             // IDOR 秘匿のため 404 とする（Severity.WARN 既定の 400 を上書き）。
             Map.entry("EQUIPMENT_001", HttpStatus.NOT_FOUND),            // ITEM_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("EQUIPMENT_002", HttpStatus.NOT_FOUND),            // ASSIGNMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F06.3 digest（タイムラインダイジェスト）の *_NOT_FOUND。
+            // ID 直指定 URL（/timeline-digest/{id}）のため、不在 ID と越境 ID を区別しない存在秘匿の要
+            // （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("DIGEST_011", HttpStatus.NOT_FOUND),               // DIGEST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("DIGEST_014", HttpStatus.NOT_FOUND),               // CONFIG_NOT_FOUND → 404
             // 認可根治戦役 Wave 2 トランシェ2C: F09.6 directmail の *_NOT_FOUND は、対象エンティティが
             // 自スコープ外（BOLA）の場合にも (id, scopeType, scopeId) 複合フェッチで同一コードを返す存在秘匿の要。
             // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。

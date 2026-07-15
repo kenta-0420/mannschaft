@@ -1,5 +1,6 @@
 package com.mannschaft.app.digest.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
@@ -31,14 +32,19 @@ public class DigestConfigService {
     private final TimelineDigestConfigRepository configRepository;
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
+    private final AccessControlService accessControlService;
 
     /**
      * スコープの自動生成設定を取得する。
      *
-     * @throws BusinessException 設定が存在しない場合（DIGEST_014）
+     * @throws BusinessException 設定が存在しない場合（DIGEST_014）、非メンバーの場合（COMMON_002）
      */
-    public DigestConfigResponse getConfig(String scopeType, Long scopeId) {
+    public DigestConfigResponse getConfig(String scopeType, Long scopeId, Long actorUserId) {
         DigestScopeType scope = DigestScopeType.valueOf(scopeType);
+
+        // 認可根治戦役 Wave2-2C: 閲覧系はスコープメンバーのみ（非メンバーは403。設定不在の404より先に判定）
+        accessControlService.checkMembership(actorUserId, scopeId, scope.name());
+
         TimelineDigestConfigEntity config = configRepository
                 .findByScopeTypeAndScopeId(scope, scopeId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_014));
@@ -61,6 +67,9 @@ public class DigestConfigService {
         DigestScopeType scopeType = DigestScopeType.valueOf(request.getScopeType());
         ScheduleType scheduleType = ScheduleType.valueOf(request.getScheduleType());
         DigestStyle digestStyle = DigestStyle.valueOf(request.getDigestStyle());
+
+        // 認可根治戦役 Wave2-2C: 変更系はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
+        accessControlService.checkAdminOrAbove(userId, request.getScopeId(), scopeType.name());
 
         // バリデーション
         validateTimezone(request.getTimezone());
@@ -132,8 +141,12 @@ public class DigestConfigService {
      * @throws BusinessException 設定が存在しない場合（DIGEST_014）
      */
     @Transactional
-    public void deleteConfig(String scopeType, Long scopeId) {
+    public void deleteConfig(String scopeType, Long scopeId, Long actorUserId) {
         DigestScopeType scope = DigestScopeType.valueOf(scopeType);
+
+        // 認可根治戦役 Wave2-2C: 変更系は対象スコープの ADMIN/DEPUTY_ADMIN のみ
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scope.name());
+
         TimelineDigestConfigEntity config = configRepository
                 .findByScopeTypeAndScopeId(scope, scopeId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_014));
