@@ -23,7 +23,9 @@ const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
 
-// 村史は権限不問の読み取り専用パネル。コンテキストは provide 存在の保証として参照する。
+// 村史は読み取り専用パネル。閲覧可否は BE 側で村掲示板と同一の認可
+// （村の bulletin_visibility）により判定され、権限が無ければ 403 が返る。
+// コンテキストは provide 存在の保証として参照する。
 useVillageContext()
 
 const chronicles = ref<VillageChronicleResponse[]>([])
