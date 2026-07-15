@@ -463,7 +463,15 @@
     "writeReply": "답글 작성",
     "replySubmit": "답글",
     "noReplies": "아직 답글이 없습니다",
-    "loadMoreReplies": "더 보기"
+    "loadMoreReplies": "더 보기",
+    "composerPlaceholder": {
+      "TEAM": "팀에 게시...",
+      "VILLAGE": "마을에 게시...",
+      "ORGANIZATION": "조직에 게시...",
+      "PUBLIC": "지금 무슨 일이 있나요?"
+    },
+    "submitLabel": "게시",
+    "pollOptionsCount": "{count}개 선택지"
   },
   "gallery": {
     "title": "갤러리",

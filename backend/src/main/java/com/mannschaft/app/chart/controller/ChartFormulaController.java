@@ -5,6 +5,7 @@ import com.mannschaft.app.chart.dto.CreateFormulaRequest;
 import com.mannschaft.app.chart.dto.UpdateFormulaRequest;
 import com.mannschaft.app.chart.service.ChartFormulaService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,7 +44,7 @@ public class ChartFormulaController {
     public ResponseEntity<ApiResponse<List<ChartFormulaResponse>>> listFormulas(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        List<ChartFormulaResponse> response = formulaService.listFormulas(teamId, id);
+        List<ChartFormulaResponse> response = formulaService.listFormulas(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -58,7 +59,8 @@ public class ChartFormulaController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateFormulaRequest request) {
-        ChartFormulaResponse response = formulaService.createFormula(teamId, id, request);
+        ChartFormulaResponse response = formulaService.createFormula(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -73,7 +75,8 @@ public class ChartFormulaController {
             @PathVariable Long teamId,
             @PathVariable Long formulaId,
             @Valid @RequestBody UpdateFormulaRequest request) {
-        ChartFormulaResponse response = formulaService.updateFormula(teamId, formulaId, request);
+        ChartFormulaResponse response = formulaService.updateFormula(
+                teamId, formulaId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -87,7 +90,7 @@ public class ChartFormulaController {
     public ResponseEntity<Void> deleteFormula(
             @PathVariable Long teamId,
             @PathVariable Long formulaId) {
-        formulaService.deleteFormula(teamId, formulaId);
+        formulaService.deleteFormula(teamId, formulaId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

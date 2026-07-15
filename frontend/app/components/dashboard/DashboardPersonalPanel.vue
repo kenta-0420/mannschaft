@@ -6,6 +6,8 @@
  * - 既存 dashboard.vue の中身をそのまま内包（要件 3・widget 構成は F02.2 のまま不変）。
  * - 対象3-B: 18ウィジェットを useDashboardWidgets('personal') 経由で DB 永続化（並び替え・表示制御）。
  * - FamilyHub / AdminBusinessAlert は条件付き固定パネル（v-if）として並び替え対象外。
+ * - WidgetCommandCenter（司令塔「今やること」・ADHD-UX戦役第四陣）は常時固定パネル（v-if なし）
+ *   として挨拶ヘッダー直下・ウィジェットグリッドの上に描画し、並び替え対象外・KEYS 非登録。
  * - 広告（Spotlight 掲載面）は末尾固定・非表示不可・並び替え対象外。
  * - マイカレンダーは PERSONAL_DATA_WIDGET_KEYS に含めて lg:col-span-2 で横広描画。
  */
@@ -226,6 +228,10 @@ function onDragEnd() {
           @click="showConfig = true"
         />
       </div>
+
+      <!-- 固定パネル: 司令塔「今やること」（v-if のまま・並び替え対象外・KEYS非登録） -->
+      <!-- ADHD-UX戦役 第四陣: 挨拶ヘッダー直下・ウィジェットグリッドの上に固定表示する -->
+      <WidgetCommandCenter />
 
       <!-- 条件付き固定パネル: FamilyHub（v-if のまま・並び替え対象外） -->
       <div v-if="hasFamilyTeam" class="mb-4">

@@ -463,38 +463,31 @@
       "editTitle": "寄合を編集",
       "meetupTitle": "寄合名",
       "description": "説明",
-      "venue": "場所",
+      "location": "場所",
       "candidateDates": "候補日",
       "addCandidateDate": "候補日を追加",
       "removeCandidateDate": "候補日を削除",
       "candidateDate": "候補日",
-      "candidateTimeStart": "開始時刻",
-      "candidateTimeEnd": "終了時刻",
       "vote": "投票",
-      "voteComment": "コメント（任意）",
-      "voteSubmit": "投票する",
       "confirm": "この日に決定",
       "confirmedDate": "確定日",
       "cancel": "寄合を中止",
       "confirmCancel": "この寄合を中止します。よろしいですか?",
       "empty": "予定されている寄合はありません",
-      "participantCount": "参加予定",
       "saveSuccess": "寄合を保存しました",
       "voteSuccess": "投票しました",
       "confirmSuccess": "開催日を確定しました",
       "cancelSuccess": "寄合を中止しました",
       "loadFailed": "寄合の取得に失敗しました",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参加",
-        "MAYBE": "未定"
+        "AVAILABLE": "行ける",
+        "MAYBE": "たぶん行ける",
+        "UNAVAILABLE": "行けない"
       },
       "status": {
-        "DRAFT": "下書き",
-        "OPEN": "投票受付中",
+        "PLANNING": "投票受付中",
         "CONFIRMED": "開催確定",
-        "CANCELLED": "中止",
-        "CLOSED": "終了"
+        "CANCELLED": "中止"
       }
     },
     "chronicle": {
