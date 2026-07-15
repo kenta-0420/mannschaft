@@ -144,6 +144,8 @@ class GoogleCalendarEventListenerPhase4Test {
                     .willReturn(Optional.of(mannschaftSchedule));
             given(syncSettingRepository.findByScopeTypeAndScopeIdAndIsEnabledTrue("TEAM", TEAM_ID))
                     .willReturn(List.of(syncSetting));
+            // AC-3: 可視性・min_view_role ゲートを通過する想定（後続コミットで導入された push 可否判定を満たす）
+            given(googleCalendarService.isSchedulePushableToUser(mannschaftSchedule, USER_ID)).willReturn(true);
 
             // when
             ScheduleUpdatedEvent event = new ScheduleUpdatedEvent(SCHEDULE_ID, USER_ID);
