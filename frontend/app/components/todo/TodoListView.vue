@@ -261,6 +261,7 @@ void props
             <!-- 削除ボタン -->
             <button
               type="button"
+              :data-testid="`todo-delete-${todo.id}`"
               class="ml-1 shrink-0 rounded p-1 text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 focus:opacity-100 focus:outline-none"
               :title="t('todo.list.deleteButton')"
               :aria-label="t('todo.list.deleteAriaLabel')"
