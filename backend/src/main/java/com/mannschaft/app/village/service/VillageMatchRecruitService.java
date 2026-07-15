@@ -511,17 +511,25 @@ public class VillageMatchRecruitService {
      * 募集に対するレビュー権限（投稿者本人 / HEADMAN / ELDER）を検証する。
      *
      * <p>状態遷移・応募審査・応募一覧で共通利用する。</p>
+     *
+     * <p><strong>検査順序が重要（#2284 §12）</strong>: 以前は「投稿者本人なら即 return」を
+     * メンバーシップ照会より<strong>前</strong>に置いていたため、投稿者が BAN されても
+     * 自分の募集の応募審査・状態遷移を続行できた（BAN 逃れの抜け道）。
+     * 現在は先に「現役メンバーであること」を確認し、その後に本人／ロールを判定する。
+     * これにより退村済み（{@code leftAt}）・BAN 済み（{@code bannedAt}）の投稿者は
+     * 本人であってもレビュー不可となる。</p>
      */
     private void ensureRecruitReviewer(UUID villageId, VillageMatchRecruitEntity recruit, Long actorUserId) {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        if (recruit.getPostedByUserId().equals(actorUserId)) {
-            return; // 投稿者本人
-        }
+        // 本人判定より先に「現役メンバーか」を確認する（BAN/退村した投稿者を弾くため）
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+        if (recruit.getPostedByUserId().equals(actorUserId)) {
+            return; // 現役の投稿者本人
+        }
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }

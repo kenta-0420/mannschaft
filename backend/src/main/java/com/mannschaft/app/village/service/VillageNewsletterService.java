@@ -195,11 +195,16 @@ public class VillageNewsletterService {
         return entity;
     }
 
-    /** HEADMAN または ELDER 以外なら MODERATION_FORBIDDEN（403）。 */
+    /**
+     * <strong>現役</strong>の HEADMAN または ELDER 以外なら MODERATION_FORBIDDEN（403）。
+     *
+     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
+     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 以前は BAN を検査しておらず、BAN された長老がお便り設定を変更できた。</p>
+     */
     private void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);

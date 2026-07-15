@@ -21,9 +21,43 @@ import java.util.UUID;
  */
 public interface VillageMembershipRepository extends JpaRepository<VillageMembershipEntity, UUID> {
 
-    /** 現役メンバーシップ（leftAt IS NULL）を主体で取得。 */
+    /**
+     * 在籍メンバーシップ（leftAt IS NULL）を主体で取得。
+     *
+     * <p><strong>認可判定に本メソッドを使ってはならない。</strong> BAN 済み（{@code bannedAt IS NOT NULL}）の
+     * メンバーも返すため、認可ガードで使うと BAN されたメンバーが操作を継続できてしまう（#2284 §12 の実害）。
+     * 認可判定には {@link #findActiveByVillageIdAndSubject} を使うこと。</p>
+     *
+     * <p>本メソッドの用途は「BAN 済みも含めて在籍状態を知りたい」場合に限る
+     * （例: BAN 実行時の対象取得・表示用の在籍フラグ）。</p>
+     */
     Optional<VillageMembershipEntity> findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
             UUID villageId, VillageSubjectType subjectType, Long subjectId);
+
+    /**
+     * <strong>現役</strong>メンバーシップ（{@code leftAt IS NULL} かつ {@code bannedAt IS NULL}）を主体で取得。
+     *
+     * <p>村ドメインの認可ガードにおける「現役メンバーである」の<strong>唯一の正準述語</strong>（#2284 §12）。
+     * 退村判定（{@code leftAt}）と BAN 判定（{@code bannedAt}）を WHERE 句に閉じ込めることで、
+     * 呼び出し側が BAN 検査を書き忘れても穴が開かない構造にする。</p>
+     *
+     * <p>背景: 「HEADMAN or ELDER」判定が 6 名 8 実装にコピーされ、うち 5 実装が {@code bannedAt} を
+     * 検査しておらず、BAN された長老がモデレーション操作を実行できた。各実装に検査を足すのではなく、
+     * 述語をクエリ 1 箇所へ寄せることで再発を構造的に防ぐ。</p>
+     */
+    Optional<VillageMembershipEntity> findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNullAndBannedAtIsNull(
+            UUID villageId, VillageSubjectType subjectType, Long subjectId);
+
+    /**
+     * 認可用の現役メンバーシップ取得（USER 主体固定）のショートハンド。
+     *
+     * @see #findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNullAndBannedAtIsNull
+     */
+    default Optional<VillageMembershipEntity> findActiveByVillageIdAndSubject(
+            UUID villageId, VillageSubjectType subjectType, Long subjectId) {
+        return findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNullAndBannedAtIsNull(
+                villageId, subjectType, subjectId);
+    }
 
     /** 指定主体が参加している全村のメンバーシップ。 */
     List<VillageMembershipEntity> findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
