@@ -1,5 +1,6 @@
 package com.mannschaft.app.line.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.LineErrorCode;
@@ -20,6 +21,11 @@ import java.util.List;
 
 /**
  * SNSフィード設定サービス。
+ *
+ * <p>認可（認可根治戦役 Wave2 トランシェ2C）: 閲覧（一覧・プレビュー）は {@code checkMembership}、
+ * 変更（作成・更新・削除）は {@code checkAdminOrAbove}。id を受け取るメソッドは対象エンティティを
+ * 先に fetch し、entity 由来の scope と path scope の不一致は LINE_007（404 マッピング）で存在秘匿する
+ * （BOLA 是正）。認可は entity 由来 scope（= 不一致検証通過後は path scope と同値）で行う。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,11 +36,15 @@ public class SnsFeedConfigService {
     private final LineMapper lineMapper;
     private final EncryptionService encryptionService;
     private final SnsFeedApiClient snsFeedApiClient;
+    private final AccessControlService accessControlService;
 
     /**
      * フィード設定一覧を取得する。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
-    public List<SnsFeedConfigResponse> findAll(ScopeType scopeType, Long scopeId) {
+    public List<SnsFeedConfigResponse> findAll(ScopeType scopeType, Long scopeId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
         return snsFeedConfigRepository.findByScopeTypeAndScopeId(scopeType, scopeId).stream()
                 .map(lineMapper::toSnsFeedConfigResponse)
                 .toList();
@@ -46,6 +56,7 @@ public class SnsFeedConfigService {
     @Transactional
     public SnsFeedConfigResponse create(ScopeType scopeType, Long scopeId, Long userId,
                                          CreateSnsFeedConfigRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
         SnsProvider provider = SnsProvider.valueOf(request.getProvider());
 
         if (snsFeedConfigRepository.existsByScopeTypeAndScopeIdAndProvider(
@@ -69,11 +80,15 @@ public class SnsFeedConfigService {
 
     /**
      * フィード設定を更新する。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     @Transactional
     public SnsFeedConfigResponse update(Long id, ScopeType scopeType, Long scopeId,
-                                         UpdateSnsFeedConfigRequest request) {
+                                         Long actorUserId, UpdateSnsFeedConfigRequest request) {
         SnsFeedConfigEntity entity = findByIdAndScope(id, scopeType, scopeId);
+        // entity 由来 scope で認可（findByIdAndScope で path scope との一致検証済み = BOLA は 404 秘匿済み）
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType().name());
         entity.update(
                 request.getAccountUsername(),
                 request.getAccessToken() != null ? encrypt(request.getAccessToken()) : null,
@@ -85,18 +100,29 @@ public class SnsFeedConfigService {
 
     /**
      * フィード設定を論理削除する。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     @Transactional
-    public void delete(Long id, ScopeType scopeType, Long scopeId) {
+    public void delete(Long id, ScopeType scopeType, Long scopeId, Long actorUserId) {
         SnsFeedConfigEntity entity = findByIdAndScope(id, scopeType, scopeId);
+        // entity 由来 scope で認可（findByIdAndScope で path scope との一致検証済み = BOLA は 404 秘匿済み）
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType().name());
         entity.softDelete();
     }
 
     /**
      * フィードプレビューを取得する（将来外部API連携予定）。
+     *
+     * <p>閲覧系のため {@code checkMembership}（返却されるのは公開SNSのフィード項目のみで
+     * アクセストークン等のシークレットは含まれない）。</p>
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
-    public SnsFeedPreviewResponse preview(Long id, ScopeType scopeType, Long scopeId) {
+    public SnsFeedPreviewResponse preview(Long id, ScopeType scopeType, Long scopeId, Long actorUserId) {
         SnsFeedConfigEntity entity = findByIdAndScope(id, scopeType, scopeId);
+        // entity 由来 scope で認可（findByIdAndScope で path scope との一致検証済み = BOLA は 404 秘匿済み）
+        accessControlService.checkMembership(actorUserId, entity.getScopeId(), entity.getScopeType().name());
 
         List<SnsFeedPreviewResponse.FeedItem> items;
         if (entity.getProvider() == SnsProvider.INSTAGRAM && entity.getAccessTokenEnc() != null) {
