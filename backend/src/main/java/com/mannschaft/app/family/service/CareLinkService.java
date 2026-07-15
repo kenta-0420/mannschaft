@@ -254,8 +254,17 @@ public class CareLinkService {
 
     /**
      * チームのケア通知上書き設定を取得する。設定がない場合は null を返す。
+     *
+     * <p>児童 PII・後見系の最機密データのため、ケアリンクの当事者
+     * （ケア対象者本人または見守り者）のみ閲覧を許可する。当事者以外は
+     * チーム ADMIN であっても FAMILY_030（403）。存在しない careLinkId は
+     * FAMILY_025（404）で存在秘匿する。</p>
+     *
+     * @param currentUserId 操作するユーザーID（当事者チェック）
      */
-    public TeamCareOverrideResponse getTeamOverride(String scopeType, Long scopeId, Long careLinkId) {
+    public TeamCareOverrideResponse getTeamOverride(String scopeType, Long scopeId, Long careLinkId,
+                                                      Long currentUserId) {
+        requireCareLinkParty(careLinkId, currentUserId);
         return overrideRepository
                 .findByScopeTypeAndScopeIdAndCareLinkId(scopeType, scopeId, careLinkId)
                 .map(this::toOverrideResponse)
@@ -264,10 +273,17 @@ public class CareLinkService {
 
     /**
      * チームのケア通知上書き設定を作成または更新する（upsert）。
+     *
+     * <p>児童 PII・後見系の最機密データのため、ケアリンクの当事者
+     * （ケア対象者本人または見守り者）のみ操作を許可する（当事者チェックは
+     * {@link #requireCareLinkParty}）。</p>
+     *
+     * @param currentUserId 操作するユーザーID（当事者チェック）
      */
     @Transactional
     public TeamCareOverrideResponse upsertTeamOverride(String scopeType, Long scopeId, Long careLinkId,
                                                         Long currentUserId, TeamCareOverrideRequest request) {
+        requireCareLinkParty(careLinkId, currentUserId);
         TeamCareNotificationOverrideEntity entity = overrideRepository
                 .findByScopeTypeAndScopeIdAndCareLinkId(scopeType, scopeId, careLinkId)
                 .orElse(TeamCareNotificationOverrideEntity.builder()
@@ -288,12 +304,42 @@ public class CareLinkService {
 
     /**
      * チームのケア通知上書き設定を削除する。
+     *
+     * <p>児童 PII・後見系の最機密データのため、ケアリンクの当事者
+     * （ケア対象者本人または見守り者）のみ操作を許可する（当事者チェックは
+     * {@link #requireCareLinkParty}）。</p>
+     *
+     * @param currentUserId 操作するユーザーID（当事者チェック）
      */
     @Transactional
-    public void deleteTeamOverride(String scopeType, Long scopeId, Long careLinkId) {
+    public void deleteTeamOverride(String scopeType, Long scopeId, Long careLinkId, Long currentUserId) {
+        requireCareLinkParty(careLinkId, currentUserId);
         overrideRepository
                 .findByScopeTypeAndScopeIdAndCareLinkId(scopeType, scopeId, careLinkId)
                 .ifPresent(overrideRepository::delete);
+    }
+
+    /**
+     * 指定 careLinkId のケアリンクを取得し、currentUserId が当事者
+     * （ケア対象者または見守り者）であることを検証する。
+     *
+     * <p>TeamCareOverride 系 EP（児童 PII・後見系の最機密）の共通認可ガード。
+     * 存在しない careLinkId は FAMILY_025（404・存在秘匿）、非当事者は
+     * FAMILY_030（403）。BOLA 対策として careLinkId 由来の当事者情報のみで
+     * 判定し、パスの teamId は信用しない。</p>
+     *
+     * @param careLinkId    対象ケアリンクID
+     * @param currentUserId 操作するユーザーID
+     * @return 当事者チェック済みのケアリンク
+     */
+    private UserCareLinkEntity requireCareLinkParty(Long careLinkId, Long currentUserId) {
+        UserCareLinkEntity link = careLinkRepository.findById(careLinkId)
+                .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_025));
+        if (!link.getCareRecipientUserId().equals(currentUserId)
+                && !link.getWatcherUserId().equals(currentUserId)) {
+            throw new BusinessException(FamilyErrorCode.FAMILY_030);
+        }
+        return link;
     }
 
     // =========================================================
