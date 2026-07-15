@@ -1,5 +1,6 @@
 package com.mannschaft.app.directmail.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.MarkdownConverter;
@@ -38,12 +39,21 @@ import java.util.UUID;
 
 /**
  * ダイレクトメールサービス。メールのCRUD・送信・統計を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2C: 全公開メソッドの入口で {@link AccessControlService} による
+ * 認可検証を行う（閲覧系=checkMembership／変更系・受信者PII・見積=checkAdminOrAbove）。
+ * 対象エンティティは (id, scopeType, scopeId) 複合条件でフェッチするため、path スコープと
+ * entity スコープの不一致（BOLA）は {@link DirectMailErrorCode#MAIL_NOT_FOUND} → 404 で存在秘匿される。
+ * {@link #sendSystemAdMail} のみシステム内部呼び出し（F09.17 広告経路）のため対象外。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DirectMailService {
+
+    /** 認可根治戦役 Wave2 トランシェ2C: スコープ認可基盤 */
+    private final AccessControlService accessControlService;
 
     private final DirectMailLogRepository mailLogRepository;
     private final DirectMailRecipientRepository recipientRepository;
@@ -172,10 +182,13 @@ public class DirectMailService {
 
     /**
      * メールを作成する（下書き保存）。
+     *
+     * <p>変更系のため送信者（操作者）はスコープの ADMIN 以上であること。</p>
      */
     @Transactional
     public DirectMailResponse createMail(String scopeType, Long scopeId, Long senderId,
                                           CreateDirectMailRequest request) {
+        accessControlService.checkAdminOrAbove(senderId, scopeId, scopeType);
         DirectMailLogEntity entity = DirectMailLogEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -194,9 +207,11 @@ public class DirectMailService {
     }
 
     /**
-     * メール一覧を取得する。
+     * メール一覧を取得する。閲覧系のため操作者はスコープのメンバーであること。
      */
-    public PagedResponse<DirectMailResponse> listMails(String scopeType, Long scopeId, Pageable pageable) {
+    public PagedResponse<DirectMailResponse> listMails(String scopeType, Long scopeId, Long actorUserId,
+                                                        Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         Page<DirectMailLogEntity> page = mailLogRepository
                 .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId, pageable);
         List<DirectMailResponse> content = directMailMapper.toMailResponseList(page.getContent());
@@ -206,19 +221,22 @@ public class DirectMailService {
     }
 
     /**
-     * メール詳細を取得する。
+     * メール詳細を取得する。閲覧系のため操作者はスコープのメンバーであること。
+     * path スコープと不一致の mailId は 404（存在秘匿）。
      */
-    public DirectMailResponse getMail(String scopeType, Long scopeId, Long mailId) {
+    public DirectMailResponse getMail(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         return directMailMapper.toMailResponse(entity);
     }
 
     /**
-     * メールを編集する（下書きのみ）。
+     * メールを編集する（下書きのみ）。変更系のため操作者はスコープの ADMIN 以上であること。
      */
     @Transactional
-    public DirectMailResponse updateMail(String scopeType, Long scopeId, Long mailId,
+    public DirectMailResponse updateMail(String scopeType, Long scopeId, Long actorUserId, Long mailId,
                                           UpdateDirectMailRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         if (!"DRAFT".equals(entity.getStatus())) {
             throw new BusinessException(DirectMailErrorCode.NOT_DRAFT);
@@ -243,9 +261,12 @@ public class DirectMailService {
      *
      * <p>F09.13: 組織スコープのダイレクトメールは課金対象。
      * {@code estimatedRecipients} が設定されている場合はその値でクレジット消費する。</p>
+     *
+     * <p>認可: なりすまし一斉送信の根治のため、操作者はスコープの ADMIN 以上であること。</p>
      */
     @Transactional
-    public DirectMailResponse sendMail(String scopeType, Long scopeId, Long mailId) {
+    public DirectMailResponse sendMail(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         if (!"DRAFT".equals(entity.getStatus()) && !"SCHEDULED".equals(entity.getStatus())) {
             throw new BusinessException(DirectMailErrorCode.ALREADY_SENT);
@@ -267,11 +288,12 @@ public class DirectMailService {
     }
 
     /**
-     * メールを予約送信する。
+     * メールを予約送信する。変更系のため操作者はスコープの ADMIN 以上であること。
      */
     @Transactional
-    public DirectMailResponse scheduleMail(String scopeType, Long scopeId, Long mailId,
+    public DirectMailResponse scheduleMail(String scopeType, Long scopeId, Long actorUserId, Long mailId,
                                             ScheduleMailRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         if (!"DRAFT".equals(entity.getStatus())) {
             throw new BusinessException(DirectMailErrorCode.NOT_DRAFT);
@@ -284,10 +306,11 @@ public class DirectMailService {
     }
 
     /**
-     * 送信をキャンセルする。
+     * 送信をキャンセルする。変更系のため操作者はスコープの ADMIN 以上であること。
      */
     @Transactional
-    public DirectMailResponse cancelMail(String scopeType, Long scopeId, Long mailId) {
+    public DirectMailResponse cancelMail(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         if ("SENDING".equals(entity.getStatus()) || "SENT".equals(entity.getStatus())) {
             throw new BusinessException(DirectMailErrorCode.CANNOT_CANCEL);
@@ -301,9 +324,14 @@ public class DirectMailService {
 
     /**
      * 受信者一覧を取得する。
+     *
+     * <p>認可: 受信者のメールアドレス（PII）を含むため、閲覧系だが ADMIN 以上に限定する
+     * （台帳 findings「受信者一覧 PII露出」の根治）。</p>
      */
     public PagedResponse<DirectMailRecipientResponse> listRecipients(String scopeType, Long scopeId,
-                                                                      Long mailId, Pageable pageable) {
+                                                                      Long actorUserId, Long mailId,
+                                                                      Pageable pageable) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         findMailOrThrow(scopeType, scopeId, mailId);
         Page<DirectMailRecipientEntity> page = recipientRepository.findByMailLogId(mailId, pageable);
         List<DirectMailRecipientResponse> content = directMailMapper.toRecipientResponseList(page.getContent());
@@ -313,9 +341,10 @@ public class DirectMailService {
     }
 
     /**
-     * 送信統計を取得する。
+     * 送信統計を取得する。閲覧系のため操作者はスコープのメンバーであること（集計値のみ・PIIなし）。
      */
-    public DirectMailStatsResponse getStats(String scopeType, Long scopeId, Long mailId) {
+    public DirectMailStatsResponse getStats(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
 
         double openRate = entity.getTotalRecipients() > 0
@@ -336,8 +365,13 @@ public class DirectMailService {
 
     /**
      * メールプレビューを生成する。
+     *
+     * <p>純関数（Markdown→HTML）だがスコープ付き公開入口のため、操作者はスコープのメンバーであること
+     * （認可皆無の入口を残さない）。</p>
      */
-    public PreviewMailResponse preview(PreviewMailRequest request) {
+    public PreviewMailResponse preview(String scopeType, Long scopeId, Long actorUserId,
+                                        PreviewMailRequest request) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         String html = MarkdownConverter.toHtml(request.getBodyMarkdown());
         return new PreviewMailResponse(html);
     }
@@ -346,9 +380,13 @@ public class DirectMailService {
      * 配信対象数を見積もる。
      * recipientType: ALL（全メンバー）, ROLE（ロール指定）
      * recipientFilter: ROLE の場合 {"role":"MEMBER"} 等のJSON
+     *
+     * <p>認可: ロール別メンバー数はスコープ内部のインテリジェンスであり、メール作成フロー専用の
+     * 補助 EP のため ADMIN 以上に限定する。</p>
      */
-    public EstimateRecipientsResponse estimateRecipients(String scopeType, Long scopeId,
+    public EstimateRecipientsResponse estimateRecipients(String scopeType, Long scopeId, Long actorUserId,
                                                           EstimateRecipientsRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         int estimated = resolveRecipientCount(scopeType, scopeId,
                 request.getRecipientType(), request.getRecipientFilter());
         log.info("配信対象数見積: scopeType={}, scopeId={}, type={}, estimated={}",

@@ -1,5 +1,6 @@
 package com.mannschaft.app.digest;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.digest.dto.DigestConfigRequest;
 import com.mannschaft.app.digest.dto.DigestConfigResponse;
@@ -31,6 +32,7 @@ class DigestConfigServiceTest {
     @Mock private TimelineDigestConfigRepository configRepository;
     @Mock private DigestMapper digestMapper;
     @Mock private DigestProperties digestProperties;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private DigestConfigService service;
@@ -44,7 +46,7 @@ class DigestConfigServiceTest {
             given(configRepository.findByScopeTypeAndScopeId(DigestScopeType.TEAM, 1L))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getConfig("TEAM", 1L))
+            assertThatThrownBy(() -> service.getConfig("TEAM", 1L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_014"));
@@ -60,7 +62,7 @@ class DigestConfigServiceTest {
             given(digestMapper.toConfigResponse(entity)).willReturn(
                     new DigestConfigResponse(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
-            DigestConfigResponse result = service.getConfig("TEAM", 1L);
+            DigestConfigResponse result = service.getConfig("TEAM", 1L, 100L);
             assertThat(result).isNotNull();
         }
     }
@@ -74,7 +76,7 @@ class DigestConfigServiceTest {
             given(configRepository.findByScopeTypeAndScopeId(DigestScopeType.TEAM, 1L))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deleteConfig("TEAM", 1L))
+            assertThatThrownBy(() -> service.deleteConfig("TEAM", 1L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_014"));
@@ -89,7 +91,7 @@ class DigestConfigServiceTest {
                     .willReturn(Optional.of(entity));
             given(configRepository.save(any())).willReturn(entity);
 
-            service.deleteConfig("TEAM", 1L);
+            service.deleteConfig("TEAM", 1L, 100L);
             verify(configRepository).save(any());
         }
     }

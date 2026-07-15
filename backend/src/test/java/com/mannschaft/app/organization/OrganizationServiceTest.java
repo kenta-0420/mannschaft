@@ -237,6 +237,21 @@ class OrganizationServiceTest {
         }
 
         @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.getOrganization(ORG_SLUG);
+
+            assertThat(response.getData().getNumericId()).isEqualTo(ORG_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(response.getData().getId()).isEqualTo(response.getData().getSlug());
+        }
+
+        @Test
         @DisplayName("画像URL根治Phase2_icon/bannerが署名付き表示URLへ解決される")
         void icon_bannerが署名付き表示URLへ解決される() {
             OrganizationEntity org = createOrganization();
