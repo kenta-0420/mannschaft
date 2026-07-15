@@ -237,7 +237,7 @@ class VillageReportServiceTest {
     @DisplayName("通報一覧: HEADMAN は status 指定で取得でき、通報者は ANONYMOUS_VILLAGER 固定")
     void listReports_byHeadman_withStatus() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN)));
         Page<VillageReportEntity> page = new PageImpl<>(List.of(existingReport(VillageReportStatus.PENDING)));
@@ -257,7 +257,7 @@ class VillageReportServiceTest {
     @DisplayName("通報一覧: status 未指定で全件（findByVillageIdOrderByCreatedAtDesc 経路）")
     void listReports_withoutStatus_callsAllOrderByCreatedAtDesc() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ELDER_USER_ID))
                 .willReturn(Optional.of(memberOf(ELDER_MEMBERSHIP_ID, ELDER_USER_ID, VillageRole.ELDER)));
         Page<VillageReportEntity> page = new PageImpl<>(List.of(existingReport(VillageReportStatus.RESOLVED)));
@@ -275,7 +275,7 @@ class VillageReportServiceTest {
     @DisplayName("通報一覧: VILLAGER（非モデレーター）は VILLAGE_024 で拒否")
     void listReports_byVillager_forbidden() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, VILLAGER_USER_ID))
                 .willReturn(Optional.of(memberOf(VILLAGER_MEMBERSHIP_ID, VILLAGER_USER_ID, VillageRole.VILLAGER)));
 
@@ -293,7 +293,7 @@ class VillageReportServiceTest {
     void resolveReport_byHeadman_success() {
         VillageMembershipEntity headman = memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(headman));
         VillageReportEntity report = existingReport(VillageReportStatus.PENDING);
@@ -317,7 +317,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: ELDER も RESOLVED へ遷移できる")
     void resolveReport_byElder_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ELDER_USER_ID))
                 .willReturn(Optional.of(memberOf(ELDER_MEMBERSHIP_ID, ELDER_USER_ID, VillageRole.ELDER)));
         given(reportRepository.findById(REPORT_ID))
@@ -339,7 +339,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: VILLAGER は VILLAGE_024 で拒否される")
     void resolveReport_byVillager_forbidden() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, VILLAGER_USER_ID))
                 .willReturn(Optional.of(memberOf(VILLAGER_MEMBERSHIP_ID, VILLAGER_USER_ID, VillageRole.VILLAGER)));
 
@@ -358,7 +358,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: actionTaken=BANNED かつ MEMBERSHIP 通報 → membershipService.ban が呼ばれる")
     void resolveReport_banned_callsMembershipServiceBan() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN)));
 
@@ -394,7 +394,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: 既に RESOLVED の通報は VILLAGE_042 で拒否される")
     void resolveReport_alreadyResolved() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN)));
         given(reportRepository.findById(REPORT_ID))
@@ -414,7 +414,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: 存在しない report ID は VILLAGE_040")
     void resolveReport_notFound() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN)));
         given(reportRepository.findById(REPORT_ID)).willReturn(Optional.empty());
@@ -433,7 +433,7 @@ class VillageReportServiceTest {
     @DisplayName("通報解決: 別村の report ID を指定 → VILLAGE_040（IDOR 防止）")
     void resolveReport_crossVillage_idor() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                 .willReturn(Optional.of(memberOf(HEADMAN_MEMBERSHIP_ID, HEADMAN_USER_ID, VillageRole.HEADMAN)));
 

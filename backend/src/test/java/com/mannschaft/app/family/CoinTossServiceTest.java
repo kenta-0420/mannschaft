@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.CoinTossRequest;
@@ -31,6 +32,7 @@ import static org.mockito.BDDMockito.given;
 class CoinTossServiceTest {
 
     @Mock private CoinTossResultRepository coinTossResultRepository;
+    @Mock private AccessControlService accessControlService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private CoinTossService service;
 

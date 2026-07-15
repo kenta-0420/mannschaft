@@ -297,13 +297,16 @@ public class VillageFestivalService {
     }
 
     /**
-     * 実行者が当該村の HEADMAN または ELDER であることを検証する。
+     * 実行者が当該村の<strong>現役</strong> HEADMAN または ELDER であることを検証する。
      * いずれでもなければ {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     *
+     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
+     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 以前は BAN を検査しておらず、BAN された長老が祭りを作成・更新・中止できた。</p>
      */
     private void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);

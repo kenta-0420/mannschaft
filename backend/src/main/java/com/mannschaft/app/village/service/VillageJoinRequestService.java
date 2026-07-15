@@ -299,7 +299,12 @@ public class VillageJoinRequestService {
     }
 
     /**
-     * 操作者が村長または長老（審査権限保持者）であることを検証する。
+     * 操作者が<strong>現役</strong>の村長または長老（審査権限保持者）であることを検証する。
+     *
+     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
+     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 以前は BAN を検査しておらず、BAN された長老が参加申請の審査一覧を閲覧し、
+     * 承認・却下まで実行できた（＝BAN されたまま村の門番を続けられた）。</p>
      *
      * @return 操作者のメンバーシップ（{@code reviewer_membership_id} 記録に使用）
      */
@@ -308,8 +313,7 @@ public class VillageJoinRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);

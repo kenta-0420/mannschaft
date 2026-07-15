@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -36,6 +37,7 @@ import static org.mockito.BDDMockito.given;
 class PresenceServiceTest {
 
     @Mock private PresenceEventRepository presenceEventRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private PresenceService service;
 
     @Nested
@@ -167,7 +169,7 @@ class PresenceServiceTest {
             given(presenceEventRepository.findLatestByTeamId(1L)).willReturn(List.of(event));
 
             // When
-            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L);
+            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L, 100L);
 
             // Then
             assertThat(result.getData()).hasSize(1);
@@ -188,7 +190,7 @@ class PresenceServiceTest {
             given(presenceEventRepository.findLatestByTeamId(1L)).willReturn(List.of(event));
 
             // When
-            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L);
+            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L, 100L);
 
             // Then
             assertThat(result.getData().get(0).getStatus()).isEqualTo("UNKNOWN");
@@ -209,7 +211,7 @@ class PresenceServiceTest {
             given(presenceEventRepository.findLatestByTeamId(1L)).willReturn(List.of(event));
 
             // When
-            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L);
+            ApiResponse<List<PresenceStatusResponse>> result = service.getStatus(1L, 100L);
 
             // Then
             assertThat(result.getData().get(0).getStatus()).isEqualTo("GOING_OUT");
@@ -236,7 +238,7 @@ class PresenceServiceTest {
                     .willReturn(List.of(event));
 
             // When
-            CursorPagedResponse<PresenceEventResponse> result = service.getHistory(1L, 100L, null, 10);
+            CursorPagedResponse<PresenceEventResponse> result = service.getHistory(1L, 100L, 100L, null, 10);
 
             // Then
             assertThat(result.getData()).hasSize(1);
@@ -267,7 +269,7 @@ class PresenceServiceTest {
                     .willReturn(List.of(event));
 
             // When
-            ApiResponse<PresenceStatsResponse> result = service.getStats(1L, "7d");
+            ApiResponse<PresenceStatsResponse> result = service.getStats(1L, 100L, "7d");
 
             // Then
             assertThat(result.getData().getTotalHomeEvents()).isEqualTo(1);

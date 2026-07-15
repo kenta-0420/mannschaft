@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.RoleAliasRequest;
 import com.mannschaft.app.family.repository.TeamRoleAliasRepository;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RoleAliasServiceTest {
 
     @Mock private TeamRoleAliasRepository teamRoleAliasRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private RoleAliasService service;
 
     @Nested

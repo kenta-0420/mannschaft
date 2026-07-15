@@ -336,6 +336,11 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // 投稿者本人であっても「現役メンバーであること」が前提（#2284 §12）。
+        // BAN / 退村した投稿者は自分の募集でもレビュー不可のため、現役メンバーシップを stub する。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         MatchRecruitResponse res = service.closeRecruit(VILLAGE_ID, entity.getId(), ACTOR);
@@ -353,7 +358,7 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(roleMembership(ACTOR, VillageRole.HEADMAN)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -373,7 +378,7 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
 
@@ -569,6 +574,11 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // 投稿者本人であっても「現役メンバーであること」が前提（#2284 §12）。
+        // BAN / 退村した投稿者は自分の募集でもレビュー不可のため、現役メンバーシップを stub する。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(applicationRepository.findById(app.getId())).willReturn(Optional.of(app));
         given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 

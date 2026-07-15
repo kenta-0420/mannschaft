@@ -41,7 +41,7 @@ public class AnniversaryController {
     @Operation(summary = "記念日一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<AnniversaryResponse>>> getAnniversaries(@PathVariable Long teamId) {
-        return ResponseEntity.ok(anniversaryService.getAnniversaries(teamId));
+        return ResponseEntity.ok(anniversaryService.getAnniversaries(teamId, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -67,7 +67,8 @@ public class AnniversaryController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody AnniversaryRequest request) {
-        return ResponseEntity.ok(anniversaryService.updateAnniversary(teamId, id, request));
+        return ResponseEntity.ok(
+                anniversaryService.updateAnniversary(teamId, id, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -79,7 +80,7 @@ public class AnniversaryController {
     public ResponseEntity<Void> deleteAnniversary(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        anniversaryService.deleteAnniversary(teamId, id);
+        anniversaryService.deleteAnniversary(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -90,6 +91,6 @@ public class AnniversaryController {
     @Operation(summary = "直近の記念日")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<AnniversaryResponse>>> getUpcoming(@PathVariable Long teamId) {
-        return ResponseEntity.ok(anniversaryService.getUpcoming(teamId));
+        return ResponseEntity.ok(anniversaryService.getUpcoming(teamId, SecurityUtils.getCurrentUserId()));
     }
 }
