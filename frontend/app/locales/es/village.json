@@ -202,7 +202,7 @@
       "formTitle": "Solicitar unirse",
       "messagePlaceholder": "Cuenta qué quieres hacer en esta aldea y por qué quieres unirte (opcional, máximo 500 caracteres)",
       "submittedTitle": "Tu solicitud enviada",
-      "submittedBody": "Espera a que el jefe o un anciano la revise. El botón de retirar desaparece al salir de esta pantalla.",
+      "submittedBody": "Espera a que el jefe o un anciano la revise. Mientras esté pendiente, puedes retirarla desde esta pantalla en cualquier momento.",
       "withdrawSuccess": "Solicitud de ingreso retirada",
       "approveSuccess": "Solicitud de ingreso aprobada",
       "rejectSuccess": "Solicitud de ingreso rechazada",

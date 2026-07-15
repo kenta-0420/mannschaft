@@ -23,8 +23,10 @@
  *  APPROVAL 村でのみ出る申請フォーム / 審査一覧は、条件付き skip を入れると
  *  「テストが丸ごと skip されたのに exit 0 で緑に見える」偽陽性になるため入れていない
  *  （実際に踏んだ）。それらは APPROVAL 村を作る seed が入った時点で追加すること。
- *  なお実装時には、DB の join_policy を一時的に APPROVAL へ倒して
- *  申請フォーム→送信→取下げ（実 DB で PENDING→WITHDRAWN を確認）と審査一覧を実機検証済み。
+ *  なお実装時には、DB の join_policy を一時的に APPROVAL へ倒して以下を実機検証済み:
+ *   - 申請フォーム→送信→取下げ（実 DB で PENDING→WITHDRAWN を確認）
+ *   - 審査一覧の疎通
+ *   - **リロード後も審査待ち状態と取下げ導線が復元される**（GET /join-requests/me による根治）
  */
 
 import { test, expect } from '@playwright/test'

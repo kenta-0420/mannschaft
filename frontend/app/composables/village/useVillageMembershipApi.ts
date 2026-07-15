@@ -177,6 +177,25 @@ export function useVillageMembershipApi() {
   }
 
   /**
+   * §4.5.2 自分の参加申請一覧（申請者本人）。
+   *
+   * BE: `GET /api/v1/villages/{villageId}/join-requests/me` は
+   * `ApiResponse<List<JoinRequestResponse>>`（`createdAt` 降順・素の配列）を返す。
+   * 審査者向け一覧（{@link listJoinRequests}）が `Page` なのに対しこちらは素の配列という
+   * 非対称は、`GET /api/v1/me/village-creation-requests` と同じ既存流儀に合わせたもの
+   * （`VillageJoinRequestControllerTest#listMine_success` が `$.data[0].status` で固定済み）。
+   *
+   * 申請が無い場合は空配列（404 ではない）。
+   * 「誰の申請か」は BE が認証済みユーザーから解決するため、引数で渡す余地は無い。
+   */
+  async function listMyJoinRequests(villageId: string) {
+    const res = await api<{ data: JoinRequestResponse[] }>(
+      `/api/v1/villages/${villageId}/join-requests/me`,
+    )
+    return res.data
+  }
+
+  /**
    * §4.5.2 申請一覧（村長/長老向け）。
    *
    * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>`
@@ -266,6 +285,7 @@ export function useVillageMembershipApi() {
     reviewCreationRequest,
     // 参加申請
     createJoinRequest,
+    listMyJoinRequests,
     listJoinRequests,
     approveJoinRequest,
     rejectJoinRequest,

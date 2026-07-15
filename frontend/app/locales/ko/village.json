@@ -202,7 +202,7 @@
       "formTitle": "가입 신청하기",
       "messagePlaceholder": "마을에서 하고 싶은 일과 가입하려는 이유를 적어 주세요 (선택, 500자 이내)",
       "submittedTitle": "제출한 신청",
-      "submittedBody": "촌장 또는 원로의 심사를 기다려 주세요. 이 화면을 벗어나면 철회 버튼은 표시되지 않습니다.",
+      "submittedBody": "촌장 또는 원로의 심사를 기다려 주세요. 심사 대기 중에는 이 화면에서 언제든지 철회할 수 있습니다.",
       "withdrawSuccess": "가입 신청을 철회했습니다",
       "approveSuccess": "가입 신청을 승인했습니다",
       "rejectSuccess": "가입 신청을 거절했습니다",

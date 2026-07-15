@@ -202,7 +202,7 @@
       "formTitle": "Request to join",
       "messagePlaceholder": "Tell them what you want to do in this village and why you want to join (optional, up to 500 characters)",
       "submittedTitle": "Your submitted request",
-      "submittedBody": "Please wait for the headman or an elder to review it. The withdraw button disappears once you leave this screen.",
+      "submittedBody": "Please wait for the headman or an elder to review it. You can withdraw it from this screen at any time while it is pending.",
       "withdrawSuccess": "Join request withdrawn",
       "approveSuccess": "Join request approved",
       "rejectSuccess": "Join request rejected",

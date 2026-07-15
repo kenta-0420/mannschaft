@@ -202,7 +202,7 @@
       "formTitle": "参加を申請する",
       "messagePlaceholder": "村でやりたいことや、参加したい理由を書いてください（任意・500字以内）",
       "submittedTitle": "送信済みの申請",
-      "submittedBody": "村長・長老の審査をお待ちください。この画面を離れると取り下げボタンは表示されなくなります。",
+      "submittedBody": "村長・長老の審査をお待ちください。審査待ちの間はこの画面からいつでも取り下げられます。",
       "withdrawSuccess": "参加申請を取り下げました",
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました",

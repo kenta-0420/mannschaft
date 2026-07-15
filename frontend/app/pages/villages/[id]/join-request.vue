@@ -41,6 +41,7 @@ const route = useRoute()
 const { t } = useI18n()
 const {
   createJoinRequest,
+  listMyJoinRequests,
   listJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
@@ -128,13 +129,14 @@ const formMessage = ref('')
 const submitting = ref(false)
 
 /**
- * 送信直後の申請（取下げ用に id を保持）。
+ * 審査待ちの自分の申請（取下げ導線の表示に使う）。
  *
- * BE には「申請者が自分の参加申請を取得する」エンドポイントが無く、
- * 一覧（GET join-requests）は村長/長老のみ閲覧可のため、リロードすると復元できない。
- * リロード後に再申請した場合は BE が VILLAGE_039（審査待ち重複）を返し、下部で案内する。
+ * BE の `GET /join-requests/me` から復元するため、**リロードしても状態が残る**。
+ * （旧実装は「送信直後のレスポンスをメモリに保持」する暫定対応で、リロードすると
+ *   取下げ導線が消えていた。BE 側に申請者向け EP を新設して根治済み。）
  */
-const submittedRequest = ref<JoinRequestResponse | null>(null)
+const myPendingRequest = ref<JoinRequestResponse | null>(null)
+const myRequestLoading = ref(false)
 
 const messageError = computed<string | null>(() => {
   if (formMessage.value.length > MESSAGE_MAX) return t('village.error.VILLAGE_029')
@@ -148,6 +150,29 @@ const canSubmit = computed<boolean>(() => {
   return currentUserId.value != null
 })
 
+/**
+ * 自分の審査待ち申請を BE から復元する（リロード後も取下げ導線を出すため）。
+ *
+ * BE は申請の履歴（APPROVED/REJECTED/WITHDRAWN 含む）を createdAt 降順で返すため、
+ * 取下げ可能な PENDING だけを拾う（PENDING は同時に 1 件しか存在しない）。
+ */
+async function loadMyRequest() {
+  // FREE 村は申請の概念が無い。村人・審査者はこのパネルを使わないので呼ばない。
+  if (isFreeVillage.value || perms.value.isMember) return
+  myRequestLoading.value = true
+  try {
+    const mine = await listMyJoinRequests(villageId.value)
+    myPendingRequest.value = mine.find(r => r.status === 'PENDING') ?? null
+  }
+  catch (err) {
+    const { code, status } = extractApiError(err)
+    showError(translateApiError(code, status))
+  }
+  finally {
+    myRequestLoading.value = false
+  }
+}
+
 async function submit() {
   const myUserId = currentUserId.value
   if (!canSubmit.value || myUserId == null) return
@@ -160,7 +185,7 @@ async function submit() {
       subjectId: myUserId,
       message: formMessage.value.trim() === '' ? null : formMessage.value.trim(),
     }
-    submittedRequest.value = await createJoinRequest(villageId.value, body)
+    myPendingRequest.value = await createJoinRequest(villageId.value, body)
     formMessage.value = ''
     showSuccess(t('village.joinRequest.submitted'))
   }
@@ -171,6 +196,8 @@ async function submit() {
       showWarn(translateApiError(code, status))
       // 村人になっていた場合は親シェルの状態を同期して画面モードを正す
       if (code === 'VILLAGE_006') await refresh()
+      // 審査待ち重複（別タブ等で既に申請済み）は BE の実状態を取り込んで画面を正す
+      if (code === 'VILLAGE_039') await loadMyRequest()
     }
     else {
       showError(translateApiError(code, status))
@@ -181,19 +208,21 @@ async function submit() {
   }
 }
 
-/** 送信直後の申請を取り下げる（申請者本人のみ・PENDING のみ）。 */
-async function withdrawSubmitted() {
-  const req = submittedRequest.value
+/** 審査待ちの自分の申請を取り下げる（申請者本人のみ・PENDING のみ）。 */
+async function withdrawMine() {
+  const req = myPendingRequest.value
   if (!req || submitting.value) return
   submitting.value = true
   try {
     await withdrawJoinRequest(villageId.value, req.id)
-    submittedRequest.value = null
+    myPendingRequest.value = null
     showSuccess(t('village.joinRequest.withdrawSuccess'))
   }
   catch (err) {
     const { code, status } = extractApiError(err)
     showError(translateApiError(code, status))
+    // 取下げ失敗（既に審査済み等）は BE の実状態へ寄せる
+    await loadMyRequest()
   }
   finally {
     submitting.value = false
@@ -366,12 +395,15 @@ const showGuide = ref(false)
 
 onMounted(() => {
   void loadRequests()
+  void loadMyRequest()
 })
 
-// 親シェルは村取得をクライアントで行うため、権限確定が本ページのマウント後になりうる。
-// 審査権限が立った時点で一覧を取得する（非審査者では発火しない）。
-watch(isReviewer, (reviewer) => {
-  if (reviewer) void loadRequests()
+// 親シェルは村取得をクライアントで行うため、権限・joinPolicy の確定が本ページのマウント後に
+// なりうる。村が解決した時点で、その時のモードに応じた取得を行う。
+watch(village, (v) => {
+  if (!v) return
+  void loadRequests()
+  void loadMyRequest()
 })
 </script>
 
@@ -482,24 +514,32 @@ watch(isReviewer, (reviewer) => {
 
     <!-- 3. 非メンバー: 申請フォーム / 申請済みパネル -->
     <div v-else-if="!perms.isMember" class="flex flex-col gap-4">
-      <!-- 3-b. 送信済み（この画面を離れる/リロードすると復元できない。BE に申請者向け取得APIが無いため） -->
-      <SectionCard v-if="submittedRequest" :title="t('village.joinRequest.submittedTitle')">
+      <!-- 3-0. 自分の申請の復元中（リロード直後にフォームが一瞬見えるのを防ぐ） -->
+      <div v-if="myRequestLoading" class="py-12 text-center text-surface-500">
+        <i class="pi pi-spin pi-spinner text-2xl" aria-hidden="true" />
+      </div>
+
+      <!-- 3-b. 審査待ち（GET /join-requests/me から復元するためリロードしても残る） -->
+      <SectionCard
+        v-else-if="myPendingRequest"
+        :title="t('village.joinRequest.submittedTitle')"
+      >
         <div class="flex flex-col gap-4">
           <div class="flex items-center gap-2">
             <Tag
-              :value="statusLabel(submittedRequest.status)"
-              :severity="statusSeverity(submittedRequest.status)"
+              :value="statusLabel(myPendingRequest.status)"
+              :severity="statusSeverity(myPendingRequest.status)"
             />
             <span class="text-sm text-surface-500">
-              {{ formatDateTime(submittedRequest.createdAt) }}
+              {{ formatDateTime(myPendingRequest.createdAt) }}
             </span>
           </div>
           <p class="text-sm text-surface-600 dark:text-surface-300">
             {{ t('village.joinRequest.submittedBody') }}
           </p>
-          <div v-if="submittedRequest.message" class="rounded-lg bg-surface-50 p-3 dark:bg-surface-900">
+          <div v-if="myPendingRequest.message" class="rounded-lg bg-surface-50 p-3 dark:bg-surface-900">
             <p class="whitespace-pre-wrap text-sm">
-              {{ submittedRequest.message }}
+              {{ myPendingRequest.message }}
             </p>
           </div>
           <div class="flex justify-end">
@@ -509,7 +549,8 @@ watch(isReviewer, (reviewer) => {
               severity="secondary"
               outlined
               :loading="submitting"
-              @click="withdrawSubmitted"
+              data-testid="join-request-withdraw"
+              @click="withdrawMine"
             />
           </div>
         </div>

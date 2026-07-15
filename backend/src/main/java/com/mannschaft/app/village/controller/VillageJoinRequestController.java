@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,6 +29,7 @@ import java.util.UUID;
  *
  * <ul>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests} 参加申請（認証ユーザー）</li>
+ *   <li>{@code GET  /api/v1/villages/{villageId}/join-requests/me} 自分の申請一覧（申請者本人）</li>
  *   <li>{@code GET  /api/v1/villages/{villageId}/join-requests}  村長/長老用 一覧</li>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests/{id}/approve}  承認</li>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests/{id}/reject}   拒否</li>
@@ -56,6 +58,29 @@ public class VillageJoinRequestController {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         JoinRequestResponse response = service.createRequest(villageId, actorUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    // ------------------------------------------------------------------
+    // 自分の申請（申請者向け）
+    // ------------------------------------------------------------------
+
+    /**
+     * 申請者が自分の参加申請を取得する。
+     *
+     * <p>審査者向け一覧（{@link #list}）は HEADMAN/ELDER 限定のため、申請者（＝非メンバー）は
+     * 自分の申請状態すら確認できず、取下げに必要な id も復元できなかった。本 EP がそれを解消する。</p>
+     *
+     * <p><b>IDOR 閉塞</b>: 「誰の申請を返すか」をパス・クエリで一切受け取らず、
+     * {@link SecurityUtils#getCurrentUserId()} だけで解決する。したがって他人の申請を
+     * 要求する余地が構造的に存在しない（403/404 の判定自体が不要）。</p>
+     */
+    @GetMapping("/api/v1/villages/{villageId}/join-requests/me")
+    @Operation(summary = "自分の村参加申請一覧（申請者本人）")
+    public ResponseEntity<ApiResponse<List<JoinRequestResponse>>> listMine(
+            @PathVariable("villageId") UUID villageId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        List<JoinRequestResponse> result = service.listMine(villageId, actorUserId);
+        return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     // ------------------------------------------------------------------

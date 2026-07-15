@@ -202,7 +202,7 @@
       "formTitle": "Beitritt beantragen",
       "messagePlaceholder": "Beschreibe, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen)",
       "submittedTitle": "Dein gesendeter Antrag",
-      "submittedBody": "Bitte warte auf die Prüfung durch den Dorfvorsteher oder einen Ältesten. Nach dem Verlassen dieser Seite wird die Schaltfläche zum Zurückziehen nicht mehr angezeigt.",
+      "submittedBody": "Bitte warte auf die Prüfung durch den Dorfvorsteher oder einen Ältesten. Solange der Antrag aussteht, kannst du ihn jederzeit auf dieser Seite zurückziehen.",
       "withdrawSuccess": "Beitrittsantrag zurückgezogen",
       "approveSuccess": "Beitrittsantrag genehmigt",
       "rejectSuccess": "Beitrittsantrag abgelehnt",
