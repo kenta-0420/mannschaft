@@ -277,7 +277,7 @@ class VillageJoinRequestServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
         // ensureReviewer
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
         // 申請ロード
@@ -322,7 +322,7 @@ class VillageJoinRequestServiceTest {
         VillageMembershipEntity reviewer = membership(VillageRole.ELDER, USER_ID);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
         given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
@@ -347,7 +347,7 @@ class VillageJoinRequestServiceTest {
     void approve_villagerForbidden() {
         UUID requestId = UUID.randomUUID();
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(membership(VillageRole.VILLAGER, USER_ID)));
 

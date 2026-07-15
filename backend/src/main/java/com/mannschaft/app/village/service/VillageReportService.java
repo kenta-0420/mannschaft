@@ -241,19 +241,19 @@ public class VillageReportService {
     }
 
     /**
-     * 当該ユーザーが対象村のモデレーター（HEADMAN / ELDER）であることを要求する。
-     * 一般村人や非村人は {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     * 当該ユーザーが対象村の<strong>現役</strong>モデレーター（HEADMAN / ELDER）であることを要求する。
+     * 一般村人・非村人・退村済み・BAN 済みは {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     *
+     * <p>BAN / 退村の検査は {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 従来はここで手書きの {@code bannedAt != null} 分岐を持っていたが、同じ判定が村ドメイン全体に
+     * コピーされ 5 実装で書き忘れられていた。述語をクエリ 1 箇所に寄せ、書き忘れの余地を無くす。</p>
      *
      * @return モデレーターのメンバーシップ Entity（{@code handler_membership_id} 記録用）
      */
     private VillageMembershipEntity requireModerator(UUID villageId, Long actorUserId) {
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
-        if (m.getBannedAt() != null) {
-            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
-        }
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
