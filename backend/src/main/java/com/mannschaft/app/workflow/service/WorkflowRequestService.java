@@ -1,8 +1,10 @@
 package com.mannschaft.app.workflow.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
+import com.mannschaft.app.workflow.WorkflowScopes;
 import com.mannschaft.app.workflow.WorkflowStatus;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.RequestStepResponse;
@@ -41,17 +43,24 @@ public class WorkflowRequestService {
     private final WorkflowTemplateStepRepository templateStepRepository;
     private final WorkflowTemplateService templateService;
     private final WorkflowMapper workflowMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * スコープ内の申請一覧をページング取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param status    ステータスフィルタ（null の場合は全件）
-     * @param pageable  ページング情報
+     * <p>認可: スコープメンバーのみ（Wave 2 トランシェ2C。非メンバーは 403）。
+     * 指定承認者は非 ADMIN メンバーでもあり得るため、メンバー可視とする。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 操作者ユーザーID
+     * @param status      ステータスフィルタ（null の場合は全件）
+     * @param pageable    ページング情報
      * @return 申請レスポンスのページ
      */
-    public Page<WorkflowRequestResponse> listRequests(String scopeType, Long scopeId, String status, Pageable pageable) {
+    public Page<WorkflowRequestResponse> listRequests(String scopeType, Long scopeId, Long actorUserId,
+                                                      String status, Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, scopeId, WorkflowScopes.canonical(scopeType));
         Page<WorkflowRequestEntity> page;
         if (status != null) {
             WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status);
@@ -89,22 +98,52 @@ public class WorkflowRequestService {
     /**
      * 申請詳細を取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param requestId 申請ID
+     * <p>認可: 申請者本人、または entity 由来スコープのメンバー/ADMIN のみ。
+     * それ以外は 404 で存在秘匿（BOLA対策・Wave 2 トランシェ2C）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param requestId   申請ID
+     * @param actorUserId 操作者ユーザーID
      * @return 申請レスポンス
      */
-    public WorkflowRequestResponse getRequest(String scopeType, Long scopeId, Long requestId) {
+    public WorkflowRequestResponse getRequest(String scopeType, Long scopeId, Long requestId, Long actorUserId) {
         WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
+        checkRequestVisibility(entity, actorUserId);
         return buildRequestResponse(entity);
     }
 
     /**
-     * 申請を作成する（下書き状態）。
+     * 申請を作成する（下書き状態）— API 公開入口（Wave 2 トランシェ2C）。
+     *
+     * <p>認可: スコープメンバーのみ（非メンバーは 403）。認可後に {@link #createRequest} へ委譲する。
+     * バッチ（シフト予算 100% 到達の自動起動）は操作ユーザーが存在しないため、
+     * 認可ゲートを持たない {@link #createRequest} を直接呼ぶ
+     * （認可ガードは public 入口に置き、共有メソッドをバッチの巻き添えにしない）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 申請者（操作者）ユーザーID
+     * @param request     作成リクエスト
+     * @return 作成された申請レスポンス
+     */
+    @Transactional
+    public WorkflowRequestResponse createRequestAsUser(String scopeType, Long scopeId, Long actorUserId,
+                                                       CreateWorkflowRequestRequest request) {
+        accessControlService.checkMembership(actorUserId, scopeId, WorkflowScopes.canonical(scopeType));
+        return createRequest(scopeType, scopeId, actorUserId, request);
+    }
+
+    /**
+     * 申請を作成する（下書き状態）— 内部共有入口（バッチ・システム起動用）。
+     *
+     * <p>テンプレートはスコープ整合を検証する: 指定された templateId が path のスコープに
+     * 属さない場合は 404（TEMPLATE_NOT_FOUND）で存在秘匿する（クロススコープのテンプレート
+     * 探索・流用の根治。Wave 2 トランシェ2C）。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
-     * @param userId    申請者ユーザーID
+     * @param userId    申請者ユーザーID（システム自動起動時は null）
      * @param request   作成リクエスト
      * @return 作成された申請レスポンス
      */
@@ -112,6 +151,11 @@ public class WorkflowRequestService {
     public WorkflowRequestResponse createRequest(String scopeType, Long scopeId, Long userId,
                                                   CreateWorkflowRequestRequest request) {
         WorkflowTemplateEntity template = templateService.getTemplateEntity(request.getTemplateId());
+
+        if (!WorkflowScopes.canonical(template.getScopeType()).equals(WorkflowScopes.canonical(scopeType))
+                || !template.getScopeId().equals(scopeId)) {
+            throw new BusinessException(WorkflowErrorCode.TEMPLATE_NOT_FOUND);
+        }
 
         if (!template.getIsActive()) {
             throw new BusinessException(WorkflowErrorCode.TEMPLATE_INACTIVE);
@@ -137,16 +181,21 @@ public class WorkflowRequestService {
     /**
      * 申請を更新する（下書き状態のみ）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param requestId 申請ID
-     * @param request   更新リクエスト
+     * <p>認可: 申請者本人、または entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の requestId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param requestId   申請ID
+     * @param actorUserId 操作者ユーザーID
+     * @param request     更新リクエスト
      * @return 更新された申請レスポンス
      */
     @Transactional
     public WorkflowRequestResponse updateRequest(String scopeType, Long scopeId, Long requestId,
-                                                  UpdateWorkflowRequestRequest request) {
+                                                  Long actorUserId, UpdateWorkflowRequestRequest request) {
         WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
+        checkOwnerOrAdminOnEntityScope(actorUserId, entity);
 
         if (entity.getStatus() != WorkflowStatus.DRAFT) {
             throw new BusinessException(WorkflowErrorCode.INVALID_STATUS_TRANSITION);
@@ -161,7 +210,29 @@ public class WorkflowRequestService {
     }
 
     /**
-     * 申請を提出する。
+     * 申請を提出する — API 公開入口（Wave 2 トランシェ2C）。
+     *
+     * <p>認可: 申請者本人、または entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の requestId は 404 で存在秘匿（BOLA対策）。認可後に
+     * {@link #submitRequest} へ委譲する。バッチ（シフト予算 100% 到達の自動起動）は
+     * 認可ゲートを持たない {@link #submitRequest} を直接呼ぶ。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param requestId   申請ID
+     * @param actorUserId 操作者ユーザーID
+     * @return 更新された申請レスポンス
+     */
+    @Transactional
+    public WorkflowRequestResponse submitRequestAsUser(String scopeType, Long scopeId, Long requestId,
+                                                       Long actorUserId) {
+        WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
+        checkOwnerOrAdminOnEntityScope(actorUserId, entity);
+        return submitRequest(scopeType, scopeId, requestId);
+    }
+
+    /**
+     * 申請を提出する — 内部共有入口（バッチ・システム起動用）。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -210,14 +281,20 @@ public class WorkflowRequestService {
     /**
      * 申請を取り下げる。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param requestId 申請ID
+     * <p>認可: 申請者本人、または entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の requestId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param requestId   申請ID
+     * @param actorUserId 操作者ユーザーID
      * @return 更新された申請レスポンス
      */
     @Transactional
-    public WorkflowRequestResponse withdrawRequest(String scopeType, Long scopeId, Long requestId) {
+    public WorkflowRequestResponse withdrawRequest(String scopeType, Long scopeId, Long requestId,
+                                                   Long actorUserId) {
         WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
+        checkOwnerOrAdminOnEntityScope(actorUserId, entity);
 
         if (!entity.isWithdrawable()) {
             throw new BusinessException(WorkflowErrorCode.INVALID_STATUS_TRANSITION);
@@ -232,13 +309,18 @@ public class WorkflowRequestService {
     /**
      * 申請を論理削除する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param requestId 申請ID
+     * <p>認可: 申請者本人、または entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ（403）。
+     * パスと不一致の requestId は 404 で存在秘匿（BOLA対策）。</p>
+     *
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param requestId   申請ID
+     * @param actorUserId 操作者ユーザーID
      */
     @Transactional
-    public void deleteRequest(String scopeType, Long scopeId, Long requestId) {
+    public void deleteRequest(String scopeType, Long scopeId, Long requestId, Long actorUserId) {
         WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
+        checkOwnerOrAdminOnEntityScope(actorUserId, entity);
         entity.softDelete();
         requestRepository.save(entity);
         log.info("ワークフロー申請削除: requestId={}", requestId);
@@ -253,6 +335,37 @@ public class WorkflowRequestService {
     public WorkflowRequestEntity getRequestEntity(Long requestId) {
         return requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+    }
+
+    /**
+     * 申請の可視性を検証する（★BOLA厳禁★・Wave 2 トランシェ2C）。
+     *
+     * <p>申請者本人・entity 由来スコープのメンバー・ADMIN のいずれでもない場合は
+     * 404（REQUEST_NOT_FOUND）で存在秘匿する。ADMIN 判定は user_roles 系統のため、
+     * memberships 系統の isMember と両方を見る。</p>
+     */
+    private void checkRequestVisibility(WorkflowRequestEntity entity, Long actorUserId) {
+        if (actorUserId != null && actorUserId.equals(entity.getRequestedBy())) {
+            return;
+        }
+        String canonicalScope = WorkflowScopes.canonical(entity.getScopeType());
+        if (accessControlService.isMember(actorUserId, entity.getScopeId(), canonicalScope)
+                || accessControlService.isAdminOrAbove(actorUserId, entity.getScopeId(), canonicalScope)) {
+            return;
+        }
+        throw new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND);
+    }
+
+    /**
+     * 申請者本人、または entity 由来スコープの ADMIN/DEPUTY_ADMIN であることを検証する（★BOLA厳禁★）。
+     *
+     * <p>path で渡された scopeId をそのまま信用せず、取得済み entity の scopeType/scopeId で
+     * 認可する。違反時は 403（COMMON_002）。</p>
+     */
+    private void checkOwnerOrAdminOnEntityScope(Long actorUserId, WorkflowRequestEntity entity) {
+        accessControlService.checkOwnerOrAdmin(
+                actorUserId, entity.getRequestedBy(),
+                entity.getScopeId(), WorkflowScopes.canonical(entity.getScopeType()));
     }
 
     /**
