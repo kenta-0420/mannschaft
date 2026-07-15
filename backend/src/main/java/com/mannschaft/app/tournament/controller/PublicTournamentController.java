@@ -64,6 +64,8 @@ public class PublicTournamentController {
     public ResponseEntity<ApiResponse<List<StandingResponse>>> getPublicStandings(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         tournamentService.verifyPublicAccess(orgId, tId);
+        // divId が tId 配下であることを束縛検証する（台帳指摘の穴・BOLA 是正）。
+        tournamentService.verifyDivisionInTournament(tId, divId);
         return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getStandings(divId)));
     }
 
@@ -97,6 +99,8 @@ public class PublicTournamentController {
     public ResponseEntity<ApiResponse<MatrixResponse>> getPublicMatrix(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         tournamentService.verifyPublicAccess(orgId, tId);
+        // divId が tId 配下であることを束縛検証する（台帳指摘の穴・BOLA 是正）。
+        tournamentService.verifyDivisionInTournament(tId, divId);
         return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getMatrix(divId)));
     }
 }

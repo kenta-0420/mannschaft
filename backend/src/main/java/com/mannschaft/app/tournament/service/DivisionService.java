@@ -1,6 +1,9 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.TournamentMapper;
@@ -25,6 +28,15 @@ import java.util.List;
 
 /**
  * ディビジョン・参加チーム管理サービス。
+ *
+ * <h2>認可（認可根治戦役 Wave2 トランシェ2C）</h2>
+ * <ul>
+ *   <li>閲覧（一覧）: 親大会（{@code tId}）の F00 可視性判定に委譲。不可視は 404（IDOR 秘匿）。</li>
+ *   <li>変更（作成／更新／削除）: {@code tId} が path {@code orgId} 配下であることを検証した上で、
+ *       主催組織 ADMIN/DEPUTY_ADMIN を要求する。他組織の大会 ID を自組織 URL に指定した越境
+ *       （BOLA）は 404（存在秘匿）で遮断する。</li>
+ *   <li>{@code divId}/{@code pId} は必ず親（{@code tId}/{@code divId}）配下であることを束縛検証する。</li>
+ * </ul>
  */
 @Slf4j
 @Service
@@ -36,6 +48,8 @@ public class DivisionService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentRepository tournamentRepository;
     private final TournamentMapper mapper;
+    private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
     /**
      * F08.7.1 連絡機能: ディビジョン作成時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -54,13 +68,25 @@ public class DivisionService {
 
     // ===== Division =====
 
-    public List<DivisionResponse> listDivisions(Long tournamentId) {
+    /**
+     * ディビジョン一覧を取得する（閲覧系）。
+     * 親大会（tournamentId）の F00 可視性判定に委譲し、不可視は 404（IDOR 秘匿）。
+     */
+    public List<DivisionResponse> listDivisions(Long tournamentId, Long viewerUserId) {
+        verifyTournamentVisible(tournamentId, viewerUserId);
         return divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(tournamentId)
                 .stream().map(mapper::toDivisionResponse).toList();
     }
 
+    /**
+     * ディビジョンを作成する（変更系）。
+     * tId が path orgId 配下であることを検証（BOLA 是正）した上で主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+     */
     @Transactional
-    public DivisionResponse createDivision(Long tournamentId, CreateDivisionRequest request) {
+    public DivisionResponse createDivision(Long orgId, Long tournamentId, Long userId, CreateDivisionRequest request) {
+        TournamentEntity tournament = findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+
         TournamentDivisionEntity division = TournamentDivisionEntity.builder()
                 .tournamentId(tournamentId)
                 .name(request.getName())
@@ -76,26 +102,28 @@ public class DivisionService {
         TournamentDivisionEntity saved = divisionRepository.save(division);
 
         // F08.7.1: ディビジョンの連絡スペース（掲示板＋チャット）を自動付帯（要件④）
-        TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
-        String tournamentName = tournament != null ? tournament.getName() : "大会";
         contactSpaceProvisioningService.provisionForDivision(
-                saved.getId(), tournamentName + " " + saved.getName() + " 連絡");
+                saved.getId(), tournament.getName() + " " + saved.getName() + " 連絡");
 
         // F08.7.1 / 04: ディビジョンのデフォルトフォルダ「規約」を自動付帯（冪等・§4）。
         // クォータ帰属は主催組織（organization_id）に集約（§6）。
-        if (tournament != null) {
-            sharedFolderService.provisionDefaultFolder(
-                    com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION,
-                    tournament.getOrganizationId(), saved.getId(),
-                    com.mannschaft.app.common.SecurityUtils.getCurrentUserIdOrNull(),
-                    DEFAULT_DIVISION_FOLDER);
-        }
+        sharedFolderService.provisionDefaultFolder(
+                com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION,
+                tournament.getOrganizationId(), saved.getId(),
+                userId,
+                DEFAULT_DIVISION_FOLDER);
 
         return mapper.toDivisionResponse(saved);
     }
 
+    /**
+     * ディビジョンを更新する（変更系）。tId→orgId 束縛・divId→tId 束縛の両方を検証する。
+     */
     @Transactional
-    public DivisionResponse updateDivision(Long tournamentId, Long divId, UpdateDivisionRequest request) {
+    public DivisionResponse updateDivision(Long orgId, Long tournamentId, Long divId, Long userId,
+                                            UpdateDivisionRequest request) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         TournamentDivisionEntity division = findDivisionOrThrow(tournamentId, divId);
         division.update(
                 request.getName() != null ? request.getName() : division.getName(),
@@ -110,8 +138,13 @@ public class DivisionService {
         return mapper.toDivisionResponse(divisionRepository.save(division));
     }
 
+    /**
+     * ディビジョンを削除する（変更系）。tId→orgId 束縛・divId→tId 束縛の両方を検証する。
+     */
     @Transactional
-    public void deleteDivision(Long tournamentId, Long divId) {
+    public void deleteDivision(Long orgId, Long tournamentId, Long divId, Long userId) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         TournamentDivisionEntity division = findDivisionOrThrow(tournamentId, divId);
         // F08.7.1 §6.1: 物理削除前に連絡スペースを archive（孤児化防止・クロスドメインCASCADEなし・原則2）
         contactSpaceProvisioningService.archiveForDivision(divId);
@@ -120,20 +153,33 @@ public class DivisionService {
 
     // ===== Participant =====
 
-    public List<ParticipantResponse> listParticipants(Long divisionId) {
+    /**
+     * 参加チーム一覧を取得する（閲覧系）。
+     * 親大会（tournamentId）の可視性に加え、divId が tournamentId 配下であることを束縛検証する
+     * （公開大会の tId を踏み台にした非公開大会 divId の閲覧を遮断・台帳指摘の穴）。
+     */
+    public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId, Long viewerUserId) {
+        verifyTournamentVisible(tournamentId, viewerUserId);
+        findDivisionOrThrow(tournamentId, divisionId);
         return participantRepository.findByDivisionIdOrderBySeedAsc(divisionId)
                 .stream().map(mapper::toParticipantResponse).toList();
     }
 
+    /**
+     * チームを参加登録する（変更系）。tId→orgId・divId→tId の両方を束縛検証する。
+     */
     @Transactional
-    public ParticipantResponse addParticipant(Long divisionId, CreateParticipantRequest request) {
+    public ParticipantResponse addParticipant(Long orgId, Long tournamentId, Long divisionId, Long userId,
+                                               CreateParticipantRequest request) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        TournamentDivisionEntity division = findDivisionOrThrow(tournamentId, divisionId);
+
         // 重複チェック
         participantRepository.findByDivisionIdAndTeamId(divisionId, request.getTeamId())
                 .ifPresent(p -> { throw new BusinessException(TournamentErrorCode.DUPLICATE_PARTICIPANT); });
 
         // 最大参加チーム数チェック
-        TournamentDivisionEntity division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
         if (division.getMaxParticipants() != null) {
             long count = participantRepository.countByDivisionId(divisionId);
             if (count >= division.getMaxParticipants()) {
@@ -150,10 +196,16 @@ public class DivisionService {
         return mapper.toParticipantResponse(participantRepository.save(participant));
     }
 
+    /**
+     * 参加情報を更新する（変更系）。tId→orgId・divId→tId・pId→divId を全て束縛検証する。
+     */
     @Transactional
-    public ParticipantResponse updateParticipant(Long pId, UpdateParticipantRequest request) {
-        TournamentParticipantEntity participant = participantRepository.findById(pId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+    public ParticipantResponse updateParticipant(Long orgId, Long tournamentId, Long divisionId, Long pId,
+                                                  Long userId, UpdateParticipantRequest request) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        findDivisionOrThrow(tournamentId, divisionId);
+        TournamentParticipantEntity participant = findParticipantOrThrow(divisionId, pId);
 
         if (request.getSeed() != null || request.getDisplayName() != null) {
             participant.update(
@@ -166,15 +218,49 @@ public class DivisionService {
         return mapper.toParticipantResponse(participantRepository.save(participant));
     }
 
+    /**
+     * チームを参加除外する（変更系）。tId→orgId・divId→tId・pId→divId を全て束縛検証する。
+     */
     @Transactional
-    public void removeParticipant(Long pId) {
-        TournamentParticipantEntity participant = participantRepository.findById(pId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+    public void removeParticipant(Long orgId, Long tournamentId, Long divisionId, Long pId, Long userId) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        findDivisionOrThrow(tournamentId, divisionId);
+        TournamentParticipantEntity participant = findParticipantOrThrow(divisionId, pId);
         participantRepository.delete(participant);
+    }
+
+    // ===== 内部ヘルパー =====
+
+    /**
+     * 大会が path orgId 配下であることを検証する（BOLA 対策・IDOR 対策で 404 に統一）。
+     */
+    private TournamentEntity findTournamentInOrgOrThrow(Long orgId, Long tournamentId) {
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        if (!tournament.getOrganizationId().equals(orgId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+        return tournament;
+    }
+
+    /**
+     * 大会 visibility ガード（閲覧系）。認証ユーザー（未認証なら null）が当該 tournament を
+     * 閲覧できるか F00 共通可視性 Resolver で判定し、不可視なら 404 を投げる。
+     */
+    private void verifyTournamentVisible(Long tournamentId, Long viewerUserId) {
+        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
     }
 
     TournamentDivisionEntity findDivisionOrThrow(Long tournamentId, Long divId) {
         return divisionRepository.findByIdAndTournamentId(divId, tournamentId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
+    }
+
+    private TournamentParticipantEntity findParticipantOrThrow(Long divisionId, Long pId) {
+        return participantRepository.findByIdAndDivisionId(pId, divisionId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
     }
 }
