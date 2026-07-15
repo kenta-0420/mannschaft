@@ -52514,7 +52514,7 @@ export interface components {
             contactMethod?: string;
             description?: string;
             /** Format: date */
-            matchDate: string;
+            matchDate?: string;
             /** @example 14:30:00 */
             matchTimeEnd?: string;
             /** @example 14:30:00 */
