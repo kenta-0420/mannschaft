@@ -10,6 +10,7 @@ import com.mannschaft.app.line.entity.SnsFeedConfigEntity;
 import com.mannschaft.app.line.entity.UserLineConnectionEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 /**
  * LINE/SNS機能のMapStructマッパー。
@@ -32,7 +33,16 @@ public interface LineMapper {
     /**
      * シークレット文字列をマスクする。先頭8文字+末尾4文字のみ表示し、中間は "****" に置換する。
      * 短いシークレット（12文字未満）は全体をマスクする（#2259 webhook ドメインの maskToken と同仕様）。
+     *
+     * <p>{@code @Named} 必須（過剰マスクバグの根治・CI #2295 で実測発覚）: このマッパーの中で
+     * {@code String -> String} 型の変換メソッドがこれ1つしかないため、{@code @Named} を付けずに
+     * default メソッドとして置くと、MapStruct が channelId／botUserId／accountUsername など
+     * 明示 {@code @Mapping} を書いていない他の {@code String} プロパティにも「唯一マッチする変換候補」
+     * として本メソッドを暗黙的に適用してしまう（MapStruct の implicit method selection の既知の罠）。
+     * {@code @Named} を付けることで暗黙適用の候補から除外し、{@link #toLineBotConfigResponse}
+     * の {@code expression} 経由での明示呼び出しにのみ限定する。</p>
      */
+    @Named("maskSecret")
     default String maskSecret(String secret) {
         if (secret == null) {
             return null;
