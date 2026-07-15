@@ -370,5 +370,23 @@ public class MembershipService {
                 .toList();
     }
 
+    /**
+     * 指定ユーザーが指定スコープ（単一）のアクティブメンバーかどうかを返す。
+     *
+     * <p>{@code schedule} ドメインの {@code GoogleCalendarService}（{@code @Transactional} クラス）が
+     * 同期トグルの IDOR 閉塞（非メンバー拒否）でメンバーシップを確認する際、
+     * {@code membership} ドメインの {@link MembershipRepository} を直接注入することを避けるための
+     * 公開窓口（D-3 ArchUnit 準拠: @Transactional クラスは別ドメイン Repository に直接依存しない）。
+     * {@code boolean} のみを返し、Entity を漏らさない。</p>
+     *
+     * @param userId    対象ユーザー ID
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID（team_id または organization_id）
+     * @return アクティブメンバーなら true（退会済み・非メンバーは false）
+     */
+    public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
 }
 
