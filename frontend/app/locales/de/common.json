@@ -463,7 +463,15 @@
     "writeReply": "Antwort schreiben",
     "replySubmit": "Antworten",
     "noReplies": "Noch keine Antworten",
-    "loadMoreReplies": "Mehr anzeigen"
+    "loadMoreReplies": "Mehr anzeigen",
+    "composerPlaceholder": {
+      "TEAM": "Im Team posten...",
+      "VILLAGE": "Im Dorf posten...",
+      "ORGANIZATION": "In der Organisation posten...",
+      "PUBLIC": "Was gibt's Neues?"
+    },
+    "submitLabel": "Posten",
+    "pollOptionsCount": "{count} Optionen"
   },
   "gallery": {
     "title": "Galerie",
