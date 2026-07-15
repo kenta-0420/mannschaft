@@ -65,6 +65,6 @@ public class CoinTossController {
             @PathVariable Long teamId,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(coinTossService.getHistory(teamId, cursor, limit));
+        return ResponseEntity.ok(coinTossService.getHistory(teamId, SecurityUtils.getCurrentUserId(), cursor, limit));
     }
 }
