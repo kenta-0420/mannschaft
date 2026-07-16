@@ -261,12 +261,18 @@ public class OrganizationController {
     // サポーター管理（管理者向け）
     // ========================================
 
+    // 認可根治戦役 Wave3-B1b: 以下 7EP は双子コントローラー TeamController（Wave3-B5 済）と
+    // 完全に同型のエンドポイントであり、申請者の個人情報（氏名・メッセージ）や承認/却下操作を扱うため
+    // checkAdminOrAbove で保護する（非会員/一般メンバーの無防備アクセスを根治。SupporterService 側は既に
+    // applicationId ↔ scope の不一致を SUPPORTER_003 として存在秘匿する実装済み・BOLA対策は温存）。
+
     @GetMapping("/{slug}/supporters")
     @Operation(summary = "承認済みサポーター一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterResponse>> getSupporters(
             @PathVariable String slug, Pageable pageable) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(supporterService.getSupporters(SCOPE_TYPE, id, pageable));
     }
 
@@ -276,6 +282,7 @@ public class OrganizationController {
     public ResponseEntity<PagedResponse<SupporterApplicationResponse>> getSupporterApplications(
             @PathVariable String slug, Pageable pageable) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(supporterService.getApplications(SCOPE_TYPE, id, pageable));
     }
 
@@ -285,6 +292,7 @@ public class OrganizationController {
     public ResponseEntity<Void> approveSupporterApplication(
             @PathVariable String slug, @PathVariable Long applicationId) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.approve(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -295,6 +303,7 @@ public class OrganizationController {
     public ResponseEntity<Void> rejectSupporterApplication(
             @PathVariable String slug, @PathVariable Long applicationId) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.reject(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -305,6 +314,7 @@ public class OrganizationController {
     public ResponseEntity<Void> bulkApproveSupporterApplications(
             @PathVariable String slug, @Valid @RequestBody BulkApproveRequest request) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.bulkApprove(request, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -314,6 +324,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(supporterService.getSettings(SCOPE_TYPE, id)));
     }
 
@@ -323,6 +334,7 @@ public class OrganizationController {
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> updateSupporterSettings(
             @PathVariable String slug, @RequestBody UpdateSupporterSettingsRequest request) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(supporterService.updateSettings(SCOPE_TYPE, id, request)));
     }
 

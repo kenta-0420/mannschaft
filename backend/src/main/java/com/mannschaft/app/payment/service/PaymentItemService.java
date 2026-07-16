@@ -253,6 +253,28 @@ public class PaymentItemService {
     }
 
     /**
+     * 認可根治戦役 Wave3-B1b: 支払い項目が指定のチームスコープに属することを検証し、Entity を返す（BOLA 是正）。
+     *
+     * <p>{@link com.mannschaft.app.payment.controller.TeamPaymentController} 等、path 上位スコープ
+     * （{@code teamId}）配下の {@code itemId} であることを確認してから
+     * {@link MemberPaymentService} の {@code itemId} 直渡しメソッドを呼び出す前のゲートとして使う
+     * （{@link #findByIdAndOrganizationIdOrThrow} のチーム版・認可ガードは public 入口に敷設し、
+     * 共有 Service メソッド自体は変更しない方針）。</p>
+     *
+     * <p>{@code itemId} が当該チームに属さない（存在しない／他チーム／組織スコープ所属）場合は、
+     * 越境者に「別チームに存在する」ことを教えないよう {@link PaymentErrorCode#PAYMENT_ITEM_NOT_FOUND}（404・
+     * 存在秘匿）を投げる。</p>
+     *
+     * @param itemId 支払い項目 ID（path 変数）
+     * @param teamId チーム ID（path 変数・上位スコープ）
+     * @return チームスコープ内であることが確認された支払い項目 Entity
+     */
+    public PaymentItemEntity findByIdAndTeamIdOrThrow(Long itemId, Long teamId) {
+        return paymentItemRepository.findByIdAndTeamId(itemId, teamId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND));
+    }
+
+    /**
      * F08.9 P5: 項目の Stripe Product/Price ID 焼付を永続化する（継続課金 Price の get-or-create 後の保存用）。
      *
      * <p>{@link MembershipSubscriptionService#subscribe} が recurring Price を get-or-create したあと、

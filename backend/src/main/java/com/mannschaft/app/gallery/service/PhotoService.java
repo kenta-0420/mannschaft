@@ -72,8 +72,19 @@ public class PhotoService {
 
     /**
      * アルバム内メディアをページング取得する。
+     *
+     * <p><b>認可根治戦役 Wave3-B1b</b>: 従来 {@code PhotoService#listPhotos} は可視性検証ゼロで
+     * {@code photoRepository.findByAlbumId} を返すだけだった（対照的に {@code getAlbum} は
+     * {@code contentVisibilityChecker.assertCanView} を通していた）。entity 由来 scope（アルバムの
+     * teamId/organizationId）の {@link AccessControlService#checkMembership} で保護する
+     * （既存の同ドメイン {@link #getAlbumDownloadUrl}/{@link #getPhotoDownloadUrl} と同じ手本）。</p>
      */
-    public Page<PhotoResponse> listPhotos(Long albumId, String sort, Pageable pageable) {
+    public Page<PhotoResponse> listPhotos(Long albumId, String sort, Pageable pageable, Long userId) {
+        PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
+        accessControlService.checkMembership(userId,
+                PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(album.getTeamId()));
+
         Page<PhotoEntity> page;
         if ("taken_at".equals(sort)) {
             page = photoRepository.findByAlbumIdOrderByTakenAtDesc(albumId, pageable);
