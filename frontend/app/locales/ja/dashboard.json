@@ -200,7 +200,10 @@
       "partialLoadError": "一部のデータを取得できませんでした",
       "todoCompleteAria": "完了にする",
       "todoCompleteSuccess": "TODOを完了しました",
-      "todoCompleteError": "TODOの完了に失敗しました"
+      "todoCompleteError": "TODOの完了に失敗しました",
+      "adminSectionTitle": "承認待ち",
+      "adminUnresolvedCount": "承認待ち {count}件",
+      "adminLoadError": "承認待ちの取得に失敗しました"
     },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",

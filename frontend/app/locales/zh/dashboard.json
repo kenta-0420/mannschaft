@@ -200,7 +200,10 @@
       "partialLoadError": "部分数据加载失败",
       "todoCompleteAria": "标记为完成",
       "todoCompleteSuccess": "待办事项已完成",
-      "todoCompleteError": "完成待办事项失败"
+      "todoCompleteError": "完成待办事项失败",
+      "adminSectionTitle": "待审批",
+      "adminUnresolvedCount": "待审批 {count} 件",
+      "adminLoadError": "获取待审批事项失败"
     },
     "myCorkboard": {
       "widgetTitle": "我的软木板",

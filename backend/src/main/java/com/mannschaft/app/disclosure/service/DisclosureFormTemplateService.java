@@ -3,6 +3,7 @@ package com.mannschaft.app.disclosure.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.dto.DisclosureFormTemplateResponse;
@@ -39,6 +40,7 @@ public class DisclosureFormTemplateService {
 
     private final DisclosureFormTemplateRepository templateRepository;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 利用可能様式の一覧を取得する。
@@ -51,9 +53,12 @@ public class DisclosureFormTemplateService {
      * @param prefectureCode  JIS 都道府県コード（NULL 可）
      * @return 利用可能様式のレスポンスリスト（重複は ID で排除）
      */
-    public List<DisclosureFormTemplateResponse> listAvailable(String scopeType, Long scopeId,
+    public List<DisclosureFormTemplateResponse> listAvailable(String scopeType, Long scopeId, Long userId,
                                                               String prefectureCode) {
         validateScope(scopeType);
+        if (SCOPE_ORGANIZATION.equals(scopeType) && scopeId != null) {
+            accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
+        }
 
         // 1. システム提供 / 都道府県共通アクティブ様式
         List<DisclosureFormTemplateEntity> base =
@@ -92,8 +97,11 @@ public class DisclosureFormTemplateService {
      * 本フェーズでは Repository 層で scope 検証を兼ねるが、API 経由で他組織 ID
      * を指定された場合の漏洩を防ぐため Service 層でも検証する。</p>
      */
-    public DisclosureFormTemplateResponse get(String scopeType, Long scopeId, Long templateId) {
+    public DisclosureFormTemplateResponse get(String scopeType, Long scopeId, Long userId, Long templateId) {
         validateScope(scopeType);
+        if (SCOPE_ORGANIZATION.equals(scopeType) && scopeId != null) {
+            accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
+        }
         DisclosureFormTemplateEntity entity = templateRepository
                 .findByIdAndDeletedAtIsNull(templateId)
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));

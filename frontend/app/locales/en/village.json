@@ -197,7 +197,28 @@
       "rejected": "Rejected",
       "withdrawn": "Withdrawn",
       "reviewComment": "Review comment",
-      "empty": "No join requests"
+      "empty": "No join requests",
+      "description": "This village requires approval. You become a villager once the headman or an elder approves your request. Adding a message improves your chances.",
+      "formTitle": "Request to join",
+      "messagePlaceholder": "Tell them what you want to do in this village and why you want to join (optional, up to 500 characters)",
+      "submittedTitle": "Your submitted request",
+      "submittedBody": "Please wait for the headman or an elder to review it. You can withdraw it from this screen at any time while it is pending.",
+      "withdrawSuccess": "Join request withdrawn",
+      "approveSuccess": "Join request approved",
+      "rejectSuccess": "Join request rejected",
+      "rejectCommentRequired": "A review comment is required when rejecting",
+      "reviewCommentPlaceholder": "Enter a comment for the applicant (up to 500 characters)",
+      "reviewDescription": "Review join requests for this village. Approving a request makes the applicant a villager.",
+      "column": {
+        "requester": "Applicant",
+        "message": "Message",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "confirm": {
+        "approve": "Approve this join request? The applicant will become a villager.",
+        "reject": "Reject this join request?"
+      }
     },
     "feed": {
       "title": "Village feed",
@@ -696,6 +717,37 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "How to use join requests",
+      "description": "Learn how to request to join an approval-based village and how the headman and elders review requests.",
+      "apply": {
+        "title": "Request to join",
+        "body": "You cannot join an approval-based village directly. Send a request and wait for the headman or an elder to approve it. A message is optional but improves your chances.",
+        "steps": {
+          "step1": "Write what you want to do in the village and why you want to join (optional, up to 500 characters).",
+          "step2": "Press Submit to send the request to the headman and elders.",
+          "step3": "Right after sending, you can cancel the request with the Withdraw button."
+        }
+      },
+      "status": {
+        "title": "Check the review status",
+        "body": "A request starts as Pending review, then the headman or an elder marks it Approved or Rejected. Once approved you become a villager and all village features unlock.",
+        "steps": {
+          "step1": "Right after sending, the status shows as Pending review.",
+          "step2": "Once approved you become a villager and every village tab opens up.",
+          "step3": "If rejected, the review comment explains why. Read it and request again if appropriate."
+        }
+      },
+      "review": {
+        "title": "Review requests (headman and elders)",
+        "body": "The headman and elders see the list of join requests on this screen. Read each message and decide whether to approve or reject it.",
+        "steps": {
+          "step1": "Use the tabs to switch between Pending review, Approved, Rejected and Withdrawn.",
+          "step2": "Press Approve to make the applicant a villager. The review comment is optional.",
+          "step3": "When pressing Reject, a review comment is required so the applicant knows why."
         }
       }
     }

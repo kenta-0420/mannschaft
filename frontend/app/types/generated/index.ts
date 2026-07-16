@@ -29565,6 +29565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分の村参加申請一覧（申請者本人） */
+        get: operations["listMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/chronicles": {
         parameters: {
             query?: never;
@@ -38972,7 +38989,7 @@ export interface paths {
             cookie?: never;
         };
         /** 自分の村作成申請一覧 */
-        get: operations["listMine"];
+        get: operations["listMine_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41195,6 +41212,26 @@ export interface paths {
          * @description 公開中のプラットフォームお知らせ一覧を返す
          */
         get: operations["getAnnouncements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/admin-action-required": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 個人横断「承認待ち」集計
+         * @description ADMIN/DEPUTY_ADMIN として管理する全チーム・組織の予約承認/シフトリクエスト/マッチング応募/未収請求の承認待ちアイテムをスコープ情報付きで返す。1スコープがエラーでも他スコープは返す縮退設計（AC-B1-4）。認証必須（未認証は401）。管理スコープを持たないユーザーは空配列200（AC-B1-3）。
+         */
+        get: operations["getPersonalAdminActionRequired"];
         put?: never;
         post?: never;
         delete?: never;
@@ -52514,7 +52551,7 @@ export interface components {
             contactMethod?: string;
             description?: string;
             /** Format: date */
-            matchDate: string;
+            matchDate?: string;
             /** @example 14:30:00 */
             matchTimeEnd?: string;
             /** @example 14:30:00 */
@@ -66193,6 +66230,9 @@ export interface components {
             sorted?: boolean;
             unsorted?: boolean;
         };
+        ApiResponseListJoinRequestResponse: {
+            data?: components["schemas"]["JoinRequestResponse"][];
+        };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
         };
@@ -74859,6 +74899,28 @@ export interface components {
             publishedAt?: string;
             severity?: string;
             title?: string;
+        };
+        ApiResponsePersonalAdminActionRequiredResponse: {
+            data?: components["schemas"]["PersonalAdminActionRequiredResponse"];
+        };
+        PersonalAdminActionRequiredItem: {
+            detail_route?: string;
+            domain?: string;
+            item_id?: string;
+            /** Format: date-time */
+            requested_at?: string;
+            requested_by?: string;
+            /** Format: int64 */
+            scope_id?: number;
+            scope_name?: string;
+            scope_slug?: string;
+            scope_type?: string;
+            title?: string;
+        };
+        PersonalAdminActionRequiredResponse: {
+            items?: components["schemas"]["PersonalAdminActionRequiredItem"][];
+            /** Format: int64 */
+            total_pending?: number;
         };
         ActivityFeedResponse: {
             actor?: components["schemas"]["ActorSummary"];
@@ -137053,6 +137115,28 @@ export interface operations {
             };
         };
     };
+    listMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
+                };
+            };
+        };
+    };
     list_66: {
         parameters: {
             query?: never;
@@ -149993,7 +150077,7 @@ export interface operations {
             };
         };
     };
-    listMine: {
+    listMine_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -152969,6 +153053,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListDashboardAnnouncementResponse"];
+                };
+            };
+        };
+    };
+    getPersonalAdminActionRequired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePersonalAdminActionRequiredResponse"];
                 };
             };
         };

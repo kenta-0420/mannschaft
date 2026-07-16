@@ -200,7 +200,10 @@
       "partialLoadError": "No se pudieron cargar algunos datos",
       "todoCompleteAria": "Marcar como completada",
       "todoCompleteSuccess": "Tarea completada",
-      "todoCompleteError": "Error al completar la tarea"
+      "todoCompleteError": "Error al completar la tarea",
+      "adminSectionTitle": "Aprobaciones pendientes",
+      "adminUnresolvedCount": "{count} aprobaciones pendientes",
+      "adminLoadError": "No se pudieron cargar las aprobaciones pendientes"
     },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",

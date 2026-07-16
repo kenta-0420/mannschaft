@@ -200,7 +200,10 @@
       "partialLoadError": "Einige Daten konnten nicht geladen werden",
       "todoCompleteAria": "Als erledigt markieren",
       "todoCompleteSuccess": "Aufgabe erledigt",
-      "todoCompleteError": "Aufgabe konnte nicht abgeschlossen werden"
+      "todoCompleteError": "Aufgabe konnte nicht abgeschlossen werden",
+      "adminSectionTitle": "Ausstehende Genehmigungen",
+      "adminUnresolvedCount": "{count} ausstehende Genehmigungen",
+      "adminLoadError": "Ausstehende Genehmigungen konnten nicht geladen werden"
     },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",

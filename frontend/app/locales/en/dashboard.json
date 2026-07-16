@@ -200,7 +200,10 @@
       "partialLoadError": "Some data could not be loaded",
       "todoCompleteAria": "Mark as complete",
       "todoCompleteSuccess": "TODO completed",
-      "todoCompleteError": "Failed to complete the TODO"
+      "todoCompleteError": "Failed to complete the TODO",
+      "adminSectionTitle": "Pending Approvals",
+      "adminUnresolvedCount": "{count} pending approvals",
+      "adminLoadError": "Failed to load pending approvals"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",
