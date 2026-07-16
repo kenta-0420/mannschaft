@@ -30,8 +30,9 @@
  *  カード2「ニュースレター設定」は Q2 が 2026-07-16 に御裁可され **(b) 長老も可** で決着した
  *  ため isAdmin とする（BE `VillageNewsletterService` は元々 ELDER を許可しており、
  *  これで FE/BE の権限不一致も解消する。§12.1 / §12.2）。
- *  カード1「募集カテゴリ」・カード5「通報管理」は本設計の後続フェーズ（P4 / 別設計）で
- *  実装されるため、遷移先ページが無い間は `to: null` の「近日公開」プレースホルダとする
+ *  カード1「募集カテゴリ」は P4 で管理画面（`/admin/recruit-categories`）を新設し**結線済み**。
+ *  カード5「通報管理」は本設計の対象外（別設計・§2.2）のため、遷移先ページが無い間は
+ *  `to: null` の「近日公開」プレースホルダとする
  *  （`teams/[slug]/admin/index.vue` の approvals カードと同じ作法）。
  */
 // NuxtLink は #components から明示 import して `<component :is>` に **コンポーネント実体**を渡す。
@@ -77,8 +78,8 @@ const cards = computed<AdminConsoleCard[]>(() => {
       titleKey: 'village.admin.cards.recruitCategories.title',
       descKey: 'village.admin.cards.recruitCategories.desc',
       icon: 'pi pi-tags',
-      // P4（カテゴリ管理画面）が未着手のため、画面が出来るまでは近日公開プレースホルダ。
-      to: null,
+      // P4 で管理画面を新設したため結線済み。
+      to: `${base.value}/admin/recruit-categories`,
       visible: perms.value.isAdmin,
     },
     {

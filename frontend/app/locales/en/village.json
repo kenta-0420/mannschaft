@@ -809,6 +809,75 @@
           "step2": "Only the headman can edit the village basic settings."
         }
       }
+    },
+    "recruitCategory": {
+      "title": "Recruit categories",
+      "subtitle": "Define recruitment categories freely to match how your village actually works.",
+      "add": "Add category",
+      "edit": "Edit category",
+      "name": "Category name",
+      "namePlaceholder": "e.g. Looking for participants",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Explain what this category is used for",
+      "color": "Color (optional)",
+      "displayOrder": "Display order",
+      "preset": "Default",
+      "usage": "Recruits in use",
+      "usageCount": "{count}",
+      "empty": "No categories yet. Use \"Add category\" to create one.",
+      "reorder": "Reorder",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "reorderSaved": "Order saved",
+      "created": "Category added",
+      "updated": "Category updated",
+      "deleted": "Category deleted",
+      "confirmDelete": "Delete this category?",
+      "confirmDeleteBody": "This deletes \"{name}\". Categories used by a recruit cannot be deleted.",
+      "limitNote": "Up to {max} categories per village (currently {count}).",
+      "error": {
+        "VILLAGE_083": "Recruit category not found",
+        "VILLAGE_084": "A recruit category with the same name already exists",
+        "VILLAGE_085": "You can have at most {max} recruit categories",
+        "VILLAGE_086": "This category is used by a recruit and cannot be deleted",
+        "loadFailed": "Failed to load recruit categories"
+      },
+      "validation": {
+        "nameRequired": "Category name is required",
+        "nameMax": "Category name must be {max} characters or fewer",
+        "descriptionMax": "Description must be {max} characters or fewer"
+      },
+      "clearColor": "Clear colour"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "How to use recruit categories",
+      "description": "Define the categories used to classify recruits, per village. The headman and elders can edit them.",
+      "manage": {
+        "title": "Add and edit categories",
+        "body": "Use \"Add category\" to create a new one. You can name it freely and add a description and colour.",
+        "steps": {
+          "step1": "Press the \"Add category\" button.",
+          "step2": "Enter a category name (required, up to 40 characters). Description and colour are optional.",
+          "step3": "Press Save to add it to the list. You can edit it any time from the pencil icon."
+        }
+      },
+      "preset": {
+        "title": "Default categories can be changed too",
+        "body": "The default categories created with your village (participants, helpers, other) are just data. If they do not fit your village, rename or delete them.",
+        "steps": {
+          "step1": "Even with the \"Default\" badge, there is no restriction on editing or deleting.",
+          "step2": "If a name does not suit your village, simply rewrite it."
+        }
+      },
+      "order": {
+        "title": "Ordering and deletion",
+        "body": "Reordering with the up/down arrows also changes the order shown when creating and filtering recruits. Categories in use cannot be deleted, to protect existing recruits.",
+        "steps": {
+          "step1": "Reordering with the up/down arrows saves immediately.",
+          "step2": "Categories with zero \"Recruits in use\" can be deleted with the trash icon.",
+          "step3": "To delete a category that is in use, first change the category of those recruits."
+        }
+      }
     }
   }
 }

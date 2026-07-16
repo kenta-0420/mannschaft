@@ -809,6 +809,75 @@
           "step2": "只有村长可以编辑村庄基本设置。"
         }
       }
+    },
+    "recruitCategory": {
+      "title": "招募分类",
+      "subtitle": "可根据村庄的实际情况自由定义招募分类。",
+      "add": "添加分类",
+      "edit": "编辑分类",
+      "name": "分类名称",
+      "namePlaceholder": "例如：招募参加者",
+      "description": "说明（可选）",
+      "descriptionPlaceholder": "可补充说明该分类用于哪类招募",
+      "color": "颜色（可选）",
+      "displayOrder": "显示顺序",
+      "preset": "初始分类",
+      "usage": "使用中的招募",
+      "usageCount": "{count}条",
+      "empty": "还没有分类。请通过「添加分类」创建。",
+      "reorder": "排序",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "reorderSaved": "已保存排序",
+      "created": "已添加分类",
+      "updated": "已更新分类",
+      "deleted": "已删除分类",
+      "confirmDelete": "要删除此分类吗？",
+      "confirmDeleteBody": "将删除「{name}」。如有招募正在使用则无法删除。",
+      "limitNote": "每个村庄最多可创建{max}个分类（当前 {count}个）。",
+      "error": {
+        "VILLAGE_083": "未找到招募分类",
+        "VILLAGE_084": "已存在同名的招募分类",
+        "VILLAGE_085": "招募分类最多{max}个",
+        "VILLAGE_086": "有招募正在使用此分类，无法删除",
+        "loadFailed": "获取招募分类失败"
+      },
+      "validation": {
+        "nameRequired": "分类名称为必填项",
+        "nameMax": "分类名称请控制在{max}个字符以内",
+        "descriptionMax": "说明请控制在{max}个字符以内"
+      },
+      "clearColor": "清除颜色"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "招募分类的使用方法",
+      "description": "可按村庄自由定义用于分类招募的类别。村长与长老可以编辑。",
+      "manage": {
+        "title": "添加与编辑分类",
+        "body": "通过「添加分类」可创建新分类。名称可自由决定，还可添加说明和颜色。",
+        "steps": {
+          "step1": "点击「添加分类」按钮。",
+          "step2": "输入分类名称（必填、40字符以内）。说明与颜色为可选。",
+          "step3": "点击「保存」后会加入列表。之后可随时通过铅笔图标编辑。"
+        }
+      },
+      "preset": {
+        "title": "初始分类也可自由更改",
+        "body": "创建村庄时准备的初始分类（招募参加者・招募协助者・其他）只是数据。如果不适合本村，可以改名或删除。",
+        "steps": {
+          "step1": "即使带有「初始分类」标记，编辑与删除也没有限制。",
+          "step2": "不符合村庄活动的名称，请直接改写。"
+        }
+      },
+      "order": {
+        "title": "排序与删除",
+        "body": "用上下箭头排序后，招募的创建画面与筛选也会按此顺序显示。使用中的分类为保护招募而无法删除。",
+        "steps": {
+          "step1": "用上下箭头排序后会立即保存。",
+          "step2": "「使用中的招募」为0条的分类可通过垃圾桶图标删除。",
+          "step3": "若要删除使用中的分类，请先更改这些招募的分类。"
+        }
+      }
     }
   }
 }

@@ -809,6 +809,75 @@
           "step2": "Nur der Dorfvorsteher kann die Grundeinstellungen des Dorfes bearbeiten."
         }
       }
+    },
+    "recruitCategory": {
+      "title": "Gesuchkategorien",
+      "subtitle": "Definieren Sie Gesuchkategorien frei, passend zur tatsächlichen Arbeit Ihres Dorfes.",
+      "add": "Kategorie hinzufügen",
+      "edit": "Kategorie bearbeiten",
+      "name": "Kategoriename",
+      "namePlaceholder": "z. B. Teilnehmende gesucht",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Erläutern Sie, wofür diese Kategorie verwendet wird",
+      "color": "Farbe (optional)",
+      "displayOrder": "Anzeigereihenfolge",
+      "preset": "Standard",
+      "usage": "Verwendende Gesuche",
+      "usageCount": "{count}",
+      "empty": "Noch keine Kategorien. Erstellen Sie eine über „Kategorie hinzufügen\".",
+      "reorder": "Neu anordnen",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "reorderSaved": "Reihenfolge gespeichert",
+      "created": "Kategorie hinzugefügt",
+      "updated": "Kategorie aktualisiert",
+      "deleted": "Kategorie gelöscht",
+      "confirmDelete": "Diese Kategorie löschen?",
+      "confirmDeleteBody": "„{name}\" wird gelöscht. Von einem Gesuch verwendete Kategorien können nicht gelöscht werden.",
+      "limitNote": "Bis zu {max} Kategorien pro Dorf (aktuell {count}).",
+      "error": {
+        "VILLAGE_083": "Gesuchkategorie nicht gefunden",
+        "VILLAGE_084": "Eine Gesuchkategorie mit demselben Namen existiert bereits",
+        "VILLAGE_085": "Sie können höchstens {max} Gesuchkategorien haben",
+        "VILLAGE_086": "Diese Kategorie wird von einem Gesuch verwendet und kann nicht gelöscht werden",
+        "loadFailed": "Gesuchkategorien konnten nicht geladen werden"
+      },
+      "validation": {
+        "nameRequired": "Der Kategoriename ist erforderlich",
+        "nameMax": "Der Kategoriename darf höchstens {max} Zeichen lang sein",
+        "descriptionMax": "Die Beschreibung darf höchstens {max} Zeichen lang sein"
+      },
+      "clearColor": "Farbe entfernen"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "So funktionieren Gesuchkategorien",
+      "description": "Definieren Sie pro Dorf die Kategorien, mit denen Gesuche eingeteilt werden. Dorfvorsteher und Älteste können sie bearbeiten.",
+      "manage": {
+        "title": "Kategorien hinzufügen und bearbeiten",
+        "body": "Erstellen Sie über „Kategorie hinzufügen\" eine neue. Der Name ist frei wählbar, Beschreibung und Farbe sind ebenfalls möglich.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Kategorie hinzufügen\".",
+          "step2": "Geben Sie einen Kategorienamen ein (erforderlich, max. 40 Zeichen). Beschreibung und Farbe sind optional.",
+          "step3": "Mit „Speichern\" wird sie zur Liste hinzugefügt. Über das Stiftsymbol können Sie sie jederzeit bearbeiten."
+        }
+      },
+      "preset": {
+        "title": "Auch Standardkategorien lassen sich ändern",
+        "body": "Die mit dem Dorf angelegten Standardkategorien (Teilnehmende, Helfende, Sonstiges) sind nur Daten. Wenn sie nicht zu Ihrem Dorf passen, benennen Sie sie um oder löschen Sie sie.",
+        "steps": {
+          "step1": "Auch mit dem Abzeichen „Standard\" gibt es keine Einschränkung beim Bearbeiten oder Löschen.",
+          "step2": "Passt ein Name nicht zu Ihrem Dorf, schreiben Sie ihn einfach um."
+        }
+      },
+      "order": {
+        "title": "Reihenfolge und Löschen",
+        "body": "Das Umsortieren mit den Pfeilen ändert auch die Reihenfolge beim Erstellen und Filtern von Gesuchen. Verwendete Kategorien können nicht gelöscht werden, um bestehende Gesuche zu schützen.",
+        "steps": {
+          "step1": "Das Umsortieren mit den Pfeiltasten wird sofort gespeichert.",
+          "step2": "Kategorien mit null „Verwendenden Gesuchen\" lassen sich über das Papierkorbsymbol löschen.",
+          "step3": "Um eine verwendete Kategorie zu löschen, ändern Sie zuerst die Kategorie dieser Gesuche."
+        }
+      }
     }
   }
 }
