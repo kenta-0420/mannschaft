@@ -53,8 +53,9 @@ public class IncidentCategoryController {
     public ApiResponse<List<IncidentCategoryResponse>> listCategories(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         List<IncidentCategoryResponse> response =
-                incidentCategoryService.listCategories(scopeType, scopeId);
+                incidentCategoryService.listCategories(scopeType, scopeId, userId);
         return ApiResponse.of(response);
     }
 
@@ -66,7 +67,8 @@ public class IncidentCategoryController {
     public ApiResponse<IncidentCategoryResponse> updateCategory(
             @PathVariable Long id,
             @Validated @RequestBody UpdateIncidentCategoryRequest request) {
-        IncidentCategoryResponse response = incidentCategoryService.updateCategory(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        IncidentCategoryResponse response = incidentCategoryService.updateCategory(id, request, userId);
         return ApiResponse.of(response);
     }
 
@@ -76,7 +78,8 @@ public class IncidentCategoryController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
-        incidentCategoryService.deleteCategory(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        incidentCategoryService.deleteCategory(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

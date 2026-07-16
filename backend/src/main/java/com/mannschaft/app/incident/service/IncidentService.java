@@ -1,6 +1,8 @@
 package com.mannschaft.app.incident.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.incident.IncidentErrorCode;
 import com.mannschaft.app.incident.IncidentStatus;
@@ -40,6 +42,13 @@ public class IncidentService {
     private final IncidentAssignmentRepository assignmentRepository;
     private final IncidentStatusHistoryRepository statusHistoryRepository;
     private final DomainEventPublisher eventPublisher;
+
+    /**
+     * 認可根治戦役 Wave3-B3: incident ドメイン全体（authz呼び皆無）への認可敷設で使用する。
+     * 閲覧系は {@code checkMembership}、変更系は {@code checkAdminOrAbove}／
+     * {@code checkOwnerOrAdmin} を用いる（手本: committee/pointcard）。
+     */
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -145,6 +154,9 @@ public class IncidentService {
      */
     @Transactional
     public IncidentResponse reportIncident(Long reportedBy, ReportIncidentRequest req) {
+        // 認可: MEMBER以上（scopeId/scopeTypeはリクエスト由来。BOLA対象IDが無いため通常のcheckMembership）
+        accessControlService.checkMembership(reportedBy, req.scopeId(), req.scopeType());
+
         // カテゴリ存在確認とSLA期限算出
         LocalDateTime slaDeadline = null;
         if (req.categoryId() != null) {
@@ -194,24 +206,36 @@ public class IncidentService {
     /**
      * インシデントを1件取得する。
      *
-     * @param id インシデントID
+     * <p>認可: MEMBER以上。URL に scope が現れない ID 直指定 EP のため、entity を先に fetch し、
+     * entity 由来の scope で認可判定する（BOLA是正）。非メンバーは存在秘匿のため 404 とする。</p>
+     *
+     * @param id     インシデントID
+     * @param userId 呼び出しユーザーID
      * @return インシデントレスポンス
      */
-    public IncidentResponse getIncident(Long id) {
-        return IncidentResponse.from(findIncidentOrThrow(id));
+    public IncidentResponse getIncident(Long id, Long userId) {
+        IncidentEntity incident = findIncidentOrThrow(id);
+        requireMemberOrConceal(incident, userId);
+        return IncidentResponse.from(incident);
     }
 
     /**
      * インシデント一覧をフィルタ検索する（ページング対応）。
      *
+     * <p>認可: MEMBER以上。scopeId/scopeType はクエリパラメータ由来（BOLA対象IDが無いため
+     * 通常の checkMembership。非メンバーは 403）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param status    ステータスフィルタ（nullの場合は全件）
      * @param pageable  ページング情報
+     * @param userId    呼び出しユーザーID
      * @return インシデントサマリーレスポンスのページ
      */
     public Page<IncidentSummaryResponse> listIncidents(
-            String scopeType, Long scopeId, String status, Pageable pageable) {
+            String scopeType, Long scopeId, String status, Pageable pageable, Long userId) {
+        accessControlService.checkMembership(userId, scopeId, scopeType);
+
         // リポジトリからスコープに紐づく未削除インシデントを取得
         List<IncidentEntity> all =
                 incidentRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(
@@ -241,6 +265,9 @@ public class IncidentService {
     /**
      * インシデントのtitle/description/priorityを更新する。
      *
+     * <p>認可: ADMIN または報告者本人。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが報告者でも ADMIN でもない場合は 403（{@code checkOwnerOrAdmin}）。</p>
+     *
      * @param id     インシデントID
      * @param userId 操作者ユーザーID
      * @param req    更新リクエスト
@@ -249,6 +276,9 @@ public class IncidentService {
     @Transactional
     public IncidentResponse updateIncident(Long id, Long userId, UpdateIncidentRequest req) {
         IncidentEntity incident = findIncidentOrThrow(id);
+        requireMemberOrConceal(incident, userId);
+        accessControlService.checkOwnerOrAdmin(
+                userId, incident.getReportedBy(), incident.getScopeId(), incident.getScopeType());
 
         if (req.title() != null || req.description() != null) {
             incident.updateDetails(
@@ -275,6 +305,9 @@ public class IncidentService {
      * IncidentStatusHistoryEntityを保存し、IncidentStatusChangedEventを発行する。
      * RESOLVEDへの変更時にresolvedAtをセットする（IncidentEntityにフィールドがあれば）。
      *
+     * <p>認可: ADMIN または担当者。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でも担当者でもない場合は 403。</p>
+     *
      * @param id        インシデントID
      * @param changedBy 変更者ユーザーID
      * @param newStatus 新ステータス文字列
@@ -283,6 +316,14 @@ public class IncidentService {
     @Transactional
     public IncidentResponse changeStatus(Long id, Long changedBy, String newStatus) {
         IncidentEntity incident = findIncidentOrThrow(id);
+        requireMemberOrConceal(incident, changedBy);
+
+        boolean isAdmin = accessControlService.isAdminOrAbove(
+                changedBy, incident.getScopeId(), incident.getScopeType());
+        boolean isAssignee = assignmentRepository.findByIncidentIdAndUserId(id, changedBy).isPresent();
+        if (!isAdmin && !isAssignee) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
 
         // ステータスのバリデーション
         try {
@@ -326,14 +367,20 @@ public class IncidentService {
      * インシデントに担当者をアサインする。
      * IncidentAssignmentEntityを保存する。
      *
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
      * @param id           インシデントID
      * @param assigneeId   担当者ID
      * @param assigneeType 担当者種別（USER / EXTERNAL）
+     * @param userId       操作者ユーザーID
      * @return 更新後インシデントレスポンス
      */
     @Transactional
-    public IncidentResponse assignIncident(Long id, Long assigneeId, String assigneeType) {
+    public IncidentResponse assignIncident(Long id, Long assigneeId, String assigneeType, Long userId) {
         IncidentEntity incident = findIncidentOrThrow(id);
+        requireMemberOrConceal(incident, userId);
+        accessControlService.checkAdminOrAbove(userId, incident.getScopeId(), incident.getScopeType());
 
         IncidentAssignmentEntity assignment = IncidentAssignmentEntity.builder()
                 .incidentId(id)
@@ -350,11 +397,18 @@ public class IncidentService {
     /**
      * インシデントを論理削除する。
      *
-     * @param id インシデントID
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     インシデントID
+     * @param userId 操作者ユーザーID
      */
     @Transactional
-    public void deleteIncident(Long id) {
+    public void deleteIncident(Long id, Long userId) {
         IncidentEntity incident = findIncidentOrThrow(id);
+        requireMemberOrConceal(incident, userId);
+        accessControlService.checkAdminOrAbove(userId, incident.getScopeId(), incident.getScopeType());
+
         incident.softDelete();
         incidentRepository.save(incident);
         log.info("インシデント論理削除: id={}", id);
@@ -370,5 +424,17 @@ public class IncidentService {
     public IncidentEntity findIncidentOrThrow(Long id) {
         return incidentRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(IncidentErrorCode.INCIDENT_002));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B3 BOLA是正: ID 直指定 EP で使う共通ガード。
+     * URL に scope が現れないため、entity を先に fetch した上で呼び出しユーザーが
+     * entity 由来 scope のメンバーであることを検証する。非メンバーは越境 ID の存在を秘匿するため、
+     * 通常の {@code checkMembership}（403）ではなく entity の NOT_FOUND コード（404）を投げる。
+     */
+    private void requireMemberOrConceal(IncidentEntity incident, Long userId) {
+        if (!accessControlService.isMember(userId, incident.getScopeId(), incident.getScopeType())) {
+            throw new BusinessException(IncidentErrorCode.INCIDENT_002);
+        }
     }
 }
