@@ -96,7 +96,8 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> updateSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.updateSchedule(scheduleId, request);
+        ShiftScheduleResponse response = scheduleService.updateSchedule(
+                scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -108,7 +109,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long scheduleId) {
-        scheduleService.deleteSchedule(scheduleId);
+        scheduleService.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
