@@ -103186,6 +103186,38 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/join-requests/me": {
+      "get": {
+        "tags": [
+          "F17.1 村機能 - 村参加申請"
+        ],
+        "summary": "自分の村参加申請一覧（申請者本人）",
+        "operationId": "listMine",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/chronicles": {
       "get": {
         "tags": [
@@ -126686,7 +126718,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "自分の村作成申請一覧",
-        "operationId": "listMine",
+        "operationId": "listMine_1",
         "responses": {
           "200": {
             "description": "OK",
@@ -198233,6 +198265,17 @@
           },
           "unsorted": {
             "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListJoinRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JoinRequestResponse"
+            }
           }
         }
       },

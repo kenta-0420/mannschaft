@@ -393,6 +393,15 @@ export interface MembershipListParams {
   size?: number
 }
 
+/**
+ * §4.5 参加申請一覧のページングクエリ。
+ * 絞り込み `status` は `listJoinRequests` の第 2 引数で指定するため含めない。
+ */
+export interface JoinRequestListParams {
+  page?: number
+  size?: number
+}
+
 /** §4.6 管理者向け村作成申請一覧クエリ */
 export interface CreationRequestListParams {
   status?: VillageRequestStatus
