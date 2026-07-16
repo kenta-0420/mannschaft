@@ -16,7 +16,30 @@ import java.util.UUID;
  */
 public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity, Long> {
 
-    String SEARCH_QUERY = "SELECT * FROM timeline_posts WHERE MATCH(content) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL AND status = 'PUBLISHED' ORDER BY created_at DESC LIMIT :limit";
+    /**
+     * 認可根治 Wave3-B7-timeline（本丸）: 全文検索の可視 scope 絞り込み。
+     *
+     * <p>旧クエリは {@code MATCH(content) AGAINST} のみで scope 絞り込みが皆無だったため、
+     * TEAM/ORGANIZATION/PERSONAL の全投稿がキーワード一致で横断ヒットしていた（本文漏洩・IDOR）。
+     * 呼び出し元が可視な scope（PUBLIC 常時 + 所属 TEAM/ORGANIZATION + 自分の PERSONAL）に限定する。</p>
+     *
+     * <p><b>VILLAGE は意図的に対象外</b>: {@code scope_village_id} は {@code BINARY(16)} で
+     * ネイティブ SQL の {@code IN} 束縛（Hibernate の UUID⇔バイト列変換の並び順に依存）は
+     * 契約テストで裏取りできない状態での導入リスクが高いため、本 Wave では見送る
+     * （fail-safe: 除外＝非表示であり漏洩方向には倒れない）。村タイムラインは
+     * {@code VillageSearchService#searchByVillageIdAndKeyword}（JPQL・現役メンバー限定）で
+     * 別途カバー済みのため、機能的な穴にはならない。</p>
+     */
+    String SEARCH_QUERY = "SELECT * FROM timeline_posts "
+            + "WHERE MATCH(content) AGAINST(:keyword IN BOOLEAN MODE) "
+            + "AND deleted_at IS NULL AND status = 'PUBLISHED' "
+            + "AND ("
+            + "  scope_type = 'PUBLIC'"
+            + "  OR (scope_type = 'TEAM' AND scope_id IN (:teamIds))"
+            + "  OR (scope_type = 'ORGANIZATION' AND scope_id IN (:orgIds))"
+            + "  OR (scope_type = 'PERSONAL' AND user_id = :userId)"
+            + ") "
+            + "ORDER BY created_at DESC LIMIT :limit";
 
     /**
      * スコープ別フィード（新着順）を取得する。
@@ -64,12 +87,58 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             Pageable pageable);
 
     /**
-     * ユーザーの投稿一覧を取得する。
+     * ユーザーの投稿一覧を取得する（scope 無視・全件）。
+     *
+     * <p><strong>公開 API（{@code GET /timeline/users/{userId}/posts}）からは呼ばないこと。</strong>
+     * TEAM/ORGANIZATION/PERSONAL/VILLAGE を問わず対象ユーザーの全 PUBLISHED 投稿を返すため、
+     * 呼び出し元が非メンバーでも scope 混在で漏洩する（BOLA）。GDPR 個人データ収集
+     * （{@code PersonalDataCollector}）・ダッシュボード自分の投稿表示（{@code DashboardService}）等、
+     * 「対象ユーザー本人の全件」を要する内部用途専用。公開 API は
+     * {@link #findByUserIdVisibleToCaller} を使うこと（認可根治 Wave3-B7-timeline）。</p>
      */
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.userId = :userId "
             + "AND p.parentId IS NULL AND p.status = 'PUBLISHED' ORDER BY p.createdAt DESC")
     List<TimelinePostEntity> findByUserIdOrderByCreatedAtDesc(
             @Param("userId") Long userId, Pageable pageable);
+
+    /**
+     * ユーザーの投稿一覧を取得する（呼び出し元から可視な scope のみ。認可根治 Wave3-B7-timeline）。
+     *
+     * <p>{@code GET /timeline/users/{userId}/posts} 専用。対象ユーザー本人が呼び出し元の場合は
+     * 自分の全投稿（scope 不問）、他人が呼び出す場合は PUBLIC + 呼び出し元が所属する
+     * TEAM/ORGANIZATION/VILLAGE scope の投稿のみに限定する（PERSONAL・非所属 scope は除外・BOLA 対策）。</p>
+     *
+     * <p>{@code teamIds}/{@code orgIds}/{@code villageIds} は呼び出し側で空にならないことを
+     * 保証すること（{@code findMyFeed} と同じ規約・ダミー値で {@code IN ()} エラーを回避）。</p>
+     *
+     * @param targetUserId 投稿一覧の対象ユーザー ID
+     * @param callerUserId 呼び出し元ユーザー ID（自分一致なら scope 不問で全件可視）
+     * @param teamIds      呼び出し元が所属する TEAM scopeId 一覧（非空）
+     * @param orgIds       呼び出し元が所属する ORGANIZATION scopeId 一覧（非空）
+     * @param villageIds   呼び出し元が所属する村 ID 一覧（非空）
+     * @param pageable     取得件数
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.userId = :targetUserId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND (
+                p.userId = :callerUserId
+                OR p.scopeType = com.mannschaft.app.timeline.PostScopeType.PUBLIC
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM AND p.scopeId IN :teamIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION AND p.scopeId IN :orgIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.VILLAGE AND p.scopeVillageId IN :villageIds)
+              )
+            ORDER BY p.createdAt DESC
+            """)
+    List<TimelinePostEntity> findByUserIdVisibleToCaller(
+            @Param("targetUserId") Long targetUserId,
+            @Param("callerUserId") Long callerUserId,
+            @Param("teamIds") List<Long> teamIds,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("villageIds") List<UUID> villageIds,
+            Pageable pageable);
 
     /**
      * 投稿のリプライ一覧を会話の古い順（{@code createdAt} 昇順）で先頭から取得する。
@@ -110,11 +179,25 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("scopeType") PostScopeType scopeType, @Param("scopeId") Long scopeId);
 
     /**
-     * 全文検索で投稿を取得する。
+     * 全文検索で投稿を取得する（可視 scope 絞り込み込み。認可根治 Wave3-B7-timeline）。
+     *
+     * <p>{@code teamIds}/{@code orgIds} は呼び出し側で空にならないことを保証すること
+     * （空の場合は native SQL の {@code IN ()} が構文エラーになるため、ダミー値
+     * {@code List.of(-1L)} 等で埋めること。{@code findMyFeed} と同じ規約）。</p>
+     *
+     * @param keyword 検索キーワード
+     * @param teamIds 呼び出し元が所属する TEAM scopeId 一覧（非空）
+     * @param orgIds  呼び出し元が所属する ORGANIZATION scopeId 一覧（非空）
+     * @param userId  呼び出し元ユーザー ID（PERSONAL 投稿の自分一致判定用）
+     * @param limit   取得件数上限
      */
     @Query(value = SEARCH_QUERY, nativeQuery = true)
     List<TimelinePostEntity> searchByKeyword(
-            @Param("keyword") String keyword, @Param("limit") int limit);
+            @Param("keyword") String keyword,
+            @Param("teamIds") List<Long> teamIds,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("userId") Long userId,
+            @Param("limit") int limit);
 
     // ====================================================================
     // F19.1 Phase 7 — 公開タイムライン投稿（未ログインアクセス用）

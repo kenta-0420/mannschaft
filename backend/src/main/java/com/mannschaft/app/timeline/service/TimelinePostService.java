@@ -69,6 +69,13 @@ public class TimelinePostService {
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "timeline_post_attachments";
 
+    /**
+     * 認可根治 Wave3-B7-timeline: 村所属が空のユーザーで JPQL の {@code IN ()} 構文エラーを避けるための
+     * ダミー UUID（nil UUID）。UUIDv7 は常に非ゼロのタイムスタンプ prefix を持つため実在の村 ID と
+     * 衝突しない（{@code findMyFeed} の {@code -1L} ダミーと同じ考え方）。
+     */
+    private static final UUID NIL_VILLAGE_ID_SENTINEL = new UUID(0L, 0L);
+
     private final TimelinePostRepository postRepository;
     private final TimelinePostAttachmentRepository attachmentRepository;
     private final TimelinePostEditRepository editRepository;
@@ -438,6 +445,12 @@ public class TimelinePostService {
      */
     public PostDetailResponse getPostDetail(Long postId, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
+        // 認可根治 Wave3-B7-timeline（BOLA 根治）: post を先に取得し、post 自身が持つ scope に対して
+        // membership を検証する。不可視なら「存在しない」と同じ POST_NOT_FOUND を返し、
+        // 越境アクセスの成否（対象 ID が実在するか）を漏らさない。
+        if (!isPostVisible(post, userId)) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
 
         List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(
                 attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId));
@@ -493,13 +506,21 @@ public class TimelinePostService {
      * <p>scopeType=VILLAGE の場合は scopeVillageId（UUID）で絞り込む。
      * scopeVillageId が null の場合は空リストを返す。</p>
      *
+     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
+     * （非メンバーは COMMON_002・403）、VILLAGE は {@link #requireVillageMember}
+     * （非メンバーは {@link VillageErrorCode#NOT_MEMBER}・IDOR 対策で 404 相当）で
+     * 呼び出し元のメンバーシップを検証する。PUBLIC 等その他スコープは従来通り無検証
+     * （本来公開のため）。TIMELINE_POST は {@code VisibilityResolver} 未実装のため、
+     * {@code contentVisibilityChecker} ではなく明示 membership チェックで是正する。</p>
+     *
      * @param scopeType      スコープ種別
      * @param scopeId        スコープID（VILLAGE スコープでは未使用）
      * @param scopeVillageId 村 ID（scopeType=VILLAGE 時に使用）
      * @param size           取得件数
+     * @param userId         呼び出し元ユーザー ID（メンバーシップ検証用）
      * @return 投稿一覧
      */
-    public List<PostResponse> getFeed(String scopeType, Long scopeId, UUID scopeVillageId, int size) {
+    public List<PostResponse> getFeed(String scopeType, Long scopeId, UUID scopeVillageId, int size, Long userId) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
         List<TimelinePostEntity> posts;
@@ -508,13 +529,53 @@ public class TimelinePostService {
             if (scopeVillageId == null) {
                 return List.of();
             }
+            requireVillageMember(scopeVillageId, userId);
             posts = postRepository.findFeedByVillageId(scopeVillageId, PageRequest.of(0, feedSize));
         } else {
+            checkScopeMembership(scopeType, scopeId, userId);
             posts = postRepository.findFeedByScopeType(scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
         }
         // スコープ別フィードにも著者名/アバター・投稿元名/slug・代理主体を enrich する
         // （マイフィードと同じ enrichPosts を通す）。
         return enrichPosts(timelineMapper.toPostResponseList(posts));
+    }
+
+    /**
+     * 呼び出し元ユーザーが対象村の現役 USER メンバーであることを検証する（認可根治 Wave3-B7-timeline）。
+     * 非メンバーは {@link VillageErrorCode#NOT_MEMBER}（village ドメインの既存 IDOR 対策と同一方針・
+     * {@code VillageSearchService#requireVillageMember} を踏襲）。
+     */
+    private void requireVillageMember(UUID villageId, Long userId) {
+        if (!postingIdentityService.isUserVillageMember(villageId, userId)) {
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
+        }
+    }
+
+    /**
+     * 投稿 1 件の可視性を判定する（認可根治 Wave3-B7-timeline・BOLA 対策）。
+     * {@link #getPostDetail} / {@link #getReplies} が「post を先に取得し post 自身の scope で判定する」
+     * ために使う（クエリパラメータ由来の scope ではなく、DB に永続化された実 scope を正とする）。
+     *
+     * <ul>
+     *   <li>PUBLIC: 常に可視</li>
+     *   <li>TEAM/ORGANIZATION: 呼び出し元がそのスコープのメンバーであること</li>
+     *   <li>VILLAGE: 呼び出し元がその村の現役 USER メンバーであること</li>
+     *   <li>PERSONAL: 呼び出し元が投稿者本人であること</li>
+     *   <li>FRIEND_TEAM/FRIEND_FORWARD/FRIEND_ARCHIVE: 本 Wave の対象外（social ドメインの
+     *       {@code FriendFeedController} 経由が正規導線であり、本メソッド経由の閲覧は想定外だが
+     *       誤検知で正規導線を壊さないよう pass-through。B7 以降の follow-up 候補として残す）</li>
+     * </ul>
+     */
+    private boolean isPostVisible(TimelinePostEntity post, Long userId) {
+        return switch (post.getScopeType()) {
+            case PUBLIC -> true;
+            case TEAM -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
+            case ORGANIZATION -> accessControlService.isMember(userId, post.getScopeId(), "ORGANIZATION");
+            case VILLAGE -> post.getScopeVillageId() != null
+                    && postingIdentityService.isUserVillageMember(post.getScopeVillageId(), userId);
+            case PERSONAL -> userId != null && userId.equals(post.getUserId());
+            case FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE -> true;
+        };
     }
 
     /**
@@ -692,16 +753,30 @@ public class TimelinePostService {
     }
 
     /**
-     * ユーザーの投稿一覧を取得する。
+     * ユーザーの投稿一覧を取得する（呼び出し元から可視な scope のみ。認可根治 Wave3-B7-timeline）。
      *
-     * @param userId ユーザーID
-     * @param size   取得件数
+     * <p>旧実装は対象ユーザーの全 PUBLISHED 投稿を scope 無視で返しており、TEAM/PERSONAL 等
+     * 呼び出し元が非メンバーの投稿まで漏洩していた（BOLA）。本人が閲覧する場合は scope 不問で
+     * 全件、他人が閲覧する場合は PUBLIC + 呼び出し元が所属する TEAM/ORGANIZATION/VILLAGE scope の
+     * 投稿のみに限定する（{@link TimelinePostRepository#findByUserIdVisibleToCaller} 参照）。</p>
+     *
+     * @param targetUserId 投稿一覧の対象ユーザーID
+     * @param size         取得件数
+     * @param callerUserId 呼び出し元ユーザー ID（可視 scope 解決用）
      * @return 投稿一覧
      */
-    public List<PostResponse> getUserPosts(Long userId, int size) {
+    public List<PostResponse> getUserPosts(Long targetUserId, int size, Long callerUserId) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
-        List<TimelinePostEntity> posts = postRepository.findByUserIdOrderByCreatedAtDesc(
-                userId, PageRequest.of(0, feedSize));
+        List<Long> teamIds = membershipService.getActiveTeamIdsByUser(callerUserId);
+        List<Long> orgIds = membershipService.getActiveOrgIdsByUser(callerUserId);
+        List<UUID> villageIds = postingIdentityService.getActiveVillageIdsByUser(callerUserId);
+        // 空リストは JPQL の IN () で構文エラーになるためダミー値で埋める（findMyFeed と同一規約）。
+        List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
+        List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+        List<UUID> safeVillageIds = villageIds.isEmpty() ? List.of(NIL_VILLAGE_ID_SENTINEL) : villageIds;
+        List<TimelinePostEntity> posts = postRepository.findByUserIdVisibleToCaller(
+                targetUserId, callerUserId, safeTeamIds, safeOrgIds, safeVillageIds,
+                PageRequest.of(0, feedSize));
         return timelineMapper.toPostResponseList(posts);
     }
 
@@ -711,12 +786,21 @@ public class TimelinePostService {
      * <p>著者名/アバター・投稿元名/slug・代理主体を {@link #enrichPosts} で付与する
      * （一覧フィードと同一の表示情報）。ID 昇順で並べ、{@code cursor} 指定時はその ID より後を返す。</p>
      *
+     * <p><b>認可根治 Wave3-B7-timeline（BOLA 根治）</b>: 親投稿を取得し、その scope に対して
+     * {@link #isPostVisible} で可視性を検証する。不可視なら {@link #getPostDetail} と同様に
+     * POST_NOT_FOUND を返す（越境アクセスの成否を漏らさない）。</p>
+     *
      * @param postId 親投稿ID
      * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
      * @param size   取得件数（1 件以上・0 以下は既定 20）
+     * @param userId 呼び出し元ユーザー ID（親投稿の可視性検証用）
      * @return enrich 済みリプライ一覧（ID 昇順）
      */
-    public List<PostResponse> getReplies(Long postId, Long cursor, int size) {
+    public List<PostResponse> getReplies(Long postId, Long cursor, int size, Long userId) {
+        TimelinePostEntity parent = findPostOrThrow(postId);
+        if (!isPostVisible(parent, userId)) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
                 postId, cursor, PageRequest.of(0, feedSize));
@@ -726,11 +810,21 @@ public class TimelinePostService {
     /**
      * ピン留め投稿一覧を取得する。
      *
+     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
+     * で呼び出し元のメンバーシップを検証する（非メンバーは COMMON_002・403）。</p>
+     *
+     * <p><b>既知の残課題（本 Wave 対象外）</b>: VILLAGE スコープは呼び出し元が
+     * {@code scopeVillageId} を渡す経路が無く（本 EP のシグネチャに UUID パラメータが存在しない）、
+     * {@code scope_id} は常に 0 のため全村で衝突する。本メソッドの認可検証だけでは
+     * VILLAGE のピン留め投稿混在は是正できない（別途 API 契約変更が必要・follow-up 起票推奨）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    呼び出し元ユーザー ID（メンバーシップ検証用）
      * @return ピン留め投稿一覧
      */
-    public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId) {
+    public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId, Long userId) {
+        checkScopeMembership(scopeType, scopeId, userId);
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
         List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
         // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
@@ -738,15 +832,27 @@ public class TimelinePostService {
     }
 
     /**
-     * 全文検索で投稿を取得する。
+     * 全文検索で投稿を取得する（可視 scope 絞り込み込み。認可根治 Wave3-B7-timeline・本丸）。
+     *
+     * <p>旧実装は {@code MATCH...AGAINST} のみで scope を一切見ておらず、TEAM/ORGANIZATION/
+     * PERSONAL の全投稿がキーワード一致で横断ヒットしていた（本文漏洩）。呼び出し元が可視な
+     * scope（PUBLIC 常時 + 所属 TEAM/ORGANIZATION + 自分の PERSONAL）に限定する。
+     * VILLAGE は本 Wave では対象外（{@link TimelinePostRepository#SEARCH_QUERY} の Javadoc 参照）。</p>
      *
      * @param keyword 検索キーワード
      * @param limit   取得件数
+     * @param userId  呼び出し元ユーザー ID（可視 scope 解決・PERSONAL 一致判定用）
      * @return 検索結果
      */
-    public List<PostResponse> searchPosts(String keyword, int limit) {
+    public List<PostResponse> searchPosts(String keyword, int limit, Long userId) {
         int searchLimit = limit > 0 ? limit : DEFAULT_FEED_SIZE;
-        List<TimelinePostEntity> posts = postRepository.searchByKeyword(keyword, searchLimit);
+        List<Long> teamIds = membershipService.getActiveTeamIdsByUser(userId);
+        List<Long> orgIds = membershipService.getActiveOrgIdsByUser(userId);
+        // 空リストは native SQL の IN () で構文エラーになるためダミー値で埋める（findMyFeed と同一規約）。
+        List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
+        List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+        List<TimelinePostEntity> posts = postRepository.searchByKeyword(
+                keyword, safeTeamIds, safeOrgIds, userId, searchLimit);
         return timelineMapper.toPostResponseList(posts);
     }
 
