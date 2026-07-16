@@ -20,7 +20,8 @@ import java.nio.charset.StandardCharsets;
  *
  * <p>{@code GET /api/v1/{scopeType}/{scopeId}/form-templates/{templateId}/submissions/export}。
  * テンプレート単位の全提出を EAV ピボット展開して RFC 4180 CSV を返す。
- * ADMIN 認可は SecurityUtils / 認可フィルタで担保する。</p>
+ * ADMIN 認可は {@link FormCsvExportService} 内で {@code AccessControlService.checkAdminOrAbove}
+ * により担保する（認可根治戦役 Wave3-B4）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/{scopeType}/{scopeId}/form-templates/{templateId}/submissions")

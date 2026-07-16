@@ -100,6 +100,8 @@ class DisclosureExportControllerIntegrationTest extends AbstractDisclosureIntegr
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
+        // 認可根治戦役 Wave3-B4: 出力実行/ダウンロード/期限延長は checkAdminOrAbove の対象になったため ADMIN を付与
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, ORG_ID);
         insertOrganization(ORG_ID, "出力テスト組合");
 
         templateId = saveSystemTemplate(

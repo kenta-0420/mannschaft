@@ -627,11 +627,21 @@ class SecurityConfigAuthorizationTest {
                 "GET /api/v1/admin/onboarding/presets");
     }
 
+    // 認可根治戦役 Wave3 トランシェB4: F05.7 forms の SYSTEM_ADMIN 専用プリセット管理も
+    // Wave0 と同じ requestMatcher 登録漏れだったため追加格上げ（SecurityConfig 参照）。
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/form-presets は 403")
+    void member_admin_form_presets_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/form-presets")),
+                "GET /api/v1/admin/form-presets");
+    }
+
     // ---- AC-0-1: SYSTEM_ADMIN は 403 にならない（過剰ロックでない証左） ----
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    @DisplayName("AC-0-1 SYSTEM_ADMIN: admin 系 6 パスは 403 にならない")
+    @DisplayName("AC-0-1 SYSTEM_ADMIN: admin 系 7 パスは 403 にならない")
     void systemAdmin_admin_paths_not_forbidden() throws Exception {
         expectNotForbidden(mockMvc.perform(post("/api/v1/admin/stripe/reconcile/1")),
                 "POST /api/v1/admin/stripe/reconcile/{id}");
@@ -645,6 +655,8 @@ class SecurityConfigAuthorizationTest {
                 "GET /api/v1/admin/users/{id}/violations");
         expectNotForbidden(mockMvc.perform(get("/api/v1/admin/onboarding/presets")),
                 "GET /api/v1/admin/onboarding/presets");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/form-presets")),
+                "GET /api/v1/admin/form-presets");
     }
 
     // ---- AC-0-2（回帰防止）: per-scope admin 配下は一律 SYSTEM_ADMIN 化しない ----
