@@ -1,5 +1,6 @@
 package com.mannschaft.app.member;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.dto.CreateTeamPageRequest;
 import com.mannschaft.app.member.dto.TeamPageResponse;
@@ -21,6 +22,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -32,6 +35,7 @@ class TeamPageServiceTest {
     @Mock private TeamPageSectionRepository sectionRepository;
     @Mock private MemberProfileRepository profileRepository;
     @Mock private MemberMapper memberMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private TeamPageService service;
 
     @Nested
@@ -106,7 +110,7 @@ class TeamPageServiceTest {
             given(pageRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getPage(1L))
+            assertThatThrownBy(() -> service.getPage(999L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_001"));
@@ -125,9 +129,10 @@ class TeamPageServiceTest {
                     .teamId(1L).title("テスト").slug("test").pageType(PageType.MAIN).build();
             given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
             given(pageRepository.save(any(TeamPageEntity.class))).willReturn(entity);
+            given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString())).willReturn(true);
 
             // When
-            service.deletePage(1L);
+            service.deletePage(999L, 1L);
 
             // Then
             verify(pageRepository).save(any(TeamPageEntity.class));

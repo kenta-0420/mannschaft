@@ -917,18 +917,20 @@ public class GlobalExceptionHandler {
             Map.entry("WORKFLOW_005", HttpStatus.NOT_FOUND),             // COMMENT_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("WORKFLOW_006", HttpStatus.NOT_FOUND),             // ATTACHMENT_NOT_FOUND（IDOR 秘匿 → 404）
             // 承認判断は「指定承認者でない」という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
-            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN),              // NOT_APPROVER → 403
+            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN),             // NOT_APPROVER → 403
+            // Wave3 member BOLA存在秘匿
+            Map.entry("MEMBER_001", HttpStatus.NOT_FOUND),               // PAGE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_002", HttpStatus.NOT_FOUND),               // SECTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_003", HttpStatus.NOT_FOUND),               // PROFILE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_004", HttpStatus.NOT_FOUND),               // FIELD_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3 トランシェB5: supporter/property/gallery の *_NOT_FOUND は、
-            // 対象エンティティが自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要
-            // （path に scope を含むエンドポイントの scope 不一致は「不在」と同一コードに畳み込む）。
-            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            // 対象エンティティが自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。
             Map.entry("SUPPORTER_003", HttpStatus.NOT_FOUND),            // 申請不在/越境（IDOR 秘匿 → 404）
             Map.entry("PROPERTY_001", HttpStatus.NOT_FOUND),             // パッケージ不在/越境（IDOR 秘匿 → 404）
             Map.entry("PROPERTY_005", HttpStatus.NOT_FOUND),             // 業者不在/越境（IDOR 秘匿 → 404）
             Map.entry("GALLERY_001", HttpStatus.NOT_FOUND),              // ALBUM_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("GALLERY_002", HttpStatus.NOT_FOUND),              // PHOTO_NOT_FOUND（IDOR 秘匿 → 404）
-            // GALLERY_007（UPLOAD_NOT_ALLOWED）は member アップロード不許可アルバムへの
-            // アップロード試行という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
+            // GALLERY_007（UPLOAD_NOT_ALLOWED）は member アップロード不許可アルバムへの明確な認可拒否のため 403。
             Map.entry("GALLERY_007", HttpStatus.FORBIDDEN)               // UPLOAD_NOT_ALLOWED → 403
     );
 

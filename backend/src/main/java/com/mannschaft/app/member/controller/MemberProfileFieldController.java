@@ -1,6 +1,7 @@
 package com.mannschaft.app.member.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.member.dto.CreateFieldRequest;
 import com.mannschaft.app.member.dto.FieldResponse;
 import com.mannschaft.app.member.dto.UpdateFieldRequest;
@@ -43,7 +44,8 @@ public class MemberProfileFieldController {
     public ResponseEntity<ApiResponse<List<FieldResponse>>> listFields(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId) {
-        List<FieldResponse> response = fieldService.listFields(teamId, organizationId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<FieldResponse> response = fieldService.listFields(userId, teamId, organizationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -55,7 +57,8 @@ public class MemberProfileFieldController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<FieldResponse>> createField(
             @Valid @RequestBody CreateFieldRequest request) {
-        FieldResponse response = fieldService.createField(request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        FieldResponse response = fieldService.createField(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -68,7 +71,8 @@ public class MemberProfileFieldController {
     public ResponseEntity<ApiResponse<FieldResponse>> updateField(
             @PathVariable Long id,
             @Valid @RequestBody UpdateFieldRequest request) {
-        FieldResponse response = fieldService.updateField(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        FieldResponse response = fieldService.updateField(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -79,7 +83,8 @@ public class MemberProfileFieldController {
     @Operation(summary = "フィールド定義無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
     public ResponseEntity<Void> deactivateField(@PathVariable Long id) {
-        fieldService.deactivateField(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        fieldService.deactivateField(userId, id);
         return ResponseEntity.noContent().build();
     }
 }
