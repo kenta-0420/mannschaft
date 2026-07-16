@@ -112,7 +112,7 @@ public class TimelinePostController {
             @PathVariable Long id,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int limit) {
-        List<PostResponse> replies = postService.getReplies(id, cursor, limit);
+        List<PostResponse> replies = postService.getReplies(id, cursor, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(TimelineFeedResponse.ofReplies(replies, limit));
     }
 

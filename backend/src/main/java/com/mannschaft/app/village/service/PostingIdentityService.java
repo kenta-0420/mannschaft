@@ -343,6 +343,25 @@ public class PostingIdentityService {
     }
 
     /**
+     * 指定ユーザーが USER 主体として現役所属している村の ID 一覧を返す（認可根治 Wave3-B7-timeline）。
+     *
+     * <p>{@code timeline} ドメインの {@code TimelinePostService#getUserPosts} が「呼び出し元が
+     * 見える VILLAGE スコープ」を絞り込むために利用する。
+     * {@code com.mannschaft.app.membership.service.MembershipService#getActiveTeamIdsByUser}
+     * と同じ思想（プリミティブのみ返却・ドメイン境界原則5・D-3 ArchUnit 準拠）で、village ドメインの
+     * {@link VillageMembershipRepository} を他ドメインへ直接漏らさない越境窓口。
+     * 退会（{@code left_at}）・BAN（{@code banned_at}）済みは除外（{@link #isUserVillageMember} と同一の現役定義）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return 現役 USER メンバーとして所属する村の ID 一覧
+     */
+    public List<UUID> getActiveVillageIdsByUser(Long userId) {
+        return membershipRepository.findActiveUserMemberships(userId).stream()
+                .map(VillageMembershipEntity::getVillageId)
+                .toList();
+    }
+
+    /**
      * ユーザーの表示名（村ニックネーム）を解決する。
      * Phase 1 は {@code villageId IS NULL} の全村共通ニックネーム。未登録なら {@code "USER:#<id>"}。
      */
