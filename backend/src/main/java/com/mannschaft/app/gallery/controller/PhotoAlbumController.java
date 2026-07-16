@@ -103,7 +103,7 @@ public class PhotoAlbumController {
     public ResponseEntity<ApiResponse<AlbumResponse>> updateAlbum(
             @PathVariable Long id,
             @Valid @RequestBody UpdateAlbumRequest request) {
-        AlbumResponse response = albumService.updateAlbum(id, request);
+        AlbumResponse response = albumService.updateAlbum(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -114,7 +114,7 @@ public class PhotoAlbumController {
     @Operation(summary = "アルバム削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteAlbum(@PathVariable Long id) {
-        albumService.deleteAlbum(id);
+        albumService.deleteAlbum(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -172,7 +172,8 @@ public class PhotoAlbumController {
             @PathVariable Long id,
             @RequestParam(required = false) List<Long> photoIds,
             @RequestParam(defaultValue = "100") int limit) {
-        DownloadResponse response = photoService.getAlbumDownloadUrl(id, photoIds, limit);
+        DownloadResponse response =
+                photoService.getAlbumDownloadUrl(id, SecurityUtils.getCurrentUserId(), photoIds, limit);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

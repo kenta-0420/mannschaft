@@ -3,6 +3,8 @@ package com.mannschaft.app.property.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.property.PropertyHistoryErrorCode;
 import com.mannschaft.app.property.VendorCategory;
 import com.mannschaft.app.property.dto.VendorRequest;
@@ -11,6 +13,7 @@ import com.mannschaft.app.property.dto.VendorSuggestionResponse;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.VendorRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +78,13 @@ class VendorControllerIntegrationTest extends AbstractMySqlIntegrationTest {
                 "業者", "テスト");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+        // 認可根治戦役 Wave3-B5: VendorController に checkMembership/checkAdminOrAbove を追加したため、
+        // 本テストの被験者は TEAM_ID の ADMIN として振る舞う前提で付与する
+        // （checkMembership は memberships 表、checkAdminOrAbove は user_roles 表を見るため両方必要）。
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", TEAM_ID, null);
+        MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+        em.flush();
+        em.clear();
     }
 
     /** users テーブルにテスト用ユーザーを INSERT し ID を返す（FK 制約クリア用）。 */
