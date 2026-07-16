@@ -54,6 +54,18 @@ public class VillageMatchRecruitEntity extends UuidV7Entity {
     @Column(name = "category", nullable = false, length = 30)
     private VillageMatchRecruitCategory category;
 
+    /**
+     * カテゴリマスタ参照（F17.1 P1 の Expand で追加された {@code category_id} 列。
+     * 設計書 §5.4 Stage 1）。
+     *
+     * <p>この時点（P2）ではまだ書き込み専用の補助フィールドであり、{@code category}（enum）が
+     * 引き続き正である。読み取りをこちらへ一本化するのは Stage 2（P5・設計書 §5.4）の役割。
+     * P2 でマッピングした理由は、募集カテゴリ CRUD の削除ガード（使用中判定）と
+     * {@code recruitCount} 集計（設計書 §6.2）が本列を参照する必要があるため。</p>
+     */
+    @Column(name = "category_id", columnDefinition = "BINARY(16)")
+    private UUID categoryId;
+
     @Column(name = "title", nullable = false, length = 100)
     private String title;
 

@@ -362,7 +362,24 @@ public enum VillageErrorCode implements ErrorCode {
      * 投稿者本人による自分の投稿の更新・削除はモデレーター権限を要しないため本コードは発生しない。</p>
      */
     VILLAGE_BULLETIN_MODERATE_FORBIDDEN("VILLAGE_082",
-            "この操作は村の村長または長老のみが行えます", Severity.WARN);
+            "この操作は村の村長または長老のみが行えます", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 村長コンソール + 募集カテゴリマスタ（VILLAGE_083〜086）
+    // ==================================================================
+    // 設計書 docs/features/F17.1_village_headman_console_and_recruit_categories.md §8
+
+    /** VILLAGE_083: 募集カテゴリが存在しない（404、IDOR 対策で村不一致も 404 に統一）。 */
+    RECRUIT_CATEGORY_NOT_FOUND("VILLAGE_083", "募集カテゴリが見つかりません", Severity.WARN),
+
+    /** VILLAGE_084: 同一村内でカテゴリ名が重複（409）。 */
+    RECRUIT_CATEGORY_NAME_DUPLICATED("VILLAGE_084", "同じ名前の募集カテゴリが既にあります", Severity.WARN),
+
+    /** VILLAGE_085: 1村あたりのカテゴリ数上限（20件）超過（422）。 */
+    RECRUIT_CATEGORY_LIMIT_EXCEEDED("VILLAGE_085", "募集カテゴリは20件までです", Severity.WARN),
+
+    /** VILLAGE_086: 使用中の募集カテゴリを削除しようとした（409）。 */
+    RECRUIT_CATEGORY_IN_USE("VILLAGE_086", "このカテゴリを使っている募集があるため削除できません", Severity.WARN);
 
     private final String code;
     private final String message;
