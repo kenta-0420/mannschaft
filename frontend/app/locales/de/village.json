@@ -76,8 +76,6 @@
       "timeline": "Zeitstrahl",
       "lobby": "Foyer",
       "members": "Mitgliederliste",
-      "settings": "Einstellungen",
-      "reports": "Meldungen",
       "calendar": "Kalender",
       "festival": "Festival",
       "matchRecruit": "Spielrekrutierung",
@@ -748,6 +746,67 @@
           "step1": "Wechsle über die Tabs zwischen Prüfung ausstehend, Genehmigt, Abgelehnt und Zurückgezogen.",
           "step2": "Mit Genehmigen wird die antragstellende Person Dorfbewohner. Der Prüfkommentar ist optional.",
           "step3": "Beim Ablehnen ist ein Prüfkommentar Pflicht, damit der Grund nachvollziehbar ist."
+        }
+      }
+    },
+    "admin": {
+      "title": "Dorfverwaltung",
+      "subtitle": "Verwaltungsmenü für Dorfvorsteher und Älteste",
+      "cards": {
+        "recruitCategories": {
+          "title": "Gesuchkategorien",
+          "desc": "Gesuchkategorien hinzufügen, bearbeiten und neu anordnen."
+        },
+        "newsletter": {
+          "title": "Newsletter-Einstellungen",
+          "desc": "Versandhäufigkeit und Abmeldung konfigurieren."
+        },
+        "members": {
+          "title": "Mitglieder & Rollen",
+          "desc": "Dorfbewohner verwalten, Rollen ändern und sperren (BAN)."
+        },
+        "joinRequests": {
+          "title": "Beitrittsanträge prüfen",
+          "desc": "Beitrittsanträge prüfen sowie genehmigen oder ablehnen."
+        },
+        "reports": {
+          "title": "Meldungsverwaltung",
+          "desc": "Meldungen prüfen und bearbeiten (demnächst verfügbar)."
+        },
+        "settings": {
+          "title": "Grundeinstellungen des Dorfes",
+          "desc": "Name, Beschreibung und weitere Grundinformationen des Dorfes bearbeiten."
+        }
+      },
+      "comingSoon": "Demnächst verfügbar",
+      "accessDenied": "Nur der Dorfvorsteher und Älteste können auf diesen Bildschirm zugreifen."
+    },
+    "adminGuide": {
+      "page_title": "So funktioniert die Dorfverwaltung",
+      "description": "Ein Verwaltungsmenü für Dorfvorsteher und Älteste. Jede Karte führt zu einem Bildschirm, der für den täglichen Betrieb benötigt wird.",
+      "open": {
+        "title": "Dorfverwaltung öffnen",
+        "body": "Öffnen Sie sie über die Schaltfläche mit dem Zahnradsymbol „Dorfverwaltung\" in der Dorfkopfzeile. Diese Schaltfläche wird nur Dorfvorstehern und Ältesten angezeigt.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Dorfverwaltung\" oben rechts in der Dorfkopfzeile.",
+          "step2": "Eine Liste von Karten wird angezeigt. Tippen Sie auf eine Karte, um zu diesem Bildschirm zu gelangen."
+        }
+      },
+      "cards": {
+        "title": "Was Sie mit jeder Karte tun können",
+        "body": "Sie können auf Gesuchkategorien, Newsletter-Einstellungen, Mitglieder & Rollen, die Prüfung von Beitrittsanträgen, Meldungen und die Grundeinstellungen des Dorfes zugreifen.",
+        "steps": {
+          "step1": "„Gesuchkategorien\" ermöglicht das Hinzufügen, Bearbeiten und Neuanordnen von Kategorien wie Festen oder Übungsspielen.",
+          "step2": "„Mitglieder & Rollen\" und „Beitrittsanträge prüfen\" ermöglichen die Verwaltung von Dorfbewohnern und die Prüfung neuer Bewerber.",
+          "step3": "Die „Grundeinstellungen des Dorfes\" können nur vom Dorfvorsteher geöffnet werden. Damit werden Name, Beschreibung und mehr bearbeitet."
+        }
+      },
+      "permissions": {
+        "title": "Unterschied zwischen Dorfvorsteher und Ältesten",
+        "body": "Die meisten Karten können sowohl vom Dorfvorsteher als auch von Ältesten genutzt werden, aber die Grundeinstellungen des Dorfes (und derzeit auch die Newsletter-Einstellungen) können nur vom Dorfvorsteher geöffnet werden.",
+        "steps": {
+          "step1": "Älteste können die Karten Gesuchkategorien, Mitglieder, Beitrittsanträge und Meldungen nutzen.",
+          "step2": "Nur der Dorfvorsteher kann die Grundeinstellungen des Dorfes bearbeiten."
         }
       }
     }

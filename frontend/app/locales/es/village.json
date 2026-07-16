@@ -76,8 +76,6 @@
       "timeline": "Cronología",
       "lobby": "Vestíbulo",
       "members": "Lista de miembros",
-      "settings": "Configuración",
-      "reports": "Denuncias",
       "calendar": "Calendario",
       "festival": "Festival",
       "matchRecruit": "Reclutamiento de partidos",
@@ -748,6 +746,67 @@
           "step1": "Usa las pestañas para cambiar entre Pendiente de revisión, Aprobada, Rechazada y Retirada.",
           "step2": "Pulsa Aprobar para que la persona solicitante se convierta en aldeano. El comentario es opcional.",
           "step3": "Al pulsar Rechazar es obligatorio un comentario de revisión para explicar el motivo."
+        }
+      }
+    },
+    "admin": {
+      "title": "Gestión de la aldea",
+      "subtitle": "Menú de gestión para el jefe de aldea y los ancianos",
+      "cards": {
+        "recruitCategories": {
+          "title": "Categorías de convocatoria",
+          "desc": "Añade, edita y reordena las categorías de convocatoria."
+        },
+        "newsletter": {
+          "title": "Configuración del boletín",
+          "desc": "Configura la frecuencia de envío y la exclusión."
+        },
+        "members": {
+          "title": "Miembros y roles",
+          "desc": "Gestiona a los aldeanos, cambia roles y expulsa (BAN)."
+        },
+        "joinRequests": {
+          "title": "Revisar solicitudes de ingreso",
+          "desc": "Revisa y aprueba o rechaza las solicitudes de ingreso."
+        },
+        "reports": {
+          "title": "Gestión de denuncias",
+          "desc": "Revisa y gestiona las denuncias (próximamente)."
+        },
+        "settings": {
+          "title": "Configuración básica de la aldea",
+          "desc": "Edita el nombre, la descripción y otra información básica de la aldea."
+        }
+      },
+      "comingSoon": "Próximamente",
+      "accessDenied": "Solo el jefe de aldea y los ancianos pueden acceder a esta pantalla."
+    },
+    "adminGuide": {
+      "page_title": "Cómo usar la gestión de la aldea",
+      "description": "Un menú de gestión para el jefe de aldea y los ancianos. Cada tarjeta te lleva a la pantalla que necesitas para la operación diaria.",
+      "open": {
+        "title": "Abrir la gestión de la aldea",
+        "body": "Ábrela desde el botón con el icono de engranaje \"Gestión de la aldea\" en el encabezado de la aldea. Este botón solo se muestra al jefe de aldea y a los ancianos.",
+        "steps": {
+          "step1": "Pulsa el botón \"Gestión de la aldea\" en la parte superior derecha del encabezado de la aldea.",
+          "step2": "Aparece una lista de tarjetas. Pulsa una tarjeta para ir a esa pantalla."
+        }
+      },
+      "cards": {
+        "title": "Qué puedes hacer con cada tarjeta",
+        "body": "Puedes acceder a las categorías de convocatoria, la configuración del boletín, miembros y roles, la revisión de solicitudes de ingreso, las denuncias y la configuración básica de la aldea.",
+        "steps": {
+          "step1": "\"Categorías de convocatoria\" te permite añadir, editar y reordenar categorías como festivales o partidos de práctica.",
+          "step2": "\"Miembros y roles\" y \"Revisar solicitudes de ingreso\" te permiten gestionar a los aldeanos y revisar a los nuevos solicitantes.",
+          "step3": "\"Configuración básica de la aldea\" solo puede abrirla el jefe de aldea. Edita el nombre, la descripción y más."
+        }
+      },
+      "permissions": {
+        "title": "Diferencia entre el jefe de aldea y los ancianos",
+        "body": "La mayoría de las tarjetas pueden usarlas tanto el jefe de aldea como los ancianos, pero la configuración básica de la aldea (y actualmente la del boletín) solo puede abrirla el jefe de aldea.",
+        "steps": {
+          "step1": "Los ancianos pueden usar las tarjetas de categorías de convocatoria, miembros, solicitudes de ingreso y denuncias.",
+          "step2": "Solo el jefe de aldea puede editar la configuración básica de la aldea."
         }
       }
     }

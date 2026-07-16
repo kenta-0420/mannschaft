@@ -63,6 +63,14 @@ export interface VillageContext {
   perms: ComputedRef<VillagePerms>
   /** ログイン中ユーザーの id（未ログイン時は null）。 */
   currentUserId: ComputedRef<number | null>
+  /**
+   * 村本体編集ダイアログ（VillageEditDialog）を開く。
+   *
+   * F17.1 P3（村長コンソール）— ダイアログ自体は親シェルが常駐描画しているため、
+   * 子（`/admin` 配下の「村の基本設定」カード等）はこの関数経由で開閉のみ委譲し、
+   * ダイアログを二重に持たない。
+   */
+  openEditDialog: () => void
 }
 
 /**

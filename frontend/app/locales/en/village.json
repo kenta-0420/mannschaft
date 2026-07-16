@@ -76,8 +76,6 @@
       "timeline": "Timeline",
       "lobby": "Lobby",
       "members": "Members",
-      "settings": "Settings",
-      "reports": "Reports",
       "calendar": "Calendar",
       "festival": "Festival",
       "matchRecruit": "Match recruit",
@@ -748,6 +746,67 @@
           "step1": "Use the tabs to switch between Pending review, Approved, Rejected and Withdrawn.",
           "step2": "Press Approve to make the applicant a villager. The review comment is optional.",
           "step3": "When pressing Reject, a review comment is required so the applicant knows why."
+        }
+      }
+    },
+    "admin": {
+      "title": "Village management",
+      "subtitle": "Management menu for the headman and elders",
+      "cards": {
+        "recruitCategories": {
+          "title": "Recruit categories",
+          "desc": "Add, edit, and reorder recruitment categories."
+        },
+        "newsletter": {
+          "title": "Newsletter settings",
+          "desc": "Configure delivery frequency and opt-out."
+        },
+        "members": {
+          "title": "Members & roles",
+          "desc": "Manage villagers, change roles, and ban members."
+        },
+        "joinRequests": {
+          "title": "Review join requests",
+          "desc": "Review and approve or reject join requests."
+        },
+        "reports": {
+          "title": "Reports",
+          "desc": "Review and handle reports (coming soon)."
+        },
+        "settings": {
+          "title": "Village basic settings",
+          "desc": "Edit the village's name, description, and other basic info."
+        }
+      },
+      "comingSoon": "Coming soon",
+      "accessDenied": "Only the headman and elders can access this screen."
+    },
+    "adminGuide": {
+      "page_title": "How to use village management",
+      "description": "A management menu for the headman and elders. Each card takes you to a screen you need for day-to-day operations.",
+      "open": {
+        "title": "Open village management",
+        "body": "Open it from the gear icon \"Village management\" button in the village header. This button is shown only to the headman and elders.",
+        "steps": {
+          "step1": "Press the \"Village management\" button in the top-right of the village header.",
+          "step2": "A list of cards appears. Press a card to go to that screen."
+        }
+      },
+      "cards": {
+        "title": "What you can do with each card",
+        "body": "You can access recruit categories, newsletter settings, members and roles, join request review, reports, and the village basic settings.",
+        "steps": {
+          "step1": "\"Recruit categories\" lets you add, edit, and reorder recruitment categories such as festivals or practice matches.",
+          "step2": "\"Members & roles\" and \"Review join requests\" let you manage villagers and review new applicants.",
+          "step3": "\"Village basic settings\" can only be opened by the headman. It edits the village's name, description, and more."
+        }
+      },
+      "permissions": {
+        "title": "Difference between the headman and elders",
+        "body": "Most cards can be used by both the headman and elders, but the village's basic settings (and currently newsletter settings) can only be opened by the headman.",
+        "steps": {
+          "step1": "Elders can use the recruit categories, members, join requests, and reports cards.",
+          "step2": "Only the headman can edit the village basic settings."
         }
       }
     }
