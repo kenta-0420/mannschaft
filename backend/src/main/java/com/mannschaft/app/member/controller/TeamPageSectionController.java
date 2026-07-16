@@ -1,6 +1,7 @@
 package com.mannschaft.app.member.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.member.dto.CreateSectionRequest;
 import com.mannschaft.app.member.dto.SectionResponse;
 import com.mannschaft.app.member.dto.UpdateSectionRequest;
@@ -38,7 +39,8 @@ public class TeamPageSectionController {
     @Operation(summary = "セクション一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SectionResponse>>> listSections(@PathVariable Long pageId) {
-        List<SectionResponse> response = sectionService.listSections(pageId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<SectionResponse> response = sectionService.listSections(userId, pageId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -51,7 +53,8 @@ public class TeamPageSectionController {
     public ResponseEntity<ApiResponse<SectionResponse>> createSection(
             @PathVariable Long pageId,
             @Valid @RequestBody CreateSectionRequest request) {
-        SectionResponse response = sectionService.createSection(pageId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        SectionResponse response = sectionService.createSection(userId, pageId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -64,7 +67,8 @@ public class TeamPageSectionController {
     public ResponseEntity<ApiResponse<SectionResponse>> updateSection(
             @PathVariable Long id,
             @Valid @RequestBody UpdateSectionRequest request) {
-        SectionResponse response = sectionService.updateSection(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        SectionResponse response = sectionService.updateSection(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -75,7 +79,8 @@ public class TeamPageSectionController {
     @Operation(summary = "セクション削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSection(@PathVariable Long id) {
-        sectionService.deleteSection(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        sectionService.deleteSection(userId, id);
         return ResponseEntity.noContent().build();
     }
 }

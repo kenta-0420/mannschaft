@@ -918,15 +918,15 @@ public class GlobalExceptionHandler {
             Map.entry("WORKFLOW_006", HttpStatus.NOT_FOUND),             // ATTACHMENT_NOT_FOUND（IDOR 秘匿 → 404）
             // 承認判断は「指定承認者でない」という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
             Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN),             // NOT_APPROVER → 403
-            // 認可根治戦役 Wave3-B3: moderation の WarningReReviewService#createReReview は
-            // actionId の所有者検証（BOLA是正）で MODERATION_EXT_001 を使う。他ユーザーの
-            // actionId/reportId を指定した場合、存在秘匿のため 404 とする（selfCorrect の
-            // 既存挙動とも統一。Severity.WARN 既定の 400 を上書き）。
+            // Wave3 member BOLA存在秘匿
+            Map.entry("MEMBER_001", HttpStatus.NOT_FOUND),               // PAGE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_002", HttpStatus.NOT_FOUND),               // SECTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_003", HttpStatus.NOT_FOUND),               // PROFILE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("MEMBER_004", HttpStatus.NOT_FOUND),               // FIELD_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3-B3: moderation の WarningReReviewService#createReReview は actionId 所有者検証(BOLA是正)で
+            // MODERATION_EXT_001 を使い、越境は存在秘匿のため 404（selfCorrect と統一）。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
-            // 認可根治戦役 Wave3-B3: incident ドメインは entity 由来 scope で認可判定するため、
-            // ID 直指定 EP（GET/{id} PUT/{id} PATCH/{id}/status POST/{id}/assign DELETE/{id} 等）で
-            // 呼び出し元が entity の scope に所属しない場合、存在秘匿のため *_NOT_FOUND を 404 とする
-            // （Severity.WARN 既定の 400 を上書き）。
+            // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は存在秘匿の 404。
             Map.entry("INCIDENT_001", HttpStatus.NOT_FOUND),             // カテゴリ不在／越境（IDOR 秘匿 → 404）
             Map.entry("INCIDENT_002", HttpStatus.NOT_FOUND),             // インシデント不在／越境（IDOR 秘匿 → 404）
             Map.entry("INCIDENT_009", HttpStatus.NOT_FOUND)              // スケジュール不在／越境（IDOR 秘匿 → 404）
