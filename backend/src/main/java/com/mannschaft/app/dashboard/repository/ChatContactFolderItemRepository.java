@@ -62,6 +62,38 @@ public interface ChatContactFolderItemRepository extends JpaRepository<ChatConta
             @Param("itemId") Long itemId);
 
     /**
+     * 指定ユーザー（フォルダ所有者）配下の既存割り当てをアイテム種別×アイテムIDで取得する。
+     *
+     * <p>BOLA対策: {@link #findByItemTypeAndItemId} はフォルダ所有者を問わずグローバルに
+     * 1件を返すため、assignItem/bulkAssignItems の「既存割り当て移動」処理でそのまま使うと
+     * 他人のフォルダに同一 itemType/itemId の行があった場合にそちらを取得・削除してしまう
+     * （eviction BOLA）。owner-scoped 版はリクエストユーザー自身のフォルダ配下のみを対象にする。</p>
+     */
+    @Query("SELECT i FROM ChatContactFolderItemEntity i " +
+            "JOIN ChatContactFolderEntity f ON i.folderId = f.id " +
+            "WHERE f.userId = :userId AND i.itemType = :itemType AND i.itemId = :itemId")
+    Optional<ChatContactFolderItemEntity> findByFolderOwnerAndItemTypeAndItemId(
+            @Param("userId") Long userId,
+            @Param("itemType") FolderItemType itemType,
+            @Param("itemId") Long itemId);
+
+    /**
+     * 指定ユーザー（フォルダ所有者）配下の既存割り当てをアイテム種別×アイテムIDで削除する。
+     *
+     * <p>BOLA対策: {@link #deleteByItemTypeAndItemId} はフォルダ所有者を問わずグローバルに
+     * 削除するため、そのまま assignItem/bulkAssignItems の「1アイテム1フォルダ」制約実装に
+     * 使うと他人のフォルダから同一 itemType/itemId の行を黙って退避（eviction）させてしまう。
+     * owner-scoped 版はリクエストユーザー自身のフォルダ配下の行のみを削除対象にする。</p>
+     */
+    @Modifying
+    @Query("DELETE FROM ChatContactFolderItemEntity e WHERE e.itemType = :itemType AND e.itemId = :itemId " +
+            "AND e.folderId IN (SELECT f.id FROM ChatContactFolderEntity f WHERE f.userId = :userId)")
+    void deleteByFolderOwnerAndItemTypeAndItemId(
+            @Param("userId") Long userId,
+            @Param("itemType") FolderItemType itemType,
+            @Param("itemId") Long itemId);
+
+    /**
      * 指定ユーザーの連絡先フォルダに対象アイテムが登録されているか確認する（DM受信制限チェック用）。
      */
     @Query("SELECT COUNT(i) > 0 FROM ChatContactFolderItemEntity i " +

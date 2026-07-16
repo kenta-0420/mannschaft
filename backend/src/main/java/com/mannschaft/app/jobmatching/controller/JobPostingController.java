@@ -83,12 +83,16 @@ public class JobPostingController {
 
     /**
      * 求人詳細を取得する。
+     *
+     * <p>BOLA対策: id 直打ちで他チームの DRAFT/非公開求人が閲覧できないよう、
+     * 一覧（{@link #searchJobs}）と同じ F00 可視性基盤で viewer 視点の可視性を検証する。</p>
      */
     @GetMapping("/{id}")
     @Operation(summary = "求人詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<JobPostingResponse>> getJob(@PathVariable Long id) {
-        JobPostingEntity entity = jobPostingService.findById(id);
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        JobPostingEntity entity = jobPostingService.findById(id, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toPostingResponse(entity)));
     }
 
