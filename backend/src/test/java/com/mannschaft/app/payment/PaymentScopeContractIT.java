@@ -118,6 +118,14 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminOrgBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, payableMemberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        // MemberPaymentService#verifyBeneficiaryMembership（AC-6）の ORGANIZATION 分岐は
+        // hasRoleOrAbove(..,"ORGANIZATION","MEMBER") と isInOrgDistributionAudience の OR で判定するが、
+        // 前者は roles.name="MEMBER" 行が存在しないと必ず false（roleRepository.findByName が空）、
+        // 後者は user_roles テーブルのみを見る（memberships は見ない）ため、memberships への
+        // insertMembership だけでは「受益者としての手動記録」が USER_NOT_MEMBER（PAYMENT_027・400）で
+        // 弾かれる。PaymentBeneficiaryMemberOnlyIntegrationTest（orgMemberUserId 周り）と同じ金型で
+        // insertUserRole も併せて張る必要がある。
+        MembershipTestHelper.insertUserRole(em, payableMemberOrgAId, "MEMBER", null, orgAId);
         // outsiderId はどこにも所属させない。
 
         itemOrgAId = paymentItemRepository.save(PaymentItemEntity.builder()
@@ -248,6 +256,9 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
             // 既に保有しているため、同じ userId で新規作成すると ALREADY_PAID（PAYMENT_004・400）に
             // 正当に弾かれてしまう（PATCH/DELETE/refund 系テストの前提データを壊さず流用するための
             // フィクスチャ設計上の衝突）。未入金の payableMemberOrgAId を対象にして純粋な「新規作成」を検証する。
+            // payableMemberOrgAId は insertMembership に加え insertUserRole(..,"MEMBER",..) も
+            // @BeforeEach で張ってある（AC-6 verifyBeneficiaryMembership の ORGANIZATION 判定が
+            // user_roles 経由でしか受益者所属を認識できないため。詳細は @BeforeEach のコメント参照）。
             mockMvc.perform(post("/api/v1/organizations/{id}/payment-items/{itemId}/payments", orgAId, itemOrgAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(manualBody(payableMemberOrgAId))))
