@@ -4,6 +4,7 @@ import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DisclosureOutputFormat;
@@ -44,12 +45,13 @@ class DisclosureCirculationServiceTest {
 
     @Mock private DisclosureExportRepository exportRepository;
     @Mock private CirculationService circulationService;
+    @Mock private AccessControlService accessControlService;
 
     private DisclosureCirculationService service;
 
     @BeforeEach
     void setUp() {
-        service = new DisclosureCirculationService(exportRepository, circulationService);
+        service = new DisclosureCirculationService(exportRepository, circulationService, accessControlService);
     }
 
     @Test
