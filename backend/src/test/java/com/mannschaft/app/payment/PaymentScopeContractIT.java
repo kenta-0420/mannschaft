@@ -91,6 +91,7 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminOrgBId;   // ORG B の ADMIN（別 scope の越境攻撃者）
     private Long memberOrgAId;  // ORG A の非 ADMIN メンバー
     private Long outsiderId;    // どこにも所属しない非メンバー
+    private Long payableMemberOrgAId; // ORG A の非 ADMIN メンバー（未入金・手動記録の新規作成テスト専用）
 
     private Long itemOrgAId;    // 組織 A の支払い項目
     private Long itemOrgBId;    // 組織 B の支払い項目（BOLA②: itemId 越境検証用）
@@ -107,6 +108,7 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
         adminOrgBId = insertUser("payauthz-admin-org-b@example.com");
         memberOrgAId = insertUser("payauthz-member-org-a@example.com");
         outsiderId = insertUser("payauthz-outsider@example.com");
+        payableMemberOrgAId = insertUser("payauthz-payable-member-org-a@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（EquipmentScopeContractIT 踏襲）。
@@ -115,6 +117,7 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminOrgBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, payableMemberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         // outsiderId はどこにも所属させない。
 
         itemOrgAId = paymentItemRepository.save(PaymentItemEntity.builder()
@@ -241,9 +244,13 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当ADMINは201")
         void 正当ADMINは201() throws Exception {
             setAuth(adminOrgAId);
+            // memberOrgAId は @BeforeEach で itemOrgAId に対する PAID 記録（manualPaymentId）を
+            // 既に保有しているため、同じ userId で新規作成すると ALREADY_PAID（PAYMENT_004・400）に
+            // 正当に弾かれてしまう（PATCH/DELETE/refund 系テストの前提データを壊さず流用するための
+            // フィクスチャ設計上の衝突）。未入金の payableMemberOrgAId を対象にして純粋な「新規作成」を検証する。
             mockMvc.perform(post("/api/v1/organizations/{id}/payment-items/{itemId}/payments", orgAId, itemOrgAId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(manualBody(memberOrgAId))))
+                            .content(objectMapper.writeValueAsString(manualBody(payableMemberOrgAId))))
                     .andExpect(status().isCreated());
         }
 
