@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
@@ -44,6 +45,8 @@ public class PhotoAlbumService {
     private final GalleryMapper galleryMapper;
     /** F00 Phase E-5: 可視性判定ファサード。 */
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave3-B5: 書込CRUD（作成/更新/削除）の scope 認可用。 */
+    private final AccessControlService accessControlService;
 
     /**
      * アルバム一覧をページング取得する。
@@ -109,9 +112,17 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを作成する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: 作成先 scope（teamId/organizationId）の ADMIN/DEPUTY_ADMIN
+     * のみ作成可（{@link AccessControlService#checkAdminOrAbove}）。従来は非会員でも
+     * 任意チーム/組織にアルバムを作成できる無防備状態だった。</p>
      */
     @Transactional
     public AlbumResponse createAlbum(Long userId, CreateAlbumRequest request) {
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(request.getTeamId(), request.getOrganizationId()),
+                resolveScopeType(request.getTeamId()));
+
         AlbumVisibility visibility = request.getVisibility() != null
                 ? AlbumVisibility.valueOf(request.getVisibility()) : AlbumVisibility.ALL_MEMBERS;
         Boolean allowMemberUpload = request.getAllowMemberUpload() != null
@@ -138,10 +149,17 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを更新する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope（teamId/organizationId）の
+     * ADMIN/DEPUTY_ADMIN のみ更新可。id 指定エンドポイント（scope が path に無い）のため、
+     * scope は必ず entity 側から解決する（digest 等の既存 ID-only ドメインと同じ手本）。</p>
      */
     @Transactional
-    public AlbumResponse updateAlbum(Long albumId, UpdateAlbumRequest request) {
+    public AlbumResponse updateAlbum(Long albumId, Long userId, UpdateAlbumRequest request) {
         PhotoAlbumEntity entity = findAlbumOrThrow(albumId);
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(entity.getTeamId(), entity.getOrganizationId()),
+                resolveScopeType(entity.getTeamId()));
 
         AlbumVisibility visibility = request.getVisibility() != null
                 ? AlbumVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
@@ -160,10 +178,15 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを論理削除する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope の ADMIN/DEPUTY_ADMIN のみ削除可。</p>
      */
     @Transactional
-    public void deleteAlbum(Long albumId) {
+    public void deleteAlbum(Long albumId, Long userId) {
         PhotoAlbumEntity entity = findAlbumOrThrow(albumId);
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(entity.getTeamId(), entity.getOrganizationId()),
+                resolveScopeType(entity.getTeamId()));
         entity.softDelete();
         albumRepository.save(entity);
         log.info("アルバム削除: albumId={}", albumId);
@@ -175,5 +198,20 @@ public class PhotoAlbumService {
     PhotoAlbumEntity findAlbumOrThrow(Long albumId) {
         return albumRepository.findById(albumId)
                 .orElseThrow(() -> new BusinessException(GalleryErrorCode.ALBUM_NOT_FOUND));
+    }
+
+    /**
+     * teamId/organizationId（片方のみ設定される想定）から scopeType 文字列を解決する
+     * （認可根治戦役 Wave3-B5: {@code AccessControlService} 呼び出し共通ヘルパー）。
+     */
+    static String resolveScopeType(Long teamId) {
+        return teamId != null ? "TEAM" : "ORGANIZATION";
+    }
+
+    /**
+     * teamId/organizationId（片方のみ設定される想定）から scopeId を解決する。
+     */
+    static Long resolveScopeId(Long teamId, Long organizationId) {
+        return teamId != null ? teamId : organizationId;
     }
 }

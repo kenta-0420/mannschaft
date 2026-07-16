@@ -944,7 +944,15 @@ public class GlobalExceptionHandler {
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
             Map.entry("INCIDENT_001", HttpStatus.NOT_FOUND),             // カテゴリ不在／越境（IDOR 秘匿 → 404）
             Map.entry("INCIDENT_002", HttpStatus.NOT_FOUND),             // インシデント不在／越境（IDOR 秘匿 → 404）
-            Map.entry("INCIDENT_009", HttpStatus.NOT_FOUND)              // スケジュール不在／越境（IDOR 秘匿 → 404）
+            Map.entry("INCIDENT_009", HttpStatus.NOT_FOUND),             // スケジュール不在／越境（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3 トランシェB5: supporter/property/gallery の *_NOT_FOUND は BOLA 存在秘匿のため 404。
+            Map.entry("SUPPORTER_003", HttpStatus.NOT_FOUND),            // 申請不在/越境（IDOR 秘匿 → 404）
+            Map.entry("PROPERTY_001", HttpStatus.NOT_FOUND),             // パッケージ不在/越境（IDOR 秘匿 → 404）
+            Map.entry("PROPERTY_005", HttpStatus.NOT_FOUND),             // 業者不在/越境（IDOR 秘匿 → 404）
+            Map.entry("GALLERY_001", HttpStatus.NOT_FOUND),              // ALBUM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("GALLERY_002", HttpStatus.NOT_FOUND),              // PHOTO_NOT_FOUND（IDOR 秘匿 → 404）
+            // GALLERY_007（UPLOAD_NOT_ALLOWED）は member アップロード不許可アルバムへの明確な認可拒否のため 403。
+            Map.entry("GALLERY_007", HttpStatus.FORBIDDEN)               // UPLOAD_NOT_ALLOWED → 403
     );
 
     /**
