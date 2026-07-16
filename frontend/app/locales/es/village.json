@@ -257,7 +257,8 @@
       "empty": "No hay miembros",
       "banned": "Expulsado",
       "you": "Tú",
-      "filterRole": "Filtrar por rol"
+      "filterRole": "Filtrar por rol",
+      "soloHeadmanHint": "Cuando otros miembros se unan a esta aldea, podrás nombrarlos ancianos aquí."
     },
     "postingIdentity": {
       "title": "Publicar como",

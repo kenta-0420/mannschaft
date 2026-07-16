@@ -257,7 +257,8 @@
       "empty": "村人がいません",
       "banned": "BAN済み",
       "you": "あなた",
-      "filterRole": "ロールで絞り込み"
+      "filterRole": "ロールで絞り込み",
+      "soloHeadmanHint": "他のメンバーがこの村に参加すると、ここで長老に任命できます。"
     },
     "postingIdentity": {
       "title": "投稿主体",

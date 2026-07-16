@@ -119,6 +119,26 @@ function isSelfMembership(m: MembershipResponse): boolean {
   return m.subjectType === 'USER' && m.subjectId === currentUserId.value
 }
 
+/**
+ * 自分以外に役職変更できる生存メンバー数。
+ * BAN 済みは操作対象外なので除外する（自分自身も除外）。
+ */
+const otherActiveMemberCount = computed<number>(() =>
+  members.value.filter(m => !isSelfMembership(m) && !m.isBanned).length,
+)
+
+/**
+ * 「ソロ村（村長ひとり）」の空状態案内を出すか。
+ *
+ * 村長ひとりしか居ない村では役職変更操作が一切出せないため、
+ * 「壊れている」と誤解されやすい（実機で誤解が発生）。HEADMAN のときのみ
+ * 「他のメンバーが参加すれば長老に任命できる」旨を案内する。
+ * 村長でない者（長老・村人）には出さない（そもそも役職変更できないため）。
+ */
+const showSoloHeadmanHint = computed<boolean>(() =>
+  isHeadman.value && !membersLoading.value && otherActiveMemberCount.value === 0,
+)
+
 // =============================================================================
 // エラー抽出（FE3 と同形）
 // =============================================================================
@@ -322,6 +342,15 @@ onMounted(() => {
       @open-role-dialog="openRoleDialog"
       @open-ban-dialog="openBanDialog"
       @open-member-report="openMemberReportDialog"
+    />
+
+    <!-- ソロ村（村長ひとり）の空状態案内。
+         他に役職変更できる生存メンバーが居ない HEADMAN のときのみ表示（誤解防止）。 -->
+    <DashboardEmptyState
+      v-if="showSoloHeadmanHint"
+      icon="pi pi-users"
+      :message="t('village.members.soloHeadmanHint')"
+      data-testid="village-members-solo-headman-hint"
     />
 
     <!-- ロール変更 Dialog -->
