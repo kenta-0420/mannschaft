@@ -423,11 +423,13 @@ class PropertyScopeContractIT extends AbstractMySqlIntegrationTest {
             Long vendorId = createVendorAsAdminA();
 
             setAuthentication(adminAId);
+            // vendorBody は一意化のため name にサフィックスを付与するので、実際に送信した名前を控えて照合する
+            Map<String, Object> requestBody = vendorBody("業者改名済");
             mockMvc.perform(put("/api/v1/teams/{scopeId}/vendors/{id}", teamAId, vendorId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(vendorBody("業者改名済"))))
+                            .content(objectMapper.writeValueAsString(requestBody)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.name").value("業者改名済"));
+                    .andExpect(jsonPath("$.data.name").value(requestBody.get("name")));
         }
 
         @Test
