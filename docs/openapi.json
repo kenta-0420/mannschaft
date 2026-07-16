@@ -160049,8 +160049,7 @@
           }
         },
         "required": [
-          "category",
-          "matchDate"
+          "category"
         ]
       },
       "ApiResponseMatchRecruitResponse": {

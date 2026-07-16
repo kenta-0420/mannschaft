@@ -6,6 +6,7 @@ import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.village.dto.MatchApplicationResponse;
 import com.mannschaft.app.village.dto.MatchApplicationReviewRequest;
+import com.mannschaft.app.village.dto.MatchRecruitCreateRequest;
 import com.mannschaft.app.village.dto.MatchRecruitListResponse;
 import com.mannschaft.app.village.dto.MatchRecruitResponse;
 import com.mannschaft.app.village.entity.enums.VillageMatchApplicationStatus;
@@ -179,6 +180,104 @@ class VillageMatchRecruitControllerContractTest {
                 .andExpect(jsonPath("$.data.items[0].location").doesNotExist())
                 .andExpect(jsonPath("$.data.items[0].requiredCount").value(1))
                 .andExpect(jsonPath("$.data.items[0].postedByUserId").value(USER_ID));
+    }
+
+    // ==================================================================
+    // F17.1 P1（DB Expand）— 作成リクエストの契約
+    // ==================================================================
+
+    /**
+     * 設計書 §5.6 / AC-28・AC-24 に対応。
+     *
+     * <p>{@code match_date} のスポーツ固着（{@code NOT NULL}）を緩和し、日付を持たない募集
+     * （マネージャー募集・引っ越し手伝い等）を登録できるようにする。DDL 面の緩和は
+     * {@code FlywayExistingDataVillageRecruitCategoriesMigrationTest} が検証し、
+     * 本テストは <b>Bean Validation（{@code @NotNull}）が緩和に追随していること</b>を固定する。</p>
+     */
+    @Nested
+    @DisplayName("F17.1 P1 — 募集作成の契約（match_date 緩和）")
+    class CreateContract {
+
+        /** matchDate 以外は現行どおりの最小 JSON。 */
+        private String createJson(String matchDateJsonValue) {
+            return "{"
+                    + "\"category\":\"OTHER\","
+                    + "\"title\":\"引っ越し手伝い募集\","
+                    + "\"matchDate\":" + matchDateJsonValue
+                    + "}";
+        }
+
+        @Test
+        @DisplayName("AC-28 matchDate を null で送っても 201 で作成できる（@NotNull が外れていること）")
+        void create_withNullMatchDate_returns201() throws Exception {
+            given(matchRecruitService.createRecruit(eq(VILLAGE_ID), any(), eq(USER_ID)))
+                    .willReturn(recruit());
+
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createJson("null")))
+                    .andExpect(status().isCreated());
+
+            // Service まで matchDate=null が素通しで届くこと（Controller 層で握りつぶさない）
+            ArgumentCaptor<MatchRecruitCreateRequest> captor =
+                    ArgumentCaptor.forClass(MatchRecruitCreateRequest.class);
+            verify(matchRecruitService).createRecruit(eq(VILLAGE_ID), captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue().matchDate())
+                    .as("日付を持たない募集は matchDate=null のまま Service へ渡る").isNull();
+        }
+
+        @Test
+        @DisplayName("AC-28 matchDate フィールドを省略しても 201 で作成できる")
+        void create_withoutMatchDateField_returns201() throws Exception {
+            given(matchRecruitService.createRecruit(eq(VILLAGE_ID), any(), eq(USER_ID)))
+                    .willReturn(recruit());
+
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"category\":\"OTHER\",\"title\":\"マネージャー募集\"}"))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("AC-24 後方互換 — matchDate 有りの従来リクエストは従来どおり 201 で作成できる")
+        void create_withMatchDate_stillWorks() throws Exception {
+            given(matchRecruitService.createRecruit(eq(VILLAGE_ID), any(), eq(USER_ID)))
+                    .willReturn(recruit());
+
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createJson("\"2026-08-02\"")))
+                    .andExpect(status().isCreated());
+
+            ArgumentCaptor<MatchRecruitCreateRequest> captor =
+                    ArgumentCaptor.forClass(MatchRecruitCreateRequest.class);
+            verify(matchRecruitService).createRecruit(eq(VILLAGE_ID), captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue().matchDate())
+                    .as("従来どおり matchDate が束縛されること（緩和は既存契約を壊さない）")
+                    .isEqualTo(LocalDate.of(2026, 8, 2));
+        }
+
+        @Test
+        @DisplayName("緩和の範囲は matchDate のみ — title 空欄は従来どおり 400 で弾かれる")
+        void create_blankTitle_stillRejected() throws Exception {
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"category\":\"OTHER\",\"title\":\"\",\"matchDate\":null}"))
+                    .andExpect(status().isBadRequest());
+
+            verify(matchRecruitService, never()).createRecruit(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("緩和の範囲は matchDate のみ — category 未指定は従来どおり 400 で弾かれる")
+        void create_missingCategory_stillRejected() throws Exception {
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"title\":\"カテゴリ無し\",\"matchDate\":null}"))
+                    .andExpect(status().isBadRequest());
+
+            verify(matchRecruitService, never()).createRecruit(any(), any(), any());
+        }
     }
 
     // ==================================================================

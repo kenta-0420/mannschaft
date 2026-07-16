@@ -19,7 +19,9 @@ public record MatchRecruitCreateRequest(
         @NotNull VillageMatchRecruitCategory category,
         @NotBlank @Size(max = 100) String title,
         String description,
-        @NotNull LocalDate matchDate,
+        // F17.1 §5.6: 日付を持たない募集（マネージャー募集・引っ越し手伝い等）を許すため
+        // @NotNull を外した（V153 で DDL も NULL 許容に緩和済み）。
+        LocalDate matchDate,
         LocalTime matchTimeStart,
         LocalTime matchTimeEnd,
         @Size(max = 200) String venue,

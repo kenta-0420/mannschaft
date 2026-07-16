@@ -251,10 +251,15 @@ public class VillageMatchRecruitService {
             p = recruitRepository.findByVillageIdAndDeletedAtIsNull(villageId, pageable);
         }
 
+        // F17.1 §5.6: matchDate は NULL 許容に緩和された（日付を持たない募集）。
+        // 日付範囲で絞り込む場合、日付を持たない募集はどの期間にも属さないため対象外とする
+        // （素の e.getMatchDate().isBefore(...) は NULL 行で NPE / 500 になる）。
         List<VillageMatchRecruitEntity> filtered = p.getContent().stream()
                 .filter(e -> category == null || e.getCategory() == category)
-                .filter(e -> matchDateFrom == null || !e.getMatchDate().isBefore(matchDateFrom))
-                .filter(e -> matchDateTo == null || !e.getMatchDate().isAfter(matchDateTo))
+                .filter(e -> matchDateFrom == null
+                        || (e.getMatchDate() != null && !e.getMatchDate().isBefore(matchDateFrom)))
+                .filter(e -> matchDateTo == null
+                        || (e.getMatchDate() != null && !e.getMatchDate().isAfter(matchDateTo)))
                 .toList();
 
         List<MatchRecruitResponse> items = mapWithDisplayNames(filtered);
