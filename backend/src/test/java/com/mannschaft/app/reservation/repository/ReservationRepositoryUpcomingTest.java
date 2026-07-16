@@ -206,4 +206,85 @@ class ReservationRepositoryUpcomingTest extends AbstractMySqlIntegrationTest {
             assertThat(findUpcoming()).isEmpty();
         }
     }
+
+    /**
+     * {@link ReservationRepository#findUpcomingByUserIdBetween} 番人テスト（司令塔第二弾）。
+     *
+     * <p>個人ダッシュボード「今後の予定」統合用の期間指定版。{@code [fromDate, untilDate)} の
+     * 半開区間で来店日時（{@code slotDate}）を絞り込む。フィクスチャは {@code ReservationSlotEntity.builder()}
+     * の {@code LocalDate}/{@code LocalTime} を直接 bind しており、文字列リテラルによる TZ 罠
+     * （{@code feedback_it_fixture_datetime_tz_bind}）を回避している。</p>
+     */
+    @Nested
+    @DisplayName("findUpcomingByUserIdBetween 番人テスト（期間指定・司令塔第二弾）")
+    class UpcomingBetween {
+
+        private static final LocalDate FROM_DATE = LocalDate.of(2026, 4, 1);
+        private static final LocalDate UNTIL_DATE = LocalDate.of(2026, 4, 8); // 7日間の排他的上限
+
+        private List<Object[]> findUpcomingBetween() {
+            em.clear();
+            return repository.findUpcomingByUserIdBetween(USER_ID, FROM_DATE, UNTIL_DATE);
+        }
+
+        @Test
+        @DisplayName("期間内（開始日含む）の CONFIRMED 予約は含まれる")
+        void 期間開始日は含まれる() {
+            Long slotId = persistSlot(FROM_DATE, LocalTime.of(9, 0));
+            persistReservation(USER_ID, slotId, ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+
+            assertThat(findUpcomingBetween()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("期間の排他的上限（untilDate ちょうど）は含まれない")
+        void 期間終了日は含まれない() {
+            Long slotId = persistSlot(UNTIL_DATE, LocalTime.of(9, 0));
+            persistReservation(USER_ID, slotId, ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+
+            assertThat(findUpcomingBetween()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("期間より前の枠・期間より後の枠は含まれない")
+        void 期間外は含まれない() {
+            persistReservation(USER_ID, persistSlot(FROM_DATE.minusDays(1), LocalTime.of(9, 0)),
+                    ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+            persistReservation(USER_ID, persistSlot(UNTIL_DATE.plusDays(1), LocalTime.of(9, 0)),
+                    ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+
+            assertThat(findUpcomingBetween()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("結果は [id, title, slotDate, startTime, endTime, teamId] の Object[] で、日付→開始時刻昇順")
+        void 返却形と並び順() {
+            Long later = persistSlot(FROM_DATE.plusDays(2), LocalTime.of(9, 0));
+            Long earlier = persistSlot(FROM_DATE.plusDays(1), LocalTime.of(9, 0));
+            persistReservation(USER_ID, later, ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+            persistReservation(USER_ID, earlier, ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+
+            List<Object[]> result = findUpcomingBetween();
+
+            assertThat(result).hasSize(2);
+            Object[] first = result.get(0);
+            assertThat((LocalDate) first[2]).isEqualTo(FROM_DATE.plusDays(1));
+            assertThat((LocalTime) first[3]).isEqualTo(LocalTime.of(9, 0));
+            assertThat((LocalTime) first[4]).isEqualTo(LocalTime.of(10, 0));
+            assertThat((Long) first[5]).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("別ユーザー・PENDING/CANCELLED は含まれない")
+        void 別ユーザーや無効ステータスは含まれない() {
+            persistReservation(OTHER_USER_ID, persistSlot(FROM_DATE, LocalTime.of(9, 0)),
+                    ReservationStatus.CONFIRMED, PAST_BOOKED_AT);
+            persistReservation(USER_ID, persistSlot(FROM_DATE, LocalTime.of(10, 0)),
+                    ReservationStatus.PENDING, PAST_BOOKED_AT);
+            persistReservation(USER_ID, persistSlot(FROM_DATE, LocalTime.of(11, 0)),
+                    ReservationStatus.CANCELLED, PAST_BOOKED_AT);
+
+            assertThat(findUpcomingBetween()).isEmpty();
+        }
+    }
 }
