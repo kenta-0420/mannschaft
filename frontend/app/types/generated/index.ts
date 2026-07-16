@@ -40709,7 +40709,7 @@ export interface paths {
         };
         /**
          * 直近イベント
-         * @description 今後N日間のイベント + 出欠状況を横断取得
+         * @description 今後N日間のイベント + 本人のシフト + 本人の予約を横断統合し、開始日時昇順で返す（kind: EVENT/SHIFT/RESERVATION）
          */
         get: operations["getUpcomingEvents"];
         put?: never;
