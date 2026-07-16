@@ -208,6 +208,16 @@ export function toAttendanceActionItem(item: PersonalActionItem): AttendanceActi
   }
 }
 
+/**
+ * 「承認待ち」セクション（司令塔第二弾）を表示すべきかを判定する。
+ *
+ * <p>管理スコープを持たない/承認待ち0件のユーザーには非表示（AC-B1-3）。
+ * 一方、取得自体が失敗した場合は 0 件と偽らず表示する（症状を隠さない・AC-B1-4）。</p>
+ */
+export function shouldShowAdminSection(totalPending: number, failed: boolean): boolean {
+  return totalPending > 0 || failed
+}
+
 export function useCommandCenter() {
   return {
     classifyDeadline,
@@ -216,5 +226,6 @@ export function useCommandCenter() {
     toCirculationActionItem,
     toSurveyActionItem,
     toAttendanceActionItem,
+    shouldShowAdminSection,
   }
 }

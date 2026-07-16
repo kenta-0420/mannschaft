@@ -21,9 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -979,6 +984,123 @@ class AccessControlServiceTest {
             assertThat(accessControlService.getRoleName(USER_ID, SCOPE_ID, "TEAM")).isNull();
             assertThat(accessControlService.resolveEffectiveRoleName(USER_ID, SCOPE_ID, "TEAM")).isNull();
             assertThat(accessControlService.hasRoleOrAbove(USER_ID, SCOPE_ID, "TEAM", "SUPPORTER")).isFalse();
+        }
+    }
+
+    // ========================================
+    // findAdminOrAboveScopeIds（ダッシュボード司令塔第二弾: 承認待ち横断集約の認可フィルタ）
+    // ========================================
+
+    @Nested
+    @DisplayName("findAdminOrAboveScopeIds")
+    class FindAdminOrAboveScopeIds {
+
+        private static final Long ADMIN_ROLE_ID = 2L;
+        private static final Long DEPUTY_ROLE_ID = 3L;
+        private static final Long MEMBER_ROLE_ID = 4L;
+
+        private void stubAdminRoles() {
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者")
+                            .priority(2).isSystem(true).build()));
+            given(roleRepository.findByName("DEPUTY_ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(DEPUTY_ROLE_ID).name("DEPUTY_ADMIN").displayName("副管理者")
+                            .priority(3).isSystem(true).build()));
+        }
+
+        @Test
+        @DisplayName("AC-B1-2: ADMIN/DEPUTY_ADMINちょうどのスコープのみ含み、MEMBERのスコープは含まない")
+        void 認可境界_ADMINとDEPUTY_ADMINちょうどのみ含む() {
+            // Given
+            Long teamAdmin = 10L;
+            Long teamDeputy = 11L;
+            Long teamMember = 12L;
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(teamAdmin).build(),
+                    UserRoleEntity.builder().id(2L).userId(USER_ID).roleId(DEPUTY_ROLE_ID).teamId(teamDeputy).build(),
+                    UserRoleEntity.builder().id(3L).userId(USER_ID).roleId(MEMBER_ROLE_ID).teamId(teamMember).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then: ADMIN・DEPUTY_ADMIN ちょうどのスコープのみ含み、MEMBER のスコープは含まない
+            assertThat(result).containsExactlyInAnyOrder(teamAdmin, teamDeputy);
+            assertThat(result).doesNotContain(teamMember);
+        }
+
+        @Test
+        @DisplayName("AC-B1-1: 管理スコープが一つも無いユーザー（MEMBERのみ）は空集合")
+        void 管理スコープなし_空集合() {
+            // Given: 全て MEMBER ロールのみ所属
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(MEMBER_ROLE_ID).teamId(SCOPE_ID).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONスコープでも同様にADMIN/DEPUTY_ADMINのみ含む")
+        void ORGANIZATIONスコープ_ADMIN系のみ含む() {
+            // Given
+            Long orgAdmin = 20L;
+            Long orgMember = 21L;
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(orgAdmin).build(),
+                    UserRoleEntity.builder().id(2L).userId(USER_ID).roleId(MEMBER_ROLE_ID).organizationId(orgMember).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "ORGANIZATION");
+
+            // Then
+            assertThat(result).containsExactly(orgAdmin);
+        }
+
+        @Test
+        @DisplayName("AC-B1-5: スコープ数Nに依存せずuser_rolesクエリは1回・ロール名解決は定数回（N+1にならない）")
+        void 性能_N件でもクエリ定数回() {
+            // Given: 50 チームすべて ADMIN 所属
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者")
+                            .priority(2).isSystem(true).build()));
+            given(roleRepository.findByName("DEPUTY_ADMIN")).willReturn(Optional.empty());
+
+            List<UserRoleEntity> manyRoles = new java.util.ArrayList<>();
+            for (long i = 1; i <= 50; i++) {
+                manyRoles.add(UserRoleEntity.builder()
+                        .id(i).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(100L + i).build());
+            }
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(manyRoles);
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then
+            assertThat(result).hasSize(50);
+            // user_roles への問い合わせはスコープ数によらず1回のみ（N+1でない）
+            verify(userRoleRepository, times(1)).findByUserIdAndTeamIdIsNotNull(USER_ID);
+            // ロール名解決（ADMIN/DEPUTY_ADMIN）はスコープ数によらず1回ずつのみ
+            verify(roleRepository, times(1)).findByName("ADMIN");
+            verify(roleRepository, times(1)).findByName("DEPUTY_ADMIN");
+            // per-scope の単発問い合わせ経路は一切呼ばれない
+            verify(userRoleRepository, never()).findByUserIdAndTeamId(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("異常系: TEAM/ORGANIZATION以外はIllegalArgumentException")
+        void 不正なスコープ種別_IllegalArgumentException() {
+            stubAdminRoles();
+            assertThatThrownBy(() -> accessControlService.findAdminOrAboveScopeIds(USER_ID, "PERSONAL"))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }
