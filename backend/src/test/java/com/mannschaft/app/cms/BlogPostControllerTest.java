@@ -230,7 +230,7 @@ class BlogPostControllerTest {
             ResponseEntity<Void> result = controller.deletePost(POST_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).deletePost(POST_ID);
+            verify(postService).deletePost(POST_ID, USER_ID);
         }
     }
 
@@ -246,7 +246,7 @@ class BlogPostControllerTest {
         @DisplayName("正常系: ステータス変更される")
         void ステータス変更_正常() {
             PublishRequest request = new PublishRequest("PUBLISHED", null, null);
-            given(postService.changeStatus(eq(POST_ID), any())).willReturn(mockResponse());
+            given(postService.changeStatus(eq(POST_ID), eq(USER_ID), any())).willReturn(mockResponse());
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.changeStatus(POST_ID, request);
 
@@ -287,7 +287,7 @@ class BlogPostControllerTest {
         void 一括操作_正常() {
             BulkActionRequest request = new BulkActionRequest(List.of(1L, 2L), "DELETE");
             BulkActionResponse response = new BulkActionResponse(2, List.of(), "DELETE");
-            given(postService.bulkAction(any())).willReturn(response);
+            given(postService.bulkAction(any(), eq(USER_ID))).willReturn(response);
 
             ResponseEntity<ApiResponse<BulkActionResponse>> result = controller.bulkAction(request);
 
@@ -402,7 +402,7 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: プレビュートークンが発行される")
         void プレビュートークン発行_正常() {
-            given(postService.issuePreviewToken(POST_ID)).willReturn(mockResponse());
+            given(postService.issuePreviewToken(POST_ID, USER_ID)).willReturn(mockResponse());
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.issuePreviewToken(POST_ID);
 
@@ -420,7 +420,7 @@ class BlogPostControllerTest {
             ResponseEntity<Void> result = controller.revokePreviewToken(POST_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).revokePreviewToken(POST_ID);
+            verify(postService).revokePreviewToken(POST_ID, USER_ID);
         }
     }
 }

@@ -144,7 +144,7 @@ public class PersonalBlogController {
     @Operation(summary = "個人ブログ記事削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.deletePost(id);
+        postService.deletePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -157,7 +157,7 @@ public class PersonalBlogController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
-        BlogPostResponse response = postService.changeStatus(id, request);
+        BlogPostResponse response = postService.changeStatus(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -183,7 +183,7 @@ public class PersonalBlogController {
     public ResponseEntity<Void> revokeShare(
             @PathVariable Long id,
             @PathVariable Long shareId) {
-        postService.revokeShare(id, shareId);
+        postService.revokeShare(id, shareId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

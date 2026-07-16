@@ -177,7 +177,7 @@ public class OrgScheduleController {
             @PathVariable String orgPublicId,
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
-        scheduleService.deleteSchedule(scheduleId, updateScope);
+        scheduleService.deleteSchedule(scheduleId, updateScope, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -196,6 +196,9 @@ public class OrgScheduleController {
 
     /**
      * 組織スケジュールの出欠集計を取得する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 個人名付き出欠一覧の漏洩を防ぐため、当該スケジュールが
+     * 属する組織のメンバーのみ閲覧可（entity 由来 scope・{@code checkMembership} 水準）。</p>
      */
     @GetMapping("/{scheduleId}/attendances")
     @Operation(summary = "組織出欠集計")
@@ -203,12 +206,15 @@ public class OrgScheduleController {
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendances(
             @PathVariable String orgPublicId,
             @PathVariable Long scheduleId) {
-        List<AttendanceResponse> responses = attendanceService.getAttendances(scheduleId);
+        List<AttendanceResponse> responses =
+                attendanceService.getAttendances(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
      * 組織スケジュールの出欠一覧をCSVエクスポートする。
+     *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: getAttendances と同じく当該組織のメンバーのみ。</p>
      */
     @GetMapping("/{scheduleId}/attendances/export")
     @Operation(summary = "組織出欠CSVエクスポート")
@@ -216,7 +222,7 @@ public class OrgScheduleController {
     public ResponseEntity<byte[]> exportAttendancesCsv(
             @PathVariable String orgPublicId,
             @PathVariable Long scheduleId) {
-        String csv = attendanceService.exportAttendancesCsv(scheduleId);
+        String csv = attendanceService.exportAttendancesCsv(scheduleId, SecurityUtils.getCurrentUserId());
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=attendances_" + scheduleId + ".csv")
@@ -275,6 +281,11 @@ public class OrgScheduleController {
 
     /**
      * 組織スケジュールを複製する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6・BOLA是正）</b>: {@code ScheduleService.duplicateSchedule} は
+     * クロス招待受諾（{@code ScheduleCrossRefService.acceptInvitation}）からも呼ばれる共有メソッドで
+     * 認可を持たないため、この public な複製 API 入口で複製元(source)の entity 由来 scope に対する
+     * ADMIN 認可を行う（他 team/org の scheduleId を渡す複製元なりすましを防ぐ）。</p>
      */
     @PostMapping("/{scheduleId}/duplicate")
     @Operation(summary = "組織スケジュール複製")
@@ -282,7 +293,9 @@ public class OrgScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
             @PathVariable String orgPublicId,
             @PathVariable Long scheduleId) {
-        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        scheduleService.checkScopeAdminAccess(scheduleId, userId);
+        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

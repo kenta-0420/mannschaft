@@ -105,6 +105,7 @@ public class ShiftScheduleService {
      */
     @Transactional
     public ShiftScheduleResponse createSchedule(Long teamId, CreateShiftScheduleRequest req, Long userId) {
+        checkTeamAdminAccess(teamId, userId);
         validateDateRange(req.getStartDate(), req.getEndDate());
 
         ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
@@ -133,8 +134,9 @@ public class ShiftScheduleService {
      * @return 更新されたシフトスケジュール
      */
     @Transactional
-    public ShiftScheduleResponse updateSchedule(Long id, UpdateShiftScheduleRequest req) {
+    public ShiftScheduleResponse updateSchedule(Long id, UpdateShiftScheduleRequest req, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
 
         // 日付整合性検証（更新後の組み合わせで確認）
         LocalDate startDate = req.getStartDate() != null ? req.getStartDate() : entity.getStartDate();
@@ -166,8 +168,9 @@ public class ShiftScheduleService {
      * @param id スケジュールID
      */
     @Transactional
-    public void deleteSchedule(Long id) {
+    public void deleteSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
         entity.softDelete();
         scheduleRepository.save(entity);
         log.info("シフトスケジュール削除: id={}", id);
@@ -184,6 +187,7 @@ public class ShiftScheduleService {
     @Transactional
     public ShiftScheduleResponse transitionStatus(Long id, String status, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
 
         switch (targetStatus) {
@@ -219,6 +223,10 @@ public class ShiftScheduleService {
     @Transactional
     public ShiftScheduleResponse duplicateSchedule(Long id, Long userId) {
         ShiftScheduleEntity source = findScheduleOrThrow(id);
+        // BOLA是正（認可根治 Wave3-B6）: 複製元(source)のscope由来で認可する。shift ドメイン内に
+        // duplicateSchedule の内部呼び出し元は存在しない（grep 確認済み）ため、この共有メソッド自体に
+        // 認可を敷設してよい（schedule ドメインの ScheduleService.duplicateSchedule とは事情が異なる）。
+        checkScheduleAdminAccess(source, userId);
 
         ShiftScheduleEntity duplicate = source.toBuilder()
                 .status(ShiftScheduleStatus.DRAFT)
@@ -372,10 +380,25 @@ public class ShiftScheduleService {
      * @throws BusinessException 権限がない場合（COMMON_002）
      */
     void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
+        checkTeamAdminAccess(schedule.getTeamId(), userId);
+    }
+
+    /**
+     * チーム ID 直接指定での管理操作 per-scope 認可（認可根治 Wave3-B6）。
+     *
+     * <p>{@link #createSchedule} はエンティティ未生成の時点（path 由来 teamId のみ）で
+     * 認可が必要なため、{@link #checkScheduleAdminAccess} と同じ判定ロジックを teamId 直接指定で
+     * 呼べるように分離した。SYSTEM_ADMIN は短絡的に許可する。</p>
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作ユーザーID
+     * @throws BusinessException 権限がない場合（COMMON_002）
+     */
+    private void checkTeamAdminAccess(Long teamId, Long userId) {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**
