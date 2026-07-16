@@ -254,7 +254,7 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("一般メンバー(allowMemberUpload=false)のアップロードは403（GALLERY_007: 業務ルール拒否）")
-        void 一般メンバーのアップロードはallowMemberUpload falseで403() throws Exception {
+        void 一般メンバーのアップロードはallowMemberUploadFalseで403() throws Exception {
             Long albumId = createAlbumAsAdminA(); // デフォルト allowMemberUpload=false
 
             setAuthentication(memberAId);
@@ -267,7 +267,7 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("一般メンバー(allowMemberUpload=true)のアップロードは201")
-        void 一般メンバーのアップロードはallowMemberUpload trueで201() throws Exception {
+        void 一般メンバーのアップロードはallowMemberUploadTrueで201() throws Exception {
             Long albumId = createAlbumAsAdminA(true);
 
             setAuthentication(memberAId);
@@ -280,7 +280,7 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("ADMINは allowMemberUpload=false でもアップロード可（201）")
-        void ADMINはallowMemberUpload falseでもアップロード可() throws Exception {
+        void ADMINはallowMemberUploadFalseでもアップロード可() throws Exception {
             Long albumId = createAlbumAsAdminA();
 
             setAuthentication(adminAId);
