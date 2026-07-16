@@ -723,6 +723,10 @@
       "description": "F04.4 / F01.7 Phase 2 フォロー関係の可視化"
     },
     {
+      "name": "F17.1 村機能 - 募集カテゴリ",
+      "description": "村ごと募集カテゴリマスタの CRUD API"
+    },
+    {
       "name": "活動統計",
       "description": "F06.4 活動統計・集計・エクスポート"
     },
@@ -3799,6 +3803,131 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/recruit-categories/{categoryId}": {
+      "put": {
+        "tags": [
+          "F17.1 村機能 - 募集カテゴリ"
+        ],
+        "summary": "募集カテゴリ更新（村長/長老）",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VillageRecruitCategoryUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageRecruitCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "F17.1 村機能 - 募集カテゴリ"
+        ],
+        "summary": "募集カテゴリ論理削除（村長/長老）",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/recruit-categories/order": {
+      "put": {
+        "tags": [
+          "F17.1 村機能 - 募集カテゴリ"
+        ],
+        "summary": "募集カテゴリ一括並び替え（村長/長老）",
+        "operationId": "reorder",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VillageRecruitCategoryOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListVillageRecruitCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/newsletter": {
       "get": {
         "tags": [
@@ -3877,7 +4006,7 @@
           "村紋 (F17.1 Phase 2)"
         ],
         "summary": "村紋設定（HEADMAN/SYSTEM_ADMIN）— 既に R2 にアップロード済みの r2Key を登録",
-        "operationId": "update",
+        "operationId": "update_1",
         "parameters": [
           {
             "name": "villageId",
@@ -3917,7 +4046,7 @@
           "村紋 (F17.1 Phase 2)"
         ],
         "summary": "村紋削除（HEADMAN/SYSTEM_ADMIN）",
-        "operationId": "delete",
+        "operationId": "delete_1",
         "parameters": [
           {
             "name": "villageId",
@@ -4278,7 +4407,7 @@
           "車両管理"
         ],
         "summary": "車両更新",
-        "operationId": "update_1",
+        "operationId": "update_2",
         "parameters": [
           {
             "name": "id",
@@ -4318,7 +4447,7 @@
           "車両管理"
         ],
         "summary": "車両削除",
-        "operationId": "delete_1",
+        "operationId": "delete_2",
         "parameters": [
           {
             "name": "id",
@@ -4343,7 +4472,7 @@
           "TODO ステータスラベル（個人）"
         ],
         "summary": "個人ステータスラベル更新",
-        "operationId": "update_2",
+        "operationId": "update_3",
         "parameters": [
           {
             "name": "labelId",
@@ -4383,7 +4512,7 @@
           "TODO ステータスラベル（個人）"
         ],
         "summary": "個人ステータスラベル削除",
-        "operationId": "delete_2",
+        "operationId": "delete_3",
         "parameters": [
           {
             "name": "labelId",
@@ -4630,7 +4759,7 @@
           "プロフィールメディア"
         ],
         "summary": "ユーザープロフィールメディア削除",
-        "operationId": "delete_3",
+        "operationId": "delete_4",
         "parameters": [
           {
             "name": "role",
@@ -6175,7 +6304,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル更新（ADMIN のみ）",
-        "operationId": "update_3",
+        "operationId": "update_4",
         "parameters": [
           {
             "name": "teamId",
@@ -6223,7 +6352,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル削除（ADMIN のみ）",
-        "operationId": "delete_4",
+        "operationId": "delete_5",
         "parameters": [
           {
             "name": "teamId",
@@ -7293,7 +7422,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット更新",
-        "operationId": "update_4",
+        "operationId": "update_5",
         "parameters": [
           {
             "name": "teamId",
@@ -7342,7 +7471,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット削除",
-        "operationId": "delete_5",
+        "operationId": "delete_6",
         "parameters": [
           {
             "name": "teamId",
@@ -7448,7 +7577,7 @@
           "居住者管理（チーム）"
         ],
         "summary": "居住者更新",
-        "operationId": "update_5",
+        "operationId": "update_6",
         "parameters": [
           {
             "name": "teamId",
@@ -7497,7 +7626,7 @@
           "居住者管理（チーム）"
         ],
         "summary": "居住者削除",
-        "operationId": "delete_6",
+        "operationId": "delete_7",
         "parameters": [
           {
             "name": "teamId",
@@ -7642,7 +7771,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件更新",
-        "operationId": "update_6",
+        "operationId": "update_7",
         "parameters": [
           {
             "name": "teamId",
@@ -7691,7 +7820,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件削除",
-        "operationId": "delete_7",
+        "operationId": "delete_8",
         "parameters": [
           {
             "name": "teamId",
@@ -7764,7 +7893,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション更新",
-        "operationId": "update_7",
+        "operationId": "update_8",
         "parameters": [
           {
             "name": "teamId",
@@ -7813,7 +7942,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション削除",
-        "operationId": "delete_8",
+        "operationId": "delete_9",
         "parameters": [
           {
             "name": "teamId",
@@ -8118,7 +8247,7 @@
           "プロフィールメディア"
         ],
         "summary": "チームプロフィールメディア削除",
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "name": "teamId",
@@ -8516,7 +8645,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース更新",
-        "operationId": "update_8",
+        "operationId": "update_9",
         "parameters": [
           {
             "name": "teamId",
@@ -8565,7 +8694,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース削除",
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "name": "teamId",
@@ -8832,7 +8961,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望更新",
-        "operationId": "update_9",
+        "operationId": "update_10",
         "parameters": [
           {
             "name": "teamId",
@@ -8881,7 +9010,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望削除",
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "name": "teamId",
@@ -9453,7 +9582,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "name": "teamId",
@@ -9501,7 +9630,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "name": "teamId",
@@ -9563,7 +9692,7 @@
         "tags": [
           "gamification-config-controller"
         ],
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "name": "teamId",
@@ -9604,7 +9733,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "name": "teamId",
@@ -9652,7 +9781,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "delete_13",
+        "operationId": "delete_14",
         "parameters": [
           {
             "name": "teamId",
@@ -10373,7 +10502,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室更新",
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "name": "teamId",
@@ -10422,7 +10551,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室削除",
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "name": "teamId",
@@ -10751,7 +10880,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン更新",
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "name": "teamId",
@@ -10800,7 +10929,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン削除",
-        "operationId": "delete_15",
+        "operationId": "delete_16",
         "parameters": [
           {
             "name": "teamId",
@@ -10956,7 +11085,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート更新",
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "name": "teamId",
@@ -11005,7 +11134,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート削除（論理削除）",
-        "operationId": "delete_16",
+        "operationId": "delete_17",
         "parameters": [
           {
             "name": "teamId",
@@ -12204,7 +12333,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "name": "teamId",
@@ -12252,7 +12381,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "delete_17",
+        "operationId": "delete_18",
         "parameters": [
           {
             "name": "teamId",
@@ -12422,7 +12551,7 @@
         "tags": [
           "team-advertiser-operational-ad-campaign-controller"
         ],
-        "operationId": "update_17",
+        "operationId": "update_18",
         "parameters": [
           {
             "name": "teamId",
@@ -12472,7 +12601,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "update_18",
+        "operationId": "update_19",
         "parameters": [
           {
             "name": "teamId",
@@ -12529,7 +12658,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "delete_18",
+        "operationId": "delete_19",
         "parameters": [
           {
             "name": "teamId",
@@ -13585,7 +13714,7 @@
         ],
         "summary": "ナビ項目更新",
         "description": "ナビ項目を更新する。is_fixed\u003dTRUEの項目のfixedをFALSEには変更不可。",
-        "operationId": "update_19",
+        "operationId": "update_20",
         "parameters": [
           {
             "name": "key",
@@ -13625,7 +13754,7 @@
         ],
         "summary": "ナビ項目削除",
         "description": "ナビ項目を削除する。is_fixed\u003dTRUEの項目は削除不可。",
-        "operationId": "delete_19",
+        "operationId": "delete_20",
         "parameters": [
           {
             "name": "key",
@@ -13880,7 +14009,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー更新",
-        "operationId": "update_20",
+        "operationId": "update_21",
         "parameters": [
           {
             "name": "id",
@@ -13920,7 +14049,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー削除",
-        "operationId": "delete_20",
+        "operationId": "delete_21",
         "parameters": [
           {
             "name": "id",
@@ -13983,7 +14112,7 @@
         ],
         "summary": "手数料パターン更新",
         "description": "率・固定額・enabled・説明を更新する。改定は新規徴収のみ反映（遡及しない）。DEFAULT の無効化は不可。",
-        "operationId": "update_21",
+        "operationId": "update_22",
         "parameters": [
           {
             "name": "policyKey",
@@ -14605,7 +14734,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "update_22",
+        "operationId": "update_23",
         "parameters": [
           {
             "name": "id",
@@ -14644,7 +14773,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "delete_21",
+        "operationId": "delete_22",
         "parameters": [
           {
             "name": "id",
@@ -16798,7 +16927,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース更新",
-        "operationId": "update_23",
+        "operationId": "update_24",
         "parameters": [
           {
             "name": "organizationId",
@@ -16847,7 +16976,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース削除",
-        "operationId": "delete_22",
+        "operationId": "delete_23",
         "parameters": [
           {
             "name": "organizationId",
@@ -17114,7 +17243,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望更新",
-        "operationId": "update_24",
+        "operationId": "update_25",
         "parameters": [
           {
             "name": "organizationId",
@@ -17163,7 +17292,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望削除",
-        "operationId": "delete_23",
+        "operationId": "delete_24",
         "parameters": [
           {
             "name": "organizationId",
@@ -17671,7 +17800,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "update_25",
+        "operationId": "update_26",
         "parameters": [
           {
             "name": "organizationId",
@@ -17719,7 +17848,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "delete_24",
+        "operationId": "delete_25",
         "parameters": [
           {
             "name": "organizationId",
@@ -17790,7 +17919,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "update_26",
+        "operationId": "update_27",
         "parameters": [
           {
             "name": "organizationId",
@@ -17838,7 +17967,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "delete_25",
+        "operationId": "delete_26",
         "parameters": [
           {
             "name": "organizationId",
@@ -17909,7 +18038,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "update_27",
+        "operationId": "update_28",
         "parameters": [
           {
             "name": "organizationId",
@@ -17957,7 +18086,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "delete_26",
+        "operationId": "delete_27",
         "parameters": [
           {
             "name": "organizationId",
@@ -18127,7 +18256,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "update_28",
+        "operationId": "update_29",
         "parameters": [
           {
             "name": "organizationId",
@@ -18177,7 +18306,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "update_29",
+        "operationId": "update_30",
         "parameters": [
           {
             "name": "organizationId",
@@ -18234,7 +18363,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "delete_27",
+        "operationId": "delete_28",
         "parameters": [
           {
             "name": "organizationId",
@@ -19139,7 +19268,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル更新（ADMIN のみ）",
-        "operationId": "update_30",
+        "operationId": "update_31",
         "parameters": [
           {
             "name": "orgId",
@@ -19188,7 +19317,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル削除（ADMIN のみ）",
-        "operationId": "delete_28",
+        "operationId": "delete_29",
         "parameters": [
           {
             "name": "orgId",
@@ -19690,7 +19819,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット更新",
-        "operationId": "update_31",
+        "operationId": "update_32",
         "parameters": [
           {
             "name": "orgId",
@@ -19739,7 +19868,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット削除",
-        "operationId": "delete_29",
+        "operationId": "delete_30",
         "parameters": [
           {
             "name": "orgId",
@@ -19773,7 +19902,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者更新",
-        "operationId": "update_32",
+        "operationId": "update_33",
         "parameters": [
           {
             "name": "orgId",
@@ -19822,7 +19951,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者削除",
-        "operationId": "delete_30",
+        "operationId": "delete_31",
         "parameters": [
           {
             "name": "orgId",
@@ -19997,7 +20126,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件更新",
-        "operationId": "update_33",
+        "operationId": "update_34",
         "parameters": [
           {
             "name": "orgId",
@@ -20046,7 +20175,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件削除",
-        "operationId": "delete_31",
+        "operationId": "delete_32",
         "parameters": [
           {
             "name": "orgId",
@@ -20119,7 +20248,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション更新",
-        "operationId": "update_34",
+        "operationId": "update_35",
         "parameters": [
           {
             "name": "orgId",
@@ -20168,7 +20297,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション削除",
-        "operationId": "delete_32",
+        "operationId": "delete_33",
         "parameters": [
           {
             "name": "orgId",
@@ -20255,7 +20384,7 @@
           "プロフィールメディア"
         ],
         "summary": "組織プロフィールメディア削除",
-        "operationId": "delete_33",
+        "operationId": "delete_34",
         "parameters": [
           {
             "name": "orgId",
@@ -21008,7 +21137,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室更新",
-        "operationId": "update_35",
+        "operationId": "update_36",
         "parameters": [
           {
             "name": "orgId",
@@ -21057,7 +21186,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室削除",
-        "operationId": "delete_34",
+        "operationId": "delete_35",
         "parameters": [
           {
             "name": "orgId",
@@ -21303,7 +21432,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン更新",
-        "operationId": "update_36",
+        "operationId": "update_37",
         "parameters": [
           {
             "name": "orgId",
@@ -21352,7 +21481,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン削除",
-        "operationId": "delete_35",
+        "operationId": "delete_36",
         "parameters": [
           {
             "name": "orgId",
@@ -21386,7 +21515,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート更新（組織）",
-        "operationId": "update_37",
+        "operationId": "update_38",
         "parameters": [
           {
             "name": "orgId",
@@ -21435,7 +21564,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート削除（論理削除）（組織）",
-        "operationId": "delete_36",
+        "operationId": "delete_37",
         "parameters": [
           {
             "name": "orgId",
@@ -21990,7 +22119,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "update_38",
+        "operationId": "update_39",
         "parameters": [
           {
             "name": "templateId",
@@ -22029,7 +22158,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "delete_37",
+        "operationId": "delete_38",
         "parameters": [
           {
             "name": "templateId",
@@ -22828,7 +22957,7 @@
           "個人時間割-設定"
         ],
         "summary": "設定更新（UPSERT・部分更新）",
-        "operationId": "update_39",
+        "operationId": "update_40",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25197,7 +25326,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "update_40",
+        "operationId": "update_41",
         "parameters": [
           {
             "name": "presetId",
@@ -25236,7 +25365,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "delete_38",
+        "operationId": "delete_39",
         "parameters": [
           {
             "name": "presetId",
@@ -25357,7 +25486,7 @@
         ],
         "summary": "年齢区分設定更新",
         "description": "指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）",
-        "operationId": "update_41",
+        "operationId": "update_42",
         "parameters": [
           {
             "name": "ageGroup",
@@ -30457,6 +30586,78 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/recruit-categories": {
+      "get": {
+        "tags": [
+          "F17.1 村機能 - 募集カテゴリ"
+        ],
+        "summary": "募集カテゴリ一覧（村人）",
+        "operationId": "list_5",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListVillageRecruitCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "F17.1 村機能 - 募集カテゴリ"
+        ],
+        "summary": "募集カテゴリ作成（村長/長老）",
+        "operationId": "create_3",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VillageRecruitCategoryCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageRecruitCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/newsletter/opt-out": {
       "post": {
         "tags": [
@@ -30511,7 +30712,7 @@
           "村メンバーシップ (F17.1)"
         ],
         "summary": "村メンバー一覧を取得（村人のみ）",
-        "operationId": "list_5",
+        "operationId": "list_6",
         "parameters": [
           {
             "name": "villageId",
@@ -30653,7 +30854,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "村の寄合一覧を取得する",
-        "operationId": "list_6",
+        "operationId": "list_7",
         "parameters": [
           {
             "name": "villageId",
@@ -30716,7 +30917,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "寄合を作成する（村人なら誰でも可、作成者が幹事になる）",
-        "operationId": "create_3",
+        "operationId": "create_4",
         "parameters": [
           {
             "name": "villageId",
@@ -30901,7 +31102,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集一覧（category / status / 試合日範囲フィルタ可）",
-        "operationId": "list_7",
+        "operationId": "list_8",
         "parameters": [
           {
             "name": "villageId",
@@ -30985,7 +31186,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集を作成（村人）",
-        "operationId": "create_4",
+        "operationId": "create_5",
         "parameters": [
           {
             "name": "villageId",
@@ -31349,7 +31550,7 @@
           "F17.1 村機能 - 村参加申請"
         ],
         "summary": "村の参加申請一覧（村長/長老）",
-        "operationId": "list_8",
+        "operationId": "list_9",
         "parameters": [
           {
             "name": "villageId",
@@ -31413,7 +31614,7 @@
           "F17.1 村機能 - 村参加申請"
         ],
         "summary": "村参加申請を行う（APPROVAL 村のみ）",
-        "operationId": "create_5",
+        "operationId": "create_6",
         "parameters": [
           {
             "name": "villageId",
@@ -31597,7 +31798,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭り一覧を取得する",
-        "operationId": "list_9",
+        "operationId": "list_10",
         "parameters": [
           {
             "name": "villageId",
@@ -31661,7 +31862,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭りを作成する（HEADMAN / ELDER のみ）",
-        "operationId": "create_6",
+        "operationId": "create_7",
         "parameters": [
           {
             "name": "villageId",
@@ -31792,7 +31993,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを作成する（HEADMAN / ELDER のみ）",
-        "operationId": "create_7",
+        "operationId": "create_8",
         "parameters": [
           {
             "name": "villageId",
@@ -31871,7 +32072,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "村作成申請を行う",
-        "operationId": "create_8",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -32306,7 +32507,7 @@
           "車両管理"
         ],
         "summary": "車両一覧",
-        "operationId": "list_10",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "description": "OK",
@@ -32325,7 +32526,7 @@
           "車両管理"
         ],
         "summary": "車両登録",
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -32356,7 +32557,7 @@
           "TODO ステータスラベル（個人）"
         ],
         "summary": "個人ステータスラベル一覧（SYSTEM 既定 + 個人スコープ）",
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "description": "OK",
@@ -32375,7 +32576,7 @@
           "TODO ステータスラベル（個人）"
         ],
         "summary": "個人ステータスラベル作成",
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -35076,7 +35277,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル一覧（SYSTEM 既定 + チームスコープ）",
-        "operationId": "list_12",
+        "operationId": "list_13",
         "parameters": [
           {
             "name": "teamId",
@@ -35105,7 +35306,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル作成（ADMIN/DEPUTY_ADMIN）",
-        "operationId": "create_11",
+        "operationId": "create_12",
         "parameters": [
           {
             "name": "teamId",
@@ -36989,7 +37190,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット一覧",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "parameters": [
           {
             "name": "teamId",
@@ -37019,7 +37220,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット作成",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "parameters": [
           {
             "name": "teamId",
@@ -37263,7 +37464,7 @@
           "居住者書類（チーム）"
         ],
         "summary": "書類一覧",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "parameters": [
           {
             "name": "teamId",
@@ -38885,7 +39086,7 @@
           "F03.11 募集型予約 / サブカテゴリ"
         ],
         "summary": "サブカテゴリ一覧",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "parameters": [
           {
             "name": "teamId",
@@ -38924,7 +39125,7 @@
           "F03.11 募集型予約 / サブカテゴリ"
         ],
         "summary": "サブカテゴリ作成",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "parameters": [
           {
             "name": "teamId",
@@ -39000,7 +39201,7 @@
           "F03.11 募集型予約 / 募集枠 (チーム)"
         ],
         "summary": "チーム募集枠一覧",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "parameters": [
           {
             "name": "teamId",
@@ -39058,7 +39259,7 @@
           "F03.11 募集型予約 / 募集枠 (チーム)"
         ],
         "summary": "チーム募集枠作成 (DRAFT で作成)",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "parameters": [
           {
             "name": "teamId",
@@ -39627,7 +39828,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件一覧",
-        "operationId": "list_17",
+        "operationId": "list_18",
         "parameters": [
           {
             "name": "teamId",
@@ -39693,7 +39894,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件掲示作成",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "parameters": [
           {
             "name": "teamId",
@@ -39825,7 +40026,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション一覧",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "parameters": [
           {
             "name": "teamId",
@@ -39883,7 +40084,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション作成",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "parameters": [
           {
             "name": "teamId",
@@ -40796,7 +40997,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト一覧",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "name": "teamId",
@@ -40826,7 +41027,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト追加",
-        "operationId": "create_17",
+        "operationId": "create_18",
         "parameters": [
           {
             "name": "teamId",
@@ -41041,7 +41242,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース一覧",
-        "operationId": "list_20",
+        "operationId": "list_21",
         "parameters": [
           {
             "name": "teamId",
@@ -41099,7 +41300,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース作成",
-        "operationId": "create_18",
+        "operationId": "create_19",
         "parameters": [
           {
             "name": "teamId",
@@ -41522,7 +41723,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望一覧",
-        "operationId": "list_21",
+        "operationId": "list_22",
         "parameters": [
           {
             "name": "teamId",
@@ -41580,7 +41781,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望作成",
-        "operationId": "create_19",
+        "operationId": "create_20",
         "parameters": [
           {
             "name": "teamId",
@@ -41673,7 +41874,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請一覧",
-        "operationId": "list_22",
+        "operationId": "list_23",
         "parameters": [
           {
             "name": "teamId",
@@ -41731,7 +41932,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム区画申請",
-        "operationId": "create_20",
+        "operationId": "create_21",
         "parameters": [
           {
             "name": "teamId",
@@ -41813,7 +42014,7 @@
         "tags": [
           "team-onboarding-template-controller"
         ],
-        "operationId": "list_23",
+        "operationId": "list_24",
         "parameters": [
           {
             "name": "teamId",
@@ -41842,7 +42043,7 @@
         "tags": [
           "team-onboarding-template-controller"
         ],
-        "operationId": "create_21",
+        "operationId": "create_22",
         "parameters": [
           {
             "name": "teamId",
@@ -42852,7 +43053,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "list_24",
+        "operationId": "list_25",
         "parameters": [
           {
             "name": "teamId",
@@ -42881,7 +43082,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "create_22",
+        "operationId": "create_23",
         "parameters": [
           {
             "name": "teamId",
@@ -42922,7 +43123,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "list_25",
+        "operationId": "list_26",
         "parameters": [
           {
             "name": "teamId",
@@ -42951,7 +43152,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "create_23",
+        "operationId": "create_24",
         "parameters": [
           {
             "name": "teamId",
@@ -44573,7 +44774,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室一覧",
-        "operationId": "list_26",
+        "operationId": "list_27",
         "parameters": [
           {
             "name": "teamId",
@@ -44623,7 +44824,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室作成",
-        "operationId": "create_24",
+        "operationId": "create_25",
         "parameters": [
           {
             "name": "teamId",
@@ -44704,7 +44905,7 @@
           "居住者管理（チーム）"
         ],
         "summary": "居住者登録",
-        "operationId": "create_25",
+        "operationId": "create_26",
         "parameters": [
           {
             "name": "teamId",
@@ -45288,7 +45489,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン一覧",
-        "operationId": "list_27",
+        "operationId": "list_28",
         "parameters": [
           {
             "name": "teamId",
@@ -45338,7 +45539,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン作成",
-        "operationId": "create_26",
+        "operationId": "create_27",
         "parameters": [
           {
             "name": "teamId",
@@ -45452,7 +45653,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知一覧取得",
-        "operationId": "list_28",
+        "operationId": "list_29",
         "parameters": [
           {
             "name": "teamId",
@@ -45592,7 +45793,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート一覧取得",
-        "operationId": "list_29",
+        "operationId": "list_30",
         "parameters": [
           {
             "name": "teamId",
@@ -45622,7 +45823,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート作成",
-        "operationId": "create_27",
+        "operationId": "create_28",
         "parameters": [
           {
             "name": "teamId",
@@ -46513,7 +46714,7 @@
           "F03.11 募集型予約 / キャンセルポリシー (チーム)"
         ],
         "summary": "チームのキャンセルポリシー一覧",
-        "operationId": "list_30",
+        "operationId": "list_31",
         "parameters": [
           {
             "name": "teamId",
@@ -46543,7 +46744,7 @@
           "F03.11 募集型予約 / キャンセルポリシー (チーム)"
         ],
         "summary": "キャンセルポリシー作成 (テンプレート用 or 募集用)",
-        "operationId": "create_28",
+        "operationId": "create_29",
         "parameters": [
           {
             "name": "teamId",
@@ -46584,7 +46785,7 @@
         "tags": [
           "team-budget-fiscal-year-controller"
         ],
-        "operationId": "list_31",
+        "operationId": "list_32",
         "parameters": [
           {
             "name": "teamId",
@@ -46613,7 +46814,7 @@
         "tags": [
           "team-budget-fiscal-year-controller"
         ],
-        "operationId": "create_29",
+        "operationId": "create_30",
         "parameters": [
           {
             "name": "teamId",
@@ -47701,7 +47902,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "list_32",
+        "operationId": "list_33",
         "parameters": [
           {
             "name": "teamId",
@@ -47757,7 +47958,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "create_30",
+        "operationId": "create_31",
         "parameters": [
           {
             "name": "teamId",
@@ -48138,7 +48339,7 @@
         "tags": [
           "team-advertiser-operational-ad-campaign-controller"
         ],
-        "operationId": "list_33",
+        "operationId": "list_34",
         "parameters": [
           {
             "name": "teamId",
@@ -48202,7 +48403,7 @@
         "tags": [
           "team-advertiser-operational-ad-campaign-controller"
         ],
-        "operationId": "create_31",
+        "operationId": "create_32",
         "parameters": [
           {
             "name": "teamId",
@@ -48403,7 +48604,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "list_34",
+        "operationId": "list_35",
         "parameters": [
           {
             "name": "teamId",
@@ -48441,7 +48642,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "create_32",
+        "operationId": "create_33",
         "parameters": [
           {
             "name": "teamId",
@@ -50406,7 +50607,7 @@
         ],
         "summary": "セキュリティインシデント登録",
         "description": "新規セキュリティインシデントを登録する。",
-        "operationId": "create_33",
+        "operationId": "create_34",
         "requestBody": {
           "content": {
             "application/json": {
@@ -50558,7 +50759,7 @@
         ],
         "summary": "ナビ項目追加",
         "description": "新しいナビ項目を追加する。key は ^[a-z0-9\\-]+$ のみ可。",
-        "operationId": "create_34",
+        "operationId": "create_35",
         "requestBody": {
           "content": {
             "application/json": {
@@ -50702,7 +50903,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー一覧取得",
-        "operationId": "list_35",
+        "operationId": "list_36",
         "parameters": [
           {
             "name": "page",
@@ -50743,7 +50944,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー作成",
-        "operationId": "create_35",
+        "operationId": "create_36",
         "requestBody": {
           "content": {
             "application/json": {
@@ -50910,7 +51111,7 @@
         ],
         "summary": "手数料パターン割当一覧",
         "description": "未削除の割当一覧（source_kind＋sub_key → policy_key）を作成順で返す。",
-        "operationId": "list_36",
+        "operationId": "list_37",
         "responses": {
           "200": {
             "description": "OK",
@@ -50930,7 +51131,7 @@
         ],
         "summary": "手数料パターン割当作成",
         "description": "割当を作成する。参照先 policy 不在は 404・無効は 422。同条件の既存割当は 409。割当変更は新規課金のみ反映（既存取引は焼き付け済みで不変）。",
-        "operationId": "create_36",
+        "operationId": "create_37",
         "requestBody": {
           "content": {
             "application/json": {
@@ -50962,7 +51163,7 @@
         ],
         "summary": "手数料パターン一覧",
         "description": "全パターンを返す（enabled\u003dfalse 含む全件・policy_key 昇順・割当数付き）。",
-        "operationId": "list_37",
+        "operationId": "list_38",
         "responses": {
           "200": {
             "description": "OK",
@@ -50982,7 +51183,7 @@
         ],
         "summary": "手数料パターン新規",
         "description": "新しいパターンを作成する。既存キーは 409（更新は PUT）。率・固定額の業務制約あり。",
-        "operationId": "create_37",
+        "operationId": "create_38",
         "requestBody": {
           "content": {
             "application/json": {
@@ -51581,7 +51782,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "list_38",
+        "operationId": "list_39",
         "parameters": [
           {
             "name": "pageable",
@@ -51609,7 +51810,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "create_38",
+        "operationId": "create_39",
         "requestBody": {
           "content": {
             "application/json": {
@@ -54199,7 +54400,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.1: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_39",
+        "operationId": "list_40",
         "parameters": [
           {
             "name": "scheduleId",
@@ -54250,7 +54451,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.1: 委任者が代理人を指定する",
-        "operationId": "create_39",
+        "operationId": "create_40",
         "parameters": [
           {
             "name": "scheduleId",
@@ -57402,7 +57603,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト一覧",
-        "operationId": "list_40",
+        "operationId": "list_41",
         "parameters": [
           {
             "name": "organizationId",
@@ -57432,7 +57633,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト追加",
-        "operationId": "create_40",
+        "operationId": "create_41",
         "parameters": [
           {
             "name": "organizationId",
@@ -57647,7 +57848,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース一覧",
-        "operationId": "list_41",
+        "operationId": "list_42",
         "parameters": [
           {
             "name": "organizationId",
@@ -57705,7 +57906,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース作成",
-        "operationId": "create_41",
+        "operationId": "create_42",
         "parameters": [
           {
             "name": "organizationId",
@@ -58128,7 +58329,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望一覧",
-        "operationId": "list_42",
+        "operationId": "list_43",
         "parameters": [
           {
             "name": "organizationId",
@@ -58186,7 +58387,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望作成",
-        "operationId": "create_42",
+        "operationId": "create_43",
         "parameters": [
           {
             "name": "organizationId",
@@ -58279,7 +58480,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請一覧",
-        "operationId": "list_43",
+        "operationId": "list_44",
         "parameters": [
           {
             "name": "organizationId",
@@ -58337,7 +58538,7 @@
           "組織区画申請"
         ],
         "summary": "組織区画申請",
-        "operationId": "create_43",
+        "operationId": "create_44",
         "parameters": [
           {
             "name": "organizationId",
@@ -58815,7 +59016,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "create_44",
+        "operationId": "create_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -58906,7 +59107,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "list_44",
+        "operationId": "list_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -58968,7 +59169,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "create_45",
+        "operationId": "create_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -59116,7 +59317,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "list_45",
+        "operationId": "list_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -59172,7 +59373,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "create_46",
+        "operationId": "create_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -59553,7 +59754,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "list_46",
+        "operationId": "list_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -59617,7 +59818,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "create_47",
+        "operationId": "create_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -59818,7 +60019,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "list_47",
+        "operationId": "list_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -59856,7 +60057,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "create_48",
+        "operationId": "create_49",
         "parameters": [
           {
             "name": "organizationId",
@@ -62644,7 +62845,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ）",
-        "operationId": "list_48",
+        "operationId": "list_49",
         "parameters": [
           {
             "name": "orgId",
@@ -62674,7 +62875,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN）",
-        "operationId": "create_49",
+        "operationId": "create_50",
         "parameters": [
           {
             "name": "orgId",
@@ -63720,7 +63921,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット一覧",
-        "operationId": "list_49",
+        "operationId": "list_50",
         "parameters": [
           {
             "name": "orgId",
@@ -63750,7 +63951,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット作成",
-        "operationId": "create_50",
+        "operationId": "create_51",
         "parameters": [
           {
             "name": "orgId",
@@ -63909,7 +64110,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類一覧",
-        "operationId": "list_50",
+        "operationId": "list_51",
         "parameters": [
           {
             "name": "orgId",
@@ -64338,7 +64539,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠一覧",
-        "operationId": "list_51",
+        "operationId": "list_52",
         "parameters": [
           {
             "name": "orgId",
@@ -64396,7 +64597,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠作成 (DRAFT で作成)",
-        "operationId": "create_51",
+        "operationId": "create_52",
         "parameters": [
           {
             "name": "orgId",
@@ -64585,7 +64786,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件一覧",
-        "operationId": "list_52",
+        "operationId": "list_53",
         "parameters": [
           {
             "name": "orgId",
@@ -64651,7 +64852,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件掲示作成",
-        "operationId": "create_52",
+        "operationId": "create_53",
         "parameters": [
           {
             "name": "orgId",
@@ -64783,7 +64984,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション一覧",
-        "operationId": "list_53",
+        "operationId": "list_54",
         "parameters": [
           {
             "name": "orgId",
@@ -64841,7 +65042,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション作成",
-        "operationId": "create_53",
+        "operationId": "create_54",
         "parameters": [
           {
             "name": "orgId",
@@ -65463,7 +65664,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会の発行請求一覧（status フィルタ・ページング）",
-        "operationId": "list_54",
+        "operationId": "list_55",
         "parameters": [
           {
             "name": "orgId",
@@ -65532,7 +65733,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の発行（DRAFT）",
-        "operationId": "create_54",
+        "operationId": "create_55",
         "parameters": [
           {
             "name": "orgId",
@@ -65573,7 +65774,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "list_55",
+        "operationId": "list_56",
         "parameters": [
           {
             "name": "orgId",
@@ -65602,7 +65803,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "create_55",
+        "operationId": "create_56",
         "parameters": [
           {
             "name": "orgId",
@@ -65897,7 +66098,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真一覧（閲覧可視性・作成日時昇順）",
-        "operationId": "list_56",
+        "operationId": "list_57",
         "parameters": [
           {
             "name": "orgId",
@@ -66911,7 +67112,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室一覧",
-        "operationId": "list_57",
+        "operationId": "list_58",
         "parameters": [
           {
             "name": "orgId",
@@ -66961,7 +67162,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室作成",
-        "operationId": "create_56",
+        "operationId": "create_57",
         "parameters": [
           {
             "name": "orgId",
@@ -67042,7 +67243,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者登録",
-        "operationId": "create_57",
+        "operationId": "create_58",
         "parameters": [
           {
             "name": "orgId",
@@ -67554,7 +67755,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン一覧",
-        "operationId": "list_58",
+        "operationId": "list_59",
         "parameters": [
           {
             "name": "orgId",
@@ -67604,7 +67805,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン作成",
-        "operationId": "create_58",
+        "operationId": "create_59",
         "parameters": [
           {
             "name": "orgId",
@@ -67718,7 +67919,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知一覧取得（組織）",
-        "operationId": "list_59",
+        "operationId": "list_60",
         "parameters": [
           {
             "name": "orgId",
@@ -67858,7 +68059,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート一覧取得（組織）",
-        "operationId": "list_60",
+        "operationId": "list_61",
         "parameters": [
           {
             "name": "orgId",
@@ -67888,7 +68089,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート作成（組織）",
-        "operationId": "create_59",
+        "operationId": "create_60",
         "parameters": [
           {
             "name": "orgId",
@@ -68206,7 +68407,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "list_61",
+        "operationId": "list_62",
         "parameters": [
           {
             "name": "orgId",
@@ -68235,7 +68436,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "create_60",
+        "operationId": "create_61",
         "parameters": [
           {
             "name": "orgId",
@@ -69771,7 +69972,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目一覧",
-        "operationId": "list_62",
+        "operationId": "list_63",
         "responses": {
           "200": {
             "description": "OK",
@@ -69790,7 +69991,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目作成（最大10件）",
-        "operationId": "create_61",
+        "operationId": "create_62",
         "requestBody": {
           "content": {
             "application/json": {
@@ -70349,7 +70550,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割一覧（自分）",
-        "operationId": "list_63",
+        "operationId": "list_64",
         "responses": {
           "200": {
             "description": "OK",
@@ -70368,7 +70569,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割作成（DRAFT）",
-        "operationId": "create_62",
+        "operationId": "create_63",
         "requestBody": {
           "content": {
             "application/json": {
@@ -70399,7 +70600,7 @@
           "個人時間割共有先"
         ],
         "summary": "共有先一覧（自分の個人時間割）",
-        "operationId": "list_64",
+        "operationId": "list_65",
         "parameters": [
           {
             "name": "personalTimetableId",
@@ -71257,7 +71458,7 @@
         ],
         "summary": "広告を通報する",
         "description": "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。",
-        "operationId": "create_63",
+        "operationId": "create_64",
         "requestBody": {
           "content": {
             "application/json": {
@@ -73944,7 +74145,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.2: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_65",
+        "operationId": "list_66",
         "parameters": [
           {
             "name": "eventId",
@@ -73995,7 +74196,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.2: 委任者が代理人を指定する",
-        "operationId": "create_64",
+        "operationId": "create_65",
         "parameters": [
           {
             "name": "eventId",
@@ -74141,7 +74342,7 @@
           "エラーレポート"
         ],
         "summary": "エラーレポート送信",
-        "operationId": "create_65",
+        "operationId": "create_66",
         "requestBody": {
           "content": {
             "application/json": {
@@ -77339,7 +77540,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "create_66",
+        "operationId": "create_67",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -77631,7 +77832,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "create_67",
+        "operationId": "create_68",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -80610,7 +80811,7 @@
         ],
         "summary": "同義語新規登録",
         "description": "synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。",
-        "operationId": "create_68",
+        "operationId": "create_69",
         "requestBody": {
           "content": {
             "application/json": {
@@ -80778,7 +80979,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "create_69",
+        "operationId": "create_70",
         "requestBody": {
           "content": {
             "application/json": {
@@ -82399,7 +82600,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目削除（ADMIN/DEPUTY_ADMIN、If-Match 必須）",
-        "operationId": "delete_39",
+        "operationId": "delete_40",
         "parameters": [
           {
             "name": "scopeType",
@@ -82456,7 +82657,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須）",
-        "operationId": "update_42",
+        "operationId": "update_43",
         "parameters": [
           {
             "name": "scopeType",
@@ -82660,7 +82861,7 @@
           "村機能"
         ],
         "summary": "村論理削除（HEADMAN / SYSTEM_ADMIN）",
-        "operationId": "delete_40",
+        "operationId": "delete_41",
         "parameters": [
           {
             "name": "villageId",
@@ -82683,7 +82884,7 @@
           "村機能"
         ],
         "summary": "村更新（HEADMAN / SYSTEM_ADMIN）",
-        "operationId": "update_43",
+        "operationId": "update_44",
         "parameters": [
           {
             "name": "villageId",
@@ -82823,7 +83024,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "寄合を部分更新する（幹事のみ）",
-        "operationId": "update_44",
+        "operationId": "update_45",
         "parameters": [
           {
             "name": "villageId",
@@ -82913,7 +83114,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集を更新（投稿者本人のみ）",
-        "operationId": "update_45",
+        "operationId": "update_46",
         "parameters": [
           {
             "name": "villageId",
@@ -83003,7 +83204,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭りを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_46",
+        "operationId": "update_47",
         "parameters": [
           {
             "name": "villageId",
@@ -83093,7 +83294,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを論理削除する（HEADMAN / ELDER のみ）",
-        "operationId": "delete_41",
+        "operationId": "delete_42",
         "parameters": [
           {
             "name": "villageId",
@@ -83125,7 +83326,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_47",
+        "operationId": "update_48",
         "parameters": [
           {
             "name": "villageId",
@@ -88612,7 +88813,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "update_48",
+        "operationId": "update_49",
         "parameters": [
           {
             "name": "teamId",
@@ -90152,7 +90353,7 @@
         ],
         "summary": "セキュリティインシデント更新",
         "description": "ステータス変更・DPA 通知記録を行う。",
-        "operationId": "update_49",
+        "operationId": "update_50",
         "parameters": [
           {
             "name": "id",
@@ -90505,7 +90706,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート更新",
-        "operationId": "update_50",
+        "operationId": "update_51",
         "parameters": [
           {
             "name": "id",
@@ -92266,7 +92467,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠編集 (§5.7)",
-        "operationId": "update_51",
+        "operationId": "update_52",
         "parameters": [
           {
             "name": "id",
@@ -96941,7 +97142,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "update_52",
+        "operationId": "update_53",
         "parameters": [
           {
             "name": "orgId",
@@ -97291,7 +97492,7 @@
           "村ピン留め"
         ],
         "summary": "ピン並び替え",
-        "operationId": "reorder",
+        "operationId": "reorder_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -97322,7 +97523,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目削除",
-        "operationId": "delete_42",
+        "operationId": "delete_43",
         "parameters": [
           {
             "name": "fieldId",
@@ -97345,7 +97546,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目更新",
-        "operationId": "update_53",
+        "operationId": "update_54",
         "parameters": [
           {
             "name": "fieldId",
@@ -97680,7 +97881,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割論理削除",
-        "operationId": "delete_43",
+        "operationId": "delete_44",
         "parameters": [
           {
             "name": "id",
@@ -97703,7 +97904,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割メタ情報更新",
-        "operationId": "update_54",
+        "operationId": "update_55",
         "parameters": [
           {
             "name": "id",
@@ -99509,7 +99710,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
-        "operationId": "update_55",
+        "operationId": "update_56",
         "parameters": [
           {
             "name": "id",
@@ -99705,7 +99906,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "delete_44",
+        "operationId": "delete_45",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -99727,7 +99928,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "update_56",
+        "operationId": "update_57",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -99768,7 +99969,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "delete_45",
+        "operationId": "delete_46",
         "parameters": [
           {
             "name": "categoryId",
@@ -99807,7 +100008,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "update_57",
+        "operationId": "update_58",
         "parameters": [
           {
             "name": "categoryId",
@@ -100861,7 +101062,7 @@
         ],
         "summary": "同義語削除",
         "description": "物理削除。削除後にキャッシュリビルド。",
-        "operationId": "delete_46",
+        "operationId": "delete_47",
         "parameters": [
           {
             "name": "id",
@@ -100885,7 +101086,7 @@
         ],
         "summary": "同義語編集",
         "description": "synonymDisplay 指定時は再正規化と重複チェックを行う。",
-        "operationId": "update_58",
+        "operationId": "update_59",
         "parameters": [
           {
             "name": "id",
@@ -103192,7 +103393,7 @@
           "村史 (F17.1)"
         ],
         "summary": "村の村史一覧（月次ダイジェスト）を取得する",
-        "operationId": "list_66",
+        "operationId": "list_67",
         "parameters": [
           {
             "name": "villageId",
@@ -104975,7 +105176,7 @@
           "タイムラインダイジェスト"
         ],
         "summary": "ダイジェスト履歴一覧取得",
-        "operationId": "list_67",
+        "operationId": "list_68",
         "parameters": [
           {
             "name": "scopeType",
@@ -107615,7 +107816,7 @@
           "協会請求（チーム視点）"
         ],
         "summary": "受信した協会請求の一覧",
-        "operationId": "list_68",
+        "operationId": "list_69",
         "parameters": [
           {
             "name": "teamId",
@@ -107730,7 +107931,7 @@
           "立替/精算（チーム視点）"
         ],
         "summary": "立替/精算記録の一覧",
-        "operationId": "list_69",
+        "operationId": "list_70",
         "parameters": [
           {
             "name": "teamId",
@@ -108122,7 +108323,7 @@
         "tags": [
           "team-onboarding-progress-controller"
         ],
-        "operationId": "list_70",
+        "operationId": "list_71",
         "parameters": [
           {
             "name": "teamId",
@@ -111113,7 +111314,7 @@
         "tags": [
           "team-budget-transaction-controller"
         ],
-        "operationId": "list_71",
+        "operationId": "list_72",
         "parameters": [
           {
             "name": "teamId",
@@ -113387,7 +113588,7 @@
           "プロモーション課金（SYSTEM_ADMIN）"
         ],
         "summary": "課金状況一覧",
-        "operationId": "list_72",
+        "operationId": "list_73",
         "parameters": [
           {
             "name": "billingStatus",
@@ -113861,7 +114062,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート一覧取得",
-        "operationId": "list_73",
+        "operationId": "list_74",
         "parameters": [
           {
             "name": "status",
@@ -115463,7 +115664,7 @@
         ],
         "summary": "通報一覧",
         "description": "status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。",
-        "operationId": "list_74",
+        "operationId": "list_75",
         "parameters": [
           {
             "name": "status",
@@ -115632,7 +115833,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "list_75",
+        "operationId": "list_76",
         "parameters": [
           {
             "name": "status",
@@ -115712,7 +115913,7 @@
         ],
         "summary": "審査キュー一覧",
         "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
-        "operationId": "list_76",
+        "operationId": "list_77",
         "parameters": [
           {
             "name": "status",
@@ -116832,7 +117033,7 @@
           "シフト予算 失敗イベント (F08.7)"
         ],
         "summary": "失敗イベント一覧を取得 (status で絞り込み可、新しい順)",
-        "operationId": "list_77",
+        "operationId": "list_78",
         "parameters": [
           {
             "name": "X-Organization-Id",
@@ -124513,7 +124714,7 @@
         "tags": [
           "org-onboarding-progress-controller"
         ],
-        "operationId": "list_78",
+        "operationId": "list_79",
         "parameters": [
           {
             "name": "orgId",
@@ -125485,7 +125686,7 @@
         "tags": [
           "org-budget-transaction-controller"
         ],
-        "operationId": "list_79",
+        "operationId": "list_80",
         "parameters": [
           {
             "name": "orgId",
@@ -125930,7 +126131,7 @@
         "tags": [
           "onboarding-me-controller"
         ],
-        "operationId": "list_80",
+        "operationId": "list_81",
         "parameters": [
           {
             "name": "status",
@@ -126600,7 +126801,7 @@
           "村投稿主体 (F17.1)"
         ],
         "summary": "村でなれる投稿主体一覧を取得する（村人のみ）",
-        "operationId": "list_81",
+        "operationId": "list_82",
         "parameters": [
           {
             "name": "villageId",
@@ -126707,7 +126908,7 @@
           "個人メモ-添付"
         ],
         "summary": "メモ添付一覧",
-        "operationId": "list_82",
+        "operationId": "list_83",
         "parameters": [
           {
             "name": "noteId",
@@ -129637,7 +129838,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_83",
+        "operationId": "list_84",
         "parameters": [
           {
             "name": "teamId",
@@ -132433,7 +132634,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "delete_47",
+        "operationId": "delete_48",
         "parameters": [
           {
             "name": "transactionId",
@@ -136050,7 +136251,7 @@
           "居住者書類（チーム）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_48",
+        "operationId": "delete_49",
         "parameters": [
           {
             "name": "teamId",
@@ -136127,7 +136328,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト削除",
-        "operationId": "delete_49",
+        "operationId": "delete_50",
         "parameters": [
           {
             "name": "teamId",
@@ -136637,7 +136838,7 @@
         ],
         "summary": "手数料パターン割当解除",
         "description": "割当を解除する（論理削除）。既存課金には影響しない（焼き付け済みで不変）。",
-        "operationId": "delete_50",
+        "operationId": "delete_51",
         "parameters": [
           {
             "name": "id",
@@ -137219,7 +137420,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト削除",
-        "operationId": "delete_51",
+        "operationId": "delete_52",
         "parameters": [
           {
             "name": "organizationId",
@@ -137615,7 +137816,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_52",
+        "operationId": "delete_53",
         "parameters": [
           {
             "name": "orgId",
@@ -137658,7 +137859,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真の削除（記録権限・R2 ベストエフォート削除）",
-        "operationId": "delete_53",
+        "operationId": "delete_54",
         "parameters": [
           {
             "name": "orgId",
@@ -137802,7 +138003,7 @@
           "個人メモ"
         ],
         "summary": "個人メモ削除（論理）",
-        "operationId": "delete_54",
+        "operationId": "delete_55",
         "parameters": [
           {
             "name": "noteId",
@@ -137827,7 +138028,7 @@
           "個人メモ-添付"
         ],
         "summary": "添付削除（論理）",
-        "operationId": "delete_55",
+        "operationId": "delete_56",
         "parameters": [
           {
             "name": "attachmentId",
@@ -140590,6 +140791,102 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "VillageRecruitCategoryUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseVillageRecruitCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/VillageRecruitCategoryResponse"
+          }
+        }
+      },
+      "VillageRecruitCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isPreset": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recruitCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "VillageRecruitCategoryOrderRequest": {
+        "type": "object",
+        "properties": {
+          "orderedCategoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "ApiResponseListVillageRecruitCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VillageRecruitCategoryResponse"
+            }
           }
         }
       },
@@ -159768,6 +160065,29 @@
           "actionTaken",
           "resolution"
         ]
+      },
+      "VillageRecruitCategoryCreateRequest": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          }
+        }
       },
       "MembershipJoinRequest": {
         "type": "object",
