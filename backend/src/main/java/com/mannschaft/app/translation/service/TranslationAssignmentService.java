@@ -37,6 +37,7 @@ public class TranslationAssignmentService {
     /**
      * 翻訳者アサイン作成リクエスト。
      * translationId で指定した翻訳コンテンツの language および scopeType/scopeId を使ってアサインを作成する。
+     * BOLA是正: translationId は path スコープ（呼び出し元が渡す scopeType/scopeId）配下でのみ解決する。
      */
     @Getter
     @Setter
@@ -87,20 +88,21 @@ public class TranslationAssignmentService {
      * 同一スコープ×ユーザー×言語のアサインが既に存在する場合は既存レコードを返す（冪等）。
      *
      * @param assignedBy アサイン操作者のユーザーID（ログ記録用）
+     * @param scopeType  スコープ種別（BOLA是正: translationId がこのscope配下か束縛検証する）
+     * @param scopeId    スコープID
      * @param req        アサインリクエスト
      * @return 作成または既存のアサインレスポンス
-     * @throws BusinessException TRANSLATION_002: 翻訳コンテンツが見つからない場合
+     * @throws BusinessException TRANSLATION_002: 翻訳コンテンツが見つからない、またはscope不一致（越境）の場合
      */
     @Transactional
     public ApiResponse<TranslationAssignmentResponse> assignTranslator(
-            Long assignedBy, AssignTranslatorRequest req) {
+            Long assignedBy, String scopeType, Long scopeId, AssignTranslatorRequest req) {
 
-        // 翻訳コンテンツの存在確認（スコープ情報と言語を取得）
-        ContentTranslationEntity translation = contentTranslationRepository.findById(req.getTranslationId())
+        // 翻訳コンテンツの存在確認（BOLA是正: path scope 配下かを束縛。言語はここから取得）
+        ContentTranslationEntity translation = contentTranslationRepository
+                .findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(req.getTranslationId(), scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_002));
 
-        String scopeType = translation.getScopeType();
-        Long scopeId = translation.getScopeId();
         String language = translation.getLanguage();
 
         // 同一スコープ×ユーザー×言語の重複チェック
@@ -144,17 +146,22 @@ public class TranslationAssignmentService {
      * スコープに紐づくアサイン一覧を取得する。
      * translationIdから翻訳コンテンツのスコープ情報を参照してアサイン一覧を返す。
      *
+     * @param scopeType     スコープ種別（BOLA是正: translationId がこのscope配下か束縛検証する）
+     * @param scopeId       スコープID
      * @param translationId 翻訳コンテンツID（スコープ情報の取得に使用）
      * @return アサインレスポンスのリスト
-     * @throws BusinessException TRANSLATION_002: 翻訳コンテンツが見つからない場合
+     * @throws BusinessException TRANSLATION_002: 翻訳コンテンツが見つからない、またはscope不一致（越境）の場合
      */
-    public ApiResponse<List<TranslationAssignmentResponse>> listAssignments(Long translationId) {
-        ContentTranslationEntity translation = contentTranslationRepository.findById(translationId)
+    public ApiResponse<List<TranslationAssignmentResponse>> listAssignments(
+            String scopeType, Long scopeId, Long translationId) {
+        // BOLA是正: translationId は path scope 配下でのみ解決する（他scopeの translationId で
+        // 自スコープのアサイン一覧を覗き見/自スコープの translationId で他スコープのアサインを覗くのを防ぐ）
+        contentTranslationRepository
+                .findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(translationId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_002));
 
         List<TranslationAssignmentEntity> assignments =
-                translationAssignmentRepository.findByScopeTypeAndScopeIdAndIsActiveTrue(
-                        translation.getScopeType(), translation.getScopeId());
+                translationAssignmentRepository.findByScopeTypeAndScopeIdAndIsActiveTrue(scopeType, scopeId);
 
         List<TranslationAssignmentResponse> responses = assignments.stream()
                 .map(TranslationAssignmentResponse::new)
@@ -188,15 +195,19 @@ public class TranslationAssignmentService {
     /**
      * アサインを物理削除する。
      *
-     * @param id アサインID
-     * @throws BusinessException TRANSLATION_009: アサインが見つからない場合
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
+     * @param id        アサインID
+     * @throws BusinessException TRANSLATION_009: アサインが見つからない、またはscope不一致（越境）の場合
      */
     @Transactional
-    public void removeAssignment(Long id) {
-        if (!translationAssignmentRepository.existsById(id)) {
-            throw new BusinessException(TranslationErrorCode.TRANSLATION_009);
-        }
-        translationAssignmentRepository.deleteById(id);
+    public void removeAssignment(String scopeType, Long scopeId, Long id) {
+        // BOLA是正: 削除対象アサインは path scope 配下でのみ解決する（他scopeのアサインIDを渡した
+        // 物理削除の越境実行を防ぐ）
+        TranslationAssignmentEntity assignment = translationAssignmentRepository
+                .findByIdAndScopeTypeAndScopeId(id, scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_009));
+        translationAssignmentRepository.delete(assignment);
         log.info("翻訳者アサイン物理削除: id={}", id);
     }
 
