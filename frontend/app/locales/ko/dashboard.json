@@ -197,7 +197,10 @@
       "partialLoadError": "일부 데이터를 불러오지 못했습니다",
       "todoCompleteAria": "완료로 표시",
       "todoCompleteSuccess": "TODO를 완료했습니다",
-      "todoCompleteError": "TODO 완료에 실패했습니다"
+      "todoCompleteError": "TODO 완료에 실패했습니다",
+      "adminSectionTitle": "승인 대기",
+      "adminUnresolvedCount": "승인 대기 {count}건",
+      "adminLoadError": "승인 대기 항목을 불러오지 못했습니다"
     },
     "myCorkboard": {
       "widgetTitle": "내 코르크보드",

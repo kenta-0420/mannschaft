@@ -524,6 +524,55 @@ public class AccessControlService {
         return scopeIds;
     }
 
+    /**
+     * ユーザーが ADMIN または DEPUTY_ADMIN として管理している指定スコープ種別の scopeId 群を列挙する
+     * （ダッシュボード司令塔第二弾: 承認待ち横断集約の認可フィルタ）。
+     *
+     * <p>ADMIN/DEPUTY_ADMIN は {@code user_roles} テーブル由来のみで、{@code memberships.role_kind} は
+     * MEMBER/SUPPORTER のみを保持する（§8.3 系統分離）。そのため本メソッドは {@code user_roles} を
+     * スコープ種別ごとに 1 回だけクエリし（{@link #findAffiliatedScopeIds} と同じ
+     * {@code findByUserIdAndTeamIdIsNotNull}/{@code findByUserIdAndOrganizationIdIsNotNull} を再利用）、
+     * ADMIN/DEPUTY_ADMIN の roleId（呼び出し 1 回・スコープ数に依存しない定数回）でメモリ上フィルタする。
+     * スコープ数 N に対し DB 往復は定数回で済み、N+1 を発生させない（司令塔第二弾 AC-B1-5）。</p>
+     *
+     * <p>本メソッドが返す scopeId は「ユーザーが当該スコープの ADMIN/DEPUTY_ADMIN である」ことのみを
+     * 保証する一次フィルタである。個別ドメインの参照時は各 Facade/Service が
+     * {@link #checkAdminOrAbove} 等で再検証する二重防御構成を前提とする。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeType スコープ種別（{@code "TEAM"} または {@code "ORGANIZATION"}）
+     * @return ADMIN/DEPUTY_ADMIN として所属する scopeId の集合（重複なし）。該当なしなら空集合
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public Set<Long> findAdminOrAboveScopeIds(Long userId, String scopeType) {
+        Set<Long> adminRoleIds = new java.util.HashSet<>();
+        roleRepository.findByName("ADMIN").ifPresent(r -> adminRoleIds.add(r.getId()));
+        roleRepository.findByName("DEPUTY_ADMIN").ifPresent(r -> adminRoleIds.add(r.getId()));
+        if (adminRoleIds.isEmpty()) {
+            // roles マスタに ADMIN/DEPUTY_ADMIN が存在しない異常系（通常到達しない）。
+            return Set.of();
+        }
+
+        Set<Long> scopeIds = new java.util.LinkedHashSet<>();
+        if ("TEAM".equals(scopeType)) {
+            for (UserRoleEntity ur : userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)) {
+                if (adminRoleIds.contains(ur.getRoleId())) {
+                    scopeIds.add(ur.getTeamId());
+                }
+            }
+        } else if ("ORGANIZATION".equals(scopeType)) {
+            for (UserRoleEntity ur : userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)) {
+                if (adminRoleIds.contains(ur.getRoleId())) {
+                    scopeIds.add(ur.getOrganizationId());
+                }
+            }
+        } else {
+            throw new IllegalArgumentException(
+                    "findAdminOrAboveScopeIds は TEAM / ORGANIZATION スコープ専用です: " + scopeType);
+        }
+        return scopeIds;
+    }
+
     // ========================================
     // ヘルパー（private）
     // ========================================
