@@ -331,7 +331,7 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.changeStatus(POST_ID, request);
+            BlogPostResponse result = service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(result).isNotNull();
             assertThat(entity.getStatus()).isEqualTo(PostStatus.REJECTED);
@@ -346,7 +346,7 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.changeStatus(POST_ID, request);
+            BlogPostResponse result = service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(result).isNotNull();
         }
@@ -361,7 +361,7 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            service.changeStatus(POST_ID, request);
+            service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
         }
@@ -433,7 +433,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(1);
         }
@@ -445,7 +445,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(0);
             assertThat(result.getSkippedIds()).contains(1L);
@@ -458,7 +458,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(1);
         }
@@ -470,7 +470,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getSkippedIds()).contains(1L);
         }
@@ -481,7 +481,7 @@ class BlogPostServiceAdditionalTest {
             BulkActionRequest request = new BulkActionRequest(List.of(99L), "DELETE");
             given(postRepository.findById(99L)).willReturn(Optional.empty());
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(0);
             assertThat(result.getSkippedIds()).contains(99L);
@@ -494,7 +494,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getSkippedIds()).contains(1L);
         }
