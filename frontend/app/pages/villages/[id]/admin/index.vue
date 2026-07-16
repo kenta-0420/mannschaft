@@ -25,14 +25,25 @@
  *  不整合を踏襲。是正は §10 P7 の任意仕上げ）。
  *
  * # カード構成と権限差（§3.4）
- *  コンソール本体の表示権限は isAdmin（HEADMAN or ELDER）。
+ *  コンソール本体の表示権限は isAdmin（HEADMAN or ELDER）。カード1〜5 は長老にも見え、
  *  カード6「村の基本設定」のみ isHeadman（MANAGE）で出し分ける。
- *  カード2「ニュースレター設定」は Q2 未決のため、判断が下るまで FE の現行挙動
- *  （isHeadman のみ）に合わせる安全側とする（§3.4 の Q2 注）。
+ *  カード2「ニュースレター設定」は Q2 が 2026-07-16 に御裁可され **(b) 長老も可** で決着した
+ *  ため isAdmin とする（BE `VillageNewsletterService` は元々 ELDER を許可しており、
+ *  これで FE/BE の権限不一致も解消する。§12.1 / §12.2）。
  *  カード1「募集カテゴリ」・カード5「通報管理」は本設計の後続フェーズ（P4 / 別設計）で
  *  実装されるため、遷移先ページが無い間は `to: null` の「近日公開」プレースホルダとする
  *  （`teams/[slug]/admin/index.vue` の approvals カードと同じ作法）。
  */
+// NuxtLink は #components から明示 import して `<component :is>` に **コンポーネント実体**を渡す。
+//
+// 【重要・実機で踏んだ罠】`:is="'NuxtLink'"`（文字列）は動かない。Vue は文字列を
+// resolveDynamicComponent → ローカル/グローバル登録の解決に掛けるが、Nuxt の components
+// 自動 import は「テンプレートに `<NuxtLink>` というタグが literal で現れる」ことを引き金に
+// import を注入する仕組みのため、`:is` の文字列だけでは登録されない。解決に失敗した文字列は
+// **そのままネイティブ要素名として描画される**ので、`<nuxtlink>` という未知要素（href 無し・
+// クリックしても遷移しない死んだリンク）が静かに出来上がる。TypeScript も lint も検知しない。
+import type { Component } from 'vue'
+import { NuxtLink } from '#components'
 import { useVillageContext } from '~/composables/useVillageContext'
 
 // auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
@@ -76,8 +87,8 @@ const cards = computed<AdminConsoleCard[]>(() => {
       descKey: 'village.admin.cards.newsletter.desc',
       icon: 'pi pi-envelope',
       to: `${base.value}/newsletter-settings`,
-      // Q2 未決（設計書 §3.4）。判断が下るまで FE 現行挙動（HEADMAN のみ）に合わせる安全側。
-      visible: perms.value.isHeadman,
+      // Q2 御裁可済（2026-07-16・設計書 §12.1）: (b) 長老も可。BE は元々 ELDER 許可のため BE 変更不要。
+      visible: perms.value.isAdmin,
     },
     {
       key: 'members',
@@ -118,8 +129,14 @@ const cards = computed<AdminConsoleCard[]>(() => {
   return list.filter(c => c.visible)
 })
 
-function cardTag(card: AdminConsoleCard): string {
-  if (card.to) return 'NuxtLink'
+/**
+ * カードを何で描画するか。
+ * - 遷移先あり → NuxtLink（**文字列 'NuxtLink' ではなくコンポーネント実体**。上記 import の注参照）
+ * - ダイアログ起動 → button
+ * - どちらも無い（近日公開） → div
+ */
+function cardTag(card: AdminConsoleCard): Component | string {
+  if (card.to) return NuxtLink
   if (card.action) return 'button'
   return 'div'
 }

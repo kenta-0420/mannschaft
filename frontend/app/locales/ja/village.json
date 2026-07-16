@@ -325,7 +325,7 @@
       "VILLAGE_044": "お気に入り村のピンが見つかりません",
       "generic": "村機能でエラーが発生しました",
       "backToList": "村一覧へ戻る",
-      "headmanOnly": "この設定は村長のみが変更できます"
+      "moderatorOnly": "この設定は村長・長老のみが変更できます"
     },
     "placeholder": {
       "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",

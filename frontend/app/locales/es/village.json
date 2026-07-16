@@ -325,7 +325,7 @@
       "VILLAGE_044": "Aldea favorita fijada no encontrada",
       "generic": "Se produjo un error en la función de la aldea",
       "backToList": "Volver a la lista de aldeas",
-      "headmanOnly": "Solo el jefe del pueblo puede modificar esta configuración"
+      "moderatorOnly": "Solo el jefe del pueblo y los ancianos pueden modificar esta configuración"
     },
     "placeholder": {
       "bulletinComingSoon": "El tablón de anuncios de la aldea está previsto para la Fase 2",

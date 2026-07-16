@@ -325,7 +325,7 @@
       "VILLAGE_044": "找不到收藏的村庄",
       "generic": "村庄功能发生错误",
       "backToList": "返回村庄列表",
-      "headmanOnly": "只有村长可以修改此设置"
+      "moderatorOnly": "只有村长和长老可以修改此设置"
     },
     "placeholder": {
       "bulletinComingSoon": "村庄公告板计划在 Phase 2 中实装",

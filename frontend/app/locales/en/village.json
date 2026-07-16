@@ -325,7 +325,7 @@
       "VILLAGE_044": "Pinned village not found",
       "generic": "An error occurred in the village feature",
       "backToList": "Back to village list",
-      "headmanOnly": "Only the headman can modify this setting"
+      "moderatorOnly": "Only the headman and elders can modify this setting"
     },
     "placeholder": {
       "bulletinComingSoon": "The village bulletin board is planned for Phase 2",

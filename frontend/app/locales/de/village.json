@@ -325,7 +325,7 @@
       "VILLAGE_044": "Angeheftetes Lieblingsdorf nicht gefunden",
       "generic": "In der Dorffunktion ist ein Fehler aufgetreten",
       "backToList": "Zurück zur Dorfliste",
-      "headmanOnly": "Nur der Dorfvorsteher kann diese Einstellung ändern"
+      "moderatorOnly": "Nur der Dorfvorsteher und Älteste können diese Einstellung ändern"
     },
     "placeholder": {
       "bulletinComingSoon": "Das Schwarze Brett des Dorfes ist für Phase 2 geplant",

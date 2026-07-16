@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — ニュースレター設定（HEADMAN専用）
+ * F17.1 村機能 — ニュースレター設定（村長 HEADMAN ／ 長老 ELDER）
  *
  * 設計書: docs/features/F17.1_village_community.md §2.2 / §13.2（Phase 3）
  * P3 是正: docs/features/F17.1_village_headman_console_and_recruit_categories.md §3.3
+ * Q2 御裁可（2026-07-16）: 同 §12.1 / §12.2 — 変更権限は村長のみ → **村長・長老**（下記 canManage）
  *
  * 構成:
  *   - 上段: 見出し（下記「永続シェル方式」のとおり VillageHeader 自体は親が常駐描画する）
@@ -46,7 +47,16 @@ const settings = ref<VillageNewsletterSettingsResponse | null>(null)
 const settingsLoading = ref(false)
 const saving = ref(false)
 
-const isHeadman = computed(() => perms.value.isHeadman)
+/**
+ * 設定を変更できるか（村長 HEADMAN または長老 ELDER）。
+ *
+ * Q2 御裁可（2026-07-16・設計書 F17.1_village_headman_console_and_recruit_categories.md
+ * §12.1 / §12.2）: ニュースレター設定は **(b) 長老も可** で決着した。
+ * BE `VillageNewsletterService#requireHeadmanOrElder` は元々 ELDER を許可しており、
+ * 従来ここが `isHeadman` だったために「ELDER は API を直接叩けば変更できるが画面上は
+ * 締め出されている」という FE/BE の権限不一致が生じていた。BE 現行に FE を合わせて根治する。
+ */
+const canManage = computed(() => perms.value.isAdmin)
 
 const frequencyOptions = computed(() =>
   [
@@ -131,9 +141,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="!isHeadman" class="rounded-lg border border-warn-300 bg-warn-50 p-6 dark:bg-warn-950">
+        <div v-if="!canManage" class="rounded-lg border border-warn-300 bg-warn-50 p-6 dark:bg-warn-950">
           <p class="text-sm">
-            <i class="pi pi-lock mr-2" />{{ t('village.error.headmanOnly') }}
+            <i class="pi pi-lock mr-2" />{{ t('village.error.moderatorOnly') }}
           </p>
         </div>
 
