@@ -580,13 +580,32 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
         return body;
     }
 
-    /** circulation_documents へ直接 INSERT する（scopeType は TEAM 固定）。 */
+    /**
+     * circulation_documents へ直接 INSERT する（scopeType は TEAM 固定）。
+     *
+     * <p>test profile は {@code ddl-auto=create}（Flyway 無効）でスキーマを Entity から生成するため、
+     * Hibernate は {@code @Column(nullable=false)} を <b>SQL DEFAULT 無し</b>の NOT NULL 列として作る
+     * （{@code @Builder.Default} の初期値は Java 側でのみ効き、DDL の DEFAULT には反映されない）。
+     * よって生 SQL INSERT では NOT NULL 列を全て明示的に埋める必要がある
+     * （enum 列は {@code EnumType.STRING} なので enum 名の文字列を投入する）。
+     * NULL 許容列（due_date / completed_at / export_* 等）と、
+     * Entity に存在しない列（post_announcement_on_start 等・migration のみで Entity 未定義のため
+     * ddl-auto=create 下では列自体が存在しない）は投入しない。</p>
+     */
     private Long insertDocument(Long scopeId, Long createdBy, String status) {
         String title = "契約テスト文書 " + System.nanoTime();
         em.createNativeQuery(
                         "INSERT INTO circulation_documents "
-                                + "(scope_type, scope_id, created_by, title, body, status, created_at, updated_at) "
-                                + "VALUES ('TEAM', :scopeId, :createdBy, :title, '本文', :status, NOW(), NOW())")
+                                + "(scope_type, scope_id, created_by, title, body, "
+                                + "circulation_mode, sequential_count, status, priority, "
+                                + "reminder_enabled, reminder_interval_hours, stamp_display_style, "
+                                + "total_recipient_count, stamped_count, attachment_count, comment_count, "
+                                + "export_status, created_at, updated_at) "
+                                + "VALUES ('TEAM', :scopeId, :createdBy, :title, '本文', "
+                                + "'SIMULTANEOUS', 0, :status, 'NORMAL', "
+                                + "0, 24, 'STANDARD', "
+                                + "0, 0, 0, 0, "
+                                + "'NOT_GENERATED', NOW(), NOW())")
                 .setParameter("scopeId", scopeId)
                 .setParameter("createdBy", createdBy)
                 .setParameter("title", title)
@@ -597,12 +616,19 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
                         .getSingleResult()).longValue();
     }
 
-    /** circulation_recipients へ受信者を 1 行 INSERT する。 */
+    /**
+     * circulation_recipients へ受信者を 1 行 INSERT する。
+     *
+     * <p>{@link #insertDocument} と同じ理由で NOT NULL 列を全て埋める
+     * （tilt_angle / is_flipped も {@code @Column(nullable=false)}。
+     * is_proxy_confirmed は Entity 側で {@code columnDefinition="TINYINT(1) DEFAULT 0"} を持つため省略可）。</p>
+     */
     private void insertRecipient(Long documentId, Long userId) {
         em.createNativeQuery(
                         "INSERT INTO circulation_recipients "
-                                + "(document_id, user_id, sort_order, status, created_at, updated_at) "
-                                + "VALUES (:docId, :userId, 0, 'PENDING', NOW(), NOW())")
+                                + "(document_id, user_id, sort_order, status, tilt_angle, is_flipped, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:docId, :userId, 0, 'PENDING', 0, 0, NOW(), NOW())")
                 .setParameter("docId", documentId)
                 .setParameter("userId", userId)
                 .executeUpdate();
