@@ -1,17 +1,24 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — ニュースレター設定（HEADMAN専用）
+ * F17.1 村機能 — ニュースレター設定（村長 HEADMAN ／ 長老 ELDER）
  *
  * 設計書: docs/features/F17.1_village_community.md §2.2 / §13.2（Phase 3）
+ * P3 是正: docs/features/F17.1_village_headman_console_and_recruit_categories.md §3.3
+ * Q2 御裁可（2026-07-16）: 同 §12.1 / §12.2 — 変更権限は村長のみ → **村長・長老**（下記 canManage）
  *
  * 構成:
- *   - 上段: <VillageHeader activeTab="newsletter-settings" />（HEADMAN 専用）
+ *   - 上段: 見出し（下記「永続シェル方式」のとおり VillageHeader 自体は親が常駐描画する）
  *   - 下段:
  *       - 週次/月次の有効化トグル
  *       - opt-out 一覧 + 配信履歴
  *
- * 注意: VillageHeader の `activeTab` に新タブ追加は最小化のため、
- * 設定タブとしては独立画面で動作させる（ヘッダーは付けず情報のみ）。
+ * 永続シェル方式（SPA）: 【2026-07-16 是正】本コメントは以前
+ * 「VillageHeader は付けず独立画面で動作させる」としていたが、これは永続シェル化
+ * （親 `pages/villages/[id].vue` が VillageHeader を常駐描画する現行アーキテクチャ）以前の
+ * stale な記述だった。実際には親シェルが VillageHeader を描画するため、本ページを開くと
+ * VillageHeader は表示される。生きている方針は「9 タブ列（`VillageHeader.vue` の `tabs`）
+ * には新タブを追加しない」の一点のみで、本ページはシェルの子として独立画面のまま動作する
+ * （村長コンソール `pages/villages/[id]/admin/index.vue` と同じ位置づけ）。
  */
 import type {
   VillageNewsletterFrequency,
@@ -40,7 +47,16 @@ const settings = ref<VillageNewsletterSettingsResponse | null>(null)
 const settingsLoading = ref(false)
 const saving = ref(false)
 
-const isHeadman = computed(() => perms.value.isHeadman)
+/**
+ * 設定を変更できるか（村長 HEADMAN または長老 ELDER）。
+ *
+ * Q2 御裁可（2026-07-16・設計書 F17.1_village_headman_console_and_recruit_categories.md
+ * §12.1 / §12.2）: ニュースレター設定は **(b) 長老も可** で決着した。
+ * BE `VillageNewsletterService#requireHeadmanOrElder` は元々 ELDER を許可しており、
+ * 従来ここが `isHeadman` だったために「ELDER は API を直接叩けば変更できるが画面上は
+ * 締め出されている」という FE/BE の権限不一致が生じていた。BE 現行に FE を合わせて根治する。
+ */
+const canManage = computed(() => perms.value.isAdmin)
 
 const frequencyOptions = computed(() =>
   [
@@ -125,9 +141,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="!isHeadman" class="rounded-lg border border-warn-300 bg-warn-50 p-6 dark:bg-warn-950">
+        <div v-if="!canManage" class="rounded-lg border border-warn-300 bg-warn-50 p-6 dark:bg-warn-950">
           <p class="text-sm">
-            <i class="pi pi-lock mr-2" />{{ t('village.error.headmanOnly') }}
+            <i class="pi pi-lock mr-2" />{{ t('village.error.moderatorOnly') }}
           </p>
         </div>
 

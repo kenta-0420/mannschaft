@@ -297,6 +297,7 @@ provideVillageContext({
   myMembership,
   perms,
   currentUserId,
+  openEditDialog: onEdit,
 })
 </script>
 

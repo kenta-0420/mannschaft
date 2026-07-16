@@ -116,6 +116,13 @@ const isPinned = computed(() => props.village.isPinned)
 const isOfficial = computed(() => props.village.isOfficial)
 const canEdit = computed(() => props.village.myRole === 'HEADMAN')
 const isFree = computed(() => props.village.joinPolicy === 'FREE')
+/**
+ * F17.1 P3（村長コンソール）— 「村の運営」ボタンの表示条件。
+ * HEADMAN or ELDER（`useVillageContext().perms.isAdmin` と同じ意味論）。
+ * VillageHeader は `village` プロパティしか受け取らないため、ここで直接 myRole から導出する
+ * （canEdit と同じ作法）。
+ */
+const isAdmin = computed(() => props.village.myRole === 'HEADMAN' || props.village.myRole === 'ELDER')
 
 // =============================================================================
 // タブナビ — PrimeVue Tabs (v-model:value)
@@ -370,6 +377,25 @@ function onPinToggle() {
             outlined
             @click="emit('edit')"
           />
+
+          <!--
+            村の運営ボタン（HEADMAN or ELDER。F17.1 P3 村長コンソール §3.3）。
+            単なる画面遷移のため親への emit は不要（NuxtLink で直接遷移）。
+          -->
+          <NuxtLink
+            v-if="isAdmin"
+            :to="`/villages/${village.id}/admin`"
+          >
+            <Button
+              :label="t('village.admin.title')"
+              :aria-label="t('village.admin.title')"
+              icon="pi pi-cog"
+              severity="secondary"
+              size="small"
+              outlined
+              data-testid="village-admin-console-link"
+            />
+          </NuxtLink>
 
           <!-- 退村ボタン（メンバーのみ） -->
           <Button
