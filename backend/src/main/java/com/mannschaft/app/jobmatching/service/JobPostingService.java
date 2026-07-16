@@ -267,10 +267,21 @@ public class JobPostingService {
     // ---------------------------------------------------------------------
 
     /**
-     * 求人 ID で取得する。見つからない場合は {@code JOB_NOT_FOUND} を送出する。
+     * 求人 ID で取得する（viewer 視点の可視性チェック込み）。
+     *
+     * <p>BOLA対策: 一覧（{@link #listByTeamForViewer}）では {@link ContentVisibilityChecker}
+     * によるフィルタリングを行っているが、詳細取得はこれまで存在確認のみで viewer の可視性を
+     * 見ていなかった（他チームの DRAFT 求人等が id 直打ちで閲覧できてしまう欠陥）。
+     * {@link ContentVisibilityChecker#assertCanView} で一覧と同じ可視性基盤を通す。</p>
+     *
+     * @param postingId    求人ID
+     * @param viewerUserId 閲覧者ユーザーID（未認証は {@code null}）
+     * @return 求人エンティティ
      */
-    public JobPostingEntity findById(Long postingId) {
-        return findOrThrow(postingId);
+    public JobPostingEntity findById(Long postingId, Long viewerUserId) {
+        JobPostingEntity posting = findOrThrow(postingId);
+        visibilityChecker.assertCanView(ReferenceType.JOB_POSTING, postingId, viewerUserId);
+        return posting;
     }
 
     /**

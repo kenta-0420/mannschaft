@@ -257,7 +257,8 @@
       "empty": "No members yet",
       "banned": "Banned",
       "you": "You",
-      "filterRole": "Filter by role"
+      "filterRole": "Filter by role",
+      "soloHeadmanHint": "Once other members join this village, you can appoint them as elders here."
     },
     "postingIdentity": {
       "title": "Post as",
