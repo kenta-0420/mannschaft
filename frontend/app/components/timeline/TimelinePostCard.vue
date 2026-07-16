@@ -180,11 +180,10 @@ async function toggleReplies() {
   }
 }
 
-/** 返信ボタン。アコーディオン有効時は展開してフォームへ、無効時はレガシー emit。 */
+/** 返信ボタン。アコーディオン有効時は開閉トグル、無効時はレガシー emit。 */
 async function onReplyButton() {
   if (props.repliesAccordion) {
-    if (!repliesExpanded.value) repliesExpanded.value = true
-    if (!repliesLoaded.value) await loadReplies()
+    await toggleReplies()
   } else {
     emit('reply', props.post.id)
   }
