@@ -83,11 +83,15 @@ class CheckinLocationScopeContractIT extends AbstractMySqlIntegrationTest {
         memberAId = insertUser("cl-authz-member-a@example.com");
         outsiderId = insertUser("cl-authz-outsider@example.com");
 
-        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        // 注意: このクラスは com.mannschaft.app.membership パッケージに属するため、無修飾 ScopeType は
+        // 同パッケージの com.mannschaft.app.membership.ScopeType（拠点entity用）に解決される。
+        // MembershipTestHelper.insertMembership は F00.5系 com.mannschaft.app.membership.domain.ScopeType を
+        // 要求するため、ここは完全修飾する（import追加はentity builderのScopeTypeと衝突するため不可）。
+        MembershipTestHelper.insertMembership(em, adminAId, com.mannschaft.app.membership.domain.ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
-        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, com.mannschaft.app.membership.domain.ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
-        MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, memberAId, com.mannschaft.app.membership.domain.ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         // outsiderId はどこにも所属させない。
 
         locationA = locationRepository.save(CheckinLocationEntity.builder()
