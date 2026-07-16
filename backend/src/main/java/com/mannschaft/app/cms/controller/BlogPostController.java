@@ -138,7 +138,7 @@ public class BlogPostController {
     @Operation(summary = "記事削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.deletePost(id);
+        postService.deletePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -151,7 +151,7 @@ public class BlogPostController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
-        BlogPostResponse response = postService.changeStatus(id, request);
+        BlogPostResponse response = postService.changeStatus(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -176,7 +176,7 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "処理成功")
     public ResponseEntity<ApiResponse<BulkActionResponse>> bulkAction(
             @Valid @RequestBody BulkActionRequest request) {
-        BulkActionResponse response = postService.bulkAction(request);
+        BulkActionResponse response = postService.bulkAction(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -245,7 +245,7 @@ public class BlogPostController {
     @Operation(summary = "プレビュートークン発行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> issuePreviewToken(@PathVariable Long id) {
-        BlogPostResponse response = postService.issuePreviewToken(id);
+        BlogPostResponse response = postService.issuePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -256,7 +256,7 @@ public class BlogPostController {
     @Operation(summary = "プレビュートークン無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
     public ResponseEntity<Void> revokePreviewToken(@PathVariable Long id) {
-        postService.revokePreviewToken(id);
+        postService.revokePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
