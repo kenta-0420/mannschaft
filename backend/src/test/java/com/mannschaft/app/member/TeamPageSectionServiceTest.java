@@ -47,7 +47,7 @@ class TeamPageSectionServiceTest {
             CreateSectionRequest req = new CreateSectionRequest("HEADING", "見出し", null, null, null, null);
 
             // When
-            SectionResponse result = service.createSection(1L, req);
+            SectionResponse result = service.createSection(999L, 1L, req);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("見出し");
@@ -66,7 +66,7 @@ class TeamPageSectionServiceTest {
             given(sectionRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteSection(1L))
+            assertThatThrownBy(() -> service.deleteSection(999L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_002"));

@@ -2,10 +2,12 @@ package com.mannschaft.app.forms.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.forms.FormErrorCode;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.dto.FormPdfDownloadUrlResponse;
 import com.mannschaft.app.forms.dto.FormPdfGenerateResponse;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
@@ -39,10 +41,8 @@ import java.util.Map;
  * 既存基盤 {@link PdfGeneratorService}（Thymeleaf + Flying Saucer）を流用する。
  * 既に登録済みの日本語フォント / Cache Policy / I/O エラー処理を再利用できるためコスト低。</p>
  *
- * <p>認可: 提出者本人 / テンプレート作成者 / ADMIN+ のいずれか。
- * 本サービスでは {@link #generatePdf} / {@link #generateDownloadUrl} の引数 {@code currentUserId}
- * に対して提出者一致または作成者一致を確認する。ADMIN ロール判定は Controller 層の
- * 認可フィルタに委ねる（既存 forms API と同方針）。</p>
+ * <p>認可: 提出者本人 / テンプレート作成者 / スコープ ADMIN・DEPUTY_ADMIN 以上 のいずれか
+ * （認可根治戦役 Wave3-B4 で {@code AccessControlService.isAdminOrAbove} を本 Service に実装済み）。</p>
  *
  * @since 2026-05-17 (F05.7 Phase 11 第四陣 4-B)
  */
@@ -68,6 +68,7 @@ public class FormPdfService {
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
     private final AuditLogService auditLogService;
+    private final AccessControlService accessControlService;
 
     /**
      * 提出済みフォームの PDF を生成し R2/S3 にアップロードする。
@@ -93,10 +94,10 @@ public class FormPdfService {
     @Transactional
     public FormPdfGenerateResponse generatePdf(
             String scopeType, Long scopeId, Long submissionId, Long currentUserId) {
-        FormSubmissionEntity submission = findSubmissionOrThrow(submissionId);
+        FormSubmissionEntity submission = findSubmissionInScopeOrThrow(scopeType, scopeId, submissionId);
         ensureSubmittedOrLater(submission);
         FormTemplateEntity template = findTemplateOrThrow(submission.getTemplateId());
-        ensureViewerCanAccess(submission, template, currentUserId);
+        ensureViewerCanAccess(submission, template, currentUserId, scopeType, scopeId);
 
         List<FormTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(template.getId());
@@ -139,9 +140,9 @@ public class FormPdfService {
      */
     public FormPdfDownloadUrlResponse generateDownloadUrl(
             String scopeType, Long scopeId, Long submissionId, Long currentUserId) {
-        FormSubmissionEntity submission = findSubmissionOrThrow(submissionId);
+        FormSubmissionEntity submission = findSubmissionInScopeOrThrow(scopeType, scopeId, submissionId);
         FormTemplateEntity template = findTemplateOrThrow(submission.getTemplateId());
-        ensureViewerCanAccess(submission, template, currentUserId);
+        ensureViewerCanAccess(submission, template, currentUserId, scopeType, scopeId);
 
         String pdfKey = submission.getPdfFileKey();
         if (pdfKey == null || pdfKey.isBlank()) {
@@ -162,6 +163,19 @@ public class FormPdfService {
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
     }
 
+    /**
+     * 提出を取得し、URL の {@code scopeType}/{@code scopeId} と一致するかを検証する（BOLA ガード）。
+     * 認可根治戦役 Wave3-B4: 従来は submissionId のみで取得しており、URL の scope を一切
+     * 検証していなかった。不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。
+     */
+    private FormSubmissionEntity findSubmissionInScopeOrThrow(String scopeType, Long scopeId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+        if (!entity.getScopeType().equalsIgnoreCase(scopeType) || !entity.getScopeId().equals(scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
+    }
+
     private FormTemplateEntity findTemplateOrThrow(Long templateId) {
         return templateRepository.findById(templateId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.TEMPLATE_NOT_FOUND));
@@ -174,19 +188,23 @@ public class FormPdfService {
     }
 
     /**
-     * 提出者本人 or テンプレート作成者のいずれかであることを確認する。
-     * ADMIN 認可は Controller 層の RolesAllowed / SecurityUtils で別途担保する想定。
+     * 提出者本人 / テンプレート作成者 / スコープ ADMIN 以上 のいずれかであることを確認する。
+     *
+     * <p>認可根治戦役 Wave3-B4: 従来コメントは「ADMIN 経路は Controller 層で別途担保する想定」
+     * としていたが、実際には Controller・Service いずれにも ADMIN 判定が実装されておらず、
+     * 提出者本人でも作成者でもない ADMIN は PDF を閲覧できない過小権限バグだった。
+     * {@link AccessControlService#isAdminOrAbove} を追加して根治する。</p>
      */
     private void ensureViewerCanAccess(
-            FormSubmissionEntity submission, FormTemplateEntity template, Long userId) {
+            FormSubmissionEntity submission, FormTemplateEntity template, Long userId,
+            String scopeType, Long scopeId) {
         if (userId == null) {
             throw new BusinessException(FormErrorCode.PDF_ACCESS_DENIED);
         }
         boolean isSubmitter = userId.equals(submission.getSubmittedBy());
         boolean isCreator = userId.equals(template.getCreatedBy());
-        if (!isSubmitter && !isCreator) {
-            // ADMIN 経路は Controller の認可フィルタに委ねる。本サービスは
-            // 「自分の提出」または「自分が作ったテンプレート」のみ通す。
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
+        if (!isSubmitter && !isCreator && !isAdmin) {
             throw new BusinessException(FormErrorCode.PDF_ACCESS_DENIED);
         }
     }

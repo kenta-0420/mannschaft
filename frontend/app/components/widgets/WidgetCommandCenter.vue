@@ -6,12 +6,14 @@ import {
   toCirculationActionItem,
   toSurveyActionItem,
   toAttendanceActionItem,
+  shouldShowAdminSection,
   type CommandCenterItem,
 } from '~/composables/useCommandCenter'
 import type { CirculationActionItem, SurveyActionItem, AttendanceActionItem, ScopeTabType } from '~/types/dashboard-scope'
+import type { PersonalAdminActionItem } from '~/composables/usePersonalAdminActionRequired'
 
 /**
- * ダッシュボード司令塔ウィジェット「今やること」。
+ * ダッシュボード司令塔ウィジェット「今やること」＋「承認待ち」。
  *
  * ADHD-UX戦役 第四陣: 「数字＋文脈＋次の行動」ワンセットの司令塔を最上段に固定表示する。
  * DashboardPersonalPanel.vue に WidgetFamilyHub と同様の v-if 固定パネルとして挿入する
@@ -20,13 +22,16 @@ import type { CirculationActionItem, SurveyActionItem, AttendanceActionItem, Sco
  * データソース:
  * - usePersonalActionRequired: 全チーム/組織横断の回覧板・アンケート・出席確認（既存 API）
  * - useDashboardApi().getDashboardTodoSummary: 本人の期限切れTODO（既存 API・BE新設ゼロ）
- * 片方が失敗してももう片方は表示する縮退設計（AC-3）。
+ * - usePersonalAdminActionRequired: ADMIN/DEPUTY_ADMIN として管理する全スコープ横断の承認待ち
+ *   （司令塔第二弾・新設 API）。管理スコープを持たない/承認待ち0件のユーザーには非表示（AC-B1-3）。
+ * いずれかが失敗しても他は表示する縮退設計（AC-3 / AC-B1-4）。
  *
- * 設計書: ADHD-UX戦役 第四陣「ダッシュボード司令塔化 第一弾」
+ * 設計書: ADHD-UX戦役 第四陣「ダッシュボード司令塔化 第一弾・第二弾」
  */
 
 const { fetchActionRequired } = usePersonalActionRequired()
 const { getDashboardTodoSummary, toggleTodoComplete } = useDashboardApi()
+const { fetchAdminActionRequired } = usePersonalAdminActionRequired()
 const { userTimezone, formatDate } = useDatetime()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
@@ -41,6 +46,14 @@ const items = ref<CommandCenterItem[]>([])
 const actionRequiredFailed = ref(false)
 const todoFailed = ref(false)
 
+// === 承認待ち横断集約（司令塔第二弾） ===
+const adminItems = ref<PersonalAdminActionItem[]>([])
+const adminTotalPending = ref(0)
+const adminActionFailed = ref(false)
+/** 承認待ちセクションを表示するか。管理スコープなし/承認待ち0件は非表示（AC-B1-3）。取得失敗時は症状を隠さず表示する。 */
+const showAdminSection = computed(() =>
+  loaded.value && shouldShowAdminSection(adminTotalPending.value, adminActionFailed.value))
+
 const counts = computed(() => computeCommandCenterCounts(items.value))
 const isEmpty = computed(() => loaded.value && items.value.length === 0)
 const hasFailure = computed(() => actionRequiredFailed.value || todoFailed.value)
@@ -49,9 +62,10 @@ async function load() {
   if (loaded.value || loading.value) return
   loading.value = true
   try {
-    const [actionSettled, todoSettled] = await Promise.allSettled([
+    const [actionSettled, todoSettled, adminSettled] = await Promise.allSettled([
       fetchActionRequired(),
       getDashboardTodoSummary().then((res) => res.data),
+      fetchAdminActionRequired(),
     ])
 
     if (actionSettled.status === 'rejected') {
@@ -59,6 +73,13 @@ async function load() {
     }
     if (todoSettled.status === 'rejected') {
       captureQuiet(todoSettled.reason, { context: 'WidgetCommandCenter: dashboard/todos取得' })
+    }
+    if (adminSettled.status === 'rejected') {
+      captureQuiet(adminSettled.reason, { context: 'WidgetCommandCenter: admin-action-required取得' })
+      adminActionFailed.value = true
+    } else {
+      adminItems.value = adminSettled.value.items
+      adminTotalPending.value = adminSettled.value.totalPending
     }
 
     const result = mergeCommandCenterData(actionSettled, todoSettled, dayjs(), userTimezone.value)
@@ -69,6 +90,10 @@ async function load() {
     loaded.value = true
     loading.value = false
   }
+}
+
+function onAdminItemClick(item: PersonalAdminActionItem) {
+  navigateTo(item.detailRoute)
 }
 
 function observeViewport() {
@@ -306,6 +331,55 @@ function deadlineTextClass(item: CommandCenterItem): string {
           </div>
         </TransitionGroup>
       </template>
+    </SectionCard>
+
+    <!-- 承認待ち横断集約（司令塔第二弾）: 管理スコープ保持ユーザーのみ・0件時非表示（AC-B1-3） -->
+    <SectionCard v-if="showAdminSection" class="mt-4" data-testid="command-center-admin-section">
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-surface-400">
+            {{ $t('dashboard.commandCenter.adminSectionTitle') }}
+          </p>
+          <p
+            v-if="adminTotalPending > 0"
+            class="text-2xl font-bold text-surface-800 dark:text-surface-100"
+            data-testid="command-center-admin-total"
+          >
+            {{ $t('dashboard.commandCenter.adminUnresolvedCount', { count: adminTotalPending }) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- 取得失敗（症状を隠さず表示・AC-B1-4） -->
+      <Message v-if="adminActionFailed" severity="warn" :closable="false" class="text-xs" data-testid="command-center-admin-error">
+        {{ $t('dashboard.commandCenter.adminLoadError') }}
+      </Message>
+
+      <ul v-else class="divide-y divide-surface-200 dark:divide-surface-700">
+        <li
+          v-for="item in adminItems"
+          :key="`${item.domain}-${item.scopeType}-${item.scopeId}-${item.itemId}`"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 py-2.5 text-left hover:text-primary"
+            :data-testid="`command-center-admin-item-${item.domain}-${item.itemId}`"
+            @click="onAdminItemClick(item)"
+          >
+            <i class="pi pi-verified shrink-0 text-lg text-surface-400" />
+            <span class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-surface-700 dark:text-surface-200">
+                {{ item.title }}
+              </p>
+              <p class="truncate text-xs text-surface-400">
+                {{ item.scopeName }} ・ {{ $t(`adminConsole.lens.approvals.domain.${item.domain}`) }}
+                <span v-if="item.requestedBy"> ・ {{ item.requestedBy }}</span>
+              </p>
+            </span>
+            <i class="pi pi-chevron-right shrink-0 text-xs text-surface-400" />
+          </button>
+        </li>
+      </ul>
     </SectionCard>
 
     <!-- 回覧板確認モーダル -->

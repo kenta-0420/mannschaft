@@ -9,6 +9,7 @@ import {
   toCirculationActionItem,
   toSurveyActionItem,
   toAttendanceActionItem,
+  shouldShowAdminSection,
   type CommandCenterItem,
   type CommandCenterTodoRawResponse,
 } from '~/composables/useCommandCenter'
@@ -233,5 +234,23 @@ describe('モーダル変換関数', () => {
     const item = actionItem({ itemType: 'ATTENDANCE', itemId: '9', title: '出欠', startsAt: null })
     const result = toAttendanceActionItem(item)
     expect(result).toEqual({ scheduleId: 9, eventTitle: '出欠', startsAt: '' })
+  })
+})
+
+describe('shouldShowAdminSection（司令塔第二弾: 承認待ち横断集約）', () => {
+  it('AC-B1-3: 管理スコープはあるが承認待ち0件・取得成功のときは非表示', () => {
+    expect(shouldShowAdminSection(0, false)).toBe(false)
+  })
+
+  it('承認待ちが1件以上あるときは表示', () => {
+    expect(shouldShowAdminSection(1, false)).toBe(true)
+  })
+
+  it('AC-B1-4: 取得が失敗したときは0件でも症状を隠さず表示する', () => {
+    expect(shouldShowAdminSection(0, true)).toBe(true)
+  })
+
+  it('承認待ちがあり、かつ取得失敗フラグも立っている場合も表示', () => {
+    expect(shouldShowAdminSection(5, true)).toBe(true)
   })
 })
