@@ -2,6 +2,7 @@ package com.mannschaft.app.member.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.member.dto.BulkCreateMemberRequest;
 import com.mannschaft.app.member.dto.BulkCreateMemberResponse;
 import com.mannschaft.app.member.dto.CopyMembersRequest;
@@ -53,7 +54,8 @@ public class MemberProfileController {
             @RequestParam Long teamPageId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        Page<MemberProfileResponse> result = profileService.listProfiles(teamPageId, PageRequest.of(page, size));
+        Long userId = SecurityUtils.getCurrentUserId();
+        Page<MemberProfileResponse> result = profileService.listProfiles(userId, teamPageId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -66,7 +68,8 @@ public class MemberProfileController {
     @Operation(summary = "メンバー詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> getMember(@PathVariable Long id) {
-        MemberProfileResponse response = profileService.getProfile(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        MemberProfileResponse response = profileService.getProfile(userId, id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -78,7 +81,8 @@ public class MemberProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> createMember(
             @Valid @RequestBody CreateMemberProfileRequest request) {
-        MemberProfileResponse response = profileService.createProfile(request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        MemberProfileResponse response = profileService.createProfile(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -91,7 +95,8 @@ public class MemberProfileController {
     public ResponseEntity<ApiResponse<MemberProfileResponse>> updateMember(
             @PathVariable Long id,
             @Valid @RequestBody UpdateMemberProfileRequest request) {
-        MemberProfileResponse response = profileService.updateProfile(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        MemberProfileResponse response = profileService.updateProfile(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -102,7 +107,8 @@ public class MemberProfileController {
     @Operation(summary = "メンバー削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMember(@PathVariable Long id) {
-        profileService.deleteProfile(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        profileService.deleteProfile(userId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -114,7 +120,8 @@ public class MemberProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
     public ResponseEntity<ApiResponse<BulkCreateMemberResponse>> bulkCreateMembers(
             @Valid @RequestBody BulkCreateMemberRequest request) {
-        BulkCreateMemberResponse response = profileService.bulkCreate(request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        BulkCreateMemberResponse response = profileService.bulkCreate(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -127,7 +134,8 @@ public class MemberProfileController {
     public ResponseEntity<ApiResponse<CopyMembersResponse>> copyMembers(
             @PathVariable Long id,
             @Valid @RequestBody CopyMembersRequest request) {
-        CopyMembersResponse response = profileService.copyMembers(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        CopyMembersResponse response = profileService.copyMembers(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -139,7 +147,8 @@ public class MemberProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ReorderResponse>> reorderMembers(
             @Valid @RequestBody ReorderRequest request) {
-        ReorderResponse response = profileService.reorderMembers(request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        ReorderResponse response = profileService.reorderMembers(userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -153,7 +162,8 @@ public class MemberProfileController {
             @RequestParam String q,
             @RequestParam(required = false) Long teamPageId,
             @RequestParam(defaultValue = "10") int limit) {
-        List<MemberLookupResponse> response = profileService.lookupMembers(teamPageId, q, limit);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<MemberLookupResponse> response = profileService.lookupMembers(userId, teamPageId, q, limit);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.payment.dto.BulkPaymentRequest;
@@ -9,6 +10,7 @@ import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.dto.RemindResponse;
 import com.mannschaft.app.payment.dto.UpdatePaymentRequest;
 import com.mannschaft.app.payment.service.MemberPaymentService;
+import com.mannschaft.app.payment.service.PaymentItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,10 +35,19 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * 組織支払い記録コントローラー。組織単位の支払い記録管理 API を提供する。
  * <p>
- * エンドポイント数: 9（GET payments, POST payments, PATCH payments/{paymentId},
+ * エンドポイント数: 8（GET payments, POST payments, PATCH payments/{paymentId},
  *                     POST payments/bulk, DELETE payments/{paymentId},
- *                     POST remind, GET payments/export, GET payment-summary,
+ *                     POST remind, GET payments/export,
  *                     POST payments/{paymentId}/refund）
+ *
+ * <p><b>認可根治戦役 Wave3-B1（2026-07-16）:</b> 全 8 EP に認可ゼロ（未認証チェックのみ deny-by-default 頼み）
+ * だった欠陥を是正する。変更系（create/update/bulk/cancel/remind/export/refund）は
+ * {@link AccessControlService#checkAdminOrAbove}（"ORGANIZATION" scope）を要求し、閲覧系（list）は
+ * {@link AccessControlService#checkMembership} を要求する。加えて、path 上位スコープの ADMIN であっても
+ * {@code itemId} が別組織/別チームの支払い項目である BOLA（越境）を防ぐため、
+ * {@link PaymentItemService#findByIdAndOrganizationIdOrThrow} で {@code itemId} が {@code id}（組織）配下に
+ * 属することを検証してから {@link MemberPaymentService} の {@code itemId} 直渡しメソッドを呼ぶ。
+ * 不一致は {@code PAYMENT_ITEM_NOT_FOUND}（404・存在秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{id}/payment-items/{itemId}")
@@ -45,6 +56,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class OrganizationPaymentController {
 
     private final MemberPaymentService memberPaymentService;
+    private final PaymentItemService paymentItemService;
+    private final AccessControlService accessControlService;
 
 
     @GetMapping("/payments")
@@ -55,6 +68,9 @@ public class OrganizationPaymentController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         Page<MemberPaymentResponse> result = memberPaymentService.listPayments(
                 itemId, status, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -68,8 +84,11 @@ public class OrganizationPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody CreateManualPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         MemberPaymentResponse response = memberPaymentService.createManualPayment(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -80,6 +99,9 @@ public class OrganizationPaymentController {
             @PathVariable Long itemId,
             @PathVariable Long paymentId,
             @Valid @RequestBody UpdatePaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         MemberPaymentResponse response = memberPaymentService.updatePayment(itemId, paymentId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -90,8 +112,11 @@ public class OrganizationPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody BulkPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         BulkPaymentResponse response = memberPaymentService.createBulkPayments(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -101,6 +126,9 @@ public class OrganizationPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @PathVariable Long paymentId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         memberPaymentService.cancelPayment(itemId, paymentId);
         return ResponseEntity.noContent().build();
     }
@@ -110,6 +138,9 @@ public class OrganizationPaymentController {
     public ResponseEntity<ApiResponse<RemindResponse>> sendRemind(
             @PathVariable Long id,
             @PathVariable Long itemId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         RemindResponse response = memberPaymentService.sendRemind(itemId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -119,6 +150,10 @@ public class OrganizationPaymentController {
     public ResponseEntity<byte[]> exportPayments(
             @PathVariable Long id,
             @PathVariable Long itemId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        // CSV エクスポートは全メンバーの財務明細一覧のため ADMIN 限定（TeamPaymentExportController と同水準）。
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         byte[] csv = memberPaymentService.exportPaymentsCsv(itemId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
@@ -132,8 +167,12 @@ public class OrganizationPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @PathVariable Long paymentId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        // 最重要案件: Stripe 実返金。ORG ADMIN 以上のみ＋itemId の組織帰属検証（BOLA 是正）を通す。
+        accessControlService.checkAdminOrAbove(userId, id, "ORGANIZATION");
+        paymentItemService.findByIdAndOrganizationIdOrThrow(itemId, id);
         MemberPaymentResponse response = memberPaymentService.refundPayment(
-                itemId, paymentId, SecurityUtils.getCurrentUserId());
+                itemId, paymentId, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
