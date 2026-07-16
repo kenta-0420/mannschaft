@@ -240,14 +240,21 @@ class ModerationScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /**
      * content_reports へ 1 行 INSERT する（NOT NULL 列: target_type/target_id/reported_by/
-     * scope_type/scope_id/reason/status/created_at/updated_at をすべて明示）。
+     * scope_type/scope_id/reason/status/content_hidden/created_at/updated_at をすべて明示）。
+     *
+     * <p>test プロファイルは {@code spring.jpa.hibernate.ddl-auto=create}（Flyway 無効。
+     * {@code backend/src/test/resources/application-test.yml}）でスキーマを生成するため、
+     * 実テーブルは {@link com.mannschaft.app.moderation.entity.ContentReportEntity} の
+     * {@code @Column} 定義から素直に DDL 化される。{@code contentHidden}
+     * （{@code @Column(nullable = false)}）は Java 側で {@code @Builder.Default = false} を
+     * 持つのみで DB レベルの DEFAULT 句は生成されない。生 SQL INSERT では明示指定が必須。</p>
      */
     private Long insertContentReport(Long reportedBy) {
         em.createNativeQuery(
                         "INSERT INTO content_reports (target_type, target_id, reported_by, "
-                                + "scope_type, scope_id, reason, status, created_at, updated_at) "
+                                + "scope_type, scope_id, reason, status, content_hidden, created_at, updated_at) "
                                 + "VALUES ('TIMELINE_POST', 1, :reportedBy, "
-                                + "'TEAM', 1, 'SPAM', 'PENDING', NOW(), NOW())")
+                                + "'TEAM', 1, 'SPAM', 'PENDING', 0, NOW(), NOW())")
                 .setParameter("reportedBy", reportedBy)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM content_reports").getSingleResult()).longValue();
