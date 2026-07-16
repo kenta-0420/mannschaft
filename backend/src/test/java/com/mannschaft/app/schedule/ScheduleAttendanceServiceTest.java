@@ -38,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -643,20 +645,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("出欠一覧取得_正常_一覧を返す")
         void 出欠一覧取得_正常_一覧を返す() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID);
+            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getStatus()).isEqualTo("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("出欠一覧取得_非権限者_COMMON_002")
+        void 出欠一覧取得_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendances(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID);
         }
     }
 
@@ -715,10 +731,11 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", "管理者承認")));
 
             // when
-            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req);
+            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID);
 
             // then
             verify(attendanceRepository).save(any(ScheduleAttendanceEntity.class));
+            verify(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
         }
 
         @Test
@@ -732,10 +749,28 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
 
             // when & then
-            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req))
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.ATTENDANCE_NOT_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("一括更新_非権限者_COMMON_002")
+        void 一括更新_非権限者_COMMON_002() {
+            // given: checkScopeAdminAccess（ScheduleService 側）が COMMON_002 を投げるケース
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            BulkAttendanceRequest req = new BulkAttendanceRequest(
+                    List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).save(any(ScheduleAttendanceEntity.class));
         }
     }
 
@@ -750,21 +785,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("CSV出力_正常_ヘッダーとデータを含む")
         void CSV出力_正常_ヘッダーとデータを含む() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             attendance.respond(AttendanceStatus.ATTENDING, "参加します");
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID);
+            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(csv).startsWith("ユーザーID,ステータス,コメント,回答日時");
             assertThat(csv).contains("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("CSV出力_非権限者_COMMON_002")
+        void CSV出力_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 

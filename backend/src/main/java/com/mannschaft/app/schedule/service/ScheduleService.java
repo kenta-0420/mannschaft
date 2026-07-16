@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
@@ -36,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * スケジュールサービス。スケジュールのCRUD・横断調整を担当するファサード。
@@ -79,6 +82,10 @@ public class ScheduleService {
      * （CLAUDE.md ドメイン境界の原則・ScheduleAttendanceService と同じ越境窓口方式）。
      */
     private final OrganizationMembershipService organizationMembershipService;
+    /**
+     * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
+     */
+    private final AccessControlService accessControlService;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -200,6 +207,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse createSchedule(CreateScheduleRequest req, Long scopeId,
                                            String scopeType, Long userId) {
+        checkCreateScopeAccess(scopeId, scopeType, userId);
         LocalDateTime startAtJst = toJst(req.getStartAt());
         LocalDateTime endAtJst = toJst(req.getEndAt());
         LocalDateTime deadlineJst = toJst(req.getAttendanceDeadline());
@@ -251,6 +259,7 @@ public class ScheduleService {
     public ScheduleResponse updateSchedule(Long id, UpdateScheduleRequest req,
                                            String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
@@ -308,10 +317,12 @@ public class ScheduleService {
      *
      * @param id          スケジュールID
      * @param updateScope 更新スコープ（THIS_ONLY / THIS_AND_FOLLOWING / ALL）
+     * @param userId      操作ユーザーID（認可チェック用）
      */
     @Transactional
-    public void deleteSchedule(Long id, String updateScope) {
+    public void deleteSchedule(Long id, String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
 
         if (UPDATE_SCOPE_ALL.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // 親と全子を削除
@@ -341,6 +352,7 @@ public class ScheduleService {
     @Transactional
     public void cancelSchedule(Long id, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         schedule.cancel();
@@ -357,6 +369,13 @@ public class ScheduleService {
 
     /**
      * スケジュールを複製する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6・BOLA是正）</b>: 本メソッドは
+     * {@link ScheduleCrossRefService#acceptInvitation}（クロス招待の受諾＝正当な越境複製）からも
+     * 呼ばれる共有メソッドのため、ここに per-scope 認可を埋め込むと招待受諾の正当系を壊す
+     * （{@code feedback_authz_gate_on_public_entry_not_shared_method}）。認可は public な複製 API の
+     * 入口（{@code OrgScheduleController} / {@code TeamScheduleController} の duplicate EP）で
+     * {@link #checkScopeAdminAccess(Long, Long)} を呼んで行う。</p>
      *
      * @param id     複製元スケジュールID
      * @param userId 作成者ID
@@ -399,6 +418,84 @@ public class ScheduleService {
     ScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * スケジュールに対する管理操作（update/delete/cancel/duplicate）の per-scope 認可を
+     * entity 由来 scope で強制する（認可根治 Wave3-B6）。
+     *
+     * <p>TEAM/ORGANIZATION スコープは {@link AccessControlService#checkAdminOrAbove} で
+     * 当該チーム/組織の ADMIN/DEPUTY_ADMIN のみ許可する。PERSONAL スコープ（{@code userId} 設定）は
+     * ロール概念が無いため所有者本人一致で判定する
+     * （{@code project_scopetype_cross_domain_personal_mismatch}: PERSONAL を membership 系 API に
+     * 渡すと 500 になるため分岐が必須）。SYSTEM_ADMIN は短絡的に許可する。</p>
+     *
+     * <p>id 版は {@link ScheduleCrossRefService} 等、他クラスから public な操作入口で
+     * BOLA 是正のために呼び出す用途で公開する（duplicateSchedule 自体には認可を埋め込まない方針の受け皿）。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 操作ユーザーID
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
+     */
+    public void checkScopeAdminAccess(Long id, Long userId) {
+        ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
+    }
+
+    /**
+     * {@link #checkScopeAdminAccess(Long, Long)} の entity 版（既に fetch 済みの場合に使う）。
+     */
+    void checkScopeAdminAccess(ScheduleEntity schedule, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (schedule.isTeamScope()) {
+            accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), SCOPE_TYPE_TEAM);
+        } else if (schedule.isOrganizationScope()) {
+            accessControlService.checkAdminOrAbove(userId, schedule.getOrganizationId(), SCOPE_TYPE_ORGANIZATION);
+        } else if (!Objects.equals(schedule.getUserId(), userId)) {
+            // PERSONAL スコープ: 所有者本人以外は拒否（他ドメインの書込EP経由のID混同=BOLAを防ぐ）
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スケジュールの出欠等の閲覧操作に対する per-scope 認可を entity 由来 scope で強制する
+     * （認可根治 Wave3-B6・checkMembership 水準）。{@link ScheduleAttendanceService} の
+     * getAttendances / exportAttendancesCsv から呼ばれる。
+     *
+     * @param id     スケジュールID
+     * @param userId 閲覧ユーザーID
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
+     */
+    public void checkScopeViewAccess(Long id, Long userId) {
+        ScheduleEntity schedule = findScheduleOrThrow(id);
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (schedule.isTeamScope()) {
+            accessControlService.checkMembership(userId, schedule.getTeamId(), SCOPE_TYPE_TEAM);
+        } else if (schedule.isOrganizationScope()) {
+            accessControlService.checkMembership(userId, schedule.getOrganizationId(), SCOPE_TYPE_ORGANIZATION);
+        } else if (!Objects.equals(schedule.getUserId(), userId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スケジュール作成時（entity 未生成の path 由来 scope）の per-scope 認可を強制する
+     * （認可根治 Wave3-B6）。TEAM/ORGANIZATION のみ ADMIN 必須。PERSONAL は
+     * {@code PersonalScheduleController} 経由の自己作成が正規ルートのため無条件許可、
+     * 不正な scopeType は後続の {@link #buildScheduleEntity} の switch で
+     * {@link ScheduleErrorCode#INVALID_SCOPE} として弾かれる。
+     */
+    private void checkCreateScopeAccess(Long scopeId, String scopeType, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (SCOPE_TYPE_TEAM.equals(scopeType) || SCOPE_TYPE_ORGANIZATION.equals(scopeType)) {
+            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+        }
     }
 
     // --- プライベートメソッド ---
