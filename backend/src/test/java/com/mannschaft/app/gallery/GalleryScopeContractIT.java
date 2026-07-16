@@ -92,16 +92,29 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
     @BeforeEach
     void setUp() {
         insertRoleIfAbsent("ADMIN", "管理者", 2);
-        // 認可根治Wave3-B5 根治: test profile は spring.flyway.enabled=false + ddl-auto=create のため
-        // V9.069 の storage_plans 初期シード（TEAM/ORGANIZATION/PERSONAL 既定プラン）が投入されない。
-        // uploadPhotos が StorageQuotaService.recordUpload → ensureSubscription 経由で
-        // 「TEAM の既定プラン」を探しに行くと見つからず SUBSCRIPTION_NOT_FOUND（500 Internal）になる
-        // （写真アップロードが reject される前段の認可チェックを通過した瞬間に必ず 500 化する不具合）。
-        // roles と同じ idempotent seed パターンで TEAM 既定プランを自前補完する。
-        insertDefaultStoragePlanIfAbsent("TEAM", "フリー（チーム）GL契約テスト", 5_368_709_120L, 5_368_709_120L);
 
         teamAId = insertTeam("GL認可契約チームA");
         teamBId = insertTeam("GL認可契約チームB");
+
+        // 認可根治Wave3-B5 根治（真因確定・第2版）: 当初 insertDefaultStoragePlanIfAbsent で
+        // storage_plans をシードしただけでは 500（STORAGE_QUOTA_002 = SUBSCRIPTION_NOT_FOUND）が
+        // 消えなかった。真因は「シードした行が本テストTXから見えないこと」ではなく、
+        // uploadPhotos → StorageQuotaService.recordUpload → ensureSubscription が未存在時に
+        // 委譲する StorageSubscriptionProvisioningService#getOrCreateDefault が
+        // @Transactional(REQUIRES_NEW) で【別コネクション】を張ることにある。
+        // 本 IT はクラスレベル @Transactional（テストTX・本メソッド終了までコミットされない）で
+        // 動くため、setUp() で storage_plans に INSERT した行は「同一テストTX内では見えるが、
+        // REQUIRES_NEW 側の別コネクションからは（MySQL の分離レベルに関わらず他コネクションの
+        // 未コミット変更は不可視のため）絶対に見えない」。結果、別コネクション側の
+        // findFirstByScopeLevelAndIsDefaultTrueAndDeletedAtIsNull が常に空を返し、
+        // 何度 storage_plans をシードしても SUBSCRIPTION_NOT_FOUND が再現し続けていた。
+        // 根治として、write 経路が実際に参照する storage_subscriptions 行そのものを
+        // ここで直接補完し、ensureSubscription が REQUIRES_NEW（getOrCreateDefault）に
+        // 到達すること自体を回避する。findByScopeTypeAndScopeId はテストTXと同一コネクション上で
+        // 実行されるため、ここで補完した行は確実に参照できる。
+        Long teamStoragePlanId = insertDefaultStoragePlanIfAbsent(
+                "TEAM", "フリー（チーム）GL契約テスト", 5_368_709_120L, 5_368_709_120L);
+        insertStorageSubscriptionIfAbsent("TEAM", teamAId, teamStoragePlanId);
 
         adminAId = insertUser("gl-authz-admin-a@example.com");
         adminBId = insertUser("gl-authz-admin-b@example.com");
@@ -496,32 +509,72 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /**
      * storage_plans を scope_level で引く idempotent seed（グローバル参照テーブルのため deleteAll しない）。
+     * 既存または新規作成したプランの id を返す（{@link #insertStorageSubscriptionIfAbsent} が
+     * FK {@code storage_subscriptions.plan_id} として直接参照するために必要）。
      *
      * <p>test profile（{@code spring.flyway.enabled=false} + {@code ddl-auto=create}）では
      * V9.069 の初期シード INSERT が実行されないため、{@code insertRoleIfAbsent} と同様に
-     * 本テストで既定プランを自前補完する必要がある（本 IT が
-     * {@code StorageQuotaService.recordUpload} を実 DB で通す最初の統合テストであり、
-     * この欠落が uploadPhotos 成功系すべてを 500（{@code STORAGE_QUOTA_002}）にしていた）。</p>
+     * 本テストで既定プランを自前補完する。ただし本メソッド単体のシードだけでは
+     * {@code getOrCreateDefault}（REQUIRES_NEW・別コネクション）から不可視のため 500 は消えない
+     * （詳細は {@link #setUp()} のコメント）。本メソッドは {@link #insertStorageSubscriptionIfAbsent}
+     * と組み合わせて、REQUIRES_NEW 経路そのものを回避するために使う。</p>
      */
-    private void insertDefaultStoragePlanIfAbsent(String scopeLevel, String name, long includedBytes, long maxBytes) {
+    private Long insertDefaultStoragePlanIfAbsent(String scopeLevel, String name, long includedBytes, long maxBytes) {
         Number count = (Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM storage_plans "
                                 + "WHERE scope_level = :scopeLevel AND is_default = TRUE AND deleted_at IS NULL")
                 .setParameter("scopeLevel", scopeLevel)
                 .getSingleResult();
+        if (count.longValue() == 0) {
+            em.createNativeQuery(
+                            "INSERT INTO storage_plans ("
+                                    + "name, scope_level, included_bytes, max_bytes, price_monthly, "
+                                    + "is_default, sort_order, created_at, updated_at) "
+                                    + "VALUES (:name, :scopeLevel, :includedBytes, :maxBytes, 0.00, "
+                                    + "TRUE, 1, NOW(), NOW())")
+                    .setParameter("name", name)
+                    .setParameter("scopeLevel", scopeLevel)
+                    .setParameter("includedBytes", includedBytes)
+                    .setParameter("maxBytes", maxBytes)
+                    .executeUpdate();
+        }
+        return ((Number) em.createNativeQuery(
+                        "SELECT id FROM storage_plans WHERE scope_level = :scopeLevel "
+                                + "AND is_default = TRUE AND deleted_at IS NULL ORDER BY id LIMIT 1")
+                .setParameter("scopeLevel", scopeLevel)
+                .getSingleResult()).longValue();
+    }
+
+    /**
+     * storage_subscriptions を scope_type + scope_id で直接補完する（根治の核心）。
+     *
+     * <p>{@link com.mannschaft.app.common.storage.quota.StorageQuotaService#recordUpload}
+     * 内部の {@code ensureSubscription} は {@code subscriptionRepository.findByScopeTypeAndScopeId}
+     * を<b>テストTXと同一コネクション</b>で実行する（{@code recordUpload} 自体は既定の
+     * {@code REQUIRED} 伝播のため、外側のテストTXにそのまま参加する）。
+     * そのため、ここで直接 INSERT した行は setUp() と同一トランザクション内にあり確実に見える
+     * （REQUIRES_NEW を経由する {@code getOrCreateDefault} には到達しなくなる）。</p>
+     *
+     * <p>scope_id は本 IT が毎回新規作成するチーム ID のため、他テストの既存データと
+     * 衝突する余地がない（{@code UNIQUE KEY uq_ss_scope(scope_type, scope_id)}）。</p>
+     */
+    private void insertStorageSubscriptionIfAbsent(String scopeType, Long scopeId, Long planId) {
+        Number count = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM storage_subscriptions "
+                                + "WHERE scope_type = :scopeType AND scope_id = :scopeId")
+                .setParameter("scopeType", scopeType)
+                .setParameter("scopeId", scopeId)
+                .getSingleResult();
         if (count.longValue() > 0) {
             return;
         }
         em.createNativeQuery(
-                        "INSERT INTO storage_plans ("
-                                + "name, scope_level, included_bytes, max_bytes, price_monthly, "
-                                + "is_default, sort_order, created_at, updated_at) "
-                                + "VALUES (:name, :scopeLevel, :includedBytes, :maxBytes, 0.00, "
-                                + "TRUE, 1, NOW(), NOW())")
-                .setParameter("name", name)
-                .setParameter("scopeLevel", scopeLevel)
-                .setParameter("includedBytes", includedBytes)
-                .setParameter("maxBytes", maxBytes)
+                        "INSERT INTO storage_subscriptions ("
+                                + "scope_type, scope_id, plan_id, used_bytes, file_count, created_at, updated_at) "
+                                + "VALUES (:scopeType, :scopeId, :planId, 0, 0, NOW(), NOW())")
+                .setParameter("scopeType", scopeType)
+                .setParameter("scopeId", scopeId)
+                .setParameter("planId", planId)
                 .executeUpdate();
     }
 
