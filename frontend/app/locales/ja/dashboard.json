@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "新しいチーム・組織を見つける",

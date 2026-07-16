@@ -16,6 +16,7 @@ import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.EventType;
@@ -24,6 +25,7 @@ import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -107,6 +109,8 @@ class DashboardScheduleBatchN1Test {
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private ShiftAssignmentRepository shiftAssignmentRepository;
+    @Mock private ReservationRepository reservationRepository;
     @Mock private OrganizationService organizationService;
     @Mock private TeamService teamService;
     /** Controller の DashboardService 依存はモックに差し替える（getCalendar は service を呼ばないため挙動に影響なし）。 */
@@ -148,6 +152,8 @@ class DashboardScheduleBatchN1Test {
                 teamRepository,
                 organizationRepository,
                 contentVisibilityChecker,
+                shiftAssignmentRepository,
+                reservationRepository,
                 scopeActionRequiredFacade,
                 organizationService,
                 teamService,

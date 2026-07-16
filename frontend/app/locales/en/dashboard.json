@@ -77,7 +77,10 @@
       "toggle_today": "Today",
       "toggle_week": "This Week",
       "empty_today": "No events today",
-      "empty_week": "No events this week"
+      "empty_week": "No events this week",
+      "kind_event": "Event",
+      "kind_shift": "Shift",
+      "kind_reservation": "Reservation"
     },
     "personal": {
       "find_team_title": "Find a New Team or Organization",

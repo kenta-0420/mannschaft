@@ -37,6 +37,11 @@ export function useDashboardApi() {
     return api<{
       data: Array<{
         id: number
+        /**
+         * 司令塔第二弾（ADHD-UX戦役第四陣）: 種別（イベント/本人シフト/本人予約）。
+         * 既存イベントは EVENT。後方互換のため未知の値でも描画は落とさない想定。
+         */
+        kind: 'EVENT' | 'SHIFT' | 'RESERVATION'
         title: string
         start_at: string
         end_at: string
