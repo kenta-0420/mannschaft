@@ -365,6 +365,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/warning-re-reviews/**").hasRole("SYSTEM_ADMIN")
                 .requestMatchers("/api/v1/admin/users/**").hasRole("SYSTEM_ADMIN")
                 .requestMatchers("/api/v1/admin/onboarding/presets/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 Wave3 トランシェB4: F05.7 forms の SYSTEM_ADMIN 専用プリセット管理も
+                // Wave0 と同じ requestMatcher 登録漏れ（authenticated() のみで到達可能）だったため格上げする。
+                // Service 層の AccessControlService.checkSystemAdmin と二重防御になる。
+                .requestMatchers("/api/v1/admin/form-presets/**").hasRole("SYSTEM_ADMIN")
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
                 // F09.19.2 スポットライト配信（サービング/計測。content|view|visit すべて認証必須。§6.1/§11）

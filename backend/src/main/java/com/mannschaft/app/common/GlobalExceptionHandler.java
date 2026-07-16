@@ -923,8 +923,15 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBER_002", HttpStatus.NOT_FOUND),               // SECTION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("MEMBER_003", HttpStatus.NOT_FOUND),               // PROFILE_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("MEMBER_004", HttpStatus.NOT_FOUND),               // FIELD_NOT_FOUND（IDOR 秘匿 → 404）
-            // 認可根治戦役 Wave3 トランシェB5: supporter/property/gallery の *_NOT_FOUND は、
-            // 対象エンティティが自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。
+            // 認可根治戦役 Wave3 forms/disclosure BOLA存在秘匿: forms の *_NOT_FOUND は BOLA 存在秘匿のため 404、PDF 権限なしは 403。
+            Map.entry("FORM_001", HttpStatus.NOT_FOUND),                 // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FORM_002", HttpStatus.NOT_FOUND),                 // SUBMISSION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FORM_003", HttpStatus.NOT_FOUND),                 // PRESET_NOT_FOUND → 404
+            Map.entry("FORM_014", HttpStatus.FORBIDDEN),                 // PDF_ACCESS_DENIED → 403
+            // disclosure の DISCLOSURE_001/002 は cross-scope entity-mismatch 専用のため BOLA 存在秘匿の 404。
+            Map.entry("DISCLOSURE_001", HttpStatus.NOT_FOUND),           // リソース不在 → 404
+            Map.entry("DISCLOSURE_002", HttpStatus.NOT_FOUND),           // スコープ不一致（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3 トランシェB5: supporter/property/gallery の *_NOT_FOUND は BOLA 存在秘匿のため 404。
             Map.entry("SUPPORTER_003", HttpStatus.NOT_FOUND),            // 申請不在/越境（IDOR 秘匿 → 404）
             Map.entry("PROPERTY_001", HttpStatus.NOT_FOUND),             // パッケージ不在/越境（IDOR 秘匿 → 404）
             Map.entry("PROPERTY_005", HttpStatus.NOT_FOUND),             // 業者不在/越境（IDOR 秘匿 → 404）

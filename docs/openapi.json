@@ -131395,6 +131395,28 @@
         }
       }
     },
+    "/api/v1/dashboard/admin-action-required": {
+      "get": {
+        "tags": [
+          "ダッシュボード（管理者承認待ち）"
+        ],
+        "summary": "個人横断「承認待ち」集計",
+        "description": "ADMIN/DEPUTY_ADMIN として管理する全チーム・組織の予約承認/シフトリクエスト/マッチング応募/未収請求の承認待ちアイテムをスコープ情報付きで返す。1スコープがエラーでも他スコープは返す縮退設計（AC-B1-4）。認証必須（未認証は401）。管理スコープを持たないユーザーは空配列200（AC-B1-3）。",
+        "operationId": "getPersonalAdminActionRequired",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePersonalAdminActionRequiredResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/dashboard/activity": {
       "get": {
         "tags": [
@@ -221329,6 +221351,66 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponsePersonalAdminActionRequiredResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PersonalAdminActionRequiredResponse"
+          }
+        }
+      },
+      "PersonalAdminActionRequiredItem": {
+        "type": "object",
+        "properties": {
+          "detail_route": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requested_by": {
+            "type": "string"
+          },
+          "scope_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scope_name": {
+            "type": "string"
+          },
+          "scope_slug": {
+            "type": "string"
+          },
+          "scope_type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PersonalAdminActionRequiredResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalAdminActionRequiredItem"
+            }
+          },
+          "total_pending": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
