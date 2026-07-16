@@ -151,11 +151,17 @@ public class ScheduleAttendanceService {
     /**
      * スケジュールの出欠一覧を取得する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 個人名付き出欠一覧の漏洩を防ぐため、当該スケジュールが
+     * 属する scope（TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkMembership} 水準）。
+     * entity 由来 scope で判定するため、URL の teamId/orgId と実際のスケジュールの scope が
+     * 一致しない BOLA 越境も防ぐ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠回答一覧
      */
-    public List<AttendanceResponse> getAttendances(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public List<AttendanceResponse> getAttendances(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         return attendanceRepository.findByScheduleIdOrderByUserIdAsc(scheduleId).stream()
                 .map(this::toAttendanceResponse)
                 .toList();
@@ -352,11 +358,17 @@ public class ScheduleAttendanceService {
     /**
      * 管理者による出欠一括更新を行う。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 「管理者用」の doc どおり、当該スケジュールが属する
+     * scope（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN のみ実行可（{@code checkAdminOrAbove} 水準・
+     * entity 由来 scope）。従来は認可ゼロで一般メンバーも一括上書きできていた欠陥を是正。</p>
+     *
      * @param scheduleId スケジュールID
      * @param req        一括出欠リクエスト
+     * @param userId     操作ユーザーID
      */
     @Transactional
-    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req) {
+    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req, Long userId) {
+        scheduleService.checkScopeAdminAccess(scheduleId, userId);
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
         validateAttendanceRequired(schedule);
 
@@ -378,11 +390,14 @@ public class ScheduleAttendanceService {
     /**
      * 出欠一覧をCSV文字列として出力する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: getAttendances と同じく entity 由来 scope のメンバーのみ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return CSV文字列
      */
-    public String exportAttendancesCsv(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public String exportAttendancesCsv(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         List<ScheduleAttendanceEntity> attendances = attendanceRepository
                 .findByScheduleIdOrderByUserIdAsc(scheduleId);
 

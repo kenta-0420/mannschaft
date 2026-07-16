@@ -57,9 +57,10 @@ public class TimelineFeedController {
             @RequestParam(defaultValue = "0") String scopeId,
             @RequestParam(required = false) UUID scopeVillageId,
             @RequestParam(defaultValue = "20") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Long resolvedScopeId = scopeIdResolver.resolve(scopeType, scopeId);
-        List<PostResponse> posts = postService.getFeed(scopeType, resolvedScopeId, scopeVillageId, size);
-        List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId);
+        List<PostResponse> posts = postService.getFeed(scopeType, resolvedScopeId, scopeVillageId, size, userId);
+        List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId, userId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
     }
@@ -101,7 +102,8 @@ public class TimelineFeedController {
     public ResponseEntity<ApiResponse<List<PostResponse>>> getUserPosts(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "20") int size) {
-        List<PostResponse> posts = postService.getUserPosts(userId, size);
+        Long callerUserId = SecurityUtils.getCurrentUserId();
+        List<PostResponse> posts = postService.getUserPosts(userId, size, callerUserId);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 
@@ -114,7 +116,8 @@ public class TimelineFeedController {
     public ResponseEntity<ApiResponse<List<PostResponse>>> getPinnedPosts(
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") Long scopeId) {
-        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId, userId);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 
@@ -127,7 +130,8 @@ public class TimelineFeedController {
     public ResponseEntity<ApiResponse<List<PostResponse>>> searchPosts(
             @RequestParam String q,
             @RequestParam(defaultValue = "20") int limit) {
-        List<PostResponse> posts = postService.searchPosts(q, limit);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<PostResponse> posts = postService.searchPosts(q, limit, userId);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 }

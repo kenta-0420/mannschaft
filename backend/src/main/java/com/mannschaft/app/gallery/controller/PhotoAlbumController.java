@@ -142,7 +142,8 @@ public class PhotoAlbumController {
             @RequestParam(defaultValue = "sort_order") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size) {
-        Page<PhotoResponse> result = photoService.listPhotos(id, sort, PageRequest.of(page, size));
+        Page<PhotoResponse> result = photoService.listPhotos(
+                id, sort, PageRequest.of(page, size), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));

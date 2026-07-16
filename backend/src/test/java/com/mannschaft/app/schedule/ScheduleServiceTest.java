@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
@@ -35,6 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -74,6 +78,9 @@ class ScheduleServiceTest {
 
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -385,6 +392,28 @@ class ScheduleServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.INVALID_SCOPE);
         }
+
+        @Test
+        @DisplayName("スケジュール作成_非権限者_COMMON_002")
+        void スケジュール作成_非権限者_COMMON_002() {
+            // given
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "練習", null, null,
+                    START_ODT, END_ODT,
+                    false, "PRACTICE",
+                    null, null, null,
+                    false, null, null, null, null, null, null, null, null, null, false, false);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(scheduleRepository, never()).save(any(ScheduleEntity.class));
+        }
     }
 
     // ========================================
@@ -434,6 +463,29 @@ class ScheduleServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.SCHEDULE_ALREADY_CANCELLED);
         }
+
+        @Test
+        @DisplayName("スケジュール更新_非権限者_COMMON_002")
+        void スケジュール更新_非権限者_COMMON_002() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新", null, null,
+                    null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when & then
+            assertThatThrownBy(() -> scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(scheduleRepository, never()).save(any(ScheduleEntity.class));
+        }
     }
 
     // ========================================
@@ -454,7 +506,7 @@ class ScheduleServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             // when
-            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY");
+            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY", USER_ID);
 
             // then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -468,10 +520,28 @@ class ScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY"))
+            assertThatThrownBy(() -> scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY", USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("スケジュール削除_非権限者_COMMON_002")
+        void スケジュール削除_非権限者_COMMON_002() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY", USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(scheduleRepository, never()).save(any(ScheduleEntity.class));
         }
     }
 
@@ -513,6 +583,24 @@ class ScheduleServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.SCHEDULE_ALREADY_CANCELLED);
         }
+
+        @Test
+        @DisplayName("スケジュールキャンセル_非権限者_COMMON_002")
+        void スケジュールキャンセル_非権限者_COMMON_002() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> scheduleService.cancelSchedule(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(scheduleRepository, never()).save(any(ScheduleEntity.class));
+        }
     }
 
     // ========================================
@@ -539,6 +627,135 @@ class ScheduleServiceTest {
             assertThat(result.getContent().title()).isEqualTo("練習");
             assertThat(result.getContent().status()).isEqualTo("SCHEDULED");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
+        }
+    }
+
+    // ========================================
+    // checkScopeAdminAccess / checkScopeViewAccess（認可根治 Wave3-B6）
+    //
+    // duplicateSchedule 自体（ScheduleCrossRefService.acceptInvitation からも呼ばれる共有メソッド）
+    // には認可を持たせず、public な複製 API 入口（Org/TeamScheduleController）で BOLA 是正のために
+    // 呼び出す公開メソッド。update/delete/cancel/bulkUpdateAttendances/getAttendances の内部実装にも
+    // 使われる TEAM/ORGANIZATION/PERSONAL 分岐ロジックをここで直接検証する。
+    // ========================================
+
+    @Nested
+    @DisplayName("checkScopeAdminAccess / checkScopeViewAccess")
+    class CheckScopeAccess {
+
+        private static final Long ORG_ID = 20L;
+        private static final Long OTHER_USER_ID = 999L;
+
+        private ScheduleEntity createOrgScheduleEntity() {
+            return ScheduleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .title("組織イベント")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.EVENT)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+        }
+
+        private ScheduleEntity createPersonalScheduleEntity(Long ownerUserId) {
+            return ScheduleEntity.builder()
+                    .userId(ownerUserId)
+                    .title("個人予定")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .isException(false)
+                    .createdBy(ownerUserId)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("checkScopeAdminAccess_TEAMスケジュール_ADMINならcheckAdminOrAboveを通過")
+        void checkScopeAdminAccess_TEAM_ADMIN許可() {
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            scheduleService.checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("checkScopeAdminAccess_ORGANIZATIONスケジュール_非ADMINはCOMMON_002")
+        void checkScopeAdminAccess_ORG_非ADMIN拒否() {
+            ScheduleEntity entity = createOrgScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> scheduleService.checkScopeAdminAccess(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("checkScopeAdminAccess_PERSONALスケジュール_所有者本人は許可")
+        void checkScopeAdminAccess_PERSONAL_所有者許可() {
+            ScheduleEntity entity = createPersonalScheduleEntity(USER_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            scheduleService.checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            // PERSONAL は checkAdminOrAbove を経由しない（membership系APIにPERSONALを渡すと500になるため）
+            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("checkScopeAdminAccess_PERSONALスケジュール_他人はCOMMON_002（BOLA是正）")
+        void checkScopeAdminAccess_PERSONAL_他人拒否() {
+            ScheduleEntity entity = createPersonalScheduleEntity(OTHER_USER_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> scheduleService.checkScopeAdminAccess(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("checkScopeAdminAccess_SYSTEM_ADMINは短絡で許可")
+        void checkScopeAdminAccess_SYSTEM_ADMIN短絡() {
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            scheduleService.checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("checkScopeViewAccess_TEAMスケジュール_checkMembershipを呼ぶ")
+        void checkScopeViewAccess_TEAM_checkMembership呼び出し() {
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            scheduleService.checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("checkScopeViewAccess_PERSONALスケジュール_他人はCOMMON_002")
+        void checkScopeViewAccess_PERSONAL_他人拒否() {
+            ScheduleEntity entity = createPersonalScheduleEntity(OTHER_USER_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> scheduleService.checkScopeViewAccess(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -598,7 +815,7 @@ class ScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
 
             // when
-            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_AND_FOLLOWING");
+            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_AND_FOLLOWING", USER_ID);
 
             // then
             verify(scheduleRepository).findById(SCHEDULE_ID);
@@ -629,7 +846,7 @@ class ScheduleServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             // when
-            scheduleService.deleteSchedule(SCHEDULE_ID, "ALL");
+            scheduleService.deleteSchedule(SCHEDULE_ID, "ALL", USER_ID);
 
             // then
             assertThat(parent.getDeletedAt()).isNotNull();

@@ -24,6 +24,7 @@ import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -261,6 +262,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse updatePost(Long id, Long userId, UpdateBlogPostRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
 
         Visibility visibility = request.getVisibility() != null
                 ? Visibility.valueOf(request.getVisibility()) : entity.getVisibility();
@@ -294,8 +296,9 @@ public class BlogPostService {
      * 公開ステータスを変更する。
      */
     @Transactional
-    public BlogPostResponse changeStatus(Long id, PublishRequest request) {
+    public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
         PostStatus newStatus = PostStatus.valueOf(request.getStatus());
 
         if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
@@ -317,8 +320,9 @@ public class BlogPostService {
      * 記事を論理削除する。
      */
     @Transactional
-    public void deletePost(Long id) {
+    public void deletePost(Long id, Long userId) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
         entity.softDelete();
         postRepository.save(entity);
         log.info("記事削除: postId={}", id);
@@ -330,6 +334,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse duplicatePost(Long id, Long userId) {
         BlogPostEntity original = findPostOrThrow(id);
+        checkWriteAccess(original, userId);
         String newSlug = generateSlug(original.getTitle() + "-copy");
         short readingTime = calculateReadingTime(original.getBody());
 
@@ -376,17 +381,17 @@ public class BlogPostService {
     }
 
     /**
-     * プレビュートークンを発行する（{@link BlogPostShareService} へ委譲）。
+     * プレビュートークンを発行する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public BlogPostResponse issuePreviewToken(Long id) {
-        return shareService.issuePreviewToken(id);
+    public BlogPostResponse issuePreviewToken(Long id, Long userId) {
+        return shareService.issuePreviewToken(id, userId);
     }
 
     /**
-     * プレビュートークンを無効化する（{@link BlogPostShareService} へ委譲）。
+     * プレビュートークンを無効化する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public void revokePreviewToken(Long id) {
-        shareService.revokePreviewToken(id);
+    public void revokePreviewToken(Long id, Long userId) {
+        shareService.revokePreviewToken(id, userId);
     }
 
     /**
@@ -395,6 +400,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse autoSave(Long id, Long userId, AutoSaveRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
 
         if (request.getTitle() != null) {
             entity.update(request.getTitle(), entity.getSlug(),
@@ -418,7 +424,7 @@ public class BlogPostService {
      * 一括ステータス変更を実行する。
      */
     @Transactional
-    public BulkActionResponse bulkAction(BulkActionRequest request) {
+    public BulkActionResponse bulkAction(BulkActionRequest request, Long userId) {
         if (request.getIds().size() > 50) {
             throw new BusinessException(CmsErrorCode.BULK_LIMIT_EXCEEDED);
         }
@@ -432,6 +438,10 @@ public class BlogPostService {
                 skippedIds.add(id);
                 continue;
             }
+            // 認可根治戦役 Wave3-B7: 一括操作は対象記事ごとに所有者/スコープADMINを検証する。
+            // 非所有者かつ非ADMINの記事が1件でも含まれる場合は即座に403で全体を中断する
+            // （fail-closed。部分適用による越境操作の既成事実化を防ぐ）。
+            checkWriteAccess(entity, userId);
 
             switch (request.getAction().toUpperCase()) {
                 case "ARCHIVE" -> {
@@ -497,17 +507,17 @@ public class BlogPostService {
     }
 
     /**
-     * 個人ブログ記事をチーム/組織に共有する（{@link BlogPostShareService} へ委譲）。
+     * 個人ブログ記事をチーム/組織に共有する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
     public SharePostResponse sharePost(Long postId, Long userId, SharePostRequest request) {
         return shareService.sharePost(postId, userId, request);
     }
 
     /**
-     * 共有を取り消す（{@link BlogPostShareService} へ委譲）。
+     * 共有を取り消す（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public void revokeShare(Long postId, Long shareId) {
-        shareService.revokeShare(postId, shareId);
+    public void revokeShare(Long postId, Long shareId, Long userId) {
+        shareService.revokeShare(postId, shareId, userId);
     }
 
     /**
@@ -516,6 +526,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
         BlogPostEntity entity = findPostOrThrow(postId);
+        checkWriteAccess(entity, userId);
 
         if (entity.getStatus() != PostStatus.PENDING_SELF_REVIEW) {
             throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
@@ -669,6 +680,32 @@ public class BlogPostService {
     BlogPostEntity findPostOrThrow(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+    }
+
+    /**
+     * 記事書込操作の認可を検証する（認可根治戦役 Wave3-B7）。
+     *
+     * <p>投稿者本人（{@code authorId == actorUserId}）はスコープ種別を問わず許可する。
+     * それ以外は、記事が所属するスコープ（teamId優先→organizationId）の ADMIN/DEPUTY_ADMIN
+     * であることを {@link AccessControlService#checkAdminOrAbove} で要求する（違反時 403 = COMMON_002）。
+     * 個人ブログ（teamId/organizationId ともに null）で非所有者の場合はスコープ判定不能のため
+     * 直接 403（COMMON_002）とする。</p>
+     *
+     * @param entity      対象記事エンティティ
+     * @param actorUserId 操作ユーザー ID
+     * @throws BusinessException 非所有者かつスコープ ADMIN 未満の場合（COMMON_002、403）
+     */
+    private void checkWriteAccess(BlogPostEntity entity, Long actorUserId) {
+        if (actorUserId != null && actorUserId.equals(entity.getAuthorId())) {
+            return;
+        }
+        if (entity.getTeamId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
+        } else if (entity.getOrganizationId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**
