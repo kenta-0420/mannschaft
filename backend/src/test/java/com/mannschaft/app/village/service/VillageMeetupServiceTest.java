@@ -129,7 +129,7 @@ class VillageMeetupServiceTest {
     @DisplayName("create: 村人でない → 403 MEETUP_NOT_MEMBER")
     void create_not_member() {
         givenActiveVillage();
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
                 .willReturn(Optional.empty());
         MeetupCreateRequest req = new MeetupCreateRequest(
@@ -450,7 +450,7 @@ class VillageMeetupServiceTest {
                 .joinedAt(LocalDateTime.now().minusDays(10))
                 .build();
         m.setId(UUID.randomUUID());
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
                 .willReturn(Optional.of(m));
     }

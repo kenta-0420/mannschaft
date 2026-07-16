@@ -896,7 +896,28 @@ public class GlobalExceptionHandler {
             // 対象エンティティが自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。
             // Severity.WARN 既定の 400 のまま だと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
             Map.entry("LINE_001", HttpStatus.NOT_FOUND),                 // BOT_CONFIG_NOT_FOUND
-            Map.entry("LINE_007", HttpStatus.NOT_FOUND)                  // SNS_FEED_CONFIG_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("LINE_007", HttpStatus.NOT_FOUND),                 // SNS_FEED_CONFIG_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave 2 トランシェ2C: F01.4/F03.12 family の *_NOT_FOUND は、対象エンティティが
+            // 自チーム外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            // FAMILY_030（ケアリンク操作権限なし）は認可拒否のため 403 へ上書きする（児童 PII 防護）。
+            Map.entry("FAMILY_008", HttpStatus.NOT_FOUND),               // COIN_TOSS_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FAMILY_011", HttpStatus.NOT_FOUND),               // SHOPPING_LIST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FAMILY_013", HttpStatus.NOT_FOUND),               // SHOPPING_ITEM_NOT_FOUND（listId 紐付け検証・IDOR 秘匿 → 404）
+            Map.entry("FAMILY_016", HttpStatus.NOT_FOUND),               // DUTY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FAMILY_018", HttpStatus.NOT_FOUND),               // ANNIVERSARY_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("FAMILY_025", HttpStatus.NOT_FOUND),               // CARE_LINK_NOT_FOUND（存在秘匿 → 404）
+            Map.entry("FAMILY_030", HttpStatus.FORBIDDEN),               // ケアリンク操作権限なし（当事者以外 → 403）
+            // 認可根治戦役 Wave 2 トランシェ2C: F05.6 workflow（稟議/申請ワークフロー）は
+            // entity 由来の scopeType/scopeId で認可判定するため、path/リクエストの scope 不一致・
+            // 非所属者アクセスは同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
+            // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("WORKFLOW_001", HttpStatus.NOT_FOUND),             // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_002", HttpStatus.NOT_FOUND),             // REQUEST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_005", HttpStatus.NOT_FOUND),             // COMMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("WORKFLOW_006", HttpStatus.NOT_FOUND),             // ATTACHMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 承認判断は「指定承認者でない」という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN)              // NOT_APPROVER → 403
     );
 
     /**

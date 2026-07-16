@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.FamilyErrorCode;
@@ -27,10 +28,14 @@ public class ShoppingListService {
 
     private static final int MAX_LISTS_PER_TEAM = 10;
     private static final int MAX_ITEMS_PER_LIST = 100;
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
     private final ShoppingListRepository shoppingListRepository;
     private final ShoppingListItemRepository shoppingListItemRepository;
+    private final AccessControlService accessControlService;
 
-    public ApiResponse<List<ShoppingListResponse>> getLists(Long teamId, String status) {
+    public ApiResponse<List<ShoppingListResponse>> getLists(Long teamId, Long actorUserId, String status) {
+        // 認可根治 Wave2-2C: お買い物リストはチーム内共有データ。非メンバーの閲覧を403で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<ShoppingListEntity> lists;
         if (status != null) {
             ShoppingListStatus s = ShoppingListStatus.valueOf(status.toUpperCase());
@@ -43,6 +48,8 @@ public class ShoppingListService {
 
     @Transactional
     public ApiResponse<ShoppingListResponse> createList(Long teamId, Long userId, ShoppingListRequest request) {
+        // 認可根治 Wave2-2C: 家族ユーティリティのため作成は全メンバー可（既存仕様）。非メンバーは403
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
         long count = shoppingListRepository.countByTeamIdAndDeletedAtIsNull(teamId);
         if (count >= MAX_LISTS_PER_TEAM) { throw new BusinessException(FamilyErrorCode.FAMILY_012); }
         ShoppingListEntity entity = ShoppingListEntity.builder()
@@ -53,31 +60,37 @@ public class ShoppingListService {
     }
 
     @Transactional
-    public ApiResponse<ShoppingListResponse> updateList(Long teamId, Long listId, ShoppingListRequest request) {
-        ShoppingListEntity list = findListOrThrow(listId);
+    public ApiResponse<ShoppingListResponse> updateList(Long teamId, Long listId, Long actorUserId,
+                                                         ShoppingListRequest request) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
         list.rename(request.getName());
         return ApiResponse.of(toListResponse(list));
     }
 
     @Transactional
     public void deleteList(Long teamId, Long listId, Long userId) {
-        ShoppingListEntity list = findListOrThrow(listId);
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(userId, list.getTeamId(), SCOPE_TYPE_TEAM);
         if (!list.getCreatedBy().equals(userId)) { throw new BusinessException(FamilyErrorCode.FAMILY_015); }
         list.softDelete();
     }
 
     @Transactional
-    public ApiResponse<ShoppingListResponse> archiveList(Long teamId, Long listId) {
-        ShoppingListEntity list = findListOrThrow(listId);
+    public ApiResponse<ShoppingListResponse> archiveList(Long teamId, Long listId, Long actorUserId) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
         list.archive();
         return ApiResponse.of(toListResponse(list));
     }
 
     @Transactional
-    public ApiResponse<List<ShoppingItemResponse>> copyFromTemplate(Long teamId, Long listId, Long templateId, Long userId) {
-        ShoppingListEntity templateList = findListOrThrow(templateId);
+    public ApiResponse<List<ShoppingItemResponse>> copyFromTemplate(Long teamId, Long listId, Long templateId,
+                                                                     Long userId) {
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
+        ShoppingListEntity templateList = findListInTeamOrThrow(teamId, templateId);
         if (!Boolean.TRUE.equals(templateList.getIsTemplate())) { throw new BusinessException(FamilyErrorCode.FAMILY_021); }
-        ShoppingListEntity targetList = findListOrThrow(listId);
+        ShoppingListEntity targetList = findListInTeamOrThrow(teamId, listId);
         if (ShoppingListStatus.ARCHIVED.equals(targetList.getStatus())) { throw new BusinessException(FamilyErrorCode.FAMILY_022); }
         List<ShoppingListItemEntity> templateItems = shoppingListItemRepository.findByListIdOrderBySortOrderAsc(templateId);
         for (ShoppingListItemEntity templateItem : templateItems) {
@@ -88,18 +101,20 @@ public class ShoppingListService {
                     .note(templateItem.getNote()).sortOrder(templateItem.getSortOrder()).createdBy(userId).build();
             shoppingListItemRepository.save(newItem);
         }
-        return getItems(teamId, listId);
+        return getItems(teamId, listId, userId);
     }
 
-    public ApiResponse<List<ShoppingItemResponse>> getItems(Long teamId, Long listId) {
-        findListOrThrow(listId);
+    public ApiResponse<List<ShoppingItemResponse>> getItems(Long teamId, Long listId, Long actorUserId) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
         List<ShoppingListItemEntity> items = shoppingListItemRepository.findByListIdOrderByIsCheckedAscSortOrderAsc(listId);
         return ApiResponse.of(items.stream().map(this::toItemResponse).toList());
     }
 
     @Transactional
     public ApiResponse<ShoppingItemResponse> addItem(Long teamId, Long listId, Long userId, ShoppingItemRequest request) {
-        findListOrThrow(listId);
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(userId, list.getTeamId(), SCOPE_TYPE_TEAM);
         long count = shoppingListItemRepository.countByListId(listId);
         if (count >= MAX_ITEMS_PER_LIST) { throw new BusinessException(FamilyErrorCode.FAMILY_014); }
         ShoppingListItemEntity item = ShoppingListItemEntity.builder()
@@ -110,46 +125,71 @@ public class ShoppingListService {
     }
 
     @Transactional
-    public ApiResponse<ShoppingItemResponse> updateItem(Long teamId, Long listId, Long itemId, ShoppingItemRequest request) {
-        ShoppingListItemEntity item = findItemOrThrow(itemId);
+    public ApiResponse<ShoppingItemResponse> updateItem(Long teamId, Long listId, Long itemId, Long actorUserId,
+                                                         ShoppingItemRequest request) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
+        ShoppingListItemEntity item = findItemInListOrThrow(listId, itemId);
         item.update(request.getName(), request.getQuantity(), request.getNote(), request.getAssignedTo(),
                 request.getSortOrder() != null ? request.getSortOrder() : item.getSortOrder());
         return ApiResponse.of(toItemResponse(item));
     }
 
     @Transactional
-    public void deleteItem(Long teamId, Long listId, Long itemId) {
-        ShoppingListItemEntity item = findItemOrThrow(itemId);
+    public void deleteItem(Long teamId, Long listId, Long itemId, Long actorUserId) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
+        ShoppingListItemEntity item = findItemInListOrThrow(listId, itemId);
         shoppingListItemRepository.delete(item);
     }
 
     @Transactional
     public ApiResponse<ShoppingItemResponse> toggleCheck(Long teamId, Long listId, Long itemId, Long userId) {
-        ShoppingListItemEntity item = findItemOrThrow(itemId);
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(userId, list.getTeamId(), SCOPE_TYPE_TEAM);
+        ShoppingListItemEntity item = findItemInListOrThrow(listId, itemId);
         item.toggleCheck(userId);
         return ApiResponse.of(toItemResponse(item));
     }
 
     @Transactional
-    public ApiResponse<Integer> deleteCheckedItems(Long teamId, Long listId) {
-        findListOrThrow(listId);
+    public ApiResponse<Integer> deleteCheckedItems(Long teamId, Long listId, Long actorUserId) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
         return ApiResponse.of(shoppingListItemRepository.deleteCheckedItems(listId));
     }
 
     @Transactional
-    public ApiResponse<Integer> uncheckAll(Long teamId, Long listId) {
-        findListOrThrow(listId);
+    public ApiResponse<Integer> uncheckAll(Long teamId, Long listId, Long actorUserId) {
+        ShoppingListEntity list = findListInTeamOrThrow(teamId, listId);
+        accessControlService.checkMembership(actorUserId, list.getTeamId(), SCOPE_TYPE_TEAM);
         return ApiResponse.of(shoppingListItemRepository.uncheckAllItems(listId));
     }
 
-    private ShoppingListEntity findListOrThrow(Long listId) {
-        return shoppingListRepository.findByIdAndDeletedAtIsNull(listId)
+    /**
+     * お買い物リストを取得し、entity 由来の teamId とパス teamId の一致を検証する。
+     * 不一致（他チームのリスト ID 指定 = BOLA）は存在秘匿のため FAMILY_011（404）を返す。
+     */
+    private ShoppingListEntity findListInTeamOrThrow(Long teamId, Long listId) {
+        ShoppingListEntity list = shoppingListRepository.findByIdAndDeletedAtIsNull(listId)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_011));
+        if (!list.getTeamId().equals(teamId)) {
+            throw new BusinessException(FamilyErrorCode.FAMILY_011);
+        }
+        return list;
     }
 
-    private ShoppingListItemEntity findItemOrThrow(Long itemId) {
-        return shoppingListItemRepository.findById(itemId)
+    /**
+     * アイテムを取得し、entity 由来の listId とパス listId の一致を検証する。
+     * 不一致（別リストの itemId 指定 = BOLA）は存在秘匿のため FAMILY_013（404）を返す。
+     */
+    private ShoppingListItemEntity findItemInListOrThrow(Long listId, Long itemId) {
+        ShoppingListItemEntity item = shoppingListItemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_013));
+        if (!item.getListId().equals(listId)) {
+            throw new BusinessException(FamilyErrorCode.FAMILY_013);
+        }
+        return item;
     }
 
     private ShoppingListResponse toListResponse(ShoppingListEntity entity) {

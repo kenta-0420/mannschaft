@@ -476,11 +476,17 @@ public class VillageMeetupService {
         return entity;
     }
 
+    /**
+     * 実行者が当該村の<strong>現役</strong>村人であることを検証する（ロールは問わない）。
+     *
+     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
+     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 以前は「BAN 状態の扱いは別フローで吸収する」として BAN を素通ししていたが、
+     * その別フローは存在せず、BAN された村人が寄合の作成・投票を続行できた。</p>
+     */
     private void requireVillager(UUID villageId, Long actorUserId) {
-        // Phase 3-β では「村人ならロール問わず可」。BAN 状態の扱いは別フローで吸収する。
         membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MEETUP_NOT_MEMBER));
     }
 

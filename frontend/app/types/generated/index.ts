@@ -52531,7 +52531,7 @@ export interface components {
             contactMethod?: string;
             description?: string;
             /** Format: date */
-            matchDate: string;
+            matchDate?: string;
             /** @example 14:30:00 */
             matchTimeEnd?: string;
             /** @example 14:30:00 */
@@ -74906,6 +74906,8 @@ export interface components {
             data?: components["schemas"]["ActivityFeedResponse"][];
         };
         ActionItem: {
+            /** Format: date-time */
+            circulated_at?: string;
             /** Format: date-time */
             deadline?: string;
             item_id?: string;

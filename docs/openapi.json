@@ -160081,8 +160081,7 @@
           }
         },
         "required": [
-          "category",
-          "matchDate"
+          "category"
         ]
       },
       "ApiResponseMatchRecruitResponse": {
@@ -221401,6 +221400,10 @@
       "ActionItem": {
         "type": "object",
         "properties": {
+          "circulated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "deadline": {
             "type": "string",
             "format": "date-time"

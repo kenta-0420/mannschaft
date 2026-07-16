@@ -60,7 +60,14 @@ public class VillageMatchRecruitEntity extends UuidV7Entity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "match_date", nullable = false)
+    /**
+     * 予定日（任意）。
+     *
+     * <p>F17.1 §5.6: カテゴリを汎用化しても日付が必須のままでは「マネージャー募集」
+     * 「引っ越し手伝い募集」のような日付を持たない募集が登録できないため NULL 許容に緩和した
+     * （V153 Expand）。制約の緩和方向であり既存データは壊れない。</p>
+     */
+    @Column(name = "match_date")
     private LocalDate matchDate;
 
     @Column(name = "match_time_start")
