@@ -197,7 +197,28 @@
       "rejected": "Abgelehnt",
       "withdrawn": "Zurückgezogen",
       "reviewComment": "Prüfkommentar",
-      "empty": "Keine Beitrittsanträge"
+      "empty": "Keine Beitrittsanträge",
+      "description": "Dieses Dorf erfordert eine Genehmigung. Du wirst Dorfbewohner, sobald der Dorfvorsteher oder ein Ältester deinen Antrag genehmigt. Eine Nachricht erhöht deine Chancen.",
+      "formTitle": "Beitritt beantragen",
+      "messagePlaceholder": "Beschreibe, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen)",
+      "submittedTitle": "Dein gesendeter Antrag",
+      "submittedBody": "Bitte warte auf die Prüfung durch den Dorfvorsteher oder einen Ältesten. Solange der Antrag aussteht, kannst du ihn jederzeit auf dieser Seite zurückziehen.",
+      "withdrawSuccess": "Beitrittsantrag zurückgezogen",
+      "approveSuccess": "Beitrittsantrag genehmigt",
+      "rejectSuccess": "Beitrittsantrag abgelehnt",
+      "rejectCommentRequired": "Bei einer Ablehnung ist ein Prüfkommentar erforderlich",
+      "reviewCommentPlaceholder": "Kommentar für die antragstellende Person eingeben (max. 500 Zeichen)",
+      "reviewDescription": "Prüfe die Beitrittsanträge für dieses Dorf. Nach der Genehmigung wird die antragstellende Person Dorfbewohner.",
+      "column": {
+        "requester": "Antragsteller",
+        "message": "Nachricht",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "confirm": {
+        "approve": "Diesen Beitrittsantrag genehmigen? Die antragstellende Person wird Dorfbewohner.",
+        "reject": "Diesen Beitrittsantrag ablehnen?"
+      }
     },
     "feed": {
       "title": "Dorf-Feed",
@@ -696,6 +717,37 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Beitrittsanträge verwenden",
+      "description": "Erklärt, wie du den Beitritt zu einem genehmigungspflichtigen Dorf beantragst und wie Dorfvorsteher und Älteste die Anträge prüfen.",
+      "apply": {
+        "title": "Beitritt beantragen",
+        "body": "Einem genehmigungspflichtigen Dorf kannst du nicht direkt beitreten. Sende einen Antrag und warte auf die Genehmigung durch den Dorfvorsteher oder einen Ältesten. Die Nachricht ist optional, erhöht aber deine Chancen.",
+        "steps": {
+          "step1": "Beschreibe in der Nachricht, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen).",
+          "step2": "Mit Senden geht der Antrag an den Dorfvorsteher und die Ältesten.",
+          "step3": "Direkt nach dem Senden kannst du den Antrag über die Schaltfläche Zurückziehen abbrechen."
+        }
+      },
+      "status": {
+        "title": "Prüfstatus verfolgen",
+        "body": "Ein Antrag beginnt mit Prüfung ausstehend. Anschließend setzt der Dorfvorsteher oder ein Ältester ihn auf Genehmigt oder Abgelehnt. Nach der Genehmigung wirst du Dorfbewohner und alle Funktionen stehen offen.",
+        "steps": {
+          "step1": "Direkt nach dem Senden wird der Status Prüfung ausstehend angezeigt.",
+          "step2": "Nach der Genehmigung wirst du Dorfbewohner und alle Dorf-Tabs öffnen sich.",
+          "step3": "Bei einer Ablehnung erklärt der Prüfkommentar den Grund. Lies ihn und stelle bei Bedarf einen neuen Antrag."
+        }
+      },
+      "review": {
+        "title": "Anträge prüfen (Dorfvorsteher und Älteste)",
+        "body": "Dorfvorsteher und Älteste sehen auf dieser Seite die Liste der eingegangenen Beitrittsanträge. Lies die Nachricht und entscheide über Genehmigung oder Ablehnung.",
+        "steps": {
+          "step1": "Wechsle über die Tabs zwischen Prüfung ausstehend, Genehmigt, Abgelehnt und Zurückgezogen.",
+          "step2": "Mit Genehmigen wird die antragstellende Person Dorfbewohner. Der Prüfkommentar ist optional.",
+          "step3": "Beim Ablehnen ist ein Prüfkommentar Pflicht, damit der Grund nachvollziehbar ist."
         }
       }
     }

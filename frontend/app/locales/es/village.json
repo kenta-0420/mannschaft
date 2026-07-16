@@ -197,7 +197,28 @@
       "rejected": "Rechazado",
       "withdrawn": "Retirado",
       "reviewComment": "Comentario de revisión",
-      "empty": "No hay solicitudes de ingreso"
+      "empty": "No hay solicitudes de ingreso",
+      "description": "Esta aldea requiere aprobación. Te conviertes en aldeano cuando el jefe o un anciano aprueba tu solicitud. Añadir un mensaje aumenta tus posibilidades.",
+      "formTitle": "Solicitar unirse",
+      "messagePlaceholder": "Cuenta qué quieres hacer en esta aldea y por qué quieres unirte (opcional, máximo 500 caracteres)",
+      "submittedTitle": "Tu solicitud enviada",
+      "submittedBody": "Espera a que el jefe o un anciano la revise. Mientras esté pendiente, puedes retirarla desde esta pantalla en cualquier momento.",
+      "withdrawSuccess": "Solicitud de ingreso retirada",
+      "approveSuccess": "Solicitud de ingreso aprobada",
+      "rejectSuccess": "Solicitud de ingreso rechazada",
+      "rejectCommentRequired": "Se requiere un comentario de revisión para rechazar",
+      "reviewCommentPlaceholder": "Escribe un comentario para el solicitante (máximo 500 caracteres)",
+      "reviewDescription": "Revisa las solicitudes de ingreso a esta aldea. Al aprobar una, el solicitante se convierte en aldeano.",
+      "column": {
+        "requester": "Solicitante",
+        "message": "Mensaje",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "confirm": {
+        "approve": "¿Aprobar esta solicitud de ingreso? El solicitante se convertirá en aldeano.",
+        "reject": "¿Rechazar esta solicitud de ingreso?"
+      }
     },
     "feed": {
       "title": "Feed de la aldea",
@@ -696,6 +717,37 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Cómo usar las solicitudes de ingreso",
+      "description": "Explica cómo solicitar el ingreso a una aldea con aprobación y cómo el jefe y los ancianos revisan las solicitudes.",
+      "apply": {
+        "title": "Solicitar unirse",
+        "body": "No puedes unirte directamente a una aldea con aprobación. Envía una solicitud y espera a que el jefe o un anciano la apruebe. El mensaje es opcional, pero aumenta tus posibilidades.",
+        "steps": {
+          "step1": "Escribe en el mensaje qué quieres hacer en la aldea y por qué quieres unirte (opcional, máximo 500 caracteres).",
+          "step2": "Pulsa Enviar para que la solicitud llegue al jefe y a los ancianos.",
+          "step3": "Justo después de enviarla puedes cancelarla con el botón Retirar."
+        }
+      },
+      "status": {
+        "title": "Consultar el estado de la revisión",
+        "body": "La solicitud empieza como Pendiente de revisión y el jefe o un anciano la marca como Aprobada o Rechazada. Al aprobarse te conviertes en aldeano y se desbloquean todas las funciones.",
+        "steps": {
+          "step1": "Justo después de enviarla, el estado aparece como Pendiente de revisión.",
+          "step2": "Al aprobarse te conviertes en aldeano y se abren todas las pestañas de la aldea.",
+          "step3": "Si la rechazan, el comentario de revisión explica el motivo. Léelo y vuelve a solicitarlo si procede."
+        }
+      },
+      "review": {
+        "title": "Revisar solicitudes (jefe y ancianos)",
+        "body": "El jefe y los ancianos ven en esta pantalla la lista de solicitudes de ingreso. Lee cada mensaje y decide si aprobarla o rechazarla.",
+        "steps": {
+          "step1": "Usa las pestañas para cambiar entre Pendiente de revisión, Aprobada, Rechazada y Retirada.",
+          "step2": "Pulsa Aprobar para que la persona solicitante se convierta en aldeano. El comentario es opcional.",
+          "step3": "Al pulsar Rechazar es obligatorio un comentario de revisión para explicar el motivo."
         }
       }
     }

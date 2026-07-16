@@ -29618,6 +29618,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分の村参加申請一覧（申請者本人） */
+        get: operations["listMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/chronicles": {
         parameters: {
             query?: never;
@@ -39025,7 +39042,7 @@ export interface paths {
             cookie?: never;
         };
         /** 自分の村作成申請一覧 */
-        get: operations["listMine"];
+        get: operations["listMine_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -66286,6 +66303,9 @@ export interface components {
             empty?: boolean;
             sorted?: boolean;
             unsorted?: boolean;
+        };
+        ApiResponseListJoinRequestResponse: {
+            data?: components["schemas"]["JoinRequestResponse"][];
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -137269,6 +137289,28 @@ export interface operations {
             };
         };
     };
+    listMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
+                };
+            };
+        };
+    };
     list_67: {
         parameters: {
             query?: never;
@@ -150209,7 +150251,7 @@ export interface operations {
             };
         };
     };
-    listMine: {
+    listMine_1: {
         parameters: {
             query?: never;
             header?: never;
