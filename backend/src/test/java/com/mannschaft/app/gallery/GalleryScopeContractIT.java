@@ -92,6 +92,13 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
     @BeforeEach
     void setUp() {
         insertRoleIfAbsent("ADMIN", "管理者", 2);
+        // 認可根治Wave3-B5 根治: test profile は spring.flyway.enabled=false + ddl-auto=create のため
+        // V9.069 の storage_plans 初期シード（TEAM/ORGANIZATION/PERSONAL 既定プラン）が投入されない。
+        // uploadPhotos が StorageQuotaService.recordUpload → ensureSubscription 経由で
+        // 「TEAM の既定プラン」を探しに行くと見つからず SUBSCRIPTION_NOT_FOUND（500 Internal）になる
+        // （写真アップロードが reject される前段の認可チェックを通過した瞬間に必ず 500 化する不具合）。
+        // roles と同じ idempotent seed パターンで TEAM 既定プランを自前補完する。
+        insertDefaultStoragePlanIfAbsent("TEAM", "フリー（チーム）GL契約テスト", 5_368_709_120L, 5_368_709_120L);
 
         teamAId = insertTeam("GL認可契約チームA");
         teamBId = insertTeam("GL認可契約チームB");
@@ -484,6 +491,37 @@ class GalleryScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("name", name)
                 .setParameter("dn", displayName)
                 .setParameter("priority", priority)
+                .executeUpdate();
+    }
+
+    /**
+     * storage_plans を scope_level で引く idempotent seed（グローバル参照テーブルのため deleteAll しない）。
+     *
+     * <p>test profile（{@code spring.flyway.enabled=false} + {@code ddl-auto=create}）では
+     * V9.069 の初期シード INSERT が実行されないため、{@code insertRoleIfAbsent} と同様に
+     * 本テストで既定プランを自前補完する必要がある（本 IT が
+     * {@code StorageQuotaService.recordUpload} を実 DB で通す最初の統合テストであり、
+     * この欠落が uploadPhotos 成功系すべてを 500（{@code STORAGE_QUOTA_002}）にしていた）。</p>
+     */
+    private void insertDefaultStoragePlanIfAbsent(String scopeLevel, String name, long includedBytes, long maxBytes) {
+        Number count = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM storage_plans "
+                                + "WHERE scope_level = :scopeLevel AND is_default = TRUE AND deleted_at IS NULL")
+                .setParameter("scopeLevel", scopeLevel)
+                .getSingleResult();
+        if (count.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO storage_plans ("
+                                + "name, scope_level, included_bytes, max_bytes, price_monthly, "
+                                + "is_default, sort_order, created_at, updated_at) "
+                                + "VALUES (:name, :scopeLevel, :includedBytes, :maxBytes, 0.00, "
+                                + "TRUE, 1, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("scopeLevel", scopeLevel)
+                .setParameter("includedBytes", includedBytes)
+                .setParameter("maxBytes", maxBytes)
                 .executeUpdate();
     }
 
