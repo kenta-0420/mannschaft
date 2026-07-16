@@ -1,6 +1,7 @@
 package com.mannschaft.app.forms;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -47,6 +48,7 @@ class FormPdfServiceTest {
     @Mock private PdfGeneratorService pdfGeneratorService;
     @Mock private StorageService storageService;
     @Mock private AuditLogService auditLogService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private FormPdfService formPdfService;
