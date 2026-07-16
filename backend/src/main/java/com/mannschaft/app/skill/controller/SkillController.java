@@ -95,7 +95,7 @@ public class SkillController {
         Long userId = SecurityUtils.getCurrentUserId();
         String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
 
-        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole).getData();
+        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole, "TEAM", teamId).getData();
         String categoryName = resolveCategoryName(entity.getSkillCategoryId(), teamId);
         return ApiResponse.of(skillMapper.toResponse(entity, categoryName));
     }
@@ -112,7 +112,7 @@ public class SkillController {
         String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
 
         MemberSkillEntity entity = memberSkillService.updateSkill(
-                id, userId, userRole,
+                id, userId, userRole, "TEAM", teamId,
                 request.name(), request.issuer(), request.credentialNumber(),
                 request.acquiredOn(), request.expiresAt(), request.version()
         ).getData();
@@ -130,7 +130,7 @@ public class SkillController {
             @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
-        memberSkillService.deleteSkill(id, userId, userRole);
+        memberSkillService.deleteSkill(id, userId, userRole, "TEAM", teamId);
         return ResponseEntity.noContent().build();
     }
 
@@ -144,7 +144,7 @@ public class SkillController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
-        MemberSkillEntity entity = memberSkillService.verifySkill(id, userId).getData();
+        MemberSkillEntity entity = memberSkillService.verifySkill(id, userId, "TEAM", teamId).getData();
         String categoryName = resolveCategoryName(entity.getSkillCategoryId(), teamId);
         return ApiResponse.of(skillMapper.toResponse(entity, categoryName));
     }
@@ -175,7 +175,7 @@ public class SkillController {
         Long userId = SecurityUtils.getCurrentUserId();
         String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
 
-        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole).getData();
+        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole, "TEAM", teamId).getData();
         String downloadUrl = storageService.generateDownloadUrl(
                 entity.getCertificateS3Key(), Duration.ofMinutes(15));
         return ApiResponse.of(downloadUrl);

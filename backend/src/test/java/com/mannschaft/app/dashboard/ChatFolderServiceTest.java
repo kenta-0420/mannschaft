@@ -296,7 +296,7 @@ class ChatFolderServiceTest {
             ChatContactFolderEntity folder = createFolder(USER_ID, "仕事", 0);
             AssignFolderItemRequest request = new AssignFolderItemRequest("DM_CHANNEL", ITEM_ID);
             given(folderRepository.findByIdAndUserId(FOLDER_ID, USER_ID)).willReturn(Optional.of(folder));
-            given(folderItemRepository.findByItemTypeAndItemId(FolderItemType.DM_CHANNEL, ITEM_ID))
+            given(folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(USER_ID, FolderItemType.DM_CHANNEL, ITEM_ID))
                     .willReturn(Optional.empty());
             given(folderItemRepository.save(any(ChatContactFolderItemEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -323,7 +323,7 @@ class ChatFolderServiceTest {
                     .itemId(ITEM_ID)
                     .build();
             given(folderRepository.findByIdAndUserId(FOLDER_ID, USER_ID)).willReturn(Optional.of(folder));
-            given(folderItemRepository.findByItemTypeAndItemId(FolderItemType.DM_CHANNEL, ITEM_ID))
+            given(folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(USER_ID, FolderItemType.DM_CHANNEL, ITEM_ID))
                     .willReturn(Optional.of(existingItem));
             given(folderItemRepository.save(any(ChatContactFolderItemEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -334,7 +334,7 @@ class ChatFolderServiceTest {
             chatFolderService.assignItem(USER_ID, FOLDER_ID, request);
 
             // Then
-            verify(folderItemRepository).deleteByItemTypeAndItemId(FolderItemType.DM_CHANNEL, ITEM_ID);
+            verify(folderItemRepository).deleteByFolderOwnerAndItemTypeAndItemId(USER_ID, FolderItemType.DM_CHANNEL, ITEM_ID);
             verify(folderItemRepository).save(any(ChatContactFolderItemEntity.class));
         }
 
@@ -429,7 +429,8 @@ class ChatFolderServiceTest {
             );
             BulkAssignFolderItemsRequest request = new BulkAssignFolderItemsRequest(items);
 
-            given(folderItemRepository.findByItemTypeAndItemId(any(), any())).willReturn(Optional.empty());
+            given(folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(eq(USER_ID), any(), any()))
+                    .willReturn(Optional.empty());
             given(folderItemRepository.save(any(ChatContactFolderItemEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -454,7 +455,7 @@ class ChatFolderServiceTest {
             );
             BulkAssignFolderItemsRequest request = new BulkAssignFolderItemsRequest(items);
 
-            given(folderItemRepository.findByItemTypeAndItemId(FolderItemType.DM_CHANNEL, 1L))
+            given(folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(USER_ID, FolderItemType.DM_CHANNEL, 1L))
                     .willReturn(Optional.empty());
             given(folderItemRepository.save(any(ChatContactFolderItemEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
