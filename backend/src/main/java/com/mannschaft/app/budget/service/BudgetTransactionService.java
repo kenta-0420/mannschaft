@@ -117,12 +117,19 @@ public class BudgetTransactionService {
 
     /**
      * 取引をIDで取得する。
+     *
+     * <p>認可根治戦役 Wave3-B9: scopeId/scopeType はクライアント指定値であり信用できない
+     * （BOLA: 別スコープの transactionId を自スコープの scopeId/scopeType と一緒に送れば
+     * 素通りしていた）。entity を先に fetch し、クライアント指定値が entity 由来の
+     * 真の scope と一致することを確認してから（不一致は存在秘匿のため 404）、
+     * その真の scope で checkMembership する。</p>
      */
     public TransactionDetailResponse getById(Long id, Long scopeId, String scopeType) {
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
-
         BudgetTransactionEntity entity = findById(id);
+        requireScopeMatchOrConceal(entity, scopeId, scopeType);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
+
         BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
         List<AttachmentResponse> attachments = attachmentRepository.findByTransactionId(id)
                 .stream()
@@ -221,13 +228,20 @@ public class BudgetTransactionService {
 
     /**
      * 取引を削除する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は scopeId/scopeType（クライアント指定値）で
+     * checkAdminOrAbove した「後」に id 直指定で削除していたため、任意スコープの ADMIN が
+     * 別スコープの transactionId を渡すだけで削除できる重大 BOLA だった。
+     * entity を先に fetch し、クライアント指定値が entity 由来の真の scope と一致することを
+     * 確認してから（不一致は存在秘匿のため 404）、その真の scope で checkAdminOrAbove する。</p>
      */
     @Transactional
     public void delete(Long id, Long scopeId, String scopeType) {
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
-
         BudgetTransactionEntity entity = findById(id);
+        requireScopeMatchOrConceal(entity, scopeId, scopeType);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
+
         transactionRepository.delete(entity);
         log.info("取引を削除しました: id={}", id);
     }
@@ -325,8 +339,19 @@ public class BudgetTransactionService {
 
     /**
      * 添付ファイルアップロードURLを生成する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意 transactionId に
+     * 対する S3 アップロードURLを取得できた）。本 EP は scope を宣言する query パラメータを
+     * 持たない「ID 直指定」EP のため、entity 由来 scope に非所属の場合は存在秘匿のため 404
+     * （incident ドメイン {@code requireMemberOrConceal} と同じ設計）。所属しているが ADMIN
+     * でない場合は 403。</p>
      */
     public UploadUrlResponse generateUploadUrl(Long transactionId, String fileName, String contentType) {
+        BudgetTransactionEntity entity = findById(transactionId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(entity, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
+
         String s3Key = "budget/attachments/" + transactionId + "/" + System.currentTimeMillis() + "_" + fileName;
         PresignedUploadResult result = storageService.generateUploadUrl(s3Key, contentType, UPLOAD_URL_TTL);
         return new UploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
@@ -335,12 +360,19 @@ public class BudgetTransactionService {
     /**
      * 添付ファイルを削除する。S3オブジェクトとDBレコードを両方削除する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。ID 直指定 EP のため
+     * entity 由来 scope に非所属なら 404（存在秘匿）、所属しているが ADMIN でない場合は 403
+     * （添付ファイルは取引→スコープの親子鎖で辿る）。</p>
+     *
      * @param transactionId 取引ID
      * @param attachmentId  添付ファイルID
      */
     @Transactional
     public void deleteAttachment(Long transactionId, Long attachmentId) {
-        findById(transactionId); // 取引の存在確認
+        BudgetTransactionEntity transaction = findById(transactionId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(transaction, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, transaction.getScopeId(), transaction.getScopeType());
 
         BudgetTransactionAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_021));
@@ -356,10 +388,16 @@ public class BudgetTransactionService {
 
     /**
      * 添付ファイルメタデータを登録する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。ID 直指定 EP のため
+     * entity 由来 scope に非所属なら 404（存在秘匿）、所属しているが ADMIN でない場合は 403。</p>
      */
     @Transactional
     public AttachmentResponse registerAttachment(RegisterAttachmentRequest request) {
-        findById(request.transactionId()); // 存在確認
+        BudgetTransactionEntity transaction = findById(request.transactionId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(transaction, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, transaction.getScopeId(), transaction.getScopeType());
 
         BudgetTransactionAttachmentEntity entity = BudgetTransactionAttachmentEntity.builder()
                 .transactionId(request.transactionId())
@@ -380,6 +418,29 @@ public class BudgetTransactionService {
     BudgetTransactionEntity findById(Long id) {
         return transactionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_009));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B9: getById/delete のようにクライアントが scopeId/scopeType を
+     * 明示的に宣言する EP で使う BOLA ガード。entity 由来の真の scope と一致しない場合は
+     * 越境 ID の存在を秘匿するため、通常の 403 ではなく取引の NOT_FOUND コード（404）を投げる。
+     */
+    private void requireScopeMatchOrConceal(BudgetTransactionEntity entity, Long scopeId, String scopeType) {
+        if (!entity.getScopeId().equals(scopeId) || !entity.getScopeType().equals(scopeType)) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_009);
+        }
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B9: 添付ファイル系 EP（scope を宣言する query パラメータを持たない
+     * 「ID 直指定」EP）で使う BOLA ガード。entity 由来 scope の非メンバーは越境 ID の存在を
+     * 秘匿するため、通常の {@code checkMembership}（403）ではなく取引の NOT_FOUND コード（404）を
+     * 投げる（incident ドメイン {@code requireMemberOrConceal} と同じ設計判断）。
+     */
+    private void requireMemberOrConceal(BudgetTransactionEntity entity, Long currentUserId) {
+        if (!accessControlService.isMember(currentUserId, entity.getScopeId(), entity.getScopeType())) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_009);
+        }
     }
 
     private BudgetApprovalStatus determineApprovalStatus(BudgetTransactionType txType,

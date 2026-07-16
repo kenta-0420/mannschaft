@@ -1,10 +1,13 @@
 package com.mannschaft.app.budget.service;
 
 import com.mannschaft.app.budget.BudgetCategoryType;
+import com.mannschaft.app.budget.BudgetFiscalYearStatus;
 import com.mannschaft.app.budget.BudgetMapper;
 import com.mannschaft.app.budget.dto.UpdateCategoryRequest;
 import com.mannschaft.app.budget.entity.BudgetCategoryEntity;
+import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
 import com.mannschaft.app.budget.repository.BudgetCategoryRepository;
+import com.mannschaft.app.budget.repository.BudgetFiscalYearRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -41,6 +44,8 @@ class BudgetCategoryServiceTest {
     @Mock
     private BudgetCategoryRepository categoryRepository;
     @Mock
+    private BudgetFiscalYearRepository fiscalYearRepository;
+    @Mock
     private BudgetMapper budgetMapper;
     @Mock
     private AccessControlService accessControlService;
@@ -52,6 +57,7 @@ class BudgetCategoryServiceTest {
 
     private static final Long CURRENT_USER_ID = 7L;
     private static final Long CATEGORY_ID = 42L;
+    private static final Long FISCAL_YEAR_ID = 100L;
     private static final Long SCOPE_ID = 10L;
     private static final String SCOPE_TYPE = "TEAM";
 
@@ -68,7 +74,7 @@ class BudgetCategoryServiceTest {
 
     private BudgetCategoryEntity existingCategory() {
         BudgetCategoryEntity entity = BudgetCategoryEntity.builder()
-                .fiscalYearId(100L)
+                .fiscalYearId(FISCAL_YEAR_ID)
                 .name("旧名称")
                 .categoryType(BudgetCategoryType.EXPENSE)
                 .parentId(null)
@@ -80,11 +86,31 @@ class BudgetCategoryServiceTest {
         return entity;
     }
 
+    /**
+     * 認可根治戦役 Wave3-B9: update/delete はカテゴリの親（会計年度）由来の scope で
+     * 認可判定するため、fiscalYearRepository.findById のモック用に親年度エンティティを用意する。
+     * SCOPE_ID/SCOPE_TYPE と一致させることで、既存アサーションの意味を変えずに済ませる。
+     */
+    private BudgetFiscalYearEntity existingFiscalYear() {
+        BudgetFiscalYearEntity fy = BudgetFiscalYearEntity.builder()
+                .name("テスト年度")
+                .startDate(java.time.LocalDate.of(2026, 1, 1))
+                .endDate(java.time.LocalDate.of(2026, 12, 31))
+                .scopeId(SCOPE_ID)
+                .scopeType(SCOPE_TYPE)
+                .status(BudgetFiscalYearStatus.OPEN)
+                .createdBy(CURRENT_USER_ID)
+                .build();
+        ReflectionTestUtils.setField(fy, "id", FISCAL_YEAR_ID);
+        return fy;
+    }
+
     @Test
     @DisplayName("update: findById の同一インスタンスを id 保持のまま save する（INSERT 化しない）")
     void update_mutatesManagedEntityAndPreservesId() {
         BudgetCategoryEntity existing = existingCategory();
         given(categoryRepository.findById(CATEGORY_ID)).willReturn(Optional.of(existing));
+        given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
         // save はエコー（受領インスタンスをそのまま返す）。INSERT/UPDATE 区別は captor で id を見る
         given(categoryRepository.save(any(BudgetCategoryEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -114,6 +140,7 @@ class BudgetCategoryServiceTest {
     void update_keepsExistingSortOrderWhenNull() {
         BudgetCategoryEntity existing = existingCategory();
         given(categoryRepository.findById(CATEGORY_ID)).willReturn(Optional.of(existing));
+        given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
         given(categoryRepository.save(any(BudgetCategoryEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 

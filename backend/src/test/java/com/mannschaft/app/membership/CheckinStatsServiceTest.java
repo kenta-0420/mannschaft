@@ -1,18 +1,24 @@
 package com.mannschaft.app.membership;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.dto.CheckinStatsResponse;
 import com.mannschaft.app.membership.entity.MemberCardEntity;
 import com.mannschaft.app.membership.repository.MemberCardCheckinRepository;
 import com.mannschaft.app.membership.repository.MemberCardRepository;
 import com.mannschaft.app.membership.service.CheckinStatsService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -25,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link CheckinStatsService} の単体テスト。
@@ -40,6 +47,9 @@ class CheckinStatsServiceTest {
     @Mock
     private MemberCardRepository memberCardRepository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private CheckinStatsService checkinStatsService;
 
@@ -48,6 +58,24 @@ class CheckinStatsServiceTest {
     // ========================================
 
     private static final Long SCOPE_ID = 100L;
+    private static final Long USER_ID = 1L;
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    /**
+     * 認可根治戦役 Wave3-B9: getStats が内部で {@code SecurityUtils.getCurrentUserId()} を
+     * 呼ぶようになったため、全テストで static mock する。
+     */
+    @BeforeEach
+    void setUpSecurityUtils() {
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+    }
+
+    @AfterEach
+    void tearDownSecurityUtils() {
+        securityUtilsMock.close();
+    }
 
     // ========================================
     // getStats
@@ -131,6 +159,7 @@ class CheckinStatsServiceTest {
             assertThat(stats.getByLocation()).hasSize(1);
             assertThat(stats.getPeriod().getFrom()).isEqualTo(from);
             assertThat(stats.getPeriod().getTo()).isEqualTo(to);
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -176,6 +205,24 @@ class CheckinStatsServiceTest {
             assertThat(stats.getByHour()).isEmpty();
             assertThat(stats.getTopMembers()).isEmpty();
             assertThat(stats.getByLocation()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("異常系: 非管理者はCOMMON_002（403）— スコープ統計を認可なく取得できない")
+        void 取得_非管理者_403() {
+            // Given: checkAdminOrAbove が COMMON_002 を投げる
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+            // When / Then: 期間バリデーションより先に認可で弾かれる
+            assertThatThrownBy(() -> checkinStatsService.getStats(
+                    ScopeType.TEAM, SCOPE_ID, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 10)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            org.mockito.Mockito.verifyNoInteractions(checkinRepository);
         }
 
         @Test
