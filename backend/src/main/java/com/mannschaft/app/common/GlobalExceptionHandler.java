@@ -917,7 +917,13 @@ public class GlobalExceptionHandler {
             Map.entry("WORKFLOW_005", HttpStatus.NOT_FOUND),             // COMMENT_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("WORKFLOW_006", HttpStatus.NOT_FOUND),             // ATTACHMENT_NOT_FOUND（IDOR 秘匿 → 404）
             // 承認判断は「指定承認者でない」という明確な認可拒否のため 403（Severity.WARN 既定の 400 を上書き）。
-            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN)              // NOT_APPROVER → 403
+            Map.entry("WORKFLOW_009", HttpStatus.FORBIDDEN),             // NOT_APPROVER → 403
+            // 認可根治戦役 Wave3-B1: payment（決済ドメイン）の *_NOT_FOUND は、対象エンティティが
+            // 自組織/自チーム外（BOLA。OrganizationPaymentController の itemId 越境等）の場合にも
+            // 同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例
+            // （他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("PAYMENT_001", HttpStatus.NOT_FOUND),              // PAYMENT_ITEM_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PAYMENT_002", HttpStatus.NOT_FOUND)               // PAYMENT_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
