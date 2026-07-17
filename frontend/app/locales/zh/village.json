@@ -547,24 +547,33 @@
       "loadFailed": "获取巡礼信息失败"
     },
     "newsletter": {
-      "title": "新闻简报",
+      "title": "通讯",
       "subtitle": "村庄更新通知",
-      "settings": "新闻简报设置",
-      "frequency": "发送频率",
-      "lastSentAt": "最后发送时间",
-      "nextScheduledAt": "下次发送时间",
-      "optOut": "取消订阅",
-      "optIn": "重新订阅",
-      "optedOut": "您目前已取消订阅",
-      "saveSuccess": "新闻简报设置已保存",
-      "optOutSuccess": "已取消订阅",
-      "optInSuccess": "已重新订阅",
-      "loadFailed": "获取新闻简报设置失败",
-      "frequencyOption": {
-        "DAILY": "每天",
-        "WEEKLY": "每周",
-        "MONTHLY": "每月",
-        "NEVER": "停止"
+      "settings": "通讯设置",
+      "lastSentAt": "上次发送",
+      "saveSuccess": "通讯设置已保存",
+      "optOutSuccess": "已停止接收",
+      "optInSuccess": "已恢复接收",
+      "loadFailed": "获取通讯设置失败",
+      "manageOnlyHint": "只有村长和长老可以更改村庄的发送设置。",
+      "comingSoonNote": "发送功能正在准备中。可以保存设置，但尚未实际发送通讯。",
+      "villageSection": {
+        "title": "村庄发送设置",
+        "subtitle": "可以分别开启或关闭每周和每月通讯。"
+      },
+      "weekly": {
+        "label": "每周通讯",
+        "timing": "每周五发送"
+      },
+      "monthly": {
+        "label": "每月通讯",
+        "timing": "每月末发送"
+      },
+      "personalSection": {
+        "title": "你的接收设置",
+        "toggleLabel": "接收此村庄的通讯",
+        "receivingHint": "你当前正在接收此通讯。",
+        "stoppedHint": "你已停止接收此通讯。"
       }
     },
     "slug": {
@@ -878,6 +887,38 @@
           "step2": "「使用中的招募」为0条的分类可通过垃圾桶图标删除。",
           "step3": "若要删除使用中的分类，请先更改这些招募的分类。"
         }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "通讯使用方法",
+      "description": "村庄通讯会把村庄的更新汇总成一条通知。每周和每月可以独立开关，是否接收由每位成员自行选择。",
+      "toggles": {
+        "title": "独立开关每周和每月",
+        "body": "在村庄发送设置中，可以分别切换每周和每月。也可以只开启其中一项。",
+        "steps": {
+          "step1": "用「每周通讯」开关来开启或关闭每周发送。",
+          "step2": "用「每月通讯」开关来开启或关闭每月发送。",
+          "step3": "切换开关后会立即保存（无需保存按钮）。"
+        }
+      },
+      "timing": {
+        "title": "发送时间",
+        "body": "每周于每周五发送，每月于月末发送。"
+      },
+      "permission": {
+        "title": "谁可以更改",
+        "body": "只有村长和长老可以更改「村庄发送设置」。其他成员只能以只读方式查看当前设置。"
+      },
+      "personal": {
+        "title": "你的接收设置",
+        "body": "是否接收由每位成员自行选择。默认为开启接收。",
+        "steps": {
+          "step1": "关闭「你的接收设置」开关后，将不再接收此村庄的通讯。",
+          "step2": "再次开启即可恢复接收。"
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ 发送功能正在准备中。可以保存设置，但尚未实际发送通讯。"
       }
     }
   }

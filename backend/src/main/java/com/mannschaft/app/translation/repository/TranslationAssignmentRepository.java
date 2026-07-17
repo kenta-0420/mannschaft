@@ -4,6 +4,7 @@ import com.mannschaft.app.translation.entity.TranslationAssignmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 翻訳担当者アサインリポジトリ。
@@ -43,4 +44,16 @@ public interface TranslationAssignmentRepository extends JpaRepository<Translati
      */
     boolean existsByScopeTypeAndScopeIdAndUserIdAndLanguageAndIsActiveTrue(
             String scopeType, Long scopeId, Long userId, String language);
+
+    /**
+     * IDとスコープでアサインを取得する。
+     * BOLA是正: アサインID直指定に対し、path スコープ（scopeType/scopeId）配下かを束縛する。
+     *
+     * @param id        アサインID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @return アサイン
+     */
+    Optional<TranslationAssignmentEntity> findByIdAndScopeTypeAndScopeId(
+            Long id, String scopeType, Long scopeId);
 }
