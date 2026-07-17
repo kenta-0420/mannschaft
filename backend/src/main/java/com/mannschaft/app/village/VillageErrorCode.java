@@ -379,7 +379,22 @@ public enum VillageErrorCode implements ErrorCode {
     RECRUIT_CATEGORY_LIMIT_EXCEEDED("VILLAGE_085", "募集カテゴリは20件までです", Severity.WARN),
 
     /** VILLAGE_086: 使用中の募集カテゴリを削除しようとした（409）。 */
-    RECRUIT_CATEGORY_IN_USE("VILLAGE_086", "このカテゴリを使っている募集があるため削除できません", Severity.WARN);
+    RECRUIT_CATEGORY_IN_USE("VILLAGE_086", "このカテゴリを使っている募集があるため削除できません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 ②-2 村ニュースレター集計・凍結（VILLAGE_087）
+    // 設計書 docs/features/F17.1_village_newsletter_content_model.md §4.2 / §11.1 AC-02
+    // ==================================================================
+
+    /**
+     * VILLAGE_087: 凍結済みニュースレター号の集計値（digest_*）を更新しようとした（409）。
+     *
+     * <p>号の凍結ダイジェストは snapshot として確定後は不変（改ざん不可・要件①）。
+     * {@code status != AGGREGATED} の号に対して再集計・再凍結を試みた場合に投げる
+     * （設計書 §4.2「凍結後に集計値を更新しようとする操作は BusinessException で拒否する」）。</p>
+     */
+    NEWSLETTER_ISSUE_ALREADY_FROZEN("VILLAGE_087",
+            "この号は既に凍結されているため集計値を変更できません", Severity.WARN);
 
     private final String code;
     private final String message;
