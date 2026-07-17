@@ -33,6 +33,7 @@ import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -131,10 +132,13 @@ class EventCheckinScopeContractIT extends AbstractMySqlIntegrationTest {
                 .eventId(eventTeamAId).userId(ownerUserId).ticketTypeId(ticketTypeId)
                 .status(RegistrationStatus.APPROVED).quantity(1)
                 .build()).getId();
-        String qrToken = "CKAUTHZ-QR-" + System.nanoTime();
+        // qr_token(length=36)は UUID 文字列(36文字ちょうど)を用いて桁溢れを避ける。
+        // ticket_number(length=30)は UUID 先頭12文字を用いた短い一意値にする。
+        String qrToken = UUID.randomUUID().toString();
+        String ticketNumber = "CK-" + UUID.randomUUID().toString().substring(0, 12);
         ticketRepository.save(EventTicketEntity.builder()
                 .registrationId(registrationId).eventId(eventTeamAId).ticketTypeId(ticketTypeId)
-                .qrToken(qrToken).ticketNumber("CKAUTHZ-" + System.nanoTime())
+                .qrToken(qrToken).ticketNumber(ticketNumber)
                 .status(TicketStatus.VALID)
                 .build());
         em.flush();

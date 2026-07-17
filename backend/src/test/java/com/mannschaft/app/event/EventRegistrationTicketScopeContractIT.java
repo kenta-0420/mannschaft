@@ -504,8 +504,12 @@ class EventRegistrationTicketScopeContractIT extends AbstractMySqlIntegrationTes
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * event_tickets.qr_token カラム（length=36）に収まる一意なトークンを生成する。
+     * UUID の文字列表現は 36 文字ちょうどで、接頭辞を付けると桁溢れ（Data too long）するため付けない。
+     */
     private String uniqueToken() {
-        return "REGAUTHZ-QR-" + UUID.randomUUID();
+        return UUID.randomUUID().toString();
     }
 
     private Long insertEvent(Long teamId, String slug) {
