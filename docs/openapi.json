@@ -1799,6 +1799,10 @@
       "description": "F08.7 埋め込み用順位表・ブラケット・ランキング"
     },
     {
+      "name": "村ニュースレター公開一覧 (F17.1 ②-4)",
+      "description": "全村横断の公開号（PUBLIC×PUBLISHED）一覧・詳細。ログイン必須のみ"
+    },
+    {
       "name": "管理 - 権限グループ",
       "description": "F10.1 権限グループ管理API"
     },
@@ -3993,6 +3997,242 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNewsletterSettingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/tags/{tagId}": {
+      "put": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村のニュースレタータグを更新（HEADMAN / ELDER・楽観ロック）",
+        "operationId": "updateTag",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsletterTagUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterTagResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村のニュースレタータグを削除（HEADMAN / ELDER・使用中は不可）",
+        "operationId": "deleteTag",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/visibility": {
+      "put": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村ニュースレター号の公開範囲を切替（HEADMAN / ELDER・楽観ロック）",
+        "operationId": "updateIssueVisibility",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsletterVisibilityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterIssueDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/tags": {
+      "put": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村ニュースレター号にタグを付ける（HEADMAN / ELDER・楽観ロック・置き換え式）",
+        "operationId": "updateIssueTags",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsletterIssueTagsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterIssueDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/comment": {
+      "put": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村ニュースレター号にコメントを保存（HEADMAN / ELDER・楽観ロック・凍結後も可）",
+        "operationId": "updateIssueComment",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsletterCommentUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterIssueDetailResponse"
                 }
               }
             }
@@ -24717,7 +24957,7 @@
           "ブログタグ"
         ],
         "summary": "タグ更新",
-        "operationId": "updateTag",
+        "operationId": "updateTag_1",
         "parameters": [
           {
             "name": "id",
@@ -24757,7 +24997,7 @@
           "ブログタグ"
         ],
         "summary": "タグ削除",
-        "operationId": "deleteTag",
+        "operationId": "deleteTag_1",
         "parameters": [
           {
             "name": "id",
@@ -30651,6 +30891,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseVillageRecruitCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/tags": {
+      "get": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村のニュースレタータグ一覧（表示順）",
+        "operationId": "listTags",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListNewsletterTagResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村のニュースレタータグを作成（HEADMAN / ELDER）",
+        "operationId": "createTag",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsletterTagCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterTagResponse"
                 }
               }
             }
@@ -72933,7 +73245,7 @@
           "ファイル共有 - タグ"
         ],
         "summary": "タグ一覧",
-        "operationId": "listTags",
+        "operationId": "listTags_1",
         "parameters": [
           {
             "name": "fileId",
@@ -77924,7 +78236,7 @@
           "ブログタグ"
         ],
         "summary": "タグ一覧",
-        "operationId": "listTags_1",
+        "operationId": "listTags_2",
         "parameters": [
           {
             "name": "teamId",
@@ -77963,7 +78275,7 @@
           "ブログタグ"
         ],
         "summary": "タグ作成",
-        "operationId": "createTag",
+        "operationId": "createTag_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -82036,7 +82348,7 @@
           "行動メモタグ"
         ],
         "summary": "タグ一覧取得",
-        "operationId": "listTags_2",
+        "operationId": "listTags_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -82055,7 +82367,7 @@
           "行動メモタグ"
         ],
         "summary": "タグ作成",
-        "operationId": "createTag_1",
+        "operationId": "createTag_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -101585,7 +101897,7 @@
           "行動メモタグ"
         ],
         "summary": "タグ削除（論理削除）",
-        "operationId": "deleteTag_1",
+        "operationId": "deleteTag_2",
         "parameters": [
           {
             "name": "id",
@@ -101608,7 +101920,7 @@
           "行動メモタグ"
         ],
         "summary": "タグ更新",
-        "operationId": "updateTag_1",
+        "operationId": "updateTag_2",
         "parameters": [
           {
             "name": "id",
@@ -103183,6 +103495,108 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListNewsletterSendLogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/issues": {
+      "get": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村ニュースレター号の一覧（新しい順・?tagId\u003d でタグ絞り込み可）",
+        "operationId": "listIssues",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterIssuePageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}": {
+      "get": {
+        "tags": [
+          "村ニュースレター (F17.1 Phase 3-β-E)"
+        ],
+        "summary": "村ニュースレター号の詳細（凍結ダイジェスト＋コメント＋タグ）",
+        "operationId": "getIssue",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNewsletterIssueDetailResponse"
                 }
               }
             }
@@ -126348,6 +126762,81 @@
         }
       }
     },
+    "/api/v1/newsletter/public": {
+      "get": {
+        "tags": [
+          "村ニュースレター公開一覧 (F17.1 ②-4)"
+        ],
+        "summary": "公開ニュースレター号の村横断一覧（新しい順）",
+        "operationId": "listPublicIssues",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicNewsletterIssuePageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/newsletter/public/{issueId}": {
+      "get": {
+        "tags": [
+          "村ニュースレター公開一覧 (F17.1 ②-4)"
+        ],
+        "summary": "公開ニュースレター号の詳細（PUBLIC 以外は 404 秘匿）",
+        "operationId": "getPublicIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicNewsletterIssueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/my/receipts": {
       "get": {
         "tags": [
@@ -141004,6 +141493,259 @@
             "format": "uuid"
           }
         }
+      },
+      "NewsletterTagUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ApiResponseNewsletterTagResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NewsletterTagResponse"
+          }
+        }
+      },
+      "NewsletterTagResponse": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "NewsletterVisibilityUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "VILLAGE_MEMBERS",
+              "PUBLIC"
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "visibility"
+        ]
+      },
+      "ApiResponseNewsletterIssueDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NewsletterIssueDetailResponse"
+          }
+        }
+      },
+      "NewsletterIssueDetailResponse": {
+        "type": "object",
+        "properties": {
+          "aggregatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commentUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commentUpdatedBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "digestFestivalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestMeetupCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestNewMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestPostCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestRecruitCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic1Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic1Name": {
+            "type": "string"
+          },
+          "digestTopic2Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic2Name": {
+            "type": "string"
+          },
+          "digestTopic3Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic3Name": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ]
+          },
+          "headmanComment": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "EXTRA"
+            ]
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledPublishAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AGGREGATED",
+              "FROZEN",
+              "PUBLISHED",
+              "CANCELED"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsletterTagResponse"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "VILLAGE_MEMBERS",
+              "PUBLIC"
+            ]
+          }
+        }
+      },
+      "NewsletterIssueTagsUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "tagIds",
+          "version"
+        ]
+      },
+      "NewsletterCommentUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "version"
+        ]
       },
       "VillageMonshoUpdateRequest": {
         "type": "object",
@@ -160126,6 +160868,24 @@
             "type": "string",
             "maxLength": 40,
             "minLength": 0
+          }
+        }
+      },
+      "NewsletterTagCreateRequest": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -198200,6 +198960,17 @@
           }
         }
       },
+      "ApiResponseListNewsletterTagResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsletterTagResponse"
+            }
+          }
+        }
+      },
       "ApiResponseListNewsletterSendLogResponse": {
         "type": "object",
         "properties": {
@@ -198237,6 +199008,109 @@
           "successCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ApiResponseNewsletterIssuePageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NewsletterIssuePageResponse"
+          }
+        }
+      },
+      "NewsletterIssuePageResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsletterIssueSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "NewsletterIssueSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "digestNewMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestPostCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ]
+          },
+          "hasComment": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AGGREGATED",
+              "FROZEN",
+              "PUBLISHED",
+              "CANCELED"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsletterTagResponse"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "VILLAGE_MEMBERS",
+              "PUBLIC"
+            ]
           }
         }
       },
@@ -217154,6 +218028,122 @@
           },
           "priceJpy": {
             "type": "number"
+          }
+        }
+      },
+      "ApiResponsePublicNewsletterIssuePageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicNewsletterIssuePageResponse"
+          }
+        }
+      },
+      "PublicNewsletterIssuePageResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicNewsletterIssueResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PublicNewsletterIssueResponse": {
+        "type": "object",
+        "properties": {
+          "digestFestivalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestMeetupCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestNewMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestPostCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestRecruitCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic1Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic1Name": {
+            "type": "string"
+          },
+          "digestTopic2Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic2Name": {
+            "type": "string"
+          },
+          "digestTopic3Count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "digestTopic3Name": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ]
+          },
+          "headmanComment": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsletterTagResponse"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ApiResponsePublicNewsletterIssueResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicNewsletterIssueResponse"
           }
         }
       },
