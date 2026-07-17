@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -132,10 +133,16 @@ public class VisibilityTemplateController {
      * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
      * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
      *
+     * <p>認可: 自分のテンプレート（またはプリセット）に対する自己スコープのプレビュー EP であり、
+     * 所有者強制は Service 側の {@code getTemplate(id, currentUserId)} が担う（他人のテンプレートは 404）。
+     * 認証済みであることを {@code @PreAuthorize("isAuthenticated()")} で明示し、認可番人（AuthzControllerGuardArchTest）
+     * のシグナル A を正当に満たす。</p>
+     *
      * @param id      テンプレートID
      * @param request 評価リクエスト
      */
     @Operation(summary = "公開範囲評価", description = "指定テンプレートに対して対象ユーザーの閲覧可否を評価する")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/evaluate")
     public ResponseEntity<ApiResponse<EvaluateVisibilityResponse>> evaluate(
             @PathVariable Long id,
@@ -163,9 +170,15 @@ public class VisibilityTemplateController {
      * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
      * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
      *
+     * <p>認可: 自分のテンプレート（またはプリセット）に対する自己スコープのプレビュー EP であり、
+     * 所有者強制は Service 側の {@code getTemplate(id, currentUserId)} が担う（他人のテンプレートは 404）。
+     * 認証済みであることを {@code @PreAuthorize("isAuthenticated()")} で明示し、認可番人（AuthzControllerGuardArchTest）
+     * のシグナル A を正当に満たす。</p>
+     *
      * @param id テンプレートID
      */
     @Operation(summary = "解決済みメンバー一覧取得", description = "テンプレートに基づいて閲覧可能ユーザーIDの一覧を解決して返す（プレビュー用）")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/resolved-members")
     public ResponseEntity<ApiResponse<ResolvedMembersResponse>> getResolvedMembers(
             @PathVariable Long id) {
