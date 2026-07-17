@@ -79,6 +79,27 @@ public class ModuleService {
     }
 
     /**
+     * SYSTEM_ADMIN 管理画面向けに全モジュールを取得する。
+     *
+     * <p>tenant 向けの {@link #getModuleCatalog()} が「OPTIONAL かつ is_active」に絞り込むのに対し、
+     * こちらは <b>DEFAULT/OPTIONAL・is_active の true/false を問わず全件</b>を moduleNumber 昇順で返す。
+     * これにより管理画面に DEFAULT モジュールも表示され、is_active=false へトグルした行も
+     * 一覧に残り続けて再有効化できる（無効化しても画面から消えない）。</p>
+     *
+     * <p>キャッシュは付けない。管理画面は低トラフィックで、有料要否/有効状態トグル直後の
+     * 反映を常に保証すべきため、常に最新を DB から読む。論理削除は
+     * {@code @SQLRestriction("deleted_at IS NULL")} により自動除外される。</p>
+     *
+     * @return 全モジュール詳細リスト（moduleNumber 昇順）
+     */
+    public List<ModuleResponse> getAllModulesForAdmin() {
+        return moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()
+                .stream()
+                .map(this::toModuleResponse)
+                .toList();
+    }
+
+    /**
      * チームの機能設定タブ向けカタログ＋有効状態を取得する。
      *
      * <p>利用可能な OPTIONAL かつ active なモジュール全件に対し、当該チームでの有効化状態・
@@ -449,6 +470,14 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
+            // 有料プランチェック（チーム側 toggleTeamModule と対称・穴の根治）。
+            // 有料モジュールは premium entitlement（scope=ORG）を保持していなければ有効化不可。
+            // scope は組織なので EntitlementScopeKind.ORG + orgId を渡す（チーム側は TEAM + teamId）。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.ORG, orgId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
             // 無料上限チェック
             long enabledCount = organizationEnabledModuleRepository
                     .countByOrganizationIdAndIsEnabledTrue(orgId);

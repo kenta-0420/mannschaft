@@ -90519,6 +90519,41 @@
         }
       }
     },
+    "/api/v1/system-admin/modules/{id}/paid-plan": {
+      "patch": {
+        "tags": [
+          "システム管理 - モジュール"
+        ],
+        "summary": "モジュール有料プラン要否更新",
+        "operationId": "updatePaidPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateModulePaidPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/modules/{id}/level-availability": {
       "patch": {
         "tags": [
@@ -90542,6 +90577,41 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateLevelAvailabilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/modules/{id}/active": {
+      "patch": {
+        "tags": [
+          "システム管理 - モジュール"
+        ],
+        "summary": "モジュール有効/無効更新",
+        "operationId": "updateActive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateModuleActiveRequest"
               }
             }
           },
@@ -193752,6 +193822,17 @@
           }
         }
       },
+      "UpdateModulePaidPlanRequest": {
+        "type": "object",
+        "properties": {
+          "requiresPaidPlan": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "requiresPaidPlan"
+        ]
+      },
       "UpdateLevelAvailabilityRequest": {
         "type": "object",
         "properties": {
@@ -193763,6 +193844,17 @@
             "minLength": 1
           }
         }
+      },
+      "UpdateModuleActiveRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isActive"
+        ]
       },
       "FeedbackStatusRequest": {
         "type": "object",
