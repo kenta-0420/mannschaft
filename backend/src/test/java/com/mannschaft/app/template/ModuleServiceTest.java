@@ -982,11 +982,59 @@ class ModuleServiceTest {
         }
 
         @Test
-        @DisplayName("AC-C5: 組織側は requiresPaidPlan 判定を持たない（有料モジュールでも entitlement 未参照で有効化成功・無改変）")
-        void 有効化_有料モジュールでも組織は有料判定なし_成功() {
-            // Given: 組織側 toggleOrganizationModule は結線対象外。requiresPaidPlan=true でも
-            // TMPL_004 を投げず、entitlementQueryService.isEntitled も一切参照しないことを保証する。
+        @DisplayName("AC-6: 有料モジュールを premium 権利なし組織で有効化_TMPL004例外（穴の根治）")
+        void 有効化_有料モジュールでpremium権利なし_TMPL004例外() {
+            // Given: 組織側にもチーム側と対称の有料ゲートを敷設。scope=ORG の premium entitlement が
+            // 無ければ TMPL_004。以前は組織側にゲートが無く entitlement 無しでも有効化できる穴だった。
             ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.ORG, ORG_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(false);
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_004"));
+        }
+
+        @Test
+        @DisplayName("AC-6: 有料モジュールを premium 権利あり組織で有効化_成功")
+        void 有効化_有料モジュールでpremium権利あり_成功() {
+            // Given: scope=ORG の premium entitlement 保持 → ゲート通過し有効化される。
+            ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.ORG, ORG_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(true);
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+                    .willReturn(0L);
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then: 例外なく有効化される。
+            verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-6: 無料モジュールは有料ゲートを通らず entitlement 未参照で有効化成功")
+        void 有効化_無料モジュールは有料ゲート不通過_成功() {
+            // Given: requiresPaidPlan=false なら短絡評価で isEntitled は呼ばれない（回帰防止）。
+            ModuleDefinitionEntity module = createOptionalModule();
             given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
             given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
                     module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
@@ -1003,7 +1051,7 @@ class ModuleServiceTest {
             // When
             moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
 
-            // Then: 例外なく有効化され、entitlement 判定は呼ばれない。
+            // Then: 有効化され、無料モジュールでは entitlement 判定は呼ばれない。
             verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
             verify(entitlementQueryService, never())
                     .isEntitled(any(EntitlementScopeKind.class), anyLong(), any(String.class));

@@ -3,6 +3,8 @@ package com.mannschaft.app.template.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.template.dto.ModuleResponse;
 import com.mannschaft.app.template.dto.UpdateLevelAvailabilityRequest;
+import com.mannschaft.app.template.dto.UpdateModuleActiveRequest;
+import com.mannschaft.app.template.dto.UpdateModulePaidPlanRequest;
 import com.mannschaft.app.template.service.ModuleService;
 import com.mannschaft.app.template.service.SystemAdminTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,6 +63,34 @@ public class SystemAdminModuleController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateLevelAvailabilityRequest request) {
         systemAdminTemplateService.updateLevelAvailability(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * モジュールの有料プラン要否を更新する。
+     * 認可は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で担保する。
+     */
+    @PatchMapping("/{id}/paid-plan")
+    @Operation(summary = "モジュール有料プラン要否更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<Void> updatePaidPlan(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateModulePaidPlanRequest request) {
+        systemAdminTemplateService.updateModulePaidPlan(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * モジュールの有効/無効を更新する。
+     * 認可は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で担保する。
+     */
+    @PatchMapping("/{id}/active")
+    @Operation(summary = "モジュール有効/無効更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<Void> updateActive(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateModuleActiveRequest request) {
+        systemAdminTemplateService.updateModuleActive(id, request);
         return ResponseEntity.ok().build();
     }
 }

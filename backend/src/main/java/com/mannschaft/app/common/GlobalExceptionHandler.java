@@ -95,6 +95,9 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
+            //（Severity.WARN 既定の 400 を上書き。SYSTEM_ADMIN トグル API 等で正しい status を返す）
+            Map.entry("TMPL_002", HttpStatus.NOT_FOUND),
             // F19.1 公開ページ Public API（IDOR / レート制限）
             Map.entry("PUBLIC_001", HttpStatus.NOT_FOUND),         // PUBLIC でないチーム / 組織は 404 で隠蔽
             Map.entry("PUBLIC_002", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過

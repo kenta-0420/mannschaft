@@ -449,6 +449,14 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
+            // 有料プランチェック（チーム側 toggleTeamModule と対称・穴の根治）。
+            // 有料モジュールは premium entitlement（scope=ORG）を保持していなければ有効化不可。
+            // scope は組織なので EntitlementScopeKind.ORG + orgId を渡す（チーム側は TEAM + teamId）。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.ORG, orgId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
             // 無料上限チェック
             long enabledCount = organizationEnabledModuleRepository
                     .countByOrganizationIdAndIsEnabledTrue(orgId);
