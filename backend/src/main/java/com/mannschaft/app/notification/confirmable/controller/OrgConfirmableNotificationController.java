@@ -60,6 +60,8 @@ public class OrgConfirmableNotificationController {
             @PathVariable Long orgId,
             @Valid @RequestBody ConfirmableNotificationCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave3-B12notif: 通知送信は管理操作（受信者へ強制配信＋ORGはクレジット消費を伴う）。
+        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
         ConfirmableNotificationEntity entity = notificationService.send(
                 ScopeType.ORGANIZATION,
                 orgId,
@@ -89,6 +91,9 @@ public class OrgConfirmableNotificationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> list(
             @PathVariable Long orgId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave3-B12notif: 一覧は閲覧系のため checkMembership（非メンバーの BOLA 一覧取得を根治）。
+        accessControlService.checkMembership(currentUserId, orgId, ScopeType.ORGANIZATION.name());
         List<ConfirmableNotificationEntity> entities =
                 notificationService.listByScope(ScopeType.ORGANIZATION, orgId);
         List<ConfirmableNotificationResponse> responses = entities.stream()
@@ -115,12 +120,15 @@ public class OrgConfirmableNotificationController {
     public ResponseEntity<ApiResponse<ConfirmableNotificationDetailResponse>> getDetail(
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック
+        // スコープ整合チェック（BOLA対策: notificationId が path の orgId 配下かを突合。不一致は404秘匿）
         if (!ScopeType.ORGANIZATION.equals(entity.getScopeType()) || !orgId.equals(entity.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
         }
+        // 認可根治 Wave3-B12notif: 閲覧系は checkMembership（非メンバーの詳細窃視を根治）。
+        accessControlService.checkMembership(currentUserId, orgId, ScopeType.ORGANIZATION.name());
 
         ConfirmableNotificationDetailResponse response = mapper.toDetailResponse(entity);
         long confirmedCount = recipientRepository
@@ -141,6 +149,15 @@ public class OrgConfirmableNotificationController {
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の orgId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.ORGANIZATION.equals(entity.getScopeType()) || !orgId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif: キャンセルは管理操作のため checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+
         notificationService.cancel(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
     }
@@ -156,6 +173,16 @@ public class OrgConfirmableNotificationController {
     public ResponseEntity<Void> resendReminder(
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の orgId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.ORGANIZATION.equals(entity.getScopeType()) || !orgId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif: リマインド再送は管理操作のため checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+
         notificationService.resendReminder(notificationId);
         return ResponseEntity.noContent().build();
     }
@@ -178,6 +205,13 @@ public class OrgConfirmableNotificationController {
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の orgId 配下かを突合。不一致は404秘匿）
+        // ADMIN であっても他 scope の notificationId で受信者一覧を覗ける副次 BOLA を根治（Wave3-B12notif）。
+        if (!ScopeType.ORGANIZATION.equals(notification.getScopeType()) || !orgId.equals(notification.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
 
         if (accessControlService.isAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name())) {
             List<ConfirmableNotificationRecipientEntity> recipients =
