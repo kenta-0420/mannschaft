@@ -437,6 +437,39 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("認可根治 Wave3-B12event: EVENT_NOT_FOUND（EVENT_001）は個別マッピングで 404 NotFound になる"
+                + "（スコープ帰属不一致・IDOR 秘匿・WARN 既定 400 の上書き回帰固定）")
+        void resolveHttpStatus_EVENT_001_404() {
+            // EventScopeAccessGuard 等の Javadoc は「404 で秘匿する」と明記していたが、
+            // 個別マッピング未登録のため Severity.WARN 既定の 400 のままだった実装漏れを根治した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.EVENT_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("認可根治 Wave3-B12event: 参加登録/チケット/招待トークン/チケット種別/タイムテーブル項目の "
+                + "NOT_FOUND 系（親子BOLA秘匿）は個別マッピングで 404 NotFound になる")
+        void resolveHttpStatus_eventSubResourceNotFound_404() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.REGISTRATION_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.INVITE_TOKEN_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_TYPE_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TIMETABLE_ITEM_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
         void resolveHttpStatus_INVALID_TIME_RANGE_400() {
             // 実機 E2E で start>=end が 500 を返していた（旧 Severity.ERROR）。
