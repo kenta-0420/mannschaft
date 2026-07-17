@@ -52425,8 +52425,6 @@ export interface components {
         };
         EvaluateVisibilityRequest: {
             /** Format: int64 */
-            ownerUserId: number;
-            /** Format: int64 */
             targetUserId: number;
         };
         ApiResponseEvaluateVisibilityResponse: {
@@ -137098,9 +137096,7 @@ export interface operations {
     };
     getResolvedMembers: {
         parameters: {
-            query: {
-                ownerUserId: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 id: number;
