@@ -13,6 +13,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +37,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 存在しない module id で 404（TMPL_002）を返すことを検証する。</p>
  *
  * <p>認可（AC-5）は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で
- * 構造的に担保されるため、本テストは {@code addFilters=false} で機能面（AC-1/2/3）に集中する。</p>
+ * 構造的に担保されるため、本テストは {@code addFilters=false} で機能面（AC-1/2/3）に集中する。
+ * ただし対象 2 本には {@code @PreAuthorize("hasRole('SYSTEM_ADMIN')")}（メソッドセキュリティ）が
+ * 付いており、これは {@code addFilters=false} でも作動する。認証が無いと {@code AccessDeniedException}
+ * が 403 へ変換されず（{@code ExceptionTranslationFilter} 無効）500 になるため、
+ * {@code @WithMockUser(roles = "SYSTEM_ADMIN")} で SYSTEM_ADMIN として認証する。</p>
  *
  * <p>金型: {@code TeamModuleScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + repository シード）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = "SYSTEM_ADMIN")
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("SYSTEM_ADMIN モジュール トグル API 契約テスト（試練）")
