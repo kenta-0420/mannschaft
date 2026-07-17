@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -74,6 +75,7 @@ public class SystemAdminModuleController {
      * 認可は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で担保する。
      */
     @PatchMapping("/{id}/paid-plan")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @Operation(summary = "モジュール有料プラン要否更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<Void> updatePaidPlan(
@@ -88,6 +90,7 @@ public class SystemAdminModuleController {
      * 認可は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で担保する。
      */
     @PatchMapping("/{id}/active")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @Operation(summary = "モジュール有効/無効更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<Void> updateActive(
