@@ -548,23 +548,32 @@
     },
     "newsletter": {
       "title": "Boletín",
-      "subtitle": "Notificaciones de actualizaciones de la aldea",
-      "settings": "Configuración del boletín",
-      "frequency": "Frecuencia",
+      "subtitle": "Novedades del pueblo",
+      "settings": "Ajustes del boletín",
       "lastSentAt": "Último envío",
-      "nextScheduledAt": "Próximo envío programado",
-      "optOut": "Cancelar suscripción",
-      "optIn": "Reanudar suscripción",
-      "optedOut": "Actualmente estás suscripción cancelada",
-      "saveSuccess": "Configuración del boletín guardada",
+      "saveSuccess": "Ajustes del boletín guardados",
       "optOutSuccess": "Suscripción cancelada",
       "optInSuccess": "Suscripción reanudada",
-      "loadFailed": "Error al cargar la configuración del boletín",
-      "frequencyOption": {
-        "DAILY": "Diario",
-        "WEEKLY": "Semanal",
-        "MONTHLY": "Mensual",
-        "NEVER": "Nunca"
+      "loadFailed": "No se pudieron cargar los ajustes del boletín",
+      "manageOnlyHint": "Solo el jefe y los ancianos pueden cambiar los ajustes de envío del pueblo.",
+      "comingSoonNote": "El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían.",
+      "villageSection": {
+        "title": "Ajustes de envío del pueblo",
+        "subtitle": "Activa o desactiva de forma independiente el boletín semanal y el mensual."
+      },
+      "weekly": {
+        "label": "Boletín semanal",
+        "timing": "Se envía cada viernes"
+      },
+      "monthly": {
+        "label": "Boletín mensual",
+        "timing": "Se envía a fin de mes"
+      },
+      "personalSection": {
+        "title": "Tu suscripción",
+        "toggleLabel": "Recibir el boletín de este pueblo",
+        "receivingHint": "Actualmente recibes este boletín.",
+        "stoppedHint": "Has dejado de recibir este boletín."
       }
     },
     "slug": {
@@ -878,6 +887,38 @@
           "step2": "Las categorías con cero \"Convocatorias en uso\" se pueden eliminar con el icono de papelera.",
           "step3": "Para eliminar una categoría en uso, cambia primero la categoría de esas convocatorias."
         }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "Cómo usar el boletín",
+      "description": "El boletín del pueblo agrupa las novedades del pueblo en una sola notificación. El semanal y el mensual se activan de forma independiente, y cada miembro elige si desea recibirlo.",
+      "toggles": {
+        "title": "Activa el semanal y el mensual por separado",
+        "body": "En los ajustes de envío del pueblo puedes cambiar el semanal y el mensual por separado. Puedes activar solo uno.",
+        "steps": {
+          "step1": "Usa el interruptor «Boletín semanal» para activar o desactivar el envío semanal.",
+          "step2": "Usa el interruptor «Boletín mensual» para activar o desactivar el envío mensual.",
+          "step3": "Los cambios se guardan al instante al cambiar un interruptor (sin botón de guardar)."
+        }
+      },
+      "timing": {
+        "title": "Momento de envío",
+        "body": "El semanal se envía cada viernes; el mensual, a fin de cada mes."
+      },
+      "permission": {
+        "title": "Quién puede cambiarlo",
+        "body": "Solo el jefe y los ancianos pueden cambiar los «ajustes de envío del pueblo». Los demás miembros ven los ajustes actuales como solo lectura."
+      },
+      "personal": {
+        "title": "Tu suscripción",
+        "body": "Cada miembro elige si desea recibir el boletín. La recepción está activada de forma predeterminada.",
+        "steps": {
+          "step1": "Desactiva el interruptor «Tu suscripción» para dejar de recibir el boletín de este pueblo.",
+          "step2": "Vuelve a activarlo para reanudar la recepción."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían realmente."
       }
     }
   }
