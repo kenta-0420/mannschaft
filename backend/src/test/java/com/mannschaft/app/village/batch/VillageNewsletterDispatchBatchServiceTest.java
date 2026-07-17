@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -197,10 +198,12 @@ class VillageNewsletterDispatchBatchServiceTest {
         given(membershipRepository.findActiveUserSubjectIdsByVillageId(VILLAGE_ID))
                 .willReturn(List.of(USER_1, USER_2, USER_3));
         given(optOutRepository.findByVillageId(VILLAGE_ID)).willReturn(List.of());
-        // USER_2 への通知だけ例外
-        doThrow(new RuntimeException("配信失敗（テスト）")).when(notificationHelper).notifyPreAuthorized(
-                eq(USER_2), anyString(), any(), anyString(), anyString(),
-                anyString(), any(), any(), any(), anyString(), any());
+        // USER_2 への通知だけ例外。lenient で strict-stubs の PotentialStubbingProblem を回避する
+        // （非マッチの USER_1/USER_3 呼び出しがサービスの広域 catch に飲み込まれ余計な failure が
+        //  加算される現象を防ぐ。第1引数の eq(USER_2) は維持し USER_2 のみ throw させる）。
+        lenient().doThrow(new RuntimeException("配信失敗（テスト）")).when(notificationHelper).notifyPreAuthorized(
+                eq(USER_2), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any());
 
         int published = batchService.dispatchForDate(NOW);
 
