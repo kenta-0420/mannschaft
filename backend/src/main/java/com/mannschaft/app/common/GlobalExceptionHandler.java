@@ -258,6 +258,15 @@ public class GlobalExceptionHandler {
             // 機能55 予約作成（第三陣）予約タスク取消
             Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
+            // F03.8 / 認可根治 Wave3-B12event: イベント本体・サブリソースの IDOR 秘匿。
+            // Javadoc（EventScopeAccessGuard 等）は既に「404 で秘匿する」と明記していたが、
+            // このマッピング未登録のため Severity.WARN 既定の 400 のままだった実装漏れを根治する。
+            Map.entry("EVENT_001", HttpStatus.NOT_FOUND),                   // EVENT_NOT_FOUND（スコープ帰属不一致含む）
+            Map.entry("EVENT_010", HttpStatus.NOT_FOUND),                   // TICKET_TYPE_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_011", HttpStatus.NOT_FOUND),                   // REGISTRATION_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_012", HttpStatus.NOT_FOUND),                   // TICKET_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_014", HttpStatus.NOT_FOUND),                   // TIMETABLE_ITEM_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_015", HttpStatus.NOT_FOUND),                   // INVITE_TOKEN_NOT_FOUND（親子BOLA）
             // F03.10 代理出席（イベント側 §4.2 / §5.6 / §5.7）
             Map.entry("EVENT_030", HttpStatus.NOT_FOUND),                   // DELEGATION_NOT_FOUND
             Map.entry("EVENT_031", HttpStatus.FORBIDDEN),                   // 委任者がスコープ外

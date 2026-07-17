@@ -5,7 +5,9 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
 import com.mannschaft.app.event.dto.DismissalStatusResponse;
+import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.service.EventDismissalService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,6 +35,15 @@ import java.util.List;
  *   <li>GET  /api/v1/teams/{teamId}/events/{eventId}/dismissal/status — 解散状態確認</li>
  *   <li>GET  /api/v1/events/my-organizing/dismissal-reminders — 主催未解散イベント一覧（Phase11）</li>
  * </ul>
+ *
+ * <p><b>認可（認可根治 Wave3-B12event）:</b> 送信・状態確認のいずれも認可が一切敷設されておらず
+ * （Javadoc 上「ADMIN/STAFF専用」と謳われていたが未実装）、非メンバーでも他チームの解散通知を
+ * 送信・状態閲覧できた。{@link EventDismissalService#sendDismissalNotification} /
+ * {@link EventDismissalService#getDismissalStatus} は {@code findByIdAndTeamScopeId} で
+ * イベント帰属は検証するが、操作者がスコープメンバーであるかは検証していなかったため、
+ * Controller 入口で {@link EventScopeAccessGuard} を敷設する（Service 側の帰属検証は二重防御として維持）。
+ * {@code getMyDismissalReminderTargets} は Service 内で {@code createdBy=userId} のみを返す設計のため
+ * スコープ侵害が起きず対象外（Javadoc 参照）。</p>
  */
 @RestController
 @Tag(name = "解散通知", description = "F03.12 §16 イベント解散通知API")
@@ -40,6 +51,7 @@ import java.util.List;
 public class EventDismissalController {
 
     private final EventDismissalService eventDismissalService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * 解散通知を全参加者・見守り者に送信する。
@@ -62,6 +74,7 @@ public class EventDismissalController {
             @Valid @RequestBody DismissalRequest request) {
 
         Long operatorUserId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeAdmin(operatorUserId, EventScopeType.TEAM, teamId, eventId);
         eventDismissalService.sendDismissalNotification(eventId, teamId, operatorUserId, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(null));
@@ -81,6 +94,8 @@ public class EventDismissalController {
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
 
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         DismissalStatusResponse response = eventDismissalService.getDismissalStatus(eventId, teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
