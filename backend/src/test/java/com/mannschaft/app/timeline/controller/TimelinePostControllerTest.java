@@ -122,7 +122,7 @@ class TimelinePostControllerTest {
         Long postId = 5L;
         PostResponse reply1 = PostResponse.builder().id(101L).build();
         PostResponse reply2 = PostResponse.builder().id(102L).build();
-        given(postService.getReplies(eq(postId), any(), eq(20)))
+        given(postService.getReplies(eq(postId), any(), eq(20), eq(USER_ID)))
                 .willReturn(List.of(reply1, reply2));
 
         ResponseEntity<TimelineFeedResponse> response = controller.getReplies(postId, null, 20);
@@ -133,14 +133,14 @@ class TimelinePostControllerTest {
         // FE は res.data.posts / res.meta.nextCursor を読む
         assertThat(body.getData().getPinned()).isEmpty();
         assertThat(body.getData().getPosts()).containsExactly(reply1, reply2);
-        verify(postService).getReplies(eq(postId), any(), eq(20));
+        verify(postService).getReplies(eq(postId), any(), eq(20), eq(USER_ID));
     }
 
     @Test
     @DisplayName("AC-8: 返信0件は data.posts 空配列・meta.nextCursor=null・hasNext=false")
     void getReplies_emptyRepliesReturnsEmptyPostsAndNullCursor() {
         Long postId = 5L;
-        given(postService.getReplies(eq(postId), any(), eq(20)))
+        given(postService.getReplies(eq(postId), any(), eq(20), eq(USER_ID)))
                 .willReturn(List.of());
 
         ResponseEntity<TimelineFeedResponse> response = controller.getReplies(postId, null, 20);

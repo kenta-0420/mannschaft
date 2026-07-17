@@ -195,7 +195,7 @@ const showGuide = ref(false)
       >
         <div class="flex items-center gap-2">
           <i :class="[card.icon, 'text-lg text-primary-600 dark:text-primary-400']" aria-hidden="true" />
-          <h2 class="text-base font-semibold">
+          <h2 class="text-base font-semibold text-surface-900 dark:text-surface-50">
             {{ t(card.titleKey) }}
           </h2>
         </div>

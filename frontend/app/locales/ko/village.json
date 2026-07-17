@@ -257,7 +257,8 @@
       "empty": "회원이 없습니다",
       "banned": "차단됨",
       "you": "나",
-      "filterRole": "역할로 필터"
+      "filterRole": "역할로 필터",
+      "soloHeadmanHint": "다른 회원이 이 마을에 참여하면 여기에서 장로로 임명할 수 있습니다."
     },
     "postingIdentity": {
       "title": "게시 주체",

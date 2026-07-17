@@ -257,7 +257,8 @@
       "empty": "暂无成员",
       "banned": "已封禁",
       "you": "您",
-      "filterRole": "按角色筛选"
+      "filterRole": "按角色筛选",
+      "soloHeadmanHint": "当其他成员加入本村后，您可以在此将其任命为长老。"
     },
     "postingIdentity": {
       "title": "发帖身份",

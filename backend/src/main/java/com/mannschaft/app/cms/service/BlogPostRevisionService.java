@@ -9,7 +9,12 @@ import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,24 +37,44 @@ public class BlogPostRevisionService {
     private final BlogPostRepository postRepository;
     private final BlogPostRevisionRepository revisionRepository;
     private final CmsMapper cmsMapper;
+    private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * リビジョン一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だった（記事の実存確認のみ）ため、
+     * 非メンバーでも他人の記事のリビジョン履歴（下書き含む編集履歴）を閲覧できた。
+     * {@link ContentVisibilityChecker#assertCanView} で {@code getById} と同一の
+     * 可視性判定を適用する。</p>
      */
     public List<RevisionResponse> listRevisions(Long postId) {
         findPostOrThrow(postId);
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, postId, viewerUserId);
         return cmsMapper.toRevisionResponseList(
                 revisionRepository.findByBlogPostIdOrderByCreatedAtDesc(postId));
     }
 
     /**
      * リビジョンから復元する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 2点の根治を行う。
+     * ①書込認可: 投稿者本人 or スコープADMIN以外は403（{@link #checkWriteAccess}）。
+     * ②BOLA是正: {@code revisionId} が {@code postId} 配下のリビジョンでない場合
+     * （＝他記事のリビジョンIDを流用した越境アクセス）は、存在秘匿のため
+     * 単純な不在と同一の {@link CmsErrorCode#REVISION_NOT_FOUND}（404）を返す。</p>
      */
     @Transactional
     public BlogPostResponse restoreRevision(Long postId, Long revisionId, Long userId) {
         BlogPostEntity entity = findPostOrThrow(postId);
+        checkWriteAccess(entity, userId);
         BlogPostRevisionEntity revision = revisionRepository.findById(revisionId)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.REVISION_NOT_FOUND));
+        if (!revision.getBlogPostId().equals(postId)) {
+            // BOLA対策: revisionId が postId 配下でない越境アクセスは、存在秘匿のため不在と同一コードで404。
+            throw new BusinessException(CmsErrorCode.REVISION_NOT_FOUND);
+        }
 
         // 現在の状態をリビジョンとして保存
         saveRevision(entity, userId);
@@ -102,6 +127,24 @@ public class BlogPostRevisionService {
     private BlogPostEntity findPostOrThrow(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+    }
+
+    /**
+     * 記事書込操作の認可を検証する（{@link BlogPostService#checkWriteAccess} と同一方式。
+     * 認可根治戦役 Wave3-B7）。投稿者本人はスコープ種別を問わず許可。それ以外はスコープ
+     * （teamId優先→organizationId）の ADMIN/DEPUTY_ADMIN のみ許可。個人ブログで非所有者は403。
+     */
+    private void checkWriteAccess(BlogPostEntity entity, Long actorUserId) {
+        if (actorUserId != null && actorUserId.equals(entity.getAuthorId())) {
+            return;
+        }
+        if (entity.getTeamId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
+        } else if (entity.getOrganizationId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

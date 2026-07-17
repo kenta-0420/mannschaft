@@ -963,7 +963,15 @@ public class GlobalExceptionHandler {
             Map.entry("BUDGET_021", HttpStatus.NOT_FOUND),               // 添付ファイル不在／越境（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B9: membership 会員証停止/再開・CheckinLocation は entity 由来 scope 認可。
             Map.entry("MEMBERSHIP_001", HttpStatus.NOT_FOUND),           // 会員証不在（IDOR 秘匿 → 404）
-            Map.entry("MEMBERSHIP_019", HttpStatus.NOT_FOUND)            // 拠点不在／越境（IDOR 秘匿 → 404）
+            Map.entry("MEMBERSHIP_019", HttpStatus.NOT_FOUND),           // 拠点不在／越境（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3-B7: cms（ブログ）の *_NOT_FOUND は、対象エンティティが自スコープ外
+            // （BOLA・revisionId/shareId が postId 配下でない場合を含む）でも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。
+            Map.entry("CMS_001", HttpStatus.NOT_FOUND),                  // POST_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("CMS_002", HttpStatus.NOT_FOUND),                  // TAG_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("CMS_003", HttpStatus.NOT_FOUND),                  // SERIES_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("CMS_004", HttpStatus.NOT_FOUND),                  // REVISION_NOT_FOUND（親post不一致BOLA → 404）
+            Map.entry("CMS_019", HttpStatus.NOT_FOUND)                   // SHARE_NOT_FOUND（親post不一致BOLA → 404）
     );
 
     /**
