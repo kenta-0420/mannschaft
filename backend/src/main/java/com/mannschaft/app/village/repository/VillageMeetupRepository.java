@@ -5,6 +5,8 @@ import com.mannschaft.app.village.entity.enums.VillageMeetupStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
 
@@ -22,4 +24,25 @@ public interface VillageMeetupRepository extends JpaRepository<VillageMeetupEnti
     /** 状態別の村の寄合一覧。 */
     Page<VillageMeetupEntity> findByVillageIdAndStatusAndDeletedAtIsNull(
             UUID villageId, VillageMeetupStatus status, Pageable pageable);
+
+    // ====================================================================
+    // F17.1 ②-2 村ニュースレター集計（村ドメイン内 read-only 呼出）
+    // ====================================================================
+
+    /**
+     * 村ニュースレター集計用: 指定期間内に作成された生きている寄合件数（F17.1 ②-2・設計書 §5.3）。
+     *
+     * <p>{@code created_at} 基準・半開区間 {@code [fromInclusive, toExclusive)}・論理削除除外。</p>
+     */
+    @Query("""
+            SELECT COUNT(m) FROM VillageMeetupEntity m
+            WHERE m.villageId = :villageId
+              AND m.deletedAt IS NULL
+              AND m.createdAt >= :fromInclusive
+              AND m.createdAt <  :toExclusive
+            """)
+    long countByVillageIdAndCreatedAtBetweenAndDeletedAtIsNull(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }
