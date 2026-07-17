@@ -953,6 +953,17 @@ public class GlobalExceptionHandler {
             Map.entry("GALLERY_002", HttpStatus.NOT_FOUND),              // PHOTO_NOT_FOUND（IDOR 秘匿 → 404）
             // GALLERY_007（UPLOAD_NOT_ALLOWED）は member アップロード不許可アルバムへの明確な認可拒否のため 403。
             Map.entry("GALLERY_007", HttpStatus.FORBIDDEN),              // UPLOAD_NOT_ALLOWED → 403
+            // 認可根治戦役 Wave3-B9: budget flat経路（transaction/category/fiscalYear/report）は
+            // entity由来（またはfiscalYearId経由の親子鎖）scope認可。越境IDは既存の *_NOT_FOUND と
+            // 同一コードで存在秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("BUDGET_003", HttpStatus.NOT_FOUND),               // 年度不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_006", HttpStatus.NOT_FOUND),               // 費目不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_009", HttpStatus.NOT_FOUND),               // 取引不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_010", HttpStatus.NOT_FOUND),               // 報告書不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_021", HttpStatus.NOT_FOUND),               // 添付ファイル不在／越境（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3-B9: membership 会員証停止/再開・CheckinLocation は entity 由来 scope 認可。
+            Map.entry("MEMBERSHIP_001", HttpStatus.NOT_FOUND),           // 会員証不在（IDOR 秘匿 → 404）
+            Map.entry("MEMBERSHIP_019", HttpStatus.NOT_FOUND),           // 拠点不在／越境（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B10: knowledgebase の revision/page 親子束縛（pageId/revisionId/
             // parentId/templateId/newParentId）は BOLA 存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("KB_001", HttpStatus.NOT_FOUND),                   // PAGE_NOT_FOUND（親/移動先/revision所属page束縛も同一コード・IDOR秘匿→404）
