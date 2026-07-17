@@ -35,16 +35,19 @@ public class ContentTranslationStatusService {
     /**
      * 翻訳コンテンツのステータスを変更する。遷移ルールをバリデーションする。
      *
-     * @param id  翻訳コンテンツID
-     * @param req ステータス変更リクエスト
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
+     * @param req       ステータス変更リクエスト
      * @return 更新後の翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      * @throws BusinessException TRANSLATION_005: 不正なステータス遷移の場合
      * @throws BusinessException TRANSLATION_007: バージョン不一致の場合
      */
     @Transactional
-    public ApiResponse<ContentTranslationResponse> changeStatus(Long id, ChangeStatusRequest req) {
-        ContentTranslationEntity entity = findOrThrow(id);
+    public ApiResponse<ContentTranslationResponse> changeStatus(
+            Long id, String scopeType, Long scopeId, ChangeStatusRequest req) {
+        ContentTranslationEntity entity = findOrThrow(id, scopeType, scopeId);
 
         // 楽観的ロック: バージョンチェック
         checkVersion(entity, req.getVersion());
@@ -81,13 +84,15 @@ public class ContentTranslationStatusService {
     /**
      * 翻訳コンテンツを公開状態（PUBLISHED）に更新する。
      *
-     * @param id 翻訳コンテンツID
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      * @return 更新後の翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      */
     @Transactional
-    public ApiResponse<ContentTranslationResponse> publishTranslation(Long id) {
-        ContentTranslationEntity entity = findOrThrow(id);
+    public ApiResponse<ContentTranslationResponse> publishTranslation(Long id, String scopeType, Long scopeId) {
+        ContentTranslationEntity entity = findOrThrow(id, scopeType, scopeId);
         entity.publish();
         ContentTranslationEntity saved = contentTranslationRepository.save(entity);
         log.info("翻訳コンテンツ公開: id={}", id);
@@ -98,16 +103,19 @@ public class ContentTranslationStatusService {
      * 指定原文コンテンツのPUBLISHED翻訳を全てNEEDS_UPDATEに更新する。
      * 原文が更新された際に呼び出す（イベントリスナー・バッチからの呼び出し）。
      *
+     * @param scopeType   スコープ種別（BOLA是正: 原文IDがこのscope配下か束縛検証する）
+     * @param scopeId     スコープID
      * @param contentType 原文コンテンツ種別
      * @param contentId   原文コンテンツID
      * @return 更新件数
      */
     @Transactional
-    public int markAsStale(String contentType, Long contentId) {
-        // PUBLISHED状態の翻訳を全て取得
+    public int markAsStale(String scopeType, Long scopeId, String contentType, Long contentId) {
+        // PUBLISHED状態の翻訳を全て取得（scope束縛: 他scope所属の同一sourceId翻訳を巻き込まない）
         List<ContentTranslationEntity> publishedList =
-                contentTranslationRepository.findBySourceTypeAndSourceIdAndStatusAndDeletedAtIsNull(
-                        contentType, contentId, TranslationStatus.PUBLISHED.name());
+                contentTranslationRepository
+                        .findBySourceTypeAndSourceIdAndStatusAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                                contentType, contentId, TranslationStatus.PUBLISHED.name(), scopeType, scopeId);
 
         int count = 0;
         for (ContentTranslationEntity entity : publishedList) {
@@ -124,13 +132,16 @@ public class ContentTranslationStatusService {
     }
 
     /**
-     * IDで翻訳コンテンツを取得する。見つからない場合は TRANSLATION_002 例外をスロー。
+     * IDとスコープで翻訳コンテンツを取得する。見つからない、またはscope不一致（BOLA越境）の場合は
+     * 同一コード（TRANSLATION_002）で例外をスローし存在を秘匿する。
      *
-     * @param id 翻訳コンテンツID
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
      * @return 翻訳コンテンツエンティティ
      */
-    private ContentTranslationEntity findOrThrow(Long id) {
-        return contentTranslationRepository.findById(id)
+    private ContentTranslationEntity findOrThrow(Long id, String scopeType, Long scopeId) {
+        return contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(id, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_002));
     }
 
