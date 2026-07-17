@@ -2,8 +2,10 @@ package com.mannschaft.app.facility;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.facility.entity.FacilityBookingEntity;
+import com.mannschaft.app.facility.entity.FacilityBookingPaymentEntity;
 import com.mannschaft.app.facility.entity.FacilityUsageRuleEntity;
 import com.mannschaft.app.facility.entity.SharedFacilityEntity;
+import com.mannschaft.app.facility.repository.FacilityBookingPaymentRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
 import com.mannschaft.app.facility.repository.FacilityUsageRuleRepository;
 import com.mannschaft.app.facility.repository.SharedFacilityRepository;
@@ -81,6 +83,9 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private FacilityUsageRuleRepository usageRuleRepository;
 
+    @Autowired
+    private FacilityBookingPaymentRepository paymentRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -88,7 +93,8 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long teamBId;
 
     private Long adminAId;   // teamA の ADMIN（正当）
-    private Long memberAId;  // teamA の非 ADMIN メンバー
+    private Long memberAId;  // teamA の非 ADMIN メンバー（bookingA の予約者本人）
+    private Long memberCId;  // teamA の非 ADMIN メンバー（bookingA の予約者ではない＝他人メンバー）
     private Long outsiderId; // どこにも所属しない非メンバー
 
     private Long facilityAId; // teamA の施設
@@ -104,6 +110,7 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
 
         adminAId = insertUser("facauthz-admin-a@example.com");
         memberAId = insertUser("facauthz-member-a@example.com");
+        memberCId = insertUser("facauthz-member-c@example.com");
         outsiderId = insertUser("facauthz-outsider@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
@@ -111,6 +118,7 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, memberCId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         // outsiderId はどこにも所属させない。
 
         SharedFacilityEntity facilityA = facilityRepository.save(SharedFacilityEntity.builder()
@@ -144,6 +152,11 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
                 .usageFee(BigDecimal.valueOf(2000)).equipmentFee(BigDecimal.ZERO)
                 .totalFee(BigDecimal.valueOf(2000)).build());
         bookingBId = bookingB.getId();
+
+        // bookingA の支払い行（予約者本人=memberA による支払い取得の正当系 200 用）。
+        paymentRepository.save(FacilityBookingPaymentEntity.builder()
+                .bookingId(bookingAId).payerUserId(memberAId)
+                .amount(BigDecimal.valueOf(2000)).build());
 
         em.flush();
         em.clear();
@@ -440,11 +453,11 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 8. GET /facilities/stats（統計・スコープ宣言型: checkMembership）
+    // 8. GET /facilities/stats（統計・機微データ=売上/手数料: ADMIN限定 checkAdminOrAbove）
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("8. GET /facilities/stats")
+    @DisplayName("8. GET /facilities/stats（ADMIN限定）")
     class Stats {
 
         @Test
@@ -455,9 +468,16 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
-        void 正当メンバーは200() throws Exception {
+        @DisplayName("非ADMINメンバーは403（売上・手数料は運営側材料ゆえ非公開）")
+        void 非ADMINメンバーは403() throws Exception {
             setAuth(memberAId);
+            mockMvc.perform(get(facilities(teamAId) + "/stats")).andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminAId);
             mockMvc.perform(get(facilities(teamAId) + "/stats")).andExpect(status().isOk());
         }
     }
@@ -624,11 +644,11 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 14. 支払い系（GET /payment: 越境404・非メンバー403 / PATCH /payment/confirm: 越境404・非ADMIN403・ADMIN200）
+    // 14. 支払い系（GET /payment=予約単位: 越境404・他人403・予約者本人200 / PATCH /confirm: 越境404・非ADMIN403・ADMIN200）
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("14. GET /payment・PATCH /payment/confirm")
+    @DisplayName("14. GET /payment（本人orADMIN）・PATCH /payment/confirm（ADMIN）")
     class Payment {
 
         @Test
@@ -640,11 +660,27 @@ class FacilityScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("他人（非owner非adminメンバー）支払い取得は403")
+        void 他人メンバー取得は403() throws Exception {
+            setAuth(memberCId); // teamA メンバーだが bookingA の予約者ではない
+            mockMvc.perform(get(bookings(teamAId) + "/" + bookingAId + "/payment"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
         @DisplayName("非メンバー支払い取得は403")
         void 非メンバー取得は403() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get(bookings(teamAId) + "/" + bookingAId + "/payment"))
                     .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("予約者本人は支払い取得200")
+        void 予約者本人取得は200() throws Exception {
+            setAuth(memberAId); // bookingA の予約者本人
+            mockMvc.perform(get(bookings(teamAId) + "/" + bookingAId + "/payment"))
+                    .andExpect(status().isOk());
         }
 
         @Test

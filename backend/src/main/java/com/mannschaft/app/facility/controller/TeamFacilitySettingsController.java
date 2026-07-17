@@ -70,7 +70,7 @@ public class TeamFacilitySettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FacilityStatsResponse>> getStats(
             @PathVariable Long teamId) {
-        accessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         FacilityStatsResponse response = statsService.getStats(SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

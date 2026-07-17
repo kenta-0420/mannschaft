@@ -201,7 +201,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> getPayment(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
-        accessGuard.requireBookingMember(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingPaymentResponse response = paymentService.getPayment(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
