@@ -34,7 +34,7 @@ JOIN (
     UNION ALL SELECT 'budget',            'ORGANIZATION', 1
     UNION ALL SELECT 'budget',            'TEAM',         1
     UNION ALL SELECT 'budget',            'PERSONAL',     0
-    UNION ALL SELECT 'school_attendance', 'ORGANIZATION', 0
+    UNION ALL SELECT 'school_attendance', 'ORGANIZATION', 1
     UNION ALL SELECT 'school_attendance', 'TEAM',         1
     UNION ALL SELECT 'school_attendance', 'PERSONAL',     1
     UNION ALL SELECT 'timetable',         'ORGANIZATION', 1

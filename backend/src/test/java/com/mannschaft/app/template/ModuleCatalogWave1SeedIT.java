@@ -98,7 +98,7 @@ class ModuleCatalogWave1SeedIT {
         putLevel(m, "tournament", 1, 1, 0);
         putLevel(m, "event", 1, 1, 0);
         putLevel(m, "budget", 1, 1, 0);
-        putLevel(m, "school_attendance", 0, 1, 1);
+        putLevel(m, "school_attendance", 1, 1, 1);
         putLevel(m, "timetable", 1, 1, 1);
         putLevel(m, "recruitment", 1, 1, 1);
         putLevel(m, "committee", 1, 0, 0);
