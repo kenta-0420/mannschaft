@@ -1,5 +1,6 @@
 #
-#Wed Jun 17 12:55:54 JST 2026
+#Fri Jul 17 13:47:11 JST 2026
 entities\ should\ extend\ UuidV7Entity\ (D-2b)=2c0ba995-682e-4f80-a5a5-f68c835b720d
 no\ cross-domain\ entity\ dependency\ (D-1)=584c3a46-b9c1-4cc2-bf74-e0a18eab1bef
+public\ controller\ endpoints\ must\ have\ an\ authorization\ signal\ (Wave4)=9ed4737d-c74f-4374-923e-4663d3c9e256
 transactional\ should\ not\ span\ other-domain\ repositories\ (D-3)=f14374b1-655e-4df2-8e82-2d79c8df9174
