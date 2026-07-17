@@ -41,6 +41,20 @@ public interface VillageNewsletterIssueRepository
     List<VillageNewsletterIssueEntity> findByStatusAndScheduledPublishAtLessThanEqualAndDeletedAtIsNull(
             VillageNewsletterIssueStatus status, LocalDateTime threshold);
 
+    /**
+     * 集計バッチの期間算出用（②-2）: 同一村×頻度で、指定時刻より前に終わった直近号を1件返す。
+     *
+     * <p>次の号の {@code period_start} は「直近号の {@code period_end}」から始める（期間を連続させる）。
+     * {@code periodEndExclusive}（＝今回の集計基準時刻）より <b>厳密に前</b> に終わった号だけを対象にすることで、
+     * 同日に二度走らせても「今作った号」を除外でき、{@code period_start} が同値に収束して冪等性
+     * （{@link #findByVillageIdAndFrequencyAndPeriodStart}）が保たれる。</p>
+     */
+    Optional<VillageNewsletterIssueEntity>
+            findFirstByVillageIdAndFrequencyAndPeriodEndLessThanAndDeletedAtIsNullOrderByPeriodEndDesc(
+                    UUID villageId,
+                    com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency frequency,
+                    LocalDateTime periodEndExclusive);
+
     /** 公開一覧（村横断）: PUBLIC かつ PUBLISHED の号を新しい順（§8.2・idx_vni_public_published）。 */
     Page<VillageNewsletterIssueEntity>
             findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDesc(

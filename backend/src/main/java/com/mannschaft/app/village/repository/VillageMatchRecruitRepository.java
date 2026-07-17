@@ -57,4 +57,25 @@ public interface VillageMatchRecruitRepository extends JpaRepository<VillageMatc
             GROUP BY r.categoryId
             """)
     List<Object[]> countActiveGroupedByCategory(@Param("villageId") UUID villageId);
+
+    // ====================================================================
+    // F17.1 ②-2 村ニュースレター集計（村ドメイン内 read-only 呼出）
+    // ====================================================================
+
+    /**
+     * 村ニュースレター集計用: 指定期間内に作成された生きている募集件数（F17.1 ②-2・設計書 §5.3）。
+     *
+     * <p>{@code created_at} 基準・半開区間 {@code [fromInclusive, toExclusive)}・論理削除除外。</p>
+     */
+    @Query("""
+            SELECT COUNT(r) FROM VillageMatchRecruitEntity r
+            WHERE r.villageId = :villageId
+              AND r.deletedAt IS NULL
+              AND r.createdAt >= :fromInclusive
+              AND r.createdAt <  :toExclusive
+            """)
+    long countByVillageIdAndCreatedAtBetweenAndDeletedAtIsNull(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }
