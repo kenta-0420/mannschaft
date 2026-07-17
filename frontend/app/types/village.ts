@@ -922,41 +922,66 @@ export interface VillagePilgrimageVisitResponse {
 // F17 Phase 3 — ニュースレター (village_newsletter_*)
 // -----------------------------------------------------------------------------
 
+/**
+ * ニュースレターの配信頻度。
+ *
+ * BE `VillageNewsletterFrequency` enum は **WEEKLY / MONTHLY の 2 値のみ**
+ * （`backend/.../entity/enums/VillageNewsletterFrequency.java`）。
+ * 以前ここにあった DAILY / NEVER は BE に存在せず、契約不一致の原因だったため撤去した。
+ */
 export type VillageNewsletterFrequency =
-  | 'DAILY'
   | 'WEEKLY'
   | 'MONTHLY'
-  | 'NEVER'
 
-/** ニュースレター設定 */
-export interface VillageNewsletterSettingsResponse {
-  userId: number
-  villageId: string | null
-  frequency: VillageNewsletterFrequency
-  optedOut: boolean
-  lastSentAt: string | null
-  nextScheduledAt: string | null
-}
-
-/** ニュースレター設定更新リクエスト */
-export interface VillageNewsletterSettingsRequest {
-  frequency: VillageNewsletterFrequency
-}
-
-/** ニュースレター購読停止レスポンス */
-export interface VillageNewsletterOptOutResponse {
-  userId: number
-  optedOut: boolean
-  optedOutAt: string | null
-}
-
-/** ニュースレター配信ログ */
-export interface VillageNewsletterSendLogResponse {
+/**
+ * ニュースレター設定の 1 行（BE: `NewsletterSettingResponse`）。
+ *
+ * 村ごとに WEEKLY / MONTHLY それぞれ 0〜1 件。設定が未作成の頻度は
+ * {@link VillageNewsletterSettingsResponse.settings} に含まれない。
+ */
+export interface VillageNewsletterSetting {
   id: string
   villageId: string
-  frequency: string
+  frequency: VillageNewsletterFrequency
+  isEnabled: boolean
+  lastSentAt: string | null
+  nextScheduledAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  version: number
+}
+
+/**
+ * 村のニュースレター設定一覧レスポンス（BE: `NewsletterSettingsResponse`）。
+ *
+ * `settings` は WEEKLY / MONTHLY の 0〜2 件。`optedOut` は
+ * **閲覧ユーザー個人**の受信停止状態（村レベルの全停止ではない）。
+ */
+export interface VillageNewsletterSettingsResponse {
+  villageId: string
+  settings: VillageNewsletterSetting[]
+  optedOut: boolean
+}
+
+/**
+ * ニュースレター設定更新リクエスト（BE: `NewsletterSettingUpdateRequest`）。
+ *
+ * 指定頻度（frequency）の設定を isEnabled で upsert する。
+ * BE は単一の {@link VillageNewsletterSetting}（upsert した 1 行）を返す。
+ */
+export interface VillageNewsletterSettingUpdateRequest {
+  frequency: VillageNewsletterFrequency
+  isEnabled: boolean
+}
+
+/** ニュースレター配信ログ（BE: `NewsletterSendLogResponse`）。 */
+export interface VillageNewsletterSendLogResponse {
+  id: string
+  newsletterId: string
   sentAt: string
   recipientCount: number
+  successCount: number
+  failureCount: number
 }
 
 // -----------------------------------------------------------------------------
