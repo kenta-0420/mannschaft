@@ -13,9 +13,10 @@ import type {
   VillagePilgrimageRecommendationResponse,
   VillagePilgrimageVisitRecordRequest,
   VillagePilgrimageVisitResponse,
+  VillageNewsletterFrequency,
   VillageNewsletterSettingsResponse,
-  VillageNewsletterSettingsRequest,
-  VillageNewsletterOptOutResponse,
+  VillageNewsletterSetting,
+  VillageNewsletterSettingUpdateRequest,
   VillageNewsletterSendLogResponse,
 } from '~/types/village'
 
@@ -232,6 +233,11 @@ export function useVillagePhase3Api() {
   // ニュースレター
   // ==========================================================================
 
+  /**
+   * 村のニュースレター設定を取得する。
+   * BE: `GET /api/v1/villages/{id}/newsletter` → `NewsletterSettingsResponse`
+   * （`{villageId, settings: WEEKLY/MONTHLY の 0〜2 件, optedOut: 個人の受信停止状態}`）。
+   */
   async function getNewsletterSettings(villageId: string) {
     const res = await api<{ data: VillageNewsletterSettingsResponse }>(
       `/api/v1/villages/${villageId}/newsletter`,
@@ -239,31 +245,45 @@ export function useVillagePhase3Api() {
     return res.data
   }
 
-  async function updateNewsletterSettings(villageId: string, body: VillageNewsletterSettingsRequest) {
-    const res = await api<{ data: VillageNewsletterSettingsResponse }>(
+  /**
+   * 指定頻度（WEEKLY / MONTHLY）の配信設定を upsert する（HEADMAN / ELDER のみ）。
+   * BE: `PUT /api/v1/villages/{id}/newsletter`。body は `{frequency, isEnabled}`
+   * （frequency のみだと 400）。戻りは upsert した **単一** の `NewsletterSettingResponse`。
+   */
+  async function updateNewsletterSettings(
+    villageId: string,
+    body: VillageNewsletterSettingUpdateRequest,
+  ) {
+    const res = await api<{ data: VillageNewsletterSetting }>(
       `/api/v1/villages/${villageId}/newsletter`,
       { method: 'PUT', body },
     )
     return res.data
   }
 
-  async function optOut(villageId: string) {
-    const res = await api<{ data: VillageNewsletterOptOutResponse }>(
+  /**
+   * 当該ユーザーをニュースレターから opt-out する（村人全員操作可）。
+   * BE: `POST /opt-out` は **204 No Content**（本体なし）。戻り値なし。
+   */
+  async function optOut(villageId: string): Promise<void> {
+    await api(
       `/api/v1/villages/${villageId}/newsletter/opt-out`,
       { method: 'POST' },
     )
-    return res.data
   }
 
-  async function optIn(villageId: string) {
-    const res = await api<{ data: VillageNewsletterOptOutResponse }>(
+  /**
+   * 当該ユーザーの opt-out を解除する（= opt-in に戻す）。
+   * BE: `DELETE /opt-out` は **204 No Content**（本体なし）。戻り値なし。
+   */
+  async function optIn(villageId: string): Promise<void> {
+    await api(
       `/api/v1/villages/${villageId}/newsletter/opt-out`,
       { method: 'DELETE' },
     )
-    return res.data
   }
 
-  async function listSendLogs(villageId: string, frequency: string) {
+  async function listSendLogs(villageId: string, frequency: VillageNewsletterFrequency) {
     const res = await api<{ data: VillageNewsletterSendLogResponse[] }>(
       `/api/v1/villages/${villageId}/newsletter/send-logs?frequency=${frequency}`,
     )

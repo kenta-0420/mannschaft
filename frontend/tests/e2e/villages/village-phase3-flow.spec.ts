@@ -182,14 +182,30 @@ const MOCK_PILGRIMAGE_RECOMMENDATION: VillagePilgrimageRecommendationResponse = 
   visitedAt: null,
 }
 
-/** ニュースレター設定 */
+/**
+ * ニュースレター設定。
+ *
+ * BE `NewsletterSettingsResponse` の実形状（`{villageId, settings: WEEKLY/MONTHLY の
+ * 0〜2 件, optedOut: 個人の受信停止状態}`）に合わせる。以前はフラット単一形状
+ * （`{userId, frequency, optedOut, ...}`）＋誤った URL（`.../villages/newsletter/settings`）
+ * をモックしていたため、契約不一致（GET 空・PUT 400）を検知できていなかった。
+ */
 const MOCK_NEWSLETTER_SETTINGS: VillageNewsletterSettingsResponse = {
-  userId: 1,
   villageId: MOCK_VILLAGE_ID,
-  frequency: 'WEEKLY',
+  settings: [
+    {
+      id: '01900000-0000-7000-8300-000000000001',
+      villageId: MOCK_VILLAGE_ID,
+      frequency: 'WEEKLY',
+      isEnabled: true,
+      lastSentAt: '2026-05-07T00:00:00',
+      nextScheduledAt: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-07T00:00:00',
+      version: 1,
+    },
+  ],
   optedOut: false,
-  lastSentAt: '2026-05-07T00:00:00Z',
-  nextScheduledAt: '2026-05-14T00:00:00Z',
 }
 
 // =============================================================================
@@ -440,17 +456,25 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
   test('VILLAGE-P3-005: ニュースレター設定が表示できる', async ({ page }) => {
     let putCalled = false
 
-    // GET /api/v1/villages/newsletter/settings
-    await page.route('**/api/v1/villages/newsletter/settings', async (route) => {
+    // GET/PUT /api/v1/villages/{id}/newsletter（実 URL は村 ID を含む）
+    await page.route('**/api/v1/villages/*/newsletter', async (route) => {
       const method = route.request().method()
       if (method === 'GET') {
         await fulfillJson(route, MOCK_NEWSLETTER_SETTINGS)
       }
       else if (method === 'PUT') {
         putCalled = true
+        // BE は upsert した単一 setting を返す（一覧ではない）。
         await fulfillJson(route, {
-          ...MOCK_NEWSLETTER_SETTINGS,
+          id: '01900000-0000-7000-8300-000000000002',
+          villageId: MOCK_VILLAGE_ID,
           frequency: 'MONTHLY',
+          isEnabled: true,
+          lastSentAt: null,
+          nextScheduledAt: null,
+          createdAt: '2026-05-01T00:00:00',
+          updatedAt: '2026-05-17T00:00:00',
+          version: 1,
         })
       }
       else {
@@ -468,14 +492,14 @@ test.describe('VILLAGE-P3-001〜005: 村機能 Phase 3 ゴールデンパス', (
       page.getByText(/ニュースレター|配信頻度|Newsletter|Frequency/i).first(),
     ).toBeVisible({ timeout: 10_000 })
 
-    // 現在の頻度 WEEKLY が反映されている UI 要素のいずれか
-    // （Select/Dropdown 表示は実装依存のため、頻度ラベル文言が表示されることだけ確認）
+    // 週次（WEEKLY）の見出しが表示されている（トグル UI へ刷新済み）
     await expect(page.getByText(/週次|WEEKLY|毎週/i).first()).toBeVisible()
 
-    // 任意: 保存ボタンが存在する（HEADMAN なら編集可能）
-    const saveButton = page.getByRole('button', { name: /保存|Save/i }).first()
-    if (await saveButton.isVisible().catch(() => false)) {
-      await saveButton.click()
+    // 任意: MONTHLY トグルを操作すると PUT が飛ぶ（HEADMAN なら編集可能）。
+    // トグルへ刷新したため単一「保存」ボタンは廃止。
+    const monthlyToggle = page.getByTestId('newsletter-toggle-MONTHLY').first()
+    if (await monthlyToggle.isVisible().catch(() => false)) {
+      await monthlyToggle.click()
       // PUT が呼ばれることを確認（失敗しても致命的ではないため緩く）
       await expect.poll(() => putCalled, { timeout: 3_000 }).toBe(true)
     }
