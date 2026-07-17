@@ -395,10 +395,11 @@ class FlywayExistingDataVillageNewsletterIssuesMigrationTest {
 
     private static void insertIssueTag(Connection conn, UUID issueId, UUID tagId) throws Exception {
         try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO village_newsletter_issue_tags (issue_id, tag_id, created_at) "
-                        + "VALUES (UNHEX(?), UNHEX(?), NOW(6))")) {
-            ps.setString(1, issueId.toString().replace("-", ""));
-            ps.setString(2, tagId.toString().replace("-", ""));
+                "INSERT INTO village_newsletter_issue_tags (id, issue_id, tag_id, created_at) "
+                        + "VALUES (UNHEX(?), UNHEX(?), UNHEX(?), NOW(6))")) {
+            ps.setString(1, UUID.randomUUID().toString().replace("-", ""));
+            ps.setString(2, issueId.toString().replace("-", ""));
+            ps.setString(3, tagId.toString().replace("-", ""));
             ps.executeUpdate();
         }
     }

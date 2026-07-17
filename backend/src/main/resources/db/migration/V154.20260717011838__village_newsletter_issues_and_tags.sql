@@ -110,11 +110,17 @@ CREATE TABLE village_newsletter_tags (
 -- ---------------------------------------------------------------------
 -- 3) village_newsletter_issue_tags: 号×タグ中間表（両側 UUIDv7・村ドメイン内で完結）
 -- ---------------------------------------------------------------------
+-- 原則6（EntityUuidV7ConventionArchTest D-2b で機械的に強制）に従い、新規中間表も UUIDv7
+-- サロゲート PK を持つ。リンクの一意性は UNIQUE (issue_id, tag_id) で担保する（両側 UUID＝Long 壁は
+-- 越えない）。設計書 §4.7.1 は複合 PK を提示するが、既存中間表（blog_post_tags 等）は enforcement
+-- 導入前の凍結免除であり、新規テーブルは UUIDv7 継承が必須のため surrogate PK とする。
 CREATE TABLE village_newsletter_issue_tags (
+    id           BINARY(16)  NOT NULL                COMMENT 'UUIDv7 PK（原則6）',
     issue_id     BINARY(16)  NOT NULL                COMMENT 'FK → village_newsletter_issues.id（同一ドメイン CASCADE）',
     tag_id       BINARY(16)  NOT NULL                COMMENT 'FK → village_newsletter_tags.id（同一ドメイン CASCADE）',
     created_at   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (issue_id, tag_id),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_vnit_issue_tag (issue_id, tag_id),
     KEY idx_vnit_tag (tag_id),
     CONSTRAINT fk_vnit_issue FOREIGN KEY (issue_id) REFERENCES village_newsletter_issues(id) ON DELETE CASCADE,
     CONSTRAINT fk_vnit_tag   FOREIGN KEY (tag_id)   REFERENCES village_newsletter_tags(id)   ON DELETE CASCADE
