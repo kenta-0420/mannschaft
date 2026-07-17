@@ -271,6 +271,8 @@ public enum AuditEventType {
     VILLAGE_NEWSLETTER_SENT(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
+    /** F17.1 ②-2 — 村ニュースレター号を集計・凍結（集計バッチによる snapshot 確定）。 */
+    VILLAGE_NEWSLETTER_ISSUE_FROZEN(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */
