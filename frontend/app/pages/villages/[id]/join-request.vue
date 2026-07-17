@@ -413,7 +413,6 @@ watch(village, (v) => {
       :title="t('village.joinRequest.title')"
       size="sm"
       help
-      :back-to="`/villages/${villageId}`"
       @help="showGuide = true"
     />
 
