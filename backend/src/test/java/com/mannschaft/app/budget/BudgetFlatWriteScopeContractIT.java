@@ -12,7 +12,7 @@ import com.mannschaft.app.budget.repository.BudgetReportRepository;
 import com.mannschaft.app.budget.repository.BudgetTransactionAttachmentRepository;
 import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -100,8 +100,16 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private BudgetReportRepository reportRepository;
 
+    /**
+     * 認可根治戦役 Wave3-B9: budget の StorageService インターフェース注入先である
+     * 具象 bean は R2StorageService（bean名 r2StorageService）である。ここを interface 型
+     * {@code @MockitoBean StorageService} で置換すると bean が StorageService$MockitoMock 型に
+     * すり替わり、同一 context 内で具象 {@code R2StorageService} を注入する
+     * {@code StoragePathMigrationBatchService} の DI が型不一致で壊れて context 起動が失敗する。
+     * 具象型でモックすれば interface 消費者(budget)・具象型消費者(migration)の双方を満たす。
+     */
     @MockitoBean
-    private StorageService storageService;
+    private R2StorageService storageService;
 
     @PersistenceContext
     private EntityManager em;
