@@ -25387,6 +25387,23 @@ export interface paths {
         patch: operations["updatePreset_4"];
         trace?: never;
     };
+    "/api/v1/system-admin/modules/{id}/paid-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** モジュール有料プラン要否更新 */
+        patch: operations["updatePaidPlan"];
+        trace?: never;
+    };
     "/api/v1/system-admin/modules/{id}/level-availability": {
         parameters: {
             query?: never;
@@ -25402,6 +25419,23 @@ export interface paths {
         head?: never;
         /** レベル別利用可否更新 */
         patch: operations["updateLevelAvailability"];
+        trace?: never;
+    };
+    "/api/v1/system-admin/modules/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** モジュール有効/無効更新 */
+        patch: operations["updateActive"];
         trace?: never;
     };
     "/api/v1/system-admin/maintenance-schedules/{id}/complete": {
@@ -64642,9 +64676,15 @@ export interface components {
             /** @enum {string} */
             status?: "OPEN" | "INVESTIGATING" | "CONTAINED" | "CLOSED";
         };
+        UpdateModulePaidPlanRequest: {
+            requiresPaidPlan: boolean;
+        };
         UpdateLevelAvailabilityRequest: {
             available?: boolean;
             level?: string;
+        };
+        UpdateModuleActiveRequest: {
+            isActive: boolean;
         };
         FeedbackStatusRequest: {
             status?: string;
@@ -129576,6 +129616,30 @@ export interface operations {
             };
         };
     };
+    updatePaidPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModulePaidPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateLevelAvailability: {
         parameters: {
             query?: never;
@@ -129588,6 +129652,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateLevelAvailabilityRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModuleActiveRequest"];
             };
         };
         responses: {
