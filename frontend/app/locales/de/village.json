@@ -257,7 +257,8 @@
       "empty": "Noch keine Mitglieder",
       "banned": "Gesperrt",
       "you": "Sie",
-      "filterRole": "Nach Rolle filtern"
+      "filterRole": "Nach Rolle filtern",
+      "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
     },
     "postingIdentity": {
       "title": "Beitrag als",
