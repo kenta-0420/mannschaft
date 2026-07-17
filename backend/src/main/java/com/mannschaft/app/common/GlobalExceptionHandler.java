@@ -384,6 +384,10 @@ public class GlobalExceptionHandler {
             Map.entry("TIMETABLE_002", HttpStatus.NOT_FOUND),                // TERM_NOT_FOUND
             Map.entry("TIMETABLE_003", HttpStatus.NOT_FOUND),                // SLOT_NOT_FOUND
             Map.entry("TIMETABLE_004", HttpStatus.NOT_FOUND),                // CHANGE_NOT_FOUND
+            // F09.5 共用施設予約（認可根治Wave5 早馬: BOLA 対策で 404 統一。従来 WARN 既定の 400 のまま
+            //   未マップだったため、越境 facilityId/bookingId が「存在するが 400」で存在を漏らしていた欠陥を根治）
+            Map.entry("FACILITY_001", HttpStatus.NOT_FOUND),                 // FACILITY_NOT_FOUND（越境施設は存在秘匿）
+            Map.entry("FACILITY_006", HttpStatus.NOT_FOUND),                 // BOOKING_NOT_FOUND（越境予約は存在秘匿）
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
