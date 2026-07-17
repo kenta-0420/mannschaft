@@ -1,5 +1,6 @@
 package com.mannschaft.app.visibility;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -16,12 +17,16 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,9 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p><b>是正前の脆弱性</b>: 両 EP は client 供給の {@code ownerUserId}
  * （リクエストボディ / クエリパラメータ）をそのまま {@code VisibilityTemplateEvaluator} に渡していた。
  * {@code TEAM_FRIEND_OF} ルールの {@code @USER_PRIMARY_TEAM} プレースホルダは
- * {@code ownerUserId} を起点にオーナーの所属チーム（→フレンドチーム→メンバー一覧）を解決するため、
- * 任意の他ユーザー ID を {@code ownerUserId} に詐称することで、当該ユーザーの所属チーム/
- * フレンドチームメンバー一覧を本人になりすまさず列挙できる IDOR だった
+ * {@code ownerUserId} を起点にオーナーの主所属チームを解決するため、任意の他ユーザー ID を
+ * {@code ownerUserId} に詐称することで、当該ユーザーの関係グラフ（主所属チーム/フレンドチーム）を
+ * 本人になりすまさず覗ける IDOR だった
  * （システムプリセットテンプレートは全ユーザーがアクセス可能なため攻撃者も自由に呼べる）。</p>
  *
  * <p><b>是正後</b>: owner は常に {@code SecurityUtils.getCurrentUserId()}
@@ -48,9 +53,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li>本人が自分のテンプレートプレビューを行う分には従来どおり正しく動作する（ベースライン）。</li>
  *   <li>攻撃者がリクエストボディ/クエリパラメータに他人の {@code ownerUserId} を詐称して混入させても、
- *       DTO からフィールドが除去されているため無視され、攻撃者自身のコンテキストで評価される
- *       （他人の所属チーム/フレンドチームメンバーは一切列挙できない）。</li>
+ *       DTO / パラメータから除去済のため無視され、<b>攻撃者自身のコンテキスト</b>で評価される
+ *       （被害者の関係グラフは一切列挙できない）。</li>
  * </ul>
+ *
+ * <p><b>2 つの EP のメカニズム差（アサート設計上の重要事項）</b>:</p>
+ * <ul>
+ *   <li>{@code resolveMemberUserIds}（resolved-members）: {@code TEAM_FRIEND_OF} +
+ *       {@code @USER_PRIMARY_TEAM} の解決先は「オーナーの<b>主所属チームそのもの</b>のメンバー集合」
+ *       （{@code findUserIdsByScope("TEAM", ownerPrimaryTeam)}）。つまり owner が誰かで
+ *       返る集合が変わる。よって「owner=victim なら victim の主所属チームメンバー、owner=attacker なら
+ *       attacker の主所属チームメンバー」という差でサーバー固定を検証できる。</li>
+ *   <li>{@code canView}（evaluate）: {@code evaluateTeamFriendOf} が owner の主所属チームの
+ *       <b>フレンドチーム</b>に viewer が属するかを判定する。owner が誰かで targetTeam が変わる。</li>
+ * </ul>
+ *
+ * <p>アサートは順序・具体 ID の決め打ちを避け、集合の {@code contains}/{@code doesNotContain}/
+ * 非一致で頑健に検証する（seed の自動採番 ID に依存しない）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -69,14 +88,18 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
 
     /** 被害者の主所属チーム。 */
     private Long teamVictimId;
-    /** 被害者の主所属チームとフレンド関係にあるチーム（被害者からのみ列挙されるべき）。 */
+    /** 被害者の主所属チームとフレンド関係にあるチーム（evaluate のフレンド探索用）。 */
     private Long teamVictimFriendId;
     /** 攻撃者の主所属チーム。誰ともフレンド関係を持たない。 */
     private Long teamAttackerId;
 
     private Long victimId;
+    /** teamVictim の別メンバー。被害者コンテキストの resolved-members にのみ現れるべき識別子。 */
+    private Long victimTeammateId;
     private Long attackerId;
-    /** teamVictimFriend のメンバー。被害者視点でのみ resolved-members に現れるべき。 */
+    /** teamAttacker の別メンバー。攻撃者コンテキストの resolved-members に現れる識別子。 */
+    private Long attackerTeammateId;
+    /** teamVictimFriend のメンバー。evaluate のフレンド探索で被害者視点でのみ true になる。 */
     private Long victimFriendMemberId;
 
     /** システムプリセットテンプレート（TEAM_FRIEND_OF + @USER_PRIMARY_TEAM ルール）。 */
@@ -89,18 +112,24 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
         teamAttackerId = insertTeam("VIS認可契約攻撃者チーム");
 
         victimId = insertUser("vis-authz-victim@example.com");
+        victimTeammateId = insertUser("vis-authz-victim-teammate@example.com");
         attackerId = insertUser("vis-authz-attacker@example.com");
+        attackerTeammateId = insertUser("vis-authz-attacker-teammate@example.com");
         victimFriendMemberId = insertUser("vis-authz-victim-friend-member@example.com");
 
         // 主所属チームの解決は user_roles (team_id IS NOT NULL) を見る（VisibilityTemplateEvaluator）。
+        // victim / victimTeammate は teamVictim、attacker / attackerTeammate は teamAttacker に配属し、
+        // 両チームのメンバー集合が互いに素になるようにする（詐称検証の doesNotContain を意味あるものにする）。
         MembershipTestHelper.insertUserRole(em, victimId, "MEMBER", teamVictimId, null);
+        MembershipTestHelper.insertUserRole(em, victimTeammateId, "MEMBER", teamVictimId, null);
         MembershipTestHelper.insertUserRole(em, attackerId, "MEMBER", teamAttackerId, null);
+        MembershipTestHelper.insertUserRole(em, attackerTeammateId, "MEMBER", teamAttackerId, null);
         MembershipTestHelper.insertUserRole(em, victimFriendMemberId, "MEMBER", teamVictimFriendId, null);
 
         // 被害者チーム ⇔ 被害者フレンドチーム のみフレンド関係を成立させる（攻撃者チームは孤立）。
         insertTeamFriend(teamVictimId, teamVictimFriendId);
 
-        presetTemplateId = insertPresetTemplate("VIS認可契約プリセット（フレンドチーム全員）");
+        presetTemplateId = insertPresetTemplate("VIS認可契約プリセット（主所属チーム基点）");
         insertTeamFriendOfPrimaryTeamRule(presetTemplateId);
 
         em.flush();
@@ -116,13 +145,16 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
     class OwnPreview {
 
         @Test
-        @DisplayName("被害者本人の resolved-members はフレンドチームメンバーを含む")
-        void 被害者本人のresolvedMembersはフレンドチームメンバーを含む() throws Exception {
-            setAuthentication(victimId);
-            mockMvc.perform(get("/api/v1/visibility-templates/{id}/resolved-members", presetTemplateId))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.totalUsers").value(1))
-                    .andExpect(jsonPath("$.data.userIds[0]").value(victimFriendMemberId));
+        @DisplayName("被害者本人の resolved-members は被害者コンテキスト（主所属チームのメンバー）を返す")
+        void 被害者本人のresolvedMembersは被害者コンテキストを返す() throws Exception {
+            Set<Long> resolved = fetchResolvedUserIds(victimId, null);
+
+            // 被害者の主所属チーム（teamVictim）のメンバーが返る。順序・件数の決め打ちはせず contains で頑健に。
+            assertThat(resolved)
+                    .as("被害者本人のプレビューは自分の主所属チームメンバーを含む")
+                    .contains(victimTeammateId)
+                    // 攻撃者チームのメンバーは混ざらない（コンテキスト分離の確認）。
+                    .doesNotContain(attackerTeammateId);
         }
 
         @Test
@@ -147,20 +179,29 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
     class OwnerSpoofAttempt {
 
         @Test
-        @DisplayName("resolved-members に他人の ownerUserId をクエリパラメータで混入させても無視される"
-                + "（攻撃者自身のコンテキストで評価され、被害者のフレンドチームメンバーは列挙されない）")
+        @DisplayName("resolved-members に被害者の ownerUserId をクエリパラメータで混入させても無視され、"
+                + "攻撃者自身のコンテキストで評価される（被害者の主所属チームメンバーは列挙されない）")
         void resolvedMembersのownerUserId詐称は無視される() throws Exception {
-            setAuthentication(attackerId);
-            mockMvc.perform(get("/api/v1/visibility-templates/{id}/resolved-members?ownerUserId={victim}",
-                            presetTemplateId, victimId))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.totalUsers").value(0))
-                    .andExpect(jsonPath("$.data.userIds").isEmpty());
+            // ① ベースライン: 被害者本人が叩いたときに返る集合（＝被害者の関係グラフ）。
+            Set<Long> victimContext = fetchResolvedUserIds(victimId, null);
+            // ② 攻撃者が被害者の ownerUserId を詐称して叩いた結果。
+            Set<Long> attackerSpoofed = fetchResolvedUserIds(attackerId, victimId);
+
+            assertThat(attackerSpoofed)
+                    .as("詐称結果は攻撃者自身のコンテキスト（自分の主所属チームメンバー）である")
+                    .contains(attackerTeammateId);
+            assertThat(attackerSpoofed)
+                    .as("詐称しても被害者の主所属チームメンバー（関係グラフ）は一切列挙されない")
+                    .doesNotContain(victimTeammateId)
+                    .doesNotContain(victimId);
+            assertThat(attackerSpoofed)
+                    .as("詐称結果は被害者本人のプレビュー結果と一致しない（サーバー固定が効いている）")
+                    .isNotEqualTo(victimContext);
         }
 
         @Test
-        @DisplayName("evaluate に他人の ownerUserId をリクエストボディで混入させても無視される"
-                + "（攻撃者自身のコンテキストで評価され、被害者のフレンドチームメンバーへの閲覧可否は false）")
+        @DisplayName("evaluate に被害者の ownerUserId をリクエストボディで混入させても無視され、"
+                + "攻撃者自身のコンテキストで評価される（被害者フレンドチームメンバーへの閲覧可否は false）")
         void evaluateのownerUserId詐称は無視される() throws Exception {
             setAuthentication(attackerId);
             Map<String, Object> spoofedBody = new LinkedHashMap<>();
@@ -183,6 +224,31 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
     private void setAuthentication(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    }
+
+    /**
+     * 指定ユーザーとして {@code GET /resolved-members} を叩き、返却された userIds を Set で返す。
+     *
+     * @param callerId              認証主体（サーバーが owner として採用すべき ID）
+     * @param spoofedOwnerUserIdOrNull 詐称のため混入させる ownerUserId クエリパラメータ（不要なら null）
+     */
+    private Set<Long> fetchResolvedUserIds(Long callerId, Long spoofedOwnerUserIdOrNull) throws Exception {
+        setAuthentication(callerId);
+        MockHttpServletRequestBuilder req =
+                get("/api/v1/visibility-templates/{id}/resolved-members", presetTemplateId);
+        if (spoofedOwnerUserIdOrNull != null) {
+            // 是正後の Controller には @RequestParam ownerUserId が無いため、未知パラメータとして無視される。
+            req.param("ownerUserId", spoofedOwnerUserIdOrNull.toString());
+        }
+        String json = mockMvc.perform(req)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode userIds = objectMapper.readTree(json).path("data").path("userIds");
+        Set<Long> result = new HashSet<>();
+        userIds.forEach(node -> result.add(node.asLong()));
+        return result;
     }
 
     private Map<String, Object> evaluateBody(Long targetUserId) {

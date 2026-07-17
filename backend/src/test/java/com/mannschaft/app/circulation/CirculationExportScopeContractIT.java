@@ -1,6 +1,6 @@
 package com.mannschaft.app.circulation;
 
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -69,9 +69,19 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
-    /** R2/S3 は外部依存のため mock（generateDownloadUrl で使用）。 */
+    /**
+     * R2/S3 は外部依存のため mock（generateDownloadUrl で使用）。
+     *
+     * <p>認可根治 Wave3-B9 と同じ理由（{@code BudgetFlatWriteScopeContractIT} で先行対処済）で、
+     * interface 型 {@code @MockitoBean StorageService} ではなく具象型
+     * {@code @MockitoBean R2StorageService}（bean 名 r2StorageService）で置換する。
+     * interface 型で置換すると bean が {@code StorageService$MockitoMock} 型にすり替わり、
+     * 同一 context 内で具象 {@code R2StorageService} を注入する消費者（{@code CirculationService}
+     * 等）の DI が型不一致で壊れて ApplicationContext 起動が失敗するため。
+     * 具象型でモックすれば interface 消費者・具象型消費者の双方を満たす。</p>
+     */
     @MockitoBean
-    private StorageService storageService;
+    private R2StorageService storageService;
 
     private Long teamAId;
     private Long teamBId;
