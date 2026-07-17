@@ -114,7 +114,28 @@ function encryptForTest(plain) {
   );
   const E2E_SUPPORTER = Number(e2eSupporterRow.id);
 
-  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}, E2E_SUPPORTER id=${E2E_SUPPORTER}`);
+  // 認可根治戦役 Wave4: e2e-real-smoke の認可スモーク用「非メンバー」テストアカウント。
+  // どのチーム/組織にも user_roles/memberships を一切割り当てない（assignRole を意図的に呼ばない）。
+  // smoke-check.sh はこのユーザーでログインし、保護EPを叩いて 403/404 になることを確認する
+  // （200 が返ったら認可漏れとして smoke を fail させる）。
+  const e2eOutsiderHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-outsider@test.mannschaft.local', e2eOutsiderHash,
+     encryptForTest('E2E部外者'), encryptForTest('非会員'), 'E2E部外者（非会員）',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eOutsiderRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-outsider@test.mannschaft.local']
+  );
+  const E2E_OUTSIDER = Number(e2eOutsiderRow.id);
+
+  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}, E2E_SUPPORTER id=${E2E_SUPPORTER}, E2E_OUTSIDER id=${E2E_OUTSIDER}（どのteam/orgにも非所属）`);
 
   // ============================================================
   // 1. ダミーユーザー 20人
@@ -913,6 +934,7 @@ function encryptForTest(plain) {
   console.log('========================================');
   console.log(`E2E_USER id:    ${E2E_USER}  (e2e-user@test.mannschaft.local)`);
   console.log(`E2E_ADMIN id:   ${E2E_ADMIN}  (e2e-admin@test.mannschaft.local)`);
+  console.log(`E2E_OUTSIDER id: ${E2E_OUTSIDER}  (e2e-outsider@test.mannschaft.local / 非メンバー・認可スモーク専用)`);
   console.log(`Users:         20 dummy (id ${userIds[0]}-${userIds[19]})`);
   console.log(`Organizations: 10`);
   console.log(`  JFA (top) -> 関東FA -> 東京FA, 神奈川FA`);
