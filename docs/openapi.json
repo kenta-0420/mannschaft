@@ -103059,15 +103059,6 @@
               "type": "integer",
               "format": "int64"
             }
-          },
-          {
-            "name": "ownerUserId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
           }
         ],
         "responses": {
@@ -159795,17 +159786,12 @@
       "EvaluateVisibilityRequest": {
         "type": "object",
         "properties": {
-          "ownerUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
           "targetUserId": {
             "type": "integer",
             "format": "int64"
           }
         },
         "required": [
-          "ownerUserId",
           "targetUserId"
         ]
       },

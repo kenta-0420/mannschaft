@@ -81,7 +81,7 @@ class CirculationExportServiceTest {
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
         given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID, false);
+        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID);
 
         assertThat(result).isInstanceOf(ExportRequestResponse.class);
         ExportRequestResponse resp = (ExportRequestResponse) result;
@@ -104,7 +104,7 @@ class CirculationExportServiceTest {
         given(storageService.generateDownloadUrl(eq("circulation/exports/100/key.pdf"), any(Duration.class)))
                 .willReturn("https://r2.example.com/signed-url");
 
-        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID, false);
+        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID);
 
         assertThat(result).isInstanceOf(ExportStatusResponse.class);
         ExportStatusResponse resp = (ExportStatusResponse) result;
@@ -120,7 +120,7 @@ class CirculationExportServiceTest {
                 CirculationExportStatus.NOT_GENERATED);
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
 
-        assertThatThrownBy(() -> exportService.requestExport(DOCUMENT_ID, CREATOR_ID, false))
+        assertThatThrownBy(() -> exportService.requestExport(DOCUMENT_ID, CREATOR_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(CirculationErrorCode.EXPORT_NOT_AVAILABLE_NON_COMPLETED.getMessage());
     }
@@ -134,7 +134,7 @@ class CirculationExportServiceTest {
         given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, STRANGER_ID))
                 .willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> exportService.requestExport(DOCUMENT_ID, STRANGER_ID, false))
+        assertThatThrownBy(() -> exportService.requestExport(DOCUMENT_ID, STRANGER_ID))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -146,7 +146,7 @@ class CirculationExportServiceTest {
         ReflectionTestUtils.setField(entity, "exportRequestedAt", LocalDateTime.now().minusSeconds(5));
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
 
-        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID, false);
+        Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID);
 
         assertThat(result).isInstanceOf(ExportRequestResponse.class);
         verify(documentRepository, never()).save(any());
@@ -160,7 +160,7 @@ class CirculationExportServiceTest {
                 CirculationExportStatus.NOT_GENERATED);
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
 
-        assertThatThrownBy(() -> exportService.getExportStatus(DOCUMENT_ID, CREATOR_ID, false))
+        assertThatThrownBy(() -> exportService.getExportStatus(DOCUMENT_ID, CREATOR_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(CirculationErrorCode.EXPORT_NOT_REQUESTED.getMessage());
     }
@@ -177,7 +177,7 @@ class CirculationExportServiceTest {
         given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
                 .willReturn("https://r2.example.com/signed");
 
-        ExportStatusResponse resp = exportService.getExportStatus(DOCUMENT_ID, CREATOR_ID, false);
+        ExportStatusResponse resp = exportService.getExportStatus(DOCUMENT_ID, CREATOR_ID);
 
         assertThat(resp.status()).isEqualTo("COMPLETED");
         assertThat(resp.url()).isEqualTo("https://r2.example.com/signed");
@@ -200,7 +200,7 @@ class CirculationExportServiceTest {
                 .willReturn(Optional.of(recipient));
         given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        Object result = exportService.requestExport(DOCUMENT_ID, RECIPIENT_ID, false);
+        Object result = exportService.requestExport(DOCUMENT_ID, RECIPIENT_ID);
 
         assertThat(result).isInstanceOf(ExportRequestResponse.class);
         assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.PENDING);
