@@ -8,7 +8,6 @@ import com.mannschaft.app.village.repository.VillageMeetupRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,10 +26,19 @@ import java.util.UUID;
  * <p>TOP3 抽出は <b>村史の {@link VillageChronicleService#extractTop3Topics} をそのまま呼ぶ</b>。
  * ロジックを重複実装せず、村史側の挙動も 1 ミリも変えない（同一パッケージのため呼び出し可能）。</p>
  *
+ * <h2>本ヘルパは {@code @Transactional} を付けない（D-3 越境トランザクション回避）</h2>
+ * <p>集計バッチ（{@link com.mannschaft.app.village.batch.VillageNewsletterAggregateBatchService}）は、
+ * トランザクションを開始する<b>前</b>に本ヘルパで集計を確定させ、その結果 snapshot だけを村ドメインの
+ * トランザクション（{@link VillageNewsletterIssueService#freezeIssue}）へ渡す。これにより掲示板/
+ * タイムライン等の<b>他ドメイン読み取りが村の書き込みトランザクションに含まれず</b>、
+ * どの取引も複数ドメインをまたがない＝アーキテクチャ番人 D-3（越境 {@code @Transactional}）を
+ * <b>構造的に回避</b>する（本クラスに {@code @Transactional} が無いので越境読み取りは autocommit）。</p>
+ *
  * <h2>原則準拠</h2>
  * <ul>
- *   <li>原則5: 集計は read-only 呼出のみ。掲示板/タイムラインは他ドメインだが読み取り専用で越境する
- *       （村史と同じ TODO: 将来 VillagePostCreatedEvent によるカウンタ非同期更新へ分離）。</li>
+ *   <li>原則5: 集計は read-only 呼出のみ。掲示板/タイムラインは他ドメインだが読み取り専用で越境する。
+ *       将来は VillagePostCreatedEvent 駆動のカウンタ表へ分離し越境自体を解消する
+ *       （設計書 §4.6・村史と同じ TODO）。</li>
  *   <li>タイムゾーン: UTC 固定（村史と同じ。村ローカル TZ は将来 Phase）。</li>
  * </ul>
  */
@@ -56,7 +64,6 @@ public class VillageNewsletterDigestAggregator {
      * @param to        集計期間の終了（含まない）
      * @return 集計結果 snapshot
      */
-    @Transactional(readOnly = true)
     public NewsletterDigestSnapshot aggregate(UUID villageId, LocalDateTime from, LocalDateTime to) {
         long bulletinCount = bulletinThreadRepository
                 .countByVillageIdAndCreatedAtBetween(villageId, from, to);

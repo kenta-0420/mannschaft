@@ -24,8 +24,10 @@ import java.util.UUID;
 /**
  * 村ニュースレター号サービス（F17.1 ②-2・設計書 §4.2 / §5）。
  *
- * <p>集計器（{@link VillageNewsletterDigestAggregator}）で確定した snapshot を号エンティティへ複写し、
- * 「集計 → 凍結」を 1 トランザクションで行う。凍結後のダイジェストは不変（改ざん不可・要件①）。</p>
+ * <p>集計器（{@link VillageNewsletterDigestAggregator}）が<b>トランザクション外で</b>確定した snapshot を
+ * 引数で受け取り、号エンティティへ複写して凍結する。本サービスの {@code @Transactional} は
+ * <b>村ドメインのリポジトリのみ</b>に依存し他ドメインを読まないため、越境トランザクション
+ * （番人 D-3）にならない。凍結後のダイジェストは不変（改ざん不可・要件①）。</p>
  *
  * <h2>改ざん不可の担保（AC-02・設計書 §4.2）</h2>
  * <ul>
@@ -46,14 +48,17 @@ import java.util.UUID;
 public class VillageNewsletterIssueService {
 
     private final VillageNewsletterIssueRepository issueRepository;
-    private final VillageNewsletterDigestAggregator aggregator;
     private final AuditLogService auditLogService;
 
     /**
-     * 指定村・指定期間の号を集計し凍結する（AGGREGATED → FROZEN）。
+     * 集計済みの snapshot を号へ複写して凍結する（AGGREGATED → FROZEN）。
+     *
+     * <p>集計（他ドメイン読み取り）は呼び出し元（集計バッチ）が<b>トランザクション外で</b>済ませ、
+     * その結果 {@code snapshot} を本メソッドへ渡す。本メソッドの {@code @Transactional} は
+     * 村ドメイン（{@code issueRepository}）のみに閉じ、越境しない（番人 D-3 回避）。</p>
      *
      * <p><b>冪等（AC-03）</b>: 同一村×頻度×{@code periodStart} の号が既に存在する場合は、
-     * 集計も保存も行わず既存号をそのまま返す（集計バッチの二重起動・再走に対して安全）。
+     * 保存も凍結も行わず既存号をそのまま返す（集計バッチの二重起動・並行実行に対する最終防衛）。
      * 既存号の凍結ダイジェストは触らない＝改ざん不可（AC-02）。</p>
      *
      * @param villageId          村 ID
@@ -62,28 +67,29 @@ public class VillageNewsletterIssueService {
      * @param periodStart        集計期間の開始（含む）
      * @param periodEnd          集計期間の終了（含まない・集計基準時刻）
      * @param scheduledPublishAt 配信予定時刻（ラグの終端）
+     * @param snapshot           トランザクション外で確定済みの集計 snapshot
      * @return 生成・凍結した号（既存があればその号）
-     * @throws BusinessException 既存号が凍結済みで再集計を試みた場合（{@link VillageErrorCode#NEWSLETTER_ISSUE_ALREADY_FROZEN}）
+     * @throws BusinessException 既存号が凍結済みで再凍結を試みた場合（{@link VillageErrorCode#NEWSLETTER_ISSUE_ALREADY_FROZEN}）
      */
     @Transactional
-    public VillageNewsletterIssueEntity aggregateAndFreeze(
+    public VillageNewsletterIssueEntity freezeIssue(
             UUID villageId,
             VillageNewsletterFrequency frequency,
             UUID newsletterId,
             LocalDateTime periodStart,
             LocalDateTime periodEnd,
-            LocalDateTime scheduledPublishAt) {
+            LocalDateTime scheduledPublishAt,
+            NewsletterDigestSnapshot snapshot) {
 
         // 冪等（AC-03）: 既存号があれば何もせず返す。凍結済み snapshot は不変（AC-02）。
         Optional<VillageNewsletterIssueEntity> existing = issueRepository
                 .findByVillageIdAndFrequencyAndPeriodStart(villageId, frequency, periodStart);
         if (existing.isPresent()) {
-            log.debug("ニュースレター号は既に存在するため再集計しない（冪等）: villageId={} frequency={} periodStart={}",
+            log.debug("ニュースレター号は既に存在するため凍結しない（冪等）: villageId={} frequency={} periodStart={}",
                     villageId, frequency, periodStart);
             return existing.get();
         }
 
-        NewsletterDigestSnapshot snapshot = aggregator.aggregate(villageId, periodStart, periodEnd);
         List<Map.Entry<String, Integer>> top3 = snapshot.top3Topics();
         LocalDateTime now = LocalDateTime.now();
 

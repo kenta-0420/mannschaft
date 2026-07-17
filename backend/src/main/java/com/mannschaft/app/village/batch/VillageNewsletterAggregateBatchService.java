@@ -6,6 +6,8 @@ import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterRepository;
+import com.mannschaft.app.village.service.NewsletterDigestSnapshot;
+import com.mannschaft.app.village.service.VillageNewsletterDigestAggregator;
 import com.mannschaft.app.village.service.VillageNewsletterIssueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,7 @@ import java.time.ZoneOffset;
  * F17.1 ②-2 — 村ニュースレター集計・凍結バッチ（設計書 §4.2 / §5）。
  *
  * <p>毎日 03:00（UTC）に全ニュースレター設定を走査し、当日が各村の <b>集計日</b> に当たるものについて
- * その期間のダイジェストを集計して号を凍結する（{@link VillageNewsletterIssueService#aggregateAndFreeze}）。
+ * その期間のダイジェストを集計器（取引外）で確定し、号を凍結する（{@link VillageNewsletterIssueService#freezeIssue}）。
  * ラグを経て配信日に配信するのは ②-3 の配信バッチ（本バッチは触らない）。</p>
  *
  * <h2>集計日の判定（設計書 §4.3）</h2>
@@ -45,6 +47,12 @@ public class VillageNewsletterAggregateBatchService {
     private final VillageNewsletterRepository newsletterRepository;
     private final VillageNewsletterIssueRepository issueRepository;
     private final VillageNewsletterIssueService issueService;
+    /**
+     * 集計器（他ドメイン読み取り）。本バッチは {@code @Transactional} でないため、
+     * ここでの越境読み取りは autocommit で行われ、村の書き込みトランザクションに含まれない
+     * （番人 D-3 回避。集計器クラス Javadoc 参照）。
+     */
+    private final VillageNewsletterDigestAggregator aggregator;
 
     /**
      * 毎日 03:00 UTC に、当日が集計日に当たる村のダイジェストを集計・凍結する。
@@ -93,7 +101,11 @@ public class VillageNewsletterAggregateBatchService {
     /**
      * 1 設定について、当日が集計日なら集計・凍結する。
      *
-     * @return 集計を実行した場合 true（集計日でなければ false）
+     * <p>順序が肝: (1) 集計日判定 → (2) period 算出 → (3) <b>先に冪等チェック</b>
+     * （既存号があれば越境読み取りすらせず return） → (4) トランザクション<b>外</b>で集計
+     * （越境読み取り・番人 D-3 回避） → (5) 村ドメインのトランザクションで凍結保存。</p>
+     *
+     * @return 号を新規に集計・凍結した場合 true（集計日でない／既存号がある場合は false）
      */
     private boolean aggregateOne(LocalDate today, VillageNewsletterEntity nl) {
         if (!isAggregateDay(today, nl)) {
@@ -101,11 +113,21 @@ public class VillageNewsletterAggregateBatchService {
         }
         LocalDateTime periodEnd = today.atStartOfDay();
         LocalDateTime periodStart = resolvePeriodStart(nl, periodEnd);
-        LocalDateTime scheduledPublishAt = resolveScheduledPublishAt(today, nl);
 
-        issueService.aggregateAndFreeze(
+        // 冪等（AC-03）: 既存号があれば集計器（越境読み取り）を呼ばずに終了する。
+        if (issueRepository.findByVillageIdAndFrequencyAndPeriodStart(
+                nl.getVillageId(), nl.getFrequency(), periodStart).isPresent()) {
+            log.debug("ニュースレター号は既に存在するため集計しない（冪等）: villageId={} frequency={} periodStart={}",
+                    nl.getVillageId(), nl.getFrequency(), periodStart);
+            return false;
+        }
+
+        LocalDateTime scheduledPublishAt = resolveScheduledPublishAt(today, nl);
+        // トランザクション外で他ドメイン読み取り（集計）→ snapshot を村ドメインのトランザクションへ渡す。
+        NewsletterDigestSnapshot snapshot = aggregator.aggregate(nl.getVillageId(), periodStart, periodEnd);
+        issueService.freezeIssue(
                 nl.getVillageId(), nl.getFrequency(), nl.getId(),
-                periodStart, periodEnd, scheduledPublishAt);
+                periodStart, periodEnd, scheduledPublishAt, snapshot);
         return true;
     }
 

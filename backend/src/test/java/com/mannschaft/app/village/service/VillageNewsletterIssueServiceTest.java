@@ -35,17 +35,18 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link VillageNewsletterIssueService} 単体テスト（F17.1 ②-2・設計書 §11.1）。
  *
- * <p>DB 無し・Mockito。集計器が返した snapshot を号へ複写し「集計 → 凍結」する流れと、
- * 冪等・改ざん不可の受け入れ条件を検証する。実 MySQL を通した期間集計の正当性は
- * {@code VillageNewsletterAggregateIntegrationTest} で別途検証する。</p>
+ * <p>DB 無し・Mockito。<b>集計は本サービスの外で済ませ</b>、確定済み {@link NewsletterDigestSnapshot}
+ * を号へ複写して凍結する流れと、冪等・改ざん不可の受け入れ条件を検証する。集計器（越境読み取り）は
+ * バッチがトランザクション外で呼ぶため、本サービスは集計器に依存しない（番人 D-3 回避）。
+ * 実 MySQL を通した期間集計の正当性は {@code VillageNewsletterAggregateIntegrationTest} で別途検証する。</p>
  *
  * <h3>受け入れ条件との対応</h3>
  * <ul>
- *   <li>AC-01: 集計・凍結後、{@code status=FROZEN} の号が生成され digest_post_count が投稿数と一致</li>
+ *   <li>AC-01: 凍結後、{@code status=FROZEN} の号が生成され digest_post_count が snapshot の投稿数と一致</li>
  *   <li>AC-02: 凍結済み号の digest_* は更新経路が存在しない（setter 無し）＋ freeze 二重遷移は
  *       {@code NEWSLETTER_ISSUE_ALREADY_FROZEN} に翻訳される＝改ざん不可</li>
- *   <li>AC-03: 同一村×頻度×期間で二度呼んでも save/aggregate せず既存号を返す（冪等）</li>
- *   <li>AC-05: 祭/寄合/募集の件数が digest_festival/meetup/recruit_count に反映される</li>
+ *   <li>AC-03: 既存号があれば save せず既存号を返す（冪等・最終防衛）</li>
+ *   <li>AC-05: snapshot の祭/寄合/募集件数が digest_festival/meetup/recruit_count に載る</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -62,31 +63,32 @@ class VillageNewsletterIssueServiceTest {
     @Mock
     private VillageNewsletterIssueRepository issueRepository;
     @Mock
-    private VillageNewsletterDigestAggregator aggregator;
-    @Mock
     private AuditLogService auditLogService;
 
     @InjectMocks
     private VillageNewsletterIssueService service;
 
+    private VillageNewsletterIssueEntity freezeIssue(NewsletterDigestSnapshot snapshot) {
+        return service.freezeIssue(
+                VILLAGE_ID, FREQ, NEWSLETTER_ID, PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT, snapshot);
+    }
+
     // ========================================================================
-    // AC-01 / AC-05 — 集計 → 凍結
+    // AC-01 / AC-05 — snapshot を号へ複写して凍結
     // ========================================================================
 
     @Test
-    @DisplayName("AC-01/05: 集計器の snapshot を号へ複写し FROZEN 化。post/festival/meetup/recruit が一致")
-    void aggregateAndFreeze_copiesSnapshotAndFreezes() {
+    @DisplayName("AC-01/05: snapshot を号へ複写し FROZEN 化。post/festival/meetup/recruit が一致")
+    void freezeIssue_copiesSnapshotAndFreezes() {
         given(issueRepository.findByVillageIdAndFrequencyAndPeriodStart(VILLAGE_ID, FREQ, PERIOD_START))
                 .willReturn(Optional.empty());
-        // postCount=20（掲示板12+タイムライン8想定）, newMember=3, festival=2, meetup=1, recruit=4
-        given(aggregator.aggregate(eq(VILLAGE_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .willReturn(new NewsletterDigestSnapshot(20, 3, 2, 1, 4,
-                        List.of(Map.entry("夏祭り", 3), Map.entry("清掃", 2))));
         given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        VillageNewsletterIssueEntity result = service.aggregateAndFreeze(
-                VILLAGE_ID, FREQ, NEWSLETTER_ID, PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
+        // postCount=20（掲示板12+タイムライン8想定）, newMember=3, festival=2, meetup=1, recruit=4
+        VillageNewsletterIssueEntity result = freezeIssue(
+                new NewsletterDigestSnapshot(20, 3, 2, 1, 4,
+                        List.of(Map.entry("夏祭り", 3), Map.entry("清掃", 2))));
 
         // AC-01: FROZEN・投稿数一致
         assertThat(result.getStatus()).isEqualTo(VillageNewsletterIssueStatus.FROZEN);
@@ -120,17 +122,16 @@ class VillageNewsletterIssueServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("AC-03: 既存号があれば集計も保存もせず同一号を返す（冪等・二重起動対策）")
-    void aggregateAndFreeze_idempotentWhenIssueExists() {
+    @DisplayName("AC-03: 既存号があれば保存せず同一号を返す（冪等・並行実行の最終防衛）")
+    void freezeIssue_idempotentWhenIssueExists() {
         VillageNewsletterIssueEntity existing = issueWithStatus(VillageNewsletterIssueStatus.FROZEN);
         given(issueRepository.findByVillageIdAndFrequencyAndPeriodStart(VILLAGE_ID, FREQ, PERIOD_START))
                 .willReturn(Optional.of(existing));
 
-        VillageNewsletterIssueEntity result = service.aggregateAndFreeze(
-                VILLAGE_ID, FREQ, NEWSLETTER_ID, PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
+        VillageNewsletterIssueEntity result = freezeIssue(
+                new NewsletterDigestSnapshot(99, 99, 99, 99, 99, List.of()));
 
         assertThat(result).isSameAs(existing);
-        verify(aggregator, never()).aggregate(any(), any(), any());
         verify(issueRepository, never()).save(any());
         verify(auditLogService, never())
                 .record(any(), any(), any(), any(), any(), any(), any(), any(), any());
@@ -141,37 +142,34 @@ class VillageNewsletterIssueServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("AC-02: 既存 FROZEN 号の集計値は再集計・上書きされない（frozen snapshot は不変）")
-    void aggregateAndFreeze_frozenDigestIsImmutable() {
+    @DisplayName("AC-02: 既存 FROZEN 号の集計値は上書きされない（引数 snapshot を無視して既存号を返す）")
+    void freezeIssue_frozenDigestIsImmutable() {
         // 既存の凍結号。digest_* は setter を持たないため、そもそも更新経路が型として存在しない
-        // （＝コンパイル時に改ざん不可が保証される。ここではサービス経由の再集計も起きないことを確認）。
+        // （＝コンパイル時に改ざん不可が保証される）。ここではサービス経由でも上書きされないことを確認。
         VillageNewsletterIssueEntity existing = issueWithStatus(VillageNewsletterIssueStatus.FROZEN);
         int frozenPostCount = existing.getDigestPostCount();
         given(issueRepository.findByVillageIdAndFrequencyAndPeriodStart(VILLAGE_ID, FREQ, PERIOD_START))
                 .willReturn(Optional.of(existing));
 
-        VillageNewsletterIssueEntity result = service.aggregateAndFreeze(
-                VILLAGE_ID, FREQ, NEWSLETTER_ID, PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
+        // 新しい snapshot（post=999）を渡しても、既存号の値は書き換わらない。
+        VillageNewsletterIssueEntity result = freezeIssue(
+                new NewsletterDigestSnapshot(999, 0, 0, 0, 0, List.of()));
 
-        // 集計器を呼ばない＝凍結済みの値が再計算・上書きされない
-        verify(aggregator, never()).aggregate(any(), any(), any());
         assertThat(result.getDigestPostCount()).isEqualTo(frozenPostCount);
         assertThat(result.getStatus()).isEqualTo(VillageNewsletterIssueStatus.FROZEN);
+        verify(issueRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("AC-02: AGGREGATED 以外からの凍結遷移は NEWSLETTER_ISSUE_ALREADY_FROZEN に翻訳される")
-    void aggregateAndFreeze_translatesIllegalFreezeToDomainError() {
+    void freezeIssue_translatesIllegalFreezeToDomainError() {
         given(issueRepository.findByVillageIdAndFrequencyAndPeriodStart(VILLAGE_ID, FREQ, PERIOD_START))
                 .willReturn(Optional.empty());
-        given(aggregator.aggregate(eq(VILLAGE_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .willReturn(new NewsletterDigestSnapshot(1, 0, 0, 0, 0, List.of()));
         // save が「既に凍結済み」の号を返す異常系（レース・二重処理）を模す → freeze() が IllegalStateException
         given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
                 .willReturn(issueWithStatus(VillageNewsletterIssueStatus.FROZEN));
 
-        assertThatThrownBy(() -> service.aggregateAndFreeze(
-                VILLAGE_ID, FREQ, NEWSLETTER_ID, PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT))
+        assertThatThrownBy(() -> freezeIssue(new NewsletterDigestSnapshot(1, 0, 0, 0, 0, List.of())))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_ALREADY_FROZEN);

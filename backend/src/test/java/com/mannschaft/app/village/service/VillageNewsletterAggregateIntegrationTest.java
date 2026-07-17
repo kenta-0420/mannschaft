@@ -78,8 +78,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class VillageNewsletterAggregateIntegrationTest extends AbstractVillageIntegrationTest {
 
     @Autowired
-    private VillageNewsletterIssueService issueService;
-    @Autowired
     private VillageNewsletterAggregateBatchService batchService;
     @Autowired
     private VillageNewsletterIssueRepository issueRepository;
@@ -106,18 +104,27 @@ class VillageNewsletterAggregateIntegrationTest extends AbstractVillageIntegrati
     private static final LocalDateTime IN_PERIOD = LocalDateTime.of(2026, 6, 15, 10, 0);
     private static final LocalDateTime BEFORE_PERIOD = LocalDateTime.of(2026, 5, 20, 10, 0);
     private static final LocalDateTime AFTER_PERIOD = LocalDateTime.of(2026, 7, 5, 10, 0);
-    private static final LocalDateTime SCHEDULED_PUBLISH_AT = LocalDateTime.of(2026, 7, 3, 18, 0);
+
+    /**
+     * 集計基準日。バッチはこの日を「今日」として periodEnd = today 0:00 = {@link #PERIOD_END}、
+     * 直近号が無いので periodStart = periodEnd.minusMonths(1) = {@link #PERIOD_START} を算出する。
+     * MONTHLY の集計日は日付一致（{@code 2026-07-01} の DOM=1）で当日を集計日にする。
+     */
+    private static final LocalDate AGG_TODAY = LocalDate.of(2026, 7, 1);
 
     private UUID villageId;
 
     // ========================================================================
-    // AC-01 / AC-05 — 期間集計と凍結
+    // AC-01 / AC-05 — バッチ経由の期間集計と凍結（越境読み取りは取引外）
     // ========================================================================
 
     @Test
-    @DisplayName("AC-01/05: 期間内のみが digest に数えられ FROZEN 号が生成される（半開区間・論理削除除外）")
-    void aggregateAndFreeze_countsOnlyWithinPeriod() {
+    @DisplayName("AC-01/05: バッチ集計で期間内のみが digest に数えられ FROZEN 号が生成される（半開区間・論理削除除外）")
+    void aggregateForDate_countsOnlyWithinPeriod() {
         villageId = persistVillage().getId();
+        // MONTHLY・当日(2026-07-01)を集計日にする設定
+        persistNewsletter(villageId, VillageNewsletterFrequency.MONTHLY,
+                AGG_TODAY.getDayOfMonth(), 1, 18);
 
         // 掲示板: 期間内 2 件 + 期間外 1 件（前）
         persistBulletinThread("夏祭りの準備", IN_PERIOD, false);
@@ -144,11 +151,15 @@ class VillageNewsletterAggregateIntegrationTest extends AbstractVillageIntegrati
         persistRecruit(IN_PERIOD, false);
         persistRecruit(IN_PERIOD, true);
 
-        VillageNewsletterIssueEntity issue = issueService.aggregateAndFreeze(
-                villageId, VillageNewsletterFrequency.MONTHLY, UUID.randomUUID(),
-                PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
+        int aggregated = batchService.aggregateForDate(AGG_TODAY);
+        assertThat(aggregated).isEqualTo(1);
 
+        VillageNewsletterIssueEntity issue = issueRepository
+                .findByVillageIdAndFrequencyAndPeriodStart(
+                        villageId, VillageNewsletterFrequency.MONTHLY, PERIOD_START)
+                .orElseThrow();
         assertThat(issue.getStatus()).isEqualTo(VillageNewsletterIssueStatus.FROZEN);
+        assertThat(issue.getPeriodEnd()).isEqualTo(PERIOD_END);
         assertThat(issue.getDigestPostCount()).isEqualTo(5);       // 掲示板 2 + タイムライン 3
         assertThat(issue.getDigestNewMemberCount()).isEqualTo(2);
         assertThat(issue.getDigestFestivalCount()).isEqualTo(2);
@@ -157,23 +168,20 @@ class VillageNewsletterAggregateIntegrationTest extends AbstractVillageIntegrati
     }
 
     // ========================================================================
-    // AC-03 — 冪等
+    // AC-03 — 冪等（二度集計しても号は 1 件）
     // ========================================================================
 
     @Test
-    @DisplayName("AC-03: 同一村×頻度×期間で二度集計しても号は 1 件（冪等）")
-    void aggregateAndFreeze_isIdempotent() {
+    @DisplayName("AC-03: バッチを二度実行しても号は 1 件（冪等）")
+    void aggregateForDate_isIdempotent() {
         villageId = persistVillage().getId();
+        persistNewsletter(villageId, VillageNewsletterFrequency.MONTHLY,
+                AGG_TODAY.getDayOfMonth(), 1, 18);
         persistBulletinThread("スレ", IN_PERIOD, false);
 
-        VillageNewsletterIssueEntity first = issueService.aggregateAndFreeze(
-                villageId, VillageNewsletterFrequency.MONTHLY, UUID.randomUUID(),
-                PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
-        VillageNewsletterIssueEntity second = issueService.aggregateAndFreeze(
-                villageId, VillageNewsletterFrequency.MONTHLY, UUID.randomUUID(),
-                PERIOD_START, PERIOD_END, SCHEDULED_PUBLISH_AT);
+        batchService.aggregateForDate(AGG_TODAY);
+        batchService.aggregateForDate(AGG_TODAY);
 
-        assertThat(second.getId()).isEqualTo(first.getId());
         long total = issueRepository
                 .findByVillageIdAndDeletedAtIsNullOrderByCreatedAtDesc(villageId, PageRequest.of(0, 10))
                 .getTotalElements();
