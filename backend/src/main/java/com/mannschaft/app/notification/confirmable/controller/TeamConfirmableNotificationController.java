@@ -60,6 +60,8 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @Valid @RequestBody ConfirmableNotificationCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave3-B12notif: 通知送信は管理操作（受信者へ強制配信）。
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
         ConfirmableNotificationEntity entity = notificationService.send(
                 ScopeType.TEAM,
                 teamId,
@@ -89,6 +91,9 @@ public class TeamConfirmableNotificationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> list(
             @PathVariable Long teamId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave3-B12notif: 一覧は閲覧系のため checkMembership（非メンバーの BOLA 一覧取得を根治）。
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
         List<ConfirmableNotificationEntity> entities =
                 notificationService.listByScope(ScopeType.TEAM, teamId);
         List<ConfirmableNotificationResponse> responses = entities.stream()
@@ -115,12 +120,15 @@ public class TeamConfirmableNotificationController {
     public ResponseEntity<ApiResponse<ConfirmableNotificationDetailResponse>> getDetail(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
         if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
         }
+        // 認可根治 Wave3-B12notif: 閲覧系は checkMembership（非メンバーの詳細窃視を根治）。
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
 
         ConfirmableNotificationDetailResponse response = mapper.toDetailResponse(entity);
         long confirmedCount = recipientRepository
@@ -141,6 +149,15 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif: キャンセルは管理操作のため checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
+
         notificationService.cancel(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
     }
@@ -156,6 +173,16 @@ public class TeamConfirmableNotificationController {
     public ResponseEntity<Void> resendReminder(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif: リマインド再送は管理操作のため checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
+
         notificationService.resendReminder(notificationId);
         return ResponseEntity.noContent().build();
     }
@@ -182,6 +209,13 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        // ADMIN であっても他 scope の notificationId で受信者一覧を覗ける副次 BOLA を根治（Wave3-B12notif）。
+        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
 
         // ADMIN+ なら全件返す（既存挙動）
         if (accessControlService.isAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name())) {

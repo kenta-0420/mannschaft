@@ -960,7 +960,12 @@ public class GlobalExceptionHandler {
             Map.entry("CMS_002", HttpStatus.NOT_FOUND),                  // TAG_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("CMS_003", HttpStatus.NOT_FOUND),                  // SERIES_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("CMS_004", HttpStatus.NOT_FOUND),                  // REVISION_NOT_FOUND（親post不一致BOLA → 404）
-            Map.entry("CMS_019", HttpStatus.NOT_FOUND)                   // SHARE_NOT_FOUND（親post不一致BOLA → 404）
+            Map.entry("CMS_019", HttpStatus.NOT_FOUND),                  // SHARE_NOT_FOUND（親post不一致BOLA → 404）
+            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）は notificationId↔pathスコープ
+            // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
+            // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
+            Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND)
     );
 
     /**
