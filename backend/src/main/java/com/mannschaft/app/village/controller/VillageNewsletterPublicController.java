@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +36,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/newsletter/public")
 @Tag(name = "村ニュースレター公開一覧 (F17.1 ②-4)",
      description = "全村横断の公開号（PUBLIC×PUBLISHED）一覧・詳細。ログイン必須のみ")
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class VillageNewsletterPublicController {
 

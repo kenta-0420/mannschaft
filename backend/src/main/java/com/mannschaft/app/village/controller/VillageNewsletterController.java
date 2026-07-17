@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -107,6 +108,7 @@ public class VillageNewsletterController {
     // ========================================================================
 
     @GetMapping("/issues")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村ニュースレター号の一覧（新しい順・?tagId= でタグ絞り込み可）")
     public ApiResponse<NewsletterIssuePageResponse> listIssues(
             @PathVariable("villageId") UUID villageId,
@@ -119,6 +121,7 @@ public class VillageNewsletterController {
     }
 
     @GetMapping("/issues/{issueId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村ニュースレター号の詳細（凍結ダイジェスト＋コメント＋タグ）")
     public ApiResponse<NewsletterIssueDetailResponse> getIssue(
             @PathVariable("villageId") UUID villageId,
@@ -128,6 +131,7 @@ public class VillageNewsletterController {
     }
 
     @PutMapping("/issues/{issueId}/comment")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村ニュースレター号にコメントを保存（HEADMAN / ELDER・楽観ロック・凍結後も可）")
     public ApiResponse<NewsletterIssueDetailResponse> updateIssueComment(
             @PathVariable("villageId") UUID villageId,
@@ -139,6 +143,7 @@ public class VillageNewsletterController {
     }
 
     @PutMapping("/issues/{issueId}/tags")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村ニュースレター号にタグを付ける（HEADMAN / ELDER・楽観ロック・置き換え式）")
     public ApiResponse<NewsletterIssueDetailResponse> updateIssueTags(
             @PathVariable("villageId") UUID villageId,
@@ -150,6 +155,7 @@ public class VillageNewsletterController {
     }
 
     @PutMapping("/issues/{issueId}/visibility")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村ニュースレター号の公開範囲を切替（HEADMAN / ELDER・楽観ロック）")
     public ApiResponse<NewsletterIssueDetailResponse> updateIssueVisibility(
             @PathVariable("villageId") UUID villageId,
@@ -165,6 +171,7 @@ public class VillageNewsletterController {
     // ========================================================================
 
     @GetMapping("/tags")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のニュースレタータグ一覧（表示順）")
     public ApiResponse<List<NewsletterTagResponse>> listTags(
             @PathVariable("villageId") UUID villageId) {
@@ -173,6 +180,7 @@ public class VillageNewsletterController {
     }
 
     @PostMapping("/tags")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のニュースレタータグを作成（HEADMAN / ELDER）")
     public ResponseEntity<ApiResponse<NewsletterTagResponse>> createTag(
             @PathVariable("villageId") UUID villageId,
@@ -184,6 +192,7 @@ public class VillageNewsletterController {
     }
 
     @PutMapping("/tags/{tagId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のニュースレタータグを更新（HEADMAN / ELDER・楽観ロック）")
     public ApiResponse<NewsletterTagResponse> updateTag(
             @PathVariable("villageId") UUID villageId,
@@ -196,6 +205,7 @@ public class VillageNewsletterController {
     }
 
     @DeleteMapping("/tags/{tagId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のニュースレタータグを削除（HEADMAN / ELDER・使用中は不可）")
     public ResponseEntity<Void> deleteTag(
             @PathVariable("villageId") UUID villageId,
