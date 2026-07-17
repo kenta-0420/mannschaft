@@ -27,6 +27,20 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
             String sourceType, Long sourceId, String language);
 
     /**
+     * 原文種別・原文ID・言語・スコープで翻訳コンテンツを取得する（未削除）。
+     * BOLA是正: 原文ID直指定に対し、path スコープ（scopeType/scopeId）配下かを束縛する。
+     *
+     * @param sourceType 原文種別
+     * @param sourceId   原文ID
+     * @param language   言語コード
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @return 翻訳コンテンツ
+     */
+    Optional<ContentTranslationEntity> findBySourceTypeAndSourceIdAndLanguageAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+            String sourceType, Long sourceId, String language, String scopeType, Long scopeId);
+
+    /**
      * 原文種別・原文IDで全言語の翻訳コンテンツを取得する（未削除）。
      * 利用可能言語の一覧取得に使用する。
      *
@@ -36,6 +50,31 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
      */
     List<ContentTranslationEntity> findBySourceTypeAndSourceIdAndDeletedAtIsNull(
             String sourceType, Long sourceId);
+
+    /**
+     * 原文種別・原文ID・スコープで全言語の翻訳コンテンツを取得する（未削除）。
+     * BOLA是正: 原文ID直指定に対し、path スコープ（scopeType/scopeId）配下かを束縛する。
+     *
+     * @param sourceType 原文種別
+     * @param sourceId   原文ID
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @return 翻訳コンテンツリスト
+     */
+    List<ContentTranslationEntity> findBySourceTypeAndSourceIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+            String sourceType, Long sourceId, String scopeType, Long scopeId);
+
+    /**
+     * IDとスコープで翻訳コンテンツを取得する（未削除）。
+     * BOLA是正: 対象ID直指定に対し、path スコープ（scopeType/scopeId）配下かを束縛する。
+     *
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @return 翻訳コンテンツ
+     */
+    Optional<ContentTranslationEntity> findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+            Long id, String scopeType, Long scopeId);
 
     /**
      * スコープに紐づく翻訳コンテンツを作成日時降順で取得する（未削除）。
@@ -58,6 +97,20 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
      */
     List<ContentTranslationEntity> findBySourceTypeAndSourceIdAndStatusAndDeletedAtIsNull(
             String sourceType, Long sourceId, String status);
+
+    /**
+     * 原文種別・原文ID・ステータス・スコープで翻訳コンテンツを取得する（未削除）。
+     * BOLA是正: 原文ID直指定に対し、path スコープ（scopeType/scopeId）配下かを束縛する。
+     *
+     * @param sourceType 原文種別
+     * @param sourceId   原文ID
+     * @param status     ステータス
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @return 翻訳コンテンツリスト
+     */
+    List<ContentTranslationEntity> findBySourceTypeAndSourceIdAndStatusAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+            String sourceType, Long sourceId, String status, String scopeType, Long scopeId);
 
     /**
      * スコープ内の翻訳コンテンツをフィルタ付きページネーションで取得する（未削除）。

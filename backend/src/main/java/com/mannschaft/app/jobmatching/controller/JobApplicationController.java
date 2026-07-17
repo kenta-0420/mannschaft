@@ -135,16 +135,17 @@ public class JobApplicationController {
     // ========================================
 
     /**
-     * 応募詳細を取得する。
+     * 応募詳細を取得する。当事者（応募者本人、または対象求人の採否権限者）のみ許可。
      *
-     * <p>MVP では Service 側で閲覧権限チェックを行わないため、認証済みであれば参照可能。
-     * 後続 Phase で応募者本人または Requester/ADMIN のみに絞るリファクタを Service 層に加える予定。</p>
+     * <p>BOLA対策: 従来は認証済みであれば誰でも他人の応募（自己PR含む）を id 直打ちで
+     * 閲覧できてしまう欠陥があったため、{@link JobApplicationService#findById(Long, Long)} で
+     * 当事者チェックを行うよう根治した。</p>
      */
     @GetMapping("/api/v1/applications/{id}")
     @Operation(summary = "応募詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<JobApplicationResponse>> getApplication(@PathVariable Long id) {
-        JobApplicationEntity entity = applicationService.findById(id);
+        JobApplicationEntity entity = applicationService.findById(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toApplicationResponse(entity)));
     }
 

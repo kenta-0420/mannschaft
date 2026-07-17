@@ -257,7 +257,8 @@
       "empty": "Noch keine Mitglieder",
       "banned": "Gesperrt",
       "you": "Sie",
-      "filterRole": "Nach Rolle filtern"
+      "filterRole": "Nach Rolle filtern",
+      "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
     },
     "postingIdentity": {
       "title": "Beitrag als",
@@ -547,23 +548,32 @@
     },
     "newsletter": {
       "title": "Newsletter",
-      "subtitle": "Dorf-Update-Benachrichtigungen",
+      "subtitle": "Dorf-Updates",
       "settings": "Newsletter-Einstellungen",
-      "frequency": "Häufigkeit",
       "lastSentAt": "Zuletzt gesendet",
-      "nextScheduledAt": "Nächste geplante Sendung",
-      "optOut": "Abmelden",
-      "optIn": "Wieder anmelden",
-      "optedOut": "Sie sind derzeit abgemeldet",
       "saveSuccess": "Newsletter-Einstellungen gespeichert",
-      "optOutSuccess": "Abgemeldet",
-      "optInSuccess": "Wieder angemeldet",
+      "optOutSuccess": "Empfang beendet",
+      "optInSuccess": "Empfang wieder aktiviert",
       "loadFailed": "Newsletter-Einstellungen konnten nicht geladen werden",
-      "frequencyOption": {
-        "DAILY": "Täglich",
-        "WEEKLY": "Wöchentlich",
-        "MONTHLY": "Monatlich",
-        "NEVER": "Nie"
+      "manageOnlyHint": "Nur der Dorfvorsteher und die Ältesten können die Versandeinstellungen des Dorfes ändern.",
+      "comingSoonNote": "Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter versendet.",
+      "villageSection": {
+        "title": "Versandeinstellungen des Dorfes",
+        "subtitle": "Aktiviere oder deaktiviere den wöchentlichen und den monatlichen Newsletter unabhängig voneinander."
+      },
+      "weekly": {
+        "label": "Wöchentlicher Newsletter",
+        "timing": "Wird jeden Freitag versendet"
+      },
+      "monthly": {
+        "label": "Monatlicher Newsletter",
+        "timing": "Wird zum Monatsende versendet"
+      },
+      "personalSection": {
+        "title": "Dein Empfang",
+        "toggleLabel": "Newsletter dieses Dorfes empfangen",
+        "receivingHint": "Du empfängst diesen Newsletter derzeit.",
+        "stoppedHint": "Du hast den Empfang dieses Newsletters gestoppt."
       }
     },
     "slug": {
@@ -877,6 +887,38 @@
           "step2": "Kategorien mit null „Verwendenden Gesuchen\" lassen sich über das Papierkorbsymbol löschen.",
           "step3": "Um eine verwendete Kategorie zu löschen, ändern Sie zuerst die Kategorie dieser Gesuche."
         }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "So nutzt du den Newsletter",
+      "description": "Der Dorf-Newsletter bündelt Dorf-Updates in einer Benachrichtigung. Wöchentlich und monatlich lassen sich unabhängig schalten, und jedes Mitglied entscheidet selbst über den Empfang.",
+      "toggles": {
+        "title": "Wöchentlich und monatlich unabhängig schalten",
+        "body": "In den Versandeinstellungen des Dorfes kannst du wöchentlich und monatlich getrennt umschalten. Du kannst auch nur eines aktivieren.",
+        "steps": {
+          "step1": "Schalte mit dem Schalter „Wöchentlicher Newsletter“ den wöchentlichen Versand ein oder aus.",
+          "step2": "Schalte mit dem Schalter „Monatlicher Newsletter“ den monatlichen Versand ein oder aus.",
+          "step3": "Änderungen werden beim Umschalten sofort gespeichert (kein Speichern-Button nötig)."
+        }
+      },
+      "timing": {
+        "title": "Versandzeitpunkt",
+        "body": "Wöchentlich wird jeden Freitag versendet, monatlich zum Ende jedes Monats."
+      },
+      "permission": {
+        "title": "Wer es ändern kann",
+        "body": "Nur der Dorfvorsteher und die Ältesten können die „Versandeinstellungen des Dorfes“ ändern. Andere Mitglieder sehen die aktuellen Einstellungen schreibgeschützt."
+      },
+      "personal": {
+        "title": "Dein Empfang",
+        "body": "Jedes Mitglied entscheidet selbst über den Empfang des Newsletters. Standardmäßig ist der Empfang aktiviert.",
+        "steps": {
+          "step1": "Schalte den Schalter „Dein Empfang“ aus, um den Newsletter dieses Dorfes nicht mehr zu erhalten.",
+          "step2": "Schalte ihn wieder ein, um den Empfang fortzusetzen."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter tatsächlich versendet."
       }
     }
   }

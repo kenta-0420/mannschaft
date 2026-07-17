@@ -257,7 +257,8 @@
       "empty": "No members yet",
       "banned": "Banned",
       "you": "You",
-      "filterRole": "Filter by role"
+      "filterRole": "Filter by role",
+      "soloHeadmanHint": "Once other members join this village, you can appoint them as elders here."
     },
     "postingIdentity": {
       "title": "Post as",
@@ -547,23 +548,32 @@
     },
     "newsletter": {
       "title": "Newsletter",
-      "subtitle": "Village update notifications",
+      "subtitle": "Village updates",
       "settings": "Newsletter settings",
-      "frequency": "Frequency",
-      "lastSentAt": "Last sent at",
-      "nextScheduledAt": "Next scheduled",
-      "optOut": "Unsubscribe",
-      "optIn": "Resubscribe",
-      "optedOut": "You are currently unsubscribed",
+      "lastSentAt": "Last sent",
       "saveSuccess": "Newsletter settings saved",
-      "optOutSuccess": "Unsubscribed",
-      "optInSuccess": "Resubscribed",
+      "optOutSuccess": "Unsubscribed from the newsletter",
+      "optInSuccess": "Resubscribed to the newsletter",
       "loadFailed": "Failed to load newsletter settings",
-      "frequencyOption": {
-        "DAILY": "Daily",
-        "WEEKLY": "Weekly",
-        "MONTHLY": "Monthly",
-        "NEVER": "Never"
+      "manageOnlyHint": "Only the headman and elders can change the village delivery settings.",
+      "comingSoonNote": "Newsletter delivery is coming soon. You can save settings, but newsletters are not sent yet.",
+      "villageSection": {
+        "title": "Village delivery settings",
+        "subtitle": "Turn the weekly and monthly newsletters on or off independently."
+      },
+      "weekly": {
+        "label": "Weekly newsletter",
+        "timing": "Delivered every Friday"
+      },
+      "monthly": {
+        "label": "Monthly newsletter",
+        "timing": "Delivered at month end"
+      },
+      "personalSection": {
+        "title": "Your subscription",
+        "toggleLabel": "Receive this village's newsletter",
+        "receivingHint": "You are currently receiving this newsletter.",
+        "stoppedHint": "You have stopped receiving this newsletter."
       }
     },
     "slug": {
@@ -877,6 +887,38 @@
           "step2": "Categories with zero \"Recruits in use\" can be deleted with the trash icon.",
           "step3": "To delete a category that is in use, first change the category of those recruits."
         }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "How to use the newsletter",
+      "description": "The village newsletter bundles village updates into a single notification. Weekly and monthly can be toggled independently, and each member chooses whether to receive it.",
+      "toggles": {
+        "title": "Toggle weekly and monthly independently",
+        "body": "In the village delivery settings you can switch weekly and monthly separately. You can enable just one.",
+        "steps": {
+          "step1": "Use the Weekly newsletter toggle to turn weekly delivery on or off.",
+          "step2": "Use the Monthly newsletter toggle to turn monthly delivery on or off.",
+          "step3": "Changes are saved immediately when you flip a toggle (no save button)."
+        }
+      },
+      "timing": {
+        "title": "Delivery timing",
+        "body": "Weekly is delivered every Friday; monthly is delivered at the end of each month."
+      },
+      "permission": {
+        "title": "Who can change it",
+        "body": "Only the headman and elders can change the village delivery settings. Other members see the current settings as read-only."
+      },
+      "personal": {
+        "title": "Your subscription",
+        "body": "Each member chooses whether to receive the newsletter. Receiving is on by default.",
+        "steps": {
+          "step1": "Turn off the Your subscription toggle to stop receiving this village's newsletter.",
+          "step2": "Turn it back on to resume receiving."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Newsletter delivery is coming soon. You can save settings, but newsletters are not actually sent yet."
       }
     }
   }

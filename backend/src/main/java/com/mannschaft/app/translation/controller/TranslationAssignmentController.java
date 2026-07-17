@@ -55,7 +55,7 @@ public class TranslationAssignmentController {
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
         ApiResponse<TranslationAssignmentResponse> response =
-                translationAssignmentService.assignTranslator(userId, req);
+                translationAssignmentService.assignTranslator(userId, "TEAM", teamId, req);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -76,7 +76,7 @@ public class TranslationAssignmentController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return translationAssignmentService.listAssignments(translationId);
+        return translationAssignmentService.listAssignments("TEAM", teamId, translationId);
     }
 
     /**
@@ -112,7 +112,7 @@ public class TranslationAssignmentController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
-        translationAssignmentService.removeAssignment(id);
+        translationAssignmentService.removeAssignment("TEAM", teamId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -139,7 +139,7 @@ public class TranslationAssignmentController {
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
 
         ApiResponse<TranslationAssignmentResponse> response =
-                translationAssignmentService.assignTranslator(userId, req);
+                translationAssignmentService.assignTranslator(userId, "ORGANIZATION", orgId, req);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -160,7 +160,7 @@ public class TranslationAssignmentController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return translationAssignmentService.listAssignments(translationId);
+        return translationAssignmentService.listAssignments("ORGANIZATION", orgId, translationId);
     }
 
     /**
@@ -196,7 +196,7 @@ public class TranslationAssignmentController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        translationAssignmentService.removeAssignment(id);
+        translationAssignmentService.removeAssignment("ORGANIZATION", orgId, id);
         return ResponseEntity.noContent().build();
     }
 }

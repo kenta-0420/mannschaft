@@ -39,7 +39,8 @@ public class OrganizationCorkboardController {
     @Operation(summary = "組織コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CorkboardResponse>>> listBoards(@PathVariable Long orgId) {
-        List<CorkboardResponse> boards = corkboardService.listScopedBoards("ORGANIZATION", orgId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<CorkboardResponse> boards = corkboardService.listScopedBoards("ORGANIZATION", orgId, userId);
         return ResponseEntity.ok(ApiResponse.of(boards));
     }
 
@@ -51,7 +52,8 @@ public class OrganizationCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CorkboardResponse>> createBoard(
             @PathVariable Long orgId, @Valid @RequestBody CreateCorkboardRequest request) {
-        CorkboardResponse response = corkboardService.createScopedBoard("ORGANIZATION", orgId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        CorkboardResponse response = corkboardService.createScopedBoard("ORGANIZATION", orgId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

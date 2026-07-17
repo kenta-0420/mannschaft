@@ -56,6 +56,11 @@ import type {
   VillageMeetupVoteSummary,
   VillageMeetupVoteSummaryCandidate,
   VillageMeetupVoteType,
+  VillageNewsletterFrequency,
+  VillageNewsletterSendLogResponse,
+  VillageNewsletterSetting,
+  VillageNewsletterSettingsResponse,
+  VillageNewsletterSettingUpdateRequest,
   VillageRequestStatus,
   VillageSubjectType,
 } from './village'
@@ -269,4 +274,41 @@ export type MatchApplicationStatusEnumMatch = AssertTrue<
 >
 export type MatchApplicationStatusEnumExhaustive = AssertTrue<
   Assignable<NonNullable<Schemas['MatchApplicationResponse']['status']>, VillageMatchApplicationStatus>
+>
+
+// =============================================================================
+// E. ニュースレター (newsletter) — 課題D（19 件目の契約不一致）
+// =============================================================================
+//
+// これがドリフト再発防止の柵。以前の手書き型は「頻度を 1 つ選ぶ」フラット単一形状
+// （`{userId, frequency, optedOut, ...}`）で、BE の「WEEKLY/MONTHLY をそれぞれ
+// オン/オフする」配列形状（`{villageId, settings: [...], optedOut}`）と食い違い、
+// GET の Select が常に空・PUT が必ず 400 になっていた。BE を正として寄せた。
+
+/** 設定一覧は `{villageId, settings, optedOut}`。`userId` や単一 `frequency` はここで落ちる。 */
+export type NewsletterSettingsResponseKeysMatch = AssertTrue<
+  SameKeys<VillageNewsletterSettingsResponse, Schemas['NewsletterSettingsResponse']>
+>
+
+/** 配列要素は `{id, villageId, frequency, isEnabled, lastSentAt, nextScheduledAt, createdAt, updatedAt, version}`。 */
+export type NewsletterSettingResponseKeysMatch = AssertTrue<
+  SameKeys<VillageNewsletterSetting, Schemas['NewsletterSettingResponse']>
+>
+
+/** PUT の body は `{frequency, isEnabled}`（frequency のみは BE で 400）。 */
+export type NewsletterSettingUpdateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageNewsletterSettingUpdateRequest, Schemas['NewsletterSettingUpdateRequest']>
+>
+
+/** 配信ログは `{id, newsletterId, sentAt, recipientCount, successCount, failureCount}`。 */
+export type NewsletterSendLogResponseKeysMatch = AssertTrue<
+  SameKeys<VillageNewsletterSendLogResponse, Schemas['NewsletterSendLogResponse']>
+>
+
+/** 頻度 enum は WEEKLY / MONTHLY の 2 値のみ（DAILY / NEVER を足すとここで落ちる）。 */
+export type NewsletterFrequencyEnumMatch = AssertTrue<
+  Assignable<VillageNewsletterFrequency, NonNullable<Schemas['NewsletterSettingResponse']['frequency']>>
+>
+export type NewsletterFrequencyEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['NewsletterSettingResponse']['frequency']>, VillageNewsletterFrequency>
 >
