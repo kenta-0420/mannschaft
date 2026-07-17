@@ -66,6 +66,10 @@ class VillageNewsletterControllerTest {
     @MockitoBean
     private VillageNewsletterService service;
 
+    /** ②-4 で Controller に注入された号 API サービス。設定系テストでは未使用だが context 解決に必要。 */
+    @MockitoBean
+    private com.mannschaft.app.village.service.VillageNewsletterIssueService issueService;
+
     @MockitoBean
     private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
 

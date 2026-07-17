@@ -20,4 +20,7 @@ public interface VillageNewsletterIssueTagRepository
 
     /** ある号の全タグ紐付けを削除（タグ付け更新時の入れ替え）。 */
     void deleteByIssueId(UUID issueId);
+
+    /** あるタグの使用件数（タグ削除時の使用中ガード・②-4）。 */
+    long countByTagId(UUID tagId);
 }

@@ -4,12 +4,20 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
+import com.mannschaft.app.village.dto.PublicNewsletterIssueResponse;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueStatus;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueType;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterVisibility;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -64,9 +73,34 @@ class VillageNewsletterIssueServiceTest {
     private VillageNewsletterIssueRepository issueRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private VillageNewsletterTagRepository tagRepository;
+    @Mock
+    private VillageNewsletterIssueTagRepository issueTagRepository;
+    @Mock
+    private VillageMembershipRepository membershipRepository;
+    @Mock
+    private VillageBulletinAccessService bulletinAccessService;
 
     @InjectMocks
     private VillageNewsletterIssueService service;
+
+    private static final Long HEADMAN_USER_ID = 100L;
+
+    /** 現役 HEADMAN のメンバーシップを返すようモックする（②-4 の編集認可用）。 */
+    private void givenActorIsHeadman() {
+        VillageMembershipEntity headman = VillageMembershipEntity.builder()
+                .villageId(VILLAGE_ID)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(HEADMAN_USER_ID)
+                .role(VillageRole.HEADMAN)
+                .joinedAt(LocalDateTime.now())
+                .version(0L)
+                .build();
+        lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
+                        VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
+                .thenReturn(Optional.of(headman));
+    }
 
     private VillageNewsletterIssueEntity freezeIssue(NewsletterDigestSnapshot snapshot) {
         return service.freezeIssue(
@@ -176,8 +210,124 @@ class VillageNewsletterIssueServiceTest {
     }
 
     // ========================================================================
+    // ②-4 AC-08 — 楽観ロック（expectedVersion 不一致は競合）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-08: expectedVersion が号の現在値と不一致なら NEWSLETTER_ISSUE_VERSION_CONFLICT（save しない）")
+    void updateComment_versionMismatchThrowsConflict() {
+        givenActorIsHeadman();
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity issue = issueWithVersionAndStatus(
+                issueId, 5L, VillageNewsletterIssueStatus.FROZEN,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        given(issueRepository.findByIdAndVillageIdAndDeletedAtIsNull(issueId, VILLAGE_ID))
+                .willReturn(Optional.of(issue));
+
+        assertThatThrownBy(() -> service.updateComment(
+                VILLAGE_ID, issueId, HEADMAN_USER_ID, "新コメント", 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+
+        verify(issueRepository, never()).save(any());
+    }
+
+    // ========================================================================
+    // ②-4 AC-09 — 凍結後もコメントは編集できる（digest 不変性に触れない）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-09: FROZEN/PUBLISHED 号でもコメントは保存できる（status に依らず・楽観ロック一致時）")
+    void updateComment_editableAfterFreeze() {
+        givenActorIsHeadman();
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity issue = issueWithVersionAndStatus(
+                issueId, 2L, VillageNewsletterIssueStatus.PUBLISHED,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        int frozenPostCount = issue.getDigestPostCount();
+        given(issueRepository.findByIdAndVillageIdAndDeletedAtIsNull(issueId, VILLAGE_ID))
+                .willReturn(Optional.of(issue));
+        given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(issueTagRepository.findByIssueId(issueId)).willReturn(List.of());
+
+        NewsletterIssueDetailResponse result = service.updateComment(
+                VILLAGE_ID, issueId, HEADMAN_USER_ID, "配信後の御礼コメント", 2L);
+
+        assertThat(result.headmanComment()).isEqualTo("配信後の御礼コメント");
+        assertThat(result.commentUpdatedBy()).isEqualTo(HEADMAN_USER_ID);
+        // ダイジェスト snapshot は不変（コメント保存で書き換わらない）
+        assertThat(result.digestPostCount()).isEqualTo(frozenPostCount);
+        assertThat(result.status()).isEqualTo(VillageNewsletterIssueStatus.PUBLISHED);
+        verify(issueRepository).save(any(VillageNewsletterIssueEntity.class));
+    }
+
+    // ========================================================================
+    // ②-4 AC-17 — 公開詳細は PUBLIC×PUBLISHED のみ（他は 404 秘匿・IDOR）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-17: VILLAGE_MEMBERS 号への公開直アクセスは NEWSLETTER_ISSUE_NOT_FOUND（404 秘匿）")
+    void getPublicIssue_hidesVillageMembersIssue() {
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity members = issueWithVersionAndStatus(
+                issueId, 1L, VillageNewsletterIssueStatus.PUBLISHED,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(members));
+
+        assertThatThrownBy(() -> service.getPublicIssue(issueId, 999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("AC-17: PUBLIC×PUBLISHED 号は非メンバー（村外ユーザー）でも取得できる")
+    void getPublicIssue_publicIsAccessible() {
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity pub = issueWithVersionAndStatus(
+                issueId, 1L, VillageNewsletterIssueStatus.PUBLISHED,
+                VillageNewsletterVisibility.PUBLIC);
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(pub));
+        given(issueTagRepository.findByIssueId(issueId)).willReturn(List.of());
+
+        PublicNewsletterIssueResponse result = service.getPublicIssue(issueId, 999L);
+
+        assertThat(result.id()).isEqualTo(issueId);
+        assertThat(result.villageId()).isEqualTo(VILLAGE_ID);
+    }
+
+    // ========================================================================
     // ヘルパ
     // ========================================================================
+
+    private VillageNewsletterIssueEntity issueWithVersionAndStatus(
+            UUID id, Long version, VillageNewsletterIssueStatus status,
+            VillageNewsletterVisibility visibility) {
+        return VillageNewsletterIssueEntity.builder()
+                .id(id)
+                .villageId(VILLAGE_ID)
+                .newsletterId(NEWSLETTER_ID)
+                .frequency(FREQ)
+                .issueType(VillageNewsletterIssueType.REGULAR)
+                .status(status)
+                .title("号")
+                .visibility(visibility)
+                .periodStart(PERIOD_START)
+                .periodEnd(PERIOD_END)
+                .publishedAt(LocalDateTime.of(2026, 6, 12, 18, 0))
+                .digestPostCount(11)
+                .digestNewMemberCount(2)
+                .digestFestivalCount(0)
+                .digestMeetupCount(0)
+                .digestRecruitCount(0)
+                .digestTopic1Count(0)
+                .digestTopic2Count(0)
+                .digestTopic3Count(0)
+                .version(version)
+                .build();
+    }
 
     private VillageNewsletterIssueEntity issueWithStatus(VillageNewsletterIssueStatus status) {
         return VillageNewsletterIssueEntity.builder()

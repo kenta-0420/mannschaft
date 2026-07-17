@@ -4,22 +4,42 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
+import com.mannschaft.app.village.dto.NewsletterIssuePageResponse;
+import com.mannschaft.app.village.dto.NewsletterIssueSummaryResponse;
+import com.mannschaft.app.village.dto.NewsletterTagResponse;
+import com.mannschaft.app.village.dto.PublicNewsletterIssuePageResponse;
+import com.mannschaft.app.village.dto.PublicNewsletterIssueResponse;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
+import com.mannschaft.app.village.entity.VillageNewsletterIssueTagEntity;
+import com.mannschaft.app.village.entity.VillageNewsletterTagEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueStatus;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueType;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterVisibility;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 村ニュースレター号サービス（F17.1 ②-2・設計書 §4.2 / §5）。
@@ -49,6 +69,13 @@ public class VillageNewsletterIssueService {
 
     private final VillageNewsletterIssueRepository issueRepository;
     private final AuditLogService auditLogService;
+
+    // ②-4（コメント/タグ/公開一覧 API）で追加。バッチ経路（freezeIssue）は無変更で他ドメイン非依存を維持し、
+    // API 経路のみが閲覧認可（掲示板流用）・編集認可（村メンバーシップ正準述語）・タグ中間表を用いる。
+    private final VillageNewsletterTagRepository tagRepository;
+    private final VillageNewsletterIssueTagRepository issueTagRepository;
+    private final VillageMembershipRepository membershipRepository;
+    private final VillageBulletinAccessService bulletinAccessService;
 
     /**
      * 集計済みの snapshot を号へ複写して凍結する（AGGREGATED → FROZEN）。
@@ -146,6 +173,373 @@ public class VillageNewsletterIssueService {
                 villageId, frequency, periodStart, periodEnd, snapshot.postCount());
 
         return frozen;
+    }
+
+    // ==================================================================
+    // ②-4: 号 API（一覧 / 詳細 / コメント / タグ付け / 公開範囲）
+    // ==================================================================
+
+    /**
+     * 村内の号一覧（新しい順・タグ絞り込み可）。閲覧認可は掲示板と同一（村史に倣う・設計書 §8.1）。
+     *
+     * <p>{@code tagId} 指定時は中間表の逆引き（{@link VillageNewsletterIssueTagRepository#findByTagId}）で
+     * 号 ID 集合を得てから村スコープで絞る（漏洩防止に村スコープ必須・空集合は {@code IN ()} を避けて短絡）。</p>
+     */
+    @Transactional(readOnly = true)
+    public NewsletterIssuePageResponse listIssues(
+            UUID villageId, Long userId, UUID tagId, Pageable pageable) {
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+
+        Page<VillageNewsletterIssueEntity> page;
+        if (tagId != null) {
+            Set<UUID> issueIds = issueTagRepository.findByTagId(tagId).stream()
+                    .map(VillageNewsletterIssueTagEntity::getIssueId)
+                    .collect(Collectors.toSet());
+            if (issueIds.isEmpty()) {
+                page = Page.empty(pageable);
+            } else {
+                page = issueRepository.findByVillageIdAndIdInAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        villageId, issueIds, pageable);
+            }
+        } else {
+            page = issueRepository.findByVillageIdAndDeletedAtIsNullOrderByCreatedAtDesc(villageId, pageable);
+        }
+
+        List<NewsletterIssueSummaryResponse> content = page.getContent().stream()
+                .map(this::toSummary)
+                .toList();
+        return NewsletterIssuePageResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .build();
+    }
+
+    /** 号詳細（凍結ダイジェスト＋コメント＋タグ）。閲覧認可は掲示板と同一。村不一致・不存在は 404 秘匿。 */
+    @Transactional(readOnly = true)
+    public NewsletterIssueDetailResponse getIssue(UUID villageId, UUID issueId, Long userId) {
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        VillageNewsletterIssueEntity issue = issueRepository
+                .findByIdAndVillageIdAndDeletedAtIsNull(issueId, villageId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND));
+        return toDetail(issue);
+    }
+
+    /**
+     * 村長コメントを保存する（HEADMAN / ELDER・楽観ロック・AC-06/07/08/09）。
+     *
+     * <p>コメントはダイジェスト本体とは別カラムのため、<b>凍結後（FROZEN / PUBLISHED）でも編集可</b>
+     * （AC-09・snapshot 不変性に触れない）。ステータスに依らず保存できる。</p>
+     */
+    @Transactional
+    public NewsletterIssueDetailResponse updateComment(
+            UUID villageId, UUID issueId, Long userId, String comment, Long expectedVersion) {
+        requireHeadmanOrElder(villageId, userId);
+        VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
+        issue.updateComment(comment, userId, LocalDateTime.now());
+        VillageNewsletterIssueEntity saved = issueRepository.save(issue);
+        log.info("ニュースレター号コメント保存: villageId={} issueId={} userId={}", villageId, issueId, userId);
+        return toDetail(saved);
+    }
+
+    /**
+     * 号へのタグ付けを更新する（HEADMAN / ELDER・楽観ロック・置き換え式・AC-15）。
+     *
+     * <p>指定タグが<b>すべて当該村に属する</b>ことを検証してから中間表を入れ替える
+     * （他村タグの混入＝漏洩を {@code NEWSLETTER_TAG_NOT_FOUND} で拒否）。</p>
+     */
+    @Transactional
+    public NewsletterIssueDetailResponse setIssueTags(
+            UUID villageId, UUID issueId, Long userId, List<UUID> tagIds, Long expectedVersion) {
+        requireHeadmanOrElder(villageId, userId);
+        VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
+
+        List<UUID> distinctTagIds = tagIds == null ? List.of()
+                : tagIds.stream().filter(Objects::nonNull).distinct().toList();
+        for (UUID tagId : distinctTagIds) {
+            tagRepository.findByIdAndVillageIdAndDeletedAtIsNull(tagId, villageId)
+                    .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_TAG_NOT_FOUND));
+        }
+        issueTagRepository.deleteByIssueId(issueId);
+        for (UUID tagId : distinctTagIds) {
+            issueTagRepository.save(VillageNewsletterIssueTagEntity.builder()
+                    .issueId(issueId)
+                    .tagId(tagId)
+                    .build());
+        }
+        VillageNewsletterIssueEntity saved = issueRepository.save(issue);
+        log.info("ニュースレター号タグ付け更新: villageId={} issueId={} tagCount={}",
+                villageId, issueId, distinctTagIds.size());
+        return toDetail(saved);
+    }
+
+    /** 号の公開範囲を切り替える（HEADMAN / ELDER・楽観ロック・VILLAGE_MEMBERS↔PUBLIC）。 */
+    @Transactional
+    public NewsletterIssueDetailResponse changeVisibility(
+            UUID villageId, UUID issueId, Long userId,
+            VillageNewsletterVisibility visibility, Long expectedVersion) {
+        requireHeadmanOrElder(villageId, userId);
+        VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
+        issue.changeVisibility(visibility);
+        VillageNewsletterIssueEntity saved = issueRepository.save(issue);
+        log.info("ニュースレター号公開範囲切替: villageId={} issueId={} visibility={}",
+                villageId, issueId, visibility);
+        return toDetail(saved);
+    }
+
+    // ==================================================================
+    // ②-4: タグ CRUD（HEADMAN / ELDER・使用中ガードは募集カテゴリに倣う）
+    // ==================================================================
+
+    /** 村のタグ一覧（表示順）。閲覧認可は掲示板と同一。 */
+    @Transactional(readOnly = true)
+    public List<NewsletterTagResponse> listTags(UUID villageId, Long userId) {
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        return tagRepository.findByVillageIdAndDeletedAtIsNullOrderBySortOrderAsc(villageId).stream()
+                .map(VillageNewsletterIssueService::toTagResponse)
+                .toList();
+    }
+
+    /** タグを作成する（HEADMAN / ELDER）。村内タグ名の重複は 409（NEWSLETTER_TAG_DUPLICATE）。 */
+    @Transactional
+    public NewsletterTagResponse createTag(
+            UUID villageId, Long userId, String name, String color, Integer sortOrder) {
+        requireHeadmanOrElder(villageId, userId);
+        tagRepository.findByVillageIdAndNameAndDeletedAtIsNull(villageId, name)
+                .ifPresent(t -> {
+                    throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_DUPLICATE);
+                });
+        VillageNewsletterTagEntity tag = VillageNewsletterTagEntity.builder()
+                .villageId(villageId)
+                .name(name)
+                .color(color)          // null は onCreate で既定色 #6B7280
+                .sortOrder(sortOrder)  // null は onCreate で 0
+                .build();
+        VillageNewsletterTagEntity saved = tagRepository.save(tag);
+        log.info("ニュースレタータグ作成: villageId={} name={} userId={}", villageId, name, userId);
+        return toTagResponse(saved);
+    }
+
+    /** タグを更新する（HEADMAN / ELDER・楽観ロック）。改名で村内他タグと衝突する場合は 409。 */
+    @Transactional
+    public NewsletterTagResponse updateTag(
+            UUID villageId, UUID tagId, Long userId,
+            String name, String color, Integer sortOrder, Long expectedVersion) {
+        requireHeadmanOrElder(villageId, userId);
+        VillageNewsletterTagEntity tag = tagRepository
+                .findByIdAndVillageIdAndDeletedAtIsNull(tagId, villageId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_TAG_NOT_FOUND));
+        if (expectedVersion != null && !Objects.equals(tag.getVersion(), expectedVersion)) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+        }
+        tagRepository.findByVillageIdAndNameAndDeletedAtIsNull(villageId, name)
+                .filter(other -> !other.getId().equals(tagId))
+                .ifPresent(o -> {
+                    throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_DUPLICATE);
+                });
+        tag.setName(name);
+        if (color != null) {
+            tag.setColor(color);
+        }
+        if (sortOrder != null) {
+            tag.setSortOrder(sortOrder);
+        }
+        VillageNewsletterTagEntity saved = tagRepository.save(tag);
+        log.info("ニュースレタータグ更新: villageId={} tagId={} userId={}", villageId, tagId, userId);
+        return toTagResponse(saved);
+    }
+
+    /** タグを削除する（HEADMAN / ELDER・使用中ガード）。号に使われている場合は 409（NEWSLETTER_TAG_IN_USE）。 */
+    @Transactional
+    public void deleteTag(UUID villageId, UUID tagId, Long userId) {
+        requireHeadmanOrElder(villageId, userId);
+        VillageNewsletterTagEntity tag = tagRepository
+                .findByIdAndVillageIdAndDeletedAtIsNull(tagId, villageId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_TAG_NOT_FOUND));
+        if (issueTagRepository.countByTagId(tagId) > 0) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_IN_USE);
+        }
+        tag.setDeletedAt(LocalDateTime.now());
+        tagRepository.save(tag);
+        log.info("ニュースレタータグ削除: villageId={} tagId={} userId={}", villageId, tagId, userId);
+    }
+
+    // ==================================================================
+    // ②-4: 公開一覧（村横断・ログイン必須のみ・AC-16/17）
+    // ==================================================================
+
+    /**
+     * 公開号の村横断一覧（新しい順）。ログイン必須のみ（村メンバー不問）。
+     *
+     * <p>クエリが {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} のみを引くため、
+     * {@code VILLAGE_MEMBERS} の号は<b>構造的に混入しえない</b>（AC-16・漏洩防止）。</p>
+     */
+    @Transactional(readOnly = true)
+    public PublicNewsletterIssuePageResponse listPublicIssues(Long userId, Pageable pageable) {
+        Page<VillageNewsletterIssueEntity> page = issueRepository
+                .findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDesc(
+                        VillageNewsletterVisibility.PUBLIC,
+                        VillageNewsletterIssueStatus.PUBLISHED,
+                        pageable);
+        List<PublicNewsletterIssueResponse> content = page.getContent().stream()
+                .map(this::toPublic)
+                .toList();
+        return PublicNewsletterIssuePageResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .build();
+    }
+
+    /**
+     * 公開号の詳細（村横断）。ログイン必須のみ。
+     *
+     * <p>PUBLIC かつ PUBLISHED 以外（VILLAGE_MEMBERS 号・未配信号・削除号）への直アクセスは
+     * {@code NEWSLETTER_ISSUE_NOT_FOUND}（404）で存在秘匿する（AC-17・IDOR 対策）。</p>
+     */
+    @Transactional(readOnly = true)
+    public PublicNewsletterIssueResponse getPublicIssue(UUID issueId, Long userId) {
+        VillageNewsletterIssueEntity issue = issueRepository.findById(issueId)
+                .filter(i -> i.getDeletedAt() == null)
+                .filter(i -> i.getVisibility() == VillageNewsletterVisibility.PUBLIC)
+                .filter(i -> i.getStatus() == VillageNewsletterIssueStatus.PUBLISHED)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND));
+        return toPublic(issue);
+    }
+
+    // ==================================================================
+    // 認可・楽観ロック・マッパ
+    // ==================================================================
+
+    /**
+     * <strong>現役</strong>の HEADMAN または ELDER 以外なら MODERATION_FORBIDDEN（403）。
+     *
+     * <p>設定系 {@code VillageNewsletterService.requireHeadmanOrElder} と同一の正準述語
+     * {@code findActiveByVillageIdAndSubject}（退村 {@code leftAt} / BAN {@code bannedAt} を除外）を用いる。
+     * 「呼び出し元まかせ認可」を踏まぬよう、認可はこのサービス内で完結させる。</p>
+     */
+    private void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
+        VillageMembershipEntity actor = membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+        if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
+        }
+    }
+
+    /** 編集用に号をロードし、楽観ロック（expectedVersion）を検証する。不一致は 409（設計書 §4.4）。 */
+    private VillageNewsletterIssueEntity loadIssueForEdit(
+            UUID villageId, UUID issueId, Long expectedVersion) {
+        VillageNewsletterIssueEntity issue = issueRepository
+                .findByIdAndVillageIdAndDeletedAtIsNull(issueId, villageId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND));
+        if (expectedVersion != null && !Objects.equals(issue.getVersion(), expectedVersion)) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+        }
+        return issue;
+    }
+
+    private NewsletterIssueSummaryResponse toSummary(VillageNewsletterIssueEntity issue) {
+        return NewsletterIssueSummaryResponse.builder()
+                .id(issue.getId())
+                .villageId(issue.getVillageId())
+                .title(issue.getTitle())
+                .frequency(issue.getFrequency())
+                .status(issue.getStatus())
+                .visibility(issue.getVisibility())
+                .periodStart(issue.getPeriodStart())
+                .periodEnd(issue.getPeriodEnd())
+                .publishedAt(issue.getPublishedAt())
+                .createdAt(issue.getCreatedAt())
+                .digestPostCount(issue.getDigestPostCount())
+                .digestNewMemberCount(issue.getDigestNewMemberCount())
+                .hasComment(issue.getHeadmanComment() != null && !issue.getHeadmanComment().isBlank())
+                .tags(resolveTags(issue.getId()))
+                .build();
+    }
+
+    private NewsletterIssueDetailResponse toDetail(VillageNewsletterIssueEntity issue) {
+        return NewsletterIssueDetailResponse.builder()
+                .id(issue.getId())
+                .villageId(issue.getVillageId())
+                .title(issue.getTitle())
+                .frequency(issue.getFrequency())
+                .issueType(issue.getIssueType())
+                .status(issue.getStatus())
+                .visibility(issue.getVisibility())
+                .periodStart(issue.getPeriodStart())
+                .periodEnd(issue.getPeriodEnd())
+                .aggregatedAt(issue.getAggregatedAt())
+                .scheduledPublishAt(issue.getScheduledPublishAt())
+                .publishedAt(issue.getPublishedAt())
+                .digestPostCount(issue.getDigestPostCount())
+                .digestNewMemberCount(issue.getDigestNewMemberCount())
+                .digestFestivalCount(issue.getDigestFestivalCount())
+                .digestMeetupCount(issue.getDigestMeetupCount())
+                .digestRecruitCount(issue.getDigestRecruitCount())
+                .digestTopic1Name(issue.getDigestTopic1Name())
+                .digestTopic1Count(issue.getDigestTopic1Count())
+                .digestTopic2Name(issue.getDigestTopic2Name())
+                .digestTopic2Count(issue.getDigestTopic2Count())
+                .digestTopic3Name(issue.getDigestTopic3Name())
+                .digestTopic3Count(issue.getDigestTopic3Count())
+                .headmanComment(issue.getHeadmanComment())
+                .commentUpdatedBy(issue.getCommentUpdatedBy())
+                .commentUpdatedAt(issue.getCommentUpdatedAt())
+                .tags(resolveTags(issue.getId()))
+                .version(issue.getVersion())
+                .build();
+    }
+
+    private PublicNewsletterIssueResponse toPublic(VillageNewsletterIssueEntity issue) {
+        return PublicNewsletterIssueResponse.builder()
+                .id(issue.getId())
+                .villageId(issue.getVillageId())
+                .title(issue.getTitle())
+                .frequency(issue.getFrequency())
+                .publishedAt(issue.getPublishedAt())
+                .digestPostCount(issue.getDigestPostCount())
+                .digestNewMemberCount(issue.getDigestNewMemberCount())
+                .digestFestivalCount(issue.getDigestFestivalCount())
+                .digestMeetupCount(issue.getDigestMeetupCount())
+                .digestRecruitCount(issue.getDigestRecruitCount())
+                .digestTopic1Name(issue.getDigestTopic1Name())
+                .digestTopic1Count(issue.getDigestTopic1Count())
+                .digestTopic2Name(issue.getDigestTopic2Name())
+                .digestTopic2Count(issue.getDigestTopic2Count())
+                .digestTopic3Name(issue.getDigestTopic3Name())
+                .digestTopic3Count(issue.getDigestTopic3Count())
+                .headmanComment(issue.getHeadmanComment())
+                .tags(resolveTags(issue.getId()))
+                .build();
+    }
+
+    /** 号 ID から付与タグを解決する（中間表 → タグマスタ・論理削除タグは除外・表示順）。 */
+    private List<NewsletterTagResponse> resolveTags(UUID issueId) {
+        List<VillageNewsletterIssueTagEntity> links = issueTagRepository.findByIssueId(issueId);
+        List<NewsletterTagResponse> tags = new ArrayList<>();
+        for (VillageNewsletterIssueTagEntity link : links) {
+            tagRepository.findById(link.getTagId())
+                    .filter(t -> t.getDeletedAt() == null)
+                    .ifPresent(t -> tags.add(toTagResponse(t)));
+        }
+        tags.sort((a, b) -> Integer.compare(
+                a.sortOrder() == null ? 0 : a.sortOrder(),
+                b.sortOrder() == null ? 0 : b.sortOrder()));
+        return tags;
+    }
+
+    private static NewsletterTagResponse toTagResponse(VillageNewsletterTagEntity tag) {
+        return NewsletterTagResponse.builder()
+                .id(tag.getId())
+                .villageId(tag.getVillageId())
+                .name(tag.getName())
+                .color(tag.getColor())
+                .sortOrder(tag.getSortOrder())
+                .version(tag.getVersion())
+                .build();
     }
 
     /**
