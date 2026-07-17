@@ -35,12 +35,15 @@ public class SystemAdminModuleController {
 
     /**
      * 全モジュール一覧を取得する（SYSTEM_ADMIN用）。
+     *
+     * <p>tenant 向けカタログ（OPTIONAL かつ active のみ）ではなく、DEFAULT/OPTIONAL・
+     * is_active を問わず全件を返す。無効化したモジュールも一覧に残るため再有効化できる。</p>
      */
     @GetMapping
     @Operation(summary = "全モジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ModuleResponse>>> getAllModules() {
-        return ResponseEntity.ok(ApiResponse.of(moduleService.getModuleCatalog()));
+        return ResponseEntity.ok(ApiResponse.of(moduleService.getAllModulesForAdmin()));
     }
 
     /**

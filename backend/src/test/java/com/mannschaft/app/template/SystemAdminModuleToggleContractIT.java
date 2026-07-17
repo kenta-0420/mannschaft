@@ -31,7 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>正本: {@code SystemAdminModuleController} の新規 2 本
  * {@code PATCH /api/v1/system-admin/modules/{id}/paid-plan}（有料要否）と
  * {@code PATCH /api/v1/system-admin/modules/{id}/active}（有効/無効）。
- * 更新結果が一覧 {@code GET /api/v1/system-admin/modules}（getModuleCatalog）に反映されること、
+ * 更新結果が一覧 {@code GET /api/v1/system-admin/modules}（getAllModulesForAdmin）に反映されること、
+ * 一覧が DEFAULT・is_active=false を含む全モジュールを返すこと、
  * 存在しない module id で 404（TMPL_002）を返すことを検証する。</p>
  *
  * <p>認可（AC-5）は {@code /api/v1/system-admin/**} のパスベース一括ルール（SYSTEM_ADMIN）で
@@ -102,18 +103,80 @@ class SystemAdminModuleToggleContractIT extends AbstractMySqlIntegrationTest {
     class UpdateActive {
 
         @Test
-        @DisplayName("isActive=false に更新すると 200 かつ一覧（active のみ）から外れる")
+        @DisplayName("isActive の更新が一覧に反映される（管理一覧は inactive も返す）")
         void 有効状態更新が一覧に反映される() throws Exception {
-            // 前提: 更新前は一覧に存在する。
-            assertThat(findModuleInCatalog(moduleId)).as("更新前は一覧に存在").isNotNull();
+            // 前提: 更新前は一覧に存在し active=true。
+            JsonNode before = findModuleInCatalog(moduleId);
+            assertThat(before).as("更新前は一覧に存在").isNotNull();
+            assertThat(before.get("isActive").asBoolean()).isTrue();
 
             mockMvc.perform(patch("/api/v1/system-admin/modules/{id}/active", moduleId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("isActive", false))))
                     .andExpect(status().isOk());
 
-            // getModuleCatalog は is_active=true のみ返すため、無効化後は一覧から消える。
-            assertThat(findModuleInCatalog(moduleId)).as("無効化後は一覧から外れる").isNull();
+            // 管理一覧は is_active=false も返すため、無効化後も一覧に残り isActive=false になる。
+            JsonNode after = findModuleInCatalog(moduleId);
+            assertThat(after).as("無効化後も管理一覧に残る").isNotNull();
+            assertThat(after.get("isActive").asBoolean()).isFalse();
+        }
+
+        @Test
+        @DisplayName("AC-2 本丸ラウンドトリップ: 無効化→一覧に残る→再有効化できる")
+        void ラウンドトリップ_無効化しても再有効化できる() throws Exception {
+            // 無効化
+            mockMvc.perform(patch("/api/v1/system-admin/modules/{id}/active", moduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("isActive", false))))
+                    .andExpect(status().isOk());
+            JsonNode disabled = findModuleInCatalog(moduleId);
+            assertThat(disabled).as("無効化後も一覧に残る（＝画面から再有効化可能）").isNotNull();
+            assertThat(disabled.get("isActive").asBoolean()).isFalse();
+
+            // 再有効化（一覧から消えていたら不可能だった操作）
+            mockMvc.perform(patch("/api/v1/system-admin/modules/{id}/active", moduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("isActive", true))))
+                    .andExpect(status().isOk());
+            JsonNode reEnabled = findModuleInCatalog(moduleId);
+            assertThat(reEnabled).as("再有効化後も一覧に存在").isNotNull();
+            assertThat(reEnabled.get("isActive").asBoolean()).isTrue();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 管理一覧は DEFAULT・inactive も含む全モジュールを返す（欠陥の根治）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("管理一覧は DEFAULT・inactive を含む全件を返す")
+    class AdminListReturnsAllModules {
+
+        @Test
+        @DisplayName("DEFAULT モジュールと is_active=false のモジュールが一覧に含まれる")
+        void DEFAULTとinactiveも一覧に含まれる() throws Exception {
+            // DEFAULT モジュール（tenant カタログには出ないが管理一覧には出るべき）
+            Long defaultModuleId = moduleDefinitionRepository.save(ModuleDefinitionEntity.builder()
+                    .name("SYSADMIN DEFAULT モジュール")
+                    .slug("sysadmin-default-module-" + System.nanoTime())
+                    .moduleType(ModuleDefinitionEntity.ModuleType.DEFAULT)
+                    .moduleNumber(2)
+                    .requiresPaidPlan(false)
+                    .isActive(true)
+                    .build()).getId();
+
+            // 無効な OPTIONAL モジュール（is_active=false）
+            Long inactiveModuleId = moduleDefinitionRepository.save(ModuleDefinitionEntity.builder()
+                    .name("SYSADMIN 無効 OPTIONAL モジュール")
+                    .slug("sysadmin-inactive-module-" + System.nanoTime())
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(3)
+                    .requiresPaidPlan(false)
+                    .isActive(false)
+                    .build()).getId();
+
+            assertThat(findModuleInCatalog(defaultModuleId)).as("DEFAULT モジュールが管理一覧に含まれる").isNotNull();
+            assertThat(findModuleInCatalog(inactiveModuleId)).as("inactive モジュールが管理一覧に含まれる").isNotNull();
         }
     }
 
@@ -164,7 +227,7 @@ class SystemAdminModuleToggleContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * {@code GET /api/v1/system-admin/modules}（getModuleCatalog）を叩き、指定 id の
+     * {@code GET /api/v1/system-admin/modules}（getAllModulesForAdmin）を叩き、指定 id の
      * モジュールノードを返す。存在しなければ null。
      */
     private JsonNode findModuleInCatalog(Long targetId) throws Exception {

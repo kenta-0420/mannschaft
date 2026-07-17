@@ -193,6 +193,59 @@ class ModuleServiceTest {
     }
 
     // ========================================
+    // getAllModulesForAdmin（管理一覧: DEFAULT+inactive 全件）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAllModulesForAdmin")
+    class GetAllModulesForAdmin {
+
+        @Test
+        @DisplayName("取得_DEFAULTとinactiveを含む全件をリポジトリ順で返す")
+        void 取得_DEFAULTとinactiveを含む全件を返す() {
+            // Given: DEFAULT / 有効OPTIONAL / 無効OPTIONAL が moduleNumber 昇順で並ぶ
+            ModuleDefinitionEntity defaultModule = ModuleDefinitionEntity.builder()
+                    .name("メンバー管理").slug("member-management")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.DEFAULT)
+                    .moduleNumber(1).requiresPaidPlan(false).isActive(true).build();
+            ModuleDefinitionEntity activeOptional = ModuleDefinitionEntity.builder()
+                    .name("予約管理").slug("reservation")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(2).requiresPaidPlan(false).isActive(true).build();
+            ModuleDefinitionEntity inactiveOptional = ModuleDefinitionEntity.builder()
+                    .name("無効モジュール").slug("inactive")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(3).requiresPaidPlan(false).isActive(false).build();
+
+            given(moduleDefinitionRepository.findAllByOrderByModuleNumberAsc())
+                    .willReturn(List.of(defaultModule, activeOptional, inactiveOptional));
+            given(moduleLevelAvailabilityRepository.findByModuleId(any())).willReturn(List.of());
+            given(moduleRecommendationRepository.findByModuleId(any())).willReturn(List.of());
+
+            // When
+            List<ModuleResponse> result = moduleService.getAllModulesForAdmin();
+
+            // Then: DEFAULT も inactive も除外されず、リポジトリの昇順をそのまま保持する
+            assertThat(result).hasSize(3);
+            assertThat(result).extracting(ModuleResponse::getName)
+                    .containsExactly("メンバー管理", "予約管理", "無効モジュール");
+            assertThat(result).extracting(ModuleResponse::getModuleType)
+                    .containsExactly("DEFAULT", "OPTIONAL", "OPTIONAL");
+            assertThat(result.get(2).getIsActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("取得_0件_空リスト返却")
+        void 取得_0件_空リスト返却() {
+            given(moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()).willReturn(List.of());
+
+            List<ModuleResponse> result = moduleService.getAllModulesForAdmin();
+
+            assertThat(result).isEmpty();
+        }
+    }
+
+    // ========================================
     // getModule
     // ========================================
 

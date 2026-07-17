@@ -79,6 +79,27 @@ public class ModuleService {
     }
 
     /**
+     * SYSTEM_ADMIN 管理画面向けに全モジュールを取得する。
+     *
+     * <p>tenant 向けの {@link #getModuleCatalog()} が「OPTIONAL かつ is_active」に絞り込むのに対し、
+     * こちらは <b>DEFAULT/OPTIONAL・is_active の true/false を問わず全件</b>を moduleNumber 昇順で返す。
+     * これにより管理画面に DEFAULT モジュールも表示され、is_active=false へトグルした行も
+     * 一覧に残り続けて再有効化できる（無効化しても画面から消えない）。</p>
+     *
+     * <p>キャッシュは付けない。管理画面は低トラフィックで、有料要否/有効状態トグル直後の
+     * 反映を常に保証すべきため、常に最新を DB から読む。論理削除は
+     * {@code @SQLRestriction("deleted_at IS NULL")} により自動除外される。</p>
+     *
+     * @return 全モジュール詳細リスト（moduleNumber 昇順）
+     */
+    public List<ModuleResponse> getAllModulesForAdmin() {
+        return moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()
+                .stream()
+                .map(this::toModuleResponse)
+                .toList();
+    }
+
+    /**
      * チームの機能設定タブ向けカタログ＋有効状態を取得する。
      *
      * <p>利用可能な OPTIONAL かつ active なモジュール全件に対し、当該チームでの有効化状態・
