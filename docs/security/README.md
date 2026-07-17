@@ -82,6 +82,17 @@
 4. **症状を隠さない** — 障害は根治治療（CLAUDE.md「障害対応の原則」と整合）。認可エラーを握りつぶさない
 5. **テナント分離** — `organization_id` 絞り込みを `AbstractTenantAwareRepository` で統一（将来のシャーディング前提）
 
+### 4.1 認可回帰テストの層構造（認可根治戦役 Wave3/Wave4）
+
+認可漏れ（IDOR・BOLA）の回帰防止は **二層構造** で担保する。両者は補完関係であり、どちらか一方に寄せることはしない。
+
+| 層 | 実体 | 実行タイミング | required 化 |
+|---|---|---|---|
+| **一次防御** | `*ScopeContractIT`（非メンバー403/越境404/正当成功を実 MySQL Testcontainers で検証する契約テスト群。38 個・全ドメイン網羅）＋ ArchUnit 認可番人 | 全 PR で**必須**チェック「Compile & Test」内 | ✅ required（main ruleset 必須チェック） |
+| **実機裏取り** | `e2e-real-smoke` ワークフローの認可スモーク（`backend/scripts/smoke-check.sh`）— 非メンバー・未認証で実際に起動した Spring Boot に対し保護 EP を叩き 401/403/404 を確認。200 が返れば即 fail | seed/schedule 関連ファイル変更時の PR・週次 cron・手動実行 | ❌ 非 required |
+
+**なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
+
 ---
 
 ## 5. 本番移行チェックリスト（セキュリティ関連）
@@ -153,6 +164,7 @@
 
 | 日付 | 変更 |
 |---|---|
+| 2026-07-17 | **認可根治戦役 Wave4**: §4.1「認可回帰テストの層構造」を新設。一次防御（`*ScopeContractIT` 38個＋ArchUnit・required）と実機裏取り（`e2e-real-smoke` 認可スモーク・非required）の二層構造と、実機裏取りをrequired化しない理由を明記。`backend/scripts/smoke-check.sh` に非メンバー403/未認証401の実機スモーク追加、`seed-e2e-data.js` に非メンバー専用 `e2e-outsider` アカウントを追加。 |
 | 2026-06-12 | **ステータス追従**: 認可基盤根治 Phase 1〜3 完了（#1266・2026-06-02 点火）・レートリミット Valkey 化 全 18 フィルタ完了（#1470/1471/1472・2026-06-12）を反映。OWASP A01/A04 の未着手警告を根治済みに更新。文書一覧の 03 ステータス更新。§8 実装待機テーブルに「状態」列を追加し C-1 を根治済みに更新。実機コード裏取りにより ShiftPdf 負論理(#1263)・統合テスト 11 シナリオ(#1266)・CSP レポート受信 EP(#1274 `CspReportController`)も完了済みと確認し、C-1 の残課題が Phase 6（性能最適化）のみであること・C-3 実装済みを反映。 |
 | 2026-06-02 | セキュリティ精査ギャップ反映。文書一覧に 06〜09 を追加。OWASP A01 に未着手警告・A04 にビジネスロジック設計書参照を追加。§8「実装待機」セクションを新設（C-1/C-2/C-3 の 3 件を明示）。 |
 | 2026-05-26 | 新規作成（Security Hardening Phase 1）。横断セキュリティ設計を集約 |

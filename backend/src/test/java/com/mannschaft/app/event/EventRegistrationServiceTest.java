@@ -1,5 +1,6 @@
 package com.mannschaft.app.event;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.CreateRegistrationRequest;
 import com.mannschaft.app.event.dto.GuestRegistrationRequest;
@@ -63,6 +64,9 @@ class EventRegistrationServiceTest {
 
     @Mock
     private EventMapper eventMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private EventRegistrationService eventRegistrationService;
@@ -395,7 +399,7 @@ class EventRegistrationServiceTest {
             EventEntity event = createRegistrationOpenEvent();
             RegistrationResponse response = createRegistrationResponse("APPROVED");
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(ticketType));
             given(registrationRepository.save(any(EventRegistrationEntity.class))).willReturn(entity);
             given(ticketTypeRepository.save(any(EventTicketTypeEntity.class))).willReturn(ticketType);
@@ -403,7 +407,7 @@ class EventRegistrationServiceTest {
             given(eventMapper.toRegistrationResponse(entity)).willReturn(response);
 
             // When
-            RegistrationResponse result = eventRegistrationService.approveRegistration(REGISTRATION_ID, USER_ID);
+            RegistrationResponse result = eventRegistrationService.approveRegistration(EVENT_ID, REGISTRATION_ID, USER_ID);
 
             // Then
             assertThat(result.getStatus()).isEqualTo("APPROVED");
@@ -415,10 +419,10 @@ class EventRegistrationServiceTest {
         void 登録承認_APPROVED_例外スロー() {
             // Given
             EventRegistrationEntity entity = createApprovedRegistration();
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventRegistrationService.approveRegistration(REGISTRATION_ID, USER_ID))
+            assertThatThrownBy(() -> eventRegistrationService.approveRegistration(EVENT_ID, REGISTRATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -438,12 +442,12 @@ class EventRegistrationServiceTest {
             EventRegistrationEntity entity = createPendingRegistration();
             RegistrationResponse response = createRegistrationResponse("REJECTED");
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(registrationRepository.save(any(EventRegistrationEntity.class))).willReturn(entity);
             given(eventMapper.toRegistrationResponse(entity)).willReturn(response);
 
             // When
-            RegistrationResponse result = eventRegistrationService.rejectRegistration(REGISTRATION_ID, USER_ID);
+            RegistrationResponse result = eventRegistrationService.rejectRegistration(EVENT_ID, REGISTRATION_ID, USER_ID);
 
             // Then
             assertThat(result.getStatus()).isEqualTo("REJECTED");
@@ -454,10 +458,10 @@ class EventRegistrationServiceTest {
         void 登録却下_APPROVED_例外スロー() {
             // Given
             EventRegistrationEntity entity = createApprovedRegistration();
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventRegistrationService.rejectRegistration(REGISTRATION_ID, USER_ID))
+            assertThatThrownBy(() -> eventRegistrationService.rejectRegistration(EVENT_ID, REGISTRATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -477,12 +481,13 @@ class EventRegistrationServiceTest {
             EventRegistrationEntity entity = createApprovedRegistration();
             RegistrationResponse response = createRegistrationResponse("CANCELLED");
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(registrationRepository.save(any(EventRegistrationEntity.class))).willReturn(entity);
             given(eventMapper.toRegistrationResponse(entity)).willReturn(response);
 
             // When
-            RegistrationResponse result = eventRegistrationService.cancelRegistration(REGISTRATION_ID, "都合が悪くなった");
+            RegistrationResponse result = eventRegistrationService.cancelRegistration(
+                    EVENT_ID, REGISTRATION_ID, USER_ID, "都合が悪くなった");
 
             // Then
             assertThat(result.getStatus()).isEqualTo("CANCELLED");
@@ -497,10 +502,10 @@ class EventRegistrationServiceTest {
                     .eventId(EVENT_ID).userId(USER_ID).ticketTypeId(TICKET_TYPE_ID)
                     .status(RegistrationStatus.CANCELLED).quantity(1).build();
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventRegistrationService.cancelRegistration(REGISTRATION_ID, "理由"))
+            assertThatThrownBy(() -> eventRegistrationService.cancelRegistration(EVENT_ID, REGISTRATION_ID, USER_ID, "理由"))
                     .isInstanceOf(BusinessException.class);
         }
     }

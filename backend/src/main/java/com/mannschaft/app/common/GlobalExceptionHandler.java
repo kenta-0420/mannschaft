@@ -261,6 +261,15 @@ public class GlobalExceptionHandler {
             // 機能55 予約作成（第三陣）予約タスク取消
             Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
+            // F03.8 / 認可根治 Wave3-B12event: イベント本体・サブリソースの IDOR 秘匿。
+            // Javadoc（EventScopeAccessGuard 等）は既に「404 で秘匿する」と明記していたが、
+            // このマッピング未登録のため Severity.WARN 既定の 400 のままだった実装漏れを根治する。
+            Map.entry("EVENT_001", HttpStatus.NOT_FOUND),                   // EVENT_NOT_FOUND（スコープ帰属不一致含む）
+            Map.entry("EVENT_010", HttpStatus.NOT_FOUND),                   // TICKET_TYPE_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_011", HttpStatus.NOT_FOUND),                   // REGISTRATION_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_012", HttpStatus.NOT_FOUND),                   // TICKET_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_014", HttpStatus.NOT_FOUND),                   // TIMETABLE_ITEM_NOT_FOUND（親子BOLA）
+            Map.entry("EVENT_015", HttpStatus.NOT_FOUND),                   // INVITE_TOKEN_NOT_FOUND（親子BOLA）
             // F03.10 代理出席（イベント側 §4.2 / §5.6 / §5.7）
             Map.entry("EVENT_030", HttpStatus.NOT_FOUND),                   // DELEGATION_NOT_FOUND
             Map.entry("EVENT_031", HttpStatus.FORBIDDEN),                   // 委任者がスコープ外
@@ -956,6 +965,17 @@ public class GlobalExceptionHandler {
             Map.entry("GALLERY_002", HttpStatus.NOT_FOUND),              // PHOTO_NOT_FOUND（IDOR 秘匿 → 404）
             // GALLERY_007（UPLOAD_NOT_ALLOWED）は member アップロード不許可アルバムへの明確な認可拒否のため 403。
             Map.entry("GALLERY_007", HttpStatus.FORBIDDEN),              // UPLOAD_NOT_ALLOWED → 403
+            // 認可根治戦役 Wave3-B9: budget flat経路（transaction/category/fiscalYear/report）は
+            // entity由来（またはfiscalYearId経由の親子鎖）scope認可。越境IDは既存の *_NOT_FOUND と
+            // 同一コードで存在秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("BUDGET_003", HttpStatus.NOT_FOUND),               // 年度不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_006", HttpStatus.NOT_FOUND),               // 費目不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_009", HttpStatus.NOT_FOUND),               // 取引不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_010", HttpStatus.NOT_FOUND),               // 報告書不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_021", HttpStatus.NOT_FOUND),               // 添付ファイル不在／越境（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave3-B9: membership 会員証停止/再開・CheckinLocation は entity 由来 scope 認可。
+            Map.entry("MEMBERSHIP_001", HttpStatus.NOT_FOUND),           // 会員証不在（IDOR 秘匿 → 404）
+            Map.entry("MEMBERSHIP_019", HttpStatus.NOT_FOUND),           // 拠点不在／越境（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B10: knowledgebase の revision/page 親子束縛（pageId/revisionId/
             // parentId/templateId/newParentId）は BOLA 存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("KB_001", HttpStatus.NOT_FOUND),                   // PAGE_NOT_FOUND（親/移動先/revision所属page束縛も同一コード・IDOR秘匿→404）
@@ -973,7 +993,12 @@ public class GlobalExceptionHandler {
             Map.entry("CMS_002", HttpStatus.NOT_FOUND),                  // TAG_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("CMS_003", HttpStatus.NOT_FOUND),                  // SERIES_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("CMS_004", HttpStatus.NOT_FOUND),                  // REVISION_NOT_FOUND（親post不一致BOLA → 404）
-            Map.entry("CMS_019", HttpStatus.NOT_FOUND)                   // SHARE_NOT_FOUND（親post不一致BOLA → 404）
+            Map.entry("CMS_019", HttpStatus.NOT_FOUND),                  // SHARE_NOT_FOUND（親post不一致BOLA → 404）
+            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）は notificationId↔pathスコープ
+            // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
+            // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
+            Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND)
     );
 
     /**

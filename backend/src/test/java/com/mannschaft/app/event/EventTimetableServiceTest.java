@@ -175,12 +175,12 @@ class EventTimetableServiceTest {
                     LocalDateTime.now(), LocalDateTime.now()
             );
 
-            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            given(timetableRepository.findByIdAndEventId(ITEM_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(timetableRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTimetableItemResponse(entity)).willReturn(response);
 
             // When
-            TimetableItemResponse result = eventTimetableService.updateTimetableItem(ITEM_ID, request);
+            TimetableItemResponse result = eventTimetableService.updateTimetableItem(EVENT_ID, ITEM_ID, request);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("パネルディスカッション");
@@ -200,12 +200,12 @@ class EventTimetableServiceTest {
             );
             EventTimetableItemEntity entity = createTimetableItem();
 
-            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            given(timetableRepository.findByIdAndEventId(ITEM_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(timetableRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTimetableItemResponse(entity)).willReturn(createTimetableItemResponse());
 
             // When
-            eventTimetableService.updateTimetableItem(ITEM_ID, request);
+            eventTimetableService.updateTimetableItem(EVENT_ID, ITEM_ID, request);
 
             // Then: ミューテート後のフィールドが正しく更新されていることを確認
             assertThat(entity.getTitle()).isEqualTo("パネルディスカッション");
@@ -223,10 +223,10 @@ class EventTimetableServiceTest {
             UpdateTimetableItemRequest request = new UpdateTimetableItemRequest(
                     "更新", null, null, null, null, null, null
             );
-            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.empty());
+            given(timetableRepository.findByIdAndEventId(ITEM_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTimetableService.updateTimetableItem(ITEM_ID, request))
+            assertThatThrownBy(() -> eventTimetableService.updateTimetableItem(EVENT_ID, ITEM_ID, request))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -244,10 +244,10 @@ class EventTimetableServiceTest {
         void タイムテーブル項目削除_正常_削除実行() {
             // Given
             EventTimetableItemEntity entity = createTimetableItem();
-            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            given(timetableRepository.findByIdAndEventId(ITEM_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When
-            eventTimetableService.deleteTimetableItem(ITEM_ID);
+            eventTimetableService.deleteTimetableItem(EVENT_ID, ITEM_ID);
 
             // Then
             verify(timetableRepository).delete(entity);
@@ -257,10 +257,10 @@ class EventTimetableServiceTest {
         @DisplayName("タイムテーブル項目削除_存在しない_例外スロー")
         void タイムテーブル項目削除_存在しない_例外スロー() {
             // Given
-            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.empty());
+            given(timetableRepository.findByIdAndEventId(ITEM_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTimetableService.deleteTimetableItem(ITEM_ID))
+            assertThatThrownBy(() -> eventTimetableService.deleteTimetableItem(EVENT_ID, ITEM_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

@@ -6,6 +6,7 @@ import com.mannschaft.app.event.dto.CreateRegistrationRequest;
 import com.mannschaft.app.event.dto.GuestRegistrationRequest;
 import com.mannschaft.app.event.dto.RegistrationResponse;
 import com.mannschaft.app.event.service.EventRegistrationService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,7 +34,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class EventRegistrationController {
 
     private final EventRegistrationService registrationService;
-
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * 参加登録一覧を取得する。
@@ -46,6 +47,8 @@ public class EventRegistrationController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        // IDOR 根治: eventId のフラットサブリソースはイベント自身のスコープでメンバー判定する。
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
         Page<RegistrationResponse> result = registrationService.listRegistrations(
                 eventId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -62,7 +65,9 @@ public class EventRegistrationController {
     public ResponseEntity<ApiResponse<RegistrationResponse>> getRegistration(
             @PathVariable Long eventId,
             @PathVariable Long registrationId) {
-        RegistrationResponse response = registrationService.getRegistration(registrationId);
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        // 親子BOLA根治: registrationId が eventId に属するかは Service 側で突合し、越境は404秘匿する。
+        RegistrationResponse response = registrationService.getRegistration(eventId, registrationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -75,13 +80,18 @@ public class EventRegistrationController {
     public ResponseEntity<ApiResponse<RegistrationResponse>> createRegistration(
             @PathVariable Long eventId,
             @Valid @RequestBody CreateRegistrationRequest request) {
-        RegistrationResponse response = registrationService.createRegistration(
-                eventId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireMemberByEventId(userId, eventId);
+        RegistrationResponse response = registrationService.createRegistration(eventId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * ゲストの参加登録を作成する。
+     *
+     * <p>認可: 招待トークン自体が認可証（{@code EventRegistrationService} が
+     * トークン有効性・eventId 帰属を検証する）であり、スコープメンバーシップは要求しない
+     * （ゲストは定義上スコープ非メンバーのため）。</p>
      */
     @PostMapping("/guest")
     @Operation(summary = "ゲスト参加登録")
@@ -102,8 +112,9 @@ public class EventRegistrationController {
     public ResponseEntity<ApiResponse<RegistrationResponse>> approveRegistration(
             @PathVariable Long eventId,
             @PathVariable Long registrationId) {
-        RegistrationResponse response = registrationService.approveRegistration(
-                registrationId, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireAdminByEventId(userId, eventId);
+        RegistrationResponse response = registrationService.approveRegistration(eventId, registrationId, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -116,13 +127,18 @@ public class EventRegistrationController {
     public ResponseEntity<ApiResponse<RegistrationResponse>> rejectRegistration(
             @PathVariable Long eventId,
             @PathVariable Long registrationId) {
-        RegistrationResponse response = registrationService.rejectRegistration(
-                registrationId, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireAdminByEventId(userId, eventId);
+        RegistrationResponse response = registrationService.rejectRegistration(eventId, registrationId, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * 参加登録をキャンセルする。
+     *
+     * <p>認可: 少なくとも当該イベントスコープのメンバーであることを要求したうえで、
+     * 本人（登録者）または ADMIN/DEPUTY_ADMIN のみが実際にキャンセルできる
+     * （所有者判定は {@code EventRegistrationService} 側で行う）。</p>
      */
     @PostMapping("/{registrationId}/cancel")
     @Operation(summary = "参加登録キャンセル")
@@ -131,7 +147,9 @@ public class EventRegistrationController {
             @PathVariable Long eventId,
             @PathVariable Long registrationId,
             @RequestParam(required = false) String reason) {
-        RegistrationResponse response = registrationService.cancelRegistration(registrationId, reason);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireMemberByEventId(userId, eventId);
+        RegistrationResponse response = registrationService.cancelRegistration(eventId, registrationId, userId, reason);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

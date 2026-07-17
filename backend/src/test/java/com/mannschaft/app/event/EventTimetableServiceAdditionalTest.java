@@ -198,12 +198,12 @@ class EventTimetableServiceAdditionalTest {
                     );
             TimetableItemResponse response = createResponse(itemId);
 
-            given(timetableRepository.findById(itemId)).willReturn(java.util.Optional.of(entity));
+            given(timetableRepository.findByIdAndEventId(itemId, EVENT_ID)).willReturn(java.util.Optional.of(entity));
             given(timetableRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTimetableItemResponse(entity)).willReturn(response);
 
             // When
-            TimetableItemResponse result = eventTimetableService.updateTimetableItem(itemId, request);
+            TimetableItemResponse result = eventTimetableService.updateTimetableItem(EVENT_ID, itemId, request);
 
             // Then
             assertThat(result).isNotNull();
