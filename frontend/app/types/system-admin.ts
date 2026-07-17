@@ -127,6 +127,16 @@ export interface ModuleResponse {
   recommendations: ModuleSummaryResponse[]
 }
 
+/** PATCH /api/v1/system-admin/modules/{id}/paid-plan のリクエスト */
+export interface UpdateModulePaidPlanRequest {
+  requiresPaidPlan: boolean
+}
+
+/** PATCH /api/v1/system-admin/modules/{id}/active のリクエスト */
+export interface UpdateModuleActiveRequest {
+  isActive: boolean
+}
+
 // ===== Batch Logs =====
 export interface BatchJobLogResponse {
   id: number
