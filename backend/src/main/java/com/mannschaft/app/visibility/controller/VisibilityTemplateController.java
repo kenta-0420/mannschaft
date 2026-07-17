@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -128,6 +127,11 @@ public class VisibilityTemplateController {
      * <p>指定テンプレートに対して、対象ユーザーが閲覧可能かどうかを評価する。
      * 評価はアクセス権確認のみであり、データの変更は行わない。</p>
      *
+     * <p>認可根治 Wave4: owner はリクエストボディの値ではなく
+     * {@code SecurityUtils.getCurrentUserId()} で確定したサーバー側の値に固定する
+     * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
+     * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
+     *
      * @param id      テンプレートID
      * @param request 評価リクエスト
      */
@@ -140,7 +144,7 @@ public class VisibilityTemplateController {
         // 自分のテンプレートまたはプリセットのみ evaluate 可能（IDOR対策）
         visibilityTemplateService.getTemplate(id, userId);
         boolean canView = visibilityTemplateEvaluator.canView(
-                request.getTargetUserId(), id, request.getOwnerUserId());
+                request.getTargetUserId(), id, userId);
         EvaluateVisibilityResponse response = EvaluateVisibilityResponse.builder()
                 .templateId(id)
                 .targetUserId(request.getTargetUserId())
@@ -154,18 +158,21 @@ public class VisibilityTemplateController {
      *
      * <p>オーナーのみアクセス可能。アクセス権確認のために getTemplate を呼び出す。</p>
      *
-     * @param id          テンプレートID
-     * @param ownerUserId テンプレートオーナーのユーザーID
+     * <p>認可根治 Wave4: owner はクエリパラメータの値ではなく
+     * {@code SecurityUtils.getCurrentUserId()} で確定したサーバー側の値に固定する
+     * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
+     * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
+     *
+     * @param id テンプレートID
      */
     @Operation(summary = "解決済みメンバー一覧取得", description = "テンプレートに基づいて閲覧可能ユーザーIDの一覧を解決して返す（プレビュー用）")
     @GetMapping("/{id}/resolved-members")
     public ResponseEntity<ApiResponse<ResolvedMembersResponse>> getResolvedMembers(
-            @PathVariable Long id,
-            @RequestParam Long ownerUserId) {
+            @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         // オーナーのみアクセス可（Service 内で TEMPLATE_NOT_FOUND で弾く）
         visibilityTemplateService.getTemplate(id, userId);
-        Set<Long> memberIds = visibilityTemplateEvaluator.resolveMemberUserIds(id, ownerUserId);
+        Set<Long> memberIds = visibilityTemplateEvaluator.resolveMemberUserIds(id, userId);
         ResolvedMembersResponse response = ResolvedMembersResponse.builder()
                 .templateId(id)
                 .totalUsers(memberIds.size())
