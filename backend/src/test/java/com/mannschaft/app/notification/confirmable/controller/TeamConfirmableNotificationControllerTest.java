@@ -154,26 +154,32 @@ class TeamConfirmableNotificationControllerTest {
         @Test
         @DisplayName("GET_confirmable-notifications_一覧_200OKとJSON配列が返る")
         void GET_confirmableNotifications_一覧_200OKとJSON配列が返る() {
-            // given
-            ConfirmableNotificationEntity entity = createActiveNotification();
-            ConfirmableNotificationResponse response = createNotificationResponse();
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // given
+                // 認可根治 Wave3-B12notif: list は checkMembership のため
+                // SecurityUtils.getCurrentUserId() が呼ばれる。認証コンテキストをモックする
+                // （accessControlService は @Mock のため checkMembership は void で通る）。
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                ConfirmableNotificationEntity entity = createActiveNotification();
+                ConfirmableNotificationResponse response = createNotificationResponse();
 
-            given(notificationService.listByScope(ScopeType.TEAM, TEAM_ID))
-                    .willReturn(List.of(entity));
-            given(mapper.toResponse(entity)).willReturn(response);
-            given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(any()))
-                    .willReturn(0L);
+                given(notificationService.listByScope(ScopeType.TEAM, TEAM_ID))
+                        .willReturn(List.of(entity));
+                given(mapper.toResponse(entity)).willReturn(response);
+                given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(any()))
+                        .willReturn(0L);
 
-            // when
-            ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> result =
-                    controller.list(TEAM_ID);
+                // when
+                ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> result =
+                        controller.list(TEAM_ID);
 
-            // then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody()).isNotNull();
-            assertThat(result.getBody().getData()).isNotEmpty();
-            assertThat(result.getBody().getData()).hasSize(1);
-            verify(notificationService).listByScope(ScopeType.TEAM, TEAM_ID);
+                // then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody()).isNotNull();
+                assertThat(result.getBody().getData()).isNotEmpty();
+                assertThat(result.getBody().getData()).hasSize(1);
+                verify(notificationService).listByScope(ScopeType.TEAM, TEAM_ID);
+            }
         }
     }
 
