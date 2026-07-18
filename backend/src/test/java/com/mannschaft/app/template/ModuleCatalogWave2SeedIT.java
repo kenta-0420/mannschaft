@@ -129,7 +129,9 @@ class ModuleCatalogWave2SeedIT {
         putLevel(m, "job_matching", 0, 1, 1);
         putLevel(m, "promotion", 1, 1, 0);
         putLevel(m, "point_card", 1, 0, 1);
-        putLevel(m, "blog_cms", 0, 1, 1);
+        // V158（有効化バックフィル）で blog_cms 組織レベルを 0→1 是正したため、Wave2 IT の期待も追随。
+        // Testcontainers は Flyway を V158 まで全適用するため、blog_cms × ORGANIZATION は 1 になる。
+        putLevel(m, "blog_cms", 1, 1, 1);
         putLevel(m, "memo", 0, 0, 1);
         putLevel(m, "contact", 0, 0, 1);
         putLevel(m, "social", 0, 0, 1);

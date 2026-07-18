@@ -263,7 +263,10 @@ public class TeamTodoController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(commentService.listComments(id, page, size));
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        // 認可根治（早馬 BOLA 閉塞）: path scope 束縛＋membership 検証は Service で実施する。
+        return ResponseEntity.ok(commentService.listComments(
+                id, TodoScopeType.TEAM, internalTeamId, SecurityUtils.getCurrentUserId(), page, size));
     }
 
     /**
@@ -276,8 +279,10 @@ public class TeamTodoController {
             @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateCommentRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(commentService.addComment(id, request, SecurityUtils.getCurrentUserId()));
+                .body(commentService.addComment(
+                        id, TodoScopeType.TEAM, internalTeamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -291,7 +296,9 @@ public class TeamTodoController {
             @PathVariable Long id,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
-        return ResponseEntity.ok(commentService.updateComment(id, commentId, request, SecurityUtils.getCurrentUserId()));
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        return ResponseEntity.ok(commentService.updateComment(
+                id, TodoScopeType.TEAM, internalTeamId, commentId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**

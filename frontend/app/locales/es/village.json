@@ -324,6 +324,10 @@
       "VILLAGE_042": "Denuncia no encontrada",
       "VILLAGE_043": "Esta denuncia ya ha sido procesada",
       "VILLAGE_044": "Aldea favorita fijada no encontrada",
+      "VILLAGE_052": "Delegación de representante no encontrada",
+      "VILLAGE_053": "Esta combinación de membresía/usuario ya ha sido delegada como representante",
+      "VILLAGE_054": "La membresía objetivo no es un equipo ni una organización",
+      "VILLAGE_055": "El usuario delegado no es miembro del equipo/organización objetivo",
       "generic": "Se produjo un error en la función de la aldea",
       "backToList": "Volver a la lista de aldeas",
       "moderatorOnly": "Solo el jefe del pueblo y los ancianos pueden modificar esta configuración"
@@ -470,11 +474,22 @@
     },
     "representative": {
       "title": "Delegación de representante",
+      "subtitle": "Delega el derecho a publicar como representante a un usuario individual, en nombre de una membresía de equipo/organización de esta aldea.",
       "grant": "Delegar como representante",
       "revoke": "Revocar delegación",
       "empty": "No hay representantes delegados",
       "grantedBy": "Delegado por",
-      "note": "Nota"
+      "grantedAt": "Delegado el",
+      "note": "Nota",
+      "target": "Objetivo (equipo/organización)",
+      "targetPlaceholder": "Selecciona un equipo/organización para delegar",
+      "noTargets": "No hay membresías de equipo/organización disponibles para delegar",
+      "unknownTarget": "Objetivo desconocido",
+      "representativeUser": "Usuario representante",
+      "loadFailed": "No se pudieron cargar las delegaciones de representante",
+      "confirmRevokeTitle": "¿Revocar esta delegación?",
+      "confirmRevokeBody": "Se revocará la delegación de representante de {name}. ¿Estás seguro?",
+      "revokeSuccess": "Delegación revocada"
     },
     "meetup": {
       "title": "Reunión",
@@ -777,6 +792,10 @@
         "members": {
           "title": "Miembros y roles",
           "desc": "Gestiona a los aldeanos, cambia roles y expulsa (BAN)."
+        },
+        "representatives": {
+          "title": "Delegación de representante",
+          "desc": "Delega y gestiona los usuarios que pueden publicar como representante de una membresía de equipo/organización."
         },
         "joinRequests": {
           "title": "Revisar solicitudes de ingreso",

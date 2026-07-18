@@ -135,8 +135,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウントと同一定義に揃え、grandfather 行は数えない
+        // （表示層でも grandfather を除外しないと FE の追加ボタンが閉じ AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return TeamModuleCatalogResponse.builder()
@@ -181,8 +184,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウント（countBy...IsGrandfatheredFalse）と同一定義に
+        // 揃え、grandfather 行は数えない（表示層でも除外しないと AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return OrgModuleCatalogResponse.builder()
@@ -285,9 +291,12 @@ public class ModuleService {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
-                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                    .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                     .count();
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
@@ -478,9 +487,11 @@ public class ModuleService {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = organizationEnabledModuleRepository
-                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(orgId);
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
             }

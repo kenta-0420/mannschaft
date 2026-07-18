@@ -324,6 +324,10 @@
       "VILLAGE_042": "找不到举报",
       "VILLAGE_043": "此举报已被处理",
       "VILLAGE_044": "找不到收藏的村庄",
+      "VILLAGE_052": "找不到代表委任",
+      "VILLAGE_053": "该对象与用户的组合已经被委任为代表",
+      "VILLAGE_054": "目标成员身份不是团队/组织",
+      "VILLAGE_055": "被委任用户不是目标团队/组织的成员",
       "generic": "村庄功能发生错误",
       "backToList": "返回村庄列表",
       "moderatorOnly": "只有村长和长老可以修改此设置"
@@ -470,11 +474,22 @@
     },
     "representative": {
       "title": "代表委任",
+      "subtitle": "针对该村庄内团队/组织的成员身份，将「以代表身份发帖」的权限委任给个人用户。",
       "grant": "委任为代表",
       "revoke": "撤销委任",
       "empty": "暂无委任的代表",
       "grantedBy": "委任人",
-      "note": "备注"
+      "grantedAt": "委任时间",
+      "note": "备注",
+      "target": "对象（团队/组织）",
+      "targetPlaceholder": "选择要委任的团队/组织",
+      "noTargets": "没有可供委任的团队/组织成员身份",
+      "unknownTarget": "对象不明",
+      "representativeUser": "代表用户",
+      "loadFailed": "获取代表委任失败",
+      "confirmRevokeTitle": "确定要撤销此委任吗?",
+      "confirmRevokeBody": "即将撤销对 {name} 的代表委任，确定吗?",
+      "revokeSuccess": "已撤销委任"
     },
     "meetup": {
       "title": "聚会",
@@ -777,6 +792,10 @@
         "members": {
           "title": "成员与职位",
           "desc": "管理村民、变更职位、执行封禁（BAN）。"
+        },
+        "representatives": {
+          "title": "代表委任",
+          "desc": "委任并管理可以代表团队/组织成员身份发帖的用户。"
         },
         "joinRequests": {
           "title": "审核入村申请",

@@ -324,6 +324,10 @@
       "VILLAGE_042": "Meldung nicht gefunden",
       "VILLAGE_043": "Diese Meldung wurde bereits bearbeitet",
       "VILLAGE_044": "Angeheftetes Lieblingsdorf nicht gefunden",
+      "VILLAGE_052": "Vertreterdelegierung nicht gefunden",
+      "VILLAGE_053": "Diese Kombination aus Mitgliedschaft und Benutzer wurde bereits als Vertreter delegiert",
+      "VILLAGE_054": "Die Ziel-Mitgliedschaft ist kein Team/keine Organisation",
+      "VILLAGE_055": "Der delegierte Benutzer ist kein Mitglied des Ziel-Teams/der Ziel-Organisation",
       "generic": "In der Dorffunktion ist ein Fehler aufgetreten",
       "backToList": "Zurück zur Dorfliste",
       "moderatorOnly": "Nur der Dorfvorsteher und Älteste können diese Einstellung ändern"
@@ -470,11 +474,22 @@
     },
     "representative": {
       "title": "Vertreterdelegierung",
+      "subtitle": "Delegieren Sie das Recht, als Vertreter zu posten, an einen einzelnen Benutzer im Namen einer Team-/Organisationsmitgliedschaft in diesem Dorf.",
       "grant": "Als Vertreter delegieren",
       "revoke": "Delegation widerrufen",
       "empty": "Keine delegierten Vertreter",
       "grantedBy": "Delegiert von",
-      "note": "Notiz"
+      "grantedAt": "Delegiert am",
+      "note": "Notiz",
+      "target": "Ziel (Team/Organisation)",
+      "targetPlaceholder": "Team/Organisation zum Delegieren auswählen",
+      "noTargets": "Keine Team-/Organisationsmitgliedschaften für die Delegation verfügbar",
+      "unknownTarget": "Unbekanntes Ziel",
+      "representativeUser": "Vertreterbenutzer",
+      "loadFailed": "Vertreterdelegierungen konnten nicht geladen werden",
+      "confirmRevokeTitle": "Diese Delegation widerrufen?",
+      "confirmRevokeBody": "Die Vertreterdelegierung für {name} wird widerrufen. Sind Sie sicher?",
+      "revokeSuccess": "Delegation widerrufen"
     },
     "meetup": {
       "title": "Treffen",
@@ -777,6 +792,10 @@
         "members": {
           "title": "Mitglieder & Rollen",
           "desc": "Dorfbewohner verwalten, Rollen ändern und sperren (BAN)."
+        },
+        "representatives": {
+          "title": "Vertreterdelegierung",
+          "desc": "Benutzer delegieren und verwalten, die als Vertreter einer Team-/Organisationsmitgliedschaft posten dürfen."
         },
         "joinRequests": {
           "title": "Beitrittsanträge prüfen",
