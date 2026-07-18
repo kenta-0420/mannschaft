@@ -347,6 +347,22 @@ public class Auth2faService {
         return ApiResponse.of(tokenResponse);
     }
 
+    /**
+     * ユーザーが二要素認証（TOTP）を有効化済みかを返す。
+     *
+     * <p>他ドメイン（role 等）が ADMIN 昇格前の 2FA 必須チェックに用いるための公開クエリ。
+     * {@code auth.repository} を他ドメインから直接参照させない（D-3 ArchUnit・越境 Repository 依存禁止）
+     * ため、Service 経由でプリミティブ（boolean）のみを返し Entity を漏らさない。</p>
+     *
+     * @param userId ユーザー ID
+     * @return 2FA レコードが存在し {@code is_enabled = true} の場合のみ true（未設定・未有効化は false）
+     */
+    public boolean isTwoFactorEnabled(Long userId) {
+        return twoFactorAuthRepository.findByUserId(userId)
+                .map(TwoFactorAuthEntity::getIsEnabled)
+                .orElse(false);
+    }
+
     // === ヘルパーメソッド ===
 
     /**
