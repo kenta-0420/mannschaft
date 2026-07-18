@@ -74,6 +74,7 @@ slug は既存 BIGINT 主キーテーブル（`teams` / `organizations`）上の
 - **招待トークン**: UUID v4（推測不可能）を使用。HTTPS 必須。`SELECT ... FOR UPDATE` でアトミックに使用回数チェックと更新を行い同時参加による上限超過を防ぐ
 - **ロール昇格制限**: ADMIN は自分と同等以上（priority <= 2）のロールを他ユーザーに付与できない（自己昇格・SYSTEM_ADMIN 付与を防止）
 - **ADMIN 昇格時の2FA必須**: ADMIN ロールへの昇格操作は、対象ユーザーが `two_factor_auth` テーブルに有効な TOTP レコードを持つ場合のみ許可する。2FA 未設定のまま ADMIN にすることはできない（README: 「SYSTEM_ADMIN・ADMIN には2FA必須」）
+- **オーナー委譲の宛先照合（承諾型・IDOR 防止 / 2026-07-18）**: オーナー委譲は承諾型（`ownership_transfer_offers`）で行う。`accept`/`decline` は **オファーの `target_user_id` と実行ユーザー ID を Service 入口で照合** し、不一致は 403 とする（他人宛ての委譲オファーを第三者が承諾する IDOR を封じる）。承諾時に 2FA を再チェックし、`checkLastAdmin` は承諾（新 ADMIN 確定後）でのみスキップする。オファー作成（打診）は ADMIN のみ・同一スコープの PENDING は 1 件まで（409）。監査ログは `TEAM_OWNERSHIP_TRANSFER_OFFERED` / `ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED`（打診）、`TEAM_ADMIN_TRANSFERRED` / `ORGANIZATION_ADMIN_TRANSFERRED`（承諾＝実行・metadata に `offer_id` 含む）、`*_OWNERSHIP_TRANSFER_DECLINED` / `*_OWNERSHIP_TRANSFER_CANCELLED`（辞退/取消）を記録する
 - **組織種別変更**: `org_type` は ADMIN による自己申告制（承認プロセスなし・即時反映）。NONPROFIT / FORPROFIT の識別は UI のカラーコーディング等で視覚的に区別する。変更履歴は audit_logs（`ORGANIZATION_ORG_TYPE_CHANGED`）に before / after を含めて記録し、事後追跡を可能にする
 - **スコープ境界**: `user_roles` の `team_id` と `organization_id` を同時に非 NULL にすることをアプリ層で禁止
 - **招待URL公開範囲**: `GET /api/v1/invite/{token}` は未認証でアクセス可能だが、チーム名・アイコン・ロール名のみ返す（メンバー一覧・内部情報は含めない）
@@ -255,6 +256,21 @@ V71.20260609002__add_slug_to_organizations.sql
   --   UNIQUE KEY uq_organizations_slug (slug)
   -- 既存データの backfill: teams と同様。3 字未満は CONCAT('org-', LPAD(id,6,'0'))
   -- バリデーション: teams と同一
+
+-- オーナー委譲の承諾型化（2026-07-18・§10.11 解消）
+V{major}.{yyyyMMddHHmmss}__create_ownership_transfer_offers_table.sql
+  -- 新規テーブル ownership_transfer_offers（原則6: UUIDv7）
+  --   id BINARY(16) NOT NULL PRIMARY KEY（UuidV7Entity 継承）
+  --   team_id / organization_id BIGINT UNSIGNED NULL（FK なし・INDEX / 原則1）
+  --   issued_by / target_user_id BIGINT UNSIGNED NOT NULL（FK なし）
+  --   status VARCHAR(20) NOT NULL DEFAULT 'PENDING'（PENDING/ACCEPTED/DECLINED/EXPIRED/CANCELLED）
+  --   expires_at DATETIME NOT NULL, accepted_at / resolved_at DATETIME NULL
+  --   created_at / updated_at DATETIME
+  --   CONSTRAINT chk_oto_scope CHECK ((team_id IS NULL) != (organization_id IS NULL))
+  --   INDEX idx_oto_target_user (target_user_id, status)
+  --   INDEX idx_oto_team (team_id, status) / idx_oto_org (organization_id, status)
+  -- ※ major は origin/main 全体の最大 major+1 でマージ時に確定・minor はタイムスタンプ必須
+  -- ※ 純粋な新規テーブル作成のみ（既存データ書き換えなし）のため既存データ番人テスト不要
 ```
 
 > **教訓（slug 二重移行の退行）**: V71 系は当初 `public_id`（UUID）→ slug への置換として実装され、`public_id` 列を DROP した。さらに **`CreateTeamRequest` から slug 入力欄が失われ、name からの自動生成のみ**になった結果、ASCII 3 字未満（日本語名等）のチーム／組織には `team-000017` のような**意味の無い連番 slug** が backfill で付与された。正準仕様は「ユーザーが任意 slug を入力する村方式」（§5.9）であり、連番付与・public_id(UUID) 路線は不採用。既存連番 slug の是正は §5.9.4、public_id 不採用の根拠は §5.9.6 を参照。
@@ -289,6 +305,10 @@ V71.20260609002__add_slug_to_organizations.sql
 - [x] **拡張プロフィールの楽観ロック** → **初版は「最後に書いた人の勝ち」運用で確定**（2026-04-15）。理由: プロフィール編集は ADMIN/DEPUTY_ADMIN のみで同時編集頻度が極めて低い・audit_logs で before/after を保持しているため事後復元は可能。運用で衝突が問題化した場合は `If-Match` / `ETag` ベースの制御を追加する（変更は現行APIに後方互換に追加可能）
 - [x] **拡張プロフィールの OGP プレビュー** → **本設計のスコープ外で確定**（2026-04-15）。`homepage_url` は表示用のみでサーバーから能動的に fetch しない方針。将来 OGP 機能を追加する場合は別 feature doc で SSRF 対策（許可ホスト制限・レスポンスサイズ制限・タイムアウト・プライベートIP拒否）を設計した上で実装する
 - [x] **profile_visibility 項目追加時の移行方針** → **「未知キー＝false（非公開）扱い」で確定**（2026-04-15）。既存組織の `profile_visibility` JSON に将来追加されたキーが不在の場合、アプリ層のデシリアライザが `false` を返す設計。後方互換のためマイグレーションは原則不要。将来キー名を変更・削除する場合のみマイグレーションスクリプトを用意する
+- [x] **オーナー委譲に指名先の事前承諾フローがない**（`account_purge_last_admin_succession.md` §10.11）→ **対応（2026-07-18 マスター御裁可）**: オーナー委譲を承諾型（オファー→承諾）に統一。新テーブル `ownership_transfer_offers`（UUIDv7）＋ `POST /{scope}/{slug}/transfer-ownership-offers`（打診）／`.../{offerId}/accept`（承諾＝実行）／`decline`／`DELETE`（取消）を新設。指名相手のみ承諾可（宛先照合 = IDOR 防止）。旧即時 `transfer-ownership` は廃止。§10.11 の未解決状態が本改修で解消される
+- [ ] **降格先ロールは MEMBER（実装が正・旧 doc の DEPUTY_ADMIN は誤記）**: 実装 `RoleService#transferOwnership` は発行者を MEMBER 降格（javadoc・コード確認済み）。旧設計記述の DEPUTY_ADMIN は乖離した誤りであり、マスター御裁可（発行者 MEMBER 降格）と一致する **MEMBER に統一**する。02_api_design のレスポンス例・03_business_logic のフロー・実装コードを MEMBER で揃える（対応済み）
+- [ ] **FE-BE 不一致は方式ごとの乖離＝既存バグ（実装時に刷新・M-4）**: 旧 BE `transfer-ownership` は `@RequestParam Long targetUserId`（**クエリ**）でボディを読まない（`TeamController` 確認済み）。FE は body `{ newAdminUserId }` のみ送信 → クエリ未付与で **現行は 400 になるバグ**。承諾型 2 ステップ API への FE 全面刷新時に、新 API は **JSON body `{ targetUserId }`** に統一しクエリ方式は廃止する
+- [x] **退会 purge 経路と承諾型の衝突（H-2）**→ **決着**: 通常委譲は承諾型2段、**退会 purge 経由の最後の ADMIN 承継のみ承諾スキップの強制委譲**（2FA チェックなし・audit `forced=true`）を残す。GDPR Art.17 の 30 日タイムリミット順守のため先送り不可。`acceptOffer` と `forceTransferForPurge` を別メソッドに分離（03_business_logic・account_purge §10.11 に明文化）
 
 ---
 
@@ -296,6 +316,7 @@ V71.20260609002__add_slug_to_organizations.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-07-18 | **オーナー委譲の承諾型化（マスター御裁可）**: 旧即時 `POST /{scope}/{slug}/transfer-ownership`（承諾なし即時昇格・降格）を廃止し、承諾型オファーの 2 ステップ API に置換。① 新テーブル `ownership_transfer_offers`（UUIDv7・原則6 / クロスドメイン FK なし・原則1 / `chk_oto_scope` XOR）を 01_db_design に追加。② 02_api_design のエンドポイント表・詳細節を `transfer-ownership-offers`（打診/accept/decline/DELETE）に改訂。③ 03_business_logic に「オーナー委譲 承諾フロー（2ステップ）」を新設（状態機械 PENDING→ACCEPTED/DECLINED/EXPIRED/CANCELLED・宛先照合による IDOR 防止）。④ 06 セキュリティに宛先照合・監査イベント（`*_OWNERSHIP_TRANSFER_OFFERED`/`_DECLINED`/`_CANCELLED`）を追記。⑤ Flyway に `create_ownership_transfer_offers_table` を追加。`account_purge_last_admin_succession.md` §10.11（指名先承諾欠如）が本改修で解消。既知課題として「降格先ロール DEPUTY_ADMIN↔MEMBER 不一致」「FE-BE パラメータ `newAdminUserId`↔`targetUserId` 不一致」を実装時統一事項として記録。関連: [F04.12 チャットからの承諾型招待](../F04.12_chat_membership_invite.md)（共通の承諾型オファー思想）|
 | 2026-04-15 | 組織・チーム拡張プロフィール機能を追加: ① `organizations`/`teams` に `homepage_url` / `established_date` / `established_date_precision` / `philosophy` / `profile_visibility` JSON の5カラムを追加。② 新テーブル `organization_officers` / `team_officers`（役員一覧・最大50件）、`organization_custom_fields` / `team_custom_fields`（フリー記述項目・最大20件）を追加。③ 全項目に ON/OFF 公開可否フラグを搭載（`profile_visibility` JSON + 個別行の `is_visible`）。④ 対応API 23本を追加（プロフィール一括更新 PATCH、officers/custom-fields の CRUD + reorder）。⑤ セキュリティ考慮事項に「URL スキーム検証（case insensitive）」「XSS プレーンテキスト強制」「可視性の Service 層強制チェック6ステップ」「監査ログ 10 種追加・GDPR REDACTED 方針」「Valkey キャッシュ無効化」「N+1対策」「エラーコード `ORG_040`〜`ORG_049`」を追記。⑥ Flyway V3.131〜V3.135 を追加 |
 | 2026-04-25 | 組織階層の表示用エンドポイントを追加: ① `GET /api/v1/organizations/{id}/ancestors` 上位組織チェーン取得（root → 親順・`hierarchy_visibility` と `visibility` を尊重・閲覧不可な祖先は `{id, hidden:true}` プレースホルダで返す・最大深度は `app.org.max-depth`）② `GET /api/v1/organizations/{id}/children` 直近の子組織一覧（visibility フィルタ・カーソルページネーション・`archived` フラグ含む）。これによりフロントエンドで「上位組織パンくず」「下位組織一覧」が単一API呼び出しで構築可能になる。既存の `parent_organization_id` カラム・`hierarchy_visibility` ENUM・`app.org.max-depth` 設定をそのまま活用する読み取り専用追加 |
 | 2026-04-15 | 拡張プロフィール機能の精査（第1回・第2回）: ① ER図に新テーブル4つを反映 ② JSON vs 個別BOOLEANのトレードオフ設計ノート追記 ③ `reorder` 時の stale 競合処理追加（`ORG_042` / `ORG_044`）④ Unicode 文字数カウント方針（`Character.codePointCount()`）⑤ 空文字の正規化ルール（nullable は NULL、NOT NULL は 400）⑥ `visibility_preview=true` クエリの詳細仕様（ADMIN/DEPUTY_ADMIN のみ・`isPubliclyVisible` フィールド追加）⑦ 既存 `PATCH /{id}` と新 `PATCH /{id}/profile` の棲み分けルール（`ORG_049`）⑧ 役員個人情報の登録責任を明文化 ⑨ 未解決事項に「楽観ロック」「OGP プレビューの SSRF」「profile_visibility 将来拡張の移行」を追加 |
