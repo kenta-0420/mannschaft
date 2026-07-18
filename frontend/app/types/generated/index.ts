@@ -62980,6 +62980,76 @@ export interface components {
         AddReactionRequest: {
             emoji?: string;
         };
+        ApiResponseChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"];
+        };
+        ChatInviteCardData: {
+            /** Format: date-time */
+            expiresAt?: string;
+            isTarget?: boolean;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
+            status?: string;
+            token?: string;
+            /** Format: int64 */
+            tokenId?: number;
+        };
+        ChatMessageResponse: {
+            audit?: components["schemas"]["MessageAuditDto"];
+            /** Format: int64 */
+            channelId?: number;
+            content?: components["schemas"]["MessageContentDto"];
+            engagement?: components["schemas"]["MessageEngagementDto"];
+            /** Format: int64 */
+            id?: number;
+            inviteData?: components["schemas"]["ChatInviteCardData"];
+            messageType?: string;
+            sender?: components["schemas"]["SenderDto"];
+            /** Format: int64 */
+            senderId?: number;
+            thread?: components["schemas"]["MessageThreadDto"];
+        };
+        MessageAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        MessageContentDto: {
+            body?: string;
+            /** Format: int64 */
+            forwardedFromId?: number;
+            isEdited?: boolean;
+            isSystem?: boolean;
+            /** Format: date-time */
+            scheduledAt?: string;
+        };
+        MessageEngagementDto: {
+            attachments?: components["schemas"]["AttachmentResponse"][];
+            isPinned?: boolean;
+            /** Format: int32 */
+            reactionCount?: number;
+            reactions?: components["schemas"]["ReactionResponse"][];
+            /** Format: int32 */
+            replyCount?: number;
+        };
+        MessageThreadDto: {
+            /** Format: int32 */
+            depth?: number;
+            /** Format: int64 */
+            parentId?: number;
+            /** Format: int64 */
+            rootId?: number;
+            suggestBoardMigration?: boolean;
+        };
+        SenderDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
         ForwardMessageRequest: {
             additionalComment?: string;
             /** Format: int64 */
@@ -75912,12 +75982,12 @@ export interface components {
             data?: components["schemas"]["ActiveThreadItemResponse"][];
             meta?: components["schemas"]["CursorMeta"];
         };
-        CursorPagedResponseMessageResponse: {
-            data?: components["schemas"]["MessageResponse"][];
+        CursorPagedResponseChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"][];
             meta?: components["schemas"]["CursorMeta"];
         };
-        ApiResponseListMessageResponse: {
-            data?: components["schemas"]["MessageResponse"][];
+        ApiResponseListChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"][];
         };
         ApiResponseListChatFolderResponse: {
             data?: components["schemas"]["ChatFolderResponse"][];
@@ -121742,7 +121812,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -121768,7 +121838,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -121917,7 +121987,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CursorPagedResponseMessageResponse"];
+                    "*/*": components["schemas"]["CursorPagedResponseChatMessageResponse"];
                 };
             };
         };
@@ -121943,7 +122013,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -136043,7 +136113,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -155011,7 +155081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseListChatMessageResponse"];
                 };
             };
         };

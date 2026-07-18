@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,9 +10,16 @@ import java.util.List;
 /**
  * メッセージレスポンスDTO。
  * スレッド情報・コンテンツ・エンゲージメント・監査情報をネストで表現する。
+ *
+ * <p>{@code com.mannschaft.app.auth.dto.MessageResponse} と simple name が衝突し、
+ * springdoc の openapi スキーマ登録で auth 側に上書きされ本 DTO の
+ * {@code messageType}/{@code inviteData}/{@code InviteCardDto} が契約から欠落していた
+ * （feedback_openapi_nested_schema_name_collision）。{@code @Schema(name=)} で一意名を
+ * 明示して契約に反映する。auth 側は据え置き（既存生成型消費者への影響回避）。</p>
  */
 @Builder(toBuilder = true)
 @Getter
+@Schema(name = "ChatMessageResponse")
 public class MessageResponse {
 
     private Long id;
@@ -87,6 +95,7 @@ public class MessageResponse {
      * @param isTarget  呼出ユーザーが宛先本人か（true=参加/辞退活性、false=承諾待ち）
      * @param expiresAt 有効期限（ISO8601）
      */
+    @Schema(name = "ChatInviteCardData")
     public record InviteCardDto(
             Long tokenId,
             String token,

@@ -76596,7 +76596,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                  "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
                 }
               }
             }
@@ -76638,7 +76638,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                  "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
                 }
               }
             }
@@ -76856,7 +76856,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/CursorPagedResponseMessageResponse"
+                  "$ref": "#/components/schemas/CursorPagedResponseChatMessageResponse"
                 }
               }
             }
@@ -76896,7 +76896,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                  "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
                 }
               }
             }
@@ -99981,7 +99981,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                  "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
                 }
               }
             }
@@ -133271,7 +133271,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListMessageResponse"
+                  "$ref": "#/components/schemas/ApiResponseListChatMessageResponse"
                 }
               }
             }
@@ -188906,6 +188906,182 @@
           }
         }
       },
+      "ApiResponseChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ChatMessageResponse"
+          }
+        }
+      },
+      "ChatInviteCardData": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isTarget": {
+            "type": "boolean"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "tokenId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/MessageAuditDto"
+          },
+          "channelId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "content": {
+            "$ref": "#/components/schemas/MessageContentDto"
+          },
+          "engagement": {
+            "$ref": "#/components/schemas/MessageEngagementDto"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inviteData": {
+            "$ref": "#/components/schemas/ChatInviteCardData"
+          },
+          "messageType": {
+            "type": "string"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/SenderDto"
+          },
+          "senderId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "thread": {
+            "$ref": "#/components/schemas/MessageThreadDto"
+          }
+        }
+      },
+      "MessageAuditDto": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MessageContentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "forwardedFromId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isEdited": {
+            "type": "boolean"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MessageEngagementDto": {
+        "type": "object",
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentResponse"
+            }
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "reactionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReactionResponse"
+            }
+          },
+          "replyCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MessageThreadDto": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rootId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "suggestBoardMigration": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SenderDto": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ForwardMessageRequest": {
         "type": "object",
         "properties": {
@@ -224008,13 +224184,13 @@
           }
         }
       },
-      "CursorPagedResponseMessageResponse": {
+      "CursorPagedResponseChatMessageResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ChatMessageResponse"
             }
           },
           "meta": {
@@ -224022,13 +224198,13 @@
           }
         }
       },
-      "ApiResponseListMessageResponse": {
+      "ApiResponseListChatMessageResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ChatMessageResponse"
             }
           }
         }
