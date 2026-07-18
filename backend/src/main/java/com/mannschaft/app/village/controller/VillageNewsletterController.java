@@ -116,7 +116,8 @@ public class VillageNewsletterController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        // size を [1,100] に丸める（過大要求での大量取得・DoS 防止・②-4 堅牢性 AC-10。他ドメイン慣習に合わせる）。
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         return ApiResponse.of(issueService.listIssues(villageId, actorUserId, tagId, pageable));
     }
 

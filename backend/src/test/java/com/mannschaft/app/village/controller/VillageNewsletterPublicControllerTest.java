@@ -13,9 +13,11 @@ import com.mannschaft.app.village.service.VillageNewsletterIssueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,10 +27,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -109,6 +113,36 @@ class VillageNewsletterPublicControllerTest {
                 .andExpect(jsonPath("$.data.content").isArray())
                 .andExpect(jsonPath("$.data.content[0].title").value("2026年06月 村だより"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("AC-10: GET /public?size=500 は Service へ size=100 に丸めた Pageable を渡す")
+    void listPublic_sizeClampedTo100() throws Exception {
+        given(issueService.listPublicIssues(eq(USER_ID), any()))
+                .willReturn(PublicNewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(100).build());
+
+        mockMvc.perform(get("/api/v1/newsletter/public").param("size", "500"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listPublicIssues(eq(USER_ID), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("AC-10: GET /public?page=-1 は 200・Service へ page=0 に丸めた Pageable を渡す（下限クランプ）")
+    void listPublic_pageClampedToZero() throws Exception {
+        given(issueService.listPublicIssues(eq(USER_ID), any()))
+                .willReturn(PublicNewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/newsletter/public").param("page", "-1"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listPublicIssues(eq(USER_ID), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageNumber()).isEqualTo(0);
     }
 
     @Test

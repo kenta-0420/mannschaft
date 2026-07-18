@@ -10,7 +10,6 @@ import com.mannschaft.app.village.dto.NewsletterIssueSummaryResponse;
 import com.mannschaft.app.village.dto.NewsletterTagResponse;
 import com.mannschaft.app.village.dto.PublicNewsletterIssuePageResponse;
 import com.mannschaft.app.village.dto.PublicNewsletterIssueResponse;
-import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueTagEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterTagEntity;
@@ -18,21 +17,23 @@ import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueStatus;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueType;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterVisibility;
-import com.mannschaft.app.village.entity.enums.VillageRole;
-import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
+import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,8 +75,15 @@ public class VillageNewsletterIssueService {
     // API 経路のみが閲覧認可（掲示板流用）・編集認可（村メンバーシップ正準述語）・タグ中間表を用いる。
     private final VillageNewsletterTagRepository tagRepository;
     private final VillageNewsletterIssueTagRepository issueTagRepository;
-    private final VillageMembershipRepository membershipRepository;
     private final VillageBulletinAccessService bulletinAccessService;
+
+    // ②-4 堅牢性（Issue #2348）で追加。
+    // villageRepository: 公開号の発行元村が生存しているかを確認する（村生存ゲート・AC-4〜8）。
+    //   同一 village ドメインのため直接参照してよい（クロスドメインではない）。
+    // entityManager: タグ入替は中間表のみを変更し号行を dirty にしないため、@Version の
+    //   強制インクリメントロック（OPTIMISTIC_FORCE_INCREMENT）を掛けて lost update を根治する（AC-1〜3）。
+    private final VillageRepository villageRepository;
+    private final EntityManager entityManager;
 
     /**
      * 集計済みの snapshot を号へ複写して凍結する（AGGREGATED → FROZEN）。
@@ -205,8 +213,10 @@ public class VillageNewsletterIssueService {
             page = issueRepository.findByVillageIdAndDeletedAtIsNullOrderByCreatedAtDesc(villageId, pageable);
         }
 
+        Map<UUID, List<NewsletterTagResponse>> tagsByIssue = resolveTagsForIssues(
+                page.getContent().stream().map(VillageNewsletterIssueEntity::getId).toList());
         List<NewsletterIssueSummaryResponse> content = page.getContent().stream()
-                .map(this::toSummary)
+                .map(issue -> toSummary(issue, tagsByIssue.getOrDefault(issue.getId(), List.of())))
                 .toList();
         return NewsletterIssuePageResponse.builder()
                 .content(content)
@@ -235,7 +245,7 @@ public class VillageNewsletterIssueService {
     @Transactional
     public NewsletterIssueDetailResponse updateComment(
             UUID villageId, UUID issueId, Long userId, String comment, Long expectedVersion) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
         issue.updateComment(comment, userId, LocalDateTime.now());
         VillageNewsletterIssueEntity saved = issueRepository.save(issue);
@@ -252,8 +262,20 @@ public class VillageNewsletterIssueService {
     @Transactional
     public NewsletterIssueDetailResponse setIssueTags(
             UUID villageId, UUID issueId, Long userId, List<UUID> tagIds, Long expectedVersion) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
+
+        // 【lost update 根治・AC-1〜3】タグ付けは中間表（issue_tags）のみを入れ替え、号行そのものは
+        // 変更しない。このままでは Hibernate が号行を dirty と見なさず @Version が上がらないため、
+        // 「2 管理者が同一 version で同時にタグ付け」しても両方成功し、後勝ちで先の付け替えが失われる
+        // （lost update）。
+        //
+        // OPTIMISTIC_FORCE_INCREMENT ロックの版インクリメントは Hibernate では before-transaction-completion
+        // 処理として登録され、明示 flush() では発火せず commit 直前に走る。そのため版競合は下の try/catch の
+        // 外（commit 時）に生の ObjectOptimisticLockingFailureException として噴出し 500 化していた。
+        // 号行を実際に dirty 化（updated_at を進める）し、通常の版付き UPDATE を明示 flush() で発火させることで、
+        // 敗者は flush() 時点で OptimisticLockException を受け、下の catch で確実に 409 へ翻訳される。
+        issue.touch();
 
         List<UUID> distinctTagIds = tagIds == null ? List.of()
                 : tagIds.stream().filter(Objects::nonNull).distinct().toList();
@@ -269,6 +291,13 @@ public class VillageNewsletterIssueService {
                     .build());
         }
         VillageNewsletterIssueEntity saved = issueRepository.save(issue);
+        try {
+            // touch() で dirty 化した号行の版付き UPDATE をこの場で確定させ、版競合を即検出する
+            // （握り潰さず、既存の号版競合と同じ型付きエラー 409 に翻訳する）。
+            entityManager.flush();
+        } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+        }
         log.info("ニュースレター号タグ付け更新: villageId={} issueId={} tagCount={}",
                 villageId, issueId, distinctTagIds.size());
         return toDetail(saved);
@@ -279,7 +308,7 @@ public class VillageNewsletterIssueService {
     public NewsletterIssueDetailResponse changeVisibility(
             UUID villageId, UUID issueId, Long userId,
             VillageNewsletterVisibility visibility, Long expectedVersion) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         VillageNewsletterIssueEntity issue = loadIssueForEdit(villageId, issueId, expectedVersion);
         issue.changeVisibility(visibility);
         VillageNewsletterIssueEntity saved = issueRepository.save(issue);
@@ -305,7 +334,7 @@ public class VillageNewsletterIssueService {
     @Transactional
     public NewsletterTagResponse createTag(
             UUID villageId, Long userId, String name, String color, Integer sortOrder) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         tagRepository.findByVillageIdAndNameAndDeletedAtIsNull(villageId, name)
                 .ifPresent(t -> {
                     throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_DUPLICATE);
@@ -326,12 +355,13 @@ public class VillageNewsletterIssueService {
     public NewsletterTagResponse updateTag(
             UUID villageId, UUID tagId, Long userId,
             String name, String color, Integer sortOrder, Long expectedVersion) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         VillageNewsletterTagEntity tag = tagRepository
                 .findByIdAndVillageIdAndDeletedAtIsNull(tagId, villageId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_TAG_NOT_FOUND));
         if (expectedVersion != null && !Objects.equals(tag.getVersion(), expectedVersion)) {
-            throw new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+            // タグ専用の版競合コード（AC-13）。号の版競合（VILLAGE_089）とは対象エンティティが異なるため分離する。
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_VERSION_CONFLICT);
         }
         tagRepository.findByVillageIdAndNameAndDeletedAtIsNull(villageId, name)
                 .filter(other -> !other.getId().equals(tagId))
@@ -346,6 +376,14 @@ public class VillageNewsletterIssueService {
             tag.setSortOrder(sortOrder);
         }
         VillageNewsletterTagEntity saved = tagRepository.save(tag);
+        try {
+            // 上の expectedVersion 手動チェックは load〜save 間の“素早い”競合しか捕まえない。
+            // 真の同時編集レース（両者が同一版を読み、@Version が commit 時に衝突）の敗者を、
+            // setIssueTags と対称に flush で即検出し専用コード 093 に翻訳する（汎用 COMMON_003 に落とさない・AC-13）。
+            entityManager.flush();
+        } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_VERSION_CONFLICT);
+        }
         log.info("ニュースレタータグ更新: villageId={} tagId={} userId={}", villageId, tagId, userId);
         return toTagResponse(saved);
     }
@@ -353,7 +391,7 @@ public class VillageNewsletterIssueService {
     /** タグを削除する（HEADMAN / ELDER・使用中ガード）。号に使われている場合は 409（NEWSLETTER_TAG_IN_USE）。 */
     @Transactional
     public void deleteTag(UUID villageId, UUID tagId, Long userId) {
-        requireHeadmanOrElder(villageId, userId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, userId);
         VillageNewsletterTagEntity tag = tagRepository
                 .findByIdAndVillageIdAndDeletedAtIsNull(tagId, villageId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_TAG_NOT_FOUND));
@@ -373,17 +411,24 @@ public class VillageNewsletterIssueService {
      * 公開号の村横断一覧（新しい順）。ログイン必須のみ（村メンバー不問）。
      *
      * <p>クエリが {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} のみを引くため、
-     * {@code VILLAGE_MEMBERS} の号は<b>構造的に混入しえない</b>（AC-16・漏洩防止）。</p>
+     * {@code VILLAGE_MEMBERS} の号は<b>構造的に混入しえない</b>（AC-16・漏洩防止）。さらに②-4 堅牢性で
+     * <b>発行元の村が生存している号だけ</b>を返すよう村生存ゲート（{@code deleted_at/archived_at IS NULL}）を
+     * クエリに加え、削除／凍結された村のお便り（ゾンビ号）の露出を根治する（AC-4〜8）。</p>
+     *
+     * <p>タグは号ごとの N+1 を避け、ページ内の全号 ID でリンク 1 本＋全タグ ID でタグ 1 本を引く
+     * 一括解決に切り替える（AC-9）。号↔タグの対応は issueId で厳密に保つ（AC-11）。</p>
      */
     @Transactional(readOnly = true)
     public PublicNewsletterIssuePageResponse listPublicIssues(Long userId, Pageable pageable) {
         Page<VillageNewsletterIssueEntity> page = issueRepository
-                .findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDesc(
+                .findPublicIssuesFromAliveVillages(
                         VillageNewsletterVisibility.PUBLIC,
                         VillageNewsletterIssueStatus.PUBLISHED,
                         pageable);
+        Map<UUID, List<NewsletterTagResponse>> tagsByIssue = resolveTagsForIssues(
+                page.getContent().stream().map(VillageNewsletterIssueEntity::getId).toList());
         List<PublicNewsletterIssueResponse> content = page.getContent().stream()
-                .map(this::toPublic)
+                .map(issue -> toPublic(issue, tagsByIssue.getOrDefault(issue.getId(), List.of())))
                 .toList();
         return PublicNewsletterIssuePageResponse.builder()
                 .content(content)
@@ -397,7 +442,9 @@ public class VillageNewsletterIssueService {
      * 公開号の詳細（村横断）。ログイン必須のみ。
      *
      * <p>PUBLIC かつ PUBLISHED 以外（VILLAGE_MEMBERS 号・未配信号・削除号）への直アクセスは
-     * {@code NEWSLETTER_ISSUE_NOT_FOUND}（404）で存在秘匿する（AC-17・IDOR 対策）。</p>
+     * {@code NEWSLETTER_ISSUE_NOT_FOUND}（404）で存在秘匿する（AC-17・IDOR 対策）。さらに②-4 堅牢性で、
+     * 号自体は PUBLIC×PUBLISHED でも<b>発行元の村が削除／凍結されていれば</b>同じく 404 で秘匿する
+     * （AC-6・ゾンビ号の直アクセス封鎖）。</p>
      */
     @Transactional(readOnly = true)
     public PublicNewsletterIssueResponse getPublicIssue(UUID issueId, Long userId) {
@@ -406,28 +453,17 @@ public class VillageNewsletterIssueService {
                 .filter(i -> i.getVisibility() == VillageNewsletterVisibility.PUBLIC)
                 .filter(i -> i.getStatus() == VillageNewsletterIssueStatus.PUBLISHED)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND));
+        // 発行元村が削除／凍結されていたら存在秘匿（AC-6）。checkVillageBulletinViewAccess と同じ生存判定クエリ。
+        villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(issue.getVillageId())
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND));
         return toPublic(issue);
     }
 
     // ==================================================================
-    // 認可・楽観ロック・マッパ
+    // 楽観ロック・マッパ
     // ==================================================================
-
-    /**
-     * <strong>現役</strong>の HEADMAN または ELDER 以外なら MODERATION_FORBIDDEN（403）。
-     *
-     * <p>設定系 {@code VillageNewsletterService.requireHeadmanOrElder} と同一の正準述語
-     * {@code findActiveByVillageIdAndSubject}（退村 {@code leftAt} / BAN {@code bannedAt} を除外）を用いる。
-     * 「呼び出し元まかせ認可」を踏まぬよう、認可はこのサービス内で完結させる。</p>
-     */
-    private void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
-        VillageMembershipEntity actor = membershipRepository
-                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
-        if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
-            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
-        }
-    }
+    // 編集認可（現役 HEADMAN / ELDER 判定）は VillageBulletinAccessService#requireHeadmanOrElder へ集約した
+    // （②-4 堅牢性 AC-15/16・設定系 VillageNewsletterService と重複していた private 実装を解消）。
 
     /** 編集用に号をロードし、楽観ロック（expectedVersion）を検証する。不一致は 409（設計書 §4.4）。 */
     private VillageNewsletterIssueEntity loadIssueForEdit(
@@ -441,7 +477,9 @@ public class VillageNewsletterIssueService {
         return issue;
     }
 
-    private NewsletterIssueSummaryResponse toSummary(VillageNewsletterIssueEntity issue) {
+    /** 一覧用サマリ。タグは呼び出し元が一括解決した結果（{@code tags}）を渡す（N+1 回避・AC-9）。 */
+    private NewsletterIssueSummaryResponse toSummary(
+            VillageNewsletterIssueEntity issue, List<NewsletterTagResponse> tags) {
         return NewsletterIssueSummaryResponse.builder()
                 .id(issue.getId())
                 .villageId(issue.getVillageId())
@@ -456,7 +494,7 @@ public class VillageNewsletterIssueService {
                 .digestPostCount(issue.getDigestPostCount())
                 .digestNewMemberCount(issue.getDigestNewMemberCount())
                 .hasComment(issue.getHeadmanComment() != null && !issue.getHeadmanComment().isBlank())
-                .tags(resolveTags(issue.getId()))
+                .tags(tags)
                 .build();
     }
 
@@ -493,7 +531,14 @@ public class VillageNewsletterIssueService {
                 .build();
     }
 
+    /** 単票の公開 DTO（詳細取得）。タグは単票のため従来どおり号 ID で解決する。 */
     private PublicNewsletterIssueResponse toPublic(VillageNewsletterIssueEntity issue) {
+        return toPublic(issue, resolveTags(issue.getId()));
+    }
+
+    /** 一覧用の公開 DTO。タグは呼び出し元が一括解決した結果（{@code tags}）を渡す（N+1 回避・AC-9）。 */
+    private PublicNewsletterIssueResponse toPublic(
+            VillageNewsletterIssueEntity issue, List<NewsletterTagResponse> tags) {
         return PublicNewsletterIssueResponse.builder()
                 .id(issue.getId())
                 .villageId(issue.getVillageId())
@@ -512,11 +557,11 @@ public class VillageNewsletterIssueService {
                 .digestTopic3Name(issue.getDigestTopic3Name())
                 .digestTopic3Count(issue.getDigestTopic3Count())
                 .headmanComment(issue.getHeadmanComment())
-                .tags(resolveTags(issue.getId()))
+                .tags(tags)
                 .build();
     }
 
-    /** 号 ID から付与タグを解決する（中間表 → タグマスタ・論理削除タグは除外・表示順）。 */
+    /** 号 ID から付与タグを解決する（中間表 → タグマスタ・論理削除タグは除外・表示順）。単票用。 */
     private List<NewsletterTagResponse> resolveTags(UUID issueId) {
         List<VillageNewsletterIssueTagEntity> links = issueTagRepository.findByIssueId(issueId);
         List<NewsletterTagResponse> tags = new ArrayList<>();
@@ -529,6 +574,46 @@ public class VillageNewsletterIssueService {
                 a.sortOrder() == null ? 0 : a.sortOrder(),
                 b.sortOrder() == null ? 0 : b.sortOrder()));
         return tags;
+    }
+
+    /**
+     * ページ内の全号のタグを<b>一括解決</b>する（一覧の N+1 回避・②-4 堅牢性 AC-9〜12）。
+     *
+     * <p>号ごとに {@code findByIssueId}＋タグ毎 {@code findById} を発行していた従来実装（号 N 件で
+     * 最悪 1+N+M 回）を、リンク 1 本＋タグ 1 本の計 2 クエリに畳み込む。号↔タグの対応は
+     * {@code issueId} をキーにした Map で厳密に保つため取り違えは起きない（AC-11）。論理削除タグは
+     * 除外し、各号のタグは表示順（{@code sortOrder}）で整列する。タグ 0 件の号は空リストになる（AC-12）。</p>
+     *
+     * @param issueIds ページに載る号 ID 群（空なら空 Map を返し {@code IN ()} を発行しない）
+     * @return {@code issueId → 表示順に並んだタグ} の Map（タグ無しの号はキー自体が無い＝呼び出し側で空リスト補完）
+     */
+    private Map<UUID, List<NewsletterTagResponse>> resolveTagsForIssues(List<UUID> issueIds) {
+        if (issueIds.isEmpty()) {
+            return Map.of();
+        }
+        List<VillageNewsletterIssueTagEntity> links = issueTagRepository.findByIssueIdIn(issueIds);
+        if (links.isEmpty()) {
+            return Map.of();
+        }
+        Set<UUID> tagIds = links.stream()
+                .map(VillageNewsletterIssueTagEntity::getTagId)
+                .collect(Collectors.toSet());
+        // 論理削除タグは findByIdInAndDeletedAtIsNull で除外済み。存在しないタグ ID は Map に載らない。
+        Map<UUID, NewsletterTagResponse> tagById = tagRepository.findByIdInAndDeletedAtIsNull(tagIds).stream()
+                .collect(Collectors.toMap(
+                        VillageNewsletterTagEntity::getId,
+                        VillageNewsletterIssueService::toTagResponse));
+        Map<UUID, List<NewsletterTagResponse>> byIssue = new HashMap<>();
+        for (VillageNewsletterIssueTagEntity link : links) {
+            NewsletterTagResponse tag = tagById.get(link.getTagId());
+            if (tag != null) {
+                byIssue.computeIfAbsent(link.getIssueId(), k -> new ArrayList<>()).add(tag);
+            }
+        }
+        byIssue.values().forEach(list -> list.sort((a, b) -> Integer.compare(
+                a.sortOrder() == null ? 0 : a.sortOrder(),
+                b.sortOrder() == null ? 0 : b.sortOrder())));
+        return byIssue;
     }
 
     private static NewsletterTagResponse toTagResponse(VillageNewsletterTagEntity tag) {

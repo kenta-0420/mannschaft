@@ -589,6 +589,7 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_090", HttpStatus.NOT_FOUND),             // NEWSLETTER_TAG_NOT_FOUND
             Map.entry("VILLAGE_091", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_IN_USE
             Map.entry("VILLAGE_092", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_DUPLICATE
+            Map.entry("VILLAGE_093", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_VERSION_CONFLICT（タグ楽観ロック）
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND

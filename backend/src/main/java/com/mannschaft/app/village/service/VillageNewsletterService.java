@@ -9,14 +9,10 @@ import com.mannschaft.app.village.dto.NewsletterSettingResponse;
 import com.mannschaft.app.village.dto.NewsletterSettingUpdateRequest;
 import com.mannschaft.app.village.dto.NewsletterSettingsResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
-import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterOptOutEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterSendLogEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
-import com.mannschaft.app.village.entity.enums.VillageRole;
-import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterOptOutRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterSendLogRepository;
@@ -61,8 +57,9 @@ public class VillageNewsletterService {
     private final VillageNewsletterOptOutRepository optOutRepository;
     private final VillageNewsletterSendLogRepository sendLogRepository;
     private final VillageRepository villageRepository;
-    private final VillageMembershipRepository membershipRepository;
     private final AuditLogService auditLogService;
+    // ②-4 堅牢性（AC-15/16）: HEADMAN/ELDER 認可述語を掲示板認可サービスへ集約（重複ロジック解消）。
+    private final VillageBulletinAccessService bulletinAccessService;
 
     // ====================================================================
     // 設定取得
@@ -102,7 +99,7 @@ public class VillageNewsletterService {
             NewsletterSettingUpdateRequest request,
             Long actorUserId) {
         requireExistingVillage(villageId);
-        requireHeadmanOrElder(villageId, actorUserId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageNewsletterEntity entity = newsletterRepository
                 .findByVillageIdAndFrequencyAndDeletedAtIsNull(villageId, request.frequency())
@@ -193,22 +190,6 @@ public class VillageNewsletterService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
         return entity;
-    }
-
-    /**
-     * <strong>現役</strong>の HEADMAN または ELDER 以外なら MODERATION_FORBIDDEN（403）。
-     *
-     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
-     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
-     * 以前は BAN を検査しておらず、BAN された長老がお便り設定を変更できた。</p>
-     */
-    private void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
-        VillageMembershipEntity actor = membershipRepository
-                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
-        if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
-            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
-        }
     }
 
     // ====================================================================
