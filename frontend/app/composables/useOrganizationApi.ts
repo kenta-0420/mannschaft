@@ -1,6 +1,13 @@
+import type { components } from '~/types/generated'
 import type { MemberResponse } from '~/types/member'
 import type { OrganizationResponse } from '~/types/organization'
 import type { SlugAvailabilityResponse, SlugResolveResponse } from '~/types/slug'
+
+// === オーナー委譲（承諾型オファー・F01.2 2026-07-18〜）生成型 ===
+// 生成型を最優先で使う（memory feedback_fe_api_type_assertion_field_lie）。
+type TransferOwnershipOfferCreateRequest = components['schemas']['TransferOwnershipOfferCreateRequest']
+type TransferOwnershipOfferResponse = components['schemas']['TransferOwnershipOfferResponse']
+type TransferOwnershipAcceptResponse = components['schemas']['TransferOwnershipAcceptResponse']
 
 interface OrganizationSummaryResponse {
   id: string
@@ -345,11 +352,38 @@ export function useOrganizationApi() {
     return api(`/api/v1/organizations/${orgSlug}/blocks/${blockId}`, { method: 'DELETE' })
   }
 
-  // === オーナー移譲 ===
-  async function transferOwnership(orgSlug: string, newAdminUserId: number) {
-    return api(`/api/v1/organizations/${orgSlug}/transfer-ownership`, {
+  // === オーナー移譲（承諾型オファー・F01.2 2026-07-18〜） ===
+  // 旧 `transferOwnership`（即時型・body { newAdminUserId }）は廃止（設計書 03_business_logic.md M-4）。
+  // 承諾型 2 ステップ API（打診 → 承諾/辞退/取消）へ全面移行し、body は camelCase `targetUserId` に統一する。
+
+  /** オーナー委譲を打診する（PENDING オファーを作成。この時点ではロールは変わらない）。 */
+  async function createOwnershipOffer(orgSlug: string, targetUserId: number) {
+    const body: TransferOwnershipOfferCreateRequest = { targetUserId }
+    return api<{ data: TransferOwnershipOfferResponse }>(
+      `/api/v1/organizations/${orgSlug}/transfer-ownership-offers`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** オファーを承諾する（＝委譲を実行。対象→ADMIN 昇格・発行者→MEMBER 降格）。指名相手本人のみ実行可。 */
+  async function acceptOwnershipOffer(orgSlug: string, offerId: string) {
+    return api<{ data: TransferOwnershipAcceptResponse }>(
+      `/api/v1/organizations/${orgSlug}/transfer-ownership-offers/${offerId}/accept`,
+      { method: 'POST' },
+    )
+  }
+
+  /** オファーを辞退する（status=DECLINED。ロール不変）。指名相手本人のみ実行可。 */
+  async function declineOwnershipOffer(orgSlug: string, offerId: string) {
+    return api(`/api/v1/organizations/${orgSlug}/transfer-ownership-offers/${offerId}/decline`, {
       method: 'POST',
-      body: { newAdminUserId },
+    })
+  }
+
+  /** オファーを取消す（status=CANCELLED。ロール不変）。発行者または当該組織 ADMIN のみ実行可。 */
+  async function cancelOwnershipOffer(orgSlug: string, offerId: string) {
+    return api(`/api/v1/organizations/${orgSlug}/transfer-ownership-offers/${offerId}`, {
+      method: 'DELETE',
     })
   }
 
@@ -422,7 +456,10 @@ export function useOrganizationApi() {
     getBlocks,
     createBlock,
     removeBlock,
-    transferOwnership,
+    createOwnershipOffer,
+    acceptOwnershipOffer,
+    declineOwnershipOffer,
+    cancelOwnershipOffer,
     getAccessRequirements,
     updateAccessRequirements,
     getContentPaymentGates,
