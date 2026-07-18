@@ -170,6 +170,10 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_023", HttpStatus.BAD_REQUEST),    // todo_not_completed_by_memo (Phase 4-β)
             Map.entry("ACTION_MEMO_024", HttpStatus.FORBIDDEN),      // dashboard_forbidden (Phase 4-β)
             Map.entry("ACTION_MEMO_025", HttpStatus.BAD_REQUEST),    // reminder_time_required (Phase 4-β)
+            // F02.3 TODO: 不在 / スコープ不一致は IDOR 対策で 403 ではなく 404 で存在秘匿する
+            //（TodoService.assertTodoScope / TodoCommentService.verifyScopeAndMembership 等。
+            //  Severity.WARN 既定の 400 のまま未マップだった欠陥を根治。javadoc の「404 で返す」記述と実挙動を一致させる）
+            Map.entry("TODO_010", HttpStatus.NOT_FOUND),             // TODO_NOT_FOUND (IDOR/BOLA 秘匿)
             // F05.4 アンケート 督促 API（権限なしのみ 403、その他は Severity.WARN 既定の 400）
             Map.entry("SURVEY_014", HttpStatus.FORBIDDEN),           // REMIND_PERMISSION_DENIED
             // F11.1 オフライン同期

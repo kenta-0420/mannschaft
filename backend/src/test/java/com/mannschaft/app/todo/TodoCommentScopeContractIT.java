@@ -76,6 +76,8 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long teamAId;
     private Long teamBId;
+    private String teamASlug;   // team todo API はスラッグ受け（resolveTeamId(slug)）。path にはこれを渡す
+    private String teamBSlug;
     private Long orgAId;
     private Long orgBId;
 
@@ -92,10 +94,12 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamAId = insertTeam("TODOCMTAUTHZ チームA");
-        teamBId = insertTeam("TODOCMTAUTHZ チームB");
-        orgAId = insertOrganization("TODOCMTAUTHZ 組織A");
-        orgBId = insertOrganization("TODOCMTAUTHZ 組織B");
+        teamASlug = "todocmtauthz-team-a-" + System.nanoTime();
+        teamBSlug = "todocmtauthz-team-b-" + System.nanoTime();
+        teamAId = insertTeam("TODOCMTAUTHZ チームA", teamASlug);
+        teamBId = insertTeam("TODOCMTAUTHZ チームB", teamBSlug);
+        orgAId = insertOrganization("TODOCMTAUTHZ 組織A", "todocmtauthz-org-a-" + System.nanoTime());
+        orgBId = insertOrganization("TODOCMTAUTHZ 組織B", "todocmtauthz-org-b-" + System.nanoTime());
 
         memberTeamAId = insertUser("todocmtauthz-member-team-a@example.com");
         memberTeamBId = insertUser("todocmtauthz-member-team-b@example.com");
@@ -166,7 +170,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("未認証は401")
         void 未認証は401() throws Exception {
             SecurityContextHolder.clearContext();
-            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId))
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId))
                     .andExpect(status().isUnauthorized());
         }
 
@@ -174,7 +178,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("非メンバー(outsider)は403")
         void 非メンバーは403() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId))
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId))
                     .andExpect(status().isForbidden());
         }
 
@@ -182,7 +186,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別scopeメンバー(teamBメンバーがteamAのURL)は403")
         void 別scopeメンバーは403() throws Exception {
             setAuth(memberTeamBId);
-            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId))
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId))
                     .andExpect(status().isForbidden());
         }
 
@@ -190,7 +194,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当メンバーは200")
         void 正当メンバーは200() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId))
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId))
                     .andExpect(status().isOk());
         }
 
@@ -198,7 +202,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("BOLA: teamBメンバーが自チームURLでteamAのtodoIdを指定→404秘匿")
         void BOLAは404秘匿() throws Exception {
             setAuth(memberTeamBId);
-            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamBId, todoTeamAId))
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/comments", teamBSlug, todoTeamAId))
                     .andExpect(status().isNotFound());
         }
     }
@@ -215,7 +219,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("非メンバーは403")
         void 非メンバーは403() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId)
+            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境投稿")))
                     .andExpect(status().isForbidden());
@@ -225,7 +229,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別scopeメンバー(teamBメンバー)は403")
         void 別scopeメンバーは403() throws Exception {
             setAuth(memberTeamBId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId)
+            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境投稿")))
                     .andExpect(status().isForbidden());
@@ -235,7 +239,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当メンバーは201")
         void 正当メンバーは201() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamAId, todoTeamAId)
+            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamASlug, todoTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("正当な投稿")))
                     .andExpect(status().isCreated());
@@ -245,7 +249,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("BOLA: teamBメンバーが自チームURLでteamAのtodoIdを指定→404秘匿")
         void BOLAは404秘匿() throws Exception {
             setAuth(memberTeamBId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamBId, todoTeamAId)
+            mockMvc.perform(post("/api/v1/teams/{teamId}/todos/{id}/comments", teamBSlug, todoTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境投稿")))
                     .andExpect(status().isNotFound());
@@ -265,7 +269,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         void 非メンバーは403() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(put("/api/v1/teams/{teamId}/todos/{id}/comments/{commentId}",
-                            teamAId, todoTeamAId, commentTeamAId)
+                            teamASlug, todoTeamAId, commentTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境編集")))
                     .andExpect(status().isForbidden());
@@ -276,7 +280,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         void 別scopeメンバーは403() throws Exception {
             setAuth(memberTeamBId);
             mockMvc.perform(put("/api/v1/teams/{teamId}/todos/{id}/comments/{commentId}",
-                            teamAId, todoTeamAId, commentTeamAId)
+                            teamASlug, todoTeamAId, commentTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境編集")))
                     .andExpect(status().isForbidden());
@@ -287,7 +291,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         void BOLAは404秘匿() throws Exception {
             setAuth(memberTeamBId);
             mockMvc.perform(put("/api/v1/teams/{teamId}/todos/{id}/comments/{commentId}",
-                            teamBId, todoTeamAId, commentTeamAId)
+                            teamBSlug, todoTeamAId, commentTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("越境編集")))
                     .andExpect(status().isNotFound());
@@ -298,7 +302,7 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
         void 正当本人は200() throws Exception {
             setAuth(memberTeamAId);
             mockMvc.perform(put("/api/v1/teams/{teamId}/todos/{id}/comments/{commentId}",
-                            teamAId, todoTeamAId, commentTeamAId)
+                            teamASlug, todoTeamAId, commentTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(commentBody("更新後コメント")))
                     .andExpect(status().isOk());
@@ -425,29 +429,29 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
                 .getSingleResult()).longValue();
     }
 
-    private Long insertTeam(String name) {
+    private Long insertTeam(String name, String slug) {
         em.createNativeQuery(
                         "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
-                                + "CONCAT('c-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, :slug, NOW(), NOW())")
                 .setParameter("name", name)
+                .setParameter("slug", slug)
                 .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
-                .setParameter("name", name)
+        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE slug = :slug")
+                .setParameter("slug", slug)
                 .getSingleResult()).longValue();
     }
 
-    private Long insertOrganization(String name) {
+    private Long insertOrganization(String name, String slug) {
         em.createNativeQuery(
                         "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
                                 + "supporter_enabled, version, slug, created_at, updated_at) "
-                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
-                                + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, :slug, NOW(), NOW())")
                 .setParameter("name", name)
+                .setParameter("slug", slug)
                 .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
-                .setParameter("name", name)
+        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE slug = :slug")
+                .setParameter("slug", slug)
                 .getSingleResult()).longValue();
     }
 }
