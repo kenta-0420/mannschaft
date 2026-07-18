@@ -4,6 +4,9 @@ import com.mannschaft.app.auth.service.Auth2faService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.TransferOwnershipAcceptResponse;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferCreateRequest;
@@ -56,6 +59,12 @@ public class OwnershipTransferOfferService {
     private static final String STATUS_DECLINED = "DECLINED";
     private static final String STATUS_CANCELLED = "CANCELLED";
 
+    /** 通知種別（{@link com.mannschaft.app.notification.NotificationType} と同値の文字列）。 */
+    private static final String NOTIF_OFFERED = "OWNERSHIP_TRANSFER_OFFERED";
+    private static final String NOTIF_DECLINED = "OWNERSHIP_TRANSFER_DECLINED";
+    /** 通知の sourceType（MEMBER_JOINED 等と同じく USER 起点。sourceId は UUID のため持たない）。 */
+    private static final String NOTIF_SOURCE_USER = "USER";
+
     /** オファーの有効期限（発行から7日）。 */
     private static final int OFFER_TTL_DAYS = 7;
 
@@ -63,19 +72,21 @@ public class OwnershipTransferOfferService {
     private final RoleService roleService;
     private final AccessControlService accessControlService;
     private final Auth2faService auth2faService;
+    private final NotificationHelper notificationHelper;
 
     /**
      * オーナー委譲を打診する（PENDING オファーを作成。ロールは変わらない）。
      *
      * @param scopeId     スコープ（チーム/組織）ID
      * @param scopeType   スコープ種別（{@code TEAM} / {@code ORGANIZATION}）
+     * @param scopeSlug   スコープの slug（到達通知の actionUrl 生成に用いる。Controller が解決済み）
      * @param request     打診リクエスト（targetUserId）
      * @param actorUserId 実行ユーザー ID（対象スコープの ADMIN）
      * @return 作成されたオファー
      */
     @Transactional
     public TransferOwnershipOfferResponse createOffer(
-            Long scopeId, String scopeType,
+            Long scopeId, String scopeType, String scopeSlug,
             TransferOwnershipOfferCreateRequest request, Long actorUserId) {
         Long targetUserId = request.targetUserId();
 
@@ -122,6 +133,23 @@ public class OwnershipTransferOfferService {
 
         log.info("オーナー委譲 打診作成: scopeType={}, scopeId={}, offerId={}, issuedBy={}, target={}",
                 scopeType, scopeId, offer.getId(), actorUserId, targetUserId);
+
+        // 到達通知（設計書 step9）: 対象ユーザーへ「管理者就任の打診が届いた」通知を発火し、
+        // actionUrl で受信側の承諾/辞退カード（?offerId= ディープリンク）へ導線を張る。
+        // これが無いと打診相手がオファーに気づけず承諾画面へ到達できない（承諾型が成立しない）。
+        // sourceId は UUID のため持たない（sourceType=USER・sourceId=null で visibility ガードは対象外）。
+        notificationHelper.notify(
+                targetUserId,
+                NOTIF_OFFERED,
+                NotificationPriority.HIGH,
+                "管理者就任の打診が届きました",
+                "あなたに管理者（オーナー）就任が打診されています。承諾すると管理者になります。",
+                NOTIF_SOURCE_USER,
+                null,
+                notificationScopeType(scopeType),
+                scopeId,
+                buildMembersDeepLink(scopeType, scopeSlug, offer.getId()),
+                actorUserId);
 
         // 表示名は FE 側のメンバー一覧で userId から解決する（role ドメインから user ドメインの
         // 表示名を跨いで引かない＝越境 Repository 依存回避。D-3）。
@@ -199,11 +227,12 @@ public class OwnershipTransferOfferService {
      *
      * @param scopeId     スコープ ID
      * @param scopeType   スコープ種別
+     * @param scopeSlug   スコープの slug（発行者への辞退通知の actionUrl 生成に用いる）
      * @param offerId     オファー ID
      * @param actorUserId 実行ユーザー ID（指名相手本人）
      */
     @Transactional
-    public void declineOffer(Long scopeId, String scopeType, UUID offerId, Long actorUserId) {
+    public void declineOffer(Long scopeId, String scopeType, String scopeSlug, UUID offerId, Long actorUserId) {
         OwnershipTransferOfferEntity offer = loadScopedOffer(offerId, scopeId, scopeType);
         requirePending(offer);
         requireAddressee(offer, actorUserId); // 宛先照合（IDOR 防止）: 指名相手本人のみ辞退可。
@@ -214,6 +243,41 @@ public class OwnershipTransferOfferService {
 
         log.info("オーナー委譲 辞退: scopeType={}, scopeId={}, offerId={}, by={}",
                 scopeType, scopeId, offerId, actorUserId);
+
+        // 発行者へ辞退通知（設計書 step 辞退「発行者へ通知」）。actionUrl は当該スコープのメンバー一覧。
+        notificationHelper.notify(
+                offer.getIssuedBy(),
+                NOTIF_DECLINED,
+                NotificationPriority.NORMAL,
+                "オーナー委譲の打診が辞退されました",
+                "打診したメンバーが管理者（オーナー）就任を辞退しました。",
+                NOTIF_SOURCE_USER,
+                null,
+                notificationScopeType(scopeType),
+                scopeId,
+                buildMembersLink(scopeType, scopeSlug),
+                actorUserId);
+    }
+
+    /**
+     * 自分（指名相手）宛の有効な（PENDING）オファー一覧を取得する（受信インボックス）。
+     *
+     * <p>認可＝本人限定（IDOR 防止）: {@code findByTargetUserIdAndStatus} は常に呼び出し元自身の
+     * {@code targetUserId} で絞るため、第三者が他人宛のオファーを取得する経路が構造的に存在しない。
+     * 表示名は打診レスポンスと同様に FE 側のメンバー一覧で解決する（越境 Repository 依存回避）。</p>
+     *
+     * @param actorUserId 実行ユーザー ID（＝指名相手本人）
+     * @return 本人宛の PENDING オファー一覧
+     */
+    public List<TransferOwnershipOfferResponse> listMyPendingOffers(Long actorUserId) {
+        return offerRepository.findByTargetUserIdAndStatus(actorUserId, STATUS_PENDING).stream()
+                .map(offer -> new TransferOwnershipOfferResponse(
+                        offer.getId(),
+                        offer.getStatus(),
+                        new TransferOwnershipOfferResponse.UserBrief(offer.getTargetUserId(), null),
+                        new TransferOwnershipOfferResponse.UserBrief(offer.getIssuedBy(), null),
+                        offer.getExpiresAt()))
+                .toList();
     }
 
     /**
@@ -298,5 +362,23 @@ public class OwnershipTransferOfferService {
         if (!offer.getTargetUserId().equals(actorUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_009); // 403
         }
+    }
+
+    /** スコープ種別を通知スコープ種別へ写す（TEAM / ORGANIZATION）。 */
+    private NotificationScopeType notificationScopeType(String scopeType) {
+        return SCOPE_TEAM.equals(scopeType)
+                ? NotificationScopeType.TEAM
+                : NotificationScopeType.ORGANIZATION;
+    }
+
+    /** 受信側の承諾/辞退カードへ飛ぶディープリンク（{@code ?offerId=} で FE がカードを表示）。 */
+    private String buildMembersDeepLink(String scopeType, String scopeSlug, UUID offerId) {
+        return buildMembersLink(scopeType, scopeSlug) + "?offerId=" + offerId;
+    }
+
+    /** 当該スコープのメンバー一覧ページ（辞退通知等・offerId なし）。 */
+    private String buildMembersLink(String scopeType, String scopeSlug) {
+        String base = SCOPE_TEAM.equals(scopeType) ? "/teams/" : "/organizations/";
+        return base + scopeSlug + "/members";
     }
 }

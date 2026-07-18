@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -326,6 +327,39 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
             // オファー経由でない（PENDING/ACCEPTED オファーが作られていないこと）
             assertThat(offerRepository.findByTeamIdAndStatus(teamAId, STATUS_PENDING)).isEmpty();
             assertThat(offerRepository.findByTeamIdAndStatus(teamAId, STATUS_ACCEPTED)).isEmpty();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. 受信インボックス（GET /me/ownership-transfer-offers）: 本人限定・IDOR 防止
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. 受信インボックス GET /me/ownership-transfer-offers（本人限定）")
+    class MyOffersInbox {
+
+        @Test
+        @DisplayName("宛先本人は自分宛の PENDING オファーを取得できる（200・件数1・offerId一致）")
+        void 本人は自分宛オファーを取得できる() throws Exception {
+            UUID offerId = seedPendingTeamOffer(adminAId, targetId, futureExpiry());
+            setAuth(targetId);
+            mockMvc.perform(get("/api/v1/me/ownership-transfer-offers"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].offerId").value(offerId.toString()))
+                    .andExpect(jsonPath("$.data[0].status").value(STATUS_PENDING))
+                    .andExpect(jsonPath("$.data[0].issuedBy.userId").value(adminAId));
+        }
+
+        @Test
+        @DisplayName("第三者は他人宛のオファーを取得できない（IDOR 防止・件数0）")
+        void 第三者は他人宛オファーを取得できない() throws Exception {
+            // target 宛のオファーを seed。stranger でログインしても見えないこと。
+            seedPendingTeamOffer(adminAId, targetId, futureExpiry());
+            setAuth(strangerId);
+            mockMvc.perform(get("/api/v1/me/ownership-transfer-offers"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
         }
     }
 
