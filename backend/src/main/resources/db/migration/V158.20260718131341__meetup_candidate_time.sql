@@ -13,14 +13,13 @@
 --    重複チェックを行うこと（VillageMeetupService の重複検査を拡張済み）。
 
 -- 1) 候補日に任意の時刻列を追加（終日 = NULL）
+--    MySQL の ADD COLUMN では COMMENT は column_definition の一部であり、位置指定 AFTER より前に置く。
 ALTER TABLE village_meetup_candidate_dates
-    ADD COLUMN candidate_time TIME NULL AFTER candidate_date
-    COMMENT '候補の時刻（任意・NULL は終日）';
+    ADD COLUMN candidate_time TIME NULL COMMENT '候補の時刻（任意・NULL は終日）' AFTER candidate_date;
 
 -- 2) 寄合本体に確定時刻列を追加（CONFIRMED 時のみセット・終日 = NULL）
 ALTER TABLE village_meetups
-    ADD COLUMN confirmed_time TIME NULL AFTER confirmed_date
-    COMMENT '確定時刻（CONFIRMED 時のみセット・NULL は終日）';
+    ADD COLUMN confirmed_time TIME NULL COMMENT '確定時刻（CONFIRMED 時のみセット・NULL は終日）' AFTER confirmed_date;
 
 -- 3) UNIQUE を (meetup_id, candidate_date) から (meetup_id, candidate_date, candidate_time) へ張り替える。
 --    既存データは candidate_time = NULL なので (date, NULL) の組で従来どおり一意性が保たれる（無損失）。
