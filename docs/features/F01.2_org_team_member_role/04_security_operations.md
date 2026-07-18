@@ -306,8 +306,9 @@ V{major}.{yyyyMMddHHmmss}__create_ownership_transfer_offers_table.sql
 - [x] **拡張プロフィールの OGP プレビュー** → **本設計のスコープ外で確定**（2026-04-15）。`homepage_url` は表示用のみでサーバーから能動的に fetch しない方針。将来 OGP 機能を追加する場合は別 feature doc で SSRF 対策（許可ホスト制限・レスポンスサイズ制限・タイムアウト・プライベートIP拒否）を設計した上で実装する
 - [x] **profile_visibility 項目追加時の移行方針** → **「未知キー＝false（非公開）扱い」で確定**（2026-04-15）。既存組織の `profile_visibility` JSON に将来追加されたキーが不在の場合、アプリ層のデシリアライザが `false` を返す設計。後方互換のためマイグレーションは原則不要。将来キー名を変更・削除する場合のみマイグレーションスクリプトを用意する
 - [x] **オーナー委譲に指名先の事前承諾フローがない**（`account_purge_last_admin_succession.md` §10.11）→ **対応（2026-07-18 マスター御裁可）**: オーナー委譲を承諾型（オファー→承諾）に統一。新テーブル `ownership_transfer_offers`（UUIDv7）＋ `POST /{scope}/{slug}/transfer-ownership-offers`（打診）／`.../{offerId}/accept`（承諾＝実行）／`decline`／`DELETE`（取消）を新設。指名相手のみ承諾可（宛先照合 = IDOR 防止）。旧即時 `transfer-ownership` は廃止。§10.11 の未解決状態が本改修で解消される
-- [ ] **降格先ロールの不一致（実装時に統一）**: 旧設計記述は発行者を DEPUTY_ADMIN 降格、実装 `RoleService#transferOwnership` は MEMBER 降格。マスター御裁可（発行者 MEMBER 降格）に従い **MEMBER に統一**する。02_api_design のレスポンス例・03_business_logic のフロー・実装コードを揃える
-- [ ] **FE-BE パラメータ不一致（実装時に統一）**: FE composable は body `newAdminUserId`、BE は `targetUserId`。承諾型 2 ステップ API への FE 全面改修時に `targetUserId` へ統一する
+- [ ] **降格先ロールは MEMBER（実装が正・旧 doc の DEPUTY_ADMIN は誤記）**: 実装 `RoleService#transferOwnership` は発行者を MEMBER 降格（javadoc・コード確認済み）。旧設計記述の DEPUTY_ADMIN は乖離した誤りであり、マスター御裁可（発行者 MEMBER 降格）と一致する **MEMBER に統一**する。02_api_design のレスポンス例・03_business_logic のフロー・実装コードを MEMBER で揃える（対応済み）
+- [ ] **FE-BE 不一致は方式ごとの乖離＝既存バグ（実装時に刷新・M-4）**: 旧 BE `transfer-ownership` は `@RequestParam Long targetUserId`（**クエリ**）でボディを読まない（`TeamController` 確認済み）。FE は body `{ newAdminUserId }` のみ送信 → クエリ未付与で **現行は 400 になるバグ**。承諾型 2 ステップ API への FE 全面刷新時に、新 API は **JSON body `{ targetUserId }`** に統一しクエリ方式は廃止する
+- [x] **退会 purge 経路と承諾型の衝突（H-2）**→ **決着**: 通常委譲は承諾型2段、**退会 purge 経由の最後の ADMIN 承継のみ承諾スキップの強制委譲**（2FA チェックなし・audit `forced=true`）を残す。GDPR Art.17 の 30 日タイムリミット順守のため先送り不可。`acceptOffer` と `forceTransferForPurge` を別メソッドに分離（03_business_logic・account_purge §10.11 に明文化）
 
 ---
 

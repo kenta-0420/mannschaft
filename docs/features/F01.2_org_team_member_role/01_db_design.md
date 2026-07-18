@@ -453,6 +453,7 @@ INDEX idx_oto_org (organization_id, status)            -- 組織別 PENDING オ�
 - **同一スコープに PENDING は 1 件まで**: `status='PENDING'` の重複打診をアプリ層で禁止（打診時 409）。DB レベルの部分 UNIQUE は MySQL 8.0 では関数インデックスで表現するが、運用頻度が低いためアプリ層チェックを一次とする。
 - **既存 `invite_tokens` を流用しない理由**: `invite_tokens` は「非メンバーを新規参加させる」ための公開リンク/QR 用トークン（`role_id` で付与ロールを持ち、`used_count`/`max_uses` で多数参加を管理）である。オーナー委譲は「**既存メンバーのロールを入れ替える**」操作で意味論が異なり、`invite_tokens` に相乗りさせると join フローに特殊分岐が増えて認可が複雑化する。よって専用テーブル `ownership_transfer_offers`（新規＝原則6 で UUIDv7）を設ける方が整合的と判断した。
 - **チーム/組織論理削除時**: 紐付く PENDING オファーを CANCELLED に一括更新（`invite_tokens` の一括失効と同方針）。
+- **`AbstractTenantAwareRepository`（原則7）の継承要否**: 本テーブルは `organization_id`（NULL 可）と `team_id`（NULL 可）の XOR を持ち、`organization_id` 単独でのテナント絞り込みが常に成立しない（チーム委譲時は `organization_id` が NULL）。よって原則7 の基底（`findByOrganizationIdAndDeletedAtIsNull` 等）はそのままでは適合しない。**Repository は通常の `JpaRepository` とし、検索は `idx_oto_target_user`（宛先起点）/ `idx_oto_team` / `idx_oto_org`（スコープ起点）で行う**。将来シャーディングする場合は「委譲は宛先ユーザー文脈で承諾される短命レコード」であり、シャードキー（`organization_id`）に強く依存しないため原則7 非適用でも整合する（`invite_tokens` と同じ扱い）。
 
 ---
 
