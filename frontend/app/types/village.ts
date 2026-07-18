@@ -452,6 +452,8 @@ export interface VillageRepresentativeResponse {
   representativeDisplayName: string | null
   /** 委任を発行したチーム/組織 ADMIN の user_id */
   grantedByUserId: number
+  /** 委任実行ユーザー表示名（Backend 解決後のスナップショット。解決不可なら null） */
+  grantedByDisplayName: string | null
   grantedAt: string
   revokedAt: string | null
   /** 任意メモ */

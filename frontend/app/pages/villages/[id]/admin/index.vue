@@ -34,6 +34,14 @@
  *  カード5「通報管理」は本設計の対象外（別設計・§2.2）のため、遷移先ページが無い間は
  *  `to: null` の「近日公開」プレースホルダとする
  *  （`teams/[slug]/admin/index.vue` の approvals カードと同じ作法）。
+ *
+ * # 代表委任カード（Issue #2356・2026-07-18 追記）
+ *  孤児化していた `VillageRepresentativeGrantDialog.vue`（BE `VillageRepresentativeController`
+ *  は完備済みだがどこからもマウントされていなかった）を村長コンソールに搭載するため、
+ *  「メンバー・役職」の隣に「代表委任」カードを新設した。BE Service（`ensureModerator`）は
+ *  HEADMAN/ELDER どちらも許可するため、カード自体の可視性は他カード同様 isAdmin とする。
+ *  ただし委任の付与・取消し操作自体は本画面遷移先（`/admin/representatives`）で isHeadman
+ *  のみに絞っている（長老は一覧の閲覧のみ）。
  */
 // NuxtLink は #components から明示 import して `<component :is>` に **コンポーネント実体**を渡す。
 //
@@ -97,6 +105,15 @@ const cards = computed<AdminConsoleCard[]>(() => {
       descKey: 'village.admin.cards.members.desc',
       icon: 'pi pi-users',
       to: `${base.value}/members`,
+      visible: perms.value.isAdmin,
+    },
+    {
+      key: 'representatives',
+      titleKey: 'village.admin.cards.representatives.title',
+      descKey: 'village.admin.cards.representatives.desc',
+      icon: 'pi pi-id-card',
+      // #2356: 孤児化していた VillageRepresentativeGrantDialog を村長コンソールに搭載。
+      to: `${base.value}/admin/representatives`,
       visible: perms.value.isAdmin,
     },
     {
