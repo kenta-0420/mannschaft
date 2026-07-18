@@ -23,6 +23,7 @@ import com.mannschaft.app.village.repository.VillageRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.OptimisticLockException;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,10 +45,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -267,6 +270,8 @@ class VillageNewsletterIssueServiceTest {
         assertThat(result.digestPostCount()).isEqualTo(frozenPostCount);
         assertThat(result.status()).isEqualTo(VillageNewsletterIssueStatus.PUBLISHED);
         verify(issueRepository).save(any(VillageNewsletterIssueEntity.class));
+        // 編集認可の配線が生きていること（この verify が落ちれば requireHeadmanOrElder 呼出削除を機械検出）
+        verify(bulletinAccessService).requireHeadmanOrElder(VILLAGE_ID, HEADMAN_USER_ID);
     }
 
     // ========================================================================
@@ -352,6 +357,8 @@ class VillageNewsletterIssueServiceTest {
         // 号行を dirty にしない中間表入替でも @Version を上げるための強制インクリメントロック
         verify(entityManager).lock(issue, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
         verify(entityManager).flush();
+        // 編集認可の配線が生きていること（requireHeadmanOrElder 呼出削除を機械検出）
+        verify(bulletinAccessService).requireHeadmanOrElder(VILLAGE_ID, HEADMAN_USER_ID);
     }
 
     @Test
@@ -376,6 +383,65 @@ class VillageNewsletterIssueServiceTest {
                 .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
     }
 
+    @Test
+    @DisplayName("AC-3(本番アーム): flush が jakarta OptimisticLockException を直接投げても 409 に翻訳する")
+    void setIssueTags_flushJakartaOptimisticLockMapsToConflict() {
+        givenActorIsHeadman();
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity issue = issueWithVersionAndStatus(
+                issueId, 0L, VillageNewsletterIssueStatus.FROZEN,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        given(issueRepository.findByIdAndVillageIdAndDeletedAtIsNull(issueId, VILLAGE_ID))
+                .willReturn(Optional.of(issue));
+        given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // Spring ラップ前の“生”の JPA 例外（本番 Hibernate が投げうる型）で union catch の本番アームを守る
+        doThrow(new OptimisticLockException("race")).when(entityManager).flush();
+
+        assertThatThrownBy(() -> service.setIssueTags(VILLAGE_ID, issueId, HEADMAN_USER_ID, List.of(), 0L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-15/16 — 編集6経路の認可配線（非モデレーターは 403 伝播・後続書込ゼロ）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-15/16: 非HEADMAN/ELDER の全編集操作は MODERATION_FORBIDDEN を伝播し save/flush/lock を一切走らせない")
+    void editOperations_forbiddenForNonModerator_noSideEffects() {
+        Long villager = 777L;
+        doThrow(new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN))
+                .when(bulletinAccessService).requireHeadmanOrElder(eq(VILLAGE_ID), eq(villager));
+        UUID issueId = UUID.randomUUID();
+        UUID tagId = UUID.randomUUID();
+
+        assertForbidden(() -> service.updateComment(VILLAGE_ID, issueId, villager, "c", 0L));
+        assertForbidden(() -> service.setIssueTags(VILLAGE_ID, issueId, villager, List.of(), 0L));
+        assertForbidden(() -> service.changeVisibility(
+                VILLAGE_ID, issueId, villager, VillageNewsletterVisibility.VILLAGE_MEMBERS, 0L));
+        assertForbidden(() -> service.updateTag(VILLAGE_ID, tagId, villager, "名", null, null, 0L));
+        assertForbidden(() -> service.deleteTag(VILLAGE_ID, tagId, villager));
+
+        // 認可で弾かれた後、いかなる書込・ロック・flush も走らない（「呼び出し元まかせ認可」退行の柵）
+        verify(issueRepository, never()).save(any());
+        verify(tagRepository, never()).save(any());
+        verify(issueTagRepository, never()).deleteByIssueId(any());
+        verify(entityManager, never()).lock(any(), any());
+        verify(entityManager, never()).flush();
+        // 各経路が確かに認可述語を呼んでいる（配線の生存確認・5 経路）
+        verify(bulletinAccessService, times(5)).requireHeadmanOrElder(VILLAGE_ID, villager);
+    }
+
+    /** MODERATION_FORBIDDEN(403) を投げることを表明するヘルパ。 */
+    private void assertForbidden(ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+    }
+
     // ========================================================================
     // ②-4 堅牢性 AC-9/11/12 — 一覧のタグはページ一括解決（N+1 回避・取り違え無し・空配列）
     // ========================================================================
@@ -394,10 +460,13 @@ class VillageNewsletterIssueServiceTest {
         given(issueRepository.findPublicIssuesFromAliveVillages(
                 eq(VillageNewsletterVisibility.PUBLIC), eq(VillageNewsletterIssueStatus.PUBLISHED), any()))
                 .willReturn(new PageImpl<>(List.of(e1, e2)));
-        // issue1 に tagA(sort 2)/tagB(sort 1)、issue2 にはタグ無し（AC-12）
-        given(issueTagRepository.findByIssueIdIn(List.of(issue1, issue2))).willReturn(List.of(
-                VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagA).build(),
-                VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagB).build()));
+        // issue1 に tagA(sort 2)/tagB(sort 1)、issue2 にはタグ無し（AC-12）。
+        // ID 収集順（Service 内の stream 順）に依存しない順不同マッチャで縛る（将来の実装変更で偽赤化しない）。
+        given(issueTagRepository.findByIssueIdIn(argThat(
+                c -> c != null && c.size() == 2 && c.containsAll(List.of(issue1, issue2)))))
+                .willReturn(List.of(
+                        VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagA).build(),
+                        VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagB).build()));
         given(tagRepository.findByIdInAndDeletedAtIsNull(anyCollection())).willReturn(List.of(
                 tag(tagA, "祭", 2), tag(tagB, "清掃", 1)));
 

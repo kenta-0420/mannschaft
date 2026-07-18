@@ -131,6 +131,21 @@ class VillageNewsletterPublicControllerTest {
     }
 
     @Test
+    @DisplayName("AC-10: GET /public?page=-1 は 200・Service へ page=0 に丸めた Pageable を渡す（下限クランプ）")
+    void listPublic_pageClampedToZero() throws Exception {
+        given(issueService.listPublicIssues(eq(USER_ID), any()))
+                .willReturn(PublicNewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/newsletter/public").param("page", "-1"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listPublicIssues(eq(USER_ID), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageNumber()).isEqualTo(0);
+    }
+
+    @Test
     @DisplayName("AC-17: GET /public/{id} — Service が NEWSLETTER_ISSUE_NOT_FOUND を投げると 404 秘匿（VILLAGE_088）")
     void getPublic_notFoundHidesNonPublic() throws Exception {
         willThrow(new BusinessException(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND))

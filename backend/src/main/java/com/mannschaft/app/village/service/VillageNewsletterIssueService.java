@@ -372,6 +372,14 @@ public class VillageNewsletterIssueService {
             tag.setSortOrder(sortOrder);
         }
         VillageNewsletterTagEntity saved = tagRepository.save(tag);
+        try {
+            // 上の expectedVersion 手動チェックは load〜save 間の“素早い”競合しか捕まえない。
+            // 真の同時編集レース（両者が同一版を読み、@Version が commit 時に衝突）の敗者を、
+            // setIssueTags と対称に flush で即検出し専用コード 093 に翻訳する（汎用 COMMON_003 に落とさない・AC-13）。
+            entityManager.flush();
+        } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
+            throw new BusinessException(VillageErrorCode.NEWSLETTER_TAG_VERSION_CONFLICT);
+        }
         log.info("ニュースレタータグ更新: villageId={} tagId={} userId={}", villageId, tagId, userId);
         return toTagResponse(saved);
     }

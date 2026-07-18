@@ -346,6 +346,22 @@ class VillageNewsletterIssueControllerTest {
         assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("AC-10: GET /issues?page=-1 は 200・Service へ page=0 に丸めた Pageable を渡す（下限クランプ）")
+    void listIssues_pageClampedToZero() throws Exception {
+        given(issueService.listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), any()))
+                .willReturn(NewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/newsletter/issues", VILLAGE_ID)
+                        .param("page", "-1"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageNumber()).isEqualTo(0);
+    }
+
     // ------------------------------------------------------------------
     // ②-4 堅牢性 AC-14: タグ版競合の専用コード VILLAGE_093 マッピング
     // ------------------------------------------------------------------

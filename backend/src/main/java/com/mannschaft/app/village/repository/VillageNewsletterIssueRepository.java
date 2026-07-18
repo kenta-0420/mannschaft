@@ -66,13 +66,6 @@ public interface VillageNewsletterIssueRepository
                     com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency frequency,
                     LocalDateTime periodEndExclusive);
 
-    /** 公開一覧（村横断）: PUBLIC かつ PUBLISHED の号を新しい順（§8.2・idx_vni_public_published）。 */
-    Page<VillageNewsletterIssueEntity>
-            findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDesc(
-                    VillageNewsletterVisibility visibility,
-                    VillageNewsletterIssueStatus status,
-                    Pageable pageable);
-
     /**
      * 公開一覧（村横断・②-4 堅牢性 AC-4〜8）: 指定 visibility×status の号のうち、
      * <b>発行元の村が生存している</b>（{@code deleted_at IS NULL AND archived_at IS NULL}）ものだけを返す。
