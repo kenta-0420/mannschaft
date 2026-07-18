@@ -251,9 +251,19 @@ class ModuleActivationBackfillIT {
     // JDBC ヘルパー
     // ========================================
 
+    /**
+     * teams に 1 行 INSERT する。実 DDL の NOT NULL・DEFAULT 無し列を全網羅する
+     * （V71 で追加された slug NOT NULL UNIQUE を含む）。列リストは既存 IT
+     * {@code BulletinThreadVisibilityResolverIntegrationTest#insertTeam} を金型に流用。
+     * slug は UNIQUE のため UUID 由来の一意値を付与する。deleted_at は NULL
+     * （backfill が deleted_at IS NULL を対象とするため NULL であることが必須）。
+     */
     private long insertTeam(Connection c, String name) throws Exception {
         try (PreparedStatement ps = c.prepareStatement(
-                "INSERT INTO teams (name, created_at, updated_at) VALUES (?, NOW(), NOW())",
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
+                        + "created_at, updated_at) "
+                        + "VALUES (?, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), "
+                        + "NOW(), NOW())",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
             ps.executeUpdate();
@@ -264,10 +274,17 @@ class ModuleActivationBackfillIT {
         }
     }
 
+    /**
+     * organizations に 1 行 INSERT する。実 DDL の NOT NULL・DEFAULT 無し列を全網羅する
+     * （V71 で追加された slug NOT NULL UNIQUE を含む）。列リストは既存 IT
+     * {@code BulletinThreadVisibilityResolverIntegrationTest#insertOrganization} を金型に流用。
+     */
     private long insertOrganization(Connection c, String name) throws Exception {
         try (PreparedStatement ps = c.prepareStatement(
-                "INSERT INTO organizations (name, org_type, created_at, updated_at) "
-                        + "VALUES (?, 'COMPANY', NOW(), NOW())",
+                "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (?, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
+                        + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
             ps.executeUpdate();
