@@ -13,7 +13,9 @@ import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoSharedMemoService;
 import com.mannschaft.app.todo.service.TodoStatusService;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.team.service.TeamService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +28,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.MessageSource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -77,6 +81,9 @@ class TeamTodoControllerTest {
     private TeamService teamService;
 
     @Mock
+    private TodoAccessGuard todoAccessGuard;
+
+    @Mock
     private MessageSource messageSource;
 
     @InjectMocks
@@ -94,6 +101,15 @@ class TeamTodoControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
                 .build();
         given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        // 各 EP は SecurityUtils.getCurrentUserId() を要求するため認証コンテキストを用意する
+        // （TodoAccessGuard は @Mock で no-op のため認可自体は素通り）。
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("1", null, List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     private PagedResponse<TodoResponse> emptyPaged() {
