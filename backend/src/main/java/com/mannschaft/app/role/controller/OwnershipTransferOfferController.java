@@ -16,11 +16,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -48,6 +50,23 @@ public class OwnershipTransferOfferController {
     private final OrganizationService organizationService;
 
     // ========================================
+    // 受信インボックス（自分宛オファー）
+    // ========================================
+
+    @GetMapping("/api/v1/me/ownership-transfer-offers")
+    @Operation(summary = "自分宛の有効な（PENDING）オーナー委譲オファー一覧",
+            description = "指名相手（本人）宛の PENDING オファーのみ返す。第三者が他人宛を取得する経路は"
+                    + "構造的に存在しない（本人限定・IDOR 防止）。通知の actionUrl から到達した受信側 UI が"
+                    + "オファーの存在確認・一覧表示に用いる。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<TransferOwnershipOfferResponse>>> listMyOffers() {
+        List<TransferOwnershipOfferResponse> offers =
+                offerService.listMyPendingOffers(SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(offers));
+    }
+
+    // ========================================
     // チーム
     // ========================================
 
@@ -60,7 +79,7 @@ public class OwnershipTransferOfferController {
             @Valid @RequestBody TransferOwnershipOfferCreateRequest request) {
         Long id = teamService.resolveTeamId(slug);
         TransferOwnershipOfferResponse response =
-                offerService.createOffer(id, SCOPE_TEAM, request, SecurityUtils.getCurrentUserId());
+                offerService.createOffer(id, SCOPE_TEAM, slug, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -85,7 +104,7 @@ public class OwnershipTransferOfferController {
             @PathVariable String slug,
             @PathVariable UUID offerId) {
         Long id = teamService.resolveTeamId(slug);
-        offerService.declineOffer(id, SCOPE_TEAM, offerId, SecurityUtils.getCurrentUserId());
+        offerService.declineOffer(id, SCOPE_TEAM, slug, offerId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -114,7 +133,7 @@ public class OwnershipTransferOfferController {
             @Valid @RequestBody TransferOwnershipOfferCreateRequest request) {
         Long id = organizationService.resolveOrgId(slug);
         TransferOwnershipOfferResponse response =
-                offerService.createOffer(id, SCOPE_ORGANIZATION, request, SecurityUtils.getCurrentUserId());
+                offerService.createOffer(id, SCOPE_ORGANIZATION, slug, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -139,7 +158,7 @@ public class OwnershipTransferOfferController {
             @PathVariable String slug,
             @PathVariable UUID offerId) {
         Long id = organizationService.resolveOrgId(slug);
-        offerService.declineOffer(id, SCOPE_ORGANIZATION, offerId, SecurityUtils.getCurrentUserId());
+        offerService.declineOffer(id, SCOPE_ORGANIZATION, slug, offerId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
