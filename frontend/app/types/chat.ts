@@ -133,6 +133,53 @@ export interface ChatMessageAttachment {
   url: string
 }
 
+/**
+ * メッセージ種別（F04.12）。
+ *
+ * BE {@code chat_messages.message_type}（VARCHAR）に対応。
+ * - TEXT: 通常本文メッセージ（既定）
+ * - INVITE_CARD: チーム/組織への承諾型招待カード（{@link ChatMessageResponse.inviteData} を伴う）
+ */
+export type ChatMessageType = 'TEXT' | 'INVITE_CARD'
+
+/** 承諾型招待カードのスコープ種別（F04.12）。 */
+export type ChatInviteScopeType = 'TEAM' | 'ORGANIZATION'
+
+/**
+ * 承諾型招待カードの表示状態（F04.12・設計書 §5）。
+ *
+ * BE が {@code invite_tokens} + membership から導出して返す（カード自体は状態を持たない）。
+ * - PENDING: 承諾待ち（宛先本人にのみ参加/辞退ボタン活性）
+ * - JOINED: 参加済み（承諾済み）
+ * - EXPIRED: 期限切れ
+ * - REVOKED: 取消済み / 辞退済み（理由は audit で区別）
+ */
+export type ChatInviteStatus = 'PENDING' | 'JOINED' | 'EXPIRED' | 'REVOKED'
+
+/**
+ * 招待カード描画契約（F04.12・設計書 §5 `inviteData` 完全定義 / A-4）。
+ *
+ * {@code messageType === 'INVITE_CARD'} のメッセージにのみ付与される。
+ */
+export interface ChatInviteData {
+  /** 招待トークン ID */
+  tokenId: number
+  /** 承諾/辞退 API に渡す UUID トークン */
+  token: string
+  /** 招待先種別 */
+  scopeType: ChatInviteScopeType
+  /** 招待先 ID */
+  scopeId: number
+  /** 招待先の表示名 */
+  scopeName: string
+  /** 導出済みの表示状態（BE が算出して返す） */
+  status: ChatInviteStatus
+  /** 呼出ユーザーが宛先本人か（true=参加/辞退ボタン活性、false=承諾待ち表示） */
+  isTarget: boolean
+  /** 有効期限（ISO8601） */
+  expiresAt: string
+}
+
 export interface ChatMessageResponse {
   id: number
   channelId: number
@@ -163,6 +210,10 @@ export interface ChatMessageResponse {
   depth: number
   /** depth >= 10 時に true（掲示板移行推奨） */
   suggestBoardMigration: boolean
+  /** メッセージ種別（F04.12）。既定は TEXT */
+  messageType: ChatMessageType
+  /** 招待カードのペイロード（F04.12）。messageType が INVITE_CARD 以外では null */
+  inviteData: ChatInviteData | null
 }
 
 /** スレッド取得レスポンス (F04.2) */

@@ -11,6 +11,8 @@ const props = defineProps<{
   canDelete?: boolean
   /** 投稿者本人かどうか（コンテキストメニュー出し分け用） */
   isMine?: boolean
+  /** 承諾/辞退 API 実行中の招待トークン（招待カードのボタンローディング表示用・F04.12） */
+  pendingInviteToken?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -19,7 +21,16 @@ const emit = defineEmits<{
   pin: [messageId: number]
   delete: [messageId: number]
   bookmark: [messageId: number]
+  /** 招待カードの承諾（F04.12）。messageId でローカル差し替え対象を特定する */
+  inviteJoin: [messageId: number, token: string]
+  /** 招待カードの辞退（F04.12） */
+  inviteDecline: [messageId: number, token: string]
 }>()
+
+/** この招待カードが承諾/辞退 API 実行中か（F04.12）。 */
+const isInvitePending = computed(
+  () => props.pendingInviteToken != null && props.pendingInviteToken === props.message.inviteData?.token,
+)
 
 const { t } = useI18n()
 const { relativeTime } = useRelativeTime()
@@ -170,6 +181,28 @@ const indentStyle = computed(() => {
     <!-- 削除済み -->
     <div v-else-if="message.isDeleted" class="py-1 text-sm italic text-surface-400">
       このメッセージは削除されました
+    </div>
+
+    <!-- 招待カード（F04.12） -->
+    <div v-else-if="message.messageType === 'INVITE_CARD' && message.inviteData" class="flex gap-3">
+      <Avatar
+        :label="message.sender?.displayName?.charAt(0) || '?'"
+        shape="circle"
+        size="normal"
+        class="mt-0.5 shrink-0"
+      />
+      <div class="min-w-0 flex-1">
+        <div class="flex items-baseline gap-2">
+          <span class="text-sm font-semibold">{{ message.sender?.displayName || '不明' }}</span>
+          <span class="text-xs text-surface-400">{{ relativeTime(message.createdAt) }}</span>
+        </div>
+        <ChatInviteCard
+          :invite="message.inviteData"
+          :submitting="isInvitePending"
+          @join="(token: string) => emit('inviteJoin', message.id, token)"
+          @decline="(token: string) => emit('inviteDecline', message.id, token)"
+        />
+      </div>
     </div>
 
     <!-- 通常メッセージ -->
