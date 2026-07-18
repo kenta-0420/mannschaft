@@ -58,8 +58,11 @@ public class ChatMessageController {
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false, defaultValue = "before") String direction) {
         // F08.7.1: 大会/ディビジョン連絡チャットは閲覧認可（canView）を通す（通常チャンネルは no-op）
-        messageService.checkChannelViewAccess(channelId, SecurityUtils.getCurrentUserId());
-        CursorPagedResponse<MessageResponse> response = messageService.listMessages(channelId, cursor, limit, direction);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        messageService.checkChannelViewAccess(channelId, currentUserId);
+        // F04.12: 招待カードの inviteData.isTarget（宛先本人判定）解決のため閲覧ユーザー ID を渡す。
+        CursorPagedResponse<MessageResponse> response =
+                messageService.listMessages(channelId, cursor, limit, direction, currentUserId);
         return ResponseEntity.ok(response);
     }
 

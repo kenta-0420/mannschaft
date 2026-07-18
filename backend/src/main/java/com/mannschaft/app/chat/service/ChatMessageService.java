@@ -23,7 +23,9 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.role.dto.InviteCardData;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.MembershipInviteService;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
@@ -87,6 +89,11 @@ public class ChatMessageService {
     private final UserRoleRepository userRoleRepository;
     /** F08.7.1 連絡機能: 大会/ディビジョンチャットの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
     private final TournamentContactAccessService tournamentContactAccessService;
+    /**
+     * F04.12: 招待カード（{@code message_type = 'INVITE_CARD'}）の描画契約 inviteData を role ドメインから
+     * 解決する（ドメイン間 Service 呼び出し・原則1/原則5）。Entity は漏らさず {@link InviteCardData} で受け取る。
+     */
+    private final MembershipInviteService membershipInviteService;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -103,6 +110,24 @@ public class ChatMessageService {
      */
     public CursorPagedResponse<MessageResponse> listMessages(
             Long channelId, Long cursor, Integer limit, String direction) {
+        return listMessages(channelId, cursor, limit, direction, null);
+    }
+
+    /**
+     * チャンネルのメッセージ一覧を取得する（閲覧ユーザー ID 付き・F04.12）。
+     *
+     * <p>{@code viewerUserId} は招待カードの {@code inviteData.isTarget}（宛先本人判定）解決に用いる。
+     * それ以外の挙動は {@link #listMessages(Long, Long, Integer, String)} と同一。</p>
+     *
+     * @param channelId    チャンネルID
+     * @param cursor       カーソル（メッセージID）。null の場合は最新から取得
+     * @param limit        取得件数
+     * @param direction    取得方向。"after" で cursor より新しいメッセージを昇順取得。それ以外は降順取得
+     * @param viewerUserId 閲覧ユーザー ID（招待カードの宛先本人判定用。未認証は null）
+     * @return カーソルページネーション付きメッセージレスポンス
+     */
+    public CursorPagedResponse<MessageResponse> listMessages(
+            Long channelId, Long cursor, Integer limit, String direction, Long viewerUserId) {
         int effectiveLimit = resolveLimit(limit);
         Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
 
@@ -121,7 +146,7 @@ public class ChatMessageService {
             messages = messages.subList(0, effectiveLimit);
         }
 
-        List<MessageResponse> responses = enrichMessages(messages);
+        List<MessageResponse> responses = enrichMessages(messages, viewerUserId);
 
         String nextCursor = hasNext && !messages.isEmpty()
                 ? String.valueOf(messages.get(messages.size() - 1).getId())
@@ -270,7 +295,7 @@ public class ChatMessageService {
         ChatMessageEntity saved = messageRepository.save(message);
 
         log.info("メッセージ編集完了: messageId={}", messageId);
-        MessageResponse response = enrichMessage(saved);
+        MessageResponse response = enrichMessage(saved, userId);
         // F04.2: WebSocket でチャンネル参加者全員に配信
         chatMessagePublisher.publishUpdated(saved.getChannelId(), response);
         return response;
@@ -329,7 +354,7 @@ public class ChatMessageService {
         // F08.7.1: 大会/ディビジョン連絡チャットの返信一覧も canView を通す（メッセージ本文の漏洩防止）。
         checkChannelViewAccess(parent.getChannelId(), userId);
         List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAsc(parentId);
-        return enrichMessages(replies);
+        return enrichMessages(replies, userId);
     }
 
     /**
@@ -353,12 +378,12 @@ public class ChatMessageService {
         Page<ChatMessageEntity> replyPage = messageRepository
                 .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(messageId, pageable);
 
-        List<MessageResponse> messages = enrichMessages(replyPage.getContent());
+        List<MessageResponse> messages = enrichMessages(replyPage.getContent(), userId);
 
         boolean hasMore = replyPage.hasNext();
         String nextCursor = hasMore ? "page_" + (page + 1) : null;
 
-        MessageResponse rootResponse = enrichMessage(root);
+        MessageResponse rootResponse = enrichMessage(root, userId);
         return new ThreadResponse(
                 rootResponse,
                 messages,
@@ -463,7 +488,7 @@ public class ChatMessageService {
         }
         ChatMessageEntity saved = messageRepository.save(message);
         log.info("メッセージピン留め変更: messageId={}, pinned={}", messageId, pinned);
-        return enrichMessage(saved);
+        return enrichMessage(saved, userId);
     }
 
     /**
@@ -498,7 +523,7 @@ public class ChatMessageService {
         ChatMessageEntity saved = messageRepository.save(forwarded);
         log.info("メッセージ転送完了: originalId={}, forwardedId={}, targetChannelId={}",
                 messageId, saved.getId(), request.getTargetChannelId());
-        return enrichMessage(saved);
+        return enrichMessage(saved, userId);
     }
 
     /**
@@ -516,7 +541,7 @@ public class ChatMessageService {
         int effectiveLimit = resolveLimit(limit);
         Pageable pageable = PageRequest.of(0, effectiveLimit);
         List<ChatMessageEntity> messages = messageRepository.searchByKeyword(channelId, keyword, pageable);
-        return enrichMessages(messages);
+        return enrichMessages(messages, userId);
     }
 
     /**
@@ -595,20 +620,21 @@ public class ChatMessageService {
         return responses;
     }
 
-    private MessageResponse enrichMessage(ChatMessageEntity message) {
+    private MessageResponse enrichMessage(ChatMessageEntity message, Long viewerUserId) {
         List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
         List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
         Map<Long, MessageResponse.SenderDto> resolved = resolveSenders(
                 message.getSenderId() != null ? List.of(message.getSenderId()) : List.of());
-        return chatMapper.toMessageResponseWithDetails(
+        MessageResponse response = chatMapper.toMessageResponseWithDetails(
                 message,
                 chatMapper.toAttachmentResponseList(attachments),
                 chatMapper.toReactionResponseList(reactions),
                 senderDtoOf(message.getSenderId(), resolved)
         );
+        return withInviteData(response, message, viewerUserId);
     }
 
-    private List<MessageResponse> enrichMessages(List<ChatMessageEntity> messages) {
+    private List<MessageResponse> enrichMessages(List<ChatMessageEntity> messages, Long viewerUserId) {
         // N+1 回避: 全メッセージの senderId を集め、表示名・アバターを各 1 クエリで一括解決してから Map で引く
         Map<Long, MessageResponse.SenderDto> resolved = resolveSenders(
                 messages.stream().map(ChatMessageEntity::getSenderId).collect(Collectors.toList()));
@@ -616,14 +642,40 @@ public class ChatMessageService {
         for (ChatMessageEntity message : messages) {
             List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
             List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
-            responses.add(chatMapper.toMessageResponseWithDetails(
+            MessageResponse response = chatMapper.toMessageResponseWithDetails(
                     message,
                     chatMapper.toAttachmentResponseList(attachments),
                     chatMapper.toReactionResponseList(reactions),
                     senderDtoOf(message.getSenderId(), resolved)
-            ));
+            );
+            responses.add(withInviteData(response, message, viewerUserId));
         }
         return responses;
+    }
+
+    /**
+     * F04.12: 招待カード（{@code message_type = 'INVITE_CARD'} かつ {@code invite_token_id} 非 NULL）の
+     * メッセージに inviteData を付与する（設計書 §5・A-4）。それ以外のメッセージは無変更で返す
+     * （{@code messageType} は既に mapper がトップレベル付与済み・inviteData は null）。
+     *
+     * <p>inviteData の解決は role ドメインの {@link MembershipInviteService#resolveInviteCardData(Long, Long)}
+     * にドメイン間 Service 呼び出しで委譲する（chat から role の Repository/Entity を直接触らない・原則1/D-1）。
+     * {@code viewerUserId} は宛先本人判定（isTarget）に用いる。</p>
+     */
+    private MessageResponse withInviteData(
+            MessageResponse response, ChatMessageEntity message, Long viewerUserId) {
+        if (!"INVITE_CARD".equals(message.getMessageType()) || message.getInviteTokenId() == null) {
+            return response;
+        }
+        InviteCardData data = membershipInviteService.resolveInviteCardData(
+                message.getInviteTokenId(), viewerUserId);
+        if (data == null) {
+            return response;
+        }
+        MessageResponse.InviteCardDto inviteData = new MessageResponse.InviteCardDto(
+                data.tokenId(), data.token(), data.scopeType(), data.scopeId(),
+                data.scopeName(), data.status(), data.isTarget(), data.expiresAt());
+        return response.toBuilder().inviteData(inviteData).build();
     }
 
     /**

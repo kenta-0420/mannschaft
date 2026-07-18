@@ -7,6 +7,7 @@ import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.InvitableScopesResponse;
+import com.mannschaft.app.role.dto.InviteCardData;
 import com.mannschaft.app.role.dto.MembershipInviteRequest;
 import com.mannschaft.app.role.dto.MembershipInviteResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -149,6 +150,72 @@ public class MembershipInviteService {
 
         token.revoke();
         log.info("承諾型招待を取消: tokenId={}, actorUserId={}", tokenId, actorUserId);
+    }
+
+    /**
+     * 招待カードの描画契約データ（{@link InviteCardData}）を解決する（F04.12・設計書 §5・A-4）。
+     *
+     * <p>chat ドメインのメッセージ取得経路が {@code message_type = 'INVITE_CARD'} のメッセージに対して
+     * ドメイン間 Service 呼び出しで使用する。Entity を漏らさず値オブジェクトで返す（原則1・ArchUnit D-1）。</p>
+     *
+     * <p><strong>{@code isTarget} の判定（IDOR 核心・設計書 §5）:</strong>
+     * {@code viewerUserId == token.targetUserId} で「閲覧者が宛先本人か」を判定する。
+     * 宛先本人にのみ参加/辞退ボタンを活性化し、発行者側は「承諾待ち」表示とする。</p>
+     *
+     * <p><strong>{@code status} の導出（状態機械・設計書 §5・M-1）:</strong> カードは状態を持たず
+     * {@code invite_tokens} + メンバーシップから都度導出する。優先順位は
+     * JOINED（宛先が既にスコープメンバー）→ REVOKED（{@code revoked_at} 非 NULL）→
+     * EXPIRED（{@code expires_at < NOW()}・ちょうどは有効）→ PENDING。</p>
+     *
+     * @param tokenId      招待トークン ID（{@code chat_messages.invite_token_id}）
+     * @param viewerUserId 現在の閲覧ユーザー ID（宛先本人判定に使用。未認証は null）
+     * @return 招待カード描画データ。トークンが存在しない場合は null（カードは inviteData 無しで描画される）
+     */
+    public InviteCardData resolveInviteCardData(Long tokenId, Long viewerUserId) {
+        if (tokenId == null) {
+            return null;
+        }
+        InviteTokenEntity token = inviteTokenRepository.findById(tokenId).orElse(null);
+        if (token == null) {
+            // トークンは revoke でも物理削除されない（revoked_at を立てるのみ）。
+            // 到達し得ない想定だが、万一欠落していれば inviteData 無しで返す（500 を出さない）。
+            log.warn("招待カードのトークンが見つかりません: tokenId={}", tokenId);
+            return null;
+        }
+
+        boolean isTeam = token.getTeamId() != null;
+        String scopeType = isTeam ? "TEAM" : "ORGANIZATION";
+        Long scopeId = isTeam ? token.getTeamId() : token.getOrganizationId();
+        String scopeName = resolveScopeName(scopeType, scopeId);
+
+        boolean isTarget = viewerUserId != null && viewerUserId.equals(token.getTargetUserId());
+        String status = deriveCardStatus(token, scopeType, scopeId);
+
+        return new InviteCardData(
+                token.getId(), token.getToken(),
+                scopeType, scopeId, scopeName,
+                status, isTarget, token.getExpiresAt());
+    }
+
+    /**
+     * 招待カードの表示状態を導出する（設計書 §5 状態遷移表）。
+     *
+     * <p>宛先が既にスコープメンバーなら承諾済み＝JOINED。以降は失効理由の優先度で判定する。</p>
+     */
+    private String deriveCardStatus(InviteTokenEntity token, String scopeType, Long scopeId) {
+        Long targetUserId = token.getTargetUserId();
+        if (targetUserId != null && accessControlService.isMember(targetUserId, scopeId, scopeType)) {
+            return "JOINED";
+        }
+        if (token.getRevokedAt() != null) {
+            return "REVOKED";
+        }
+        LocalDateTime expiresAt = token.getExpiresAt();
+        // M-1: 既存 isValid() は expiresAt.isBefore(now) で判定するため、ちょうど（==）は有効（PENDING）。
+        if (expiresAt != null && expiresAt.isBefore(LocalDateTime.now())) {
+            return "EXPIRED";
+        }
+        return "PENDING";
     }
 
     /**
