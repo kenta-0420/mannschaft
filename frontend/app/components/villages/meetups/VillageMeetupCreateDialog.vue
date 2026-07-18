@@ -15,11 +15,12 @@ import Textarea from 'primevue/textarea'
 /**
  * 候補日フォーム行。
  *
- * BE (`MeetupCreateRequest.candidateDates`) は `List<LocalDate>` ＝ 日付のみを受け取り、
- * 開始 / 終了時刻を保持する項目を持たない。そのため時刻入力は提供しない。
+ * BE (`MeetupCreateRequest.candidateDates`) は object 配列 `{date, time?}`（#2357）。
+ * `candidateTime` は任意（空は終日）。
  */
 interface CandidateDateForm {
   candidateDate: string
+  candidateTime: string
 }
 
 interface MeetupFormState {
@@ -91,12 +92,20 @@ const { t } = useI18n()
           <div
             v-for="(c, idx) in form.candidateDates"
             :key="idx"
-            class="grid grid-cols-[1fr_auto] gap-2 items-end"
+            class="grid grid-cols-[1fr_auto_auto] gap-2 items-end"
           >
             <InputText
               v-model="c.candidateDate"
               type="date"
               class="w-full"
+              :aria-label="t('village.meetup.candidateDate')"
+            />
+            <InputText
+              v-model="c.candidateTime"
+              type="time"
+              class="w-32"
+              :aria-label="t('village.meetup.candidateTime')"
+              :placeholder="t('village.meetup.allDay')"
             />
             <Button
               icon="pi pi-trash"
@@ -109,6 +118,9 @@ const { t } = useI18n()
             />
           </div>
         </div>
+        <p class="text-xs text-surface-500 mt-1">
+          {{ t('village.meetup.timeOptionalHint') }}
+        </p>
       </div>
     </div>
     <template #footer>

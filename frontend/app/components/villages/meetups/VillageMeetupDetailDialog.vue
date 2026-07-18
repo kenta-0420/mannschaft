@@ -11,9 +11,9 @@
  * BE 契約に関する注意（MeetupCandidateDateResponse は `{id, meetupId, candidateDate, sortOrder}` のみ）:
  * - 票数は候補日 DTO に含まれない。投票集計 API (`GET /meetups/{id}/votes`) の結果を
  *   `voteSummary` prop で受け取り、candidateDateId で突き合わせて表示する。
- * - 候補日に `isConfirmed` フラグは存在しない。`MeetupResponse.confirmedDate`（LocalDate）と
- *   候補日の `candidateDate` を突き合わせて導出する。
- * - 候補日に時刻は存在しない（日付のみ）。
+ * - 候補日に `isConfirmed` フラグは存在しない。`MeetupResponse.confirmedDate/confirmedTime` と
+ *   候補日の `candidateDate/candidateTime` を突き合わせて導出する（#2357）。
+ * - 候補日は日付 + 任意の時刻（`candidateTime`。null は終日）。
  */
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
@@ -73,11 +73,19 @@ function summaryFor(candidateDateId: string): VillageMeetupVoteSummaryCandidate 
 
 /**
  * 確定済み候補日か。BE に候補日単位の `isConfirmed` は無いため、
- * 寄合の `confirmedDate` と候補日の日付が一致するかで導出する。
+ * 寄合の `confirmedDate` / `confirmedTime` と候補日の `candidateDate` / `candidateTime` の
+ * 両方が一致するかで導出する（#2357）。日付だけの一致では、同日別時刻の候補を誤判定する。
  */
 function isConfirmedCandidate(candidate: VillageMeetupCandidateDateResponse): boolean {
-  const confirmed = props.detailMeetup?.confirmedDate
-  return !!confirmed && confirmed === candidate.candidateDate
+  const meetup = props.detailMeetup
+  if (!meetup || meetup.status !== 'CONFIRMED' || !meetup.confirmedDate) return false
+  return meetup.confirmedDate === candidate.candidateDate
+    && (meetup.confirmedTime ?? null) === (candidate.candidateTime ?? null)
+}
+
+/** 候補の時刻を表示用に整形する。時刻あり→`HH:mm`、終日→i18n ラベル。 */
+function displayTime(candidateTime: string | null): string {
+  return candidateTime ? candidateTime.slice(0, 5) : t('village.meetup.allDay')
 }
 </script>
 
@@ -123,6 +131,13 @@ function isConfirmedCandidate(candidate: VillageMeetupCandidateDateResponse): bo
               <div class="flex items-center gap-2">
                 <i class="pi pi-calendar" />
                 <span>{{ c.candidateDate }}</span>
+                <span
+                  class="inline-flex items-center gap-1 text-surface-600 dark:text-surface-300"
+                  :class="c.candidateTime ? '' : 'italic'"
+                >
+                  <i class="pi pi-clock text-xs" />
+                  {{ displayTime(c.candidateTime) }}
+                </span>
                 <Badge
                   v-if="isConfirmedCandidate(c)"
                   :value="t('village.meetup.confirmedDate')"

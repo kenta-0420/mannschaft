@@ -6,6 +6,7 @@ import lombok.Builder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public record MeetupResponse(
         Long organizerUserId,
         VillageMeetupStatus status,
         LocalDate confirmedDate,
+        LocalTime confirmedTime,
         String location,
         LocalDateTime createdAt,
         List<MeetupCandidateDateResponse> candidateDates) {
@@ -37,6 +39,7 @@ public record MeetupResponse(
                 .organizerUserId(entity.getOrganizerUserId())
                 .status(entity.getStatus())
                 .confirmedDate(entity.getConfirmedDate())
+                .confirmedTime(entity.getConfirmedTime())
                 .location(entity.getLocation())
                 .createdAt(entity.getCreatedAt())
                 .candidateDates(candidateDates)

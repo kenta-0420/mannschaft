@@ -52874,8 +52874,14 @@ export interface components {
         MembershipBanRequest: {
             reason?: string;
         };
+        MeetupCandidateDateInput: {
+            /** Format: date */
+            date: string;
+            /** @example 14:30:00 */
+            time?: string;
+        };
         MeetupCreateRequest: {
-            candidateDates?: string[];
+            candidateDates?: components["schemas"]["MeetupCandidateDateInput"][];
             description?: string;
             location?: string;
             title?: string;
@@ -52886,6 +52892,8 @@ export interface components {
         MeetupCandidateDateResponse: {
             /** Format: date */
             candidateDate?: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -52897,6 +52905,8 @@ export interface components {
             candidateDates?: components["schemas"]["MeetupCandidateDateResponse"][];
             /** Format: date */
             confirmedDate?: string;
+            /** @example 14:30:00 */
+            confirmedTime?: string;
             /** Format: date-time */
             createdAt?: string;
             description?: string;
@@ -52918,6 +52928,8 @@ export interface components {
         MeetupCandidateDateAddRequest: {
             /** Format: date */
             candidateDate: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: int32 */
             sortOrder?: number;
         };
@@ -66546,6 +66558,8 @@ export interface components {
             candidateDate?: string;
             /** Format: uuid */
             candidateDateId?: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: int32 */
             maybeCount?: number;
             /** Format: int32 */

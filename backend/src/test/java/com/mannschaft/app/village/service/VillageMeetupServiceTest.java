@@ -5,6 +5,8 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MeetupCandidateDateAddRequest;
+import com.mannschaft.app.village.dto.MeetupCandidateDateInput;
+import com.mannschaft.app.village.dto.MeetupCandidateDateResponse;
 import com.mannschaft.app.village.dto.MeetupConfirmRequest;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
 import com.mannschaft.app.village.dto.MeetupResponse;
@@ -37,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -102,7 +105,8 @@ class VillageMeetupServiceTest {
         givenActorIsVillager();
         MeetupCreateRequest req = new MeetupCreateRequest(
                 "新年会", "みんなで集まろう", "渋谷駅",
-                List.of(LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 17)));
+                List.of(new MeetupCandidateDateInput(LocalDate.of(2026, 1, 10), null),
+                        new MeetupCandidateDateInput(LocalDate.of(2026, 1, 17), LocalTime.of(19, 0))));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
                 .willAnswer(inv -> {
                     VillageMeetupEntity e = inv.getArgument(0);
@@ -112,14 +116,20 @@ class VillageMeetupServiceTest {
                 });
         given(candidateDateRepository.save(any(VillageMeetupCandidateDateEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(MEETUP_ID))
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of()); // detail 取得時の候補日（空でも問題なし）
 
         MeetupResponse res = service.createMeetup(VILLAGE_ID, req, ACTOR_USER_ID);
 
         assertThat(res.status()).isEqualTo(VillageMeetupStatus.PLANNING);
         assertThat(res.organizerUserId()).isEqualTo(ACTOR_USER_ID);
-        verify(candidateDateRepository, org.mockito.Mockito.times(2)).save(any());
+        // AC-3: 保存された候補日エンティティに時刻が正しく載る（終日=null と 19:00 の両方）
+        org.mockito.ArgumentCaptor<VillageMeetupCandidateDateEntity> cdCaptor =
+                org.mockito.ArgumentCaptor.forClass(VillageMeetupCandidateDateEntity.class);
+        verify(candidateDateRepository, org.mockito.Mockito.times(2)).save(cdCaptor.capture());
+        assertThat(cdCaptor.getAllValues())
+                .extracting(VillageMeetupCandidateDateEntity::getCandidateTime)
+                .containsExactly(null, LocalTime.of(19, 0));
         verify(auditLogService).record(
                 eq(AuditEventType.VILLAGE_MEETUP_CREATED.name()),
                 eq(ACTOR_USER_ID), any(), any(), any(), any(), any(), any(), anyString());
@@ -133,7 +143,7 @@ class VillageMeetupServiceTest {
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
                 .willReturn(Optional.empty());
         MeetupCreateRequest req = new MeetupCreateRequest(
-                "X", null, null, List.of(LocalDate.of(2026, 1, 10)));
+                "X", null, null, List.of(new MeetupCandidateDateInput(LocalDate.of(2026, 1, 10), null)));
 
         assertThatThrownBy(() -> service.createMeetup(VILLAGE_ID, req, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -142,18 +152,47 @@ class VillageMeetupServiceTest {
     }
 
     @Test
-    @DisplayName("create: 候補日に重複あり → 409 VOTE_DUPLICATE")
+    @DisplayName("create: 候補日に重複あり（同一 date・同一 time）→ 409 VOTE_DUPLICATE")
     void create_duplicate_dates() {
         givenActiveVillage();
         givenActorIsVillager();
         LocalDate d = LocalDate.of(2026, 1, 10);
-        MeetupCreateRequest req = new MeetupCreateRequest("X", null, null, List.of(d, d));
+        // 終日候補（time=null）同士の重複も弾く（MySQL UNIQUE では NULL 重複を許容するためアプリ層で検査）
+        MeetupCreateRequest req = new MeetupCreateRequest("X", null, null,
+                List.of(new MeetupCandidateDateInput(d, null), new MeetupCandidateDateInput(d, null)));
 
         assertThatThrownBy(() -> service.createMeetup(VILLAGE_ID, req, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.VOTE_DUPLICATE);
         verify(meetupRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: AC-4 同一日でも時刻が異なれば共存できる（重複扱いにしない）")
+    void create_same_date_different_time_ok() {
+        givenActiveVillage();
+        givenActorIsVillager();
+        LocalDate d = LocalDate.of(2026, 1, 10);
+        MeetupCreateRequest req = new MeetupCreateRequest("X", null, null,
+                List.of(new MeetupCandidateDateInput(d, LocalTime.of(10, 0)),
+                        new MeetupCandidateDateInput(d, LocalTime.of(19, 0))));
+        given(meetupRepository.save(any(VillageMeetupEntity.class)))
+                .willAnswer(inv -> {
+                    VillageMeetupEntity e = inv.getArgument(0);
+                    e.setId(MEETUP_ID);
+                    e.setCreatedAt(LocalDateTime.now());
+                    return e;
+                });
+        given(candidateDateRepository.save(any(VillageMeetupCandidateDateEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
+                .willReturn(List.of());
+
+        MeetupResponse res = service.createMeetup(VILLAGE_ID, req, ACTOR_USER_ID);
+
+        assertThat(res.status()).isEqualTo(VillageMeetupStatus.PLANNING);
+        verify(candidateDateRepository, org.mockito.Mockito.times(2)).save(any());
     }
 
     // ========================================================================
@@ -168,7 +207,7 @@ class VillageMeetupServiceTest {
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(MEETUP_ID))
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of());
 
         MeetupUpdateRequest req = new MeetupUpdateRequest("新タイトル", null, null);
@@ -220,7 +259,7 @@ class VillageMeetupServiceTest {
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(MEETUP_ID))
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of());
 
         MeetupResponse res = service.cancelMeetup(VILLAGE_ID, MEETUP_ID, ACTOR_USER_ID);
@@ -249,16 +288,18 @@ class VillageMeetupServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("confirm: 正常系 → CONFIRMED + confirmed_date セット")
+    @DisplayName("confirm: AC-5 正常系 → CONFIRMED + 候補の date/time が confirmed へ転記")
     void confirm_ok() {
         givenActiveVillage();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
-        VillageMeetupCandidateDateEntity cd = candidateDate(LocalDate.of(2026, 1, 10), MEETUP_ID);
+        // 時刻付きの候補（19:00）を確定 → confirmedTime へ転記される
+        VillageMeetupCandidateDateEntity cd =
+                candidateDate(LocalDate.of(2026, 1, 10), LocalTime.of(19, 0), MEETUP_ID);
         given(candidateDateRepository.findById(CANDIDATE_DATE_ID)).willReturn(Optional.of(cd));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(MEETUP_ID))
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of());
 
         MeetupResponse res = service.confirmMeetup(VILLAGE_ID, MEETUP_ID,
@@ -266,6 +307,28 @@ class VillageMeetupServiceTest {
 
         assertThat(res.status()).isEqualTo(VillageMeetupStatus.CONFIRMED);
         assertThat(res.confirmedDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+        assertThat(res.confirmedTime()).isEqualTo(LocalTime.of(19, 0));
+        assertThat(existing.getConfirmedTime()).isEqualTo(LocalTime.of(19, 0));
+    }
+
+    @Test
+    @DisplayName("confirm: AC-5b 終日候補（time=null）を確定すると confirmedTime も null のまま")
+    void confirm_allday_keeps_null_time() {
+        givenActiveVillage();
+        VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
+        given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
+        VillageMeetupCandidateDateEntity cd = candidateDate(LocalDate.of(2026, 1, 10), null, MEETUP_ID);
+        given(candidateDateRepository.findById(CANDIDATE_DATE_ID)).willReturn(Optional.of(cd));
+        given(meetupRepository.save(any(VillageMeetupEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
+                .willReturn(List.of());
+
+        MeetupResponse res = service.confirmMeetup(VILLAGE_ID, MEETUP_ID,
+                new MeetupConfirmRequest(CANDIDATE_DATE_ID), ACTOR_USER_ID);
+
+        assertThat(res.confirmedDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+        assertThat(res.confirmedTime()).isNull();
     }
 
     @Test
@@ -370,7 +433,7 @@ class VillageMeetupServiceTest {
         VillageMeetupCandidateDateEntity cd2 = candidateDate(LocalDate.of(2026, 1, 17), MEETUP_ID);
         cd1.setId(CANDIDATE_DATE_ID);
         cd2.setId(OTHER_CANDIDATE_DATE_ID);
-        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(MEETUP_ID))
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of(cd1, cd2));
 
         // cd1: AVAILABLE x2, MAYBE x1  / cd2: UNAVAILABLE x1
@@ -398,20 +461,43 @@ class VillageMeetupServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("addCandidateDate: 同一日付既存 → 409 VOTE_DUPLICATE")
+    @DisplayName("addCandidateDate: 同一 (date, time) 既存 → 409 VOTE_DUPLICATE（終日同士も弾く）")
     void add_candidate_duplicate() {
         givenActiveVillage();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
-        VillageMeetupCandidateDateEntity dup = candidateDate(LocalDate.of(2026, 1, 10), MEETUP_ID);
-        given(candidateDateRepository.findByMeetupIdAndCandidateDate(MEETUP_ID, LocalDate.of(2026, 1, 10)))
-                .willReturn(Optional.of(dup));
+        // 既存は終日候補（time=null）。追加も終日 → (date, null) ペアが一致するので重複
+        VillageMeetupCandidateDateEntity dup = candidateDate(LocalDate.of(2026, 1, 10), null, MEETUP_ID);
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
+                .willReturn(List.of(dup));
 
         assertThatThrownBy(() -> service.addCandidateDate(VILLAGE_ID, MEETUP_ID,
-                new MeetupCandidateDateAddRequest(LocalDate.of(2026, 1, 10), 0), ACTOR_USER_ID))
+                new MeetupCandidateDateAddRequest(LocalDate.of(2026, 1, 10), null, 0), ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.VOTE_DUPLICATE);
+    }
+
+    @Test
+    @DisplayName("addCandidateDate: AC-6 同一日でも時刻が違えば追加できる（重複にしない・時刻も保存）")
+    void add_candidate_same_date_different_time_ok() {
+        givenActiveVillage();
+        VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
+        given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
+        // 既存は 10:00 の候補。追加は同日 19:00 → 別ペアなので許可
+        VillageMeetupCandidateDateEntity morning =
+                candidateDate(LocalDate.of(2026, 1, 10), LocalTime.of(10, 0), MEETUP_ID);
+        given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
+                .willReturn(List.of(morning));
+        given(candidateDateRepository.save(any(VillageMeetupCandidateDateEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        MeetupCandidateDateResponse res = service.addCandidateDate(VILLAGE_ID, MEETUP_ID,
+                new MeetupCandidateDateAddRequest(LocalDate.of(2026, 1, 10), LocalTime.of(19, 0), 1),
+                ACTOR_USER_ID);
+
+        assertThat(res.candidateDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+        assertThat(res.candidateTime()).isEqualTo(LocalTime.of(19, 0));
     }
 
     // ========================================================================
@@ -482,9 +568,14 @@ class VillageMeetupServiceTest {
     }
 
     private VillageMeetupCandidateDateEntity candidateDate(LocalDate date, UUID meetupId) {
+        return candidateDate(date, null, meetupId);
+    }
+
+    private VillageMeetupCandidateDateEntity candidateDate(LocalDate date, LocalTime time, UUID meetupId) {
         VillageMeetupCandidateDateEntity cd = VillageMeetupCandidateDateEntity.builder()
                 .meetupId(meetupId)
                 .candidateDate(date)
+                .candidateTime(time)
                 .sortOrder(0)
                 .build();
         cd.setId(CANDIDATE_DATE_ID);

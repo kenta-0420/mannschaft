@@ -88,11 +88,13 @@ function setStatusFilter(value: StatusFilter) {
 /**
  * 候補日フォーム行。
  *
- * BE (`MeetupCreateRequest.candidateDates`) は `List<LocalDate>` ＝ 日付のみ。
- * 時刻（開始 / 終了）は BE に保持先が無いため、フォームからも撤去している。
+ * BE (`MeetupCreateRequest.candidateDates`) は object 配列 `{date, time?}`（#2357）。
+ * `candidateTime` は任意（空文字は終日として送信時に省略する）。
  */
 interface CandidateDateForm {
   candidateDate: string
+  /** 時刻 (HH:mm)。空は終日 */
+  candidateTime: string
 }
 
 interface MeetupFormState {
@@ -108,7 +110,7 @@ function emptyForm(): MeetupFormState {
     title: '',
     description: '',
     location: '',
-    candidateDates: [{ candidateDate: '' }],
+    candidateDates: [{ candidateDate: '', candidateTime: '' }],
   }
 }
 
@@ -142,7 +144,10 @@ function openCreateDialog() {
       description: saved.description ?? '',
       location: saved.location ?? '',
       candidateDates: saved.candidateDates?.length
-        ? saved.candidateDates.map(d => ({ candidateDate: d.candidateDate ?? '' }))
+        ? saved.candidateDates.map(d => ({
+            candidateDate: d.candidateDate ?? '',
+            candidateTime: d.candidateTime ?? '',
+          }))
         : emptyForm().candidateDates,
     }
   }
@@ -150,7 +155,7 @@ function openCreateDialog() {
 }
 
 function addCandidateDateRow() {
-  createForm.value.candidateDates.push({ candidateDate: '' })
+  createForm.value.candidateDates.push({ candidateDate: '', candidateTime: '' })
 }
 
 function removeCandidateDateRow(index: number) {
@@ -165,8 +170,12 @@ async function submitCreate() {
     title: createForm.value.title,
     description: createForm.value.description || null,
     location: createForm.value.location || null,
-    // BE は素の日付配列（List<LocalDate>）を受け取る
-    candidateDates: validDates.map(d => d.candidateDate),
+    // BE は object 配列 `{date, time?}` を受け取る（#2357）。空の時刻は省略（終日）。
+    candidateDates: validDates.map(d => (
+      d.candidateTime
+        ? { date: d.candidateDate, time: d.candidateTime }
+        : { date: d.candidateDate }
+    )),
   }
   try {
     await villageApi.createMeetup(villageId.value, body)

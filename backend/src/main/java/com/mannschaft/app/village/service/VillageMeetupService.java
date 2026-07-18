@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MeetupCandidateDateAddRequest;
+import com.mannschaft.app.village.dto.MeetupCandidateDateInput;
 import com.mannschaft.app.village.dto.MeetupCandidateDateResponse;
 import com.mannschaft.app.village.dto.MeetupConfirmRequest;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
@@ -32,6 +33,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,10 +99,17 @@ public class VillageMeetupService {
         if (request.candidateDates().size() > MAX_CANDIDATE_DATES) {
             throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
         }
-        // 候補日重複（同一リスト内）チェック
-        Set<java.time.LocalDate> uniq = new HashSet<>(request.candidateDates());
-        if (uniq.size() != request.candidateDates().size()) {
-            throw new BusinessException(VillageErrorCode.VOTE_DUPLICATE);
+        // 候補日重複（同一リスト内）チェック。
+        // MySQL の UNIQUE は TIME NULL を重複許容するため、DB 制約だけでは終日候補の重複を弾けない。
+        // よって (date, time) ペアでアプリ層でも重複を検査する（#2357）。
+        Set<CandidateDateKey> uniq = new HashSet<>();
+        for (MeetupCandidateDateInput input : request.candidateDates()) {
+            if (input == null || input.date() == null) {
+                throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+            }
+            if (!uniq.add(new CandidateDateKey(input.date(), input.time()))) {
+                throw new BusinessException(VillageErrorCode.VOTE_DUPLICATE);
+            }
         }
 
         VillageMeetupEntity entity = VillageMeetupEntity.builder()
@@ -112,12 +122,13 @@ public class VillageMeetupService {
                 .build();
         VillageMeetupEntity saved = meetupRepository.save(entity);
 
-        // 候補日登録
+        // 候補日登録（日付 + 任意の時刻）
         int order = 0;
-        for (java.time.LocalDate date : request.candidateDates()) {
+        for (MeetupCandidateDateInput input : request.candidateDates()) {
             VillageMeetupCandidateDateEntity cd = VillageMeetupCandidateDateEntity.builder()
                     .meetupId(saved.getId())
-                    .candidateDate(date)
+                    .candidateDate(input.date())
+                    .candidateTime(input.time())
                     .sortOrder(order++)
                     .build();
             candidateDateRepository.save(cd);
@@ -253,6 +264,8 @@ public class VillageMeetupService {
 
         entity.setStatus(VillageMeetupStatus.CONFIRMED);
         entity.setConfirmedDate(cd.getCandidateDate());
+        // 候補の時刻（終日なら null）も確定時刻へ転記する（#2357）
+        entity.setConfirmedTime(cd.getCandidateTime());
         VillageMeetupEntity saved = meetupRepository.save(entity);
 
         auditLogService.record(
@@ -320,12 +333,21 @@ public class VillageMeetupService {
             throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
         }
 
-        candidateDateRepository.findByMeetupIdAndCandidateDate(meetupId, request.candidateDate())
-                .ifPresent(d -> { throw new BusinessException(VillageErrorCode.VOTE_DUPLICATE); });
+        // (date, time) ペアでの重複チェック。MySQL の UNIQUE は TIME NULL を重複許容するため、
+        // 終日候補の重複を確実に弾くにはアプリ層で NULL を含めて等価判定する必要がある（#2357）。
+        CandidateDateKey key = new CandidateDateKey(request.candidateDate(), request.candidateTime());
+        boolean duplicated = candidateDateRepository
+                .findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(meetupId)
+                .stream()
+                .anyMatch(d -> key.equals(new CandidateDateKey(d.getCandidateDate(), d.getCandidateTime())));
+        if (duplicated) {
+            throw new BusinessException(VillageErrorCode.VOTE_DUPLICATE);
+        }
 
         VillageMeetupCandidateDateEntity cd = VillageMeetupCandidateDateEntity.builder()
                 .meetupId(meetupId)
                 .candidateDate(request.candidateDate())
+                .candidateTime(request.candidateTime())
                 .sortOrder(request.sortOrder() != null ? request.sortOrder() : 0)
                 .build();
         VillageMeetupCandidateDateEntity saved = candidateDateRepository.save(cd);
@@ -414,7 +436,7 @@ public class VillageMeetupService {
         loadMeetup(villageId, meetupId); // 存在/IDOR チェック
 
         List<VillageMeetupCandidateDateEntity> dates =
-                candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAsc(meetupId);
+                candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(meetupId);
         if (dates.isEmpty()) {
             return MeetupVoteSummaryResponse.builder().meetupId(meetupId).candidates(List.of()).build();
         }
@@ -438,6 +460,7 @@ public class VillageMeetupService {
                     return MeetupVoteSummaryResponse.CandidateDateSummary.builder()
                             .candidateDateId(cd.getId())
                             .candidateDate(cd.getCandidateDate())
+                            .candidateTime(cd.getCandidateTime())
                             .availableCount(avail)
                             .maybeCount(maybe)
                             .unavailableCount(unavail)
@@ -498,9 +521,18 @@ public class VillageMeetupService {
 
     private MeetupResponse buildResponseWithCandidates(VillageMeetupEntity entity) {
         List<MeetupCandidateDateResponse> candidates = candidateDateRepository
-                .findByMeetupIdOrderBySortOrderAscCandidateDateAsc(entity.getId())
+                .findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(entity.getId())
                 .stream().map(MeetupCandidateDateResponse::of).toList();
         return MeetupResponse.of(entity, candidates);
+    }
+
+    /**
+     * 候補日の同一性キー（日付 + 任意の時刻）。#2357
+     *
+     * <p>{@code time} が {@code null}（終日）でも等価判定に含めるための小さな値オブジェクト。
+     * MySQL の UNIQUE は TIME NULL を重複許容するため、重複検査はこのキーでアプリ層でも行う。</p>
+     */
+    private record CandidateDateKey(LocalDate date, LocalTime time) {
     }
 
     private Pageable resolvePageable(Pageable pageable) {

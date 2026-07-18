@@ -161041,14 +161041,29 @@
           }
         }
       },
+      "MeetupCandidateDateInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string",
+            "example": "14:30:00"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      },
       "MeetupCreateRequest": {
         "type": "object",
         "properties": {
           "candidateDates": {
             "type": "array",
             "items": {
-              "type": "string",
-              "format": "date"
+              "$ref": "#/components/schemas/MeetupCandidateDateInput"
             },
             "maxItems": 30,
             "minItems": 0
@@ -161085,6 +161100,10 @@
             "type": "string",
             "format": "date"
           },
+          "candidateTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -161111,6 +161130,10 @@
           "confirmedDate": {
             "type": "string",
             "format": "date"
+          },
+          "confirmedTime": {
+            "type": "string",
+            "example": "14:30:00"
           },
           "createdAt": {
             "type": "string",
@@ -161165,6 +161188,10 @@
           "candidateDate": {
             "type": "string",
             "format": "date"
+          },
+          "candidateTime": {
+            "type": "string",
+            "example": "14:30:00"
           },
           "sortOrder": {
             "type": "integer",
@@ -199274,6 +199301,10 @@
           "candidateDateId": {
             "type": "string",
             "format": "uuid"
+          },
+          "candidateTime": {
+            "type": "string",
+            "example": "14:30:00"
           },
           "maybeCount": {
             "type": "integer",
