@@ -1295,6 +1295,10 @@
       "description": "F02.8 チーム・組織ダッシュボード告知ウィザード テンプレート管理 API"
     },
     {
+      "name": "オーナー委譲オファー",
+      "description": "F01.2 承諾型オーナー委譲"
+    },
+    {
       "name": "個人時間割-設定",
       "description": "F03.15 ユーザー個別の時間割設定"
     },
@@ -1783,6 +1787,10 @@
       "description": "F03.4+ 臨時休業一括通知"
     },
     {
+      "name": "招待発行可能スコープ",
+      "description": "F04.12 招待発行できるチーム/組織一覧"
+    },
+    {
       "name": "大会スコアキーパー指名",
       "description": "F08.7 順位UI 項目③ スコア入力編集権限の細分化"
     },
@@ -1877,6 +1885,10 @@
     {
       "name": "ポイっとメモ設定",
       "description": "F02.5 リマインド設定管理"
+    },
+    {
+      "name": "チャット承諾型招待",
+      "description": "F04.12 チャットからチーム/組織への承諾型招待"
     },
     {
       "name": "後見まとめ払い",
@@ -49032,6 +49044,120 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/transfer-ownership-offers": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "チーム オーナー委譲を打診",
+        "operationId": "createTeamOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipOfferCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "打診成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransferOwnershipOfferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "チーム委譲を辞退",
+        "operationId": "declineTeamOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "辞退成功"
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "チーム委譲を承諾（＝実行）",
+        "operationId": "acceptTeamOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "承諾成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransferOwnershipAcceptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/supporter-applications/{applicationId}/reject": {
       "post": {
         "tags": [
@@ -57197,6 +57323,120 @@
         "responses": {
           "200": {
             "description": "譲渡成功"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/transfer-ownership-offers": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "組織 オーナー委譲を打診",
+        "operationId": "createOrgOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipOfferCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "打診成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransferOwnershipOfferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "組織委譲を辞退",
+        "operationId": "declineOrgOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "辞退成功"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept": {
+      "post": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "組織委譲を承諾（＝実行）",
+        "operationId": "acceptOrgOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "承諾成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransferOwnershipAcceptResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -72302,6 +72542,31 @@
         }
       }
     },
+    "/api/v1/invite/{token}/decline": {
+      "post": {
+        "tags": [
+          "招待"
+        ],
+        "summary": "承諾型招待の辞退",
+        "description": "宛先本人が招待を辞退する。revoked_at を立てカードを辞退済み表示にする（F04.12）",
+        "operationId": "declineInvite",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "辞退成功"
+          }
+        }
+      }
+    },
     "/api/v1/incidents": {
       "get": {
         "tags": [
@@ -76632,6 +76897,49 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/channels/{channelId}/membership-invite": {
+      "post": {
+        "tags": [
+          "チャット承諾型招待"
+        ],
+        "summary": "承諾型招待の発行",
+        "description": "DM 相手を指定チーム/組織へ招待。宛先付きトークン発行＋招待カード投稿",
+        "operationId": "issueMembershipInvite",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "発行成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMembershipInviteResponse"
                 }
               }
             }
@@ -128630,6 +128938,27 @@
         }
       }
     },
+    "/api/v1/me/invitable-scopes": {
+      "get": {
+        "tags": [
+          "招待発行可能スコープ"
+        ],
+        "summary": "招待発行可能スコープ一覧",
+        "operationId": "getInvitableScopes",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseInvitableScopesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/ical/token": {
       "get": {
         "tags": [
@@ -137164,6 +137493,39 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}": {
+      "delete": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "チーム委譲オファーを取消",
+        "operationId": "cancelTeamOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/members/{userId}": {
       "delete": {
         "tags": [
@@ -137891,6 +138253,39 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}": {
+      "delete": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "組織委譲オファーを取消",
+        "operationId": "cancelOrgOffer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
           }
         }
       }
@@ -139105,6 +139500,41 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          }
+        }
+      }
+    },
+    "/api/v1/chat/channels/{channelId}/membership-invite/{tokenId}": {
+      "delete": {
+        "tags": [
+          "チャット承諾型招待"
+        ],
+        "summary": "承諾型招待の取消",
+        "description": "発行者または対象スコープ ADMIN が招待を取消す（revoked_at を立てる）",
+        "operationId": "revokeMembershipInvite",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
           }
         }
       }
@@ -173603,6 +174033,94 @@
           "placement"
         ]
       },
+      "TransferOwnershipOfferCreateRequest": {
+        "type": "object",
+        "properties": {
+          "targetUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "targetUserId"
+        ]
+      },
+      "ApiResponseTransferOwnershipOfferResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransferOwnershipOfferResponse"
+          }
+        }
+      },
+      "TransferOwnershipOfferResponse": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issuedBy": {
+            "$ref": "#/components/schemas/UserBrief"
+          },
+          "offerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/UserBrief"
+          }
+        }
+      },
+      "UserBrief": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseTransferOwnershipAcceptResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransferOwnershipAcceptResponse"
+          }
+        }
+      },
+      "MemberBrief": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TransferOwnershipAcceptResponse": {
+        "type": "object",
+        "properties": {
+          "newAdmin": {
+            "$ref": "#/components/schemas/MemberBrief"
+          },
+          "previousAdmin": {
+            "$ref": "#/components/schemas/MemberBrief"
+          }
+        }
+      },
       "BulkApproveRequest": {
         "type": "object",
         "properties": {
@@ -188702,6 +189220,75 @@
           "scheduledAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "MembershipInviteRequest": {
+        "type": "object",
+        "properties": {
+          "expiresInDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "roleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "scopeId"
+        ]
+      },
+      "ApiResponseMembershipInviteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MembershipInviteResponse"
+          }
+        }
+      },
+      "MembershipInviteResponse": {
+        "type": "object",
+        "properties": {
+          "cardMessageId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "targetUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "token": {
+            "type": "string"
+          },
+          "tokenId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -219866,6 +220453,46 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseInvitableScopesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/InvitableScopesResponse"
+          }
+        }
+      },
+      "InvitableScope": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InvitableScopesResponse": {
+        "type": "object",
+        "properties": {
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvitableScope"
+            }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvitableScope"
+            }
           }
         }
       },
