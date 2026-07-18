@@ -5,25 +5,33 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
+import com.mannschaft.app.village.dto.NewsletterTagResponse;
+import com.mannschaft.app.village.dto.PublicNewsletterIssuePageResponse;
 import com.mannschaft.app.village.dto.PublicNewsletterIssueResponse;
-import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
+import com.mannschaft.app.village.entity.VillageNewsletterIssueTagEntity;
+import com.mannschaft.app.village.entity.VillageNewsletterTagEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueStatus;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueType;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterVisibility;
-import com.mannschaft.app.village.entity.enums.VillageRole;
-import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
+import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,10 +42,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -78,28 +87,25 @@ class VillageNewsletterIssueServiceTest {
     @Mock
     private VillageNewsletterIssueTagRepository issueTagRepository;
     @Mock
-    private VillageMembershipRepository membershipRepository;
-    @Mock
     private VillageBulletinAccessService bulletinAccessService;
+    // ②-4 堅牢性（Issue #2348）で Service に新規注入したため兄弟モックにも追随（放置すると NPE でシャード赤）。
+    @Mock
+    private VillageRepository villageRepository;
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private VillageNewsletterIssueService service;
 
     private static final Long HEADMAN_USER_ID = 100L;
 
-    /** 現役 HEADMAN のメンバーシップを返すようモックする（②-4 の編集認可用）。 */
+    /**
+     * 編集認可（HEADMAN / ELDER）を通過させる。認可述語は {@code bulletinAccessService.requireHeadmanOrElder}
+     * へ集約されており void モックの既定は no-op（=許可）なので、ここでは追加のスタブは不要。
+     * 意図（この actor は編集権限あり）を呼び出し側で明示するためのマーカーとして残す。
+     */
     private void givenActorIsHeadman() {
-        VillageMembershipEntity headman = VillageMembershipEntity.builder()
-                .villageId(VILLAGE_ID)
-                .subjectType(VillageSubjectType.USER)
-                .subjectId(HEADMAN_USER_ID)
-                .role(VillageRole.HEADMAN)
-                .joinedAt(LocalDateTime.now())
-                .version(0L)
-                .build();
-        lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
-                        VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
-                .thenReturn(Optional.of(headman));
+        // no-op（bulletinAccessService.requireHeadmanOrElder の既定 no-op が「許可」を表す）
     }
 
     private VillageNewsletterIssueEntity freezeIssue(NewsletterDigestSnapshot snapshot) {
@@ -283,13 +289,16 @@ class VillageNewsletterIssueServiceTest {
     }
 
     @Test
-    @DisplayName("AC-17: PUBLIC×PUBLISHED 号は非メンバー（村外ユーザー）でも取得できる")
+    @DisplayName("AC-17/AC-7: PUBLIC×PUBLISHED 号（発行元村が生存）は非メンバーでも取得できる")
     void getPublicIssue_publicIsAccessible() {
         UUID issueId = UUID.randomUUID();
         VillageNewsletterIssueEntity pub = issueWithVersionAndStatus(
                 issueId, 1L, VillageNewsletterIssueStatus.PUBLISHED,
                 VillageNewsletterVisibility.PUBLIC);
         given(issueRepository.findById(issueId)).willReturn(Optional.of(pub));
+        // 発行元村が生存（村生存ゲート・AC-7）
+        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                .willReturn(Optional.of(VillageEntity.builder().build()));
         given(issueTagRepository.findByIssueId(issueId)).willReturn(List.of());
 
         PublicNewsletterIssueResponse result = service.getPublicIssue(issueId, 999L);
@@ -299,8 +308,147 @@ class VillageNewsletterIssueServiceTest {
     }
 
     // ========================================================================
+    // ②-4 堅牢性 AC-6 — 発行元村が削除/凍結された公開号は 404 秘匿（ゾンビ号）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-6: PUBLIC×PUBLISHED でも発行元村が削除/凍結済みなら NEWSLETTER_ISSUE_NOT_FOUND（404 秘匿）")
+    void getPublicIssue_hidesZombieIssueFromDeadVillage() {
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity pub = issueWithVersionAndStatus(
+                issueId, 1L, VillageNewsletterIssueStatus.PUBLISHED,
+                VillageNewsletterVisibility.PUBLIC);
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(pub));
+        // 発行元村が消滅（削除 or 凍結）→ 生存クエリは空を返す
+        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getPublicIssue(issueId, 999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND);
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-1〜3 — タグ入替は号行へ強制インクリメントロックを掛け lost update を根治
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-2: setIssueTags は号行に OPTIMISTIC_FORCE_INCREMENT ロックを掛けてから flush する")
+    void setIssueTags_forcesVersionIncrement() {
+        givenActorIsHeadman();
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity issue = issueWithVersionAndStatus(
+                issueId, 0L, VillageNewsletterIssueStatus.FROZEN,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        given(issueRepository.findByIdAndVillageIdAndDeletedAtIsNull(issueId, VILLAGE_ID))
+                .willReturn(Optional.of(issue));
+        given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(issueTagRepository.findByIssueId(issueId)).willReturn(List.of());
+
+        service.setIssueTags(VILLAGE_ID, issueId, HEADMAN_USER_ID, List.of(), 0L);
+
+        // 号行を dirty にしない中間表入替でも @Version を上げるための強制インクリメントロック
+        verify(entityManager).lock(issue, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        verify(entityManager).flush();
+    }
+
+    @Test
+    @DisplayName("AC-3: flush で楽観ロック例外が起きたら NEWSLETTER_ISSUE_VERSION_CONFLICT（409）に翻訳する")
+    void setIssueTags_flushConflictMapsToVersionConflict() {
+        givenActorIsHeadman();
+        UUID issueId = UUID.randomUUID();
+        VillageNewsletterIssueEntity issue = issueWithVersionAndStatus(
+                issueId, 0L, VillageNewsletterIssueStatus.FROZEN,
+                VillageNewsletterVisibility.VILLAGE_MEMBERS);
+        given(issueRepository.findByIdAndVillageIdAndDeletedAtIsNull(issueId, VILLAGE_ID))
+                .willReturn(Optional.of(issue));
+        given(issueRepository.save(any(VillageNewsletterIssueEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 並行編集を模す: flush 時に強制インクリメント UPDATE が版不一致で失敗
+        doThrow(new ObjectOptimisticLockingFailureException("conflict", new OptimisticLockException()))
+                .when(entityManager).flush();
+
+        assertThatThrownBy(() -> service.setIssueTags(VILLAGE_ID, issueId, HEADMAN_USER_ID, List.of(), 0L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_VERSION_CONFLICT);
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-9/11/12 — 一覧のタグはページ一括解決（N+1 回避・取り違え無し・空配列）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-9/11/12: listPublicIssues はタグを一括解決し号ごとに正しく割当て（0件は空配列・単票findByIssueId不使用）")
+    void listPublicIssues_batchResolvesTagsPerIssue() {
+        UUID issue1 = UUID.randomUUID();
+        UUID issue2 = UUID.randomUUID();
+        UUID tagA = UUID.randomUUID();
+        UUID tagB = UUID.randomUUID();
+        VillageNewsletterIssueEntity e1 = issueWithVersionAndStatus(
+                issue1, 0L, VillageNewsletterIssueStatus.PUBLISHED, VillageNewsletterVisibility.PUBLIC);
+        VillageNewsletterIssueEntity e2 = issueWithVersionAndStatus(
+                issue2, 0L, VillageNewsletterIssueStatus.PUBLISHED, VillageNewsletterVisibility.PUBLIC);
+        given(issueRepository.findPublicIssuesFromAliveVillages(
+                eq(VillageNewsletterVisibility.PUBLIC), eq(VillageNewsletterIssueStatus.PUBLISHED), any()))
+                .willReturn(new PageImpl<>(List.of(e1, e2)));
+        // issue1 に tagA(sort 2)/tagB(sort 1)、issue2 にはタグ無し（AC-12）
+        given(issueTagRepository.findByIssueIdIn(List.of(issue1, issue2))).willReturn(List.of(
+                VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagA).build(),
+                VillageNewsletterIssueTagEntity.builder().issueId(issue1).tagId(tagB).build()));
+        given(tagRepository.findByIdInAndDeletedAtIsNull(anyCollection())).willReturn(List.of(
+                tag(tagA, "祭", 2), tag(tagB, "清掃", 1)));
+
+        PublicNewsletterIssuePageResponse res = service.listPublicIssues(999L, PageRequest.of(0, 20));
+
+        // AC-11: 号↔タグの取り違えが無い。AC-9: 表示順(sortOrder)で整列。
+        List<NewsletterTagResponse> issue1Tags = res.content().get(0).tags();
+        assertThat(issue1Tags).extracting(NewsletterTagResponse::name).containsExactly("清掃", "祭");
+        // AC-12: タグ 0 件の号は空配列（null ではない）
+        assertThat(res.content().get(1).tags()).isEmpty();
+        // AC-9: 単票 N+1 経路（findByIssueId）は一覧では使わない
+        verify(issueTagRepository, never()).findByIssueId(any());
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-13 — タグ版競合は専用コード VILLAGE_093（号の 089 と分離）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-13: updateTag の version 不一致は NEWSLETTER_TAG_VERSION_CONFLICT（409・タグ専用・save しない）")
+    void updateTag_versionMismatchThrowsTagVersionConflict() {
+        givenActorIsHeadman();
+        UUID tagId = UUID.randomUUID();
+        VillageNewsletterTagEntity existing = tag(tagId, "祭", 0); // version=0
+        given(tagRepository.findByIdAndVillageIdAndDeletedAtIsNull(tagId, VILLAGE_ID))
+                .willReturn(Optional.of(existing));
+
+        // expectedVersion=1 は現在値 0 と不一致
+        assertThatThrownBy(() -> service.updateTag(
+                VILLAGE_ID, tagId, HEADMAN_USER_ID, "夏祭り", null, null, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_TAG_VERSION_CONFLICT);
+
+        verify(tagRepository, never()).save(any());
+    }
+
+    // ========================================================================
     // ヘルパ
     // ========================================================================
+
+    private VillageNewsletterTagEntity tag(UUID id, String name, int sortOrder) {
+        return VillageNewsletterTagEntity.builder()
+                .id(id)
+                .villageId(VILLAGE_ID)
+                .name(name)
+                .color("#6B7280")
+                .sortOrder(sortOrder)
+                .version(0L)
+                .build();
+    }
 
     private VillageNewsletterIssueEntity issueWithVersionAndStatus(
             UUID id, Long version, VillageNewsletterIssueStatus status,

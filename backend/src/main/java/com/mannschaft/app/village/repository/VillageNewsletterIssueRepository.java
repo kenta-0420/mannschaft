@@ -6,6 +6,8 @@ import com.mannschaft.app.village.entity.enums.VillageNewsletterVisibility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -70,4 +72,39 @@ public interface VillageNewsletterIssueRepository
                     VillageNewsletterVisibility visibility,
                     VillageNewsletterIssueStatus status,
                     Pageable pageable);
+
+    /**
+     * 公開一覧（村横断・②-4 堅牢性 AC-4〜8）: 指定 visibility×status の号のうち、
+     * <b>発行元の村が生存している</b>（{@code deleted_at IS NULL AND archived_at IS NULL}）ものだけを返す。
+     *
+     * <p>削除／凍結された村のお便りが「みんなのお便り」に残り続ける漏洩（ゾンビ号）を根治する。
+     * villages と village_newsletter_issues は同一 village ドメインのため JOIN（EXISTS 相関）で
+     * 絞り込んでよい（マスター御裁可済）。ページの {@code totalElements} を実データと整合させるため、
+     * {@code countQuery} も同一の生存条件で数える（AC-8）。</p>
+     */
+    @Query(value = """
+            SELECT i FROM VillageNewsletterIssueEntity i
+            WHERE i.visibility = :visibility
+              AND i.status = :status
+              AND i.deletedAt IS NULL
+              AND EXISTS (SELECT 1 FROM VillageEntity v
+                          WHERE v.id = i.villageId
+                            AND v.deletedAt IS NULL
+                            AND v.archivedAt IS NULL)
+            ORDER BY i.publishedAt DESC
+            """,
+            countQuery = """
+            SELECT COUNT(i) FROM VillageNewsletterIssueEntity i
+            WHERE i.visibility = :visibility
+              AND i.status = :status
+              AND i.deletedAt IS NULL
+              AND EXISTS (SELECT 1 FROM VillageEntity v
+                          WHERE v.id = i.villageId
+                            AND v.deletedAt IS NULL
+                            AND v.archivedAt IS NULL)
+            """)
+    Page<VillageNewsletterIssueEntity> findPublicIssuesFromAliveVillages(
+            @Param("visibility") VillageNewsletterVisibility visibility,
+            @Param("status") VillageNewsletterIssueStatus status,
+            Pageable pageable);
 }

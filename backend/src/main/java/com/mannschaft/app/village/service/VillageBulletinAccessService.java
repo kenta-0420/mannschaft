@@ -141,4 +141,29 @@ public class VillageBulletinAccessService {
         }
         throw new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
     }
+
+    /**
+     * 村ニュースレターの編集認可: <strong>現役</strong>の HEADMAN または ELDER 以外なら
+     * {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）を投げる（②-4 堅牢性 AC-15/16）。
+     *
+     * <p>従来 {@code VillageNewsletterService} と {@code VillageNewsletterIssueService} に
+     * バイト同一の private 実装が二重に存在した（重複ロジック）。認可述語をこの一箇所へ寄せることで
+     * 「呼び出し元まかせ・実装ドリフト」を構造的に防ぐ。「現役」の判定（退村 {@code leftAt} /
+     * BAN {@code bannedAt} の除外）は正準クエリ {@code findActiveByVillageIdAndSubject} に委譲する。</p>
+     *
+     * <p>本メソッドは編集系の主体検証専用であり、村の存在確認は行わない（呼び出し元が閲覧認可
+     * {@link #checkVillageBulletinViewAccess} や号ロードで村スコープを担保している）。</p>
+     *
+     * @param villageId   対象村 ID
+     * @param actorUserId 操作しようとするユーザー ID
+     * @throws BusinessException 現役 HEADMAN / ELDER でない場合（{@link VillageErrorCode#MODERATION_FORBIDDEN}）
+     */
+    public void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
+        VillageMembershipEntity actor = membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+        if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
+        }
+    }
 }

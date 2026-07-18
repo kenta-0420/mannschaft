@@ -429,7 +429,17 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_092: 同一村内でタグ名が重複（409、uk_vnt_village_name に先立つアプリ層チェック）。 */
     NEWSLETTER_TAG_DUPLICATE("VILLAGE_092",
-            "同じ名前のタグが既にあります", Severity.WARN);
+            "同じ名前のタグが既にあります", Severity.WARN),
+
+    /**
+     * VILLAGE_093: ニュースレター<b>タグ</b>の楽観ロック競合（409・②-4 堅牢性 AC-13）。
+     *
+     * <p>タグ更新（{@code updateTag}）で、クライアントが送った {@code version} がタグの現在値と
+     * 一致しない場合に投げる。号の版競合（{@link #NEWSLETTER_ISSUE_VERSION_CONFLICT}・VILLAGE_089）とは
+     * 対象エンティティが異なる（号 vs タグ）ため、原因究明を容易にする目的で専用コードを分ける。</p>
+     */
+    NEWSLETTER_TAG_VERSION_CONFLICT("VILLAGE_093",
+            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN);
 
     private final String code;
     private final String message;

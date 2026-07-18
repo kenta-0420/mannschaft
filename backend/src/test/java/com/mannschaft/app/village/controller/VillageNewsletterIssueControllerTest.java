@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -307,6 +308,63 @@ class VillageNewsletterIssueControllerTest {
 
         verify(issueService).setIssueTags(eq(VILLAGE_ID), eq(ISSUE_ID), eq(USER_ID),
                 eq(List.of(TAG_ID)), eq(3L));
+    }
+
+    // ------------------------------------------------------------------
+    // ②-4 堅牢性 AC-10: size クランプ（過大要求を [1,100] に丸める）
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("AC-10: GET /issues?size=500 は Service へ size=100 に丸めた Pageable を渡す")
+    void listIssues_sizeClampedTo100() throws Exception {
+        given(issueService.listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), any()))
+                .willReturn(NewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(100).build());
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/newsletter/issues", VILLAGE_ID)
+                        .param("size", "500"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("AC-10: GET /issues?size=0 は Service へ size=1 に丸めた Pageable を渡す（下限）")
+    void listIssues_sizeClampedToMin() throws Exception {
+        given(issueService.listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), any()))
+                .willReturn(NewsletterIssuePageResponse.builder()
+                        .content(List.of()).totalElements(0).page(0).size(1).build());
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/newsletter/issues", VILLAGE_ID)
+                        .param("size", "0"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(issueService).listIssues(eq(VILLAGE_ID), eq(USER_ID), isNull(), pageCaptor.capture());
+        assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(1);
+    }
+
+    // ------------------------------------------------------------------
+    // ②-4 堅牢性 AC-14: タグ版競合の専用コード VILLAGE_093 マッピング
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("AC-14: updateTag が NEWSLETTER_TAG_VERSION_CONFLICT を投げると 409（VILLAGE_093）")
+    void updateTag_versionConflictMapsTo093() throws Exception {
+        willThrow(new BusinessException(VillageErrorCode.NEWSLETTER_TAG_VERSION_CONFLICT))
+                .given(issueService).updateTag(any(), any(), any(), any(), any(), any(), eq(1L));
+
+        String body = """
+                { "name": "夏祭り", "version": 1 }
+                """;
+
+        mockMvc.perform(put("/api/v1/villages/{villageId}/newsletter/tags/{tagId}", VILLAGE_ID, TAG_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_093"));
     }
 
     @Test
