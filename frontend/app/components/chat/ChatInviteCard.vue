@@ -28,6 +28,15 @@ const { relativeTime } = useRelativeTime()
 /** PENDING かつ宛先本人 = 参加/辞退ボタンを活性化できる状態。 */
 const canAct = computed(() => props.invite.status === 'PENDING' && props.invite.isTarget)
 
+// token は宛先本人にのみ返る（非宛先は null・多層防御）。canAct 下でのみボタンが描画されるため
+// 実際は常に非 null だが、型の嘘を避けるため emit 前に null を弾く（string へ絞り込み）。
+function onJoin() {
+  if (props.invite.token) emit('join', props.invite.token)
+}
+function onDecline() {
+  if (props.invite.token) emit('decline', props.invite.token)
+}
+
 /** カード見出し（宛先本人は「招待が届いています」、発行者は「承諾待ち」）。 */
 const heading = computed(() =>
   props.invite.isTarget
@@ -108,7 +117,7 @@ const statusBadge = computed<{ label: string; classes: string }>(() => {
             :loading="submitting"
             :disabled="submitting"
             data-testid="chat-invite-join"
-            @click="emit('join', invite.token)"
+            @click="onJoin"
           />
           <Button
             :label="$t('chat.invite.card.decline')"
@@ -117,7 +126,7 @@ const statusBadge = computed<{ label: string; classes: string }>(() => {
             severity="secondary"
             :disabled="submitting"
             data-testid="chat-invite-decline"
-            @click="emit('decline', invite.token)"
+            @click="onDecline"
           />
         </div>
 

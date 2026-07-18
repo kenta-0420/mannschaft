@@ -2160,5 +2160,22 @@
   "comingSoon": {
     "title": "준비 중",
     "description": "이 기능은 현재 개발 중입니다. 잠시 후 다시 확인해 주세요."
+  },
+  "member": {
+    "columns": {
+      "name": "멤버",
+      "role": "역할",
+      "joinedAt": "가입일",
+      "actions": "작업"
+    },
+    "empty": "아직 멤버가 없습니다",
+    "roleChanged": "역할을 변경했습니다",
+    "roleChangeFailed": "역할 변경에 실패했습니다",
+    "removed": "멤버를 제외했습니다",
+    "removeFailed": "멤버 제외에 실패했습니다",
+    "remove": {
+      "confirmTitle": "멤버 제외",
+      "confirmMessage": "{name} 님을 멤버에서 제외하시겠습니까?"
+    }
   }
 }

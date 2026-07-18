@@ -58,7 +58,8 @@ export interface BeSender {
  */
 export interface BeInviteData {
   tokenId: number
-  token: string
+  /** 宛先本人にのみ返る UUID トークン。非宛先（発行者側）は BE が null で返す（多層防御）。 */
+  token: string | null
   scopeType: string
   scopeId: number
   scopeName: string

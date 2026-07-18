@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -270,6 +271,38 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ROLE_009"));
         }
+
+        @Test
+        @DisplayName("宛先本人の decline は成功し REVOKED（revoked_at セット）・以後同トークンの join は弾かれる（二重accept不可）")
+        void 宛先本人のdeclineは成功し辞退後にjoinできない() throws Exception {
+            // 承諾型の核心: 宛先本人が辞退すると revoked_at が立ち（REVOKED）、
+            // 以後同じトークンで join を試みても参加が復活しない（辞退の永続性・二重accept封鎖）。
+            String token = seedNamedToken(teamAId, targetId, resolveRoleId("MEMBER"),
+                    LocalDateTime.now().plusDays(7));
+
+            setAuth(targetId);
+            mockMvc.perform(post("/api/v1/invite/{token}/decline", token))
+                    .andExpect(status().isOk());
+
+            em.flush();
+            em.clear();
+
+            // revoked_at がセットされている（REVOKED へ導出される）。
+            Object revokedAt = em.createNativeQuery(
+                            "SELECT revoked_at FROM invite_tokens WHERE token = :tk")
+                    .setParameter("tk", token)
+                    .getSingleResult();
+            assertThat(revokedAt).isNotNull();
+
+            // 辞退後に同じトークンで join を試みても弾かれ（4xx）、参加は復活しない。
+            setAuth(targetId);
+            mockMvc.perform(post("/api/v1/invite/{token}/join", token))
+                    .andExpect(status().is4xxClientError());
+
+            em.flush();
+            em.clear();
+            assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isFalse();
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -322,6 +355,25 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("期限が現在以降のトークンの join は成功する（M-1 境界 inclusive・isValid() は isBefore 判定で == は有効）")
+        void 期限境界の宛先トークンのjoinは成功() throws Exception {
+            // M-1: EXPIRED は expires_at < NOW（strict isBefore）のみ。expires_at == NOW（境界ちょうど）は有効側。
+            // 実クロック（Clock 非注入）ではナノ秒精度の「厳密な ==」を固定できないため、
+            // seed から join までに時計が進んでも EXPIRED に落ちない「現在以降」の境界近傍を用いて
+            // 「境界は inclusive（未失効）」を担保する（strictly-past を突く EXPIRED テストと対を成す）。
+            LocalDateTime now = LocalDateTime.now();
+            String token = seedNamedToken(teamAId, targetId, resolveRoleId("MEMBER"),
+                    now.plusSeconds(5));
+            setAuth(targetId);
+            mockMvc.perform(post("/api/v1/invite/{token}/join", token))
+                    .andExpect(status().isOk());
+
+            em.flush();
+            em.clear();
+            assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isTrue();
+        }
+
+        @Test
         @DisplayName("GROUP_DM チャンネルからの発行は 422（DM 限定）")
         void GROUP_DMからの発行は422() throws Exception {
             setAuth(adminAId);
@@ -363,6 +415,28 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                                     inviteBody("ORGANIZATION", orgAId, resolveRoleId("MEMBER"), 7))))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.error.code").value("ORG_007"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 6. invitable-scopes（管理スコープ 0 件でも 200 空配列・エラーにしない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. 招待発行可能スコープ一覧（GET /api/v1/me/invitable-scopes）")
+    class InvitableScopesEndpoint {
+
+        @Test
+        @DisplayName("ADMIN/DEPUTY_ADMIN スコープを 1 つも持たないユーザーは 200 ＋ 空配列（エラーにしない・B-6）")
+        void 管理スコープ0件でも200空配列() throws Exception {
+            // stranger は teamA / orgA いずれの ADMIN/DEPUTY_ADMIN でもない（非所属）。
+            setAuth(strangerId);
+            mockMvc.perform(get("/api/v1/me/invitable-scopes"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.teams").isArray())
+                    .andExpect(jsonPath("$.data.teams").isEmpty())
+                    .andExpect(jsonPath("$.data.organizations").isArray())
+                    .andExpect(jsonPath("$.data.organizations").isEmpty());
         }
     }
 

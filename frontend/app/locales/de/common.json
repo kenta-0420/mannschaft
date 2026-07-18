@@ -2160,5 +2160,22 @@
   "comingSoon": {
     "title": "Demnächst verfügbar",
     "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
+  },
+  "member": {
+    "columns": {
+      "name": "Mitglied",
+      "role": "Rolle",
+      "joinedAt": "Beigetreten",
+      "actions": "Aktionen"
+    },
+    "empty": "Noch keine Mitglieder",
+    "roleChanged": "Rolle geändert",
+    "roleChangeFailed": "Rolle konnte nicht geändert werden",
+    "removed": "Mitglied entfernt",
+    "removeFailed": "Mitglied konnte nicht entfernt werden",
+    "remove": {
+      "confirmTitle": "Mitglied entfernen",
+      "confirmMessage": "{name} aus den Mitgliedern entfernen?"
+    }
   }
 }

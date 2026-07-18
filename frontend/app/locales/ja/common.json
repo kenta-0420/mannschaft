@@ -2160,5 +2160,22 @@
   "comingSoon": {
     "title": "準備中",
     "description": "この機能は現在準備中です。もうしばらくお待ちください。"
+  },
+  "member": {
+    "columns": {
+      "name": "メンバー",
+      "role": "ロール",
+      "joinedAt": "参加日",
+      "actions": "操作"
+    },
+    "empty": "メンバーはまだいません",
+    "roleChanged": "ロールを変更しました",
+    "roleChangeFailed": "ロール変更に失敗しました",
+    "removed": "メンバーを除外しました",
+    "removeFailed": "メンバー除外に失敗しました",
+    "remove": {
+      "confirmTitle": "メンバーの除外",
+      "confirmMessage": "{name} をメンバーから除外しますか？"
+    }
   }
 }

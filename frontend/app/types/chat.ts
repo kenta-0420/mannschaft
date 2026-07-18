@@ -164,8 +164,11 @@ export type ChatInviteStatus = 'PENDING' | 'JOINED' | 'EXPIRED' | 'REVOKED'
 export interface ChatInviteData {
   /** 招待トークン ID */
   tokenId: number
-  /** 承諾/辞退 API に渡す UUID トークン */
-  token: string
+  /**
+   * 承諾/辞退 API に渡す UUID トークン。
+   * 宛先本人（isTarget=true）にのみ返り、発行者側（isTarget=false）は「承諾待ち」表示のみで null（多層防御・BE で非宛先へは露出しない）。
+   */
+  token: string | null
   /** 招待先種別 */
   scopeType: ChatInviteScopeType
   /** 招待先 ID */

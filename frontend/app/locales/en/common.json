@@ -2160,5 +2160,22 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."
+  },
+  "member": {
+    "columns": {
+      "name": "Member",
+      "role": "Role",
+      "joinedAt": "Joined",
+      "actions": "Actions"
+    },
+    "empty": "No members yet",
+    "roleChanged": "Role changed",
+    "roleChangeFailed": "Failed to change role",
+    "removed": "Member removed",
+    "removeFailed": "Failed to remove member",
+    "remove": {
+      "confirmTitle": "Remove member",
+      "confirmMessage": "Remove {name} from members?"
+    }
   }
 }

@@ -97,8 +97,10 @@ async function loadMembers() {
     members.value = response.data
     totalRecords.value = response.meta.totalElements
   }
-  catch {
-    members.value = []
+  catch (error) {
+    // 握りつぶし禁止（障害対応の原則）: 読み込み失敗はエラー通知で表面化する。
+    // 既存表示を勝手に空へ倒すと「メンバー0件」の誤解を招くため clobber しない。
+    handleApiError(error, 'loadMembers')
   }
   finally {
     loading.value = false
@@ -112,26 +114,34 @@ async function onChangeRole(userId: number, roleId: number) {
       method: 'PATCH',
       body: { roleId },
     })
-    notification.success('ロールを変更しました')
+    notification.success(t('member.roleChanged'))
     await loadMembers()
     emit('roleChanged')
   }
   catch {
-    notification.error('ロール変更に失敗しました')
+    notification.error(t('member.roleChangeFailed'))
   }
 }
 
-async function onRemoveMember(userId: number, displayName: string) {
-  if (!confirm(`${displayName} をメンバーから除外しますか？`)) return
+/** メンバー除外（危険操作）。ネイティブ confirm ではなく共通の確認ダイアログに統一（オファー系と同作法）。 */
+function onRemoveMember(member: Member) {
+  confirmAction({
+    header: t('member.remove.confirmTitle'),
+    message: t('member.remove.confirmMessage', { name: member.displayName }),
+    onAccept: () => doRemoveMember(member),
+  })
+}
+
+async function doRemoveMember(member: Member) {
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
-    await api(`/api/v1/${base}/${props.scopeId}/members/${userId}`, { method: 'DELETE' })
-    notification.success('メンバーを除外しました')
+    await api(`/api/v1/${base}/${props.scopeId}/members/${member.userId}`, { method: 'DELETE' })
+    notification.success(t('member.removed'))
     await loadMembers()
     emit('memberRemoved')
   }
   catch {
-    notification.error('メンバー除外に失敗しました')
+    notification.error(t('member.removeFailed'))
   }
 }
 
@@ -254,7 +264,7 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
       data-key="userId"
       @page="onPage"
     >
-      <Column header="メンバー" field="displayName">
+      <Column :header="t('member.columns.name')" field="displayName">
         <template #body="{ data }">
           <div class="flex items-center gap-3">
             <Avatar
@@ -267,17 +277,17 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
           </div>
         </template>
       </Column>
-      <Column header="ロール" field="roleName" style="width: 160px">
+      <Column :header="t('member.columns.role')" field="roleName" style="width: 160px">
         <template #body="{ data }">
           <RoleBadge :role="data.roleName" />
         </template>
       </Column>
-      <Column header="参加日" field="joinedAt" style="width: 120px">
+      <Column :header="t('member.columns.joinedAt')" field="joinedAt" style="width: 120px">
         <template #body="{ data }">
           {{ formatMemberDate(data.joinedAt) }}
         </template>
       </Column>
-      <Column v-if="showActionsColumn" header="操作" style="width: 140px">
+      <Column v-if="showActionsColumn" :header="t('member.columns.actions')" style="width: 140px">
         <template #body="{ data }">
           <div class="flex gap-1">
             <Button
@@ -299,14 +309,14 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
               text
               rounded
               size="small"
-              @click="onRemoveMember(data.userId, data.displayName)"
+              @click="onRemoveMember(data)"
             />
           </div>
         </template>
       </Column>
       <template #empty>
         <div class="p-4 text-center text-surface-500">
-          メンバーはまだいません
+          {{ t('member.empty') }}
         </div>
       </template>
     </DataTable>

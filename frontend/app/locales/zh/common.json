@@ -2160,5 +2160,22 @@
   "comingSoon": {
     "title": "即将推出",
     "description": "此功能目前正在开发中。请稍后再来查看。"
+  },
+  "member": {
+    "columns": {
+      "name": "成员",
+      "role": "角色",
+      "joinedAt": "加入日期",
+      "actions": "操作"
+    },
+    "empty": "暂无成员",
+    "roleChanged": "已更改角色",
+    "roleChangeFailed": "更改角色失败",
+    "removed": "已移除成员",
+    "removeFailed": "移除成员失败",
+    "remove": {
+      "confirmTitle": "移除成员",
+      "confirmMessage": "确定将 {name} 从成员中移除吗？"
+    }
   }
 }
