@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -59,6 +60,7 @@ public class ChatMessageEntity extends BaseEntity {
      * 将来拡張のため VARCHAR + アプリ層 enum バリデーション（MySQL ENUM にはしない）。デフォルトは TEXT。
      */
     @Column(name = "message_type", nullable = false, length = 20)
+    @ColumnDefault("'TEXT'")
     @Builder.Default
     private String messageType = "TEXT";
 

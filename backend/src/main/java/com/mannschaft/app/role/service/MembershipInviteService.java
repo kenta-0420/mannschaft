@@ -4,8 +4,7 @@ import com.mannschaft.app.chat.service.ChatMembershipInviteCardService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.OrgErrorCode;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.InvitableScopesResponse;
 import com.mannschaft.app.role.dto.MembershipInviteRequest;
@@ -15,8 +14,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.team.TeamErrorCode;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -55,8 +53,8 @@ public class MembershipInviteService {
 
     private final InviteTokenRepository inviteTokenRepository;
     private final RoleRepository roleRepository;
-    private final TeamRepository teamRepository;
-    private final OrganizationRepository organizationRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
     private final MembershipInviteTokenIssuer tokenIssuer;
     private final ChatMembershipInviteCardService cardService;
@@ -233,29 +231,37 @@ public class MembershipInviteService {
         return role.getId();
     }
 
-    /** スコープの存在・アーカイブ検証を行い表示名を返す（404 / 422）。 */
+    /**
+     * スコープの存在・アーカイブ検証を行い表示名を返す（404 / 422）。
+     *
+     * <p>他ドメイン（team/organization）のデータは各ドメイン Service 経由で取得する
+     * （CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」・原則 1・原則 5）。
+     * Entity/Repository を直接参照しない。</p>
+     */
     private String validateScopeAndResolveName(String scopeType, Long scopeId) {
         if ("TEAM".equals(scopeType)) {
-            TeamEntity team = teamRepository.findById(scopeId)
+            TeamService.TeamSummary team = teamService.findTeamSummary(scopeId)
                     .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
-            if (team.getArchivedAt() != null) {
+            if (team.archived()) {
                 throw new BusinessException(TeamErrorCode.TEAM_002, HttpStatus.UNPROCESSABLE_ENTITY);
             }
-            return team.getName();
+            return team.name();
         }
-        OrganizationEntity org = organizationRepository.findById(scopeId)
+        OrganizationService.OrganizationSummary org = organizationService.findOrganizationSummary(scopeId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001, HttpStatus.NOT_FOUND));
-        if (org.getArchivedAt() != null) {
+        if (org.archived()) {
             throw new BusinessException(OrgErrorCode.ORG_003, HttpStatus.UNPROCESSABLE_ENTITY);
         }
-        return org.getName();
+        return org.name();
     }
 
     private String resolveScopeName(String scopeType, Long scopeId) {
         if ("TEAM".equals(scopeType)) {
-            return teamRepository.findById(scopeId).map(TeamEntity::getName).orElse(null);
+            return teamService.findTeamSummary(scopeId)
+                    .map(TeamService.TeamSummary::name).orElse(null);
         }
-        return organizationRepository.findById(scopeId).map(OrganizationEntity::getName).orElse(null);
+        return organizationService.findOrganizationSummary(scopeId)
+                .map(OrganizationService.OrganizationSummary::name).orElse(null);
     }
 
     private boolean hasActivePendingInvite(Long targetUserId, String scopeType, Long scopeId) {
