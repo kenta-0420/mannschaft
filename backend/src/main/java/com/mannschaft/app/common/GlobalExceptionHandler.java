@@ -93,6 +93,13 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
+            // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
+            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),             // 宛先照合失敗（第三者の承諾/辞退）→ 403 IDOR 防止
+            Map.entry("ROLE_010", HttpStatus.UNPROCESSABLE_ENTITY), // 承諾者 2FA 未設定 → 422
+            Map.entry("ROLE_011", HttpStatus.CONFLICT),             // 重複 PENDING 打診 → 409
+            Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
+            Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
+            Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
