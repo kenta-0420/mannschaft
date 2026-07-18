@@ -39871,6 +39871,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/ownership-transfer-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分宛の有効な（PENDING）オーナー委譲オファー一覧
+         * @description 指名相手（本人）宛の PENDING オファーのみ返す。第三者が他人宛を取得する経路は構造的に存在しない（本人限定・IDOR 防止）。通知の actionUrl から到達した受信側 UI がオファーの存在確認・一覧表示に用いる。
+         */
+        get: operations["listMyOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/organizations": {
         parameters: {
             query?: never;
@@ -74535,6 +74555,9 @@ export interface components {
         };
         PayableDuesResponse: {
             items?: components["schemas"]["PayableDueItem"][];
+        };
+        ApiResponseListTransferOwnershipOfferResponse: {
+            data?: components["schemas"]["TransferOwnershipOfferResponse"][];
         };
         CursorPagedResponseMyOrganizationResponse: {
             data?: components["schemas"]["MyOrganizationResponse"][];
@@ -152128,6 +152151,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePayableDuesResponse"];
+                };
+            };
+        };
+    };
+    listMyOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTransferOwnershipOfferResponse"];
                 };
             };
         };

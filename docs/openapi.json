@@ -128823,6 +128823,28 @@
         }
       }
     },
+    "/api/v1/me/ownership-transfer-offers": {
+      "get": {
+        "tags": [
+          "オーナー委譲オファー"
+        ],
+        "summary": "自分宛の有効な（PENDING）オーナー委譲オファー一覧",
+        "description": "指名相手（本人）宛の PENDING オファーのみ返す。第三者が他人宛を取得する経路は構造的に存在しない（本人限定・IDOR 防止）。通知の actionUrl から到達した受信側 UI がオファーの存在確認・一覧表示に用いる。",
+        "operationId": "listMyOffers",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTransferOwnershipOfferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/organizations": {
       "get": {
         "tags": [
@@ -220326,6 +220348,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PayableDueItem"
+            }
+          }
+        }
+      },
+      "ApiResponseListTransferOwnershipOfferResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferOwnershipOfferResponse"
             }
           }
         }
