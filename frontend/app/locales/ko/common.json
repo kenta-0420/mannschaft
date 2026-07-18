@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "팀에 초대",
+      "sentSuccess": "초대를 보냈습니다",
+      "joinedSuccess": "참가했습니다",
+      "declinedSuccess": "초대를 거절했습니다",
+      "modal": {
+        "title": "초대할 팀/조직 선택",
+        "empty": "초대할 수 있는 팀·조직이 없습니다",
+        "submit": "초대 보내기"
+      },
+      "card": {
+        "pending": "{scope} 참가 초대가 도착했습니다",
+        "waiting": "상대방의 수락 대기 중",
+        "statusPending": "수락 대기",
+        "join": "참가하기",
+        "decline": "거절하기",
+        "joined": "참가함",
+        "declined": "거절함",
+        "expired": "기한 만료",
+        "revoked": "취소됨",
+        "expiresAt": "기한: {time}"
+      },
+      "preview": {
+        "sent": "{scope} 참가 초대를 보냈습니다"
+      },
+      "notification": {
+        "received": "{scope} 참가 초대가 도착했습니다"
+      },
+      "error": {
+        "notTarget": "이 초대는 당신에게 보낸 것이 아닙니다",
+        "privilegedRole": "관리자 역할은 이 방법으로 초대할 수 없습니다",
+        "loadFailed": "초대 가능한 팀/조직을 불러오지 못했습니다",
+        "sendFailed": "초대 전송에 실패했습니다",
+        "joinFailed": "참가에 실패했습니다",
+        "declineFailed": "거절에 실패했습니다"
+      }
+    },
     "contextMenu": {
       "replyInThread": "스레드에서 답장",
       "react": "반응",

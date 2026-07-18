@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "チームに招待",
+      "sentSuccess": "招待を送りました",
+      "joinedSuccess": "参加しました",
+      "declinedSuccess": "招待を辞退しました",
+      "modal": {
+        "title": "招待するチーム/組織を選ぶ",
+        "empty": "招待できるチーム・組織がありません",
+        "submit": "招待を送る"
+      },
+      "card": {
+        "pending": "{scope} への招待が届いています",
+        "waiting": "相手の承諾待ち",
+        "statusPending": "承諾待ち",
+        "join": "参加する",
+        "decline": "辞退する",
+        "joined": "参加済み",
+        "declined": "辞退済み",
+        "expired": "期限切れ",
+        "revoked": "取消済み",
+        "expiresAt": "期限: {time}"
+      },
+      "preview": {
+        "sent": "{scope} への招待を送りました"
+      },
+      "notification": {
+        "received": "{scope} への招待が届きました"
+      },
+      "error": {
+        "notTarget": "この招待はあなた宛てではありません",
+        "privilegedRole": "管理者ロールはこの方法では招待できません",
+        "loadFailed": "招待できるチーム・組織の取得に失敗しました",
+        "sendFailed": "招待の送信に失敗しました",
+        "joinFailed": "参加に失敗しました",
+        "declineFailed": "辞退に失敗しました"
+      }
+    },
     "contextMenu": {
       "replyInThread": "スレッドで返信",
       "react": "リアクション",

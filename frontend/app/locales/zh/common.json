@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "邀请加入团队",
+      "sentSuccess": "已发送邀请",
+      "joinedSuccess": "已加入",
+      "declinedSuccess": "已谢绝邀请",
+      "modal": {
+        "title": "选择要邀请加入的团队/组织",
+        "empty": "没有可邀请加入的团队或组织",
+        "submit": "发送邀请"
+      },
+      "card": {
+        "pending": "您收到加入 {scope} 的邀请",
+        "waiting": "等待对方回应",
+        "statusPending": "待接受",
+        "join": "加入",
+        "decline": "谢绝",
+        "joined": "已加入",
+        "declined": "已谢绝",
+        "expired": "已过期",
+        "revoked": "已取消",
+        "expiresAt": "有效期至：{time}"
+      },
+      "preview": {
+        "sent": "已发送加入 {scope} 的邀请"
+      },
+      "notification": {
+        "received": "您收到加入 {scope} 的邀请"
+      },
+      "error": {
+        "notTarget": "此邀请并非发给您",
+        "privilegedRole": "无法以此方式邀请管理员角色",
+        "loadFailed": "加载可邀请的团队/组织失败",
+        "sendFailed": "发送邀请失败",
+        "joinFailed": "加入失败",
+        "declineFailed": "谢绝失败"
+      }
+    },
     "contextMenu": {
       "replyInThread": "在话题中回复",
       "react": "回应",

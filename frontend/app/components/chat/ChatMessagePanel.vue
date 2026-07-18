@@ -22,6 +22,10 @@ const emit = defineEmits<{
 }>()
 
 const showInviteDialog = ref(false)
+const showMembershipInviteDialog = ref(false)
+
+const { joinInvite, declineInvite } = useChatMembershipInvite()
+const { t } = useI18n()
 
 const {
   getMessages,
@@ -211,6 +215,55 @@ function onSent() {
 }
 
 // ============================================================
+// 承諾型招待カード（F04.12）— 承諾 / 辞退
+// ============================================================
+
+/** 承諾/辞退 API 実行中の招待トークン（招待カードのボタンローディング用・多重送信防止）。 */
+const pendingInviteToken = ref<string | null>(null)
+
+/**
+ * 招待カードの状態をローカルで差し替える（設計書 A-2）。
+ *
+ * 既存 WS は MESSAGE_CREATED のみで MESSAGE_UPDATED を招待カードに使わないため、
+ * ユーザーが操作した当該カード（messageId 既知）を直接 JOINED/REVOKED へ差し替える。
+ * 発行者側 DM は次回フェッチ時に BE が inviteData.status を再導出して最終整合する。
+ */
+function updateInviteStatus(messageId: number, status: 'JOINED' | 'REVOKED') {
+  const msg = messages.value.find((m) => m.id === messageId)
+  if (msg && msg.inviteData) {
+    msg.inviteData = { ...msg.inviteData, status }
+  }
+}
+
+async function onInviteJoin(messageId: number, token: string) {
+  if (pendingInviteToken.value) return
+  pendingInviteToken.value = token
+  try {
+    await joinInvite(token)
+    updateInviteStatus(messageId, 'JOINED')
+    showSuccess(t('chat.invite.joinedSuccess'))
+  } catch {
+    showError(t('chat.invite.error.joinFailed'))
+  } finally {
+    pendingInviteToken.value = null
+  }
+}
+
+async function onInviteDecline(messageId: number, token: string) {
+  if (pendingInviteToken.value) return
+  pendingInviteToken.value = token
+  try {
+    await declineInvite(token)
+    updateInviteStatus(messageId, 'REVOKED')
+    showSuccess(t('chat.invite.declinedSuccess'))
+  } catch {
+    showError(t('chat.invite.error.declineFailed'))
+  } finally {
+    pendingInviteToken.value = null
+  }
+}
+
+// ============================================================
 // タイピングインジケーター
 // ============================================================
 
@@ -322,7 +375,11 @@ onUnmounted(() => {
     </div>
 
     <!-- チャンネルヘッダー -->
-    <ChatChannelHeader :channel="channel" @invite="showInviteDialog = true" />
+    <ChatChannelHeader
+      :channel="channel"
+      @invite="showInviteDialog = true"
+      @membership-invite="showMembershipInviteDialog = true"
+    />
 
     <!-- アクティブスレッドバッジ -->
     <ChatActiveThreadsBar
@@ -346,12 +403,15 @@ onUnmounted(() => {
           :next-cursor="nextCursor"
           :can-pin="canPin"
           :can-delete="canDelete"
+          :pending-invite-token="pendingInviteToken"
           @load-more="(cursor: string) => loadMessages(cursor)"
           @reaction="onReaction"
           @pin="onPin"
           @delete="onDelete"
           @bookmark="onBookmark"
           @reply="openThread"
+          @invite-join="onInviteJoin"
+          @invite-decline="onInviteDecline"
         />
 
         <!-- タイピングインジケーター -->
@@ -401,6 +461,13 @@ onUnmounted(() => {
     :team-id="teamId"
     :organization-id="organizationId"
     @created="(ch) => emit('channelCreated', ch)"
+  />
+
+  <!-- チーム/組織への承諾型招待モーダル（F04.12）。発行後にメッセージを再取得してカードを反映する -->
+  <ChatMembershipInviteDialog
+    v-model:visible="showMembershipInviteDialog"
+    :channel-id="channel.id"
+    @invited="loadMessages()"
   />
 </template>
 

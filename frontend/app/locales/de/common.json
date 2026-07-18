@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "Zum Team einladen",
+      "sentSuccess": "Einladung gesendet",
+      "joinedSuccess": "Beigetreten",
+      "declinedSuccess": "Einladung abgelehnt",
+      "modal": {
+        "title": "Team/Organisation zum Einladen auswählen",
+        "empty": "Keine Teams oder Organisationen zum Einladen verfügbar",
+        "submit": "Einladung senden"
+      },
+      "card": {
+        "pending": "Du hast eine Einladung zu {scope}",
+        "waiting": "Warten auf Antwort",
+        "statusPending": "Ausstehend",
+        "join": "Beitreten",
+        "decline": "Ablehnen",
+        "joined": "Beigetreten",
+        "declined": "Abgelehnt",
+        "expired": "Abgelaufen",
+        "revoked": "Storniert",
+        "expiresAt": "Läuft ab: {time}"
+      },
+      "preview": {
+        "sent": "Einladung zu {scope} gesendet"
+      },
+      "notification": {
+        "received": "Du hast eine Einladung zu {scope} erhalten"
+      },
+      "error": {
+        "notTarget": "Diese Einladung ist nicht an dich gerichtet",
+        "privilegedRole": "Administratorrollen können auf diesem Weg nicht eingeladen werden",
+        "loadFailed": "Einladbare Teams/Organisationen konnten nicht geladen werden",
+        "sendFailed": "Einladung konnte nicht gesendet werden",
+        "joinFailed": "Beitritt fehlgeschlagen",
+        "declineFailed": "Ablehnen fehlgeschlagen"
+      }
+    },
     "contextMenu": {
       "replyInThread": "Im Thread antworten",
       "react": "Reagieren",

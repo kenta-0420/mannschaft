@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "Invitar al equipo",
+      "sentSuccess": "Invitación enviada",
+      "joinedSuccess": "Te has unido",
+      "declinedSuccess": "Invitación rechazada",
+      "modal": {
+        "title": "Elige un equipo u organización para invitar",
+        "empty": "No hay equipos ni organizaciones disponibles para invitar",
+        "submit": "Enviar invitación"
+      },
+      "card": {
+        "pending": "Tienes una invitación a {scope}",
+        "waiting": "Esperando su respuesta",
+        "statusPending": "Pendiente",
+        "join": "Unirse",
+        "decline": "Rechazar",
+        "joined": "Unido",
+        "declined": "Rechazada",
+        "expired": "Caducada",
+        "revoked": "Cancelada",
+        "expiresAt": "Caduca: {time}"
+      },
+      "preview": {
+        "sent": "Invitación enviada a {scope}"
+      },
+      "notification": {
+        "received": "Has recibido una invitación a {scope}"
+      },
+      "error": {
+        "notTarget": "Esta invitación no es para ti",
+        "privilegedRole": "Los roles de administrador no se pueden invitar de esta forma",
+        "loadFailed": "No se pudieron cargar los equipos/organizaciones para invitar",
+        "sendFailed": "No se pudo enviar la invitación",
+        "joinFailed": "No se pudo unir",
+        "declineFailed": "No se pudo rechazar"
+      }
+    },
     "contextMenu": {
       "replyInThread": "Responder en hilo",
       "react": "Reaccionar",

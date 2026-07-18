@@ -1,5 +1,42 @@
 {
   "chat": {
+    "invite": {
+      "button": "Invite to team",
+      "sentSuccess": "Invitation sent",
+      "joinedSuccess": "You joined",
+      "declinedSuccess": "Invitation declined",
+      "modal": {
+        "title": "Choose a team/organization to invite to",
+        "empty": "No teams or organizations available to invite to",
+        "submit": "Send invitation"
+      },
+      "card": {
+        "pending": "You have an invitation to {scope}",
+        "waiting": "Waiting for their response",
+        "statusPending": "Pending",
+        "join": "Join",
+        "decline": "Decline",
+        "joined": "Joined",
+        "declined": "Declined",
+        "expired": "Expired",
+        "revoked": "Cancelled",
+        "expiresAt": "Expires: {time}"
+      },
+      "preview": {
+        "sent": "Sent an invitation to {scope}"
+      },
+      "notification": {
+        "received": "You received an invitation to {scope}"
+      },
+      "error": {
+        "notTarget": "This invitation is not addressed to you",
+        "privilegedRole": "Administrator roles cannot be invited this way",
+        "loadFailed": "Failed to load invitable teams/organizations",
+        "sendFailed": "Failed to send the invitation",
+        "joinFailed": "Failed to join",
+        "declineFailed": "Failed to decline"
+      }
+    },
     "contextMenu": {
       "replyInThread": "Reply in Thread",
       "react": "React",
