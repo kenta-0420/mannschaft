@@ -222,27 +222,75 @@
 
 > - `invite_token_id` をメタデータに含めることで、どの招待トークン経由で参加したかを事後追跡可能にする（トークン発行者の特定・悪用調査に有用）
 
-### ADMIN 権限移譲フロー（1ステップ）
+### オーナー委譲 承諾フロー（2ステップ・承諾型 / 2026-07-18 マスター御裁可）
+
+**方針転換の背景**: 従来のオーナー委譲は「即時型」（操作者が押した瞬間に対象ユーザーを ADMIN 昇格＋自分を降格し、事後通知のみ）だった。しかし **指名相手の承諾がないまま管理責任を押し付けられる** 問題があり、[`account_purge_last_admin_succession.md` §10.11](../../architecture/account_purge_last_admin_succession.md) で未解決事項として残されていた。**2026-07-18 のマスター御裁可により、オーナー委譲も承諾型（オファー→承諾）に統一する。** これは F04.12（チャットからの承諾型招待）・team-invites/org-invites の PENDING→ACTIVE と同一の「承諾型オファー」思想である。
+
+#### 状態機械
 
 ```
-1. POST /api/v1/teams/{id}/transfer-ownership を受付（body: {"target_user_id": X}）
+        打診(POST transfer-ownership-offers)
+              │
+              ▼
+          [PENDING]
+          /   │    \   \
+   accept  decline expire cancel(発行者取消)
+      │       │      │      │
+      ▼       ▼      ▼      ▼
+ [ACCEPTED][DECLINED][EXPIRED][CANCELLED]
+ = 委譲実行   = いずれも現状維持（ロール不変）
+```
+
+**指名相手だけが承諾できる（宛先照合 = IDOR 防止）。** 承諾があって初めて対象ユーザーを ADMIN 昇格＋発行者を降格する。辞退・期限切れ・取消のいずれでもロールは一切変わらない。
+
+#### ステップ1: オファー作成
+
+```
+1. POST /api/v1/teams/{slug}/transfer-ownership-offers を受付（body: {"targetUserId": X}）
 2. 操作者が対象チームの ADMIN か確認 → ADMIN 未満は 403
 3. チームがアーカイブ済みでないか確認 → アーカイブ済みは 422
-4. 対象ユーザーが当該チームのメンバーか確認 → メンバーでなければ 404
+4. 対象ユーザーが当該チームのメンバーか、かつ操作者 ≠ 対象 か確認 → 否なら 404 / 422
 5. 【2FA必須チェック】対象ユーザーが 2FA を設定済みか確認 → 未設定は 422
-6. 1トランザクション内で以下を実行:
-   a. 対象ユーザーの user_roles.role_id を ADMIN に UPDATE
-   b. 操作者（自分）の user_roles.role_id を DEPUTY_ADMIN に UPDATE
-   c. 対象ユーザーの user_permission_groups（当該チームスコープ）を DELETE（ADMIN は権限グループ不要）
-   d. 操作者の user_permission_groups（当該チームスコープ）を DELETE（DEPUTY_ADMIN として再割り当てが必要）
-7. audit_logs に TEAM_ADMIN_TRANSFERRED を記録
+   （承諾時に再チェックもするが、無駄なオファー作成を防ぐため作成時にも確認）
+6. 同一スコープに PENDING オファーが既存なら 409（重複打診防止・古いものを取消してから）
+7. ownership_transfer_offers に INSERT（status=PENDING, target_user_id=X, expires_at=発行から7日）
+8. audit_logs に TEAM_OWNERSHIP_TRANSFER_OFFERED を記録
    metadata: {"from_user_id": 操作者ID, "to_user_id": 対象ユーザーID}
-8. 200 OK を返す
+9. 対象ユーザーへ到達通知（F04.3/F04.9）「管理者への就任を打診されています」
+10. 201 Created を返す（オファー ID・PENDING）
 ```
 
-> - 組織の場合（`POST /organizations/{id}/transfer-ownership`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_ADMIN_TRANSFERRED`）
-> - 移譲後、旧 ADMIN は DEPUTY_ADMIN となるが権限グループ未割り当て（実効パーミッション 0）。新 ADMIN が必要に応じて権限グループを割り当てる
-> - 複数 ADMIN が存在する場合でも移譲は可能（操作者のみが DEPUTY_ADMIN に降格し、他の ADMIN はそのまま）
+#### ステップ2: 承諾（委譲実行）／辞退／取消
+
+```
+承諾: POST /api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept
+1. オファーを取得。status=PENDING かつ未期限か確認 → 否なら 409/410（EXPIRED/CANCELLED/既処理）
+2. 【宛先照合 = IDOR 防止】offer.target_user_id == 実行ユーザー ID か確認 → 不一致は 403
+3. 【2FA再チェック】実行ユーザーが 2FA 設定済みか確認 → 未設定は 422
+4. チームが依然アーカイブ済みでないか・発行者が依然 ADMIN か再確認 → 否なら 409
+5. 1トランザクション内で以下を実行（既存 transferOwnership ロジックを流用）:
+   a. 対象ユーザー（=実行ユーザー）の user_roles.role_id を ADMIN に UPDATE
+   b. 発行者の user_roles.role_id を降格（後述「降格先ロール」参照）
+   c. 対象ユーザーの user_permission_groups（当該スコープ）を DELETE（ADMIN は不要）
+   d. offer.status を ACCEPTED に UPDATE、accepted_at=NOW()
+   e. MembershipChangedEvent(CHANGED)×2 を発火
+6. audit_logs に TEAM_ADMIN_TRANSFERRED を記録（metadata に offer_id を含める）
+7. 200 OK を返す
+
+辞退: POST .../transfer-ownership-offers/{offerId}/decline
+- 宛先照合（target_user_id == 実行ユーザー）→ status を DECLINED に。ロール不変。発行者へ通知。
+
+取消: DELETE .../transfer-ownership-offers/{offerId}
+- 発行者（または対象スコープ ADMIN）のみ。status を CANCELLED に。ロール不変。
+```
+
+> - 組織の場合（`.../organizations/{slug}/transfer-ownership-offers`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED` / `ORGANIZATION_ADMIN_TRANSFERRED`）
+> - 複数 ADMIN が存在する場合でも委譲は可能（承諾時に発行者のみ降格し、他の ADMIN はそのまま）
+> - 承諾（accept）は `checkLastAdmin` を呼ばない（委譲完了後は新 ADMIN が存在するため正当）
+>
+> **⚠️ 降格先ロールの不一致（実装時に統一する既知課題）**: 旧設計記述では発行者を **DEPUTY_ADMIN** に降格するとしていたが、実装 `RoleService#transferOwnership` は発行者を **MEMBER** に降格している。マスター御裁可（2026-07-18「発行者 MEMBER 降格」）に従い **MEMBER 降格に統一** する。02_api_design のレスポンス例（`previous_admin.role`）と本フロー・実装を MEMBER で揃えること。
+>
+> **⚠️ FE-BE パラメータ不一致（実装時に揃える既知課題）**: BE 側は body `targetUserId`（旧: `target_user_id`）を受けるが、FE composable [`useTeamCrud.ts`](../../../frontend/app/composables/team/useTeamCrud.ts) は `transferOwnership(slug, newAdminUserId)` で body `{ newAdminUserId }` を送っている。**承諾型化に伴い FE を 2 ステップ API（オファー作成→承諾）へ全面改修する際に、パラメータ名を BE の `targetUserId` に統一する。**
 
 ---
 

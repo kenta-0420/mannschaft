@@ -14,6 +14,7 @@
 | `permission_group_permissions` | 権限グループ↔パーミッション紐付け | なし |
 | `user_permission_groups` | ユーザー↔権限グループ割り当て | なし |
 | `invite_tokens` | 招待URL/QRコード用トークン | なし（revoked_at で失効管理）|
+| `ownership_transfer_offers` | オーナー委譲の承諾型オファー（打診→承諾で ADMIN 委譲を実行）。2026-07-18 承諾型化で新設 | なし（status で状態管理）|
 | `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待・チームの承認で成立）| なし（物理削除。履歴は audit_logs で管理）|
 | `team_blocks` | チームのサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_blocks` | 組織のサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
@@ -417,6 +418,41 @@ INDEX idx_it_organization_id (organization_id)
 - 有効期限の選択肢: 1日 / 7日 / 30日 / 90日 / 無期限
 - **発行者退会時の扱い**: `created_by` は `SET NULL on delete`。発行者が退会してもトークンは自動失効させず有効のままとする。理由: ① 引退・卒業等により発行者が交代しても既存の募集 URL が無効にならないよう運用継続性を保つため ② 招待 URL の管理責任は個人ではなくチーム/組織に帰属するため ③ 必要な場合は他の ADMIN が `revoked_at` を手動設定して失効させることが可能なため
 - **チーム/組織論理削除時の扱い**: 対象エンティティが論理削除された際、紐付くすべてのトークン（`revoked_at IS NULL` のもの）に `revoked_at = NOW()` を一括設定する。存在しないエンティティへの参加導線を残さないため。実装: チーム/組織削除 Service メソッド内でトランザクション内に一括 UPDATE を含める（`WHERE team_id/organization_id = :id AND revoked_at IS NULL`）
+
+---
+
+#### `ownership_transfer_offers`
+
+オーナー委譲（ADMIN 権限移譲）の **承諾型オファー**。発行者が打診（PENDING 作成）し、指名相手の承諾（accept）で初めて委譲を実行する。2026-07-18 のマスター御裁可による承諾型化で新設。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|---|------|-----------|------|
+| `id` | BINARY(16) | NO | （UUIDv7・アプリ生成）| PK。**新規テーブルのため原則6に従い UUIDv7**（`UuidV7Entity` 継承）|
+| `team_id` | BIGINT UNSIGNED | YES | NULL | 委譲対象がチームの場合に設定（組織委譲時は NULL）。**クロスドメインではなく team ドメイン内**だが FK は張らず INDEX（後述）|
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | 委譲対象が組織の場合に設定（チーム委譲時は NULL）|
+| `issued_by` | BIGINT UNSIGNED | NO | — | 発行者（現 ADMIN）の user ID。FK なし（user は別ドメイン・原則1）|
+| `target_user_id` | BIGINT UNSIGNED | NO | — | 指名相手（承諾できる唯一のユーザー）の user ID。FK なし・INDEX |
+| `status` | VARCHAR(20) | NO | `'PENDING'` | `PENDING` / `ACCEPTED` / `DECLINED` / `EXPIRED` / `CANCELLED`。**VARCHAR + アプリ層検証**（ENUM にしない）|
+| `expires_at` | DATETIME | NO | — | 有効期限（発行から7日を既定）。超過は EXPIRED |
+| `accepted_at` | DATETIME | YES | NULL | 承諾日時（ACCEPTED 時のみ）|
+| `resolved_at` | DATETIME | YES | NULL | 辞退/取消/期限確定の処理日時 |
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+
+**インデックス**
+```sql
+INDEX idx_oto_target_user (target_user_id, status)     -- 自分宛ての PENDING オファー一覧
+INDEX idx_oto_team (team_id, status)                   -- チーム別 PENDING オファー
+INDEX idx_oto_org (organization_id, status)            -- 組織別 PENDING オファー
+```
+
+**制約・備考**
+- **主キーは UUIDv7（原則6）**: 本テーブルはテナント/ユーザーごとに行が増える新規テーブルのため、`UuidV7Entity` を継承し `id BINARY(16)` とする（マスタ例外・シングルトン例外のいずれにも該当しない）。
+- **`team_id`/`organization_id` の XOR**: どちらか一方のみ非 NULL（`invite_tokens.chk_it_scope` と同方式の CHECK 制約 `chk_oto_scope` を張る）。
+- **FK を張らない（原則1）**: `issued_by`/`target_user_id`（user ドメイン）はもちろん、`team_id`/`organization_id`（team/org ドメイン）も本テーブル（role ドメイン）から見れば別ドメイン参照のため FK なし・INDEX のみ。整合性はアプリ層で保証。
+- **同一スコープに PENDING は 1 件まで**: `status='PENDING'` の重複打診をアプリ層で禁止（打診時 409）。DB レベルの部分 UNIQUE は MySQL 8.0 では関数インデックスで表現するが、運用頻度が低いためアプリ層チェックを一次とする。
+- **既存 `invite_tokens` を流用しない理由**: `invite_tokens` は「非メンバーを新規参加させる」ための公開リンク/QR 用トークン（`role_id` で付与ロールを持ち、`used_count`/`max_uses` で多数参加を管理）である。オーナー委譲は「**既存メンバーのロールを入れ替える**」操作で意味論が異なり、`invite_tokens` に相乗りさせると join フローに特殊分岐が増えて認可が複雑化する。よって専用テーブル `ownership_transfer_offers`（新規＝原則6 で UUIDv7）を設ける方が整合的と判断した。
+- **チーム/組織論理削除時**: 紐付く PENDING オファーを CANCELLED に一括更新（`invite_tokens` の一括失効と同方針）。
 
 ---
 
