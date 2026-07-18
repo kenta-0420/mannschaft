@@ -1,0 +1,157 @@
+package com.mannschaft.app.role.controller;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.role.dto.TransferOwnershipAcceptResponse;
+import com.mannschaft.app.role.dto.TransferOwnershipOfferCreateRequest;
+import com.mannschaft.app.role.dto.TransferOwnershipOfferResponse;
+import com.mannschaft.app.role.service.OwnershipTransferOfferService;
+import com.mannschaft.app.team.service.TeamService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+/**
+ * オーナー委譲 承諾型オファーコントローラー（F01.2・2026-07-18 承諾型化）。
+ *
+ * <p>チーム/組織のオーナー委譲を「打診 → 承諾/辞退/取消」の 2 ステップ承諾型で扱う。
+ * 旧即時 API（{@code POST /{scope}/{slug}/transfer-ownership}）を置き換える（設計書 02_api_design）。
+ * team/org で同一仕様のため、既存 {@code TeamController}/{@code OrganizationController} の
+ * slug 解決の定石（{@code resolveTeamId}/{@code resolveOrgId}）を踏襲し 1 コントローラーに集約する。</p>
+ *
+ * <p><strong>認可（骨格）:</strong> 各エンドポイントに認証必須の method-level シグナルを置く。
+ * 打診＝ADMIN・承諾/辞退＝指名相手本人（宛先照合）・取消＝発行者/ADMIN の細粒度認可は
+ * Service 層で実施する（設計書 03_business_logic。実装は /出陣）。</p>
+ */
+@RestController
+@Tag(name = "オーナー委譲オファー", description = "F01.2 承諾型オーナー委譲")
+@RequiredArgsConstructor
+public class OwnershipTransferOfferController {
+
+    private static final String SCOPE_TEAM = "TEAM";
+    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
+
+    private final OwnershipTransferOfferService offerService;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+
+    // ========================================
+    // チーム
+    // ========================================
+
+    @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers")
+    @Operation(summary = "チーム オーナー委譲を打診")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "打診成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TransferOwnershipOfferResponse>> createTeamOffer(
+            @PathVariable String slug,
+            @Valid @RequestBody TransferOwnershipOfferCreateRequest request) {
+        Long id = teamService.resolveTeamId(slug);
+        TransferOwnershipOfferResponse response =
+                offerService.createOffer(id, SCOPE_TEAM, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept")
+    @Operation(summary = "チーム委譲を承諾（＝実行）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TransferOwnershipAcceptResponse>> acceptTeamOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = teamService.resolveTeamId(slug);
+        TransferOwnershipAcceptResponse response =
+                offerService.acceptOffer(id, SCOPE_TEAM, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline")
+    @Operation(summary = "チーム委譲を辞退")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> declineTeamOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = teamService.resolveTeamId(slug);
+        offerService.declineOffer(id, SCOPE_TEAM, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}")
+    @Operation(summary = "チーム委譲オファーを取消")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> cancelTeamOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = teamService.resolveTeamId(slug);
+        offerService.cancelOffer(id, SCOPE_TEAM, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========================================
+    // 組織
+    // ========================================
+
+    @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers")
+    @Operation(summary = "組織 オーナー委譲を打診")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "打診成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TransferOwnershipOfferResponse>> createOrgOffer(
+            @PathVariable String slug,
+            @Valid @RequestBody TransferOwnershipOfferCreateRequest request) {
+        Long id = organizationService.resolveOrgId(slug);
+        TransferOwnershipOfferResponse response =
+                offerService.createOffer(id, SCOPE_ORGANIZATION, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept")
+    @Operation(summary = "組織委譲を承諾（＝実行）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TransferOwnershipAcceptResponse>> acceptOrgOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = organizationService.resolveOrgId(slug);
+        TransferOwnershipAcceptResponse response =
+                offerService.acceptOffer(id, SCOPE_ORGANIZATION, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline")
+    @Operation(summary = "組織委譲を辞退")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> declineOrgOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = organizationService.resolveOrgId(slug);
+        offerService.declineOffer(id, SCOPE_ORGANIZATION, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}")
+    @Operation(summary = "組織委譲オファーを取消")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> cancelOrgOffer(
+            @PathVariable String slug,
+            @PathVariable UUID offerId) {
+        Long id = organizationService.resolveOrgId(slug);
+        offerService.cancelOffer(id, SCOPE_ORGANIZATION, offerId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+}

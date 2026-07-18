@@ -154,6 +154,22 @@ public class InviteService {
     }
 
     /**
+     * 承諾型招待を辞退する（F04.12・骨格）。
+     *
+     * <p>宛先本人のみ。{@code revoked_at = NOW()} を立て（カードは REVOKED 表示に導出）、
+     * audit_logs に理由 {@code DECLINED} を記録する。宛先不一致は 403（{@link RoleErrorCode#ROLE_009}）。</p>
+     *
+     * <p><strong>骨格（スタブ）:</strong> 未実装。実装は /出陣 で行う。</p>
+     *
+     * @param tokenStr トークン文字列
+     * @param userId   実行ユーザー ID（宛先本人）
+     */
+    @Transactional
+    public void declineInvite(String tokenStr, Long userId) {
+        throw new UnsupportedOperationException("未実装: /出陣で実装");
+    }
+
+    /**
      * 招待トークンをプレビューする。未認証ユーザーにも表示可能。
      */
     public ApiResponse<InvitePreviewResponse> previewInvite(String tokenStr) {

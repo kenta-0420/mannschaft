@@ -49,6 +49,13 @@ public class InviteTokenEntity {
 
     private Long createdBy;
 
+    /**
+     * 承諾型招待の宛先ユーザー（F04.12）。
+     * NULL = 従来の共有リンク型（誰でも参加可） / 非 NULL = 宛先付き承諾型（この user のみ承諾可）。
+     * users は user ドメインのため FK は張らない（原則1）。
+     */
+    private Long targetUserId;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

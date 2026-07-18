@@ -33,7 +33,14 @@ public enum RoleErrorCode implements ErrorCode {
     ROLE_007("ROLE_007", "パーミッションが見つかりません", Severity.WARN),
 
     /** QRコードサイズが範囲外です（64〜1024px） */
-    ROLE_008("ROLE_008", "QRコードサイズは64〜1024の範囲で指定してください", Severity.WARN);
+    ROLE_008("ROLE_008", "QRコードサイズは64〜1024の範囲で指定してください", Severity.WARN),
+
+    /**
+     * 宛先不一致（F04.12 / F01.2 承諾型オファー）。
+     * 他人宛ての招待・委譲オファーを第三者が承諾/辞退しようとした場合の 403（IDOR 防止）。
+     * 発行時に特権ロール（ADMIN/DEPUTY_ADMIN）を指定した場合の 422 にも流用する（設計書 §6・C-1）。
+     */
+    ROLE_009("ROLE_009", "この招待はあなた宛てではありません", Severity.WARN);
 
     private final String code;
     private final String message;

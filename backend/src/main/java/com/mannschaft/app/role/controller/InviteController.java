@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -73,6 +74,22 @@ public class InviteController {
             @RequestBody(required = false) InviteJoinRequest req) {
         Long folderId = req != null ? req.folderId() : null;
         inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 承諾型招待を辞退する（F04.12）。宛先本人のみ。
+     *
+     * <p>認可: 認証必須。宛先本人か否かの照合（IDOR 防止）は Service 層で行う
+     * （宛先不一致は 403 ROLE_009。実装は /出陣）。</p>
+     */
+    @PostMapping("/{token}/decline")
+    @Operation(summary = "承諾型招待の辞退",
+            description = "宛先本人が招待を辞退する。revoked_at を立てカードを辞退済み表示にする（F04.12）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> declineInvite(@PathVariable String token) {
+        inviteService.declineInvite(token, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }
