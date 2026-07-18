@@ -80,6 +80,11 @@ class AuthzControllerGuardArchTest {
     private static final String ACCESS_GUARD_SUFFIX = "AccessGuard";
     private static final String ACCESS_SERVICE_SUFFIX = "AccessService";
 
+    /** 委譲探索の起点パッケージ（外部ライブラリへ潜らないための境界）。 */
+    private static final String APP_ROOT_PACKAGE = "com.mannschaft.app";
+    /** 委譲探索の深さ上限（起点 Mapping メソッド=深さ0、そこから 2 ホップまで＝案① D=2）。 */
+    private static final int MAX_DELEGATION_DEPTH = 2;
+
     @ArchTest
     static final ArchRule public_controller_endpoints_must_have_authorization_signal =
         FreezingArchRule.freeze(
@@ -128,7 +133,7 @@ class AuthzControllerGuardArchTest {
                     + "AccessControlService/ContentVisibilityChecker/*AccessGuard/*AccessService)") {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
-                if (hasPreAuthorizeSignal(method) || hasAuthorizationCallSignal(method)) {
+                if (hasAuthorizationSignal(method)) {
                     return;
                 }
                 String message = String.format(
@@ -141,21 +146,102 @@ class AuthzControllerGuardArchTest {
         };
     }
 
+    /**
+     * メソッドが認可シグナル（A: {@code @PreAuthorize} / B: 認可呼び出し）を持つかを返す。
+     *
+     * <p>本番番人（{@link #haveAnAuthorizationSignal()}）と偽陰性ゼロ証明メタテスト
+     * {@code AuthzControllerGuardConditionTest} の双方から呼ばれる合格判定の単一の正準。
+     * 判定ロジックを二重実装しないため package-visible の static ヘルパとして公開する。
+     */
+    static boolean hasAuthorizationSignal(JavaMethod method) {
+        return hasPreAuthorizeSignal(method) || hasAuthorizationCallSignal(method);
+    }
+
     /** シグナル(A): メソッドまたは宣言クラスに {@code @PreAuthorize} が付いているか。 */
     private static boolean hasPreAuthorizeSignal(JavaMethod method) {
         return method.isAnnotatedWith(PreAuthorize.class)
             || method.getOwner().isAnnotatedWith(PreAuthorize.class);
     }
 
-    /** シグナル(B): メソッド本体が認可呼び出しクラスへ直接メソッド呼び出しをしているか。 */
+    /**
+     * シグナル(B): 起点 Mapping メソッドから <b>呼び出しグラフを深さ {@value #MAX_DELEGATION_DEPTH}
+     * まで BFS で辿り</b>、訪問した各メソッドのいずれかが認可呼び出しクラスへ
+     * 直接メソッド呼び出しをしていれば認可シグナルありと判定する（Wave5 賢化・案① D=2）。
+     *
+     * <p><b>賢化の理由</b>: 従来は「起点メソッドが直接 {@code *AccessGuard} 等を呼ぶ」場合のみ
+     * 合格とし、認可を Service に委譲した薄い Controller が全て凍結ストアに落ちていた
+     * （＝返済対象の負債）。そこで <b>Controller → 注入 Service → private helper → 認可クラス</b>
+     * のような 2 ホップまでの委譲を認可シグナルとして認識する。
+     *
+     * <p><b>探索の必須ガード</b>:
+     * <ul>
+     *   <li>各訪問メソッドで「直接呼び先が認可クラスか」を判定（到達しない限り合格させない）</li>
+     *   <li>{@code visited}（FQN 集合）で同一メソッド再訪を防ぐ＝サイクルガード</li>
+     *   <li>深さ上限 {@value #MAX_DELEGATION_DEPTH}（起点=深さ0、そこから 2 ホップまで）</li>
+     *   <li>展開対象を {@code com.mannschaft.app} パッケージ配下に限定
+     *       （外部ライブラリへ潜って指数爆発しないため）</li>
+     * </ul>
+     *
+     * <p>判定を緩めすぎない: 白名簿クラス（{@code AccessControlService}/
+     * {@code ContentVisibilityChecker}/{@code *AccessGuard}/{@code *AccessService}）へ
+     * <b>到達しない限り合格させない</b>。この不合格側は
+     * {@code AuthzControllerGuardConditionTest} の unauthorized fixture で担保する。
+     *
+     * <p><b>既知の限界</b>: interface 経由の Service 呼び出しは
+     * {@link com.tngtech.archunit.core.domain.AccessTarget.MethodCallTarget#resolveMember()}
+     * が具象実装体を返さず（interface メソッドに解決 or 解決不能）救済漏れの可能性がある。
+     * 本リポは具象 Service 主体のため影響は小さいが、interface 委譲 Controller は
+     * 従来どおり凍結ストアに残る（保守的に不合格＝偽陰性を作らない側に倒す）。
+     */
     private static boolean hasAuthorizationCallSignal(JavaMethod method) {
-        for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
-            JavaClass targetOwner = call.getTarget().getOwner();
-            if (isAuthorizationClass(targetOwner)) {
-                return true;
+        java.util.Set<String> visited = new java.util.HashSet<>();
+        java.util.Deque<MethodAtDepth> queue = new java.util.ArrayDeque<>();
+        visited.add(method.getFullName());
+        queue.add(new MethodAtDepth(method, 0));
+
+        while (!queue.isEmpty()) {
+            MethodAtDepth current = queue.poll();
+            JavaMethod visiting = current.method();
+
+            // (1) 訪問メソッドが直接 認可クラスを呼んでいれば合格。
+            for (JavaMethodCall call : visiting.getMethodCallsFromSelf()) {
+                if (isAuthorizationClass(call.getTarget().getOwner())) {
+                    return true;
+                }
+            }
+
+            // (2) 深さ上限に達していなければ委譲先メソッドを展開する。
+            if (current.depth() >= MAX_DELEGATION_DEPTH) {
+                continue;
+            }
+            for (JavaMethodCall call : visiting.getMethodCallsFromSelf()) {
+                // 呼び出し先を import 済みの実装メソッドへ解決する。
+                // interface 経由等で具象体に解決できない場合 Optional.empty() となり
+                // その枝は辿らない（保守的に不合格側へ倒す＝偽陰性を作らない）。
+                java.util.Optional<JavaMethod> resolved = call.getTarget().resolveMember();
+                if (resolved.isEmpty()) {
+                    continue;
+                }
+                JavaMethod callee = resolved.get();
+                // 外部ライブラリへは潜らない（アプリ内実装のみ辿る）。
+                if (!isWithinAppPackage(callee.getOwner())) {
+                    continue;
+                }
+                // 同一メソッドの再訪を防ぐ（サイクルガード）。
+                if (visited.add(callee.getFullName())) {
+                    queue.add(new MethodAtDepth(callee, current.depth() + 1));
+                }
             }
         }
         return false;
+    }
+
+    /** 呼び出しグラフ BFS のノード（メソッドと起点からの深さ）。 */
+    private record MethodAtDepth(JavaMethod method, int depth) { }
+
+    /** クラスがアプリ本体パッケージ（{@value #APP_ROOT_PACKAGE}）配下か。 */
+    private static boolean isWithinAppPackage(JavaClass clazz) {
+        return clazz.getPackageName().startsWith(APP_ROOT_PACKAGE);
     }
 
     /**
