@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * <b>#2357（村寄合の候補日に任意の時刻）DB 移行 番人テスト</b>:
- * {@code V158.__meetup_candidate_time.sql}（Expand + Migrate）を
+ * {@code V159.__meetup_candidate_time.sql}（Expand + Migrate）を
  * <b>実 MySQL</b>（Testcontainers）で検証する。
  *
  * <h2>なぜモック不可なのか</h2>
@@ -43,11 +43,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.village.migration."
         + "FlywayMeetupCandidateTimeMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 村寄合 候補日 TIME 追加移行（V158 Expand/Migrate）番人テスト")
+@DisplayName("Flyway 村寄合 候補日 TIME 追加移行（V159 Expand/Migrate）番人テスト")
 class FlywayMeetupCandidateTimeMigrationTest {
 
-    /** V158（本移行）の直前バージョン。ここまで適用してから旧スキーマ（time 列なし）の行をシードする。 */
-    private static final String PRE_V158_TARGET = "157.20260718083724";
+    /**
+     * V159（本移行）の直前バージョン。ここまで適用してから旧スキーマ（time 列なし）の行をシードする。
+     * 本移行の直前は #2359 の V158.20260718115027（module_activation_backfill_grandfather）であり、
+     * これは village_meetup 系テーブルに一切触れないため、ここまで適用しても candidate_time 列は存在しない。
+     */
+    private static final String PRE_V159_TARGET = "158.20260718115027";
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final UUID MEETUP_ID = UUID.randomUUID();
@@ -75,22 +79,22 @@ class FlywayMeetupCandidateTimeMigrationTest {
     void startContainerAndMigrate() throws Exception {
         MYSQL.start();
 
-        // given: V158 の直前まで適用 ＝ candidate_time / confirmed_time 列がまだ無い状態
+        // given: V159 の直前まで適用 ＝ candidate_time / confirmed_time 列がまだ無い状態
         Flyway pre = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V158_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V159_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
-        assertThat(preResult.success).as("V158 直前までの適用が成功すること").isTrue();
+        assertThat(preResult.success).as("V159 直前までの適用が成功すること").isTrue();
 
         try (Connection conn = openConn()) {
             // sanity: 旧スキーマの証明
             assertThat(columnExists(conn, "village_meetup_candidate_dates", "candidate_time"))
-                    .as("V158 適用前は candidate_time 列が存在しないこと").isFalse();
+                    .as("V159 適用前は candidate_time 列が存在しないこと").isFalse();
             assertThat(columnExists(conn, "village_meetups", "confirmed_time"))
-                    .as("V158 適用前は confirmed_time 列が存在しないこと").isFalse();
+                    .as("V159 適用前は confirmed_time 列が存在しないこと").isFalse();
 
             // 旧スキーマの村・寄合・「日付のみ」候補日をシード
             insertVillage(conn, VILLAGE_ID, "meetup-time", "寄合時刻テスト村");
@@ -98,7 +102,7 @@ class FlywayMeetupCandidateTimeMigrationTest {
             insertLegacyCandidate(conn, LEGACY_CANDIDATE_ID, MEETUP_ID, "2026-08-01");
         }
 
-        // when: 残りのマイグレーション（V158 含む）を適用する
+        // when: 残りのマイグレーション（V159 含む）を適用する
         Flyway rest = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
@@ -106,7 +110,7 @@ class FlywayMeetupCandidateTimeMigrationTest {
                 .load();
         MigrateResult restResult = rest.migrate();
         assertThat(restResult.success)
-                .as("V158（Expand/Migrate）を含む残りのマイグレーションが成功すること").isTrue();
+                .as("V159（Expand/Migrate）を含む残りのマイグレーションが成功すること").isTrue();
     }
 
     @AfterAll
