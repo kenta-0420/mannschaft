@@ -394,7 +394,42 @@ public enum VillageErrorCode implements ErrorCode {
      * （設計書 §4.2「凍結後に集計値を更新しようとする操作は BusinessException で拒否する」）。</p>
      */
     NEWSLETTER_ISSUE_ALREADY_FROZEN("VILLAGE_087",
-            "この号は既に凍結されているため集計値を変更できません", Severity.WARN);
+            "この号は既に凍結されているため集計値を変更できません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 ②-4 村ニュースレター コメント/タグ/公開一覧 API（VILLAGE_088〜092）
+    // 設計書 docs/features/F17.1_village_newsletter_content_model.md §8 / §11.2 / §11.4
+    // ==================================================================
+
+    /**
+     * VILLAGE_088: ニュースレター号が存在しない（404、IDOR 対策で村不一致・非公開直アクセスも 404 に統一）。
+     *
+     * <p>号 ID が存在しない／指定村に属さない／公開一覧で PUBLIC×PUBLISHED でない号への直アクセス時に投げる
+     * （設計書 §8.2「PUBLIC 以外への直アクセスは 404 で存在秘匿」）。</p>
+     */
+    NEWSLETTER_ISSUE_NOT_FOUND("VILLAGE_088",
+            "ニュースレターの号が見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_089: 号の楽観ロック競合（409）。
+     *
+     * <p>コメント保存・タグ付け・公開範囲切替で、クライアントが送った {@code version} が号の現在値と
+     * 一致しない場合に投げる（設計書 §4.4・村長と長老の同時編集を検出）。FE はリロードを促す。</p>
+     */
+    NEWSLETTER_ISSUE_VERSION_CONFLICT("VILLAGE_089",
+            "他の管理者がこの号を更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    /** VILLAGE_090: ニュースレタータグが存在しない（404、IDOR 対策で村不一致も 404 に統一）。 */
+    NEWSLETTER_TAG_NOT_FOUND("VILLAGE_090",
+            "ニュースレターのタグが見つかりません", Severity.WARN),
+
+    /** VILLAGE_091: 使用中のタグを削除しようとした（409、募集カテゴリの使用中ガードに倣う）。 */
+    NEWSLETTER_TAG_IN_USE("VILLAGE_091",
+            "このタグを使っている号があるため削除できません", Severity.WARN),
+
+    /** VILLAGE_092: 同一村内でタグ名が重複（409、uk_vnt_village_name に先立つアプリ層チェック）。 */
+    NEWSLETTER_TAG_DUPLICATE("VILLAGE_092",
+            "同じ名前のタグが既にあります", Severity.WARN);
 
     private final String code;
     private final String message;

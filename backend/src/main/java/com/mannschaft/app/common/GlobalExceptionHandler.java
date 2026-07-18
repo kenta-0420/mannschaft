@@ -579,6 +579,12 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_084", HttpStatus.CONFLICT),              // RECRUIT_CATEGORY_NAME_DUPLICATED
             Map.entry("VILLAGE_085", HttpStatus.UNPROCESSABLE_ENTITY),  // RECRUIT_CATEGORY_LIMIT_EXCEEDED
             Map.entry("VILLAGE_086", HttpStatus.CONFLICT),              // RECRUIT_CATEGORY_IN_USE
+            // F17.1 ②-4 村ニュースレター コメント/タグ/公開一覧 API（VILLAGE_088〜092）
+            Map.entry("VILLAGE_088", HttpStatus.NOT_FOUND),             // NEWSLETTER_ISSUE_NOT_FOUND（IDOR 対策で 404 秘匿）
+            Map.entry("VILLAGE_089", HttpStatus.CONFLICT),             // NEWSLETTER_ISSUE_VERSION_CONFLICT（楽観ロック）
+            Map.entry("VILLAGE_090", HttpStatus.NOT_FOUND),             // NEWSLETTER_TAG_NOT_FOUND
+            Map.entry("VILLAGE_091", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_IN_USE
+            Map.entry("VILLAGE_092", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_DUPLICATE
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND

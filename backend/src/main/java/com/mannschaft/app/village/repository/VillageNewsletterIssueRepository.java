@@ -29,6 +29,15 @@ public interface VillageNewsletterIssueRepository
             UUID id, UUID villageId);
 
     /**
+     * 村内の号一覧をタグで絞り込む（新しい順・論理削除除外・②-4）。
+     *
+     * <p>タグ→号の逆引き（{@link VillageNewsletterIssueTagRepository#findByTagId}）で得た号 ID 集合を
+     * IN 条件で渡す。空集合は呼び出し側で {@code Page.empty()} に短絡し、{@code IN ()} を発行しない。</p>
+     */
+    Page<VillageNewsletterIssueEntity> findByVillageIdAndIdInAndDeletedAtIsNullOrderByCreatedAtDesc(
+            UUID villageId, java.util.Collection<UUID> ids, Pageable pageable);
+
+    /**
      * 冪等性判定用: 同一村×頻度×期間の号が既にあるか（UNIQUE と対応・集計バッチの二重起動対策）。
      * frequency は null 非対応（EXTRA は対象外）のため定期便のみで使う。
      */

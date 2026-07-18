@@ -301,6 +301,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/newsletter/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村のニュースレタータグを更新（HEADMAN / ELDER・楽観ロック） */
+        put: operations["updateTag"];
+        post?: never;
+        /** 村のニュースレタータグを削除（HEADMAN / ELDER・使用中は不可） */
+        delete: operations["deleteTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号の公開範囲を切替（HEADMAN / ELDER・楽観ロック） */
+        put: operations["updateIssueVisibility"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号にタグを付ける（HEADMAN / ELDER・楽観ロック・置き換え式） */
+        put: operations["updateIssueTags"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/comment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号にコメントを保存（HEADMAN / ELDER・楽観ロック・凍結後も可） */
+        put: operations["updateIssueComment"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/monsho": {
         parameters: {
             query?: never;
@@ -4958,10 +5027,10 @@ export interface paths {
         };
         get?: never;
         /** タグ更新 */
-        put: operations["updateTag"];
+        put: operations["updateTag_1"];
         post?: never;
         /** タグ削除 */
-        delete: operations["deleteTag"];
+        delete: operations["deleteTag_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6455,6 +6524,24 @@ export interface paths {
         put?: never;
         /** 募集カテゴリ作成（村長/長老） */
         post: operations["create_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村のニュースレタータグ一覧（表示順） */
+        get: operations["listTags"];
+        put?: never;
+        /** 村のニュースレタータグを作成（HEADMAN / ELDER） */
+        post: operations["createTag"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19606,7 +19693,7 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧 */
-        get: operations["listTags"];
+        get: operations["listTags_1"];
         put?: never;
         /** タグ追加 */
         post: operations["addTag"];
@@ -21399,10 +21486,10 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧 */
-        get: operations["listTags_1"];
+        get: operations["listTags_2"];
         put?: never;
         /** タグ作成 */
-        post: operations["createTag"];
+        post: operations["createTag_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22927,10 +23014,10 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧取得 */
-        get: operations["listTags_2"];
+        get: operations["listTags_3"];
         put?: never;
         /** タグ作成 */
-        post: operations["createTag_1"];
+        post: operations["createTag_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -28988,11 +29075,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** タグ削除（論理削除） */
-        delete: operations["deleteTag_1"];
+        delete: operations["deleteTag_2"];
         options?: never;
         head?: never;
         /** タグ更新 */
-        patch: operations["updateTag_1"];
+        patch: operations["updateTag_2"];
         trace?: never;
     };
     "/api/v1/action-memo-settings": {
@@ -29559,6 +29646,40 @@ export interface paths {
         };
         /** 指定頻度のニュースレター配信履歴を取得する */
         get: operations["listSendLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村ニュースレター号の一覧（新しい順・?tagId= でタグ絞り込み可） */
+        get: operations["listIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村ニュースレター号の詳細（凍結ダイジェスト＋コメント＋タグ） */
+        get: operations["getIssue"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38790,6 +38911,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/newsletter/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開ニュースレター号の村横断一覧（新しい順） */
+        get: operations["listPublicIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/newsletter/public/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開ニュースレター号の詳細（PUBLIC 以外は 404 秘匿） */
+        get: operations["getPublicIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/my/receipts": {
         parameters: {
             query?: never;
@@ -45409,6 +45564,100 @@ export interface components {
             version?: number;
             /** Format: uuid */
             villageId?: string;
+        };
+        NewsletterTagUpdateRequest: {
+            color?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: int64 */
+            version: number;
+        };
+        ApiResponseNewsletterTagResponse: {
+            data?: components["schemas"]["NewsletterTagResponse"];
+        };
+        NewsletterTagResponse: {
+            color?: string;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            villageId?: string;
+        };
+        NewsletterVisibilityUpdateRequest: {
+            /** Format: int64 */
+            version: number;
+            /** @enum {string} */
+            visibility: "VILLAGE_MEMBERS" | "PUBLIC";
+        };
+        ApiResponseNewsletterIssueDetailResponse: {
+            data?: components["schemas"]["NewsletterIssueDetailResponse"];
+        };
+        NewsletterIssueDetailResponse: {
+            /** Format: date-time */
+            aggregatedAt?: string;
+            /** Format: date-time */
+            commentUpdatedAt?: string;
+            /** Format: int64 */
+            commentUpdatedBy?: number;
+            /** Format: int32 */
+            digestFestivalCount?: number;
+            /** Format: int32 */
+            digestMeetupCount?: number;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** Format: int32 */
+            digestRecruitCount?: number;
+            /** Format: int32 */
+            digestTopic1Count?: number;
+            digestTopic1Name?: string;
+            /** Format: int32 */
+            digestTopic2Count?: number;
+            digestTopic2Name?: string;
+            /** Format: int32 */
+            digestTopic3Count?: number;
+            digestTopic3Name?: string;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            headmanComment?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            issueType?: "REGULAR" | "EXTRA";
+            /** Format: date-time */
+            periodEnd?: string;
+            /** Format: date-time */
+            periodStart?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: date-time */
+            scheduledPublishAt?: string;
+            /** @enum {string} */
+            status?: "AGGREGATED" | "FROZEN" | "PUBLISHED" | "CANCELED";
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            villageId?: string;
+            /** @enum {string} */
+            visibility?: "VILLAGE_MEMBERS" | "PUBLIC";
+        };
+        NewsletterIssueTagsUpdateRequest: {
+            tagIds: string[];
+            /** Format: int64 */
+            version: number;
+        };
+        NewsletterCommentUpdateRequest: {
+            comment?: string;
+            /** Format: int64 */
+            version: number;
         };
         VillageMonshoUpdateRequest: {
             r2Key?: string;
@@ -52591,6 +52840,12 @@ export interface components {
             /** Format: int32 */
             displayOrder?: number;
             name?: string;
+        };
+        NewsletterTagCreateRequest: {
+            color?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
         };
         MembershipJoinRequest: {
             /** Format: int64 */
@@ -66205,6 +66460,9 @@ export interface components {
             /** Format: uuid */
             villageId?: string;
         };
+        ApiResponseListNewsletterTagResponse: {
+            data?: components["schemas"]["NewsletterTagResponse"][];
+        };
         ApiResponseListNewsletterSendLogResponse: {
             data?: components["schemas"]["NewsletterSendLogResponse"][];
         };
@@ -66221,6 +66479,45 @@ export interface components {
             sentAt?: string;
             /** Format: int32 */
             successCount?: number;
+        };
+        ApiResponseNewsletterIssuePageResponse: {
+            data?: components["schemas"]["NewsletterIssuePageResponse"];
+        };
+        NewsletterIssuePageResponse: {
+            content?: components["schemas"]["NewsletterIssueSummaryResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+        };
+        NewsletterIssueSummaryResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            hasComment?: boolean;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            periodEnd?: string;
+            /** Format: date-time */
+            periodStart?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** @enum {string} */
+            status?: "AGGREGATED" | "FROZEN" | "PUBLISHED" | "CANCELED";
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: uuid */
+            villageId?: string;
+            /** @enum {string} */
+            visibility?: "VILLAGE_MEMBERS" | "PUBLIC";
         };
         ApiResponseMembershipListResponse: {
             data?: components["schemas"]["MembershipListResponse"];
@@ -73327,6 +73624,53 @@ export interface components {
             name?: string;
             priceJpy?: number;
         };
+        ApiResponsePublicNewsletterIssuePageResponse: {
+            data?: components["schemas"]["PublicNewsletterIssuePageResponse"];
+        };
+        PublicNewsletterIssuePageResponse: {
+            content?: components["schemas"]["PublicNewsletterIssueResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+        };
+        PublicNewsletterIssueResponse: {
+            /** Format: int32 */
+            digestFestivalCount?: number;
+            /** Format: int32 */
+            digestMeetupCount?: number;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** Format: int32 */
+            digestRecruitCount?: number;
+            /** Format: int32 */
+            digestTopic1Count?: number;
+            digestTopic1Name?: string;
+            /** Format: int32 */
+            digestTopic2Count?: number;
+            digestTopic2Name?: string;
+            /** Format: int32 */
+            digestTopic3Count?: number;
+            digestTopic3Name?: string;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            headmanComment?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: uuid */
+            villageId?: string;
+        };
+        ApiResponsePublicNewsletterIssueResponse: {
+            data?: components["schemas"]["PublicNewsletterIssueResponse"];
+        };
         MyReceiptResponse: {
             amount?: number;
             description?: string;
@@ -77165,6 +77509,135 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNewsletterSettingResponse"];
+                };
+            };
+        };
+    };
+    updateTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterTagUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterTagResponse"];
+                };
+            };
+        };
+    };
+    deleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateIssueVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterVisibilityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
+    updateIssueTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterIssueTagsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
+    updateIssueComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterCommentUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
                 };
             };
         };
@@ -90071,7 +90544,7 @@ export interface operations {
             };
         };
     };
-    updateTag: {
+    updateTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -90097,7 +90570,7 @@ export interface operations {
             };
         };
     };
-    deleteTag: {
+    deleteTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -93264,6 +93737,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseVillageRecruitCategoryResponse"];
+                };
+            };
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListNewsletterTagResponse"];
+                };
+            };
+        };
+    };
+    createTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterTagCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterTagResponse"];
                 };
             };
         };
@@ -118722,7 +119243,7 @@ export interface operations {
             };
         };
     };
-    listTags: {
+    listTags_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -121994,7 +122515,7 @@ export interface operations {
             };
         };
     };
-    listTags_1: {
+    listTags_2: {
         parameters: {
             query?: {
                 teamId?: number;
@@ -122017,7 +122538,7 @@ export interface operations {
             };
         };
     };
-    createTag: {
+    createTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -124637,7 +125158,7 @@ export interface operations {
             };
         };
     };
-    listTags_2: {
+    listTags_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -124657,7 +125178,7 @@ export interface operations {
             };
         };
     };
-    createTag_1: {
+    createTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -136457,7 +136978,7 @@ export interface operations {
             };
         };
     };
-    deleteTag_1: {
+    deleteTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -136477,7 +136998,7 @@ export interface operations {
             };
         };
     };
-    updateTag_1: {
+    updateTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -137297,6 +137818,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListNewsletterSendLogResponse"];
+                };
+            };
+        };
+    };
+    listIssues: {
+        parameters: {
+            query?: {
+                tagId?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssuePageResponse"];
+                };
+            };
+        };
+    };
+    getIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
                 };
             };
         };
@@ -150002,6 +150572,51 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListNotificationCreditPackageResponse"];
+                };
+            };
+        };
+    };
+    listPublicIssues: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicNewsletterIssuePageResponse"];
+                };
+            };
+        };
+    };
+    getPublicIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicNewsletterIssueResponse"];
                 };
             };
         };
