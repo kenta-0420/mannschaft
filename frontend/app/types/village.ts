@@ -745,14 +745,16 @@ export type VillageMeetupVoteType = 'AVAILABLE' | 'MAYBE' | 'UNAVAILABLE'
 /**
  * 寄合候補日。BE: `MeetupCandidateDateResponse`。
  *
- * 時刻・投票集計は本 DTO に含まれない（日付のみ）。
- * 集計値は投票集計 API（{@link VillageMeetupVoteSummary}）から取得すること。
+ * 投票集計は本 DTO に含まれない。集計値は投票集計 API
+ * （{@link VillageMeetupVoteSummary}）から取得すること。
  */
 export interface VillageMeetupCandidateDateResponse {
   id: string
   meetupId: string
   /** 候補日 (YYYY-MM-DD) */
   candidateDate: string
+  /** 候補の時刻 (HH:mm:ss)。任意・null は終日（#2357） */
+  candidateTime: string | null
   /** 表示順 */
   sortOrder: number
 }
@@ -767,6 +769,8 @@ export interface VillageMeetupResponse {
   status: VillageMeetupStatus
   /** 確定日 (YYYY-MM-DD)。CONFIRMED 時のみセットされる */
   confirmedDate: string | null
+  /** 確定時刻 (HH:mm:ss)。CONFIRMED かつ時刻ありの場合のみ。null は終日（#2357） */
+  confirmedTime: string | null
   /** 集合場所（BE のフィールド名は venue ではなく location） */
   location: string | null
   createdAt: string
@@ -779,6 +783,8 @@ export interface VillageMeetupVoteSummaryCandidate {
   candidateDateId: string
   /** 候補日 (YYYY-MM-DD) */
   candidateDate: string
+  /** 候補の時刻 (HH:mm:ss)。null は終日（#2357） */
+  candidateTime: string | null
   availableCount: number
   maybeCount: number
   unavailableCount: number
@@ -791,16 +797,28 @@ export interface VillageMeetupVoteSummary {
 }
 
 /**
+ * 寄合作成時の候補日 1 件。BE: `MeetupCandidateDateInput`（#2357）。
+ *
+ * `date` は必須、`time` は任意（省略 / null は終日）。
+ */
+export interface VillageMeetupCandidateDateInput {
+  /** 候補日 (YYYY-MM-DD) */
+  date: string
+  /** 候補の時刻 (HH:mm)。任意・省略は終日（送信時は空なら省略する） */
+  time?: string
+}
+
+/**
  * 寄合作成リクエスト。BE: `MeetupCreateRequest`。
  *
- * `candidateDates` は素の日付配列（`List<LocalDate>`）。1〜30 件。
+ * `candidateDates` は object 配列 `{date, time?}`。1〜30 件（#2357）。
  */
 export interface VillageMeetupCreateRequest {
   title: string
   description?: string | null
   location?: string | null
-  /** 候補日 (YYYY-MM-DD) の配列 */
-  candidateDates: string[]
+  /** 候補日 object の配列 `{date, time?}` */
+  candidateDates: VillageMeetupCandidateDateInput[]
 }
 
 /** 寄合更新リクエスト。BE: `MeetupUpdateRequest`（部分更新・全 optional）。 */
@@ -830,6 +848,8 @@ export interface VillageMeetupVoteRequest {
 export interface VillageMeetupCandidateDateAddRequest {
   /** 候補日 (YYYY-MM-DD) */
   candidateDate: string
+  /** 候補の時刻 (HH:mm)。任意・省略 / null は終日（#2357） */
+  candidateTime?: string | null
   sortOrder?: number | null
 }
 

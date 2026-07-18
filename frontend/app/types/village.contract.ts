@@ -130,7 +130,7 @@ export type MeetupCandidateDateAddRequestKeysMatch = AssertTrue<
   SameKeys<VillageMeetupCandidateDateAddRequest, Schemas['MeetupCandidateDateAddRequest']>
 >
 
-/** 候補日は素の日付配列（`List<LocalDate>`）。オブジェクト配列に戻したらここで落ちる。 */
+/** 候補日は object 配列 `{date, time?}`（#2357）。素の string 配列に戻したらここで落ちる。 */
 export type MeetupCreateCandidateDatesShapeMatch = AssertTrue<
   Assignable<VillageMeetupCreateRequest['candidateDates'], NonNullable<Schemas['MeetupCreateRequest']['candidateDates']>>
 >

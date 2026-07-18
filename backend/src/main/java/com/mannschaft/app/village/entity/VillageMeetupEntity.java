@@ -19,6 +19,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 /**
@@ -60,6 +61,10 @@ public class VillageMeetupEntity extends UuidV7Entity {
     /** 確定日（CONFIRMED 時のみセット） */
     @Column(name = "confirmed_date")
     private LocalDate confirmedDate;
+
+    /** 確定時刻（CONFIRMED 時のみセット・NULL は終日）。#2357 */
+    @Column(name = "confirmed_time")
+    private LocalTime confirmedTime;
 
     /** 集合場所（任意） */
     @Column(name = "location", length = 300)

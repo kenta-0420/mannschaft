@@ -4,6 +4,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.village.dto.MeetupCandidateDateInput;
 import com.mannschaft.app.village.dto.MeetupCandidateDateResponse;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
 import com.mannschaft.app.village.dto.MeetupResponse;
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -113,6 +115,7 @@ class VillageMeetupControllerTest {
                 .id(CANDIDATE_DATE_ID)
                 .meetupId(MEETUP_ID)
                 .candidateDate(LocalDate.of(2026, 8, 1))
+                .candidateTime(LocalTime.of(18, 30))
                 .sortOrder(0)
                 .build();
     }
@@ -339,12 +342,12 @@ class VillageMeetupControllerTest {
     // ==================================================================
 
     @Nested
-    @DisplayName("寄合作成の candidateDates 契約")
+    @DisplayName("寄合作成の candidateDates 契約（#2357 object 配列 {date, time?}）")
     class CreateCandidateDatesContract {
 
         @Test
-        @DisplayName("POST — candidateDates は素の日付配列（List<LocalDate>）で 201")
-        void create_candidateDatesArePlainDateArray() throws Exception {
+        @DisplayName("POST — candidateDates は object 配列 {date, time?} で 201。time 任意（終日は time 省略）")
+        void create_candidateDatesAreObjectArray() throws Exception {
             given(meetupService.createMeetup(eq(VILLAGE_ID), any(MeetupCreateRequest.class), eq(USER_ID)))
                     .willReturn(meetup());
 
@@ -353,7 +356,10 @@ class VillageMeetupControllerTest {
                       "title": "夏の寄合",
                       "description": "納涼会",
                       "location": "公民館",
-                      "candidateDates": ["2026-08-01", "2026-08-02"]
+                      "candidateDates": [
+                        { "date": "2026-08-01", "time": "18:30" },
+                        { "date": "2026-08-02" }
+                      ]
                     }
                     """;
 
@@ -366,16 +372,36 @@ class VillageMeetupControllerTest {
             ArgumentCaptor<MeetupCreateRequest> captor = ArgumentCaptor.forClass(MeetupCreateRequest.class);
             verify(meetupService).createMeetup(eq(VILLAGE_ID), captor.capture(), eq(USER_ID));
             assertThat(captor.getValue().candidateDates())
-                    .containsExactly(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 2));
+                    .containsExactly(
+                            new MeetupCandidateDateInput(LocalDate.of(2026, 8, 1), LocalTime.of(18, 30)),
+                            new MeetupCandidateDateInput(LocalDate.of(2026, 8, 2), null));
         }
 
         @Test
-        @DisplayName("POST — candidateDates を object 配列（{candidateDate:...}）で送ると 400。FE の誤形状を固定")
-        void create_candidateDatesAsObjectArray_returns400() throws Exception {
+        @DisplayName("POST — 素の日付配列（List<String>）で送ると 400。旧形状はもう受理しない")
+        void create_candidateDatesAsPlainStringArray_returns400() throws Exception {
             String body = """
                     {
                       "title": "夏の寄合",
-                      "candidateDates": [{ "candidateDate": "2026-08-01" }]
+                      "candidateDates": ["2026-08-01", "2026-08-02"]
+                    }
+                    """;
+
+            mockMvc.perform(post(BASE, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+
+            verify(meetupService, never()).createMeetup(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("POST — object 要素に date が無い（{time:...} のみ）は 400（@NotNull date）")
+        void create_candidateDateWithoutDate_returns400() throws Exception {
+            String body = """
+                    {
+                      "title": "夏の寄合",
+                      "candidateDates": [{ "time": "18:30" }]
                     }
                     """;
 
@@ -425,6 +451,7 @@ class VillageMeetupControllerTest {
                     .organizerUserId(USER_ID)
                     .status(VillageMeetupStatus.CONFIRMED)
                     .confirmedDate(LocalDate.of(2026, 8, 1))
+                    .confirmedTime(LocalTime.of(18, 30))
                     .location("公民館")
                     .createdAt(LocalDateTime.of(2026, 7, 15, 10, 0))
                     .candidateDates(List.of(candidateDate()))
@@ -438,6 +465,8 @@ class VillageMeetupControllerTest {
                     .andExpect(jsonPath("$.data.venue").doesNotExist())
                     // 正: confirmedDate は日付そのもの（FE は confirmedDateId を期待していた）
                     .andExpect(jsonPath("$.data.confirmedDate").value("2026-08-01"))
+                    // #2357: 確定時刻も返す（終日なら null）
+                    .andExpect(jsonPath("$.data.confirmedTime").value("18:30:00"))
                     .andExpect(jsonPath("$.data.confirmedDateId").doesNotExist())
                     // 存在しないフィールド
                     .andExpect(jsonPath("$.data.participantCount").doesNotExist())
@@ -457,6 +486,8 @@ class VillageMeetupControllerTest {
                     .andExpect(jsonPath("$.data.candidateDates[0].id").value(CANDIDATE_DATE_ID.toString()))
                     .andExpect(jsonPath("$.data.candidateDates[0].meetupId").value(MEETUP_ID.toString()))
                     .andExpect(jsonPath("$.data.candidateDates[0].candidateDate").value("2026-08-01"))
+                    // #2357: 候補日 DTO に candidateTime（終日なら null）が載る
+                    .andExpect(jsonPath("$.data.candidateDates[0].candidateTime").value("18:30:00"))
                     .andExpect(jsonPath("$.data.candidateDates[0].sortOrder").value(0))
                     // 候補日 DTO に投票集計は含まれない（集計は GET /votes 側の責務）
                     .andExpect(jsonPath("$.data.candidateDates[0].availableCount").doesNotExist())
