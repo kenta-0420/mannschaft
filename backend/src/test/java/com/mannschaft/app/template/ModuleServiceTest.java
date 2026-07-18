@@ -7,6 +7,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
 import com.mannschaft.app.template.dto.ModuleResponse;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
+import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
@@ -1320,6 +1322,105 @@ class ModuleServiceTest {
             verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
             verify(organizationEnabledModuleRepository, never())
                     .countByOrganizationIdAndIsEnabledTrue(anyLong());
+        }
+    }
+
+    // ========================================
+    // カタログ表示用 enabledCount のグランドファザリング除外
+    // （FE「X/10 使用中」表示・追加ボタン活性判定と上限強制の整合）
+    // ========================================
+
+    @Nested
+    @DisplayName("カタログ enabledCount のグランドファザリング除外")
+    class CatalogEnabledCountExclusion {
+
+        private static final Long ORG_ID = 200L;
+
+        @Test
+        @DisplayName("チームカタログ: enabledCount は grandfather を除外し通常有効化分のみ（3本＋grandfather5本→3）")
+        void チームカタログ_enabledCountはgrandfather除外() {
+            // Given: 通常有効3本 + grandfather5本。表示用 enabledCount は grandfather を数えず 3。
+            List<TeamEnabledModuleEntity> rows = new java.util.ArrayList<>();
+            IntStream.rangeClosed(1, 3)
+                    .forEach(i -> rows.add(createEnabledModule(TEAM_ID, (long) (10 + i))));
+            IntStream.rangeClosed(1, 5)
+                    .forEach(i -> rows.add(createGrandfatheredModule(TEAM_ID, (long) (50 + i))));
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+            // カタログ母集合は本テストの関心外なので空にする（enabledCount は enable 行から算出される）。
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            // When
+            TeamModuleCatalogResponse resp = moduleService.getTeamModuleCatalog(TEAM_ID);
+
+            // Then: grandfather を除外した通常有効化分のみが使用数として表示される。
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather 行は使用数に数えない")
+                    .isEqualTo(3L);
+            assertThat(resp.getPlanLimit()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("チームカタログ: grandfather のみ（通常0）なら enabledCount=0")
+        void チームカタログ_grandfatherのみはenabledCount0() {
+            List<TeamEnabledModuleEntity> rows = IntStream.rangeClosed(1, 7)
+                    .mapToObj(i -> createGrandfatheredModule(TEAM_ID, (long) (50 + i)))
+                    .collect(java.util.stream.Collectors.toList());
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            TeamModuleCatalogResponse resp = moduleService.getTeamModuleCatalog(TEAM_ID);
+
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather のみなら使用数は 0（既得機能は枠を消費しない）")
+                    .isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("組織カタログ: enabledCount は grandfather を除外し通常有効化分のみ（4本＋grandfather7本→4）")
+        void 組織カタログ_enabledCountはgrandfather除外() {
+            // Given: 通常有効4本 + grandfather7本。表示用 enabledCount は grandfather を数えず 4。
+            List<OrganizationEnabledModuleEntity> rows = new java.util.ArrayList<>();
+            IntStream.rangeClosed(1, 4)
+                    .forEach(i -> rows.add(OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (10 + i))
+                            .isEnabled(true).enabledBy(USER_ID).build()));
+            IntStream.rangeClosed(1, 7)
+                    .forEach(i -> rows.add(OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (50 + i))
+                            .isEnabled(true).isGrandfathered(true).enabledBy(null).build()));
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            // When
+            OrgModuleCatalogResponse resp = moduleService.getOrganizationModuleCatalog(ORG_ID);
+
+            // Then
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather 行は使用数に数えない")
+                    .isEqualTo(4L);
+            assertThat(resp.getPlanLimit()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("組織カタログ: grandfather のみ（通常0）なら enabledCount=0")
+        void 組織カタログ_grandfatherのみはenabledCount0() {
+            List<OrganizationEnabledModuleEntity> rows = IntStream.rangeClosed(1, 7)
+                    .mapToObj(i -> OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (50 + i))
+                            .isEnabled(true).isGrandfathered(true).enabledBy(null).build())
+                    .collect(java.util.stream.Collectors.toList());
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            OrgModuleCatalogResponse resp = moduleService.getOrganizationModuleCatalog(ORG_ID);
+
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather のみなら使用数は 0（既得機能は枠を消費しない）")
+                    .isEqualTo(0L);
         }
     }
 }
