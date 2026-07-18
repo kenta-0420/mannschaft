@@ -285,9 +285,12 @@ public class ModuleService {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
-                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                    .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                     .count();
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
@@ -478,9 +481,11 @@ public class ModuleService {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = organizationEnabledModuleRepository
-                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(orgId);
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
             }
