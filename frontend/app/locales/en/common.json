@@ -124,7 +124,39 @@
     "DEPUTY_ADMIN": "Deputy Administrator",
     "MEMBER": "Member",
     "SUPPORTER": "Supporter",
-    "GUEST": "Guest"
+    "GUEST": "Guest",
+    "transfer": {
+      "offer": {
+        "button": "Transfer ownership",
+        "notification": "You have been offered admin ownership of {scope}",
+        "pending": "An admin ownership offer has been sent to you",
+        "pendingByMe": "Ownership transfer to {name} is pending",
+        "accept": "Accept",
+        "decline": "Decline",
+        "cancel": "Cancel",
+        "accepted": "You are now the administrator",
+        "declined": "The offer was declined",
+        "expired": "This offer has expired",
+        "cancelled": "This offer has been cancelled",
+        "confirmTitle": "Offer ownership transfer",
+        "confirmMessage": "Offer to transfer ownership to {name}? If they accept, you will be demoted to Member (nothing changes until they accept).",
+        "acceptConfirmTitle": "Accept ownership transfer",
+        "acceptConfirmMessage": "If you accept, you will become the Administrator and the current administrator will be demoted to Member. Continue?",
+        "declineConfirmTitle": "Decline offer",
+        "declineConfirmMessage": "Decline this offer? Your role will not change.",
+        "cancelConfirmTitle": "Cancel offer",
+        "cancelConfirmMessage": "Cancel this ownership transfer offer? The recipient's role will not change.",
+        "created": "Offer sent",
+        "cancelSuccess": "Offer cancelled"
+      },
+      "error": {
+        "notTarget": "This offer is not addressed to you",
+        "need2fa": {
+          "message": "Two-factor authentication is required to become an administrator",
+          "cta": "Set up two-factor authentication"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "Timetable Management",
@@ -239,7 +271,13 @@
     "AUTH_010": "Your current password is incorrect",
     "AUTH_011": "No password has been set yet",
     "AUTH_044": "Too many requests. Please wait a moment and try again",
-    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys"
+    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys",
+    "ROLE_009": "This offer is not addressed to you",
+    "ROLE_010": "Two-factor authentication is required to become an administrator",
+    "ROLE_011": "An active transfer offer already exists",
+    "ROLE_012": "This transfer offer has already been resolved or is invalid",
+    "ROLE_013": "The target was not found",
+    "ROLE_014": "You cannot transfer ownership to yourself"
   },
   "annual_plan": {
     "title": "Annual Event Plan",
