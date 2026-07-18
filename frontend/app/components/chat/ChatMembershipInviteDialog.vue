@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ChatInviteScopeType } from '~/types/chat'
-import type { MembershipInviteResponse } from '~/composables/chat/useChatMembershipInvite'
+import {
+  useChatMembershipInvite,
+  type InvitableScope,
+  type MembershipInviteResponse,
+} from '~/composables/chat/useChatMembershipInvite'
 
 /**
  * チーム/組織への承諾型招待モーダル（F04.12）。
@@ -41,10 +45,16 @@ async function loadScopes() {
   try {
     const res = await getInvitableScopes()
     const teams: SelectableScope[] = (res.teams ?? [])
-      .filter((s): s is { scopeId: number; name: string } => s.scopeId != null && s.name != null)
+      .filter(
+        (s: InvitableScope): s is InvitableScope & { scopeId: number; name: string } =>
+          s.scopeId != null && s.name != null,
+      )
       .map((s) => ({ scopeType: 'TEAM' as const, scopeId: s.scopeId, name: s.name }))
     const orgs: SelectableScope[] = (res.organizations ?? [])
-      .filter((s): s is { scopeId: number; name: string } => s.scopeId != null && s.name != null)
+      .filter(
+        (s: InvitableScope): s is InvitableScope & { scopeId: number; name: string } =>
+          s.scopeId != null && s.name != null,
+      )
       .map((s) => ({ scopeType: 'ORGANIZATION' as const, scopeId: s.scopeId, name: s.name }))
     scopes.value = [...teams, ...orgs]
   } catch {

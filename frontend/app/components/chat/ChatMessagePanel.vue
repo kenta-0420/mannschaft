@@ -7,6 +7,7 @@ import {
   type BeMessageResponse,
   type BeReaction,
 } from '~/composables/chat/chatMessageMapper'
+import { useChatMembershipInvite } from '~/composables/chat/useChatMembershipInvite'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
