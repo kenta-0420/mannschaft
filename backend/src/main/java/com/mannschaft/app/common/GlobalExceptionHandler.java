@@ -97,7 +97,8 @@ public class GlobalExceptionHandler {
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
-            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),             // 宛先照合失敗（第三者の承諾/辞退）→ 403 IDOR 防止
+            //（ROLE_009 宛先照合失敗=403 は上の F04.12 承諾型招待ブロックで既に定義済みのため重複登録しない。
+            //   Map.ofEntries は重複キーで IllegalArgumentException になるため統合時に一本化した）
             Map.entry("ROLE_010", HttpStatus.UNPROCESSABLE_ENTITY), // 承諾者 2FA 未設定 → 422
             Map.entry("ROLE_011", HttpStatus.CONFLICT),             // 重複 PENDING 打診 → 409
             Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
