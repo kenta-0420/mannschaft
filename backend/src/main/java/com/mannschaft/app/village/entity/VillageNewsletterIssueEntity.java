@@ -207,6 +207,21 @@ public class VillageNewsletterIssueEntity extends UuidV7Entity {
         this.visibility = visibility;
     }
 
+    /**
+     * 号本文を変えない編集（タグ入替のように中間表のみ変更する操作）でも {@code @Version} を進めるため、
+     * 号行を意図的に dirty にする。
+     *
+     * <p>{@code updated_at} は plain 列（{@code @PreUpdate} 管理）だが、{@code @PreUpdate} は
+     * 「エンティティが既に dirty」でなければ発火しない。中間表だけの変更では号行が dirty にならず
+     * バージョン付き UPDATE が一切発行されないため、並行編集の lost update を検出できない。
+     * ここで手動に {@code updated_at} を進めてロード値との差分を作り、flush 時に
+     * {@code update ... set updated_at=?, version=? where id=? and version=?} を明示発行させる
+     * （敗者は flush 時点で {@code OptimisticLockException} を受け、commit 時 500 化を避ける）。</p>
+     */
+    public void touch() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     /** 配信完了にする（FROZEN → PUBLISHED）。 */
     public void markPublished(LocalDateTime at) {
         this.status = VillageNewsletterIssueStatus.PUBLISHED;

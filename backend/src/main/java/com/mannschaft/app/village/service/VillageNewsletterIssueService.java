@@ -22,7 +22,6 @@ import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository
 import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -269,9 +268,14 @@ public class VillageNewsletterIssueService {
         // 【lost update 根治・AC-1〜3】タグ付けは中間表（issue_tags）のみを入れ替え、号行そのものは
         // 変更しない。このままでは Hibernate が号行を dirty と見なさず @Version が上がらないため、
         // 「2 管理者が同一 version で同時にタグ付け」しても両方成功し、後勝ちで先の付け替えが失われる
-        // （lost update）。号行に OPTIMISTIC_FORCE_INCREMENT ロックを掛けることで、flush 時に
-        // version 付き UPDATE を強制発行させ、並行編集を版競合として検出する。
-        entityManager.lock(issue, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        // （lost update）。
+        //
+        // OPTIMISTIC_FORCE_INCREMENT ロックの版インクリメントは Hibernate では before-transaction-completion
+        // 処理として登録され、明示 flush() では発火せず commit 直前に走る。そのため版競合は下の try/catch の
+        // 外（commit 時）に生の ObjectOptimisticLockingFailureException として噴出し 500 化していた。
+        // 号行を実際に dirty 化（updated_at を進める）し、通常の版付き UPDATE を明示 flush() で発火させることで、
+        // 敗者は flush() 時点で OptimisticLockException を受け、下の catch で確実に 409 へ翻訳される。
+        issue.touch();
 
         List<UUID> distinctTagIds = tagIds == null ? List.of()
                 : tagIds.stream().filter(Objects::nonNull).distinct().toList();
@@ -288,7 +292,7 @@ public class VillageNewsletterIssueService {
         }
         VillageNewsletterIssueEntity saved = issueRepository.save(issue);
         try {
-            // 強制インクリメントの version 付き UPDATE をこの場で確定させ、版競合を即検出する
+            // touch() で dirty 化した号行の版付き UPDATE をこの場で確定させ、版競合を即検出する
             // （握り潰さず、既存の号版競合と同じ型付きエラー 409 に翻訳する）。
             entityManager.flush();
         } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {

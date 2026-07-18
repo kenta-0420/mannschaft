@@ -21,7 +21,6 @@ import com.mannschaft.app.village.repository.VillageNewsletterIssueTagRepository
 import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.OptimisticLockException;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
@@ -339,7 +338,7 @@ class VillageNewsletterIssueServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("AC-2: setIssueTags は号行に OPTIMISTIC_FORCE_INCREMENT ロックを掛けてから flush する")
+    @DisplayName("AC-2: setIssueTags は号行を touch() で dirty 化し（版付きUPDATEのため）明示 flush() で確定する")
     void setIssueTags_forcesVersionIncrement() {
         givenActorIsHeadman();
         UUID issueId = UUID.randomUUID();
@@ -354,9 +353,12 @@ class VillageNewsletterIssueServiceTest {
 
         service.setIssueTags(VILLAGE_ID, issueId, HEADMAN_USER_ID, List.of(), 0L);
 
-        // 号行を dirty にしない中間表入替でも @Version を上げるための強制インクリメントロック
-        verify(entityManager).lock(issue, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        // 中間表のみ変更でも号行を dirty 化して版付き UPDATE を発行させる（OFI は明示 flush で発火しないため touch）。
+        assertThat(issue.getUpdatedAt()).as("touch() で updated_at が進み号行が dirty 化される").isNotNull();
+        // commit を待たず flush 時点で版競合を surface させる（敗者を 409 化する要）
         verify(entityManager).flush();
+        // OFI ロックはもう使わない（commit 時 500 化の原因だった）
+        verify(entityManager, never()).lock(any(), any());
         // 編集認可の配線が生きていること（requireHeadmanOrElder 呼出削除を機械検出）
         verify(bulletinAccessService).requireHeadmanOrElder(VILLAGE_ID, HEADMAN_USER_ID);
     }
