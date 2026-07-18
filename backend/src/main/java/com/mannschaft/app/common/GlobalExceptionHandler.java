@@ -91,6 +91,9 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // F04.12 承諾型招待: 宛先照合 IDOR（他人宛て招待を第三者が承諾/辞退）は 403 が既定。
+            //（発行時の特権ロール指定は 422 でスロー箇所が httpStatusOverride を明示する。§6）
+            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
@@ -1033,7 +1036,11 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(errorCode);
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
 
-        HttpStatus status = resolveHttpStatus(errorCode);
+        // スロー箇所固有のステータス上書きがあれば優先する（F04.12 ROLE_009 は
+        // 宛先照合 IDOR=403 / 発行時の特権ロール指定=422 と、同一コードで文脈により異なる）。
+        HttpStatus status = ex.getHttpStatusOverride() != null
+                ? ex.getHttpStatusOverride()
+                : resolveHttpStatus(errorCode);
 
         // F10.6: 5xx を返す BusinessException のみ記録対象（severity=MEDIUM）
         if (status.is5xxServerError()) {
