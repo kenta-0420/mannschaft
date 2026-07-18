@@ -324,6 +324,10 @@
       "VILLAGE_042": "通報が見つかりません",
       "VILLAGE_043": "この通報は既に処理済みです",
       "VILLAGE_044": "お気に入り村のピンが見つかりません",
+      "VILLAGE_052": "代表委任が見つかりません",
+      "VILLAGE_053": "この対象・ユーザーの組み合わせは既に代表委任済みです",
+      "VILLAGE_054": "対象メンバーシップがチーム/組織ではありません",
+      "VILLAGE_055": "委任先ユーザーは対象チーム/組織のメンバーではありません",
       "generic": "村機能でエラーが発生しました",
       "backToList": "村一覧へ戻る",
       "moderatorOnly": "この設定は村長・長老のみが変更できます"
@@ -470,11 +474,22 @@
     },
     "representative": {
       "title": "代表委任",
+      "subtitle": "チーム/組織としての村加入（メンバーシップ）に対し、個人ユーザーへ代表として投稿する権限を委任します。",
       "grant": "代表に委任する",
       "revoke": "委任を取消",
       "empty": "委任された代表はいません",
       "grantedBy": "委任元",
-      "note": "メモ"
+      "grantedAt": "委任日時",
+      "note": "メモ",
+      "target": "対象（チーム/組織）",
+      "targetPlaceholder": "委任先のチーム/組織を選択",
+      "noTargets": "代表委任可能なチーム/組織の参加がありません",
+      "unknownTarget": "対象不明",
+      "representativeUser": "代表ユーザー",
+      "loadFailed": "代表委任の取得に失敗しました",
+      "confirmRevokeTitle": "委任を取消しますか?",
+      "confirmRevokeBody": "{name} への代表委任を取消します。よろしいですか?",
+      "revokeSuccess": "委任を取消しました"
     },
     "meetup": {
       "title": "寄合",
@@ -774,6 +789,10 @@
         "members": {
           "title": "メンバー・役職",
           "desc": "村人の役職変更やBANなど、メンバーを管理します。"
+        },
+        "representatives": {
+          "title": "代表委任",
+          "desc": "チーム/組織の村加入に対し、代表として投稿できるユーザーを委任・管理します。"
         },
         "joinRequests": {
           "title": "参加申請の審査",

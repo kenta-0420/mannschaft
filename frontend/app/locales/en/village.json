@@ -324,6 +324,10 @@
       "VILLAGE_042": "Report not found",
       "VILLAGE_043": "This report has already been processed",
       "VILLAGE_044": "Pinned village not found",
+      "VILLAGE_052": "Representative delegation not found",
+      "VILLAGE_053": "This membership/user combination has already been delegated as representative",
+      "VILLAGE_054": "The target membership is not a team or organization",
+      "VILLAGE_055": "The delegated user is not a member of the target team/organization",
       "generic": "An error occurred in the village feature",
       "backToList": "Back to village list",
       "moderatorOnly": "Only the headman and elders can modify this setting"
@@ -470,11 +474,22 @@
     },
     "representative": {
       "title": "Representative delegation",
+      "subtitle": "Delegate the right to post as a representative to an individual user, on behalf of a team/organization membership in this village.",
       "grant": "Delegate as representative",
       "revoke": "Revoke delegation",
       "empty": "No delegated representatives",
       "grantedBy": "Delegated by",
-      "note": "Note"
+      "grantedAt": "Delegated at",
+      "note": "Note",
+      "target": "Target (team/organization)",
+      "targetPlaceholder": "Select a team/organization to delegate to",
+      "noTargets": "No team/organization memberships available for delegation",
+      "unknownTarget": "Unknown target",
+      "representativeUser": "Representative user",
+      "loadFailed": "Failed to load representative delegations",
+      "confirmRevokeTitle": "Revoke this delegation?",
+      "confirmRevokeBody": "This will revoke the representative delegation for {name}. Are you sure?",
+      "revokeSuccess": "Delegation revoked"
     },
     "meetup": {
       "title": "Meetup",
@@ -774,6 +789,10 @@
         "members": {
           "title": "Members & roles",
           "desc": "Manage villagers, change roles, and ban members."
+        },
+        "representatives": {
+          "title": "Representative delegation",
+          "desc": "Delegate and manage users who can post as a representative for a team/organization membership."
         },
         "joinRequests": {
           "title": "Review join requests",
