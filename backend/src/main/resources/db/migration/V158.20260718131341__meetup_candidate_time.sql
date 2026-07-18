@@ -23,8 +23,18 @@ ALTER TABLE village_meetups
 
 -- 3) UNIQUE を (meetup_id, candidate_date) から (meetup_id, candidate_date, candidate_time) へ張り替える。
 --    既存データは candidate_time = NULL なので (date, NULL) の組で従来どおり一意性が保たれる（無損失）。
-ALTER TABLE village_meetup_candidate_dates
-    DROP INDEX uk_vmcd_meetup_date;
+--
+--    ⚠️ 順序が重要（ADD を先・DROP を後）:
+--    旧索引 uk_vmcd_meetup_date は先頭列 meetup_id が FK fk_vmcd_meetup(→village_meetups) を
+--    覆う唯一の索引であり、代替索引が無い状態では DROP できない
+--    （error 1553: Cannot drop index ... needed in a foreign key constraint）。
+--    新索引 uk_vmcd_meetup_date_time も先頭列が meetup_id なので FK を覆える。
+--    よって「新索引を先に ADD → 旧索引を後で DROP」とすれば常に FK を覆う索引が存在し DROP が通る。
 
+-- 3a) 新 UNIQUE を先に張る（meetup_id 先頭で FK を覆うため、旧索引の DROP を可能にする）
 ALTER TABLE village_meetup_candidate_dates
     ADD UNIQUE KEY uk_vmcd_meetup_date_time (meetup_id, candidate_date, candidate_time);
+
+-- 3b) 旧 UNIQUE を後から落とす（FK は新索引が覆うので DROP 可能）
+ALTER TABLE village_meetup_candidate_dates
+    DROP INDEX uk_vmcd_meetup_date;
