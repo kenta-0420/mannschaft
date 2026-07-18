@@ -94,12 +94,17 @@ class TodoCommentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamASlug = "todocmtauthz-team-a-" + System.nanoTime();
-        teamBSlug = "todocmtauthz-team-b-" + System.nanoTime();
+        // slug は teams/organizations とも @Column(length = 30) のため 30 字以内に収める。
+        // base36 圧縮した nanoTime（約12字・英数字）＋ 2字接頭辞で一意化（"ta-"/"tb-"/"oa-"/"ob-" ≤ 30 字）。
+        String uniq = Long.toString(System.nanoTime(), 36);
+        teamASlug = "ta-" + uniq;
+        teamBSlug = "tb-" + uniq;
+        String orgASlug = "oa-" + uniq;
+        String orgBSlug = "ob-" + uniq;
         teamAId = insertTeam("TODOCMTAUTHZ チームA", teamASlug);
         teamBId = insertTeam("TODOCMTAUTHZ チームB", teamBSlug);
-        orgAId = insertOrganization("TODOCMTAUTHZ 組織A", "todocmtauthz-org-a-" + System.nanoTime());
-        orgBId = insertOrganization("TODOCMTAUTHZ 組織B", "todocmtauthz-org-b-" + System.nanoTime());
+        orgAId = insertOrganization("TODOCMTAUTHZ 組織A", orgASlug);
+        orgBId = insertOrganization("TODOCMTAUTHZ 組織B", orgBSlug);
 
         memberTeamAId = insertUser("todocmtauthz-member-team-a@example.com");
         memberTeamBId = insertUser("todocmtauthz-member-team-b@example.com");
