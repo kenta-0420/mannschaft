@@ -17,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.UUID;
@@ -179,10 +180,14 @@ class FlywayMeetupCandidateTimeMigrationTest {
     void 同一date_timeの重複はDB制約で拒否される() throws Exception {
         try (Connection conn = openConn()) {
             insertCandidate(conn, UUID.randomUUID(), MEETUP_ID, "2026-08-11", "10:00:00");
+            // insertCandidate は SQLException を RuntimeException にラップして投げる（他の非例外呼び出し箇所を
+            // throws Exception 汚染させないため）。よって実際に飛ぶのは RuntimeException で、原因(cause)が
+            // UNIQUE 違反 SQLIntegrityConstraintViolationException であることまで縛って堅牢に検証する。
             assertThatThrownBy(() ->
                     insertCandidate(conn, UUID.randomUUID(), MEETUP_ID, "2026-08-11", "10:00:00"))
                     .as("同一 (meetup_id, date, time) は uk_vmcd_meetup_date_time 違反")
-                    .isInstanceOf(SQLException.class);
+                    .isInstanceOf(RuntimeException.class)
+                    .hasCauseInstanceOf(SQLIntegrityConstraintViolationException.class);
         }
     }
 
