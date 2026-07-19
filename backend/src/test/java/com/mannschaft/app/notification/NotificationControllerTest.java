@@ -9,6 +9,8 @@ import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -259,8 +263,25 @@ class NotificationControllerTest {
         @Mock
         private NotificationService adminNotificationService;
 
+        // 認可根治 Wave5: getStats は SYSTEM_ADMIN 限定になり AccessControlService を入口で呼ぶ
+        @Mock
+        private com.mannschaft.app.common.AccessControlService accessControlService;
+
         @InjectMocks
         private NotificationAdminController adminController;
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            // 認可根治 Wave5: getStats が SecurityUtils.getCurrentUserId() を参照するため
+            // 認証済みコンテキストを用意する（未設定だと COMMON_000 で落ちる）。
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
 
         @Test
         @DisplayName("統計取得_正常_200返却")
@@ -277,6 +298,8 @@ class NotificationControllerTest {
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody().getData().getTotalNotifications()).isEqualTo(100L);
             assertThat(result.getBody().getData().getUnreadCount()).isEqualTo(30L);
+            // SYSTEM_ADMIN 認可が入口で呼ばれていること
+            verify(accessControlService).checkSystemAdmin(USER_ID);
         }
     }
 }
