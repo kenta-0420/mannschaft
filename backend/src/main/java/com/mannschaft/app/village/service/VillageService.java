@@ -2,6 +2,7 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MonshoUploadUrlResponse;
@@ -32,6 +33,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -72,6 +74,16 @@ public class VillageService {
 
     /** 村作成レートリミット（件/日/ユーザー） */
     private static final int VILLAGE_CREATION_DAILY_LIMIT = 3;
+
+    /** 村紋（monsho）アップロードで許可する MIME タイプ（#2355）。 */
+    private static final java.util.Set<String> ALLOWED_MONSHO_MIME =
+            java.util.Set.of("image/jpeg", "image/png", "image/webp");
+
+    /** 村紋アップロードのファイルサイズ上限（バイト）。ProfileMedia ICON=5MB を手本（#2355）。 */
+    private static final long MONSHO_MAX_BYTES = 5L * 1024 * 1024;
+
+    /** 村紋アップロード用 presigned URL の有効期限（秒）（#2355）。 */
+    private static final long MONSHO_UPLOAD_TTL_SECONDS = 600L;
 
     private final VillageRepository villageRepository;
     private final VillageSearchRepository villageSearchRepository;
@@ -298,8 +310,12 @@ public class VillageService {
      * {@code village/{villageId}/monsho/{UUID.randomUUID()}.{ext}} に従いキーを組み立て、
      * {@code r2StorageService.generateUploadUrl} で署名付き PUT URL を払い出す。</p>
      *
-     * <p><strong>骨格スタブ（#2355 試練）:</strong> 本メソッドは受け入れテスト（red）を設置するための
-     * 未実装スタブであり、呼び出すと {@link UnsupportedOperationException} を投げる。実装は /出陣 で行う。</p>
+     * <p><strong>検証順序（IDOR 配慮）:</strong> 認可（村の存在確認 → HEADMAN/SYSTEM_ADMIN 判定）を
+     * MIME/サイズ検証より必ず先に行う。これにより不正入力でも他人の村の存在有無を漏らさない。</p>
+     *
+     * <p><strong>読取との差異:</strong> 本メソッドは PUT アップロード用の presigned URL を発行するのみ。
+     * 返却する {@code r2Key} は生キーであり、読取（表示）側の署名 URL 化（presigned GET）は行わない。
+     * 表示は FE の {@code buildR2Url} による公開 URL 化が正。</p>
      *
      * @param villageId       対象村
      * @param contentType     アップロードする画像の Content-Type
@@ -310,7 +326,46 @@ public class VillageService {
     @Transactional(readOnly = true)
     public MonshoUploadUrlResponse generateMonshoUploadUrl(
             UUID villageId, String contentType, long fileSize, Long requesterUserId) {
-        throw new UnsupportedOperationException("未実装 #2355 /出陣で実装");
+        // 1〜2. 認可を先に（IDOR 配慮: 不正入力でも村の存在有無を漏らさない）
+        VillageEntity entity = findActiveOrThrow(villageId);
+        requireHeadmanOrSystemAdmin(entity, requesterUserId);
+
+        // 3. MIME 検証
+        if (contentType == null || !ALLOWED_MONSHO_MIME.contains(contentType)) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        }
+
+        // 4. サイズ検証（0 以下・上限超過は不正）
+        if (fileSize <= 0 || fileSize > MONSHO_MAX_BYTES) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        }
+
+        // 5〜6. R2 キー組み立て（village/{villageId}/monsho/{uuid}.{ext}）
+        String ext = resolveMonshoExtension(contentType);
+        String r2Key = String.format("village/%s/monsho/%s.%s", villageId, UUID.randomUUID(), ext);
+
+        // 7. presigned PUT URL 発行（TTL=600 秒）
+        PresignedUploadResult result = r2StorageService.generateUploadUrl(
+                r2Key, contentType, Duration.ofSeconds(MONSHO_UPLOAD_TTL_SECONDS));
+
+        log.info("村紋アップロードURL発行: villageId={}, byUser={}", villageId, requesterUserId);
+
+        // 8. レスポンス組み立て
+        return new MonshoUploadUrlResponse(
+                result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
+    }
+
+    /**
+     * 村紋の Content-Type から拡張子を解決する（#2355）。
+     * 許可済み MIME のみ呼ばれる前提（未知の型は呼び出し側で 400 済み）。
+     */
+    private String resolveMonshoExtension(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        };
     }
 
     // ─────────────────────────────────────────────

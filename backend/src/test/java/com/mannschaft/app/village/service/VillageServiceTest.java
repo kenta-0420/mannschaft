@@ -569,10 +569,12 @@ class VillageServiceTest {
         void generateUploadUrl_headmanSucceeds() {
             givenVillageExists();
             givenHeadman();
+            // 実 R2StorageService は渡された s3Key をそのまま echo する。mock も同挙動にし、
+            // Service が村スコープキーを生成して presign に渡していることを検証する。
             lenient().when(r2StorageService.generateUploadUrl(
                             any(String.class), eq(VALID_MIME), any(Duration.class)))
-                    .thenReturn(new PresignedUploadResult(
-                            "https://r2.example.com/put?sig=xyz", "returned-key", 600L));
+                    .thenAnswer(inv -> new PresignedUploadResult(
+                            "https://r2.example.com/put?sig=xyz", inv.getArgument(0), 600L));
 
             MonshoUploadUrlResponse res = service.generateMonshoUploadUrl(
                     VILLAGE_ID, VALID_MIME, OK_FILE_SIZE, HEADMAN_USER_ID);
