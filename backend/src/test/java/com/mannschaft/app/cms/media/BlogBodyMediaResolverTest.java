@@ -293,6 +293,25 @@ class BlogBodyMediaResolverTest {
         }
 
         @Test
+        @DisplayName("AUTHZ-4b: パーセントエンコードされたトラバーサル（%2e%2e）を拒否する")
+        void パーセントエンコードのトラバーサルは拒否される() {
+            // ".." の文字列完全一致チェックだけでは "%2e%2e" はデコードされず素通りしてしまう。
+            String percentEncodedTraversalKey = "blog/TEAM/12/%2e%2e/%2e%2e/TEAM/99/x.png";
+            stubLedgerContains(OWN_IMAGE_KEY, percentEncodedTraversalKey);
+            stubResolveAllEcho();
+
+            String body = "![自分](" + OWN_IMAGE_KEY + ")\n![encoded traversal](" + percentEncodedTraversalKey + ")";
+
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+
+            assertThat(capturePresignedKeys())
+                    .as("%2e%2e はデコードせず、正規形でない（% を含む）キーとして一律拒否すること")
+                    .doesNotContain(percentEncodedTraversalKey)
+                    .contains(OWN_IMAGE_KEY);
+            assertThat(result).doesNotContain("signed::" + percentEncodedTraversalKey);
+        }
+
+        @Test
         @DisplayName("AUTHZ-5: blog/ 以外のプレフィックス（他機能のキー）を拒否する")
         void 他機能のキーは拒否される() {
             // 掲示板添付やチームアイコンなど、blog 以外のストレージ領域を狙う手書き

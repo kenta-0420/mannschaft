@@ -153,6 +153,13 @@ public class BlogBodyMediaResolver {
             return body;
         }
 
+        // 重要: ここで Set.contains（Java の case-sensitive 比較）により再度絞り込むことは
+        // 「無駄な二度絞り」ではなく意図的な防壁である。MySQL の既定照合順序は
+        // case-insensitive のため、findByS3KeyIn に "blog/TEAM/12/AAAA.PNG" を渡すと
+        // 台帳の "blog/team/12/aaaa.png" 行（大文字小文字違いの他人のキー）が誤ってヒットし
+        // registeredKeys に含まれてしまう可能性がある。このフィルタが無いと、大文字小文字を
+        // 変えたキーを本文に手書きするだけで他人のファイルの署名 URL を引ける穴になる。
+        // 削除禁止（DB 照合順序に依存せず Java 側で厳密一致を担保する最後の砦）。
         List<String> verifiedKeys = ownScopeKeys.stream()
                 .filter(registeredKeys::contains)
                 .toList();
@@ -197,6 +204,15 @@ public class BlogBodyMediaResolver {
      * <p>{@code ../} などの相対セグメントを含むキーは正規化前後で表現が変わるため一律に拒否する
      * （アップロード経路が発行する正規キーには相対セグメントが現れない）。
      * これにより {@code blog/TEAM/12/../99/x.png} での脱出を防ぐ。</p>
+     *
+     * <p><b>パーセントエンコードも同様に一律拒否する</b>（例: {@code %2e%2e} は文字列としては
+     * {@code ".."} と一致しないため、上記の {@code ".."} 完全一致チェックだけでは素通りする）。
+     * アップロード経路が発行する正規キー（{@code blog/{scopeType}/{scopeId}/{uuid}.{ext}}）には
+     * {@code %} が現れないため、正当なキーを巻き添えにしない。
+     * 「デコードして正規化してから比較する」方式は正規化ロジック自体にバグがあれば即座に穴になるため
+     * 採らない。あくまで<b>正規形でないものを拒否する</b>という fail-closed の方針を維持する
+     * （関門2 が将来 S3 側で {@code %2e%2e} を正規化する実装に差し替わった場合でも、
+     * 関門1 単独でこの経路を防ぐため）。</p>
      */
     private boolean belongsToScope(String key, StorageScopeType scopeType, Long scopeId) {
         if (key == null || scopeType == null || scopeId == null) {
@@ -210,6 +226,10 @@ public class BlogBodyMediaResolver {
         for (String segment : segments) {
             // 空セグメント（"//"・先頭スラッシュ）と相対セグメントを含むキーは正規形ではない。
             if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+                return false;
+            }
+            // パーセントエンコード（%2e%2e 等）を含むキーも正規形ではないため一律拒否する。
+            if (segment.indexOf('%') >= 0) {
                 return false;
             }
         }
