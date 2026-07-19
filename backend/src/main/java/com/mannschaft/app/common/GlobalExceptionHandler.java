@@ -878,6 +878,13 @@ public class GlobalExceptionHandler {
             Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
             Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
             Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave5: F03.7 queue の *_NOT_FOUND は、QueueAccessGuard が
+            // 「対象エンティティが URL パスの scope 外（BOLA）」の場合にも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例に反するため 404 へ上書きする。
+            Map.entry("QUEUE_001", HttpStatus.NOT_FOUND),                // CATEGORY_NOT_FOUND（scope 外 → 404 秘匿）
+            Map.entry("QUEUE_002", HttpStatus.NOT_FOUND),                // COUNTER_NOT_FOUND（scope 外 → 404 秘匿）
+            Map.entry("QUEUE_003", HttpStatus.NOT_FOUND),                // TICKET_NOT_FOUND（scope 外・他人所有 → 404 秘匿）
+            Map.entry("QUEUE_008", HttpStatus.NOT_FOUND),                // QR_CODE_NOT_FOUND（scope 外 → 404 秘匿）
             // 認可根治戦役 Wave 2 トランシェ2B: F07.4 chart（要配慮個人情報：健康記録）の
             // NOT_FOUND 系は teamId を跨いだ存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("CHART_001", HttpStatus.NOT_FOUND),                 // CHART_NOT_FOUND

@@ -22,6 +22,7 @@ import com.mannschaft.app.queue.dto.SettingsResponse;
 import com.mannschaft.app.queue.dto.TicketResponse;
 import com.mannschaft.app.queue.dto.UpdateCategoryRequest;
 import com.mannschaft.app.queue.dto.UpdateCounterRequest;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueCategoryService;
 import com.mannschaft.app.queue.service.QueueCounterService;
 import com.mannschaft.app.queue.service.QueueQrCodeService;
@@ -114,6 +115,9 @@ class QueueControllerTest {
         @Mock
         private QueueTicketService ticketService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueTicketController ticketController;
 
@@ -138,39 +142,48 @@ class QueueControllerTest {
         @Test
         @DisplayName("待ちチケット一覧取得_正常_200返却")
         void 待ちチケット一覧取得_正常_200返却() {
-            given(ticketService.listWaitingTickets(COUNTER_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listWaitingTickets(COUNTER_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listWaitingTickets(TEAM_ID, COUNTER_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listWaitingTickets(TEAM_ID, COUNTER_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("全チケット一覧取得_正常_200返却")
         void 全チケット一覧取得_正常_200返却() {
-            given(ticketService.listAllTickets(COUNTER_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listAllTickets(COUNTER_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listAllTickets(TEAM_ID, COUNTER_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listAllTickets(TEAM_ID, COUNTER_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("チケット詳細取得_正常_200返却")
         void チケット詳細取得_正常_200返却() {
-            given(ticketService.getTicket(TICKET_ID)).willReturn(createTicketResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.getTicket(TICKET_ID)).willReturn(createTicketResponse());
 
-            ResponseEntity<ApiResponse<TicketResponse>> result =
-                    ticketController.getTicket(TEAM_ID, TICKET_ID);
+                ResponseEntity<ApiResponse<TicketResponse>> result =
+                        ticketController.getTicket(TEAM_ID, TICKET_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getId()).isEqualTo(TICKET_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getId()).isEqualTo(TICKET_ID);
+            }
         }
 
         @Test
@@ -237,28 +250,34 @@ class QueueControllerTest {
         @Test
         @DisplayName("カテゴリチケット一覧取得_正常_200返却")
         void カテゴリチケット一覧取得_正常_200返却() {
-            given(ticketService.listCategoryTickets(CATEGORY_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listCategoryTickets(CATEGORY_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listCategoryTickets(TEAM_ID, CATEGORY_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listCategoryTickets(TEAM_ID, CATEGORY_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("ゲストチケット発行_正常_201返却")
         void ゲストチケット発行_正常_201返却() {
-            CreateTicketRequest request = new CreateTicketRequest("ゲスト", null, (short) 1, "WALK_IN", null);
-            given(ticketService.issueTicket(eq(COUNTER_ID), eq(request), eq(null),
-                    eq(QueueScopeType.TEAM), eq(TEAM_ID)))
-                    .willReturn(createTicketResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                CreateTicketRequest request = new CreateTicketRequest("ゲスト", null, (short) 1, "WALK_IN", null);
+                given(ticketService.issueTicket(eq(COUNTER_ID), eq(request), eq(null),
+                        eq(QueueScopeType.TEAM), eq(TEAM_ID)))
+                        .willReturn(createTicketResponse());
 
-            ResponseEntity<ApiResponse<TicketResponse>> result =
-                    ticketController.issueGuestTicket(TEAM_ID, COUNTER_ID, request);
+                ResponseEntity<ApiResponse<TicketResponse>> result =
+                        ticketController.issueGuestTicket(TEAM_ID, COUNTER_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            }
         }
 
         @Test
@@ -290,60 +309,75 @@ class QueueControllerTest {
         @Mock
         private QueueCategoryService categoryService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueCategoryController categoryController;
 
         @Test
         @DisplayName("カテゴリ一覧取得_正常_200返却")
         void カテゴリ一覧取得_正常_200返却() {
-            given(categoryService.listCategories(QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(List.of(createCategoryResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(categoryService.listCategories(QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(List.of(createCategoryResponse()));
 
-            ResponseEntity<ApiResponse<List<CategoryResponse>>> result =
-                    categoryController.listCategories(TEAM_ID);
+                ResponseEntity<ApiResponse<List<CategoryResponse>>> result =
+                        categoryController.listCategories(TEAM_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("カテゴリ詳細取得_正常_200返却")
         void カテゴリ詳細取得_正常_200返却() {
-            given(categoryService.getCategory(CATEGORY_ID, QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(createCategoryResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(categoryService.getCategory(CATEGORY_ID, QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(createCategoryResponse());
 
-            ResponseEntity<ApiResponse<CategoryResponse>> result =
-                    categoryController.getCategory(TEAM_ID, CATEGORY_ID);
+                ResponseEntity<ApiResponse<CategoryResponse>> result =
+                        categoryController.getCategory(TEAM_ID, CATEGORY_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getId()).isEqualTo(CATEGORY_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getId()).isEqualTo(CATEGORY_ID);
+            }
         }
 
         @Test
         @DisplayName("カテゴリ作成_正常_201返却")
         void カテゴリ作成_正常_201返却() {
-            CreateCategoryRequest request = new CreateCategoryRequest("一般受付", "FIFO", "A", (short) 50, (short) 1);
-            given(categoryService.createCategory(request, QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(createCategoryResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                CreateCategoryRequest request = new CreateCategoryRequest("一般受付", "FIFO", "A", (short) 50, (short) 1);
+                given(categoryService.createCategory(request, QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(createCategoryResponse());
 
-            ResponseEntity<ApiResponse<CategoryResponse>> result =
-                    categoryController.createCategory(TEAM_ID, request);
+                ResponseEntity<ApiResponse<CategoryResponse>> result =
+                        categoryController.createCategory(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-            assertThat(result.getBody().getData()).isNotNull();
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getBody().getData()).isNotNull();
+            }
         }
 
         @Test
         @DisplayName("カテゴリ更新_正常_200返却")
         void カテゴリ更新_正常_200返却() {
-            UpdateCategoryRequest request = new UpdateCategoryRequest("更新受付", null, null, null, null);
-            given(categoryService.updateCategory(CATEGORY_ID, request, QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(createCategoryResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                UpdateCategoryRequest request = new UpdateCategoryRequest("更新受付", null, null, null, null);
+                given(categoryService.updateCategory(CATEGORY_ID, request, QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(createCategoryResponse());
 
-            ResponseEntity<ApiResponse<CategoryResponse>> result =
-                    categoryController.updateCategory(TEAM_ID, CATEGORY_ID, request);
+                ResponseEntity<ApiResponse<CategoryResponse>> result =
+                        categoryController.updateCategory(TEAM_ID, CATEGORY_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
         }
     }
 
@@ -358,33 +392,42 @@ class QueueControllerTest {
         @Mock
         private QueueCounterService counterService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueCounterController counterController;
 
         @Test
         @DisplayName("カウンター一覧取得_正常_200返却")
         void カウンター一覧取得_正常_200返却() {
-            given(counterService.listCounters(CATEGORY_ID))
-                    .willReturn(List.of(createCounterResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(counterService.listCounters(CATEGORY_ID))
+                        .willReturn(List.of(createCounterResponse()));
 
-            ResponseEntity<ApiResponse<List<CounterResponse>>> result =
-                    counterController.listCounters(TEAM_ID, CATEGORY_ID);
+                ResponseEntity<ApiResponse<List<CounterResponse>>> result =
+                        counterController.listCounters(TEAM_ID, CATEGORY_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("カウンター詳細取得_正常_200返却")
         void カウンター詳細取得_正常_200返却() {
-            given(counterService.getCounter(COUNTER_ID))
-                    .willReturn(createCounterResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(counterService.getCounter(COUNTER_ID))
+                        .willReturn(createCounterResponse());
 
-            ResponseEntity<ApiResponse<CounterResponse>> result =
-                    counterController.getCounter(TEAM_ID, COUNTER_ID);
+                ResponseEntity<ApiResponse<CounterResponse>> result =
+                        counterController.getCounter(TEAM_ID, COUNTER_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getId()).isEqualTo(COUNTER_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getId()).isEqualTo(COUNTER_ID);
+            }
         }
 
         @Test
@@ -409,14 +452,17 @@ class QueueControllerTest {
         @Test
         @DisplayName("カウンター更新_正常_200返却")
         void カウンター更新_正常_200返却() {
-            UpdateCounterRequest request = new UpdateCounterRequest(null, null, null, null, null, null, null, null, null, null, null);
-            given(counterService.updateCounter(COUNTER_ID, request))
-                    .willReturn(createCounterResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                UpdateCounterRequest request = new UpdateCounterRequest(null, null, null, null, null, null, null, null, null, null, null);
+                given(counterService.updateCounter(COUNTER_ID, request))
+                        .willReturn(createCounterResponse());
 
-            ResponseEntity<ApiResponse<CounterResponse>> result =
-                    counterController.updateCounter(TEAM_ID, COUNTER_ID, request);
+                ResponseEntity<ApiResponse<CounterResponse>> result =
+                        counterController.updateCounter(TEAM_ID, COUNTER_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
         }
     }
 
@@ -431,53 +477,68 @@ class QueueControllerTest {
         @Mock
         private QueueQrCodeService qrCodeService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueQrCodeController qrCodeController;
 
         @Test
         @DisplayName("QRコード発行_正常_201返却")
         void QRコード発行_正常_201返却() {
-            CreateQrCodeRequest request = new CreateQrCodeRequest(CATEGORY_ID, null);
-            given(qrCodeService.createQrCode(request)).willReturn(createQrCodeResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                CreateQrCodeRequest request = new CreateQrCodeRequest(CATEGORY_ID, null);
+                given(qrCodeService.createQrCode(request)).willReturn(createQrCodeResponse());
 
-            ResponseEntity<ApiResponse<QrCodeResponse>> result =
-                    qrCodeController.createQrCode(TEAM_ID, request);
+                ResponseEntity<ApiResponse<QrCodeResponse>> result =
+                        qrCodeController.createQrCode(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-            assertThat(result.getBody().getData()).isNotNull();
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getBody().getData()).isNotNull();
+            }
         }
 
         @Test
         @DisplayName("QRトークン検証_正常_200返却")
         void QRトークン検証_正常_200返却() {
-            given(qrCodeService.getByToken("token-abc")).willReturn(createQrCodeResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(qrCodeService.getByToken("token-abc")).willReturn(createQrCodeResponse());
 
-            ResponseEntity<ApiResponse<QrCodeResponse>> result =
-                    qrCodeController.getByToken(TEAM_ID, "token-abc");
+                ResponseEntity<ApiResponse<QrCodeResponse>> result =
+                        qrCodeController.getByToken(TEAM_ID, "token-abc");
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
         }
 
         @Test
         @DisplayName("QRコード一覧取得_正常_200返却")
         void QRコード一覧取得_正常_200返却() {
-            given(qrCodeService.listQrCodes(CATEGORY_ID, null))
-                    .willReturn(List.of(createQrCodeResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(qrCodeService.listQrCodes(CATEGORY_ID, null))
+                        .willReturn(List.of(createQrCodeResponse()));
 
-            ResponseEntity<ApiResponse<List<QrCodeResponse>>> result =
-                    qrCodeController.listQrCodes(TEAM_ID, CATEGORY_ID, null);
+                ResponseEntity<ApiResponse<List<QrCodeResponse>>> result =
+                        qrCodeController.listQrCodes(TEAM_ID, CATEGORY_ID, null);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("QRコード無効化_正常_204返却")
         void QRコード無効化_正常_204返却() {
-            ResponseEntity<Void> result = qrCodeController.deactivateQrCode(TEAM_ID, QR_CODE_ID);
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                ResponseEntity<Void> result = qrCodeController.deactivateQrCode(TEAM_ID, QR_CODE_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(qrCodeService).deactivateQrCode(QR_CODE_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+                verify(qrCodeService).deactivateQrCode(QR_CODE_ID);
+            }
         }
     }
 
@@ -492,36 +553,45 @@ class QueueControllerTest {
         @Mock
         private QueueSettingsService settingsService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueSettingsController settingsController;
 
         @Test
         @DisplayName("設定取得_正常_200返却")
         void 設定取得_正常_200返却() {
-            given(settingsService.getSettings(QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(createSettingsResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(settingsService.getSettings(QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(createSettingsResponse());
 
-            ResponseEntity<ApiResponse<SettingsResponse>> result =
-                    settingsController.getSettings(TEAM_ID);
+                ResponseEntity<ApiResponse<SettingsResponse>> result =
+                        settingsController.getSettings(TEAM_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).isNotNull();
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).isNotNull();
+            }
         }
 
         @Test
         @DisplayName("設定更新_正常_200返却")
         void 設定更新_正常_200返却() {
-            QueueSettingsRequest request = new QueueSettingsRequest(
-                    (short) 10, false, (short) 3, (short) 30,
-                    (short) 2, true, (short) 5, (short) 15, true, false
-            );
-            given(settingsService.updateSettings(QueueScopeType.TEAM, TEAM_ID, request))
-                    .willReturn(createSettingsResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                QueueSettingsRequest request = new QueueSettingsRequest(
+                        (short) 10, false, (short) 3, (short) 30,
+                        (short) 2, true, (short) 5, (short) 15, true, false
+                );
+                given(settingsService.updateSettings(QueueScopeType.TEAM, TEAM_ID, request))
+                        .willReturn(createSettingsResponse());
 
-            ResponseEntity<ApiResponse<SettingsResponse>> result =
-                    settingsController.updateSettings(TEAM_ID, request);
+                ResponseEntity<ApiResponse<SettingsResponse>> result =
+                        settingsController.updateSettings(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
         }
     }
 
@@ -537,6 +607,9 @@ class QueueControllerTest {
         private QueueStatsService statsService;
 
         @Mock
+        private QueueAccessGuard accessGuard;
+
+        @Mock
         private QueueCategoryService categoryService;
 
         @InjectMocks
@@ -545,23 +618,27 @@ class QueueControllerTest {
         @Test
         @DisplayName("リアルタイムキューステータス取得_正常_200返却")
         void リアルタイムキューステータス取得_正常_200返却() {
-            // Given
-            CategoryResponse cat = createCategoryResponse();
-            given(categoryService.listCategories(QueueScopeType.TEAM, TEAM_ID))
-                    .willReturn(List.of(cat));
-            QueueStatusResponse statusResponse = new QueueStatusResponse(
-                    COUNTER_ID, "窓口1", true, 3, 30, "A001", List.of()
-            );
-            given(statsService.getQueueStatus(List.of(CATEGORY_ID)))
-                    .willReturn(List.of(statusResponse));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
 
-            // When
-            ResponseEntity<ApiResponse<List<QueueStatusResponse>>> result =
-                    statusController.getQueueStatus(TEAM_ID);
+                // Given
+                CategoryResponse cat = createCategoryResponse();
+                given(categoryService.listCategories(QueueScopeType.TEAM, TEAM_ID))
+                        .willReturn(List.of(cat));
+                QueueStatusResponse statusResponse = new QueueStatusResponse(
+                        COUNTER_ID, "窓口1", true, 3, 30, "A001", List.of()
+                );
+                given(statsService.getQueueStatus(List.of(CATEGORY_ID)))
+                        .willReturn(List.of(statusResponse));
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                // When
+                ResponseEntity<ApiResponse<List<QueueStatusResponse>>> result =
+                        statusController.getQueueStatus(TEAM_ID);
+
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
     }
 }
