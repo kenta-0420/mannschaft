@@ -95,6 +95,10 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // F10.1 目安箱: フィードバック不在は 404（Severity.WARN 既定の 400 を上書き）。
+            // 認可根治 Wave5 で AdminFeedbackController が「別スコープのフィードバック」を
+            // 存在秘匿する際にも本コードを使うため、404 への正規化が必須。
+            Map.entry("ADMIN_FB_003", HttpStatus.NOT_FOUND),
             // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
             //（Severity.WARN 既定の 400 を上書き。SYSTEM_ADMIN トグル API 等で正しい status を返す）
             Map.entry("TMPL_002", HttpStatus.NOT_FOUND),

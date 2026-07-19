@@ -66,6 +66,7 @@ const MOCK_CANDIDATE_DATE: VillageMeetupCandidateDateResponse = {
   id: '01900000-0000-7000-8100-000000000001',
   meetupId: '01900000-0000-7000-8200-000000000001',
   candidateDate: '2026-06-01',
+  candidateTime: null,
   sortOrder: 0,
 }
 
@@ -86,6 +87,7 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     location: '集会所',
     status: 'PLANNING',
     confirmedDate: null,
+    confirmedTime: null,
     candidateDates: [MOCK_CANDIDATE_DATE],
     createdAt: '2026-05-14T00:00:00Z',
   },
@@ -98,6 +100,7 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     location: 'オンライン',
     status: 'CONFIRMED',
     confirmedDate: '2026-05-20',
+    confirmedTime: null,
     candidateDates: [],
     createdAt: '2026-05-10T00:00:00Z',
   },
@@ -110,6 +113,7 @@ const MOCK_MEETUPS: VillageMeetupResponse[] = [
     location: null,
     status: 'CANCELLED',
     confirmedDate: null,
+    confirmedTime: null,
     candidateDates: [],
     createdAt: '2026-02-01T00:00:00Z',
   },
@@ -122,6 +126,7 @@ const MOCK_VOTE_SUMMARY: VillageMeetupVoteSummary = {
     {
       candidateDateId: MOCK_CANDIDATE_DATE.id,
       candidateDate: MOCK_CANDIDATE_DATE.candidateDate,
+      candidateTime: MOCK_CANDIDATE_DATE.candidateTime,
       availableCount: 2,
       maybeCount: 1,
       unavailableCount: 0,

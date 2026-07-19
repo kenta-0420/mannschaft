@@ -48,7 +48,6 @@ com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService (domain 'ac
 com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService (domain 'actionmemo') depends on other-domain entity com.mannschaft.app.cms.entity.BlogPostEntity$BlogPostEntityBuilder (domain 'cms')
 com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService (domain 'actionmemo') depends on other-domain entity com.mannschaft.app.cms.entity.BlogPostEntity$BlogPostEntityBuilder (domain 'cms')
 com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService (domain 'actionmemo') depends on other-domain entity com.mannschaft.app.cms.entity.BlogPostEntity$BlogPostEntityBuilder (domain 'cms')
-com.mannschaft.app.admin.controller.AdminDashboardController (domain 'admin') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity (domain 'role')
 com.mannschaft.app.admin.controller.SystemAdminDashboardController (domain 'admin') depends on other-domain entity com.mannschaft.app.auth.entity.UserEntity (domain 'auth')
 com.mannschaft.app.admin.controller.SystemAdminDashboardController (domain 'admin') depends on other-domain entity com.mannschaft.app.organization.entity.OrganizationEntity (domain 'organization')
 com.mannschaft.app.admin.controller.SystemAdminDashboardController (domain 'admin') depends on other-domain entity com.mannschaft.app.team.entity.TeamEntity (domain 'team')
