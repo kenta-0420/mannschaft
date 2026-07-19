@@ -160689,7 +160689,7 @@
           "category": {
             "type": "string"
           },
-          "coverR2Key": {
+          "coverUrl": {
             "type": "string"
           },
           "createdAt": {
@@ -160702,7 +160702,7 @@
           "guidelineMd": {
             "type": "string"
           },
-          "iconR2Key": {
+          "iconUrl": {
             "type": "string"
           },
           "id": {
@@ -160728,6 +160728,9 @@
           "memberCount": {
             "type": "integer",
             "format": "int64"
+          },
+          "monshoUrl": {
+            "type": "string"
           },
           "myRole": {
             "type": "string",
@@ -218837,7 +218840,7 @@
       "VillagePinnedSummaryResponse": {
         "type": "object",
         "properties": {
-          "iconR2Key": {
+          "iconUrl": {
             "type": "string"
           },
           "id": {

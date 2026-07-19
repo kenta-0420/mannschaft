@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -63,6 +64,8 @@ class VillageFeedServiceTest {
     @Mock private BulletinThreadRepository bulletinThreadRepository;
     @Mock private ChatChannelRepository chatChannelRepository;
     @Mock private ChatMessageRepository chatMessageRepository;
+    /** 村アイコンの署名 URL 解決（#2355）。未スタブでも resolveAll は空 Map を返す（Mockito 既定）。 */
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private VillageFeedService service;

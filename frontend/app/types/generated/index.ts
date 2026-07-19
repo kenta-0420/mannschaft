@@ -52761,12 +52761,12 @@ export interface components {
             /** @enum {string} */
             bulletinVisibility?: "PUBLIC" | "MEMBERS_ONLY";
             category?: string;
-            coverR2Key?: string;
+            coverUrl?: string;
             /** Format: date-time */
             createdAt?: string;
             description?: string;
             guidelineMd?: string;
-            iconR2Key?: string;
+            iconUrl?: string;
             /** Format: uuid */
             id?: string;
             isMember?: boolean;
@@ -52776,6 +52776,7 @@ export interface components {
             joinPolicy?: "FREE" | "APPROVAL";
             /** Format: int64 */
             memberCount?: number;
+            monshoUrl?: string;
             /** @enum {string} */
             myRole?: "HEADMAN" | "ELDER" | "VILLAGER" | "VISITOR";
             name?: string;
@@ -73901,7 +73902,7 @@ export interface components {
             pinnedVillages?: components["schemas"]["VillagePinnedSummaryResponse"][];
         };
         VillagePinnedSummaryResponse: {
-            iconR2Key?: string;
+            iconUrl?: string;
             /** Format: uuid */
             id?: string;
             name?: string;

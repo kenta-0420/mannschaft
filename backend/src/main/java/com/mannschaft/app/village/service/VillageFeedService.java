@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.dto.VillageFeedItemResponse;
@@ -70,6 +71,8 @@ public class VillageFeedService {
     private final BulletinThreadRepository bulletinThreadRepository;
     private final ChatChannelRepository chatChannelRepository;
     private final ChatMessageRepository chatMessageRepository;
+    /** 村アイコンの生 R2 キーを表示用の署名付き URL へ解決する共通部品（#2355）。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 個人ダッシュボードの村フィードを集約して返す。
@@ -91,7 +94,9 @@ public class VillageFeedService {
         // ピン村を一括取得（村数だけまとめて引いてループ内 N+1 を避ける）
         Map<UUID, VillageEntity> villageMap = loadVillagesByPin(pins);
 
-        // ピン村サマリー
+        // ピン村サマリー（アイコンは同一キーの presign 重複を避けるため一括解決してメモ化）
+        Map<String, String> iconUrlsByKey = mediaUrlResolver.resolveAll(
+                villageMap.values().stream().map(VillageEntity::getIconR2Key).toList());
         List<VillagePinnedSummaryResponse> pinned = new ArrayList<>(pins.size());
         for (UserVillagePinEntity pin : pins) {
             VillageEntity v = villageMap.get(pin.getVillageId());
@@ -102,7 +107,7 @@ public class VillageFeedService {
             pinned.add(VillagePinnedSummaryResponse.builder()
                     .id(v.getId())
                     .name(v.getName())
-                    .iconR2Key(v.getIconR2Key())
+                    .iconUrl(iconUrlsByKey.get(v.getIconR2Key()))
                     // 未読件数は Phase 1 では 0 固定（B11 以降で既読管理連携）
                     .unreadCount(0L)
                     .build());
