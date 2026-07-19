@@ -1015,7 +1015,14 @@ public class GlobalExceptionHandler {
             // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND)
+            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
+            // 認可根治戦役 Wave5: ticket（F08.5 回数券）の *_NOT_FOUND は、対象エンティティが自チーム外、
+            // または顧客面で他人の所有物である場合にも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと ID の実在有無が判別でき、購入者の存在が推測可能になる。
+            Map.entry("TICKET_001", HttpStatus.NOT_FOUND),               // PRODUCT_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
+            Map.entry("TICKET_002", HttpStatus.NOT_FOUND),               // BOOK_NOT_FOUND（teamId 束縛＋所有者不一致 → 404）
+            Map.entry("TICKET_003", HttpStatus.NOT_FOUND),               // CONSUMPTION_NOT_FOUND（親book不一致BOLA → 404）
+            Map.entry("TICKET_004", HttpStatus.NOT_FOUND)                // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
     );
 
     /**
