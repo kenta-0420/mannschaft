@@ -563,7 +563,8 @@ export interface VillageFestivalResponse {
   description: string | null
   startsAt: string
   endsAt: string
-  bannerR2Key: string | null
+  /** バナー画像の表示用URL（署名付きGET URL。BEが解決済み。未設定/解決失敗時はnull） */
+  bannerUrl: string | null
   /** テーマカラー (#RRGGBB) */
   themeColorHex: string | null
   status: VillageFestivalStatus
