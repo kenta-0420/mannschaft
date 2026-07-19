@@ -156,6 +156,8 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
+            // F16 school 出席要件規程: bare id EP（update/delete）の権限不足は存在秘匿で 404（Severity.WARN 既定 400 を上書き）
+            Map.entry("S030", HttpStatus.NOT_FOUND),
             // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
             Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
             // F02.5 Phase 3: チーム投稿系エラー
