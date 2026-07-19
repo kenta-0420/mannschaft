@@ -5,8 +5,9 @@ package com.mannschaft.app.village.dto;
  *
  * <p>{@code uploadUrl} は R2 への直接 PUT に使う署名付き URL。{@code r2Key} は将来
  * {@code PUT /monsho} に渡す確定用キー（{@code village/{villageId}/monsho/{uuid}.{ext}} 形式）。
- * 読取は別経路（FE の {@code buildR2Url} による公開 URL 化）で行うため、本レスポンスの
- * {@code r2Key} は生キーであり署名化しない。</p>
+ * 読取は別経路（村取得 API 等で {@code MediaUrlResolver} が生 r2Key から presigned GET URL
+ * ＝ {@code monshoUrl} を解決して返す）で行うため、本レスポンスの {@code r2Key} は
+ * 書込専用の生キーであり署名化しない。</p>
  *
  * @param uploadUrl        presigned PUT URL（このURLに画像実体を PUT する）
  * @param r2Key            R2 オブジェクトキー（アップロード完了後 PUT /monsho に渡す）

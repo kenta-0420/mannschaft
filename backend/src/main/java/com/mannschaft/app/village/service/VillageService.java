@@ -317,8 +317,9 @@ public class VillageService {
      * MIME/サイズ検証より必ず先に行う。これにより不正入力でも他人の村の存在有無を漏らさない。</p>
      *
      * <p><strong>読取との差異:</strong> 本メソッドは PUT アップロード用の presigned URL を発行するのみ。
-     * 返却する {@code r2Key} は生キーであり、読取（表示）側の署名 URL 化（presigned GET）は行わない。
-     * 表示は FE の {@code buildR2Url} による公開 URL 化が正。</p>
+     * 返却する {@code r2Key} は生キーであり、本メソッド自身は読取（表示）側の署名 URL 化（presigned GET）を
+     * 行わない。読取は別途 {@code MediaUrlResolver} が村取得 API（{@code monshoUrl} 等）で presigned GET URL
+     * として解決して返す。FE は署名 URL をそのまま {@code <img src>} に渡すのみで、公開 URL 組み立ては行わない。</p>
      *
      * @param villageId       対象村
      * @param contentType     アップロードする画像の Content-Type

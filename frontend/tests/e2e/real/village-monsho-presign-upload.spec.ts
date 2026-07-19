@@ -148,39 +148,23 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
     expect([200, 204] as Array<number | null>).toContain(minioPutStatus)
     expect(commitStatus, '登録 PUT /monsho が200で返ること').toBe(200)
 
-    // ---- ランタイム設定の r2PublicUrl を実測（img 表示チェックより先に必ず取得する） ----
-    //   nuxt.config.ts の runtimeConfig.public に r2PublicUrl キー自体が宣言されていない疑いがあり
-    //   （grep 実測・NUXT_PUBLIC_R2_PUBLIC_URL を宣言していないキーへ注入しても Nuxt は反映しない）、
-    //   その場合 buildR2Url() は base=undefined で常に null を返す＝画像が一切表示されない。
-    const r2PublicUrlRuntime = await page.evaluate(() => {
-      // @ts-expect-error -- Nuxt が window に埋め込む実行時ペイロード
-      return window.__NUXT__?.config?.public?.r2PublicUrl ?? null
-    })
-    console.log('runtimeConfig.public.r2PublicUrl (実測):', JSON.stringify(r2PublicUrlRuntime))
-
-    // ---- ダイアログ内プレビュー画像の src を確認（二重前置チェック） ----
-    // ハード assert にはしない: r2PublicUrl 未設定なら <img> 自体がそもそも描画されない
-    // （v-if="monshoPreviewUrl"）ため、ここで abort すると後続の回帰確認(§7)・異常系(§8)の
-    // エビデンスが一切取れなくなる。事実を記録した上で処理を継続する。
+    // ---- ダイアログ内プレビュー画像が署名URL方式で表示されること ----
+    // #2355以降、村紋の読取は BE が MediaUrlResolver で presign した署名URL(monshoUrl)を
+    // 返し、FE はそれをそのまま <img src> に渡すだけ（buildR2Url 等の公開URL組み立ては
+    // FEから物理削除済み）。presign→直PUT→登録が全て200で成功した以上、
+    // プレビュー <img> は必ず描画されるためハード assert とする。
     const dialogPreviewImg = dialog.locator('img').first()
-    const dialogImgVisible = await dialogPreviewImg.isVisible().catch(() => false)
-    console.log('dialog monsho preview <img> visible:', dialogImgVisible)
-    let dialogImgSrc: string | null = null
-    if (dialogImgVisible) {
-      dialogImgSrc = await dialogPreviewImg.getAttribute('src')
-      console.log('dialog monsho preview <img src>:', dialogImgSrc)
-      // 二重前置チェック: "http" が2回登場するような壊れた URL でないこと
-      const httpOccurrences = (dialogImgSrc?.match(/https?:\/\//g) ?? []).length
-      expect(httpOccurrences, `村紋画像URLが二重前置されていないこと（実値=${dialogImgSrc}）`).toBeLessThanOrEqual(1)
-    }
-    else {
-      console.log(
-        '[重大バグ疑い] presign→直PUT→登録が全て200で成功したにもかかわらず、',
-        'ダイアログ内プレビュー<img>が描画されていない。',
-        'runtimeConfig.public.r2PublicUrl =', JSON.stringify(r2PublicUrlRuntime),
-        '。buildR2Url() が base 未設定で null を返し v-if で <img> 自体が非描画になっている可能性。',
-      )
-    }
+    await expect(
+      dialogPreviewImg,
+      '村紋プレビュー<img>が描画されること（署名URL方式・v-if="monshoPreviewUrl"）',
+    ).toBeVisible({ timeout: 15_000 })
+    const dialogImgSrc = await dialogPreviewImg.getAttribute('src')
+    console.log('dialog monsho preview <img src>:', dialogImgSrc)
+    expect(dialogImgSrc, '村紋プレビューのsrcが署名付きURLとして返っていること').toBeTruthy()
+    expect(dialogImgSrc, '署名付きURLはhttp(s)スキームで始まること').toMatch(/^https?:\/\//)
+    // 二重前置チェック: "http" が2回登場するような壊れた URL でないこと
+    const httpOccurrences = (dialogImgSrc?.match(/https?:\/\//g) ?? []).length
+    expect(httpOccurrences, `村紋画像URLが二重前置されていないこと（実値=${dialogImgSrc}）`).toBeLessThanOrEqual(1)
 
     await page.screenshot({
       path: 'test-results/monsho-01-after-upload-dialog.png',
