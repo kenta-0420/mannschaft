@@ -38,7 +38,7 @@ interface CreationRequestBody {
 
 test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
-  test.setTimeout(180_000)
+  test.setTimeout(240_000)
 
   test('MONSHO-E2E-01: 使い捨て村作成→presign入稿→表示→回帰→異常系を一気通貫で踏む', async ({
     page,
@@ -357,6 +357,7 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
 
     // =========================================================================
     // 9. 異常系: 5MB超ファイル / 非対応MIME を選び、FE が読めるエラーを出すこと
+    //    直前のアイコン/カバー保存(§8)でダイアログが閉じているため再オープンする。
     // =========================================================================
     const uploadUrlRequests: string[] = []
     page.on('request', (req) => {
@@ -365,8 +366,12 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
       }
     })
 
-    // 8a. 非対応MIME（.txt）
-    const fileInput3 = dialog3.locator('input[type="file"]')
+    await settingsCard.click()
+    const dialog4 = page.getByRole('dialog').filter({ hasText: '村を編集' })
+    await expect(dialog4).toBeVisible({ timeout: 10_000 })
+
+    // 9a. 非対応MIME（.txt）
+    const fileInput3 = dialog4.locator('input[type="file"]')
     const requestsBeforeTxt = uploadUrlRequests.length
     await fileInput3.setInputFiles({
       name: 'invalid.txt',
@@ -389,7 +394,7 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
       fullPage: true,
     })
 
-    // 8b. 5MB超ファイル（PNGだが実バイト数で拒否される想定）
+    // 9b. 5MB超ファイル（PNGだが実バイト数で拒否される想定）
     const requestsBeforeOversize = uploadUrlRequests.length
     await fileInput3.setInputFiles({
       name: 'oversized.png',
