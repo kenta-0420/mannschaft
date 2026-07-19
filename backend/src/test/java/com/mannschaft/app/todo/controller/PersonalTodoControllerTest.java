@@ -9,6 +9,7 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
@@ -74,6 +75,9 @@ class PersonalTodoControllerTest {
 
     @Mock
     private TodoPersonalMemoService personalMemoService;
+
+    @Mock
+    private TodoAccessGuard todoAccessGuard;
 
     @Mock
     private MessageSource messageSource;
