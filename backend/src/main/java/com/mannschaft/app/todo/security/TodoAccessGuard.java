@@ -76,6 +76,16 @@ public class TodoAccessGuard {
             // IDOR 秘匿: 他 scope の TODO id を推測して叩くケースを 404 にまとめる。
             throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
         }
+        if (scopeType == TodoScopeType.PERSONAL) {
+            // PERSONAL スコープは membership 概念を持たない（AccessControlService に PERSONAL を渡すと 500。
+            // project_scopetype_cross_domain_personal_mismatch）。所有権＝scopeId(=userId) 一致で認可し、
+            // 上の scope 束縛が既に「todo.scopeId == scopeId」を保証しているため、呼び出し元が scopeId=userId を
+            // 渡す限り所有者本人であることは担保済み。念のため明示照合して越境（scopeId≠userId 呼び出し）も 404 に落とす。
+            if (!Objects.equals(scopeId, userId)) {
+                throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+            }
+            return;
+        }
         accessControlService.checkMembership(userId, scopeId, scopeType.name());
     }
 

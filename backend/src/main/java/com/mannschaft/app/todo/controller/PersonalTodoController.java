@@ -214,8 +214,10 @@ public class PersonalTodoController {
     public ResponseEntity<Void> linkSchedule(
             @PathVariable Long id,
             @Valid @RequestBody LinkScheduleRequest request) {
+        // 認可根治（Wave5 todo硬化B）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（Service 署名拡張）。
+        Long userId = SecurityUtils.getCurrentUserId();
         scheduleLinkService.linkScheduleToTodo(
-                request.getScheduleId(), id, request.getParentId(), SecurityUtils.getCurrentUserId());
+                request.getScheduleId(), id, TodoScopeType.PERSONAL, userId, request.getParentId(), userId);
         return ResponseEntity.ok().build();
     }
 
@@ -226,7 +228,9 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO スケジュール連携解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
     public ResponseEntity<Void> unlinkSchedule(@PathVariable Long id) {
-        scheduleLinkService.unlinkScheduleFromTodo(id, SecurityUtils.getCurrentUserId());
+        // 認可根治（Wave5 todo硬化B）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（Service 署名拡張）。
+        Long userId = SecurityUtils.getCurrentUserId();
+        scheduleLinkService.unlinkScheduleFromTodo(id, TodoScopeType.PERSONAL, userId, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -284,7 +288,10 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO 個人メモ取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<PersonalMemoResponse>> getPersonalMemo(@PathVariable Long id) {
-        return ResponseEntity.ok(personalMemoService.getPersonalMemo(id, SecurityUtils.getCurrentUserId()));
+        // 認可根治（Wave5 todo硬化B）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（Service 署名拡張）。
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(personalMemoService.getPersonalMemo(
+                id, TodoScopeType.PERSONAL, userId, userId));
     }
 
     /**
@@ -296,7 +303,10 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<PersonalMemoResponse>> upsertPersonalMemo(
             @PathVariable Long id,
             @Valid @RequestBody PersonalMemoRequest request) {
-        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(id, SecurityUtils.getCurrentUserId(), request));
+        // 認可根治（Wave5 todo硬化B）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（Service 署名拡張）。
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(
+                id, TodoScopeType.PERSONAL, userId, userId, request));
     }
 
     /**
@@ -306,7 +316,9 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO 個人メモ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePersonalMemo(@PathVariable Long id) {
-        personalMemoService.deletePersonalMemo(id, SecurityUtils.getCurrentUserId());
+        // 認可根治（Wave5 todo硬化B）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（Service 署名拡張）。
+        Long userId = SecurityUtils.getCurrentUserId();
+        personalMemoService.deletePersonalMemo(id, TodoScopeType.PERSONAL, userId, userId);
         return ResponseEntity.noContent().build();
     }
 }
