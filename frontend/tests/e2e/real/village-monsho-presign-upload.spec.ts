@@ -10,10 +10,13 @@ import { waitForHydration } from '../helpers/wait'
  * VillageHeader での表示、他フィールド編集保存後の消失回帰（検分是正 a9994a6ff）、異常系。
  *
  * 使い捨て村: 既存村の seed membership 汚染を避けるため、村作成申請
- * (POST /villages/creation-requests) → 運営承認 (POST /admin/village-creation-requests/{id}/approve)
- * で毎回新規に村を作る。承認者(運営)はメインの page セッションとは別の
- * playwright.request.newContext() を使い、メインセッション（page.request）のトークンローテーションに
- * 影響を与えない（feedback_e2e_real_single_session_token_rotation）。
+ * (POST /villages/creation-requests) で毎回新規に村を作る。
+ *
+ * 実装調査で判明した事実（VillageCreationRequestService#createRequest 実測）:
+ *   本 API は「申請 → 運営承認」の2段階ではなく、**同一トランザクション内で即時自動承認**する
+ *   （申請者自身が reviewer として記録され、村レコード・HEADMAN membership もその場で作成される）。
+ *   レスポンスの createdVillageId が即座に非 null で返るため、別途 SYSTEM_ADMIN による
+ *   POST /admin/village-creation-requests/{id}/approve は不要（呼ぶと VILLAGE_033 既審査済みで 409 になる）。
  */
 
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
@@ -23,20 +26,8 @@ const MINIO_ORIGIN = process.env.MINIO_ORIGIN ?? 'http://localhost:9000'
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-pwui-1782136885@test.mannschaft.local'
 const USER_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'Passw0rd!2026'
 
-// SYSTEM_ADMIN シードユーザー（村作成申請の承認用。backend/scripts/seed-e2e-data.js 参照）
-const ADMIN_EMAIL = 'e2e-admin@test.mannschaft.local'
-const ADMIN_PASSWORD = 'TestPass2026!'
-
-interface LoginBody {
-  data: { accessToken: string }
-}
-
 interface CreationRequestBody {
-  data: { id: string }
-}
-
-interface ApproveBody {
-  data: { createdVillageId: string }
+  data: { id: string, createdVillageId: string | null }
 }
 
 test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
@@ -45,7 +36,6 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
 
   test('MONSHO-E2E-01: 使い捨て村作成→presign入稿→表示→回帰→異常系を一気通貫で踏む', async ({
     page,
-    playwright,
   }) => {
     // ---- 観測バッファ ----
     let presignStatus: number | null = null
@@ -76,8 +66,8 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
     await loginViaApi(page, { email: USER_EMAIL, password: USER_PASSWORD }, { apiBaseUrl: API_BASE })
 
     // =========================================================================
-    // 2. 使い捨ての村を新規作成（村作成申請 → 運営承認）
-    //    作成者(90209)が申請者のまま承認されるため HEADMAN になる。
+    // 2. 使い捨ての村を新規作成（村作成申請 = 同一トランザクションで即時自動承認・実測）
+    //    作成者(90209)が申請者のまま自動承認されるため HEADMAN になる。
     // =========================================================================
     const uniqueSuffix = Date.now()
     const villageName = `E2Eモンショ検証村${uniqueSuffix}`
@@ -96,38 +86,10 @@ test.describe('MONSHO-E2E: 村紋 presign 入稿 実機E2E (#2355)', () => {
     })
     expect(createRes.status(), `村作成申請が201で返ること: ${await createRes.text().catch(() => '')}`).toBe(201)
     const createBody = (await createRes.json()) as CreationRequestBody
-    const requestId = createBody.data.id
-    expect(requestId, '申請IDが返ること').toBeTruthy()
+    const villageId = createBody.data.createdVillageId ?? ''
+    expect(villageId, '申請と同時に自動承認され createdVillageId が返ること').toBeTruthy()
 
-    // 承認は別の ephemeral request context（SYSTEM_ADMIN）で行う。
-    // page / page.request の Cookie ジャーには一切触れないため、90209 のセッションは無傷。
-    const adminCtx = await playwright.request.newContext()
-    let villageId = ''
-    try {
-      const adminLoginRes = await adminCtx.post(`${API_BASE}/api/v1/auth/login`, {
-        data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-      })
-      expect(adminLoginRes.status(), '運営(SYSTEM_ADMIN)ログインが200で返ること').toBe(200)
-      const adminLoginBody = (await adminLoginRes.json()) as LoginBody
-      const adminToken = adminLoginBody.data.accessToken
-
-      const approveRes = await adminCtx.post(
-        `${API_BASE}/api/v1/admin/village-creation-requests/${requestId}/approve`,
-        { headers: { Authorization: `Bearer ${adminToken}` } },
-      )
-      expect(
-        approveRes.status(),
-        `村作成申請の承認が200で返ること: ${await approveRes.text().catch(() => '')}`,
-      ).toBe(200)
-      const approveBody = (await approveRes.json()) as ApproveBody
-      villageId = approveBody.data.createdVillageId
-      expect(villageId, '承認後に createdVillageId が返ること').toBeTruthy()
-    }
-    finally {
-      await adminCtx.dispose()
-    }
-
-    console.log('=== MONSHO E2E: 使い捨て村作成完了 ===')
+    console.log('=== MONSHO E2E: 使い捨て村作成完了（即時自動承認） ===')
     console.log('villageId:', villageId, '| slug:', villageSlug)
 
     // =========================================================================
