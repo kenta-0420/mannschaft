@@ -537,9 +537,10 @@ class ParkingScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("非メンバーのサブリース更新は403")
         void 非メンバーのサブリース更新は403() throws Exception {
             setAuthentication(outsiderId);
+            // @Valid が guard より先に走るため、body は必須項目を充足させ bind時400を回避し認可(403)へ到達させる
             mockMvc.perform(put("/api/v1/teams/{teamId}/parking/subleases/{id}", teamAId, 999999L)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
+                            .content("{\"title\":\"更新\",\"pricePerMonth\":10000,\"availableFrom\":\"2026-08-01\"}"))
                     .andExpect(status().isForbidden());
         }
 
