@@ -417,6 +417,170 @@ class ParkingScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // Wave5: getSpaceIds 経由の read / 自己保有系 / サブリース管理に
+    //        ParkingAccessGuard で membership/ADMIN を強制（旧 authz=0 の根治）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Wave5: 一覧・読み取りの membership 強制（旧 authz=0）")
+    class Wave5ReadMembership {
+
+        @Test
+        @DisplayName("非メンバーの申請一覧は403")
+        void 非メンバーの申請一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/applications", teamAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("正当メンバーの申請一覧は200")
+        void 正当メンバーの申請一覧は200() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/applications", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("非メンバーのサブリース一覧は403")
+        void 非メンバーのサブリース一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/subleases", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当メンバーのサブリース一覧は200")
+        void 正当メンバーのサブリース一覧は200() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/subleases", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("非メンバーの譲渡希望一覧は403")
+        void 非メンバーの譲渡希望一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/listings", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非メンバーの来場者予約一覧は403（PII一覧の membership 強制）")
+        void 非メンバーの来場者予約一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/visitor-reservations", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非メンバーのウォッチリスト一覧は403")
+        void 非メンバーのウォッチリスト一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/parking/watchlist", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非メンバーのウォッチリスト追加は403（自己保有系も入口は membership）")
+        void 非メンバーのウォッチリスト追加は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/watchlist", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当メンバーのウォッチリスト追加は201（自己保有系 write=member）")
+        void 正当メンバーのウォッチリスト追加は201() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/watchlist", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("非メンバーの来場者予約作成は403（作成入口の membership 強制）")
+        void 非メンバーの来場者予約作成は403() throws Exception {
+            setAuthentication(outsiderId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("spaceId", 1L);
+            body.put("visitorName", "来場者");
+            body.put("visitorPlateNumber", "品川300あ00-00");
+            body.put("reservedDate", "2999-01-01");
+            body.put("timeFrom", "10:00:00");
+            body.put("timeTo", "11:00:00");
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/visitor-reservations", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("Wave5: サブリースのライフサイクル操作は ADMIN 限定（BOLA根治の要・旧 authz=0）")
+    class Wave5SubleaseManageAdmin {
+
+        @Test
+        @DisplayName("非ADMINメンバーのサブリース終了は403（guardがサービス到達前に遮断）")
+        void 非ADMINメンバーのサブリース終了は403() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/parking/subleases/{id}/terminate", teamAId, 999999L))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("非メンバーのサブリース更新は403")
+        void 非メンバーのサブリース更新は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(put("/api/v1/teams/{teamId}/parking/subleases/{id}", teamAId, 999999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINのサブリース終了は200")
+        void 正当ADMINのサブリース終了は200() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "SLT-03", "NOT_ACCEPTING", adminAId);
+            Long assignmentId = insertAssignment(spaceId, memberAId, adminAId);
+            Long subleaseId = insertSublease(spaceId, assignmentId, memberAId, "終了対象3");
+            em.flush();
+
+            setAuthentication(adminAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/parking/subleases/{id}/terminate", teamAId, subleaseId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("他チームADMINが自チームURLで他チームのサブリースを終了しようとすると404（越境秘匿・二段防御の二段目）")
+        void 他チームADMINによる越境終了は404() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "SLT-04", "NOT_ACCEPTING", adminAId);
+            Long assignmentId = insertAssignment(spaceId, memberAId, adminAId);
+            Long subleaseId = insertSublease(spaceId, assignmentId, memberAId, "終了対象4");
+            em.flush();
+
+            setAuthentication(adminBId); // teamB の ADMIN が teamB の URL に teamA のサブリースID を渡す
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/parking/subleases/{id}/terminate", teamBId, subleaseId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("PARKING_025"));
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーの譲渡確定(transfer)は403（旧 authz=0・manage=admin）")
+        void 非ADMINメンバーの譲渡確定は403() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/parking/listings/{id}/transfer", teamAId, 999999L))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

@@ -322,8 +322,11 @@ public class ParkingSpaceService {
      * スコープ内の全区画IDを取得する（内部用）。
      *
      * <p>他ドメインサービス（application/listing/sublease/visitor）が自スコープの
-     * spaceId 一覧を得るための内部ヘルパー。呼び出し元コントローラーが認可を担う構成のため、
-     * 本メソッド自体には認可チェックを持たせない（呼び出し元が Wave3 以降で対応予定）。</p>
+     * spaceId 一覧を得るための内部ヘルパー。本メソッド自体は認可チェックを持たない
+     * （バッチ等と共有される内部 finder には認可を敷かない方針）。
+     * 呼び出し元コントローラーが {@link ParkingAccessGuard} で membership/ADMIN を検証する
+     * 構成に是正済み（認可根治戦役 Wave5）。返す spaceId 群は URL パスの scope 内に束縛されるため、
+     * ガードによる membership/ADMIN 検証と合わせて二段防御を成す。</p>
      */
     public List<Long> getSpaceIds(String scopeType, Long scopeId) {
         return spaceRepository.findByScopeTypeAndScopeId(scopeType, scopeId, Pageable.unpaged())
