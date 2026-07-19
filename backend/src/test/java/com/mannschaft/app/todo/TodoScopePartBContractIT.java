@@ -183,6 +183,7 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
                 .status(TodoStatus.OPEN)
                 .priority(TodoPriority.MEDIUM)
                 .sortOrder(0)
+                .progressManual(true)   // setProgressRate（手動モード必須）の PERSONAL 正常系のため手動モードで作る
                 .createdBy(memberTeamAId)
                 .build());
         todoPersonalId = todoPersonal.getId();
@@ -664,6 +665,57 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(put("/api/v1/todos/{id}/memo", todoPersonalId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("memo", "越境更新"))))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. PERSONAL スコープ 進捗率/進捗モード（早馬 追加・Controller 入口で所有権認可）
+    //    setProgressRate/setProgressMode は ActionMemoService からも呼ばれる共有メソッドのため
+    //    PersonalTodoController 入口で verifyScopeAndMembership(PERSONAL, userId, userId) を敷く。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. PERSONAL /todos/{id}/progress・/progress-mode（所有権 scopeId=userId・生IDOR根治）")
+    class PersonalScopeProgress {
+
+        @Test
+        @DisplayName("progress: 所有者本人は200")
+        void progress_所有者は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/progress", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("progressRate", 50))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("progress: 他人（非所有者）は404秘匿（PERSONALをmembershipに渡さず500化しない）")
+        void progress_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/progress", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("progressRate", 50))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("progress-mode: 所有者本人は200")
+        void progressMode_所有者は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/progress-mode", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("progressManual", true))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("progress-mode: 他人（非所有者）は404秘匿")
+        void progressMode_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/progress-mode", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("progressManual", true))))
                     .andExpect(status().isNotFound());
         }
     }

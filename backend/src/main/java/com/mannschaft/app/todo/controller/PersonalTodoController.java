@@ -14,6 +14,7 @@ import com.mannschaft.app.todo.dto.ProgressRateRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
@@ -56,6 +57,7 @@ public class PersonalTodoController {
     private final TodoGanttService ganttService;
     private final TodoScheduleLinkService scheduleLinkService;
     private final TodoPersonalMemoService personalMemoService;
+    private final TodoAccessGuard todoAccessGuard;
 
 
     /**
@@ -264,6 +266,11 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> setProgressRate(
             @PathVariable Long id,
             @Valid @RequestBody ProgressRateRequest request) {
+        // 認可根治（Wave5 早馬）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（404 秘匿）。
+        // setProgressRate は ActionMemoService からも呼ばれる共有メソッドのため、
+        // ガードは共有メソッドではなく public 入口（本 Controller）で敷く。
+        Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.PERSONAL, userId, userId);
         return ResponseEntity.ok(todoService.setProgressRate(id, request.getProgressRate()));
     }
 
@@ -276,6 +283,9 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> setProgressMode(
             @PathVariable Long id,
             @Valid @RequestBody ProgressModeRequest request) {
+        // 認可根治（Wave5 早馬）: PERSONAL は所有権（scopeId=userId）で scope 束縛＋認可（404 秘匿）。
+        Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.PERSONAL, userId, userId);
         return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
     }
 
