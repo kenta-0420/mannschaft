@@ -2,6 +2,7 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -91,6 +92,8 @@ public class VillageService {
     private final UserVillagePinRepository pinRepository;
     private final AccessControlService accessControlService;
     private final R2StorageService r2StorageService;
+    /** 生の R2 キーを表示用の署名付き URL へ解決する共通部品（#2355 / VillagePinService と同方式）。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ─────────────────────────────────────────────
     // 作成
@@ -496,8 +499,10 @@ public class VillageService {
                 .visibility(v.getVisibility())
                 .bulletinVisibility(v.getBulletinVisibility())
                 .category(v.getCategory())
-                .iconR2Key(v.getIconR2Key())
-                .coverR2Key(v.getCoverR2Key())
+                // TODO(#2355 出陣): iconUrl / coverUrl / monshoUrl を mediaUrlResolver で
+                //  署名付き表示 URL へ解決して載せる。現状は未配線のため常に null であり、
+                //  村の画像が 1 枚も表示されない（試練が red で固定している欠陥）。
+                //  村紋は VillageEntity#getMonshoR2Key() に既に永続化済み。
                 .guidelineMd(includePrivateView ? v.getGuidelineMd() : null)
                 .memberCount(v.getMemberCountCache() != null ? v.getMemberCountCache() : 0L)
                 .isOfficial(v.getType() == VillageType.OFFICIAL)
