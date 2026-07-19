@@ -354,7 +354,15 @@
     "monsho": {
       "title": "村庄徽章",
       "upload": "上传村庄徽章",
-      "remove": "删除村庄徽章"
+      "remove": "删除村庄徽章",
+      "label": "村庄徽章（家纹 / 标志）",
+      "change": "更换徽章",
+      "uploading": "上传中…",
+      "hint": "JPG / PNG / WebP，最大 5MB",
+      "errorMime": "仅支持 JPG、PNG 和 WebP 图片",
+      "errorSize": "文件大小不得超过 5MB",
+      "uploadSuccess": "村庄徽章已上传",
+      "removeSuccess": "村庄徽章已删除"
     },
     "calendar": {
       "title": "村庄日历",

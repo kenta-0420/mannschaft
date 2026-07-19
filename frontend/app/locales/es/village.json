@@ -354,7 +354,15 @@
     "monsho": {
       "title": "Escudo de la aldea",
       "upload": "Subir escudo de la aldea",
-      "remove": "Eliminar escudo de la aldea"
+      "remove": "Eliminar escudo de la aldea",
+      "label": "Escudo de la aldea (emblema / logo)",
+      "change": "Cambiar escudo",
+      "uploading": "Subiendo…",
+      "hint": "JPG / PNG / WebP, hasta 5MB",
+      "errorMime": "Solo se admiten imágenes JPG, PNG y WebP",
+      "errorSize": "El tamaño del archivo debe ser de 5MB o menos",
+      "uploadSuccess": "Escudo de la aldea subido",
+      "removeSuccess": "Escudo de la aldea eliminado"
     },
     "calendar": {
       "title": "Calendario de la aldea",

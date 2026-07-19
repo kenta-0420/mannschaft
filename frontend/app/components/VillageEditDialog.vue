@@ -29,6 +29,9 @@ import type {
   VillageVisibility,
 } from '~/types/village'
 
+/** 村紋 (monsho) は VillageResponse の拡張で扱う（既存 VillageResponse は変更禁止のため）。 */
+type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
+
 const props = defineProps<{
   visible: boolean
   village: VillageResponse
@@ -52,6 +55,10 @@ const DESCRIPTION_MAX = 1000
 const CATEGORY_MAX = 50
 const GUIDELINE_MAX = 20000
 const R2KEY_MAX = 500
+
+/** 村紋アップロードの FE バリデーション（BE の ALLOWED_MONSHO_MIME / MONSHO_MAX_BYTES と一致・#2355） */
+const MONSHO_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp']
+const MONSHO_MAX_BYTES = 5 * 1024 * 1024
 
 interface JoinPolicyOption {
   value: VillageJoinPolicy
@@ -97,6 +104,8 @@ interface FormState {
   iconR2Key: string
   coverR2Key: string
   guidelineMd: string
+  /** 村紋 R2 キー（別 EP でファイル入稿・PATCH 本文には含めない） */
+  monshoR2Key: string
 }
 
 function buildFormFromVillage(v: VillageResponse): FormState {
@@ -110,11 +119,93 @@ function buildFormFromVillage(v: VillageResponse): FormState {
     iconR2Key: v.iconR2Key ?? '',
     coverR2Key: v.coverR2Key ?? '',
     guidelineMd: v.guidelineMd ?? '',
+    monshoR2Key: (v as VillageWithMonsho).monshoR2Key ?? '',
   }
 }
 
 const form = ref<FormState>(buildFormFromVillage(props.village))
 const submitting = ref(false)
+
+// =============================================================================
+// 村紋 (monsho) — ファイル入稿（presign → R2 直 PUT → PUT /monsho）(#2355)
+// =============================================================================
+
+const runtimeConfig = useRuntimeConfig()
+const monshoFileInput = ref<HTMLInputElement | null>(null)
+const monshoUploading = ref(false)
+
+/** 生 r2Key に公開 base を1回だけ前置（二重前置しない・BE は署名 URL 化しない前提）。VillageHeader と同パターン。 */
+function buildR2Url(r2Key: string | null): string | null {
+  if (!r2Key) return null
+  const base = runtimeConfig.public.r2PublicUrl as string | undefined
+  if (!base) return null
+  return `${base.replace(/\/$/, '')}/${r2Key}`
+}
+
+const monshoPreviewUrl = computed<string | null>(() =>
+  buildR2Url(form.value.monshoR2Key ? form.value.monshoR2Key : null),
+)
+
+function triggerMonshoSelect() {
+  if (monshoUploading.value || submitting.value) return
+  monshoFileInput.value?.click()
+}
+
+async function onMonshoFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  input.value = '' // 同じファイルの再選択を許可
+  if (!file) return
+
+  // FE バリデーション（アップロード前・BE と一致）
+  if (!MONSHO_ALLOWED_MIME.includes(file.type)) {
+    showError(t('village.monsho.errorMime'))
+    return
+  }
+  if (file.size > MONSHO_MAX_BYTES) {
+    showError(t('village.monsho.errorSize'))
+    return
+  }
+
+  monshoUploading.value = true
+  try {
+    const res = await villageApi.uploadMonsho(props.village.id, file)
+    form.value.monshoR2Key = res.monshoR2Key ?? ''
+    showSuccess(t('village.monsho.uploadSuccess'))
+    emitMonshoUpdated(form.value.monshoR2Key || null)
+  }
+  catch (err) {
+    const { code, status } = extractApiError(err)
+    showError(translateApiError(code, status))
+  }
+  finally {
+    monshoUploading.value = false
+  }
+}
+
+async function removeMonsho() {
+  if (monshoUploading.value || submitting.value) return
+  monshoUploading.value = true
+  try {
+    await villageApi.deleteMonsho(props.village.id)
+    form.value.monshoR2Key = ''
+    showSuccess(t('village.monsho.removeSuccess'))
+    emitMonshoUpdated(null)
+  }
+  catch (err) {
+    const { code, status } = extractApiError(err)
+    showError(translateApiError(code, status))
+  }
+  finally {
+    monshoUploading.value = false
+  }
+}
+
+/** 村紋変更を親へ即時反映（Dialog は閉じない。親は villageData を差し替え VillageHeader を更新）。 */
+function emitMonshoUpdated(monshoR2Key: string | null) {
+  const merged: VillageWithMonsho = { ...(props.village as VillageWithMonsho), monshoR2Key }
+  emit('updated', merged)
+}
 
 /** Dialog の visible 変化に応じてフォームを再初期化（毎回最新の村情報から） */
 watch(
@@ -430,6 +521,68 @@ async function submit() {
         <p v-if="coverKeyError" class="mt-1 text-xs text-red-600">
           {{ coverKeyError }}
         </p>
+      </div>
+
+      <!-- 村紋（家紋・ロゴ）— ファイル入稿（#2355） -->
+      <div>
+        <label class="mb-1 block text-sm font-medium">
+          {{ t('village.monsho.label') }}
+        </label>
+        <div class="flex items-center gap-4">
+          <!-- プレビュー（アップロード中はオーバーレイ） -->
+          <div
+            class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800"
+          >
+            <img
+              v-if="monshoPreviewUrl"
+              :src="monshoPreviewUrl"
+              :alt="t('village.monsho.title')"
+              class="h-full w-full object-contain"
+            >
+            <i v-else class="pi pi-image text-2xl text-surface-400" />
+            <div
+              v-if="monshoUploading"
+              class="absolute inset-0 flex items-center justify-center bg-black/40"
+            >
+              <i class="pi pi-spin pi-spinner text-xl text-white" />
+            </div>
+          </div>
+
+          <!-- 隠しファイル input + 操作ボタン -->
+          <div class="flex flex-col gap-2">
+            <input
+              ref="monshoFileInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="hidden"
+              @change="onMonshoFileChange"
+            >
+            <div class="flex flex-wrap gap-2">
+              <Button
+                :label="monshoPreviewUrl ? t('village.monsho.change') : t('village.monsho.upload')"
+                icon="pi pi-upload"
+                severity="secondary"
+                size="small"
+                :loading="monshoUploading"
+                :disabled="submitting"
+                @click="triggerMonshoSelect"
+              />
+              <Button
+                v-if="monshoPreviewUrl"
+                :label="t('village.monsho.remove')"
+                icon="pi pi-trash"
+                severity="danger"
+                size="small"
+                text
+                :disabled="monshoUploading || submitting"
+                @click="removeMonsho"
+              />
+            </div>
+            <p class="text-xs text-surface-500">
+              {{ monshoUploading ? t('village.monsho.uploading') : t('village.monsho.hint') }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <!-- ガイドライン -->

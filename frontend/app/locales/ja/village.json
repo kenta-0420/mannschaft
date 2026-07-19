@@ -354,7 +354,15 @@
     "monsho": {
       "title": "村紋",
       "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "remove": "村紋を削除",
+      "label": "村紋（家紋・ロゴ）",
+      "change": "村紋を変更",
+      "uploading": "アップロード中…",
+      "hint": "JPG / PNG / WebP・5MBまで",
+      "errorMime": "画像形式は JPG・PNG・WebP のみ対応しています",
+      "errorSize": "ファイルサイズは 5MB 以内にしてください",
+      "uploadSuccess": "村紋をアップロードしました",
+      "removeSuccess": "村紋を削除しました"
     },
     "calendar": {
       "title": "歳時記カレンダー",
