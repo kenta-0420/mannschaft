@@ -22,6 +22,7 @@ import com.mannschaft.app.queue.dto.SettingsResponse;
 import com.mannschaft.app.queue.dto.TicketResponse;
 import com.mannschaft.app.queue.dto.UpdateCategoryRequest;
 import com.mannschaft.app.queue.dto.UpdateCounterRequest;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueCategoryService;
 import com.mannschaft.app.queue.service.QueueCounterService;
 import com.mannschaft.app.queue.service.QueueQrCodeService;
@@ -113,6 +114,9 @@ class QueueControllerTest {
 
         @Mock
         private QueueTicketService ticketService;
+
+        @Mock
+        private QueueAccessGuard accessGuard;
 
         @InjectMocks
         private QueueTicketController ticketController;
@@ -290,6 +294,9 @@ class QueueControllerTest {
         @Mock
         private QueueCategoryService categoryService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueCategoryController categoryController;
 
@@ -357,6 +364,9 @@ class QueueControllerTest {
 
         @Mock
         private QueueCounterService counterService;
+
+        @Mock
+        private QueueAccessGuard accessGuard;
 
         @InjectMocks
         private QueueCounterController counterController;
@@ -431,6 +441,9 @@ class QueueControllerTest {
         @Mock
         private QueueQrCodeService qrCodeService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueQrCodeController qrCodeController;
 
@@ -492,6 +505,9 @@ class QueueControllerTest {
         @Mock
         private QueueSettingsService settingsService;
 
+        @Mock
+        private QueueAccessGuard accessGuard;
+
         @InjectMocks
         private QueueSettingsController settingsController;
 
@@ -535,6 +551,9 @@ class QueueControllerTest {
 
         @Mock
         private QueueStatsService statsService;
+
+        @Mock
+        private QueueAccessGuard accessGuard;
 
         @Mock
         private QueueCategoryService categoryService;
