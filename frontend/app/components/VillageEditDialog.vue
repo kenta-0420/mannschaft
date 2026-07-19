@@ -354,7 +354,14 @@ async function submit() {
     }
     const updated = await villageApi.updateVillage(props.village.id, body)
     showSuccess(t('village.editDialog.saveSuccess'))
-    emit('updated', updated)
+    // updateVillage の戻り値(VillageResponse)は monshoR2Key を持たないため、
+    // 直前の村紋アップロード結果(form.value.monshoR2Key)をマージしてから親へ流す。
+    // これをしないと親が villageData を全置換し、表示上 村紋がプレースホルダに戻る（#2355 検分是正1）。
+    const mergedUpdated: VillageWithMonsho = {
+      ...updated,
+      monshoR2Key: form.value.monshoR2Key || null,
+    }
+    emit('updated', mergedUpdated)
     emit('update:visible', false)
   }
   catch (err) {

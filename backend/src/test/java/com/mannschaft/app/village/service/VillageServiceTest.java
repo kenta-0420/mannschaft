@@ -536,19 +536,24 @@ class VillageServiceTest {
     /**
      * 村紋 presign 発行の Service ロジック検証（#2355）。
      *
-     * <p><strong>本テストは red（試練）である。</strong>{@link VillageService#generateMonshoUploadUrl}
-     * は骨格スタブで {@link UnsupportedOperationException} を投げるため、以下すべて失敗する。
-     * /出陣 で認可（AC-2/AC-3）・MIME/サイズ検証（AC-5）・キー規約/TTL（AC-1）を実装して green 化する。</p>
+     * <p>{@link VillageService#generateMonshoUploadUrl} は本実装済み（green）。
+     * 認可（村存在確認→HEADMAN/SYSTEM_ADMIN）を先行し、その後 MIME（jpeg/png/webp）と
+     * サイズ（0 超〜{@code MONSHO_MAX_BYTES}=5MB）を検証し、キー規約
+     * {@code village/{villageId}/monsho/{uuid}.{ext}} でキーを組んで presign（TTL=600 秒）を払い出す。
+     * ここでは認可（AC-2/AC-3）・MIME/サイズ境界（AC-5）・キー規約/TTL（AC-1）を網羅する。</p>
      *
-     * <p>設定用スタブは {@code lenient()} で置く（スタブが即例外を投げ mock 未到達でも
-     * UnnecessaryStubbing で落とさないため）。</p>
+     * <p>設定用スタブは {@code lenient()} で置く（分岐により未到達となる mock があっても
+     * UnnecessaryStubbing で落とさないため）。R2StorageService は外部境界のため mock、
+     * 認可判定は実物（{@code requireHeadmanOrSystemAdmin} / {@code findActiveOrThrow}）を通す。</p>
      */
     @Nested
-    @DisplayName("generateMonshoUploadUrl() — 村紋 presign 発行（#2355・red）")
+    @DisplayName("generateMonshoUploadUrl() — 村紋 presign 発行（#2355）")
     class GenerateMonshoUploadUrlTests {
 
         private static final String VALID_MIME = "image/png";
-        // 村紋サイズ上限（ProfileMedia ICON=5MB を手本とした想定値）を確実に超えるサイズ
+        // 村紋サイズ上限（実装 MONSHO_MAX_BYTES=5MB）
+        private static final long MAX_FILE_SIZE = 5L * 1024 * 1024;
+        // 上限を確実に超えるサイズ
         private static final long HUGE_FILE_SIZE = 50L * 1024 * 1024;
         private static final long OK_FILE_SIZE = 100L * 1024;
 
@@ -583,6 +588,54 @@ class VillageServiceTest {
             assertThat(res.expiresInSeconds()).isEqualTo(600L);
             assertThat(res.r2Key()).startsWith("village/" + VILLAGE_ID + "/monsho/");
             assertThat(res.r2Key()).endsWith(".png");
+        }
+
+        @Test
+        @DisplayName("AC-5境界: サイズちょうど 5MB(MONSHO_MAX_BYTES) は成功（> でのみ弾くため通る）")
+        void generateUploadUrl_fileSizeExactlyMaxSucceeds() {
+            givenVillageExists();
+            givenHeadman();
+            lenient().when(r2StorageService.generateUploadUrl(
+                            any(String.class), eq(VALID_MIME), any(Duration.class)))
+                    .thenAnswer(inv -> new PresignedUploadResult(
+                            "https://r2.example.com/put?sig=boundary", inv.getArgument(0), 600L));
+
+            MonshoUploadUrlResponse res = service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, MAX_FILE_SIZE, HEADMAN_USER_ID);
+
+            assertThat(res.uploadUrl()).isEqualTo("https://r2.example.com/put?sig=boundary");
+            assertThat(res.r2Key()).startsWith("village/" + VILLAGE_ID + "/monsho/");
+            assertThat(res.r2Key()).endsWith(".png");
+        }
+
+        @Test
+        @DisplayName("AC-5境界: サイズ 0 は 400（VILLAGE_FIELD_INVALID）— fileSize <= 0 分岐")
+        void generateUploadUrl_fileSizeZero() {
+            givenVillageExists();
+            givenHeadman();
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, 0L, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-5境界: サイズ負値(-1) は 400（VILLAGE_FIELD_INVALID）")
+        void generateUploadUrl_fileSizeNegative() {
+            givenVillageExists();
+            givenHeadman();
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, -1L, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
         }
 
         @Test
