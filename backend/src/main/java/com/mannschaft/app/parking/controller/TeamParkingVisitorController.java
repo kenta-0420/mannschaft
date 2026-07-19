@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.*;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingSpaceService;
 import com.mannschaft.app.parking.service.ParkingVisitorRecurringService;
 import com.mannschaft.app.parking.service.ParkingVisitorReservationService;
@@ -35,6 +36,7 @@ public class TeamParkingVisitorController {
     private final ParkingVisitorReservationService reservationService;
     private final ParkingVisitorRecurringService recurringService;
     private final ParkingSpaceService spaceService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
 
@@ -47,6 +49,7 @@ public class TeamParkingVisitorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         Page<VisitorReservationResponse> result = reservationService.list(spaceIds, date,
                 PageRequest.of(page, Math.min(size, 100), Sort.by("reservedDate", "timeFrom")));
@@ -60,6 +63,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> createReservation(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateVisitorReservationRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.create(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
@@ -69,6 +73,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<AvailabilityResponse>> getAvailability(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         AvailabilityResponse result = reservationService.getAvailability(SCOPE_TYPE, teamId, date);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -77,6 +82,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約詳細")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> getReservation(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.getDetail(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -85,6 +91,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約承認")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> approveReservation(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.approve(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -94,6 +101,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> rejectReservation(
             @PathVariable Long teamId, @PathVariable Long id,
             @RequestParam(required = false) String adminComment) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.reject(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId(), adminComment);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -102,6 +110,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者チェックイン")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> checkIn(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.checkIn(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -110,6 +119,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約完了")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> complete(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.complete(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -117,6 +127,7 @@ public class TeamParkingVisitorController {
     @DeleteMapping("/visitor-reservations/{id}")
     @Operation(summary = "チーム来場者予約キャンセル")
     public ResponseEntity<Void> cancelReservation(@PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         reservationService.cancel(SCOPE_TYPE, teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
@@ -126,6 +137,7 @@ public class TeamParkingVisitorController {
     @GetMapping("/visitor-recurring")
     @Operation(summary = "チーム定期予約テンプレート一覧")
     public ResponseEntity<ApiResponse<List<VisitorRecurringResponse>>> listRecurring(@PathVariable Long teamId) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<VisitorRecurringResponse> result = recurringService.list(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -135,6 +147,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> createRecurring(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateVisitorRecurringRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorRecurringResponse result = recurringService.create(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
@@ -144,6 +157,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> updateRecurring(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateVisitorRecurringRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         VisitorRecurringResponse result = recurringService.update(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -151,6 +165,7 @@ public class TeamParkingVisitorController {
     @DeleteMapping("/visitor-recurring/{id}")
     @Operation(summary = "チーム定期予約テンプレート削除")
     public ResponseEntity<Void> deleteRecurring(@PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         recurringService.delete(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, id);
         return ResponseEntity.noContent().build();
     }
