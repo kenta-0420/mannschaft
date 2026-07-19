@@ -3,6 +3,7 @@ package com.mannschaft.app.village.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.FestivalCreateRequest;
 import com.mannschaft.app.village.dto.FestivalResponse;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -69,6 +71,8 @@ public class VillageFestivalService {
     private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final AuditLogService auditLogService;
+    /** バナー画像の生 R2 キーを表示用の署名付き URL へ解決する共通部品（#2355 r2PublicUrl 根絶）。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ====================================================================
     // 作成
@@ -127,7 +131,7 @@ public class VillageFestivalService {
         log.info("Village festival created: villageId={} festivalId={} status={} by userId={}",
                 villageId, saved.getId(), saved.getStatus(), actorUserId);
 
-        return FestivalResponse.of(saved, null);
+        return FestivalResponse.of(saved, null, mediaUrlResolver.resolve(saved.getBannerR2Key()));
     }
 
     // ====================================================================
@@ -197,7 +201,7 @@ public class VillageFestivalService {
         log.info("Village festival updated: villageId={} festivalId={} by userId={}",
                 villageId, saved.getId(), actorUserId);
 
-        return FestivalResponse.of(saved, null);
+        return FestivalResponse.of(saved, null, mediaUrlResolver.resolve(saved.getBannerR2Key()));
     }
 
     // ====================================================================
@@ -220,7 +224,7 @@ public class VillageFestivalService {
         if (entity.getStatus() == VillageFestivalStatus.ENDED
                 || entity.getStatus() == VillageFestivalStatus.CANCELLED) {
             // 冪等：既に終了/中止済みなら何もせず返す
-            return FestivalResponse.of(entity, null);
+            return FestivalResponse.of(entity, null, mediaUrlResolver.resolve(entity.getBannerR2Key()));
         }
 
         entity.setStatus(VillageFestivalStatus.CANCELLED);
@@ -236,7 +240,7 @@ public class VillageFestivalService {
         log.info("Village festival cancelled: villageId={} festivalId={} by userId={}",
                 villageId, saved.getId(), actorUserId);
 
-        return FestivalResponse.of(saved, null);
+        return FestivalResponse.of(saved, null, mediaUrlResolver.resolve(saved.getBannerR2Key()));
     }
 
     // ====================================================================
@@ -256,8 +260,15 @@ public class VillageFestivalService {
         Page<VillageFestivalEntity> page = (status == null)
                 ? festivalRepository.findByVillageIdAndDeletedAtIsNull(villageId, resolved)
                 : festivalRepository.findByVillageIdAndStatusAndDeletedAtIsNull(villageId, status, resolved);
-        return page.getContent().stream()
-                .map(f -> FestivalResponse.of(f, null))
+        List<VillageFestivalEntity> content = page.getContent();
+
+        // 一覧では同一バナーキー（使い回し画像）が複数行に現れうるため、
+        // 行ごとに resolve() を個別に呼ばず resolveAll() で一括解決してメモ化する（N+1 防止）。
+        Map<String, String> bannerUrlsByKey = mediaUrlResolver.resolveAll(
+                content.stream().map(VillageFestivalEntity::getBannerR2Key).toList());
+
+        return content.stream()
+                .map(f -> FestivalResponse.of(f, null, bannerUrlsByKey.get(f.getBannerR2Key())))
                 .toList();
     }
 
@@ -267,7 +278,7 @@ public class VillageFestivalService {
     public FestivalResponse getFestival(UUID villageId, UUID festivalId) {
         loadActiveVillage(villageId);
         VillageFestivalEntity entity = loadFestival(villageId, festivalId);
-        return FestivalResponse.of(entity, null);
+        return FestivalResponse.of(entity, null, mediaUrlResolver.resolve(entity.getBannerR2Key()));
     }
 
     // ====================================================================
