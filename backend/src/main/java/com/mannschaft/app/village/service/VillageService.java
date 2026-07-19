@@ -404,8 +404,19 @@ public class VillageService {
 
         Page<VillageEntity> result = villageSearchRepository.findAll(spec, pageable);
 
+        // 一覧では同一キー（例: 同一運営が使い回す村アイコン）が複数行に現れうるため、
+        // 行ごとに resolve() を個別に呼ばず resolveAll() で一括解決してメモ化する（N+1 防止 / AC-7）。
+        List<String> allKeys = result.getContent().stream()
+                .flatMap(v -> java.util.stream.Stream.of(
+                        v.getIconR2Key(), v.getCoverR2Key(), v.getMonshoR2Key()))
+                .toList();
+        java.util.Map<String, String> resolvedUrls = mediaUrlResolver.resolveAll(allKeys);
+
         List<VillageResponse> items = result.getContent().stream()
-                .map(v -> toResponse(v, requesterUserId, false))
+                .map(v -> toResponse(v, requesterUserId, false,
+                        resolvedUrls.get(v.getIconR2Key()),
+                        resolvedUrls.get(v.getCoverR2Key()),
+                        resolvedUrls.get(v.getMonshoR2Key())))
                 .toList();
 
         return VillageSearchResponse.builder()
@@ -474,12 +485,31 @@ public class VillageService {
     }
 
     /**
-     * {@link VillageEntity} を {@link VillageResponse} に変換する。
+     * {@link VillageEntity} を {@link VillageResponse} に変換する（単票用: create/get/update）。
+     *
+     * <p>icon/cover/monsho の3キーを {@link MediaUrlResolver#resolve} で個別に署名 URL 解決する。
+     * 一覧（{@link #search}）は行数分の presign を避けるため、事前に {@code resolveAll} で
+     * バッチ解決した結果を {@link #toResponse(VillageEntity, Long, boolean, String, String, String)}
+     * へ直接渡す別経路を使う。</p>
      *
      * @param includePrivateView 詳細表示モード（{@code guidelineMd} などを返す）かどうか。
      *                           検索結果モードでは false。
      */
     private VillageResponse toResponse(VillageEntity v, Long requesterUserId, boolean includePrivateView) {
+        String iconUrl = mediaUrlResolver.resolve(v.getIconR2Key());
+        String coverUrl = mediaUrlResolver.resolve(v.getCoverR2Key());
+        String monshoUrl = mediaUrlResolver.resolve(v.getMonshoR2Key());
+        return toResponse(v, requesterUserId, includePrivateView, iconUrl, coverUrl, monshoUrl);
+    }
+
+    /**
+     * {@link VillageEntity} を {@link VillageResponse} に変換する（画像 URL 解決済みを受け取る版）。
+     *
+     * <p>{@link #search} が {@code resolveAll} で一括解決した結果をここへ渡すことで、
+     * 同一 R2 キーを共有する行でも presign が行数分走らないようにする（N+1 防止 / AC-7）。</p>
+     */
+    private VillageResponse toResponse(VillageEntity v, Long requesterUserId, boolean includePrivateView,
+                                        String iconUrl, String coverUrl, String monshoUrl) {
         boolean isMember = isMember(v.getId(), requesterUserId);
         boolean isPinned = isPinned(v.getId(), requesterUserId);
         VillageRole myRole = null;
@@ -499,10 +529,9 @@ public class VillageService {
                 .visibility(v.getVisibility())
                 .bulletinVisibility(v.getBulletinVisibility())
                 .category(v.getCategory())
-                // TODO(#2355 出陣): iconUrl / coverUrl / monshoUrl を mediaUrlResolver で
-                //  署名付き表示 URL へ解決して載せる。現状は未配線のため常に null であり、
-                //  村の画像が 1 枚も表示されない（試練が red で固定している欠陥）。
-                //  村紋は VillageEntity#getMonshoR2Key() に既に永続化済み。
+                .iconUrl(iconUrl)
+                .coverUrl(coverUrl)
+                .monshoUrl(monshoUrl)
                 .guidelineMd(includePrivateView ? v.getGuidelineMd() : null)
                 .memberCount(v.getMemberCountCache() != null ? v.getMemberCountCache() : 0L)
                 .isOfficial(v.getType() == VillageType.OFFICIAL)
