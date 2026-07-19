@@ -2,7 +2,10 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.MonshoUploadUrlResponse;
 import com.mannschaft.app.village.dto.VillageCreateRequest;
 import com.mannschaft.app.village.dto.VillageResponse;
 import com.mannschaft.app.village.dto.VillageSearchResponse;
@@ -33,6 +36,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +67,7 @@ class VillageServiceTest {
     @Mock private VillageMembershipRepository membershipRepository;
     @Mock private UserVillagePinRepository pinRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private R2StorageService r2StorageService;
 
     @InjectMocks private VillageService service;
 
@@ -521,6 +526,137 @@ class VillageServiceTest {
 
             assertThat(res.content()).isEmpty();
             assertThat(res.totalElements()).isEqualTo(0);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // generateMonshoUploadUrl （#2355 村紋 presign 発行 EP）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 村紋 presign 発行の Service ロジック検証（#2355）。
+     *
+     * <p><strong>本テストは red（試練）である。</strong>{@link VillageService#generateMonshoUploadUrl}
+     * は骨格スタブで {@link UnsupportedOperationException} を投げるため、以下すべて失敗する。
+     * /出陣 で認可（AC-2/AC-3）・MIME/サイズ検証（AC-5）・キー規約/TTL（AC-1）を実装して green 化する。</p>
+     *
+     * <p>設定用スタブは {@code lenient()} で置く（スタブが即例外を投げ mock 未到達でも
+     * UnnecessaryStubbing で落とさないため）。</p>
+     */
+    @Nested
+    @DisplayName("generateMonshoUploadUrl() — 村紋 presign 発行（#2355・red）")
+    class GenerateMonshoUploadUrlTests {
+
+        private static final String VALID_MIME = "image/png";
+        // 村紋サイズ上限（ProfileMedia ICON=5MB を手本とした想定値）を確実に超えるサイズ
+        private static final long HUGE_FILE_SIZE = 50L * 1024 * 1024;
+        private static final long OK_FILE_SIZE = 100L * 1024;
+
+        private void givenVillageExists() {
+            lenient().when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                    .thenReturn(Optional.of(sampleVillage(VillageVisibility.PUBLIC, 0L)));
+        }
+
+        private void givenHeadman() {
+            lenient().when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
+            lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                            VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
+                    .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
+        }
+
+        @Test
+        @DisplayName("AC-1: HEADMAN は 200 相当で uploadUrl / 村スコープ r2Key / TTL=600 を得る")
+        void generateUploadUrl_headmanSucceeds() {
+            givenVillageExists();
+            givenHeadman();
+            lenient().when(r2StorageService.generateUploadUrl(
+                            any(String.class), eq(VALID_MIME), any(Duration.class)))
+                    .thenReturn(new PresignedUploadResult(
+                            "https://r2.example.com/put?sig=xyz", "returned-key", 600L));
+
+            MonshoUploadUrlResponse res = service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, OK_FILE_SIZE, HEADMAN_USER_ID);
+
+            assertThat(res.uploadUrl()).isEqualTo("https://r2.example.com/put?sig=xyz");
+            assertThat(res.expiresInSeconds()).isEqualTo(600L);
+            assertThat(res.r2Key()).startsWith("village/" + VILLAGE_ID + "/monsho/");
+            assertThat(res.r2Key()).endsWith(".png");
+        }
+
+        @Test
+        @DisplayName("AC-2: 非 HEADMAN・非 SYSTEM_ADMIN は MODERATION_FORBIDDEN（403）")
+        void generateUploadUrl_nonHeadmanForbidden() {
+            givenVillageExists();
+            lenient().when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
+            // membership は @BeforeEach の既定で空（非メンバー）
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, OK_FILE_SIZE, REGULAR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-3: 存在しない村（UUID）は VILLAGE_NOT_FOUND（404）")
+        void generateUploadUrl_villageNotFound() {
+            lenient().when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, OK_FILE_SIZE, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-5: 不正 MIME（image/svg+xml）は 400（VILLAGE_FIELD_INVALID）")
+        void generateUploadUrl_invalidMimeSvg() {
+            givenVillageExists();
+            givenHeadman();
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, "image/svg+xml", OK_FILE_SIZE, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-5: 不正 MIME（application/pdf）は 400（VILLAGE_FIELD_INVALID）")
+        void generateUploadUrl_invalidMimePdf() {
+            givenVillageExists();
+            givenHeadman();
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, "application/pdf", OK_FILE_SIZE, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-5: サイズ超過は 400（VILLAGE_FIELD_INVALID）")
+        void generateUploadUrl_fileSizeExceeded() {
+            givenVillageExists();
+            givenHeadman();
+
+            assertThatThrownBy(() -> service.generateMonshoUploadUrl(
+                    VILLAGE_ID, VALID_MIME, HUGE_FILE_SIZE, HEADMAN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
         }
     }
 

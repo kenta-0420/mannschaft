@@ -2,7 +2,9 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.MonshoUploadUrlResponse;
 import com.mannschaft.app.village.dto.VillageCreateRequest;
 import com.mannschaft.app.village.dto.VillageResponse;
 import com.mannschaft.app.village.dto.VillageSearchResponse;
@@ -76,6 +78,7 @@ public class VillageService {
     private final VillageMembershipRepository membershipRepository;
     private final UserVillagePinRepository pinRepository;
     private final AccessControlService accessControlService;
+    private final R2StorageService r2StorageService;
 
     // ─────────────────────────────────────────────
     // 作成
@@ -285,6 +288,29 @@ public class VillageService {
         entity = villageRepository.save(entity);
         log.info("村紋削除: villageId={}, byUser={}", villageId, requesterUserId);
         return entity;
+    }
+
+    /**
+     * 村紋（monsho）アップロード用の presigned PUT URL を発行する（F17 Phase 2 U7 / #2355）。
+     *
+     * <p>HEADMAN または SYSTEM_ADMIN のみ実行可能。MIME タイプ（image/jpeg / image/png / image/webp）と
+     * ファイルサイズ上限を検証したうえで、R2 キー規約
+     * {@code village/{villageId}/monsho/{UUID.randomUUID()}.{ext}} に従いキーを組み立て、
+     * {@code r2StorageService.generateUploadUrl} で署名付き PUT URL を払い出す。</p>
+     *
+     * <p><strong>骨格スタブ（#2355 試練）:</strong> 本メソッドは受け入れテスト（red）を設置するための
+     * 未実装スタブであり、呼び出すと {@link UnsupportedOperationException} を投げる。実装は /出陣 で行う。</p>
+     *
+     * @param villageId       対象村
+     * @param contentType     アップロードする画像の Content-Type
+     * @param fileSize        アップロードする画像のバイト数
+     * @param requesterUserId 実行者ユーザー ID
+     * @return presigned PUT URL / R2 キー / 有効期限（秒）
+     */
+    @Transactional(readOnly = true)
+    public MonshoUploadUrlResponse generateMonshoUploadUrl(
+            UUID villageId, String contentType, long fileSize, Long requesterUserId) {
+        throw new UnsupportedOperationException("未実装 #2355 /出陣で実装");
     }
 
     // ─────────────────────────────────────────────

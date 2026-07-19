@@ -2,6 +2,8 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.village.dto.MonshoUploadUrlRequest;
+import com.mannschaft.app.village.dto.MonshoUploadUrlResponse;
 import com.mannschaft.app.village.dto.VillageMonshoResponse;
 import com.mannschaft.app.village.dto.VillageMonshoUpdateRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +46,17 @@ import java.util.UUID;
 public class VillageMonshoController {
 
     private final VillageService villageService;
+
+    @PostMapping("/upload-url")
+    @Operation(summary = "村紋アップロード用 presigned PUT URL 発行（HEADMAN/SYSTEM_ADMIN）— #2355")
+    public ResponseEntity<ApiResponse<MonshoUploadUrlResponse>> generateUploadUrl(
+            @PathVariable UUID villageId,
+            @Valid @RequestBody MonshoUploadUrlRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        MonshoUploadUrlResponse response = villageService.generateMonshoUploadUrl(
+                villageId, request.contentType(), request.fileSize(), userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
 
     @PutMapping
     @Operation(summary = "村紋設定（HEADMAN/SYSTEM_ADMIN）— 既に R2 にアップロード済みの r2Key を登録")
