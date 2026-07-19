@@ -31018,6 +31018,48 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/monsho/upload-url": {
+      "post": {
+        "tags": [
+          "村紋 (F17.1 Phase 2)"
+        ],
+        "summary": "村紋アップロード用 presigned PUT URL 発行（HEADMAN/SYSTEM_ADMIN）— #2355",
+        "operationId": "generateUploadUrl",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonshoUploadUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMonshoUploadUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/memberships": {
       "get": {
         "tags": [
@@ -33093,7 +33135,7 @@
           "プロフィールメディア"
         ],
         "summary": "ユーザープロフィールメディアアップロードURL発行",
-        "operationId": "generateUploadUrl",
+        "operationId": "generateUploadUrl_1",
         "parameters": [
           {
             "name": "role",
@@ -36588,7 +36630,7 @@
         "tags": [
           "skill-controller"
         ],
-        "operationId": "generateUploadUrl_1",
+        "operationId": "generateUploadUrl_2",
         "parameters": [
           {
             "name": "teamId",
@@ -37256,7 +37298,7 @@
           "サービス履歴"
         ],
         "summary": "アップロードURL発行",
-        "operationId": "generateUploadUrl_2",
+        "operationId": "generateUploadUrl_3",
         "parameters": [
           {
             "name": "teamId",
@@ -40841,7 +40883,7 @@
           "プロフィールメディア"
         ],
         "summary": "チームプロフィールメディアアップロードURL発行",
-        "operationId": "generateUploadUrl_3",
+        "operationId": "generateUploadUrl_4",
         "parameters": [
           {
             "name": "teamId",
@@ -54664,7 +54706,7 @@
         ],
         "summary": "スケジュールメディアアップロード URL 発行",
         "description": "IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。",
-        "operationId": "generateUploadUrl_4",
+        "operationId": "generateUploadUrl_5",
         "parameters": [
           {
             "name": "scheduleId",
@@ -65612,7 +65654,7 @@
           "プロフィールメディア"
         ],
         "summary": "組織プロフィールメディアアップロードURL発行",
-        "operationId": "generateUploadUrl_5",
+        "operationId": "generateUploadUrl_6",
         "parameters": [
           {
             "name": "orgId",
@@ -76439,7 +76481,7 @@
           "チャットファイル"
         ],
         "summary": "アップロードURL発行",
-        "operationId": "generateUploadUrl_6",
+        "operationId": "generateUploadUrl_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -78708,7 +78750,7 @@
         ],
         "summary": "メディアアップロード URL 発行",
         "description": "IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。",
-        "operationId": "generateUploadUrl_7",
+        "operationId": "generateUploadUrl_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -160956,6 +160998,42 @@
           "sortOrder": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "MonshoUploadUrlRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseMonshoUploadUrlResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MonshoUploadUrlResponse"
+          }
+        }
+      },
+      "MonshoUploadUrlResponse": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "r2Key": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
           }
         }
       },

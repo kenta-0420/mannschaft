@@ -6566,6 +6566,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/monsho/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 村紋アップロード用 presigned PUT URL 発行（HEADMAN/SYSTEM_ADMIN）— #2355 */
+        post: operations["generateUploadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/memberships": {
         parameters: {
             query?: never;
@@ -7201,7 +7218,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** ユーザープロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl"];
+        post: operations["generateUploadUrl_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8315,7 +8332,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generateUploadUrl_1"];
+        post: operations["generateUploadUrl_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8471,7 +8488,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** アップロードURL発行 */
-        post: operations["generateUploadUrl_2"];
+        post: operations["generateUploadUrl_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9478,7 +9495,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** チームプロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl_3"];
+        post: operations["generateUploadUrl_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13904,7 +13921,7 @@ export interface paths {
          * スケジュールメディアアップロード URL 発行
          * @description IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。
          */
-        post: operations["generateUploadUrl_4"];
+        post: operations["generateUploadUrl_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17100,7 +17117,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織プロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl_5"];
+        post: operations["generateUploadUrl_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20851,7 +20868,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** アップロードURL発行 */
-        post: operations["generateUploadUrl_6"];
+        post: operations["generateUploadUrl_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21615,7 +21632,7 @@ export interface paths {
          * メディアアップロード URL 発行
          * @description IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。
          */
-        post: operations["generateUploadUrl_7"];
+        post: operations["generateUploadUrl_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -52846,6 +52863,20 @@ export interface components {
             name?: string;
             /** Format: int32 */
             sortOrder?: number;
+        };
+        MonshoUploadUrlRequest: {
+            contentType?: string;
+            /** Format: int64 */
+            fileSize?: number;
+        };
+        ApiResponseMonshoUploadUrlResponse: {
+            data?: components["schemas"]["MonshoUploadUrlResponse"];
+        };
+        MonshoUploadUrlResponse: {
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            r2Key?: string;
+            uploadUrl?: string;
         };
         MembershipJoinRequest: {
             /** Format: int64 */
@@ -93843,6 +93874,32 @@ export interface operations {
             };
         };
     };
+    generateUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonshoUploadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMonshoUploadUrlResponse"];
+                };
+            };
+        };
+    };
     list_6: {
         parameters: {
             query?: {
@@ -95044,7 +95101,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl: {
+    generateUploadUrl_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -97207,7 +97264,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_1: {
+    generateUploadUrl_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -97564,7 +97621,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_2: {
+    generateUploadUrl_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -99627,7 +99684,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_3: {
+    generateUploadUrl_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -108223,7 +108280,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_4: {
+    generateUploadUrl_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -114493,7 +114550,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_5: {
+    generateUploadUrl_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -121351,7 +121408,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_6: {
+    generateUploadUrl_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -122809,7 +122866,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_7: {
+    generateUploadUrl_8: {
         parameters: {
             query?: never;
             header?: never;
