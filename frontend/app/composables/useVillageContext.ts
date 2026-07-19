@@ -23,16 +23,9 @@ import type { MembershipResponse, VillageResponse } from '~/types/village'
  *  - `inject(key)!` の非 null アサーション散在を避けるため、未 provide 時に明示的に
  *    throw する `useVillageContext()` アクセサを公開する。壊れたら静かに undefined を
  *    返すよりも、開発時に即座に発見できる方が安全。
- *  - VillageHeader.vue は `VillageResponse & { monshoR2Key?: string | null }` の交差型
- *    （L31）を受け取るため、本コンテキストの village も同じ交差型 `VillageWithMonsho`
- *    を採用する。
+ *  - 村紋（monshoUrl）は #2355 で VillageResponse 本体に統合済みのため、交差型は
+ *    不要になった。VillageHeader.vue も本コンテキストも素の VillageResponse を扱う。
  */
-
-/**
- * VillageHeader が受け取る村レスポンスの交差型（村紋 r2Key を optional で追加）。
- * VillageHeader.vue L31 と一致させる。
- */
-export type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
 
 /** 親が provide する権限フラグ群。 */
 export interface VillagePerms {
@@ -54,7 +47,7 @@ export interface VillageContext {
    * 村本体（取得前/エラー時は null）。子は読み取り専用で参照する。
    * 親では `villageData`（useAsyncData）を加工した computed を渡すため ComputedRef とする。
    */
-  village: ComputedRef<VillageWithMonsho | null>
+  village: ComputedRef<VillageResponse | null>
   /** 村再取得（参加・退村・ピン操作後の状態同期に使う）。 */
   refresh: () => Promise<void>
   /** 自分のメンバーシップ（退村時に id が必要・未所属時は null）。 */

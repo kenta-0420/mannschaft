@@ -189,7 +189,12 @@ export function useVillageFeatureApi() {
   // これにより「presign 発行 → R2 へ直 PUT → PUT /monsho で r2Key 登録」の3ステップで
   // ファイル入稿できる。かつての FormData を POST /monsho に送る `uploadMonsho`（実測 405・
   // 死蔵）は撤去済みで、本実装はそれとは別物（multipart は一切使わない）。
-  // 読取（表示）は生 r2Key ＋ FE の公開 URL 化（buildR2Url）が正で、BE は署名 URL 化しない。
+  // 村の表示系読取（GET /villages/{id} 等）は #2355 で署名付き表示 URL
+  // （VillageResponse.monshoUrl）に統一済み。FE は公開ベース URL を組み立てない
+  // （前置なしでそのまま <img src> に渡す）。
+  // 本 PUT/DELETE（書込エコー）だけは既存契約どおり生 r2Key を返す点に注意
+  // （VillageMonshoResponse.monshoR2Key）。プレビューは呼び出し側で村詳細を
+  // 再取得して署名 URL を得ること（VillageEditDialog.vue#refreshMonshoUrl が範）。
   // =====================================================================
 
   /**

@@ -29,9 +29,6 @@ import type {
   VillageVisibility,
 } from '~/types/village'
 
-/** 村紋 (monsho) は VillageResponse の拡張で扱う（既存 VillageResponse は変更禁止のため）。 */
-type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
-
 const props = defineProps<{
   visible: boolean
   village: VillageResponse
@@ -104,10 +101,15 @@ interface FormState {
   iconR2Key: string
   coverR2Key: string
   guidelineMd: string
-  /** 村紋 R2 キー（別 EP でファイル入稿・PATCH 本文には含めない） */
-  monshoR2Key: string
 }
 
+/**
+ * icon/cover の R2 キー入力欄は「新しい値を入力する」欄として扱う（空欄プリフィル）。
+ * VillageResponse は #2355 で署名済み表示 URL（iconUrl/coverUrl）のみを返し、生キーは
+ * 返さなくなったため、現在値をテキストとして再表示することはできない。空送信は BE 側で
+ * 「未指定＝現状維持」として扱われる（VillageService#update の null チェック）ため、
+ * 空欄プリフィルでも「変更しない」という既存の意味は壊れない。
+ */
 function buildFormFromVillage(v: VillageResponse): FormState {
   return {
     name: v.name ?? '',
@@ -116,10 +118,9 @@ function buildFormFromVillage(v: VillageResponse): FormState {
     joinPolicy: v.joinPolicy,
     visibility: v.visibility,
     bulletinVisibility: v.bulletinVisibility ?? 'MEMBERS_ONLY',
-    iconR2Key: v.iconR2Key ?? '',
-    coverR2Key: v.coverR2Key ?? '',
+    iconR2Key: '',
+    coverR2Key: '',
     guidelineMd: v.guidelineMd ?? '',
-    monshoR2Key: (v as VillageWithMonsho).monshoR2Key ?? '',
   }
 }
 
@@ -130,21 +131,22 @@ const submitting = ref(false)
 // 村紋 (monsho) — ファイル入稿（presign → R2 直 PUT → PUT /monsho）(#2355)
 // =============================================================================
 
-const runtimeConfig = useRuntimeConfig()
 const monshoFileInput = ref<HTMLInputElement | null>(null)
 const monshoUploading = ref(false)
 
-/** 生 r2Key に公開 base を1回だけ前置（二重前置しない・BE は署名 URL 化しない前提）。VillageHeader と同パターン。 */
-function buildR2Url(r2Key: string | null): string | null {
-  if (!r2Key) return null
-  const base = runtimeConfig.public.r2PublicUrl as string | undefined
-  if (!base) return null
-  return `${base.replace(/\/$/, '')}/${r2Key}`
-}
+/**
+ * 村紋プレビュー用 URL。BE が返す署名付き表示 URL（{@link VillageResponse.monshoUrl}）を
+ * そのまま <img src> に渡す（公開ベース URL の前置はしない）。
+ * PUT/DELETE /monsho は書込エコー用の生キーしか返さないため、成功後は村詳細を再取得して
+ * 最新の署名 URL を得る（{@link refreshMonshoUrl}）。
+ */
+const monshoUrl = ref<string | null>(props.village.monshoUrl)
 
-const monshoPreviewUrl = computed<string | null>(() =>
-  buildR2Url(form.value.monshoR2Key ? form.value.monshoR2Key : null),
-)
+async function refreshMonshoUrl() {
+  const refreshed = await villageApi.getVillage(props.village.id)
+  monshoUrl.value = refreshed.monshoUrl
+  emit('updated', refreshed)
+}
 
 function triggerMonshoSelect() {
   if (monshoUploading.value || submitting.value) return
@@ -169,10 +171,10 @@ async function onMonshoFileChange(e: Event) {
 
   monshoUploading.value = true
   try {
-    const res = await villageApi.uploadMonsho(props.village.id, file)
-    form.value.monshoR2Key = res.monshoR2Key ?? ''
+    await villageApi.uploadMonsho(props.village.id, file)
     showSuccess(t('village.monsho.uploadSuccess'))
-    emitMonshoUpdated(form.value.monshoR2Key || null)
+    // PUT /monsho は生キーのみ返す書込エコーのため、表示用署名 URL は村詳細の再取得で得る。
+    await refreshMonshoUrl()
   }
   catch (err) {
     const { code, status } = extractApiError(err)
@@ -188,9 +190,8 @@ async function removeMonsho() {
   monshoUploading.value = true
   try {
     await villageApi.deleteMonsho(props.village.id)
-    form.value.monshoR2Key = ''
     showSuccess(t('village.monsho.removeSuccess'))
-    emitMonshoUpdated(null)
+    await refreshMonshoUrl()
   }
   catch (err) {
     const { code, status } = extractApiError(err)
@@ -201,18 +202,13 @@ async function removeMonsho() {
   }
 }
 
-/** 村紋変更を親へ即時反映（Dialog は閉じない。親は villageData を差し替え VillageHeader を更新）。 */
-function emitMonshoUpdated(monshoR2Key: string | null) {
-  const merged: VillageWithMonsho = { ...(props.village as VillageWithMonsho), monshoR2Key }
-  emit('updated', merged)
-}
-
 /** Dialog の visible 変化に応じてフォームを再初期化（毎回最新の村情報から） */
 watch(
   () => props.visible,
   (v) => {
     if (v) {
       form.value = buildFormFromVillage(props.village)
+      monshoUrl.value = props.village.monshoUrl
       submitting.value = false
     }
   },
@@ -224,6 +220,7 @@ watch(
   (v) => {
     if (props.visible) {
       form.value = buildFormFromVillage(v)
+      monshoUrl.value = v.monshoUrl
     }
   },
 )
@@ -354,14 +351,9 @@ async function submit() {
     }
     const updated = await villageApi.updateVillage(props.village.id, body)
     showSuccess(t('village.editDialog.saveSuccess'))
-    // updateVillage の戻り値(VillageResponse)は monshoR2Key を持たないため、
-    // 直前の村紋アップロード結果(form.value.monshoR2Key)をマージしてから親へ流す。
-    // これをしないと親が villageData を全置換し、表示上 村紋がプレースホルダに戻る（#2355 検分是正1）。
-    const mergedUpdated: VillageWithMonsho = {
-      ...updated,
-      monshoR2Key: form.value.monshoR2Key || null,
-    }
-    emit('updated', mergedUpdated)
+    // #2355: VillageResponse は toResponse で icon/cover/monsho の署名 URL を解決済みで
+    // 返すため、村紋を別途マージし直す必要はない（BE の応答がそのまま最新表示状態）。
+    emit('updated', updated)
     emit('update:visible', false)
   }
   catch (err) {
@@ -541,8 +533,8 @@ async function submit() {
             class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800"
           >
             <img
-              v-if="monshoPreviewUrl"
-              :src="monshoPreviewUrl"
+              v-if="monshoUrl"
+              :src="monshoUrl"
               :alt="t('village.monsho.title')"
               class="h-full w-full object-contain"
             >
@@ -566,7 +558,7 @@ async function submit() {
             >
             <div class="flex flex-wrap gap-2">
               <Button
-                :label="monshoPreviewUrl ? t('village.monsho.change') : t('village.monsho.upload')"
+                :label="monshoUrl ? t('village.monsho.change') : t('village.monsho.upload')"
                 icon="pi pi-upload"
                 severity="secondary"
                 size="small"
@@ -575,7 +567,7 @@ async function submit() {
                 @click="triggerMonshoSelect"
               />
               <Button
-                v-if="monshoPreviewUrl"
+                v-if="monshoUrl"
                 :label="t('village.monsho.remove')"
                 icon="pi pi-trash"
                 severity="danger"
