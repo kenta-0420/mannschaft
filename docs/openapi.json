@@ -161677,7 +161677,7 @@
       "FestivalResponse": {
         "type": "object",
         "properties": {
-          "bannerR2Key": {
+          "bannerUrl": {
             "type": "string"
           },
           "createdAt": {

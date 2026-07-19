@@ -53105,7 +53105,7 @@ export interface components {
             data?: components["schemas"]["FestivalResponse"];
         };
         FestivalResponse: {
-            bannerR2Key?: string;
+            bannerUrl?: string;
             /** Format: date-time */
             createdAt?: string;
             createdByDisplayName?: string;
