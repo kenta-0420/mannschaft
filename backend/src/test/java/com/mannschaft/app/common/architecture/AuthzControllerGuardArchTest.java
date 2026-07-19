@@ -14,6 +14,7 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
+import com.mannschaft.app.common.security.AuthorizedInService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +55,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       ホワイトリストは「命名規約に基づく suffix 判定」とし、個別クラスの
  *       ハードコード列挙にしない（新規 AccessGuard/AccessService が追加された瞬間に
  *       自動で認可シグナルとして認識されるようにするため）。</li>
+ *   <li>(C) メソッド または宣言クラスに {@code @AuthorizedInService} 監査済マーカー
+ *       （webhook 署名検証・SecurityConfig のパス単位 hasRole・capability トークン等、
+ *       白名簿クラスを介さず Service 内の別方式で認可済みであることを監査を経て明示承認する。
+ *       {@link com.mannschaft.app.common.security.AuthorizedInService} 参照）</li>
  * </ol>
  *
  * <p><b>直接呼び出しのみ判定</b>（{@link JavaMethod#getMethodCallsFromSelf()}）。
@@ -154,13 +159,30 @@ class AuthzControllerGuardArchTest {
      * 判定ロジックを二重実装しないため package-visible の static ヘルパとして公開する。
      */
     static boolean hasAuthorizationSignal(JavaMethod method) {
-        return hasPreAuthorizeSignal(method) || hasAuthorizationCallSignal(method);
+        return hasPreAuthorizeSignal(method)
+            || hasMarkerSignal(method)
+            || hasAuthorizationCallSignal(method);
     }
 
     /** シグナル(A): メソッドまたは宣言クラスに {@code @PreAuthorize} が付いているか。 */
     private static boolean hasPreAuthorizeSignal(JavaMethod method) {
         return method.isAnnotatedWith(PreAuthorize.class)
             || method.getOwner().isAnnotatedWith(PreAuthorize.class);
+    }
+
+    /**
+     * シグナル(C): メソッドまたは宣言クラスに {@link AuthorizedInService} 監査済マーカーが
+     * 付いているか。
+     *
+     * <p>webhook 署名検証・{@code SecurityConfig} のパス単位 hasRole・capability トークン等、
+     * 番人の呼び出しグラフ判定（{@code @PreAuthorize} / 白名簿クラス呼び出し）では拾えないが
+     * 正当に認可されているエンドポイントを、監査を経て明示承認するためのマーカー。
+     * {@code @PreAuthorize} 判定（{@link #hasPreAuthorizeSignal(JavaMethod)}）と完全対称に
+     * メソッド／宣言クラスの双方を検査する。
+     */
+    private static boolean hasMarkerSignal(JavaMethod method) {
+        return method.isAnnotatedWith(AuthorizedInService.class)
+            || method.getOwner().isAnnotatedWith(AuthorizedInService.class);
     }
 
     /**
