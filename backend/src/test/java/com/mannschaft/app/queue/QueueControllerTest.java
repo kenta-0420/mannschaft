@@ -142,39 +142,48 @@ class QueueControllerTest {
         @Test
         @DisplayName("待ちチケット一覧取得_正常_200返却")
         void 待ちチケット一覧取得_正常_200返却() {
-            given(ticketService.listWaitingTickets(COUNTER_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listWaitingTickets(COUNTER_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listWaitingTickets(TEAM_ID, COUNTER_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listWaitingTickets(TEAM_ID, COUNTER_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("全チケット一覧取得_正常_200返却")
         void 全チケット一覧取得_正常_200返却() {
-            given(ticketService.listAllTickets(COUNTER_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listAllTickets(COUNTER_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listAllTickets(TEAM_ID, COUNTER_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listAllTickets(TEAM_ID, COUNTER_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("チケット詳細取得_正常_200返却")
         void チケット詳細取得_正常_200返却() {
-            given(ticketService.getTicket(TICKET_ID)).willReturn(createTicketResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.getTicket(TICKET_ID)).willReturn(createTicketResponse());
 
-            ResponseEntity<ApiResponse<TicketResponse>> result =
-                    ticketController.getTicket(TEAM_ID, TICKET_ID);
+                ResponseEntity<ApiResponse<TicketResponse>> result =
+                        ticketController.getTicket(TEAM_ID, TICKET_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getId()).isEqualTo(TICKET_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getId()).isEqualTo(TICKET_ID);
+            }
         }
 
         @Test
@@ -241,28 +250,34 @@ class QueueControllerTest {
         @Test
         @DisplayName("カテゴリチケット一覧取得_正常_200返却")
         void カテゴリチケット一覧取得_正常_200返却() {
-            given(ticketService.listCategoryTickets(CATEGORY_ID))
-                    .willReturn(List.of(createTicketResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(ticketService.listCategoryTickets(CATEGORY_ID))
+                        .willReturn(List.of(createTicketResponse()));
 
-            ResponseEntity<ApiResponse<List<TicketResponse>>> result =
-                    ticketController.listCategoryTickets(TEAM_ID, CATEGORY_ID);
+                ResponseEntity<ApiResponse<List<TicketResponse>>> result =
+                        ticketController.listCategoryTickets(TEAM_ID, CATEGORY_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("ゲストチケット発行_正常_201返却")
         void ゲストチケット発行_正常_201返却() {
-            CreateTicketRequest request = new CreateTicketRequest("ゲスト", null, (short) 1, "WALK_IN", null);
-            given(ticketService.issueTicket(eq(COUNTER_ID), eq(request), eq(null),
-                    eq(QueueScopeType.TEAM), eq(TEAM_ID)))
-                    .willReturn(createTicketResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                CreateTicketRequest request = new CreateTicketRequest("ゲスト", null, (short) 1, "WALK_IN", null);
+                given(ticketService.issueTicket(eq(COUNTER_ID), eq(request), eq(null),
+                        eq(QueueScopeType.TEAM), eq(TEAM_ID)))
+                        .willReturn(createTicketResponse());
 
-            ResponseEntity<ApiResponse<TicketResponse>> result =
-                    ticketController.issueGuestTicket(TEAM_ID, COUNTER_ID, request);
+                ResponseEntity<ApiResponse<TicketResponse>> result =
+                        ticketController.issueGuestTicket(TEAM_ID, COUNTER_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            }
         }
 
         @Test
