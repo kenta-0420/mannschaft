@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.CreateWatchlistRequest;
 import com.mannschaft.app.parking.dto.WatchlistResponse;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingWatchlistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,12 +27,14 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamParkingWatchlistController {
 
     private final ParkingWatchlistService watchlistService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
 
     @GetMapping
     @Operation(summary = "チームウォッチリスト一覧")
     public ResponseEntity<ApiResponse<List<WatchlistResponse>>> list(@PathVariable Long teamId) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<WatchlistResponse> result = watchlistService.list(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -41,6 +44,7 @@ public class TeamParkingWatchlistController {
     public ResponseEntity<ApiResponse<WatchlistResponse>> create(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateWatchlistRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         WatchlistResponse result = watchlistService.create(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
@@ -48,6 +52,7 @@ public class TeamParkingWatchlistController {
     @DeleteMapping("/{id}")
     @Operation(summary = "チームウォッチリスト削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         watchlistService.delete(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, id);
         return ResponseEntity.noContent().build();
     }

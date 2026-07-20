@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.AuthorizedDirectController;
 import com.mannschaft.app.common.architecture.fixtures.HelperDepth2Controller;
+import com.mannschaft.app.common.architecture.fixtures.MarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.MarkerClassAnnotatedController;
 import com.mannschaft.app.common.architecture.fixtures.UnauthorizedController;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -33,6 +35,10 @@ import org.junit.jupiter.api.Test;
  *       → D=2 BFS で認可シグナルあり（合格）。
  *       賢化前（直接呼びのみ判定）はここが検出漏れ＝<b>red</b>、
  *       賢化後（D=2 BFS）は <b>green</b> になる遷移点。</li>
+ *   <li><b>marker-annotated</b>: メソッドに {@code @AuthorizedInService} 監査済マーカーのみ
+ *       （他の認可呼びは皆無）→ marker シグナルで認可シグナルあり（合格）。</li>
+ *   <li><b>marker-class-annotated</b>: クラスレベルに {@code @AuthorizedInService}・メソッドは
+ *       無印 → {@code getOwner().isAnnotatedWith} 経路で認可シグナルあり（合格）。</li>
  * </ul>
  */
 @DisplayName("認可番人 合格判定ロジックの偽陰性ゼロ証明（メタテスト）")
@@ -79,6 +85,40 @@ class AuthzControllerGuardConditionTest {
                 + "D=2 BFS で認可シグナルありと判定されるべき"
                 + "（賢化前は直接呼びのみ判定のため検出漏れ＝red）")
             .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker-annotated: メソッドに@AuthorizedInServiceを付けたEPは認可シグナルありと判定される")
+    void markerAnnotatedMethodHasSignal() {
+        JavaMethod method = mappingMethod(MarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @AuthorizedInService 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker-class-annotated: クラスに@AuthorizedInServiceを付けた無印メソッドは認可シグナルありと判定される")
+    void markerClassAnnotatedMethodHasSignal() {
+        JavaMethod method = mappingMethod(MarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @AuthorizedInService を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker除去対照: マーカーの無い同型EP(unauthorized)はfalseのまま（マーカーが緩めすぎない証明）")
+    void withoutMarkerRemainsFalse() {
+        // MarkerAnnotatedController#markedMethod と本体は同一（DummyPlainService#loadData のみ）で
+        // 差は @AuthorizedInService の有無だけ。マーカーの無い UnauthorizedController#noAuth が
+        // false のままであることで、marker シグナルが「マーカーを付けた EP だけ」を合格させ、
+        // 無印 EP まで巻き込んで緩めていないことを担保する（偽陰性ゼロ）。
+        JavaMethod unmarked = mappingMethod(UnauthorizedController.class, "noAuth");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(unmarked))
+            .as("マーカーの無い同型EPは認可シグナルなし＝falseのままであるべき"
+                + "（marker追加で緩めすぎていないことの担保）")
+            .isFalse();
     }
 
     // ------------------------------------------------------------------

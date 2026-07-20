@@ -76221,11 +76221,11 @@ export interface components {
         ApiResponseAdminDashboardResponse: {
             data?: components["schemas"]["AdminDashboardResponse"];
         };
-        ApiResponsePageUserRoleEntity: {
-            data?: components["schemas"]["PageUserRoleEntity"];
+        ApiResponsePageScopeUserRoleResponse: {
+            data?: components["schemas"]["PageScopeUserRoleResponse"];
         };
-        PageUserRoleEntity: {
-            content?: components["schemas"]["UserRoleEntity"][];
+        PageScopeUserRoleResponse: {
+            content?: components["schemas"]["ScopeUserRoleResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -76242,7 +76242,7 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        UserRoleEntity: {
+        ScopeUserRoleResponse: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: int64 */
@@ -76253,7 +76253,6 @@ export interface components {
             organizationId?: number;
             /** Format: int64 */
             roleId?: number;
-            scopeKey?: string;
             /** Format: int64 */
             teamId?: number;
             /** Format: date-time */
@@ -155987,7 +155986,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageUserRoleEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageScopeUserRoleResponse"];
                 };
             };
         };

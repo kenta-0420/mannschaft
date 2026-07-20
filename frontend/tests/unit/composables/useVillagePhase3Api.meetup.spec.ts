@@ -12,7 +12,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
  * FE が投げる HTTP verb / パス / body が BE 契約と一致することを検証する。
  *
  * BE 実体（backend/.../village/controller/VillageMeetupController.java）:
- * - POST   /api/v1/villages/{vid}/meetups                                            — 作成（candidateDates は List<LocalDate>）
+ * - POST   /api/v1/villages/{vid}/meetups                                            — 作成（candidateDates は List<MeetupCandidateDateInput> object 配列 {date,time?}。#2357）
  * - GET    /api/v1/villages/{vid}/meetups?status=                                    — 一覧（status は PLANNING/CONFIRMED/CANCELLED）
  * - POST   /api/v1/villages/{vid}/meetups/{mid}/candidate-dates                      — 候補日追加（201・候補日単体を返す）
  * - DELETE /api/v1/villages/{vid}/meetups/{mid}/candidate-dates/{cid}                — 候補日削除（204・本体なし）
@@ -117,7 +117,7 @@ describe('useVillagePhase3Api — 寄合の BE 契約', () => {
   })
 
   describe('createMeetup', () => {
-    it('candidateDates を素の日付配列として送る（BE: List<LocalDate>）', async () => {
+    it('candidateDates を object 配列として送る（BE: List<MeetupCandidateDateInput>, #2357）', async () => {
       const { createMeetup } = useVillagePhase3Api()
       nextResponse = { data: { id: MEETUP_ID } }
 
@@ -125,7 +125,7 @@ describe('useVillagePhase3Api — 寄合の BE 契約', () => {
         title: 'たまねぎ収穫祭の打ち合わせ',
         description: null,
         location: '集会所',
-        candidateDates: ['2026-06-01', '2026-06-02'],
+        candidateDates: [{ date: '2026-06-01' }, { date: '2026-06-02' }],
       })
 
       expect(calls[0]!.method).toBe('POST')
@@ -134,7 +134,7 @@ describe('useVillagePhase3Api — 寄合の BE 契約', () => {
         title: 'たまねぎ収穫祭の打ち合わせ',
         description: null,
         location: '集会所',
-        candidateDates: ['2026-06-01', '2026-06-02'],
+        candidateDates: [{ date: '2026-06-01' }, { date: '2026-06-02' }],
       })
     })
   })

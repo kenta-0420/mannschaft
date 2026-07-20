@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.ticket.dto.CreateTicketProductRequest;
 import com.mannschaft.app.ticket.dto.TicketProductResponse;
 import com.mannschaft.app.ticket.dto.UpdateTicketProductRequest;
+import com.mannschaft.app.ticket.service.TicketAccessGuard;
 import com.mannschaft.app.ticket.service.TicketProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,10 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 回数券商品コントローラー。商品のCRUD APIを提供する。
+ *
+ * <p>認可（認可根治 Wave5）: 商品の作成・更新・削除はチーム ADMIN/DEPUTY_ADMIN に限定する。
+ * 一覧は購入導線のため SUPPORTER を含むチームメンバーに開放するが、
+ * 販売停止中を含む全件参照（{@code includeInactive=true}）は運用情報のため ADMIN に限定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/ticket-products")
@@ -34,6 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TicketProductController {
 
     private final TicketProductService productService;
+    private final TicketAccessGuard ticketAccessGuard;
 
 
     /**
@@ -46,6 +52,13 @@ public class TicketProductController {
     public ResponseEntity<ApiResponse<List<TicketProductResponse>>> listProducts(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "false") boolean includeInactive) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (includeInactive) {
+            // 販売停止中の商品は運用情報のため ADMIN のみ
+            ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        } else {
+            ticketAccessGuard.requireTeamMember(teamId, currentUserId);
+        }
         List<TicketProductResponse> products = productService.listProducts(teamId, includeInactive);
         return ResponseEntity.ok(ApiResponse.of(products));
     }
@@ -59,7 +72,9 @@ public class TicketProductController {
     public ResponseEntity<ApiResponse<TicketProductResponse>> createProduct(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTicketProductRequest request) {
-        TicketProductResponse response = productService.createProduct(teamId, SecurityUtils.getCurrentUserId(), request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        TicketProductResponse response = productService.createProduct(teamId, currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -73,6 +88,7 @@ public class TicketProductController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTicketProductRequest request) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         TicketProductResponse response = productService.updateProduct(teamId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -86,6 +102,7 @@ public class TicketProductController {
     public ResponseEntity<ApiResponse<TicketProductResponse>> deleteProduct(
             @PathVariable Long teamId,
             @PathVariable Long id) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         TicketProductResponse response = productService.deleteProduct(teamId, id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

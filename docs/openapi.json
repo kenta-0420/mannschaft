@@ -135525,7 +135525,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePageUserRoleEntity"
+                  "$ref": "#/components/schemas/ApiResponsePageScopeUserRoleResponse"
                 }
               }
             }
@@ -224778,21 +224778,21 @@
           }
         }
       },
-      "ApiResponsePageUserRoleEntity": {
+      "ApiResponsePageScopeUserRoleResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PageUserRoleEntity"
+            "$ref": "#/components/schemas/PageScopeUserRoleResponse"
           }
         }
       },
-      "PageUserRoleEntity": {
+      "PageScopeUserRoleResponse": {
         "type": "object",
         "properties": {
           "content": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UserRoleEntity"
+              "$ref": "#/components/schemas/ScopeUserRoleResponse"
             }
           },
           "empty": {
@@ -224832,7 +224832,7 @@
           }
         }
       },
-      "UserRoleEntity": {
+      "ScopeUserRoleResponse": {
         "type": "object",
         "properties": {
           "createdAt": {
@@ -224854,9 +224854,6 @@
           "roleId": {
             "type": "integer",
             "format": "int64"
-          },
-          "scopeKey": {
-            "type": "string"
           },
           "teamId": {
             "type": "integer",

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.*;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingSpaceService;
 import com.mannschaft.app.parking.service.ParkingVisitorRecurringService;
 import com.mannschaft.app.parking.service.ParkingVisitorReservationService;
@@ -35,6 +36,7 @@ public class OrgParkingVisitorController {
     private final ParkingVisitorReservationService reservationService;
     private final ParkingVisitorRecurringService recurringService;
     private final ParkingSpaceService spaceService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.ORGANIZATION.name();
 
@@ -45,6 +47,7 @@ public class OrgParkingVisitorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         Page<VisitorReservationResponse> result = reservationService.list(spaceIds, date,
                 PageRequest.of(page, Math.min(size, 100), Sort.by("reservedDate", "timeFrom")));
@@ -58,6 +61,7 @@ public class OrgParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> createReservation(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateVisitorReservationRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.create(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
@@ -67,6 +71,7 @@ public class OrgParkingVisitorController {
     public ResponseEntity<ApiResponse<AvailabilityResponse>> getAvailability(
             @PathVariable Long organizationId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         AvailabilityResponse result = reservationService.getAvailability(SCOPE_TYPE, organizationId, date);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -75,6 +80,7 @@ public class OrgParkingVisitorController {
     @Operation(summary = "組織来場者予約詳細")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> getReservation(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.getDetail(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -83,6 +89,7 @@ public class OrgParkingVisitorController {
     @Operation(summary = "組織来場者予約承認")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> approveReservation(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.approve(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -92,6 +99,7 @@ public class OrgParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> rejectReservation(
             @PathVariable Long organizationId, @PathVariable Long id,
             @RequestParam(required = false) String adminComment) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.reject(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId(), adminComment);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -100,6 +108,7 @@ public class OrgParkingVisitorController {
     @Operation(summary = "組織来場者チェックイン")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> checkIn(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.checkIn(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -108,6 +117,7 @@ public class OrgParkingVisitorController {
     @Operation(summary = "組織来場者予約完了")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> complete(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorReservationResponse result = reservationService.complete(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -115,6 +125,7 @@ public class OrgParkingVisitorController {
     @DeleteMapping("/visitor-reservations/{id}")
     @Operation(summary = "組織来場者予約キャンセル")
     public ResponseEntity<Void> cancelReservation(@PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         reservationService.cancel(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
@@ -122,6 +133,7 @@ public class OrgParkingVisitorController {
     @GetMapping("/visitor-recurring")
     @Operation(summary = "組織定期予約テンプレート一覧")
     public ResponseEntity<ApiResponse<List<VisitorRecurringResponse>>> listRecurring(@PathVariable Long organizationId) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<VisitorRecurringResponse> result = recurringService.list(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, organizationId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -131,6 +143,7 @@ public class OrgParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> createRecurring(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateVisitorRecurringRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorRecurringResponse result = recurringService.create(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, organizationId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
@@ -140,6 +153,7 @@ public class OrgParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> updateRecurring(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody UpdateVisitorRecurringRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         VisitorRecurringResponse result = recurringService.update(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, organizationId, id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -147,6 +161,7 @@ public class OrgParkingVisitorController {
     @DeleteMapping("/visitor-recurring/{id}")
     @Operation(summary = "組織定期予約テンプレート削除")
     public ResponseEntity<Void> deleteRecurring(@PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         recurringService.delete(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, organizationId, id);
         return ResponseEntity.noContent().build();
     }

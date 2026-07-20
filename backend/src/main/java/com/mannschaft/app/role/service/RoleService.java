@@ -18,6 +18,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
+import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -30,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -127,6 +130,44 @@ public class RoleService {
         // join 自身が MembershipChangedEvent(ASSIGNED) を発火するため、
         // 従来この直後に手動発火していた同イベントは二重発火回避のため削除し join に一本化した。
         joinMembershipForRoleGrant(targetUserId, scopeId, scopeType, grantedBy, "ROLE_ASSIGN");
+    }
+
+    /**
+     * スコープ内のユーザー（ロール割当）一覧を取得する。
+     *
+     * <p>認可根治 Wave5: 従来は {@code AdminDashboardController} が {@code UserRoleRepository} を
+     * 直叩きし {@code Page<UserRoleEntity>} を生返却していた（Entity をレスポンスに晒さない規約に違反）。
+     * ドメイン境界の原則に従い、role ドメインの本メソッドで entity → DTO 変換まで完結させ、
+     * admin ドメインが {@code UserRoleEntity} を参照しなくて済むようにする。</p>
+     *
+     * <p><b>認可は呼び出し元（Controller の public 入口）の責務</b>。
+     * {@code AdminDashboardController#getUsers} が
+     * {@code accessControlService.checkAdminOrAbove} で scope 認可済みであることを前提とする。</p>
+     *
+     * @param scopeId   スコープID（チームID または 組織ID）
+     * @param scopeType スコープ種別（TEAM/ORGANIZATION）
+     * @param pageable  ページネーション情報
+     * @return スコープ内のロール割当ページ
+     */
+    public Page<ScopeUserRoleResponse> getScopeUsers(Long scopeId, String scopeType, Pageable pageable) {
+        Page<UserRoleEntity> page = "TEAM".equals(scopeType)
+                ? userRoleRepository.findByTeamId(scopeId, pageable)
+                : userRoleRepository.findByOrganizationId(scopeId, pageable);
+        return page.map(RoleService::toScopeUserRoleResponse);
+    }
+
+    /** {@link UserRoleEntity} をスコープ内ユーザー DTO へ変換する。 */
+    private static ScopeUserRoleResponse toScopeUserRoleResponse(UserRoleEntity entity) {
+        return new ScopeUserRoleResponse(
+                entity.getId(),
+                entity.getUserId(),
+                entity.getRoleId(),
+                entity.getTeamId(),
+                entity.getOrganizationId(),
+                entity.getGrantedBy(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
     }
 
     /**
