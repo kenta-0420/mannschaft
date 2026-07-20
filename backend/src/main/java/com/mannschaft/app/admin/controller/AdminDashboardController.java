@@ -45,6 +45,9 @@ public class AdminDashboardController {
             @RequestParam Long scopeId) {
         // 認可根治 Wave5: 同クラスの updateUserRole と同水準の scope 認可を敷く
         // （別スコープ ADMIN が scopeType/scopeId を差し替えて越境集計するのを遮断）。
+        // 追込: 認可の前に scopeType を検証し、不正値による ScopeType.valueOf の
+        // IllegalArgumentException（未処理 500）を 400 へ正規化する。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         AdminDashboardResponse response = dashboardService.getDashboard(scopeType, scopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -61,6 +64,8 @@ public class AdminDashboardController {
             @RequestParam Long scopeId,
             Pageable pageable) {
         // 認可根治 Wave5: 同上。スコープ内の全ロール割当が誰にでも見えていた状態を根治する。
+        // 追込: 認可の前に scopeType を検証（不正値の未処理 500 → 400）。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         // Repository 直叩き＋Entity 生返却をやめ、role ドメインの Service 経由で DTO を取得する。
         Page<ScopeUserRoleResponse> page = roleService.getScopeUsers(scopeId, scopeType, pageable);
@@ -81,6 +86,8 @@ public class AdminDashboardController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみロール変更可
         // （別スコープ ADMIN が scopeType/scopeId を差し替えて越境するのを遮断）。
+        // 追込: 認可の前に scopeType を検証（不正値の未処理 500 → 400）。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
         accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         roleService.changeRole(scopeId, scopeType, userId, new RoleChangeRequest(roleId), currentUserId);
         return ResponseEntity.ok().build();

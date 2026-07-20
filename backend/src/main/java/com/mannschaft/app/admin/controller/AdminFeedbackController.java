@@ -49,6 +49,9 @@ public class AdminFeedbackController {
             @RequestParam(required = false) String status,
             Pageable pageable) {
         // 認可根治 Wave5: 宣言された scope に対して ADMIN/DEPUTY_ADMIN を要求する（非メンバーは 403）。
+        // 追込: 認可の前に scopeType を検証し、不正値による ScopeType.valueOf の
+        // IllegalArgumentException（未処理 500）を 400 へ正規化する。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         Page<FeedbackResponse> page = feedbackService.getFeedbacks(scopeType, scopeId, status, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -102,8 +105,9 @@ public class AdminFeedbackController {
         FeedbackService.FeedbackScopeRef scope = feedbackService.getFeedbackScope(id);
         // GENERAL 等 per-scope でない種別・scopeId 欠落は本 Controller の管轄外。
         // isAdminOrAbove へ渡すと ScopeType.valueOf が例外になるため、先に 404 で秘匿する。
+        // 追込: ホワイトリストのベタ書きを共通ヘルパーへ集約（ScopeType enum と常に一致させる）。
         boolean perScope = scope.scopeId() != null
-                && ("TEAM".equals(scope.scopeType()) || "ORGANIZATION".equals(scope.scopeType()));
+                && AdminScopeTypeValidator.isSupportedScopeType(scope.scopeType());
         if (!perScope
                 || !accessControlService.isAdminOrAbove(
                         SecurityUtils.getCurrentUserId(), scope.scopeId(), scope.scopeType())) {

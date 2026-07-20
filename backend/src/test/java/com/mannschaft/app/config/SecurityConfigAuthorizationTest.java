@@ -713,4 +713,98 @@ class SecurityConfigAuthorizationTest {
         expectAuthRejected(mockMvc.perform(get("/api/v1/teams/1/my-tickets")),
                 "GET /api/v1/teams/{teamId}/my-tickets");
     }
+
+    // ============================================================================
+    // 認可根治戦役 Wave5 追込: PR #2373 で格上げした 3 系統の SecurityConfig 側検証
+    //
+    //   SecurityConfig.java:390-392 で以下を hasRole("SYSTEM_ADMIN") に格上げした:
+    //     - /api/v1/admin/seals/**            全ユーザーの電子印鑑の一覧・一括再生成
+    //     - /api/v1/admin/action-templates/** 全体共通のモデレーション用アクションテンプレート CRUD
+    //     - /api/v1/admin/notifications/**    全テナント横断の通知配信
+    //
+    //   #2373 の契約 IT は @AutoConfigureMockMvc(addFilters = false) で動くため
+    //   フィルタチェーンを通らず、二重防御の片翼（SecurityConfig 側）が未検証だった。
+    //   本クラスは addFilters 既定（= true）でフィルタチェーンを実際に通すため、
+    //   格上げが「フィルタ層で効いていること」をここで担保する。
+    //
+    //   判定基準は本クラス既定の方針を踏襲する（対象 Controller を最小コンテキストに
+    //   載せないため、認可通過後はハンドラ不在で 404 等になる。よって
+    //   「非 SYSTEM_ADMIN は 403」「SYSTEM_ADMIN は 403 でない」を基準とする）。
+    // ============================================================================
+
+    // ---- 非 SYSTEM_ADMIN（認証済み MEMBER）は 403 ----
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/seals は 403（#2373 格上げ）")
+    void member_admin_seals_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/action-templates は 403（#2373 格上げ）")
+    void member_admin_action_templates_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/notifications は 403（#2373 格上げ）")
+    void member_admin_notifications_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+    }
+
+    // ---- 書込系も同様に 403（GET だけの格上げになっていない証左） ----
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: POST /api/v1/admin/seals/regenerate は 403（書込面も格上げ済み）")
+    void member_admin_seals_write_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(post("/api/v1/admin/seals/regenerate")),
+                "POST /api/v1/admin/seals/regenerate");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: POST /api/v1/admin/action-templates は 403（書込面も格上げ済み）")
+    void member_admin_action_templates_write_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(post("/api/v1/admin/action-templates")),
+                "POST /api/v1/admin/action-templates");
+    }
+
+    // ---- SYSTEM_ADMIN は 403 にならない（過剰ロックでない証左＝到達する） ----
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DisplayName("Wave5 SYSTEM_ADMIN: 格上げ 3 系統は 403 にならない（#2373）")
+    void systemAdmin_wave5_upgraded_paths_not_forbidden() throws Exception {
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+        expectNotForbidden(mockMvc.perform(post("/api/v1/admin/seals/regenerate")),
+                "POST /api/v1/admin/seals/regenerate");
+        expectNotForbidden(mockMvc.perform(post("/api/v1/admin/action-templates")),
+                "POST /api/v1/admin/action-templates");
+    }
+
+    // ---- 未認証は 401/403（deny-by-default。error.code を持たないため jsonPath は使わない） ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("Wave5 匿名: 格上げ 3 系統は 401/403（未認証で到達しない）")
+    void anonymous_wave5_upgraded_paths_are_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+    }
 }
