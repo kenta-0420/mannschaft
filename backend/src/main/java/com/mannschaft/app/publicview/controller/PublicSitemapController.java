@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.service.SitemapEntry;
 import com.mannschaft.app.publicview.service.SitemapPostEntry;
 import com.mannschaft.app.publicview.service.SitemapQueryService;
@@ -32,7 +33,26 @@ import java.util.concurrent.TimeUnit;
  * <p>いずれのエンドポイントも認証不要（{@code permitAll}）。
  * SecurityConfig で {@code /sitemap.xml}, {@code /sitemap-*.xml}, {@code /robots.txt} が
  * permitAll に追加されていること。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 3 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig.java:247-248 — requestMatchers(GET, "/sitemap.xml", "/robots.txt")
+ * / "/sitemap-*.xml" .permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 Phase 3 SEO。sitemap / robots.txt は<b>検索エンジンのクローラが未認証で取得する</b>
+ * のが仕様で、認証を課すと SEO が成立しない。収録するのは<b>公開ページの URL のみ</b>（非公開スコープは含めない）
+ * 。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic
 @RestController
 @Tag(name = "SEO (F19.1 Phase 3)", description = "sitemap.xml / robots.txt エンドポイント")
 @RequiredArgsConstructor

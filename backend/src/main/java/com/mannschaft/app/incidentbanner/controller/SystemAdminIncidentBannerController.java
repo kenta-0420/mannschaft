@@ -3,6 +3,7 @@ package com.mannschaft.app.incidentbanner.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.incidentbanner.dto.IncidentBannerRequest;
 import com.mannschaft.app.incidentbanner.dto.IncidentBannerResponse;
@@ -40,7 +41,20 @@ import java.util.UUID;
  *
  * <p>シスアドが原文（既定 ja）を手動オーサリングし、保存後に en/zh/ko/es/de へ
  * 自動翻訳される。検知候補 EP はエラーテレメトリからバナー化候補を提示する。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedByPathConfig} クラス付与・凍結ストア該当 8 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは、{@code SecurityConfig} のパス単位認可により
+ * SYSTEM_ADMIN ロール保持者のみへ宣言的に予約されている。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
+ * </p>
+ *
+ * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
+ * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
+ * 失効するため、必ず併せて見直すこと。</p>
  */
+@AuthorizedByPathConfig
 @RestController
 @RequestMapping("/api/v1/system-admin/incident-banners")
 @Tag(name = "システム管理 - 障害告知バナー", description = "F12.5 障害告知バナー管理API（システム管理者向け）")

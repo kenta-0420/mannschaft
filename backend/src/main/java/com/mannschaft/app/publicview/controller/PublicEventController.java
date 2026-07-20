@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicEventResponse;
 import com.mannschaft.app.publicview.service.PublicEventQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +24,25 @@ import org.springframework.web.bind.annotation.RestController;
  * チームの {@code public_events_enabled} フラグ、または組織の {@code public_events_enabled} フラグが
  * {@code true} の場合のみイベント一覧を返す。
  * フラグが {@code false} または PRIVATE の場合は 404 で隠蔽する（IDOR 対策）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig.java:271 / 277 — requestMatchers(GET, "/api/v1/public/teams/&#42;/events"
+ * / "/api/v1/public/organizations/&#42;/events").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 公開ページのイベント一覧。<b>公開設定されたスコープの公開イベントのみ</b>を返す。未ログイン訪問者への告知が目的の公開ページ機能。
+ * レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic
 @RestController
 @Tag(name = "公開イベント API (F19.1 Phase 7)")
 @RequiredArgsConstructor

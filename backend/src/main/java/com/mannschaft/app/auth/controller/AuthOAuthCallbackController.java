@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthOAuthLinkService;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,24 @@ import java.net.URI;
  * <p>
  * {@code GET /api/v1/auth/oauth/link/{provider}/callback} を認証不要で公開し、
  * 処理結果に応じてフロントエンドにリダイレクトする。
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig.java:214 — requestMatchers("/api/v1/auth/oauth/**").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * OAuth プロバイダからのリダイレクトを受ける<b>認証フローのコールバック</b>で、未認証状態で到達するのが仕様。
+ * 資格情報の検証は認証処理そのものが行う。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic
 @RestController
 @RequestMapping("/api/v1/auth/oauth/link")
 @RequiredArgsConstructor

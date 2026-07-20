@@ -8,6 +8,7 @@ import com.mannschaft.app.auth.dto.TotpSetupResponse;
 import com.mannschaft.app.auth.dto.ValidateTotpLoginRequest;
 import com.mannschaft.app.auth.dto.VerifyTotpRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -63,7 +64,25 @@ public class Auth2faController {
 
     /**
      * MFAセッショントークンを使用してTOTPを検証し、トークンを発行する。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * 2FA ログインフローは<b>本ログインが完了する前の段階</b>で呼ばれるため、既存セッション（認証済み principal）
+     * が存在せず認証を課せない。MFA セッショントークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>: 同クラスの
+     * {@code setupTotp} / {@code verifyTotpSetup} / {@code regenerateBackupCodes}
+     * は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/validate")
     @Operation(summary = "TOTPログイン検証")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "TOTP検証成功")
@@ -89,7 +108,25 @@ public class Auth2faController {
 
     /**
      * MFAリカバリーをリクエストする。リカバリーメールが送信される。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * 2FA ログインフローは<b>本ログインが完了する前の段階</b>で呼ばれるため、既存セッション（認証済み principal）
+     * が存在せず認証を課せない。MFA セッショントークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>: 同クラスの
+     * {@code setupTotp} / {@code verifyTotpSetup} / {@code regenerateBackupCodes}
+     * は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/recovery/request")
     @Operation(summary = "MFAリカバリー要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリーメール送信完了")
@@ -101,7 +138,25 @@ public class Auth2faController {
 
     /**
      * MFAリカバリーを確認し、2FAを無効化してトークンを発行する。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * 2FA ログインフローは<b>本ログインが完了する前の段階</b>で呼ばれるため、既存セッション（認証済み principal）
+     * が存在せず認証を課せない。MFA セッショントークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>: 同クラスの
+     * {@code setupTotp} / {@code verifyTotpSetup} / {@code regenerateBackupCodes}
+     * は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/recovery/confirm")
     @Operation(summary = "MFAリカバリー確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリー完了")
