@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.controller;
 
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,9 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>このエンドポイントは認証不要（Google からの外部コールバック）であり、
  * トークン検証は {@link GoogleCalendarWebhookService} 内で行う。</p>
  *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 1 EP が該当）</b>:
+ * {@link #receiveWebhook} は {@code GoogleCalendarWebhookService.java:102-103} の
+ * {@code MessageDigest.isEqual(channelToken.getBytes(UTF_8), ...)} で
+ * {@code X-Goog-Channel-Token} を DB 保持のチャンネルトークンと<b>定数時間比較</b>し、
+ * 不一致なら {@code GCAL_009} → 403 で中断する（チャンネル ID 不在は {@code GCAL_008} → 404）。
+ * 認可根治戦役 Wave5 監査済。</p>
+ *
  * <p>設計書: docs/features/F02.12_google_calendar_sync/phase4.md — P4-5 コントローラー設計</p>
  */
 @Slf4j
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/webhooks")
 @RequiredArgsConstructor

@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.AuthorizedDirectController;
 import com.mannschaft.app.common.architecture.fixtures.HelperDepth2Controller;
+import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerClassAnnotatedController;
 import com.mannschaft.app.common.architecture.fixtures.MarkerAnnotatedController;
 import com.mannschaft.app.common.architecture.fixtures.MarkerClassAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerClassAnnotatedController;
 import com.mannschaft.app.common.architecture.fixtures.UnauthorizedController;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -108,12 +112,59 @@ class AuthzControllerGuardConditionTest {
     }
 
     @Test
+    @DisplayName("path-config-marker-annotated: メソッドに@AuthorizedByPathConfigを付けたEPは認可シグナルありと判定される")
+    void pathConfigMarkerAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(PathConfigMarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @AuthorizedByPathConfig 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("path-config-marker-class-annotated: クラスに@AuthorizedByPathConfigを付けた無印メソッドは認可シグナルありと判定される")
+    void pathConfigMarkerClassAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(PathConfigMarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @AuthorizedByPathConfig を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("intentionally-public-marker-annotated: メソッドに@IntentionallyPublicを付けたEPは認可シグナルありと判定される")
+    void intentionallyPublicMarkerAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(IntentionallyPublicMarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @IntentionallyPublic 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("intentionally-public-marker-class-annotated: クラスに@IntentionallyPublicを付けた無印メソッドは認可シグナルありと判定される")
+    void intentionallyPublicMarkerClassAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(IntentionallyPublicMarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @IntentionallyPublic を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
     @DisplayName("marker除去対照: マーカーの無い同型EP(unauthorized)はfalseのまま（マーカーが緩めすぎない証明）")
     void withoutMarkerRemainsFalse() {
-        // MarkerAnnotatedController#markedMethod と本体は同一（DummyPlainService#loadData のみ）で
-        // 差は @AuthorizedInService の有無だけ。マーカーの無い UnauthorizedController#noAuth が
+        // 上記 6 つの marker fixture と本体は同一（DummyPlainService#loadData のみ）で、
+        // 差は監査済マーカー 3 種（@AuthorizedInService / @AuthorizedByPathConfig /
+        // @IntentionallyPublic）の有無だけ。マーカーの無い UnauthorizedController#noAuth が
         // false のままであることで、marker シグナルが「マーカーを付けた EP だけ」を合格させ、
         // 無印 EP まで巻き込んで緩めていないことを担保する（偽陰性ゼロ）。
+        // マーカーを 3 種へ増やしても本判定が false のままであることが、拡張で番人が
+        // 骨抜きになっていないことの証明になる。
         JavaMethod unmarked = mappingMethod(UnauthorizedController.class, "noAuth");
         assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(unmarked))
             .as("マーカーの無い同型EPは認可シグナルなし＝falseのままであるべき"

@@ -14,7 +14,10 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.IntentionallyPublic;
+import java.lang.annotation.Annotation;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,10 +58,17 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       ホワイトリストは「命名規約に基づく suffix 判定」とし、個別クラスの
  *       ハードコード列挙にしない（新規 AccessGuard/AccessService が追加された瞬間に
  *       自動で認可シグナルとして認識されるようにするため）。</li>
- *   <li>(C) メソッド または宣言クラスに {@code @AuthorizedInService} 監査済マーカー
- *       （webhook 署名検証・SecurityConfig のパス単位 hasRole・capability トークン等、
- *       白名簿クラスを介さず Service 内の別方式で認可済みであることを監査を経て明示承認する。
- *       {@link com.mannschaft.app.common.security.AuthorizedInService} 参照）</li>
+ *   <li>(C) メソッド または宣言クラスに<b>監査済マーカー 3 種のいずれか</b>。認可の所在ごとに
+ *       分離されており、実態と異なるマーカーを貼ることは誤った証跡として禁じられる:
+ *       <ul>
+ *         <li>{@link com.mannschaft.app.common.security.AuthorizedInService} —
+ *             webhook 署名検証・capability トークン等、白名簿クラスを介さず
+ *             Service 内の別方式で認可済み</li>
+ *         <li>{@link com.mannschaft.app.common.security.AuthorizedByPathConfig} —
+ *             {@code SecurityConfig} のパス単位 {@code hasRole()} 等で宣言的に強制済み</li>
+ *         <li>{@link com.mannschaft.app.common.security.IntentionallyPublic} —
+ *             {@code permitAll()} 配下で意図的に無認可公開（理由の併記が必須）</li>
+ *       </ul></li>
  * </ol>
  *
  * <p><b>直接呼び出しのみ判定</b>（{@link JavaMethod#getMethodCallsFromSelf()}）。
@@ -171,18 +181,33 @@ class AuthzControllerGuardArchTest {
     }
 
     /**
-     * シグナル(C): メソッドまたは宣言クラスに {@link AuthorizedInService} 監査済マーカーが
-     * 付いているか。
+     * シグナル(C): メソッドまたは宣言クラスに<b>監査済マーカー 3 種のいずれか</b>が付いているか。
      *
-     * <p>webhook 署名検証・{@code SecurityConfig} のパス単位 hasRole・capability トークン等、
-     * 番人の呼び出しグラフ判定（{@code @PreAuthorize} / 白名簿クラス呼び出し）では拾えないが
-     * 正当に認可されているエンドポイントを、監査を経て明示承認するためのマーカー。
-     * {@code @PreAuthorize} 判定（{@link #hasPreAuthorizeSignal(JavaMethod)}）と完全対称に
-     * メソッド／宣言クラスの双方を検査する。
+     * <p>番人の呼び出しグラフ判定（{@code @PreAuthorize} / 白名簿クラス呼び出し）では拾えないが、
+     * 監査を経て正当と確認されたエンドポイントを明示承認するためのマーカー群。
+     * <b>認可の所在ごとに 3 種へ分離</b>している（「Service 内で認可済み」の意の注釈を
+     * SecurityConfig のパス認可 EP や意図的公開 EP に貼ると誤った証跡になるため）:</p>
+     * <ul>
+     *   <li>{@link AuthorizedInService} — webhook 署名検証・capability トークン等、
+     *       Service 内の別方式で認可済み</li>
+     *   <li>{@link AuthorizedByPathConfig} — {@code SecurityConfig} のパス単位
+     *       {@code hasRole()} 等で宣言的に強制済み</li>
+     *   <li>{@link IntentionallyPublic} — {@code permitAll()} 配下で意図的に無認可公開</li>
+     * </ul>
+     *
+     * <p>{@code @PreAuthorize} 判定（{@link #hasPreAuthorizeSignal(JavaMethod)}）と完全対称に
+     * メソッド／宣言クラスの双方を検査する。</p>
      */
     private static boolean hasMarkerSignal(JavaMethod method) {
-        return method.isAnnotatedWith(AuthorizedInService.class)
-            || method.getOwner().isAnnotatedWith(AuthorizedInService.class);
+        return hasMarker(method, AuthorizedInService.class)
+            || hasMarker(method, AuthorizedByPathConfig.class)
+            || hasMarker(method, IntentionallyPublic.class);
+    }
+
+    /** メソッド または宣言クラスに指定の監査済マーカーが付いているか（メソッド／クラス対称判定）。 */
+    private static boolean hasMarker(JavaMethod method, Class<? extends Annotation> marker) {
+        return method.isAnnotatedWith(marker)
+            || method.getOwner().isAnnotatedWith(marker);
     }
 
     /**

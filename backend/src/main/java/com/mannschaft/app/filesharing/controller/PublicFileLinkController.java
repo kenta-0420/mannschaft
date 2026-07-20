@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
@@ -34,7 +35,17 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><b>DL 完全防止の原理的限界</b>: ブラウザで表示できる以上、閲覧可能なファイルの完全な DL 防止は不可能。
  * download_allowed / download_disabled は DL URL 発行拒否による運用上の抑止に留まる。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 2 EP が該当）</b>: 両 EP とも
+ * capability トークンで認可する。{@code SharedFileLinkService.java:202-216} の共通検証が
+ * token 実在（404 {@code LINK_NOT_FOUND}）→ {@code is_active}（410 {@code LINK_INACTIVE}）→
+ * {@code expires_at}（410 {@code LINK_EXPIRED}）→ {@code password_hash} 照合
+ * （403 {@code LINK_PASSWORD_INVALID}）を順に強制し、不成立なら例外で中断する。
+ * {@link #access} は {@code SharedFileLinkService.java:156} {@code accessLinkPublic}、
+ * {@link #downloadUrl} は {@code SharedFileLinkService.java:179} {@code presignDownloadForLink}
+ * 経由でこの検証を通る。認可根治戦役 Wave5 監査済。</p>
  */
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/public/file-links")
 @Tag(name = "ファイル共有 - 公開リンク", description = "F05.5 PR-D 公開ファイルリンク（未認証可）")
