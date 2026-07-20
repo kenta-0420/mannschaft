@@ -354,7 +354,15 @@
     "monsho": {
       "title": "마을 문장",
       "upload": "마을 문장 업로드",
-      "remove": "마을 문장 삭제"
+      "remove": "마을 문장 삭제",
+      "label": "마을 문장 (문양 / 로고)",
+      "change": "문장 변경",
+      "uploading": "업로드 중…",
+      "hint": "JPG / PNG / WebP · 최대 5MB",
+      "errorMime": "JPG, PNG, WebP 이미지만 지원합니다",
+      "errorSize": "파일 크기는 5MB 이하여야 합니다",
+      "uploadSuccess": "마을 문장을 업로드했습니다",
+      "removeSuccess": "마을 문장을 삭제했습니다"
     },
     "calendar": {
       "title": "마을 달력",

@@ -202,6 +202,101 @@ class VillageMonshoControllerContractTest {
     }
 
     // ==================================================================
+    // #2355 村紋 presign 発行 EP — POST /monsho/upload-url の契約
+    // ==================================================================
+
+    @Nested
+    @DisplayName("POST /monsho/upload-url — presign 発行 EP の契約（#2355）")
+    class UploadUrlContract {
+
+        private static final String UPLOAD_URL_PATH = "/api/v1/villages/{villageId}/monsho/upload-url";
+        private static final String VALID_BODY = """
+                { "contentType": "image/png", "fileSize": 12345 }
+                """;
+
+        @Test
+        @DisplayName("AC-1: 正常系は 200 で uploadUrl / r2Key / expiresInSeconds(=600) を返す（r2Key は村スコープ接頭辞）")
+        void uploadUrl_success_returns200WithPresignedFields() throws Exception {
+            String expectedKey = "village/" + VILLAGE_ID + "/monsho/abcdef.png";
+            given(villageService.generateMonshoUploadUrl(
+                    eq(VILLAGE_ID), eq("image/png"), eq(12345L), eq(USER_ID)))
+                    .willReturn(new com.mannschaft.app.village.dto.MonshoUploadUrlResponse(
+                            "https://r2.example.com/put?sig=xyz", expectedKey, 600L));
+
+            mockMvc.perform(post(UPLOAD_URL_PATH, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID_BODY))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.uploadUrl").value("https://r2.example.com/put?sig=xyz"))
+                    .andExpect(jsonPath("$.data.r2Key").value(expectedKey))
+                    .andExpect(jsonPath("$.data.expiresInSeconds").value(600))
+                    // 生キーは村スコープ接頭辞で始まる（読取用の署名 URL 化はしない）
+                    .andExpect(jsonPath("$.data.r2Key").value(org.hamcrest.Matchers.startsWith(
+                            "village/" + VILLAGE_ID + "/monsho/")));
+
+            verify(villageService).generateMonshoUploadUrl(VILLAGE_ID, "image/png", 12345L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-2: 権限不足は 403 VILLAGE_024（MODERATION_FORBIDDEN が透過する）")
+        void uploadUrl_forbidden_returns403() throws Exception {
+            org.mockito.BDDMockito.willThrow(new com.mannschaft.app.common.BusinessException(
+                            com.mannschaft.app.village.VillageErrorCode.MODERATION_FORBIDDEN))
+                    .given(villageService).generateMonshoUploadUrl(
+                            eq(VILLAGE_ID), any(), org.mockito.ArgumentMatchers.anyLong(), eq(USER_ID));
+
+            mockMvc.perform(post(UPLOAD_URL_PATH, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID_BODY))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_024"));
+        }
+
+        @Test
+        @DisplayName("AC-3: 村が存在しないと 404 VILLAGE_001（VILLAGE_NOT_FOUND が透過する）")
+        void uploadUrl_villageNotFound_returns404() throws Exception {
+            org.mockito.BDDMockito.willThrow(new com.mannschaft.app.common.BusinessException(
+                            com.mannschaft.app.village.VillageErrorCode.VILLAGE_NOT_FOUND))
+                    .given(villageService).generateMonshoUploadUrl(
+                            eq(VILLAGE_ID), any(), org.mockito.ArgumentMatchers.anyLong(), eq(USER_ID));
+
+            mockMvc.perform(post(UPLOAD_URL_PATH, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID_BODY))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_001"));
+        }
+
+        @Test
+        @DisplayName("AC-5(DTO): contentType 欠落は 400（@NotBlank）— Service には到達しない")
+        void uploadUrl_missingContentType_returns400() throws Exception {
+            mockMvc.perform(post(UPLOAD_URL_PATH, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    { "fileSize": 12345 }
+                                    """))
+                    .andExpect(status().isBadRequest());
+
+            verify(villageService, never()).generateMonshoUploadUrl(
+                    any(), any(), org.mockito.ArgumentMatchers.anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-5(DTO): contentType 空文字は 400（@NotBlank）— Service には到達しない")
+        void uploadUrl_blankContentType_returns400() throws Exception {
+            mockMvc.perform(post(UPLOAD_URL_PATH, VILLAGE_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    { "contentType": "", "fileSize": 12345 }
+                                    """))
+                    .andExpect(status().isBadRequest());
+
+            verify(villageService, never()).generateMonshoUploadUrl(
+                    any(), any(), org.mockito.ArgumentMatchers.anyLong(), any());
+        }
+    }
+
+    // ==================================================================
     // 認可失敗の透過
     // ==================================================================
 
