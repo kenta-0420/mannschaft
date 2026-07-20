@@ -48,6 +48,10 @@ public class AdminPermissionGroupController {
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
+        // 認可根治 Wave5: 同クラスの作成/削除/割当は checkAdminOrAbove 済みだったが読取のみ素通しだった。
+        // 権限グループ構成はスコープの権限設計そのもの（攻撃時の偵察材料）のため、
+        // 書込と同水準の ADMIN/DEPUTY_ADMIN 認可を敷く。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         List<PermissionGroupResponse> groups = permissionGroupService.getPermissionGroups(scopeId, scopeType);
         return ResponseEntity.ok(ApiResponse.of(groups));
     }

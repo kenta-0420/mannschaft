@@ -36,6 +36,38 @@ public class FeedbackService {
     private final FeedbackVoteRepository voteRepository;
 
     /**
+     * フィードバックが属するスコープ（entity 由来）。
+     *
+     * <p>{@code scopeId} は GENERAL（ナビバー目安箱＝プラットフォーム全体宛て）の場合 null になる。</p>
+     *
+     * @param scopeType スコープ種別（TEAM/ORGANIZATION/GENERAL）
+     * @param scopeId   スコープID（GENERAL の場合 null）
+     */
+    public record FeedbackScopeRef(String scopeType, @Nullable Long scopeId) { }
+
+    /**
+     * フィードバックの所属スコープを取得する（認可判定用）。
+     *
+     * <p>認可根治 Wave5: {@code respondToFeedback} / {@code updateFeedbackStatus} は
+     * ID のみを引数に取るため、呼び出し元が渡す scope を信用すると別スコープの管理者が
+     * 他スコープのフィードバックを操作できてしまう（BOLA）。そこで
+     * <b>entity 由来の scope</b> を返し、Controller の public 入口で認可させる。</p>
+     *
+     * <p>本メソッドは per-scope 管理者向けの {@code AdminFeedbackController} 専用。
+     * {@code SystemAdminFeedbackController}（GENERAL スコープ担当・
+     * {@code @PreAuthorize("hasRole('SYSTEM_ADMIN')")}）は scope 認可の対象外のため呼ばない。</p>
+     *
+     * @param id フィードバックID
+     * @return 所属スコープ
+     * @throws BusinessException {@code ADMIN_FB_003}: フィードバックが存在しない
+     */
+    public FeedbackScopeRef getFeedbackScope(Long id) {
+        FeedbackSubmissionEntity entity = feedbackRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(AdminFeedbackErrorCode.FEEDBACK_NOT_FOUND));
+        return new FeedbackScopeRef(entity.getScopeType(), entity.getScopeId());
+    }
+
+    /**
      * フィードバックを投稿する。
      *
      * @param req    作成リクエスト

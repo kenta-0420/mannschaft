@@ -3,8 +3,11 @@ package com.mannschaft.app.admin.controller;
 import com.mannschaft.app.admin.dto.FeedbackRespondRequest;
 import com.mannschaft.app.admin.dto.FeedbackResponse;
 import com.mannschaft.app.admin.dto.FeedbackStatusRequest;
+import com.mannschaft.app.admin.AdminFeedbackErrorCode;
 import com.mannschaft.app.admin.service.FeedbackService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +35,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class AdminFeedbackController {
 
     private final FeedbackService feedbackService;
-
+    private final AccessControlService accessControlService;
 
     /**
      * フィードバック一覧を取得する。
@@ -45,6 +48,8 @@ public class AdminFeedbackController {
             @RequestParam Long scopeId,
             @RequestParam(required = false) String status,
             Pageable pageable) {
+        // 認可根治 Wave5: 宣言された scope に対して ADMIN/DEPUTY_ADMIN を要求する（非メンバーは 403）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         Page<FeedbackResponse> page = feedbackService.getFeedbacks(scopeType, scopeId, status, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
@@ -60,6 +65,7 @@ public class AdminFeedbackController {
     public ResponseEntity<ApiResponse<FeedbackResponse>> respondToFeedback(
             @PathVariable Long id,
             @Valid @RequestBody FeedbackRespondRequest request) {
+        authorizeByEntityScope(id);
         FeedbackResponse response = feedbackService.respondToFeedback(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -73,7 +79,35 @@ public class AdminFeedbackController {
     public ResponseEntity<ApiResponse<FeedbackResponse>> updateFeedbackStatus(
             @PathVariable Long id,
             @Valid @RequestBody FeedbackStatusRequest request) {
+        authorizeByEntityScope(id);
         FeedbackResponse response = feedbackService.updateFeedbackStatus(id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * entity 由来の scope でフィードバック操作を認可する（BOLA 対策）。
+     *
+     * <p>認可根治 Wave5: {@code respond} / {@code status} は ID のみを引数に取るため、
+     * 引数の scope を信用すると別スコープの ADMIN が他スコープのフィードバックを
+     * 回答・ステータス変更できてしまう。そこで entity から scope を読み直して認可する。</p>
+     *
+     * <p>権限が無い場合・GENERAL スコープ（scopeId が null＝プラットフォーム全体宛て。
+     * {@code SystemAdminFeedbackController} の管轄）の場合は、403 ではなく
+     * <b>404（{@code ADMIN_FB_003}）で存在を秘匿</b>する。403 を返すと「その ID の
+     * フィードバックは存在する」ことが判明し、ID 総当たりによる存在推測を許すため。</p>
+     *
+     * @param id フィードバックID
+     */
+    private void authorizeByEntityScope(Long id) {
+        FeedbackService.FeedbackScopeRef scope = feedbackService.getFeedbackScope(id);
+        // GENERAL 等 per-scope でない種別・scopeId 欠落は本 Controller の管轄外。
+        // isAdminOrAbove へ渡すと ScopeType.valueOf が例外になるため、先に 404 で秘匿する。
+        boolean perScope = scope.scopeId() != null
+                && ("TEAM".equals(scope.scopeType()) || "ORGANIZATION".equals(scope.scopeType()));
+        if (!perScope
+                || !accessControlService.isAdminOrAbove(
+                        SecurityUtils.getCurrentUserId(), scope.scopeId(), scope.scopeType())) {
+            throw new BusinessException(AdminFeedbackErrorCode.FEEDBACK_NOT_FOUND);
+        }
     }
 }

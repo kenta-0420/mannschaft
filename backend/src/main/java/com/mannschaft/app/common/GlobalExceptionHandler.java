@@ -95,6 +95,10 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // F10.1 目安箱: フィードバック不在は 404（Severity.WARN 既定の 400 を上書き）。
+            // 認可根治 Wave5 で AdminFeedbackController が「別スコープのフィードバック」を
+            // 存在秘匿する際にも本コードを使うため、404 への正規化が必須。
+            Map.entry("ADMIN_FB_003", HttpStatus.NOT_FOUND),
             // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
             //（Severity.WARN 既定の 400 を上書き。SYSTEM_ADMIN トグル API 等で正しい status を返す）
             Map.entry("TMPL_002", HttpStatus.NOT_FOUND),
@@ -874,6 +878,13 @@ public class GlobalExceptionHandler {
             Map.entry("PARKING_024", HttpStatus.NOT_FOUND),              // RECURRING_NOT_FOUND
             Map.entry("PARKING_025", HttpStatus.NOT_FOUND),              // SUBLEASE_NOT_FOUND
             Map.entry("PARKING_026", HttpStatus.NOT_FOUND),              // SUBLEASE_APPLICATION_NOT_FOUND（紐付け検証・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave5: F03.7 queue の *_NOT_FOUND は、QueueAccessGuard が
+            // 「対象エンティティが URL パスの scope 外（BOLA）」の場合にも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと IDOR 秘匿の慣例に反するため 404 へ上書きする。
+            Map.entry("QUEUE_001", HttpStatus.NOT_FOUND),                // CATEGORY_NOT_FOUND（scope 外 → 404 秘匿）
+            Map.entry("QUEUE_002", HttpStatus.NOT_FOUND),                // COUNTER_NOT_FOUND（scope 外 → 404 秘匿）
+            Map.entry("QUEUE_003", HttpStatus.NOT_FOUND),                // TICKET_NOT_FOUND（scope 外・他人所有 → 404 秘匿）
+            Map.entry("QUEUE_008", HttpStatus.NOT_FOUND),                // QR_CODE_NOT_FOUND（scope 外 → 404 秘匿）
             // 認可根治戦役 Wave 2 トランシェ2B: F07.4 chart（要配慮個人情報：健康記録）の
             // NOT_FOUND 系は teamId を跨いだ存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("CHART_001", HttpStatus.NOT_FOUND),                 // CHART_NOT_FOUND
@@ -1015,7 +1026,14 @@ public class GlobalExceptionHandler {
             // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND)
+            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
+            // 認可根治戦役 Wave5: ticket（F08.5 回数券）の *_NOT_FOUND は、対象エンティティが自チーム外、
+            // または顧客面で他人の所有物である場合にも同一コードで返す存在秘匿の要。
+            // Severity.WARN 既定の 400 のままだと ID の実在有無が判別でき、購入者の存在が推測可能になる。
+            Map.entry("TICKET_001", HttpStatus.NOT_FOUND),               // PRODUCT_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
+            Map.entry("TICKET_002", HttpStatus.NOT_FOUND),               // BOOK_NOT_FOUND（teamId 束縛＋所有者不一致 → 404）
+            Map.entry("TICKET_003", HttpStatus.NOT_FOUND),               // CONSUMPTION_NOT_FOUND（親book不一致BOLA → 404）
+            Map.entry("TICKET_004", HttpStatus.NOT_FOUND)                // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
     );
 
     /**

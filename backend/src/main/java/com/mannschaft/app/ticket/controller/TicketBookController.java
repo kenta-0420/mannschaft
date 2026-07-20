@@ -19,6 +19,7 @@ import com.mannschaft.app.ticket.dto.TicketBookDetailResponse;
 import com.mannschaft.app.ticket.dto.TicketBookResponse;
 import com.mannschaft.app.ticket.dto.TicketStatsResponse;
 import com.mannschaft.app.ticket.dto.VoidResultResponse;
+import com.mannschaft.app.ticket.service.TicketAccessGuard;
 import com.mannschaft.app.ticket.service.TicketBookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,6 +49,11 @@ import java.util.Map;
 /**
  * 回数券管理コントローラー（スタッフ向け）。
  * 手動発行・消化・取消・返金・延長・統計・エクスポート APIを提供する。
+ *
+ * <p>認可（認可根治 Wave5）: 本コントローラーは全顧客の購入履歴・購入者氏名・決済額・売上を扱う。
+ * 従来 JavaDoc 上「ADMIN」と称しながら強制する実装が無く、ログイン済みであれば誰でも
+ * 任意チームの URL を叩けたため、<b>全エンドポイント</b>の入口で
+ * {@link TicketAccessGuard#requireTeamAdmin} を通す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/ticket-books")
@@ -57,6 +63,7 @@ public class TicketBookController {
 
     private final TicketBookService bookService;
     private final PdfGeneratorService pdfGeneratorService;
+    private final TicketAccessGuard ticketAccessGuard;
 
     /**
      * 手動発行（現地決済。ADMIN / DEPUTY_ADMIN）。
@@ -67,7 +74,9 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<IssueResultResponse>> issueTicketBook(
             @PathVariable Long teamId,
             @Valid @RequestBody IssueTicketBookRequest request) {
-        IssueResultResponse response = bookService.issueTicketBook(teamId, SecurityUtils.getCurrentUserId(), request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        IssueResultResponse response = bookService.issueTicketBook(teamId, currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -82,6 +91,7 @@ public class TicketBookController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         Page<TicketBookResponse> result = bookService.listTicketBooks(teamId, status, page, size);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -97,6 +107,7 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<TicketBookDetailResponse>> getTicketBookDetail(
             @PathVariable Long teamId,
             @PathVariable Long id) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         TicketBookDetailResponse response = bookService.getTicketBookDetail(teamId, id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -111,7 +122,9 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ConsumeTicketRequest request) {
-        ConsumeResultResponse response = bookService.consumeTicket(teamId, id, SecurityUtils.getCurrentUserId(), request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        ConsumeResultResponse response = bookService.consumeTicket(teamId, id, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -125,7 +138,9 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @PathVariable Long consumptionId) {
-        VoidResultResponse response = bookService.voidConsumption(teamId, id, consumptionId, SecurityUtils.getCurrentUserId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        VoidResultResponse response = bookService.voidConsumption(teamId, id, consumptionId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -139,7 +154,9 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody RefundRequest request) {
-        TicketBookDetailResponse response = bookService.refund(teamId, id, SecurityUtils.getCurrentUserId(), request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        TicketBookDetailResponse response = bookService.refund(teamId, id, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -153,6 +170,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ExtendRequest request) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         TicketBookDetailResponse response = bookService.extendExpiry(teamId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -166,8 +184,10 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<ConsumeResultResponse>> consumeByQr(
             @PathVariable Long teamId,
             @Valid @RequestBody ConsumeByQrRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
         ConsumeResultResponse response = bookService.consumeByQr(
-                teamId, SecurityUtils.getCurrentUserId(), request.getQrPayload(), request.getNote());
+                teamId, currentUserId, request.getQrPayload(), request.getNote());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -180,7 +200,9 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<BulkConsumeResponse>> bulkConsume(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkConsumeRequest request) {
-        BulkConsumeResponse response = bookService.bulkConsume(teamId, SecurityUtils.getCurrentUserId(), request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ticketAccessGuard.requireTeamAdmin(teamId, currentUserId);
+        BulkConsumeResponse response = bookService.bulkConsume(teamId, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -193,6 +215,7 @@ public class TicketBookController {
     public ResponseEntity<ApiResponse<TicketStatsResponse>> getStats(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "30d") String period) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
         TicketStatsResponse response = bookService.getStats(teamId, period);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -207,6 +230,7 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @RequestParam String format,
             @RequestParam String period) {
+        ticketAccessGuard.requireTeamAdmin(teamId, SecurityUtils.getCurrentUserId());
 
         if ("pdf".equalsIgnoreCase(format)) {
             return exportStatsPdf(teamId, period);
