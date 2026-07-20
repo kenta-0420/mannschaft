@@ -31,11 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>スタッフ面</b>（商品の作成・更新・削除／発行・消化・取消・返金・延長・QR 消化・一括消化／
  *       発行一覧・詳細・統計・エクスポート／顧客チケットサマリ）＝ {@link #requireTeamAdmin}。
  *       いずれも全顧客の購入履歴・氏名・売上といった機微情報を扱うため ADMIN/DEPUTY_ADMIN に限定する。</li>
- *   <li><b>チーム内 read</b>（販売中の商品一覧）＝ {@link #requireTeamMember}。
+ *   <li><b>チーム内 read + 購入</b>（販売中の商品一覧・Stripe Checkout Session 作成）＝ {@link #requireTeamMember}。
  *       購入導線のため SUPPORTER も通す（{@code memberships} 由来の判定）。
  *       ただし販売停止中を含む全件参照（{@code includeInactive=true}）は運用情報のため ADMIN に限定する。</li>
- *   <li><b>顧客面</b>（自分のチケット一覧・ウィジェット・購入）＝ {@code userId} による自己スコープで自足するため
- *       スコープガード非適用（非メンバーが叩いても自分の 0 件が返るのみで他者情報は露出しない）。
+ *   <li><b>顧客面の自己スコープ read</b>（自分のチケット一覧・ウィジェット）＝ {@code userId} による
+ *       自己スコープで自足するためスコープガード非適用
+ *       （非メンバーが叩いても自分の 0 件が返るのみで他者情報は露出しない）。
  *       ただし ID を指定して単票を引く詳細・領収書・QR は {@link #requireBookOwner} で所有者一致を必須とする。</li>
  * </ul>
  */
@@ -47,8 +48,12 @@ public class TicketAccessGuard {
     private final AccessControlService accessControlService;
 
     /**
-     * 指定チームのメンバー（SUPPORTER を含む）であることを要求する（チーム内 read の入口）。
+     * 指定チームのメンバー（SUPPORTER を含む）であることを要求する
+     * （チーム内 read および購入導線の入口）。
      * 非メンバーは 403（COMMON_002）。
+     *
+     * <p>{@code accessControlService.checkMembership} は {@code memberships} の
+     * {@code role_kind} を絞らないため、MEMBER と SUPPORTER の双方が通る。</p>
      *
      * @param teamId チーム ID（URL パス由来）
      * @param userId 操作ユーザー ID

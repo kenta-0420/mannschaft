@@ -396,6 +396,39 @@ class TicketScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
         }
 
+        // ---- 認可根治 Wave5 追込: 購入(checkout)をカタログ閲覧と同粒度に揃えた分の番人 ----
+        //
+        // createCheckout は JavaDoc で「MEMBER / SUPPORTER」を宣言しながら認可の強制実装を持たず、
+        // ログイン済みなら誰でも他チームの商品に対して Stripe Checkout Session と
+        // PENDING の購入行を作成できた（商品一覧のほうが購入より厳しいという粒度逆転）。
+        // requireTeamMember 追加により非メンバーはガードで 403 になる。
+        //
+        // 注: 正当メンバーの成功系（200）は Stripe API 実呼び出しを伴うため本 IT では検証しない
+        //     （本クラスは Stripe をモックしていない）。ここではガードが効くこと＝
+        //     Stripe 到達前に 403 で中断することのみを担保する。
+
+        @Test
+        @DisplayName("非メンバーの購入(checkout)は403（他チームの商品を勝手に購入させない）")
+        void 非メンバーの購入は403() throws Exception {
+            setAuthentication(outsiderId);
+
+            mockMvc.perform(post("/api/v1/teams/{teamId}/ticket-products/{id}/checkout",
+                            teamAId, productAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("他チームメンバーの購入(checkout)は403（越境拒否）")
+        void 他チームメンバーの購入は403() throws Exception {
+            setAuthentication(adminBId); // チームB の ADMIN はチームA の非メンバー
+
+            mockMvc.perform(post("/api/v1/teams/{teamId}/ticket-products/{id}/checkout",
+                            teamAId, productAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
         private Map<String, Object> productBody(String name) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", name);
