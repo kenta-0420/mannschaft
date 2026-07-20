@@ -76,8 +76,12 @@ export interface VillageResponse {
   /** 掲示板公開範囲（F17.1 §3.12.1）。未指定時は MEMBERS_ONLY */
   bulletinVisibility: VillageBulletinVisibility
   category: string | null
-  iconR2Key: string | null
-  coverR2Key: string | null
+  /** アイコンの表示用 URL（署名付き GET URL。未設定 / 解決失敗時は null。#2355） */
+  iconUrl: string | null
+  /** カバー画像の表示用 URL（署名付き GET URL。未設定 / 解決失敗時は null。#2355） */
+  coverUrl: string | null
+  /** 村紋の表示用 URL（署名付き GET URL。未設定 / 解決失敗時は null。#2355） */
+  monshoUrl: string | null
   guidelineMd: string | null
   memberCount: number
   isOfficial: boolean
@@ -246,7 +250,8 @@ export interface ReportResponse {
 export interface VillagePinnedSummaryResponse {
   id: string
   name: string
-  iconR2Key: string | null
+  /** アイコンの表示用 URL（署名付き GET URL。未設定 / 解決失敗時は null。#2355） */
+  iconUrl: string | null
   unreadCount: number
 }
 
@@ -432,9 +437,9 @@ export interface VillageInternalSearchParams {
 //   - Phase 1 既存 type は変更せず、Phase 2 では本ブロックに追記する。
 //   - 主キーはバックエンド側で UUIDv7（BINARY(16)）採用のため string 表現。
 //   - 実 API パスは Backend Controller 完成時に微調整の可能性あり。
-//   - `villages.monsho_r2_key` は VillageResponse の拡張で扱うが、
-//     既存 VillageResponse は変更禁止のため、別途 VillageMonshoResponse 等で扱う
-//     設計とする（VillageHeader 表示用に `village.iconR2Key` を流用しないこと）。
+//   - `villages.monsho_r2_key` は #2355 で VillageResponse.monshoUrl（署名付き表示 URL）として
+//     本体に統合済み。VillageHeader 等の表示は `village.monshoUrl` をそのまま <img src> に渡すこと
+//     （公開ベース URL の前置なし・独自 R2 URL 組立は禁止。VillagePinService#toResponse が範）。
 //
 
 // -----------------------------------------------------------------------------
@@ -558,7 +563,8 @@ export interface VillageFestivalResponse {
   description: string | null
   startsAt: string
   endsAt: string
-  bannerR2Key: string | null
+  /** バナー画像の表示用URL（署名付きGET URL。BEが解決済み。未設定/解決失敗時はnull） */
+  bannerUrl: string | null
   /** テーマカラー (#RRGGBB) */
   themeColorHex: string | null
   status: VillageFestivalStatus

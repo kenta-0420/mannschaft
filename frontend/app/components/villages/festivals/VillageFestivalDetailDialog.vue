@@ -17,7 +17,6 @@ defineProps<{
   visible: boolean
   festival: VillageFestivalResponse | null
   canManage: boolean
-  buildBannerUrl: (r2Key: string | null) => string | null
 }>()
 
 const emit = defineEmits<{
@@ -54,11 +53,11 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
   >
     <div v-if="festival" class="flex flex-col gap-3">
       <div
-        v-if="buildBannerUrl(festival.bannerR2Key)"
+        v-if="festival.bannerUrl"
         class="h-40 bg-surface-100 dark:bg-surface-800 overflow-hidden rounded"
       >
         <img
-          :src="buildBannerUrl(festival.bannerR2Key) ?? undefined"
+          :src="festival.bannerUrl"
           :alt="festival.title"
           class="w-full h-full object-cover"
         >

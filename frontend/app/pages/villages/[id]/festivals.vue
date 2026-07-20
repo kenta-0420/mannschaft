@@ -32,7 +32,6 @@ const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
 const { confirmAction } = useConfirmDialog()
-const config = useRuntimeConfig()
 
 // 権限は親シェルから inject
 const { perms } = useVillageContext()
@@ -75,21 +74,6 @@ async function loadFestivals() {
 function setStatusFilter(value: StatusFilter) {
   statusFilter.value = value
   loadFestivals()
-}
-
-// =====================================================================
-// バナー画像 URL 組立
-// =====================================================================
-
-const r2PublicBase = computed<string>(() => {
-  const url = config.public.r2PublicUrl as string | undefined
-  return url ? url.replace(/\/$/, '') : ''
-})
-
-function buildBannerUrl(r2Key: string | null): string | null {
-  if (!r2Key) return null
-  if (!r2PublicBase.value) return null
-  return `${r2PublicBase.value}/${r2Key}`
 }
 
 // =====================================================================
@@ -160,7 +144,12 @@ function openEditDialog(f: VillageFestivalResponse) {
     description: f.description ?? '',
     startsAt: f.startsAt.slice(0, 16), // datetime-local
     endsAt: f.endsAt.slice(0, 16),
-    bannerR2Key: f.bannerR2Key ?? '',
+    // バナーR2キー入力欄は「新しい値を入力する」欄として扱う（空欄プリフィル）。
+    // VillageFestivalResponse は #2355 で署名済み表示 URL（bannerUrl）のみを返し、
+    // 生キーは返さなくなったため、現在値をテキストとして再表示することはできない。
+    // 空送信は BE 側で「未指定＝現状維持」として扱われる（updateFestival の null チェック）
+    // ため、空欄プリフィルでも「変更しない」という既存の意味は壊れない（VillageEditDialog と同じ方針）。
+    bannerR2Key: '',
     themeColorHex: f.themeColorHex ?? '',
   }
   editTargetId.value = f.id
@@ -246,7 +235,6 @@ onMounted(() => {
       :status-filter="statusFilter"
       :status-filter-tabs="statusFilterTabs"
       :can-manage="canManage"
-      :build-banner-url="buildBannerUrl"
       @set-status-filter="setStatusFilter"
       @open-create-dialog="openCreateDialog"
       @open-detail-dialog="openDetailDialog"
@@ -266,7 +254,6 @@ onMounted(() => {
       v-model:visible="showDetailDialog"
       :festival="detailFestival"
       :can-manage="canManage"
-      :build-banner-url="buildBannerUrl"
       @edit="openEditDialog"
       @cancel-festival="submitCancel"
     />

@@ -1,3 +1,4 @@
+import type { components } from '~/types/generated'
 import type {
   PinListResponse,
   PinOrderUpdateRequest,
@@ -13,6 +14,11 @@ import type {
   VillageRepresentativeResponse,
   VillageRepresentativeRevokeRequest,
 } from '~/types/village'
+
+// 村紋 (#2355) は生成型を正とする（手書きの嘘型を作らない）
+type MonshoUploadUrlRequest = components['schemas']['MonshoUploadUrlRequest']
+type MonshoUploadUrlResponse = components['schemas']['MonshoUploadUrlResponse']
+type VillageMonshoResponse = components['schemas']['VillageMonshoResponse']
 
 /**
  * F17.1 村機能 API composable — ニックネーム・投稿主体・ピン・通報・代表委任・村紋
@@ -177,16 +183,98 @@ export function useVillageFeatureApi() {
   }
 
   // =====================================================================
-  // Phase 2: 村紋 (VillageMonshoController)
+  // Phase 2: 村紋 (VillageMonshoController) — /api/v1/villages/{villageId}/monsho
   //
-  // 村紋の「アップロード」関数はここには置かない。
-  // BE は multipart を一切受け取らず（`PUT /monsho` に JSON `{r2Key}` を渡す契約のみ）、
-  // R2 への実体アップロードは「別経路のプリサインド URL 発行 API」に委ねる設計だが、
-  // その委ね先が村ドメインに存在しない（2026-07-15 時点で BE 側の欠落）。
-  // かつて存在した `uploadMonsho` は `POST /monsho` に FormData を送る実装で、
-  // 実測 405・呼び出し元ゼロの死蔵コードだったため撤去した。
-  // 村紋アップロード UI は BE のプリサインド発行エンドポイント新設が前提となる。
+  // #2355 で BE にプリサインド発行 EP（POST /monsho/upload-url）が新設された。
+  // これにより「presign 発行 → R2 へ直 PUT → PUT /monsho で r2Key 登録」の3ステップで
+  // ファイル入稿できる。かつての FormData を POST /monsho に送る `uploadMonsho`（実測 405・
+  // 死蔵）は撤去済みで、本実装はそれとは別物（multipart は一切使わない）。
+  // 村の表示系読取（GET /villages/{id} 等）は #2355 で署名付き表示 URL
+  // （VillageResponse.monshoUrl）に統一済み。FE は公開ベース URL を組み立てない
+  // （前置なしでそのまま <img src> に渡す）。
+  // 本 PUT/DELETE（書込エコー）だけは既存契約どおり生 r2Key を返す点に注意
+  // （VillageMonshoResponse.monshoR2Key）。プレビューは呼び出し側で村詳細を
+  // 再取得して署名 URL を得ること（VillageEditDialog.vue#refreshMonshoUrl が範）。
   // =====================================================================
+
+  /**
+   * §13.2 村紋アップロード用 presigned PUT URL を発行する。
+   * POST /api/v1/villages/{villageId}/monsho/upload-url
+   */
+  async function generateMonshoUploadUrl(
+    villageId: string,
+    body: MonshoUploadUrlRequest,
+  ): Promise<MonshoUploadUrlResponse> {
+    const res = await api<{ data: MonshoUploadUrlResponse }>(
+      `/api/v1/villages/${villageId}/monsho/upload-url`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /**
+   * §13.2 村紋 r2Key を DB に登録する（アップロード完了後）。
+   * PUT /api/v1/villages/{villageId}/monsho
+   */
+  async function updateMonsho(
+    villageId: string,
+    r2Key: string,
+  ): Promise<VillageMonshoResponse> {
+    const res = await api<{ data: VillageMonshoResponse }>(
+      `/api/v1/villages/${villageId}/monsho`,
+      { method: 'PUT', body: { r2Key } },
+    )
+    return res.data
+  }
+
+  /**
+   * §13.2 村紋を削除する。
+   * DELETE /api/v1/villages/{villageId}/monsho
+   */
+  async function deleteMonsho(villageId: string): Promise<VillageMonshoResponse> {
+    const res = await api<{ data: VillageMonshoResponse }>(
+      `/api/v1/villages/${villageId}/monsho`,
+      { method: 'DELETE' },
+    )
+    return res.data
+  }
+
+  /**
+   * 村紋ファイル入稿のフルフロー（useProfileMediaApi#uploadAndCommit を手本）。
+   * 1. generateMonshoUploadUrl() で presigned PUT URL を発行
+   * 2. fetch() で R2 に直接 PUT（api ラッパーではなく生 fetch）
+   * 3. updateMonsho() で DB に r2Key を登録
+   *
+   * @returns 登録後の村紋レスポンス（monshoR2Key を含む）
+   */
+  async function uploadMonsho(
+    villageId: string,
+    file: File,
+    onProgress?: (progress: number) => void,
+  ): Promise<VillageMonshoResponse> {
+    // 1. presign 発行
+    const presign = await generateMonshoUploadUrl(villageId, {
+      contentType: file.type,
+      fileSize: file.size,
+    })
+    if (!presign.uploadUrl || !presign.r2Key) {
+      throw new Error('presign レスポンスに uploadUrl / r2Key がありません')
+    }
+
+    // 2. R2 に直接 PUT
+    const r2Response = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+    })
+    if (!r2Response.ok) {
+      throw new Error(`R2 アップロード失敗: ${r2Response.status} ${r2Response.statusText}`)
+    }
+    onProgress?.(100)
+
+    // 3. r2Key を DB 登録
+    return updateMonsho(villageId, presign.r2Key)
+  }
 
   return {
     // ニックネーム
@@ -207,5 +295,10 @@ export function useVillageFeatureApi() {
     listRepresentatives,
     grantRepresentative,
     revokeRepresentative,
+    // Phase 2: 村紋 (#2355)
+    generateMonshoUploadUrl,
+    updateMonsho,
+    deleteMonsho,
+    uploadMonsho,
   }
 }

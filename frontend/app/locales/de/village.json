@@ -354,7 +354,15 @@
     "monsho": {
       "title": "Dorfwappen",
       "upload": "Dorfwappen hochladen",
-      "remove": "Dorfwappen entfernen"
+      "remove": "Dorfwappen entfernen",
+      "label": "Dorfwappen (Emblem / Logo)",
+      "change": "Wappen ändern",
+      "uploading": "Wird hochgeladen…",
+      "hint": "JPG / PNG / WebP, bis zu 5MB",
+      "errorMime": "Nur JPG-, PNG- und WebP-Bilder werden unterstützt",
+      "errorSize": "Die Dateigröße darf höchstens 5MB betragen",
+      "uploadSuccess": "Dorfwappen hochgeladen",
+      "removeSuccess": "Dorfwappen entfernt"
     },
     "calendar": {
       "title": "Dorfkalender",

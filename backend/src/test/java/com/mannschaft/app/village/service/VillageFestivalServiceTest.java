@@ -3,6 +3,8 @@ package com.mannschaft.app.village.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.FestivalCreateRequest;
 import com.mannschaft.app.village.dto.FestivalResponse;
@@ -69,6 +71,8 @@ class VillageFestivalServiceTest {
     private static final UUID OTHER_VILLAGE_ID = UUID.fromString("01956c00-0000-7000-8000-000000000602");
     private static final UUID FESTIVAL_ID = UUID.fromString("01956c00-0000-7000-8000-000000000701");
     private static final Long ACTOR_USER_ID = 901L;
+    private static final String BANNER_KEY = "village/X/festival/Y/banner.png";
+    private static final String BANNER_URL = "https://storage.example.com/signed/village/X/festival/Y/banner.png?sig=abc";
 
     @Mock
     private VillageFestivalRepository festivalRepository;
@@ -78,6 +82,8 @@ class VillageFestivalServiceTest {
     private VillageMembershipRepository membershipRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private VillageFestivalService service;
@@ -225,6 +231,52 @@ class VillageFestivalServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    // ========================================================================
+    // create: バナー URL 解決（#2355 r2PublicUrl 根絶 — 祭バナー）
+    // ========================================================================
+
+    @Test
+    @DisplayName("create: banner_r2_key 指定 → bannerUrl は MediaUrlResolver 経由の署名URLで返る（生キー直返し禁止）")
+    void create_bannerUrlResolvedFromR2Key() {
+        givenActiveVillage();
+        givenActorRole(VillageRole.HEADMAN);
+        LocalDateTime starts = LocalDateTime.now().plusDays(7);
+        LocalDateTime ends = starts.plusDays(2);
+        FestivalCreateRequest req = new FestivalCreateRequest(
+                "夏祭り", "盛大に", starts, ends, BANNER_KEY, "#FF8800");
+        given(festivalRepository.save(any(VillageFestivalEntity.class)))
+                .willAnswer(inv -> {
+                    VillageFestivalEntity e = inv.getArgument(0);
+                    e.setId(FESTIVAL_ID);
+                    e.setCreatedAt(LocalDateTime.now());
+                    return e;
+                });
+        given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(BANNER_URL);
+
+        FestivalResponse res = service.createFestival(VILLAGE_ID, req, ACTOR_USER_ID);
+
+        assertThat(res.bannerUrl()).isEqualTo(BANNER_URL);
+        // 生の R2 キーを素通しで返していないこと（FE が相対URLとして解釈し404になる退行の防止）
+        assertThat(res.bannerUrl()).doesNotStartWith("village/");
+        verify(mediaUrlResolver).resolve(BANNER_KEY);
+    }
+
+    @Test
+    @DisplayName("create: バナー未設定 → bannerUrl は null（500 にならない）")
+    void create_noBannerReturnsNullWithoutThrowing() {
+        givenActiveVillage();
+        givenActorRole(VillageRole.HEADMAN);
+        LocalDateTime starts = LocalDateTime.now().plusDays(1);
+        LocalDateTime ends = starts.plusDays(1);
+        FestivalCreateRequest req = new FestivalCreateRequest("祭", null, starts, ends, null, null);
+        given(festivalRepository.save(any(VillageFestivalEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        FestivalResponse res = service.createFestival(VILLAGE_ID, req, ACTOR_USER_ID);
+
+        assertThat(res.bannerUrl()).isNull();
     }
 
     // ========================================================================
@@ -391,6 +443,53 @@ class VillageFestivalServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.FESTIVAL_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("get: バナー登録済みのお祭りを取得すると bannerUrl が署名URLで返る")
+    void get_bannerUrlResolvedFromR2Key() {
+        givenActiveVillage();
+        VillageFestivalEntity existing = festival(VillageFestivalStatus.ACTIVE,
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(1));
+        existing.setBannerR2Key(BANNER_KEY);
+        given(festivalRepository.findById(FESTIVAL_ID)).willReturn(Optional.of(existing));
+        given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(BANNER_URL);
+
+        FestivalResponse res = service.getFestival(VILLAGE_ID, FESTIVAL_ID);
+
+        assertThat(res.bannerUrl()).isEqualTo(BANNER_URL);
+    }
+
+    @Test
+    @DisplayName("list: 同一バナーキーを共有する複数の祭りでも presign は1回のみ（resolveAll のメモ化が効くこと・N+1防止）")
+    void list_doesNotPresignPerRowForSharedBannerKey() {
+        givenActiveVillage();
+        // 実物の MediaUrlResolver（メモ化つき）を通し、presign の実回数を StorageService で数える。
+        // resolver を mock にすると「resolveAll でメモ化されている」ことの検証にならないため、
+        // ここだけ実物を使う（VillageServiceTest の AC-7 に倣う）。
+        StorageService storageService = org.mockito.Mockito.mock(StorageService.class);
+        given(storageService.generateDownloadUrl(eq(BANNER_KEY), any(java.time.Duration.class)))
+                .willReturn(BANNER_URL);
+        MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
+        VillageFestivalService serviceWithRealResolver = new VillageFestivalService(
+                festivalRepository, villageRepository, membershipRepository, auditLogService, realResolver);
+
+        VillageFestivalEntity f1 = festival(VillageFestivalStatus.SCHEDULED,
+                LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(6));
+        f1.setBannerR2Key(BANNER_KEY);
+        VillageFestivalEntity f2 = festival(VillageFestivalStatus.ACTIVE,
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(1));
+        f2.setBannerR2Key(BANNER_KEY);
+        Page<VillageFestivalEntity> page = new PageImpl<>(List.of(f1, f2));
+        given(festivalRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any(Pageable.class)))
+                .willReturn(page);
+
+        List<FestivalResponse> res = serviceWithRealResolver.listFestivals(VILLAGE_ID, null, null);
+
+        assertThat(res).hasSize(2);
+        assertThat(res).allSatisfy(r -> assertThat(r.bannerUrl()).isEqualTo(BANNER_URL));
+        // 同一キーは 1 回しか presign しない（resolveAll のメモ化が効いていること）
+        verify(storageService, times(1)).generateDownloadUrl(eq(BANNER_KEY), any(java.time.Duration.class));
     }
 
     // ========================================================================

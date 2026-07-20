@@ -354,7 +354,15 @@
     "monsho": {
       "title": "Village crest",
       "upload": "Upload village crest",
-      "remove": "Remove village crest"
+      "remove": "Remove village crest",
+      "label": "Village crest (emblem / logo)",
+      "change": "Change crest",
+      "uploading": "Uploading…",
+      "hint": "JPG / PNG / WebP, up to 5MB",
+      "errorMime": "Only JPG, PNG and WebP images are supported",
+      "errorSize": "File size must be 5MB or less",
+      "uploadSuccess": "Village crest uploaded",
+      "removeSuccess": "Village crest removed"
     },
     "calendar": {
       "title": "Village calendar",
