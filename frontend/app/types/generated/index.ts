@@ -33654,7 +33654,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** チーム検索 */
+        /** チーム検索（PUBLIC かつ未アーカイブのチームのみ） */
         get: operations["searchTeams"];
         put?: never;
         post?: never;
@@ -38800,7 +38800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織検索 */
+        /** 組織検索（PUBLIC かつ未アーカイブの組織のみ） */
         get: operations["searchOrganizations_1"];
         put?: never;
         post?: never;
@@ -109917,6 +109917,24 @@ export interface operations {
         responses: {
             /** @description 作成成功 */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 指定した親組織の ADMIN/DEPUTY 権限がない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 指定した親組織が存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
