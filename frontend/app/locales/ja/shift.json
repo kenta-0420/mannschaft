@@ -53,7 +53,8 @@
       "noDate": "日付未設定",
       "colDate": "日付",
       "colSlots": "スロット",
-      "editDialogTitle": "シフトを編集"
+      "editDialogTitle": "シフトを編集",
+      "accessDeniedRedirect": "このページを表示する権限がありません"
     },
     "slot": {
       "createTitle": "スロットを作成",
