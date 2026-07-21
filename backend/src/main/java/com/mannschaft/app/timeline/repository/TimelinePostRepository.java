@@ -179,6 +179,28 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("scopeType") PostScopeType scopeType, @Param("scopeId") Long scopeId);
 
     /**
+     * 村スコープのピン留め投稿一覧を取得する（認可根治 Wave6）。
+     *
+     * <p>VILLAGE 投稿は村の識別子を {@code scope_village_id}（UUIDv7）側に持ち、
+     * {@code scope_id} は NOT NULL 制約のため常に 0 が入る。したがって
+     * {@link #findPinnedPosts} を {@code (VILLAGE, 0)} で引くと <b>全村のピン留め投稿が
+     * 種別一致だけで混在する</b>。本クエリは村 ID を複合キーとして絞ることで
+     * 村をまたいだ混在を構造的に防ぐ（ガード側の
+     * {@code TimelinePostService#requireVillageMember} と合わせた多層防御）。</p>
+     *
+     * @param villageId 村 ID（UUIDv7）
+     * @return 当該村のピン留め投稿一覧（新着順）
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeVillageId = :villageId
+              AND p.isPinned = true
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+            ORDER BY p.createdAt DESC
+            """)
+    List<TimelinePostEntity> findPinnedByVillageId(@Param("villageId") UUID villageId);
+
+    /**
      * 全文検索で投稿を取得する（可視 scope 絞り込み込み。認可根治 Wave3-B7-timeline）。
      *
      * <p>{@code teamIds}/{@code orgIds} は呼び出し側で空にならないことを保証すること

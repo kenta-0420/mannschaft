@@ -108,6 +108,11 @@ public class GlobalExceptionHandler {
             // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
             //（Severity.WARN 既定の 400 を上書き。SYSTEM_ADMIN トグル API 等で正しい status を返す）
             Map.entry("TMPL_002", HttpStatus.NOT_FOUND),
+            // F04.1 タイムライン: 投稿不在は 404（Severity.WARN 既定の 400 を上書き）。
+            // 認可根治 Wave3-B7 以降、越境アクセスは「存在しない」と同じ TIMELINE_001 に倒して
+            // 対象 ID の実在を秘匿する設計になっているが、status 未登録のため実際には 400 が
+            // 返っており、コード内 Javadoc の「404 相当」という記述と乖離していた（認可根治 Wave6 で是正）。
+            Map.entry("TIMELINE_001", HttpStatus.NOT_FOUND),
             // F19.1 公開ページ Public API（IDOR / レート制限）
             Map.entry("PUBLIC_001", HttpStatus.NOT_FOUND),         // PUBLIC でないチーム / 組織は 404 で隠蔽
             Map.entry("PUBLIC_002", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過
@@ -628,6 +633,9 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_076", HttpStatus.NOT_FOUND),            // SERENDIPITY_NOT_FOUND
             // F17 Phase 3-β — 巡礼（VILLAGE_077）
             Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
+            // F17.2 Wave3 ⑤相性表示・⑥所属村一覧（VILLAGE_099〜100）
+            Map.entry("VILLAGE_099", HttpStatus.NOT_FOUND),            // AFFINITY_NOT_PUBLIC_VILLAGE（内部予約・通常は 404 存在秘匿）
+            Map.entry("VILLAGE_100", HttpStatus.FORBIDDEN),            // PROFILE_VILLAGES_FORBIDDEN（0件は一律 403・§9.4）
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED

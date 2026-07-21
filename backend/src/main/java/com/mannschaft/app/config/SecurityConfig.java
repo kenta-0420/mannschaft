@@ -8,6 +8,7 @@ import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
+import com.mannschaft.app.village.VillageAffinityRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +61,7 @@ public class SecurityConfig {
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
+    private final VillageAffinityRateLimitFilter villageAffinityRateLimitFilter;
 
     /**
      * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -175,6 +177,21 @@ public class SecurityConfig {
             dashboardScopeTabRateLimitFilterRegistration() {
         FilterRegistrationBean<DashboardScopeTabRateLimitFilter> registration =
                 new FilterRegistrationBean<>(dashboardScopeTabRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F17.2 ⑤相性表示: {@link VillageAffinityRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする（キー=userId+villageId・§8.4）。
+     */
+    @Bean
+    public FilterRegistrationBean<VillageAffinityRateLimitFilter>
+            villageAffinityRateLimitFilterRegistration() {
+        FilterRegistrationBean<VillageAffinityRateLimitFilter> registration =
+                new FilterRegistrationBean<>(villageAffinityRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -479,7 +496,9 @@ public class SecurityConfig {
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
-            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
+            // F17.2 ⑤相性表示（§8.4・30req/分/userId+villageId）。差分攻撃を村単位で捕捉。JWT 認証後に動かす。
+            .addFilterAfter(villageAffinityRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }
