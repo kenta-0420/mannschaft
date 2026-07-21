@@ -93,7 +93,7 @@ class AttendanceRequirementBatchServiceTest {
             service.runDailyEvaluation();
 
             // Assert
-            verify(evaluationService).evaluate(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
         }
 
         @Test
@@ -142,7 +142,7 @@ class AttendanceRequirementBatchServiceTest {
 
             // Assert: サマリー取得も評価も呼ばれない
             verify(summaryRepository, never()).findClassSummaries(anyLong(), any(short.class));
-            verify(evaluationService, never()).evaluate(anyLong(), anyLong());
+            verify(evaluationService, never()).evaluateInternal(anyLong(), anyLong());
         }
 
         @Test
@@ -171,8 +171,8 @@ class AttendanceRequirementBatchServiceTest {
             service.runDailyEvaluation();
 
             // Assert: 2人目の評価も実行される
-            verify(evaluationService).evaluate(eq(200L), anyLong());
-            verify(evaluationService).evaluate(eq(201L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(201L), anyLong());
         }
     }
 
