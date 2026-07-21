@@ -302,7 +302,19 @@ test.describe('BLOG-IMG: ブログ本文画像の署名URL解決 実機E2E', () 
       expect(signedGet.status(), '署名URLが200で実バイトを返すこと（オブジェクトが実在すること）').toBe(200)
       expect((await signedGet.body()).length, '取得したバイト列が空でないこと').toBeGreaterThan(0)
 
-      // ---- 5. ★ブラウザで記事詳細を開き、<img> が実際に描画・デコードされること ----
+      // ---- 5. ★AC-2 逆アサーション: 編集経路は「生 r2Key のまま」が正しい ----
+      // ここが署名URL化されていたら、編集保存で期限付きURLが本文へ永続保存され画像が恒久的に壊れる。
+      // ブラウザ検証（§6）より前に置く。両者は独立した検証であり、§6 の失敗で
+      // AC-2 が巻き添えで未実行になるのを避けるため。
+      const editBody = await fetchEditBody(page.request, token, post.id)
+      console.log('[BLOG-IMG-01] 編集経路 body:', editBody)
+      expect(editBody.includes(fileKey),
+        `★ 編集経路 GET /users/me/blog/posts/{id} は生r2Keyのまま返すこと（key=${fileKey}）`).toBeTruthy()
+      expect(editBody,
+        '★ 編集経路の本文に署名パラメータ(X-Amz-)が含まれないこと（含まれたら仕様違反）').not.toContain('X-Amz-')
+      expect(editBody, '編集経路の本文は保存したMarkdownと完全一致すること').toBe(body)
+
+      // ---- 6. ★ブラウザで記事詳細を開き、<img> が実際に描画・デコードされること ----
       // FE は BlogPostDetail.vue が renderMarkdown(body) を v-html で描画するのみで、
       // 追加のURL解決は一切しない（BE 解決済みが前提）。
       await page.goto(`/users/${me.id}/blog/posts/${slug}`, { waitUntil: 'domcontentloaded' })
@@ -322,16 +334,6 @@ test.describe('BLOG-IMG: ブログ本文画像の署名URL解決 実機E2E', () 
       const imgGet = await page.request.get(imgSrc!)
       expect(imgGet.status(), 'ブラウザが読んだ src が 200 で取得できること（404でない）').toBe(200)
       await page.screenshot({ path: `test-results/blog-img-01-detail-${ts}.png`, fullPage: true })
-
-      // ---- 6. ★AC-2 逆アサーション: 編集経路は「生 r2Key のまま」が正しい ----
-      // ここが署名URL化されていたら、編集保存で期限付きURLが本文へ永続保存され画像が恒久的に壊れる。
-      const editBody = await fetchEditBody(page.request, token, post.id)
-      console.log('[BLOG-IMG-01] 編集経路 body:', editBody)
-      expect(editBody.includes(fileKey),
-        `★ 編集経路 GET /users/me/blog/posts/{id} は生r2Keyのまま返すこと（key=${fileKey}）`).toBeTruthy()
-      expect(editBody,
-        '★ 編集経路の本文に署名パラメータ(X-Amz-)が含まれないこと（含まれたら仕様違反）').not.toContain('X-Amz-')
-      expect(editBody).toBe(body)
     } finally {
       await deletePost(page.request, token, post.id)
     }
