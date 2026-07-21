@@ -95,6 +95,9 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
+            // 認可根治 Wave6: 組織 ID をリクエストボディで受ける経路で「不在は 404 秘匿」を成立させるため必須。
+            Map.entry("ORG_001", HttpStatus.NOT_FOUND),
             // F10.1 目安箱: フィードバック不在は 404（Severity.WARN 既定の 400 を上書き）。
             // 認可根治 Wave5 で AdminFeedbackController が「別スコープのフィードバック」を
             // 存在秘匿する際にも本コードを使うため、404 への正規化が必須。

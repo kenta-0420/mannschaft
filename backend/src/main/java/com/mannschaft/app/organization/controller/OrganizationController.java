@@ -86,17 +86,48 @@ public class OrganizationController {
     // 組織 CRUD
     // ========================================
 
+    /**
+     * 組織を作成する。
+     *
+     * <p>親組織（{@code parentOrganizationId}）を指定する場合は、
+     * <b>指定した親組織が実在すること</b>（不在は {@code ORG_001} → 404）と、
+     * <b>操作者がその親組織の ADMIN/DEPUTY 相当であること</b>（不足は {@code COMMON_002} → 403）を要求する。
+     * 判定は同クラスの兄弟 EP（{@code renameSlug} / {@code deleteOrganization} 等）と同じ
+     * {@code AccessControlService.checkAdminOrAbove} に委譲し、独自 gate を作らない（F00 正準）。</p>
+     *
+     * <p>親組織の指定が無い（null）場合は従来どおり認可を要求せず、認証済みユーザーであれば作成できる。
+     * 大多数の組織作成はこの経路であり、ここに認可を課すと正常系を壊す。</p>
+     */
     @PostMapping
     @Operation(summary = "組織作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "指定した親組織の ADMIN/DEPUTY 権限がない")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "指定した親組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<OrganizationResponse>> createOrganization(
             @Valid @RequestBody CreateOrganizationRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long parentOrgId = req.getParentOrganizationId();
+        if (parentOrgId != null) {
+            // 親組織の実在確認（不在は 404 で秘匿）→ 親組織 ADMIN/DEPUTY 相当の権限確認（403）の順。
+            organizationService.assertOrganizationExists(parentOrgId);
+            accessControlService.checkAdminOrAbove(userId, parentOrgId, SCOPE_TYPE);
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(organizationService.createOrganization(SecurityUtils.getCurrentUserId(), req));
+                .body(organizationService.createOrganization(userId, req));
     }
 
+    /**
+     * 組織をキーワード検索する。
+     *
+     * <p>結果は <b>PUBLIC かつ未アーカイブ</b>の組織のみに限定される（可視性フィルタは
+     * {@code OrganizationRepository#searchByKeyword} のクエリが担保。論理削除は
+     * {@code @SQLRestriction} が除外）。未認証でも呼べる公開検索であるため、
+     * チームの {@code searchPublicTeams} と同じく「公開スコープのみ」という最も安全側の流儀に揃える。</p>
+     */
     @GetMapping("/search")
-    @Operation(summary = "組織検索")
+    @Operation(summary = "組織検索（PUBLIC かつ未アーカイブの組織のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<OrganizationSummaryResponse>> searchOrganizations(
             @RequestParam(required = false) String keyword, Pageable pageable) {

@@ -57219,6 +57219,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "指定した親組織の ADMIN/DEPUTY 権限がない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "指定した親組織が存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -113902,7 +113922,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム検索",
+        "summary": "チーム検索（PUBLIC かつ未アーカイブのチームのみ）",
         "operationId": "searchTeams",
         "parameters": [
           {
@@ -126770,7 +126790,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織検索",
+        "summary": "組織検索（PUBLIC かつ未アーカイブの組織のみ）",
         "operationId": "searchOrganizations_1",
         "parameters": [
           {
