@@ -12,6 +12,8 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.entity.TodoPersonalMemoEntity;
 import com.mannschaft.app.todo.entity.TodoSharedMemoEntryEntity;
+import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
+import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoPersonalMemoRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.repository.TodoSharedMemoEntryRepository;
@@ -93,6 +95,9 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ScheduleRepository scheduleRepository;
+
+    @Autowired
+    private TodoAssigneeRepository assigneeRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -187,6 +192,15 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
                 .createdBy(memberTeamAId)
                 .build());
         todoPersonalId = todoPersonal.getId();
+
+        // 担当者行（todo_assignees）: 個人TODOの参照・更新・ステータス変更EPの認可境界は「担当者であること」。
+        // 本番では createPersonalTodo が作成者を担当者へ自動追加するが、本 IT は Repository 直 seed で
+        // Controller を経由しないため、同じ状態を明示的に作る（これが無いと所有者本人の正常系が 404 になる）。
+        assigneeRepository.save(TodoAssigneeEntity.builder()
+                .todoId(todoPersonalId)
+                .userId(memberTeamAId)
+                .assignedBy(memberTeamAId)
+                .build());
 
         // 個人メモ（todoPersonal・本人 = memberTeamA）: PERSONAL 個人メモ EP の正常系用。
         personalMemoRepository.save(TodoPersonalMemoEntity.builder()
@@ -716,6 +730,99 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(patch("/api/v1/todos/{id}/progress-mode", todoPersonalId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("progressManual", true))))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. PERSONAL 参照・更新・ステータス変更（Wave6）
+    //    getTodo/updateTodo/changeStatus は Team/Org Controller と共有のため、
+    //    ガードは共有 Service ではなく PersonalTodoController 入口に敷く。
+    //    認可境界は削除・復元・PATCH と同一の「担当者であること」に揃える。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. PERSONAL /todos/{id}（参照・更新・status・toggle）担当者照合")
+    class PersonalScopeReadWrite {
+
+        /** PUT のボディは title が @NotBlank。埋めないと bind 時 400 になり認可へ到達しない。 */
+        private Map<String, Object> validUpdateBody() {
+            return Map.of("title", "更新後タイトル", "priority", "MEDIUM");
+        }
+
+        @Test
+        @DisplayName("参照: 担当者本人は200")
+        void get_担当者本人は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/todos/{id}", todoPersonalId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("参照: 他人（非担当者）は404秘匿")
+        void get_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/todos/{id}", todoPersonalId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("更新(PUT): 担当者本人は200")
+        void put_担当者本人は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(put("/api/v1/todos/{id}", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(validUpdateBody())))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("更新(PUT): 他人（非担当者）は404秘匿（ボディは妥当＝bind400ではないこと）")
+        void put_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(put("/api/v1/todos/{id}", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(validUpdateBody())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("status: 担当者本人は200")
+        void status_担当者本人は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/status", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("status", "COMPLETED"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("status: 他人（非担当者）は404秘匿")
+        void status_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/status", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("status", "COMPLETED"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("toggle: 担当者本人は200")
+        void toggle_担当者本人は200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/toggle", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("completed", true))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("toggle: 他人（非担当者）は404秘匿（status EP の姉妹EPも同一境界であること）")
+        void toggle_他人は404秘匿() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(patch("/api/v1/todos/{id}/toggle", todoPersonalId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("completed", true))))
                     .andExpect(status().isNotFound());
         }
     }
