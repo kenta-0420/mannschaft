@@ -131,7 +131,8 @@
       "noDate": "Sin fecha",
       "colDate": "Fecha",
       "colSlots": "Franjas",
-      "editDialogTitle": "Editar turno"
+      "editDialogTitle": "Editar turno",
+      "accessDeniedRedirect": "No tienes permiso para ver esta página"
     },
     "slot": {
       "createTitle": "Crear franja",

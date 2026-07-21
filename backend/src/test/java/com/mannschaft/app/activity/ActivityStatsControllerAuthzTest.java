@@ -1,8 +1,8 @@
 package com.mannschaft.app.activity;
 
 import com.mannschaft.app.activity.controller.ActivityStatsController;
+import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.activity.service.ActivityStatsService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
@@ -28,7 +28,7 @@ import org.mockito.Mock;
 /**
  * 活動統計コントローラーの認可ゲート契約テスト（AC-8）。
  *
- * <p>統計・エクスポートは Controller 層で {@code AccessControlService.checkMembership} を先行実行し、
+ * <p>統計・エクスポートは Controller 層で {@link ActivityScopeAccessGuard#checkMembership} を先行実行し、
  * 非会員には 403（COMMON_002）を返す。サービスへは委譲されないことを検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -36,7 +36,7 @@ import org.mockito.Mock;
 class ActivityStatsControllerAuthzTest {
 
     @Mock private ActivityStatsService statsService;
-    @Mock private AccessControlService accessControlService;
+    @Mock private ActivityScopeAccessGuard scopeAccessGuard;
 
     private ActivityStatsController controller;
     private MockedStatic<SecurityUtils> securityUtils;
@@ -46,7 +46,7 @@ class ActivityStatsControllerAuthzTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ActivityStatsController(statsService, accessControlService);
+        controller = new ActivityStatsController(statsService, scopeAccessGuard);
         securityUtils = Mockito.mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
     }
@@ -61,7 +61,7 @@ class ActivityStatsControllerAuthzTest {
     @DisplayName("getStats_他スコープ会員は403（COMMON_002）でサービス非委譲")
     void 統計_他スコープ_403() {
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
         assertThatThrownBy(() -> controller.getStats("TEAM", SCOPE_ID, null, "MONTH", null, null))
                 .isInstanceOf(BusinessException.class)
@@ -75,7 +75,7 @@ class ActivityStatsControllerAuthzTest {
     @DisplayName("getFieldStats_他スコープ会員は403（COMMON_002）でサービス非委譲")
     void フィールド集計_他スコープ_403() {
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
         assertThatThrownBy(() -> controller.getFieldStats("TEAM", SCOPE_ID, 1L, "key", "MONTH"))
                 .isInstanceOf(BusinessException.class)
@@ -89,7 +89,7 @@ class ActivityStatsControllerAuthzTest {
     @DisplayName("exportCsv_他スコープ会員は403（COMMON_002）でサービス非委譲")
     void エクスポート_他スコープ_403() {
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
         assertThatThrownBy(() -> controller.exportCsv("TEAM", SCOPE_ID, null, null, null, null))
                 .isInstanceOf(BusinessException.class)
@@ -106,7 +106,7 @@ class ActivityStatsControllerAuthzTest {
 
         controller.getStats("TEAM", SCOPE_ID, null, "MONTH", null, null);
 
-        verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+        verify(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         verify(statsService).getStats(ActivityScopeType.TEAM, SCOPE_ID, null, "MONTH", null, null);
     }
 }

@@ -46,7 +46,7 @@ class ActivityResultServiceTest {
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
-    @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
+    @Mock private com.mannschaft.app.activity.service.ActivityScopeAccessGuard scopeAccessGuard;
 
     @InjectMocks
     private ActivityResultService service;
@@ -125,7 +125,7 @@ class ActivityResultServiceTest {
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(teamOriginal()));
             org.mockito.BDDMockito.willThrow(new BusinessException(
                     com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.duplicateActivity(ACTIVITY_ID, USER_ID, null))
                     .isInstanceOf(BusinessException.class)
@@ -145,7 +145,7 @@ class ActivityResultServiceTest {
 
             ActivityResultEntity result = service.duplicateActivity(ACTIVITY_ID, USER_ID, null);
             assertThat(result).isNotNull();
-            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+            verify(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         }
     }
 
@@ -254,6 +254,9 @@ class ActivityResultServiceTest {
 
             assertThat(result.getStatus()).isEqualTo(ActivityStatus.PUBLISHED);
             verify(resultRepository).save(draft);
+            // 作成者本人でも認可ガードは必ず経由する（本人判定はガード内部の責務）
+            verify(scopeAccessGuard).checkAuthorOrAdmin(
+                    USER_ID, USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         }
 
         @Test
@@ -297,7 +300,7 @@ class ActivityResultServiceTest {
                     .status(ActivityStatus.DRAFT).createdBy(USER_ID).build();
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(draft));
             // 会員だが管理者ではない
-            given(accessControlService.isAdminOrAbove(otherUser, SCOPE_ID, "TEAM")).willReturn(false);
+            given(scopeAccessGuard.isAdminOrAbove(otherUser, ActivityScopeType.TEAM, SCOPE_ID)).willReturn(false);
 
             assertThatThrownBy(() -> service.getActivity(ACTIVITY_ID, otherUser))
                     .isInstanceOf(BusinessException.class)

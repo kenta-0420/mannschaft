@@ -131,7 +131,8 @@
       "noDate": "날짜 없음",
       "colDate": "날짜",
       "colSlots": "슬롯",
-      "editDialogTitle": "근무 편집"
+      "editDialogTitle": "근무 편집",
+      "accessDeniedRedirect": "이 페이지를 볼 권한이 없습니다"
     },
     "slot": {
       "createTitle": "슬롯 생성",
