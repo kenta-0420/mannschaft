@@ -52,12 +52,18 @@ import com.mannschaft.app.common.SecurityUtils;
  * 属することを検証してから {@link MemberPaymentService} の {@code itemId} 直渡しメソッドを呼ぶ。
  * 不一致は {@code PAYMENT_ITEM_NOT_FOUND}（404・存在秘匿）。</p>
  *
- * <p>createManualPayment/createBulkPayments/sendRemind は本戦役の対象外
- * （createManualPayment/createBulkPayments は {@code MemberPaymentService} 内部の
- * {@code PaymentAuthorizationService#authorizePayment}/{@code #authorizeBulkPaymentByAdmin} が
- * {@code itemId} 由来のスコープで既に認可済み。sendRemind は既存の
- * {@code checkAdminOrAbove(id, "TEAM")} に加え、path {@code id} と {@code itemId} のスコープ不一致
- * （team A の ADMIN が team B の itemId を渡す越境）を防ぐため {@code findByIdAndTeamIdOrThrow} を追加した）。</p>
+ * <p>sendRemind は既存の {@code checkAdminOrAbove(id, "TEAM")} に加え、path {@code id} と {@code itemId} の
+ * スコープ不一致（team A の ADMIN が team B の itemId を渡す越境）を防ぐため
+ * {@code findByIdAndTeamIdOrThrow} を追加した。</p>
+ *
+ * <p><b>認可根治戦役 Wave6（B3・2026-07-21）:</b> 手動入金記録（createManualPayment /
+ * createBulkPayments）を双子の {@link OrganizationPaymentController} と同水準へ揃える。
+ * {@code MemberPaymentService} 内部の {@code PaymentAuthorizationService} による払い手権原評価
+ * （SELF / GUARDIAN / PROXY_GRANT / ADMIN_MANUAL）に加え、入口で
+ * {@link AccessControlService#checkAdminOrAbove}（"TEAM"）と {@code itemId} のチーム帰属検証
+ * （{@link PaymentItemService#findByIdAndTeamIdOrThrow}・不一致は 404・存在秘匿）を要求する。
+ * これにより「手動での入金記録はスコープ ADMIN の操作である」という不変条件を入口で保証する。
+ * 変更前の状態に関する詳細はマージ後に戦役台帳へ記録する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{id}/payment-items/{itemId}")
@@ -100,8 +106,11 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody CreateManualPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "TEAM");
+        paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         MemberPaymentResponse response = memberPaymentService.createManualPayment(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -131,8 +140,11 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody BulkPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "TEAM");
+        paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         BulkPaymentResponse response = memberPaymentService.createBulkPayments(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
