@@ -93609,7 +93609,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織削除",
+        "summary": "組織削除（ADMIN/DEPUTY のみ）",
         "operationId": "deleteOrganization",
         "parameters": [
           {
@@ -93624,6 +93624,9 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       },
@@ -93672,7 +93675,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織アーカイブ解除",
+        "summary": "組織アーカイブ解除（ADMIN/DEPUTY のみ）",
         "operationId": "unarchiveOrganization",
         "parameters": [
           {
@@ -93687,6 +93690,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ解除成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }
@@ -93711,6 +93717,9 @@
         "responses": {
           "204": {
             "description": "復元成功"
+          },
+          "403": {
+            "description": "SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可）"
           }
         }
       }
@@ -94248,7 +94257,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織アーカイブ",
+        "summary": "組織アーカイブ（ADMIN/DEPUTY のみ）",
         "operationId": "archiveOrganization",
         "parameters": [
           {
@@ -94263,6 +94272,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }

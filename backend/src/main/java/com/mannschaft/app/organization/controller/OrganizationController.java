@@ -147,11 +147,15 @@ public class OrganizationController {
     }
 
     @DeleteMapping("/{slug}")
-    @Operation(summary = "組織削除")
+    @Operation(summary = "組織削除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> deleteOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）
+        accessControlService.checkAdminOrAbove(userId, id, SCOPE_TYPE);
         organizationService.deleteOrganization(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -209,19 +213,30 @@ public class OrganizationController {
     // ========================================
 
     @PatchMapping("/{slug}/archive")
-    @Operation(summary = "組織アーカイブ")
+    @Operation(summary = "組織アーカイブ（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> archiveOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        // なお SYSTEM_ADMIN による凍結は SystemAdminDashboardController の別 EP
+        //（/api/v1/system-admin/** = SecurityConfig で hasRole("SYSTEM_ADMIN")）が担う。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         organizationService.archiveOrganization(id);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{slug}/unarchive")
-    @Operation(summary = "組織アーカイブ解除")
+    @Operation(summary = "組織アーカイブ解除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> unarchiveOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        // SYSTEM_ADMIN による凍結解除は SystemAdminDashboardController の別 EP が担う。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         organizationService.unarchiveOrganization(id);
         return ResponseEntity.ok().build();
     }
@@ -580,8 +595,13 @@ public class OrganizationController {
     @PatchMapping("/{slug}/restore")
     @Operation(summary = "組織復元（SYSTEM_ADMINのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可）")
     public ResponseEntity<Void> restoreOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // 本 EP は SYSTEM_ADMIN 専用（Service 側 Javadoc・@Operation の宣言どおり）。
+        // 組織 ADMIN に開放すると自組織を任意に復活させられるため checkAdminOrAbove では緩すぎる。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         organizationService.restoreOrganization(id);
         return ResponseEntity.noContent().build();
     }
