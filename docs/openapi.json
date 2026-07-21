@@ -53217,6 +53217,15 @@
         "operationId": "listSwapRequests",
         "parameters": [
           {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
