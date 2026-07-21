@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -19,8 +21,10 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,15 +45,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * F17.2 Wave3 機能⑤（加入前相性表示）・機能⑥（村人ミニプロフィール所属村一覧）
- * API契約テスト（<b>試練 / red 先行</b>。実装は後続部隊が green 化する）。
+ * API契約テスト。
  *
  * <h2>本テストの性質（重要 / 検分時に必読）</h2>
  *
- * <p><strong>test-first の red テスト</strong>である。対象コントローラ
- * （{@code VillageAffinityController} / プロフィール公開トグル系）は <b>まだ存在しない</b>ため、
- * 本テストは実装クラスを一切 import せず、設計書のURL文字列を MockMvc で直接叩く。
- * 現時点では全エンドポイントが未マップで <b>404</b> を返すので、200/403/429 を期待する
- * ケースはすべて赤になる（それが試練の正しい初期状態）。出陣部隊が実装すると green 化する。</p>
+ * <p>元は <strong>test-first の red テスト</strong>として実装より先に書かれ、出陣で
+ * {@code VillageAffinityController} / {@code VillageProfileController} が実装され green 化した。
+ * 実装クラスを一切 import せず、設計書のURL文字列を MockMvc で直接叩く HTTP 契約テストであり、
+ * ステータス・フィールド・enum 値の契約（§8.3/§9.4）を固定する。</p>
  *
  * <h2>金型</h2>
  * <p>{@code WebhookAuthzContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} + 実MySQL
@@ -61,9 +69,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>村・membership は使い捨て新規作成（seed 汚染回避）。{@code village_memberships} は
  *       {@code subject_type}+{@code subject_id} 構造で {@code user_id} 列は無い（原則1）。</li>
  *   <li>{@code subject_id} は FK を張らないため、users 行を作らず任意の Long を viewer/villager に使える。</li>
- *   <li>「相性の重なり人数」の厳密な算出仕様は §8.4 で確定していない実装詳細のため、本試練では
- *       「対象村の村人のうち、閲覧者ともう1つの共通村に同居している人数」を重なりの代理としてシードする。
- *       出陣部隊がアルゴリズム確定時にフィクスチャを整合させる前提（赤→緑の緑化時に微調整可）。</li>
+ *   <li>「相性の重なり人数」の算出仕様（§8.4 確定）＝「対象村の現役村人のうち、閲覧者が現役所属する
+ *       他村のいずれかにも現役所属している人数」に合わせ、{@code seedOverlap} で
+ *       「対象村と、閲覧者も居る別の共通村」に同一村人を相互所属させて重なりを作る。</li>
  * </ul>
  */
 @AutoConfigureMockMvc(addFilters = false)
@@ -83,6 +91,10 @@ class VillageAffinityProfileContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private VillageMembershipRepository membershipRepository;
+
+    /** 相性クエリの監査記録（§8.4 緩和3）を検証するため実 Bean を spy する。 */
+    @MockitoSpyBean
+    private AuditLogService auditLogService;
 
     /** users 行は作らないため衝突しない一意な擬似 userId を採番する。 */
     private static final AtomicLong USER_SEQ = new AtomicLong(17_020_000L);
@@ -169,10 +181,35 @@ class VillageAffinityProfileContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.sharedVillagerCount").doesNotExist());
         }
 
+        @Test
+        @DisplayName("AC-21b(監査): 相性クエリ成功時に VILLAGE_AFFINITY_QUERIED が villageId/bucket 付きで1回記録される")
+        void ac21b_auditRecorded() throws Exception {
+            Long viewer = nextUser();
+            VillageEntity v = persistVillage(VillageVisibility.PUBLIC, VillageJoinPolicy.FREE);
+            addMembers(v.getId(), 4);
+
+            authenticateAs(viewer);
+            mockMvc.perform(get(AFFINITY, v.getId()))
+                    .andExpect(status().isOk());
+
+            // 差分攻撃の事後検知のため、相性クエリは監査記録される（§8.4 緩和3）。
+            // record は @Async ゆえ timeout で待つ（spy 境界では同期記録されるが保険）。
+            ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService, timeout(3000)).record(
+                    eq(AuditEventType.VILLAGE_AFFINITY_QUERIED.name()),
+                    eq(viewer),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                    metadata.capture());
+            assertThat(metadata.getValue())
+                    .as("監査 metadata は対象 villageID と bucket を含むべき")
+                    .contains(v.getId().toString())
+                    .contains("bucket");
+        }
+
         // AC-21b（レート制限 429）は、本クラスの @AutoConfigureMockMvc(addFilters=false) では
         // Security フィルタチェーン（= VillageAffinityRateLimitFilter を差す場所）が無効化されるため
-        // 検証できない。実チェーン + in-memory fake Valkey を用いる専用IT
-        // VillageAffinityRateLimitFilterIT に切り出して検証する（殿裁定#2の方式）。
+        // 検証できない。実フィルタ + in-memory fake Valkey を用いる専用ユニットテスト
+        // VillageAffinityRateLimitFilterTest に切り出して検証する（殿裁定#2の方式）。
 
         @Test
         @DisplayName("AC-22: UNLISTED村を非メンバーが叩くと 404 で存在秘匿（架空村IDと同一の応答＝識別可能なコードを漏らさない）")

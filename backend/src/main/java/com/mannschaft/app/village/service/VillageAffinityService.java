@@ -8,7 +8,6 @@ import com.mannschaft.app.village.dto.SharedVillagerBucket;
 import com.mannschaft.app.village.dto.VillageAffinityResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
-import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
@@ -77,15 +76,24 @@ public class VillageAffinityService {
     public VillageAffinityResponse getAffinity(UUID villageId, Long viewerId) {
         VillageEntity village = loadPublicVillageOrHide(villageId);
 
+        // 閲覧者の現役 USER メンバーシップを 1 回だけ取得し、以降の各軸で使い回す（N+1 回避）。
+        List<VillageMembershipEntity> viewerMemberships =
+                membershipRepository.findActiveUserMemberships(viewerId);
         // 閲覧者が対象村に現役参加済みか（草分けアピールは未参加者向け・§8.8）
-        boolean viewerIsMember = membershipRepository
-                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, viewerId)
-                .isPresent();
+        boolean viewerIsMember = viewerMemberships.stream()
+                .anyMatch(m -> m.getVillageId().equals(villageId));
+        // 閲覧者が現役所属する「他の村」（対象村を除く）の村ID集合
+        Set<UUID> viewerOtherVillageIds = new HashSet<>();
+        for (VillageMembershipEntity m : viewerMemberships) {
+            if (!m.getVillageId().equals(villageId)) {
+                viewerOtherVillageIds.add(m.getVillageId());
+            }
+        }
 
         long memberCount = membershipRepository.countByVillageIdAndLeftAtIsNullAndBannedAtIsNull(villageId);
 
-        boolean categoryMatch = computeCategoryMatch(village, viewerId);
-        SharedVillagerBucket bucket = computeSharedVillagerBucket(villageId, viewerId);
+        boolean categoryMatch = computeCategoryMatch(village, viewerOtherVillageIds);
+        SharedVillagerBucket bucket = computeSharedVillagerBucket(villageId, viewerId, viewerOtherVillageIds);
         boolean pioneerAppeal = !viewerIsMember && memberCount <= PIONEER_MEMBER_THRESHOLD;
 
         List<String> reasonKeys = buildReasonKeys(categoryMatch, bucket, pioneerAppeal);
@@ -133,11 +141,10 @@ public class VillageAffinityService {
      * カテゴリ一致（§8.3）。閲覧者の「関心カテゴリ」＝閲覧者が現役所属する<strong>他の村</strong>の
      * カテゴリ集合とし、対象村のカテゴリがそこに含まれるかで判定する（新テーブル不要・read 集約）。
      */
-    private boolean computeCategoryMatch(VillageEntity target, Long viewerId) {
+    private boolean computeCategoryMatch(VillageEntity target, Set<UUID> viewerOtherVillageIds) {
         if (target.getCategory() == null || target.getCategory().isBlank()) {
             return false;
         }
-        Set<UUID> viewerOtherVillageIds = viewerOtherActiveVillageIds(viewerId, target.getId());
         if (viewerOtherVillageIds.isEmpty()) {
             return false;
         }
@@ -156,19 +163,20 @@ public class VillageAffinityService {
      * <strong>他の村</strong>のいずれかにも現役所属している人数（distinct）」を重なり数とし、
      * {@code <3=HIDDEN / 3〜9=FEW / >=10=MANY} に丸める。正確人数は外へ出さない。</p>
      */
-    private SharedVillagerBucket computeSharedVillagerBucket(UUID targetVillageId, Long viewerId) {
+    private SharedVillagerBucket computeSharedVillagerBucket(UUID targetVillageId,
+                                                             Long viewerId,
+                                                             Set<UUID> viewerOtherVillageIds) {
         List<Long> targetVillagers =
                 membershipRepository.findActiveUserSubjectIdsByVillageId(targetVillageId);
         if (targetVillagers.isEmpty()) {
             return SharedVillagerBucket.HIDDEN;
         }
 
-        // 閲覧者が現役所属する他村の現役村人集合（＝閲覧者と縁のある村人）
-        Set<UUID> viewerOtherVillageIds = viewerOtherActiveVillageIds(viewerId, targetVillageId);
-        Set<Long> coInhabitants = new HashSet<>();
-        for (UUID otherVillageId : viewerOtherVillageIds) {
-            coInhabitants.addAll(membershipRepository.findActiveUserSubjectIdsByVillageId(otherVillageId));
-        }
+        // 閲覧者が現役所属する他村の現役村人集合（＝閲覧者と縁のある村人）。
+        // 村ごとの発行（N+1）を避け、村ID集合を 1 本の IN クエリで束ねて取得する。
+        Set<Long> coInhabitants = viewerOtherVillageIds.isEmpty()
+                ? new HashSet<>()
+                : new HashSet<>(membershipRepository.findActiveUserSubjectIdsByVillageIdIn(viewerOtherVillageIds));
         coInhabitants.remove(viewerId);
 
         Set<Long> counted = new HashSet<>();
@@ -210,16 +218,5 @@ public class VillageAffinityService {
             keys.add(REASON_PIONEER);
         }
         return keys;
-    }
-
-    /** 閲覧者が現役所属する村ID集合から対象村を除いたもの。 */
-    private Set<UUID> viewerOtherActiveVillageIds(Long viewerId, UUID excludeVillageId) {
-        Set<UUID> ids = new HashSet<>();
-        for (VillageMembershipEntity m : membershipRepository.findActiveUserMemberships(viewerId)) {
-            if (!m.getVillageId().equals(excludeVillageId)) {
-                ids.add(m.getVillageId());
-            }
-        }
-        return ids;
     }
 }
