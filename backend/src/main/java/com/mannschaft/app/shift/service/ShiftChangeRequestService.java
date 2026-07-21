@@ -2,6 +2,7 @@ package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -75,20 +76,33 @@ public class ShiftChangeRequestService {
 
     /**
      * 変更依頼一覧を取得する。
-     * - ADMIN: スケジュール全件
-     * - MEMBER: 自分の依頼のみ
+     *
+     * <p><b>認可（認可根治 Wave6 / 権限昇格の封鎖）:</b> 旧実装は呼び出し側から渡された
+     * {@code role} 文字列（実体はクエリパラメータ {@code ?role=}）で全件返却か自分の分のみかを
+     * 分岐していた。<b>クライアント入力を認可判断の材料にしていた</b>ため、一般メンバーが
+     * {@code ADMIN} を自称するだけで他人の依頼を含む全件を取得できた。
+     * 本実装では {@code role} を撤廃し、{@code scheduleId} から解決したチームに対する
+     * サーバー側のロール判定でのみ分岐する。</p>
+     *
+     * <p>粒度は同ドメインの兄弟 API に合わせる。当該チームの ADMIN/DEPUTY_ADMIN（および
+     * SYSTEM_ADMIN）はスケジュール全件、一般メンバーは自分の依頼のみ、非メンバーは
+     * {@code COMMON_002}（403）とする。非メンバーを 403 とするのは
+     * {@code ShiftPdfService#checkMemberAndNotSupporter} と同一方針。</p>
      *
      * @param scheduleId スケジュールID
      * @param userId     操作者ユーザーID
-     * @param role       ロール文字列（"ADMIN" で全件取得）
      * @return 変更依頼一覧
      */
-    public List<ChangeRequestResponse> list(Long scheduleId, Long userId, String role) {
+    public List<ChangeRequestResponse> list(Long scheduleId, Long userId) {
+        Long teamId = resolveTeamId(scheduleId);
+
         List<ShiftChangeRequestEntity> entities;
-        if ("ADMIN".equals(role)) {
+        if (isScopeAdmin(userId, teamId)) {
             entities = changeRequestRepository.findAllByScheduleIdOrderByCreatedAtDesc(scheduleId);
-        } else {
+        } else if (accessControlService.isMember(userId, teamId, "TEAM")) {
             entities = changeRequestRepository.findAllByRequestedByAndScheduleId(userId, scheduleId);
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return entities.stream().map(this::toResponse).toList();
     }
@@ -96,14 +110,30 @@ public class ShiftChangeRequestService {
     /**
      * 変更依頼詳細を取得する（IDOR チェック付き）。
      *
+     * <p><b>認可（認可根治 Wave6 / 死文だった Javadoc の実装）:</b> 旧実装は
+     * 「IDOR チェック付き」と Javadoc に明記しながら<b>本体に照合コードが無く</b>、
+     * 認証済みであれば任意の ID の変更依頼を閲覧できた。本実装で実際の照合を行う。</p>
+     *
+     * <p>閲覧を許すのは「依頼者本人」または「当該シフトの所属チームの ADMIN/DEPUTY_ADMIN」
+     *（SYSTEM_ADMIN は短絡許可）のみ。それ以外は<b>存在を秘匿するため 404</b>
+     *（{@code CHANGE_REQUEST_NOT_FOUND}）を返す。403 と 404 を撃ち分けると
+     * ID の存在有無が観測できてしまうため、越境時は未存在と同じ応答に寄せている。</p>
+     *
      * @param id     変更依頼ID
      * @param userId 操作者ユーザーID
      * @return 変更依頼レスポンス
      */
     public ChangeRequestResponse get(Long id, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
-        // 依頼者本人またはシステム全体（ADMIN チェックはコントローラーで行う）
-        return toResponse(entity);
+
+        if (entity.getRequestedBy().equals(userId)) {
+            return toResponse(entity);
+        }
+        if (isScopeAdmin(userId, resolveTeamId(entity.getScheduleId()))) {
+            return toResponse(entity);
+        }
+        // 越境は存在秘匿（未存在と同一応答）
+        throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
     }
 
     /**
@@ -186,6 +216,33 @@ public class ShiftChangeRequestService {
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+    }
+
+    /**
+     * スケジュール ID から所属チーム ID を解決する（scope をパス/クエリ入力でなく実体由来にする）。
+     *
+     * @param scheduleId スケジュール ID
+     * @return 所属チーム ID
+     */
+    private Long resolveTeamId(Long scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
+                .getTeamId();
+    }
+
+    /**
+     * 当該チームに対する管理者（SYSTEM_ADMIN 短絡 or ADMIN/DEPUTY_ADMIN）かを判定する。
+     *
+     * <p>{@code checkAdminOrAbove} と異なり例外を投げず真偽を返す。一覧の返却範囲切替や
+     * 詳細の可視判定のように「弾く」のでなく「分岐する」用途で使う。</p>
+     *
+     * @param userId 操作者ユーザー ID
+     * @param teamId チーム ID
+     * @return 管理者相当なら true
+     */
+    private boolean isScopeAdmin(Long userId, Long teamId) {
+        return accessControlService.isSystemAdmin(userId)
+                || accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

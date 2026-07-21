@@ -135,7 +135,7 @@ class ChatUploadControllerTest {
     }
 
     @Test
-    @DisplayName("POST presign 異常系: チャンネル未存在で 400（既定の WARN マッピング）")
+    @DisplayName("POST presign 異常系: チャンネル未存在で 404（認可根治 Wave6: CHAT_001 を GEH に明示登録し存在秘匿）")
     void presign_404_channel_not_found() throws Exception {
         willThrow(new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND))
                 .given(chatChannelService).findChannelOrThrow(CHANNEL_ID);
@@ -145,7 +145,7 @@ class ChatUploadControllerTest {
                 """;
         mockMvc.perform(post("/api/v1/chat/files/upload-url")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("CHAT_001"));
     }
 }

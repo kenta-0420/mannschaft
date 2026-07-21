@@ -571,6 +571,8 @@ class ChatChannelServiceTest {
             ReflectionTestUtils.setField(partner, "id", PARTNER_ID);
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(dm));
+            // 認可根治 Wave6: 閲覧にチャンネルメンバーシップを要求するようになったため当事者として通す。
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
                     .willReturn(Optional.of(myMember));
             given(memberRepository.countByChannelId(CHANNEL_ID)).willReturn(2L);
@@ -590,17 +592,40 @@ class ChatChannelServiceTest {
         }
 
         @Test
-        @DisplayName("AC-B6: 非メンバーは viewer=null（memberCount は返る）")
-        void AC_B6_非メンバーはviewerがnull() {
+        @DisplayName("認可根治Wave6: 非メンバーのチャンネル詳細取得は CHANNEL_ACCESS_DENIED")
+        void 非メンバーのチャンネル詳細は拒否される() {
+            // 旧テスト（AC-B6「非メンバーは viewer=null で memberCount は返る」）は、
+            // 非メンバーにレスポンスを返すこと自体を正常系として固定していた。
+            // これは DM で相手の userId・表示名・アバターを無条件に返す情報漏洩の温床だったため、
+            // メンバーシップ管理種別では 403（CHANNEL_ACCESS_DENIED）に是正した。
             ChatChannelEntity team = ChatChannelEntity.builder()
                     .channelType(ChannelType.TEAM_PUBLIC).teamId(TEAM_ID).name("一般").build();
             ReflectionTestUtils.setField(team, "id", CHANNEL_ID);
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(team));
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> chatChannelService.getChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+        }
+
+        @Test
+        @DisplayName("認可根治Wave6: メンバーシップ非依存種別(村ロビー)は従来どおり viewer=null で返る")
+        void 村ロビーは非メンバーでもviewerがnullで返る() {
+            // VILLAGE_LOBBY / EVENT_CHAT は chat_channel_members を持たない横断スペースであり、
+            // village / event ドメイン側で認可される。ここでメンバーシップを要求すると
+            // 正当な利用者まで一律 403 になるため素通しする（WS 購読認可と同じ境界）。
+            ChatChannelEntity lobby = ChatChannelEntity.builder()
+                    .channelType(ChannelType.VILLAGE_LOBBY).name("井戸端").build();
+            ReflectionTestUtils.setField(lobby, "id", CHANNEL_ID);
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(lobby));
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(memberRepository.countByChannelId(CHANNEL_ID)).willReturn(5L);
-            given(chatMapper.toChannelResponse(team)).willReturn(base("TEAM_PUBLIC"));
+            given(chatMapper.toChannelResponse(lobby)).willReturn(base("VILLAGE_LOBBY"));
 
             ChannelResponse result = chatChannelService.getChannel(CHANNEL_ID, USER_ID);
 
