@@ -323,6 +323,7 @@
     },
     "myShift": {
       "confirmedTitle": "确定排班",
+      "upcomingTitle": "即将到来的确定排班",
       "teamFilter": {
         "all": "所有团队",
         "label": "按团队筛选"

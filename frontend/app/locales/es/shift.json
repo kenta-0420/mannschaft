@@ -328,6 +328,7 @@
     },
     "myShift": {
       "confirmedTitle": "Turno Confirmado",
+      "upcomingTitle": "Próximos turnos confirmados",
       "teamFilter": {
         "all": "Todos los Equipos",
         "label": "Filtrar por Equipo"
