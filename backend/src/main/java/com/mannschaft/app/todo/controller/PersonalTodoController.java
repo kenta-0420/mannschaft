@@ -95,6 +95,10 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TodoResponse>> getPersonalTodo(@PathVariable Long id) {
+        // 認可（Wave6）: 削除・復元・PATCH と同一の担当者照合（担当外は404秘匿）。
+        // getTodo は Team/Org Controller と共有のため、ガードは共有Serviceではなく public 入口に置く。
+        Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         return ResponseEntity.ok(todoService.getTodo(id));
     }
 
@@ -107,7 +111,10 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoStatusChangeResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody TodoStatusChangeRequest request) {
+        // 認可（Wave6）: Team/Org Controller と同様、status 変更も入口で担当者照合を行う（担当外は404秘匿）。
+        // changeStatus に渡す userId は監査項目・イベント発行用であり、認可判定はこのガードが担う。
         Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         return ResponseEntity.ok(todoStatusService.changeStatus(id, request, userId));
     }
 
@@ -121,7 +128,9 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoStatusChangeResponse>> toggleTodo(
             @PathVariable Long id,
             @RequestBody ToggleTodoRequest request) {
+        // 認可（Wave6）: status EP の姉妹EP。同一の担当者照合を揃えて敷く（担当外は404秘匿）。
         Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         String newStatus = request.completed() ? "COMPLETED" : "OPEN";
         return ResponseEntity.ok(todoStatusService.changeStatus(id, new TodoStatusChangeRequest(newStatus), userId));
     }
@@ -137,6 +146,10 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> updatePersonalTodo(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTodoRequest request) {
+        // 認可（Wave6）: PATCH（patchTodo）と同一の担当者照合に揃える（担当外は404秘匿）。
+        // updateTodo は Team/Org Controller と共有のため、ガードは共有Serviceではなく public 入口に置く。
+        Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         return ResponseEntity.ok(todoService.updateTodo(id, request));
     }
 

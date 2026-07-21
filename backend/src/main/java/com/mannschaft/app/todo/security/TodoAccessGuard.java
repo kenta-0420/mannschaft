@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -35,7 +36,38 @@ import java.util.Objects;
 public class TodoAccessGuard {
 
     private final TodoRepository todoRepository;
+    private final TodoAssigneeRepository assigneeRepository;
     private final AccessControlService accessControlService;
+
+    /**
+     * 個人TODO EP の担当者本人認可（認可根治戦役 Wave6）。
+     *
+     * <p>{@code PersonalTodoController} の個別TODO操作 EP に対し、同ドメインの既存メソッド
+     * （{@code TodoService#deletePersonalTodo} / {@code TodoService#restorePersonalTodo} /
+     * {@code TodoService#patchTodo}）が採用している認可境界を共通化したもの。</p>
+     *
+     * <p>認可境界は上記既存メソッドと<b>完全に同一</b>とする。すなわち「対象 TODO の担当者であること」を
+     * 唯一の条件とし、スコープ種別では絞らない。{@code GET /api/v1/todos/my} が全スコープ横断
+     * （担当者経由）で TODO を返す以上、その詳細・更新 EP を PERSONAL スコープ限定にすると、
+     * 担当しているチーム TODO を開けなくなり正常系を破壊するためである。</p>
+     *
+     * <p>秘匿方針: 担当外・不存在をいずれも {@link TodoErrorCode#TODO_NOT_FOUND}
+     * （{@code TODO_010} → 404）にまとめ、TODO id の存在有無を漏らさない。
+     * 上記既存メソッドの挙動と一致する。</p>
+     *
+     * <p>本メソッドは共有 Service ではなく <b>public な入口（Controller）</b>から呼ぶこと。
+     * 共有 Service 内部に置くと、同メソッドを使うバッチ・他ドメイン連携が巻き添えで 404 になる
+     * （{@code feedback_authz_gate_on_public_entry_not_shared_method}）。</p>
+     *
+     * @param todoId Todo ID
+     * @param userId 操作ユーザー ID
+     */
+    public void verifyPersonalAssignee(Long todoId, Long userId) {
+        // 担当者照合はリポジトリ引きの時点で userId と複合キー化する（後から所有者比較しない）。
+        if (!assigneeRepository.existsByTodoIdAndUserId(todoId, userId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+    }
 
     /**
      * スコープ級の membership のみを検証する（todoId を持たない EP 用）。
