@@ -6,6 +6,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
@@ -127,11 +128,16 @@ public class OrganizationController {
     }
 
     @PatchMapping("/{slug}")
-    @Operation(summary = "組織更新")
+    @Operation(summary = "組織更新（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<OrganizationResponse>> updateOrganization(
             @PathVariable String slug, @Valid @RequestBody UpdateOrganizationRequest req) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 組織そのものの設定変更は当該組織の ADMIN/DEPUTY 相当のみ許可する
+        // （同一クラスの兄弟 EP renameSlug と同じ流儀に揃える）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(organizationService.updateOrganization(id, req));
     }
 
@@ -375,11 +381,16 @@ public class OrganizationController {
     // ========================================
 
     @GetMapping("/{slug}/permission-groups")
-    @Operation(summary = "権限グループ一覧")
+    @Operation(summary = "権限グループ一覧（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
             @PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 権限グループは組織の権限設計そのものであり、作成/更新/削除
+        //（PermissionGroupService 側で checkAdminOrAbove 済み）と同じ粒度で読み取りも保護する。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(
                 permissionGroupService.getPermissionGroups(id, SCOPE_TYPE)));
     }
@@ -476,15 +487,32 @@ public class OrganizationController {
     }
 
     @PostMapping("/{slug}/transfer-ownership")
-    @Operation(summary = "オーナー譲渡")
+    @Operation(summary = "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> transferOwnership(
             @PathVariable String slug, @RequestParam Long targetUserId) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 入口二重防御（changeRole / removeMember と同じ流儀）。
+        // RoleService#transferOwnership は最終判定として「操作者が当該スコープの ADMIN」を要求するため、
+        // 本ガードは判定を緩めない（ADMIN/DEPUTY で入口を絞り、ADMIN 以外は Service 側で弾かれる）。
+        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
+        roleService.transferOwnership(id, SCOPE_TYPE, currentUserId, targetUserId);
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 呼び出し者自身を当該組織から退会させる。
+     *
+     * <p>認可は {@code RoleService#leaveScope} が担う。同メソッドは
+     * {@code (userId, scopeId, scopeType)} の複合キーで {@code user_roles} を引き、
+     * 行が無ければ {@code ROLE_001} を送出する＝<b>自分の所属行しか操作できない</b>
+     * （認可根治戦役の判定規律「リポジトリ引きの時点で currentUserId と複合キー化」に合致）。
+     * 対象ユーザーは常に {@code SecurityUtils.getCurrentUserId()} であり、path から与えられない。</p>
+     */
+    @AuthorizedInService
     @DeleteMapping("/{slug}/me")
     @Operation(summary = "組織退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
@@ -504,7 +532,13 @@ public class OrganizationController {
      * <p>未認証でもアクセス可能（対象組織が PUBLIC の場合）。PRIVATE の場合は未認証で 401・
      * 非メンバー＆非子孫メンバーで 403 を返す。各祖先はその visibility / hierarchyVisibility に応じて
      * フル情報・限定情報・プレースホルダ（{@code hidden: true}）のいずれかとして返す。</p>
+     *
+     * <p>認可は {@code OrganizationHierarchyService#getAncestors} が担う（requesterId と対象組織の
+     * visibility を突き合わせ、PRIVATE なら未認証 401 / 非メンバー かつ 非子孫メンバー 403）。
+     * 「子孫組織のメンバーにも祖先チェーンを見せる」判定は {@code ContentVisibilityChecker} の
+     * ラダーでは表現できないため、白名簿クラスへ寄せずに Service 側で判定している。</p>
      */
+    @AuthorizedInService
     @GetMapping("/{slug}/ancestors")
     @Operation(summary = "祖先組織一覧（階層パンくず用）",
             description = "対象組織の上位組織チェーンを root から直近の親の順に返す。" +
@@ -524,7 +558,13 @@ public class OrganizationController {
 
     /**
      * 対象組織の直近の子組織一覧を返す（深い孫は含まない）。
+     *
+     * <p>認可は {@code OrganizationHierarchyService#getChildren} が担う（未認証は 401、
+     * PRIVATE 組織は直接所属メンバー以外 403。さらに PRIVATE な子組織は呼び出し者が
+     * その子組織のメンバーである場合のみ結果に含める＝行単位フィルタ）。
+     * 行単位フィルタは {@code ContentVisibilityChecker} の単一 assert では表現できない。</p>
      */
+    @AuthorizedInService
     @GetMapping("/{slug}/children")
     @Operation(summary = "直近の子組織一覧",
             description = "parent_organization_id = id かつ未削除の子組織のみ返す。" +
@@ -551,8 +591,16 @@ public class OrganizationController {
     @GetMapping("/{slug}/teams")
     @Operation(summary = "組織所属チーム一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 組織の配下構成（所属チーム）は組織本体・メンバー一覧と同じ visibility ラダーで保護する
+        //（兄弟 EP getOrganization / getMembers と同じ流儀）。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(ApiResponse.of(organizationService.getTeams(id)));
     }
 
@@ -561,13 +609,19 @@ public class OrganizationController {
     // ========================================
 
     @GetMapping("/{slug}/members/all")
-    @Operation(summary = "組織配下全メンバー一覧（カスケード通知用）")
+    @Operation(summary = "組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<CursorPagedResponse<OrgAllMembersResponse>> getAllMembers(
             @PathVariable String slug,
             @RequestParam(defaultValue = "INDIVIDUAL") String scope,
             @RequestParam(defaultValue = "50") int size) {
         Long id = organizationService.resolveOrgId(slug);
+        // 本 EP は「カスケード通知の宛先選択」という管理者機能のための名簿取得であり、
+        // 配下チームまで含めた全メンバーを横断で返す。可視性ラダー（getMembers）より広い母集団を
+        // 扱うため、供給先の運用主体である ADMIN/DEPUTY 相当に限定する。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         List<OrgAllMembersResponse> members = organizationService.getAllMembers(id, scope);
         var meta = new CursorPagedResponse.CursorMeta(null, false, size);
         return ResponseEntity.ok(CursorPagedResponse.of(members, meta));
