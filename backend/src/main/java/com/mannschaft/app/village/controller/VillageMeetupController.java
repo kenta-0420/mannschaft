@@ -2,11 +2,17 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.village.dto.MeetupAttendanceResponse;
+import com.mannschaft.app.village.dto.MeetupAttendanceUpsertRequest;
 import com.mannschaft.app.village.dto.MeetupCandidateDateAddRequest;
 import com.mannschaft.app.village.dto.MeetupCandidateDateResponse;
+import com.mannschaft.app.village.dto.MeetupCommentCreateRequest;
+import com.mannschaft.app.village.dto.MeetupCommentResponse;
 import com.mannschaft.app.village.dto.MeetupConfirmRequest;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
 import com.mannschaft.app.village.dto.MeetupResponse;
+import com.mannschaft.app.village.dto.MeetupTodoCreateRequest;
+import com.mannschaft.app.village.dto.MeetupTodoResponse;
 import com.mannschaft.app.village.dto.MeetupUpdateRequest;
 import com.mannschaft.app.village.dto.MeetupVoteRequest;
 import com.mannschaft.app.village.dto.MeetupVoteSummaryResponse;
@@ -21,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -171,5 +178,128 @@ public class VillageMeetupController {
             @PathVariable("meetupId") UUID meetupId) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(meetupService.getVoteSummary(villageId, meetupId, actorUserId));
+    }
+
+    // ====================================================================
+    // F17.2 Wave1 ②寄合後半戦 — 出欠 / コメント / 宿題
+    // ====================================================================
+
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/{meetupId}/attendance")
+    @Operation(summary = "自分の出欠を登録/更新する（村人・CONFIRMED のみ・冪等 upsert）")
+    public ApiResponse<MeetupAttendanceResponse> upsertAttendance(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @Valid @RequestBody MeetupAttendanceUpsertRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(meetupService.upsertAttendance(villageId, meetupId, request, actorUserId));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{meetupId}/attendances")
+    @Operation(summary = "出欠一覧を取得する（村人・村ニックネーム表示）")
+    public ApiResponse<List<MeetupAttendanceResponse>> listAttendances(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size <= 0 ? DEFAULT_PAGE_SIZE : size);
+        return ApiResponse.of(meetupService.listAttendances(villageId, meetupId, actorUserId, pageable));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{meetupId}/comments")
+    @Operation(summary = "コメント一覧を取得する（村人・作成日昇順）")
+    public ApiResponse<List<MeetupCommentResponse>> listComments(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size <= 0 ? DEFAULT_PAGE_SIZE : size);
+        return ApiResponse.of(meetupService.listComments(villageId, meetupId, actorUserId, pageable));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{meetupId}/comments")
+    @Operation(summary = "コメントを投稿する（村人）")
+    public ResponseEntity<ApiResponse<MeetupCommentResponse>> createComment(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @Valid @RequestBody MeetupCommentCreateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        MeetupCommentResponse response = meetupService.createComment(villageId, meetupId, request, actorUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/{meetupId}/comments/{commentId}")
+    @Operation(summary = "コメントを論理削除する（投稿者本人＋村長/長老のみ）")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @PathVariable("commentId") UUID commentId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        meetupService.deleteComment(villageId, meetupId, commentId, actorUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{meetupId}/todos")
+    @Operation(summary = "宿題一覧を取得する（村人）")
+    public ApiResponse<List<MeetupTodoResponse>> listTodos(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size <= 0 ? DEFAULT_PAGE_SIZE : size);
+        return ApiResponse.of(meetupService.listTodos(villageId, meetupId, actorUserId, pageable));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{meetupId}/todos")
+    @Operation(summary = "宿題を作成する（幹事＋村長/長老）")
+    public ResponseEntity<ApiResponse<MeetupTodoResponse>> createTodo(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @Valid @RequestBody MeetupTodoCreateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        MeetupTodoResponse response = meetupService.createTodo(villageId, meetupId, request, actorUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{meetupId}/todos/{todoId}/claim")
+    @Operation(summary = "未割当の宿題を自分に割り当てる（手挙げ・村人本人）")
+    public ApiResponse<MeetupTodoResponse> claimTodo(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @PathVariable("todoId") UUID todoId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(meetupService.claimTodo(villageId, meetupId, todoId, actorUserId));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{meetupId}/todos/{todoId}/complete")
+    @Operation(summary = "宿題を完了にする（手挙げ者本人＋幹事のみ）")
+    public ApiResponse<MeetupTodoResponse> completeTodo(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @PathVariable("todoId") UUID todoId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(meetupService.completeTodo(villageId, meetupId, todoId, actorUserId));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{meetupId}/todos/{todoId}/release")
+    @Operation(summary = "宿題を手放す（未割当へ戻す・本人のみ）")
+    public ApiResponse<MeetupTodoResponse> releaseTodo(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("meetupId") UUID meetupId,
+            @PathVariable("todoId") UUID todoId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(meetupService.releaseTodo(villageId, meetupId, todoId, actorUserId));
     }
 }

@@ -601,6 +601,12 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_092", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_DUPLICATE
             Map.entry("VILLAGE_093", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_VERSION_CONFLICT（タグ楽観ロック）
 
+            // F17.2 Wave1 ②寄合後半戦・④年輪（VILLAGE_094〜096 / VILLAGE_101）
+            Map.entry("VILLAGE_094", HttpStatus.CONFLICT),             // MEETUP_NOT_CONFIRMED（PLANNING 中の出欠）
+            Map.entry("VILLAGE_095", HttpStatus.CONFLICT),             // MEETUP_TODO_ALREADY_CLAIMED（割当済み claim）
+            Map.entry("VILLAGE_096", HttpStatus.FORBIDDEN),            // MEETUP_TODO_NOT_ASSIGNEE（非手挙げ者の complete/release）
+            Map.entry("VILLAGE_101", HttpStatus.FORBIDDEN),            // CALENDAR_LOG_FORBIDDEN（年輪の他人削除）
+
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
             // F17 Phase 3-β — ご縁スコア（VILLAGE_076）

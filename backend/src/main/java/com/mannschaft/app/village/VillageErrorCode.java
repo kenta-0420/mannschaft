@@ -439,7 +439,33 @@ public enum VillageErrorCode implements ErrorCode {
      * 対象エンティティが異なる（号 vs タグ）ため、原因究明を容易にする目的で専用コードを分ける。</p>
      */
     NEWSLETTER_TAG_VERSION_CONFLICT("VILLAGE_093",
-            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN);
+            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave1 ②寄合後半戦・④年輪（VILLAGE_094〜096 / VILLAGE_101）
+    // ※ VILLAGE_097〜100 は F17.2 の他機能（祭 RSVP・相性・所属村一覧）で予約済み（設計書 §16.1）。
+    // ==================================================================
+
+    /** VILLAGE_094: PLANNING 中の寄合に出欠 API を叩いた（409・出欠は CONFIRMED 限定・設計書 §4.5/AC-08）。 */
+    MEETUP_NOT_CONFIRMED("VILLAGE_094",
+            "この寄合はまだ日程が確定していないため、出欠を受け付けられません", Severity.WARN),
+
+    /** VILLAGE_095: 既に割当済みの宿題 TODO への claim（409・設計書 §4.3/AC-10）。 */
+    MEETUP_TODO_ALREADY_CLAIMED("VILLAGE_095",
+            "この宿題は既に他の村人が引き受けています", Severity.WARN),
+
+    /**
+     * VILLAGE_096: 手挙げ者以外による宿題の complete/release（403・設計書 §4.3/AC-11・AC-12）。
+     *
+     * <p>complete は「手挙げ者本人＋幹事」、release は「本人のみ」に限る。権限の非対称
+     * （幹事でも他人の割当は手放せない）はサービス層で分岐して判定する。</p>
+     */
+    MEETUP_TODO_NOT_ASSIGNEE("VILLAGE_096",
+            "この宿題を操作する権限がありません", Severity.WARN),
+
+    /** VILLAGE_101: 年輪（歳時記の年ごとの記録）の他人削除（403・投稿者本人＋村長/長老のみ・設計書 §6.4/AC-18b）。 */
+    CALENDAR_LOG_FORBIDDEN("VILLAGE_101",
+            "この記録を削除する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -261,6 +261,14 @@ public enum AuditEventType {
     VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 出欠の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_MEETUP_ATTENDANCE_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手挙げ（claim・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_CLAIMED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の完了（complete・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_COMPLETED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手放し（release・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_RELEASED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */
