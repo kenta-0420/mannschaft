@@ -1,6 +1,8 @@
 package com.mannschaft.app.parking;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.parking.dto.AssignRequest;
 import com.mannschaft.app.parking.dto.AssignmentResponse;
 import com.mannschaft.app.parking.dto.BulkAssignRequest;
@@ -29,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +43,9 @@ class ParkingAssignmentServiceTest {
     @Mock private ParkingAssignmentRepository assignmentRepository;
     @Mock private ParkingSettingsRepository settingsRepository;
     @Mock private ParkingMapper parkingMapper;
+    // 認可根治 Wave6: assign/release/bulkAssign に checkAdminOrAbove を敷設したため
+    // 本 UT でも AccessControlService の注入が必須（未注入だと NPE で全滅する）。
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ParkingAssignmentService service;
 
     private static final String SCOPE_TYPE = "TEAM";
@@ -153,6 +160,99 @@ class ParkingAssignmentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_012"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 認可根治 Wave6: assign/release/bulkAssign の認可敷設
+    // currentUserId を assignedBy（監査欄）へ記録するだけで認可判定に使っていなかった
+    // 取りこぼしの根治。兄弟 ParkingSpaceService（Wave2 2B）と同一の
+    // checkAdminOrAbove（変更系）に揃える。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("認可（Wave6）")
+    class Authorization {
+
+        @Test
+        @DisplayName("assign は entity 由来 scope で checkAdminOrAbove を呼ぶ")
+        void 割当_認可呼び出し() {
+            ParkingSpaceEntity space = ParkingSpaceEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).spaceNumber("A-001")
+                    .spaceType(SpaceType.INDOOR).applicationStatus(ApplicationStatus.NOT_ACCEPTING)
+                    .createdBy(200L).build();
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(space));
+            given(settingsRepository.findByScopeTypeAndScopeId(SCOPE_TYPE, SCOPE_ID)).willReturn(Optional.empty());
+            given(assignmentRepository.countByUserIdAndReleasedAtIsNull(USER_ID)).willReturn(0L);
+            given(assignmentRepository.save(any())).willReturn(
+                    ParkingAssignmentEntity.builder().spaceId(1L).userId(USER_ID).assignedBy(200L).build());
+            given(spaceRepository.save(any())).willReturn(space);
+            given(parkingMapper.toAssignmentResponse(any())).willReturn(
+                    new AssignmentResponse(1L, 1L, null, USER_ID, 200L, LocalDateTime.now(),
+                            null, null, null, null, null));
+
+            service.assign(SCOPE_TYPE, SCOPE_ID, 1L, new AssignRequest(USER_ID, 1L, LocalDate.now(), null), 200L);
+
+            verify(accessControlService).checkAdminOrAbove(200L, SCOPE_ID, SCOPE_TYPE);
+        }
+
+        @Test
+        @DisplayName("assign は非ADMINなら COMMON_002 を送出し割り当てを保存しない")
+        void 割当_非ADMIN_403() {
+            ParkingSpaceEntity space = ParkingSpaceEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).spaceNumber("A-001")
+                    .spaceType(SpaceType.INDOOR).applicationStatus(ApplicationStatus.NOT_ACCEPTING)
+                    .createdBy(200L).build();
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(space));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(999L, SCOPE_ID, SCOPE_TYPE);
+
+            assertThatThrownBy(() -> service.assign(SCOPE_TYPE, SCOPE_ID, 1L,
+                    new AssignRequest(USER_ID, 1L, LocalDate.now(), null), 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+
+            verify(assignmentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("release は非ADMINなら COMMON_002 を送出し解除を保存しない")
+        void 解除_非ADMIN_403() {
+            ParkingSpaceEntity space = ParkingSpaceEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).spaceNumber("A-001")
+                    .spaceType(SpaceType.INDOOR).applicationStatus(ApplicationStatus.NOT_ACCEPTING)
+                    .createdBy(200L).build();
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(space));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(999L, SCOPE_ID, SCOPE_TYPE);
+
+            assertThatThrownBy(() -> service.release(SCOPE_TYPE, SCOPE_ID, 1L, new ReleaseRequest("理由"), 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+
+            verify(assignmentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("bulkAssign は非ADMINなら件数チェック前に COMMON_002 を送出する")
+        void 一括_非ADMIN_403() {
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(999L, SCOPE_ID, SCOPE_TYPE);
+
+            BulkAssignRequest req = new BulkAssignRequest(List.of(
+                    new BulkAssignRequest.BulkAssignItem(1L, USER_ID, 1L, LocalDate.now(), null)));
+
+            assertThatThrownBy(() -> service.bulkAssign(SCOPE_TYPE, SCOPE_ID, req, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+
+            verify(assignmentRepository, never()).save(any());
         }
     }
 
