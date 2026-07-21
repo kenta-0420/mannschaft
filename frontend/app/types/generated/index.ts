@@ -23236,6 +23236,23 @@ export interface paths {
         patch: operations["changeRole"];
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/memberships/me/profile-visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 自分の所属村一覧公開トグルを切り替える（本人のみ） */
+        patch: operations["updateMyProfileVisibility"];
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/meetups/{meetupId}": {
         parameters: {
             query?: never;
@@ -29610,7 +29627,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ご縁スコアの上位ランキングを取得する（最大100件） */
+        /**
+         * 【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）
+         * @deprecated
+         */
         get: operations["getRanking"];
         put?: never;
         post?: never;
@@ -29841,6 +29861,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/affinity/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 加入前相性表示を取得する（PUBLIC 村のみ・非メンバー可・identity 非返却） */
+        get: operations["getMyAffinity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/search": {
         parameters: {
             query?: never;
@@ -29899,6 +29936,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["suggest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/villages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 対象村人の所属村一覧を取得する（同居者限定・公開ON∩PUBLIC のみ・ニックネーム非返却） */
+        get: operations["getUserVillages"];
         put?: never;
         post?: never;
         delete?: never;
@@ -63924,6 +63978,24 @@ export interface components {
             /** @enum {string} */
             role: "HEADMAN" | "ELDER" | "VILLAGER" | "VISITOR";
         };
+        /** @description 所属村一覧の公開トグル切替リクエスト */
+        ProfileVisibilityUpdateRequest: {
+            /** @description この村所属を所属村一覧に公開するか（true=公開/false=非公開） */
+            profilePublic: boolean;
+        };
+        ApiResponseProfileVisibilityResponse: {
+            data?: components["schemas"]["ProfileVisibilityResponse"];
+        };
+        /** @description 所属村一覧の公開トグル切替結果 */
+        ProfileVisibilityResponse: {
+            /** @description 切替後の公開状態 */
+            profilePublic: boolean;
+            /**
+             * Format: uuid
+             * @description 対象の村ID
+             */
+            villageId: string;
+        };
         MeetupUpdateRequest: {
             description?: string;
             location?: string;
@@ -66747,6 +66819,28 @@ export interface components {
             /** Format: int32 */
             year?: number;
         };
+        ApiResponseVillageAffinityResponse: {
+            data?: components["schemas"]["VillageAffinityResponse"];
+        };
+        /** @description 加入前相性表示（相性のヒント）。正確な人数・identity は返さない（§8.3/§8.4） */
+        VillageAffinityResponse: {
+            /** @description 自分の関心カテゴリと村カテゴリが一致するか */
+            categoryMatch: boolean;
+            /**
+             * Format: int64
+             * @description 村の総現役メンバー数（公開情報。アピール判定の根拠・匿名重なりとは別軸）
+             */
+            memberCount: number;
+            /** @description 小規模村の「草分けアピール」を出すか（未参加×総現役メンバー10人以下・§8.8） */
+            pioneerAppeal: boolean;
+            /** @description 相性の根拠一言の i18n キー配列（FE で翻訳・空配列可） */
+            reasonKeys: string[];
+            /**
+             * @description 自分と重なる匿名村人数のバケット（HIDDEN/FEW/MANY・正確人数は非返却）
+             * @enum {string}
+             */
+            sharedVillagerBucket: "HIDDEN" | "FEW" | "MANY";
+        };
         VillageSearchResponse: {
             content?: components["schemas"]["VillageResponse"][];
             /** Format: int32 */
@@ -66769,6 +66863,23 @@ export interface components {
             source?: string;
             /** Format: int64 */
             venueId?: number;
+        };
+        ApiResponseListUserVillageSummaryResponse: {
+            data?: components["schemas"]["UserVillageSummaryResponse"][];
+        };
+        /** @description 所属村一覧の1件（村名・村紋・カテゴリ・村IDのみ。ニックネームは返さない・§9.3） */
+        UserVillageSummaryResponse: {
+            /** @description 村カテゴリ（未設定なら null） */
+            category?: string;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
+            /** @description 村紋の署名付き URL（未設定なら null） */
+            villageMonshoUrl?: string;
+            /** @description 村名（表示用） */
+            villageName: string;
         };
         CursorMeta: {
             hasNext?: boolean;
@@ -125790,6 +125901,32 @@ export interface operations {
             };
         };
     };
+    updateMyProfileVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileVisibilityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProfileVisibilityResponse"];
+                };
+            };
+        };
+    };
     get_19: {
         parameters: {
             query?: never;
@@ -138246,6 +138383,28 @@ export interface operations {
             };
         };
     };
+    getMyAffinity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageAffinityResponse"];
+                };
+            };
+        };
+    };
     search_1: {
         parameters: {
             query?: {
@@ -138333,6 +138492,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListVenueSuggestionResponse"];
+                };
+            };
+        };
+    };
+    getUserVillages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListUserVillageSummaryResponse"];
                 };
             };
         };
