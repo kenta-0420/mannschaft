@@ -36,14 +36,21 @@ public class ShiftSwapController {
 
 
     /**
-     * 交代リクエスト一覧を取得する。
+     * 指定チームの交代リクエスト一覧を取得する（当該チームの管理者のみ）。
+     *
+     * <p>認可根治 Wave6: 取得範囲を単一チームに閉じるため {@code teamId} を必須とする。
+     * 同ドメインの兄弟 API（{@code ShiftPositionController#listPositions} の {@code teamId}、
+     * {@code ShiftRequestController#listRequests} の {@code scheduleId}）と同じく、
+     * 一覧 API は明示の scope パラメータを取る規約に揃えた。</p>
      */
     @GetMapping
     @Operation(summary = "交代リクエスト一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SwapRequestResponse>>> listSwapRequests(
+            @RequestParam Long teamId,
             @RequestParam(required = false) String status) {
-        List<SwapRequestResponse> responses = swapService.listSwapRequests(status);
+        List<SwapRequestResponse> responses =
+                swapService.listSwapRequests(teamId, status, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 

@@ -107334,7 +107334,8 @@ export interface operations {
     };
     listSwapRequests: {
         parameters: {
-            query?: {
+            query: {
+                teamId: number;
                 status?: string;
             };
             header?: never;
