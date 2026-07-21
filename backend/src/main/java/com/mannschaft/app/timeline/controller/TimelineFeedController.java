@@ -60,7 +60,10 @@ public class TimelineFeedController {
         Long userId = SecurityUtils.getCurrentUserId();
         Long resolvedScopeId = scopeIdResolver.resolve(scopeType, scopeId);
         List<PostResponse> posts = postService.getFeed(scopeType, resolvedScopeId, scopeVillageId, size, userId);
-        List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId, userId);
+        // 認可根治 Wave6: 村スコープのピン留めは scope_id（常に 0）ではなく scope_village_id で引く。
+        // 村 ID を渡さないと全村のピン留めが混在するため、フィードと同じ村 ID を必ず伝播させる。
+        List<PostResponse> pinned =
+                postService.getPinnedPosts(scopeType, resolvedScopeId, scopeVillageId, userId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
     }
@@ -117,7 +120,10 @@ public class TimelineFeedController {
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") Long scopeId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId, userId);
+        // 村 ID を取らない EP のため scopeVillageId は null を渡す（VILLAGE 指定は fail-closed）。
+        // 4 引数版を直接呼ぶのは、認可番人の委譲追跡（深さ 2）で
+        // accessControlService の呼び出しが可視な位置に留まるようにするため。
+        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId, null, userId);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 
