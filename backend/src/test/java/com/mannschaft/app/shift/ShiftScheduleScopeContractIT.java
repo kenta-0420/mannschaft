@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,6 +49,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><b>象限</b>: 非ADMINメンバー（teamAの一般メンバー）/ 別scope ADMIN（BOLA: teamBのADMINが
  * teamAのシフトへアクセス）/ 正当ADMIN（teamAのADMIN）。</p>
+ *
+ * <p><b>Wave6 追加戦（§6・§7）:</b> 参照系（一覧 / 詳細）にチームメンバー粒度の認可を敷設したため、
+ * その契約を固定する。参照系の粒度は「当該チームのメンバー、ただし SUPPORTER は不可」で、
+ * {@code ShiftSlotService#checkScheduleReadAccess}（#2384）・{@code ShiftPdfService} と同一方針。
+ * <b>一般メンバーが自チームのシフト表を読めること</b>（日常利用の正常系）を明示的に固定しており、
+ * 認可を締めすぎる回帰を検知できるようにしてある。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -70,9 +77,11 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long teamAId;
     private Long teamBId;
 
-    private Long adminTeamAId;   // TEAM A の ADMIN（正当）
-    private Long adminTeamBId;   // TEAM B の ADMIN（別 scope の越境攻撃者）
-    private Long memberTeamAId;  // TEAM A の非 ADMIN メンバー
+    private Long adminTeamAId;      // TEAM A の ADMIN（正当）
+    private Long adminTeamBId;      // TEAM B の ADMIN（別 scope の越境攻撃者）
+    private Long memberTeamAId;     // TEAM A の非 ADMIN メンバー
+    private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
+    private Long outsiderId;        // どのチームにも属さない認証済みユーザー
 
     private Long scheduleAId;    // TEAM A のシフトスケジュール（DRAFT）
 
@@ -84,6 +93,8 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         adminTeamAId = insertUser("wave3b6-shift-admin-team-a@example.com");
         adminTeamBId = insertUser("wave3b6-shift-admin-team-b@example.com");
         memberTeamAId = insertUser("wave3b6-shift-member-team-a@example.com");
+        supporterTeamAId = insertUser("wave6-shift-supporter-team-a@example.com");
+        outsiderId = insertUser("wave6-shift-outsider@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（RepairPlanAuthorizationMatrixTest 踏襲）。
@@ -92,6 +103,8 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminTeamBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, supporterTeamAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+        // outsiderId は意図的にどの memberships / user_roles にも紐付けない
 
         ShiftScheduleEntity scheduleA = scheduleRepository.save(ShiftScheduleEntity.builder()
                 .teamId(teamAId)
@@ -293,6 +306,129 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminTeamAId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
                     .andExpect(status().isCreated());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 6. GET /shifts/schedules?teamId=（一覧・参照系）
+    //    粒度は「当該チームのメンバー、ただし SUPPORTER は不可」
+    //    （ShiftSlotService#checkScheduleReadAccess / ShiftPdfService と同一方針）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. GET /shifts/schedules?teamId=（一覧）")
+    class ListSchedules {
+
+        @Test
+        @DisplayName("★正常系★ 当該チームの一般メンバーは200（日常利用を壊さないこと）")
+        void 一般メンバーは200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★正常系★ 当該チームのADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★正常系★ 期間指定（from/to）でも当該チームの一般メンバーは200")
+        void 期間指定でも一般メンバーは200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", teamAId.toString())
+                            .param("from", "2026-03-01")
+                            .param("to", "2026-03-31"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMIN）は403")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/shifts/schedules").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは期間指定でも403（迂回経路を塞ぐ）")
+        void 別scopeADMINは期間指定でも403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", teamAId.toString())
+                            .param("from", "2026-03-01")
+                            .param("to", "2026-03-31"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("SUPPORTERは403")
+        void サポーターは403() throws Exception {
+            setAuth(supporterTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("無所属の認証ユーザーは403")
+        void 無所属ユーザーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/shifts/schedules").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. GET /shifts/schedules/{id}（詳細・参照系）
+    //    scope は path 変数でなく schedule 実体の teamId で解決する（BOLA封鎖）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. GET /shifts/schedules/{id}（詳細）")
+    class GetSchedule {
+
+        @Test
+        @DisplayName("★正常系★ 当該チームの一般メンバーは200（日常利用を壊さないこと）")
+        void 一般メンバーは200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★正常系★ 当該チームのADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("SUPPORTERは403")
+        void サポーターは403() throws Exception {
+            setAuth(supporterTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("無所属の認証ユーザーは403")
+        void 無所属ユーザーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isForbidden());
         }
     }
 
