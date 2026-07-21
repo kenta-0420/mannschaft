@@ -272,6 +272,10 @@ class ActivityTemplateServiceTest {
         void 複製_コピー先非会員_403() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
             // コピー元（TEAM:SCOPE_ID）は会員 → 素通り。コピー先（ORGANIZATION:2L）で拒否される。
+            // 素通りを明示的にスタブしないと、strict stubs が引数不一致（PotentialStubbingProblem）で落ちる。
+            org.mockito.BDDMockito.willDoNothing()
+                    .given(scopeAccessGuard)
+                    .checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                     .given(scopeAccessGuard)
                     .checkMembership(USER_ID, ActivityScopeType.ORGANIZATION, 2L);
