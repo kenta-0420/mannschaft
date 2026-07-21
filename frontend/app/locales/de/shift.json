@@ -131,7 +131,8 @@
       "noDate": "Kein Datum",
       "colDate": "Datum",
       "colSlots": "Slots",
-      "editDialogTitle": "Schicht bearbeiten"
+      "editDialogTitle": "Schicht bearbeiten",
+      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen"
     },
     "slot": {
       "createTitle": "Slot anlegen",
