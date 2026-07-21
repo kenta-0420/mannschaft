@@ -72,6 +72,21 @@
 
 チーム内のシフトスケジュール一覧を取得する。
 
+**認可**（認可根治 Wave6 追加戦 / 実装は `ShiftScheduleService#checkTeamReadAccess`）
+
+シフト表の閲覧は一般メンバーの日常操作のため、管理者に限定せず**当該チームのメンバー**を粒度とする。
+`ShiftSlotService#checkScheduleReadAccess`・`ShiftPdfService` と同一方針（PDF で SUPPORTER に
+伏せている情報を生 API から取得できては意味がないため、SUPPORTER は除外する）。
+
+| 呼び出し元 | 判定 |
+|---|---|
+| SYSTEM_ADMIN | 許可（短絡）|
+| 当該チームの ADMIN / DEPUTY_ADMIN / MEMBER | 許可 |
+| 当該チームの SUPPORTER | `COMMON_002`（403）|
+| 他チームのユーザー（ADMIN 含む）・無所属ユーザー | `COMMON_002`（403）|
+
+`from` / `to` を指定した期間検索も同一の認可を経由する（迂回経路を作らない）。
+
 **クエリパラメータ**
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|---|------|------|
@@ -182,6 +197,12 @@
 #### `GET /api/v1/shifts/schedules/{id}`
 
 シフトスケジュールの詳細を取得する。スロット一覧と希望提出状況のサマリーを含む。
+
+**認可**（認可根治 Wave6 追加戦 / 実装は `ShiftScheduleService#checkTeamReadAccess`）
+
+一覧と同一の粒度（当該チームのメンバー。SUPPORTER は不可）。
+scope は**パス変数でなくスケジュール実体の `team_id` から解決**してから判定するため、
+他チームの `id` を直接指定する BOLA は `COMMON_002`（403）で拒否される。
 
 **レスポンス（200 OK）**
 ```json
