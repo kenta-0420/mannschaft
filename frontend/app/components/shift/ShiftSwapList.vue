@@ -2,7 +2,8 @@
 import type { SwapRequestResponse } from '~/types/shift'
 
 const props = defineProps<{
-  teamId: string
+  /** 対象チームの数値ID。slug 文字列ではない（BEは `@RequestParam Long teamId` で受ける） */
+  teamId: number
 }>()
 
 const shiftApi = useShiftApi()
@@ -11,6 +12,8 @@ const notification = useNotification()
 
 const swaps = ref<SwapRequestResponse[]>([])
 const loading = ref(true)
+/** 取得失敗を握りつぶさず保持する。空表示と失敗を利用者が区別できるようにする */
+const loadFailed = ref(false)
 
 const statusConfig: Record<string, { label: string; severity: string }> = {
   PENDING: { label: '保留中', severity: 'warn' },
@@ -21,10 +24,15 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     swaps.value = await shiftApi.listSwapRequests(props.teamId)
-  } catch {
+  } catch (e) {
+    // 握りつぶさない。「0件」と「取得失敗」を同じ空表示に潰すと不具合が恒久的に隠れる
     swaps.value = []
+    loadFailed.value = true
+    notification.error('交換リクエストの取得に失敗しました')
+    console.error('[ShiftSwapList] 交換リクエスト取得に失敗', e)
   } finally {
     loading.value = false
   }
@@ -91,6 +99,15 @@ onMounted(load)
           />
         </div>
       </div>
+    </div>
+    <div
+      v-else-if="loadFailed"
+      class="rounded-lg border border-red-300 p-4 text-sm dark:border-red-700"
+    >
+      <p class="mb-2 text-red-600 dark:text-red-400">
+        <i class="pi pi-exclamation-triangle mr-1" />交換リクエストを取得できませんでした
+      </p>
+      <Button label="再読み込み" icon="pi pi-refresh" size="small" outlined @click="load" />
     </div>
     <DashboardEmptyState
       v-else

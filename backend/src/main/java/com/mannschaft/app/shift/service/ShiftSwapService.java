@@ -33,7 +33,9 @@ import java.util.List;
  * <ul>
  *   <li><b>管理操作</b>（一覧・承認/却下）: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）。</li>
  *   <li><b>メンバー操作</b>（申請・承諾・手挙げ）: 当該チームのメンバー、ただし SUPPORTER は不可。</li>
- *   <li><b>本人操作</b>（取消・候補者選定）: 申請者本人、または当該チームの ADMIN 以上。</li>
+ *   <li><b>本人操作</b>（取消）: 申請者本人、または当該チームの ADMIN 以上。</li>
+ *   <li><b>候補者選定</b>: 従来どおり<b>申請者本人のみ</b>（本改修で緩和していない）。
+ *       これに加えて当該チームのメンバーであることを前置きで検証する。</li>
  * </ul>
  *
  * <p>認可失敗は {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは、
@@ -265,7 +267,11 @@ public class ShiftSwapService {
     }
 
     /**
-     * オープンコールの候補者を選定して承諾済みにする（申請者または ADMIN のみ）。
+     * オープンコールの候補者を選定して承諾済みにする（申請者本人のみ）。
+     *
+     * <p>認可根治 Wave6: 実装の判定は従来どおり「申請者本人のみ」で、緩和していない。
+     * 加えて当該チームのメンバーであることを前置きで検証し、他チーム・部外者が
+     * swapId 直指定で到達することを封じる。</p>
      *
      * @param swapRequestId オープンコールの交代リクエストID
      * @param claimedBy     選定する手挙げユーザーID
@@ -275,8 +281,9 @@ public class ShiftSwapService {
     @Transactional
     public SwapRequestResponse selectClaimer(Long swapRequestId, Long claimedBy, Long actorId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapRequestId);
-        // 申請者本人でなければ当該チームの ADMIN 以上のみ許可する（Javadoc の「申請者または ADMIN」を実装で強制）
-        checkRequesterOrTeamAdmin(entity, actorId);
+        // 既存の「申請者本人のみ」判定は緩めない。テナント境界の検証のみを前置きで追加する
+        //（部外者・他チームの利用者が swapId 直指定で到達することを封じる）
+        checkTeamMemberAccess(resolveTeamIdBySwap(entity), actorId);
 
         if (!Boolean.TRUE.equals(entity.getIsOpenCall())) {
             throw new BusinessException(ShiftErrorCode.NOT_OPEN_CALL);
@@ -284,6 +291,11 @@ public class ShiftSwapService {
 
         if (entity.getStatus() != SwapRequestStatus.CLAIMED) {
             throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
+        }
+
+        // 候補者選定は申請者本人のみ（従来どおり。本PRで緩和していない）
+        if (!entity.getRequesterId().equals(actorId)) {
+            throw new BusinessException(ShiftErrorCode.CLAIMER_SELECT_DENIED);
         }
 
         entity.selectClaimer(claimedBy);

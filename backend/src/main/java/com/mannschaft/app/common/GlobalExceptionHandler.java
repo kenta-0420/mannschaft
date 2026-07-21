@@ -301,6 +301,8 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_012", HttpStatus.CONFLICT),                    // INVALID_SCHEDULE_STATUS
             Map.entry("SHIFT_019", HttpStatus.FORBIDDEN),                   // ACCESS_DENIED
             Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
+            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
+            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
