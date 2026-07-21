@@ -395,7 +395,26 @@
       "deleteSuccess": "Evento eliminado",
       "empty": "No hay eventos registrados",
       "noEventsInMonth": "No hay eventos este mes",
-      "loadFailed": "Error al cargar el calendario"
+      "loadFailed": "Error al cargar el calendario",
+      "log": {
+        "title": "Cómo fue el año pasado",
+        "lastYear": "Cómo fue en {year}",
+        "addLog": "Registrar el momento",
+        "year": "Año",
+        "note": "Nota breve",
+        "notePlaceholder": "Cuéntanos brevemente cómo fue",
+        "photoKey": "Foto (clave R2, opcional)",
+        "photoKeyHint": "La subida de imágenes llegará próximamente. Si ya tienes una clave registrada en R2, puedes indicarla",
+        "submit": "Guardar",
+        "delete": "Eliminar",
+        "empty": "Todavía no hay registros",
+        "loadFailed": "Error al cargar los registros",
+        "addSuccess": "Registro guardado",
+        "addFailed": "Error al agregar el registro",
+        "deleteConfirm": "¿Eliminar este registro?",
+        "deleteSuccess": "Registro eliminado",
+        "deleteFailed": "Error al eliminar el registro"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -543,6 +562,54 @@
         "PLANNING": "Votación abierta",
         "CONFIRMED": "Confirmado",
         "CANCELLED": "Cancelado"
+      },
+      "attendance": {
+        "title": "Asistencia",
+        "going": "Voy",
+        "maybe": "Quizás voy",
+        "absent": "No voy",
+        "notConfirmedHint": "Podrás registrar tu asistencia cuando se confirme la fecha",
+        "empty": "Todavía nadie ha respondido",
+        "unknownMember": "Aldeano",
+        "saveSuccess": "Asistencia registrada",
+        "saveFailed": "Error al registrar la asistencia"
+      },
+      "comment": {
+        "title": "Comentarios",
+        "placeholder": "Escribe un comentario",
+        "submit": "Publicar",
+        "empty": "Todavía no hay comentarios",
+        "delete": "Eliminar",
+        "postFailed": "Error al publicar el comentario",
+        "deleteConfirm": "¿Eliminar este comentario?",
+        "deleteSuccess": "Comentario eliminado",
+        "deleteFailed": "Error al eliminar el comentario"
+      },
+      "decisions": {
+        "title": "Decisiones",
+        "placeholder": "Anota lo que se decidió, qué llevar, etc.",
+        "edit": "Editar",
+        "empty": "Todavía no se ha decidido nada",
+        "saveSuccess": "Decisiones guardadas",
+        "saveFailed": "Error al guardar las decisiones"
+      },
+      "todo": {
+        "title": "Tareas pendientes",
+        "titlePlaceholder": "¿Qué hay que hacer? (p. ej., comprar snacks)",
+        "add": "Agregar",
+        "claim": "Yo me encargo",
+        "complete": "Marcar como hecho",
+        "release": "Dejar la tarea",
+        "unassigned": "Sin asignar",
+        "empty": "Todavía no hay tareas pendientes",
+        "alreadyClaimed": "Esta tarea ya tiene una persona responsable",
+        "addSuccess": "Tarea agregada",
+        "addFailed": "Error al agregar la tarea",
+        "claimSuccess": "Te has hecho cargo de esta tarea",
+        "completeSuccess": "Marcada como hecha",
+        "completeFailed": "Error al actualizar el estado",
+        "releaseSuccess": "Tarea liberada",
+        "releaseFailed": "Error al dejar la tarea"
       }
     },
     "chronicle": {

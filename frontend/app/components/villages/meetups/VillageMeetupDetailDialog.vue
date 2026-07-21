@@ -20,9 +20,13 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 
 import type {
+  VillageMeetupAttendanceResponse,
+  VillageMeetupAttendanceStatus,
   VillageMeetupCandidateDateResponse,
+  VillageMeetupCommentResponse,
   VillageMeetupResponse,
   VillageMeetupStatus,
+  VillageMeetupTodoResponse,
   VillageMeetupVoteSummary,
   VillageMeetupVoteSummaryCandidate,
   VillageMeetupVoteType,
@@ -34,6 +38,20 @@ const props = defineProps<{
   voteSummary: VillageMeetupVoteSummary | null
   isVillager: boolean
   isDetailOrganizer: boolean
+  /** 村長/長老か（後半戦セクションの管理権限判定に使う） */
+  isAdmin: boolean
+  currentUserId: number | null
+  // ②寄合後半戦（F17.2 Wave1・CONFIRMED/CANCELLED のみ表示）
+  attendances: VillageMeetupAttendanceResponse[]
+  myAttendanceStatus: VillageMeetupAttendanceStatus | null
+  attendancesLoading: boolean
+  comments: VillageMeetupCommentResponse[]
+  commentsLoading: boolean
+  commentSubmitting: boolean
+  decisionsSaving: boolean
+  todos: VillageMeetupTodoResponse[]
+  todosLoading: boolean
+  todoCreating: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,6 +59,14 @@ const emit = defineEmits<{
   castVote: [candidate: VillageMeetupCandidateDateResponse, voteType: VillageMeetupVoteType]
   confirmCandidate: [candidate: VillageMeetupCandidateDateResponse]
   cancelMeetup: []
+  respondAttendance: [status: VillageMeetupAttendanceStatus]
+  submitComment: [body: string]
+  removeComment: [commentId: string]
+  saveDecisions: [note: string]
+  createTodo: [title: string]
+  claimTodo: [todoId: string]
+  completeTodo: [todoId: string]
+  releaseTodo: [todoId: string]
 }>()
 
 const { t } = useI18n()
@@ -87,6 +113,19 @@ function isConfirmedCandidate(candidate: VillageMeetupCandidateDateResponse): bo
 function displayTime(candidateTime: string | null): string {
   return candidateTime ? candidateTime.slice(0, 5) : t('village.meetup.allDay')
 }
+
+// =====================================================================
+// F17.2 Wave1 ②寄合後半戦（出欠/コメント/決まったこと/宿題）— §4.5 状態別ゲート
+// =====================================================================
+
+/** 後半戦セクションを表示するか（PLANNING は候補日投票のみ・§4.5） */
+const showBackHalf = computed(() => props.detailMeetup?.status !== 'PLANNING')
+
+/** 後半戦の書込み UI を出すか（CONFIRMED のみ・CANCELLED は読み取りのみ・§4.5） */
+const canWriteBackHalf = computed(() => props.detailMeetup?.status === 'CONFIRMED')
+
+/** 宿題作成・決まったこと編集の権限（幹事＋村長/長老） */
+const canManageBackHalf = computed(() => props.isDetailOrganizer || props.isAdmin)
 </script>
 
 <template>
@@ -95,11 +134,11 @@ function displayTime(candidateTime: string | null): string {
     modal
     :draggable="false"
     :header="detailMeetup?.title ?? ''"
-    :style="{ width: '42rem' }"
+    :style="{ width: '42rem', maxHeight: '90vh' }"
     :breakpoints="{ '640px': '92vw' }"
     @update:visible="(v: boolean) => emit('update:visible', v)"
   >
-    <div v-if="detailMeetup" class="flex flex-col gap-3">
+    <div v-if="detailMeetup" class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
       <div class="flex items-center gap-2 flex-wrap">
         <Badge
           :value="t(`village.meetup.status.${detailMeetup.status}`)"
@@ -197,6 +236,54 @@ function displayTime(candidateTime: string | null): string {
           </div>
         </div>
       </div>
+
+      <!-- F17.2 Wave1 ②寄合後半戦: CONFIRMED/CANCELLED のみ表示（§4.5） -->
+      <template v-if="showBackHalf">
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageMeetupAttendanceSection
+          :attendances="attendances"
+          :my-status="myAttendanceStatus"
+          :can-respond="isVillager && canWriteBackHalf"
+          :loading="attendancesLoading"
+          @respond="(status) => emit('respondAttendance', status)"
+        />
+
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageMeetupDecisionsSection
+          :decisions-note="detailMeetup.decisionsNote ?? null"
+          :can-edit="canManageBackHalf"
+          :can-write="canWriteBackHalf"
+          :saving="decisionsSaving"
+          @save="(note) => emit('saveDecisions', note)"
+        />
+
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageMeetupTodoSection
+          :todos="todos"
+          :current-user-id="currentUserId"
+          :can-manage="canManageBackHalf"
+          :is-organizer="isDetailOrganizer"
+          :can-write="isVillager && canWriteBackHalf"
+          :loading="todosLoading"
+          :creating="todoCreating"
+          @create="(title) => emit('createTodo', title)"
+          @claim="(todoId) => emit('claimTodo', todoId)"
+          @complete="(todoId) => emit('completeTodo', todoId)"
+          @release="(todoId) => emit('releaseTodo', todoId)"
+        />
+
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageMeetupCommentsSection
+          :comments="comments"
+          :current-user-id="currentUserId"
+          :is-admin="isAdmin"
+          :can-write="isVillager && canWriteBackHalf"
+          :loading="commentsLoading"
+          :submitting="commentSubmitting"
+          @submit="(body) => emit('submitComment', body)"
+          @remove="(commentId) => emit('removeComment', commentId)"
+        />
+      </template>
     </div>
     <template #footer>
       <Button

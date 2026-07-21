@@ -551,6 +551,44 @@ export interface VillageCalendarEventListParams {
 }
 
 // -----------------------------------------------------------------------------
+// F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）— village_calendar_event_logs
+// 設計書: docs/features/F17.2_village_events_activation.md §6
+// -----------------------------------------------------------------------------
+
+/**
+ * 年輪（歳時記の年ごとの記録）。BE: `CalendarEventLogResponse`。
+ *
+ * `photoUrl` は署名付き表示 URL に解決済み（生の R2 キーは返らない・未設定/解決失敗は null）。
+ * `createdByDisplayName` は村ニックネームで解決される（実名は一切出さない・G4）。
+ */
+export interface VillageCalendarEventLogResponse {
+  id: string
+  calendarEventId: string
+  /** 記録対象の西暦年 */
+  year: number
+  photoUrl: string | null
+  note: string | null
+  createdByUserId: number
+  createdByDisplayName: string | null
+  createdAt: string
+}
+
+/** 年輪追加リクエスト。BE: `CalendarEventLogCreateRequest`。 */
+export interface VillageCalendarEventLogCreateRequest {
+  year: number
+  photoR2Key?: string | null
+  note?: string | null
+}
+
+/** 年輪一覧クエリ。既定は year 降順→作成日降順（BE 固定・§13.5）。 */
+export interface VillageCalendarEventLogListParams {
+  /** 絞り込み対象年（未指定なら全年） */
+  year?: number
+  page?: number
+  size?: number
+}
+
+// -----------------------------------------------------------------------------
 // お祭り (village_festivals) — §13.2
 // -----------------------------------------------------------------------------
 
@@ -869,6 +907,82 @@ export interface VillageMeetupCandidateDateAddRequest {
 /** 寄合一覧クエリ */
 export interface VillageMeetupListParams {
   status?: VillageMeetupStatus
+  page?: number
+  size?: number
+}
+
+// -----------------------------------------------------------------------------
+// F17.2 Wave1 ②寄合後半戦 — 出欠 / コメント / 宿題TODO
+// 設計書: docs/features/F17.2_village_events_activation.md §4
+// -----------------------------------------------------------------------------
+
+/** 出欠ステータス。BE: `entity.enums.VillageMeetupAttendanceStatus`。 */
+export type VillageMeetupAttendanceStatus = 'GOING' | 'MAYBE' | 'ABSENT'
+
+/**
+ * 出欠。BE: `MeetupAttendanceResponse`。
+ *
+ * `displayName` は村ニックネームで解決される（実名は一切出さない・G4）。
+ */
+export interface VillageMeetupAttendanceResponse {
+  id: string
+  meetupId: string
+  userId: number
+  displayName: string | null
+  status: VillageMeetupAttendanceStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/** 出欠 upsert リクエスト。BE: `MeetupAttendanceUpsertRequest`。 */
+export interface VillageMeetupAttendanceUpsertRequest {
+  status: VillageMeetupAttendanceStatus
+}
+
+/**
+ * コメント。BE: `MeetupCommentResponse`。
+ *
+ * `displayName` は村ニックネームで解決される（実名は一切出さない・G4）。
+ */
+export interface VillageMeetupCommentResponse {
+  id: string
+  meetupId: string
+  authorUserId: number
+  displayName: string | null
+  body: string
+  createdAt: string
+}
+
+/** コメント投稿リクエスト。BE: `MeetupCommentCreateRequest`。 */
+export interface VillageMeetupCommentCreateRequest {
+  body: string
+}
+
+/**
+ * 宿題 TODO。BE: `MeetupTodoResponse`。
+ *
+ * `assigneeUserId`/`assigneeDisplayName` が null なら未割当（手挙げ待ち）。
+ * `doneAt` が非 null なら完了済み。
+ */
+export interface VillageMeetupTodoResponse {
+  id: string
+  meetupId: string
+  title: string
+  assigneeUserId: number | null
+  assigneeDisplayName: string | null
+  doneAt: string | null
+  createdBy: number
+  createdAt: string
+}
+
+/** 宿題 TODO 作成リクエスト。BE: `MeetupTodoCreateRequest`。`assigneeUserId` 省略時は未割当で作成。 */
+export interface VillageMeetupTodoCreateRequest {
+  title: string
+  assigneeUserId?: number | null
+}
+
+/** 出欠/コメント/宿題 一覧クエリ（すべて共通の page/size ページング・§13.5） */
+export interface VillageMeetupSubResourceListParams {
   page?: number
   size?: number
 }

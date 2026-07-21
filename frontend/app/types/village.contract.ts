@@ -32,6 +32,8 @@ import type {
   JoinRequestResponse,
   VillageCalendarEventCreateRequest,
   VillageCalendarEventListResponse,
+  VillageCalendarEventLogCreateRequest,
+  VillageCalendarEventLogResponse,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageCreationRequestResponse,
@@ -45,12 +47,19 @@ import type {
   VillageMatchRecruitResponse,
   VillageMatchRecruitStatus,
   VillageMatchRecruitUpdateRequest,
+  VillageMeetupAttendanceResponse,
+  VillageMeetupAttendanceStatus,
+  VillageMeetupAttendanceUpsertRequest,
   VillageMeetupCandidateDateAddRequest,
   VillageMeetupCandidateDateResponse,
+  VillageMeetupCommentCreateRequest,
+  VillageMeetupCommentResponse,
   VillageMeetupConfirmRequest,
   VillageMeetupCreateRequest,
   VillageMeetupResponse,
   VillageMeetupStatus,
+  VillageMeetupTodoCreateRequest,
+  VillageMeetupTodoResponse,
   VillageMeetupUpdateRequest,
   VillageMeetupVoteRequest,
   VillageMeetupVoteSummary,
@@ -149,6 +158,41 @@ export type MeetupVoteTypeEnumExhaustive = AssertTrue<
   Assignable<Schemas['MeetupVoteRequest']['voteType'], VillageMeetupVoteType>
 >
 
+// -----------------------------------------------------------------------------
+// A-2. F17.2 Wave1 ②寄合後半戦 — 出欠 / コメント / 宿題TODO
+// -----------------------------------------------------------------------------
+
+export type MeetupAttendanceResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupAttendanceResponse, Schemas['MeetupAttendanceResponse']>
+>
+
+export type MeetupAttendanceUpsertRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupAttendanceUpsertRequest, Schemas['MeetupAttendanceUpsertRequest']>
+>
+
+export type MeetupAttendanceStatusEnumMatch = AssertTrue<
+  Assignable<VillageMeetupAttendanceStatus, NonNullable<Schemas['MeetupAttendanceResponse']['status']>>
+>
+export type MeetupAttendanceStatusEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['MeetupAttendanceResponse']['status']>, VillageMeetupAttendanceStatus>
+>
+
+export type MeetupCommentResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupCommentResponse, Schemas['MeetupCommentResponse']>
+>
+
+export type MeetupCommentCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupCommentCreateRequest, Schemas['MeetupCommentCreateRequest']>
+>
+
+export type MeetupTodoResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupTodoResponse, Schemas['MeetupTodoResponse']>
+>
+
+export type MeetupTodoCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupTodoCreateRequest, Schemas['MeetupTodoCreateRequest']>
+>
+
 // =============================================================================
 // B. 歳時記カレンダー (calendar)
 // =============================================================================
@@ -167,6 +211,18 @@ export type CalendarEventCreateRequestKeysMatch = AssertTrue<
 
 export type CalendarEventUpdateRequestKeysMatch = AssertTrue<
   SameKeys<VillageCalendarEventUpdateRequest, Schemas['CalendarEventUpdateRequest']>
+>
+
+// -----------------------------------------------------------------------------
+// B-2. F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）
+// -----------------------------------------------------------------------------
+
+export type CalendarEventLogResponseKeysMatch = AssertTrue<
+  SameKeys<VillageCalendarEventLogResponse, Schemas['CalendarEventLogResponse']>
+>
+
+export type CalendarEventLogCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageCalendarEventLogCreateRequest, Schemas['CalendarEventLogCreateRequest']>
 >
 
 // =============================================================================

@@ -395,7 +395,26 @@
       "deleteSuccess": "Veranstaltung gelöscht",
       "empty": "Keine Veranstaltungen eingetragen",
       "noEventsInMonth": "Keine Veranstaltungen in diesem Monat",
-      "loadFailed": "Kalender konnte nicht geladen werden"
+      "loadFailed": "Kalender konnte nicht geladen werden",
+      "log": {
+        "title": "Rückblick auf letztes Jahr",
+        "lastYear": "Rückblick {year}",
+        "addLog": "Eintrag hinzufügen",
+        "year": "Jahr",
+        "note": "Notiz",
+        "notePlaceholder": "Ein kurzer Kommentar dazu, wie es war",
+        "photoKey": "Foto (R2-Schlüssel, optional)",
+        "photoKeyHint": "Der Bild-Upload folgt bald. Falls bereits ein R2-Schlüssel existiert, kann er hier eingetragen werden",
+        "submit": "Speichern",
+        "delete": "Löschen",
+        "empty": "Noch keine Einträge",
+        "loadFailed": "Einträge konnten nicht geladen werden",
+        "addSuccess": "Eintrag gespeichert",
+        "addFailed": "Eintrag konnte nicht hinzugefügt werden",
+        "deleteConfirm": "Diesen Eintrag löschen?",
+        "deleteSuccess": "Eintrag gelöscht",
+        "deleteFailed": "Eintrag konnte nicht gelöscht werden"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -543,6 +562,54 @@
         "PLANNING": "Abstimmung offen",
         "CONFIRMED": "Bestätigt",
         "CANCELLED": "Abgesagt"
+      },
+      "attendance": {
+        "title": "Teilnahme",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "absent": "Ich komme nicht",
+        "notConfirmedHint": "Du kannst deine Teilnahme eintragen, sobald der Termin bestätigt ist",
+        "empty": "Noch niemand hat geantwortet",
+        "unknownMember": "Dorfbewohner",
+        "saveSuccess": "Teilnahme gespeichert",
+        "saveFailed": "Teilnahme konnte nicht gespeichert werden"
+      },
+      "comment": {
+        "title": "Kommentare",
+        "placeholder": "Kommentar schreiben",
+        "submit": "Absenden",
+        "empty": "Noch keine Kommentare",
+        "delete": "Löschen",
+        "postFailed": "Kommentar konnte nicht gesendet werden",
+        "deleteConfirm": "Diesen Kommentar löschen?",
+        "deleteSuccess": "Kommentar gelöscht",
+        "deleteFailed": "Kommentar konnte nicht gelöscht werden"
+      },
+      "decisions": {
+        "title": "Beschlüsse",
+        "placeholder": "Notiere, was beschlossen wurde, was mitzubringen ist usw.",
+        "edit": "Bearbeiten",
+        "empty": "Noch nichts beschlossen",
+        "saveSuccess": "Beschlüsse gespeichert",
+        "saveFailed": "Beschlüsse konnten nicht gespeichert werden"
+      },
+      "todo": {
+        "title": "Aufgaben",
+        "titlePlaceholder": "Was ist zu tun? (z. B. Snacks kaufen)",
+        "add": "Hinzufügen",
+        "claim": "Ich übernehme das",
+        "complete": "Als erledigt markieren",
+        "release": "Aufgabe abgeben",
+        "unassigned": "Nicht zugewiesen",
+        "empty": "Noch keine Aufgaben",
+        "alreadyClaimed": "Diese Aufgabe ist bereits vergeben",
+        "addSuccess": "Aufgabe hinzugefügt",
+        "addFailed": "Aufgabe konnte nicht hinzugefügt werden",
+        "claimSuccess": "Du hast diese Aufgabe übernommen",
+        "completeSuccess": "Als erledigt markiert",
+        "completeFailed": "Status konnte nicht aktualisiert werden",
+        "releaseSuccess": "Aufgabe abgegeben",
+        "releaseFailed": "Aufgabe konnte nicht abgegeben werden"
       }
     },
     "chronicle": {

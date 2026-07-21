@@ -395,7 +395,26 @@
       "deleteSuccess": "Event deleted",
       "empty": "No events registered",
       "noEventsInMonth": "No events this month",
-      "loadFailed": "Failed to load calendar"
+      "loadFailed": "Failed to load calendar",
+      "log": {
+        "title": "Last year's log",
+        "lastYear": "{year} log",
+        "addLog": "Add a log",
+        "year": "Year",
+        "note": "Note",
+        "notePlaceholder": "A short note about how it went",
+        "photoKey": "Photo (R2 key, optional)",
+        "photoKeyHint": "Photo upload is coming soon. You can enter an R2 key already registered",
+        "submit": "Save log",
+        "delete": "Delete",
+        "empty": "No logs yet",
+        "loadFailed": "Failed to load logs",
+        "addSuccess": "Log saved",
+        "addFailed": "Failed to add log",
+        "deleteConfirm": "Delete this log?",
+        "deleteSuccess": "Log deleted",
+        "deleteFailed": "Failed to delete log"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -543,6 +562,54 @@
         "PLANNING": "Voting open",
         "CONFIRMED": "Confirmed",
         "CANCELLED": "Cancelled"
+      },
+      "attendance": {
+        "title": "Attendance",
+        "going": "Going",
+        "maybe": "Maybe",
+        "absent": "Not going",
+        "notConfirmedHint": "You can register attendance once the date is confirmed",
+        "empty": "No responses yet",
+        "unknownMember": "Villager",
+        "saveSuccess": "Attendance saved",
+        "saveFailed": "Failed to save attendance"
+      },
+      "comment": {
+        "title": "Comments",
+        "placeholder": "Write a comment",
+        "submit": "Post",
+        "empty": "No comments yet",
+        "delete": "Delete",
+        "postFailed": "Failed to post comment",
+        "deleteConfirm": "Delete this comment?",
+        "deleteSuccess": "Comment deleted",
+        "deleteFailed": "Failed to delete comment"
+      },
+      "decisions": {
+        "title": "Decisions",
+        "placeholder": "Note down what was decided, things to bring, etc.",
+        "edit": "Edit",
+        "empty": "Nothing decided yet",
+        "saveSuccess": "Decisions saved",
+        "saveFailed": "Failed to save decisions"
+      },
+      "todo": {
+        "title": "To-dos",
+        "titlePlaceholder": "What needs doing? (e.g. buy snacks)",
+        "add": "Add",
+        "claim": "I'll do this",
+        "complete": "Mark complete",
+        "release": "Give up task",
+        "unassigned": "Unassigned",
+        "empty": "No to-dos yet",
+        "alreadyClaimed": "This to-do is already assigned to someone",
+        "addSuccess": "To-do added",
+        "addFailed": "Failed to add to-do",
+        "claimSuccess": "You took on this to-do",
+        "completeSuccess": "Marked complete",
+        "completeFailed": "Failed to update completion",
+        "releaseSuccess": "Task released",
+        "releaseFailed": "Failed to release task"
       }
     },
     "chronicle": {
