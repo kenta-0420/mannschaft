@@ -477,6 +477,13 @@ onMounted(async () => {
         <h2 class="text-lg font-semibold">
           {{ $t('payment.membership.subscribe.stepCard') }}
         </h2>
+        <NuxtLink
+          to="/commerce-disclosure"
+          target="_blank"
+          class="text-xs text-surface-400 hover:text-primary hover:underline"
+        >
+          {{ $t('landing.layout.footer_commerce') }}
+        </NuxtLink>
         <StripePaymentForm
           v-if="clientSecret"
           :key="clientSecret"
