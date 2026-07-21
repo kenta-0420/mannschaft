@@ -117,6 +117,9 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
     await gotoAuthed(page, '/my/shift')
     await page.waitForTimeout(1500)
 
+    // route初回コンパイル等でonMountedフェッチが遅れるraceを吸収（アサーション自体は不変）
+    await page.waitForResponse((r) => r.url().includes('/api/v1/shifts/my/confirmed-slots'), { timeout: 15_000 }).catch(() => {})
+
     expect(called, 'GET /api/v1/shifts/my/confirmed-slots が呼ばれていない').toBe(true)
 
     const timeText = page.getByText('09:00', { exact: false }).first()
