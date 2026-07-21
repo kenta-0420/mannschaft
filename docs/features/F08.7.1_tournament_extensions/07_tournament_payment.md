@@ -37,10 +37,12 @@
    実際の大会参加費 Connect 決済は `ConnectChargeService`（`ConnectChargeService.java:612`）が `EscrowSourceKind.MEMBERSHIP` に固定して `escrow_transactions` へ記録しており、大会参加費は会費（`MEMBERSHIP`）に相乗りしている状態である。
    **この「`MEMBERSHIP` への相乗り」を選んだ経緯は、PR 本文・設計書・台帳のいずれにも記録がなく不明。** 意図的な暫定策と断定できる根拠はないため、本書では「経緯不明」とのみ記す。
 
-3. **手数料計算（`PaymentFeeCalculator` 連携）が未配線**
-   `TournamentFeePaymentService.getMyTournamentFees()` 内（`TournamentFeePaymentService.java:152`）で `payerSurcharge` は `0` 固定であり、コメントで「`PaymentFeeCalculator` 連携は今後対応」と明記されている。F22.1 の手数料ランク制（`fee_policies`）とはまだ接続されていない。
+3. **実課金には手数料折半が適用されているが、`TOURNAMENT` 専用ポリシーは割り当てられない／一覧表示は実請求額と食い違う**
+   `checkoutFee()` → `MemberPaymentService.createConnectCheckout()` → `ConnectChargeService.charge()` の実課金経路では、`PaymentFeeCalculator`（`PaymentFeeCalculator.java:154-168`）による手数料折半計算が**適用されている**。額面 10,000 円・DEFAULT ポリシー（率5%＋固定0円）の場合、支払側請求額 10,250 円・`application_fee` 500 円・受取側 9,750 円（折半50/50）。
+   ただし `ConnectChargeService.charge()` 内の `feePolicyResolver.resolve(...)`（`ConnectChargeService.java:561`）に渡す `source_kind` は `EscrowSourceKind.MEMBERSHIP` 固定であり、大会参加費（`TOURNAMENT`）専用の手数料ポリシーを個別に割り当てることはできない（会費向けポリシーに従属する）。
+   一方、`TournamentFeePaymentService.getMyTournamentFees()`（一覧表示・`TournamentFeePaymentService.java:152`）は `payerSurcharge` を `0` 固定で返しており、コメントで「`PaymentFeeCalculator` 連携は今後対応」と明記されている。**これは表示のみの不整合**（一覧の表示額と実際のチェックアウト請求額が食い違う表示バグ）であり、実課金の手数料計算自体は正しく動作している。この表示バグは本改訂時点で**別 PR で修正中**（未マージ）。
 
-> 上記3点は「実装が壊れている」わけではなく、Expand→Migrate→Contract の Migrate/Contract フェーズが未着手という設計上の残務である。着手する場合は別軍議で扱う。
+> 上記のうち①②は「実装が壊れている」わけではなく、Expand→Migrate→Contract の Migrate/Contract フェーズが未着手という設計上の残務である。③は実課金の手数料計算自体は正しく動作しているが、一覧表示側にのみ表示バグがある（別 PR で修正中）。着手する場合は別軍議で扱う。
 
 ---
 
@@ -146,7 +148,7 @@ grace_period（`grace_period_days`）も F08.2 の既存機能で対応する。
 - **A. チーム代表払い（旧・素 Checkout）**: 入金先＝**主催組織の Stripe アカウント**（F08.2 の org 決済と同様）。
 - **B. 選手個人自払い（新・Connect・§0.1）**: 入金先＝**主催組織の Stripe Connect 口座**（Destination PaymentIntent による直接着金・自社口座非経由）。ただし `source_kind` は `TOURNAMENT` 専用ではなく `MEMBERSHIP` に相乗りしている（§0.2 ②・経緯不明）。
 - クロス組織の精算は F08.2 既存の枠内（MANUAL 記録 or 主催 org の Stripe）で対応する。
-- 手数料の按分（application_fee・折半50/50 等）は F22.1 の `fee_policies` ランク制に未接続（§0.2 ③）のため、大会参加費固有の手数料設定はまだできない。
+- 手数料の按分（application_fee・折半50/50）は実課金では**適用されている**（§0.2 ③）。額面 10,000 円なら支払側請求額 10,250 円・`application_fee` 500 円・受取側 9,750 円（DEFAULT ポリシー）。ただし `FeePolicyResolver` に渡される `source_kind` は `MEMBERSHIP` 固定のため、適用されるのは常に**会費向けの手数料ポリシー**であり、大会参加費（`TOURNAMENT`）専用の料率をシスアドが個別設定することはまだできない。
 
 ---
 
@@ -195,7 +197,7 @@ grace_period（`grace_period_days`）も F08.2 の既存機能で対応する。
 
 **不備**: 2026-06-04 更新後、PR #1432/#1433（2026-06-10 main マージ）で Connect 決済（選手個人自払い）が実装されたが、本書は追随更新されておらず「Connect は対象外」という誤った記述のまま放置されていた。本改訂で実態に合わせて是正した（§0）。
 
-**未解決事項（残務・§0.2 参照。実装バグではなく Migrate/Contract 未着手）**:
+**未解決事項（残務・§0.2 参照。①②は実装バグではなく Migrate/Contract 未着手、③のうち一覧表示のみ表示バグ）**:
 1. 旧経路（チーム代表・素 Checkout）と新経路（選手個人・Connect）が併存し、未統合。
 2. `source_kind=TOURNAMENT` が `EscrowSourceKind` / `escrow_transactions` の CHECK に未定義（`fee_policy_assignments` 側 CHECK とは非対称）。実態は `MEMBERSHIP` への相乗り（経緯不明）。
-3. `PaymentFeeCalculator`（手数料ランク制）が大会参加費に未配線（`payerSurcharge` 固定 0）。
+3. 実課金の手数料折半自体は適用済みだが（`MEMBERSHIP` ポリシー経由）、大会参加費（`TOURNAMENT`）専用の料率は割り当てられない。加えて一覧表示（`getMyTournamentFees()`）は `payerSurcharge` 固定 0 で実請求額と食い違う表示バグがあり、別 PR で修正中（未マージ）。
