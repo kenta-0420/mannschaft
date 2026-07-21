@@ -107872,7 +107872,6 @@ export interface operations {
         parameters: {
             query: {
                 scheduleId: number;
-                role?: string;
             };
             header?: never;
             path?: never;
