@@ -227,7 +227,18 @@ const todos = ref<VillageMeetupTodoResponse[]>([])
 const todosLoading = ref(false)
 const todoCreating = ref(false)
 
+/**
+ * 自分の出欠状態。
+ *
+ * `attendances`（一覧 API・§13.5 でページング必須）は先頭 50 件のみ取得するため、
+ * 回答者が 50 件を超える寄合では自分の回答が一覧に含まれず取り逃す恐れがある。
+ * upsert（PUT）は自分の出欠を直接返すため、応答済みならその結果を正として使い、
+ * 一覧探索はページ内に自分の回答が含まれていた場合のフォールバックとする。
+ */
+const myAttendanceRecord = ref<VillageMeetupAttendanceResponse | null>(null)
+
 const myAttendanceStatus = computed<VillageMeetupAttendanceStatus | null>(() => {
+  if (myAttendanceRecord.value) return myAttendanceRecord.value.status
   if (!currentUserId.value) return null
   return attendances.value.find(a => a.userId === currentUserId.value)?.status ?? null
 })
@@ -273,6 +284,7 @@ async function openDetailDialog(m: VillageMeetupResponse) {
   detailMeetup.value = null
   voteSummary.value = null
   attendances.value = []
+  myAttendanceRecord.value = null
   comments.value = []
   todos.value = []
   showDetailDialog.value = true
@@ -293,7 +305,9 @@ async function respondAttendance(status: VillageMeetupAttendanceStatus) {
   if (!detailMeetup.value) return
   const meetupId = detailMeetup.value.id
   try {
-    await villageApi.upsertAttendance(villageId.value, meetupId, { status })
+    // upsert 応答は自分の出欠そのものなので、一覧の再探索に頼らずここで直接ハイライトを確定する
+    // （回答者が50件を超えるとページングで自分の回答が一覧に含まれない恐れがあるため）。
+    myAttendanceRecord.value = await villageApi.upsertAttendance(villageId.value, meetupId, { status })
     attendances.value = await villageApi.listAttendances(villageId.value, meetupId, { size: 50 })
     success(t('village.meetup.attendance.saveSuccess'))
   }

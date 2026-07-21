@@ -7,7 +7,9 @@
  * - 作成: 幹事＋村長/長老のみ（`canManage`）
  * - 手を挙げる（claim）: 未割当 TODO に村人本人が押せる
  * - 手放す（release）: 割当済み TODO の担当者本人のみ表示
- * - 完了（complete）: 担当者本人＋幹事のみ表示
+ * - 完了（complete）: **担当者本人＋幹事のみ**（村長/長老は対象外・§4.3）。
+ *   `canManage`（作成用の幹事＋村長/長老フラグ）とは判定基準が異なるため、
+ *   完了可否の判定には別途 `isOrganizer`（幹事のみ）を使う
  * - CANCELLED では書込み UI を出さない（`canWrite` が false のとき操作ボタンを隠す・§4.5）
  *
  * ロジックは持たない（API 呼び出しは親が担う）。
@@ -20,8 +22,10 @@ import type { VillageMeetupTodoResponse } from '~/types/village'
 const props = defineProps<{
   todos: VillageMeetupTodoResponse[]
   currentUserId: number | null
-  /** 幹事＋村長/長老か（TODO 作成の可否） */
+  /** 幹事＋村長/長老か（TODO **作成**専用の可否。完了判定には使わない・§4.3） */
   canManage: boolean
+  /** 幹事本人か（TODO **完了**の可否。村長/長老は非対象・§4.3） */
+  isOrganizer: boolean
   /** 書込み可能な寄合状態か（CONFIRMED のみ・§4.5） */
   canWrite: boolean
   loading: boolean
@@ -43,7 +47,9 @@ function isMine(todo: VillageMeetupTodoResponse): boolean {
 }
 
 function canComplete(todo: VillageMeetupTodoResponse): boolean {
-  return props.canWrite && !todo.doneAt && (isMine(todo) || props.canManage)
+  // 完了は「手挙げ者本人＋幹事のみ」（§4.3）。村長/長老は完了操作の対象外
+  // （作成専用の `canManage` を流用すると村長/長老にも完了チェックが露出してしまうため使わない）。
+  return props.canWrite && !todo.doneAt && (isMine(todo) || props.isOrganizer)
 }
 
 function submitCreate() {
