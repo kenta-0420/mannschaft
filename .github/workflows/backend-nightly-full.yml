@@ -1,0 +1,139 @@
+# =============================================================================
+# Backend — Nightly Full Test（マイグレーションテスト込みフル実行）
+# =============================================================================
+# backend-ci.yml（PR チェック）は db/migration/** を触らない PR で Flyway
+# マイグレーション再生テスト（65 クラス）を -PexcludeMigrationTests=true により
+# 除外する。実測（PR #2380）でこれらが各 shard の計測テスト時間の 72〜88% を
+# 占めており、V1 → 最新の 150 本超を毎回リプレイして 1 件 assert するだけの
+# 内容が全 PR の壁時計を支配していたためである。
+#
+# ただし「除外」を放置すると、それらのテストがどの PR でも走らないまま腐り、
+# 実質的な抑制（免罪符）に堕する。本 workflow はその歯止めとして、
+# **除外なしのフル test を毎晩 1 回実行する**。
+#
+# 設計方針:
+#   - main の最新に対して毎日 1 回・除外なしで全テストを実行する。
+#   - PR はブロックしない（必須チェックにしない）。失敗はこの workflow が
+#     赤くなることで可視化する（Actions のスケジュール失敗は既定でリポジトリ
+#     管理者へ通知される）。
+#   - shard 構成は backend-ci.yml と揃える（6 分割）。フル実行のため 1 shard の
+#     壁時計は PR 時より長くなる想定で timeout を 90 分に取る。
+#
+# ※ このジョブ名を main ブランチ保護 Ruleset の必須チェックに登録しないこと。
+#   登録すると PR ごとに起動しない workflow が永久 pending となりマージ不能になる。
+# =============================================================================
+
+name: Backend — Nightly Full Test
+
+on:
+  schedule:
+    # 毎日 18:00 UTC = JST 翌 03:00（深夜帯・ランナー競合が少ない時間）
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+# 同時に走らせる意味がないため、進行中の nightly は新しい実行で置き換える
+concurrency:
+  group: backend-nightly-full
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+  # backend-ci.yml の SHARD_TOTAL と揃える
+  SHARD_TOTAL: "6"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # full-test: 除外なしの全テストを 6 並列で実行する
+  #
+  # backend-ci.yml の shard ジョブとの唯一の差は -PexcludeMigrationTests を
+  # 渡さないこと（＝ build.gradle.kts 側の既定 false ＝ 何も除外しない）。
+  # ---------------------------------------------------------------------------
+  full-test:
+    name: Full test (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ./backend
+    strategy:
+      # 1 shard が失敗しても他 shard を最後まで走らせ、全失敗を一度に把握する
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      # nightly はキャッシュを消費するだけにして、PR ビルドが育てたキャッシュを
+      # 上書き・汚染しないよう read-only とする。
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Compile
+        run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
+
+      # -PexcludeMigrationTests を渡さない = マイグレーションテストを含む全件実行
+      - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }}, 除外なし)
+        run: >-
+          ./gradlew test --no-daemon --continue --build-cache
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+          -Pshard.index=${{ matrix.shard }}
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-results-xml-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 14
+
+      - name: テスト結果レポートをアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-results-shard-${{ matrix.shard }}
+          path: backend/build/reports/tests/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # summary: 全 shard の結果を 1 つに集約して赤/緑を明示する
+  #
+  # matrix ジョブは shard ごとに結果が分かれるため、Actions 一覧で一目で
+  # 失敗を判別できるよう集約ジョブを置く。必須チェックには *しない*。
+  # ---------------------------------------------------------------------------
+  summary:
+    name: Nightly Full Test Summary
+    needs: full-test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 集約結果を判定
+        run: |
+          set -e
+          RESULT="${{ needs.full-test.result }}"
+          echo "[INFO] needs.full-test.result = ${RESULT}"
+          if [ "${RESULT}" = "success" ]; then
+            echo "[OK] 全 shard が success。マイグレーションテスト込みのフル実行は緑。"
+            exit 0
+          fi
+          echo "[NG] full-test=${RESULT} — マイグレーションテストを含むフル実行が失敗した。"
+          echo "     PR チェック（backend-ci.yml）では Flyway 再生テストを除外しているため、"
+          echo "     この失敗は PR CI では検出されない。アップロードされた XML を確認すること。"
+          exit 1

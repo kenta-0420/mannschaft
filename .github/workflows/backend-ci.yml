@@ -65,6 +65,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend_changed: ${{ steps.changes.outputs.backend_changed }}
+      migrations_changed: ${{ steps.changes.outputs.migrations_changed }}
     steps:
       # 変更検出のため PR の base...head 差分を見られるよう全履歴を取得する
       - name: Checkout source
@@ -81,6 +82,8 @@ jobs:
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "[INFO] non-PR event (${{ github.event_name }}) → backend_changed=true (full build)"
             echo "backend_changed=true" >> "$GITHUB_OUTPUT"
+            # 手動実行時はマイグレーションテストも含めたフル実行とする（安全側）
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -99,6 +102,20 @@ jobs:
           else
             echo "[INFO] no backend changes (docs-only 等) → backend_changed=false（compile/test skip）"
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Flyway マイグレーション（db/migration/**）の変更有無を判定する。
+          # 変更があれば Flyway 再生テスト（65 クラス）を従来どおり実行し、
+          # 無ければ除外して壁時計を短縮する（build.gradle.kts の
+          # -PexcludeMigrationTests を参照）。
+          # マイグレーションテスト本体・build.gradle.kts・本 workflow の変更時も
+          # 安全側に倒してフル実行する。
+          if echo "${CHANGED}" | grep -E '^(backend/src/main/resources/db/migration/|backend/src/test/java/.*/migration/|backend/build\.gradle\.kts$|\.github/workflows/backend-ci\.yml$)' > /dev/null; then
+            echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[INFO] migration 無変更 → migrations_changed=false（Flyway 再生テストを除外）"
+            echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
   # ---------------------------------------------------------------------------
@@ -219,13 +236,28 @@ jobs:
       # --build-cache: キャッシュヒット時にテストタスクの再実行をスキップ
       # --continue: 全テスト失敗を収集（最初の失敗で打ち切りしない）
       # -Pshard.total / -Pshard.index: build.gradle.kts のシャードフィルタを起動
+      # -PexcludeMigrationTests: db/migration/** 無変更の PR では Flyway 再生テスト
+      #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
+      #   migration を触る PR では false となり従来どおり全件実行する。
+      #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
         run: >-
           ./gradlew test --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
+          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      # test-results の XML（JUnit 形式）。HTML レポートと違い各テストの time 属性を
+      # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 7
 
       - name: テスト結果レポートをアップロード
         if: always()
