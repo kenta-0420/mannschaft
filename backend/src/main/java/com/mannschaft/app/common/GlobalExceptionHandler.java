@@ -1386,6 +1386,12 @@ public class GlobalExceptionHandler {
      * <p><b>優先順位:</b> Spring の {@code ExceptionHandlerMethodResolver} は例外型階層で最も近い
      * ハンドラを選ぶため、本ハンドラは {@code @ExceptionHandler(Exception.class)} より優先される
      * （宣言順には依存しない）。</p>
+     *
+     * <p><b>⚠️ 実装者への注意:</b> 本ハンドラの導入により、<b>4xx の {@code reason} は必ず
+     * レスポンス本文としてクライアントへ公開される</b>（従来は 500 に潰れて外へ出なかった）。
+     * {@code ResponseStatusException} を新規に書く際は、reason に内部状態・SQL・内部 ID・
+     * 他ユーザーの情報などの機微情報を書かないこと。利用者にそのまま見せてよい文言のみを入れる。
+     * 5xx の reason のみ本ハンドラが伏せる。</p>
      */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex,

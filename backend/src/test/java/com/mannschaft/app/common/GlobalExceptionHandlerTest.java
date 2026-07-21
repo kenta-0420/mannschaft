@@ -458,6 +458,39 @@ class GlobalExceptionHandlerTest {
                     .andExpect(jsonPath("$.error.message").value("画像の枚数が上限に達しています"));
         }
 
+        /**
+         * IDOR/BOLA 対策の「存在秘匿 404」が MVC 経路でも 404 のまま返ることを固定する。
+         * ProfileMediaService 等は権限が無いリソースを 403 ではなく 404 で秘匿する設計だが、
+         * catch-all に吸われて 500 になると設計が意図した秘匿の形にならない。
+         * 本 PR が最重要と位置づける経路のため、MVC 経路で機械的に固定する。
+         */
+        @Test
+        @DisplayName("正常系: MVC 経由で存在秘匿の 404 が 500 に化けず 404 のまま返る")
+        void handleResponseStatusException_MVC経由で存在秘匿404が保たれる() throws Exception {
+            // Given: 存在秘匿の 404 を投げる controller（reason 未設定＝情報を与えない形）
+            @org.springframework.web.bind.annotation.RestController
+            class ConcealingController {
+                @org.springframework.web.bind.annotation.GetMapping("/test-conceal")
+                public String conceal() {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+                }
+            }
+
+            when(messageSource.getMessage(eq("error.common.005"), any(), any()))
+                    .thenReturn("リソースが見つかりません");
+
+            MockMvc mockMvc = MockMvcBuilders
+                    .standaloneSetup(new ConcealingController())
+                    .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                    .build();
+
+            // When / Then: 403 でも 500 でもなく 404 で秘匿されること
+            mockMvc.perform(get("/test-conceal"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_005"))
+                    .andExpect(jsonPath("$.error.message").value("リソースが見つかりません"));
+        }
+
         @Test
         @DisplayName("正常系: 4xx は error_reports に記録しない / 5xx は severity=MEDIUM で記録する")
         void handleResponseStatusException_記録方針() {
