@@ -4,6 +4,7 @@ import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.social.dto.FollowResponse;
@@ -93,8 +94,14 @@ public class TeamController {
                 .body(teamService.createTeam(SecurityUtils.getCurrentUserId(), req));
     }
 
+    /**
+     * チームをキーワード検索する。
+     *
+     * <p>結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定される（可視性フィルタは
+     * {@code TeamRepository#searchByKeyword} のクエリが担保。論理削除は {@code @SQLRestriction} が除外）。</p>
+     */
     @GetMapping("/search")
-    @Operation(summary = "チーム検索")
+    @Operation(summary = "チーム検索（PUBLIC かつ未アーカイブのチームのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<TeamSummaryResponse>> searchTeams(
             @RequestParam(required = false) String keyword, Pageable pageable) {
@@ -126,11 +133,16 @@ public class TeamController {
     }
 
     @PatchMapping("/{slug}")
-    @Operation(summary = "チーム更新")
+    @Operation(summary = "チーム更新（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<TeamResponse>> updateTeam(
             @PathVariable String slug, @Valid @RequestBody UpdateTeamRequest req) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: チームそのものの設定変更は当該チームの ADMIN/DEPUTY 相当のみ許可する
+        //（同一クラスの兄弟 EP renameSlug と同じ流儀に揃える）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(teamService.updateTeam(id, req));
     }
 
@@ -146,11 +158,15 @@ public class TeamController {
     }
 
     @DeleteMapping("/{slug}")
-    @Operation(summary = "チーム削除")
+    @Operation(summary = "チーム削除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<Void> deleteTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
-        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: 当該チームの ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        accessControlService.checkAdminOrAbove(userId, id, SCOPE_TYPE);
         teamService.deleteTeam(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -208,19 +224,29 @@ public class TeamController {
     // ========================================
 
     @PatchMapping("/{slug}/archive")
-    @Operation(summary = "チームアーカイブ")
+    @Operation(summary = "チームアーカイブ（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<Void> archiveTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: 当該チームの ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        // 組織側の archiveOrganization と異なり、TeamService#archiveTeam は
+        // SystemAdminDashboardController と共有していない（本 Controller が唯一の呼び出し元）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         teamService.archiveTeam(id);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{slug}/unarchive")
-    @Operation(summary = "チームアーカイブ解除")
+    @Operation(summary = "チームアーカイブ解除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<Void> unarchiveTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: 当該チームの ADMIN/DEPUTY 相当のみ許可（archiveTeam と対称）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         teamService.unarchiveTeam(id);
         return ResponseEntity.ok().build();
     }
@@ -232,10 +258,20 @@ public class TeamController {
     @PostMapping("/{slug}/follow")
     @Operation(summary = "チームサポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<FollowStatusResponse>> followTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: サポーター自己登録は「当該チームを閲覧できる利用者」に限る。
+        // 兄弟 EP getTeam / getMembers と同じ visibility ラダーへ委譲し、独自述語を作らない。
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, id, userId);
+        // 運営者が受け入れを無効化しているチームへの自己登録は拒否する。
+        teamService.assertSupporterEnabled(id);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
+                .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
     @DeleteMapping("/{slug}/follow")
@@ -374,11 +410,16 @@ public class TeamController {
     // ========================================
 
     @GetMapping("/{slug}/permission-groups")
-    @Operation(summary = "権限グループ一覧")
+    @Operation(summary = "権限グループ一覧（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
             @PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: 権限グループはチームの権限設計そのものであり、作成/更新/削除
+        //（PermissionGroupService 側で checkAdminOrAbove 済み）と同じ粒度で読み取りも保護する。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(
                 permissionGroupService.getPermissionGroups(id, SCOPE_TYPE)));
     }
@@ -475,15 +516,32 @@ public class TeamController {
     }
 
     @PostMapping("/{slug}/transfer-ownership")
-    @Operation(summary = "オーナー譲渡")
+    @Operation(summary = "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<Void> transferOwnership(
             @PathVariable String slug, @RequestParam Long targetUserId) {
         Long id = teamService.resolveTeamId(slug);
-        roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 入口二重防御（changeRole / removeMember と同じ流儀）。
+        // RoleService#transferOwnership は最終判定として「操作者が当該スコープの ADMIN」を要求するため、
+        // 本ガードは判定を緩めない（ADMIN/DEPUTY で入口を絞り、ADMIN 以外は Service 側で弾かれる）。
+        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
+        roleService.transferOwnership(id, SCOPE_TYPE, currentUserId, targetUserId);
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 呼び出し者自身を当該チームから退会させる。
+     *
+     * <p>認可は {@code RoleService#leaveScope} が担う。同メソッドは
+     * {@code (userId, scopeId, scopeType)} の複合キーで {@code user_roles} を引き、
+     * 行が無ければ {@code ROLE_001} を送出する＝<b>自分の所属行しか操作できない</b>
+     * （認可根治戦役の判定規律「リポジトリ引きの時点で currentUserId と複合キー化」に合致）。
+     * 対象ユーザーは常に {@code SecurityUtils.getCurrentUserId()} であり、path から与えられない。</p>
+     */
+    @AuthorizedInService
     @DeleteMapping("/{slug}/me")
     @Operation(summary = "チーム退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
@@ -500,8 +558,16 @@ public class TeamController {
     @GetMapping("/{slug}/organizations")
     @Operation(summary = "チーム所属組織一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<List<TeamOrgSummaryResponse>>> getOrganizations(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: チームの所属関係はチーム本体・メンバー一覧と同じ visibility ラダーで保護する
+        //（兄弟 EP getTeam / getMembers と同じ流儀）。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(ApiResponse.of(teamService.getOrganizations(id)));
     }
 
@@ -512,8 +578,13 @@ public class TeamController {
     @PatchMapping("/{slug}/restore")
     @Operation(summary = "チーム復元（SYSTEM_ADMINのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可）")
     public ResponseEntity<Void> restoreTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        // 本 EP は SYSTEM_ADMIN 専用（@Operation summary・TeamService#restoreTeam の宣言どおり）。
+        // チーム ADMIN に開放すると自チームを任意に復活させられるため checkAdminOrAbove では緩すぎる。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         teamService.restoreTeam(id);
         return ResponseEntity.noContent().build();
     }
@@ -528,10 +599,18 @@ public class TeamController {
     @GetMapping("/{slug}/followers")
     @Operation(summary = "チームフォロワー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getTeamFollowers(
             @PathVariable String slug,
             @RequestParam(defaultValue = "20") int size) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: フォロワー一覧も個人（userId/表示名）の列挙であり、
+        // メンバー一覧（getMembers）と同じ visibility ラダーで保護する。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
         List<FollowResponse> followers = followService.getTeamFollowers(id, size);
         return ResponseEntity.ok(ApiResponse.of(followers));
     }

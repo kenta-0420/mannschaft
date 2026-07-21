@@ -41,7 +41,8 @@ public class AttendanceStatisticsController {
             @PathVariable Long teamId,
             @RequestParam Integer year,
             @RequestParam Integer month) {
-        return ApiResponse.of(statisticsService.getMonthlyStatistics(teamId, year, month));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(statisticsService.getMonthlyStatistics(teamId, year, month, currentUserId));
     }
 
     /**
@@ -76,7 +77,8 @@ public class AttendanceStatisticsController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        byte[] data = statisticsService.exportAttendanceCsv(teamId, from, to);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        byte[] data = statisticsService.exportAttendanceCsv(teamId, from, to, currentUserId);
         return ResponseEntity.ok()
                 .header("Content-Type", "text/csv; charset=utf-8")
                 .header("Content-Disposition",

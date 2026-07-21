@@ -45,7 +45,8 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ShiftRequestResponse>>> listRequests(
             @RequestParam Long scheduleId) {
-        List<ShiftRequestResponse> responses = requestService.listRequests(scheduleId);
+        List<ShiftRequestResponse> responses =
+                requestService.listRequests(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -93,7 +94,7 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteRequest(
             @PathVariable Long requestId) {
-        requestService.deleteRequest(requestId);
+        requestService.deleteRequest(requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -105,7 +106,8 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ShiftRequestSummaryResponse>> getRequestSummary(
             @RequestParam Long scheduleId) {
-        ShiftRequestSummaryResponse response = requestService.getRequestSummary(scheduleId);
+        ShiftRequestSummaryResponse response =
+                requestService.getRequestSummary(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

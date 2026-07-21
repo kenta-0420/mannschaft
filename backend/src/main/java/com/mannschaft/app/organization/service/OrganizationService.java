@@ -3,6 +3,7 @@ package com.mannschaft.app.organization.service;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
@@ -151,6 +152,41 @@ public class OrganizationService {
      */
     public Long resolveOrgId(String slug) {
         return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * 組織がサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「この組織がサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code OrgPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中の組織への
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * <p>チーム側の {@code TeamService#assertSupporterEnabled} と対の実装（双子構成）。</p>
+     *
+     * @param orgId 組織内部 ID
+     * @throws BusinessException 組織が存在しない（ORG_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long orgId) {
+        OrganizationEntity org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+        if (!Boolean.TRUE.equals(org.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
+    }
+
+    /**
+     * 指定 ID の組織が実在する（論理削除されていない）ことを確認する。
+     *
+     * <p>Controller が「リクエストボディで渡された組織 ID」を認可判定に使う前段で、
+     * 対象の実在を 404（{@link OrgErrorCode#ORG_001}）で確定させるための入口。
+     * 認可そのものは行わない（呼び出し元が {@code AccessControlService} に委譲する）。</p>
+     *
+     * @param orgId 組織 ID
+     * @throws BusinessException 組織が存在しない / 論理削除済み（{@code ORG_001}）
+     */
+    public void assertOrganizationExists(Long orgId) {
+        findOrganizationOrThrow(orgId);
     }
 
     /**
@@ -447,6 +483,9 @@ public class OrganizationService {
 
     /**
      * 組織をキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code OrganizationRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<OrganizationSummaryResponse> searchOrganizations(String keyword, Pageable pageable) {
         Page<OrganizationEntity> page = organizationRepository.searchByKeyword(

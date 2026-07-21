@@ -100,12 +100,19 @@ public class ChatChannelService {
     /**
      * チャンネル詳細を取得する。per-user 拡張（memberCount / viewer / dmPartner）を付与する。
      *
+     * <p><b>認可根治 Wave 6</b>: 従来は非メンバーでも {@code viewer} を null にするだけでレスポンスを返しており、
+     * DM チャンネルでは<b>相手の userId・表示名・アバター URL を無条件に返していた</b>。
+     * channelId を総当りすれば「誰と誰が DM しているか」の関係グラフを全件列挙できる情報漏洩だったため、
+     * メンバーシップ管理種別では閲覧に<b>チャンネルメンバーであること</b>を要求する。</p>
+     *
      * @param channelId チャンネルID
      * @param userId    呼出ユーザーID
      * @return チャンネルレスポンス
+     * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     public ChannelResponse getChannel(Long channelId, Long userId) {
         ChatChannelEntity entity = findChannelOrThrow(channelId);
+        requireChannelMembership(entity, userId);
 
         ChatChannelMemberEntity myMember =
                 memberRepository.findByChannelIdAndUserId(channelId, userId).orElse(null);
@@ -536,12 +543,21 @@ public class ChatChannelService {
      * DMチャンネルをグループDMに変換する。
      * 2者間DMをグループDMに拡張し、追加メンバーを招待可能にする。
      *
+     * <p><b>認可根治 Wave 6</b>: 従来は<b>呼出ユーザー ID を引数に取っておらず</b>、
+     * {@code channel.isDm()} しか検証していなかったため、<b>他人の DM を勝手に GROUP_DM へ変換できた</b>
+     * （変換後は追加メンバーを招待可能になるため、第三者を他人の会話に引き込む足がかりになる）。
+     * 既存のチャンネル管理操作（更新・削除・アーカイブ）と同じ {@link #checkChannelAdminAccess} を適用し、
+     * DM の場合はチャンネル OWNER のみに限定する。</p>
+     *
      * @param channelId チャンネルID
+     * @param callerId  操作ユーザーID（認可チェック用）
      * @return 変換後のチャンネルレスポンス
+     * @throws BusinessException 権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     @Transactional
-    public ChannelResponse convertToGroup(Long channelId) {
+    public ChannelResponse convertToGroup(Long channelId, Long callerId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+        checkChannelAdminAccess(channel, callerId);
 
         // DM・GROUP_DM以外は変換不可
         if (!channel.isDm()) {
@@ -550,7 +566,7 @@ public class ChatChannelService {
 
         channel.convertToGroupDm();
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("DMをグループDMに変換: channelId={}", channelId);
+        log.info("DMをグループDMに変換: channelId={}, callerId={}", channelId, callerId);
         return chatMapper.toChannelResponse(saved);
     }
 
@@ -571,6 +587,28 @@ public class ChatChannelService {
     private void validateNotArchived(ChatChannelEntity channel) {
         if (channel.getIsArchived()) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ARCHIVED);
+        }
+    }
+
+    /**
+     * メンバーシップ管理種別（{@link ChannelType#isMembershipGated()}）のチャンネルについて、
+     * 呼出ユーザーがチャンネルメンバーであることを要求する。
+     *
+     * <p>村ロビー・イベント・大会チャットは {@code chat_channel_members} 行を持たない横断スペースであり、
+     * それぞれのドメイン側（village メンバーシップ / {@code TournamentContactAccessService} 等）で
+     * 認可されるため、ここでは素通しする。境界の正準は
+     * {@link ChannelType#isMembershipGated()}（WS 購読認可と共有）。</p>
+     *
+     * <p>大会チャットの閲覧認可（{@code TournamentContactAccessService#checkView}）を必要とする経路は
+     * {@code ChatMessageService#checkChannelViewAccess} 側に集約されている。本サービスは
+     * {@code ChatMessageService} に依存できない（循環依存）ため、ここではメンバーシップ検査のみを行う。</p>
+     */
+    private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
+        if (!channel.getChannelType().isMembershipGated()) {
+            return;
+        }
+        if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
     }
 
