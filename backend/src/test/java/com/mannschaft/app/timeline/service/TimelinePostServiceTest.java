@@ -293,6 +293,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            // 認可根治 Wave6: 継承後の実効スコープ（親の TEAM）に対して到達可否が評価される
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -344,6 +346,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            // 認可根治 Wave6: 継承後の実効スコープ（親の ORGANIZATION）に対して到達可否が評価される
+            given(accessControlService.isMember(USER_ID, orgId, "ORGANIZATION")).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -361,6 +365,85 @@ class TimelinePostServiceTest {
             assertThat(capturedReply.getScopeId())
                     .as("リプライのscopeIdは親のorgIdを継承していること")
                     .isEqualTo(orgId);
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 非メンバーがTEAM投稿へ継承リプライするとPOST_NOT_FOUND・保存されない")
+        void 非メンバーの継承リプライは拒否される() {
+            // given: リクエストは PUBLIC を申告するが、実際に保存されるスコープは親の TEAM
+            Long parentId = 10L;
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("継承リプライ", "PUBLIC", 0L,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("チームの元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 他人のPERSONAL投稿への継承リプライはPOST_NOT_FOUND")
+        void 他人のPERSONAL投稿への継承リプライは拒否される() {
+            // given
+            Long parentId = 11L;
+            CreatePostRequest req = new CreatePostRequest("継承リプライ", "PUBLIC", 0L,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.PERSONAL)
+                    .scopeId(OTHER_USER_ID)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("他人の個人投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 見えない投稿はリポストできない（POST_NOT_FOUND・保存されない）")
+        void 見えない投稿のリポストは拒否される() {
+            // given
+            Long repostOfId = 21L;
+            Long teamId = 51L;
+            CreatePostRequest req = new CreatePostRequest("リポスト試み", "PUBLIC", 0L,
+                    "USER", null, null, repostOfId, null, null, null);
+            TimelinePostEntity original = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("非公開チームの投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
         }
 
         @Test
