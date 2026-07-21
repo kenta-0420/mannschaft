@@ -41,7 +41,8 @@ public class ShiftPdfService {
      * @return PDF の byte[]
      */
     public byte[] generateTeamPdf(Long scheduleId, Long requesterId) {
-        ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId);
+        // getSchedule 側でも同等の参照認可（メンバーかつ非SUPPORTER）が走る（多層防御）。
+        ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId, requesterId);
         checkMemberAndNotSupporter(requesterId, schedule.getTeamId());
         // listSlots 側でも同等の参照認可が走る（多層防御）。requesterId をそのまま引き渡す。
         List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId, requesterId);
@@ -65,7 +66,8 @@ public class ShiftPdfService {
      * @return PDF の byte[]
      */
     public byte[] generatePersonalPdf(Long scheduleId, Long requesterId) {
-        ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId);
+        // getSchedule 側でも同等の参照認可（メンバーかつ非SUPPORTER）が走る（多層防御）。
+        ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId, requesterId);
         checkMemberAndNotSupporter(requesterId, schedule.getTeamId());
         // listSlots 側でも同等の参照認可が走る（多層防御）。requesterId をそのまま引き渡す。
         List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId, requesterId);

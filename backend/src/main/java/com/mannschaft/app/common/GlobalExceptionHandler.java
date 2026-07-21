@@ -14,6 +14,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -1390,6 +1391,87 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_002));
+    }
+
+    /**
+     * {@link ResponseStatusException} を、送出時の HTTP ステータスを保ったまま
+     * プロジェクト共通の {@link ErrorResponse} 形式へ変換する。
+     *
+     * <p><b>なぜ必要か:</b> 本ハンドラが無いと {@code ResponseStatusException}
+     * （{@code RuntimeException} の子孫）は catch-all の {@link #handleUnexpectedException} に落ち、
+     * 本来の 4xx を失って 500 {@code COMMON_999}「システムエラーが発生しました」になる。
+     * 実測でブログ画像の枚数上限超過（サービスは 422 を送出）がクライアントには 500 で届いており、
+     * フロントエンドが「上限に達しました」と案内できず一律システムエラー扱いになっていた。</p>
+     *
+     * <p><b>code:</b> 独自形式を作らず、既存の {@link CommonErrorCode} へステータス単位で対応付ける
+     * （{@link #handleBusinessException} と同じ envelope に揃えるため）。</p>
+     *
+     * <p><b>message:</b> {@link ResponseStatusException#getReason()} を優先する。reason は実装者が
+     * 利用者向けに書いた日本語文言（例:「画像は 30 枚まで」）であり、汎用のコードメッセージより
+     * 具体的で UX 上有用なため。reason が空なら {@link #resolveMessage} の多言語メッセージへ
+     * フォールバックする。</p>
+     *
+     * <p><b>5xx の扱い:</b> reason は内部情報を含み得るため伏せ、{@code COMMON_999} の定型文を返す。
+     * あわせて {@link #recordBackendException} へ severity=MEDIUM で記録する
+     * （5xx のみ記録する {@link #handleBusinessException} の方針と同一）。</p>
+     *
+     * <p><b>優先順位:</b> Spring の {@code ExceptionHandlerMethodResolver} は例外型階層で最も近い
+     * ハンドラを選ぶため、本ハンドラは {@code @ExceptionHandler(Exception.class)} より優先される
+     * （宣言順には依存しない）。</p>
+     *
+     * <p><b>⚠️ 実装者への注意:</b> 本ハンドラの導入により、<b>4xx の {@code reason} は必ず
+     * レスポンス本文としてクライアントへ公開される</b>（従来は 500 に潰れて外へ出なかった）。
+     * {@code ResponseStatusException} を新規に書く際は、reason に内部状態・SQL・内部 ID・
+     * 他ユーザーの情報などの機微情報を書かないこと。利用者にそのまま見せてよい文言のみを入れる。
+     * 5xx の reason のみ本ハンドラが伏せる。</p>
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex,
+                                                                       HttpServletRequest request) {
+        HttpStatusCode status = ex.getStatusCode();
+        CommonErrorCode errorCode = resolveCommonErrorCode(status);
+
+        if (status.is5xxServerError()) {
+            log.error("ResponseStatusException(5xx): status={}", status.value(), ex);
+            recordBackendException(ex, request, ErrorReportSeverity.MEDIUM);
+            return ResponseEntity.status(status)
+                    .headers(ex.getHeaders())
+                    .body(ErrorResponse.of(errorCode));
+        }
+
+        String reason = ex.getReason();
+        String message = (reason != null && !reason.isBlank()) ? reason : resolveMessage(errorCode);
+        log.warn("ResponseStatusException: status={}, code={}, reason={}",
+                status.value(), errorCode.getCode(), reason);
+        return ResponseEntity.status(status)
+                .headers(ex.getHeaders())
+                .body(new ErrorResponse(
+                        new ErrorResponse.ErrorDetail(errorCode.getCode(), message, List.of())));
+    }
+
+    /**
+     * 既存ユニットテスト互換用 overload。
+     */
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+        return handleResponseStatusException(ex, null);
+    }
+
+    /**
+     * HTTP ステータスに対応する共通エラーコードを返す。
+     * 既存の意味づけ（COMMON_000=未認証 / 002=認可 / 003=競合 / 004=メソッド不一致 / 005=不在）に合わせ、
+     * 該当しない 4xx は入力不備（COMMON_001）、5xx はシステムエラー（COMMON_999）へ寄せる。
+     */
+    private static CommonErrorCode resolveCommonErrorCode(HttpStatusCode status) {
+        return switch (status.value()) {
+            case 401 -> CommonErrorCode.COMMON_000;
+            case 403 -> CommonErrorCode.COMMON_002;
+            case 404 -> CommonErrorCode.COMMON_005;
+            case 405 -> CommonErrorCode.COMMON_004;
+            case 409 -> CommonErrorCode.COMMON_003;
+            default -> status.is5xxServerError()
+                    ? CommonErrorCode.COMMON_999
+                    : CommonErrorCode.COMMON_001;
+        };
     }
 
     /**

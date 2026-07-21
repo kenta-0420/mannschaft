@@ -208,6 +208,33 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId);
 
     /**
+     * 認可根治 Wave6: 指定した複数スコープ（TEAM / ORGANIZATION 混在）のアクティブ会員の
+     * user_id 集合（DISTINCT）を返す。
+     *
+     * <p>横断検索の利用者検索が「閲覧者と同一スコープに所属する利用者」だけを候補にするために用いる。
+     * {@link #findActiveDistinctUserIdsByScope} のスコープ集合版で、所属スコープ数 N に対して
+     * DB 往復を 1 回に抑える（N+1 を発生させない）。</p>
+     *
+     * <p>「アクティブ」（{@code users.status='ACTIVE'}）判定は auth ドメインに委ねるため、本クエリは
+     * 在籍者の user_id 集合だけを返す（ドメイン境界厳守・membership から users を直接参照しない）。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param teamIds 対象チーム scopeId 集合（非空・空ならダミー値）
+     * @param orgIds  対象組織 scopeId 集合（非空・空ならダミー値）
+     * @return 在籍者の user_id 集合（DISTINCT）
+     */
+    @Query("SELECT DISTINCT m.userId FROM MembershipEntity m WHERE m.leftAt IS NULL AND ("
+            + "  (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.TEAM AND m.scopeId IN :teamIds)"
+            + "  OR (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION"
+            + "      AND m.scopeId IN :orgIds)"
+            + ")")
+    List<Long> findActiveDistinctUserIdsByScopes(
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("orgIds") Collection<Long> orgIds);
+
+    /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員のうち、joined_at が指定期間内
      * （当月初日 ≦ joined_at ＜ 翌月初日）の DISTINCT user_id 件数を返す（今月新規）。
      *
