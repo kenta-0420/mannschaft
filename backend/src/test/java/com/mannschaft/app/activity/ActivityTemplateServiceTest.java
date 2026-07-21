@@ -9,8 +9,8 @@ import com.mannschaft.app.activity.entity.ActivityTemplateEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
 import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
+import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,7 +40,7 @@ class ActivityTemplateServiceTest {
     @Mock private SystemActivityTemplatePresetRepository presetRepository;
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
-    @Mock private AccessControlService accessControlService;
+    @Mock private ActivityScopeAccessGuard scopeAccessGuard;
 
     @InjectMocks
     private ActivityTemplateService service;
@@ -182,7 +182,7 @@ class ActivityTemplateServiceTest {
         @DisplayName("listTemplates_他スコープ会員は403（COMMON_002）")
         void 一覧_他スコープ_403() {
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.listTemplates(USER_ID, ActivityScopeType.TEAM, SCOPE_ID))
                     .isInstanceOf(BusinessException.class)
@@ -200,7 +200,7 @@ class ActivityTemplateServiceTest {
         void 詳細_他スコープ_403() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.getTemplate(TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -218,7 +218,7 @@ class ActivityTemplateServiceTest {
         void 更新_非管理者_403() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             UpdateTemplateRequest request = new UpdateTemplateRequest(
                     "更新名", null, null, null, null, null, null);
@@ -238,7 +238,7 @@ class ActivityTemplateServiceTest {
         void 削除_非管理者_403() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.deleteTemplate(TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -248,7 +248,7 @@ class ActivityTemplateServiceTest {
     }
 
     @Nested
-    @DisplayName("認可: duplicateTemplate（コピー元=checkMembership）")
+    @DisplayName("認可: duplicateTemplate（コピー元・コピー先の双方=checkMembership）")
     class AuthzDuplicateTemplate {
         // AC-6: コピー元スコープの非会員は複製不可
         @Test
@@ -256,13 +256,34 @@ class ActivityTemplateServiceTest {
         void 複製_コピー元他スコープ_403() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             DuplicateTemplateRequest request = new DuplicateTemplateRequest("ORGANIZATION", 2L);
             assertThatThrownBy(() -> service.duplicateTemplate(TEMPLATE_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("COMMON_002"));
+        }
+
+        // AC-6b: コピー元の会員であっても、コピー先スコープの非会員は複製不可
+        // （書き込み先スコープを検証しないと任意スコープへ書き込めてしまうため）
+        @Test
+        @DisplayName("duplicateTemplate_コピー先の非会員は403（COMMON_002）")
+        void 複製_コピー先非会員_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            // コピー元（TEAM:SCOPE_ID）は会員 → 素通り。コピー先（ORGANIZATION:2L）で拒否される。
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard)
+                    .checkMembership(USER_ID, ActivityScopeType.ORGANIZATION, 2L);
+
+            DuplicateTemplateRequest request = new DuplicateTemplateRequest("ORGANIZATION", 2L);
+            assertThatThrownBy(() -> service.duplicateTemplate(TEMPLATE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            // コピー先の検証まで到達し、テンプレートは保存されないこと
+            org.mockito.Mockito.verify(templateRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
         }
     }
 
@@ -278,7 +299,7 @@ class ActivityTemplateServiceTest {
                             com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity.class);
             given(presetRepository.findById(5L)).willReturn(Optional.of(preset));
             org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             ImportTemplateRequest request = new ImportTemplateRequest(5L, "TEAM", SCOPE_ID);
             assertThatThrownBy(() -> service.importPreset(USER_ID, request))
