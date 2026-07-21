@@ -411,6 +411,14 @@ public class GlobalExceptionHandler {
             // F13 ストレージクォータ統合機構（Phase 4-α）
             Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
             Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR), // SUBSCRIPTION_NOT_FOUND
+            // F04.2 チャット（認可根治 Wave6: 閲覧・参加・投稿の認可敷設に伴う status 明示。
+            //   未マップだと Severity.WARN 既定の 400 になり、403/404 の秘匿が看板倒れになる）
+            Map.entry("CHAT_001", HttpStatus.NOT_FOUND),                     // CHANNEL_NOT_FOUND（不在チャンネル → 404）
+            Map.entry("CHAT_002", HttpStatus.NOT_FOUND),                     // MESSAGE_NOT_FOUND（不在メッセージ → 404）
+            Map.entry("CHAT_005", HttpStatus.FORBIDDEN),                     // CHANNEL_ACCESS_DENIED（非メンバーの閲覧/投稿/参加 → 403）
+            Map.entry("CHAT_006", HttpStatus.FORBIDDEN),                     // MESSAGE_EDIT_DENIED（他人のメッセージ編集 → 403）
+            Map.entry("CHAT_007", HttpStatus.FORBIDDEN),                     // MESSAGE_DELETE_DENIED（他人のメッセージ削除 → 403）
+            Map.entry("CHAT_013", HttpStatus.FORBIDDEN),                     // ROLE_CHANGE_DENIED（権限昇格の拒否 → 403）
             // F04.2 チャット 添付ファイル（F13 Phase 4-β）
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
             Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
