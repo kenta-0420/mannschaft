@@ -12,12 +12,15 @@ const emit = defineEmits<{
   create: []
 }>()
 
+const { t } = useI18n()
 const { listScopedCirculations } = useCirculationApi()
-const { showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 
 const items = ref<CirculationDocumentListItem[]>([])
 const loading = ref(false)
+// 取得失敗フラグ。失敗時にスピナーを放置したり空状態（回覧がありません）で誤魔化さず、
+// エラー面＋再試行を出して可視化する（症状を隠さない）。
+const error = ref(false)
 const statusFilter = ref<string | undefined>(undefined)
 
 const statusOptions = [
@@ -30,6 +33,7 @@ const statusOptions = [
 
 async function loadItems() {
   loading.value = true
+  error.value = false
   try {
     const res = await listScopedCirculations(
       props.scopeType === 'TEAM' ? 'team' : 'organization',
@@ -38,7 +42,8 @@ async function loadItems() {
     )
     items.value = res.data
   } catch {
-    showError('回覧一覧の取得に失敗しました')
+    // 失敗はインラインのエラー面（＋再試行）で可視化する。トーストは重複通知になるため出さない。
+    error.value = true
   } finally {
     loading.value = false
   }
@@ -74,6 +79,20 @@ defineExpose({ refresh: loadItems })
 
     <div v-if="loading" class="flex justify-center py-8">
       <LoadingBounce />
+    </div>
+
+    <!-- 取得失敗のエラー面（空状態で誤魔化さず再試行を出す） -->
+    <div v-else-if="error" class="py-12 text-center">
+      <i class="pi pi-exclamation-triangle mb-3 text-4xl text-surface-400" aria-hidden="true" />
+      <p class="text-surface-500 dark:text-surface-300">{{ t('common.scopeShell.load_error_title') }}</p>
+      <Button
+        class="mt-4"
+        :label="t('common.scopeShell.retry')"
+        icon="pi pi-refresh"
+        size="small"
+        outlined
+        @click="loadItems"
+      />
     </div>
 
     <div v-else class="flex flex-col gap-2">
