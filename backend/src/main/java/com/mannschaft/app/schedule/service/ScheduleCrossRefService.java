@@ -56,7 +56,7 @@ public class ScheduleCrossRefService {
     @Transactional
     public CrossRefResponse sendCrossInvite(Long sourceScheduleId, CrossInviteRequest req, Long userId) {
         // 認可根治 Wave6: 招待元スケジュールの entity 由来 scope の ADMIN/DEPUTY_ADMIN のみ送信可。
-        scheduleService.checkScopeAdminAccess(sourceScheduleId, userId);
+        checkSourceScheduleAdmin(sourceScheduleId, userId);
         scheduleService.getSchedule(sourceScheduleId);
         CrossRefTargetType targetType = CrossRefTargetType.valueOf(req.getTargetType());
 
@@ -100,7 +100,7 @@ public class ScheduleCrossRefService {
     public void cancelCrossInvite(Long invitationId, Long userId) {
         ScheduleCrossRefEntity crossRef = findCrossRefOrThrow(invitationId);
         // 認可根治 Wave6: 送信側（招待元スケジュールの entity 由来 scope）の ADMIN/DEPUTY_ADMIN のみ取消可。
-        scheduleService.checkScopeAdminAccess(crossRef.getSourceScheduleId(), userId);
+        checkSourceScheduleAdmin(crossRef.getSourceScheduleId(), userId);
         validateInviteStatus(crossRef, CrossRefStatus.PENDING);
 
         crossRef.cancel();
@@ -253,6 +253,21 @@ public class ScheduleCrossRefService {
     }
 
     // --- プライベートメソッド ---
+
+    /**
+     * 招待の送信側（招待元スケジュールの entity 由来 scope）に対する ADMIN 認可を強制する
+     * （認可根治 Wave6）。
+     *
+     * <p>scope 解決は同ドメインの正準である {@link ScheduleService#checkScopeAdminAccess(Long, Long)}
+     * に委譲する（独自実装をしない）。SYSTEM_ADMIN の横断許可だけは本メソッドで先に短絡させ、
+     * 委譲先と同じ判定を重ねて引かないようにする（{@code checkScopeViewAccess} と同方針）。</p>
+     */
+    private void checkSourceScheduleAdmin(Long sourceScheduleId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        scheduleService.checkScopeAdminAccess(sourceScheduleId, userId);
+    }
 
     /**
      * 招待の受信側スコープに対する ADMIN 認可を強制する（認可根治 Wave6）。
