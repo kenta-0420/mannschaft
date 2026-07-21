@@ -39,12 +39,14 @@ public class TeamEventCategoryController {
 
     /**
      * チーム行事カテゴリ一覧を取得する（チーム固有 + 親組織カテゴリのマージ結果）。
+     * 当該チームのメンバーのみ取得可能。
      */
     @GetMapping
     @Operation(summary = "チーム行事カテゴリ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<EventCategoryResponse>>> listCategories(
             @PathVariable Long teamId) {
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         Long organizationId = teamOrgMembershipRepository
                 .findFirstByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
                 .map(TeamOrgMembershipEntity::getOrganizationId)

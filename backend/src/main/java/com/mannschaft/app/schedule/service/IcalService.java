@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse.ScopedUrlItem;
@@ -59,6 +61,18 @@ public class IcalService {
     private final ScheduleRepository scheduleRepository;
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
+
+    /** スコープ種別: チーム */
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
+    /** スコープ種別: 組織 */
+    private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
+    /** iCal クエリのスコープ値: チーム */
+    private static final String SCOPE_PARAM_TEAM = "team";
+    /** iCal クエリのスコープ値: 組織 */
+    private static final String SCOPE_PARAM_ORGANIZATION = "organization";
+    /** スコープ配信の最低要求ロール（GUEST 不可） */
+    private static final String MIN_FEED_ROLE = "SUPPORTER";
 
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
@@ -136,6 +150,20 @@ public class IcalService {
         }
 
         Long userId = tokenEntity.getUserId();
+
+        // スコープ指定フィードは、トークン所有者が当該スコープに所属している場合のみ配信する。
+        // （番人の委譲追跡が 2 ホップまでのため、認可呼び出しは public 入口に直接置く）
+        if (scopeId != null) {
+            if (SCOPE_PARAM_TEAM.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_TEAM, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (SCOPE_PARAM_ORGANIZATION.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_ORGANIZATION, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+        }
+
         LocalDateTime from = LocalDateTime.now().minusMonths(ICAL_MONTHS_PAST);
         LocalDateTime to = LocalDateTime.now().plusMonths(ICAL_MONTHS_FUTURE);
 
@@ -169,6 +197,19 @@ public class IcalService {
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.ICAL_TOKEN_INVALID));
 
         Long userId = tokenEntity.getUserId();
+
+        // generateIcalFeed と同一のスコープ認可を課す（ETag 経由での越境な件数・更新時刻の推測を防ぐ）
+        if (scopeId != null) {
+            if (SCOPE_PARAM_TEAM.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_TEAM, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (SCOPE_PARAM_ORGANIZATION.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_ORGANIZATION, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+        }
+
         LocalDateTime from = LocalDateTime.now().minusMonths(ICAL_MONTHS_PAST);
         LocalDateTime to = LocalDateTime.now().plusMonths(ICAL_MONTHS_FUTURE);
 

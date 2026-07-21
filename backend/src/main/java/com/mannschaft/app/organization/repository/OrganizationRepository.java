@@ -40,7 +40,24 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     boolean existsByName(String name);
 
-    @Query("SELECT o FROM OrganizationEntity o WHERE o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%")
+    /**
+     * 組織をキーワード検索する（公開検索）。
+     *
+     * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>の組織のみに限定する。
+     * 未認証でも到達しうる公開検索であり、閲覧者ごとの可視性解決を行わないため、
+     * {@code TeamRepository#searchPublicTeams} と同じ「公開スコープのみ返す」流儀に揃える。
+     * 論理削除済みは Entity の {@code @SQLRestriction("deleted_at IS NULL")} が除外する。</p>
+     *
+     * @param keyword  組織名 / カナに対する部分一致キーワード（空文字は全件相当）
+     * @param pageable ページング情報
+     * @return PUBLIC かつ未アーカイブな組織のページ
+     */
+    @Query("""
+            SELECT o FROM OrganizationEntity o
+            WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.archivedAt IS NULL
+              AND (o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
+            """)
     Page<OrganizationEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**

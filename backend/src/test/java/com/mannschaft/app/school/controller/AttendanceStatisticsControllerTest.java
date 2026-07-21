@@ -106,7 +106,7 @@ class AttendanceStatisticsControllerTest {
                     .studentBreakdown(List.of(summary))
                     .build();
 
-            given(statisticsService.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5)))
+            given(statisticsService.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5), eq(USER_ID)))
                     .willReturn(response);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/statistics/monthly", TEAM_ID)
@@ -175,7 +175,8 @@ class AttendanceStatisticsControllerTest {
             given(statisticsService.exportAttendanceCsv(
                     eq(TEAM_ID),
                     eq(LocalDate.of(2026, 5, 1)),
-                    eq(LocalDate.of(2026, 5, 31))))
+                    eq(LocalDate.of(2026, 5, 31)),
+                    eq(USER_ID)))
                     .willReturn(csvContent.getBytes(StandardCharsets.UTF_8));
 
             byte[] body = mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/export", TEAM_ID)
