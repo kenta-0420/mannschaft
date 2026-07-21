@@ -132,28 +132,20 @@ public class TimelinePostService {
      */
     @Transactional
     public PostResponse createPost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
-        checkWriteScope(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
-        return doCreatePost(req, resolvedScopeId, userId);
-    }
-
-    /**
-     * 書き込み経路のスコープ認可（認可根治 Wave6）。
-     *
-     * <p>VILLAGE を除き {@link #checkScopeMembership} と同一の網羅的ディスパッチを用いる。</p>
-     *
-     * <p><b>VILLAGE だけ扱いが異なる理由</b>: 村への投稿権限は
-     * {@link #doCreatePost} が {@code PostingIdentityService#validatePostingIdentity} で
-     * <b>投稿主体（USER / TEAM / ORGANIZATION）単位</b>に検証する。ここで
-     * 呼び出し元 {@code userId} 単位の村メンバー判定を重ねると、
-     * 「投稿者本人は村メンバーではないが所属チームが村メンバー」という
-     * 正当なチーム代理投稿を誤って弾いてしまう。したがって VILLAGE の認可は
-     * 下流の主体検証へ委譲する（素通しではなく、より粒度の細かい検証に委ねる）。</p>
-     */
-    private void checkWriteScope(String scopeTypeStr, Long resolvedScopeId, Long userId) {
-        if (parseScopeType(scopeTypeStr) == PostScopeType.VILLAGE) {
-            return;
+        // VILLAGE への投稿権限は doCreatePost の validatePostingIdentity が
+        // 投稿主体（USER / TEAM / ORGANIZATION）単位で検証する。ここで呼び出し元 userId 単位の
+        // 村メンバー判定を重ねると、「投稿者本人は村メンバーではないが所属チームが村メンバー」
+        // という正当なチーム代理投稿を誤って弾くため、VILLAGE の認可は下流の主体検証へ委譲する
+        // （素通しではなく、より粒度の細かい検証に委ねる）。
+        //
+        // なお本判定を private ヘルパーに切り出すと、認可番人（AuthzControllerGuardArchTest）の
+        // 委譲追跡（MAX_DELEGATION_DEPTH = 2）で accessControlService の呼び出しが
+        // 3 ホップ目に沈み検出されなくなる。番人に見える位置を保つため、ここは
+        // checkScopeMembership を直接呼ぶ形にフラット化している。
+        if (parseScopeType(req.getScopeTypeOrDefault()) != PostScopeType.VILLAGE) {
+            checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
         }
-        checkScopeMembership(scopeTypeStr, resolvedScopeId, userId);
+        return doCreatePost(req, resolvedScopeId, userId);
     }
 
     /**

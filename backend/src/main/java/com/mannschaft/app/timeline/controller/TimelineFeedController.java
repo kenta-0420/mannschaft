@@ -120,7 +120,10 @@ public class TimelineFeedController {
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") Long scopeId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId, userId);
+        // 村 ID を取らない EP のため scopeVillageId は null を渡す（VILLAGE 指定は fail-closed）。
+        // 4 引数版を直接呼ぶのは、認可番人の委譲追跡（深さ 2）で
+        // accessControlService の呼び出しが可視な位置に留まるようにするため。
+        List<PostResponse> posts = postService.getPinnedPosts(scopeType, scopeId, null, userId);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 
