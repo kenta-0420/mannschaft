@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.payment.dto.ContentGateSetResponse;
@@ -26,6 +27,12 @@ import com.mannschaft.app.common.SecurityUtils;
  * チームコンテンツゲートコントローラー。チーム内コンテンツのアクセスゲート管理を提供する。
  * <p>
  * エンドポイント数: 2（GET, PUT）
+ *
+ * <p><b>認可根治戦役 Wave6（B3・2026-07-21）:</b> 双子の {@link OrganizationContentPaymentGateController}
+ * （Wave5早馬B1b で敷設済み）と同水準へ揃える。閲覧系（GET）は
+ * {@link AccessControlService#checkMembership}、変更系（PUT）は
+ * {@link AccessControlService#checkAdminOrAbove} を "TEAM" スコープで要求する。
+ * 変更前の状態に関する詳細はマージ後に戦役台帳へ記録する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{id}/content-payment-gates")
@@ -34,6 +41,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamContentPaymentGateController {
 
     private final ContentPaymentGateService contentPaymentGateService;
+    private final AccessControlService accessControlService;
 
 
     /**
@@ -46,6 +54,7 @@ public class TeamContentPaymentGateController {
             @RequestParam(required = false) String contentType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), id, "TEAM");
         Page<ContentPaymentGateResponse> result = contentPaymentGateService.listTeamContentGates(
                 id, contentType, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -61,8 +70,10 @@ public class TeamContentPaymentGateController {
     public ResponseEntity<ApiResponse<ContentGateSetResponse>> setContentGates(
             @PathVariable Long id,
             @Valid @RequestBody ContentPaymentGateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "TEAM");
         ContentGateSetResponse response = contentPaymentGateService.setTeamContentGates(
-                id, SecurityUtils.getCurrentUserId(), request);
+                id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
