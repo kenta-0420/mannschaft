@@ -95,6 +95,9 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
+            // 認可根治 Wave6: 組織 ID をリクエストボディで受ける経路で「不在は 404 秘匿」を成立させるため必須。
+            Map.entry("ORG_001", HttpStatus.NOT_FOUND),
             // F10.1 目安箱: フィードバック不在は 404（Severity.WARN 既定の 400 を上書き）。
             // 認可根治 Wave5 で AdminFeedbackController が「別スコープのフィードバック」を
             // 存在秘匿する際にも本コードを使うため、404 への正規化が必須。
@@ -162,6 +165,8 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
             // F16 school 出席要件規程: bare id EP（update/delete）の権限不足は存在秘匿で 404（Severity.WARN 既定 400 を上書き）
             Map.entry("S030", HttpStatus.NOT_FOUND),
+            // F16 school 出席要件評価: bare id EP（resolve）の権限不足・不在は存在秘匿で 404
+            Map.entry("S034", HttpStatus.NOT_FOUND),
             // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
             Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
             // F02.5 Phase 3: チーム投稿系エラー
@@ -297,7 +302,12 @@ public class GlobalExceptionHandler {
             Map.entry("EVENT_043", HttpStatus.FORBIDDEN),                   // 代理チェックイン: 権限なし
             // F03.5 シフト管理（Phase 11 第二陣で summary / remind 追加）
             Map.entry("SHIFT_001", HttpStatus.NOT_FOUND),                   // SHIFT_SCHEDULE_NOT_FOUND
+            Map.entry("SHIFT_002", HttpStatus.NOT_FOUND),                   // SHIFT_SLOT_NOT_FOUND（越境404秘匿にも使用）
             Map.entry("SHIFT_012", HttpStatus.CONFLICT),                    // INVALID_SCHEDULE_STATUS
+            Map.entry("SHIFT_019", HttpStatus.FORBIDDEN),                   // ACCESS_DENIED
+            Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
+            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
+            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
@@ -411,6 +421,14 @@ public class GlobalExceptionHandler {
             // F13 ストレージクォータ統合機構（Phase 4-α）
             Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
             Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR), // SUBSCRIPTION_NOT_FOUND
+            // F04.2 チャット（認可根治 Wave6: 閲覧・参加・投稿の認可敷設に伴う status 明示。
+            //   未マップだと Severity.WARN 既定の 400 になり、403/404 の秘匿が看板倒れになる）
+            Map.entry("CHAT_001", HttpStatus.NOT_FOUND),                     // CHANNEL_NOT_FOUND（不在チャンネル → 404）
+            Map.entry("CHAT_002", HttpStatus.NOT_FOUND),                     // MESSAGE_NOT_FOUND（不在メッセージ → 404）
+            Map.entry("CHAT_005", HttpStatus.FORBIDDEN),                     // CHANNEL_ACCESS_DENIED（非メンバーの閲覧/投稿/参加 → 403）
+            Map.entry("CHAT_006", HttpStatus.FORBIDDEN),                     // MESSAGE_EDIT_DENIED（他人のメッセージ編集 → 403）
+            Map.entry("CHAT_007", HttpStatus.FORBIDDEN),                     // MESSAGE_DELETE_DENIED（他人のメッセージ削除 → 403）
+            Map.entry("CHAT_013", HttpStatus.FORBIDDEN),                     // ROLE_CHANGE_DENIED（権限昇格の拒否 → 403）
             // F04.2 チャット 添付ファイル（F13 Phase 4-β）
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
             Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)

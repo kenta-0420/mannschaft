@@ -86,14 +86,14 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.empty());
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(evalResp);
 
             // Act
             service.runDailyEvaluation();
 
             // Assert
-            verify(evaluationService).evaluate(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
         }
 
         @Test
@@ -115,7 +115,7 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.of(prevEval));
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(newResp);
             given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
                     eq(10L), anyInt()))
@@ -142,7 +142,7 @@ class AttendanceRequirementBatchServiceTest {
 
             // Assert: サマリー取得も評価も呼ばれない
             verify(summaryRepository, never()).findClassSummaries(anyLong(), any(short.class));
-            verify(evaluationService, never()).evaluate(anyLong(), anyLong());
+            verify(evaluationService, never()).evaluateInternal(anyLong(), anyLong());
         }
 
         @Test
@@ -162,17 +162,17 @@ class AttendanceRequirementBatchServiceTest {
                     anyLong(), anyLong()))
                     .willReturn(Optional.empty());
             // 1人目は例外、2人目は正常
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willThrow(new RuntimeException("テスト用例外"));
-            given(evaluationService.evaluate(eq(201L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(201L), anyLong()))
                     .willReturn(buildEvaluationResponse(EvaluationStatus.OK));
 
             // Act（例外がスローされないことを確認）
             service.runDailyEvaluation();
 
             // Assert: 2人目の評価も実行される
-            verify(evaluationService).evaluate(eq(200L), anyLong());
-            verify(evaluationService).evaluate(eq(201L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(201L), anyLong());
         }
     }
 

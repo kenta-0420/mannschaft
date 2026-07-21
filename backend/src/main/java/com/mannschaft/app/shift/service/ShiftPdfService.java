@@ -43,7 +43,8 @@ public class ShiftPdfService {
     public byte[] generateTeamPdf(Long scheduleId, Long requesterId) {
         ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId);
         checkMemberAndNotSupporter(requesterId, schedule.getTeamId());
-        List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId);
+        // listSlots 側でも同等の参照認可が走る（多層防御）。requesterId をそのまま引き渡す。
+        List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId, requesterId);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("schedule", schedule);
@@ -66,7 +67,8 @@ public class ShiftPdfService {
     public byte[] generatePersonalPdf(Long scheduleId, Long requesterId) {
         ShiftScheduleResponse schedule = scheduleService.getSchedule(scheduleId);
         checkMemberAndNotSupporter(requesterId, schedule.getTeamId());
-        List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId);
+        // listSlots 側でも同等の参照認可が走る（多層防御）。requesterId をそのまま引き渡す。
+        List<ShiftSlotResponse> slots = shiftSlotService.listSlots(scheduleId, requesterId);
 
         // 個人の割り当てのみにフィルタ
         List<ShiftSlotResponse> mySlots = slots.stream()

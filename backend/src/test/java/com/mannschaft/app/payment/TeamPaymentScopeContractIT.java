@@ -52,9 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * path 上位スコープ（{@code teamId}）に属するかを検証していなかったため、正当な自チーム ADMIN であっても
  * 他チームの {@code itemId} を渡せばその支払い項目の入金記録を操作・返金できる BOLA が成立していた。</p>
  *
- * <p>createManualPayment/createBulkPayments は {@code MemberPaymentService} 内部の
- * {@code PaymentAuthorizationService} が itemId 由来スコープで既に認可済みのため対象外
- * （Organization 側の契約テストと異なり、本 IT では検証しない）。sendRemind は既存の
+ * <p>createManualPayment/createBulkPayments は本 IT では検証しない
+ * （Wave6 B3 で Organization 側と同水準の入口ガードを敷設し、{@code PaymentW6TeamScopeContractIT}
+ * が契約を固定している）。sendRemind は既存の
  * {@code checkAdminOrAbove} に加えて本戦役で itemId のチーム帰属検証を追加したため、そのBOLA是正も検証する。</p>
  *
  * <p>金型: {@code PaymentScopeContractIT}（Wave3-B1・{@code @AutoConfigureMockMvc(addFilters=false)} +
