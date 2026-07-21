@@ -1,6 +1,5 @@
 package com.mannschaft.app.chat.ws;
 
-import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
@@ -14,9 +13,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.stereotype.Component;
 
-import java.util.EnumSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,7 +40,7 @@ import java.util.regex.Pattern;
  *       （パターン不一致＝認可対象外）。既存購読を壊さない。</li>
  *   <li><b>未認証（session userId=null）は拒否</b>する。チャットは非公開前提であり、未ログイン観覧は許容しない。</li>
  *   <li><b>チャネル不在／論理削除済みは拒否</b>する（存在を漏らさず安全側に倒す）。</li>
- *   <li><b>メンバー行でメンバーシップが定義される種別のみ</b>を認可対象とする（{@link #MEMBERSHIP_GATED_TYPES}）。
+ *   <li><b>メンバー行でメンバーシップが定義される種別のみ</b>を認可対象とする（{@link com.mannschaft.app.chat.ChannelType#isMembershipGated()}）。
  *       {@code VILLAGE_LOBBY}／{@code EVENT_CHAT}／{@code TOURNAMENT_CHAT}／{@code TOURNAMENT_DIVISION_CHAT} は
  *       {@code chat_channel_members} 行を持たず、それぞれ village メンバーシップ・大会連絡スペース認可
  *       （{@code TournamentContactAccessService}）等の別ドメインのアクセスモデルで管理される。これらに
@@ -73,21 +70,6 @@ public class ChatChannelSubscriptionInterceptor implements ChannelInterceptor {
      * パターン不一致＝素通し（本機能対象外）とする。
      */
     private static final Pattern CHANNEL_DESTINATION = Pattern.compile("^/topic/channels/(\\d+)$");
-
-    /**
-     * {@code chat_channel_members} 行でメンバーシップが定義される種別（購読認可の対象）。
-     *
-     * <p>これ以外の種別（{@code VILLAGE_LOBBY}／{@code EVENT_CHAT}／{@code TOURNAMENT_CHAT}／
-     * {@code TOURNAMENT_DIVISION_CHAT}）はメンバー行を持たず、別ドメインのアクセスモデルで管理されるため、
-     * ここでのメンバーシップ検査対象から除外し素通しする（クラス Javadoc の不変条件・既知課題を参照）。</p>
-     */
-    private static final Set<ChannelType> MEMBERSHIP_GATED_TYPES = EnumSet.of(
-            ChannelType.TEAM_PUBLIC,
-            ChannelType.TEAM_PRIVATE,
-            ChannelType.ORG_PUBLIC,
-            ChannelType.ORG_PRIVATE,
-            ChannelType.DM,
-            ChannelType.GROUP_DM);
 
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
@@ -137,7 +119,7 @@ public class ChatChannelSubscriptionInterceptor implements ChannelInterceptor {
 
         // メンバー行でメンバーシップが定義される種別のみ購読認可を行う。
         // 自己管理型（村ロビー/イベント/大会）は別ドメイン認可のため素通し（既知課題・PR 本文参照）。
-        if (!MEMBERSHIP_GATED_TYPES.contains(chatChannel.getChannelType())) {
+        if (!chatChannel.getChannelType().isMembershipGated()) {
             log.debug("チャネル購読を許可（メンバーシップ非依存種別・素通し）: userId={}, channelId={}, type={}",
                     userId, channelId, chatChannel.getChannelType());
             return message;
