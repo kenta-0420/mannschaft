@@ -93,8 +93,14 @@ public class TeamController {
                 .body(teamService.createTeam(SecurityUtils.getCurrentUserId(), req));
     }
 
+    /**
+     * チームをキーワード検索する。
+     *
+     * <p>結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定される（可視性フィルタは
+     * {@code TeamRepository#searchByKeyword} のクエリが担保。論理削除は {@code @SQLRestriction} が除外）。</p>
+     */
     @GetMapping("/search")
-    @Operation(summary = "チーム検索")
+    @Operation(summary = "チーム検索（PUBLIC かつ未アーカイブのチームのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<TeamSummaryResponse>> searchTeams(
             @RequestParam(required = false) String keyword, Pageable pageable) {

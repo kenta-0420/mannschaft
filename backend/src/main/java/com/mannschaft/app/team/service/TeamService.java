@@ -541,6 +541,9 @@ public class TeamService {
 
     /**
      * チームをキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code TeamRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<TeamSummaryResponse> searchTeams(String keyword, Pageable pageable) {
         Page<TeamEntity> page = teamRepository.searchByKeyword(
