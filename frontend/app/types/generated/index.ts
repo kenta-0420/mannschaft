@@ -104725,6 +104725,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
                 };
             };
+            /** @description 可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
         };
     };
     unfollowTeam: {
@@ -110310,6 +110328,24 @@ export interface operations {
         responses: {
             /** @description 申請/承認成功 */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
