@@ -154,6 +154,20 @@ public class OrganizationService {
     }
 
     /**
+     * 指定 ID の組織が実在する（論理削除されていない）ことを確認する。
+     *
+     * <p>Controller が「リクエストボディで渡された組織 ID」を認可判定に使う前段で、
+     * 対象の実在を 404（{@link OrgErrorCode#ORG_001}）で確定させるための入口。
+     * 認可そのものは行わない（呼び出し元が {@code AccessControlService} に委譲する）。</p>
+     *
+     * @param orgId 組織 ID
+     * @throws BusinessException 組織が存在しない / 論理削除済み（{@code ORG_001}）
+     */
+    public void assertOrganizationExists(Long orgId) {
+        findOrganizationOrThrow(orgId);
+    }
+
+    /**
      * 組織名から一意スラッグを生成する。
      *
      * <p>ベーススラッグが既に使用中の場合は数値サフィックス (-1, -2, ...) を付与して一意化する。
@@ -447,6 +461,9 @@ public class OrganizationService {
 
     /**
      * 組織をキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code OrganizationRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<OrganizationSummaryResponse> searchOrganizations(String keyword, Pageable pageable) {
         Page<OrganizationEntity> page = organizationRepository.searchByKeyword(

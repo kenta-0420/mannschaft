@@ -19,6 +19,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -95,6 +97,24 @@ class ChatMessageServiceTest {
     private static final Long MESSAGE_ID = 10L;
     private static final Long SENDER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
+
+    /**
+     * 認可根治 Wave6: {@code checkChannelViewAccess} / {@code checkChannelPostAccess} が
+     * 通常チャンネルでチャンネルメンバーシップを要求するようになったため、
+     * 本テストの既定シナリオ（＝正当なメンバーによる操作）が成立するよう既定スタブを置く。
+     *
+     * <p>認可そのものの検証は実 DB を使う {@code ChatChannelAccessScopeContractIT}（契約テスト）が担う。
+     * ここは「認可を通過した後のドメインロジック」を検証する層と役割分担する。</p>
+     *
+     * <p>{@code lenient()} 必須: 編集・削除・大会チャット系など認可検査に到達しないテストが多数あり、
+     * strict stub のままだと {@code UnnecessaryStubbingException} で一斉に落ちる。</p>
+     */
+    @BeforeEach
+    void setUpDefaultChannelAccess() {
+        // createChannel() は id 未設定（null）のため anyLong() ではなく any() で受ける。
+        lenient().when(memberRepository.existsByChannelIdAndUserId(any(), any())).thenReturn(true);
+        lenient().when(channelService.findChannelOrThrow(any())).thenReturn(createChannel());
+    }
 
     private ChatChannelEntity createChannel() {
         return ChatChannelEntity.builder()
@@ -450,7 +470,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, 10);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 10);
 
             // then
             assertThat(result).isNotNull();
@@ -474,7 +494,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, cursor, 10);
 
             // then
             assertThat(result).isNotNull();
@@ -500,7 +520,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, 2);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 2);
 
             // then
             assertThat(result.getMeta().isHasNext()).isTrue();
@@ -516,7 +536,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, null);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, null);
 
             // then
             assertThat(result).isNotNull();
@@ -532,7 +552,7 @@ class ChatMessageServiceTest {
                     .willReturn(List.of());
 
             // when
-            chatMessageService.listMessages(CHANNEL_ID, null, 200);
+            chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 200);
 
             // then
             verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
@@ -1113,7 +1133,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+            chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, cursor, 10);
 
             // then: 3 メッセージでも表示名・アバターの一括解決はそれぞれ 1 回のみ（メッセージ数に依存しない）
             verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());

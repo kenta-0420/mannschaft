@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
@@ -9,10 +10,12 @@ import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -50,6 +54,12 @@ class ShiftSlotServiceTest {
     private ShiftPositionRepository positionRepository;
 
     @Mock
+    private ShiftScheduleRepository scheduleRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
     private ObjectMapper objectMapper;
 
     @InjectMocks
@@ -62,6 +72,20 @@ class ShiftSlotServiceTest {
     private static final Long SCHEDULE_ID = 100L;
     private static final Long SLOT_ID = 200L;
     private static final Long POSITION_ID = 50L;
+    /** 操作者。本テストは認可の可否でなく CRUD 挙動の検証が目的のため SYSTEM_ADMIN で短絡させる */
+    private static final Long ACTOR = 999L;
+
+    /**
+     * 認可を短絡させる（本テストの主眼は CRUD 挙動であり、per-scope 認可そのものは
+     * {@code ShiftSlotScopeContractIT} で実 DB 越しに検証する）。
+     *
+     * <p>{@code lenient()} なのは、存在しない ID のケースでは {@code findSlotOrThrow} が
+     * 認可判定より先に例外を投げ、本スタブが未使用になるため。</p>
+     */
+    @BeforeEach
+    void setUpAuthz() {
+        lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
+    }
 
     private ShiftSlotEntity createSlotEntity() {
         return ShiftSlotEntity.builder()
@@ -100,7 +124,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
 
             // Then
             assertThat(result).hasSize(1);
@@ -123,7 +147,7 @@ class ShiftSlotServiceTest {
                     .willReturn(List.of(entity));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
 
             // Then
             assertThat(result).hasSize(1);
@@ -149,7 +173,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.getSlot(SLOT_ID);
+            ShiftSlotResponse result = shiftSlotService.getSlot(SLOT_ID, ACTOR);
 
             // Then
             assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -162,7 +186,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.getSlot(SLOT_ID))
+            assertThatThrownBy(() -> shiftSlotService.getSlot(SLOT_ID, ACTOR))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
@@ -190,7 +214,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -214,7 +238,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.save(any(ShiftSlotEntity.class))).willReturn(savedEntity);
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -247,7 +271,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req);
+            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).hasSize(2);
@@ -276,7 +300,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req);
+            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -297,7 +321,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req);
+            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -312,7 +336,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.updateSlot(SLOT_ID, req))
+            assertThatThrownBy(() -> shiftSlotService.updateSlot(SLOT_ID, req, ACTOR))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -352,7 +376,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            shiftSlotService.updateSlot(SLOT_ID, req);
+            shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then: save に渡るのは findById で取得した「まさにその」managed entity
             // （toBuilder().build() で作り直した別インスタンスではない）。
@@ -385,7 +409,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            shiftSlotService.patchSlotAssignments(SLOT_ID, request);
+            shiftSlotService.patchSlotAssignments(SLOT_ID, request, ACTOR);
 
             // Then: 同一インスタンスが save に渡り id 保持
             ArgumentCaptor<ShiftSlotEntity> captor = ArgumentCaptor.forClass(ShiftSlotEntity.class);
@@ -412,7 +436,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
 
             // When
-            shiftSlotService.deleteSlot(SLOT_ID);
+            shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
 
             // Then
             verify(slotRepository).delete(entity);
@@ -425,7 +449,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID))
+            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID, ACTOR))
                     .isInstanceOf(BusinessException.class);
         }
     }

@@ -80,8 +80,9 @@ public class AttendanceRequirementBatchService {
                         .map(AttendanceRequirementEvaluationEntity::getStatus)
                         .orElse(null);
 
-                    // 評価実行
-                    EvaluationResponse result = evaluationService.evaluate(studentId, rule.getId());
+                    // 評価実行（バッチはユーザー主体を持たず、対象スコープは activeRules で確定済みのため
+                    // 認可ガードを通さない内部経路を使う）
+                    EvaluationResponse result = evaluationService.evaluateInternal(studentId, rule.getId());
                     evaluated++;
 
                     // ステータス変化があれば通知
