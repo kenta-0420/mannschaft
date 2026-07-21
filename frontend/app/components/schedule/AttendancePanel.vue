@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useAttendanceResponder } from '~/composables/schedule/useAttendanceResponder'
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string

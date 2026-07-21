@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import { useAttendanceResponder } from '~/composables/schedule/useAttendanceResponder'
 
 /**
  * モバイルのスケジュールリストビュー 1 行。
