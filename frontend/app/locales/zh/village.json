@@ -386,7 +386,26 @@
       "deleteSuccess": "活动已删除",
       "empty": "暂无已登记的活动",
       "noEventsInMonth": "本月暂无活动",
-      "loadFailed": "获取日历失败"
+      "loadFailed": "获取日历失败",
+      "log": {
+        "title": "往年的样子",
+        "lastYear": "{year}年的样子",
+        "addLog": "记录当时情况",
+        "year": "年份",
+        "note": "一句话",
+        "notePlaceholder": "用一句话记录当时的样子",
+        "photoKey": "照片（R2密钥・可选）",
+        "photoKeyHint": "图片上传功能即将推出。如已在R2登记密钥可直接输入",
+        "submit": "保存记录",
+        "delete": "删除",
+        "empty": "暂无记录",
+        "loadFailed": "获取记录失败",
+        "addSuccess": "已保存记录",
+        "addFailed": "添加记录失败",
+        "deleteConfirm": "删除此记录？",
+        "deleteSuccess": "记录已删除",
+        "deleteFailed": "删除记录失败"
+      }
     },
     "festival": {
       "title": "节日",
@@ -534,6 +553,54 @@
         "PLANNING": "投票中",
         "CONFIRMED": "已确定",
         "CANCELLED": "已取消"
+      },
+      "attendance": {
+        "title": "出席情况",
+        "going": "可以参加",
+        "maybe": "也许参加",
+        "absent": "无法参加",
+        "notConfirmedHint": "日期确定后即可登记出席情况",
+        "empty": "暂无人回复",
+        "unknownMember": "村民",
+        "saveSuccess": "出席情况已登记",
+        "saveFailed": "登记出席情况失败"
+      },
+      "comment": {
+        "title": "评论",
+        "placeholder": "写下评论",
+        "submit": "发布",
+        "empty": "暂无评论",
+        "delete": "删除",
+        "postFailed": "发布评论失败",
+        "deleteConfirm": "删除此评论？",
+        "deleteSuccess": "评论已删除",
+        "deleteFailed": "删除评论失败"
+      },
+      "decisions": {
+        "title": "决定事项",
+        "placeholder": "记录已决定的事项、需要携带的物品等",
+        "edit": "编辑",
+        "empty": "尚未决定任何事项",
+        "saveSuccess": "决定事项已保存",
+        "saveFailed": "保存决定事项失败"
+      },
+      "todo": {
+        "title": "待办事项",
+        "titlePlaceholder": "要做什么？（例如：购买零食）",
+        "add": "添加",
+        "claim": "我来做",
+        "complete": "标记完成",
+        "release": "放弃任务",
+        "unassigned": "未分配",
+        "empty": "暂无待办事项",
+        "alreadyClaimed": "此待办事项已有人负责",
+        "addSuccess": "待办事项已添加",
+        "addFailed": "添加待办事项失败",
+        "claimSuccess": "已认领此任务",
+        "completeSuccess": "已标记完成",
+        "completeFailed": "更新完成状态失败",
+        "releaseSuccess": "已放弃任务",
+        "releaseFailed": "放弃任务失败"
       }
     },
     "chronicle": {

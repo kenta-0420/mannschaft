@@ -7,6 +7,13 @@ import type {
   VillageMeetupCandidateDateResponse,
   VillageMeetupVoteRequest,
   VillageMeetupVoteSummary,
+  VillageMeetupAttendanceResponse,
+  VillageMeetupAttendanceUpsertRequest,
+  VillageMeetupCommentResponse,
+  VillageMeetupCommentCreateRequest,
+  VillageMeetupTodoResponse,
+  VillageMeetupTodoCreateRequest,
+  VillageMeetupSubResourceListParams,
   VillageChronicleResponse,
   VillageSerendipityRankingResponse,
   VillageSerendipityScoreResponse,
@@ -147,6 +154,121 @@ export function useVillagePhase3Api() {
   async function getVoteSummary(villageId: string, meetupId: string) {
     const res = await api<{ data: VillageMeetupVoteSummary }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/votes`,
+    )
+    return res.data
+  }
+
+  // ==========================================================================
+  // F17.2 Wave1 ②寄合後半戦 — 出欠 / コメント / 決まったこと / 宿題TODO
+  // 設計書: docs/features/F17.2_village_events_activation.md §4
+  // ==========================================================================
+
+  /** 自分の出欠を登録/更新する（村人・CONFIRMED のみ・冪等 upsert）。 */
+  async function upsertAttendance(
+    villageId: string,
+    meetupId: string,
+    body: VillageMeetupAttendanceUpsertRequest,
+  ) {
+    const res = await api<{ data: VillageMeetupAttendanceResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/attendance`,
+      { method: 'PUT', body },
+    )
+    return res.data
+  }
+
+  /** 出欠一覧を取得する（村人・村ニックネーム表示・作成順）。 */
+  async function listAttendances(
+    villageId: string,
+    meetupId: string,
+    params?: VillageMeetupSubResourceListParams,
+  ) {
+    const res = await api<{ data: VillageMeetupAttendanceResponse[] }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/attendances${qs(params)}`,
+    )
+    return res.data
+  }
+
+  /** コメント一覧を取得する（村人・作成日昇順）。 */
+  async function listComments(
+    villageId: string,
+    meetupId: string,
+    params?: VillageMeetupSubResourceListParams,
+  ) {
+    const res = await api<{ data: VillageMeetupCommentResponse[] }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/comments${qs(params)}`,
+    )
+    return res.data
+  }
+
+  /** コメントを投稿する（村人）。 */
+  async function createComment(
+    villageId: string,
+    meetupId: string,
+    body: VillageMeetupCommentCreateRequest,
+  ) {
+    const res = await api<{ data: VillageMeetupCommentResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/comments`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /** コメントを論理削除する（投稿者本人＋村長/長老のみ）。BE は 204 No Content。 */
+  async function deleteComment(villageId: string, meetupId: string, commentId: string): Promise<void> {
+    await api(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/comments/${commentId}`,
+      { method: 'DELETE' },
+    )
+  }
+
+  /** 宿題一覧を取得する（村人・作成順）。 */
+  async function listTodos(
+    villageId: string,
+    meetupId: string,
+    params?: VillageMeetupSubResourceListParams,
+  ) {
+    const res = await api<{ data: VillageMeetupTodoResponse[] }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/todos${qs(params)}`,
+    )
+    return res.data
+  }
+
+  /** 宿題を作成する（幹事＋村長/長老・assigneeUserId 省略時は未割当）。 */
+  async function createTodo(
+    villageId: string,
+    meetupId: string,
+    body: VillageMeetupTodoCreateRequest,
+  ) {
+    const res = await api<{ data: VillageMeetupTodoResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/todos`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /** 未割当の宿題を自分に割り当てる（手挙げ・村人本人）。 */
+  async function claimTodo(villageId: string, meetupId: string, todoId: string) {
+    const res = await api<{ data: VillageMeetupTodoResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/todos/${todoId}/claim`,
+      { method: 'POST' },
+    )
+    return res.data
+  }
+
+  /** 宿題を完了にする（手挙げ者本人＋幹事のみ）。 */
+  async function completeTodo(villageId: string, meetupId: string, todoId: string) {
+    const res = await api<{ data: VillageMeetupTodoResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/todos/${todoId}/complete`,
+      { method: 'POST' },
+    )
+    return res.data
+  }
+
+  /** 宿題を手放す（未割当へ戻す・本人のみ）。 */
+  async function releaseTodo(villageId: string, meetupId: string, todoId: string) {
+    const res = await api<{ data: VillageMeetupTodoResponse }>(
+      `/api/v1/villages/${villageId}/meetups/${meetupId}/todos/${todoId}/release`,
+      { method: 'POST' },
     )
     return res.data
   }
@@ -301,6 +423,17 @@ export function useVillagePhase3Api() {
     removeCandidateDate,
     castVote,
     getVoteSummary,
+    // F17.2 Wave1 ②寄合後半戦
+    upsertAttendance,
+    listAttendances,
+    listComments,
+    createComment,
+    deleteComment,
+    listTodos,
+    createTodo,
+    claimTodo,
+    completeTodo,
+    releaseTodo,
     listChronicles,
     getChronicle,
     getSerendipityRanking,

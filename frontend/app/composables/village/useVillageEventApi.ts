@@ -4,6 +4,9 @@ import type {
   VillageCalendarEventListResponse,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
+  VillageCalendarEventLogResponse,
+  VillageCalendarEventLogCreateRequest,
+  VillageCalendarEventLogListParams,
   VillageFestivalCreateRequest,
   VillageFestivalResponse,
   VillageFestivalStatus,
@@ -87,6 +90,49 @@ export function useVillageEventApi() {
   }
 
   // =====================================================================
+  // F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）
+  // /api/v1/villages/{villageId}/calendar-events/{eventId}/logs
+  // 設計書: docs/features/F17.2_village_events_activation.md §6
+  // =====================================================================
+
+  /** 年輪一覧を取得する（村人・year 降順→作成日降順・?year= 絞り込み可）。 */
+  async function listCalendarEventLogs(
+    villageId: string,
+    eventId: string,
+    params?: VillageCalendarEventLogListParams,
+  ) {
+    const res = await api<{ data: VillageCalendarEventLogResponse[] }>(
+      `/api/v1/villages/${villageId}/calendar-events/${eventId}/logs${qs(params)}`,
+    )
+    return res.data
+  }
+
+  /** 年輪を追加する（村人・同一 year に複数件可）。 */
+  async function addCalendarEventLog(
+    villageId: string,
+    eventId: string,
+    body: VillageCalendarEventLogCreateRequest,
+  ) {
+    const res = await api<{ data: VillageCalendarEventLogResponse }>(
+      `/api/v1/villages/${villageId}/calendar-events/${eventId}/logs`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /** 年輪を論理削除する（投稿者本人＋村長/長老のみ）。BE は 204 No Content。 */
+  async function deleteCalendarEventLog(
+    villageId: string,
+    eventId: string,
+    logId: string,
+  ): Promise<void> {
+    await api(
+      `/api/v1/villages/${villageId}/calendar-events/${eventId}/logs/${logId}`,
+      { method: 'DELETE' },
+    )
+  }
+
+  // =====================================================================
   // Phase 2: お祭り (VillageFestivalController)
   // /api/v1/villages/{villageId}/festivals
   // =====================================================================
@@ -148,6 +194,10 @@ export function useVillageEventApi() {
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    // F17.2 Wave1 ④歳時記×村史の年輪
+    listCalendarEventLogs,
+    addCalendarEventLog,
+    deleteCalendarEventLog,
     // Phase 2: お祭り
     listFestivals,
     getFestival,

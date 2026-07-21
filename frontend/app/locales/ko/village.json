@@ -386,7 +386,26 @@
       "deleteSuccess": "행사가 삭제되었습니다",
       "empty": "등록된 행사가 없습니다",
       "noEventsInMonth": "이번 달 행사가 없습니다",
-      "loadFailed": "달력을 가져오는 데 실패했습니다"
+      "loadFailed": "달력을 가져오는 데 실패했습니다",
+      "log": {
+        "title": "작년의 모습",
+        "lastYear": "{year}년의 모습",
+        "addLog": "모습 기록하기",
+        "year": "연도",
+        "note": "한마디",
+        "notePlaceholder": "그때의 모습을 한마디로",
+        "photoKey": "사진(R2 키・선택 사항)",
+        "photoKeyHint": "이미지 업로드 기능은 추후 추가될 예정입니다. 이미 R2에 등록된 키가 있다면 입력할 수 있습니다",
+        "submit": "기록하기",
+        "delete": "삭제",
+        "empty": "아직 기록이 없습니다",
+        "loadFailed": "기록을 가져오는 데 실패했습니다",
+        "addSuccess": "기록했습니다",
+        "addFailed": "기록 추가에 실패했습니다",
+        "deleteConfirm": "이 기록을 삭제하시겠습니까?",
+        "deleteSuccess": "기록이 삭제되었습니다",
+        "deleteFailed": "기록 삭제에 실패했습니다"
+      }
     },
     "festival": {
       "title": "축제",
@@ -534,6 +553,54 @@
         "PLANNING": "투표 접수 중",
         "CONFIRMED": "개최 확정",
         "CANCELLED": "취소"
+      },
+      "attendance": {
+        "title": "참석 여부",
+        "going": "참석",
+        "maybe": "아마 참석",
+        "absent": "불참",
+        "notConfirmedHint": "개최일이 확정되면 참석 여부를 등록할 수 있습니다",
+        "empty": "아직 응답이 없습니다",
+        "unknownMember": "마을 사람",
+        "saveSuccess": "참석 여부가 등록되었습니다",
+        "saveFailed": "참석 여부 등록에 실패했습니다"
+      },
+      "comment": {
+        "title": "댓글",
+        "placeholder": "댓글을 작성하세요",
+        "submit": "등록",
+        "empty": "아직 댓글이 없습니다",
+        "delete": "삭제",
+        "postFailed": "댓글 등록에 실패했습니다",
+        "deleteConfirm": "이 댓글을 삭제하시겠습니까?",
+        "deleteSuccess": "댓글이 삭제되었습니다",
+        "deleteFailed": "댓글 삭제에 실패했습니다"
+      },
+      "decisions": {
+        "title": "결정된 사항",
+        "placeholder": "결정된 사항이나 준비물을 적어 두세요",
+        "edit": "편집",
+        "empty": "아직 결정된 사항이 없습니다",
+        "saveSuccess": "결정된 사항을 저장했습니다",
+        "saveFailed": "결정된 사항 저장에 실패했습니다"
+      },
+      "todo": {
+        "title": "할 일",
+        "titlePlaceholder": "무엇을 할까요? (예: 간식 사기)",
+        "add": "추가",
+        "claim": "내가 할게요",
+        "complete": "완료 처리",
+        "release": "맡은 일 내려놓기",
+        "unassigned": "미배정",
+        "empty": "아직 할 일이 없습니다",
+        "alreadyClaimed": "이 할 일은 이미 담당자가 정해졌습니다",
+        "addSuccess": "할 일을 추가했습니다",
+        "addFailed": "할 일 추가에 실패했습니다",
+        "claimSuccess": "이 할 일을 맡았습니다",
+        "completeSuccess": "완료 처리했습니다",
+        "completeFailed": "완료 상태 갱신에 실패했습니다",
+        "releaseSuccess": "맡은 일을 내려놓았습니다",
+        "releaseFailed": "맡은 일 내려놓기에 실패했습니다"
       }
     },
     "chronicle": {
