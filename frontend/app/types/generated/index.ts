@@ -11873,7 +11873,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡 */
+        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
         post: operations["transferOwnership"];
         delete?: never;
         options?: never;
@@ -11939,7 +11939,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 権限グループ一覧 */
+        /** 権限グループ一覧（ADMIN/DEPUTY のみ） */
         get: operations["getPermissionGroups"];
         put?: never;
         /** 権限グループ作成 */
@@ -14889,7 +14889,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡 */
+        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
         post: operations["transferOwnership_1"];
         delete?: never;
         options?: never;
@@ -14991,7 +14991,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 権限グループ一覧 */
+        /** 権限グループ一覧（ADMIN/DEPUTY のみ） */
         get: operations["getPermissionGroups_1"];
         put?: never;
         /** 権限グループ作成 */
@@ -25057,11 +25057,11 @@ export interface paths {
         get: operations["getTeam"];
         put?: never;
         post?: never;
-        /** チーム削除 */
+        /** チーム削除（ADMIN/DEPUTY のみ） */
         delete: operations["deleteTeam"];
         options?: never;
         head?: never;
-        /** チーム更新 */
+        /** チーム更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateTeam"];
         trace?: never;
     };
@@ -25078,7 +25078,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** チームアーカイブ解除 */
+        /** チームアーカイブ解除（ADMIN/DEPUTY のみ） */
         patch: operations["unarchiveTeam"];
         trace?: never;
     };
@@ -25089,14 +25089,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** チームシフト設定取得 */
+        /** チームシフト設定取得（メンバー限定） */
         get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** チームシフト設定更新 */
+        /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateSettings_14"];
         trace?: never;
     };
@@ -25236,7 +25236,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** チームアーカイブ */
+        /** チームアーカイブ（ADMIN/DEPUTY のみ） */
         patch: operations["archiveTeam"];
         trace?: never;
     };
@@ -26556,7 +26556,7 @@ export interface paths {
         delete: operations["deleteOrganization"];
         options?: never;
         head?: never;
-        /** 組織更新 */
+        /** 組織更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateOrganization"];
         trace?: never;
     };
@@ -36926,7 +36926,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織配下全メンバー一覧（カスケード通知用） */
+        /** 組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ） */
         get: operations["getAllMembers"];
         put?: never;
         post?: never;
@@ -104475,6 +104475,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     rejectSupporterApplication: {
@@ -104556,6 +104563,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionGroupResponse"];
+                };
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -109930,6 +109946,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     rejectSupporterApplication_1: {
@@ -110113,6 +110136,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionGroupResponse"];
+                };
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -129322,6 +129354,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     updateTeam: {
@@ -129341,6 +129380,15 @@ export interface operations {
         responses: {
             /** @description 更新成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamResponse"];
+                };
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -129368,6 +129416,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getSettings_16: {
@@ -129383,6 +129438,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamShiftSettingsResponse"];
+                };
+            };
+            /** @description 当該チームのメンバーでない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -129416,6 +129480,15 @@ export interface operations {
                     "*/*": components["schemas"]["TeamShiftSettingsResponse"];
                 };
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamShiftSettingsResponse"];
+                };
+            };
         };
     };
     restoreTeam: {
@@ -129431,6 +129504,13 @@ export interface operations {
         responses: {
             /** @description 復元成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -129693,6 +129773,13 @@ export interface operations {
         responses: {
             /** @description アーカイブ成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -132070,6 +132157,15 @@ export interface operations {
         responses: {
             /** @description 更新成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -143192,6 +143288,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
                 };
             };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
+                };
+            };
         };
     };
     getTeamModules: {
@@ -143317,6 +143431,24 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFollowResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFollowResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -147666,6 +147798,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
                 };
             };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
         };
     };
     getSupporters_1: {
@@ -147841,6 +147991,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseOrgAllMembersResponse"];
+                };
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
