@@ -3,6 +3,7 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -52,6 +53,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -155,11 +157,12 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("deleteOrganization: 204 No Content")
+    @DisplayName("deleteOrganization: 204 No Content（checkAdminOrAbove を必ず呼ぶ）")
     void deleteOrganization_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.deleteOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(organizationService).deleteOrganization(eq(ORG_ID), any());
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        verify(organizationService).deleteOrganization(ORG_ID, USER_ID);
     }
 
     @Test
@@ -205,19 +208,42 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("archiveOrganization: 200 OK")
+    @DisplayName("archiveOrganization: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void archiveOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.archiveOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         verify(organizationService).archiveOrganization(ORG_ID);
     }
 
     @Test
-    @DisplayName("unarchiveOrganization: 200 OK")
+    @DisplayName("unarchiveOrganization: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void unarchiveOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.unarchiveOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         verify(organizationService).unarchiveOrganization(ORG_ID);
+    }
+
+    @Test
+    @DisplayName("restoreOrganization: 204 No Content（checkSystemAdmin を必ず呼ぶ）")
+    void restoreOrganization_204() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        assertThat(controller.restoreOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        // 組織 ADMIN 判定（checkAdminOrAbove）ではなく SYSTEM_ADMIN 判定であることを固定する
+        verify(accessControlService).checkSystemAdmin(USER_ID);
+        verify(organizationService).restoreOrganization(ORG_ID);
+    }
+
+    @Test
+    @DisplayName("restoreOrganization: SYSTEM_ADMIN でなければ 403（COMMON_002）を送出する")
+    void restoreOrganization_403_whenNotSystemAdmin() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkSystemAdmin(USER_ID);
+        assertThatThrownBy(() -> controller.restoreOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, never()).restoreOrganization(any());
     }
 
     @Test
