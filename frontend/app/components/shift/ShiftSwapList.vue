@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SwapRequestResponse } from '~/types/shift'
 
-defineProps<{
+const props = defineProps<{
   teamId: string
 }>()
 
@@ -22,7 +22,7 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
 async function load() {
   loading.value = true
   try {
-    swaps.value = await shiftApi.listSwapRequests()
+    swaps.value = await shiftApi.listSwapRequests(props.teamId)
   } catch {
     swaps.value = []
   } finally {

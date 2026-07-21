@@ -22,10 +22,22 @@ export interface CreateSwapRequestOptions {
 export function useShiftSwapApi() {
   const api = useApi()
 
-  async function listSwapRequests(status?: string): Promise<SwapRequestResponse[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  /**
+   * 指定チームの交代リクエスト一覧を取得する（当該チームの管理者のみ）。
+   *
+   * @param teamId 対象チームID（必須）
+   * @param status ステータスフィルタ（省略可）
+   */
+  async function listSwapRequests(
+    teamId: number | string,
+    status?: string,
+  ): Promise<SwapRequestResponse[]> {
+    const params = new URLSearchParams({ teamId: String(teamId) })
+    if (status) {
+      params.set('status', status)
+    }
     const res = await api<{ data: SwapRequestResponse[] }>(
-      `/api/v1/shifts/swap-requests${query}`,
+      `/api/v1/shifts/swap-requests?${params.toString()}`,
     )
     return res.data
   }

@@ -97,4 +97,47 @@ public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapReque
     List<ShiftSwapRequestEntity> findPendingByTeam(@Param("teamId") Long teamId,
                                                    @Param("status") SwapRequestStatus status,
                                                    Pageable pageable);
+
+    // ─────────────────────────────────────────────
+    // 認可根治 Wave6: 管理者向け一覧の team スコープ絞り込み
+    // 既存の countPendingByTeam / findPendingByTeam と同じ JOIN 経路
+    //（slotId → ShiftSlotEntity.scheduleId → ShiftScheduleEntity.teamId）を踏襲する。
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定チームの交代リクエストを作成日時昇順で全件取得する。
+     *
+     * @param teamId チームID
+     * @return 当該チームに属する交代リクエスト一覧
+     */
+    @Query("""
+            SELECT r FROM ShiftSwapRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftSlotEntity sl,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.slotId = sl.id
+              AND sl.scheduleId = s.id
+              AND s.teamId = :teamId
+            ORDER BY r.createdAt ASC
+            """)
+    List<ShiftSwapRequestEntity> findByTeamIdOrderByCreatedAtAsc(@Param("teamId") Long teamId);
+
+    /**
+     * 指定チームの指定ステータスの交代リクエストを作成日時昇順で取得する。
+     *
+     * @param teamId チームID
+     * @param status ステータス
+     * @return 当該チーム・当該ステータスの交代リクエスト一覧
+     */
+    @Query("""
+            SELECT r FROM ShiftSwapRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftSlotEntity sl,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.slotId = sl.id
+              AND sl.scheduleId = s.id
+              AND s.teamId = :teamId
+              AND r.status = :status
+            ORDER BY r.createdAt ASC
+            """)
+    List<ShiftSwapRequestEntity> findByTeamIdAndStatusOrderByCreatedAtAsc(@Param("teamId") Long teamId,
+                                                                          @Param("status") SwapRequestStatus status);
 }
