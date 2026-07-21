@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "连接已断开。正在尝试重新连接…"
+    },
+    "mobile": {
+      "backToList": "返回频道列表",
+      "noChannels": "还没有频道",
+      "createChannel": "创建频道"
     }
   },
   "button": {

@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "接続が切れています。再接続を試みています…"
+    },
+    "mobile": {
+      "backToList": "チャンネル一覧に戻る",
+      "noChannels": "まだチャンネルがありません",
+      "createChannel": "チャンネルを作成"
     }
   },
   "button": {

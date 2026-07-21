@@ -9,6 +9,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [channel: ChatChannelResponse]
   create: []
+  /** チャンネル一覧のロード完了時に件数を通知する（モバイル単一ペインの一覧/空状態切替に使用） */
+  loaded: [count: number]
 }>()
 
 const { getChannels } = useChatApi()
@@ -34,8 +36,10 @@ async function loadChannels() {
       organizationId: props.organizationId !== undefined ? Number(props.organizationId) : undefined,
     })
     channels.value = res.data
+    emit('loaded', channels.value.length)
   } catch {
     showError('Zimmer一覧の取得に失敗しました')
+    emit('loaded', 0)
   } finally {
     loading.value = false
   }

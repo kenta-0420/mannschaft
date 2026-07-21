@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Connection lost. Attempting to reconnect…"
+    },
+    "mobile": {
+      "backToList": "Back to channel list",
+      "noChannels": "No channels yet",
+      "createChannel": "Create channel"
     }
   },
   "button": {
