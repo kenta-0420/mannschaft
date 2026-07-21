@@ -260,6 +260,11 @@ class TimelineScopeDispatchContractIT extends AbstractMySqlIntegrationTest {
         /**
          * 書き込み経路も同じディスパッチを通ることを固定する。
          * 読み取りだけ塞いで書き込みが空くのは本戦役で繰り返し起きた取りこぼし。
+         *
+         * <p>VILLAGE だけは例外で、{@code TimelinePostService#checkWriteScope} が
+         * 下流の {@code validatePostingIdentity}（投稿主体単位の検証）へ委譲する。
+         * 本ケースでは村 ID を渡していないため {@code VILLAGE_NOT_FOUND} で弾かれる。
+         * いずれにせよ「部外者が書き込めない」ことは満たされる。</p>
          */
         @ParameterizedTest(name = "部外者の scopeType={0} 投稿作成")
         @EnumSource(PostScopeType.class)
