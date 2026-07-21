@@ -50,8 +50,21 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_009: 通報レートリミット超過（429、設計書 §6.4 で 10 件/時/ユーザー） */
     VILLAGE_REPORT_RATE_LIMITED("VILLAGE_009", "通報の上限に達しました（1時間に10件）", Severity.WARN),
 
-    /** VILLAGE_010: 村作成申請レート超過（429） */
-    CREATION_REQUEST_THROTTLED("VILLAGE_010", "村作成申請のレート上限に達しました（1日3件・保有10件まで）", Severity.WARN),
+    /**
+     * VILLAGE_010: 村作成のレート超過（429）。
+     *
+     * <p>本コードは 2 箇所から投げられ、条件が異なる:
+     * <ul>
+     *   <li>{@code VillageCreationRequestService} — 直近 24 時間（ローリング）の村作成申請が上限に達した</li>
+     *   <li>{@code VillageService} — 同一暦日（0:00 起点）の直接村作成が上限に達した</li>
+     * </ul>
+     * どちらも「短期間に村作成が集中した」という同一の利用者体験なので、
+     * 特定の窓（「1日◯件」等の日次リセットを誤解させる表現）や保有数に依存しない
+     * 汎用メッセージとする。数値・リセット挙動を本文に書かないのは、
+     * 実装（24h ローリング / 暦日）ごとに文言が乖離して誤読を招くのを防ぐため。</p>
+     */
+    CREATION_REQUEST_THROTTLED("VILLAGE_010",
+            "村作成の回数制限に達しました。しばらく時間をおいてから再度お試しください", Severity.WARN),
 
     /** VILLAGE_011: ニックネーム変更レート超過（429） */
     NICKNAME_CHANGE_THROTTLED("VILLAGE_011", "ニックネーム変更は月3回までです", Severity.WARN),
