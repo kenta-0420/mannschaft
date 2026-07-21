@@ -582,6 +582,171 @@ class ParkingScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // Wave6: 割り当て操作系（assign / release / bulkAssign）の認可
+    //        currentUserId を assignedBy（監査欄）に記録するだけで認可判定に
+    //        使っていなかった取りこぼしの根治。兄弟 ParkingSpaceService（Wave2 2B）に揃え、
+    //        変更系＝checkAdminOrAbove（403 COMMON_002）・越境ID＝404 PARKING_001。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Wave6: 区画割り当て操作(assign/release/bulk-assign)は ADMIN 限定")
+    class Wave6AssignmentAuthz {
+
+        @Test
+        @DisplayName("非メンバーの区画割り当ては403（COMMON_002）")
+        void 非メンバーの割り当ては403() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "AS-01", "NOT_ACCEPTING", adminAId);
+            em.flush();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/assign", teamAId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(assignBody(outsiderId))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーの区画割り当ては403（変更系はcheckAdminOrAbove）")
+        void 非ADMINメンバーの割り当ては403() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "AS-02", "NOT_ACCEPTING", adminAId);
+            em.flush();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/assign", teamAId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(assignBody(memberAId))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("正当ADMINの区画割り当ては200")
+        void 正当ADMINの割り当ては200() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "AS-03", "NOT_ACCEPTING", adminAId);
+            em.flush();
+
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/assign", teamAId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(assignBody(memberAId))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").exists());
+        }
+
+        @Test
+        @DisplayName("他チームADMINが自チームURLで他チームの区画を割り当てようとすると404（越境秘匿）")
+        void 他チームADMINによる越境割り当ては404() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "AS-04", "NOT_ACCEPTING", adminAId);
+            em.flush();
+
+            // teamB の ADMIN が teamB の URL に teamA の区画ID を渡す
+            setAuthentication(adminBId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/assign", teamBId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(assignBody(adminBId))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("PARKING_001"));
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーの区画解除は403")
+        void 非ADMINメンバーの解除は403() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "RL-01", "NOT_ACCEPTING", adminAId);
+            insertAssignment(spaceId, memberAId, adminAId);
+            em.flush();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/release", teamAId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("正当ADMINの区画解除は204")
+        void 正当ADMINの解除は204() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "RL-02", "NOT_ACCEPTING", adminAId);
+            insertAssignment(spaceId, memberAId, adminAId);
+            em.flush();
+
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/release", teamAId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("他チームADMINが自チームURLで他チームの区画を解除しようとすると404（越境秘匿）")
+        void 他チームADMINによる越境解除は404() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "RL-03", "NOT_ACCEPTING", adminAId);
+            insertAssignment(spaceId, memberAId, adminAId);
+            em.flush();
+
+            setAuthentication(adminBId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/{id}/release", teamBId, spaceId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("PARKING_001"));
+        }
+
+        @Test
+        @DisplayName("非メンバーの一括割り当ては403（スコープ入口で遮断）")
+        void 非メンバーの一括割り当ては403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/bulk-assign", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(bulkAssignBody(999999L, outsiderId))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーの一括割り当ては403")
+        void 非ADMINメンバーの一括割り当ては403() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/bulk-assign", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(bulkAssignBody(999999L, memberAId))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("正当ADMINの一括割り当ては200")
+        void 正当ADMINの一括割り当ては200() throws Exception {
+            Long spaceId = insertParkingSpace("TEAM", teamAId, "BA-01", "NOT_ACCEPTING", adminAId);
+            em.flush();
+
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/parking/spaces/bulk-assign", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(bulkAssignBody(spaceId, memberAId))))
+                    .andExpect(status().isOk());
+        }
+
+        /** assign の @Valid 必須項目（userId）を充足させ、bind時400ではなく認可判定へ到達させる。 */
+        private Map<String, Object> assignBody(Long targetUserId) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("userId", targetUserId);
+            return body;
+        }
+
+        /** bulk-assign の @Valid 必須項目（assignments[].spaceId/userId）を充足させる。 */
+        private Map<String, Object> bulkAssignBody(Long spaceId, Long targetUserId) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("spaceId", spaceId);
+            item.put("userId", targetUserId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("assignments", List.of(item));
+            return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
