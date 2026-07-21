@@ -260,6 +260,15 @@
       "filterRole": "Nach Rolle filtern",
       "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
     },
+    "profile": {
+      "title": "Dorfbewohner-Profil",
+      "villages": {
+        "title": "Zugehörige Dörfer",
+        "empty": "Keine Dörfer zum Anzeigen",
+        "publicToggle": "Dieses Dorf in meiner Dorfliste anzeigen",
+        "publicToggleHint": "Wenn aktiviert, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen."
+      }
+    },
     "postingIdentity": {
       "title": "Beitrag als",
       "asUser": "Als Einzelperson beitragen",
@@ -617,7 +626,7 @@
     },
     "serendipity": {
       "title": "Affinitätspunkte",
-      "subtitle": "Kompatibilität mit Ihnen",
+      "subtitle": "Gesammelte Begegnungen in diesem Dorf",
       "rank": "Rang",
       "score": "Punkte",
       "myScore": "Ihre Punkte",
@@ -625,6 +634,26 @@
       "lastComputedAt": "Zuletzt berechnet",
       "empty": "Affinitätspunkte noch nicht berechnet",
       "loadFailed": "Affinitätspunkte konnten nicht geladen werden"
+    },
+    "affinity": {
+      "title": "Kompatibilitätshinweis",
+      "subtitle": "Sehen Sie vor dem Beitritt, ob dieses Dorf zu Ihnen passen könnte",
+      "categoryMatch": "Nahe an Ihren Interessen und Kategorien",
+      "hidden": "Derzeit kein Kompatibilitätshinweis",
+      "sharedVillagers": {
+        "hidden": "Kann noch nicht angezeigt werden",
+        "few": "Ein paar Personen",
+        "many": "10 oder mehr Personen"
+      },
+      "reason": {
+        "categoryMatch": "Dieses Dorf liegt nahe an Ihren Interessen",
+        "sharedVillagers": "Es gibt Dorfbewohner, mit denen Sie bereits verbunden sind",
+        "pioneer": "Sie können jetzt als Gründungsmitglied beitreten"
+      },
+      "pioneer": {
+        "title": "Sie können ein Gründungsmitglied werden!",
+        "body": "Dies ist noch ein kleines Dorf. Wenn Sie jetzt beitreten, werden Sie eines der Gründungsmitglieder, die es gemeinsam aufbauen."
+      }
     },
     "pilgrimage": {
       "title": "Dorfwallfahrt",
@@ -1016,6 +1045,25 @@
       },
       "comingSoon": {
         "body": "⚠️ Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter tatsächlich versendet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Anleitung",
+      "what": {
+        "title": "Was ist das Dorfbewohner-Mini-Profil",
+        "body": "Tippen Sie in der Mitgliederliste auf einen Namen, um das einfache Profil dieses Dorfbewohners zu öffnen. Sie sehen dessen Rolle und die Dörfer, die er sichtbar gemacht hat."
+      },
+      "villages": {
+        "title": "Die Dorfliste verstehen",
+        "body": "Es werden nur Dörfer angezeigt, die der Dorfbewohner sichtbar gemacht hat. Angezeigt werden nur Dorfname, Wappen und Kategorie, niemals ein Spitzname. Tippen Sie auf eine Karte, um zur Startseite dieses Dorfes zu gelangen."
+      },
+      "toggle": {
+        "title": "Wenn Sie Ihr eigenes Profil öffnen",
+        "body": "Ihr eigenes Mini-Profil zeigt den Schalter „Dieses Dorf in meiner Dorfliste anzeigen“. Wenn Sie ihn aktivieren, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen. Die Einstellung gilt pro Dorf."
+      },
+      "privacy": {
+        "title": "Zum Datenschutz",
+        "body": "Die Dorfliste wird nur angezeigt, wenn Sie und die andere Person mindestens ein Dorf gemeinsam haben. Gibt es nichts anzuzeigen, erscheint neutral „Keine Dörfer zum Anzeigen“, ohne zu verraten, ob Sie ein Dorf teilen."
       }
     }
   }

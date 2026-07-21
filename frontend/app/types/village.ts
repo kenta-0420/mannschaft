@@ -1018,23 +1018,12 @@ export interface VillageChronicleResponse {
 
 // -----------------------------------------------------------------------------
 // F17 Phase 3 — ご縁スコア (village_serendipity_scores)
+//
+// F17.2 Wave3 ⑤で「ご縁スコア ランキング」表示は廃止済み（AC-23・
+// docs/features/F17.2_village_events_activation.md §8.2）。表示用の型は撤去し、
+// 加入前相性表示（VillageAffinityResponse・生成型）へ置き換えた。
+// 集計バッチ・エンティティは BE 側に存置（推薦の内部信号として使用）。
 // -----------------------------------------------------------------------------
-
-/** ご縁スコア */
-export interface VillageSerendipityScoreResponse {
-  villageId: string
-  userId: number
-  /** 0.0 〜 1.0 */
-  score: number
-  rank: number | null
-  lastComputedAt: string
-}
-
-/** ご縁スコアランキング */
-export interface VillageSerendipityRankingResponse {
-  items: VillageSerendipityScoreResponse[]
-  total: number
-}
 
 // -----------------------------------------------------------------------------
 // F17 Phase 3 — 巡礼 (village_pilgrimage_*)

@@ -260,6 +260,15 @@
       "filterRole": "Filter by role",
       "soloHeadmanHint": "Once other members join this village, you can appoint them as elders here."
     },
+    "profile": {
+      "title": "Villager profile",
+      "villages": {
+        "title": "Villages",
+        "empty": "No villages to show",
+        "publicToggle": "Show this village in my village list",
+        "publicToggleHint": "When on, people who share a village with you can see this village in your village list."
+      }
+    },
     "postingIdentity": {
       "title": "Post as",
       "asUser": "Post as yourself",
@@ -617,7 +626,7 @@
     },
     "serendipity": {
       "title": "Serendipity score",
-      "subtitle": "Compatibility with you",
+      "subtitle": "Accumulated encounters in this village",
       "rank": "Rank",
       "score": "Score",
       "myScore": "Your score",
@@ -625,6 +634,26 @@
       "lastComputedAt": "Last computed at",
       "empty": "Serendipity score not yet calculated",
       "loadFailed": "Failed to load serendipity score"
+    },
+    "affinity": {
+      "title": "Compatibility hint",
+      "subtitle": "See if this village might be a good fit before you join",
+      "categoryMatch": "Close to your interests and categories",
+      "hidden": "No compatibility hint right now",
+      "sharedVillagers": {
+        "hidden": "Not shown yet",
+        "few": "A few",
+        "many": "10 or more"
+      },
+      "reason": {
+        "categoryMatch": "This village is close to your interests",
+        "sharedVillagers": "There are villagers you already have a connection with",
+        "pioneer": "You can join now as a founding member"
+      },
+      "pioneer": {
+        "title": "You can become a founding member!",
+        "body": "This is still a small village. If you join now, you'll become one of the founding members who help build it together."
+      }
     },
     "pilgrimage": {
       "title": "Village pilgrimage",
@@ -1016,6 +1045,25 @@
       },
       "comingSoon": {
         "body": "⚠️ Newsletter delivery is coming soon. You can save settings, but newsletters are not actually sent yet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "How to use",
+      "what": {
+        "title": "What is the villager mini profile",
+        "body": "Tap a name in the member list to open this villager's simple profile. You can see their role and the villages they've chosen to show."
+      },
+      "villages": {
+        "title": "About the village list",
+        "body": "Only villages the villager has made visible are listed. It shows the village name, emblem, and category only, never a nickname. Tap a card to go to that village's top page."
+      },
+      "toggle": {
+        "title": "When you open your own profile",
+        "body": "Your own mini profile shows a \"Show this village in my village list\" toggle. Turning it on lets people who share a village with you see this village in your list. It can be set per village."
+      },
+      "privacy": {
+        "title": "About privacy",
+        "body": "The village list is only shown when you and the other person share at least one village. If there is nothing to show, it neutrally says \"No villages to show\" without revealing whether you share a village."
       }
     }
   }

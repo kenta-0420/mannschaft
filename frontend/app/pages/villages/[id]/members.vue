@@ -19,6 +19,7 @@
  *   - HEADMAN 判定は親コンテキスト perms を主とし、members 配列をフォールバックに使う。
  */
 import VillageReportDialog from '~/components/VillageReportDialog.vue'
+import VillageMemberProfileDialog from '~/components/villages/members/VillageMemberProfileDialog.vue'
 import VillageMembersBanDialog from '~/components/villages/members/VillageMembersBanDialog.vue'
 import VillageMembersRoleDialog from '~/components/villages/members/VillageMembersRoleDialog.vue'
 import VillageMembersTable from '~/components/villages/members/VillageMembersTable.vue'
@@ -89,6 +90,10 @@ const banSubmitting = ref(false)
 const reportDialogVisible = ref(false)
 const reportTargetType = ref<VillageReportTargetType>('MEMBERSHIP')
 const reportTargetRefId = ref<string>('')
+
+// Dialog 状態 — 村人ミニプロフィール（F17.2 Wave3 ⑥・§9.5）
+const memberProfileDialogVisible = ref(false)
+const memberProfileTarget = ref<MembershipResponse | null>(null)
 
 // =============================================================================
 // 派生値
@@ -318,6 +323,15 @@ function openMemberReportDialog(m: MembershipResponse) {
 }
 
 // =============================================================================
+// 村人ミニプロフィール（F17.2 Wave3 ⑥・§9.5）
+// =============================================================================
+
+function openMemberProfileDialog(m: MembershipResponse) {
+  memberProfileTarget.value = m
+  memberProfileDialogVisible.value = true
+}
+
+// =============================================================================
 // 初期化
 // =============================================================================
 
@@ -342,6 +356,7 @@ onMounted(() => {
       @open-role-dialog="openRoleDialog"
       @open-ban-dialog="openBanDialog"
       @open-member-report="openMemberReportDialog"
+      @open-member-profile="openMemberProfileDialog"
     />
 
     <!-- ソロ村（村長ひとり）の空状態案内。
@@ -384,6 +399,13 @@ onMounted(() => {
       :village-id="village.id"
       :target-type="reportTargetType"
       :target-ref-id="reportTargetRefId"
+    />
+
+    <!-- 村人ミニプロフィール Dialog（所属村一覧・自分自身なら公開トグル・F17.2 Wave3 ⑥） -->
+    <VillageMemberProfileDialog
+      v-model:visible="memberProfileDialogVisible"
+      :village-id="villageId"
+      :member="memberProfileTarget"
     />
   </div>
 </template>

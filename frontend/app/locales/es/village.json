@@ -260,6 +260,15 @@
       "filterRole": "Filtrar por rol",
       "soloHeadmanHint": "Cuando otros miembros se unan a esta aldea, podrás nombrarlos ancianos aquí."
     },
+    "profile": {
+      "title": "Perfil del aldeano",
+      "villages": {
+        "title": "Aldeas a las que pertenece",
+        "empty": "No hay aldeas para mostrar",
+        "publicToggle": "Mostrar esta aldea en mi lista de aldeas",
+        "publicToggleHint": "Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista de aldeas."
+      }
+    },
     "postingIdentity": {
       "title": "Publicar como",
       "asUser": "Publicar como individuo",
@@ -617,7 +626,7 @@
     },
     "serendipity": {
       "title": "Puntuación de afinidad",
-      "subtitle": "Compatibilidad contigo",
+      "subtitle": "Encuentros acumulados en esta aldea",
       "rank": "Posición",
       "score": "Puntuación",
       "myScore": "Tu puntuación",
@@ -625,6 +634,26 @@
       "lastComputedAt": "Última actualización",
       "empty": "La puntuación de afinidad aún no se ha calculado",
       "loadFailed": "Error al cargar la puntuación de afinidad"
+    },
+    "affinity": {
+      "title": "Pista de compatibilidad",
+      "subtitle": "Mira si esta aldea puede encajar contigo antes de unirte",
+      "categoryMatch": "Cercana a tus intereses y categorías",
+      "hidden": "Ahora mismo no hay ninguna pista de compatibilidad",
+      "sharedVillagers": {
+        "hidden": "Aún no se puede mostrar",
+        "few": "Unas pocas personas",
+        "many": "10 o más personas"
+      },
+      "reason": {
+        "categoryMatch": "Esta aldea está cerca de tus intereses",
+        "sharedVillagers": "Hay aldeanos con los que ya tienes conexión",
+        "pioneer": "Puedes unirte ahora como miembro fundador"
+      },
+      "pioneer": {
+        "title": "¡Puedes convertirte en miembro fundador!",
+        "body": "Esta todavía es una aldea pequeña. Si te unes ahora, serás uno de los miembros fundadores que ayudan a construirla juntos."
+      }
     },
     "pilgrimage": {
       "title": "Peregrinación de la aldea",
@@ -1016,6 +1045,25 @@
       },
       "comingSoon": {
         "body": "⚠️ El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían realmente."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Cómo usarlo",
+      "what": {
+        "title": "Qué es el mini perfil del aldeano",
+        "body": "Toca un nombre en la lista de miembros para abrir el perfil sencillo de ese aldeano. Puedes ver su rol y las aldeas que ha elegido mostrar."
+      },
+      "villages": {
+        "title": "Cómo leer la lista de aldeas",
+        "body": "Solo aparecen las aldeas que el aldeano ha hecho visibles. Se muestra el nombre de la aldea, el emblema y la categoría, nunca un apodo. Toca una tarjeta para ir a la página principal de esa aldea."
+      },
+      "toggle": {
+        "title": "Cuando abres tu propio perfil",
+        "body": "Tu propio mini perfil muestra un interruptor «Mostrar esta aldea en mi lista de aldeas». Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista. Se puede configurar por cada aldea."
+      },
+      "privacy": {
+        "title": "Sobre la privacidad",
+        "body": "La lista de aldeas solo se muestra cuando tú y la otra persona compartís al menos una aldea. Si no hay nada que mostrar, aparece de forma neutral «No hay aldeas para mostrar», sin revelar si compartís una aldea."
       }
     }
   }

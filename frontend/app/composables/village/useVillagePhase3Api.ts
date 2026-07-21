@@ -15,8 +15,6 @@ import type {
   VillageMeetupTodoCreateRequest,
   VillageMeetupSubResourceListParams,
   VillageChronicleResponse,
-  VillageSerendipityRankingResponse,
-  VillageSerendipityScoreResponse,
   VillagePilgrimageRecommendationResponse,
   VillagePilgrimageVisitRecordRequest,
   VillagePilgrimageVisitResponse,
@@ -305,25 +303,11 @@ export function useVillagePhase3Api() {
 
   // ==========================================================================
   // ご縁スコア
+  //
+  // F17.2 Wave3 ⑤でランキング表示は廃止済み（AC-23）。FE からの取得関数は撤去し、
+  // 加入前相性表示は useVillageAffinityApi().getMyAffinity() へ置き換えた
+  // （docs/features/F17.2_village_events_activation.md §8.2）。
   // ==========================================================================
-
-  async function getSerendipityRanking(
-    villageId: string,
-    page?: number,
-    size?: number,
-  ) {
-    const res = await api<{ data: VillageSerendipityRankingResponse }>(
-      `/api/v1/villages/${villageId}/serendipity-scores/ranking${qs({ page, size })}`,
-    )
-    return res.data
-  }
-
-  async function getMyScore(villageId: string) {
-    const res = await api<{ data: VillageSerendipityScoreResponse }>(
-      `/api/v1/villages/${villageId}/serendipity-scores/me`,
-    )
-    return res.data
-  }
 
   // ==========================================================================
   // 巡礼
@@ -436,8 +420,6 @@ export function useVillagePhase3Api() {
     releaseTodo,
     listChronicles,
     getChronicle,
-    getSerendipityRanking,
-    getMyScore,
     getTodaysPilgrimage,
     recordVisit,
     listMyVisits,
