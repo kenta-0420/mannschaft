@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.schedule.dto.CrossRefResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.service.ScheduleCrossRefService;
@@ -39,7 +40,7 @@ public class ScheduleInvitationController {
     public ResponseEntity<ApiResponse<List<CrossRefResponse>>> listTeamInvitations(
             @PathVariable Long teamId) {
         List<CrossRefResponse> responses = crossRefService.listReceivedInvitations(
-                TARGET_TYPE_TEAM, teamId);
+                TARGET_TYPE_TEAM, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -52,7 +53,8 @@ public class ScheduleInvitationController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> acceptTeamInvitation(
             @PathVariable Long teamId,
             @PathVariable Long invitationId) {
-        ScheduleResponse response = crossRefService.acceptInvitation(invitationId);
+        ScheduleResponse response = crossRefService.acceptInvitation(
+                TARGET_TYPE_TEAM, teamId, invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -65,7 +67,8 @@ public class ScheduleInvitationController {
     public ResponseEntity<Void> rejectTeamInvitation(
             @PathVariable Long teamId,
             @PathVariable Long invitationId) {
-        crossRefService.rejectInvitation(invitationId);
+        crossRefService.rejectInvitation(
+                TARGET_TYPE_TEAM, teamId, invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -78,7 +81,8 @@ public class ScheduleInvitationController {
     public ResponseEntity<Void> confirmTeamInvitation(
             @PathVariable Long teamId,
             @PathVariable Long invitationId) {
-        crossRefService.confirmInvitation(invitationId);
+        crossRefService.confirmInvitation(
+                TARGET_TYPE_TEAM, teamId, invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -93,7 +97,7 @@ public class ScheduleInvitationController {
     public ResponseEntity<ApiResponse<List<CrossRefResponse>>> listOrgInvitations(
             @PathVariable Long orgId) {
         List<CrossRefResponse> responses = crossRefService.listReceivedInvitations(
-                TARGET_TYPE_ORGANIZATION, orgId);
+                TARGET_TYPE_ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -106,7 +110,8 @@ public class ScheduleInvitationController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> acceptOrgInvitation(
             @PathVariable Long orgId,
             @PathVariable Long invitationId) {
-        ScheduleResponse response = crossRefService.acceptInvitation(invitationId);
+        ScheduleResponse response = crossRefService.acceptInvitation(
+                TARGET_TYPE_ORGANIZATION, orgId, invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -119,7 +124,8 @@ public class ScheduleInvitationController {
     public ResponseEntity<Void> rejectOrgInvitation(
             @PathVariable Long orgId,
             @PathVariable Long invitationId) {
-        crossRefService.rejectInvitation(invitationId);
+        crossRefService.rejectInvitation(
+                TARGET_TYPE_ORGANIZATION, orgId, invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

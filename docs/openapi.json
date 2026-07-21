@@ -49046,7 +49046,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "オーナー譲渡",
+        "summary": "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）",
         "operationId": "transferOwnership",
         "parameters": [
           {
@@ -49070,6 +49070,9 @@
         "responses": {
           "200": {
             "description": "譲渡成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -49179,7 +49182,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "権限グループ一覧",
+        "summary": "権限グループ一覧（ADMIN/DEPUTY のみ）",
         "operationId": "getPermissionGroups",
         "parameters": [
           {
@@ -49194,6 +49197,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -54062,15 +54075,6 @@
               "type": "integer",
               "format": "int64"
             }
-          },
-          {
-            "name": "role",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "MEMBER"
-            }
           }
         ],
         "responses": {
@@ -57215,7 +57219,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "オーナー譲渡",
+        "summary": "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）",
         "operationId": "transferOwnership_1",
         "parameters": [
           {
@@ -57239,6 +57243,9 @@
         "responses": {
           "200": {
             "description": "譲渡成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }
@@ -57535,7 +57542,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "権限グループ一覧",
+        "summary": "権限グループ一覧（ADMIN/DEPUTY のみ）",
         "operationId": "getPermissionGroups_1",
         "parameters": [
           {
@@ -57550,6 +57557,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -89481,7 +89498,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム削除",
+        "summary": "チーム削除（ADMIN/DEPUTY のみ）",
         "operationId": "deleteTeam",
         "parameters": [
           {
@@ -89496,6 +89513,9 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       },
@@ -89503,7 +89523,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム更新",
+        "summary": "チーム更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateTeam",
         "parameters": [
           {
@@ -89535,6 +89555,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -89544,7 +89574,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チームアーカイブ解除",
+        "summary": "チームアーカイブ解除（ADMIN/DEPUTY のみ）",
         "operationId": "unarchiveTeam",
         "parameters": [
           {
@@ -89559,6 +89589,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ解除成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -89568,7 +89601,7 @@
         "tags": [
           "チームシフト設定"
         ],
-        "summary": "チームシフト設定取得",
+        "summary": "チームシフト設定取得（メンバー限定）",
         "operationId": "getSettings_16",
         "parameters": [
           {
@@ -89590,6 +89623,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームのメンバーでない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamShiftSettingsResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -89597,7 +89640,7 @@
         "tags": [
           "チームシフト設定"
         ],
-        "summary": "チームシフト設定更新",
+        "summary": "チームシフト設定更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateSettings_14",
         "parameters": [
           {
@@ -89629,6 +89672,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamShiftSettingsResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -89653,6 +89706,9 @@
         "responses": {
           "204": {
             "description": "復元成功"
+          },
+          "403": {
+            "description": "SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可）"
           }
         }
       }
@@ -90061,7 +90117,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チームアーカイブ",
+        "summary": "チームアーカイブ（ADMIN/DEPUTY のみ）",
         "operationId": "archiveTeam",
         "parameters": [
           {
@@ -90076,6 +90132,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -93634,7 +93693,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織更新",
+        "summary": "組織更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateOrganization",
         "parameters": [
           {
@@ -93659,6 +93718,16 @@
         "responses": {
           "200": {
             "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -113271,6 +113340,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTeamOrgSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTeamOrgSummaryResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -113457,6 +113546,26 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFollowResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFollowResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
@@ -121071,6 +121180,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -121319,7 +121448,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織配下全メンバー一覧（カスケード通知用）",
+        "summary": "組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ）",
         "operationId": "getAllMembers",
         "parameters": [
           {
@@ -121353,6 +121482,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseOrgAllMembersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {

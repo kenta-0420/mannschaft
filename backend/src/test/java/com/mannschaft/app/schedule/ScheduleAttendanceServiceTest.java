@@ -697,12 +697,102 @@ class ScheduleAttendanceServiceTest {
                     .willReturn(List.of(row1, row2));
 
             // when
-            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID);
+            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getAttending()).isEqualTo(3);
             assertThat(result.getAbsent()).isEqualTo(1);
             assertThat(result.getTotal()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("出欠サマリー取得_scope外の利用者_COMMON_002")
+        void 出欠サマリー取得_scope外の利用者_COMMON_002() {
+            // given: checkScopeViewAccess が entity 由来 scope で弾く
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // 出席率統計の認可（認可根治 Wave6）
+    // ========================================
+
+    @Nested
+    @DisplayName("出席率統計の認可（認可根治 Wave6）")
+    class AttendanceStatsAuthorization {
+
+        /** 期間フィクスチャ。文字列リテラルでなく LocalDateTime で bind する（TZ ズレ事故の回避）。 */
+        private static final LocalDateTime FROM = LocalDateTime.of(2026, 4, 1, 0, 0);
+        private static final LocalDateTime TO = LocalDateTime.of(2026, 4, 30, 23, 59);
+
+        @Test
+        @DisplayName("チーム統計_チーム管理者でない_COMMON_002")
+        void チーム統計_チーム管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> attendanceService.getTeamAttendanceStats(
+                    TEAM_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可前にリポジトリを引いていないこと（漏洩経路が残っていないこと）
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("組織統計_組織管理者でない_COMMON_002")
+        void 組織統計_組織管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> attendanceService.getOrgAttendanceStats(
+                    ORG_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("チーム統計_正常_チーム管理者は取得できる")
+        void チーム統計_正常_チーム管理者は取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(userRoleRepository.findByTeamId(org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getTeamAttendanceStats(TEAM_ID, FROM, TO, USER_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("組織統計_正常_SYSTEM_ADMINは横断で取得できる")
+        void 組織統計_正常_SYSTEM_ADMINは横断で取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(userRoleRepository.findByOrganizationId(org.mockito.ArgumentMatchers.eq(ORG_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getOrgAttendanceStats(ORG_ID, FROM, TO, USER_ID)).isEmpty();
+
+            // SYSTEM_ADMIN は per-scope 判定を通さない
+            org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 

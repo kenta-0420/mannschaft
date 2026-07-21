@@ -1,6 +1,7 @@
 package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.chat.ChannelMemberRole;
+import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.AddMemberRequest;
@@ -8,6 +9,7 @@ import com.mannschaft.app.chat.dto.ChangeRoleRequest;
 import com.mannschaft.app.chat.dto.ChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
+import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
@@ -111,13 +113,32 @@ public class ChatMemberService {
     /**
      * チャンネルに自分で参加する。
      *
+     * <p><b>認可根治 Wave 6</b>: 従来は「チャンネルの存在確認 → 既参加チェック → 保存」だけで、
+     * {@code channelType}・{@code isPrivate}・スコープ所属を一切見ていなかった。そのため
+     * <b>誰でも他人同士の DM / グループ DM を含む任意のチャンネルに自己参加でき</b>、
+     * 参加後はメンバーとして全本文を閲覧できた（メンバーシップ自体を書き込める＝認可の土台の破壊）。</p>
+     *
+     * <p>是正後の規則:</p>
+     * <ul>
+     *   <li><b>{@code DM} / {@code GROUP_DM} / 非公開チャンネル（{@code *_PRIVATE} または
+     *       {@code isPrivate=true}）</b> — 自己参加は一切不可（招待制）。
+     *       参加者追加は {@link #addMembers} の OWNER/ADMIN 経路のみ。</li>
+     *   <li><b>{@code TEAM_PUBLIC} / {@code ORG_PUBLIC}</b> — <b>当該チーム/組織のメンバーであること</b>を
+     *       要求する（「公開」はスコープ内に対する公開であり、全世界への公開ではない）。</li>
+     *   <li><b>村ロビー・イベント・大会チャット</b> — {@code chat_channel_members} をアクセス判定に
+     *       用いない種別のため従来どおり（各ドメイン側で認可される）。</li>
+     * </ul>
+     *
      * @param channelId チャンネルID
      * @param userId    参加するユーザーID
      * @return 参加したメンバーレスポンス
+     * @throws BusinessException 自己参加が許されないチャンネルの場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）、
+     *                           またはスコープ非メンバーの場合（{@code COMMON_002}）
      */
     @Transactional
     public MemberResponse joinChannel(Long channelId, Long userId) {
-        channelService.findChannelOrThrow(channelId);
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
+        checkSelfJoinAllowed(channel, userId);
 
         if (memberRepository.existsByChannelIdAndUserId(channelId, userId)) {
             throw new BusinessException(ChatErrorCode.ALREADY_MEMBER);
@@ -238,6 +259,36 @@ public class ChatMemberService {
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         member.resetUnreadCount();
         memberRepository.save(member);
+    }
+
+    /**
+     * 自己参加（{@link #joinChannel}）が許されるチャンネルかを検証する。
+     *
+     * <p>メンバーシップでアクセスを判定する種別（{@link ChannelType#isMembershipGated()}）のうち、
+     * 自己参加を許すのは公開スコープチャンネル（{@code TEAM_PUBLIC} / {@code ORG_PUBLIC}）だけであり、
+     * さらにそのスコープ（チーム/組織）のメンバーであることを要求する。</p>
+     */
+    private void checkSelfJoinAllowed(ChatChannelEntity channel, Long userId) {
+        ChannelType channelType = channel.getChannelType();
+        if (!channelType.isMembershipGated()) {
+            // 村ロビー / イベント / 大会チャット: chat_channel_members でアクセス判定しない種別のため従来どおり。
+            return;
+        }
+        // DM / GROUP_DM / 非公開チャンネルは招待制。自己参加は認めない。
+        if (!channelType.isSelfJoinableScopeChannel() || Boolean.TRUE.equals(channel.getIsPrivate())) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+        // 公開チャンネルは「スコープ内に対する公開」。当該チーム/組織のメンバーであることを要求する。
+        if (channel.getTeamId() != null) {
+            accessControlService.checkMembership(userId, channel.getTeamId(), "TEAM");
+            return;
+        }
+        if (channel.getOrganizationId() != null) {
+            accessControlService.checkMembership(userId, channel.getOrganizationId(), "ORGANIZATION");
+            return;
+        }
+        // 公開種別なのにスコープが無いチャンネルは所属を検証できない。安全側に倒して拒否する。
+        throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
     }
 
     private ChatChannelMemberEntity findMemberOrThrow(Long channelId, Long userId) {
