@@ -269,9 +269,11 @@ public class AttendanceRequirementEvaluationService {
                 .map(AttendanceRequirementEvaluationEntity::getRequirementRuleId)
                 .distinct()
                 .collect(Collectors.toList());
-        if (!ruleIds.isEmpty()) {
+        if (currentUserId != null && !ruleIds.isEmpty()) {
             for (AttendanceRequirementRuleEntity rule : ruleRepository.findAllById(ruleIds)) {
-                if (isRuleScopeMember(rule, currentUserId)) {
+                Long scopeId = resolveScopeId(rule);
+                if (scopeId != null
+                        && accessControlService.isMember(currentUserId, scopeId, resolveScopeType(rule))) {
                     return;
                 }
             }
@@ -287,32 +289,44 @@ public class AttendanceRequirementEvaluationService {
      * <p>URL にスコープを持たない bare id EP 用。権限が無い場合は 403 ではなく引数の
      * ErrorCode（404 系）を送出し、リソースの存在有無を非権限者に開示しない。</p>
      *
+     * <p>{@code accessControlService} は本メソッドから<b>直接</b>呼ぶこと。番人テスト
+     * {@code AuthzControllerGuardArchTest} は Controller 起点で 2 ホップまでしか委譲を辿らないため、
+     * さらに private メソッドへ委譲すると認可シグナルを検出できなくなる。</p>
+     *
      * @param rule        対象規程エンティティ
      * @param actorUserId 操作ユーザーID
      * @param hideAs      権限が無い場合に送出するエラーコード（存在秘匿用）
      */
     private void requireRuleScopeMemberOrHide(
             AttendanceRequirementRuleEntity rule, Long actorUserId, SchoolErrorCode hideAs) {
-        if (!isRuleScopeMember(rule, actorUserId)) {
+        Long scopeId = resolveScopeId(rule);
+        if (actorUserId == null || scopeId == null
+                || !accessControlService.isMember(actorUserId, scopeId, resolveScopeType(rule))) {
             throw new BusinessException(hideAs);
         }
     }
 
     /**
-     * 規程 entity 由来スコープのメンバーかどうかを判定する。
+     * 規程 entity 由来スコープの scopeId を解決する（組織スコープ優先）。
      *
-     * @param rule   対象規程エンティティ
-     * @param userId 判定対象のユーザーID
-     * @return メンバーなら true
+     * @param rule 対象規程エンティティ
+     * @return 組織ID または チームID（どちらも無ければ null）
      */
-    private boolean isRuleScopeMember(AttendanceRequirementRuleEntity rule, Long userId) {
-        if (rule == null || userId == null) {
-            return false;
+    private Long resolveScopeId(AttendanceRequirementRuleEntity rule) {
+        if (rule == null) {
+            return null;
         }
-        boolean orgScope = rule.getOrganizationId() != null;
-        Long scopeId = orgScope ? rule.getOrganizationId() : rule.getTeamId();
-        String scopeType = orgScope ? SCOPE_ORGANIZATION : SCOPE_TEAM;
-        return scopeId != null && accessControlService.isMember(userId, scopeId, scopeType);
+        return rule.getOrganizationId() != null ? rule.getOrganizationId() : rule.getTeamId();
+    }
+
+    /**
+     * 規程 entity 由来スコープの scopeType を解決する。
+     *
+     * @param rule 対象規程エンティティ
+     * @return {@code ORGANIZATION} または {@code TEAM}
+     */
+    private String resolveScopeType(AttendanceRequirementRuleEntity rule) {
+        return rule != null && rule.getOrganizationId() != null ? SCOPE_ORGANIZATION : SCOPE_TEAM;
     }
 
     // ========================================
