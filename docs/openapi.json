@@ -54062,15 +54062,6 @@
               "type": "integer",
               "format": "int64"
             }
-          },
-          {
-            "name": "role",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "MEMBER"
-            }
           }
         ],
         "responses": {
