@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.entity.ScheduleCrossRefEntity;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,6 +67,9 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
     private MockMvc mockMvc;
 
     @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private ScheduleRepository scheduleRepository;
 
     @Autowired
@@ -85,14 +91,22 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
     private Long memberOrgAId;   // ORG A の非 ADMIN メンバー
     private Long outsiderId;     // どこにも所属しない非メンバー
 
-    private Long teamInvitationId;  // TEAM A 宛の PENDING 招待
-    private Long orgInvitationId;   // ORG A 宛の PENDING 招待
+    private String teamASlug;
+    private String teamBSlug;
+
+    private Long teamInvitationId;  // TEAM A 宛の PENDING 招待（受信側テスト用）
+    private Long orgInvitationId;   // ORG A 宛の PENDING 招待（受信側テスト用）
+    private Long awaitingTeamInvitationId; // TEAM A 宛の AWAITING_CONFIRMATION 招待（最終確認用）
+    private Long outgoingInvitationId;     // TEAM A 発 → TEAM B 宛の PENDING 招待（送信側の取消用）
+    private Long teamAScheduleId;          // TEAM A のスケジュール（統計・リマインド・招待送信の起点）
 
     @BeforeEach
     void setUp() {
         long nano = System.nanoTime();
-        teamAId = insertTeam("W6B5 チームA", "w6b5-team-a-" + nano);
-        teamBId = insertTeam("W6B5 チームB", "w6b5-team-b-" + nano);
+        teamASlug = "w6b5-team-a-" + nano;
+        teamBSlug = "w6b5-team-b-" + nano;
+        teamAId = insertTeam("W6B5 チームA", teamASlug);
+        teamBId = insertTeam("W6B5 チームB", teamBSlug);
         orgAId = insertOrganization("W6B5 組織A", "w6b5-org-a-" + nano);
         orgBId = insertOrganization("W6B5 組織B", "w6b5-org-b-" + nano);
 
@@ -160,6 +174,41 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
                 .invitedBy(adminOrgBId)
                 .status(CrossRefStatus.PENDING)
                 .message("W6B5 組織宛招待")
+                .build()).getId();
+
+        // 最終確認（confirm）用: AWAITING_CONFIRMATION の TEAM A 宛招待。
+        awaitingTeamInvitationId = crossRefRepository.save(ScheduleCrossRefEntity.builder()
+                .sourceScheduleId(sourceTeamScheduleId)
+                .targetType(CrossRefTargetType.TEAM)
+                .targetId(teamAId)
+                .invitedBy(adminTeamBId)
+                .status(CrossRefStatus.AWAITING_CONFIRMATION)
+                .message("W6B5 チーム宛招待（最終確認待ち）")
+                .build()).getId();
+
+        // 送信側テスト用: TEAM A の予定（統計・リマインド・招待送信の起点）。
+        // attendanceRequired=true は出欠まわりの前提を満たすため。
+        teamAScheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                .teamId(teamAId)
+                .title("W6B5 チームA練習")
+                .startAt(LocalDateTime.of(2026, 4, 5, 10, 0))
+                .endAt(LocalDateTime.of(2026, 4, 5, 12, 0))
+                .eventType(EventType.PRACTICE)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .createdBy(adminTeamAId)
+                .build()).getId();
+
+        // 取消（cancel）用: TEAM A 発 → TEAM B 宛。送信側 TEAM A の ADMIN のみ取消可。
+        outgoingInvitationId = crossRefRepository.save(ScheduleCrossRefEntity.builder()
+                .sourceScheduleId(teamAScheduleId)
+                .targetType(CrossRefTargetType.TEAM)
+                .targetId(teamBId)
+                .invitedBy(adminTeamAId)
+                .status(CrossRefStatus.PENDING)
+                .message("W6B5 送信側招待")
                 .build()).getId();
 
         em.flush();
@@ -464,8 +513,234 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
         void チーム最終確認_非ADMINメンバーは403() throws Exception {
             setAuth(memberTeamAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/schedule-invitations/{invitationId}/confirm",
-                            teamAId, teamInvitationId))
+                            teamAId, awaitingTeamInvitationId))
                     .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("チーム最終確認: 別scope ADMIN（teamBのADMIN）は403")
+        void チーム最終確認_別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/schedule-invitations/{invitationId}/confirm",
+                            teamAId, awaitingTeamInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("チーム最終確認: 正当な受信側ADMINは204（正常系）")
+        void チーム最終確認_正当な受信側ADMINは204() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/schedule-invitations/{invitationId}/confirm",
+                            teamAId, awaitingTeamInvitationId))
+                    .andExpect(status().isNoContent());
+        }
+
+        // --- 組織承認（acceptOrgInvitation）: TEAM 系と対称に固定する ---
+
+        @Test
+        @DisplayName("組織承認: 非メンバーは403")
+        void 組織承認_非メンバーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/schedule-invitations/{invitationId}/accept",
+                            orgAId, orgInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("組織承認: 非ADMINメンバーは403")
+        void 組織承認_非ADMINメンバーは403() throws Exception {
+            setAuth(memberOrgAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/schedule-invitations/{invitationId}/accept",
+                            orgAId, orgInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("組織承認: 送信側（orgBのADMIN）は受信側の権限が無いので403")
+        void 組織承認_送信側ADMINは403() throws Exception {
+            setAuth(adminOrgBId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/schedule-invitations/{invitationId}/accept",
+                            orgAId, orgInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("組織承認: 正当な受信側ADMINは200（正常系）")
+        void 組織承認_正当な受信側ADMINは200() throws Exception {
+            setAuth(adminOrgAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/schedule-invitations/{invitationId}/accept",
+                            orgAId, orgInvitationId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("チーム承認: 正当な受信側ADMINは200（正常系）")
+        void チーム承認_正当な受信側ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/schedule-invitations/{invitationId}/accept",
+                            teamAId, teamInvitationId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 6. GET /schedules/{scheduleId}/stats（出欠集計サマリー・checkScopeViewAccess水準）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. GET /schedules/{scheduleId}/stats（出欠集計サマリー）")
+    class AttendanceSummary {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/schedules/{scheduleId}/stats", teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMIN）は403")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/schedules/{scheduleId}/stats", teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当メンバーは200（正常系・サマリーはメンバー水準）")
+        void 正当メンバーは200() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/schedules/{scheduleId}/stats", teamAScheduleId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. POST /schedules/{scheduleId}/remind（リマインド送信・checkScopeAdminAccess水準）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. POST /schedules/{scheduleId}/remind（リマインド送信）")
+    class SendReminder {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/schedules/{scheduleId}/remind", teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは403（スコープ全員への通知送信のためADMIN水準）")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/schedules/{scheduleId}/remind", teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMIN）は403")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/schedules/{scheduleId}/remind", teamAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当なチームADMINは204（正常系）")
+        void 正当なチームADMINは204() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/schedules/{scheduleId}/remind", teamAScheduleId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. クロス招待の送信・取消（送信側 = 招待元スケジュールの entity 由来 scope の ADMIN）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. POST/DELETE /teams/{teamPublicId}/schedules/{id}/cross-invite")
+    class CrossInvite {
+
+        /** @Valid 先行400 を避けるため必須項目を充足させたボディを返す。 */
+        private String inviteBody() throws Exception {
+            return objectMapper.writeValueAsString(
+                    java.util.Map.of("targetType", "TEAM", "targetId", teamBId, "message", "招待します"));
+        }
+
+        @Test
+        @DisplayName("招待送信: 非メンバーは403")
+        void 招待送信_非メンバーは403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite",
+                            teamASlug, teamAScheduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(inviteBody()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("招待送信: 非ADMINメンバーは403")
+        void 招待送信_非ADMINメンバーは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite",
+                            teamASlug, teamAScheduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(inviteBody()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("招待送信: 別scope ADMIN（teamBのADMIN）は403")
+        void 招待送信_別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite",
+                            teamASlug, teamAScheduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(inviteBody()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("招待送信: 正当な送信側ADMINは201（正常系）")
+        void 招待送信_正当な送信側ADMINは201() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite",
+                            teamASlug, teamAScheduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                    "targetType", "ORGANIZATION", "targetId", orgBId, "message", "招待します"))))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("招待取消: 非ADMINメンバーは403")
+        void 招待取消_非ADMINメンバーは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite/{invitationId}",
+                            teamASlug, teamAScheduleId, outgoingInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("招待取消: 受信側（teamBのADMIN）は送信側の権限が無いので403")
+        void 招待取消_受信側ADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite/{invitationId}",
+                            teamASlug, teamAScheduleId, outgoingInvitationId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("招待取消: 正当な送信側ADMINは204（正常系）")
+        void 招待取消_正当な送信側ADMINは204() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite/{invitationId}",
+                            teamASlug, teamAScheduleId, outgoingInvitationId))
+                    .andExpect(status().isNoContent());
         }
     }
 
