@@ -17,6 +17,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -240,6 +241,25 @@ public class TeamService {
      */
     public Long resolveTeamId(String slug) {
         return findTeamBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * チームがサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「このチームがサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code TeamPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中のチームへの
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * @param teamId チーム内部 ID
+     * @throws BusinessException チームが存在しない（TEAM_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long teamId) {
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        if (!Boolean.TRUE.equals(team.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
     }
 
     /**

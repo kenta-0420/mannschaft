@@ -232,10 +232,20 @@ public class TeamController {
     @PostMapping("/{slug}/follow")
     @Operation(summary = "チームサポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<FollowStatusResponse>> followTeam(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: サポーター自己登録は「当該チームを閲覧できる利用者」に限る。
+        // 兄弟 EP getTeam / getMembers と同じ visibility ラダーへ委譲し、独自述語を作らない。
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, id, userId);
+        // 運営者が受け入れを無効化しているチームへの自己登録は拒否する。
+        teamService.assertSupporterEnabled(id);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
+                .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
     @DeleteMapping("/{slug}/follow")

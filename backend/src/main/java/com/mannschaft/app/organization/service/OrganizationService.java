@@ -3,6 +3,7 @@ package com.mannschaft.app.organization.service;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
@@ -151,6 +152,27 @@ public class OrganizationService {
      */
     public Long resolveOrgId(String slug) {
         return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * 組織がサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「この組織がサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code OrgPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中の組織への
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * <p>チーム側の {@code TeamService#assertSupporterEnabled} と対の実装（双子構成）。</p>
+     *
+     * @param orgId 組織内部 ID
+     * @throws BusinessException 組織が存在しない（ORG_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long orgId) {
+        OrganizationEntity org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+        if (!Boolean.TRUE.equals(org.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
     }
 
     /**
