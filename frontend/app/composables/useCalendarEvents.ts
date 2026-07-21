@@ -25,6 +25,16 @@ export interface CalendarEventItem {
   scopeType?: string
   scopeName?: string | null
   scopeIconUrl?: string | null
+  /**
+   * 出欠回答が必須のイベントか（モバイルのリストビューで行内 RSVP ボタンの出し分けに使う）。
+   * BE ScheduleResponse.content.attendanceRequired 由来。未設定は false 扱い。
+   */
+  attendanceRequired?: boolean
+  /**
+   * 閲覧者本人の出欠回答状態（'YES' / 'NO' / 'MAYBE' / null）。
+   * 一覧 API は null を返し、詳細 GET で実値が入る（BE 現仕様）。
+   */
+  myAttendance?: string | null
 }
 
 export interface UseCalendarEventsOptions {

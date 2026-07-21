@@ -95,6 +95,10 @@ export function toCalendarEventItem(
     scopeType,
     scopeName: scope.scopeName ?? null,
     scopeIconUrl: scope.scopeIconUrl ?? null,
+    // モバイルのリストビューで行内 RSVP を出し分けるために出欠情報も引き継ぐ。
+    // 一覧 API は myAttendanceStatus=null を返す（詳細 GET でのみ実値・BE 現仕様）。
+    attendanceRequired: content.attendanceRequired ?? false,
+    myAttendance: raw.myAttendanceStatus ?? null,
   }
 }
 

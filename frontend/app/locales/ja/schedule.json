@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "出席",
+      "no": "欠席",
+      "maybe": "未定",
+      "respondSuccess": "出欠を回答しました",
+      "respondError": "出欠の回答に失敗しました"
+    },
+    "list": {
+      "allDay": "終日",
+      "empty": "この期間の予定はありません",
+      "prevMonth": "前の月",
+      "nextMonth": "次の月"
+    },
     "common_delete": "削除",
     "description_label": "説明",
     "error_title_required": "タイトルは必須です",
