@@ -49420,6 +49420,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -57769,6 +57789,26 @@
         "responses": {
           "201": {
             "description": "申請/承認成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
