@@ -86,7 +86,7 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.empty());
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(evalResp);
 
             // Act
@@ -115,7 +115,7 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.of(prevEval));
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(newResp);
             given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
                     eq(10L), anyInt()))
@@ -162,9 +162,9 @@ class AttendanceRequirementBatchServiceTest {
                     anyLong(), anyLong()))
                     .willReturn(Optional.empty());
             // 1人目は例外、2人目は正常
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willThrow(new RuntimeException("テスト用例外"));
-            given(evaluationService.evaluate(eq(201L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(201L), anyLong()))
                     .willReturn(buildEvaluationResponse(EvaluationStatus.OK));
 
             // Act（例外がスローされないことを確認）
