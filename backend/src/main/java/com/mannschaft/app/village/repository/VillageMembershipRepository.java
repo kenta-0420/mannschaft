@@ -63,8 +63,16 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
     List<VillageMembershipEntity> findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
             VillageSubjectType subjectType, Long subjectId);
 
-    /** 村の現役メンバー件数。 */
+    /** 村の現役メンバー件数（BAN 済みも含む・在籍ベース）。 */
     long countByVillageIdAndLeftAtIsNull(UUID villageId);
+
+    /**
+     * 村の<strong>現役</strong>メンバー件数（{@code leftAt IS NULL} かつ {@code bannedAt IS NULL}）。
+     *
+     * <p>F17.2 相性表示（§8.8 草分けアピール）の「総現役メンバー数」判定に使う。
+     * BAN 済みは活動できないため総数に含めない（{@link #countByVillageIdAndLeftAtIsNull} との違い）。</p>
+     */
+    long countByVillageIdAndLeftAtIsNullAndBannedAtIsNull(UUID villageId);
 
     /** 村の現役メンバー一覧（ページネーション、参加日昇順）。 */
     Page<VillageMembershipEntity> findByVillageIdAndLeftAtIsNullOrderByJoinedAtAsc(

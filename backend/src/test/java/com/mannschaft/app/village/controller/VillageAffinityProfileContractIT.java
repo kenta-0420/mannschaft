@@ -169,32 +169,10 @@ class VillageAffinityProfileContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.sharedVillagerCount").doesNotExist());
         }
 
-        @Test
-        @DisplayName("AC-21b: レート制限超過で 429（実装前は 404 で赤）")
-        void ac21b_rateLimitExceeded_429() throws Exception {
-            // NOTE(緑化部隊): 本ケースの green 化には (1) VillageAffinityRateLimitFilter の新設
-            // （既定30回/分・キー=userId+villageId・§8.4緩和2）と (2) テストコンテキストで機能する
-            // ValkeyRateLimiter が必要（本基底は StringRedisTemplate をモック化しているため、
-            // 実カウントには fake/embedded Valkey への差し替えを要する）。
-            // また監査 AuditEventType.VILLAGE_AFFINITY_QUERIED 記録（§8.4緩和3）は enum 定数が
-            // 未定義のため本試練では compile 断裂回避のため assert しない（緑化部隊が追加）。
-            Long viewer = nextUser();
-            VillageEntity v = persistVillage(VillageVisibility.PUBLIC, VillageJoinPolicy.FREE);
-            authenticateAs(viewer);
-
-            int last = 200;
-            // 既定 30回/分 を超える回数を叩き、いずれかで 429 になることを期待する
-            for (int i = 0; i < 40; i++) {
-                last = mockMvc.perform(get(AFFINITY, v.getId()))
-                        .andReturn().getResponse().getStatus();
-                if (last == 429) {
-                    break;
-                }
-            }
-            org.assertj.core.api.Assertions.assertThat(last)
-                    .as("相性APIはレート制限（既定30回/分）で 429 を返すべき")
-                    .isEqualTo(429);
-        }
+        // AC-21b（レート制限 429）は、本クラスの @AutoConfigureMockMvc(addFilters=false) では
+        // Security フィルタチェーン（= VillageAffinityRateLimitFilter を差す場所）が無効化されるため
+        // 検証できない。実チェーン + in-memory fake Valkey を用いる専用IT
+        // VillageAffinityRateLimitFilterIT に切り出して検証する（殿裁定#2の方式）。
 
         @Test
         @DisplayName("AC-22: UNLISTED村を非メンバーが叩くと 404 で存在秘匿（架空村IDと同一の応答＝識別可能なコードを漏らさない）")
