@@ -260,21 +260,13 @@ public class ShiftRequestService {
      * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
      */
     private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
-        checkTeamAdminAccess(scheduleService.findScheduleOrThrow(scheduleId).getTeamId(), userId);
-    }
-
-    /**
-     * 管理操作の per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
-     *
-     * @param teamId 対象チームID
-     * @param userId 操作者ユーザーID
-     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
-     */
-    private void checkTeamAdminAccess(Long teamId, Long userId) {
+        // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
+        // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        accessControlService.checkAdminOrAbove(
+                userId, scheduleService.findScheduleOrThrow(scheduleId).getTeamId(), "TEAM");
     }
 
     /**
@@ -302,10 +294,15 @@ public class ShiftRequestService {
      * @throws BusinessException 提出者でも当該チームの ADMIN 以上でもない場合（COMMON_002 / 403）
      */
     private void checkOwnerOrTeamAdmin(ShiftRequestEntity entity, Long userId) {
+        // AccessControlService をこのメソッドから直接呼ぶ（番人の委譲探索は深さ2までのため）
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
         if (entity.getUserId() != null && entity.getUserId().equals(userId)) {
             return;
         }
-        checkScheduleAdminAccess(entity.getScheduleId(), userId);
+        accessControlService.checkAdminOrAbove(
+                userId, scheduleService.findScheduleOrThrow(entity.getScheduleId()).getTeamId(), "TEAM");
     }
 
     /**

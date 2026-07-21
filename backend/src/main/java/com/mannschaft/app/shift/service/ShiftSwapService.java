@@ -367,10 +367,15 @@ public class ShiftSwapService {
      * @throws BusinessException 申請者でも当該チームの ADMIN 以上でもない場合（COMMON_002 / 403）
      */
     private void checkRequesterOrTeamAdmin(ShiftSwapRequestEntity entity, Long userId) {
+        // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
+        // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
         if (entity.getRequesterId().equals(userId)) {
             return;
         }
-        checkTeamAdminAccess(resolveTeamIdBySwap(entity), userId);
+        accessControlService.checkAdminOrAbove(userId, resolveTeamIdBySwap(entity), "TEAM");
     }
 
     /**
