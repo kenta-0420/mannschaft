@@ -1,8 +1,10 @@
 package com.mannschaft.app.search.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.queue.repository.QueueTicketRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyCheckRepository;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,25 +44,47 @@ public class GlobalSearchService {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
+    private final AccessControlService accessControlService;
+    private final MembershipService membershipService;
 
     private static final int SEARCH_LIMIT = 10;
 
     /**
-     * 9種別横断検索を実行する。
+     * 空集合を JPQL の {@code IN :param} に渡すと構文エラーになるため、代替に用いるダミー値。
+     * 実在しない ID（負数）なので、どのレコードにも一致しない。
+     */
+    private static final List<Long> NO_MATCH = List.of(-1L);
+
+    /**
+     * 9種別横断検索を実行する（閲覧者依存の可視性フィルタ込み）。
+     *
+     * <p>各種別のリポジトリクエリには、閲覧者が所属するチーム／組織の ID 集合と閲覧者自身の ID を渡し、
+     * <strong>クエリ段階で</strong>可視範囲に絞り込む（取得後にフィルタすると件数とページングが壊れるため）。
+     * 所属スコープの解決は {@link AccessControlService#findAffiliatedScopeIds} に委ねる
+     * （{@code user_roles} と {@code memberships} の両系統を統合した正準の解決窓口）。</p>
+     *
+     * <p>「公開のものだけ返す」ではなく「閲覧者の所属スコープのものは返す」方式を採るため、
+     * 自分が所属するチーム／組織の非公開データは従来どおり検索にヒットする。</p>
      *
      * @param query  検索クエリ
-     * @param userId 検索実行ユーザーID
+     * @param userId 検索実行ユーザーID（可視スコープの解決に使用する）
      * @return 統合検索結果
      */
     public SearchResultResponse search(String query, Long userId) {
         long startTime = System.currentTimeMillis();
         Pageable limit = PageRequest.of(0, SEARCH_LIMIT);
 
+        // 閲覧者の可視スコープを解決する（user_roles ∪ memberships の両系統統合）。
+        List<Long> teamIds = toSafeIds(accessControlService.findAffiliatedScopeIds(userId, "TEAM"));
+        List<Long> orgIds = toSafeIds(accessControlService.findAffiliatedScopeIds(userId, "ORGANIZATION"));
+        // 利用者検索は「所属を共有する相手」のみを候補にする。
+        List<Long> visibleUserIds = toSafeIds(membershipService.getActiveUserIdsInScopes(teamIds, orgIds));
+
         Map<String, List<Map<String, Object>>> results = new LinkedHashMap<>();
         Map<String, Long> counts = new LinkedHashMap<>();
 
         // schedules
-        var schedules = scheduleRepository.searchByKeyword(query, limit);
+        var schedules = scheduleRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
         results.put("schedules", schedules.stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle(),
@@ -68,7 +93,7 @@ public class GlobalSearchService {
         counts.put("schedules", (long) schedules.size());
 
         // events
-        var events = eventRepository.searchByKeyword(query, limit);
+        var events = eventRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
         results.put("events", events.stream()
                 .map(e -> Map.<String, Object>of(
                         "id", e.getId(), "title", e.getSubtitle() != null ? e.getSubtitle() : "",
@@ -77,7 +102,7 @@ public class GlobalSearchService {
         counts.put("events", (long) events.size());
 
         // reservations (facility bookings)
-        var reservations = facilityBookingRepository.searchByKeyword(query, limit);
+        var reservations = facilityBookingRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
         results.put("reservations", reservations.stream()
                 .map(b -> Map.<String, Object>of(
                         "id", b.getId(), "purpose", b.getPurpose() != null ? b.getPurpose() : ""))
@@ -85,7 +110,7 @@ public class GlobalSearchService {
         counts.put("reservations", (long) reservations.size());
 
         // shifts
-        var shifts = shiftScheduleRepository.searchByKeyword(query, limit);
+        var shifts = shiftScheduleRepository.searchByKeyword(query, teamIds, limit);
         results.put("shifts", shifts.stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle()))
@@ -93,7 +118,7 @@ public class GlobalSearchService {
         counts.put("shifts", (long) shifts.size());
 
         // safetyChecks
-        var safetyChecks = safetyCheckRepository.searchByKeyword(query, limit);
+        var safetyChecks = safetyCheckRepository.searchByKeyword(query, teamIds, orgIds, limit);
         results.put("safetyChecks", safetyChecks.stream()
                 .map(sc -> Map.<String, Object>of(
                         "id", sc.getId(), "title", sc.getTitle()))
@@ -101,7 +126,7 @@ public class GlobalSearchService {
         counts.put("safetyChecks", (long) safetyChecks.size());
 
         // queues
-        var queues = queueTicketRepository.searchByKeyword(query, limit);
+        var queues = queueTicketRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
         results.put("queues", queues.stream()
                 .map(q -> Map.<String, Object>of(
                         "id", q.getId(),
@@ -127,7 +152,7 @@ public class GlobalSearchService {
         counts.put("organizations", orgs.getTotalElements());
 
         // users
-        var users = userRepository.searchByKeyword(query, limit);
+        var users = userRepository.searchByKeyword(query, visibleUserIds, limit);
         results.put("users", users.stream()
                 .map(u -> Map.<String, Object>of(
                         "id", u.getId(), "fullName", u.getLastName() + " " + u.getFirstName()))
@@ -138,5 +163,18 @@ public class GlobalSearchService {
         log.info("グローバル検索実行: query='{}', userId={}, executionTime={}ms", query, userId, executionTimeMs);
 
         return new SearchResultResponse(query, results, counts, executionTimeMs);
+    }
+
+    /**
+     * ID 集合を JPQL の {@code IN} に安全に渡せる形へ変換する。
+     *
+     * <p>空集合をそのまま渡すと {@code IN ()} となり構文エラーになるため、
+     * どのレコードにも一致しないダミー値に置き換える（fail-closed: 所属が無い利用者には何も返さない）。</p>
+     *
+     * @param ids 変換元の ID 集合
+     * @return 非空の ID リスト（元が空なら {@link #NO_MATCH}）
+     */
+    private static List<Long> toSafeIds(Collection<Long> ids) {
+        return (ids == null || ids.isEmpty()) ? NO_MATCH : List.copyOf(ids);
     }
 }
