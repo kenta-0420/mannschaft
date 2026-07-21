@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -49,6 +51,9 @@ class IcalServiceTest {
 
     @Mock
     private NameResolverService nameResolverService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private IcalService icalService;
@@ -288,6 +293,93 @@ class IcalServiceTest {
             assertThat(result).startsWith("BEGIN:VCALENDAR");
             assertThat(result).doesNotContain("BEGIN:VEVENT");
             assertThat(result).endsWith("END:VCALENDAR\r\n");
+        }
+    }
+
+    // ========================================
+    // スコープ指定フィードの認可（認可根治 Wave6 追加戦）
+    // ========================================
+
+    @Nested
+    @DisplayName("スコープ指定フィードの認可")
+    class FeedScopeAuthorization {
+
+        private static final Long TEAM_ID = 500L;
+        private static final Long ORG_ID = 600L;
+
+        @Test
+        @DisplayName("teamスコープ_トークン所有者が当該チームに所属していない場合は403相当")
+        void teamスコープ_非所属は拒否() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER"))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> icalService.generateIcalFeed(TOKEN, "team", TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            verify(scheduleRepository, org.mockito.Mockito.never())
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                            any(), any(LocalDateTime.class), any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("teamスコープ_所属していれば配信される（正常系）")
+        void teamスコープ_所属者は配信() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER"))
+                    .willReturn(true);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(TEAM_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(createScheduleForFeed()));
+
+            String result = icalService.generateIcalFeed(TOKEN, "team", TEAM_ID);
+
+            assertThat(result).contains("SUMMARY:テスト予定");
+        }
+
+        @Test
+        @DisplayName("organizationスコープ_トークン所有者が当該組織に所属していない場合は403相当")
+        void 組織スコープ_非所属は拒否() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "SUPPORTER"))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> icalService.generateIcalFeed(TOKEN, "organization", ORG_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("ETag算出も同一のスコープ認可を課す")
+        void ETag算出_非所属は拒否() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER"))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> icalService.calculateETag(TOKEN, "team", TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("スコープ未指定_認可判定を経ずに自分のフィードを返す（正常系・非回帰）")
+        void スコープ未指定_認可判定なしで配信() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(createScheduleForFeed()));
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+
+            String result = icalService.generateIcalFeed(TOKEN, null, null);
+
+            assertThat(result).contains("SUMMARY:テスト予定");
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .hasRoleOrAbove(any(), any(), any(), any());
         }
     }
 

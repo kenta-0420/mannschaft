@@ -8,12 +8,14 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.PermissionGroupService;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.social.service.FollowService;
+import com.mannschaft.app.supporter.dto.FollowStatusResponse;
 import com.mannschaft.app.supporter.service.SupporterService;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
@@ -348,5 +350,45 @@ class TeamControllerTest {
         assertThatThrownBy(() -> controller.getTeamFollowers(TEAM_SLUG, 20))
                 .isInstanceOf(BusinessException.class);
         verify(followService, Mockito.never()).getTeamFollowers(TEAM_ID, 20);
+    }
+
+    // ========================================
+    // followTeam: サポーター自己登録の可視性・受け入れ可否ゲート（認可根治 Wave6）
+    // ========================================
+
+    @Test
+    @DisplayName("followTeam: 可視性・受け入れ可否ともに通過すれば 201 Created（正常系）")
+    void followTeam_201_whenGatesPass() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(supporterService.follow(USER_ID, "TEAM", TEAM_ID))
+                .willReturn(ApiResponse.of(FollowStatusResponse.approved()));
+        assertThat(controller.followTeam(TEAM_SLUG).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
+        verify(teamService).assertSupporterEnabled(TEAM_ID);
+        verify(supporterService).follow(USER_ID, "TEAM", TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("followTeam: 可視性ラダー未満は例外伝播し、サポーター登録本体を呼ばない")
+    void followTeam_denied_whenNotVisible() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
+        assertThatThrownBy(() -> controller.followTeam(TEAM_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(teamService, Mockito.never()).assertSupporterEnabled(TEAM_ID);
+        verify(supporterService, Mockito.never()).follow(USER_ID, "TEAM", TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("followTeam: サポーター受け入れ無効は例外伝播し、サポーター登録本体を呼ばない")
+    void followTeam_denied_whenSupporterDisabled() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willThrow(new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED))
+                .given(teamService).assertSupporterEnabled(TEAM_ID);
+        assertThatThrownBy(() -> controller.followTeam(TEAM_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(supporterService, Mockito.never()).follow(USER_ID, "TEAM", TEAM_ID);
     }
 }

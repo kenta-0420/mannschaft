@@ -8,6 +8,7 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.organization.controller.OrganizationController;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -111,6 +112,46 @@ class OrganizationControllerTest {
         given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
         ResponseEntity<ApiResponse<OrganizationResponse>> resp = controller.createOrganization(req);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    @DisplayName("createOrganization: 親組織の指定がなければ認可チェックを行わない（正常系の保全）")
+    void createOrganization_親なしは認可チェックしない() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
+        given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+
+        controller.createOrganization(req);
+
+        verify(organizationService, never()).assertOrganizationExists(any());
+        verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("createOrganization: 親組織を指定すると実在確認と親組織ADMIN確認を行う")
+    void createOrganization_親指定は実在確認とADMIN確認を行う() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", ORG_ID, null);
+        given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+
+        controller.createOrganization(req);
+
+        verify(organizationService).assertOrganizationExists(ORG_ID);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+    }
+
+    @Test
+    @DisplayName("createOrganization: 親組織のADMINでなければ作成に到達しない")
+    void createOrganization_親組織ADMINでなければ作成しない() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", ORG_ID, null);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+        assertThatThrownBy(() -> controller.createOrganization(req))
+                .isInstanceOf(BusinessException.class);
+
+        verify(organizationService, never()).createOrganization(any(), any());
     }
 
     @Test
@@ -267,7 +308,34 @@ class OrganizationControllerTest {
         given(supporterService.follow(USER_ID, "ORGANIZATION", ORG_ID))
                 .willReturn(ApiResponse.of(FollowStatusResponse.approved()));
         assertThat(controller.followOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // 認可根治 Wave6: 可視性ゲート・受け入れ可否ゲートを通過してから本体を呼ぶ
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        verify(organizationService).assertSupporterEnabled(ORG_ID);
         verify(supporterService).follow(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    @Test
+    @DisplayName("followOrganization: 可視性ラダー未満は例外伝播し、サポーター登録本体を呼ばない")
+    void followOrganization_denied_whenNotVisible() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.followOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, never()).assertSupporterEnabled(ORG_ID);
+        verify(supporterService, never()).follow(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    @Test
+    @DisplayName("followOrganization: サポーター受け入れ無効は例外伝播し、サポーター登録本体を呼ばない")
+    void followOrganization_denied_whenSupporterDisabled() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED))
+                .given(organizationService).assertSupporterEnabled(ORG_ID);
+        assertThatThrownBy(() -> controller.followOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(supporterService, never()).follow(USER_ID, "ORGANIZATION", ORG_ID);
     }
 
     @Test
