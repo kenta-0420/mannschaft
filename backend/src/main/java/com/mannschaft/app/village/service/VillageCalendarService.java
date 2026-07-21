@@ -345,12 +345,15 @@ public class VillageCalendarService {
         // 署名 URL を一括解決（N+1 回避・AC-19）
         Map<String, String> urlMap = mediaUrlResolver.resolveAll(
                 logs.stream().map(VillageCalendarEventLogEntity::getPhotoR2Key).collect(Collectors.toList()));
+        // 表示名も一括解決（N+1 回避・検分 §3）
+        Map<Long, String> names = resolveDisplayNames(
+                logs.stream().map(VillageCalendarEventLogEntity::getCreatedByUserId).toList(), villageId);
 
         return logs.stream()
                 .map(l -> CalendarEventLogResponse.of(
                         l,
                         l.getPhotoR2Key() == null ? null : urlMap.get(l.getPhotoR2Key()),
-                        resolveUserDisplayName(l.getCreatedByUserId(), villageId)))
+                        names.get(l.getCreatedByUserId())))
                 .toList();
     }
 
@@ -417,6 +420,38 @@ public class VillageCalendarService {
         return nicknameRepository.findByUserIdAndVillageIdIsNull(userId)
                 .map(UserVillageNicknameEntity::getNickname)
                 .orElse("USER:#" + userId);
+    }
+
+    /**
+     * 村人集合の表示名を村ニックネームで<strong>一括</strong>解決する（年輪一覧の N+1 回避・検分 §3）。
+     * 単票版 {@link #resolveUserDisplayName(Long, UUID)} と同一の解決順（村内 → 全村共通 → {@code "USER:#id"}）
+     * を保ちつつ、クエリを user_id 集合の先読み 2 回に抑える。
+     */
+    private Map<Long, String> resolveDisplayNames(java.util.Collection<Long> userIds, UUID villageId) {
+        java.util.Set<Long> ids = userIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> result = new java.util.HashMap<>();
+        if (ids.isEmpty()) {
+            return result;
+        }
+        if (villageId != null) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageId(ids, villageId)) {
+                result.put(n.getUserId(), n.getNickname());
+            }
+        }
+        java.util.Set<Long> remaining = ids.stream()
+                .filter(id -> !result.containsKey(id))
+                .collect(Collectors.toSet());
+        if (!remaining.isEmpty()) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageIdIsNull(remaining)) {
+                result.putIfAbsent(n.getUserId(), n.getNickname());
+            }
+        }
+        for (Long id : ids) {
+            result.putIfAbsent(id, "USER:#" + id);
+        }
+        return result;
     }
 
     /** 年輪一覧の Pageable を解決する（ソートは Repository メソッド名に委譲・既定 20・上限 100）。 */

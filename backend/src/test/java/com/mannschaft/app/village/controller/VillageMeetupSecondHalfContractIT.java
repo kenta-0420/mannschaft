@@ -486,6 +486,159 @@ class VillageMeetupSecondHalfContractIT extends AbstractMySqlIntegrationTest {
             assertThat(meetupRepository.findById(meetup.getId())).get()
                     .satisfies(m -> assertThat(m.getDecisionsNote()).isNull());
         }
+
+        // ── AC-13 組合せ回帰（フィールド単位ガードの抜け穴防止・検分で恒久化） ──────
+
+        @Test
+        @DisplayName("非幹事の村長が {title, decisionsNote} 同時送信 → 403 で title も decisions も不適用")
+        void headman_combined_title_and_decisions_rejected_403_nothingApplied() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), HEADMAN_ID, VillageRole.HEADMAN);
+            // PLANNING なら core フィールドは本来更新可の状態。だが村長は幹事でないため core ガードで 403。
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.PLANNING);
+            String originalTitle = meetupRepository.findById(meetup.getId()).orElseThrow().getTitle();
+
+            authAs(HEADMAN_ID);
+            mockMvc.perform(patch("/api/v1/villages/{vid}/meetups/{mid}", v.getId(), meetup.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("title", "村長による乗っ取りタイトル",
+                                    "decisionsNote", "村長の横取りメモ"))))
+                    .andExpect(status().isForbidden());
+
+            // core ガード（幹事限定）で弾かれ、title も decisionsNote も一切書き換わらない。
+            assertThat(meetupRepository.findById(meetup.getId())).get()
+                    .satisfies(m -> {
+                        assertThat(m.getTitle()).isEqualTo(originalTitle);
+                        assertThat(m.getDecisionsNote()).isNull();
+                    });
+        }
+
+        @Test
+        @DisplayName("幹事が CONFIRMED で {title, decisionsNote} 同時送信 → MEETUP_INVALID_STATUS で core 拒否・両フィールド不適用")
+        void organizer_combined_on_confirmed_rejected_invalidStatus() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), ORGANIZER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CONFIRMED);
+            String originalTitle = meetupRepository.findById(meetup.getId()).orElseThrow().getTitle();
+
+            authAs(ORGANIZER_ID);
+            mockMvc.perform(patch("/api/v1/villages/{vid}/meetups/{mid}", v.getId(), meetup.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("title", "確定後のタイトル変更",
+                                    "decisionsNote", "同時に決まったことも"))))
+                    // core フィールド（title）は PLANNING 限定 → CONFIRMED で MEETUP_INVALID_STATUS（409）
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+
+            // core 拒否が先に立つため、decisionsNote も title も書き換わらない。
+            assertThat(meetupRepository.findById(meetup.getId())).get()
+                    .satisfies(m -> {
+                        assertThat(m.getTitle()).isEqualTo(originalTitle);
+                        assertThat(m.getDecisionsNote()).isNull();
+                    });
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // §4.5 CANCELLED 状態ゲート — 中止済み寄合は読み取りのみ（書込み系は MEETUP_INVALID_STATUS）
+    // ══════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("§4.5 CANCELLED 状態ゲート（書込み系は 409 MEETUP_INVALID_STATUS）")
+    class CancelledStateGate {
+
+        @Test
+        @DisplayName("CANCELLED 寄合へのコメント投稿は 409（VILLAGE_071）")
+        void cancelled_createComment_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups/{mid}/comments", v.getId(), meetup.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("body", "中止後の書き込み"))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+        }
+
+        @Test
+        @DisplayName("CANCELLED 寄合への宿題作成は 409（VILLAGE_071）")
+        void cancelled_createTodo_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), ORGANIZER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+
+            authAs(ORGANIZER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups/{mid}/todos", v.getId(), meetup.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("title", "中止後の宿題"))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+        }
+
+        @Test
+        @DisplayName("CANCELLED 寄合の TODO claim は 409（VILLAGE_071）")
+        void cancelled_claimTodo_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+            VillageMeetupTodoEntity todo = persistTodo(meetup.getId(), null, ORGANIZER_ID);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups/{mid}/todos/{tid}/claim",
+                            v.getId(), meetup.getId(), todo.getId()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+        }
+
+        @Test
+        @DisplayName("CANCELLED 寄合の TODO complete は 409（VILLAGE_071）")
+        void cancelled_completeTodo_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+            VillageMeetupTodoEntity todo = persistTodo(meetup.getId(), VILLAGER_ID, ORGANIZER_ID);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups/{mid}/todos/{tid}/complete",
+                            v.getId(), meetup.getId(), todo.getId()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+        }
+
+        @Test
+        @DisplayName("CANCELLED 寄合の TODO release は 409（VILLAGE_071）")
+        void cancelled_releaseTodo_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+            VillageMeetupTodoEntity todo = persistTodo(meetup.getId(), VILLAGER_ID, ORGANIZER_ID);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups/{mid}/todos/{tid}/release",
+                            v.getId(), meetup.getId(), todo.getId()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+        }
+
+        @Test
+        @DisplayName("CANCELLED 寄合の decisions_note 更新は 409（VILLAGE_071・幹事でも書込み不可）")
+        void cancelled_decisionsNote_409() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), ORGANIZER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CANCELLED);
+
+            authAs(ORGANIZER_ID);
+            mockMvc.perform(patch("/api/v1/villages/{vid}/meetups/{mid}", v.getId(), meetup.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("decisionsNote", "中止後に決まったこと更新"))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_071"));
+
+            assertThat(meetupRepository.findById(meetup.getId())).get()
+                    .satisfies(m -> assertThat(m.getDecisionsNote()).isNull());
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════

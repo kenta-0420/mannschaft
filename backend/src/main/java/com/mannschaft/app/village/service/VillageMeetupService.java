@@ -209,6 +209,8 @@ public class VillageMeetupService {
         }
         if (touchesDecisions) {
             requireOrganizerOrModerator(villageId, entity, actorUserId);
+            // CANCELLED は読み取りのみ（§4.5）。PLANNING/CONFIRMED は決まったこと更新可。
+            rejectIfCancelled(entity);
             entity.setDecisionsNote(request.decisionsNote());
         }
 
@@ -581,9 +583,12 @@ public class VillageMeetupService {
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
-        return attendanceRepository.findByMeetupIdOrderByCreatedAtAsc(meetupId, resolved)
-                .getContent().stream()
-                .map(a -> MeetupAttendanceResponse.of(a, resolveUserDisplayName(a.getUserId(), villageId)))
+        List<VillageMeetupAttendanceEntity> rows =
+                attendanceRepository.findByMeetupIdOrderByCreatedAtAsc(meetupId, resolved).getContent();
+        Map<Long, String> names = resolveDisplayNames(
+                rows.stream().map(VillageMeetupAttendanceEntity::getUserId).toList(), villageId);
+        return rows.stream()
+                .map(a -> MeetupAttendanceResponse.of(a, names.get(a.getUserId())))
                 .toList();
     }
 
@@ -596,8 +601,9 @@ public class VillageMeetupService {
     public MeetupCommentResponse createComment(UUID villageId, UUID meetupId,
                                                MeetupCommentCreateRequest request, Long actorUserId) {
         loadActiveVillage(villageId);
-        loadMeetup(villageId, meetupId);
+        VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
+        rejectIfCancelled(meetup);
 
         VillageMeetupCommentEntity entity = VillageMeetupCommentEntity.builder()
                 .meetupId(meetupId)
@@ -615,9 +621,12 @@ public class VillageMeetupService {
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
-        return commentRepository.findByMeetupIdAndDeletedAtIsNullOrderByCreatedAtAsc(meetupId, resolved)
-                .getContent().stream()
-                .map(c -> MeetupCommentResponse.of(c, resolveUserDisplayName(c.getAuthorUserId(), villageId)))
+        List<VillageMeetupCommentEntity> rows =
+                commentRepository.findByMeetupIdAndDeletedAtIsNullOrderByCreatedAtAsc(meetupId, resolved).getContent();
+        Map<Long, String> names = resolveDisplayNames(
+                rows.stream().map(VillageMeetupCommentEntity::getAuthorUserId).toList(), villageId);
+        return rows.stream()
+                .map(c -> MeetupCommentResponse.of(c, names.get(c.getAuthorUserId())))
                 .toList();
     }
 
@@ -648,6 +657,7 @@ public class VillageMeetupService {
         loadActiveVillage(villageId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireOrganizerOrModerator(villageId, meetup, actorUserId);
+        rejectIfCancelled(meetup);
 
         VillageMeetupTodoEntity entity = VillageMeetupTodoEntity.builder()
                 .meetupId(meetupId)
@@ -666,9 +676,13 @@ public class VillageMeetupService {
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
-        return todoRepository.findByMeetupIdAndDeletedAtIsNullOrderByCreatedAtAsc(meetupId, resolved)
-                .getContent().stream()
-                .map(t -> MeetupTodoResponse.of(t, resolveUserDisplayName(t.getAssigneeUserId(), villageId)))
+        List<VillageMeetupTodoEntity> rows =
+                todoRepository.findByMeetupIdAndDeletedAtIsNullOrderByCreatedAtAsc(meetupId, resolved).getContent();
+        // assigneeUserId が null の TODO（手挙げ待ち）は names に含まれず get(null)=null → 表示名 null を維持。
+        Map<Long, String> names = resolveDisplayNames(
+                rows.stream().map(VillageMeetupTodoEntity::getAssigneeUserId).toList(), villageId);
+        return rows.stream()
+                .map(t -> MeetupTodoResponse.of(t, names.get(t.getAssigneeUserId())))
                 .toList();
     }
 
@@ -679,8 +693,9 @@ public class VillageMeetupService {
     @Transactional
     public MeetupTodoResponse claimTodo(UUID villageId, UUID meetupId, UUID todoId, Long actorUserId) {
         loadActiveVillage(villageId);
-        loadMeetup(villageId, meetupId);
+        VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
+        rejectIfCancelled(meetup);
 
         VillageMeetupTodoEntity todo = loadTodo(meetupId, todoId);
         if (todo.getAssigneeUserId() != null) {
@@ -707,6 +722,7 @@ public class VillageMeetupService {
         loadActiveVillage(villageId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
+        rejectIfCancelled(meetup);
 
         VillageMeetupTodoEntity todo = loadTodo(meetupId, todoId);
         boolean isAssignee = actorUserId.equals(todo.getAssigneeUserId());
@@ -734,8 +750,9 @@ public class VillageMeetupService {
     @Transactional
     public MeetupTodoResponse releaseTodo(UUID villageId, UUID meetupId, UUID todoId, Long actorUserId) {
         loadActiveVillage(villageId);
-        loadMeetup(villageId, meetupId);
+        VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
+        rejectIfCancelled(meetup);
 
         VillageMeetupTodoEntity todo = loadTodo(meetupId, todoId);
         if (!actorUserId.equals(todo.getAssigneeUserId())) {
@@ -827,6 +844,16 @@ public class VillageMeetupService {
         }
     }
 
+    /**
+     * CANCELLED（中止済み）の寄合への新規書き込みを拒否する（設計書 §4.5「CANCELLED=読み取りのみ」）。
+     * コメント/宿題/決まったこと等の書込み系で使用する（既存 {@link VillageErrorCode#MEETUP_INVALID_STATUS} 流用）。
+     */
+    private void rejectIfCancelled(VillageMeetupEntity meetup) {
+        if (meetup.getStatus() == VillageMeetupStatus.CANCELLED) {
+            throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
+        }
+    }
+
     /** コメントを寄合スコープで取得する。他寄合・論理削除済みは 404（IDOR 秘匿・MEETUP_NOT_FOUND）。 */
     private VillageMeetupCommentEntity loadComment(UUID meetupId, UUID commentId) {
         VillageMeetupCommentEntity c = commentRepository.findById(commentId)
@@ -865,6 +892,40 @@ public class VillageMeetupService {
         return nicknameRepository.findByUserIdAndVillageIdIsNull(userId)
                 .map(UserVillageNicknameEntity::getNickname)
                 .orElse("USER:#" + userId);
+    }
+
+    /**
+     * 村人集合の表示名を村ニックネームで<strong>一括</strong>解決する（一覧の N+1 回避・検分 §3）。
+     *
+     * <p>単票版 {@link #resolveUserDisplayName(Long, UUID)} と同一の解決順（村内ニックネーム →
+     * 全村共通ニックネーム → {@code "USER:#id"}）を保つが、クエリを user_id 集合の先読み 2 回に抑える。
+     * {@code null} の userId は結果マップに含めない（呼び出し側で {@code null} 表示を維持する）。</p>
+     */
+    private Map<Long, String> resolveDisplayNames(java.util.Collection<Long> userIds, UUID villageId) {
+        Set<Long> ids = userIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> result = new java.util.HashMap<>();
+        if (ids.isEmpty()) {
+            return result;
+        }
+        if (villageId != null) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageId(ids, villageId)) {
+                result.put(n.getUserId(), n.getNickname());
+            }
+        }
+        Set<Long> remaining = ids.stream()
+                .filter(id -> !result.containsKey(id))
+                .collect(Collectors.toSet());
+        if (!remaining.isEmpty()) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageIdIsNull(remaining)) {
+                result.putIfAbsent(n.getUserId(), n.getNickname());
+            }
+        }
+        for (Long id : ids) {
+            result.putIfAbsent(id, "USER:#" + id);
+        }
+        return result;
     }
 
     /** 昇順（作成日）一覧用に Pageable を解決する（既定 20・上限 {@link #MAX_PAGE_SIZE}）。 */
