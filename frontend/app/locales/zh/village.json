@@ -260,6 +260,15 @@
       "filterRole": "按角色筛选",
       "soloHeadmanHint": "当其他成员加入本村后，您可以在此将其任命为长老。"
     },
+    "profile": {
+      "title": "村民资料",
+      "villages": {
+        "title": "所属村列表",
+        "empty": "没有可显示的所属村",
+        "publicToggle": "在我的所属村列表中显示此村",
+        "publicToggleHint": "开启后，与您同在一个村的人可以在您的所属村列表中看到此村。"
+      }
+    },
     "postingIdentity": {
       "title": "发帖身份",
       "asUser": "以个人身份发帖",
@@ -550,7 +559,7 @@
     },
     "serendipity": {
       "title": "缘分分数",
-      "subtitle": "与您的契合度",
+      "subtitle": "在本村积累的相遇",
       "rank": "排名",
       "score": "分数",
       "myScore": "您的分数",
@@ -558,6 +567,26 @@
       "lastComputedAt": "最后计算时间",
       "empty": "缘分分数尚未计算",
       "loadFailed": "获取缘分分数失败"
+    },
+    "affinity": {
+      "title": "契合度提示",
+      "subtitle": "加入前看看这个村是否适合您",
+      "categoryMatch": "与您的兴趣、分类相近的村",
+      "hidden": "目前没有契合度提示",
+      "sharedVillagers": {
+        "hidden": "暂时无法显示",
+        "few": "数人",
+        "many": "10人以上"
+      },
+      "reason": {
+        "categoryMatch": "这是与您兴趣相近的村",
+        "sharedVillagers": "有与您有缘分的村民",
+        "pioneer": "现在加入可以成为开拓成员"
+      },
+      "pioneer": {
+        "title": "您可以成为开拓成员！",
+        "body": "这是一个人数还较少的小村。现在加入，您将成为一起打造这个村的开拓成员。"
+      }
     },
     "pilgrimage": {
       "title": "村庄巡礼",
@@ -949,6 +978,25 @@
       },
       "comingSoon": {
         "body": "⚠️ 发送功能正在准备中。可以保存设置，但尚未实际发送通讯。"
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "使用说明",
+      "what": {
+        "title": "什么是村民简介",
+        "body": "在成员列表中点击姓名即可打开该村民的简易资料。可以查看其角色以及对方公开的所属村列表。"
+      },
+      "villages": {
+        "title": "所属村列表说明",
+        "body": "只会显示对方设为公开的村。仅显示村名、村徽、分类，不会显示昵称。点击卡片可前往该村的首页。"
+      },
+      "toggle": {
+        "title": "打开自己的简介时",
+        "body": "打开自己的简介时会显示「在我的所属村列表中显示此村」开关。开启后，与您同在一个村的人就能在您的所属村列表中看到此村。可按村分别设置。"
+      },
+      "privacy": {
+        "title": "关于隐私",
+        "body": "所属村列表只在您与对方同处至少一个村时才会显示。若没有可显示的内容，会中立地显示「没有可显示的所属村」，不会透露您们是否同村。"
       }
     }
   }
