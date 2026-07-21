@@ -1451,6 +1451,10 @@
       "description": "F08.2 サブスクリプション管理（Phase 4）"
     },
     {
+      "name": "村人 所属村一覧 (F17.2)",
+      "description": "村人ミニプロフィールの所属村一覧と公開トグル（同居者限定・ニックネーム非返却）"
+    },
+    {
       "name": "システム管理 - 広告通報",
       "description": "F09.19.9 通報一覧・状態遷移（SYSTEM_ADMIN 専用）"
     },
@@ -1741,6 +1745,10 @@
     {
       "name": "サービス履歴",
       "description": "F07.1 サービス履歴CRUD・検索・添付・リアクション・エクスポート"
+    },
+    {
+      "name": "村 加入前相性表示 (F17.2)",
+      "description": "非メンバーが「この村は自分と合いそうか」を掴む相性のヒント（バケット化・identity 非返却）"
     },
     {
       "name": "F22.1 市（Market）公開閲覧",
@@ -83419,6 +83427,48 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/memberships/me/profile-visibility": {
+      "patch": {
+        "tags": [
+          "村人 所属村一覧 (F17.2)"
+        ],
+        "summary": "自分の所属村一覧公開トグルを切り替える（本人のみ）",
+        "operationId": "updateMyProfileVisibility",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileVisibilityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProfileVisibilityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/meetups/{meetupId}": {
       "get": {
         "tags": [
@@ -103584,7 +103634,7 @@
         "tags": [
           "村ご縁スコア (F17.1)"
         ],
-        "summary": "ご縁スコアの上位ランキングを取得する（最大100件）",
+        "summary": "【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）",
         "operationId": "getRanking",
         "parameters": [
           {
@@ -103617,7 +103667,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/villages/{villageId}/serendipity-scores/me": {
@@ -104159,6 +104210,38 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/affinity/me": {
+      "get": {
+        "tags": [
+          "村 加入前相性表示 (F17.2)"
+        ],
+        "summary": "加入前相性表示を取得する（PUBLIC 村のみ・非メンバー可・identity 非返却）",
+        "operationId": "getMyAffinity",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageAffinityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/search": {
       "get": {
         "tags": [
@@ -104309,6 +104392,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListVenueSuggestionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/villages": {
+      "get": {
+        "tags": [
+          "村人 所属村一覧 (F17.2)"
+        ],
+        "summary": "対象村人の所属村一覧を取得する（同居者限定・公開ON∩PUBLIC のみ・ニックネーム非返却）",
+        "operationId": "getUserVillages",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListUserVillageSummaryResponse"
                 }
               }
             }
@@ -192086,6 +192201,46 @@
           "role"
         ]
       },
+      "ProfileVisibilityUpdateRequest": {
+        "type": "object",
+        "description": "所属村一覧の公開トグル切替リクエスト",
+        "properties": {
+          "profilePublic": {
+            "type": "boolean",
+            "description": "この村所属を所属村一覧に公開するか（true\u003d公開/false\u003d非公開）"
+          }
+        },
+        "required": [
+          "profilePublic"
+        ]
+      },
+      "ApiResponseProfileVisibilityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProfileVisibilityResponse"
+          }
+        }
+      },
+      "ProfileVisibilityResponse": {
+        "type": "object",
+        "description": "所属村一覧の公開トグル切替結果",
+        "properties": {
+          "profilePublic": {
+            "type": "boolean",
+            "description": "切替後の公開状態"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対象の村ID"
+          }
+        },
+        "required": [
+          "profilePublic",
+          "villageId"
+        ]
+      },
       "MeetupUpdateRequest": {
         "type": "object",
         "properties": {
@@ -200009,6 +200164,56 @@
           }
         }
       },
+      "ApiResponseVillageAffinityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/VillageAffinityResponse"
+          }
+        }
+      },
+      "VillageAffinityResponse": {
+        "type": "object",
+        "description": "加入前相性表示（相性のヒント）。正確な人数・identity は返さない（§8.3/§8.4）",
+        "properties": {
+          "categoryMatch": {
+            "type": "boolean",
+            "description": "自分の関心カテゴリと村カテゴリが一致するか"
+          },
+          "memberCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "村の総現役メンバー数（公開情報。アピール判定の根拠・匿名重なりとは別軸）"
+          },
+          "pioneerAppeal": {
+            "type": "boolean",
+            "description": "小規模村の「草分けアピール」を出すか（未参加×総現役メンバー10人以下・§8.8）"
+          },
+          "reasonKeys": {
+            "type": "array",
+            "description": "相性の根拠一言の i18n キー配列（FE で翻訳・空配列可）",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sharedVillagerBucket": {
+            "type": "string",
+            "description": "自分と重なる匿名村人数のバケット（HIDDEN/FEW/MANY・正確人数は非返却）",
+            "enum": [
+              "HIDDEN",
+              "FEW",
+              "MANY"
+            ]
+          }
+        },
+        "required": [
+          "categoryMatch",
+          "memberCount",
+          "pioneerAppeal",
+          "reasonKeys",
+          "sharedVillagerBucket"
+        ]
+      },
       "VillageSearchResponse": {
         "type": "object",
         "properties": {
@@ -200074,6 +200279,44 @@
             "format": "int64"
           }
         }
+      },
+      "ApiResponseListUserVillageSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserVillageSummaryResponse"
+            }
+          }
+        }
+      },
+      "UserVillageSummaryResponse": {
+        "type": "object",
+        "description": "所属村一覧の1件（村名・村紋・カテゴリ・村IDのみ。ニックネームは返さない・§9.3）",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "村カテゴリ（未設定なら null）"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "村ID（UUID）"
+          },
+          "villageMonshoUrl": {
+            "type": "string",
+            "description": "村紋の署名付き URL（未設定なら null）"
+          },
+          "villageName": {
+            "type": "string",
+            "description": "村名（表示用）"
+          }
+        },
+        "required": [
+          "villageId",
+          "villageName"
+        ]
       },
       "CursorMeta": {
         "type": "object",

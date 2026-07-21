@@ -273,6 +273,10 @@ public enum AuditEventType {
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
     /** F17.1 ②-2 — 村ニュースレター号を集計・凍結（集計バッチによる snapshot 確定）。 */
     VILLAGE_NEWSLETTER_ISSUE_FROZEN(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑤ — 加入前相性クエリ（差分攻撃の事後検知用・§8.4 緩和3）。 */
+    VILLAGE_AFFINITY_QUERIED(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑥ — 所属村一覧の公開トグルを切替（本人操作・§9.3）。 */
+    VILLAGE_MEMBERSHIP_PROFILE_VISIBILITY_CHANGED(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */

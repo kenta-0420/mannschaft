@@ -628,6 +628,9 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_076", HttpStatus.NOT_FOUND),            // SERENDIPITY_NOT_FOUND
             // F17 Phase 3-β — 巡礼（VILLAGE_077）
             Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
+            // F17.2 Wave3 ⑤相性表示・⑥所属村一覧（VILLAGE_099〜100）
+            Map.entry("VILLAGE_099", HttpStatus.NOT_FOUND),            // AFFINITY_NOT_PUBLIC_VILLAGE（内部予約・通常は 404 存在秘匿）
+            Map.entry("VILLAGE_100", HttpStatus.FORBIDDEN),            // PROFILE_VILLAGES_FORBIDDEN（0件は一律 403・§9.4）
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
