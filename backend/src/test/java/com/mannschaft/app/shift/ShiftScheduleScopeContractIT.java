@@ -50,8 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p><b>象限</b>: 非ADMINメンバー（teamAの一般メンバー）/ 別scope ADMIN（BOLA: teamBのADMINが
  * teamAのシフトへアクセス）/ 正当ADMIN（teamAのADMIN）。</p>
  *
- * <p><b>Wave6 追加戦（§6・§7）:</b> 参照系（一覧 / 詳細）にチームメンバー粒度の認可を敷設したため、
- * その契約を固定する。参照系の粒度は「当該チームのメンバー、ただし SUPPORTER は不可」で、
+ * <p><b>参照系（一覧 / 詳細）の認可契約:</b> 粒度は「当該チームのメンバー、ただし SUPPORTER は不可」で、
  * {@code ShiftSlotService#checkScheduleReadAccess}（#2384）・{@code ShiftPdfService} と同一方針。
  * <b>一般メンバーが自チームのシフト表を読めること</b>（日常利用の正常系）を明示的に固定しており、
  * 認可を締めすぎる回帰を検知できるようにしてある。</p>
