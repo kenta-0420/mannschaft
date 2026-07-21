@@ -170,10 +170,15 @@ public class ScheduleAttendanceService {
     /**
      * 出欠集計サマリーを取得する。ATTENDING/PARTIAL/ABSENT/UNDECIDED の各件数を返す。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: {@code getAttendances} と同じく entity 由来 scope
+     * （TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkScopeViewAccess} 水準）。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠サマリー
      */
-    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId) {
+    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         scheduleService.getSchedule(scheduleId);
 
         Map<AttendanceStatus, Integer> countMap = new HashMap<>();
@@ -611,14 +616,21 @@ public class ScheduleAttendanceService {
     /**
      * チームの出席率統計を取得する。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: 名簿全体・期間横断のユーザー別出席率という管理者向け集計のため、
+     * 当該チームの ADMIN/DEPUTY_ADMIN のみ取得可（{@code checkAdminOrAbove} 水準。
+     * {@code bulkUpdateAttendances} と同段）。SYSTEM_ADMIN は横断で許可。</p>
+     *
      * @param teamId チームID
      * @param from   期間開始
      * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getTeamAttendanceStats(Long teamId,
-                                                                  LocalDateTime from, LocalDateTime to) {
+                                                                  LocalDateTime from, LocalDateTime to,
+                                                                  Long userId) {
+        checkScopeAdmin(userId, teamId, "TEAM");
         // チームメンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByTeamId(teamId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -640,14 +652,19 @@ public class ScheduleAttendanceService {
     /**
      * 組織の出席率統計を取得する。
      *
-     * @param orgId 組織ID
-     * @param from  期間開始
-     * @param to    期間終了
+     * <p><b>認可（認可根治 Wave6）</b>: {@link #getTeamAttendanceStats} と同水準（ORGANIZATION 系）。</p>
+     *
+     * @param orgId  組織ID
+     * @param from   期間開始
+     * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getOrgAttendanceStats(Long orgId,
-                                                                 LocalDateTime from, LocalDateTime to) {
+                                                                 LocalDateTime from, LocalDateTime to,
+                                                                 Long userId) {
+        checkScopeAdmin(userId, orgId, "ORGANIZATION");
         // 組織メンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByOrganizationId(orgId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -717,6 +734,17 @@ public class ScheduleAttendanceService {
     }
 
     // --- プライベートメソッド ---
+
+    /**
+     * スコープ（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN 認可を強制する（認可根治 Wave6）。
+     * SYSTEM_ADMIN は横断で許可する（{@code ScheduleService.checkScopeViewAccess} と同方針）。
+     */
+    private void checkScopeAdmin(Long userId, Long scopeId, String scopeType) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+    }
 
     /**
      * メンバーリストとスケジュールリストから出欠統計を構築する。

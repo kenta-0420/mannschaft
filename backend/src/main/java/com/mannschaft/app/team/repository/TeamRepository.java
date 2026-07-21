@@ -40,7 +40,24 @@ public interface TeamRepository
 
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 
-    @Query("SELECT t FROM TeamEntity t WHERE t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%")
+    /**
+     * チームをキーワード検索する（公開検索）。
+     *
+     * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定する。
+     * 同 Repository の {@link #searchPublicTeams} を金型とし、可視性ラダーの解決を行わない
+     * 公開検索では「PUBLIC のみ返す」という最も安全側の流儀に揃える。
+     * 論理削除済みは Entity の {@code @SQLRestriction("deleted_at IS NULL")} が除外する。</p>
+     *
+     * @param keyword  チーム名 / カナに対する部分一致キーワード（空文字は全件相当）
+     * @param pageable ページング情報
+     * @return PUBLIC かつ未アーカイブなチームのページ
+     */
+    @Query("""
+            SELECT t FROM TeamEntity t
+            WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.archivedAt IS NULL
+              AND (t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
+            """)
     Page<TeamEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**

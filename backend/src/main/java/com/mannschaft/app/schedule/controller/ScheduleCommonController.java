@@ -66,7 +66,8 @@ public class ScheduleCommonController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceStats(
             @PathVariable Long scheduleId) {
-        AttendanceSummaryResponse response = attendanceService.getAttendanceSummary(scheduleId);
+        AttendanceSummaryResponse response = attendanceService.getAttendanceSummary(
+                scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -78,6 +79,9 @@ public class ScheduleCommonController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "送信成功")
     public ResponseEntity<Void> sendReminder(
             @PathVariable Long scheduleId) {
+        // 認可根治 Wave6: 対象スコープ全員へ通知を飛ばす操作のため、entity 由来 scope の
+        // ADMIN/DEPUTY_ADMIN のみ実行可（duplicateSchedule と同じく public 入口で強制する）。
+        scheduleService.checkScopeAdminAccess(scheduleId, SecurityUtils.getCurrentUserId());
         reminderService.sendReminder(scheduleId);
         return ResponseEntity.noContent().build();
     }
@@ -107,7 +111,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> responses = attendanceService.getTeamAttendanceStats(
-                teamId, from, to);
+                teamId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -122,7 +126,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> stats = attendanceService.getTeamAttendanceStats(
-                teamId, from, to);
+                teamId, from, to, SecurityUtils.getCurrentUserId());
         String csv = buildAttendanceStatsCsv(stats);
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
@@ -142,7 +146,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> responses = attendanceService.getOrgAttendanceStats(
-                orgId, from, to);
+                orgId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -157,7 +161,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> stats = attendanceService.getOrgAttendanceStats(
-                orgId, from, to);
+                orgId, from, to, SecurityUtils.getCurrentUserId());
         String csv = buildAttendanceStatsCsv(stats);
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()

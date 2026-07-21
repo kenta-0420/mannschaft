@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
 import com.mannschaft.app.shift.dto.ShiftPositionResponse;
@@ -38,6 +39,9 @@ class ShiftPositionServiceTest {
     private ShiftPositionRepository positionRepository;
 
     @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
     private ShiftMapper shiftMapper;
 
     @InjectMocks
@@ -49,6 +53,7 @@ class ShiftPositionServiceTest {
 
     private static final Long TEAM_ID = 1L;
     private static final Long POSITION_ID = 50L;
+    private static final Long USER_ID = 900L;
 
     private ShiftPositionEntity createPositionEntity() {
         ShiftPositionEntity entity = ShiftPositionEntity.builder()
@@ -88,13 +93,14 @@ class ShiftPositionServiceTest {
             // Given
             ShiftPositionEntity entity = createPositionEntity();
             ShiftPositionResponse response = createPositionResponse();
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
                     .willReturn(List.of(entity));
             given(shiftMapper.toPositionResponseList(List.of(entity)))
                     .willReturn(List.of(response));
 
             // When
-            List<ShiftPositionResponse> result = shiftPositionService.listPositions(TEAM_ID);
+            List<ShiftPositionResponse> result = shiftPositionService.listPositions(TEAM_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -123,7 +129,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(savedEntity)).willReturn(response);
 
             // When
-            ShiftPositionResponse result = shiftPositionService.createPosition(TEAM_ID, req);
+            ShiftPositionResponse result = shiftPositionService.createPosition(TEAM_ID, req, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -140,7 +146,7 @@ class ShiftPositionServiceTest {
                     .willReturn(Optional.of(existing));
 
             // When & Then
-            assertThatThrownBy(() -> shiftPositionService.createPosition(TEAM_ID, req))
+            assertThatThrownBy(() -> shiftPositionService.createPosition(TEAM_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.POSITION_NAME_DUPLICATE));
@@ -159,7 +165,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(savedEntity)).willReturn(response);
 
             // When
-            ShiftPositionResponse result = shiftPositionService.createPosition(TEAM_ID, req);
+            ShiftPositionResponse result = shiftPositionService.createPosition(TEAM_ID, req, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -188,7 +194,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(entity)).willReturn(response);
 
             // When
-            shiftPositionService.updatePosition(POSITION_ID, req);
+            shiftPositionService.updatePosition(POSITION_ID, req, USER_ID);
 
             // Then
             assertThat(entity.getName()).isEqualTo("ホール");
@@ -207,7 +213,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(entity)).willReturn(response);
 
             // When
-            shiftPositionService.updatePosition(POSITION_ID, req);
+            shiftPositionService.updatePosition(POSITION_ID, req, USER_ID);
 
             // Then
             assertThat(entity.getIsActive()).isFalse();
@@ -226,7 +232,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(entity)).willReturn(response);
 
             // When
-            shiftPositionService.updatePosition(POSITION_ID, req);
+            shiftPositionService.updatePosition(POSITION_ID, req, USER_ID);
 
             // Then
             assertThat(entity.getIsActive()).isTrue();
@@ -240,7 +246,7 @@ class ShiftPositionServiceTest {
             given(positionRepository.findById(POSITION_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftPositionService.updatePosition(POSITION_ID, req))
+            assertThatThrownBy(() -> shiftPositionService.updatePosition(POSITION_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_POSITION_NOT_FOUND));
@@ -266,7 +272,7 @@ class ShiftPositionServiceTest {
             given(positionRepository.findById(POSITION_ID)).willReturn(Optional.of(entity));
 
             // When
-            shiftPositionService.deletePosition(POSITION_ID);
+            shiftPositionService.deletePosition(POSITION_ID, USER_ID);
 
             // Then
             verify(positionRepository).delete(entity);
@@ -279,7 +285,7 @@ class ShiftPositionServiceTest {
             given(positionRepository.findById(POSITION_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftPositionService.deletePosition(POSITION_ID))
+            assertThatThrownBy(() -> shiftPositionService.deletePosition(POSITION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -15,6 +16,7 @@ import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -56,6 +59,9 @@ class ShiftRequestServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
     private ProxyInputContext proxyInputContext;
 
     @Mock
@@ -72,6 +78,16 @@ class ShiftRequestServiceTest {
     private static final Long USER_ID = 10L;
     private static final Long REQUEST_ID = 300L;
     private static final Long TEAM_ID = 1L;
+
+    @BeforeEach
+    void setUpAuthzDefaults() {
+        // 認可根治 Wave6: 本 UT の検証対象は業務ロジック。per-scope 認可そのものの成否は
+        // 契約IT（ShiftRequestScopeContractIT）で固定するため、ここでは
+        // 「当該チームの一般メンバー」として通す既定値を lenient に置く
+        //（メソッドによっては到達しないため strict にすると UnnecessaryStubbing になる）。
+        lenient().when(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
+        lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).thenReturn(false);
+    }
 
     private ShiftScheduleEntity createCollectingSchedule() {
         ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
@@ -148,13 +164,14 @@ class ShiftRequestServiceTest {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             ShiftRequestResponse response = createRequestResponse();
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(entity));
             given(shiftMapper.toRequestResponseList(List.of(entity)))
                     .willReturn(List.of(response));
 
             // When
-            List<ShiftRequestResponse> result = shiftRequestService.listRequests(SCHEDULE_ID);
+            List<ShiftRequestResponse> result = shiftRequestService.listRequests(SCHEDULE_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -334,7 +351,7 @@ class ShiftRequestServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
 
             // When
-            shiftRequestService.deleteRequest(REQUEST_ID);
+            shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
             verify(requestRepository).delete(entity);
@@ -347,7 +364,7 @@ class ShiftRequestServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID))
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -372,7 +389,7 @@ class ShiftRequestServiceTest {
                     .willReturn(List.of());
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
 
             // Then
             assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -398,7 +415,7 @@ class ShiftRequestServiceTest {
                             new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
 
             // Then
             assertThat(result.getPreferredCount()).isEqualTo(7L);
@@ -424,7 +441,7 @@ class ShiftRequestServiceTest {
                             new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
 
             // Then
             assertThat(result.getPreferredCount()).isEqualTo(3L);
