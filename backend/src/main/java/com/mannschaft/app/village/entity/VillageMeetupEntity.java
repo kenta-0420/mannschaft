@@ -70,6 +70,13 @@ public class VillageMeetupEntity extends UuidV7Entity {
     @Column(name = "location", length = 300)
     private String location;
 
+    /**
+     * 決まったこと（幹事が記す自由記述メモ・F17.2 Wave1 ②寄合後半戦・設計書 §4.2.4）。
+     * 更新は既存の楽観ロック（{@link #version}）に相乗りする。
+     */
+    @Column(name = "decisions_note", columnDefinition = "TEXT")
+    private String decisionsNote;
+
     /** 論理削除 */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

@@ -781,6 +781,9 @@ export interface VillageMeetupResponse {
   confirmedTime: string | null
   /** 集合場所（BE のフィールド名は venue ではなく location） */
   location: string | null
+  /** 決まったこと（幹事が記す自由記述メモ・F17.2 Wave1 ②寄合後半戦 §4.2.4）。未設定時は null。
+   *  生成型 `MeetupResponse.decisionsNote` の optionality（optional）に合わせる */
+  decisionsNote?: string | null
   createdAt: string
   /** 詳細取得時のみ詰められる。一覧取得時は null */
   candidateDates: VillageMeetupCandidateDateResponse[] | null
@@ -834,6 +837,8 @@ export interface VillageMeetupUpdateRequest {
   title?: string | null
   description?: string | null
   location?: string | null
+  /** 決まったこと更新（幹事＋村長/長老・F17.2 Wave1 §4.4/AC-13）。他フィールドとは独立に認可判定される */
+  decisionsNote?: string | null
 }
 
 /** 寄合確定リクエスト。BE: `MeetupConfirmRequest`。 */

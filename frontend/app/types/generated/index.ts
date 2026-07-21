@@ -405,6 +405,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 自分の出欠を登録/更新する（村人・CONFIRMED のみ・冪等 upsert） */
+        put: operations["upsertAttendance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{userId}/seals/{sealId}": {
         parameters: {
             query?: never;
@@ -6636,6 +6653,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 宿題一覧を取得する（村人） */
+        get: operations["listTodos"];
+        put?: never;
+        /** 宿題を作成する（幹事＋村長/長老） */
+        post: operations["createTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 宿題を手放す（未割当へ戻す・本人のみ） */
+        post: operations["releaseTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 宿題を完了にする（手挙げ者本人＋幹事のみ） */
+        post: operations["completeTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 未割当の宿題を自分に割り当てる（手挙げ・村人本人） */
+        post: operations["claimTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/meetups/{meetupId}/confirm": {
         parameters: {
             query?: never;
@@ -6647,6 +6733,24 @@ export interface paths {
         put?: never;
         /** 寄合の開催日を確定する（幹事のみ） */
         post: operations["confirm_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** コメント一覧を取得する（村人・作成日昇順） */
+        get: operations["listComments_1"];
+        put?: never;
+        /** コメントを投稿する（村人） */
+        post: operations["createComment_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6924,6 +7028,24 @@ export interface paths {
         put?: never;
         /** 歳時記イベントを作成する（HEADMAN / ELDER のみ） */
         post: operations["create_8"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 年輪（その年の様子）一覧を取得する（村人・year 降順・?year= 絞り込み可） */
+        get: operations["listLogs"];
+        put?: never;
+        /** 年輪を追加する（村人・同一 year 複数件可） */
+        post: operations["addLog"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7899,10 +8021,10 @@ export interface paths {
             cookie?: never;
         };
         /** TODO一覧 */
-        get: operations["listTodos"];
+        get: operations["listTodos_1"];
         put?: never;
         /** TODO作成 */
-        post: operations["createTodo"];
+        post: operations["createTodo_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7987,7 +8109,7 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_1"];
+        get: operations["listComments_2"];
         put?: never;
         /** コメント追加 */
         post: operations["addComment"];
@@ -14559,10 +14681,10 @@ export interface paths {
             cookie?: never;
         };
         /** 議案コメント一覧 */
-        get: operations["listComments_2"];
+        get: operations["listComments_3"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_1"];
+        post: operations["createComment_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16322,10 +16444,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織TODO一覧 */
-        get: operations["listTodos_1"];
+        get: operations["listTodos_2"];
         put?: never;
         /** 組織TODO作成 */
-        post: operations["createTodo_1"];
+        post: operations["createTodo_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16410,7 +16532,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織TODOコメント一覧 */
-        get: operations["listComments_3"];
+        get: operations["listComments_4"];
         put?: never;
         /** 組織TODOコメント追加 */
         post: operations["addComment_2"];
@@ -19764,10 +19886,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_4"];
+        get: operations["listComments_5"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_2"];
+        post: operations["createComment_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20664,10 +20786,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_5"];
+        get: operations["listComments_6"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_3"];
+        post: operations["createComment_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22893,10 +23015,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_6"];
+        get: operations["listComments_7"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_4"];
+        post: operations["createComment_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -29734,6 +29856,23 @@ export interface paths {
         };
         /** 寄合の投票集計を取得する（村人のみ） */
         get: operations["getVoteSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 出欠一覧を取得する（村人・村ニックネーム表示） */
+        get: operations["listAttendances"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40511,7 +40650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listComments_7"];
+        get: operations["listComments_8"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43310,6 +43449,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** コメントを論理削除する（投稿者本人＋村長/長老のみ） */
+        delete: operations["deleteComment_5"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/meetups/{meetupId}/candidate-dates/{candidateDateId}": {
         parameters: {
             query?: never;
@@ -43322,6 +43478,23 @@ export interface paths {
         post?: never;
         /** 寄合の候補日を削除する（幹事のみ、投票も連動削除） */
         delete: operations["removeCandidateDate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs/{logId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 年輪を論理削除する（投稿者本人＋村長/長老のみ） */
+        delete: operations["deleteLog"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43953,7 +44126,7 @@ export interface paths {
          * 公開投稿コメント削除（ログイン必須）
          * @description 投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。
          */
-        delete: operations["deleteComment_5"];
+        delete: operations["deleteComment_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43970,7 +44143,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_6"];
+        delete: operations["deleteComment_7"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44670,7 +44843,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_7"];
+        delete: operations["deleteComment_8"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45744,6 +45917,28 @@ export interface components {
         MeetupVoteRequest: {
             /** @enum {string} */
             voteType: "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
+        };
+        MeetupAttendanceUpsertRequest: {
+            /** @enum {string} */
+            status: "GOING" | "MAYBE" | "ABSENT";
+        };
+        ApiResponseMeetupAttendanceResponse: {
+            data?: components["schemas"]["MeetupAttendanceResponse"];
+        };
+        MeetupAttendanceResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
+            /** @enum {string} */
+            status?: "GOING" | "MAYBE" | "ABSENT";
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         UpdateSealRequest: {
             displayText?: string;
@@ -52995,6 +53190,7 @@ export interface components {
             confirmedTime?: string;
             /** Format: date-time */
             createdAt?: string;
+            decisionsNote?: string;
             description?: string;
             /** Format: uuid */
             id?: string;
@@ -53007,9 +53203,51 @@ export interface components {
             /** Format: uuid */
             villageId?: string;
         };
+        MeetupTodoCreateRequest: {
+            /** Format: int64 */
+            assigneeUserId?: number;
+            title?: string;
+        };
+        ApiResponseMeetupTodoResponse: {
+            data?: components["schemas"]["MeetupTodoResponse"];
+        };
+        MeetupTodoResponse: {
+            assigneeDisplayName?: string;
+            /** Format: int64 */
+            assigneeUserId?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            createdBy?: number;
+            /** Format: date-time */
+            doneAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
+            title?: string;
+        };
         MeetupConfirmRequest: {
             /** Format: uuid */
             candidateDateId: string;
+        };
+        MeetupCommentCreateRequest: {
+            body?: string;
+        };
+        ApiResponseMeetupCommentResponse: {
+            data?: components["schemas"]["MeetupCommentResponse"];
+        };
+        MeetupCommentResponse: {
+            /** Format: int64 */
+            authorUserId?: number;
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
         };
         MeetupCandidateDateAddRequest: {
             /** Format: date */
@@ -53212,6 +53450,30 @@ export interface components {
             title?: string;
             /** Format: uuid */
             villageId?: string;
+        };
+        CalendarEventLogCreateRequest: {
+            note?: string;
+            photoR2Key?: string;
+            /** Format: int32 */
+            year: number;
+        };
+        ApiResponseCalendarEventLogResponse: {
+            data?: components["schemas"]["CalendarEventLogResponse"];
+        };
+        CalendarEventLogResponse: {
+            /** Format: uuid */
+            calendarEventId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            createdByDisplayName?: string;
+            /** Format: int64 */
+            createdByUserId?: number;
+            /** Format: uuid */
+            id?: string;
+            note?: string;
+            photoUrl?: string;
+            /** Format: int32 */
+            year?: number;
         };
         VillageCreationRequestCreateRequest: {
             category?: string;
@@ -63997,6 +64259,7 @@ export interface components {
             villageId: string;
         };
         MeetupUpdateRequest: {
+            decisionsNote?: string;
             description?: string;
             location?: string;
             title?: string;
@@ -66674,6 +66937,15 @@ export interface components {
             /** Format: uuid */
             meetupId?: string;
         };
+        ApiResponseListMeetupTodoResponse: {
+            data?: components["schemas"]["MeetupTodoResponse"][];
+        };
+        ApiResponseListMeetupCommentResponse: {
+            data?: components["schemas"]["MeetupCommentResponse"][];
+        };
+        ApiResponseListMeetupAttendanceResponse: {
+            data?: components["schemas"]["MeetupAttendanceResponse"][];
+        };
         ApiResponseMatchRecruitListResponse: {
             data?: components["schemas"]["MatchRecruitListResponse"];
         };
@@ -66818,6 +67090,9 @@ export interface components {
             month?: number;
             /** Format: int32 */
             year?: number;
+        };
+        ApiResponseListCalendarEventLogResponse: {
+            data?: components["schemas"]["CalendarEventLogResponse"][];
         };
         ApiResponseVillageAffinityResponse: {
             data?: components["schemas"]["VillageAffinityResponse"];
@@ -77869,6 +78144,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    upsertAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupAttendanceUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupAttendanceResponse"];
+                };
             };
         };
     };
@@ -94141,6 +94443,131 @@ export interface operations {
             };
         };
     };
+    listTodos: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    createTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupTodoCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    releaseTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    completeTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    claimTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
     confirm_1: {
         parameters: {
             query?: never;
@@ -94164,6 +94591,59 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupResponse"];
+                };
+            };
+        };
+    };
+    listComments_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupCommentResponse"];
+                };
+            };
+        };
+    };
+    createComment_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupCommentCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupCommentResponse"];
                 };
             };
         };
@@ -94695,6 +95175,60 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCalendarEventResponse"];
+                };
+            };
+        };
+    };
+    listLogs: {
+        parameters: {
+            query?: {
+                year?: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarEventLogResponse"];
+                };
+            };
+        };
+    };
+    addLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventLogCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCalendarEventLogResponse"];
                 };
             };
         };
@@ -96497,7 +97031,7 @@ export interface operations {
             };
         };
     };
-    listTodos: {
+    listTodos_1: {
         parameters: {
             query?: {
                 status?: string;
@@ -96524,7 +97058,7 @@ export interface operations {
             };
         };
     };
-    createTodo: {
+    createTodo_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -96699,7 +97233,7 @@ export interface operations {
             };
         };
     };
-    listComments_1: {
+    listComments_2: {
         parameters: {
             query?: {
                 page?: number;
@@ -109552,7 +110086,7 @@ export interface operations {
             };
         };
     };
-    listComments_2: {
+    listComments_3: {
         parameters: {
             query?: {
                 page?: number;
@@ -109577,7 +110111,7 @@ export interface operations {
             };
         };
     };
-    createComment_1: {
+    createComment_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -113072,7 +113606,7 @@ export interface operations {
             };
         };
     };
-    listTodos_1: {
+    listTodos_2: {
         parameters: {
             query?: {
                 status?: string;
@@ -113099,7 +113633,7 @@ export interface operations {
             };
         };
     };
-    createTodo_1: {
+    createTodo_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -113274,7 +113808,7 @@ export interface operations {
             };
         };
     };
-    listComments_3: {
+    listComments_4: {
         parameters: {
             query?: {
                 page?: number;
@@ -119649,7 +120183,7 @@ export interface operations {
             };
         };
     };
-    listComments_4: {
+    listComments_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -119671,7 +120205,7 @@ export interface operations {
             };
         };
     };
-    createComment_2: {
+    createComment_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -121257,7 +121791,7 @@ export interface operations {
             };
         };
     };
-    listComments_5: {
+    listComments_6: {
         parameters: {
             query?: {
                 page?: number;
@@ -121282,7 +121816,7 @@ export interface operations {
             };
         };
     };
-    createComment_3: {
+    createComment_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -125176,7 +125710,7 @@ export interface operations {
             };
         };
     };
-    listComments_6: {
+    listComments_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -125198,7 +125732,7 @@ export interface operations {
             };
         };
     };
-    createComment_4: {
+    createComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -138276,6 +138810,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupVoteSummaryResponse"];
+                };
+            };
+        };
+    };
+    listAttendances: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupAttendanceResponse"];
                 };
             };
         };
@@ -153122,7 +153682,7 @@ export interface operations {
             };
         };
     };
-    listComments_7: {
+    listComments_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -156928,6 +157488,28 @@ export interface operations {
             };
         };
     };
+    deleteComment_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     removeCandidateDate: {
         parameters: {
             query?: never;
@@ -156936,6 +157518,28 @@ export interface operations {
                 villageId: string;
                 meetupId: string;
                 candidateDateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+                logId: string;
             };
             cookie?: never;
         };
@@ -157696,7 +158300,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_5: {
+    deleteComment_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -157717,7 +158321,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_6: {
+    deleteComment_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -158568,7 +159172,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_7: {
+    deleteComment_8: {
         parameters: {
             query?: never;
             header?: never;

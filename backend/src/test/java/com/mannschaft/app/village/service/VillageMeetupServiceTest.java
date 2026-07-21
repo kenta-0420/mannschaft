@@ -210,7 +210,7 @@ class VillageMeetupServiceTest {
         given(candidateDateRepository.findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(MEETUP_ID))
                 .willReturn(List.of());
 
-        MeetupUpdateRequest req = new MeetupUpdateRequest("新タイトル", null, null);
+        MeetupUpdateRequest req = new MeetupUpdateRequest("新タイトル", null, null, null);
         MeetupResponse res = service.updateMeetup(VILLAGE_ID, MEETUP_ID, req, ACTOR_USER_ID);
 
         assertThat(res.title()).isEqualTo("新タイトル");
@@ -226,7 +226,7 @@ class VillageMeetupServiceTest {
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, OTHER_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
 
-        MeetupUpdateRequest req = new MeetupUpdateRequest("X", null, null);
+        MeetupUpdateRequest req = new MeetupUpdateRequest("X", null, null, null);
         assertThatThrownBy(() -> service.updateMeetup(VILLAGE_ID, MEETUP_ID, req, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
@@ -240,7 +240,7 @@ class VillageMeetupServiceTest {
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.CONFIRMED, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
 
-        MeetupUpdateRequest req = new MeetupUpdateRequest("X", null, null);
+        MeetupUpdateRequest req = new MeetupUpdateRequest("X", null, null, null);
         assertThatThrownBy(() -> service.updateMeetup(VILLAGE_ID, MEETUP_ID, req, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())

@@ -27,6 +27,7 @@ public record MeetupResponse(
         LocalDate confirmedDate,
         LocalTime confirmedTime,
         String location,
+        String decisionsNote,
         LocalDateTime createdAt,
         List<MeetupCandidateDateResponse> candidateDates) {
 
@@ -41,6 +42,7 @@ public record MeetupResponse(
                 .confirmedDate(entity.getConfirmedDate())
                 .confirmedTime(entity.getConfirmedTime())
                 .location(entity.getLocation())
+                .decisionsNote(entity.getDecisionsNote())
                 .createdAt(entity.getCreatedAt())
                 .candidateDates(candidateDates)
                 .build();
