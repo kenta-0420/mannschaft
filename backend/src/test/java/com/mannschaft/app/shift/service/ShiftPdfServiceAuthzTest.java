@@ -124,7 +124,7 @@ class ShiftPdfServiceAuthzTest {
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46}; // "%PDF" マジックバイト
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-team"), any()))
                     .willReturn(expected);
@@ -180,7 +180,7 @@ class ShiftPdfServiceAuthzTest {
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46};
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-personal"), any()))
                     .willReturn(expected);
