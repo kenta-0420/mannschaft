@@ -60,7 +60,10 @@ public class TimelineFeedController {
         Long userId = SecurityUtils.getCurrentUserId();
         Long resolvedScopeId = scopeIdResolver.resolve(scopeType, scopeId);
         List<PostResponse> posts = postService.getFeed(scopeType, resolvedScopeId, scopeVillageId, size, userId);
-        List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId, userId);
+        // 認可根治 Wave6: 村スコープのピン留めは scope_id（常に 0）ではなく scope_village_id で引く。
+        // 村 ID を渡さないと全村のピン留めが混在するため、フィードと同じ村 ID を必ず伝播させる。
+        List<PostResponse> pinned =
+                postService.getPinnedPosts(scopeType, resolvedScopeId, scopeVillageId, userId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
     }

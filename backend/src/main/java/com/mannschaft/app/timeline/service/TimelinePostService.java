@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -173,10 +174,24 @@ public class TimelinePostService {
     /**
      * スコープに応じたメンバーシップチェックを行う（ユーザー操作用）。
      *
+     * <p><b>認可根治 Wave6</b>: {@link PostScopeType} の <b>全 8 値を網羅的にディスパッチ</b>し、
+     * 未対応・未知の種別は {@code default} で fail-closed に倒す。呼び出し元が渡す
+     * {@code scopeTypeStr} / {@code resolvedScopeId} はいずれもリクエスト由来（クエリパラメータ・
+     * リクエストボディ）であり攻撃者が自由に指定できるため、「知っている種別だけ検証し
+     * 残りは黙って通す」構造を残してはならない。</p>
+     *
      * <ul>
-     *   <li>TEAM スコープ: {@link AccessControlService#checkMembership} でチームメンバー確認</li>
-     *   <li>ORGANIZATION スコープ: 同上で組織メンバー確認</li>
-     *   <li>その他スコープ: チェックなし</li>
+     *   <li>PUBLIC: 検証なし（公開スコープ。{@code scope_id} は意味を持たない）</li>
+     *   <li>TEAM / ORGANIZATION: {@link AccessControlService#checkMembership} でメンバー確認（非メンバーは 403）</li>
+     *   <li>PERSONAL: {@code scope_id} は投稿者本人の {@code users.id}
+     *       （唯一の生成経路である行動メモ終業投稿がそう積む）。呼び出し元本人と一致しなければ 403</li>
+     *   <li>VILLAGE: 村の識別子は {@code scope_id} ではなく {@code scope_village_id}（UUID）側にあり、
+     *       {@code scope_id} は常に 0 で全村衝突する。したがって本メソッド経由の VILLAGE 指定は
+     *       fail-closed とし、{@link #getFeed} / {@link #getPinnedPosts} の
+     *       {@code scopeVillageId} 経由（{@link #requireVillageMember}）を正路とする</li>
+     *   <li>FRIEND_TEAM / FRIEND_FORWARD / FRIEND_ARCHIVE: 汎用タイムライン経路は正路ではない。
+     *       正路は social ドメインの friend-feed API（{@code MANAGE_FRIEND_TEAMS} 権限が必要）であり、
+     *       汎用経路を開けると正路より緩い読み口を作ることになるため fail-closed とする</li>
      * </ul>
      *
      * @param scopeTypeStr    スコープ種別文字列
@@ -184,11 +199,46 @@ public class TimelinePostService {
      * @param userId          操作ユーザーID
      */
     private void checkScopeMembership(String scopeTypeStr, Long resolvedScopeId, Long userId) {
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeTypeStr);
-        if (scopeTypeEnum == PostScopeType.TEAM && resolvedScopeId != null) {
-            accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
-        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && resolvedScopeId != null) {
-            accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+        switch (parseScopeType(scopeTypeStr)) {
+            case PUBLIC -> {
+                // 公開スコープ。誰でも読み書きできるため追加の検証はしない。
+            }
+            case TEAM -> accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
+            case ORGANIZATION ->
+                    accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+            case PERSONAL -> requireSelfScope(resolvedScopeId, userId);
+            case VILLAGE, FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE ->
+                    throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スコープ種別文字列を {@link PostScopeType} に変換する。
+     *
+     * <p>未知の文字列は {@link IllegalArgumentException}（＝ 500）ではなく
+     * {@link TimelineErrorCode#POST_NOT_FOUND} に倒す。スコープ種別は利用者が
+     * 自由に指定できるため、不正値で 500 を返すと入力起因の障害が
+     * サーバー障害として計上されてしまう。</p>
+     */
+    private PostScopeType parseScopeType(String scopeTypeStr) {
+        try {
+            return PostScopeType.valueOf(scopeTypeStr);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    /**
+     * PERSONAL スコープが呼び出し元本人のものであることを検証する（認可根治 Wave6）。
+     *
+     * <p>PERSONAL の {@code scope_id} は投稿者本人の {@code users.id} であるため、
+     * 「{@code scope_id} == 呼び出し元 userId」が自己スコープの成立条件になる。
+     * これによりフィード/ピン留めのリポジトリ引きも実質的に呼び出し元 ID との
+     * 複合キーとなり、他人の PERSONAL 投稿には到達できない。</p>
+     */
+    private void requireSelfScope(Long resolvedScopeId, Long userId) {
+        if (userId == null || !userId.equals(resolvedScopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -522,7 +572,7 @@ public class TimelinePostService {
      */
     public List<PostResponse> getFeed(String scopeType, Long scopeId, UUID scopeVillageId, int size, Long userId) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
         List<TimelinePostEntity> posts;
         if (scopeTypeEnum == PostScopeType.VILLAGE) {
             // 村スコープは scope_village_id（UUID）で絞り込む
@@ -561,10 +611,20 @@ public class TimelinePostService {
      *   <li>TEAM/ORGANIZATION: 呼び出し元がそのスコープのメンバーであること</li>
      *   <li>VILLAGE: 呼び出し元がその村の現役 USER メンバーであること</li>
      *   <li>PERSONAL: 呼び出し元が投稿者本人であること</li>
-     *   <li>FRIEND_TEAM/FRIEND_FORWARD/FRIEND_ARCHIVE: 本 Wave の対象外（social ドメインの
-     *       {@code FriendFeedController} 経由が正規導線であり、本メソッド経由の閲覧は想定外だが
-     *       誤検知で正規導線を壊さないよう pass-through。B7 以降の follow-up 候補として残す）</li>
+     *   <li>FRIEND_FORWARD: 転送先チームのメンバーであること（認可根治 Wave6）。
+     *       {@code scope_id} には転送を実行したチームの {@code teams.id} が入る
+     *       （唯一の生成経路である {@code FriendContentForwardService#forward} がそう積む）。
+     *       ここで参照する scope は「クエリパラメータ由来」ではなく <b>DB に永続化された
+     *       post 自身の scope</b> であるため、メンバーシップ判定は BOLA 安全に成立する</li>
+     *   <li>FRIEND_TEAM / FRIEND_ARCHIVE: 生成経路が存在しない（Phase 3 利用予定の予約値）ため
+     *       fail-closed（認可根治 Wave6。従来は無条件 pass-through だった）</li>
      * </ul>
+     *
+     * <p><b>正路への影響が無いことの確認</b>: 本メソッドの呼び出し元は
+     * {@link #getPostDetail} と {@link #getReplies} の 2 つのみで、いずれも
+     * {@code TimelinePostController} の公開 EP から呼ばれる。social ドメインの
+     * friend-feed 経路は {@code TimelinePostService} を一切利用しないため、
+     * FRIEND_* を fail-closed にしても正規導線は壊れない。</p>
      */
     private boolean isPostVisible(TimelinePostEntity post, Long userId) {
         return switch (post.getScopeType()) {
@@ -574,7 +634,8 @@ public class TimelinePostService {
             case VILLAGE -> post.getScopeVillageId() != null
                     && postingIdentityService.isUserVillageMember(post.getScopeVillageId(), userId);
             case PERSONAL -> userId != null && userId.equals(post.getUserId());
-            case FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE -> true;
+            case FRIEND_FORWARD -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
+            case FRIEND_TEAM, FRIEND_ARCHIVE -> false;
         };
     }
 
@@ -808,15 +869,11 @@ public class TimelinePostService {
     }
 
     /**
-     * ピン留め投稿一覧を取得する。
+     * ピン留め投稿一覧を取得する（村スコープ非対応・{@code GET /timeline/pinned} 用）。
      *
-     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
-     * で呼び出し元のメンバーシップを検証する（非メンバーは COMMON_002・403）。</p>
-     *
-     * <p><b>既知の残課題（本 Wave 対象外）</b>: VILLAGE スコープは呼び出し元が
-     * {@code scopeVillageId} を渡す経路が無く（本 EP のシグネチャに UUID パラメータが存在しない）、
-     * {@code scope_id} は常に 0 のため全村で衝突する。本メソッドの認可検証だけでは
-     * VILLAGE のピン留め投稿混在は是正できない（別途 API 契約変更が必要・follow-up 起票推奨）。</p>
+     * <p>VILLAGE を指定した場合は {@link #checkScopeMembership} が fail-closed で拒否する。
+     * 村のピン留めを取得する場合は
+     * {@link #getPinnedPosts(String, Long, UUID, Long)} に村 ID を渡すこと。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -824,9 +881,39 @@ public class TimelinePostService {
      * @return ピン留め投稿一覧
      */
     public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId, Long userId) {
-        checkScopeMembership(scopeType, scopeId, userId);
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
-        List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
+        return getPinnedPosts(scopeType, scopeId, null, userId);
+    }
+
+    /**
+     * ピン留め投稿一覧を取得する（村スコープ対応）。
+     *
+     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
+     * で呼び出し元のメンバーシップを検証する（非メンバーは COMMON_002・403）。</p>
+     *
+     * <p><b>認可根治 Wave6</b>: VILLAGE スコープのピン留めを
+     * {@code scope_village_id} で引く経路を新設し、Wave3-B7 で残課題として記録されていた
+     * 「{@code scope_id} が常に 0 のため全村のピン留めが種別一致だけで混在する」問題を根治した。
+     * 村メンバーであることを {@link #requireVillageMember} で検証したうえで、
+     * リポジトリ側でも村 ID を複合キーとして絞る（多層防御）。
+     * 村 ID が渡されない VILLAGE 指定は fail-closed（{@link #checkScopeMembership}）。</p>
+     *
+     * @param scopeType      スコープ種別
+     * @param scopeId        スコープID（VILLAGE スコープでは未使用）
+     * @param scopeVillageId 村 ID（scopeType=VILLAGE 時に必須）
+     * @param userId         呼び出し元ユーザー ID（メンバーシップ検証用）
+     * @return ピン留め投稿一覧
+     */
+    public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId,
+                                             UUID scopeVillageId, Long userId) {
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
+        List<TimelinePostEntity> posts;
+        if (scopeTypeEnum == PostScopeType.VILLAGE && scopeVillageId != null) {
+            requireVillageMember(scopeVillageId, userId);
+            posts = postRepository.findPinnedByVillageId(scopeVillageId);
+        } else {
+            checkScopeMembership(scopeType, scopeId, userId);
+            posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
+        }
         // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
