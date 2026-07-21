@@ -76,7 +76,7 @@ class TimelineFeedControllerTest {
             given(scopeIdResolver.resolve("TEAM", TEAM_SLUG)).willReturn(TEAM_INTERNAL_ID);
             given(postService.getFeed(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of());
-            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID), eq(USER_ID)))
+            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), eq(USER_ID)))
                     .willReturn(List.of());
 
             ResponseEntity<TimelineFeedResponse> response =
@@ -85,7 +85,7 @@ class TimelineFeedControllerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(scopeIdResolver).resolve("TEAM", TEAM_SLUG);
             verify(postService).getFeed("TEAM", TEAM_INTERNAL_ID, null, 20, USER_ID);
-            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, USER_ID);
+            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, null, USER_ID);
         }
 
         @Test
@@ -96,7 +96,7 @@ class TimelineFeedControllerTest {
             given(scopeIdResolver.resolve("PUBLIC", "0")).willReturn(0L);
             given(postService.getFeed(eq("PUBLIC"), eq(0L), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of(normalPost));
-            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L), eq(USER_ID)))
+            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L), any(), eq(USER_ID)))
                     .willReturn(List.of(pinnedPost));
 
             ResponseEntity<TimelineFeedResponse> response =

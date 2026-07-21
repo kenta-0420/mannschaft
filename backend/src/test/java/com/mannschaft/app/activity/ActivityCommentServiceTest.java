@@ -8,7 +8,7 @@ import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityCommentRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.activity.service.ActivityCommentService;
-import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class ActivityCommentServiceTest {
     @Mock private ActivityCommentRepository commentRepository;
     @Mock private ActivityResultRepository resultRepository;
     @Mock private ActivityMapper activityMapper;
-    @Mock private AccessControlService accessControlService;
+    @Mock private ActivityScopeAccessGuard scopeAccessGuard;
 
     @InjectMocks
     private ActivityCommentService service;
@@ -64,7 +64,7 @@ class ActivityCommentServiceTest {
         void 一覧_他スコープ_403() {
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(teamActivity()));
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.listComments(ACTIVITY_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -83,7 +83,7 @@ class ActivityCommentServiceTest {
 
             List<ActivityCommentResponse> result = service.listComments(ACTIVITY_ID, USER_ID);
             assertThat(result).isNotNull();
-            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+            verify(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         }
     }
 
@@ -104,7 +104,7 @@ class ActivityCommentServiceTest {
 
             ActivityCommentResponse result = service.createComment(ACTIVITY_ID, USER_ID, request);
             assertThat(result).isNotNull();
-            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+            verify(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         }
 
         // AC-1: 他スコープ会員は投稿不可
@@ -113,7 +113,7 @@ class ActivityCommentServiceTest {
         void 作成_他スコープ_403() {
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(teamActivity()));
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
 
             assertThatThrownBy(() -> service.createComment(ACTIVITY_ID, USER_ID, new CreateCommentRequest("x")))
                     .isInstanceOf(BusinessException.class)
@@ -175,7 +175,8 @@ class ActivityCommentServiceTest {
             given(commentRepository.findById(COMMENT_ID)).willReturn(Optional.of(entity));
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(teamActivity()));
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkOwnerOrAdmin(eq(USER_ID), eq(999L), eq(SCOPE_ID), eq("TEAM"));
+                    .given(scopeAccessGuard).checkOwnerOrAdmin(
+                            eq(USER_ID), eq(999L), eq(ActivityScopeType.TEAM), eq(SCOPE_ID));
 
             assertThatThrownBy(() -> service.deleteComment(COMMENT_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)

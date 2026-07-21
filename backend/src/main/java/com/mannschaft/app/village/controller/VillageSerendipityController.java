@@ -58,9 +58,15 @@ public class VillageSerendipityController {
      *
      * @param villageId 村 ID
      * @param limit     上位件数（省略時 10、最大 100）
+     * @deprecated F17.2 §8.2 により<strong>表示廃止</strong>。優劣を可視化するランキング表示は
+     *             加入前相性表示（{@code GET /api/v1/villages/{villageId}/affinity/me}）へ置き換える。
+     *             既存クライアントの 404 事故を避けるため、まず deprecate（本段階）→ 次リリースで撤去する
+     *             2 段方式。集計バッチ・エンティティは推薦（巡礼）の内部信号として存置する。
      */
+    @Deprecated(since = "F17.2", forRemoval = true)
     @GetMapping("/ranking")
-    @Operation(summary = "ご縁スコアの上位ランキングを取得する（最大100件）")
+    @Operation(summary = "【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）",
+               deprecated = true)
     public ApiResponse<VillageSerendipityRankingResponse> getRanking(
             @PathVariable("villageId") UUID villageId,
             @RequestParam(name = "limit", required = false) Integer limit) {
