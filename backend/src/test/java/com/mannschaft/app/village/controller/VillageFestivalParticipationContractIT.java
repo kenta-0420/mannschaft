@@ -186,17 +186,18 @@ class VillageFestivalParticipationContractIT extends AbstractMySqlIntegrationTes
     class NoAbsent {
 
         @Test
-        @DisplayName("RSVP に ABSENT を送ると 400 系（GOING/MAYBE 以外は enum に無い）")
+        @DisplayName("RSVP に ABSENT を送ると 400（GOING/MAYBE 以外は enum に無く、Jackson バインドで弾かれる）")
         void absent_rejected_400() throws Exception {
             VillageEntity v = persistVillage();
             persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
             VillageFestivalEntity f = persistFestival(v.getId(), VillageFestivalStatus.ACTIVE);
 
             authAs(VILLAGER_ID);
+            // 出陣後の厳格版（試練の申し送り①）: EP 結線後は enum バインド失敗で 400 が返る。
             mockMvc.perform(put("/api/v1/villages/{vid}/festivals/{fid}/rsvp", v.getId(), f.getId())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(rsvpBody("ABSENT", null))))
-                    .andExpect(status().is4xxClientError());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test

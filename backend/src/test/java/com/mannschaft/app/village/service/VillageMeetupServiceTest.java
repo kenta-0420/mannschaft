@@ -90,6 +90,9 @@ class VillageMeetupServiceTest {
     private VillageMembershipRepository membershipRepository;
     @Mock
     private AuditLogService auditLogService;
+    /** F17.2 Wave2 ①: 行事作成・確定の還流イベント発行（no-op モック）。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private VillageMeetupService service;

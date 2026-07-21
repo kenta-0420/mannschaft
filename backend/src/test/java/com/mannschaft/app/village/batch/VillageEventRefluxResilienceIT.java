@@ -3,6 +3,7 @@ package com.mannschaft.app.village.batch;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.timeline.service.TimelinePostService;
+import com.mannschaft.app.village.service.VillageEventArchiveService;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
 import com.mannschaft.app.village.entity.enums.VillageFestivalStatus;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,10 +51,9 @@ import static org.mockito.Mockito.when;
  *
  * <p>受け入れ条件（設計書 §11.1/§11.3）: AC-06・AC-17b。</p>
  *
- * <p>※ AC-17b の本来の対象は村史編纂サービスだが、当該サービスは骨格段階で未実装のため
- * モック対象にできない。ここでは「ENDED 遷移の副作用（timeline 越境）が例外化しても
- * 祭は ENDED へ確定する」ことで分離耐性の代表検証とし、編纂サービス実装後に
- * 編纂例外注入版へ差し替える（出陣時 TODO）。</p>
+ * <p>AC-06 は {@link TimelinePostService}（自動投稿）を、AC-17b は
+ * {@link VillageEventArchiveService}（村史編纂）をモックにして各副作用に例外を注入し、
+ * それでも祭が ACTIVE / ENDED へ確定しバッチが継続することを固定する（出陣で本来版に更新済み）。</p>
  */
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -65,9 +66,13 @@ class VillageEventRefluxResilienceIT extends AbstractMySqlIntegrationTest {
     @MockitoBean
     private R2StorageService r2StorageService;
 
-    /** 副作用（自動投稿）を例外化するためモック化する。 */
+    /** AC-06 用: 自動投稿（timeline 越境の副作用）を例外化するためモック化する。 */
     @MockitoBean
     private TimelinePostService timelinePostService;
+
+    /** AC-17b 用: 村史編纂（ENDED 遷移の副作用）を例外化するためモック化する。 */
+    @MockitoBean
+    private VillageEventArchiveService eventArchiveService;
 
     @Autowired
     private VillageFestivalStateTransitionBatchService festivalBatch;
@@ -83,9 +88,12 @@ class VillageEventRefluxResilienceIT extends AbstractMySqlIntegrationTest {
     @BeforeEach
     void setUp() {
         when(lockProvider.lock(any())).thenReturn(Optional.of(mock(SimpleLock.class)));
-        // 自動投稿は常に失敗する（best-effort 分離を検証するため）。
+        // AC-06: 自動投稿は常に失敗する（timeline 越境の副作用の例外注入）。
         lenient().when(timelinePostService.createSystemVillagePost(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("simulated timeline reflux failure"));
+        // AC-17b: 村史編纂は常に失敗する（ENDED 遷移の副作用の例外注入・試練の申し送り②の本来版）。
+        lenient().doThrow(new RuntimeException("simulated archive compilation failure"))
+                .when(eventArchiveService).archiveFestival(any());
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -107,12 +115,12 @@ class VillageEventRefluxResilienceIT extends AbstractMySqlIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // AC-17b: 編纂側（ENDED 遷移の副作用）が例外化しても祭は ENDED 確定・バッチ継続
+    // AC-17b: 村史編纂（ENDED 遷移の副作用）が例外化しても祭は ENDED 確定・バッチ継続
     // ══════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-17b ENDED 遷移の副作用が例外化しても ACTIVE→ENDED は確定し、バッチは継続する")
-    void sideEffectFailure_doesNotRollbackEnding() {
+    @DisplayName("AC-17b 村史編纂が例外化しても ACTIVE→ENDED は確定し、バッチは継続する（編纂例外の分離）")
+    void archiveFailure_doesNotRollbackEnding() {
         VillageEntity v = persistVillage();
         VillageFestivalEntity f = persistFestival(v.getId(), VillageFestivalStatus.ACTIVE,
                 LocalDateTime.now().minusDays(2), LocalDateTime.now().minusMinutes(5));

@@ -43,7 +43,6 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -74,10 +73,14 @@ import static org.mockito.Mockito.when;
  *
  * <p>受け入れ条件（設計書 §11.1/§11.3）: AC-01・AC-02・AC-03・AC-04・AC-05・AC-17。</p>
  */
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F17.2 Wave2 ①フィード還流＋③村史編纂 結合テスト（試練・red）")
+@DisplayName("F17.2 Wave2 ①フィード還流＋③村史編纂 結合テスト")
 class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
+
+    // 注: 本クラスは @Transactional を付けない（ロールバックしない）。
+    // 行事作成・確定の還流は afterCommit 同期で発火するため、テスト側もコミットさせる必要がある
+    // （@Transactional だと本体がロールバックされ afterCommit が発火しない）。
+    // 各テストは System.nanoTime() で一意な村を作るためテスト間のデータ汚染は起きない。
 
     /** {@code @SchedulerLock} 経由の shedlock テーブル INSERT を回避する no-op スタブ。 */
     @MockitoBean

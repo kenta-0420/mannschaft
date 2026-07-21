@@ -240,6 +240,43 @@ public class TimelinePostService {
     }
 
     /**
+     * 村行事のシステム自動投稿が既に存在するかを判定する（F17.2 Wave2 ①・冪等判定・設計書 §3.7）。
+     *
+     * <p>{@code (scope_village_id, system_post_type, source_event_uuid)} の存在チェック。
+     * 村ドメインの還流サービスが EVENT_UPCOMING 等の二重投稿を防ぐために呼ぶ
+     * （ドメイン越境は Service メソッド経由・原則1/5）。</p>
+     */
+    public boolean systemVillagePostExists(UUID villageId, VillageEventNotificationType systemPostType,
+                                           UUID sourceEventUuid) {
+        if (villageId == null || systemPostType == null || sourceEventUuid == null) {
+            return false;
+        }
+        return postRepository.existsByScopeVillageIdAndSystemPostTypeAndSourceEventUuid(
+                villageId, systemPostType.name(), sourceEventUuid);
+    }
+
+    /**
+     * 指定 ID 群のうち生存している（timeline {@code deleted_at} でない）当該村の VILLAGE 投稿 ID を返す
+     * （F17.2 Wave2 ③・実況一覧/村史編纂の削除済み除外・AC-17c）。
+     */
+    public Set<Long> filterAliveVillagePostIds(java.util.Collection<Long> postIds, UUID villageId) {
+        if (postIds == null || postIds.isEmpty() || villageId == null) {
+            return java.util.Set.of();
+        }
+        return new HashSet<>(postRepository.findAliveVillagePostIds(postIds, villageId));
+    }
+
+    /**
+     * 指定投稿が「生存している当該村の VILLAGE 投稿」であるかを判定する（F17.2 Wave2 ③・実況タグ付けの検証）。
+     */
+    public boolean isAliveVillagePost(Long postId, UUID villageId) {
+        if (postId == null || villageId == null) {
+            return false;
+        }
+        return !postRepository.findAliveVillagePostIds(List.of(postId), villageId).isEmpty();
+    }
+
+    /**
      * スコープに応じたメンバーシップチェックを行う（ユーザー操作用）。
      *
      * <p><b>認可根治 Wave6</b>: {@link PostScopeType} の <b>全 8 値を網羅的にディスパッチ</b>し、

@@ -22,4 +22,7 @@ public interface VillageFestivalLivePostRepository
 
     /** 祭に紐づく実況投稿の紐付け一覧（新しい順・設計書 §5.6）。 */
     Page<VillageFestivalLivePostEntity> findByFestivalIdOrderByCreatedAtDesc(UUID festivalId, Pageable pageable);
+
+    /** 村史編纂用: 祭に紐づく実況投稿の紐付け全件（timeline 側 deleted_at 除外はサービス層で行う・設計書 §5.5）。 */
+    java.util.List<VillageFestivalLivePostEntity> findByFestivalId(UUID festivalId);
 }

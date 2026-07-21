@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.repository;
 
 import com.mannschaft.app.village.entity.VillageFestivalRsvpEntity;
+import com.mannschaft.app.village.entity.enums.VillageFestivalRsvpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,13 @@ public interface VillageFestivalRsvpRepository extends JpaRepository<VillageFest
 
     /** 祭に紐づく RSVP 一覧（作成順・設計書 §13.5）。 */
     Page<VillageFestivalRsvpEntity> findByFestivalIdOrderByCreatedAtAsc(UUID festivalId, Pageable pageable);
+
+    /** 参加取消（レコード削除）。SCHEDULED/ACTIVE のみ許可の判定はサービス層で行う。 */
+    void deleteByFestivalIdAndUserId(UUID festivalId, Long userId);
+
+    /** 村史編纂用: 祭の RSVP 総数。 */
+    long countByFestivalId(UUID festivalId);
+
+    /** 村史編纂用: 祭の RSVP をステータス別に集計する（GOING/MAYBE）。 */
+    long countByFestivalIdAndStatus(UUID festivalId, VillageFestivalRsvpStatus status);
 }
