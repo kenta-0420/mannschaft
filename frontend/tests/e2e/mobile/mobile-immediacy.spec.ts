@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { TEAM_ID, MOCK_TEAM, mockTeamFeatureApis } from '../teams/helpers'
 import { gotoAuthed } from './helpers'
 
@@ -24,6 +25,67 @@ test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
 function todayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** 当月の指定日を 'YYYY-MM-DD' で返す（当月グリッド内に確実に収めるため日固定で採る）。 */
+function monthDayStr(day: number): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+/**
+ * MIM-03/04/05 の前提フィクスチャ（殿裁定: spec側モック不備の補完）。
+ *
+ * チームスケジュール一覧 EP（GET /api/v1/teams/{id}/schedules?...）を、出欠必須イベント2件
+ * （日付順検証のため当月10日/20日にずらす・attendanceRequired:true・myAttendance 初期値付き）で
+ * モックする。mockTeamFeatureApis の汎用空配列（teams/{id}/**）を「後登録＝優先」で上書きするため
+ * 必ず mockTeamFeatureApis の後に登録する。正規表現で `schedules?` のみに限定し、
+ * `schedules/{id}/attendances/me`（別途モック）には一切マッチさせない。
+ *
+ * BE の ScheduleResponse ネスト構造（content/time/scope/academic/audit + myAttendanceStatus）に忠実。
+ */
+async function mockTeamSchedulesWithAttendance(page: Page): Promise<void> {
+  await page.route(new RegExp(`/api/v1/teams/${TEAM_ID}/schedules\\?`), async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 101,
+            content: {
+              title: 'モック出欠イベントA',
+              status: 'PUBLISHED',
+              eventType: 'PRACTICE',
+              location: null,
+              attendanceRequired: true,
+            },
+            time: { startAt: `${monthDayStr(10)}T10:00:00`, endAt: `${monthDayStr(10)}T12:00:00`, allDay: false },
+            scope: { scopeName: 'テストチーム', scopeIconUrl: null },
+            academic: { eventCategory: null },
+            audit: { createdByDisplayName: 'コーチ' },
+            myAttendanceStatus: null,
+          },
+          {
+            id: 102,
+            content: {
+              title: 'モック出欠イベントB',
+              status: 'PUBLISHED',
+              eventType: 'MATCH',
+              location: null,
+              attendanceRequired: true,
+            },
+            time: { startAt: `${monthDayStr(20)}T14:00:00`, endAt: `${monthDayStr(20)}T16:00:00`, allDay: false },
+            scope: { scopeName: 'テストチーム', scopeIconUrl: null },
+            academic: { eventCategory: null },
+            audit: { createdByDisplayName: 'コーチ' },
+            myAttendanceStatus: null,
+          },
+        ],
+        meta: { page: 0, size: 100, totalElements: 2, totalPages: 1 },
+      }),
+    })
+  })
 }
 
 test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入れ条件', () => {
@@ -89,6 +151,8 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_TEAM }) })
     })
     await mockTeamFeatureApis(page)
+    // 前提フィクスチャ: 出欠必須イベント入りのスケジュール一覧（mockTeamFeatureApis の空配列を後勝ちで上書き）
+    await mockTeamSchedulesWithAttendance(page)
     await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }) })
     })
@@ -109,6 +173,8 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_TEAM }) })
     })
     await mockTeamFeatureApis(page)
+    // 前提フィクスチャ: 出欠必須イベント入りのスケジュール一覧（mockTeamFeatureApis の空配列を後勝ちで上書き）
+    await mockTeamSchedulesWithAttendance(page)
     await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }) })
     })
@@ -138,6 +204,8 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_TEAM }) })
     })
     await mockTeamFeatureApis(page)
+    // 前提フィクスチャ: 出欠必須イベント入りのスケジュール一覧（mockTeamFeatureApis の空配列を後勝ちで上書き）
+    await mockTeamSchedulesWithAttendance(page)
     await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }) })
     })
