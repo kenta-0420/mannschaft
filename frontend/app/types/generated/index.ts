@@ -26552,7 +26552,7 @@ export interface paths {
         get: operations["getOrganization"];
         put?: never;
         post?: never;
-        /** 組織削除 */
+        /** 組織削除（ADMIN/DEPUTY のみ） */
         delete: operations["deleteOrganization"];
         options?: never;
         head?: never;
@@ -26573,7 +26573,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 組織アーカイブ解除 */
+        /** 組織アーカイブ解除（ADMIN/DEPUTY のみ） */
         patch: operations["unarchiveOrganization"];
         trace?: never;
     };
@@ -26764,7 +26764,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 組織アーカイブ */
+        /** 組織アーカイブ（ADMIN/DEPUTY のみ） */
         patch: operations["archiveOrganization"];
         trace?: never;
     };
@@ -132045,6 +132045,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     updateOrganization: {
@@ -132091,6 +132098,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     restoreOrganization: {
@@ -132106,6 +132120,13 @@ export interface operations {
         responses: {
             /** @description 復元成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -132438,6 +132459,13 @@ export interface operations {
         responses: {
             /** @description アーカイブ成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
