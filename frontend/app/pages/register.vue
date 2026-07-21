@@ -375,6 +375,16 @@ const onSubmit = handleSubmit(async (values) => {
         </small>
       </div>
 
+      <div class="text-center">
+        <NuxtLink
+          to="/commerce-disclosure"
+          target="_blank"
+          class="text-xs text-surface-400 hover:text-primary hover:underline"
+        >
+          {{ $t('landing.layout.footer_commerce') }}
+        </NuxtLink>
+      </div>
+
       <Button
         type="submit"
         label="アカウント作成"
