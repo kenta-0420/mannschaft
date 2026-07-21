@@ -7,6 +7,7 @@ import com.mannschaft.app.event.EventStatus;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventRepository;
+import com.mannschaft.app.facility.FacilityType;
 import com.mannschaft.app.facility.entity.FacilityBookingEntity;
 import com.mannschaft.app.facility.entity.SharedFacilityEntity;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
@@ -18,8 +19,10 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.TicketSource;
 import com.mannschaft.app.queue.entity.QueueCategoryEntity;
+import com.mannschaft.app.queue.entity.QueueCounterEntity;
 import com.mannschaft.app.queue.entity.QueueTicketEntity;
 import com.mannschaft.app.queue.repository.QueueCategoryRepository;
+import com.mannschaft.app.queue.repository.QueueCounterRepository;
 import com.mannschaft.app.queue.repository.QueueTicketRepository;
 import com.mannschaft.app.safetycheck.SafetyCheckScopeType;
 import com.mannschaft.app.safetycheck.SafetyCheckStatus;
@@ -106,6 +109,9 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
     private QueueCategoryRepository queueCategoryRepository;
 
     @Autowired
+    private QueueCounterRepository queueCounterRepository;
+
+    @Autowired
     private QueueTicketRepository queueTicketRepository;
 
     @Autowired
@@ -157,7 +163,8 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
         jdbcTemplate.update("DELETE FROM shared_facilities WHERE name LIKE ?", KW + "%");
         jdbcTemplate.update("DELETE FROM shift_schedules WHERE title LIKE ?", KW + "%");
         jdbcTemplate.update("DELETE FROM safety_checks WHERE title LIKE ?", KW + "%");
-        jdbcTemplate.update("DELETE FROM queue_tickets WHERE ticket_number LIKE ?", KW + "%");
+        jdbcTemplate.update("DELETE FROM queue_tickets WHERE guest_name LIKE ?", KW + "%");
+        jdbcTemplate.update("DELETE FROM queue_counters WHERE name LIKE ?", KW + "%");
         jdbcTemplate.update("DELETE FROM queue_categories WHERE name LIKE ?", KW + "%");
         jdbcTemplate.update("DELETE FROM users WHERE display_name LIKE ?", KW + "%");
     }
@@ -290,6 +297,9 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
                     .scopeType(scopeType)
                     .scopeId(scopeId)
                     .name(KW + " 施設")
+                    .facilityType(FacilityType.MEETING_ROOM)
+                    .capacity(10)
+                    .createdBy(USER_INSIDER)
                     .build()).getId();
         }
 
@@ -301,6 +311,7 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
                     .timeFrom(LocalTime.of(9, 0))
                     .timeTo(LocalTime.of(11, 0))
                     .purpose(KW + " 会議のため")
+                    .slotCount(1)
                     .usageFee(BigDecimal.ZERO)
                     .equipmentFee(BigDecimal.ZERO)
                     .totalFee(BigDecimal.ZERO)
@@ -423,11 +434,21 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
                     .build()).getId();
         }
 
+        private Long saveCounter(Long categoryId) {
+            return queueCounterRepository.saveAndFlush(QueueCounterEntity.builder()
+                    .categoryId(categoryId)
+                    .name(KW + " 窓口")
+                    .build()).getId();
+        }
+
         private Long saveTicket(Long categoryId, Long userId) {
             return queueTicketRepository.saveAndFlush(QueueTicketEntity.builder()
                     .categoryId(categoryId)
-                    .ticketNumber(KW + "A001")
-                    .guestName("山田花子")
+                    .counterId(saveCounter(categoryId))
+                    .ticketNumber("A001")
+                    .position(1)
+                    .issuedDate(LocalDate.of(2026, 7, 1))
+                    .guestName(KW + "山田花子")
                     .source(TicketSource.ONLINE)
                     .userId(userId)
                     .build()).getId();
