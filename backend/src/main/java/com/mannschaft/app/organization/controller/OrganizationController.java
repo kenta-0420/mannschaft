@@ -285,10 +285,20 @@ public class OrganizationController {
     @PostMapping("/{slug}/follow")
     @Operation(summary = "組織サポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<FollowStatusResponse>> followOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: サポーター自己登録は「当該組織を閲覧できる利用者」に限る。
+        // 兄弟 EP getOrganization / getMembers と同じ visibility ラダーへ委譲し、独自述語を作らない。
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, id, userId);
+        // 運営者が受け入れを無効化している組織への自己登録は拒否する。
+        organizationService.assertSupporterEnabled(id);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
+                .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
     @DeleteMapping("/{slug}/follow")

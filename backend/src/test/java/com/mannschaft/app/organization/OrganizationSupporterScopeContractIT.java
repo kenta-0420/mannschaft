@@ -51,8 +51,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  *
  * <p>BOLA対策: applicationId の scope 不一致は {@code SupporterService.findPendingApplicationOrThrow}
- * が既に SUPPORTER_003（存在秘匿）で保護済み（本 IT はその 404 マッピングも検証する）。
- * follow/unfollow/follow-status の 3EP はセルフサービス（本人の申請操作）のため対象外。</p>
+ * が既に SUPPORTER_003（存在秘匿）で保護済み（本 IT はその 404 マッピングも検証する）。</p>
+ *
+ * <p>認可根治 Wave6 追加戦（{@code FollowGate}）: サポーター自己登録 EP
+ * （POST /{slug}/follow）に F00 {@code ContentVisibilityChecker#assertCanView} による
+ * 可視性ゲートと {@code OrganizationService#assertSupporterEnabled} による受け入れ可否
+ * ゲートを敷設したため、その仕様を固定する。unfollow / follow-status の 2EP は
+ * 本人の複合キー引き（userId × scope）で完結するセルフサービス操作のため対象外。</p>
  *
  * <p>ADMIN 役の被験者は {@code checkMembership}（memberships 表）と
  * {@code checkAdminOrAbove}（user_roles 表）の両方を満たすよう二重に seed する
@@ -357,6 +362,80 @@ class OrganizationSupporterScopeContractIT extends AbstractMySqlIntegrationTest 
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // サポーター自己登録（follow）— 認可根治 Wave6 追加戦
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("サポーター自己登録(followOrganization)の可視性・受け入れ可否ゲート")
+    class FollowGate {
+
+        @Test
+        @DisplayName("【正常系】公開組織(PUBLIC・受け入れ有効)は部外者でもフォローできる(201)")
+        void 公開組織は部外者でもフォローできる() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{slug}/follow", orgASlug))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("【正常系】フォロー後の状態取得は APPROVED を返す")
+        void フォロー後の状態はAPPROVED() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{slug}/follow", orgASlug))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(get("/api/v1/organizations/{slug}/follow/status", orgASlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("非公開組織(PRIVATE)を部外者がフォローすると403")
+        void 非公開組織の部外者フォローは403() throws Exception {
+            Long privateOrgId = insertOrganizationWithVisibility(
+                    "ORGSP認可契約組織非公開", "PRIVATE", true);
+            String privateSlug = selectSlug(privateOrgId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{slug}/follow", privateSlug))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("VISIBILITY_001"));
+        }
+
+        @Test
+        @DisplayName("サポーター受け入れ無効の組織をフォローすると403")
+        void 受け入れ無効組織のフォローは403() throws Exception {
+            Long disabledOrgId = insertOrganizationWithVisibility(
+                    "ORGSP認可契約組織受入無効", "PUBLIC", false);
+            String disabledSlug = selectSlug(disabledOrgId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{slug}/follow", disabledSlug))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_SUPPORTER_DISABLED"));
+        }
+
+        @Test
+        @DisplayName("非公開組織でもフォロー状態取得は自分の状態のみで200（正常系を壊さない）")
+        void 非公開組織のフォロー状態取得は200() throws Exception {
+            Long privateOrgId = insertOrganizationWithVisibility(
+                    "ORGSP認可契約組織非公開ST", "PRIVATE", true);
+            String privateSlug = selectSlug(privateOrgId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/follow/status", privateSlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("NONE"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -423,6 +502,29 @@ class OrganizationSupporterScopeContractIT extends AbstractMySqlIntegrationTest 
                                 + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
                                 + "CONCAT('orgsp-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+
+    /**
+     * visibility / supporter_enabled を指定して組織を INSERT する（follow ゲート検証用）。
+     *
+     * @param name             組織名（一意）
+     * @param visibility       OrganizationEntity.Visibility の enum 名
+     * @param supporterEnabled サポーター受け入れ可否
+     */
+    private Long insertOrganizationWithVisibility(
+            String name, String visibility, boolean supporterEnabled) {
+        em.createNativeQuery(
+                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                                + "supporter_enabled, version, slug, created_at, updated_at) "
+                                + "VALUES (:name, 'OTHER', :visibility, 'NONE', :se, 0, "
+                                + "CONCAT('orgsp-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("visibility", visibility)
+                .setParameter("se", supporterEnabled ? 1 : 0)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
                 .setParameter("name", name)
