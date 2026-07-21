@@ -32,8 +32,15 @@ export function useAttendanceResponder(scopeType: 'team' | 'organization', scope
       })
       notification.success(t('schedule.attendance.respondSuccess'))
       return true
-    } catch {
-      notification.error(t('schedule.attendance.respondError'))
+    } catch (e) {
+      // 5xx は useApi の共通 onResponseError が既に汎用トースト（error.server）を出すため、
+      // ここで固有トーストを重ねると同一操作でエラーが二枚表示される（情報は一つ＝ADHD原則違反）。
+      // API 層が拾わない 4xx / ネットワークエラー（status 不明）のときだけ固有トーストを出す。
+      const err = e as { response?: { status?: number }; status?: number; statusCode?: number }
+      const httpStatus = err?.response?.status ?? err?.status ?? err?.statusCode
+      if (httpStatus === undefined || httpStatus < 500) {
+        notification.error(t('schedule.attendance.respondError'))
+      }
       return false
     } finally {
       responding.value = false
