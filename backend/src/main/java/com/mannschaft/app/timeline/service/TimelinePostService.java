@@ -566,7 +566,11 @@ public class TimelinePostService {
      * スコープ別フィードを取得する。
      *
      * <p>scopeType=VILLAGE の場合は scopeVillageId（UUID）で絞り込む。
-     * scopeVillageId が null の場合は空リストを返す。</p>
+     * scopeVillageId が null の場合、本メソッド自体は空リストを返すが、
+     * <b>EP 全体（{@code GET /timeline/feed}）としては 403 になる</b>。
+     * コントローラーが続けて呼ぶ {@link #getPinnedPosts(String, Long, UUID, Long)} が
+     * 「村 ID 無しの VILLAGE 指定」を fail-closed で拒否するため（認可根治 Wave6）。
+     * FE は VILLAGE スコープでは常に scopeVillageId を送るため正常系に影響はない。</p>
      *
      * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
      * （非メンバーは COMMON_002・403）、VILLAGE は {@link #requireVillageMember}
