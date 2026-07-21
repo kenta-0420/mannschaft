@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,18 @@ import java.util.UUID;
  * <p>期間付き notice として動作するお祭りエンティティの CRUD を提供する。
  * 状態遷移（SCHEDULED → ACTIVE → ENDED）は別バッチが自動更新し、本 Controller では
  * 作成・更新・中止・取得のみ扱う。認可・整合性検証は {@link VillageFestivalService} 側で完結。</p>
+ *
+ * <h2>認可</h2>
+ * <p>全エンドポイントに {@code @PreAuthorize("isAuthenticated()")} を付与し、未認証を弾く。
+ * そのうえで村スコープの実効認可は Service（public 入口）で行う:</p>
+ * <ul>
+ *   <li>作成・更新・中止: 村ロール HEADMAN / ELDER を {@code requireHeadmanOrElder} で検証</li>
+ *   <li>一覧・詳細: 村掲示板と同一の閲覧認可を
+ *       {@code VillageBulletinAccessService.checkVillageBulletinViewAccess} へ委譲する
+ *       （村の {@code bulletin_visibility} と村メンバーシップで判定）</li>
+ * </ul>
+ * <p>認可ガードを Controller ではなく Service の public 入口へ置くのは、バッチ等の別経路から
+ * 呼ばれても認可が抜けないようにするため（村史 Controller と同じ方針）。</p>
  *
  * <p>担当 API:</p>
  * <ul>
@@ -60,6 +73,7 @@ public class VillageFestivalController {
      * 村のお祭りを作成する（HEADMAN / ELDER のみ）。
      */
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のお祭りを作成する（HEADMAN / ELDER のみ）")
     public ResponseEntity<ApiResponse<FestivalResponse>> create(
             @PathVariable("villageId") UUID villageId,
@@ -74,6 +88,7 @@ public class VillageFestivalController {
      * {@code status} 指定時はその状態のみ。未指定なら全状態を開始日時降順で返す。
      */
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のお祭り一覧を取得する")
     public ApiResponse<List<FestivalResponse>> list(
             @PathVariable("villageId") UUID villageId,
@@ -84,7 +99,8 @@ public class VillageFestivalController {
                 Math.max(page, 0),
                 size <= 0 ? DEFAULT_PAGE_SIZE : size,
                 Sort.by(Sort.Direction.DESC, "startsAt"));
-        List<FestivalResponse> list = festivalService.listFestivals(villageId, status, pageable);
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        List<FestivalResponse> list = festivalService.listFestivals(villageId, status, pageable, actorUserId);
         return ApiResponse.of(list);
     }
 
@@ -92,17 +108,20 @@ public class VillageFestivalController {
      * 村のお祭り詳細を取得する。
      */
     @GetMapping("/{festivalId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のお祭り詳細を取得する")
     public ApiResponse<FestivalResponse> get(
             @PathVariable("villageId") UUID villageId,
             @PathVariable("festivalId") UUID festivalId) {
-        return ApiResponse.of(festivalService.getFestival(villageId, festivalId));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(festivalService.getFestival(villageId, festivalId, actorUserId));
     }
 
     /**
      * 村のお祭りを部分更新する（HEADMAN / ELDER のみ）。
      */
     @PatchMapping("/{festivalId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のお祭りを部分更新する（HEADMAN / ELDER のみ）")
     public ApiResponse<FestivalResponse> update(
             @PathVariable("villageId") UUID villageId,
@@ -117,6 +136,7 @@ public class VillageFestivalController {
      * 村のお祭りを中止する（HEADMAN / ELDER のみ）。既に ENDED/CANCELLED の場合は冪等 no-op。
      */
     @PostMapping("/{festivalId}/cancel")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "村のお祭りを中止する（HEADMAN / ELDER のみ）")
     public ApiResponse<FestivalResponse> cancel(
             @PathVariable("villageId") UUID villageId,
