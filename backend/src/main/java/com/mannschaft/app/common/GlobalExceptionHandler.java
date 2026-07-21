@@ -87,6 +87,9 @@ public class GlobalExceptionHandler {
             //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）
             Map.entry("MATCHING_010", HttpStatus.FORBIDDEN),
             Map.entry("MATCHING_014", HttpStatus.FORBIDDEN),
+            // F00.5 メンバーシップ基盤: サポーター受け入れ無効スコープへの自己登録拒否は 403
+            //（Severity.WARN 既定の 400 を上書き。認可根治 Wave6 でサポーター登録ゲートに使用）
+            Map.entry("MEMBERSHIP_SUPPORTER_DISABLED", HttpStatus.FORBIDDEN),
             // 未認証は 401 を返す（Severity.WARN のデフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),

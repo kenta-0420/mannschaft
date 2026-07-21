@@ -50,8 +50,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  *
  * <p>BOLA対策: applicationId の scope 不一致は {@code SupporterService.findPendingApplicationOrThrow}
- * が既に SUPPORTER_003（存在秘匿）で保護済み（本 IT はその 404 マッピングも検証する）。
- * follow/unfollow/follow-status の 3EP はセルフサービス（本人の申請操作）のため対象外。</p>
+ * が既に SUPPORTER_003（存在秘匿）で保護済み（本 IT はその 404 マッピングも検証する）。</p>
+ *
+ * <p>認可根治 Wave6 追加戦（{@code FollowGate}）: サポーター自己登録 EP
+ * （POST /{slug}/follow）に F00 {@code ContentVisibilityChecker#assertCanView} による
+ * 可視性ゲートと {@code TeamService#assertSupporterEnabled} による受け入れ可否ゲートを
+ * 敷設したため、その仕様を固定する。unfollow / follow-status の 2EP は
+ * 本人の複合キー引き（userId × scope）で完結するセルフサービス操作のため対象外。</p>
  *
  * <p>ADMIN 役の被験者は {@code checkMembership}（memberships 表）と
  * {@code checkAdminOrAbove}（user_roles 表）の両方を満たすよう二重に seed する
@@ -356,6 +361,80 @@ class SupporterScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // サポーター自己登録（follow）— 認可根治 Wave6 追加戦
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("サポーター自己登録(followTeam)の可視性・受け入れ可否ゲート")
+    class FollowGate {
+
+        @Test
+        @DisplayName("【正常系】公開チーム(PUBLIC・受け入れ有効)は部外者でもフォローできる(201)")
+        void 公開チームは部外者でもフォローできる() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{slug}/follow", teamASlug))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("【正常系】フォロー後の状態取得は APPROVED を返す")
+        void フォロー後の状態はAPPROVED() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{slug}/follow", teamASlug))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(get("/api/v1/teams/{slug}/follow/status", teamASlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("非公開チーム(MEMBERS_AND_ABOVE)を部外者がフォローすると403")
+        void 非公開チームの部外者フォローは403() throws Exception {
+            Long privateTeamId = insertTeamWithVisibility(
+                    "SP認可契約チーム非公開", "MEMBERS_AND_ABOVE", true);
+            String privateSlug = selectSlug(privateTeamId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{slug}/follow", privateSlug))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("VISIBILITY_001"));
+        }
+
+        @Test
+        @DisplayName("サポーター受け入れ無効のチームをフォローすると403")
+        void 受け入れ無効チームのフォローは403() throws Exception {
+            Long disabledTeamId = insertTeamWithVisibility(
+                    "SP認可契約チーム受入無効", "PUBLIC", false);
+            String disabledSlug = selectSlug(disabledTeamId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{slug}/follow", disabledSlug))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_SUPPORTER_DISABLED"));
+        }
+
+        @Test
+        @DisplayName("非公開チームでもフォロー状態取得は自分の状態のみで200（正常系を壊さない）")
+        void 非公開チームのフォロー状態取得は200() throws Exception {
+            Long privateTeamId = insertTeamWithVisibility(
+                    "SP認可契約チーム非公開ST", "MEMBERS_AND_ABOVE", true);
+            String privateSlug = selectSlug(privateTeamId);
+            em.flush();
+            em.clear();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{slug}/follow/status", privateSlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("NONE"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -422,6 +501,28 @@ class SupporterScopeContractIT extends AbstractMySqlIntegrationTest {
                                 + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
                                 + "CONCAT('sp-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+
+    /**
+     * visibility / supporter_enabled を指定してチームを INSERT する（follow ゲート検証用）。
+     *
+     * @param name             チーム名（一意）
+     * @param visibility       TeamEntity.Visibility の enum 名
+     * @param supporterEnabled サポーター受け入れ可否
+     */
+    private Long insertTeamWithVisibility(String name, String visibility, boolean supporterEnabled) {
+        em.createNativeQuery(
+                        "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:name, :visibility, :se, 0, 0, "
+                                + "CONCAT('sp-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("visibility", visibility)
+                .setParameter("se", supporterEnabled ? 1 : 0)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
                 .setParameter("name", name)
