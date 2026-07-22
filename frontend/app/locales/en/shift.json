@@ -80,6 +80,7 @@
     },
     "myShift": {
       "confirmedTitle": "Confirmed Shifts",
+      "upcomingTitle": "Upcoming Confirmed Shifts",
       "teamFilter": {
         "all": "All Teams",
         "label": "Filter by Team"

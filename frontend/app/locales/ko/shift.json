@@ -323,6 +323,7 @@
     },
     "myShift": {
       "confirmedTitle": "확정 근무",
+      "upcomingTitle": "다가오는 확정 근무",
       "teamFilter": {
         "all": "모든 팀",
         "label": "팀으로 필터"
