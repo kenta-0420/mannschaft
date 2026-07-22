@@ -159,7 +159,9 @@ member_payments
 Stripe に**期日決済・再試行(dunning)・カード更新・SCA**を背負わせ、唯一の難点「Connectサブスクは手数料が率(`application_fee_percent`)でしか取れず固定額不可」を **invoice 上書き**で回避する。
 
 **フロー**
-1. 初回：払い手のカードを **SetupIntent** で platform 側 Customer に保存（off_session）。**Stripe Subscription** を作成：`price`＝会費、`transfer_data[destination]`＝受領者 Connect 口座、`on_behalf_of`＝同、`billing_cycle_anchor`＝ユーザ指定決済日。
+1. 初回：払い手のカードを **SetupIntent** で platform 側 Customer に保存（off_session）。**Stripe Subscription** を作成：**明細は 2 本**（`price`＝会費＝額面 ¥10,000 ／ `price`＝支払側手数料＝`FeeBreakdown.payerFee`＝¥250。`payerFee=0` のときは手数料明細を作らない）、`transfer_data[destination]`＝受領者 Connect 口座、`on_behalf_of`＝同、`billing_cycle_anchor`＝ユーザ指定決済日。
+
+   > ⚠️ **明細を「会費のみ（額面）」にしてはならない。** invoice 合計が ¥10,000 のままだと、`application_fee_amount` を ¥500 に上書きしても受取側の着金が ¥9,750 ではなく **¥9,500** になり、受取側が毎サイクル「額面の 2.5%」を余分に負担する（下表と食い違う）。支払側の上乗せ分は **invoice の明細として加算**しなければ折半は成立しない。2 明細にすることで invoice 合計 ¥10,250 ＝ 初回サイクルの単発 charge 金額（`chargeAmount`）と一致する。
 2. 各サイクル：Stripe が invoice を自動生成 → **`invoice.created`** webhook で、その invoice の **`application_fee_amount` を固定円（加入時に焼き付けた `fee_policy_key` で解決した `total_fee`・DEFAULT なら `round(face_amount×0.05)`）に上書き**。料率改定は新規加入のみ反映・既存サブスクは加入時 policy で固定（遡及防止）。
 3. Stripe が保存カードで自動決済 → **`invoice.paid`** webhook で `escrow_transaction(source_kind=MEMBERSHIP, status=CAPTURED)` ＋ `ledger_entries` を起票し、受益者の `valid_until` を1サイクル延長。
 4. 失敗：Stripe smart retries → `past_due` に落ちれば状態反映・払い手へ督促通知（§6 配信基盤）・猶予(`grace_period_days`)後にペイウォール失効。
