@@ -298,8 +298,14 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_073: 同一候補日への重複追加（409、UNIQUE 制約に先立つアプリ層チェック）。 */
     VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
 
-    /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
-    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
+    /**
+     * VILLAGE_074: この操作には村人であることが必要（403）。
+     *
+     * <p>元は寄合専用（MEETUP_NOT_MEMBER）だったが、祭の参加レイヤー（RSVP・実況）でも同じ
+     * 「村メンバー限定」ガードに再利用するため、メッセージをドメイン中立に変更した（検分🟡5）。
+     * コードとenum定数名は後方互換のため据え置く。</p>
+     */
+    MEETUP_NOT_MEMBER("VILLAGE_074", "この操作には村人である必要があります", Severity.WARN),
 
     // ==================================================================
     // F17 Phase 3-β — 村史（VILLAGE_075）

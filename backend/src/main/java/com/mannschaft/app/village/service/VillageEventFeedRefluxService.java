@@ -1,5 +1,7 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.timeline.service.TimelinePostService;
@@ -39,6 +41,7 @@ public class VillageEventFeedRefluxService {
     private final TimelinePostService timelinePostService;
     private final NotificationHelper notificationHelper;
     private final VillageMembershipRepository membershipRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * 村行事の還流（システム投稿＋通知）を best-effort で発火する。冪等・例外は外へ伝播しない。
@@ -63,6 +66,12 @@ public class VillageEventFeedRefluxService {
             String content = buildContent(type, eventTitle);
             timelinePostService.createSystemVillagePost(villageId, type, sourceEventUuid, content);
             created = true;
+            // §16.2 監査: システム名義投稿の作成を記録（actorId=null・システム発火）。
+            auditLogService.record(
+                    AuditEventType.VILLAGE_EVENT_SYSTEM_POSTED.name(),
+                    null, null, null, null, null, null, null,
+                    "{\"villageId\":\"" + villageId + "\",\"type\":\"" + type.name()
+                            + "\",\"sourceEventUuid\":\"" + sourceEventUuid + "\"}");
         } catch (Exception e) {
             // best-effort: 状態遷移は既に確定済み。自動投稿失敗は還流の欠落に留め、状態は巻き戻さない。
             log.error("村行事の自動投稿に失敗: villageId={} type={} sourceEventUuid={}",

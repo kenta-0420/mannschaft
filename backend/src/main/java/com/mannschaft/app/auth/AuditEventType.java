@@ -277,6 +277,8 @@ public enum AuditEventType {
     VILLAGE_FESTIVAL_LIVE_POST_TAGGED(AuditEventCategory.VILLAGE),
     /** F17.2 Wave2 ③祭の参加レイヤー — 祭 ENDED 時の村史（行事アーカイブ）自動編纂（設計書 §16.2）。 */
     VILLAGE_FESTIVAL_ARCHIVED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ①行事→村フィード還流 — 行事のシステム名義自動投稿を作成（設計書 §16.2）。 */
+    VILLAGE_EVENT_SYSTEM_POSTED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */

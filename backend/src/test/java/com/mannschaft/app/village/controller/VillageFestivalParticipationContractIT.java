@@ -52,14 +52,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * F17.2 Wave2 ③お祭りの参加レイヤー — API 契約テスト（試練 / red 先行）。
+ * F17.2 Wave2 ③お祭りの参加レイヤー — API 契約テスト。
  *
  * <h2>本テストの性質（重要 / 検分時に必読）</h2>
  *
- * <p><strong>red テスト</strong>。骨格のみ（Service/Controller 未実装）の現時点では
- * RSVP・実況の EP が未結線のため、URL 文字列を突きつける本テストは
- * {@code NoResourceFoundException}（404 + {@code COMMON_005}）で必ず赤くなる。
- * 出陣（実装）後に同じ URL へハンドラが結線され、契約どおりの応答で green 化する。</p>
+ * <p>試練（red 先行）として作成し、出陣（RSVP・実況 EP の実装）で green 化済み。
+ * URL 文字列を MockMvc で直接叩き、契約（200/201/204/409 や {@code VILLAGE_098}/{@code VILLAGE_102} 等）を固定する。
+ * 出陣後の回帰番人として機能する。</p>
  *
  * <p>金型は姉妹クラス {@link VillageMeetupSecondHalfContractIT}
  * （{@code AbstractMySqlIntegrationTest} + {@code @AutoConfigureMockMvc(addFilters=false)} +
@@ -75,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F17.2 Wave2 ③祭参加 API 契約テスト（試練・red）")
+@DisplayName("F17.2 Wave2 ③祭参加 API 契約テスト")
 class VillageFestivalParticipationContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
