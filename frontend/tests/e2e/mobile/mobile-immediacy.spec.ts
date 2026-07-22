@@ -182,8 +182,8 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }) })
     })
 
-    let attendanceCalled: { body: unknown } | null = null
-    await page.route(`**/api/v1/teams/${TEAM_ID}/schedules/*/attendances/me`, async (route) => {
+    let attendanceCalled: { body: { status?: string } } | null = null
+    await page.route(`**/api/v1/schedules/*/responses`, async (route) => {
       attendanceCalled = { body: route.request().postDataJSON() }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: {} }) })
     })
@@ -199,7 +199,8 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
 
     await listRow.getByRole('button', { name: '出席' }).click()
     await page.waitForTimeout(500)
-    expect(attendanceCalled, 'respondAttendance API が呼ばれていない').not.toBeNull()
+    expect(attendanceCalled, 'respondAttendance API (PATCH /api/v1/schedules/{id}/responses) が呼ばれていない').not.toBeNull()
+    expect(attendanceCalled!.body.status, 'body.status が BE 正準の ATTENDING になっていない').toBe('ATTENDING')
   })
 
   test('MIM-05: 出欠APIを500で返すと、トースト表示され選択状態が変わらない', async ({ page }) => {
@@ -212,7 +213,7 @@ test.describe('MOBILE-IMMEDIACY: シフト・スケジュール 390px受け入�
     await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }) })
     })
-    await page.route(`**/api/v1/teams/${TEAM_ID}/schedules/*/attendances/me`, async (route) => {
+    await page.route(`**/api/v1/schedules/*/responses`, async (route) => {
       await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: true, message: 'internal' }) })
     })
 

@@ -6,7 +6,10 @@
  * - カテゴリ:   getCategories / createCategory
  * - 招待:       getScheduleInvitations / acceptScheduleInvitation / rejectScheduleInvitation / confirmScheduleInvitation
  * - カレンダー: getCalendarMonth / getCalendarRange
- * - グローバル: remindSchedule / respondToSchedule
+ * - グローバル: remindSchedule
+ *
+ * 出欠回答（respondToSchedule）は useScheduleAttendance.respondAttendance に一本化済み
+ * （PATCH /api/v1/schedules/{id}/responses への重複実装だったため削除）。
  */
 import type { ScheduleInvitationResponse } from '~/types/schedule'
 
@@ -172,10 +175,6 @@ export function useScheduleCrud() {
     return api(`/api/v1/schedules/${scheduleId}/remind`, { method: 'POST' })
   }
 
-  async function respondToSchedule(scheduleId: number, body: { status: string; comment?: string }) {
-    return api(`/api/v1/schedules/${scheduleId}/responses`, { method: 'PATCH', body })
-  }
-
   // === Schedule Invitations ===
   async function getScheduleInvitations(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ScheduleInvitationResponse[] }>(
@@ -223,7 +222,6 @@ export function useScheduleCrud() {
     getCategories,
     createCategory,
     remindSchedule,
-    respondToSchedule,
     getScheduleInvitations,
     acceptScheduleInvitation,
     rejectScheduleInvitation,
