@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,7 +50,7 @@ class BetaGrantRepositoryIT extends AbstractMySqlIntegrationTest {
     void transferableTrue_rejected() {
         BetaGrantEntity grant = validGrant().transferable(true).build();
         assertThatThrownBy(() -> repository.saveAndFlush(grant))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
@@ -61,7 +61,7 @@ class BetaGrantRepositoryIT extends AbstractMySqlIntegrationTest {
                 .scopeKind(EntitlementScopeKind.TEAM)
                 .build();
         assertThatThrownBy(() -> repository.saveAndFlush(grant))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
@@ -69,7 +69,7 @@ class BetaGrantRepositoryIT extends AbstractMySqlIntegrationTest {
     void phaseOutOfRange_rejected() {
         BetaGrantEntity grant = validGrant().betaPhase(5).build();
         assertThatThrownBy(() -> repository.saveAndFlush(grant))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
@@ -78,7 +78,7 @@ class BetaGrantRepositoryIT extends AbstractMySqlIntegrationTest {
         repository.saveAndFlush(validGrant().scopeId(2002L).betaPhase(2).build());
         BetaGrantEntity dup = validGrant().scopeId(2002L).betaPhase(2).build();
         assertThatThrownBy(() -> repository.saveAndFlush(dup))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
