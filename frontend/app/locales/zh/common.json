@@ -1444,7 +1444,9 @@
       "leave_action": "退出",
       "load_error_title": "无法获取信息",
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
-      "back_to_dashboard": "返回仪表板"
+      "back_to_dashboard": "返回仪表板",
+      "retry": "重试",
+      "slow_loading": "加载时间较长，请稍候"
     }
   },
   "teamHub": {

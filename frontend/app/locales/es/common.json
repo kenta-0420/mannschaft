@@ -1444,7 +1444,9 @@
       "leave_action": "Salir",
       "load_error_title": "No se pudo cargar la información",
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
-      "back_to_dashboard": "Volver al panel"
+      "back_to_dashboard": "Volver al panel",
+      "retry": "Reintentar",
+      "slow_loading": "La carga está tardando más de lo esperado"
     }
   },
   "teamHub": {

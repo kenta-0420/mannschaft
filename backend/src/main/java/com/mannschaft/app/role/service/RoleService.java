@@ -20,6 +20,7 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
+import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -253,11 +254,11 @@ public class RoleService {
         checkLastAdmin(scopeId, scopeType, current);
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.info("メンバー除名完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, targetUserId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        leaveMembershipForRoleRevoke(targetUserId, scopeId, scopeType, LeaveReason.REMOVED, operatorUserId);
     }
 
     /**
@@ -291,12 +292,14 @@ public class RoleService {
         // checkLastAdmin はあえて呼ばない（安全弁メソッドの本質）
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.warn("メンバー除名完了（ADMIN保護バイパス）: scopeType={}, scopeId={}, userId={}",
                 scopeType, scopeId, targetUserId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        // 本メソッドは ADMIN 保護をバイパスする安全弁だが、直前の user_roles 削除を flush 済みのため
+        // membership 側の最後の ADMIN 保護（user_roles 参照）も同様に発火せず、保護バイパスの性質を保つ。
+        leaveMembershipForRoleRevoke(targetUserId, scopeId, scopeType, LeaveReason.REMOVED, null);
     }
 
     /**
@@ -312,11 +315,11 @@ public class RoleService {
         checkLastAdmin(scopeId, scopeType, current);
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.info("スコープ退会完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        leaveMembershipForRoleRevoke(userId, scopeId, scopeType, LeaveReason.SELF, null);
     }
 
     /**
@@ -526,6 +529,36 @@ public class RoleService {
         req.setInvitedBy(invitedBy);
         req.setSource(source);
         membershipService.join(req);
+    }
+
+    /**
+     * F00.5 認可基盤: 権限ロール剥奪（除名・退会）に伴い memberships の在籍を終了させる。
+     *
+     * <p>認可の真実の源は memberships（{@code AccessControlService.isMember} /
+     * {@code findAffiliatedScopeIds} はいずれも {@code left_at IS NULL} のみを在籍とみなす）。
+     * 除名・退会では {@code user_roles} の削除と同一トランザクション内で {@code left_at} を確定させ、
+     * 両系統が常に同時に成立するようにする（片方だけ成功する状態を作らない）。
+     * {@link #joinMembershipForRoleGrant} の対称処理であり、退会の実処理は
+     * {@link MembershipService#leaveByUserAndScope} に委譲する（本クラスで独自実装しない）。</p>
+     *
+     * <p>{@code MembershipChangedEvent(REMOVED)} は委譲先が発火するため、本メソッドは
+     * <b>アクティブ membership が無く委譲先が何もしなかった場合に限り</b>同イベントを補填発火する。
+     * これによりダッシュボードキャッシュ無効化・メンバー数減算の通知は、在籍行の有無に関わらず
+     * ちょうど 1 回だけ発火する。</p>
+     *
+     * <p>本メソッドは role ドメインから membership ドメインの Service を呼ぶ越境呼び出しである
+     * （CLAUDE.md 原則 5）。Repository は直接参照せず Service 窓口経由に限定し、
+     * 将来のイベント駆動化候補として記録する。</p>
+     */
+    private void leaveMembershipForRoleRevoke(Long userId, Long scopeId, String scopeType,
+                                              LeaveReason leaveReason, Long removedBy) {
+        ScopeType scope = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        boolean ended = membershipService.leaveByUserAndScope(userId, scope, scopeId, leaveReason, removedBy);
+        if (!ended) {
+            // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）。
+            eventPublisher.publishEvent(new MembershipChangedEvent(
+                    userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        }
     }
 
     /**

@@ -1444,7 +1444,9 @@
       "leave_action": "Verlassen",
       "load_error_title": "Informationen konnten nicht geladen werden",
       "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
-      "back_to_dashboard": "Zurück zum Dashboard"
+      "back_to_dashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "slow_loading": "Das Laden dauert länger als erwartet"
     }
   },
   "teamHub": {
