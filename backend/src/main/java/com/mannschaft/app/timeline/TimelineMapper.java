@@ -85,9 +85,13 @@ public interface TimelineMapper {
                         entity.getOriginalFilename(),
                         entity.getFileSize(),
                         entity.getMimeType()))
+                // 画像の url/thumbnailUrl は R2 生キーの署名解決が必要なため Mapper では埋めない
+                // （DTO に Spring 依存を持ち込まない方針。解決は TimelinePostService が行う）。
                 .image(new AttachmentResponse.AttachmentImageDto(
                         entity.getImageWidth(),
-                        entity.getImageHeight()))
+                        entity.getImageHeight(),
+                        null,
+                        null))
                 .video(new AttachmentResponse.AttachmentVideoDto(
                         entity.getVideoUrl(),
                         entity.getVideoThumbnailUrl(),
