@@ -4,6 +4,8 @@ import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * F20.1: BE ゲート（設計書 02 §1.2・03 §4）。
  *
@@ -42,8 +44,10 @@ public class EntitlementGuard {
         if (entitlementQueryService.isEntitled(scopeKind, scopeId, featureKey)) {
             return;
         }
-        if (isPurchasable(featureKey)) {
-            throw new BusinessException(EntitlementErrorCode.FEATURE_NOT_ENTITLED);      // → 402（AC-09）
+        // feature は 1 回だけ引く（AC-21・購入可否判定と 402 details 生成で共有）。
+        FeatureCatalogEntity feature = featureCatalogRepository.findById(featureKey).orElse(null);
+        if (isPurchasable(feature)) {
+            throw new FeatureNotEntitledException(buildDetails(feature, featureKey, scopeKind, scopeId)); // → 402（AC-09）
         }
         throw new BusinessException(EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE);   // → 403（AC-09/18）
     }
@@ -52,12 +56,27 @@ public class EntitlementGuard {
      * 機能が購入可能か（enabled かつ [addon_available または enabled な非 FREE プランに掲載]）。
      * 不明/無効キーは購入不可＝403 側（fail-safe・AC-18）。
      */
-    private boolean isPurchasable(String featureKey) {
-        FeatureCatalogEntity feature = featureCatalogRepository.findById(featureKey).orElse(null);
+    private boolean isPurchasable(FeatureCatalogEntity feature) {
         if (feature == null || !Boolean.TRUE.equals(feature.getEnabled())) {
             return false;
         }
         return Boolean.TRUE.equals(feature.getAddonAvailable())
-                || planFeatureRepository.existsPurchasablePlanContaining(featureKey);
+                || planFeatureRepository.existsPurchasablePlanContaining(feature.getFeatureKey());
+    }
+
+    /**
+     * 402 応答の details（購入導線情報）を組み立てる（設計書・AC-1/2/3/8/9/11・AC-20/21）。
+     */
+    private EntitlementNotEntitledDetails buildDetails(FeatureCatalogEntity feature, String featureKey,
+                                                        EntitlementScopeKind scopeKind, Long scopeId) {
+        List<String> plansContaining = planFeatureRepository.findPurchasablePlanKeysContaining(featureKey);
+        return EntitlementNotEntitledDetails.builder()
+                .featureKey(featureKey)
+                .addonAvailable(Boolean.TRUE.equals(feature.getAddonAvailable()))
+                .addonPriceJpy(feature.getAddonPriceJpy())
+                .plansContaining(plansContaining != null ? plansContaining : List.of())
+                .scopeKind(scopeKind.name())
+                .scopeId(scopeId)
+                .build();
     }
 }
