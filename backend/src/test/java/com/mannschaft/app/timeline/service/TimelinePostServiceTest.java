@@ -107,6 +107,9 @@ class TimelinePostServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
+    @Mock
+    private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private TimelinePostService timelinePostService;
 
@@ -2276,6 +2279,143 @@ class TimelinePostServiceTest {
                     timelinePostService.resolveScope("PUBLIC", 0L, USER_ID);
             assertThat(scope.scopeType()).isEqualTo(StorageScopeType.PERSONAL);
             assertThat(scope.scopeId()).isEqualTo(USER_ID);
+        }
+    }
+
+    // ========================================
+    // issue #2424: 村タイムライン画像添付の署名URL化（BE/FE契約不一致の根治）
+    // ========================================
+    @Nested
+    @DisplayName("issue #2424 画像添付の署名URL化")
+    class AttachmentSignedUrl {
+
+        /** timeline 画像の R2 生キー（DB に保存される形）。 */
+        private static final String IMAGE_KEY = "timeline/PUBLIC/0/tmp/abc-123.jpg";
+        /** MediaUrlResolver が返す署名付き表示 URL（presign の証跡 X-Amz-Signature を含む）。 */
+        private static final String SIGNED_URL =
+                "https://r2.example.com/" + IMAGE_KEY
+                        + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=deadbeef";
+
+        /** Mapper 変換直後の生 AttachmentResponse（image.url/thumbnailUrl は未解決＝null）を作る。 */
+        private AttachmentResponse rawImageResponse(long id, String fileKey) {
+            return AttachmentResponse.builder()
+                    .id(id)
+                    .attachmentType("IMAGE")
+                    .file(new AttachmentResponse.AttachmentFileDto(fileKey, "photo.jpg", 2048L, "image/jpeg"))
+                    .image(new AttachmentResponse.AttachmentImageDto((short) 800, (short) 600, null, null))
+                    .sortOrder((short) 0)
+                    .build();
+        }
+
+        private TimelinePostAttachmentEntity imageEntity(Long postId, String fileKey) {
+            return TimelinePostAttachmentEntity.builder()
+                    .timelinePostId(postId)
+                    .attachmentType(AttachmentType.IMAGE)
+                    .fileKey(fileKey)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("AC-1 投稿詳細: 画像添付の image.url/thumbnailUrl に署名URL（X-Amz-Signature を含む）が入る")
+        void AC1_詳細で画像に署名URLが入る() {
+            // given: PUBLIC 投稿（誰でも可視）に画像添付1件
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponseList(List.of(entity)))
+                    .willReturn(List.of(rawImageResponse(9L, IMAGE_KEY)));
+            given(mediaUrlResolver.resolveAll(anyCollection()))
+                    .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then: image に署名URLが割り当てられ、値は presign 証跡を含む
+            assertThat(result.getAttachments()).hasSize(1);
+            AttachmentResponse.AttachmentImageDto img = result.getAttachments().get(0).getImage();
+            assertThat(img.url()).isEqualTo(SIGNED_URL);
+            assertThat(img.url()).contains("X-Amz-Signature");
+            assertThat(img.thumbnailUrl()).contains("X-Amz-Signature");
+            // width/height は保持される
+            assertThat(img.imageWidth()).isEqualTo((short) 800);
+        }
+
+        @Test
+        @DisplayName("AC-2 feed（PostResponse）: attachments 配列が入り、画像は署名URL付き")
+        void AC2_一覧に添付配列と署名URLが入る() {
+            // given: PUBLIC feed に1投稿・画像添付1件
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost()));
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(POST_ID, "PUBLIC", 0L, USER_ID, "USER", null)));
+            stubAllResolversEmpty();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponse(entity)).willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(mediaUrlResolver.resolveAll(anyCollection()))
+                    .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: feed の投稿にも attachments が入り、画像は署名URL
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAttachments()).hasSize(1);
+            assertThat(result.get(0).getAttachments().get(0).getImage().url()).contains("X-Amz-Signature");
+        }
+
+        @Test
+        @DisplayName("AC-3 添付0件の投稿でも例外なく空配列を返す（feed）")
+        void AC3_添付0件でも空配列() {
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost()));
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(POST_ID, "PUBLIC", 0L, USER_ID, "USER", null)));
+            stubAllResolversEmpty();
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of());
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: attachments は null ではなく空配列
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAttachments()).isNotNull().isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-4 N+1回避: 投稿N件×添付でも resolveAll と一括取得は各1回だけ")
+        void AC4_N件でも解決は1回だけ() {
+            // given: 3投稿・各1画像
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost(), createPost(), createPost()));
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(1L, "PUBLIC", 0L, 100L, "USER", null),
+                    rawFeedPost(2L, "PUBLIC", 0L, 101L, "USER", null),
+                    rawFeedPost(3L, "PUBLIC", 0L, 102L, "USER", null)));
+            stubAllResolversEmpty();
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of(
+                            imageEntity(1L, "timeline/PUBLIC/0/tmp/a.jpg"),
+                            imageEntity(2L, "timeline/PUBLIC/0/tmp/b.jpg"),
+                            imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
+            given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
+                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(mediaUrlResolver.resolveAll(anyCollection())).willReturn(Map.of());
+
+            // when
+            timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: 添付の一括取得も署名解決も 1 回のみ（ループ内 resolve なし）
+            verify(attachmentRepository, org.mockito.Mockito.times(1))
+                    .findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection());
+            verify(mediaUrlResolver, org.mockito.Mockito.times(1)).resolveAll(anyCollection());
         }
     }
 }
