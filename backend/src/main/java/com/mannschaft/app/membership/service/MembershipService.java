@@ -207,6 +207,40 @@ public class MembershipService {
     }
 
     /**
+     * ユーザー × スコープ指定での退会処理（{@link #leave(Long, MembershipLeaveRequest)} の窓口版）。
+     *
+     * <p>membershipId ではなく「誰が・どのスコープを」離脱するかしか判らない呼び出し元
+     * （role ドメインの除名・退会など）のために、アクティブ membership の解決を membership ドメイン内に
+     * 閉じ込める。呼び出し元が {@link MembershipRepository} を直接注入する必要をなくす
+     * （D-3 ArchUnit 準拠: {@code @Transactional} クラスは別ドメイン Repository に直接依存しない）。</p>
+     *
+     * <p>退会本体のロジックは {@link #leave(Long, MembershipLeaveRequest)} に委譲する。left_at /
+     * leave_reason の確定・現役役職の自動離任・{@code MembershipChangedEvent(REMOVED)} /
+     * {@code MembershipEndedEvent} / 監査イベントの発火はすべて委譲先が担う。</p>
+     *
+     * @param userId      対象ユーザー ID
+     * @param scopeType   スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId     スコープ ID
+     * @param leaveReason 退会理由
+     * @param removedBy   除名を実行した操作者 ID（自主退会・システム処理では null）
+     * @return アクティブ membership を退会させた場合 true、対象が無く何もしなかった場合 false
+     */
+    @Transactional
+    public boolean leaveByUserAndScope(Long userId, ScopeType scopeType, Long scopeId,
+                                       LeaveReason leaveReason, Long removedBy) {
+        Optional<MembershipEntity> active =
+                membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId);
+        if (active.isEmpty()) {
+            return false;
+        }
+        MembershipLeaveRequest req = new MembershipLeaveRequest();
+        req.setLeaveReason(leaveReason);
+        req.setRemovedBy(removedBy);
+        leave(active.get().getId(), req);
+        return true;
+    }
+
+    /**
      * 役職割当。
      *
      * <p>設計書 §7.4.2 に従い、スコープ越境を必ず検証する。</p>
