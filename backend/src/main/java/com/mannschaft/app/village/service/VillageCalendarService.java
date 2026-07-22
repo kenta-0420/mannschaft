@@ -14,8 +14,10 @@ import com.mannschaft.app.village.entity.VillageCalendarEventEntity;
 import com.mannschaft.app.village.entity.VillageCalendarEventLogEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.event.VillageEventOccurredEvent;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageCalendarEventLogRepository;
 import com.mannschaft.app.village.repository.VillageCalendarEventRepository;
@@ -78,6 +80,8 @@ public class VillageCalendarService {
     private final VillageCalendarEventLogRepository logRepository;
     private final MediaUrlResolver mediaUrlResolver;
     private final UserVillageNicknameRepository nicknameRepository;
+    /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // ========================================================================
     // 作成
@@ -115,6 +119,12 @@ public class VillageCalendarService {
         VillageCalendarEventEntity saved = calendarRepository.save(entity);
         log.info("Village calendar event created: villageId={} eventId={} title={} recurring={}",
                 villageId, saved.getId(), request.title(), saved.getIsAnnualRecurring());
+
+        // F17.2 Wave2 ①: 歳時記作成の還流（EVENT_CREATED・本体コミット後に AFTER_COMMIT リスナーが発火・§3.3.1）。
+        eventPublisher.publishEvent(new VillageEventOccurredEvent(
+                villageId, VillageEventNotificationType.EVENT_CREATED, saved.getId(),
+                saved.getTitle(), "/villages/" + villageId + "/calendar/" + saved.getId()));
+
         return CalendarEventResponse.from(saved);
     }
 

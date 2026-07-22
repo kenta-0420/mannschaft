@@ -422,6 +422,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 自分の参加表明を登録/更新する（村人・SCHEDULED/ACTIVE のみ・冪等 upsert） */
+        put: operations["upsertRsvp"];
+        post?: never;
+        /** 自分の参加表明を取り消す（村人本人・SCHEDULED/ACTIVE のみ） */
+        delete: operations["deleteRsvp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{userId}/seals/{sealId}": {
         parameters: {
             query?: never;
@@ -6993,6 +7011,24 @@ export interface paths {
         put?: never;
         /** 村のお祭りを作成する（HEADMAN / ELDER のみ） */
         post: operations["create_7"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/live-posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 実況投稿一覧を取得する（村人・削除済み投稿は除外） */
+        get: operations["listLivePosts"];
+        put?: never;
+        /** 実況タグを付ける（村人・ACTIVE 中のみ・二重タグは 409） */
+        post: operations["tagLivePost"];
         delete?: never;
         options?: never;
         head?: never;
@@ -29966,6 +30002,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 参加者一覧を取得する（村人・村ニックネーム表示・ページング） */
+        get: operations["listRsvps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/chronicles": {
         parameters: {
             query?: never;
@@ -45940,6 +45993,30 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        FestivalRsvpUpsertRequest: {
+            roleLabel?: string;
+            /** @enum {string} */
+            status: "GOING" | "MAYBE";
+        };
+        ApiResponseFestivalRsvpResponse: {
+            data?: components["schemas"]["FestivalRsvpResponse"];
+        };
+        FestivalRsvpResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            festivalId?: string;
+            /** Format: uuid */
+            id?: string;
+            roleLabel?: string;
+            /** @enum {string} */
+            status?: "GOING" | "MAYBE";
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
         UpdateSealRequest: {
             displayText?: string;
         };
@@ -53417,6 +53494,21 @@ export interface components {
             /** Format: uuid */
             villageId?: string;
         };
+        FestivalLivePostTagRequest: {
+            /** Format: int64 */
+            timelinePostId: number;
+        };
+        ApiResponseFestivalLivePostResponse: {
+            data?: components["schemas"]["FestivalLivePostResponse"];
+        };
+        FestivalLivePostResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            festivalId?: string;
+            /** Format: int64 */
+            timelinePostId?: number;
+        };
         CalendarEventCreateRequest: {
             colorHex?: string;
             description?: string;
@@ -54008,6 +54100,11 @@ export interface components {
             postedAs?: components["schemas"]["PostPostedAsDto"];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
+            /**
+             * @description システム自動投稿の種別（村行事の還流）。非nullなら村の行事案内名義のシステム投稿。通常投稿はnull。
+             * @enum {string}
+             */
+            systemPostType?: "EVENT_CREATED" | "EVENT_UPCOMING" | "MEETUP_CONFIRMED" | "FESTIVAL_STARTED";
             user?: components["schemas"]["PostUserDto"];
         };
         PostScopeDto: {
@@ -67055,6 +67152,12 @@ export interface components {
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
         };
+        ApiResponseListFestivalRsvpResponse: {
+            data?: components["schemas"]["FestivalRsvpResponse"][];
+        };
+        ApiResponseListFestivalLivePostResponse: {
+            data?: components["schemas"]["FestivalLivePostResponse"][];
+        };
         ApiResponseListChronicleResponse: {
             data?: components["schemas"]["ChronicleResponse"][];
         };
@@ -78171,6 +78274,54 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupAttendanceResponse"];
                 };
+            };
+        };
+    };
+    upsertRsvp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FestivalRsvpUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFestivalRsvpResponse"];
+                };
+            };
+        };
+    };
+    deleteRsvp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -95101,6 +95252,59 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseFestivalResponse"];
+                };
+            };
+        };
+    };
+    listLivePosts: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFestivalLivePostResponse"];
+                };
+            };
+        };
+    };
+    tagLivePost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FestivalLivePostTagRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFestivalLivePostResponse"];
                 };
             };
         };
@@ -138949,6 +139153,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    listRsvps: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFestivalRsvpResponse"];
                 };
             };
         };

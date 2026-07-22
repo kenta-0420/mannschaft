@@ -1,5 +1,7 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -633,6 +635,10 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_095", HttpStatus.CONFLICT),             // MEETUP_TODO_ALREADY_CLAIMED（割当済み claim）
             Map.entry("VILLAGE_096", HttpStatus.FORBIDDEN),            // MEETUP_TODO_NOT_ASSIGNEE（非手挙げ者の complete/release）
             Map.entry("VILLAGE_101", HttpStatus.FORBIDDEN),            // CALENDAR_LOG_FORBIDDEN（年輪の他人削除）
+            // F17.2 Wave2 ③祭の参加レイヤー（VILLAGE_097・098・102）
+            Map.entry("VILLAGE_097", HttpStatus.CONFLICT),             // FESTIVAL_RSVP_NOT_OPEN（SCHEDULED/ACTIVE 以外の RSVP）
+            Map.entry("VILLAGE_098", HttpStatus.CONFLICT),             // FESTIVAL_LIVE_NOT_ACTIVE（ACTIVE 以外の実況タグ）
+            Map.entry("VILLAGE_102", HttpStatus.CONFLICT),             // FESTIVAL_LIVE_POST_DUPLICATE（実況の二重タグ）
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
@@ -1113,6 +1119,30 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         return handleBusinessException(ex, null);
+    }
+
+    /**
+     * F20.1 402 details 追補: {@link FeatureNotEntitledException} 専用ハンドラ（金型:
+     * {@link #handleMilestoneLocked}）。
+     *
+     * <p>共通の {@link ErrorResponse}/{@link ErrorResponse.ErrorDetail}/{@link BusinessException} は
+     * 一切変更しない（AC-19 バイト不変）。{@link FeatureNotEntitledException} は {@link BusinessException} の
+     * サブクラスだが、Spring は最も具体的な例外型のハンドラを優先して選択するため、本メソッドが
+     * {@link #handleBusinessException} より優先して呼ばれる。403（{@code FEATURE_FORBIDDEN_FOR_SCOPE}）は
+     * details を持たない素の {@link BusinessException} のままであり、本ハンドラは通らず従来どおり
+     * {@link #handleBusinessException} を通る（AC-16）。</p>
+     *
+     * <p>4xx（402）のため error_reports への記録はしない（{@link #handleBusinessException} と同じ方針）。</p>
+     */
+    @ExceptionHandler(FeatureNotEntitledException.class)
+    public ResponseEntity<FeatureNotEntitledErrorResponse> handleFeatureNotEntitled(
+            FeatureNotEntitledException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("FeatureNotEntitledException: code={}, featureKey={}",
+                ex.getErrorCode().getCode(), ex.getDetails().getFeatureKey());
+        FeatureNotEntitledErrorResponse body =
+                new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
     }
 
     /**

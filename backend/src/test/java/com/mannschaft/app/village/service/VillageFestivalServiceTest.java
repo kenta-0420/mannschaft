@@ -91,6 +91,9 @@ class VillageFestivalServiceTest {
      */
     @Mock
     private VillageBulletinAccessService bulletinAccessService;
+    /** F17.2 Wave2 ①: 行事作成の還流イベント発行（no-op モック）。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private VillageFestivalService service;
@@ -474,7 +477,7 @@ class VillageFestivalServiceTest {
         MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
         VillageFestivalService serviceWithRealResolver = new VillageFestivalService(
                 festivalRepository, villageRepository, membershipRepository, auditLogService, realResolver,
-                bulletinAccessService);
+                bulletinAccessService, eventPublisher);
 
         VillageFestivalEntity f1 = festival(VillageFestivalStatus.SCHEDULED,
                 LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(6));

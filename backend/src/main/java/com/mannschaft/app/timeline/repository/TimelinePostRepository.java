@@ -17,6 +17,33 @@ import java.util.UUID;
 public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity, Long> {
 
     /**
+     * F17.2 Wave2 ①: 村行事のシステム自動投稿の冪等判定（設計書 §3.7）。
+     *
+     * <p>{@code (scope_village_id, system_post_type, source_event_uuid)} の存在チェックで、
+     * EVENT_UPCOMING 等の繰り返しバッチが同一行事へ二重投稿しないことを機械的に保証する。
+     * {@code @SQLRestriction("deleted_at IS NULL")} が効くため、生存する投稿のみを数える。</p>
+     */
+    boolean existsByScopeVillageIdAndSystemPostTypeAndSourceEventUuid(
+            UUID scopeVillageId, String systemPostType, UUID sourceEventUuid);
+
+    /**
+     * F17.2 Wave2 ③: 指定 ID 群のうち<b>生存している</b>（削除されていない）VILLAGE 投稿を返す。
+     *
+     * <p>実況一覧・村史編纂で timeline {@code deleted_at} 済み投稿を除外するために使う（AC-17c）。
+     * {@code @SQLRestriction} により削除済みは自動除外される。村スコープ一致も条件に含めて
+     * 越境参照の取り違えを防ぐ。</p>
+     */
+    @Query("""
+            SELECT p.id FROM TimelinePostEntity p
+            WHERE p.id IN :ids
+              AND p.scopeType = com.mannschaft.app.timeline.PostScopeType.VILLAGE
+              AND p.scopeVillageId = :villageId
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+            """)
+    List<Long> findAliveVillagePostIds(@Param("ids") java.util.Collection<Long> ids,
+                                       @Param("villageId") UUID villageId);
+
+    /**
      * 認可根治 Wave3-B7-timeline（本丸）: 全文検索の可視 scope 絞り込み。
      *
      * <p>旧クエリは {@code MATCH(content) AGAINST} のみで scope 絞り込みが皆無だったため、

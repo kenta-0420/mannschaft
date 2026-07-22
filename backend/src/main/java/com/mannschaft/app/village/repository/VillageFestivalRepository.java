@@ -29,6 +29,14 @@ public interface VillageFestivalRepository extends JpaRepository<VillageFestival
     /** 自動状態遷移バッチ用: 指定状態のお祭りを一括取得。 */
     List<VillageFestivalEntity> findByStatusAndDeletedAtIsNull(VillageFestivalStatus status);
 
+    /**
+     * 接近通知バッチ用（F17.2 Wave2 ①・設計書 §3.5）: 指定状態かつ {@code starts_at} が
+     * 半開区間 {@code [fromInclusive, toExclusive)} に入る生きているお祭りを取得する。
+     * 「翌日開催」の走査に使う（前日1回のみ・冪等判定は timeline 側で別途行う）。
+     */
+    List<VillageFestivalEntity> findByStatusAndStartsAtGreaterThanEqualAndStartsAtLessThanAndDeletedAtIsNull(
+            VillageFestivalStatus status, java.time.LocalDateTime fromInclusive, java.time.LocalDateTime toExclusive);
+
     // ====================================================================
     // F17.1 ②-2 村ニュースレター集計（村ドメイン内 read-only 呼出）
     // ====================================================================

@@ -4,8 +4,11 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageFestivalStatus;
 import com.mannschaft.app.village.repository.VillageFestivalRepository;
+import com.mannschaft.app.village.service.VillageEventArchiveService;
+import com.mannschaft.app.village.service.VillageEventFeedRefluxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -45,6 +48,10 @@ public class VillageFestivalStateTransitionBatchService {
 
     private final VillageFestivalRepository festivalRepository;
     private final AuditLogService auditLogService;
+    /** F17.2 Wave2 ①: 祭 ACTIVE 化時の FESTIVAL_STARTED 自動投稿・通知（設計書 §3.3.1）。 */
+    private final VillageEventFeedRefluxService refluxService;
+    /** F17.2 Wave2 ③: 祭 ENDED 時の村史（行事アーカイブ）自動編纂（設計書 §5.5）。 */
+    private final VillageEventArchiveService eventArchiveService;
 
     /**
      * 15 分ごとに状態遷移を実行する。
@@ -72,12 +79,20 @@ public class VillageFestivalStateTransitionBatchService {
             if (f.getStartsAt() == null || f.getStartsAt().isAfter(now)) {
                 continue;
             }
+            boolean transitioned = false;
             try {
                 transitionToActive(f);
                 activated++;
+                transitioned = true;
             } catch (Exception e) {
                 failed++;
                 log.error("お祭り ACTIVE 遷移失敗: festivalId={}", f.getId(), e);
+            }
+            // §3.3.1: 状態遷移のコミット後（メソッド戻り後）に副作用を発火。失敗しても状態は巻き戻らない。
+            // refluxService.publish は内部で best-effort（例外を外へ出さない）。
+            if (transitioned) {
+                refluxService.publish(f.getVillageId(), VillageEventNotificationType.FESTIVAL_STARTED, f.getId(),
+                        f.getTitle(), "/villages/" + f.getVillageId() + "/festivals/" + f.getId());
             }
         }
 
@@ -88,12 +103,22 @@ public class VillageFestivalStateTransitionBatchService {
             if (f.getEndsAt() == null || f.getEndsAt().isAfter(now)) {
                 continue;
             }
+            boolean transitioned = false;
             try {
                 transitionToEnded(f);
                 ended++;
+                transitioned = true;
             } catch (Exception e) {
                 failed++;
                 log.error("お祭り ENDED 遷移失敗: festivalId={}", f.getId(), e);
+            }
+            // §5.5: ENDED コミット後に村史編纂。編纂失敗は握って次の祭へ継続（状態は既に確定・AC-17b）。
+            if (transitioned) {
+                try {
+                    eventArchiveService.archiveFestival(f);
+                } catch (Exception e) {
+                    log.error("祭の村史編纂失敗（祭は ENDED 確定済み・継続）: festivalId={}", f.getId(), e);
+                }
             }
         }
 
