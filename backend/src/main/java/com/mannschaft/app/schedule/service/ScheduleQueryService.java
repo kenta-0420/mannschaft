@@ -8,7 +8,9 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import io.micrometer.core.annotation.Timed;
@@ -19,8 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * スケジュールの取得系・カレンダー集約を担当するサービス。
@@ -41,6 +46,7 @@ public class ScheduleQueryService {
     private final UserRoleRepository userRoleRepository;
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final ScheduleAttendanceRepository attendanceRepository;
 
     /**
      * 横断カレンダーへの追加合流 SPI（F06.5 §6.2）。schedule 以外のドメイン（例 reflection）が
@@ -98,6 +104,12 @@ public class ScheduleQueryService {
      * <p>取得済み ID 群を 1 回の {@link ContentVisibilityChecker#filterAccessible} 呼び出しで
      * 判定する（N+1 を避ける）。fail-closed 原則（Resolver 未登録時は空 Set）に従う。</p>
      *
+     * <p>あわせて {@code myAttendanceStatus}（閲覧者自身の出欠状態）も
+     * {@link #fetchMyAttendanceStatusByScheduleId} で 1 クエリバッチ取得し合流する
+     * （一覧APIが出欠回答済みでも常に null を返していた欠陥の是正。#2453 後続）。
+     * 詳細GET（{@code TeamScheduleController#getSchedule} 等）と同じ意味論
+     * （出欠レコード自体が存在しない = null、存在すれば実ステータス文字列）に揃える。</p>
+     *
      * @param schedules    取得済みスケジュール（同一スコープ前提）
      * @param viewerUserId 閲覧者ユーザーID
      * @return 可視なスケジュールの DTO 一覧（元の並び順を維持）
@@ -110,10 +122,42 @@ public class ScheduleQueryService {
         List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
         Set<Long> visibleIds = contentVisibilityChecker
                 .filterAccessible(ReferenceType.SCHEDULE, ids, viewerUserId);
+        Map<Long, String> myAttendanceStatusByScheduleId =
+                fetchMyAttendanceStatusByScheduleId(ids, viewerUserId);
         return schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
-                .map(this::toScheduleResponse)
+                .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId())))
                 .toList();
+    }
+
+    /**
+     * スケジュールID群に対する閲覧者自身の出欠状態を 1 クエリでバッチ取得する。
+     *
+     * <p><b>認可（fail-closed）</b>: userId は常に呼び出し元の {@code viewerUserId} 固定。
+     * 他ユーザーの出欠は一切読まない。scheduleIds は呼び出し元（{@link #toVisibleScheduleResponses}）で
+     * 既にスコープ内かつ可視性フィルタ済みの ID のみが渡される前提。</p>
+     *
+     * <p><b>性能</b>: {@link ScheduleAttendanceRepository#findByScheduleIdInAndUserId} を
+     * ループ外で 1 本だけ発行する（N+1 回避）。scheduleId をキーに status 文字列を保持する
+     * Map を返し、出欠レコードが存在しない scheduleId は Map に存在しない
+     * （= {@code get} が null を返す = 詳細GETの「未回答/募集対象外は null」と同じ意味論）。</p>
+     *
+     * @param scheduleIds 対象スケジュールID群
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return scheduleId → 出欠ステータス文字列（レコード無しのIDは含まれない）
+     */
+    private Map<Long, String> fetchMyAttendanceStatusByScheduleId(
+            List<Long> scheduleIds, Long viewerUserId) {
+        if (scheduleIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<ScheduleAttendanceEntity> attendances =
+                attendanceRepository.findByScheduleIdInAndUserId(scheduleIds, viewerUserId);
+        return attendances.stream()
+                .collect(Collectors.toMap(
+                        ScheduleAttendanceEntity::getScheduleId,
+                        a -> a.getStatus().name(),
+                        (a, b) -> a));
     }
 
     /**
@@ -207,8 +251,14 @@ public class ScheduleQueryService {
 
     /**
      * エンティティをスケジュール一覧用レスポンスDTOに変換する。
+     *
+     * @param entity             変換対象のスケジュール
+     * @param myAttendanceStatus 閲覧者自身の出欠ステータス文字列（レコード無し/未対象なら null）。
+     *                           呼び出し元（{@link #toVisibleScheduleResponses}）が
+     *                           {@link #fetchMyAttendanceStatusByScheduleId} で 1 クエリバッチ取得した
+     *                           値を渡す（N+1 回避のため本メソッド内では出欠を取得しない）。
      */
-    ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
+    ScheduleResponse toScheduleResponse(ScheduleEntity entity, String myAttendanceStatus) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
         return ScheduleResponse.builder()
                 .id(entity.getId())
@@ -226,7 +276,7 @@ public class ScheduleQueryService {
                         entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
-                .myAttendanceStatus(null)
+                .myAttendanceStatus(myAttendanceStatus)
                 .build();
     }
 
