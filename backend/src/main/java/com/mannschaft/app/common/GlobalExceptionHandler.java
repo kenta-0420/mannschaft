@@ -902,6 +902,17 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
             Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
             Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
+            Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
+            Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
+            Map.entry("BETA_PERK_003", HttpStatus.UNPROCESSABLE_ENTITY),// ACTIVITY_CRITERIA_NOT_MET
+            Map.entry("BETA_PERK_004", HttpStatus.BAD_REQUEST),         // BETA_PHASE_INVALID
+            Map.entry("BETA_PERK_005", HttpStatus.CONFLICT),            // GRANT_ALREADY_REVOKED
+            Map.entry("BETA_PERK_006", HttpStatus.CONFLICT),            // REVIEW_NOT_FLAGGED
+            Map.entry("BETA_PERK_007", HttpStatus.UNPROCESSABLE_ENTITY),// GRANT_SCOPE_MISMATCH
+            Map.entry("BETA_PERK_008", HttpStatus.UNPROCESSABLE_ENTITY),// EXTEND_NOT_APPLICABLE（INDIVIDUAL 無期限）
+            Map.entry("BETA_PERK_009", HttpStatus.BAD_REQUEST),         // CRITERIA_VALIDATION_FAILED（無条件付与の防止）
+            Map.entry("BETA_PERK_010", HttpStatus.NOT_FOUND),           // CRITERIA_NOT_FOUND（未定義/enabled=false）
             // 認可根治戦役 Wave 2 トランシェ2A #3: F09.15 succession（法的手続き・エスカレーション）は
             // (id, organizationId) 複合キーで取得するため、別テナントの ID 指定は IDOR 秘匿のため 404 とする
             // （Severity.WARN 既定の 400 を上書き）。
