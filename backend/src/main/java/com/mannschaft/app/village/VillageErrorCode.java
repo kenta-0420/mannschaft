@@ -298,8 +298,14 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_073: 同一候補日への重複追加（409、UNIQUE 制約に先立つアプリ層チェック）。 */
     VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
 
-    /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
-    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
+    /**
+     * VILLAGE_074: この操作には村人であることが必要（403）。
+     *
+     * <p>元は寄合専用（MEETUP_NOT_MEMBER）だったが、祭の参加レイヤー（RSVP・実況）でも同じ
+     * 「村メンバー限定」ガードに再利用するため、メッセージをドメイン中立に変更した（検分🟡5）。
+     * コードとenum定数名は後方互換のため据え置く。</p>
+     */
+    MEETUP_NOT_MEMBER("VILLAGE_074", "この操作には村人である必要があります", Severity.WARN),
 
     // ==================================================================
     // F17 Phase 3-β — 村史（VILLAGE_075）
@@ -490,7 +496,41 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_101: 年輪（歳時記の年ごとの記録）の他人削除（403・投稿者本人＋村長/長老のみ・設計書 §6.4/AC-18b）。 */
     CALENDAR_LOG_FORBIDDEN("VILLAGE_101",
-            "この記録を削除する権限がありません", Severity.WARN);
+            "この記録を削除する権限がありません", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave2 ③祭の参加レイヤー（VILLAGE_097・098・102）
+    // 設計書 docs/features/F17.2_village_events_activation.md §5・§16.1
+    // ※ VILLAGE_097〜098 は §16.1 で予約済み枠を確定使用。VILLAGE_102 は現最大(101)の次。
+    // ==================================================================
+
+    /**
+     * VILLAGE_097: 参加表明（RSVP）を受け付けられない状態の祭に対する操作（409・設計書 §5.6/§12.2）。
+     *
+     * <p>RSVP の登録・取消は SCHEDULED / ACTIVE の祭のみ受け付ける。ENDED / CANCELLED の祭に
+     * 対する RSVP 書き込み・取消は本コードで拒否する（ENDED 後は村史スナップショットとの
+     * 一貫性のため読み取り専用）。</p>
+     */
+    FESTIVAL_RSVP_NOT_OPEN("VILLAGE_097",
+            "このお祭りは現在、参加表明を受け付けられない状態です", Severity.WARN),
+
+    /**
+     * VILLAGE_098: 実況タグ付けを ACTIVE 以外の祭に対して行おうとした（409・設計書 §5.4/AC-16）。
+     *
+     * <p>実況投稿の紐付けは開催中（ACTIVE）の祭のみ受け付ける。SCHEDULED / ENDED / CANCELLED の
+     * 祭への実況タグは本コードで拒否する。</p>
+     */
+    FESTIVAL_LIVE_NOT_ACTIVE("VILLAGE_098",
+            "実況の投稿は開催中のお祭りにのみ紐付けられます", Severity.WARN),
+
+    /**
+     * VILLAGE_102: 同一投稿を同じ祭へ二重に実況タグ付けした（409・設計書 §5.6/AC-16）。
+     *
+     * <p>複合自然キー {@code (festival_id, timeline_post_id)} の重複。冪等に握り潰さず
+     * 明示エラーにする（対処療法禁止）。</p>
+     */
+    FESTIVAL_LIVE_POST_DUPLICATE("VILLAGE_102",
+            "この投稿は既にこのお祭りの実況として登録されています", Severity.WARN);
 
     private final String code;
     private final String message;

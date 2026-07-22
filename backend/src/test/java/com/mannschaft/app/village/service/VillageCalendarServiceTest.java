@@ -82,6 +82,9 @@ class VillageCalendarServiceTest {
     private VillageCalendarEventRepository calendarRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
+    /** F17.2 Wave2 ①: 歳時記作成の還流イベント発行（no-op モック）。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private VillageCalendarService service;
