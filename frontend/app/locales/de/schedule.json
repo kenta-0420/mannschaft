@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Teilnehmen",
+      "no": "Abwesend",
+      "maybe": "Vielleicht",
+      "respondSuccess": "Anwesenheit gespeichert",
+      "respondError": "Anwesenheit konnte nicht gespeichert werden"
+    },
+    "list": {
+      "allDay": "Ganztägig",
+      "empty": "Keine Termine für diesen Zeitraum",
+      "prevMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat"
+    },
     "common_delete": "Löschen",
     "description_label": "Beschreibung",
     "error_title_required": "Der Titel ist erforderlich",

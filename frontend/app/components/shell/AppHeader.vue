@@ -60,7 +60,10 @@ function handleLogoClick() {
 
 <template>
   <header class="sticky top-0 z-50 h-[var(--app-header-h)] border-b border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
-    <div class="flex h-full items-center gap-2 px-4">
+    <!-- AC-1/AC-16根治: 外枠を overflow-x-hidden にし、右アクション群が想定外に
+         伸長しても document 全体の横パンへ波及しない構造にする（Popover類はPrimeVue Portal
+         でbody直下へteleportされるため、ここでのoverflow-hiddenでクリップされない）。 -->
+    <div class="flex h-full items-center gap-2 overflow-x-hidden px-4">
       <!-- パネル型トグル（デスクトップ: レール開閉） -->
       <button
         type="button"
@@ -122,54 +125,61 @@ function handleLogoClick() {
       <div class="flex items-center gap-1">
         <ClientOnly>
           <template v-if="authStore.isAuthenticated">
-            <!-- F15.3: チーム/組織のドロップダウン（ヘッダー残置が確定仕様） -->
-            <ScopeNavDropdown scope-type="TEAM" :label="t('scopeFolder.nav.teams')" />
-            <ScopeNavDropdown scope-type="ORGANIZATION" :label="t('scopeFolder.nav.organizations')" />
+            <!-- AC-16: チーム/組織ドロップダウン・目安箱・受信箱・PWA・ログアウト・Syncは
+                 デスクトップ(md=768px)以上のみヘッダーに残置する。モバイルはハンバーガー経由の
+                 ドロワー（GlobalSidebar force-wide 内の退避セクション）へ移設し、横パンを根治する。 -->
+            <div class="hidden items-center gap-1 md:flex">
+              <!-- F15.3: チーム/組織のドロップダウン（デスクトップはヘッダー残置が確定仕様） -->
+              <ScopeNavDropdown scope-type="TEAM" :label="t('scopeFolder.nav.teams')" />
+              <ScopeNavDropdown scope-type="ORGANIZATION" :label="t('scopeFolder.nav.organizations')" />
 
-            <SyncProgressIndicator />
-            <!-- 目安箱ボタン -->
-            <Button
-              v-tooltip.bottom="t('feedback.nav_tooltip')"
-              icon="pi pi-box"
-              text
-              rounded
-              severity="secondary"
-              @click="emit('open-feedback')"
-            />
-            <!-- F04.11: 受信箱アイコン -->
-            <NuxtLink
-              to="/inbox"
-              class="relative flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
-              :aria-label="t('inbox.title')"
-              :title="t('inbox.title')"
-            >
-              <i class="pi pi-inbox text-surface-600 dark:text-surface-300" />
-              <Badge
-                v-if="inboxStore.inboxCount > 0"
-                :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
-                severity="danger"
-                class="absolute -right-1 -top-1 shadow-md ring-2 ring-white dark:ring-surface-900 !min-w-[1.1rem] !h-[1.1rem] !text-[0.6rem]"
+              <SyncProgressIndicator />
+              <!-- 目安箱ボタン -->
+              <Button
+                v-tooltip.bottom="t('feedback.nav_tooltip')"
+                icon="pi pi-box"
+                text
+                rounded
+                severity="secondary"
+                @click="emit('open-feedback')"
               />
-            </NuxtLink>
+              <!-- F04.11: 受信箱アイコン -->
+              <NuxtLink
+                to="/inbox"
+                class="relative flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :aria-label="t('inbox.title')"
+                :title="t('inbox.title')"
+              >
+                <i class="pi pi-inbox text-surface-600 dark:text-surface-300" />
+                <Badge
+                  v-if="inboxStore.inboxCount > 0"
+                  :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
+                  severity="danger"
+                  class="absolute -right-1 -top-1 shadow-md ring-2 ring-white dark:ring-surface-900 !min-w-[1.1rem] !h-[1.1rem] !text-[0.6rem]"
+                />
+              </NuxtLink>
+              <!-- PWAインストールボタン（未インストール時のみ） -->
+              <Button
+                v-if="showPwaInstallBtn"
+                v-tooltip.bottom="t('pwa.install_button')"
+                icon="pi pi-download"
+                text
+                rounded
+                severity="secondary"
+                @click="handlePwaInstall"
+              />
+              <Button
+                v-tooltip.bottom="t('button.logout')"
+                icon="pi pi-sign-out"
+                text
+                rounded
+                severity="secondary"
+                @click="authStore.serverLogout()"
+              />
+            </div>
+
+            <!-- モバイル/デスクトップ共通: 通知ベルのみ常時ヘッダーに残す -->
             <NotificationBell />
-            <!-- PWAインストールボタン（未インストール時のみ） -->
-            <Button
-              v-if="showPwaInstallBtn"
-              v-tooltip.bottom="'アプリをインストール'"
-              icon="pi pi-download"
-              text
-              rounded
-              severity="secondary"
-              @click="handlePwaInstall"
-            />
-            <Button
-              v-tooltip.bottom="'ログアウト'"
-              icon="pi pi-sign-out"
-              text
-              rounded
-              severity="secondary"
-              @click="authStore.serverLogout()"
-            />
           </template>
         </ClientOnly>
         <slot name="header-actions" />
