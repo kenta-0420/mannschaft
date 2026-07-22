@@ -689,20 +689,17 @@ export interface VillageFestivalLivePostTagRequest {
 // F17.2 Wave2 ⑦ 村史（行事アーカイブ）— village_event_archives
 // 設計書: docs/features/F17.2_village_events_activation.md §7
 //
-// ⚠️ BE 未実装の注記（2026-07-22 時点）: 編纂（書き込み）側の `VillageEventArchiveService`
-// は origin/main に main 済み（祭 ENDED 遷移時にスナップショット確定）だが、
-// 読み取り側の Controller（`GET /api/v1/villages/{villageId}/event-archives`）は
-// 本 Wave2 骨格 PR (#2427) に未着手で、`docs/openapi.json` / 生成型にもまだ現れない。
-// 本節の型・composable メソッドは §7.2/§7.4 の確定契約に準拠して先行実装するが、
-// 実際に疎通するのは対応する Controller が別途出陣・main 済みになってから
-// （それまでは村史タブは 404/読み込み失敗として表示される。フォールバック握り潰し禁止）。
+// BE 追補 #2448（2026-07-22 main 済み）で読み取り Controller
+// （`GET /api/v1/villages/{villageId}/event-archives`）が疎通済み。
+// 本節の型は `village.contract.ts` で生成型 `Schemas['VillageEventArchiveResponse']`
+// と SameKeys 照合登録済み（W1FE の教訓＝手書き型のドリフト検知網に載せる）。
 // -----------------------------------------------------------------------------
 
 /** 村史（行事アーカイブ）の元行事種別。BE: `entity.enums.VillageEventArchiveSourceType`。 */
 export type VillageEventArchiveSourceType = 'FESTIVAL' | 'CALENDAR_EVENT' | 'MEETUP'
 
 /**
- * 村史（行事アーカイブ）エントリ。BE 想定 DTO 名: `EventArchiveResponse`（未実装・§7.4）。
+ * 村史（行事アーカイブ）エントリ。BE: `VillageEventArchiveResponse`（§7.2/§7.4・#2448）。
  *
  * 編纂時に確定したスナップショット（元行事が後日削除・変更されても揺れない・§7.2）。
  * `thumbnailUrl` は既存の `bannerUrl`/`photoUrl` と同じ「署名付き表示 URL」規約に倣う

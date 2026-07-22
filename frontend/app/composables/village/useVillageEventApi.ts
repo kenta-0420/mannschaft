@@ -260,28 +260,22 @@ export function useVillageEventApi() {
 
   // =====================================================================
   // F17.2 Wave2 ⑦ 村史（行事アーカイブ）
-  // /api/v1/villages/{villageId}/event-archives
-  // 設計書: docs/features/F17.2_village_events_activation.md §7
-  //
-  // ⚠️ BE Controller 未実装（village.ts の該当セクション先頭コメント参照）。
-  // Controller が main 済みになるまで、以下の呼び出しは 404 になる。
+  // /api/v1/villages/{villageId}/event-archives（BE Controller: VillageEventArchiveController）
+  // 設計書: docs/features/F17.2_village_events_activation.md §7（BE追補 #2448 main済み）
   // =====================================================================
 
-  /** 村史（行事アーカイブ）一覧（archived_at 降順・§7.4）。 */
+  /**
+   * 村史（行事アーカイブ）一覧（archived_at 降順・§7.4）。
+   *
+   * 【確認済み】`VillageEventArchiveController`（BE 追補 #2448）は一覧 GET のみを持つ
+   * （詳細 GET `/{archiveId}` は実装されていない）。よって本 composable も一覧のみ提供する。
+   */
   async function listEventArchives(
     villageId: string,
     params?: VillageEventArchiveListParams,
   ) {
     const res = await api<{ data: VillageEventArchiveResponse[] }>(
       `/api/v1/villages/${villageId}/event-archives${qs(params)}`,
-    )
-    return res.data
-  }
-
-  /** 村史（行事アーカイブ）詳細（§7.4）。 */
-  async function getEventArchive(villageId: string, archiveId: string) {
-    const res = await api<{ data: VillageEventArchiveResponse }>(
-      `/api/v1/villages/${villageId}/event-archives/${archiveId}`,
     )
     return res.data
   }
@@ -309,8 +303,7 @@ export function useVillageEventApi() {
     listRsvps,
     tagLivePost,
     listLivePosts,
-    // F17.2 Wave2 ⑦ 村史（行事アーカイブ）※ BE Controller 未実装（先行実装）
+    // F17.2 Wave2 ⑦ 村史（行事アーカイブ）
     listEventArchives,
-    getEventArchive,
   }
 }

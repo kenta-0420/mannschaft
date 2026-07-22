@@ -8,12 +8,10 @@
  * 旧・月次統計（`VillageChronicleEntity`）から **行事アーカイブ**（`village_event_archives`。
  * 祭・歳時記・寄合の記録）へ差し替える（§7.1 確定）。
  *
- * ⚠️ BE 未実装の注記（2026-07-22 時点）: 読み取り Controller
- * （`GET /api/v1/villages/{villageId}/event-archives`）が origin/main に未着手のため、
- * 本ページは現状 404/読み込み失敗として表示される（編纂〔書き込み〕側の
- * `VillageEventArchiveService` は main 済み）。契約・UI は §7.2/§7.4 準拠で先行実装した
- * （`app/types/village.ts` の該当セクション・`village.contract.ts` の注記を参照）。
- * Controller が main 済みになれば追加変更なしに疎通する。
+ * 読み取り Controller（`GET /api/v1/villages/{villageId}/event-archives`・
+ * `VillageEventArchiveController`）は BE 追補 #2448 で main 済み。型は
+ * `app/types/village.ts` の手書き型を `village.contract.ts` で生成型
+ * （`Schemas['VillageEventArchiveResponse']`）と SameKeys 照合登録済み。
  *
  * 永続シェル方式（SPA）: 村データ・権限・VillageHeader・アクションは親
  * `pages/villages/[id].vue` に集約。本ファイルは村史パネル本体（読み取り専用）のみ。

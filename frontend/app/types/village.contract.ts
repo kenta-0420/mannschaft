@@ -37,6 +37,8 @@ import type {
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageCreationRequestResponse,
+  VillageEventArchiveResponse,
+  VillageEventArchiveSourceType,
   VillageFestivalLivePostResponse,
   VillageFestivalLivePostTagRequest,
   VillageFestivalRsvpResponse,
@@ -258,13 +260,19 @@ export type FestivalLivePostTagRequestKeysMatch = AssertTrue<
 >
 
 // -----------------------------------------------------------------------------
-// B-4. F17.2 Wave2 ⑦ 村史（行事アーカイブ）
-//
-// ⚠️ `VillageEventArchiveResponse`（village.ts）はここに未登録。
-// BE 読み取り Controller が origin/main 未実装で `Schemas['EventArchiveResponse']` が
-// 生成型に存在しないため（village.ts 側の注記を参照）。Controller が main 済みになり
-// `npm run generate:types` 後に生成型が現れたら、ここへ SameKeys 登録すること。
+// B-4. F17.2 Wave2 ⑦ 村史（行事アーカイブ）— BE 追補 #2448（2026-07-22 main 済み）
 // -----------------------------------------------------------------------------
+
+export type VillageEventArchiveResponseKeysMatch = AssertTrue<
+  SameKeys<VillageEventArchiveResponse, Schemas['VillageEventArchiveResponse']>
+>
+
+export type VillageEventArchiveSourceTypeEnumMatch = AssertTrue<
+  Assignable<VillageEventArchiveSourceType, NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>>
+>
+export type VillageEventArchiveSourceTypeEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>, VillageEventArchiveSourceType>
+>
 
 // =============================================================================
 // C. 参加申請 / 村作成申請（Spring Page 露出）
