@@ -58,6 +58,7 @@ Class <com.mannschaft.app.billing.FeatureCatalogEntity> is not assignable to com
 Class <com.mannschaft.app.billing.PlanEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (PlanEntity.java:0)
 Class <com.mannschaft.app.billing.PlanFeatureEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (PlanFeatureEntity.java:0)
 Class <com.mannschaft.app.billing.PlanPriceBandEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (PlanPriceBandEntity.java:0)
+Class <com.mannschaft.app.billing.beta.BetaPerkCriteriaEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (BetaPerkCriteriaEntity.java:0)
 Class <com.mannschaft.app.budget.entity.BudgetAllocationEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (BudgetAllocationEntity.java:0)
 Class <com.mannschaft.app.budget.entity.BudgetCategoryEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (BudgetCategoryEntity.java:0)
 Class <com.mannschaft.app.budget.entity.BudgetConfigEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (BudgetConfigEntity.java:0)

@@ -90,8 +90,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code 2c0ba995-682e-4f80-a5a5-f68c835b720d}）。
+     *
+     * <p>F20.3（2026-07-22）: {@code billing.beta.BetaPerkCriteriaEntity}（付与条件マスタ）を 1 件追加し
+     * 564 → 565。マスタ例外（全テナント共通・複合自然キー {@code (beta_phase, grant_kind)}・独立発番不要）で
+     * CLAUDE.md 原則 #6 の明記された例外に該当し、設計是認済み（設計書 F20.3 01 §0/§2）。違反隠蔽ではなく
+     * 設計是認例外の正規登録（{@code village.VillageFestivalLivePostEntity} と同型）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 564;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 565;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
