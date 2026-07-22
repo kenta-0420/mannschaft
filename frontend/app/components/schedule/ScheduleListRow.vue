@@ -26,10 +26,11 @@ const { responding, respond } = useAttendanceResponder(props.scopeType, props.sc
 // 本人の出欠選択状態。API 失敗時は更新せず既存状態を保つ（楽観更新しない）。
 const localStatus = ref<string | null>(props.event.myAttendance ?? null)
 
+// status は BE 正準（ATTENDING/ABSENT/UNDECIDED）と完全一致させる。ラベルは i18n キーのまま不変。
 const attendanceButtons = [
-  { status: 'YES', label: t('schedule.attendance.yes'), on: 'bg-green-600 text-white border-green-600' },
-  { status: 'NO', label: t('schedule.attendance.no'), on: 'bg-red-600 text-white border-red-600' },
-  { status: 'MAYBE', label: t('schedule.attendance.maybe'), on: 'bg-amber-500 text-white border-amber-500' },
+  { status: 'ATTENDING', label: t('schedule.attendance.yes'), on: 'bg-green-600 text-white border-green-600' },
+  { status: 'ABSENT', label: t('schedule.attendance.no'), on: 'bg-red-600 text-white border-red-600' },
+  { status: 'UNDECIDED', label: t('schedule.attendance.maybe'), on: 'bg-amber-500 text-white border-amber-500' },
 ] as const
 
 async function onRespond(status: string) {

@@ -61,7 +61,6 @@ export function useScheduleApi() {
     bulkCreatePerformanceRecords: analytics.bulkCreatePerformanceRecords,
     // === Global Schedule Actions ===
     remindSchedule: crud.remindSchedule,
-    respondToSchedule: crud.respondToSchedule,
     getScheduleStats: attendance.getScheduleStats,
     // === Schedule Invitations ===
     getScheduleInvitations: crud.getScheduleInvitations,
