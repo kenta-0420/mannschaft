@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "참석",
+      "no": "불참",
+      "maybe": "미정",
+      "respondSuccess": "출결을 응답했습니다",
+      "respondError": "출결 응답에 실패했습니다"
+    },
+    "list": {
+      "allDay": "종일",
+      "empty": "이 기간의 일정이 없습니다",
+      "prevMonth": "이전 달",
+      "nextMonth": "다음 달"
+    },
     "common_delete": "삭제",
     "description_label": "설명",
     "error_title_required": "제목은 필수입니다",
