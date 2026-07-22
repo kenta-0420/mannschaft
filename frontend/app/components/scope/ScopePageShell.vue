@@ -79,7 +79,7 @@ const lensModel = computed<boolean>({
     <!-- ============================================================== -->
     <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
       <div class="flex items-center">
-        <div class="flex-1 overflow-x-auto">
+        <div class="flex-1 min-w-0 overflow-x-auto">
           <Tabs :value="activeTab">
             <TabList>
               <Tab
@@ -91,7 +91,7 @@ const lensModel = computed<boolean>({
               >
                 <NuxtLink
                   :to="tab.to"
-                  class="flex items-center gap-2 no-underline text-inherit"
+                  class="flex items-center gap-2 min-h-11 no-underline text-inherit"
                 >
                   <i :class="tab.icon" />
                   <span>{{ $t(tab.labelKey) }}</span>
