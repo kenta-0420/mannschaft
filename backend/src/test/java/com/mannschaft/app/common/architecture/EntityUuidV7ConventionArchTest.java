@@ -32,6 +32,18 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * {@code freeze.refreeze=true} によりストアが自動縮小される（{@code archunit.properties}）。
  *
  * <p>{@link CrossDomainEntityImportArchTest} と同一の凍結ストアディレクトリを共用する。
+ *
+ * <h2>設計是認の凍結例外（違反隠蔽ではない）</h2>
+ * <p>凍結ストアには「移行猶予中の既存 BIGINT Entity」に加え、<b>設計上 UUIDv7 を意図的に
+ * 適用しない正当な例外</b>も 1 行だけ登録されている:</p>
+ * <ul>
+ *   <li>{@code village.entity.VillageFestivalLivePostEntity}（F17.2 Wave2 ③・設計書 §5.4/§13.1）
+ *       — お祭りの実況投稿の紐付け表。独立発番の代理キーを必要とせず、参照2本の組
+ *       {@code (festival_id, timeline_post_id)} が一意で足りる<b>複合自然キー</b>を主キーとする。
+ *       CLAUDE.md 原則 #6 の明記された例外（「参照2本の組が一意・独立発番不要」）に該当し、
+ *       設計是認済み。したがって本エントリは「違反隠蔽」ではなく「設計是認例外の正規登録」であり、
+ *       他 Entity へ緩めてはならない（新規 Entity は原則どおり UuidV7Entity を継承すること）。</li>
+ * </ul>
  */
 @AnalyzeClasses(
     packages = "com.mannschaft.app",

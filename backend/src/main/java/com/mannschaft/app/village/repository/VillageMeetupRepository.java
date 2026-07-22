@@ -25,6 +25,13 @@ public interface VillageMeetupRepository extends JpaRepository<VillageMeetupEnti
     Page<VillageMeetupEntity> findByVillageIdAndStatusAndDeletedAtIsNull(
             UUID villageId, VillageMeetupStatus status, Pageable pageable);
 
+    /**
+     * 接近通知バッチ用（F17.2 Wave2 ①・設計書 §3.5）: 指定状態かつ {@code confirmed_date} が
+     * 指定日の生きている寄合を取得する。「翌日開催」の走査に使う（CONFIRMED のみ対象）。
+     */
+    java.util.List<VillageMeetupEntity> findByStatusAndConfirmedDateAndDeletedAtIsNull(
+            VillageMeetupStatus status, java.time.LocalDate confirmedDate);
+
     // ====================================================================
     // F17.1 ②-2 村ニュースレター集計（村ドメイン内 read-only 呼出）
     // ====================================================================

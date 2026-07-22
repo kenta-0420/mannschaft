@@ -33,6 +33,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
@@ -184,6 +185,98 @@ public class TimelinePostService {
     @Transactional
     public PostResponse createSystemPost(CreatePostRequest req, Long userId) {
         return doCreatePost(req, parseInternalScopeId(req), userId, false);
+    }
+
+    /**
+     * 村行事の還流専用のシステム名義投稿を作成する（F17.2 Wave2 ①・設計書 §3.2/§3.3）。
+     *
+     * <p>行事が「立った／近づいた／確定した／始まった」ときに、村のタイムラインへ
+     * <b>システム名義（投稿者ユーザー不在）</b>の投稿を1行作る。設計書 §3.2 の契約に従い、
+     * {@code user_id = NULL}・{@code posted_as_type} は既定 {@code USER} のまま（無視される）・
+     * {@code status = PUBLISHED}・{@code scope_type = VILLAGE}・{@code scope_id = 0}・
+     * {@code scope_village_id = villageId} で保存する。システム投稿の判定は
+     * {@code system_post_type IS NOT NULL} の一本槍であり、{@code posted_as_type} は読まない。</p>
+     *
+     * <p><b>本メソッドは「村行事の還流専用」であり、汎用の「任意本文を任意村へ投げる API」ではない</b>。
+     * 種別を {@link VillageEventNotificationType} enum 引数で縛ることで用途を型で限定する。</p>
+     *
+     * <p><b>認可はこのメソッドを呼ぶ村ドメインの Service 側の責務</b>である（ドメイン越境は
+     * Service メソッド呼び出しのみ・原則1/5・設計書 §3.3）。本メソッドはメンバーシップ検証を
+     * 行わない（呼び出し元がシステム内部の信頼済みコードであることを前提とする）。
+     * 通知・自動投稿の発火配線（バッチ／afterCommit）は後続の村ドメイン側で結線する（設計書 §3.3.1）。</p>
+     *
+     * @param villageId       投稿先の村 UUID（{@code scope_village_id}）
+     * @param systemPostType  システム投稿の種別（村ドメイン enum・{@code system_post_type} へ {@code .name()} で格納）
+     * @param sourceEventUuid 対象行事の UUID（歳時記/祭/寄合の {@code id}）。冪等判定・タップ遷移に使う
+     * @param content         投稿本文（i18n 由来の要約等。呼び出し元で組み立てる）
+     * @return 作成された投稿（システム投稿なので {@code postedAs}/{@code user} は付与されない）
+     */
+    @Transactional
+    public PostResponse createSystemVillagePost(UUID villageId,
+                                                VillageEventNotificationType systemPostType,
+                                                UUID sourceEventUuid,
+                                                String content) {
+        if (villageId == null) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+        if (systemPostType == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+
+        TimelinePostEntity post = TimelinePostEntity.builder()
+                .scopeType(PostScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(villageId)
+                .userId(null)                              // システム投稿は投稿者ユーザー不在（§3.2）
+                .postedAsType(PostedAsType.USER)           // 既定値のまま・判定には使わない（§3.2）
+                .systemPostType(systemPostType.name())     // system_post_type IS NOT NULL がシステム投稿の唯一の判定
+                .sourceEventUuid(sourceEventUuid)
+                .content(content)
+                .status(PostStatus.PUBLISHED)
+                .build();
+
+        post = postRepository.save(post);
+        log.info("村行事システム投稿作成: id={}, villageId={}, type={}, sourceEventUuid={}",
+                post.getId(), villageId, systemPostType, sourceEventUuid);
+
+        return timelineMapper.toPostResponse(post);
+    }
+
+    /**
+     * 村行事のシステム自動投稿が既に存在するかを判定する（F17.2 Wave2 ①・冪等判定・設計書 §3.7）。
+     *
+     * <p>{@code (scope_village_id, system_post_type, source_event_uuid)} の存在チェック。
+     * 村ドメインの還流サービスが EVENT_UPCOMING 等の二重投稿を防ぐために呼ぶ
+     * （ドメイン越境は Service メソッド経由・原則1/5）。</p>
+     */
+    public boolean systemVillagePostExists(UUID villageId, VillageEventNotificationType systemPostType,
+                                           UUID sourceEventUuid) {
+        if (villageId == null || systemPostType == null || sourceEventUuid == null) {
+            return false;
+        }
+        return postRepository.existsByScopeVillageIdAndSystemPostTypeAndSourceEventUuid(
+                villageId, systemPostType.name(), sourceEventUuid);
+    }
+
+    /**
+     * 指定 ID 群のうち生存している（timeline {@code deleted_at} でない）当該村の VILLAGE 投稿 ID を返す
+     * （F17.2 Wave2 ③・実況一覧/村史編纂の削除済み除外・AC-17c）。
+     */
+    public Set<Long> filterAliveVillagePostIds(java.util.Collection<Long> postIds, UUID villageId) {
+        if (postIds == null || postIds.isEmpty() || villageId == null) {
+            return java.util.Set.of();
+        }
+        return new HashSet<>(postRepository.findAliveVillagePostIds(postIds, villageId));
+    }
+
+    /**
+     * 指定投稿が「生存している当該村の VILLAGE 投稿」であるかを判定する（F17.2 Wave2 ③・実況タグ付けの検証）。
+     */
+    public boolean isAliveVillagePost(Long postId, UUID villageId) {
+        if (postId == null || villageId == null) {
+            return false;
+        }
+        return !postRepository.findAliveVillagePostIds(List.of(postId), villageId).isEmpty();
     }
 
     /**
@@ -828,11 +921,16 @@ public class TimelinePostService {
         Map<Long, String> authorAvatars = nameResolverService.resolveUserAvatarUrls(authorUserIds);
 
         // 3. 各投稿へ enrich（toBuilder で不変 DTO を再構築）
+        // F17.2 Wave2 ①: システム投稿（systemPostType 非 null）は投稿主体・投稿者が存在しないため
+        // postedAs を組み立てず null で返す（設計書 §3.9(a)）。system_post_type 非 null 投稿では
+        // user_id も NULL なので enrichUser も自然に null を返す。
         return posts.stream()
                 .map(p -> p.toBuilder()
                         .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs))
                         .user(enrichUser(p.getAuthor(), authorNames, authorAvatars))
-                        .postedAs(enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
+                        .postedAs(p.getSystemPostType() != null
+                                ? null
+                                : enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
                         .build())
                 .toList();
     }
