@@ -1439,7 +1439,9 @@
       "leave_action": "退出する",
       "load_error_title": "情報を取得できませんでした",
       "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
-      "back_to_dashboard": "ダッシュボードへ戻る"
+      "back_to_dashboard": "ダッシュボードへ戻る",
+      "retry": "再試行",
+      "slow_loading": "読み込みに時間がかかっています"
     }
   },
   "teamHub": {

@@ -24,13 +24,13 @@ function goBack() {
   <NuxtLink
     v-if="to"
     :to="to"
-    class="mb-4 inline-flex min-h-[44px] items-center gap-1.5 text-base font-medium text-primary hover:underline"
+    class="inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline"
   >
     <i class="pi pi-arrow-left text-sm" />{{ displayLabel }}
   </NuxtLink>
   <button
     v-else
-    class="mb-4 inline-flex min-h-[44px] items-center gap-1.5 text-base font-medium text-primary hover:underline"
+    class="inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline"
     @click="goBack"
   >
     <i class="pi pi-arrow-left text-sm" />{{ displayLabel }}

@@ -447,9 +447,9 @@ defineExpose({ refresh: () => loadNotifications() })
 
         <!-- アクションボタン群（スヌーズ + 既読トグル）-->
         <div class="mt-1 flex shrink-0 items-center gap-1">
-          <!-- スヌーズボタン -->
+          <!-- スヌーズボタン（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
-            class="p-1 text-surface-300 hover:text-primary"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-primary"
             :aria-label="$t('inbox.action.snooze')"
             :title="$t('inbox.action.snooze')"
             @click.stop="toggleSnoozeMenu($event, notif)"
@@ -463,9 +463,9 @@ defineExpose({ refresh: () => loadNotifications() })
             :popup="true"
           />
 
-          <!-- 既読/未読トグル -->
+          <!-- 既読/未読トグル（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
-            class="p-1 text-surface-300 hover:text-surface-600"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-surface-600"
             :title="notif.isRead ? '未読にする' : '既読にする'"
             @click.stop="onToggleRead(notif)"
           >

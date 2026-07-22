@@ -956,20 +956,32 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
-    public SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+    public SubscriptionInfo createSubscription(String customerId, java.util.List<String> priceIds,
+                                               String defaultPaymentMethodId,
                                                String destinationAccountId, BigDecimal applicationFeePercent,
                                                long billingCycleAnchorEpochSec, String idempotencyKey) {
+        if (priceIds == null || priceIds.isEmpty()) {
+            // 呼び出し側の契約違反（症状を隠さず即座に拒否する）。
+            throw new IllegalArgumentException("priceIds must contain at least one price (会費 Price)");
+        }
         try {
             // 案b: 初回会費は外側で単発 destination charge 済み。Subscription は billing_cycle_anchor=次サイクル開始で
             // 起動し proration_behavior=NONE で「初回 invoice を発生させない」（PoC 実証 2026-06-05・02 §4.1）。
             // billing_cycle_anchor は「将来時刻」かつ proration_behavior=NONE のとき初回課金を当該時刻まで遅延でき、
             // trial_end 方式よりも「次サイクルから通常課金（subscription_cycle invoice）」を確実に表現できる。
-            SubscriptionCreateParams params = SubscriptionCreateParams.builder()
-                    .setCustomer(customerId)
-                    .addItem(SubscriptionCreateParams.Item.builder()
-                            .setPrice(priceId)
-                            .setQuantity(1L)
-                            .build())
+            //
+            // 案C（手数料折半の根治）: 明細は「会費 Price（額面）」＋「支払側手数料 Price（payerFee）」の 2 本。
+            // SubscriptionCreateParams.Builder#addItem は複数回呼べるため、素直に明細を積む
+            //（stripe-java 28.2.0 で確認・putExtraParam による回避は不要）。
+            SubscriptionCreateParams.Builder builder = SubscriptionCreateParams.builder()
+                    .setCustomer(customerId);
+            for (String priceId : priceIds) {
+                builder.addItem(SubscriptionCreateParams.Item.builder()
+                        .setPrice(priceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+            SubscriptionCreateParams params = builder
                     .setDefaultPaymentMethod(defaultPaymentMethodId)
                     .setOffSession(true)
                     .setOnBehalfOf(destinationAccountId)
@@ -986,14 +998,15 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .setIdempotencyKey(idempotencyKey)
                     .build();
             Subscription subscription = Subscription.create(params, options);
-            log.info("Stripe Subscription 作成（案b・次サイクル開始）: id={}, status={}, anchor={}, destination={}, feePct={}",
+            log.info("Stripe Subscription 作成（案b・次サイクル開始・案C 2明細）: id={}, status={}, anchor={}, "
+                            + "destination={}, feePct={}, prices={}",
                     subscription.getId(), subscription.getStatus(), billingCycleAnchorEpochSec,
-                    destinationAccountId, applicationFeePercent);
+                    destinationAccountId, applicationFeePercent, priceIds);
             return new SubscriptionInfo(subscription.getId(), subscription.getStatus(),
                     subscription.getCurrentPeriodEnd());
         } catch (StripeException e) {
-            log.error("Stripe Subscription 作成失敗: customer={}, price={}, destination={}",
-                    customerId, priceId, destinationAccountId, e);
+            log.error("Stripe Subscription 作成失敗: customer={}, prices={}, destination={}",
+                    customerId, priceIds, destinationAccountId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }

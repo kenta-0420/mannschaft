@@ -425,8 +425,13 @@ public interface StripePaymentProvider {
      * 第四波 webhook が {@code fee_policy_key} で固定額へ上書き）。{@code payment_behavior=ALLOW_INCOMPLETE} で
      * 初回 invoice なしの作成を許容する。</p>
      *
+     * <p><b>複数明細（案C・手数料折半の根治）:</b> {@code priceIds} には「会費 Price（額面）」と
+     * 「支払側手数料 Price（{@code FeeBreakdown.payerFee}）」を渡し、invoice 合計を初回サイクルの
+     * PaymentIntent 金額（{@code chargeAmount}）と一致させる。{@code payerFee == 0} の契約では
+     * 会費 Price のみの 1 要素になる。</p>
+     *
      * @param customerId               払い手の Stripe Customer ID（{@code cus_xxx}）
-     * @param priceId                  継続課金の Stripe Price ID（{@code price_xxx}）
+     * @param priceIds                 継続課金の Stripe Price ID 群（{@code price_xxx}・会費＋任意で手数料・1 要素以上）
      * @param defaultPaymentMethodId   off_session 課金に使う PaymentMethod ID（{@code pm_xxx}）
      * @param destinationAccountId     受領者 Connect アカウント ID（{@code acct_xxx}）
      * @param applicationFeePercent    application_fee の率（安全側既定・invoice 上書きが正）
@@ -434,7 +439,8 @@ public interface StripePaymentProvider {
      * @param idempotencyKey           冪等性キー（設計書 02 §9）
      * @return Subscription 情報（id / status / currentPeriodEnd）
      */
-    SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+    SubscriptionInfo createSubscription(String customerId, java.util.List<String> priceIds,
+                                        String defaultPaymentMethodId,
                                         String destinationAccountId, java.math.BigDecimal applicationFeePercent,
                                         long billingCycleAnchorEpochSec, String idempotencyKey);
 
