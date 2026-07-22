@@ -30,10 +30,11 @@ async function respond(status: string) {
   }
 }
 
+// status は BE 正準（ATTENDING/ABSENT/UNDECIDED）と完全一致させる。ラベルは不変。
 const attendanceButtons = [
-  { status: 'YES', label: '出席', icon: 'pi pi-check', severity: 'success' as const },
-  { status: 'NO', label: '欠席', icon: 'pi pi-times', severity: 'danger' as const },
-  { status: 'MAYBE', label: '未定', icon: 'pi pi-question', severity: 'warn' as const },
+  { status: 'ATTENDING', label: '出席', icon: 'pi pi-check', severity: 'success' as const },
+  { status: 'ABSENT', label: '欠席', icon: 'pi pi-times', severity: 'danger' as const },
+  { status: 'UNDECIDED', label: '未定', icon: 'pi pi-question', severity: 'warn' as const },
 ]
 </script>
 
