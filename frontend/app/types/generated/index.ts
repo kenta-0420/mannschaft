@@ -30019,6 +30019,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/event-archives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村史（行事アーカイブ）一覧を取得する（archived_at 降順・sourceType 絞り込み可） */
+        get: operations["list_67"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/chronicles": {
         parameters: {
             query?: never;
@@ -30027,7 +30044,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村の村史一覧（月次ダイジェスト）を取得する */
-        get: operations["list_67"];
+        get: operations["list_68"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30881,7 +30898,7 @@ export interface paths {
             cookie?: never;
         };
         /** ダイジェスト履歴一覧取得 */
-        get: operations["list_68"];
+        get: operations["list_69"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31859,7 +31876,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信した協会請求の一覧 */
-        get: operations["list_69"];
+        get: operations["list_70"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31910,7 +31927,7 @@ export interface paths {
             cookie?: never;
         };
         /** 立替/精算記録の一覧 */
-        get: operations["list_70"];
+        get: operations["list_71"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32046,7 +32063,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_71"];
+        get: operations["list_72"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33179,7 +33196,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_72"];
+        get: operations["list_73"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34077,7 +34094,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_73"];
+        get: operations["list_74"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34327,7 +34344,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_74"];
+        get: operations["list_75"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34945,7 +34962,7 @@ export interface paths {
          * 通報一覧
          * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
          */
-        get: operations["list_75"];
+        get: operations["list_76"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34993,7 +35010,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_76"];
+        get: operations["list_77"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35029,7 +35046,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_77"];
+        get: operations["list_78"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35548,7 +35565,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_78"];
+        get: operations["list_79"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38550,7 +38567,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_79"];
+        get: operations["list_80"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38928,7 +38945,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_80"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39079,7 +39096,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_81"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39443,7 +39460,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_82"];
+        get: operations["list_83"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39511,7 +39528,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_83"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40880,7 +40897,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_84"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -67157,6 +67174,43 @@ export interface components {
         };
         ApiResponseListFestivalLivePostResponse: {
             data?: components["schemas"]["FestivalLivePostResponse"][];
+        };
+        ApiResponseListVillageEventArchiveResponse: {
+            data?: components["schemas"]["VillageEventArchiveResponse"][];
+        };
+        /** @description 村史（行事アーカイブ）の1件（祭/歳時記/寄合の確定記録・実名非返却・§7.2） */
+        VillageEventArchiveResponse: {
+            /**
+             * Format: date-time
+             * @description 編纂時刻
+             */
+            archivedAt: string;
+            /**
+             * Format: uuid
+             * @description 村史エントリID（UUID）
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description 元行事のUUID（ID参照のみ）
+             */
+            sourceId: string;
+            /**
+             * @description 元行事の種別（FESTIVAL/CALENDAR_EVENT/MEETUP）
+             * @enum {string}
+             */
+            sourceType: "FESTIVAL" | "CALENDAR_EVENT" | "MEETUP";
+            /** @description 編纂サマリ（RSVP集計・実況件数等をテキスト化・未設定時null） */
+            summary?: string;
+            /** @description 代表画像の署名付き表示URL（未設定/解決失敗時null） */
+            thumbnailUrl?: string;
+            /** @description 編纂時に焼き付けた表題 */
+            title: string;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
         };
         ApiResponseListChronicleResponse: {
             data?: components["schemas"]["ChronicleResponse"][];
@@ -139185,6 +139239,32 @@ export interface operations {
     };
     list_67: {
         parameters: {
+            query?: {
+                sourceType?: "FESTIVAL" | "CALENDAR_EVENT" | "MEETUP";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListVillageEventArchiveResponse"];
+                };
+            };
+        };
+    };
+    list_68: {
+        parameters: {
             query?: never;
             header?: never;
             path: {
@@ -140323,7 +140403,7 @@ export interface operations {
             };
         };
     };
-    list_68: {
+    list_69: {
         parameters: {
             query: {
                 scopeType: string;
@@ -141745,7 +141825,7 @@ export interface operations {
             };
         };
     };
-    list_69: {
+    list_70: {
         parameters: {
             query?: never;
             header?: never;
@@ -141813,7 +141893,7 @@ export interface operations {
             };
         };
     };
-    list_70: {
+    list_71: {
         parameters: {
             query?: never;
             header?: never;
@@ -142025,7 +142105,7 @@ export interface operations {
             };
         };
     };
-    list_71: {
+    list_72: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -143607,7 +143687,7 @@ export interface operations {
             };
         };
     };
-    list_72: {
+    list_73: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -144874,7 +144954,7 @@ export interface operations {
             };
         };
     };
-    list_73: {
+    list_74: {
         parameters: {
             query?: {
                 billingStatus?: string;
@@ -145179,7 +145259,7 @@ export interface operations {
             };
         };
     };
-    list_74: {
+    list_75: {
         parameters: {
             query?: {
                 status?: string;
@@ -146012,7 +146092,7 @@ export interface operations {
             };
         };
     };
-    list_75: {
+    list_76: {
         parameters: {
             query?: {
                 status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
@@ -146085,7 +146165,7 @@ export interface operations {
             };
         };
     };
-    list_76: {
+    list_77: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -146130,7 +146210,7 @@ export interface operations {
             };
         };
     };
-    list_77: {
+    list_78: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -146839,7 +146919,7 @@ export interface operations {
             };
         };
     };
-    list_78: {
+    list_79: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -150988,7 +151068,7 @@ export interface operations {
             };
         };
     };
-    list_79: {
+    list_80: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -151512,7 +151592,7 @@ export interface operations {
             };
         };
     };
-    list_80: {
+    list_81: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -151729,7 +151809,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_82: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -152211,7 +152291,7 @@ export interface operations {
             };
         };
     };
-    list_82: {
+    list_83: {
         parameters: {
             query?: never;
             header?: never;
@@ -152295,7 +152375,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_84: {
         parameters: {
             query?: never;
             header?: never;
@@ -154159,7 +154239,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_85: {
         parameters: {
             query?: never;
             header?: never;
