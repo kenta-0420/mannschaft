@@ -302,7 +302,7 @@
       "VILLAGE_007": "No eres miembro de esta aldea",
       "VILLAGE_008": "Ese apodo ya está en uso",
       "VILLAGE_009": "Límite de denuncias alcanzado (10 por hora)",
-      "VILLAGE_010": "Límite de solicitudes de creación de aldea alcanzado (3 por día, máx. 10 pendientes)",
+      "VILLAGE_010": "Se alcanzó el límite de creación de aldeas. Espere un momento e inténtelo de nuevo.",
       "VILLAGE_011": "El apodo solo puede cambiarse 3 veces por mes",
       "VILLAGE_012": "Has alcanzado el número máximo de aldeas en las que puedes unirte (100)",
       "VILLAGE_013": "Has alcanzado el número máximo de aldeas favoritas (30)",
