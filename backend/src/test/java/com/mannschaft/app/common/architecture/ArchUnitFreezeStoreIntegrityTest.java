@@ -70,7 +70,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code wc -l backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256}）
      * に更新し、ストアファイルの変更と同じコミットに含めること。
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 918;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 795;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
