@@ -56,11 +56,15 @@ class BillingContractServiceTest {
 
     @BeforeEach
     void setUp() {
+        // F20.3 リファクタ: entitlements 発行は EntitlementIssuanceService へ抽出済み。
+        // 実体を注入する（モック entitlementRepository へ委譲するため、既存の saveAll/flush 検証はそのまま通る）。
+        EntitlementIssuanceService issuanceService =
+                new EntitlementIssuanceService(entitlementRepository, FIXED_CLOCK);
         service = new BillingContractService(
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
                 scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
-                billingPriceResolver);
+                billingPriceResolver, issuanceService);
     }
 
     private PlanEntity plan(String key, boolean enabled) {
