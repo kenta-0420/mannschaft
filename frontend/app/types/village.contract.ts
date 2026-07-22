@@ -37,6 +37,13 @@ import type {
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageCreationRequestResponse,
+  VillageEventArchiveResponse,
+  VillageEventArchiveSourceType,
+  VillageFestivalLivePostResponse,
+  VillageFestivalLivePostTagRequest,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpStatus,
+  VillageFestivalRsvpUpsertRequest,
   VillageMatchApplicationCreateRequest,
   VillageMatchApplicationResponse,
   VillageMatchApplicationReviewRequest,
@@ -223,6 +230,48 @@ export type CalendarEventLogResponseKeysMatch = AssertTrue<
 
 export type CalendarEventLogCreateRequestKeysMatch = AssertTrue<
   SameKeys<VillageCalendarEventLogCreateRequest, Schemas['CalendarEventLogCreateRequest']>
+>
+
+// =============================================================================
+// B-3. F17.2 Wave2 ③お祭りの参加レイヤー — RSVP / 実況
+// =============================================================================
+
+export type FestivalRsvpResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpResponse, Schemas['FestivalRsvpResponse']>
+>
+
+export type FestivalRsvpUpsertRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpUpsertRequest, Schemas['FestivalRsvpUpsertRequest']>
+>
+
+export type FestivalRsvpStatusEnumMatch = AssertTrue<
+  Assignable<VillageFestivalRsvpStatus, NonNullable<Schemas['FestivalRsvpResponse']['status']>>
+>
+export type FestivalRsvpStatusEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['FestivalRsvpResponse']['status']>, VillageFestivalRsvpStatus>
+>
+
+export type FestivalLivePostResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostResponse, Schemas['FestivalLivePostResponse']>
+>
+
+export type FestivalLivePostTagRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostTagRequest, Schemas['FestivalLivePostTagRequest']>
+>
+
+// -----------------------------------------------------------------------------
+// B-4. F17.2 Wave2 ⑦ 村史（行事アーカイブ）— BE 追補 #2448（2026-07-22 main 済み）
+// -----------------------------------------------------------------------------
+
+export type VillageEventArchiveResponseKeysMatch = AssertTrue<
+  SameKeys<VillageEventArchiveResponse, Schemas['VillageEventArchiveResponse']>
+>
+
+export type VillageEventArchiveSourceTypeEnumMatch = AssertTrue<
+  Assignable<VillageEventArchiveSourceType, NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>>
+>
+export type VillageEventArchiveSourceTypeEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>, VillageEventArchiveSourceType>
 >
 
 // =============================================================================

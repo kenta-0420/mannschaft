@@ -82,6 +82,13 @@
       "meetup": "모임",
       "chronicle": "마을 역사"
     },
+    "systemPost": {
+      "authorName": "마을 행사 안내",
+      "eventCreated": "행사가 생성되었습니다",
+      "eventUpcoming": "행사가 곧 시작됩니다",
+      "meetupConfirmed": "모임 일정이 확정되었습니다",
+      "festivalStarted": "축제가 시작되었습니다"
+    },
     "lobby": {
       "title": "로비",
       "today": "오늘",
@@ -442,6 +449,31 @@
         "ACTIVE": "진행 중",
         "ENDED": "종료",
         "CANCELLED": "취소"
+      },
+      "rsvp": {
+        "title": "참가 의사",
+        "going": "참가함",
+        "maybe": "아마 참가",
+        "roleLabel": "역할",
+        "roleLabelPlaceholder": "역할（선택, 예: 매대 담당）",
+        "submit": "보내기",
+        "cancel": "참가 의사 취소",
+        "empty": "아직 아무도 참가 의사를 밝히지 않았습니다",
+        "loadFailed": "참가자 목록을 가져오는 데 실패했습니다",
+        "saveSuccess": "참가 의사를 등록했습니다",
+        "saveFailed": "참가 의사 등록에 실패했습니다",
+        "cancelSuccess": "참가 의사를 취소했습니다",
+        "cancelFailed": "참가 의사 취소에 실패했습니다"
+      },
+      "live": {
+        "title": "실시간 소식",
+        "tagAsLive": "실시간 소식으로 게시할 내용을 작성하세요",
+        "submit": "실시간 소식으로 게시",
+        "empty": "아직 실시간 소식이 없습니다",
+        "viewPost": "게시물 보기",
+        "loadFailed": "실시간 소식 목록을 가져오는 데 실패했습니다",
+        "tagSuccess": "실시간 소식으로 게시했습니다",
+        "tagFailed": "실시간 소식 게시에 실패했습니다"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "마을 역사가 아직 생성되지 않았습니다",
       "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
       "viewDetail": "상세 보기"
+    },
+    "archive": {
+      "title": "마을 역사",
+      "subtitle": "축제・절기 행사・모임 등 마을 행사의 기록",
+      "empty": "아직 마을 역사 기록이 없습니다",
+      "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
+      "archivedAt": "기록일",
+      "filterAll": "전체",
+      "sourceType": {
+        "festival": "축제",
+        "calendarEvent": "절기 행사",
+        "meetup": "모임"
+      }
     },
     "serendipity": {
       "title": "인연 점수",

@@ -82,6 +82,13 @@
       "meetup": "寄合",
       "chronicle": "村史"
     },
+    "systemPost": {
+      "authorName": "村の行事案内",
+      "eventCreated": "行事が作成されました",
+      "eventUpcoming": "開催が近づいています",
+      "meetupConfirmed": "寄合が確定しました",
+      "festivalStarted": "お祭りが始まりました"
+    },
     "lobby": {
       "title": "ロビー",
       "today": "本日",
@@ -442,6 +449,31 @@
         "ACTIVE": "開催中",
         "ENDED": "終了",
         "CANCELLED": "中止"
+      },
+      "rsvp": {
+        "title": "参加表明",
+        "going": "行く",
+        "maybe": "たぶん行く",
+        "roleLabel": "役割",
+        "roleLabelPlaceholder": "役割（任意・例: 出店係）",
+        "submit": "送信",
+        "cancel": "取り消す",
+        "empty": "まだ誰も参加表明していません",
+        "loadFailed": "参加者一覧の取得に失敗しました",
+        "saveSuccess": "参加表明を登録しました",
+        "saveFailed": "参加表明の登録に失敗しました",
+        "cancelSuccess": "参加表明を取り消しました",
+        "cancelFailed": "参加表明の取り消しに失敗しました"
+      },
+      "live": {
+        "title": "実況",
+        "tagAsLive": "実況として投稿する内容を書く",
+        "submit": "実況として投稿",
+        "empty": "まだ実況投稿はありません",
+        "viewPost": "投稿を見る",
+        "loadFailed": "実況投稿一覧の取得に失敗しました",
+        "tagSuccess": "実況として投稿しました",
+        "tagFailed": "実況投稿に失敗しました"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "村史はまだ生成されていません",
       "loadFailed": "村史の取得に失敗しました",
       "viewDetail": "詳細を見る"
+    },
+    "archive": {
+      "title": "村史",
+      "subtitle": "祭・歳時記・寄合、村の行事の記録",
+      "empty": "村史はまだありません",
+      "loadFailed": "村史の取得に失敗しました",
+      "archivedAt": "記録日",
+      "filterAll": "すべて",
+      "sourceType": {
+        "festival": "お祭り",
+        "calendarEvent": "歳時記",
+        "meetup": "寄合"
+      }
     },
     "serendipity": {
       "title": "ご縁スコア",

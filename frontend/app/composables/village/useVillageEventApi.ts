@@ -7,8 +7,15 @@ import type {
   VillageCalendarEventLogResponse,
   VillageCalendarEventLogCreateRequest,
   VillageCalendarEventLogListParams,
+  VillageEventArchiveListParams,
+  VillageEventArchiveResponse,
   VillageFestivalCreateRequest,
+  VillageFestivalLivePostResponse,
+  VillageFestivalLivePostTagRequest,
   VillageFestivalResponse,
+  VillageFestivalRsvpListParams,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpUpsertRequest,
   VillageFestivalStatus,
   VillageFestivalUpdateRequest,
 } from '~/types/village'
@@ -187,6 +194,92 @@ export function useVillageEventApi() {
     return res.data
   }
 
+  // =====================================================================
+  // F17.2 Wave2 ③お祭りの参加レイヤー（RSVP・実況）
+  // /api/v1/villages/{villageId}/festivals/{festivalId}/...
+  // 設計書: docs/features/F17.2_village_events_activation.md §5
+  // =====================================================================
+
+  /** 自分の参加表明を登録/更新する（村人・SCHEDULED/ACTIVE のみ・冪等 upsert・§5.6/§4.4.1）。 */
+  async function upsertRsvp(
+    villageId: string,
+    festivalId: string,
+    body: VillageFestivalRsvpUpsertRequest,
+  ) {
+    const res = await api<{ data: VillageFestivalRsvpResponse }>(
+      `/api/v1/villages/${villageId}/festivals/${festivalId}/rsvp`,
+      { method: 'PUT', body },
+    )
+    return res.data
+  }
+
+  /** 自分の参加表明を取り消す（村人本人・SCHEDULED/ACTIVE のみ・ENDED後は不可・§5.6）。BE は 204。 */
+  async function deleteRsvp(villageId: string, festivalId: string): Promise<void> {
+    await api(`/api/v1/villages/${villageId}/festivals/${festivalId}/rsvp`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * 参加者一覧（村ニックネーム・GOING/MAYBE別・役割ラベル）。
+   *
+   * 数百人規模になりうるため必ず size 上限付きページングで呼ぶこと（AC-14b・G3）。
+   * 応答は素の配列（BE はページ総数・hasNext を返さない）。
+   */
+  async function listRsvps(
+    villageId: string,
+    festivalId: string,
+    params?: VillageFestivalRsvpListParams,
+  ) {
+    const res = await api<{ data: VillageFestivalRsvpResponse[] }>(
+      `/api/v1/villages/${villageId}/festivals/${festivalId}/rsvps${qs(params)}`,
+    )
+    return res.data
+  }
+
+  /** 実況タグを付ける（村人・ACTIVE中のみ・二重タグは409 VILLAGE_102・§5.6）。 */
+  async function tagLivePost(
+    villageId: string,
+    festivalId: string,
+    body: VillageFestivalLivePostTagRequest,
+  ) {
+    const res = await api<{ data: VillageFestivalLivePostResponse }>(
+      `/api/v1/villages/${villageId}/festivals/${festivalId}/live-posts`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /** 実況投稿一覧（村人・timeline側delete済みは除外・§5.6/AC-17c）。 */
+  async function listLivePosts(villageId: string, festivalId: string) {
+    const res = await api<{ data: VillageFestivalLivePostResponse[] }>(
+      `/api/v1/villages/${villageId}/festivals/${festivalId}/live-posts`,
+    )
+    return res.data
+  }
+
+  // =====================================================================
+  // F17.2 Wave2 ⑦ 村史（行事アーカイブ）
+  // /api/v1/villages/{villageId}/event-archives（BE Controller: VillageEventArchiveController）
+  // 設計書: docs/features/F17.2_village_events_activation.md §7（BE追補 #2448 main済み）
+  // =====================================================================
+
+  /**
+   * 村史（行事アーカイブ）一覧（archived_at 降順・§7.4）。
+   *
+   * 【確認済み】`VillageEventArchiveController`（BE 追補 #2448）は一覧 GET のみを持つ
+   * （詳細 GET `/{archiveId}` は実装されていない）。よって本 composable も一覧のみ提供する。
+   */
+  async function listEventArchives(
+    villageId: string,
+    params?: VillageEventArchiveListParams,
+  ) {
+    const res = await api<{ data: VillageEventArchiveResponse[] }>(
+      `/api/v1/villages/${villageId}/event-archives${qs(params)}`,
+    )
+    return res.data
+  }
+
   return {
     // Phase 2: 歳時記カレンダー
     listCalendarEvents,
@@ -204,5 +297,13 @@ export function useVillageEventApi() {
     createFestival,
     updateFestival,
     cancelFestival,
+    // F17.2 Wave2 ③お祭りの参加レイヤー（RSVP・実況）
+    upsertRsvp,
+    deleteRsvp,
+    listRsvps,
+    tagLivePost,
+    listLivePosts,
+    // F17.2 Wave2 ⑦ 村史（行事アーカイブ）
+    listEventArchives,
   }
 }

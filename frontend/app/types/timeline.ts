@@ -4,6 +4,12 @@ export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LI
 export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
 export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
 
+/**
+ * 村行事の自動投稿種別（F17.2 Wave2 ①フィード還流・§3.2）。
+ * 非 null なら村の行事案内名義のシステム投稿。通常投稿は null/undefined。
+ */
+export type SystemPostType = 'EVENT_CREATED' | 'EVENT_UPCOMING' | 'MEETUP_CONFIRMED' | 'FESTIVAL_STARTED'
+
 export const CONTENT_TRUNCATE_LENGTH = 500
 
 export interface TimelineUser {
@@ -118,6 +124,12 @@ export interface TimelinePostResponse {
   content: PostContentDto
   stats: PostStatsDto
   audit: PostAuditDto
+  /**
+   * 村行事のシステム自動投稿種別（F17.2 Wave2 §3.9(b)）。BE: `PostResponse.systemPostType`。
+   * 非 null/undefined のときは `user`/`postedAs` とも null（投稿者不在）なので、
+   * 表示名・アバターは i18n の固定表示（`village.systemPost.authorName`）にフォールバックする。
+   */
+  systemPostType?: SystemPostType | null
   // --- フィード固有の enrichment フィールド（バックエンドから付加されるが PostResponse 外） ---
   user: TimelineUser | null
   postedAs: PostedAs | null
