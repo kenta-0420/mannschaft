@@ -68,18 +68,18 @@
       "monetization_membership_fee": { "name": "会費徴収", "description": "メンバーからの会費徴収を開設できます" }
     },
     "paywall": {
-      "title": "この機能は有料プランで利用できます",
-      "description": "現在のプランではご利用いただけません。プラン一覧から詳細をご確認ください。",
-      "betaTitle": "ベータ期間中は無料でお試しいただけます",
-      "betaDescription": "この機能はベータ期間中につき無料で有効化できます。正式な料金はベータ終了後に決定します。",
-      "betaCta": "無料で有効にする",
-      "addonCta": "この機能だけ追加する",
-      "planCta": "プランをまとめて見る",
-      "notAvailable": "この機能は現在ご利用いただけません",
-      "activating": "有効化しています…",
-      "activateSuccess": "機能を有効にしました",
-      "activateError": "有効化に失敗しました。時間をおいて再度お試しください",
-      "close": "閉じる"
+      "title": "Esta función requiere un plan de pago",
+      "description": "No está disponible en tu plan actual. Consulta la lista de planes para más información.",
+      "betaTitle": "Gratis para probar durante el periodo beta",
+      "betaDescription": "Esta función se puede activar gratis durante el periodo beta. El precio oficial se decidirá al finalizar la beta.",
+      "betaCta": "Activar gratis",
+      "addonCta": "Añadir solo esta función",
+      "planCta": "Ver todos los planes",
+      "notAvailable": "Esta función no está disponible actualmente",
+      "activating": "Activando…",
+      "activateSuccess": "Función activada",
+      "activateError": "No se pudo activar. Inténtalo de nuevo más tarde",
+      "close": "Cerrar"
     },
     "manage": {
       "title": "課金・プラン管理",
