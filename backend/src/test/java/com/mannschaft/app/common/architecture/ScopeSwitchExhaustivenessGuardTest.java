@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,6 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -98,10 +101,7 @@ class ScopeSwitchExhaustivenessGuardTest {
     void スコープswitch文はdefaultを持つ() throws IOException {
         List<Violation> violations = new ArrayList<>();
         for (SwitchInfo sw : scanAllSwitches()) {
-            if (sw.exempt || sw.arrowForm || !sw.scopeSwitch) {
-                continue;
-            }
-            if (!sw.hasDefault) {
+            if (isRule1Violation(sw)) {
                 violations.add(new Violation(sw.relPath, sw.line,
                     (sw.stringForm ? "String" : "enum") + " スコープ switch 文に default 節がありません"));
             }
@@ -124,10 +124,7 @@ class ScopeSwitchExhaustivenessGuardTest {
     void Stringスコープswitch文のdefaultは拒否する() throws IOException {
         List<Violation> violations = new ArrayList<>();
         for (SwitchInfo sw : scanAllSwitches()) {
-            if (sw.exempt || sw.arrowForm || !sw.scopeSwitch || !sw.stringForm || !sw.hasDefault) {
-                continue;
-            }
-            if (sw.stringDefaultSilent) {
+            if (isRule2Violation(sw)) {
                 violations.add(new Violation(sw.relPath, sw.line,
                     "String スコープ switch 文の default が既知スコープと融合せず、かつ throw で拒否していません"));
             }
@@ -166,14 +163,22 @@ class ScopeSwitchExhaustivenessGuardTest {
                     }
                     String rel = SOURCE_ROOT.resolve(SOURCE_ROOT.relativize(p)).toString()
                         .replace('\\', '/');
-                    scanFile(rel, src, result);
+                    result.addAll(analyzeSource(rel, src));
                 });
         }
         return result;
     }
 
-    /** 1 ファイル分の全 switch を解析して {@code out} に追加する。 */
-    private static void scanFile(String relPath, String src, List<SwitchInfo> out) {
+    /**
+     * 1 ファイル分（あるいは任意の Java ソース文字列）を走査し、含まれる全 switch の解析結果を返す。
+     *
+     * <p>実ファイル走査（{@link #scanAllSwitches()}）と {@code @Nested} の fixture 自己検証が
+     * <b>同一の走査コア</b>を通ることを保証するための package-private エントリポイント。
+     * 実ファイルに違反が無い状態でも、パーサが改修で壊れれば fixture 自己検証が赤くなる
+     * （番人の空虚化＝vacuous green を防ぐ二重化）。</p>
+     */
+    static List<SwitchInfo> analyzeSource(String relPath, String src) {
+        List<SwitchInfo> out = new ArrayList<>();
         String masked = mask(src);
         Matcher m = SWITCH_KEYWORD.matcher(masked);
         while (m.find()) {
@@ -201,6 +206,18 @@ class ScopeSwitchExhaustivenessGuardTest {
                 out.add(info);
             }
         }
+        return out;
+    }
+
+    /** ルール1（default 欠落）違反か。実ファイル走査・fixture 自己検証で共通利用する。 */
+    static boolean isRule1Violation(SwitchInfo sw) {
+        return !sw.exempt && !sw.arrowForm && sw.scopeSwitch && !sw.hasDefault;
+    }
+
+    /** ルール2（String スコープ switch の素通り default）違反か。 */
+    static boolean isRule2Violation(SwitchInfo sw) {
+        return !sw.exempt && !sw.arrowForm && sw.scopeSwitch && sw.stringForm
+            && sw.hasDefault && sw.stringDefaultSilent;
     }
 
     /** 1 つの switch 本体 [bodyStart, bodyEnd) を解析する。矢印形・非スコープは flag のみ立てて返す。 */
@@ -588,6 +605,291 @@ class ScopeSwitchExhaustivenessGuardTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // パーサ自己検証（fixture で「失敗すべき時に失敗する」ことを固定する）
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * インライン文字列 fixture でパーサの検出挙動を固定する自己検証。
+     *
+     * <p>実ファイル走査の 2 テスト（{@link #スコープswitch文はdefaultを持つ()} /
+     * {@link #Stringスコープswitch文のdefaultは拒否する()}）は、実ソースに違反が無いため
+     * 常に緑になる。パーサ（{@link #mask(String)} / ブレース対応 / ラベル解析）が改修で壊れても
+     * その 2 テストは「違反 0 件＝緑」のまま通り、番人が静かに空虚化（vacuous）しうる。
+     * 本自己検証は <b>陽性ケースで「違反が返ること」を assert</b> するため、パーサが壊れれば
+     * ここが赤くなり、空虚化を検知できる。実ファイル走査テストと <b>同一の走査コア</b>
+     * （{@link #analyzeSource(String, String)}）を通す。</p>
+     */
+    @Nested
+    @DisplayName("パーサ自己検証（fixture）")
+    class パーサ自己検証 {
+
+        private List<SwitchInfo> analyze(String src) {
+            return analyzeSource("Fixture.java", src);
+        }
+
+        private boolean anyRule1(String src) {
+            return analyze(src).stream().anyMatch(ScopeSwitchExhaustivenessGuardTest::isRule1Violation);
+        }
+
+        private boolean anyRule2(String src) {
+            return analyze(src).stream().anyMatch(ScopeSwitchExhaustivenessGuardTest::isRule2Violation);
+        }
+
+        private boolean anyViolation(String src) {
+            return analyze(src).stream()
+                .anyMatch(sw -> isRule1Violation(sw) || isRule2Violation(sw));
+        }
+
+        // ── 陽性（違反として検出されること） ──────────────────────────────
+
+        @Test
+        @DisplayName("a: enumコロン形スコープswitch文でdefault欠落 → ルール1違反")
+        void a_enum_default欠落() {
+            String src = """
+                class F {
+                    void m(ScopeKind k) {
+                        switch (k) {
+                            case TEAM: t(); break;
+                            case ORG: o(); break;
+                        }
+                    }
+                }
+                """;
+            assertTrue(anyRule1(src), "enum スコープ switch 文の default 欠落はルール1違反であるべき");
+            assertFalse(anyRule2(src), "enum 形にルール2 は適用しない");
+        }
+
+        @Test
+        @DisplayName("b: Stringコロン形スコープswitch文でdefault欠落 → ルール1違反")
+        void b_string_default欠落() {
+            String src = """
+                class F {
+                    void m(String t) {
+                        switch (t) {
+                            case "TEAM": a(); break;
+                            case "PERSONAL": b(); break;
+                        }
+                    }
+                }
+                """;
+            assertTrue(anyRule1(src), "String スコープ switch 文の default 欠落はルール1違反であるべき");
+        }
+
+        @Test
+        @DisplayName("c: Stringスコープswitch文で単独default・throw無し（素通り） → ルール2違反")
+        void c_string_素通りdefault() {
+            String src = """
+                class F {
+                    boolean h(String t) {
+                        switch (t) {
+                            case "TEAM": return x();
+                            case "ORGANIZATION": return z();
+                            default: return y();
+                        }
+                    }
+                }
+                """;
+            assertTrue(anyRule2(src), "String スコープ switch の素通り default はルール2違反であるべき");
+            assertFalse(anyRule1(src), "default はあるのでルール1 は非違反であるべき");
+        }
+
+        // ── 陰性（false positive を出さないこと） ─────────────────────────
+
+        @Test
+        @DisplayName("d: 矢印形（String/enum）switch式 → 対象外（非違反）")
+        void d_矢印形は対象外() {
+            String stringArrow = """
+                class F {
+                    int m(String t) {
+                        return switch (t) {
+                            case "TEAM" -> 1;
+                            case "PERSONAL" -> 2;
+                            default -> 0;
+                        };
+                    }
+                }
+                """;
+            String enumArrow = """
+                class F {
+                    int m(ScopeKind k) {
+                        return switch (k) {
+                            case TEAM -> 1;
+                            case ORG -> 2;
+                        };
+                    }
+                }
+                """;
+            assertFalse(anyViolation(stringArrow), "矢印形 String switch は対象外であるべき");
+            assertFalse(anyViolation(enumArrow), "矢印形 enum switch は対象外であるべき");
+            assertTrue(analyze(stringArrow).get(0).arrowForm, "矢印形として認識されるべき");
+            assertTrue(analyze(enumArrow).get(0).arrowForm, "矢印形として認識されるべき");
+        }
+
+        @Test
+        @DisplayName("e: defaultが既知case と融合（case \"PERSONAL\": default:） → 非違反（isHidden型）")
+        void e_融合default() {
+            String src = """
+                class F {
+                    boolean isHidden(String scopeType, long userId) {
+                        switch (scopeType) {
+                            case "TEAM": return teamPaid();
+                            case "ORGANIZATION": return orgPaid();
+                            case "PERSONAL":
+                            default:
+                                return personalPaid(userId);
+                        }
+                    }
+                }
+                """;
+            assertFalse(anyViolation(src),
+                "既知スコープと融合した default（明示写像）は非違反であるべき");
+            SwitchInfo sw = analyze(src).get(0);
+            assertTrue(sw.stringForm && sw.scopeSwitch && sw.hasDefault,
+                "String スコープ switch として default 有りで認識されるべき");
+            assertFalse(sw.stringDefaultSilent, "融合 default は素通り扱いにしないべき");
+        }
+
+        @Test
+        @DisplayName("f: defaultがthrowで拒否（default: throw ...） → 非違反（validateScope型）")
+        void f_throw拒否default() {
+            String src = """
+                class F {
+                    void validateScope(String scopeType, Long scopeId) {
+                        switch (scopeType) {
+                            case "PERSONAL": return;
+                            case "TEAM":
+                            case "ORGANIZATION":
+                                if (scopeId == null) { throw new RuntimeException("id"); }
+                                return;
+                            default:
+                                throw new RuntimeException("unknown");
+                        }
+                    }
+                }
+                """;
+            assertFalse(anyViolation(src), "throw で拒否する default は非違反であるべき");
+        }
+
+        @Test
+        @DisplayName("g: enumスコープswitch文でdefaultはあるがthrowしない分類ロジック → 非違反（billing型・ルール2はenum非適用）")
+        void g_enum分類default() {
+            String src = """
+                class F {
+                    boolean isNonProfit(ScopeKind k, Long id) {
+                        switch (k) {
+                            case USER: return false;
+                            case ORG: return orgNonProfit(id);
+                            case TEAM: return teamNonProfit(id);
+                            default: return false;
+                        }
+                    }
+                }
+                """;
+            assertFalse(anyViolation(src),
+                "enum の非 throw default（分類ロジック）は非違反であるべき");
+            assertFalse(anyRule2(src), "ルール2 は enum 形に適用しない校正であるべき");
+        }
+
+        @Test
+        @DisplayName("h: case本体内のラムダ -> をコロン形と正しく扱う（矢印形誤認FPの最大リスク）")
+        void h_case本体内ラムダ() {
+            // h1: default 欠落 + case 本体にラムダ → コロン形と認識され「ルール1違反」になるべき
+            //     （矢印形と誤認するとスキップされ違反が出ない＝この assert が守る）
+            String noDefault = """
+                class F {
+                    void m(ScopeKind k, java.util.List<Runnable> list) {
+                        switch (k) {
+                            case TEAM: list.forEach(z -> z.run()); break;
+                            case ORG: o(); break;
+                        }
+                    }
+                }
+                """;
+            assertFalse(analyze(noDefault).get(0).arrowForm,
+                "case 本体のラムダ -> を矢印形 switch と誤認しないべき");
+            assertTrue(anyRule1(noDefault),
+                "ラムダを含むコロン形でも default 欠落はルール1違反として検出されるべき");
+
+            // h2: default(throw) + case 本体にラムダ → コロン形と認識され非違反
+            String withDefault = """
+                class F {
+                    void m(ScopeKind k, java.util.List<Runnable> list) {
+                        switch (k) {
+                            case TEAM: list.forEach(z -> z.run()); break;
+                            default: throw new RuntimeException();
+                        }
+                    }
+                }
+                """;
+            assertFalse(analyze(withDefault).get(0).arrowForm, "コロン形として認識されるべき");
+            assertFalse(anyViolation(withDefault), "default(throw) があるので非違反であるべき");
+        }
+
+        @Test
+        @DisplayName("i: コメント/文字列内の case/switch/default 疑似トークンはマスクされ誤検出しない")
+        void i_マスク() {
+            // 疑似トークンのみ（実 switch なし）→ switch を 1 件も検出しない
+            String pseudoOnly = """
+                class F {
+                    void m(String t) {
+                        // switch (t) { case TEAM: no default here }
+                        String s = "switch case PERSONAL default no throw";
+                        doStuff();
+                    }
+                }
+                """;
+            assertTrue(analyze(pseudoOnly).isEmpty(),
+                "コメント/文字列内の疑似 switch は検出されないべき");
+
+            // 疑似トークン（コメント/文字列）と実 switch（安全）が共存 → 実 switch 1 件のみ・非違反
+            String mixed = """
+                class F {
+                    void m(String t) {
+                        // case "TEAM": default:  ← これはコメントなので無視される
+                        String note = "case ORGANIZATION default without throw";
+                        switch (t) {
+                            case "TEAM": a(); break;
+                            default: throw new RuntimeException();
+                        }
+                    }
+                }
+                """;
+            assertEquals(1, analyze(mixed).size(),
+                "疑似トークンを除き実 switch のみ 1 件検出されるべき");
+            assertFalse(anyViolation(mixed), "実 switch は throw default で非違反であるべき");
+        }
+
+        @Test
+        @DisplayName("スコープトークンを含まない普通のswitch → 対象外（非違反）")
+        void 非スコープswitchは対象外() {
+            String intSwitch = """
+                class F {
+                    void m(int n) {
+                        switch (n) {
+                            case 0: a(); break;
+                            case 1: b(); break;
+                        }
+                    }
+                }
+                """;
+            String otherString = """
+                class F {
+                    void m(String s) {
+                        switch (s) {
+                            case "OTHER": a(); break;
+                            case "MISC": b(); break;
+                        }
+                    }
+                }
+                """;
+            assertFalse(anyViolation(intSwitch), "int switch はスコープ分岐でないので対象外");
+            assertFalse(anyViolation(otherString), "非スコープ String switch は対象外");
+            assertFalse(analyze(intSwitch).get(0).scopeSwitch, "スコープ switch と判定されないべき");
+            assertFalse(analyze(otherString).get(0).scopeSwitch, "スコープ switch と判定されないべき");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // 内部保持型
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -606,8 +908,8 @@ class ScopeSwitchExhaustivenessGuardTest {
         }
     }
 
-    /** 1 つの switch の解析結果。 */
-    private static final class SwitchInfo {
+    /** 1 つの switch の解析結果。fixture 自己検証から参照できるよう package-private。 */
+    static final class SwitchInfo {
         final String relPath;
         final int line;
         final boolean arrowForm;
