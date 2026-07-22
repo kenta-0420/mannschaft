@@ -16,6 +16,7 @@ import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -75,17 +76,36 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        userRoleRepository.deleteAll();
-        membershipRepository.deleteAll();
-        teamRepository.deleteAll();
-        organizationRepository.deleteAll();
-        roleRepository.deleteAll();
+        truncateAll();
         saveRole("SYSTEM_ADMIN", 1, true);
         adminRoleId = saveRole("ADMIN", 2, false);
         saveRole("DEPUTY_ADMIN", 3, false);
         memberRoleId = saveRole("MEMBER", 4, false);
         saveRole("SUPPORTER", 5, false);
         saveRole("GUEST", 6, false);
+    }
+
+    /**
+     * テスト境界で作成したデータを確実に消し込む。
+     *
+     * <p>本テストは（除名・退会の実コミットを固定する目的で）{@code @Transactional} を付けず
+     * 各操作を即時コミットする。そのため {@code @BeforeEach} の消し込みだけでは
+     * <b>最後のテスト実行後に自分が投入した行が commit 済みで残留</b>し、同一 shard で
+     * Spring コンテキストと Testcontainers コンテナを共有する他テストの seed と衝突しうる
+     * （特に {@code roles.name} は unique 制約を持ち、非冪等な生 INSERT を行う既存テストと
+     * 二重登録で衝突する）。前後対称に消し込むことで、本テストを「後始末まで行う良き市民」に保つ。</p>
+     */
+    @AfterEach
+    void tearDown() {
+        truncateAll();
+    }
+
+    private void truncateAll() {
+        userRoleRepository.deleteAll();
+        membershipRepository.deleteAll();
+        teamRepository.deleteAll();
+        organizationRepository.deleteAll();
+        roleRepository.deleteAll();
     }
 
     // ───────────────────────────────────────────────────────────────────
