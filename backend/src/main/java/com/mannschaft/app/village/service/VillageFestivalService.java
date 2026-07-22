@@ -11,8 +11,10 @@ import com.mannschaft.app.village.dto.FestivalUpdateRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageFestivalStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.event.VillageEventOccurredEvent;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageFestivalRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -89,6 +91,8 @@ public class VillageFestivalService {
     private final MediaUrlResolver mediaUrlResolver;
     /** 一覧・詳細の閲覧認可（村の bulletin_visibility ＋ 村メンバーシップ）を判定する。 */
     private final VillageBulletinAccessService bulletinAccessService;
+    /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // ====================================================================
     // 作成
@@ -146,6 +150,11 @@ public class VillageFestivalService {
         );
         log.info("Village festival created: villageId={} festivalId={} status={} by userId={}",
                 villageId, saved.getId(), saved.getStatus(), actorUserId);
+
+        // F17.2 Wave2 ①: 祭作成の還流（EVENT_CREATED・本体コミット後に AFTER_COMMIT リスナーが発火・§3.3.1）。
+        eventPublisher.publishEvent(new VillageEventOccurredEvent(
+                villageId, VillageEventNotificationType.EVENT_CREATED, saved.getId(),
+                saved.getTitle(), "/villages/" + villageId + "/festivals/" + saved.getId()));
 
         return FestivalResponse.of(saved, null, mediaUrlResolver.resolve(saved.getBannerR2Key()));
     }

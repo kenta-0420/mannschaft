@@ -37,9 +37,17 @@ import { waitForHydration } from '../helpers/wait'
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const MINIO_ORIGIN = process.env.MINIO_ORIGIN ?? 'http://localhost:9000'
 
-// 村を作る HEADMAN 側ユーザー（id=90209）
-const HEADMAN_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-pwui-1782136885@test.mannschaft.local'
-const HEADMAN_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'Passw0rd!2026'
+// 村を作る HEADMAN 側ユーザー（id=90209）。
+//
+// 【重要・issue #2431 の再発防止】
+//   HEADMAN の資格情報には **祭専用の環境変数名**（TEST_HEADMAN_*）を使う。
+//   汎用の TEST_USER_* を使うと frontend/.env.test の
+//     TEST_USER_EMAIL=e2e-user@test.mannschaft.local（＝OUTSIDER と同一の id=23）
+//   が Playwright 起動時に自動ロードされて既定値を上書きし、HEADMAN も OUTSIDER も
+//   同一 id=23 になってしまう（認可の否定側 AC-10/AC-11 が村長の自己操作となり空虚化する）。
+//   TEST_HEADMAN_* は .env.test に存在しないため、必ず下記の既定値（id=90209）が効く。
+const HEADMAN_EMAIL = process.env.TEST_HEADMAN_EMAIL ?? 'e2e-pwui-1782136885@test.mannschaft.local'
+const HEADMAN_PASSWORD = process.env.TEST_HEADMAN_PASSWORD ?? 'Passw0rd!2026'
 
 // 村に属さない「よそ者」ユーザー（id=23）。認可の否定側検証に使う。
 const OUTSIDER_EMAIL = process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-user@test.mannschaft.local'
@@ -78,6 +86,61 @@ interface FestivalBody {
   data: { id: string, title: string, bannerUrl: string | null, status: string }
 }
 
+/**
+ * ログイン主体アサート番人（issue #2431 の再発防止・最重要）。
+ *
+ * loginViaApi は「要求した資格情報」で /auth/login を叩くが、実際にどのユーザーとして
+ * セッションが確立したかを呼び出し側へ返さない。そのため HEADMAN と OUTSIDER が
+ * 誤って同一ユーザーに解決していても、テストはそのまま進行してしまう
+ * （＝本 issue の欠陥そのもの。認可の否定側検証が空虚化する）。
+ *
+ * 本ヘルパは loginViaApi 直後に GET /api/v1/users/me を叩き、確立したセッションの
+ * 実 id を取得して返す。これにより「誰でログインしているか」を毎回固定できる。
+ */
+async function loginAndResolveUserId(
+  page: import('@playwright/test').Page,
+  credentials: { email: string, password: string },
+  label: string,
+): Promise<number> {
+  await loginViaApi(page, { email: credentials.email, password: credentials.password }, { apiBaseUrl: API_BASE })
+  const meRes = await page.request.get(`${API_BASE}/api/v1/users/me`)
+  expect(meRes.status(), `${label}: GET /users/me が200で返ること`).toBe(200)
+  const me = (await meRes.json()) as { data: { id: number, email: string } }
+  console.log(`[番人] ${label} セッション主体: id=${me.data.id} / email=${me.data.email}`)
+  expect(me.data.id, `${label}: セッション主体の id が取得できること`).toBeTruthy()
+  return me.data.id
+}
+
+/**
+ * HEADMAN と OUTSIDER が「別人」であることを、村作成より前に固定する番人。
+ *
+ * 先に OUTSIDER でログインして id を採り、続けて HEADMAN でログインして id を採る
+ * （単一セッション設計のため、戻り時点のセッションは HEADMAN）。両者が同一 id なら
+ * ここで即座に fail し、認可の否定側（AC-10/AC-11）が空虚化した状態での実行を防ぐ。
+ *
+ * @returns { headmanId, outsiderId }（セッションは HEADMAN として確立済み）
+ */
+async function assertDistinctActorsThenLoginHeadman(
+  page: import('@playwright/test').Page,
+): Promise<{ headmanId: number, outsiderId: number }> {
+  const outsiderId = await loginAndResolveUserId(
+    page,
+    { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD },
+    'OUTSIDER',
+  )
+  const headmanId = await loginAndResolveUserId(
+    page,
+    { email: HEADMAN_EMAIL, password: HEADMAN_PASSWORD },
+    'HEADMAN',
+  )
+  expect(
+    headmanId,
+    `HEADMAN(id=${headmanId}) と OUTSIDER(id=${outsiderId}) が別人であること`
+      + '（同一だと AC-10/AC-11 が村長の自己操作となり認可検証が空虚化する＝issue #2431）',
+  ).not.toBe(outsiderId)
+  return { headmanId, outsiderId }
+}
+
 /** 使い捨ての村を作り、村ID を返す（作成者は HEADMAN になる）。 */
 async function createDisposableVillage(
   request: import('@playwright/test').APIRequestContext,
@@ -95,8 +158,19 @@ async function createDisposableVillage(
       guidelineMd: null,
     },
   })
-  expect(res.status(), `村作成申請が201で返ること: ${await res.text().catch(() => '')}`).toBe(201)
-  const body = (await res.json()) as CreationRequestBody
+  const bodyText = await res.text().catch(() => '')
+  // 村作成は「直近24時間で3件」がレート上限（VILLAGE_010 / 429）。1日に何度も走らせると
+  // 村作成自体が通らなくなる。HEADMAN を id=90209 に分離したことで id=23 とは別カウントに
+  // なるが、90209 でも繰り返せば溜まる。詰まった原因を一目で分かるよう明示する。
+  if (res.status() === 429 || bodyText.includes('VILLAGE_010')) {
+    console.warn(
+      `[レート制限] 村作成が拒否された（status=${res.status()}）。`
+      + 'このユーザーは直近24hで村作成上限(3件)に達している可能性がある（VILLAGE_010）。'
+      + '時間を置くか、別ユーザーで実行すること（本 spec は DB を直接操作しない方針）。',
+    )
+  }
+  expect(res.status(), `村作成申請が201で返ること: ${bodyText}`).toBe(201)
+  const body = JSON.parse(bodyText) as CreationRequestBody
   const villageId = body.data.createdVillageId ?? ''
   expect(villageId, '申請と同時に自動承認され createdVillageId が返ること').toBeTruthy()
   return villageId
@@ -118,9 +192,17 @@ test.describe('FESTIVAL-BANNER-E2E: 村のお祭りバナー画像 実機E2E', (
     })
 
     // ---------------------------------------------------------------------
-    // 1. HEADMAN としてログインし、使い捨て村を作る
+    // 0. 【番人・issue #2431 再発防止】HEADMAN と OUTSIDER が別人であることを
+    //    村作成より前に固定する。両者が同一 id なら AC-10 の 403 検証は
+    //    「村長が自分の村を操作しているだけ」となり空虚化するため、ここで即 fail させる。
+    //    戻り時点のセッションは HEADMAN として確立済み。
     // ---------------------------------------------------------------------
-    await loginViaApi(page, { email: HEADMAN_EMAIL, password: HEADMAN_PASSWORD }, { apiBaseUrl: API_BASE })
+    const { headmanId, outsiderId } = await assertDistinctActorsThenLoginHeadman(page)
+    console.log('=== 主体固定完了 === HEADMAN id:', headmanId, '| OUTSIDER id:', outsiderId)
+
+    // ---------------------------------------------------------------------
+    // 1. HEADMAN として使い捨て村を作る
+    // ---------------------------------------------------------------------
     const villageId = await createDisposableVillage(page.request, 'AC-8/9/10')
     console.log('=== 使い捨て村作成完了 === villageId:', villageId)
 
@@ -280,9 +362,18 @@ test.describe('FESTIVAL-BANNER-E2E: 村のお祭りバナー画像 実機E2E', (
     // ---------------------------------------------------------------------
     // 7. AC-10: 非HEADMAN/ELDER（村に属さないユーザー）の作成・更新が 403
     //    単一セッション設計のため、同じ page で「よそ者」へログインし直す
-    //    （別 context を新規に開かない）。
+    //    （別 context を新規に開かない）。番人でセッション主体が HEADMAN と
+    //    別人（＝真のよそ者）であることを再確認してから否定側を検証する。
     // ---------------------------------------------------------------------
-    await loginViaApi(page, { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD }, { apiBaseUrl: API_BASE })
+    const outsiderIdForCreate = await loginAndResolveUserId(
+      page,
+      { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD },
+      'OUTSIDER(AC-10)',
+    )
+    expect(
+      outsiderIdForCreate,
+      'AC-10: よそ者セッションが HEADMAN と別人であること（同一なら403検証が空虚）',
+    ).not.toBe(headmanId)
 
     const outsiderCreate = await page.request.post(
       `${API_BASE}/api/v1/villages/${villageId}/festivals`,
@@ -330,8 +421,12 @@ test.describe('FESTIVAL-BANNER-E2E: 村のお祭りバナー画像 実機E2E', (
   test('FESTIVAL-BANNER-02 [AC-11]: 非メンバーは他村のお祭りを読めない（BE反映後にgreen化）', async ({
     page,
   }) => {
+    // 0. 【番人・issue #2431 再発防止】HEADMAN と OUTSIDER が別人であることを固定
+    //    （両者同一なら AC-11 の「非メンバーは読めない」検証が村長の自己参照となり空虚化する）。
+    const { headmanId, outsiderId } = await assertDistinctActorsThenLoginHeadman(page)
+    console.log('=== 主体固定完了(AC-11) === HEADMAN id:', headmanId, '| OUTSIDER id:', outsiderId)
+
     // 1. HEADMAN 側で使い捨て村とお祭りを用意する
-    await loginViaApi(page, { email: HEADMAN_EMAIL, password: HEADMAN_PASSWORD }, { apiBaseUrl: API_BASE })
     const villageId = await createDisposableVillage(page.request, 'AC-11')
 
     const title = `非公開祭${Date.now()}`
@@ -348,8 +443,17 @@ test.describe('FESTIVAL-BANNER-E2E: 村のお祭りバナー画像 実機E2E', (
     expect(createRes.status(), 'お祭りの作成が201').toBe(201)
     const festival = (await createRes.json()) as FestivalBody
 
-    // 2. 村に属さない「よそ者」へログインし直す（単一セッション設計）
-    await loginViaApi(page, { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD }, { apiBaseUrl: API_BASE })
+    // 2. 村に属さない「よそ者」へログインし直す（単一セッション設計）。
+    //    番人でセッション主体が HEADMAN と別人であることを再確認する。
+    const outsiderIdForRead = await loginAndResolveUserId(
+      page,
+      { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD },
+      'OUTSIDER(AC-11)',
+    )
+    expect(
+      outsiderIdForRead,
+      'AC-11: よそ者セッションが HEADMAN と別人であること（同一なら403検証が空虚）',
+    ).not.toBe(headmanId)
 
     // 3. 一覧・詳細ともに読めないこと
     const listRes = await page.request.get(`${API_BASE}/api/v1/villages/${villageId}/festivals`)

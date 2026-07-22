@@ -28,7 +28,9 @@ import com.mannschaft.app.village.entity.VillageMeetupEntity;
 import com.mannschaft.app.village.entity.VillageMeetupTodoEntity;
 import com.mannschaft.app.village.entity.VillageMeetupVoteEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageMeetupStatus;
+import com.mannschaft.app.village.event.VillageEventOccurredEvent;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
@@ -106,6 +108,8 @@ public class VillageMeetupService {
     private final VillageMeetupCommentRepository commentRepository;
     private final VillageMeetupTodoRepository todoRepository;
     private final UserVillageNicknameRepository nicknameRepository;
+    /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // ====================================================================
     // 作成
@@ -171,6 +175,11 @@ public class VillageMeetupService {
         );
         log.info("Village meetup created: villageId={} meetupId={} candidates={} by userId={}",
                 villageId, saved.getId(), request.candidateDates().size(), actorUserId);
+
+        // F17.2 Wave2 ①: 行事作成の還流（EVENT_CREATED・本体コミット後に AFTER_COMMIT リスナーが発火・§3.3.1）。
+        eventPublisher.publishEvent(new VillageEventOccurredEvent(
+                villageId, VillageEventNotificationType.EVENT_CREATED, saved.getId(),
+                saved.getTitle(), "/villages/" + villageId + "/meetups/" + saved.getId()));
 
         return buildResponseWithCandidates(saved);
     }
@@ -323,6 +332,11 @@ public class VillageMeetupService {
         );
         log.info("Village meetup confirmed: villageId={} meetupId={} date={} by userId={}",
                 villageId, saved.getId(), saved.getConfirmedDate(), actorUserId);
+
+        // F17.2 Wave2 ①: 寄合確定の還流（MEETUP_CONFIRMED・本体コミット後に AFTER_COMMIT リスナーが発火・§3.3.1）。
+        eventPublisher.publishEvent(new VillageEventOccurredEvent(
+                villageId, VillageEventNotificationType.MEETUP_CONFIRMED, saved.getId(),
+                saved.getTitle(), "/villages/" + villageId + "/meetups/" + saved.getId()));
 
         return buildResponseWithCandidates(saved);
     }

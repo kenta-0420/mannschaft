@@ -4424,6 +4424,89 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvp": {
+      "put": {
+        "tags": [
+          "村お祭り (F17.1)"
+        ],
+        "summary": "自分の参加表明を登録/更新する（村人・SCHEDULED/ACTIVE のみ・冪等 upsert）",
+        "operationId": "upsertRsvp",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "festivalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FestivalRsvpUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFestivalRsvpResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "村お祭り (F17.1)"
+        ],
+        "summary": "自分の参加表明を取り消す（村人本人・SCHEDULED/ACTIVE のみ）",
+        "operationId": "deleteRsvp",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "festivalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/users/{userId}/seals/{sealId}": {
       "get": {
         "tags": [
@@ -32674,6 +32757,116 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseFestivalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/live-posts": {
+      "get": {
+        "tags": [
+          "村お祭り (F17.1)"
+        ],
+        "summary": "実況投稿一覧を取得する（村人・削除済み投稿は除外）",
+        "operationId": "listLivePosts",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "festivalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFestivalLivePostResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "村お祭り (F17.1)"
+        ],
+        "summary": "実況タグを付ける（村人・ACTIVE 中のみ・二重タグは 409）",
+        "operationId": "tagLivePost",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "festivalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FestivalLivePostTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFestivalLivePostResponse"
                 }
               }
             }
@@ -104738,6 +104931,67 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvps": {
+      "get": {
+        "tags": [
+          "村お祭り (F17.1)"
+        ],
+        "summary": "参加者一覧を取得する（村人・村ニックネーム表示・ページング）",
+        "operationId": "listRsvps",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "festivalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFestivalRsvpResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/chronicles": {
       "get": {
         "tags": [
@@ -142987,6 +143241,72 @@
           }
         }
       },
+      "FestivalRsvpUpsertRequest": {
+        "type": "object",
+        "properties": {
+          "roleLabel": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "GOING",
+              "MAYBE"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ApiResponseFestivalRsvpResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FestivalRsvpResponse"
+          }
+        }
+      },
+      "FestivalRsvpResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "festivalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roleLabel": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "GOING",
+              "MAYBE"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "UpdateSealRequest": {
         "type": "object",
         "properties": {
@@ -162914,6 +163234,43 @@
           }
         }
       },
+      "FestivalLivePostTagRequest": {
+        "type": "object",
+        "properties": {
+          "timelinePostId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "timelinePostId"
+        ]
+      },
+      "ApiResponseFestivalLivePostResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FestivalLivePostResponse"
+          }
+        }
+      },
+      "FestivalLivePostResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "festivalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timelinePostId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CalendarEventCreateRequest": {
         "type": "object",
         "properties": {
@@ -164568,6 +164925,16 @@
           },
           "stats": {
             "$ref": "#/components/schemas/PostStatsDto"
+          },
+          "systemPostType": {
+            "type": "string",
+            "description": "システム自動投稿の種別（村行事の還流）。非nullなら村の行事案内名義のシステム投稿。通常投稿はnull。",
+            "enum": [
+              "EVENT_CREATED",
+              "EVENT_UPCOMING",
+              "MEETUP_CONFIRMED",
+              "FESTIVAL_STARTED"
+            ]
           },
           "user": {
             "$ref": "#/components/schemas/PostUserDto"
@@ -201023,6 +201390,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FestivalResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListFestivalRsvpResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FestivalRsvpResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListFestivalLivePostResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FestivalLivePostResponse"
             }
           }
         }

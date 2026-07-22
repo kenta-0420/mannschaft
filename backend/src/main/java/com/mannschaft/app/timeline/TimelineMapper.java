@@ -10,6 +10,7 @@ import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.entity.UserMuteEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import org.mapstruct.Mapper;
 
 import java.util.Collections;
@@ -51,7 +52,18 @@ public interface TimelineMapper {
                 .audit(new PostResponse.PostAuditDto(
                         entity.getCreatedAt(),
                         entity.getUpdatedAt()))
+                .systemPostType(toSystemPostType(entity.getSystemPostType()))
                 .build();
+    }
+
+    /**
+     * F17.2 Wave2 ①: エンティティの {@code system_post_type}（文字列列）を
+     * 村ドメイン enum {@link VillageEventNotificationType} へ復元する（設計書 §3.9(a)）。
+     * 書き込みは常に {@code enum.name()} で行われるため、非 null 値は必ず正当な enum 名になる。
+     * NULL（通常投稿）はそのまま NULL を返す。
+     */
+    default VillageEventNotificationType toSystemPostType(String systemPostType) {
+        return systemPostType == null ? null : VillageEventNotificationType.valueOf(systemPostType);
     }
 
     default List<PostResponse> toPostResponseList(List<TimelinePostEntity> entities) {
