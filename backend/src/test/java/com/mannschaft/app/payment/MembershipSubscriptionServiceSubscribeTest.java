@@ -27,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -67,6 +68,12 @@ class MembershipSubscriptionServiceSubscribeTest {
     @Mock private StripeCustomerRepository stripeCustomerRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private MemberPaymentService memberPaymentService;
+
+    /**
+     * 手数料折半の正典。<b>モックせず実物を注入する</b>（固定値を返すモックでは「初回サイクルと 2 サイクル目の
+     * 請求額が一致するか」を検証できないため）。{@code @Spy} は {@code @InjectMocks} の注入候補になる。
+     */
+    @Spy private PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
 
     @InjectMocks
     private MembershipSubscriptionService service;
@@ -139,8 +146,12 @@ class MembershipSubscriptionServiceSubscribeTest {
         void 加入してPENDING起票() {
             stubHappyPathUpTo();
             given(stripePaymentProvider.createProduct(anyString(), any())).willReturn("prod_x");
+            // 案C: 会費 Price（額面 3,000）と支払側手数料 Price（RANK_A 3% の折半＝45）の 2 本を作る。
             given(stripePaymentProvider.createRecurringPrice(eq("prod_x"), any(), eq("JPY"), eq(BillingInterval.MONTHLY)))
-                    .willReturn("price_recurring");
+                    .willAnswer(inv -> {
+                        BigDecimal amount = inv.getArgument(1);
+                        return amount.longValueExact() == 3000L ? "price_recurring" : "price_surcharge";
+                    });
             given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> {
                 MembershipSubscriptionEntity e = inv.getArgument(0);
                 if (e.getId() == null) {
@@ -149,7 +160,7 @@ class MembershipSubscriptionServiceSubscribeTest {
                 return e;
             });
             given(stripePaymentProvider.createSubscription(
-                    eq("cus_payer"), eq("price_recurring"), eq("pm_saved"), eq("acct_ready"),
+                    eq("cus_payer"), any(), eq("pm_saved"), eq("acct_ready"),
                     any(), anyLong(), anyString()))
                     .willReturn(new StripePaymentProvider.SubscriptionInfo("sub_abc", "active", null));
 
@@ -172,13 +183,18 @@ class MembershipSubscriptionServiceSubscribeTest {
             assertThat(cmd.getValue().confirmImmediately()).isTrue();
             assertThat(cmd.getValue().paymentMethodId()).isEqualTo("pm_saved");
 
-            // Subscription 作成引数（default PM・transfer destination・anchor は将来時刻）。
+            // Subscription 作成引数（default PM・transfer destination・anchor は将来時刻・案C の 2 明細）。
             ArgumentCaptor<Long> anchor = ArgumentCaptor.forClass(Long.class);
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<String>> priceIds = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<BigDecimal> feePct = ArgumentCaptor.forClass(BigDecimal.class);
             verify(stripePaymentProvider).createSubscription(
-                    eq("cus_payer"), eq("price_recurring"), eq("pm_saved"), eq("acct_ready"),
-                    eq(MembershipSubscriptionService.SAFE_DEFAULT_APPLICATION_FEE_PERCENT),
-                    anchor.capture(), anyString());
+                    eq("cus_payer"), priceIds.capture(), eq("pm_saved"), eq("acct_ready"),
+                    feePct.capture(), anchor.capture(), anyString());
             assertThat(anchor.getValue()).isGreaterThan(Instant.now().getEpochSecond());
+            assertThat(priceIds.getValue()).containsExactly("price_recurring", "price_surcharge");
+            // 安全側既定は「総手数料 ÷ 実請求額」＝ 90 ÷ 3,045 ≒ 2.96%（額面基準の 3% だと取り過ぎる）。
+            assertThat(feePct.getValue()).isEqualByComparingTo(new BigDecimal("2.96"));
 
             // member_payment 起票（subscription 連結）。
             verify(memberPaymentService).recordSubscriptionInitialChargePending(
@@ -318,7 +334,7 @@ class MembershipSubscriptionServiceSubscribeTest {
             verify(memberPaymentService, never()).recordSubscriptionInitialChargePending(
                     anyLong(), anyLong(), any(), anyString(), anyLong(), any(), any(), any());
             verify(stripePaymentProvider, never()).createSubscription(
-                    anyString(), anyString(), anyString(), anyString(), any(), anyLong(), anyString());
+                    anyString(), any(), anyString(), anyString(), any(), anyLong(), anyString());
         }
 
         @Test
@@ -339,7 +355,7 @@ class MembershipSubscriptionServiceSubscribeTest {
             verify(connectChargeService).charge(any());
             // Subscription 作成までは到達しない。
             verify(stripePaymentProvider, never()).createSubscription(
-                    anyString(), anyString(), anyString(), anyString(), any(), anyLong(), anyString());
+                    anyString(), any(), anyString(), anyString(), any(), anyLong(), anyString());
         }
     }
 }
