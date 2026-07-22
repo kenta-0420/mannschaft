@@ -296,15 +296,51 @@ const activeTab = computed<string>(() => {
 // =============================================================================
 /** シェル描画に必要なデータを一括ロード（重複ロード防止に teamLoaded で番人）。 */
 const teamLoaded = ref(false)
+// 15 秒 watchdog: team / 権限が settle しない場合にスピナーの下へ「時間がかかっています」＋再試行を
+// 追加表示する（読み込み自体は継続）。無限スピナーで固着させないための番人。
+const shellSlowLoading = ref(false)
+const SHELL_WATCHDOG_MS = 15_000
+let shellWatchdogTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearShellWatchdog() {
+  if (shellWatchdogTimer !== null) {
+    clearTimeout(shellWatchdogTimer)
+    shellWatchdogTimer = null
+  }
+}
+
 async function loadShellData() {
   if (teamLoaded.value) return
   teamLoaded.value = true
-  await Promise.all([fetchTeam(), loadPermissions()])
-  await fetchFollowStatus()
-  // ウィジェット可視性設定と予約モジュール有効フラグを並列取得（失敗は無音 fallback）
-  fetchWidgetVisibility().catch(() => {})
-  fetchReservationEnabled()
+  shellSlowLoading.value = false
+  clearShellWatchdog()
+  shellWatchdogTimer = setTimeout(() => {
+    if (loading.value || roleLoading.value) shellSlowLoading.value = true
+  }, SHELL_WATCHDOG_MS)
+  try {
+    await Promise.all([fetchTeam(), loadPermissions()])
+    await fetchFollowStatus()
+    // ウィジェット可視性設定と予約モジュール有効フラグを並列取得（失敗は無音 fallback）
+    fetchWidgetVisibility().catch(() => {})
+    fetchReservationEnabled()
+  }
+  finally {
+    shellSlowLoading.value = false
+    clearShellWatchdog()
+  }
 }
+
+/**
+ * シェルデータ取得の再試行（team=null のエラー面 / watchdog から呼ぶ）。
+ * teamLoaded を戻して番人を解除してから再ロードする。
+ */
+function retryShellData() {
+  teamLoaded.value = false
+  team.value = null
+  void loadShellData()
+}
+
+onBeforeUnmount(clearShellWatchdog)
 
 // シェル対象ルート（8 タブ）に居るときだけデータをロードする。
 // 非シェルルート（schedule / chat 等 約 100 ページ）ではロードしない＝従来と同じ挙動。
@@ -451,8 +487,21 @@ provideTeamShellContext({
 
     <!-- シェル対象ルート（8 タブ）: 永続シェルで包む -->
     <template v-else>
-      <div v-if="loading || roleLoading" class="flex justify-center px-6 py-12">
-        <LoadingBounce />
+      <div v-if="loading || roleLoading">
+        <div class="flex justify-center px-6 py-12">
+          <LoadingBounce />
+        </div>
+        <!-- 15s watchdog: settle しない場合のみ表示（正常時は描画に一切影響しない） -->
+        <div v-if="shellSlowLoading" class="flex flex-col items-center gap-3 pb-8 text-center">
+          <p class="text-sm text-surface-500">{{ t('common.scopeShell.slow_loading') }}</p>
+          <Button
+            :label="t('common.scopeShell.retry')"
+            icon="pi pi-refresh"
+            size="small"
+            outlined
+            @click="retryShellData"
+          />
+        </div>
       </div>
 
       <ScopePageShell
@@ -501,10 +550,17 @@ provideTeamShellContext({
         <p class="mt-1 text-sm text-surface-500">
           {{ t('common.scopeShell.load_error_body') }}
         </p>
-        <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">
-          <i class="pi pi-arrow-left mr-1" />
-          {{ t('common.scopeShell.back_to_dashboard') }}
-        </NuxtLink>
+        <div class="mt-4 flex flex-col items-center gap-3">
+          <Button
+            :label="t('common.scopeShell.retry')"
+            icon="pi pi-refresh"
+            @click="retryShellData"
+          />
+          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+            <i class="pi pi-arrow-left mr-1" />
+            {{ t('common.scopeShell.back_to_dashboard') }}
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- サポーター解除 / チーム退出の確認ダイアログ（親集約） -->

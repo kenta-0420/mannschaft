@@ -13,7 +13,7 @@ defineEmits<{
 <template>
   <button
     :class="[
-      'flex items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors',
+      'flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-3 py-1 text-sm transition-colors',
       mitayo
         ? 'bg-primary-100 text-primary-600 dark:bg-primary-900 dark:text-primary-300'
         : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800',
