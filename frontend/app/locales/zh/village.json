@@ -82,6 +82,13 @@
       "meetup": "聚会",
       "chronicle": "村史"
     },
+    "systemPost": {
+      "authorName": "村庄活动通知",
+      "eventCreated": "已创建新活动",
+      "eventUpcoming": "活动即将开始",
+      "meetupConfirmed": "聚会日期已确定",
+      "festivalStarted": "节日已开始"
+    },
     "lobby": {
       "title": "大厅",
       "today": "今天",
@@ -442,6 +449,31 @@
         "ACTIVE": "进行中",
         "ENDED": "已结束",
         "CANCELLED": "已取消"
+      },
+      "rsvp": {
+        "title": "参加表态",
+        "going": "参加",
+        "maybe": "可能参加",
+        "roleLabel": "角色",
+        "roleLabelPlaceholder": "角色（可选，例如摊位负责人）",
+        "submit": "提交",
+        "cancel": "取消参加表态",
+        "empty": "暂无人表态参加",
+        "loadFailed": "获取参加者列表失败",
+        "saveSuccess": "已登记参加表态",
+        "saveFailed": "登记参加表态失败",
+        "cancelSuccess": "已取消参加表态",
+        "cancelFailed": "取消参加表态失败"
+      },
+      "live": {
+        "title": "现场动态",
+        "tagAsLive": "写下要作为现场动态发布的内容",
+        "submit": "作为现场动态发布",
+        "empty": "暂无现场动态",
+        "viewPost": "查看帖子",
+        "loadFailed": "获取现场动态列表失败",
+        "tagSuccess": "已作为现场动态发布",
+        "tagFailed": "发布现场动态失败"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "村史尚未生成",
       "loadFailed": "获取村史失败",
       "viewDetail": "查看详情"
+    },
+    "archive": {
+      "title": "村史",
+      "subtitle": "节日、时令活动、聚会等村庄活动的记录",
+      "empty": "暂无村史记录",
+      "loadFailed": "获取村史失败",
+      "archivedAt": "记录时间",
+      "filterAll": "全部",
+      "sourceType": {
+        "festival": "节日",
+        "calendarEvent": "时令活动",
+        "meetup": "聚会"
+      }
     },
     "serendipity": {
       "title": "缘分分数",

@@ -629,6 +629,107 @@ export interface VillageFestivalUpdateRequest {
 }
 
 // -----------------------------------------------------------------------------
+// F17.2 Wave2 ③お祭りの参加レイヤー — RSVP / 実況
+// 設計書: docs/features/F17.2_village_events_activation.md §5
+// -----------------------------------------------------------------------------
+
+/**
+ * 祭 RSVP ステータス。BE: `entity.enums.VillageFestivalRsvpStatus`。
+ *
+ * ABSENT は持たない（§5.2・G3）。不参加は「無回答」と同じ扱い（レコード不在）。
+ */
+export type VillageFestivalRsvpStatus = 'GOING' | 'MAYBE'
+
+/**
+ * 祭 RSVP。BE: `FestivalRsvpResponse`。
+ *
+ * `displayName` は村ニックネームで解決される（実名は一切出さない・G4）。
+ */
+export interface VillageFestivalRsvpResponse {
+  id: string
+  festivalId: string
+  userId: number
+  displayName: string | null
+  status: VillageFestivalRsvpStatus
+  /** 役割の自由記述ラベル（例「出店係」）。NULL=役割なし（§5.3） */
+  roleLabel: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** RSVP upsert リクエスト。BE: `FestivalRsvpUpsertRequest`。 */
+export interface VillageFestivalRsvpUpsertRequest {
+  status: VillageFestivalRsvpStatus
+  roleLabel?: string | null
+}
+
+/** RSVP 一覧クエリ（size 上限付きページング必須・AC-14b・G3「全件を舐めない」構造的抑止） */
+export interface VillageFestivalRsvpListParams {
+  page?: number
+  size?: number
+}
+
+/**
+ * 祭の実況投稿タグ付け。BE: `FestivalLivePostResponse`。
+ *
+ * `village_festival_live_posts`（村ドメイン内・timeline_posts への ID 参照のみ・§5.4）。
+ */
+export interface VillageFestivalLivePostResponse {
+  festivalId: string
+  timelinePostId: number
+  createdAt: string
+}
+
+/** 実況タグ付けリクエスト。BE: `FestivalLivePostTagRequest`。ACTIVE 中のみ受理（§5.6）。 */
+export interface VillageFestivalLivePostTagRequest {
+  timelinePostId: number
+}
+
+// -----------------------------------------------------------------------------
+// F17.2 Wave2 ⑦ 村史（行事アーカイブ）— village_event_archives
+// 設計書: docs/features/F17.2_village_events_activation.md §7
+//
+// ⚠️ BE 未実装の注記（2026-07-22 時点）: 編纂（書き込み）側の `VillageEventArchiveService`
+// は origin/main に main 済み（祭 ENDED 遷移時にスナップショット確定）だが、
+// 読み取り側の Controller（`GET /api/v1/villages/{villageId}/event-archives`）は
+// 本 Wave2 骨格 PR (#2427) に未着手で、`docs/openapi.json` / 生成型にもまだ現れない。
+// 本節の型・composable メソッドは §7.2/§7.4 の確定契約に準拠して先行実装するが、
+// 実際に疎通するのは対応する Controller が別途出陣・main 済みになってから
+// （それまでは村史タブは 404/読み込み失敗として表示される。フォールバック握り潰し禁止）。
+// -----------------------------------------------------------------------------
+
+/** 村史（行事アーカイブ）の元行事種別。BE: `entity.enums.VillageEventArchiveSourceType`。 */
+export type VillageEventArchiveSourceType = 'FESTIVAL' | 'CALENDAR_EVENT' | 'MEETUP'
+
+/**
+ * 村史（行事アーカイブ）エントリ。BE 想定 DTO 名: `EventArchiveResponse`（未実装・§7.4）。
+ *
+ * 編纂時に確定したスナップショット（元行事が後日削除・変更されても揺れない・§7.2）。
+ * `thumbnailUrl` は既存の `bannerUrl`/`photoUrl` と同じ「署名付き表示 URL」規約に倣う
+ * （生の R2 キーを応答に含めない・#2355 の r2PublicUrl 根絶方針）。
+ */
+export interface VillageEventArchiveResponse {
+  id: string
+  villageId: string
+  sourceType: VillageEventArchiveSourceType
+  /** 元行事（祭/歳時記/寄合）の UUID */
+  sourceId: string
+  title: string
+  /** 編纂サマリ（RSVP集計・実況件数等のテキスト） */
+  summary: string | null
+  thumbnailUrl: string | null
+  /** 編纂時刻 */
+  archivedAt: string
+}
+
+/** 村史一覧クエリ（`archived_at` 降順・§7.4） */
+export interface VillageEventArchiveListParams {
+  sourceType?: VillageEventArchiveSourceType
+  page?: number
+  size?: number
+}
+
+// -----------------------------------------------------------------------------
 // 練習試合募集 (village_match_recruits) — §13.2
 // -----------------------------------------------------------------------------
 

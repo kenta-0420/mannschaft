@@ -51,18 +51,66 @@ const menu = ref()
 const expanded = ref(false)
 const mitayoLoading = ref(false)
 
+/**
+ * 村行事のシステム自動投稿か（F17.2 Wave2 §3.9(c)）。
+ * `user`/`postedAs` とも null なので、ここで分岐しないと「名無し・空アバター」の
+ * 空カードになる（設計書 §3.9 冒頭の警告）。
+ */
+const isSystemPost = computed(() => !!props.post.systemPostType)
+
+/** システム投稿種別ごとの PrimeIcons アイコン（固定アイコン・§3.9(c)）。 */
+function systemPostIcon(type: string | null | undefined): string {
+  switch (type) {
+    case 'EVENT_CREATED':
+      return 'pi pi-calendar-plus'
+    case 'EVENT_UPCOMING':
+      return 'pi pi-bell'
+    case 'MEETUP_CONFIRMED':
+      return 'pi pi-check-circle'
+    case 'FESTIVAL_STARTED':
+      return 'pi pi-star-fill'
+    default:
+      return 'pi pi-megaphone'
+  }
+}
+
+/** システム投稿種別ラベル（§14 `village.systemPost.*` テンプレキー）。表示名の下に添える種別バッジ用。 */
+function systemPostTypeI18nKey(type: string | null | undefined): string | null {
+  switch (type) {
+    case 'EVENT_CREATED':
+      return 'village.systemPost.eventCreated'
+    case 'EVENT_UPCOMING':
+      return 'village.systemPost.eventUpcoming'
+    case 'MEETUP_CONFIRMED':
+      return 'village.systemPost.meetupConfirmed'
+    case 'FESTIVAL_STARTED':
+      return 'village.systemPost.festivalStarted'
+    default:
+      return null
+  }
+}
+
 const displayName = computed(() => {
+  if (isSystemPost.value) return t('village.systemPost.authorName')
   if (props.post.postedAs) {
     return props.post.postedAs.displayName || props.post.postedAs.name || ''
   }
   return props.post.user?.displayName || ''
 })
 
+/** システム投稿は固定画像を持たないため常に null（テンプレート側で `systemPostIcon` を使う）。 */
 const avatarUrl = computed(() => {
+  if (isSystemPost.value) return null
   if (props.post.postedAs) {
     return props.post.postedAs.avatarUrl || props.post.postedAs.logoUrl || null
   }
   return props.post.user?.avatarUrl || null
+})
+
+const systemPostBadgeLabel = computed(() => {
+  if (!isSystemPost.value) return null
+  const key = systemPostTypeI18nKey(props.post.systemPostType)
+  return key ? t(key) : null
 })
 
 const displayContent = computed(() => {
@@ -210,13 +258,19 @@ async function submitReply() {
 }
 
 function replyDisplayName(r: TimelinePostResponse): string {
+  if (r.systemPostType) return t('village.systemPost.authorName')
   if (r.postedAs) return r.postedAs.displayName || r.postedAs.name || ''
   return r.user?.displayName || ''
 }
 
 function replyAvatar(r: TimelinePostResponse): string | null {
+  if (r.systemPostType) return null
   if (r.postedAs) return r.postedAs.avatarUrl || r.postedAs.logoUrl || null
   return r.user?.avatarUrl || null
+}
+
+function replyIsSystemPost(r: TimelinePostResponse): boolean {
+  return !!r.systemPostType
 }
 </script>
 
@@ -261,15 +315,24 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       <div class="flex items-center gap-3">
         <Avatar
           :image="avatarUrl || undefined"
-          :label="avatarUrl ? undefined : displayName.charAt(0)"
+          :icon="!avatarUrl && isSystemPost ? systemPostIcon(post.systemPostType) : undefined"
+          :label="!avatarUrl && !isSystemPost ? displayName.charAt(0) : undefined"
           shape="circle"
           size="normal"
+          data-testid="timeline-system-post-avatar"
         />
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold">{{ displayName }}</span>
+            <span class="text-sm font-semibold" data-testid="timeline-post-author-name">{{ displayName }}</span>
             <span v-if="post.postedAs?.handle" class="text-xs text-surface-400 dark:text-surface-300">
               {{ post.postedAs.handle }}
+            </span>
+            <span
+              v-if="systemPostBadgeLabel"
+              class="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-300"
+              data-testid="timeline-system-post-badge"
+            >
+              {{ systemPostBadgeLabel }}
             </span>
           </div>
           <div class="flex items-center gap-1 text-xs text-surface-400 dark:text-surface-300">
@@ -497,7 +560,8 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <div v-for="reply in replies" :key="reply.id" class="flex gap-2">
           <Avatar
             :image="replyAvatar(reply) || undefined"
-            :label="replyAvatar(reply) ? undefined : replyDisplayName(reply).charAt(0)"
+            :icon="!replyAvatar(reply) && replyIsSystemPost(reply) ? systemPostIcon(reply.systemPostType) : undefined"
+            :label="!replyAvatar(reply) && !replyIsSystemPost(reply) ? replyDisplayName(reply).charAt(0) : undefined"
             shape="circle"
             size="normal"
           />

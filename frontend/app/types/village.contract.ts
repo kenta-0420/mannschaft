@@ -37,6 +37,11 @@ import type {
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageCreationRequestResponse,
+  VillageFestivalLivePostResponse,
+  VillageFestivalLivePostTagRequest,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpStatus,
+  VillageFestivalRsvpUpsertRequest,
   VillageMatchApplicationCreateRequest,
   VillageMatchApplicationResponse,
   VillageMatchApplicationReviewRequest,
@@ -224,6 +229,42 @@ export type CalendarEventLogResponseKeysMatch = AssertTrue<
 export type CalendarEventLogCreateRequestKeysMatch = AssertTrue<
   SameKeys<VillageCalendarEventLogCreateRequest, Schemas['CalendarEventLogCreateRequest']>
 >
+
+// =============================================================================
+// B-3. F17.2 Wave2 ③お祭りの参加レイヤー — RSVP / 実況
+// =============================================================================
+
+export type FestivalRsvpResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpResponse, Schemas['FestivalRsvpResponse']>
+>
+
+export type FestivalRsvpUpsertRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpUpsertRequest, Schemas['FestivalRsvpUpsertRequest']>
+>
+
+export type FestivalRsvpStatusEnumMatch = AssertTrue<
+  Assignable<VillageFestivalRsvpStatus, NonNullable<Schemas['FestivalRsvpResponse']['status']>>
+>
+export type FestivalRsvpStatusEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['FestivalRsvpResponse']['status']>, VillageFestivalRsvpStatus>
+>
+
+export type FestivalLivePostResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostResponse, Schemas['FestivalLivePostResponse']>
+>
+
+export type FestivalLivePostTagRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostTagRequest, Schemas['FestivalLivePostTagRequest']>
+>
+
+// -----------------------------------------------------------------------------
+// B-4. F17.2 Wave2 ⑦ 村史（行事アーカイブ）
+//
+// ⚠️ `VillageEventArchiveResponse`（village.ts）はここに未登録。
+// BE 読み取り Controller が origin/main 未実装で `Schemas['EventArchiveResponse']` が
+// 生成型に存在しないため（village.ts 側の注記を参照）。Controller が main 済みになり
+// `npm run generate:types` 後に生成型が現れたら、ここへ SameKeys 登録すること。
+// -----------------------------------------------------------------------------
 
 // =============================================================================
 // C. 参加申請 / 村作成申請（Spring Page 露出）

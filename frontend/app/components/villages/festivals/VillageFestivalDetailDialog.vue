@@ -11,18 +11,39 @@ import Badge from 'primevue/badge'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 
-import type { VillageFestivalResponse, VillageFestivalStatus } from '~/types/village'
+import type {
+  VillageFestivalLivePostResponse,
+  VillageFestivalResponse,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpStatus,
+  VillageFestivalStatus,
+} from '~/types/village'
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
   festival: VillageFestivalResponse | null
   canManage: boolean
+  isVillager: boolean
+  // F17.2 Wave2 ③お祭りの参加レイヤー（RSVP・実況）
+  rsvps: VillageFestivalRsvpResponse[]
+  myRsvpStatus: VillageFestivalRsvpStatus | null
+  myRsvpRoleLabel: string | null
+  rsvpsLoading: boolean
+  rsvpsHasMore: boolean
+  rsvpsLoadingMore: boolean
+  livePosts: VillageFestivalLivePostResponse[]
+  livePostsLoading: boolean
+  livePostPosting: boolean
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   edit: [f: VillageFestivalResponse]
   cancelFestival: [f: VillageFestivalResponse]
+  respondRsvp: [status: VillageFestivalRsvpStatus, roleLabel: string | null]
+  cancelRsvp: []
+  loadMoreRsvps: []
+  submitLivePost: [content: string]
 }>()
 
 const { t } = useI18n()
@@ -39,6 +60,22 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
       return 'danger'
   }
 }
+
+// =====================================================================
+// F17.2 Wave2 ③お祭りの参加レイヤー — 状態別ゲート（§5.6）
+// =====================================================================
+
+/** RSVP 回答セクションを表示するか（SCHEDULED/ACTIVE/ENDED は閲覧可・CANCELLED は非表示） */
+const showRsvp = computed(() => !!props.festival && props.festival.status !== 'CANCELLED')
+
+/** RSVP を書き込めるか（SCHEDULED/ACTIVE のみ・§5.6） */
+const canRespondRsvp = computed(() =>
+  props.isVillager
+  && (props.festival?.status === 'SCHEDULED' || props.festival?.status === 'ACTIVE'),
+)
+
+/** 実況セクションを表示するか（ACTIVE 中のみ・§5.4） */
+const showLive = computed(() => props.festival?.status === 'ACTIVE')
 </script>
 
 <template>
@@ -47,11 +84,11 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
     modal
     :draggable="false"
     :header="festival?.title ?? ''"
-    :style="{ width: '32rem' }"
+    :style="{ width: '38rem', maxHeight: '90vh' }"
     :breakpoints="{ '640px': '92vw' }"
     @update:visible="(v: boolean) => emit('update:visible', v)"
   >
-    <div v-if="festival" class="flex flex-col gap-3">
+    <div v-if="festival" class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
       <div
         v-if="festival.bannerUrl"
         class="h-40 bg-surface-100 dark:bg-surface-800 overflow-hidden rounded"
@@ -74,6 +111,34 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
       <p v-if="festival.description" class="whitespace-pre-wrap text-sm">
         {{ festival.description }}
       </p>
+
+      <!-- F17.2 Wave2 ③お祭りの参加レイヤー（RSVP・実況・§5） -->
+      <template v-if="showRsvp">
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageFestivalRsvpSection
+          :rsvps="rsvps"
+          :my-status="myRsvpStatus"
+          :my-role-label="myRsvpRoleLabel"
+          :can-respond="canRespondRsvp"
+          :loading="rsvpsLoading"
+          :has-more="rsvpsHasMore"
+          :loading-more="rsvpsLoadingMore"
+          @respond="(status, roleLabel) => emit('respondRsvp', status, roleLabel)"
+          @cancel-rsvp="emit('cancelRsvp')"
+          @load-more="emit('loadMoreRsvps')"
+        />
+      </template>
+
+      <template v-if="showLive">
+        <hr class="border-surface-200 dark:border-surface-700">
+        <VillageFestivalLiveSection
+          :live-posts="livePosts"
+          :loading="livePostsLoading"
+          :can-post="isVillager"
+          :posting="livePostPosting"
+          @submit="(content) => emit('submitLivePost', content)"
+        />
+      </template>
     </div>
     <template #footer>
       <Button

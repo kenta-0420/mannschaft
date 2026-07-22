@@ -82,6 +82,13 @@
       "meetup": "Reunión",
       "chronicle": "Crónica de la aldea"
     },
+    "systemPost": {
+      "authorName": "Aviso de eventos de la aldea",
+      "eventCreated": "Se creó un evento",
+      "eventUpcoming": "Un evento se acerca",
+      "meetupConfirmed": "Se confirmó la fecha de la reunión",
+      "festivalStarted": "El festival ha comenzado"
+    },
     "lobby": {
       "title": "Vestíbulo",
       "today": "Hoy",
@@ -442,6 +449,31 @@
         "ACTIVE": "En curso",
         "ENDED": "Finalizado",
         "CANCELLED": "Cancelado"
+      },
+      "rsvp": {
+        "title": "Confirmación de asistencia",
+        "going": "Voy a ir",
+        "maybe": "Tal vez vaya",
+        "roleLabel": "Rol",
+        "roleLabelPlaceholder": "Rol (opcional, p. ej. puesto de venta)",
+        "submit": "Enviar",
+        "cancel": "Retirar confirmación",
+        "empty": "Nadie ha confirmado asistencia todavía",
+        "loadFailed": "Error al cargar la lista de asistentes",
+        "saveSuccess": "Confirmación de asistencia guardada",
+        "saveFailed": "Error al guardar la confirmación de asistencia",
+        "cancelSuccess": "Confirmación de asistencia retirada",
+        "cancelFailed": "Error al retirar la confirmación de asistencia"
+      },
+      "live": {
+        "title": "Actualizaciones en vivo",
+        "tagAsLive": "Escribe algo para publicar como actualización en vivo",
+        "submit": "Publicar como actualización en vivo",
+        "empty": "Aún no hay actualizaciones en vivo",
+        "viewPost": "Ver publicación",
+        "loadFailed": "Error al cargar las actualizaciones en vivo",
+        "tagSuccess": "Publicado como actualización en vivo",
+        "tagFailed": "Error al publicar la actualización en vivo"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "Aún no se han generado crónicas",
       "loadFailed": "Error al cargar las crónicas",
       "viewDetail": "Ver detalle"
+    },
+    "archive": {
+      "title": "Crónica",
+      "subtitle": "Registro de los festivales, eventos del calendario y reuniones de la aldea",
+      "empty": "Aún no hay entradas en la crónica",
+      "loadFailed": "Error al cargar la crónica",
+      "archivedAt": "Registrado el",
+      "filterAll": "Todos",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Evento del calendario",
+        "meetup": "Reunión"
+      }
     },
     "serendipity": {
       "title": "Puntuación de afinidad",

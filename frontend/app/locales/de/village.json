@@ -82,6 +82,13 @@
       "meetup": "Treffen",
       "chronicle": "Dorfchronik"
     },
+    "systemPost": {
+      "authorName": "Dorf-Veranstaltungshinweis",
+      "eventCreated": "Eine Veranstaltung wurde erstellt",
+      "eventUpcoming": "Eine Veranstaltung steht bevor",
+      "meetupConfirmed": "Der Treffentermin wurde bestätigt",
+      "festivalStarted": "Das Festival hat begonnen"
+    },
     "lobby": {
       "title": "Foyer",
       "today": "Heute",
@@ -442,6 +449,31 @@
         "ACTIVE": "Laufend",
         "ENDED": "Beendet",
         "CANCELLED": "Abgesagt"
+      },
+      "rsvp": {
+        "title": "Teilnahmezusage",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "roleLabel": "Rolle",
+        "roleLabelPlaceholder": "Rolle (optional, z. B. Standbetreuung)",
+        "submit": "Senden",
+        "cancel": "Zusage zurückziehen",
+        "empty": "Noch niemand hat zugesagt",
+        "loadFailed": "Teilnehmerliste konnte nicht geladen werden",
+        "saveSuccess": "Teilnahmezusage gespeichert",
+        "saveFailed": "Teilnahmezusage konnte nicht gespeichert werden",
+        "cancelSuccess": "Teilnahmezusage zurückgezogen",
+        "cancelFailed": "Zusage konnte nicht zurückgezogen werden"
+      },
+      "live": {
+        "title": "Live-Updates",
+        "tagAsLive": "Schreibe etwas als Live-Update",
+        "submit": "Als Live-Update posten",
+        "empty": "Noch keine Live-Updates",
+        "viewPost": "Beitrag ansehen",
+        "loadFailed": "Live-Updates konnten nicht geladen werden",
+        "tagSuccess": "Als Live-Update gepostet",
+        "tagFailed": "Live-Update konnte nicht gepostet werden"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "Noch keine Chroniken erstellt",
       "loadFailed": "Chroniken konnten nicht geladen werden",
       "viewDetail": "Details anzeigen"
+    },
+    "archive": {
+      "title": "Chronik",
+      "subtitle": "Aufzeichnungen der Feste, Kalenderereignisse und Treffen des Dorfes",
+      "empty": "Noch keine Chronikeinträge",
+      "loadFailed": "Chronik konnte nicht geladen werden",
+      "archivedAt": "Aufgezeichnet am",
+      "filterAll": "Alle",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Kalenderereignis",
+        "meetup": "Treffen"
+      }
     },
     "serendipity": {
       "title": "Affinitätspunkte",

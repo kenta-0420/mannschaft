@@ -82,6 +82,13 @@
       "meetup": "Meetup",
       "chronicle": "Chronicle"
     },
+    "systemPost": {
+      "authorName": "Village Event Notice",
+      "eventCreated": "An event was created",
+      "eventUpcoming": "An event is coming up",
+      "meetupConfirmed": "The meetup date was confirmed",
+      "festivalStarted": "The festival has started"
+    },
     "lobby": {
       "title": "Lobby",
       "today": "Today",
@@ -442,6 +449,31 @@
         "ACTIVE": "Active",
         "ENDED": "Ended",
         "CANCELLED": "Cancelled"
+      },
+      "rsvp": {
+        "title": "RSVP",
+        "going": "Going",
+        "maybe": "Maybe",
+        "roleLabel": "Role",
+        "roleLabelPlaceholder": "Role (optional, e.g. stall staff)",
+        "submit": "Submit",
+        "cancel": "Cancel RSVP",
+        "empty": "No one has RSVP'd yet",
+        "loadFailed": "Failed to load the attendee list",
+        "saveSuccess": "RSVP saved",
+        "saveFailed": "Failed to save RSVP",
+        "cancelSuccess": "RSVP cancelled",
+        "cancelFailed": "Failed to cancel RSVP"
+      },
+      "live": {
+        "title": "Live updates",
+        "tagAsLive": "Write something to post as a live update",
+        "submit": "Post as live update",
+        "empty": "No live updates yet",
+        "viewPost": "View post",
+        "loadFailed": "Failed to load live updates",
+        "tagSuccess": "Posted as a live update",
+        "tagFailed": "Failed to post the live update"
       }
     },
     "matchRecruit": {
@@ -623,6 +655,19 @@
       "empty": "No chronicles generated yet",
       "loadFailed": "Failed to load chronicles",
       "viewDetail": "View detail"
+    },
+    "archive": {
+      "title": "Chronicle",
+      "subtitle": "Records of the village's festivals, calendar events, and meetups",
+      "empty": "No chronicle entries yet",
+      "loadFailed": "Failed to load the chronicle",
+      "archivedAt": "Recorded",
+      "filterAll": "All",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Calendar event",
+        "meetup": "Meetup"
+      }
     },
     "serendipity": {
       "title": "Serendipity score",

@@ -1,17 +1,27 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — 村詳細 / 村史タブ（永続シェル子）
+ * F17.2 Wave2 ⑦ 村史（行事アーカイブ）タブ — 村詳細 / 村史タブ（永続シェル子）
  *
- * 設計書: docs/features/F17.1_village_community.md §2.2 / §13.2（Phase 3）
+ * 設計書: docs/features/F17.2_village_events_activation.md §7（村史の定義整理・2026-07-21 マスター裁定確定）
+ *
+ * 「村史」タブのラベル（`village.tab.chronicle`）は据え置きだが、指す中身は
+ * 旧・月次統計（`VillageChronicleEntity`）から **行事アーカイブ**（`village_event_archives`。
+ * 祭・歳時記・寄合の記録）へ差し替える（§7.1 確定）。
+ *
+ * ⚠️ BE 未実装の注記（2026-07-22 時点）: 読み取り Controller
+ * （`GET /api/v1/villages/{villageId}/event-archives`）が origin/main に未着手のため、
+ * 本ページは現状 404/読み込み失敗として表示される（編纂〔書き込み〕側の
+ * `VillageEventArchiveService` は main 済み）。契約・UI は §7.2/§7.4 準拠で先行実装した
+ * （`app/types/village.ts` の該当セクション・`village.contract.ts` の注記を参照）。
+ * Controller が main 済みになれば追加変更なしに疎通する。
  *
  * 永続シェル方式（SPA）: 村データ・権限・VillageHeader・アクションは親
  * `pages/villages/[id].vue` に集約。本ファイルは村史パネル本体（読み取り専用）のみ。
- *
- * 構成:
- *   - 月別アーカイブ表示（年セレクタ）
- *   - 各村史: 投稿数 / 新規参加 / TOP3 タグカード表示
  */
-import type { VillageChronicleResponse } from '~/types/village'
+import type {
+  VillageEventArchiveResponse,
+  VillageEventArchiveSourceType,
+} from '~/types/village'
 import { useVillageContext } from '~/composables/useVillageContext'
 
 // auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
@@ -22,143 +32,150 @@ const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
+const { relativeTime } = useRelativeTime()
 
-// 村史は読み取り専用パネル。閲覧可否は BE 側で村掲示板と同一の認可
-// （村の bulletin_visibility）により判定され、権限が無ければ 403 が返る。
-// コンテキストは provide 存在の保証として参照する。
+// 村史は読み取り専用パネル。閲覧可否は BE 側で村掲示板と同一の認可により判定され、
+// 権限が無ければ 403 が返る。コンテキストは provide 存在の保証として参照する。
 useVillageContext()
 
-const chronicles = ref<VillageChronicleResponse[]>([])
-const chroniclesLoading = ref(false)
+type SourceTypeFilter = VillageEventArchiveSourceType | 'ALL'
 
-// 年セレクタ — 全件取得後にフロントで絞り込み（件数が少ない前提）
-const selectedYear = ref<number | 'ALL'>('ALL')
+const ARCHIVE_PAGE_SIZE = 20
 
-const availableYears = computed<number[]>(() => {
-  const years = new Set<number>()
-  for (const c of chronicles.value) {
-    const y = Number.parseInt(c.yearMonth.slice(0, 4), 10)
-    if (!Number.isNaN(y)) years.add(y)
+const archives = ref<VillageEventArchiveResponse[]>([])
+const archivesLoading = ref(false)
+const archivesLoadingMore = ref(false)
+const archivesPage = ref(0)
+const archivesHasMore = ref(false)
+const sourceTypeFilter = ref<SourceTypeFilter>('ALL')
+
+const sourceTypeFilterTabs: { value: SourceTypeFilter, i18nKey: string }[] = [
+  { value: 'ALL', i18nKey: 'village.archive.filterAll' },
+  { value: 'FESTIVAL', i18nKey: 'village.archive.sourceType.festival' },
+  { value: 'CALENDAR_EVENT', i18nKey: 'village.archive.sourceType.calendarEvent' },
+  { value: 'MEETUP', i18nKey: 'village.archive.sourceType.meetup' },
+]
+
+function sourceTypeLabel(sourceType: VillageEventArchiveSourceType): string {
+  switch (sourceType) {
+    case 'FESTIVAL':
+      return t('village.archive.sourceType.festival')
+    case 'CALENDAR_EVENT':
+      return t('village.archive.sourceType.calendarEvent')
+    case 'MEETUP':
+      return t('village.archive.sourceType.meetup')
   }
-  return Array.from(years).sort((a, b) => b - a)
-})
+}
 
-const filteredChronicles = computed<VillageChronicleResponse[]>(() => {
-  if (selectedYear.value === 'ALL') return chronicles.value
-  const y = String(selectedYear.value)
-  return chronicles.value.filter(c => c.yearMonth.startsWith(y))
-})
-
-const yearOptions = computed(() => [
-  { value: 'ALL' as const, label: t('village.chronicle.title') },
-  ...availableYears.value.map(y => ({ value: y, label: `${y}` })),
-])
-
-async function loadChronicles() {
-  chroniclesLoading.value = true
+async function loadArchives(opts: { reset: boolean }) {
+  const page = opts.reset ? 0 : archivesPage.value + 1
+  const loadingRef = opts.reset ? archivesLoading : archivesLoadingMore
+  loadingRef.value = true
   try {
-    // BE は素の配列を返す（ページング未対応）。
-    chronicles.value = await villageApi.listChronicles(villageId.value)
+    const fetched = await villageApi.listEventArchives(villageId.value, {
+      sourceType: sourceTypeFilter.value === 'ALL' ? undefined : sourceTypeFilter.value,
+      page,
+      size: ARCHIVE_PAGE_SIZE,
+    })
+    archives.value = opts.reset ? fetched : [...archives.value, ...fetched]
+    archivesPage.value = page
+    // BE はページ総数を返さない前提のため、直前ページが size 丁度ならまだ続きがあるとみなす。
+    archivesHasMore.value = fetched.length === ARCHIVE_PAGE_SIZE
   }
   catch (error) {
-    chronicles.value = []
-    handleApiError(error, t('village.chronicle.loadFailed'))
+    if (opts.reset) archives.value = []
+    handleApiError(error, t('village.archive.loadFailed'))
   }
   finally {
-    chroniclesLoading.value = false
+    loadingRef.value = false
   }
 }
 
-function formatYearMonth(yearMonth: string): string {
-  // YYYY-MM-DD 形式（BE は LocalDate。当該月の 1 日に正規化済み）
-  const [y, m] = yearMonth.split('-')
-  if (!y || !m) return yearMonth
-  return `${y}年${Number.parseInt(m, 10)}月`
+function setSourceTypeFilter(value: SourceTypeFilter) {
+  sourceTypeFilter.value = value
+  void loadArchives({ reset: true })
 }
 
-function topTags(chronicle: VillageChronicleResponse): string[] {
-  return chronicle.topics.slice(0, 3).map(topic => topic.name)
+function loadMoreArchives() {
+  if (archivesLoadingMore.value || !archivesHasMore.value) return
+  void loadArchives({ reset: false })
 }
 
 onMounted(() => {
-  void loadChronicles()
+  void loadArchives({ reset: true })
 })
 </script>
 
 <template>
   <div class="mx-auto max-w-4xl p-4 sm:p-6">
-    <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-      <div>
-        <h2 class="text-xl font-bold">
-          {{ t('village.chronicle.title') }}
-        </h2>
-        <p class="text-sm text-surface-500">
-          {{ t('village.chronicle.subtitle') }}
-        </p>
-      </div>
-      <Select
-        v-model="selectedYear"
-        :options="yearOptions"
-        option-value="value"
-        option-label="label"
-        class="w-44"
+    <div class="mb-4">
+      <h2 class="text-xl font-bold">
+        {{ t('village.archive.title') }}
+      </h2>
+      <p class="text-sm text-surface-500">
+        {{ t('village.archive.subtitle') }}
+      </p>
+    </div>
+
+    <div class="mb-4 flex gap-2 overflow-x-auto pb-1">
+      <Button
+        v-for="tab in sourceTypeFilterTabs"
+        :key="tab.value"
+        :label="t(tab.i18nKey)"
+        size="small"
+        :severity="sourceTypeFilter === tab.value ? 'primary' : 'secondary'"
+        :outlined="sourceTypeFilter !== tab.value"
+        @click="setSourceTypeFilter(tab.value)"
       />
     </div>
 
-    <div v-if="chroniclesLoading" class="text-center py-12 text-surface-500">
+    <div v-if="archivesLoading" class="text-center py-12 text-surface-500">
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
     <DashboardEmptyState
-      v-else-if="filteredChronicles.length === 0"
+      v-else-if="archives.length === 0"
       icon="pi pi-book"
-      :message="t('village.chronicle.empty')"
+      :message="t('village.archive.empty')"
     />
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div v-else class="flex flex-col gap-3">
       <div
-        v-for="c in filteredChronicles"
-        :key="c.id"
+        v-for="a in archives"
+        :key="a.id"
         class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
       >
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <h3 class="font-semibold text-lg">
-            {{ formatYearMonth(c.yearMonth) }}
-          </h3>
-          <span class="text-xs text-surface-400">
-            {{ c.generatedAt.slice(0, 10) }}
-          </span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="rounded bg-surface-50 p-2 dark:bg-surface-800 text-center">
-            <div class="text-xs text-surface-500">
-              {{ t('village.chronicle.postCount') }}
-            </div>
-            <div class="text-xl font-bold">
-              {{ c.postCount }}
-            </div>
+        <div class="flex gap-3">
+          <div
+            v-if="a.thumbnailUrl"
+            class="h-16 w-16 shrink-0 overflow-hidden rounded bg-surface-100 dark:bg-surface-800"
+          >
+            <img :src="a.thumbnailUrl" :alt="a.title" class="h-full w-full object-cover" >
           </div>
-          <div class="rounded bg-surface-50 p-2 dark:bg-surface-800 text-center">
-            <div class="text-xs text-surface-500">
-              {{ t('village.chronicle.newMemberCount') }}
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="font-semibold">
+                {{ a.title }}
+              </h3>
+              <Tag :value="sourceTypeLabel(a.sourceType)" severity="secondary" />
             </div>
-            <div class="text-xl font-bold">
-              {{ c.newMemberCount }}
-            </div>
-          </div>
-        </div>
-        <div v-if="topTags(c).length > 0">
-          <div class="text-xs text-surface-500 mb-1">
-            {{ t('village.chronicle.topicTags') }}
-          </div>
-          <div class="flex flex-wrap gap-1">
-            <Tag
-              v-for="tag in topTags(c)"
-              :key="tag"
-              :value="tag"
-              severity="secondary"
-            />
+            <p v-if="a.summary" class="mt-1 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">
+              {{ a.summary }}
+            </p>
+            <p class="mt-1 text-xs text-surface-400">
+              {{ t('village.archive.archivedAt') }}: {{ relativeTime(a.archivedAt) }}
+            </p>
           </div>
         </div>
       </div>
+
+      <Button
+        v-if="archivesHasMore"
+        :label="t('village.lobby.loadMore')"
+        text
+        size="small"
+        :loading="archivesLoadingMore"
+        class="self-center"
+        @click="loadMoreArchives"
+      />
     </div>
   </div>
 </template>
