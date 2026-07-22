@@ -1439,7 +1439,9 @@
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
-      "back_to_dashboard": "Back to dashboard"
+      "back_to_dashboard": "Back to dashboard",
+      "retry": "Retry",
+      "slow_loading": "Loading is taking longer than expected"
     }
   },
   "teamHub": {
