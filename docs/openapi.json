@@ -164815,6 +164815,98 @@
           }
         }
       },
+      "AttachmentFileDto": {
+        "type": "object",
+        "properties": {
+          "fileKey": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "originalFilename": {
+            "type": "string"
+          }
+        }
+      },
+      "AttachmentImageDto": {
+        "type": "object",
+        "properties": {
+          "imageHeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imageWidth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "AttachmentLinkDto": {
+        "type": "object",
+        "properties": {
+          "linkUrl": {
+            "type": "string"
+          },
+          "ogDescription": {
+            "type": "string"
+          },
+          "ogImageUrl": {
+            "type": "string"
+          },
+          "ogSiteName": {
+            "type": "string"
+          },
+          "ogTitle": {
+            "type": "string"
+          }
+        }
+      },
+      "AttachmentVideoDto": {
+        "type": "object",
+        "properties": {
+          "videoCodec": {
+            "type": "string"
+          },
+          "videoDurationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "videoHeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "videoProcessingStatus": {
+            "type": "string"
+          },
+          "videoThumbnailKey": {
+            "type": "string"
+          },
+          "videoThumbnailUrl": {
+            "type": "string"
+          },
+          "videoTitle": {
+            "type": "string"
+          },
+          "videoUrl": {
+            "type": "string"
+          },
+          "videoWidth": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PostAuditDto": {
         "type": "object",
         "properties": {
@@ -164904,6 +164996,12 @@
       "PostResponse": {
         "type": "object",
         "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineAttachmentResponse"
+            }
+          },
           "audit": {
             "$ref": "#/components/schemas/PostAuditDto"
           },
@@ -164996,6 +165094,34 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "TimelineAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "attachmentType": {
+            "type": "string"
+          },
+          "file": {
+            "$ref": "#/components/schemas/AttachmentFileDto"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "image": {
+            "$ref": "#/components/schemas/AttachmentImageDto"
+          },
+          "link": {
+            "$ref": "#/components/schemas/AttachmentLinkDto"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "video": {
+            "$ref": "#/components/schemas/AttachmentVideoDto"
           }
         }
       },
@@ -203055,7 +203181,7 @@
           "attachments": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AttachmentResponse"
+              "$ref": "#/components/schemas/TimelineAttachmentResponse"
             }
           },
           "audit": {

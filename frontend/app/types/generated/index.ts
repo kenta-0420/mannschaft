@@ -54055,6 +54055,42 @@ export interface components {
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
         };
+        AttachmentFileDto: {
+            fileKey?: string;
+            /** Format: int64 */
+            fileSize?: number;
+            mimeType?: string;
+            originalFilename?: string;
+        };
+        AttachmentImageDto: {
+            /** Format: int32 */
+            imageHeight?: number;
+            /** Format: int32 */
+            imageWidth?: number;
+            thumbnailUrl?: string;
+            url?: string;
+        };
+        AttachmentLinkDto: {
+            linkUrl?: string;
+            ogDescription?: string;
+            ogImageUrl?: string;
+            ogSiteName?: string;
+            ogTitle?: string;
+        };
+        AttachmentVideoDto: {
+            videoCodec?: string;
+            /** Format: int32 */
+            videoDurationSeconds?: number;
+            /** Format: int32 */
+            videoHeight?: number;
+            videoProcessingStatus?: string;
+            videoThumbnailKey?: string;
+            videoThumbnailUrl?: string;
+            videoTitle?: string;
+            videoUrl?: string;
+            /** Format: int32 */
+            videoWidth?: number;
+        };
         PostAuditDto: {
             /** Format: date-time */
             createdAt?: string;
@@ -54092,6 +54128,7 @@ export interface components {
             type?: string;
         };
         PostResponse: {
+            attachments?: components["schemas"]["TimelineAttachmentResponse"][];
             audit?: components["schemas"]["PostAuditDto"];
             author?: components["schemas"]["PostAuthorDto"];
             content?: components["schemas"]["PostContentDto"];
@@ -54131,6 +54168,17 @@ export interface components {
             displayName?: string;
             /** Format: int64 */
             id?: number;
+        };
+        TimelineAttachmentResponse: {
+            attachmentType?: string;
+            file?: components["schemas"]["AttachmentFileDto"];
+            /** Format: int64 */
+            id?: number;
+            image?: components["schemas"]["AttachmentImageDto"];
+            link?: components["schemas"]["AttachmentLinkDto"];
+            /** Format: int32 */
+            sortOrder?: number;
+            video?: components["schemas"]["AttachmentVideoDto"];
         };
         ApiResponseReactionResponse: {
             data?: components["schemas"]["ReactionResponse"];
@@ -67783,7 +67831,7 @@ export interface components {
             data?: components["schemas"]["PostDetailResponse"];
         };
         PostDetailResponse: {
-            attachments?: components["schemas"]["AttachmentResponse"][];
+            attachments?: components["schemas"]["TimelineAttachmentResponse"][];
             audit?: components["schemas"]["PostAuditDto"];
             author?: components["schemas"]["PostAuthorDto"];
             content?: components["schemas"]["PostContentDto"];

@@ -22,30 +22,60 @@ export interface PostedAs {
   avatarUrl?: string
 }
 
-export interface TimelineAttachment {
-  id: number
-  attachmentType: TimelineAttachmentType
+/** 添付ファイル本体（file_key はR2生キー。表示URLは image/video 側の署名URLを使う）。 */
+export interface TimelineAttachmentFile {
   fileKey?: string
+  originalFilename?: string
   fileSize?: number
   mimeType?: string
-  url?: string
-  thumbnailUrl?: string
+}
+
+/**
+ * 画像添付。url/thumbnailUrl はBEが MediaUrlResolver で解決した署名付き表示URL（issue #2424）。
+ * DBには生キーしか無いためBEが署名して返す（FEはR2を署名できない）。画像は別サムネイルを
+ * 持たないため thumbnailUrl は url と同一値。
+ */
+export interface TimelineAttachmentImage {
   imageWidth?: number
   imageHeight?: number
+  url?: string
+  thumbnailUrl?: string
+}
+
+/** 動画添付（videoUrl/videoThumbnailUrl は署名URLまたは外部URL）。 */
+export interface TimelineAttachmentVideo {
   videoUrl?: string
   videoThumbnailUrl?: string
-  videoThumbnailKey?: string
   videoTitle?: string
+  videoThumbnailKey?: string
   videoDurationSeconds?: number
   videoCodec?: string
   videoWidth?: number
   videoHeight?: number
   videoProcessingStatus?: VideoProcessingStatus
+}
+
+/** リンクプレビュー添付（OGP）。 */
+export interface TimelineAttachmentLink {
   linkUrl?: string
   ogTitle?: string
   ogDescription?: string
   ogImageUrl?: string
   ogSiteName?: string
+}
+
+/**
+ * タイムライン投稿の添付。BE の {@code TimelineAttachmentResponse}（ネスト形 file/image/video/link）と
+ * 1:1 対応する。生成型 {@code components['schemas']['TimelineAttachmentResponse']} と同形。
+ */
+export interface TimelineAttachment {
+  id: number
+  attachmentType: TimelineAttachmentType
+  sortOrder?: number
+  file?: TimelineAttachmentFile
+  image?: TimelineAttachmentImage
+  video?: TimelineAttachmentVideo
+  link?: TimelineAttachmentLink
 }
 
 export interface TimelinePollOption {

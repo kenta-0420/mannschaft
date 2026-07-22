@@ -338,46 +338,46 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       <template v-for="att in post.attachments!" :key="att.id">
         <img
           v-if="att.attachmentType === 'IMAGE'"
-          :src="att.thumbnailUrl || att.url"
+          :src="att.image?.thumbnailUrl || att.image?.url"
           class="w-full rounded-lg object-cover"
           :class="post.attachments.length === 1 ? 'max-h-96' : 'h-48'"
           loading="lazy"
           @click.stop
         >
         <div
-          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.fileKey"
+          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.file?.fileKey"
           @click.stop
         >
           <VideoPlayer
-            :file-key="att.fileKey"
-            :thumbnail-url="att.videoThumbnailUrl"
-            :processing-status="att.videoProcessingStatus"
-            :mime-type="att.mimeType"
+            :file-key="att.file.fileKey"
+            :thumbnail-url="att.video?.videoThumbnailUrl"
+            :processing-status="att.video?.videoProcessingStatus"
+            :mime-type="att.file?.mimeType"
           />
         </div>
         <a
           v-else-if="att.attachmentType === 'VIDEO_LINK'"
-          :href="att.videoUrl"
+          :href="att.video?.videoUrl"
           target="_blank"
           rel="noopener"
           class="flex items-center gap-2 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.videoThumbnailUrl" :src="att.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" >
-          <span class="text-sm text-primary">{{ att.videoTitle || '動画を見る' }}</span>
+          <img v-if="att.video?.videoThumbnailUrl" :src="att.video.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" >
+          <span class="text-sm text-primary">{{ att.video?.videoTitle || '動画を見る' }}</span>
         </a>
         <a
-          v-else-if="att.attachmentType === 'LINK_PREVIEW' && att.linkUrl"
-          :href="att.linkUrl"
+          v-else-if="att.attachmentType === 'LINK_PREVIEW' && att.link?.linkUrl"
+          :href="att.link.linkUrl"
           target="_blank"
           rel="noopener"
           class="flex gap-3 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" >
+          <img v-if="att.link?.ogImageUrl" :src="att.link.ogImageUrl" class="h-16 w-16 rounded object-cover" >
           <div class="min-w-0">
-            <p class="truncate text-sm font-medium">{{ att.ogTitle }}</p>
-            <p class="truncate text-xs text-surface-400 dark:text-surface-300">{{ att.ogSiteName }}</p>
+            <p class="truncate text-sm font-medium">{{ att.link?.ogTitle }}</p>
+            <p class="truncate text-xs text-surface-400 dark:text-surface-300">{{ att.link?.ogSiteName }}</p>
           </div>
         </a>
       </template>
