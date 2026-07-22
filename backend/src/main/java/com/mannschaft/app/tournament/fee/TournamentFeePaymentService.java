@@ -4,9 +4,14 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.payment.FeeBreakdown;
+import com.mannschaft.app.payment.FeePolicy;
+import com.mannschaft.app.payment.FeePolicyResolver;
+import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
+import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.service.MemberPaymentService;
 import com.mannschaft.app.payment.service.PaymentItemService;
@@ -51,6 +56,8 @@ public class TournamentFeePaymentService {
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipRepository membershipRepository;
     private final TournamentRepository tournamentRepository;
+    private final PaymentFeeCalculator paymentFeeCalculator;
+    private final FeePolicyResolver feePolicyResolver;
 
     /**
      * 認証ユーザーが対象の大会参加費一覧を返す。
@@ -107,6 +114,12 @@ public class TournamentFeePaymentService {
                 .distinct()
                 .toList();
 
+        // 5b. 手数料パターンを解決（実課金経路 = ConnectChargeService#charge と同一の解決条件で揃える）。
+        //    大会参加費は MemberPaymentService#createConnectCheckout 経由で MembershipChargeCommand の
+        //    後方互換コンストラクタ（subKey=null）を用いて charge されるため、表示側も
+        //    resolve(MEMBERSHIP, null) で揃える（同じ計算経路を使い、独自計算を書かない）。
+        FeePolicy feePolicy = feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, null);
+
         List<MyTournamentFeeItem> result = new ArrayList<>();
         for (TournamentFeeEntity fee : allFees) {
             // 6. SPECIFIC_TEAMS の場合は eligibility チェック
@@ -122,6 +135,11 @@ public class TournamentFeePaymentService {
             // 7. payment_item から金額取得
             PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(fee.getPaymentItemId());
             int faceAmount = paymentItem.getAmount().intValue();
+
+            // 7b. 手数料内訳を PaymentFeeCalculator で算出（実課金と同一計算・独自計算しない）。
+            FeeBreakdown feeBreakdown = paymentFeeCalculator.calculate(faceAmount, feePolicy);
+            int payerSurcharge = Math.toIntExact(feeBreakdown.payerFee());
+            int totalCharge = Math.toIntExact(feeBreakdown.chargeAmount());
 
             // 8. 支払い済みチェック（自分個人の member_payments で PAID を確認）
             boolean alreadyPaid = memberPaymentRepository.existsValidPaidPayment(userId, fee.getPaymentItemId());
@@ -149,8 +167,8 @@ public class TournamentFeePaymentService {
                     fee.getTitle(),
                     fee.getPaymentItemId(),
                     faceAmount,
-                    0,          // payerSurcharge: PaymentFeeCalculator 連携は今後対応
-                    faceAmount, // totalCharge = faceAmount + surcharge
+                    payerSurcharge, // PaymentFeeCalculator による算出（実課金と同一計算経路・根治済み）
+                    totalCharge,    // totalCharge = faceAmount + payerSurcharge
                     fee.getPaymentDue(),
                     alreadyPaid,
                     paidAt

@@ -323,6 +323,7 @@
     },
     "myShift": {
       "confirmedTitle": "確定シフト",
+      "upcomingTitle": "今後の確定シフト",
       "teamFilter": {
         "all": "すべてのチーム",
         "label": "チームで絞り込み"

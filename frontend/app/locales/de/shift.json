@@ -328,6 +328,7 @@
     },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
+      "upcomingTitle": "Bevorstehende bestätigte Schichten",
       "teamFilter": {
         "all": "Alle Teams",
         "label": "Nach Team filtern"

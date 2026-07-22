@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "出席",
+      "no": "缺席",
+      "maybe": "未定",
+      "respondSuccess": "已回复出勤",
+      "respondError": "回复出勤失败"
+    },
+    "list": {
+      "allDay": "全天",
+      "empty": "此期间没有日程",
+      "prevMonth": "上个月",
+      "nextMonth": "下个月"
+    },
     "common_delete": "删除",
     "description_label": "说明",
     "error_title_required": "标题为必填项",
