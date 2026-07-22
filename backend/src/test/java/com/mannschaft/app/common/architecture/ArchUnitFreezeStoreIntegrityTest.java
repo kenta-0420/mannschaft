@@ -91,7 +91,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code 2c0ba995-682e-4f80-a5a5-f68c835b720d}）。
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 563;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 564;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
