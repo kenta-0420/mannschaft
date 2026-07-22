@@ -309,7 +309,7 @@
       "VILLAGE_007": "You are not a member of this village",
       "VILLAGE_008": "That nickname is already in use",
       "VILLAGE_009": "Report limit reached (10 per hour)",
-      "VILLAGE_010": "Village creation request rate limit reached (3 per day, max 10 held)",
+      "VILLAGE_010": "Village creation rate limit reached. Please wait a while and try again.",
       "VILLAGE_011": "Nickname can only be changed 3 times per month",
       "VILLAGE_012": "You have reached the maximum number of villages you can join (100)",
       "VILLAGE_013": "You have reached the maximum number of pinned villages (30)",

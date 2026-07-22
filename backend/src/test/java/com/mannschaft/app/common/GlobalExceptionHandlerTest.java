@@ -1,5 +1,8 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
+import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -151,6 +154,65 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody().getError().getFieldErrors()).hasSize(1);
             assertThat(response.getBody().getError().getFieldErrors().get(0).getField()).isEqualTo("email");
+        }
+    }
+
+    // ========================================
+    // handleFeatureNotEntitled（F20.1 402 details 追補）
+    // ========================================
+
+    @Nested
+    @DisplayName("handleFeatureNotEntitled")
+    class HandleFeatureNotEntitled {
+
+        private EntitlementNotEntitledDetails details(Integer addonPriceJpy) {
+            return EntitlementNotEntitledDetails.builder()
+                    .featureKey("ads.hide")
+                    .addonAvailable(true)
+                    .addonPriceJpy(addonPriceJpy)
+                    .plansContaining(List.of("FULL"))
+                    .scopeKind("TEAM")
+                    .scopeId(123L)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: 402 Payment Required・envelope（error.code=ENTITLEMENT_003）＋details 直列化")
+        void handleFeatureNotEntitled_402WithDetails() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(500));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ENTITLEMENT_003");
+            assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+            assertThat(response.getBody().getError().getDetails()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getFeatureKey()).isEqualTo("ads.hide");
+            assertThat(response.getBody().getError().getDetails().isAddonAvailable()).isTrue();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isEqualTo(500);
+            assertThat(response.getBody().getError().getDetails().getPlansContaining()).containsExactly("FULL");
+            assertThat(response.getBody().getError().getDetails().getScopeKind()).isEqualTo("TEAM");
+            assertThat(response.getBody().getError().getDetails().getScopeId()).isEqualTo(123L);
+        }
+
+        @Test
+        @DisplayName("正常系: addonPriceJpy=null 時は details.addonPriceJpy が null のまま一貫して返る")
+        void handleFeatureNotEntitled_addonPriceJpyNull() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(null));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isNull();
         }
     }
 

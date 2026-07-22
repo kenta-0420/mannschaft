@@ -309,7 +309,7 @@
       "VILLAGE_007": "Sie sind kein Mitglied dieses Dorfes",
       "VILLAGE_008": "Dieser Spitzname ist bereits vergeben",
       "VILLAGE_009": "Meldelimit erreicht (10 pro Stunde)",
-      "VILLAGE_010": "Limit für Dorferstellungsanträge erreicht (3 pro Tag, max. 10 ausstehend)",
+      "VILLAGE_010": "Limit für Dorferstellungen erreicht. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
       "VILLAGE_011": "Der Spitzname kann nur 3 Mal pro Monat geändert werden",
       "VILLAGE_012": "Sie haben die maximale Anzahl von Dörfern erreicht, denen Sie beitreten können (100)",
       "VILLAGE_013": "Sie haben die maximale Anzahl von Lieblingsdörfern erreicht (30)",

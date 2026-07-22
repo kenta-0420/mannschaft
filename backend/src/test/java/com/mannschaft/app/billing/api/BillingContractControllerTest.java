@@ -2,7 +2,9 @@ package com.mannschaft.app.billing.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
@@ -182,20 +184,34 @@ class BillingContractControllerTest {
     // ---- AC-09 402/403 マッピング ----
 
     @Test
-    @DisplayName("AC-09: FEATURE_NOT_ENTITLED は 402（購入導線あり）")
+    @DisplayName("AC-1/AC-22: FEATURE_NOT_ENTITLED は 402（購入導線あり）・details に購入導線情報が載る")
     void create_notEntitled_402() throws Exception {
-        willThrow(new BusinessException(EntitlementErrorCode.FEATURE_NOT_ENTITLED))
+        EntitlementNotEntitledDetails details = EntitlementNotEntitledDetails.builder()
+                .featureKey("ads.hide")
+                .addonAvailable(true)
+                .addonPriceJpy(500)
+                .plansContaining(List.of("FULL"))
+                .scopeKind("USER")
+                .scopeId(USER_ID)
+                .build();
+        willThrow(new FeatureNotEntitledException(details))
                 .given(appService).create(any(), any(), any(), any(), any());
         mockMvc.perform(post("/api/v1/me/billing/contracts")
                         .header("Idempotency-Key", "idem-x")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("ADDON", null, "ads.hide")))
                 .andExpect(status().isPaymentRequired())
-                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_003"));
+                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_003"))
+                .andExpect(jsonPath("$.error.details.featureKey").value("ads.hide"))
+                .andExpect(jsonPath("$.error.details.addonAvailable").value(true))
+                .andExpect(jsonPath("$.error.details.addonPriceJpy").value(500))
+                .andExpect(jsonPath("$.error.details.plansContaining[0]").value("FULL"))
+                .andExpect(jsonPath("$.error.details.scopeKind").value("USER"))
+                .andExpect(jsonPath("$.error.details.scopeId").value(USER_ID));
     }
 
     @Test
-    @DisplayName("AC-09: FEATURE_FORBIDDEN_FOR_SCOPE は 403（購入手段なし）")
+    @DisplayName("AC-16: FEATURE_FORBIDDEN_FOR_SCOPE は 403（購入手段なし）・details は存在しない")
     void create_forbidden_403() throws Exception {
         willThrow(new BusinessException(EntitlementErrorCode.FEATURE_FORBIDDEN_FOR_SCOPE))
                 .given(appService).create(any(), any(), any(), any(), any());
@@ -204,7 +220,8 @@ class BillingContractControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("ADDON", null, "monetization.paywall")))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_004"));
+                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_004"))
+                .andExpect(jsonPath("$.error.details").doesNotExist());
     }
 
     // ---- 契約作成のエラー系（404/409/422） ----

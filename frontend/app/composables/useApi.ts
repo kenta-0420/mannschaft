@@ -1,5 +1,6 @@
 import { ofetch } from 'ofetch'
 import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
+import type { PaywallDetails } from '~/stores/usePaywallStore'
 
 /**
  * トークンリフレッシュの結果を表す 3 状態。
@@ -289,10 +290,19 @@ export function useApi() {
       // 402: F20.1 課金・エンタイトルメント基盤の共通ペイウォール検知（設計書 04 §2）。
       // ENTITLEMENT_003（購入手段あり・402）はここでグローバルにペイウォールモーダルを開く。
       // 呼び出し元は個別に握りつぶさず通常どおりエラーを catch できる（モーダル表示は副作用のみ）。
+      // BE（#2442）は details（featureKey/addonAvailable/addonPriceJpy/plansContaining/
+      // scopeKind/scopeId）を追補済みだが、details を持たない応答（旧 BE・後方互換）でも
+      // message のみで動作する（AC-23）。
       if (response.status === 402) {
-        const body = response._data as { error?: { code?: string; message?: string } } | undefined
+        const body = response._data as {
+          error?: {
+            code?: string
+            message?: string
+            details?: PaywallDetails
+          }
+        } | undefined
         if (body?.error?.code === 'ENTITLEMENT_003') {
-          usePaywallStore().open(body.error.message)
+          usePaywallStore().open({ message: body.error.message, details: body.error.details })
         }
       }
 

@@ -1,5 +1,7 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -1117,6 +1119,30 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         return handleBusinessException(ex, null);
+    }
+
+    /**
+     * F20.1 402 details 追補: {@link FeatureNotEntitledException} 専用ハンドラ（金型:
+     * {@link #handleMilestoneLocked}）。
+     *
+     * <p>共通の {@link ErrorResponse}/{@link ErrorResponse.ErrorDetail}/{@link BusinessException} は
+     * 一切変更しない（AC-19 バイト不変）。{@link FeatureNotEntitledException} は {@link BusinessException} の
+     * サブクラスだが、Spring は最も具体的な例外型のハンドラを優先して選択するため、本メソッドが
+     * {@link #handleBusinessException} より優先して呼ばれる。403（{@code FEATURE_FORBIDDEN_FOR_SCOPE}）は
+     * details を持たない素の {@link BusinessException} のままであり、本ハンドラは通らず従来どおり
+     * {@link #handleBusinessException} を通る（AC-16）。</p>
+     *
+     * <p>4xx（402）のため error_reports への記録はしない（{@link #handleBusinessException} と同じ方針）。</p>
+     */
+    @ExceptionHandler(FeatureNotEntitledException.class)
+    public ResponseEntity<FeatureNotEntitledErrorResponse> handleFeatureNotEntitled(
+            FeatureNotEntitledException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("FeatureNotEntitledException: code={}, featureKey={}",
+                ex.getErrorCode().getCode(), ex.getDetails().getFeatureKey());
+        FeatureNotEntitledErrorResponse body =
+                new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
     }
 
     /**
