@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+    },
+    "mobile": {
+      "backToList": "채널 목록으로 돌아가기",
+      "noChannels": "아직 채널이 없습니다",
+      "createChannel": "채널 만들기"
     }
   },
   "button": {
@@ -1439,7 +1444,9 @@
       "leave_action": "나가기",
       "load_error_title": "정보를 가져올 수 없습니다",
       "load_error_body": "잠시 후 다시 시도해 주세요. 권한이 없으면 표시되지 않을 수 있습니다.",
-      "back_to_dashboard": "대시보드로 돌아가기"
+      "back_to_dashboard": "대시보드로 돌아가기",
+      "retry": "다시 시도",
+      "slow_loading": "로딩이 지연되고 있습니다"
     }
   },
   "teamHub": {

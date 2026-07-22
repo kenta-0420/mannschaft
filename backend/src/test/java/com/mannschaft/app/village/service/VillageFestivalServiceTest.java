@@ -84,6 +84,13 @@ class VillageFestivalServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private MediaUrlResolver mediaUrlResolver;
+    /**
+     * 一覧・詳細の閲覧認可。既定（何もスタブしない）では例外を投げない＝閲覧可なので、
+     * 認可以外の観点を見る既存テストはそのまま通る。認可そのものの検証は
+     * {@code VillageFestivalControllerIntegrationTest} の契約テストで行う（実 DB・実メンバーシップ）。
+     */
+    @Mock
+    private VillageBulletinAccessService bulletinAccessService;
 
     @InjectMocks
     private VillageFestivalService service;
@@ -387,7 +394,6 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("list: status 指定なし → 全件取得")
     void list_all() {
-        givenActiveVillage();
         VillageFestivalEntity f1 = festival(VillageFestivalStatus.SCHEDULED,
                 LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(6));
         VillageFestivalEntity f2 = festival(VillageFestivalStatus.ACTIVE,
@@ -396,7 +402,7 @@ class VillageFestivalServiceTest {
         given(festivalRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any(Pageable.class)))
                 .willReturn(page);
 
-        List<FestivalResponse> res = service.listFestivals(VILLAGE_ID, null, null);
+        List<FestivalResponse> res = service.listFestivals(VILLAGE_ID, null, null, ACTOR_USER_ID);
 
         assertThat(res).hasSize(2);
     }
@@ -404,7 +410,6 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("list: status=ACTIVE → status 別取得 API を呼ぶ")
     void list_filtered_by_status() {
-        givenActiveVillage();
         VillageFestivalEntity f = festival(VillageFestivalStatus.ACTIVE,
                 LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(1));
         Page<VillageFestivalEntity> page = new PageImpl<>(List.of(f));
@@ -412,7 +417,7 @@ class VillageFestivalServiceTest {
                 eq(VILLAGE_ID), eq(VillageFestivalStatus.ACTIVE), any(Pageable.class)))
                 .willReturn(page);
 
-        List<FestivalResponse> res = service.listFestivals(VILLAGE_ID, VillageFestivalStatus.ACTIVE, null);
+        List<FestivalResponse> res = service.listFestivals(VILLAGE_ID, VillageFestivalStatus.ACTIVE, null, ACTOR_USER_ID);
 
         assertThat(res).hasSize(1);
         assertThat(res.get(0).status()).isEqualTo(VillageFestivalStatus.ACTIVE);
@@ -421,13 +426,12 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("get: 村が違う祭り ID → 404 FESTIVAL_NOT_FOUND（IDOR 防止）")
     void get_idor_protection() {
-        givenActiveVillage();
         VillageFestivalEntity wrong = festival(VillageFestivalStatus.ACTIVE,
                 LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(1));
         wrong.setVillageId(OTHER_VILLAGE_ID); // 別の村のもの
         given(festivalRepository.findById(FESTIVAL_ID)).willReturn(Optional.of(wrong));
 
-        assertThatThrownBy(() -> service.getFestival(VILLAGE_ID, FESTIVAL_ID))
+        assertThatThrownBy(() -> service.getFestival(VILLAGE_ID, FESTIVAL_ID, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.FESTIVAL_NOT_FOUND);
@@ -436,10 +440,9 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("get: 存在しない festival → 404 FESTIVAL_NOT_FOUND")
     void get_not_found() {
-        givenActiveVillage();
         given(festivalRepository.findById(FESTIVAL_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getFestival(VILLAGE_ID, FESTIVAL_ID))
+        assertThatThrownBy(() -> service.getFestival(VILLAGE_ID, FESTIVAL_ID, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.FESTIVAL_NOT_FOUND);
@@ -448,14 +451,13 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("get: バナー登録済みのお祭りを取得すると bannerUrl が署名URLで返る")
     void get_bannerUrlResolvedFromR2Key() {
-        givenActiveVillage();
         VillageFestivalEntity existing = festival(VillageFestivalStatus.ACTIVE,
                 LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(1));
         existing.setBannerR2Key(BANNER_KEY);
         given(festivalRepository.findById(FESTIVAL_ID)).willReturn(Optional.of(existing));
         given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(BANNER_URL);
 
-        FestivalResponse res = service.getFestival(VILLAGE_ID, FESTIVAL_ID);
+        FestivalResponse res = service.getFestival(VILLAGE_ID, FESTIVAL_ID, ACTOR_USER_ID);
 
         assertThat(res.bannerUrl()).isEqualTo(BANNER_URL);
     }
@@ -463,7 +465,6 @@ class VillageFestivalServiceTest {
     @Test
     @DisplayName("list: 同一バナーキーを共有する複数の祭りでも presign は1回のみ（resolveAll のメモ化が効くこと・N+1防止）")
     void list_doesNotPresignPerRowForSharedBannerKey() {
-        givenActiveVillage();
         // 実物の MediaUrlResolver（メモ化つき）を通し、presign の実回数を StorageService で数える。
         // resolver を mock にすると「resolveAll でメモ化されている」ことの検証にならないため、
         // ここだけ実物を使う（VillageServiceTest の AC-7 に倣う）。
@@ -472,7 +473,8 @@ class VillageFestivalServiceTest {
                 .willReturn(BANNER_URL);
         MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
         VillageFestivalService serviceWithRealResolver = new VillageFestivalService(
-                festivalRepository, villageRepository, membershipRepository, auditLogService, realResolver);
+                festivalRepository, villageRepository, membershipRepository, auditLogService, realResolver,
+                bulletinAccessService);
 
         VillageFestivalEntity f1 = festival(VillageFestivalStatus.SCHEDULED,
                 LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(6));
@@ -484,7 +486,7 @@ class VillageFestivalServiceTest {
         given(festivalRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any(Pageable.class)))
                 .willReturn(page);
 
-        List<FestivalResponse> res = serviceWithRealResolver.listFestivals(VILLAGE_ID, null, null);
+        List<FestivalResponse> res = serviceWithRealResolver.listFestivals(VILLAGE_ID, null, null, ACTOR_USER_ID);
 
         assertThat(res).hasSize(2);
         assertThat(res).allSatisfy(r -> assertThat(r.bannerUrl()).isEqualTo(BANNER_URL));

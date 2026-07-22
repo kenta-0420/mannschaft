@@ -439,7 +439,58 @@ public enum VillageErrorCode implements ErrorCode {
      * 対象エンティティが異なる（号 vs タグ）ため、原因究明を容易にする目的で専用コードを分ける。</p>
      */
     NEWSLETTER_TAG_VERSION_CONFLICT("VILLAGE_093",
-            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN);
+            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave1 ②寄合後半戦・④年輪（VILLAGE_094〜096 / VILLAGE_101）
+    // ※ VILLAGE_097〜098 は F17.2 の祭 RSVP・実況で予約済み（設計書 §16.1）。
+    // ==================================================================
+
+    /** VILLAGE_094: PLANNING 中の寄合に出欠 API を叩いた（409・出欠は CONFIRMED 限定・設計書 §4.5/AC-08）。 */
+    MEETUP_NOT_CONFIRMED("VILLAGE_094",
+            "この寄合はまだ日程が確定していないため、出欠を受け付けられません", Severity.WARN),
+
+    /** VILLAGE_095: 既に割当済みの宿題 TODO への claim（409・設計書 §4.3/AC-10）。 */
+    MEETUP_TODO_ALREADY_CLAIMED("VILLAGE_095",
+            "この宿題は既に他の村人が引き受けています", Severity.WARN),
+
+    /**
+     * VILLAGE_096: 手挙げ者以外による宿題の complete/release（403・設計書 §4.3/AC-11・AC-12）。
+     *
+     * <p>complete は「手挙げ者本人＋幹事」、release は「本人のみ」に限る。権限の非対称
+     * （幹事でも他人の割当は手放せない）はサービス層で分岐して判定する。</p>
+     */
+    MEETUP_TODO_NOT_ASSIGNEE("VILLAGE_096",
+            "この宿題を操作する権限がありません", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave3 ⑤相性表示・⑥所属村一覧（VILLAGE_099〜100）
+    // 設計書 docs/features/F17.2_village_events_activation.md §16.1
+    // ==================================================================
+
+    /**
+     * VILLAGE_099: 加入前相性表示で対象村が PUBLIC でない（§8.7）。
+     *
+     * <p><strong>内部予約コード</strong>。UNLISTED 村への非メンバー相性アクセスは
+     * 「架空の村IDへのアクセス」と区別がつかない <strong>404（{@link #VILLAGE_NOT_FOUND}）で存在秘匿</strong>するため、
+     * 本コードの本文は通常返さない（存在秘匿を優先）。将来、存在を隠す必要のない内部用途が生じた場合の予約枠。</p>
+     */
+    AFFINITY_NOT_PUBLIC_VILLAGE("VILLAGE_099",
+            "この村は相性表示の対象ではありません", Severity.WARN),
+
+    /**
+     * VILLAGE_100: 所属村一覧で返せる村が0件（403・§9.4）。
+     *
+     * <p>閲覧者と対象者に共通村があるか否かに関わらず、二重フィルタ（同居 ∩ 公開ON ∩ 村PUBLIC）の結果が
+     * 0件になる場合は一律 403 を返す。200 空配列を返すと「この2人は同じ村に居る」という同居関係の存在を
+     * 漏らす（サイドチャネル）ため、同居関係の有無ごと秘匿する。</p>
+     */
+    PROFILE_VILLAGES_FORBIDDEN("VILLAGE_100",
+            "所属村一覧を表示する権限がありません", Severity.WARN),
+
+    /** VILLAGE_101: 年輪（歳時記の年ごとの記録）の他人削除（403・投稿者本人＋村長/長老のみ・設計書 §6.4/AC-18b）。 */
+    CALENDAR_LOG_FORBIDDEN("VILLAGE_101",
+            "この記録を削除する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -56,8 +56,41 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT * FROM users WHERE email = :email LIMIT 1", nativeQuery = true)
     Optional<UserEntity> findByEmailIncludingDeleted(@Param("email") String email);
 
-    @org.springframework.data.jpa.repository.Query("SELECT u FROM UserEntity u WHERE u.displayName LIKE %:keyword% OR u.email LIKE %:keyword%")
-    java.util.List<UserEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用の利用者検索。閲覧者と同一スコープに在籍する利用者に限定する。
+     *
+     * <p>絞り込みは 3 条件の AND とする:</p>
+     * <ol>
+     *   <li>{@code visibleUserIds} — 閲覧者が所属するチーム／組織に在籍する利用者のみを候補とする
+     *       （所属を共有しない相手は横断検索に出さない）</li>
+     *   <li>{@code isSearchable = true} — 利用者本人が設定した検索許可フラグを尊重する
+     *       （退会時の匿名化でも false になるため、匿名化済みアカウントも除外される）</li>
+     *   <li>{@code status = ACTIVE} — 停止中・保留中のアカウントは候補にしない</li>
+     * </ol>
+     *
+     * <p>検索述語は {@code displayName} のみとする。{@code email} を述語に含めると
+     * 「そのメールアドレスが登録済みか」を照会できてしまい、表示名検索という本来の用途にも不要なため
+     * 除外する。論理削除済みは {@code UserEntity} の {@code @SQLRestriction} が除外する。</p>
+     *
+     * <p>呼び出し側は {@code visibleUserIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword        検索キーワード（表示名の部分一致）
+     * @param visibleUserIds 閲覧者と所属を共有する利用者 ID 集合（非空・空ならダミー値）
+     * @param pageable       取得件数
+     * @return 同一スコープ内の検索結果
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT u FROM UserEntity u
+            WHERE u.displayName LIKE %:keyword%
+              AND u.id IN :visibleUserIds
+              AND u.isSearchable = true
+              AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+            """)
+    java.util.List<UserEntity> searchByKeyword(
+            @org.springframework.data.repository.query.Param("keyword") String keyword,
+            @org.springframework.data.repository.query.Param("visibleUserIds") java.util.Collection<Long> visibleUserIds,
+            org.springframework.data.domain.Pageable pageable);
 
     long countByStatus(UserEntity.UserStatus status);
 

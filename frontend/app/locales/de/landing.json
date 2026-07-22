@@ -288,6 +288,7 @@
       "footer_legal": "Rechtliches",
       "footer_terms": "Nutzungsbedingungen",
       "footer_privacy": "Datenschutzerklärung",
+      "footer_commerce": "Angaben gem. Handelsgesetz",
       "footer_contact": "Kontakt",
       "skip_to_content": "Zum Hauptinhalt springen",
       "open_menu": "Menü öffnen",
@@ -532,6 +533,24 @@
         "section14_content": "Wir können diese Erklärung gelegentlich als Reaktion auf rechtliche Änderungen oder Dienst-Updates aktualisieren.\n\n- Wesentliche Änderungen (neue Zwecke, neue Datenerhebung, neue Drittpartei-Weitergabe usw.) werden im Voraus per In-Service-Benachrichtigung oder E-Mail mitgeteilt\n- Geringfügige Änderungen werden durch Aktualisierung des Datums „Zuletzt aktualisiert“ auf dieser Seite angezeigt\n- Ihre fortgesetzte Nutzung des Dienstes nach einer Überarbeitung stellt Ihre Zustimmung zur aktualisierten Erklärung dar",
         "section15_title": "Artikel 15: Kontakt",
         "section15_content": "Für Anfragen zum Umgang mit personenbezogenen Daten, Werbe-Opt-out oder zur Ausübung Ihrer Rechte kontaktieren Sie uns bitte über das In-Service-Anfrageformular. Wir können Sie bitten, Ihre registrierte E-Mail-Adresse zur Identitätsverifizierung anzugeben."
+      },
+      "commerce": {
+        "title": "Angaben gemäß dem japanischen Gesetz über bestimmte Handelsgeschäfte (Tokushoho)",
+        "seo_description": "Angaben von Mannschaft gemäß dem japanischen Gesetz über bestimmte Handelsgeschäfte, einschließlich Verkäuferinformationen, Zahlungsmethoden und Rückgabe-/Stornierungsrichtlinien.",
+        "items": {
+          "seller": { "label": "Verkäufer", "value": "Mannschaft Betriebsbüro" },
+          "manager": { "label": "Verantwortlicher für den Geschäftsbetrieb", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "address": { "label": "Anschrift", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "phone": { "label": "Telefonnummer", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "contact": { "label": "Kontakt (Kontaktmethode)", "value": "Bitte kontaktieren Sie uns nach der Anmeldung über den „Vorschlagskasten“ oben im Header. Anfragen zur Offenlegung von Anschrift und Telefonnummer werden ebenfalls über diesen Weg entgegengenommen" },
+          "price": { "label": "Verkaufspreis", "value": "Gemäß dem auf der jeweiligen Kaufseite für Dienstleistungen, Tickets usw. angezeigten Preis (inkl. Mehrwertsteuer)" },
+          "extraFee": { "label": "Zusätzliche Kosten außer dem Verkaufspreis", "value": "Internetverbindungskosten und sonstige Kommunikationsgebühren trägt der Kunde" },
+          "paymentMethod": { "label": "Zahlungsmethode", "value": "Kreditkarte und andere auf der jeweiligen Kaufseite angezeigte Zahlungsmethoden (die Zahlungsabwicklung erfolgt über den Zahlungsdienst von Stripe, Inc.)" },
+          "paymentTiming": { "label": "Zeitpunkt der Zahlung", "value": "Die Zahlung wird mit Abschluss des Kaufvorgangs verbindlich. Abonnements (wiederkehrende Abrechnung) werden an jedem Verlängerungstermin abgerechnet" },
+          "serviceTiming": { "label": "Zeitpunkt der Leistungserbringung", "value": "Sofort nach Abschluss der Zahlung verfügbar" },
+          "refund": { "label": "Rückgabe, Stornierung und Rückerstattung", "value": "Aufgrund der Art der Dienstleistung werden Rückerstattungen und Stornierungen nach Abschluss der Zahlung grundsätzlich nicht angenommen. Bei Zahlungen, bei denen ein Team oder eine Organisation als Verkäufer auftritt (Tickets, Mitgliedsbeiträge usw.), ist Mannschaft jedoch lediglich eine Plattform, die den Ort für die Transaktion bereitstellt; ob eine Rückerstattung möglich ist und zu welchen Bedingungen, richtet sich nach der vom jeweiligen Team bzw. der jeweiligen Organisation festgelegten Richtlinie. Für Einzelheiten wenden Sie sich bitte an den jeweiligen Verkäufer" },
+          "environment": { "label": "Betriebsumgebung", "value": "Empfohlen wird die jeweils neueste Version gängiger Browser (Chrome / Safari / Edge / Firefox)" }
+        }
       }
     },
     "features_detail": {

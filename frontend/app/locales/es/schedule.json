@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Asistir",
+      "no": "Ausente",
+      "maybe": "Quizás",
+      "respondSuccess": "Respuesta de asistencia guardada",
+      "respondError": "Error al guardar la asistencia"
+    },
+    "list": {
+      "allDay": "Todo el día",
+      "empty": "No hay eventos para este período",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente"
+    },
     "common_delete": "Eliminar",
     "description_label": "Descripción",
     "error_title_required": "El título es obligatorio",

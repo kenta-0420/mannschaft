@@ -14,6 +14,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -87,6 +88,9 @@ public class GlobalExceptionHandler {
             //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）
             Map.entry("MATCHING_010", HttpStatus.FORBIDDEN),
             Map.entry("MATCHING_014", HttpStatus.FORBIDDEN),
+            // F00.5 メンバーシップ基盤: サポーター受け入れ無効スコープへの自己登録拒否は 403
+            //（Severity.WARN 既定の 400 を上書き。認可根治 Wave6 でサポーター登録ゲートに使用）
+            Map.entry("MEMBERSHIP_SUPPORTER_DISABLED", HttpStatus.FORBIDDEN),
             // 未認証は 401 を返す（Severity.WARN のデフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
@@ -95,6 +99,9 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
+            // 認可根治 Wave6: 組織 ID をリクエストボディで受ける経路で「不在は 404 秘匿」を成立させるため必須。
+            Map.entry("ORG_001", HttpStatus.NOT_FOUND),
             // F10.1 目安箱: フィードバック不在は 404（Severity.WARN 既定の 400 を上書き）。
             // 認可根治 Wave5 で AdminFeedbackController が「別スコープのフィードバック」を
             // 存在秘匿する際にも本コードを使うため、404 への正規化が必須。
@@ -102,6 +109,11 @@ public class GlobalExceptionHandler {
             // F01.3 テンプレート/モジュール: モジュール不在は「見つからない」ため 404
             //（Severity.WARN 既定の 400 を上書き。SYSTEM_ADMIN トグル API 等で正しい status を返す）
             Map.entry("TMPL_002", HttpStatus.NOT_FOUND),
+            // F04.1 タイムライン: 投稿不在は 404（Severity.WARN 既定の 400 を上書き）。
+            // 認可根治 Wave3-B7 以降、越境アクセスは「存在しない」と同じ TIMELINE_001 に倒して
+            // 対象 ID の実在を秘匿する設計になっているが、status 未登録のため実際には 400 が
+            // 返っており、コード内 Javadoc の「404 相当」という記述と乖離していた（認可根治 Wave6 で是正）。
+            Map.entry("TIMELINE_001", HttpStatus.NOT_FOUND),
             // F19.1 公開ページ Public API（IDOR / レート制限）
             Map.entry("PUBLIC_001", HttpStatus.NOT_FOUND),         // PUBLIC でないチーム / 組織は 404 で隠蔽
             Map.entry("PUBLIC_002", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過
@@ -162,6 +174,8 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
             // F16 school 出席要件規程: bare id EP（update/delete）の権限不足は存在秘匿で 404（Severity.WARN 既定 400 を上書き）
             Map.entry("S030", HttpStatus.NOT_FOUND),
+            // F16 school 出席要件評価: bare id EP（resolve）の権限不足・不在は存在秘匿で 404
+            Map.entry("S034", HttpStatus.NOT_FOUND),
             // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
             Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
             // F02.5 Phase 3: チーム投稿系エラー
@@ -297,7 +311,12 @@ public class GlobalExceptionHandler {
             Map.entry("EVENT_043", HttpStatus.FORBIDDEN),                   // 代理チェックイン: 権限なし
             // F03.5 シフト管理（Phase 11 第二陣で summary / remind 追加）
             Map.entry("SHIFT_001", HttpStatus.NOT_FOUND),                   // SHIFT_SCHEDULE_NOT_FOUND
+            Map.entry("SHIFT_002", HttpStatus.NOT_FOUND),                   // SHIFT_SLOT_NOT_FOUND（越境404秘匿にも使用）
             Map.entry("SHIFT_012", HttpStatus.CONFLICT),                    // INVALID_SCHEDULE_STATUS
+            Map.entry("SHIFT_019", HttpStatus.FORBIDDEN),                   // ACCESS_DENIED
+            Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
+            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
+            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
@@ -411,6 +430,14 @@ public class GlobalExceptionHandler {
             // F13 ストレージクォータ統合機構（Phase 4-α）
             Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
             Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR), // SUBSCRIPTION_NOT_FOUND
+            // F04.2 チャット（認可根治 Wave6: 閲覧・参加・投稿の認可敷設に伴う status 明示。
+            //   未マップだと Severity.WARN 既定の 400 になり、403/404 の秘匿が看板倒れになる）
+            Map.entry("CHAT_001", HttpStatus.NOT_FOUND),                     // CHANNEL_NOT_FOUND（不在チャンネル → 404）
+            Map.entry("CHAT_002", HttpStatus.NOT_FOUND),                     // MESSAGE_NOT_FOUND（不在メッセージ → 404）
+            Map.entry("CHAT_005", HttpStatus.FORBIDDEN),                     // CHANNEL_ACCESS_DENIED（非メンバーの閲覧/投稿/参加 → 403）
+            Map.entry("CHAT_006", HttpStatus.FORBIDDEN),                     // MESSAGE_EDIT_DENIED（他人のメッセージ編集 → 403）
+            Map.entry("CHAT_007", HttpStatus.FORBIDDEN),                     // MESSAGE_DELETE_DENIED（他人のメッセージ削除 → 403）
+            Map.entry("CHAT_013", HttpStatus.FORBIDDEN),                     // ROLE_CHANGE_DENIED（権限昇格の拒否 → 403）
             // F04.2 チャット 添付ファイル（F13 Phase 4-β）
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
             Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
@@ -601,12 +628,21 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_092", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_DUPLICATE
             Map.entry("VILLAGE_093", HttpStatus.CONFLICT),             // NEWSLETTER_TAG_VERSION_CONFLICT（タグ楽観ロック）
 
+            // F17.2 Wave1 ②寄合後半戦・④年輪（VILLAGE_094〜096 / VILLAGE_101）
+            Map.entry("VILLAGE_094", HttpStatus.CONFLICT),             // MEETUP_NOT_CONFIRMED（PLANNING 中の出欠）
+            Map.entry("VILLAGE_095", HttpStatus.CONFLICT),             // MEETUP_TODO_ALREADY_CLAIMED（割当済み claim）
+            Map.entry("VILLAGE_096", HttpStatus.FORBIDDEN),            // MEETUP_TODO_NOT_ASSIGNEE（非手挙げ者の complete/release）
+            Map.entry("VILLAGE_101", HttpStatus.FORBIDDEN),            // CALENDAR_LOG_FORBIDDEN（年輪の他人削除）
+
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
             // F17 Phase 3-β — ご縁スコア（VILLAGE_076）
             Map.entry("VILLAGE_076", HttpStatus.NOT_FOUND),            // SERENDIPITY_NOT_FOUND
             // F17 Phase 3-β — 巡礼（VILLAGE_077）
             Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
+            // F17.2 Wave3 ⑤相性表示・⑥所属村一覧（VILLAGE_099〜100）
+            Map.entry("VILLAGE_099", HttpStatus.NOT_FOUND),            // AFFINITY_NOT_PUBLIC_VILLAGE（内部予約・通常は 404 存在秘匿）
+            Map.entry("VILLAGE_100", HttpStatus.FORBIDDEN),            // PROFILE_VILLAGES_FORBIDDEN（0件は一律 403・§9.4）
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
@@ -1355,6 +1391,87 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_002));
+    }
+
+    /**
+     * {@link ResponseStatusException} を、送出時の HTTP ステータスを保ったまま
+     * プロジェクト共通の {@link ErrorResponse} 形式へ変換する。
+     *
+     * <p><b>なぜ必要か:</b> 本ハンドラが無いと {@code ResponseStatusException}
+     * （{@code RuntimeException} の子孫）は catch-all の {@link #handleUnexpectedException} に落ち、
+     * 本来の 4xx を失って 500 {@code COMMON_999}「システムエラーが発生しました」になる。
+     * 実測でブログ画像の枚数上限超過（サービスは 422 を送出）がクライアントには 500 で届いており、
+     * フロントエンドが「上限に達しました」と案内できず一律システムエラー扱いになっていた。</p>
+     *
+     * <p><b>code:</b> 独自形式を作らず、既存の {@link CommonErrorCode} へステータス単位で対応付ける
+     * （{@link #handleBusinessException} と同じ envelope に揃えるため）。</p>
+     *
+     * <p><b>message:</b> {@link ResponseStatusException#getReason()} を優先する。reason は実装者が
+     * 利用者向けに書いた日本語文言（例:「画像は 30 枚まで」）であり、汎用のコードメッセージより
+     * 具体的で UX 上有用なため。reason が空なら {@link #resolveMessage} の多言語メッセージへ
+     * フォールバックする。</p>
+     *
+     * <p><b>5xx の扱い:</b> reason は内部情報を含み得るため伏せ、{@code COMMON_999} の定型文を返す。
+     * あわせて {@link #recordBackendException} へ severity=MEDIUM で記録する
+     * （5xx のみ記録する {@link #handleBusinessException} の方針と同一）。</p>
+     *
+     * <p><b>優先順位:</b> Spring の {@code ExceptionHandlerMethodResolver} は例外型階層で最も近い
+     * ハンドラを選ぶため、本ハンドラは {@code @ExceptionHandler(Exception.class)} より優先される
+     * （宣言順には依存しない）。</p>
+     *
+     * <p><b>⚠️ 実装者への注意:</b> 本ハンドラの導入により、<b>4xx の {@code reason} は必ず
+     * レスポンス本文としてクライアントへ公開される</b>（従来は 500 に潰れて外へ出なかった）。
+     * {@code ResponseStatusException} を新規に書く際は、reason に内部状態・SQL・内部 ID・
+     * 他ユーザーの情報などの機微情報を書かないこと。利用者にそのまま見せてよい文言のみを入れる。
+     * 5xx の reason のみ本ハンドラが伏せる。</p>
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex,
+                                                                       HttpServletRequest request) {
+        HttpStatusCode status = ex.getStatusCode();
+        CommonErrorCode errorCode = resolveCommonErrorCode(status);
+
+        if (status.is5xxServerError()) {
+            log.error("ResponseStatusException(5xx): status={}", status.value(), ex);
+            recordBackendException(ex, request, ErrorReportSeverity.MEDIUM);
+            return ResponseEntity.status(status)
+                    .headers(ex.getHeaders())
+                    .body(ErrorResponse.of(errorCode));
+        }
+
+        String reason = ex.getReason();
+        String message = (reason != null && !reason.isBlank()) ? reason : resolveMessage(errorCode);
+        log.warn("ResponseStatusException: status={}, code={}, reason={}",
+                status.value(), errorCode.getCode(), reason);
+        return ResponseEntity.status(status)
+                .headers(ex.getHeaders())
+                .body(new ErrorResponse(
+                        new ErrorResponse.ErrorDetail(errorCode.getCode(), message, List.of())));
+    }
+
+    /**
+     * 既存ユニットテスト互換用 overload。
+     */
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+        return handleResponseStatusException(ex, null);
+    }
+
+    /**
+     * HTTP ステータスに対応する共通エラーコードを返す。
+     * 既存の意味づけ（COMMON_000=未認証 / 002=認可 / 003=競合 / 004=メソッド不一致 / 005=不在）に合わせ、
+     * 該当しない 4xx は入力不備（COMMON_001）、5xx はシステムエラー（COMMON_999）へ寄せる。
+     */
+    private static CommonErrorCode resolveCommonErrorCode(HttpStatusCode status) {
+        return switch (status.value()) {
+            case 401 -> CommonErrorCode.COMMON_000;
+            case 403 -> CommonErrorCode.COMMON_002;
+            case 404 -> CommonErrorCode.COMMON_005;
+            case 405 -> CommonErrorCode.COMMON_004;
+            case 409 -> CommonErrorCode.COMMON_003;
+            default -> status.is5xxServerError()
+                    ? CommonErrorCode.COMMON_999
+                    : CommonErrorCode.COMMON_001;
+        };
     }
 
     /**

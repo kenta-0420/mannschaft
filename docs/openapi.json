@@ -1451,6 +1451,10 @@
       "description": "F08.2 サブスクリプション管理（Phase 4）"
     },
     {
+      "name": "村人 所属村一覧 (F17.2)",
+      "description": "村人ミニプロフィールの所属村一覧と公開トグル（同居者限定・ニックネーム非返却）"
+    },
+    {
       "name": "システム管理 - 広告通報",
       "description": "F09.19.9 通報一覧・状態遷移（SYSTEM_ADMIN 専用）"
     },
@@ -1741,6 +1745,10 @@
     {
       "name": "サービス履歴",
       "description": "F07.1 サービス履歴CRUD・検索・添付・リアクション・エクスポート"
+    },
+    {
+      "name": "村 加入前相性表示 (F17.2)",
+      "description": "非メンバーが「この村は自分と合いそうか」を掴む相性のヒント（バケット化・identity 非返却）"
     },
     {
       "name": "F22.1 市（Market）公開閲覧",
@@ -4361,6 +4369,57 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendance": {
+      "put": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "自分の出欠を登録/更新する（村人・CONFIRMED のみ・冪等 upsert）",
+        "operationId": "upsertAttendance",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetupAttendanceUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupAttendanceResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -31307,6 +31366,266 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos": {
+      "get": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "宿題一覧を取得する（村人）",
+        "operationId": "listTodos",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMeetupTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "宿題を作成する（幹事＋村長/長老）",
+        "operationId": "createTodo",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetupTodoCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/release": {
+      "post": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "宿題を手放す（未割当へ戻す・本人のみ）",
+        "operationId": "releaseTodo",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "todoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/complete": {
+      "post": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "宿題を完了にする（手挙げ者本人＋幹事のみ）",
+        "operationId": "completeTodo",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "todoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/claim": {
+      "post": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "未割当の宿題を自分に割り当てる（手挙げ・村人本人）",
+        "operationId": "claimTodo",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "todoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/meetups/{meetupId}/confirm": {
       "post": {
         "tags": [
@@ -31351,6 +31670,116 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMeetupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments": {
+      "get": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "コメント一覧を取得する（村人・作成日昇順）",
+        "operationId": "listComments_1",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMeetupCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "コメントを投稿する（村人）",
+        "operationId": "createComment_1",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetupCommentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeetupCommentResponse"
                 }
               }
             }
@@ -32376,6 +32805,125 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCalendarEventResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs": {
+      "get": {
+        "tags": [
+          "村歳時記カレンダー (F17.1)"
+        ],
+        "summary": "年輪（その年の様子）一覧を取得する（村人・year 降順・?year\u003d 絞り込み可）",
+        "operationId": "listLogs",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCalendarEventLogResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "村歳時記カレンダー (F17.1)"
+        ],
+        "summary": "年輪を追加する（村人・同一 year 複数件可）",
+        "operationId": "addLog",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventLogCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCalendarEventLogResponse"
                 }
               }
             }
@@ -35094,7 +35642,7 @@
           "TODO（チーム）"
         ],
         "summary": "TODO一覧",
-        "operationId": "listTodos",
+        "operationId": "listTodos_1",
         "parameters": [
           {
             "name": "teamId",
@@ -35160,7 +35708,7 @@
           "TODO（チーム）"
         ],
         "summary": "TODO作成",
-        "operationId": "createTodo",
+        "operationId": "createTodo_1",
         "parameters": [
           {
             "name": "teamId",
@@ -35473,7 +36021,7 @@
           "TODO（チーム）"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_1",
+        "operationId": "listComments_2",
         "parameters": [
           {
             "name": "teamId",
@@ -49046,7 +49594,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "オーナー譲渡",
+        "summary": "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）",
         "operationId": "transferOwnership",
         "parameters": [
           {
@@ -49070,6 +49618,9 @@
         "responses": {
           "200": {
             "description": "譲渡成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -49179,7 +49730,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "権限グループ一覧",
+        "summary": "権限グループ一覧（ADMIN/DEPUTY のみ）",
         "operationId": "getPermissionGroups",
         "parameters": [
           {
@@ -49194,6 +49745,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -49413,6 +49974,26 @@
         "responses": {
           "201": {
             "description": "申請/承認成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
@@ -53204,6 +53785,15 @@
         "operationId": "listSwapRequests",
         "parameters": [
           {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -54061,15 +54651,6 @@
             "schema": {
               "type": "integer",
               "format": "int64"
-            }
-          },
-          {
-            "name": "role",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "MEMBER"
             }
           }
         ],
@@ -56484,7 +57065,7 @@
           "議決権行使・委任状"
         ],
         "summary": "議案コメント一覧",
-        "operationId": "listComments_2",
+        "operationId": "listComments_3",
         "parameters": [
           {
             "name": "motionId",
@@ -56534,7 +57115,7 @@
           "議決権行使・委任状"
         ],
         "summary": "コメント投稿",
-        "operationId": "createComment_1",
+        "operationId": "createComment_2",
         "parameters": [
           {
             "name": "motionId",
@@ -57206,6 +57787,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "指定した親組織の ADMIN/DEPUTY 権限がない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "指定した親組織が存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -57215,7 +57816,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "オーナー譲渡",
+        "summary": "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）",
         "operationId": "transferOwnership_1",
         "parameters": [
           {
@@ -57239,6 +57840,9 @@
         "responses": {
           "200": {
             "description": "譲渡成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }
@@ -57535,7 +58139,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "権限グループ一覧",
+        "summary": "権限グループ一覧（ADMIN/DEPUTY のみ）",
         "operationId": "getPermissionGroups_1",
         "parameters": [
           {
@@ -57550,6 +58154,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -57769,6 +58383,26 @@
         "responses": {
           "201": {
             "description": "申請/承認成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
@@ -62651,7 +63285,7 @@
           "TODO（組織）"
         ],
         "summary": "組織TODO一覧",
-        "operationId": "listTodos_1",
+        "operationId": "listTodos_2",
         "parameters": [
           {
             "name": "orgId",
@@ -62718,7 +63352,7 @@
           "TODO（組織）"
         ],
         "summary": "組織TODO作成",
-        "operationId": "createTodo_1",
+        "operationId": "createTodo_2",
         "parameters": [
           {
             "name": "orgId",
@@ -63038,7 +63672,7 @@
           "TODO（組織）"
         ],
         "summary": "組織TODOコメント一覧",
-        "operationId": "listComments_3",
+        "operationId": "listComments_4",
         "parameters": [
           {
             "name": "orgId",
@@ -73486,7 +74120,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_4",
+        "operationId": "listComments_5",
         "parameters": [
           {
             "name": "fileId",
@@ -73516,7 +74150,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント作成",
-        "operationId": "createComment_2",
+        "operationId": "createComment_3",
         "parameters": [
           {
             "name": "fileId",
@@ -75937,7 +76571,7 @@
           "回覧コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_5",
+        "operationId": "listComments_6",
         "parameters": [
           {
             "name": "documentId",
@@ -75987,7 +76621,7 @@
           "回覧コメント"
         ],
         "summary": "コメント作成",
-        "operationId": "createComment_3",
+        "operationId": "createComment_4",
         "parameters": [
           {
             "name": "documentId",
@@ -81982,7 +82616,7 @@
           "活動コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_6",
+        "operationId": "listComments_7",
         "parameters": [
           {
             "name": "activityId",
@@ -82012,7 +82646,7 @@
           "活動コメント"
         ],
         "summary": "コメント投稿",
-        "operationId": "createComment_4",
+        "operationId": "createComment_5",
         "parameters": [
           {
             "name": "activityId",
@@ -83326,6 +83960,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMembershipResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/memberships/me/profile-visibility": {
+      "patch": {
+        "tags": [
+          "村人 所属村一覧 (F17.2)"
+        ],
+        "summary": "自分の所属村一覧公開トグルを切り替える（本人のみ）",
+        "operationId": "updateMyProfileVisibility",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileVisibilityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProfileVisibilityResponse"
                 }
               }
             }
@@ -89481,7 +90157,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム削除",
+        "summary": "チーム削除（ADMIN/DEPUTY のみ）",
         "operationId": "deleteTeam",
         "parameters": [
           {
@@ -89496,6 +90172,9 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       },
@@ -89503,7 +90182,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム更新",
+        "summary": "チーム更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateTeam",
         "parameters": [
           {
@@ -89535,6 +90214,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -89544,7 +90233,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チームアーカイブ解除",
+        "summary": "チームアーカイブ解除（ADMIN/DEPUTY のみ）",
         "operationId": "unarchiveTeam",
         "parameters": [
           {
@@ -89559,6 +90248,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ解除成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -89568,7 +90260,7 @@
         "tags": [
           "チームシフト設定"
         ],
-        "summary": "チームシフト設定取得",
+        "summary": "チームシフト設定取得（メンバー限定）",
         "operationId": "getSettings_16",
         "parameters": [
           {
@@ -89590,6 +90282,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームのメンバーでない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamShiftSettingsResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -89597,7 +90299,7 @@
         "tags": [
           "チームシフト設定"
         ],
-        "summary": "チームシフト設定更新",
+        "summary": "チームシフト設定更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateSettings_14",
         "parameters": [
           {
@@ -89629,6 +90331,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamShiftSettingsResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -89653,6 +90365,9 @@
         "responses": {
           "204": {
             "description": "復元成功"
+          },
+          "403": {
+            "description": "SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可）"
           }
         }
       }
@@ -90061,7 +90776,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チームアーカイブ",
+        "summary": "チームアーカイブ（ADMIN/DEPUTY のみ）",
         "operationId": "archiveTeam",
         "parameters": [
           {
@@ -90076,6 +90791,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ成功"
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY でない"
           }
         }
       }
@@ -93609,7 +94327,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織削除",
+        "summary": "組織削除（ADMIN/DEPUTY のみ）",
         "operationId": "deleteOrganization",
         "parameters": [
           {
@@ -93624,6 +94342,9 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       },
@@ -93631,7 +94352,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織更新",
+        "summary": "組織更新（ADMIN/DEPUTY のみ）",
         "operationId": "updateOrganization",
         "parameters": [
           {
@@ -93663,6 +94384,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -93672,7 +94403,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織アーカイブ解除",
+        "summary": "組織アーカイブ解除（ADMIN/DEPUTY のみ）",
         "operationId": "unarchiveOrganization",
         "parameters": [
           {
@@ -93687,6 +94418,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ解除成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }
@@ -93711,6 +94445,9 @@
         "responses": {
           "204": {
             "description": "復元成功"
+          },
+          "403": {
+            "description": "SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可）"
           }
         }
       }
@@ -94248,7 +94985,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織アーカイブ",
+        "summary": "組織アーカイブ（ADMIN/DEPUTY のみ）",
         "operationId": "archiveOrganization",
         "parameters": [
           {
@@ -94263,6 +95000,9 @@
         "responses": {
           "200": {
             "description": "アーカイブ成功"
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない"
           }
         }
       }
@@ -103434,7 +104174,7 @@
         "tags": [
           "村ご縁スコア (F17.1)"
         ],
-        "summary": "ご縁スコアの上位ランキングを取得する（最大100件）",
+        "summary": "【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）",
         "operationId": "getRanking",
         "parameters": [
           {
@@ -103467,7 +104207,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/villages/{villageId}/serendipity-scores/me": {
@@ -103757,6 +104498,67 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendances": {
+      "get": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "出欠一覧を取得する（村人・村ニックネーム表示）",
+        "operationId": "listAttendances",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMeetupAttendanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/lobby": {
       "get": {
         "tags": [
@@ -104009,6 +104811,38 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/affinity/me": {
+      "get": {
+        "tags": [
+          "村 加入前相性表示 (F17.2)"
+        ],
+        "summary": "加入前相性表示を取得する（PUBLIC 村のみ・非メンバー可・identity 非返却）",
+        "operationId": "getMyAffinity",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageAffinityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/search": {
       "get": {
         "tags": [
@@ -104159,6 +104993,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListVenueSuggestionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/villages": {
+      "get": {
+        "tags": [
+          "村人 所属村一覧 (F17.2)"
+        ],
+        "summary": "対象村人の所属村一覧を取得する（同居者限定・公開ON∩PUBLIC のみ・ニックネーム非返却）",
+        "operationId": "getUserVillages",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListUserVillageSummaryResponse"
                 }
               }
             }
@@ -113259,6 +114125,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTeamOrgSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTeamOrgSummaryResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -113445,6 +114331,26 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFollowResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFollowResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
@@ -113772,7 +114678,7 @@
         "tags": [
           "チーム管理"
         ],
-        "summary": "チーム検索",
+        "summary": "チーム検索（PUBLIC かつ未アーカイブのチームのみ）",
         "operationId": "searchTeams",
         "parameters": [
           {
@@ -121059,6 +121965,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -121307,7 +122233,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織配下全メンバー一覧（カスケード通知用）",
+        "summary": "組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ）",
         "operationId": "getAllMembers",
         "parameters": [
           {
@@ -121341,6 +122267,16 @@
         "responses": {
           "200": {
             "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseOrgAllMembersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該組織の ADMIN/DEPUTY でない",
             "content": {
               "*/*": {
                 "schema": {
@@ -126610,7 +127546,7 @@
         "tags": [
           "組織管理"
         ],
-        "summary": "組織検索",
+        "summary": "組織検索（PUBLIC かつ未アーカイブの組織のみ）",
         "operationId": "searchOrganizations_1",
         "parameters": [
           {
@@ -130034,7 +130970,7 @@
         "tags": [
           "incident-controller"
         ],
-        "operationId": "listComments_7",
+        "operationId": "listComments_8",
         "parameters": [
           {
             "name": "id",
@@ -136479,6 +137415,49 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments/{commentId}": {
+      "delete": {
+        "tags": [
+          "寄合 (F17.1 Phase 3-β)"
+        ],
+        "summary": "コメントを論理削除する（投稿者本人＋村長/長老のみ）",
+        "operationId": "deleteComment_5",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meetupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/meetups/{meetupId}/candidate-dates/{candidateDateId}": {
       "delete": {
         "tags": [
@@ -136507,6 +137486,49 @@
           },
           {
             "name": "candidateDateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs/{logId}": {
+      "delete": {
+        "tags": [
+          "村歳時記カレンダー (F17.1)"
+        ],
+        "summary": "年輪を論理削除する（投稿者本人＋村長/長老のみ）",
+        "operationId": "deleteLog",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "logId",
             "in": "path",
             "required": true,
             "schema": {
@@ -137710,7 +138732,7 @@
         ],
         "summary": "公開投稿コメント削除（ログイン必須）",
         "description": "投稿者本人または ADMIN（hasRole(\u0027ADMIN\u0027) or hasRole(\u0027SYSTEM_ADMIN\u0027)）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
-        "operationId": "deleteComment_5",
+        "operationId": "deleteComment_6",
         "parameters": [
           {
             "name": "postId",
@@ -137744,7 +138766,7 @@
           "議決権行使・委任状"
         ],
         "summary": "コメント削除",
-        "operationId": "deleteComment_6",
+        "operationId": "deleteComment_7",
         "parameters": [
           {
             "name": "motionId",
@@ -139089,7 +140111,7 @@
           "回覧コメント"
         ],
         "summary": "コメント削除",
-        "operationId": "deleteComment_7",
+        "operationId": "deleteComment_8",
         "parameters": [
           {
             "name": "documentId",
@@ -141904,6 +142926,66 @@
         "required": [
           "voteType"
         ]
+      },
+      "MeetupAttendanceUpsertRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "GOING",
+              "MAYBE",
+              "ABSENT"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ApiResponseMeetupAttendanceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MeetupAttendanceResponse"
+          }
+        }
+      },
+      "MeetupAttendanceResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meetupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "GOING",
+              "MAYBE",
+              "ABSENT"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "UpdateSealRequest": {
         "type": "object",
@@ -161220,6 +162302,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "decisionsNote": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -161251,6 +162336,63 @@
           }
         }
       },
+      "MeetupTodoCreateRequest": {
+        "type": "object",
+        "properties": {
+          "assigneeUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseMeetupTodoResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MeetupTodoResponse"
+          }
+        }
+      },
+      "MeetupTodoResponse": {
+        "type": "object",
+        "properties": {
+          "assigneeDisplayName": {
+            "type": "string"
+          },
+          "assigneeUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "doneAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meetupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "MeetupConfirmRequest": {
         "type": "object",
         "properties": {
@@ -161262,6 +162404,51 @@
         "required": [
           "candidateDateId"
         ]
+      },
+      "MeetupCommentCreateRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseMeetupCommentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MeetupCommentResponse"
+          }
+        }
+      },
+      "MeetupCommentResponse": {
+        "type": "object",
+        "properties": {
+          "authorUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meetupId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "MeetupCandidateDateAddRequest": {
         "type": "object",
@@ -161819,6 +163006,72 @@
           "villageId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "CalendarEventLogCreateRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "photoR2Key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000,
+            "minimum": 1900
+          }
+        },
+        "required": [
+          "year"
+        ]
+      },
+      "ApiResponseCalendarEventLogResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CalendarEventLogResponse"
+          }
+        }
+      },
+      "CalendarEventLogResponse": {
+        "type": "object",
+        "properties": {
+          "calendarEventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByDisplayName": {
+            "type": "string"
+          },
+          "createdByUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -191866,9 +193119,54 @@
           "role"
         ]
       },
+      "ProfileVisibilityUpdateRequest": {
+        "type": "object",
+        "description": "所属村一覧の公開トグル切替リクエスト",
+        "properties": {
+          "profilePublic": {
+            "type": "boolean",
+            "description": "この村所属を所属村一覧に公開するか（true\u003d公開/false\u003d非公開）"
+          }
+        },
+        "required": [
+          "profilePublic"
+        ]
+      },
+      "ApiResponseProfileVisibilityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProfileVisibilityResponse"
+          }
+        }
+      },
+      "ProfileVisibilityResponse": {
+        "type": "object",
+        "description": "所属村一覧の公開トグル切替結果",
+        "properties": {
+          "profilePublic": {
+            "type": "boolean",
+            "description": "切替後の公開状態"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "対象の村ID"
+          }
+        },
+        "required": [
+          "profilePublic",
+          "villageId"
+        ]
+      },
       "MeetupUpdateRequest": {
         "type": "object",
         "properties": {
+          "decisionsNote": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
           "description": {
             "type": "string",
             "maxLength": 5000,
@@ -199412,6 +200710,39 @@
           }
         }
       },
+      "ApiResponseListMeetupTodoResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetupTodoResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListMeetupCommentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetupCommentResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListMeetupAttendanceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetupAttendanceResponse"
+            }
+          }
+        }
+      },
       "ApiResponseMatchRecruitListResponse": {
         "type": "object",
         "properties": {
@@ -199789,6 +201120,67 @@
           }
         }
       },
+      "ApiResponseListCalendarEventLogResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventLogResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseVillageAffinityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/VillageAffinityResponse"
+          }
+        }
+      },
+      "VillageAffinityResponse": {
+        "type": "object",
+        "description": "加入前相性表示（相性のヒント）。正確な人数・identity は返さない（§8.3/§8.4）",
+        "properties": {
+          "categoryMatch": {
+            "type": "boolean",
+            "description": "自分の関心カテゴリと村カテゴリが一致するか"
+          },
+          "memberCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "村の総現役メンバー数（公開情報。アピール判定の根拠・匿名重なりとは別軸）"
+          },
+          "pioneerAppeal": {
+            "type": "boolean",
+            "description": "小規模村の「草分けアピール」を出すか（未参加×総現役メンバー10人以下・§8.8）"
+          },
+          "reasonKeys": {
+            "type": "array",
+            "description": "相性の根拠一言の i18n キー配列（FE で翻訳・空配列可）",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sharedVillagerBucket": {
+            "type": "string",
+            "description": "自分と重なる匿名村人数のバケット（HIDDEN/FEW/MANY・正確人数は非返却）",
+            "enum": [
+              "HIDDEN",
+              "FEW",
+              "MANY"
+            ]
+          }
+        },
+        "required": [
+          "categoryMatch",
+          "memberCount",
+          "pioneerAppeal",
+          "reasonKeys",
+          "sharedVillagerBucket"
+        ]
+      },
       "VillageSearchResponse": {
         "type": "object",
         "properties": {
@@ -199854,6 +201246,44 @@
             "format": "int64"
           }
         }
+      },
+      "ApiResponseListUserVillageSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserVillageSummaryResponse"
+            }
+          }
+        }
+      },
+      "UserVillageSummaryResponse": {
+        "type": "object",
+        "description": "所属村一覧の1件（村名・村紋・カテゴリ・村IDのみ。ニックネームは返さない・§9.3）",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "村カテゴリ（未設定なら null）"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "村ID（UUID）"
+          },
+          "villageMonshoUrl": {
+            "type": "string",
+            "description": "村紋の署名付き URL（未設定なら null）"
+          },
+          "villageName": {
+            "type": "string",
+            "description": "村名（表示用）"
+          }
+        },
+        "required": [
+          "villageId",
+          "villageName"
+        ]
       },
       "CursorMeta": {
         "type": "object",

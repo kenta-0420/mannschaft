@@ -5,6 +5,12 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const shiftApi = useShiftApi()
+
+// 数値 teamId が必要な API 向けの解決経路。
+// `TeamResponse.id` は slug と同値の URL 識別子であり数値 ID ではないため、
+// 必ず `numericId` を使う（親 pages/teams/[slug].vue が provide 済みで追加往復なし）。
+const { team } = useTeamShellContext()
+const teamNumericId = computed<number | null>(() => team.value?.numericId ?? null)
 const notification = useNotification()
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { userTimezone } = useDatetime()
@@ -77,7 +83,11 @@ onMounted(() => loadPermissions())
           />
         </TabPanel>
         <TabPanel :value="1">
-          <ShiftSwapList :team-id="teamSlug" />
+          <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
+          <ShiftSwapList v-if="teamNumericId !== null" :team-id="teamNumericId" />
+          <div v-else>
+            <Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" />
+          </div>
         </TabPanel>
         <TabPanel v-if="isAdmin" :value="2">
           <ShiftPositionManager :team-id="teamSlug" />

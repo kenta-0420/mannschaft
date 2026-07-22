@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -203,6 +204,40 @@ public class MembershipService {
                 entity.getLeaveReason(), req.getRemovedBy());
 
         return MembershipDto.from(entity, false);
+    }
+
+    /**
+     * ユーザー × スコープ指定での退会処理（{@link #leave(Long, MembershipLeaveRequest)} の窓口版）。
+     *
+     * <p>membershipId ではなく「誰が・どのスコープを」離脱するかしか判らない呼び出し元
+     * （role ドメインの除名・退会など）のために、アクティブ membership の解決を membership ドメイン内に
+     * 閉じ込める。呼び出し元が {@link MembershipRepository} を直接注入する必要をなくす
+     * （D-3 ArchUnit 準拠: {@code @Transactional} クラスは別ドメイン Repository に直接依存しない）。</p>
+     *
+     * <p>退会本体のロジックは {@link #leave(Long, MembershipLeaveRequest)} に委譲する。left_at /
+     * leave_reason の確定・現役役職の自動離任・{@code MembershipChangedEvent(REMOVED)} /
+     * {@code MembershipEndedEvent} / 監査イベントの発火はすべて委譲先が担う。</p>
+     *
+     * @param userId      対象ユーザー ID
+     * @param scopeType   スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId     スコープ ID
+     * @param leaveReason 退会理由
+     * @param removedBy   除名を実行した操作者 ID（自主退会・システム処理では null）
+     * @return アクティブ membership を退会させた場合 true、対象が無く何もしなかった場合 false
+     */
+    @Transactional
+    public boolean leaveByUserAndScope(Long userId, ScopeType scopeType, Long scopeId,
+                                       LeaveReason leaveReason, Long removedBy) {
+        Optional<MembershipEntity> active =
+                membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId);
+        if (active.isEmpty()) {
+            return false;
+        }
+        MembershipLeaveRequest req = new MembershipLeaveRequest();
+        req.setLeaveReason(leaveReason);
+        req.setRemovedBy(removedBy);
+        leave(active.get().getId(), req);
+        return true;
     }
 
     /**
@@ -386,6 +421,25 @@ public class MembershipService {
      */
     public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
         return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
+    /**
+     * 認可根治 Wave6: 指定スコープ集合（TEAM / ORGANIZATION 混在）に在籍する利用者の ID 一覧を返す。
+     *
+     * <p>{@code search} ドメインの横断検索が「閲覧者と同一スコープに所属する利用者」だけを
+     * 利用者検索の候補に絞る際に用いる公開窓口。{@code search} ドメインが {@code membership}
+     * ドメインの Repository を直接注入することを避ける（D-3 ArchUnit 準拠）。
+     * プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param teamIds 対象チーム scopeId 集合（非空・空ならダミー値）
+     * @param orgIds  対象組織 scopeId 集合（非空・空ならダミー値）
+     * @return 在籍者の user_id 一覧（DISTINCT・退会済みは除外）
+     */
+    public List<Long> getActiveUserIdsInScopes(Collection<Long> teamIds, Collection<Long> orgIds) {
+        return membershipRepository.findActiveDistinctUserIdsByScopes(teamIds, orgIds);
     }
 
 }

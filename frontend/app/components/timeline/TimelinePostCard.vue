@@ -423,10 +423,10 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       />
     </div>
 
-    <!-- アクションバー -->
-    <div class="flex items-center gap-4 border-t border-surface-100 pt-2" @click.stop>
+    <!-- アクションバー（各ボタンはヒット領域44x44。アイコン/文字の視覚サイズはtext-xsのまま維持） -->
+    <div class="flex items-center gap-2 border-t border-surface-100 pt-2" @click.stop>
       <button
-        class="flex items-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary dark:text-surface-300"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary dark:text-surface-300"
         data-testid="team-timeline-reply-btn"
         @click="onReplyButton"
       >
@@ -434,7 +434,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <span v-if="post.stats?.replyCount">{{ post.stats.replyCount }}</span>
       </button>
       <button
-        class="flex items-center gap-1 text-xs transition-colors hover:text-green-500"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs transition-colors hover:text-green-500"
         :class="(post.stats?.repostCount ?? 0) > 0 ? 'text-green-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('repost', post.id)"
       >
@@ -442,7 +442,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <span v-if="post.stats?.repostCount">{{ post.stats.repostCount }}</span>
       </button>
       <button
-        class="flex items-center gap-1 text-xs transition-colors hover:text-amber-500"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs transition-colors hover:text-amber-500"
         :class="post.isBookmarked ? 'text-amber-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('bookmark', post.id)"
       >

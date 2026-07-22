@@ -261,6 +261,14 @@ public enum AuditEventType {
     VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 出欠の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_MEETUP_ATTENDANCE_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手挙げ（claim・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_CLAIMED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の完了（complete・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_COMPLETED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手放し（release・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_RELEASED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */
@@ -273,6 +281,10 @@ public enum AuditEventType {
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
     /** F17.1 ②-2 — 村ニュースレター号を集計・凍結（集計バッチによる snapshot 確定）。 */
     VILLAGE_NEWSLETTER_ISSUE_FROZEN(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑤ — 加入前相性クエリ（差分攻撃の事後検知用・§8.4 緩和3）。 */
+    VILLAGE_AFFINITY_QUERIED(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑥ — 所属村一覧の公開トグルを切替（本人操作・§9.3）。 */
+    VILLAGE_MEMBERSHIP_PROFILE_VISIBILITY_CHANGED(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */

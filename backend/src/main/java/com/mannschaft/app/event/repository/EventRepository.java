@@ -47,8 +47,37 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
      */
     long countByScopeTypeAndScopeIdAndStatus(EventScopeType scopeType, Long scopeId, EventStatus status);
 
-    @Query("SELECT e FROM EventEntity e WHERE e.subtitle LIKE %:keyword% OR e.summary LIKE %:keyword% OR e.venueName LIKE %:keyword%")
-    List<EventEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     *
+     * <p>可視範囲は「所属チームのイベント」「所属組織のイベント」「自分が作成したイベント」に加え、
+     * 一般公開イベント（{@code visibility = PUBLIC} かつ {@code publicVisible = true}）とする。
+     * 一般公開イベントは未ログインの公開ページでも参照できる設計であり、横断検索から外す理由がない。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword  検索キーワード
+     * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
+     * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
+     * @param userId   閲覧者ユーザー ID（作成者一致判定用）
+     * @param pageable 取得件数
+     * @return 可視スコープ内の検索結果
+     */
+    @Query("""
+            SELECT e FROM EventEntity e
+            WHERE (e.subtitle LIKE %:keyword% OR e.summary LIKE %:keyword% OR e.venueName LIKE %:keyword%)
+              AND e.deletedAt IS NULL
+              AND ((e.scopeType = com.mannschaft.app.event.EventScopeType.TEAM AND e.scopeId IN :teamIds)
+                OR (e.scopeType = com.mannschaft.app.event.EventScopeType.ORGANIZATION AND e.scopeId IN :orgIds)
+                OR e.createdBy = :userId
+                OR (e.visibility = com.mannschaft.app.event.entity.EventVisibility.PUBLIC AND e.publicVisible = true))
+            """)
+    List<EventEntity> searchByKeyword(@Param("keyword") String keyword,
+                                      @Param("teamIds") Collection<Long> teamIds,
+                                      @Param("orgIds") Collection<Long> orgIds,
+                                      @Param("userId") Long userId,
+                                      Pageable pageable);
 
     /**
      * 現在進行中（schedules.startAt が :cutoff 以前かつ schedules.endAt が :now 以降）の

@@ -80,6 +80,11 @@ public class ShiftAvailabilityController {
 
     /**
      * 時給を設定する。
+     *
+     * <p><b>認可（認可根治 Wave6 追加戦）:</b> 呼び出し元の身元は
+     * {@link SecurityUtils#getCurrentUserId()} から採り、per-scope 認可は
+     * {@code ShiftHourlyRateService} 内で強制する（本人 + 当該チーム ADMIN/DEPUTY_ADMIN のみ。
+     * 対象ユーザーも当該チームのメンバーであることを要求する）。違反時は 403。</p>
      */
     @PostMapping("/hourly-rate")
     @Operation(summary = "時給設定")
@@ -87,12 +92,18 @@ public class ShiftAvailabilityController {
     public ResponseEntity<ApiResponse<HourlyRateResponse>> createHourlyRate(
             @RequestParam Long teamId,
             @Valid @RequestBody CreateHourlyRateRequest request) {
-        HourlyRateResponse response = hourlyRateService.createHourlyRate(teamId, request);
+        HourlyRateResponse response = hourlyRateService
+                .createHourlyRate(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * 時給履歴を取得する。
+     *
+     * <p><b>認可（認可根治 Wave6 追加戦）:</b> 呼び出し元の身元は
+     * {@link SecurityUtils#getCurrentUserId()} から採り、per-scope 認可は
+     * {@code ShiftHourlyRateService} 内で強制する（本人 + 当該チーム ADMIN/DEPUTY_ADMIN のみ。
+     * F03.5 設計書「他メンバーの時給は非公開」に準拠）。違反時は 403。</p>
      */
     @GetMapping("/hourly-rate")
     @Operation(summary = "時給履歴取得")
@@ -101,11 +112,12 @@ public class ShiftAvailabilityController {
             @RequestParam Long teamId,
             @RequestParam Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         if (date != null) {
-            HourlyRateResponse rate = hourlyRateService.getEffectiveRate(userId, teamId, date);
+            HourlyRateResponse rate = hourlyRateService.getEffectiveRate(userId, teamId, date, currentUserId);
             return ResponseEntity.ok(ApiResponse.of(rate != null ? List.of(rate) : List.of()));
         }
-        List<HourlyRateResponse> responses = hourlyRateService.listHourlyRates(userId, teamId);
+        List<HourlyRateResponse> responses = hourlyRateService.listHourlyRates(userId, teamId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

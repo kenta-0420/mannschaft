@@ -92,7 +92,11 @@ onUnmounted(() => {
             },
           }"
         >
-          <GlobalSidebar force-wide />
+          <GlobalSidebar
+            force-wide
+            @open-feedback="$emit('open-feedback')"
+            @open-ios-install="$emit('open-ios-install')"
+          />
         </Drawer>
       </ClientOnly>
 

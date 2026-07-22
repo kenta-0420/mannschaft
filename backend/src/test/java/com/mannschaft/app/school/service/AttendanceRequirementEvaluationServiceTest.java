@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
@@ -53,6 +54,9 @@ class AttendanceRequirementEvaluationServiceTest {
     @Mock
     private StudentAttendanceSummaryRepository summaryRepository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     // ========================================
     // evaluate
     // ========================================
@@ -82,7 +86,7 @@ class AttendanceRequirementEvaluationServiceTest {
                 return e;
             });
 
-            EvaluationResponse result = service.evaluate(200L, 1L);
+            EvaluationResponse result = service.evaluateInternal(200L, 1L);
 
             assertThat(result.status()).isEqualTo(EvaluationStatus.OK);
             // 出席率 = (100 - 10) / 100 * 100 = 90.00
@@ -110,7 +114,7 @@ class AttendanceRequirementEvaluationServiceTest {
                 return e;
             });
 
-            EvaluationResponse result = service.evaluate(200L, 1L);
+            EvaluationResponse result = service.evaluateInternal(200L, 1L);
 
             assertThat(result.status()).isEqualTo(EvaluationStatus.WARNING);
             // 出席率 = (100 - 18) / 100 * 100 = 82.00
@@ -138,7 +142,7 @@ class AttendanceRequirementEvaluationServiceTest {
                 return e;
             });
 
-            EvaluationResponse result = service.evaluate(200L, 1L);
+            EvaluationResponse result = service.evaluateInternal(200L, 1L);
 
             assertThat(result.status()).isEqualTo(EvaluationStatus.RISK);
             assertThat(result.remainingAllowedAbsences()).isEqualTo(5);
@@ -164,7 +168,7 @@ class AttendanceRequirementEvaluationServiceTest {
                 return e;
             });
 
-            EvaluationResponse result = service.evaluate(200L, 1L);
+            EvaluationResponse result = service.evaluateInternal(200L, 1L);
 
             assertThat(result.status()).isEqualTo(EvaluationStatus.VIOLATION);
         }
@@ -191,7 +195,7 @@ class AttendanceRequirementEvaluationServiceTest {
                 return e;
             });
 
-            EvaluationResponse result = service.evaluate(200L, 1L);
+            EvaluationResponse result = service.evaluateInternal(200L, 1L);
 
             // warningThresholdRate が null の場合、minAttendanceRate(80) 以上 → OK
             assertThat(result.status()).isEqualTo(EvaluationStatus.OK);
@@ -203,7 +207,7 @@ class AttendanceRequirementEvaluationServiceTest {
         void 規程が存在しないならREQUIREMENT_RULE_NOT_FOUND() {
             given(ruleRepository.findById(999L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.evaluate(200L, 999L))
+            assertThatThrownBy(() -> service.evaluateInternal(200L, 999L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
         }
@@ -217,7 +221,7 @@ class AttendanceRequirementEvaluationServiceTest {
                     any(), any(), any(short.class), any()))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.evaluate(200L, 1L))
+            assertThatThrownBy(() -> service.evaluateInternal(200L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.SUMMARY_NOT_FOUND.getMessage());
         }
@@ -247,6 +251,8 @@ class AttendanceRequirementEvaluationServiceTest {
             ReflectionTestUtils.setField(entity, "id", 50L);
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
             given(evaluationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("保護者と面談し指導完了");
@@ -288,11 +294,76 @@ class AttendanceRequirementEvaluationServiceTest {
             entity.resolve(888L, "既存の解消理由");
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("再解消しようとする");
             assertThatThrownBy(() -> service.resolveViolation(50L, 999L, request))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.EVALUATION_ALREADY_RESOLVED.getMessage());
+        }
+
+        @Test
+        @DisplayName("認可: 規程スコープ非メンバーは 404（EVALUATION_NOT_FOUND・存在秘匿）")
+        void 非メンバーはEVALUATION_NOT_FOUND() {
+            AttendanceRequirementEvaluationEntity entity = AttendanceRequirementEvaluationEntity.builder()
+                    .requirementRuleId(1L)
+                    .studentUserId(200L)
+                    .summaryId(10L)
+                    .status(EvaluationStatus.VIOLATION)
+                    .currentAttendanceRate(new BigDecimal("75.00"))
+                    .remainingAllowedAbsences(0)
+                    .evaluatedAt(LocalDateTime.now().minusDays(1))
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", 50L);
+
+            given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
+
+            ResolveEvaluationRequest request = new ResolveEvaluationRequest("越境で解消しようとする");
+            assertThatThrownBy(() -> service.resolveViolation(50L, 777L, request))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.EVALUATION_NOT_FOUND.getMessage());
+        }
+    }
+
+    // ========================================
+    // evaluate（HTTP 公開入口・認可あり）
+    // ========================================
+
+    @Nested
+    @DisplayName("evaluate — 公開入口の認可")
+    class EvaluateAuthorization {
+
+        @Test
+        @DisplayName("認可: 規程スコープ非メンバーは 404（REQUIREMENT_RULE_NOT_FOUND・存在秘匿）")
+        void 非メンバーはREQUIREMENT_RULE_NOT_FOUND() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
+
+            assertThatThrownBy(() -> service.evaluate(200L, 1L, 777L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+        }
+    }
+
+    // ========================================
+    // getAtRiskStudents（チームスコープ認可）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAtRiskStudents — チームスコープ認可")
+    class GetAtRiskStudentsAuthorization {
+
+        @Test
+        @DisplayName("認可: checkMembership を対象チームで呼ぶ")
+        void checkMembershipを呼ぶ() {
+            given(evaluationRepository.findAtRiskByTeamId(any(), any())).willReturn(java.util.List.of());
+
+            service.getAtRiskStudents(10L, null, 999L);
+
+            verify(accessControlService).checkMembership(999L, 10L, "TEAM");
         }
     }
 

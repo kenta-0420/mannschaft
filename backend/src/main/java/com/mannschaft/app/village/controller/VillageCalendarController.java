@@ -4,6 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.village.dto.CalendarEventCreateRequest;
 import com.mannschaft.app.village.dto.CalendarEventListResponse;
+import com.mannschaft.app.village.dto.CalendarEventLogCreateRequest;
+import com.mannschaft.app.village.dto.CalendarEventLogResponse;
 import com.mannschaft.app.village.dto.CalendarEventResponse;
 import com.mannschaft.app.village.dto.CalendarEventUpdateRequest;
 import com.mannschaft.app.village.service.VillageCalendarService;
@@ -11,8 +13,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -117,6 +123,51 @@ public class VillageCalendarController {
             @PathVariable("eventId") UUID eventId) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         calendarService.deleteEvent(villageId, eventId, actorUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ====================================================================
+    // F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）
+    // ====================================================================
+
+    /** 一覧の既定ページサイズ（設計書 §13.5）。 */
+    private static final int DEFAULT_LOG_PAGE_SIZE = 20;
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{eventId}/logs")
+    @Operation(summary = "年輪（その年の様子）一覧を取得する（村人・year 降順・?year= 絞り込み可）")
+    public ApiResponse<List<CalendarEventLogResponse>> listLogs(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("eventId") UUID eventId,
+            @RequestParam(name = "year", required = false) Integer year,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_LOG_PAGE_SIZE) int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size <= 0 ? DEFAULT_LOG_PAGE_SIZE : size);
+        return ApiResponse.of(calendarService.listLogs(villageId, eventId, year, actorUserId, pageable));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{eventId}/logs")
+    @Operation(summary = "年輪を追加する（村人・同一 year 複数件可）")
+    public ResponseEntity<ApiResponse<CalendarEventLogResponse>> addLog(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("eventId") UUID eventId,
+            @Valid @RequestBody CalendarEventLogCreateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        CalendarEventLogResponse response = calendarService.addLog(villageId, eventId, request, actorUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/{eventId}/logs/{logId}")
+    @Operation(summary = "年輪を論理削除する（投稿者本人＋村長/長老のみ）")
+    public ResponseEntity<Void> deleteLog(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("eventId") UUID eventId,
+            @PathVariable("logId") UUID logId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        calendarService.deleteLog(villageId, eventId, logId, actorUserId);
         return ResponseEntity.noContent().build();
     }
 }

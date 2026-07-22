@@ -4,7 +4,7 @@ import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityFieldStatsResponse;
 import com.mannschaft.app.activity.dto.ActivityStatsResponse;
 import com.mannschaft.app.activity.service.ActivityStatsService;
-import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,19 +29,16 @@ import java.time.LocalDate;
 public class ActivityStatsController {
 
     private final ActivityStatsService statsService;
-    private final AccessControlService accessControlService;
+    private final ActivityScopeAccessGuard scopeAccessGuard;
 
     /**
      * 統計・エクスポートAPIの認可ゲート。対象スコープの会員のみ実行可（非会員は 403 = COMMON_002）。
      *
-     * <p>パラメータ validation 後・サービス委譲前に先行で呼ぶ。{@code ActivityResultService} の既存実装に倣い
-     * TEAM/ORGANIZATION のみ検証する（AccessControlService は TEAM/ORGANIZATION のみ処理。COMMITTEE は対象外で通す）。</p>
+     * <p>パラメータ validation 後・サービス委譲前に先行で呼ぶ。判定はスコープ種別を網羅的に
+     * ディスパッチする {@link ActivityScopeAccessGuard} に委譲する。</p>
      */
     private void checkScopeMembership(ActivityScopeType scopeType, Long scopeId) {
-        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
-            accessControlService.checkMembership(
-                    SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
-        }
+        scopeAccessGuard.checkMembership(SecurityUtils.getCurrentUserId(), scopeType, scopeId);
     }
 
     /**

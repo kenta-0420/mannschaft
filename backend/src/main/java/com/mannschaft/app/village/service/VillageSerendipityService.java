@@ -74,7 +74,9 @@ public class VillageSerendipityService {
      *
      * @param villageId 村 ID
      * @param limit     上位件数（1〜100、超過時はクリップ）
+     * @deprecated F17.2 §8.2 により表示廃止（相性表示へ置換）。撤去は次リリース。集計自体は推薦の内部信号として存置。
      */
+    @Deprecated(since = "F17.2", forRemoval = true)
     public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit) {
         loadActiveVillage(villageId);
         int size = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
