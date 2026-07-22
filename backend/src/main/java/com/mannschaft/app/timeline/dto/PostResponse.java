@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * タイムライン投稿レスポンスDTO（一覧用）。
@@ -51,6 +52,17 @@ public class PostResponse {
     @Schema(description = "システム自動投稿の種別（村行事の還流）。非nullなら村の行事案内名義のシステム投稿。通常投稿はnull。",
             nullable = true)
     private final VillageEventNotificationType systemPostType;
+
+    /**
+     * 投稿の添付ファイル（画像・動画・リンクプレビュー）。
+     *
+     * <p>issue #2424 根治: 一覧（feed）でも投稿画像を表示できるよう、詳細（{@link PostDetailResponse}）
+     * と同じ添付配列を feed でも返す。画像添付の {@code image.url}/{@code image.thumbnailUrl} は
+     * {@code MediaUrlResolver} で解決した署名付き表示 URL。添付が無い投稿では空配列を返す
+     * （{@code null} ではなく空配列とし FE の {@code attachments?.length} 分岐を安定させる）。
+     * enrich しない経路（旧実装）では組み立てず、Service の添付付与を通した経路でのみ設定される。</p>
+     */
+    private final List<AttachmentResponse> attachments;
 
     /**
      * 投稿スコープ。

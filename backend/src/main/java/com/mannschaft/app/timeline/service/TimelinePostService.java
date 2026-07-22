@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
@@ -44,9 +45,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -111,6 +116,12 @@ public class TimelinePostService {
     private final com.mannschaft.app.team.service.TeamService teamService;
     /** 投稿元スコープの slug 一括解決用（ORGANIZATION）。 */
     private final com.mannschaft.app.organization.service.OrganizationService organizationService;
+    /**
+     * 画像添付の R2 生キー（{@code file_key}）を署名付き表示 URL へ解決する共通部品（#2377 で全域導入）。
+     * FE は R2 を署名できないため、DB の生キーをそのまま返すと 404 になる。issue #2424 の根治で
+     * timeline も他ドメイン（village/blog 等）に倣って本部品を通す。存在検証は行わず署名 URL 生成のみ。
+     */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /** 名前解決フォールバック（退会・削除・匿名化で Map に存在しない場合）。 */
     private static final String UNKNOWN_USER_NAME = "不明なユーザー";
@@ -635,8 +646,15 @@ public class TimelinePostService {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
 
-        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(
-                attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId));
+        // issue #2424: 画像添付の image.url/thumbnailUrl を署名付き表示 URL に解決して返す。
+        // 添付エンティティを取得し、画像キーをまとめて 1 回 resolveAll（N+1 回避）してから割り当てる。
+        List<TimelinePostAttachmentEntity> attachmentEntities =
+                attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
+        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities);
+        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(attachmentEntities)
+                .stream()
+                .map(a -> withResolvedImageUrl(a, imageUrlByKey))
+                .toList();
 
         boolean mitayo = reactionRepository.existsByTimelinePostIdAndUserId(postId, userId);
         int mitayoCount = (int) reactionRepository.countByTimelinePostId(postId);
@@ -924,7 +942,7 @@ public class TimelinePostService {
         // F17.2 Wave2 ①: システム投稿（systemPostType 非 null）は投稿主体・投稿者が存在しないため
         // postedAs を組み立てず null で返す（設計書 §3.9(a)）。system_post_type 非 null 投稿では
         // user_id も NULL なので enrichUser も自然に null を返す。
-        return posts.stream()
+        List<PostResponse> enriched = posts.stream()
                 .map(p -> p.toBuilder()
                         .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs))
                         .user(enrichUser(p.getAuthor(), authorNames, authorAvatars))
@@ -933,6 +951,85 @@ public class TimelinePostService {
                                 : enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
                         .build())
                 .toList();
+        // issue #2424: 一覧（feed）にも添付配列を付与し、画像は署名付き URL で返す。
+        return attachFeedAttachments(enriched);
+    }
+
+    /**
+     * 投稿一覧に添付配列を付与する（issue #2424・feed で画像を表示するための根治）。
+     *
+     * <p><b>N+1 回避</b>: 全投稿 ID 分の添付を 1 クエリで一括取得し、画像キーの署名解決も
+     * 全添付をまとめて {@link MediaUrlResolver#resolveAll} で 1 回だけ行う。取得した添付は
+     * {@code timelinePostId} でグルーピングして各投稿へ割り当てる。添付が無い投稿には空配列を
+     * 設定する（{@code null} を避け FE の {@code attachments?.length} 分岐を安定させる）。</p>
+     *
+     * <p><b>認可</b>: 本メソッドは呼び出し元がスコープ検証済みで返す投稿群（{@link #getFeed} /
+     * {@link #getMyFeed} 等が membership を検証した結果）に対してのみ添付を積む。可視な投稿の
+     * 添付だけを署名するため、独自の可視性述語を新設せずに越境署名を防げる。</p>
+     */
+    private List<PostResponse> attachFeedAttachments(List<PostResponse> posts) {
+        if (posts == null || posts.isEmpty()) {
+            return posts;
+        }
+        List<Long> postIds = posts.stream()
+                .map(PostResponse::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (postIds.isEmpty()) {
+            return posts;
+        }
+        List<TimelinePostAttachmentEntity> all =
+                attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(postIds);
+        // 画像キーは投稿をまたいで一括で 1 回だけ署名解決する（N+1 回避）。
+        Map<String, String> imageUrlByKey = resolveImageUrls(all);
+        Map<Long, List<AttachmentResponse>> byPost = new LinkedHashMap<>();
+        for (TimelinePostAttachmentEntity e : all) {
+            AttachmentResponse r = withResolvedImageUrl(timelineMapper.toAttachmentResponse(e), imageUrlByKey);
+            byPost.computeIfAbsent(e.getTimelinePostId(), k -> new ArrayList<>()).add(r);
+        }
+        return posts.stream()
+                .map(p -> p.toBuilder()
+                        .attachments(byPost.getOrDefault(p.getId(), List.of()))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * 添付エンティティ群の中から画像（{@link AttachmentType#IMAGE}）の生キーを集めて署名 URL に一括解決する。
+     * null/空白キーは除外する。1 回の {@link MediaUrlResolver#resolveAll} で presign を最小化する（N+1 回避）。
+     */
+    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return Map.of();
+        }
+        List<String> imageKeys = attachments.stream()
+                .filter(a -> a.getAttachmentType() == AttachmentType.IMAGE)
+                .map(TimelinePostAttachmentEntity::getFileKey)
+                .filter(k -> k != null && !k.isBlank())
+                .toList();
+        return mediaUrlResolver.resolveAll(imageKeys);
+    }
+
+    /**
+     * 画像添付レスポンスに署名付き表示 URL を割り当てる（画像以外・解決不能キーはそのまま返す）。
+     *
+     * <p>画像は別サムネイルを持たないため {@code thumbnailUrl} は {@code url} と同一値にする
+     * （FE は {@code thumbnailUrl || url} を読む）。imageWidth/imageHeight は Mapper 変換値を保持する。</p>
+     */
+    private AttachmentResponse withResolvedImageUrl(AttachmentResponse att, Map<String, String> imageUrlByKey) {
+        if (att == null || !AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
+            return att;
+        }
+        String key = att.getFile() != null ? att.getFile().fileKey() : null;
+        String url = key != null ? imageUrlByKey.get(key) : null;
+        if (url == null) {
+            return att;
+        }
+        Short width = att.getImage() != null ? att.getImage().imageWidth() : null;
+        Short height = att.getImage() != null ? att.getImage().imageHeight() : null;
+        return att.toBuilder()
+                .image(new AttachmentResponse.AttachmentImageDto(width, height, url, url))
+                .build();
     }
 
     /** 投稿元スコープに team/org 名・slug を付与する（TEAM/ORGANIZATION のみ。それ以外は素通し）。 */
@@ -1012,7 +1109,8 @@ public class TimelinePostService {
         List<TimelinePostEntity> posts = postRepository.findByUserIdVisibleToCaller(
                 targetUserId, callerUserId, safeTeamIds, safeOrgIds, safeVillageIds,
                 PageRequest.of(0, feedSize));
-        return timelineMapper.toPostResponseList(posts);
+        // issue #2424: プロフィール投稿一覧にも添付配列（画像は署名 URL）を付与する。
+        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
     }
 
     /**
@@ -1114,7 +1212,8 @@ public class TimelinePostService {
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
         List<TimelinePostEntity> posts = postRepository.searchByKeyword(
                 keyword, safeTeamIds, safeOrgIds, userId, searchLimit);
-        return timelineMapper.toPostResponseList(posts);
+        // issue #2424: 検索結果一覧にも添付配列（画像は署名 URL）を付与する。
+        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
     }
 
     /**
