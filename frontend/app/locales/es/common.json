@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Conexión perdida. Intentando reconectar…"
+    },
+    "mobile": {
+      "backToList": "Volver a la lista de canales",
+      "noChannels": "Aún no hay canales",
+      "createChannel": "Crear canal"
     }
   },
   "button": {

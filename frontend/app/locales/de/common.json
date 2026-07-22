@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+    },
+    "mobile": {
+      "backToList": "Zurück zur Kanalliste",
+      "noChannels": "Noch keine Kanäle",
+      "createChannel": "Kanal erstellen"
     }
   },
   "button": {
