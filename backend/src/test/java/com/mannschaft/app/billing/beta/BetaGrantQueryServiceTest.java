@@ -23,7 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.willThrow;
+import static org.mockito.BDDMockito.willThrow;
 
 /**
  * F20.3 {@link BetaGrantQueryService} の /me eligibility 挙動 単体試練（AC-N4）。
