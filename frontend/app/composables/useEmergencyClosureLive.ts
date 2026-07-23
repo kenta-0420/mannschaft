@@ -119,6 +119,7 @@ export function parseConfirmationUpdate(body: string): EmergencyClosureConfirmat
     // 境界の載せ替え（他に散らさない）。
     return raw as EmergencyClosureConfirmationUpdate
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正な STOMP フレーム（JSON パース不能）を破棄する防御（安全系）。null=不正フレームは購読側で無視
     return null
   }
 }

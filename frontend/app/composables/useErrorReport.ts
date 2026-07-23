@@ -144,6 +144,7 @@ export const useErrorReport = () => {
         context: meta?.context || undefined,
         requestId: meta?.requestId || undefined,
       },
+      // eslint-disable-next-line no-restricted-syntax -- エラー報告 POST 自体の失敗。ここで報告し直すと無限ループになるため握りつぶすのが正しい
     }).catch(() => {
       /* ログ送信失敗は無視 */
     })

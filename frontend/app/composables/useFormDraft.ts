@@ -74,6 +74,7 @@ export function useFormDraft<T>(
       if (raw === null) return null
       return JSON.parse(raw) as T
     } catch {
+      // eslint-disable-next-line no-restricted-syntax -- localStorage の破損下書きに対する防御パース。null=下書きなしとして通常フォームで開始（機能劣化なし）
       return null
     }
   }

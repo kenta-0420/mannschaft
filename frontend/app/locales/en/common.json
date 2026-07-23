@@ -228,6 +228,7 @@
     "server_retry": "Please try again later.",
     "network": "A network error occurred",
     "unauthorized": "Please log in",
+    "section_load_failed": "Failed to load this section. Please reload.",
     "unknown": "An error occurred",
     "COMMON_001": "There are errors in the input",
     "COMMON_002": "You do not have permission to perform this action",
