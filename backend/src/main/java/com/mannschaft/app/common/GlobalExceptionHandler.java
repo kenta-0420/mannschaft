@@ -639,6 +639,8 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_097", HttpStatus.CONFLICT),             // FESTIVAL_RSVP_NOT_OPEN（SCHEDULED/ACTIVE 以外の RSVP）
             Map.entry("VILLAGE_098", HttpStatus.CONFLICT),             // FESTIVAL_LIVE_NOT_ACTIVE（ACTIVE 以外の実況タグ）
             Map.entry("VILLAGE_102", HttpStatus.CONFLICT),             // FESTIVAL_LIVE_POST_DUPLICATE（実況の二重タグ）
+            // F17.2 追補 — 寄合定員（VILLAGE_103）
+            Map.entry("VILLAGE_103", HttpStatus.CONFLICT),             // MEETUP_CAPACITY_FULL（満席で新規 GOING を拒否）
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND

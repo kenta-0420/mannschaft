@@ -77,6 +77,16 @@ public class VillageMeetupEntity extends UuidV7Entity {
     @Column(name = "decisions_note", columnDefinition = "TEXT")
     private String decisionsNote;
 
+    /**
+     * GOING 出欠の定員（F17.2 追補・寄合定員）。{@code null} は無制限。
+     *
+     * <p>capacity は「行く（GOING）」の受け入れ上限のみを制約し、MAYBE/ABSENT は無制約。
+     * 満席での新規 GOING は {@link com.mannschaft.app.village.VillageErrorCode#MEETUP_CAPACITY_FULL}
+     * （VILLAGE_103・409）で拒否する。定員強制の実体は出陣フェーズで実装する。</p>
+     */
+    @Column(name = "capacity")
+    private Integer capacity;
+
     /** 論理削除 */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
