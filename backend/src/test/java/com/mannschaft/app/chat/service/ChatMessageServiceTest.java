@@ -17,6 +17,7 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,6 +87,10 @@ class ChatMessageServiceTest {
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
+    /** 裏目付A: EVENT_CHAT の閲覧・投稿認可（イベントスコープ・メンバー判定）。 */
+    @Mock
+    private EventScopeAccessGuard eventScopeAccessGuard;
+
     /** 送信者の表示名・アバター解決用（common 経由・sender 付与・N+1 回避の一括解決）。 */
     @Mock
     private com.mannschaft.app.common.NameResolverService nameResolver;
@@ -114,6 +119,10 @@ class ChatMessageServiceTest {
         // createChannel() は id 未設定（null）のため anyLong() ではなく any() で受ける。
         lenient().when(memberRepository.existsByChannelIdAndUserId(any(), any())).thenReturn(true);
         lenient().when(channelService.findChannelOrThrow(any())).thenReturn(createChannel());
+        // 裏目付A: VILLAGE_LOBBY / EVENT_CHAT も既定は「正当なメンバー」として通す
+        //（非メンバー 403 の検証は実 DB を使う ChatChannelAccessScopeContractIT が担う）。
+        lenient().when(postingIdentityService.isUserVillageMember(any(), any())).thenReturn(true);
+        lenient().when(eventScopeAccessGuard.isEventScopeMember(any(), any())).thenReturn(true);
     }
 
     private ChatChannelEntity createChannel() {

@@ -129,6 +129,82 @@
         }
       }
     },
+    "betaPerks": {
+      "sectionTitle": "ベータ特典",
+      "helpButton": "使い方ガイド",
+      "phaseBadge": "ベータ第{phase}期",
+      "grantedAt": "付与日: {date}",
+      "noExpiryIndividual": "サービス提供期間中無償",
+      "expiryTeamOrg": "{date} まで無償",
+      "renewalNote": "更新は運営からのお知らせをお待ちください（自動更新はされません）",
+      "featureListToggle": "対象機能を見る",
+      "memberSnapshot": "付与時メンバー数: {count}名",
+      "revoked": "取消済み",
+      "noGrant": "現在付与されているベータ特典はありません",
+      "eligibility": {
+        "title": "特典の達成状況",
+        "autoGrantNote": "条件を達成すると自動で付与されます（申請は不要です）",
+        "metric": {
+          "activeDays": "アクティブ日数",
+          "membershipTenureDays": "利用継続日数",
+          "activeMembers": "アクティブメンバー数"
+        },
+        "progress": "{actual} / {required}",
+        "achieved": "達成！次回の自動付与をお待ちください"
+      },
+      "badge": {
+        "name": "ベータテスター",
+        "description": "ベータ期間の活動により授与された称号です"
+      },
+      "help": {
+        "title": "ベータ特典の使い方ガイド",
+        "about": {
+          "title": "ベータ特典とは",
+          "body": "ベータ期間中の対象機能を無償でご利用いただける特典です。ご自身で契約するプラン・アドオンとは別に、運営側の判断で付与されます。"
+        },
+        "autoGrant": {
+          "title": "付与の条件（自動付与）",
+          "body": "アクティブ日数など活動実績の条件を満たすと自動で付与されます。申請フォームはありません。付与条件を満たしているかは、達成状況の進捗バーで確認できます。"
+        },
+        "period": {
+          "title": "期間と更新",
+          "body": "個人の特典はサービス提供期間中無償です。チーム・組織の特典には有効期限が設定されており、期限が近づくと運営からお知らせします。自動更新はされません。"
+        },
+        "transfer": {
+          "title": "譲渡禁止と取消",
+          "body": "特典はアカウント間で譲渡できません。利用規約に違反した場合、特典は取り消されることがあります。"
+        }
+      },
+      "admin": {
+        "title": "ベータ特典管理",
+        "tabGrants": "付与一覧",
+        "tabCandidates": "付与候補",
+        "tabCriteria": "条件マスタ",
+        "grantCta": "特典を付与",
+        "revokeCta": "取消",
+        "extendCta": "延長",
+        "resolveReviewCta": "審査解決",
+        "flagReviewCta": "審査フラグ",
+        "reviewFlagged": "審査待ち",
+        "revokeReasonLabel": "取消事由",
+        "revokeReason": {
+          "termsViolation": "規約違反",
+          "accountTransfer": "アカウント譲渡",
+          "other": "その他"
+        },
+        "skipCriteriaCheck": "条件チェックをスキップ（例外付与）",
+        "skipCriteriaWarning": "例外付与は監査記録に残ります。メモを必ず記入してください",
+        "extendMonthsLabel": "延長期間（月）",
+        "criteriaMinOneMetric": "少なくとも1つの条件指標を設定してください"
+      },
+      "errors": {
+        "alreadyExists": "この対象には同じフェーズの特典が付与済みです",
+        "criteriaNotMet": "付与条件を満たしていません",
+        "alreadyRevoked": "この特典は取消済みです",
+        "extendNotApplicable": "個人特典は期間延長の対象外です",
+        "load": "ベータ特典情報の取得に失敗しました"
+      }
+    },
     "admin": {
       "title": "課金マスタ管理",
       "tabs": { "plans": "プラン", "features": "機能カタログ", "priceBands": "人数バンド", "grants": "手動付与", "contracts": "契約横断検索" },
