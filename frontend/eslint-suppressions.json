@@ -1,0 +1,102 @@
+{
+  "app/components/schedule/ScheduleEventForm.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/match/useMatchLiveSpectator.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useActivityScopeId.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useConflictResolver.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useEmergencyClosureApi.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useEmergencyClosureLive.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useFormDraft.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useSpotlightApi.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useUserNotificationSocket.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/teams/[slug]/matches/[matchId]/live.vue": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "app/utils/activityFields.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/utils/slugRedirect.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/f221-swipe-dashboard.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/action-required-modals.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/announcement-broadcast.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/bulletin-archive-folder.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 6
+    }
+  },
+  "tests/e2e/real/event-chat-survey-bulletin.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/schedule-55-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/slug/slug-url-migration.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/unit/composables/useConflictResolver.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  }
+}
