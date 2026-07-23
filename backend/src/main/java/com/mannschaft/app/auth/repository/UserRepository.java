@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +40,28 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @return 該当ユーザー一覧（@SQLRestriction により未削除のみ）
      */
     List<UserEntity> findByIdIn(Collection<Long> ids);
+
+    /**
+     * F20.3 Phase2 自動付与バッチの走査対象＝活性ユーザーIDをページング列挙する（設計書 F20.3 03 §6）。
+     *
+     * <p><b>JPQL で scalar（{@code Long}）だけを射影する</b>: 呼び出し元（{@code billing.beta} の
+     * {@code BetaPerkAutoGrantBatchService}）は billing ドメインだが、他ドメイン Entity（{@link UserEntity}）を
+     * 受け取らず ID スカラのみを扱うため、クロスドメイン Entity 参照番人（D-1）に抵触しない
+     * （{@code LoginActivityQueryService} が {@code AuditLogRepository} を scalar 参照するのと同型）。</p>
+     *
+     * <p><b>native SQL を使わない理由</b>: {@link org.hibernate.annotations.SQLRestriction @SQLRestriction}
+     * （{@code deleted_at IS NULL}）は JPQL/HQL にのみ効き、native SQL は貫通してしまう。native だと退会申請直後に
+     * 弱匿名化で {@code deleted_at} を立てた（＝退会撤回ウィンドウ中の）ユーザーまで拾ってしまうため、必ず JPQL で
+     * {@code status = ACTIVE AND deleted_at IS NULL} を明示評価する（{@code deleted_at IS NULL} は @SQLRestriction と
+     * 二重だが意図を明示するため冪等に併記）。安定ページングのため {@code id} 昇順で並べる。</p>
+     *
+     * @param pageable ページング（ソートは {@code id} 昇順を渡す）
+     * @return 活性ユーザーの id ページ
+     */
+    @Query("SELECT u.id FROM UserEntity u "
+            + "WHERE u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE "
+            + "AND u.deletedAt IS NULL")
+    Page<Long> findActiveUserIdsForBeta(Pageable pageable);
 
     boolean existsByEmail(String email);
 

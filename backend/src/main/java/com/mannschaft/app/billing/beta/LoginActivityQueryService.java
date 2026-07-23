@@ -5,6 +5,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * F20.3 ベータ特典: 個人の {@code activeDays}（アクティブ日数）計測サービス（設計書 02 §2・README §7）。
@@ -41,5 +45,30 @@ public class LoginActivityQueryService {
             return 0L;
         }
         return auditLogRepository.countDistinctLoginDaysSince(userId, since);
+    }
+
+    /**
+     * 複数ユーザーのアクティブ日数を <b>1 クエリ</b>で一括取得する（F20.3 Phase2 自動付与バッチの N+1 回避）。
+     *
+     * <p>{@link #countDistinctActiveDays} の bulk 版。バッチは 1 ページ分のユーザーIDをまとめて渡し、per-user の
+     * {@code countDistinctActiveDays}（＝ページ内ユーザー数に比例するクエリ）を避ける。ログイン記録の無いユーザーは
+     * 集計結果に現れないため、返す Map には含まれない（呼び出し側は {@code getOrDefault(userId, 0L)} で 0 日扱い）。</p>
+     *
+     * @param userIds 対象ユーザーID群（null/空なら空 Map を返す＝{@code IN ()} 不正 SQL を防ぐ）
+     * @param since   評価ウィンドウ起点（now − evaluationWindowDays）
+     * @return userId → アクティブ日数（記録の無いユーザーは欠損）
+     */
+    public Map<Long, Long> countDistinctActiveDaysByUsers(Collection<Long> userIds, LocalDateTime since) {
+        Map<Long, Long> result = new LinkedHashMap<>();
+        if (userIds == null || userIds.isEmpty() || since == null) {
+            return result;
+        }
+        List<Object[]> rows = auditLogRepository.countDistinctLoginDaysSinceByUsers(userIds, since);
+        for (Object[] row : rows) {
+            Long userId = ((Number) row[0]).longValue();
+            long days = ((Number) row[1]).longValue();
+            result.put(userId, days);
+        }
+        return result;
     }
 }

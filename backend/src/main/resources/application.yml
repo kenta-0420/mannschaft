@@ -96,6 +96,11 @@ mannschaft:
   # デプロイ設定変更で切り替える（頻度が低くマスタ表に持つ価値なし・設計書 F20.3 02 §3/§6）。
   beta:
     current-phase: ${MANNSCHAFT_BETA_CURRENT_PHASE:1}
+    # F20.3 Phase2: 活動実績ゲートによる個人特典の自動付与バッチの有効化フラグ（設計書 F20.3 03 §6）。
+    # 既定 false = バッチは no-op（本番はマスター御裁可を経るまで false 不変）。有効化は本番環境変数
+    # MANNSCHAFT_BETA_AUTO_GRANT_ENABLED=true（relaxed binding）で明示切替する。
+    auto-grant:
+      enabled: ${MANNSCHAFT_BETA_AUTO_GRANT_ENABLED:false}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
   # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
   # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。
