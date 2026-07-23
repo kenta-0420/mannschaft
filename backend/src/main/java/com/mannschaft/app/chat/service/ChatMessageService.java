@@ -23,6 +23,7 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
@@ -87,6 +88,11 @@ public class ChatMessageService {
     private final UserRoleRepository userRoleRepository;
     /** F08.7.1 連絡機能: 大会/ディビジョンチャットの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
     private final TournamentContactAccessService tournamentContactAccessService;
+    /**
+     * 裏目付A: {@code EVENT_CHAT} の閲覧・投稿認可を event ドメインのアクセスモデルへ委譲する
+     * （クロスドメイン・原則1／Service 経由）。当該イベントスコープ（team/org）のメンバーのみに限定する。
+     */
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -544,9 +550,12 @@ public class ChatMessageService {
      *       {@code chat_channel_members} にメンバー行が存在することを要求する。
      *       {@code TEAM_PUBLIC} も対象である点に注意（「公開」＝チームメンバーが自分で参加できる、の意。
      *       未参加のまま本文を読めることは意味しない）。</li>
-     *   <li><b>{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}</b> — village / event ドメイン側の
-     *       アクセスモデルで認可されるため、ここでは素通しする（WS 購読認可
-     *       {@code ChatChannelSubscriptionInterceptor} と同じ境界。これらの層での認可強化は既知課題）。</li>
+     *   <li><b>{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}</b>（裏目付A で素通し根治）— village / event ドメイン側の
+     *       アクセスモデルで認可する。{@code VILLAGE_LOBBY} は当該村の現役メンバー
+     *       （{@link PostingIdentityService#isUserVillageMember}）、{@code EVENT_CHAT} は当該イベントスコープのメンバー
+     *       （{@link EventScopeAccessGuard#isEventScopeMember}）を要求し、非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
+     *       旧実装はこれらを無言 return で素通ししており、非メンバーが本文を閲覧できた（{@code requireChannelMembership} 参照）。
+     *       なお WS 購読認可 {@code ChatChannelSubscriptionInterceptor} 側の同種別強化は引き続き既知課題（別スコープ）。</li>
      * </ul>
      *
      * <p><b>正準の根拠</b>: {@code ChatMessageVisibilityResolver} の危険注記が
@@ -589,14 +598,46 @@ public class ChatMessageService {
     }
 
     /**
-     * メンバーシップ管理種別のチャンネルについて、呼出ユーザーがチャンネルメンバーであることを要求する。
-     * 非対象種別（村ロビー・イベント）は素通しする。
+     * チャンネル種別ごとの閲覧・投稿認可を検証する。非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
+     *
+     * <p><b>裏目付A（VILLAGE_LOBBY / EVENT_CHAT 素通し根治）:</b> 旧実装は
+     * {@code isMembershipGated()} でない種別（{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}）を
+     * <b>無言 return で素通し</b>していたため、当該村の非メンバー・当該イベントの非参加者でも
+     * 本文一覧・スレッド・検索・投稿が通っていた（認可漏れ）。Javadoc の設計意図
+     * （「村ロビー・イベントは village / event ドメインのアクセスモデルで認可する」）を実装で満たすべく、
+     * 種別ごとに各ドメインの正準アクセス判定へ委譲する。無言 return は廃し、既定は fail-closed（拒否）とする。</p>
+     *
+     * <ul>
+     *   <li><b>メンバーシップ管理種別</b>（{@link ChannelType#isMembershipGated()}）—
+     *       {@code chat_channel_members} にメンバー行が存在することを要求する（従来どおり）。</li>
+     *   <li><b>{@code VILLAGE_LOBBY}</b> — 当該村（{@code chat_channels.village_id}）の現役 USER メンバーを要求する。
+     *       判定は village ドメインの正準
+     *       {@link PostingIdentityService#isUserVillageMember(java.util.UUID, Long)}（退会・BAN 済みは非メンバー）へ委譲。</li>
+     *   <li><b>{@code EVENT_CHAT}</b> — 当該イベント（{@code chat_channels.source_id}）のスコープ（team/org）
+     *       メンバーを要求する。判定は event ドメインの正準
+     *       {@link EventScopeAccessGuard#isEventScopeMember(Long, Long)}（{@code EventChatController} と同一の認可モデル）へ委譲。</li>
+     *   <li><b>{@code TOURNAMENT_CHAT} / {@code TOURNAMENT_DIVISION_CHAT}</b> — 本メソッド到達前に
+     *       {@code checkChannelViewAccess} / {@code checkChannelPostAccess} 側の {@code tournamentScopeOf} 分岐で
+     *       委譲済みのため、ここには到達しない。将来種別が増えた場合を含め、未知種別は既定で拒否する（fail-closed）。</li>
+     * </ul>
      */
     private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
-        if (!channel.getChannelType().isMembershipGated()) {
+        ChannelType type = channel.getChannelType();
+        if (type.isMembershipGated()) {
+            if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            }
             return;
         }
-        if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+        boolean allowed = switch (type) {
+            case VILLAGE_LOBBY -> channel.getVillageId() != null
+                    && userId != null
+                    && postingIdentityService.isUserVillageMember(channel.getVillageId(), userId);
+            case EVENT_CHAT -> eventScopeAccessGuard.isEventScopeMember(userId, channel.getSourceId());
+            // TOURNAMENT_* は前段で委譲済みのため未到達。未知種別は fail-closed で拒否する。
+            default -> false;
+        };
+        if (!allowed) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
     }
