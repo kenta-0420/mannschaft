@@ -357,4 +357,16 @@ public interface TeamRepository
      */
     @Query("SELECT t.createdAt FROM TeamEntity t WHERE t.id = :teamId AND t.deletedAt IS NULL")
     Optional<java.time.LocalDateTime> findCreatedAtById(@Param("teamId") Long teamId);
+
+    /**
+     * F20.3 ベータ特典 付与候補 dry-run（設計書 02 §4.5）用: アクティブ（未削除・未アーカイブ）な
+     * チーム ID をページで返す。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。scalar
+     * （{@code Long}）を返すため、呼び出し側（{@code billing.beta.BetaPerkCandidateService}）は
+     * {@code TeamEntity} に依存しない（クロスドメイン Entity 参照 D-1 を回避）。表示名は
+     * {@link #findNameMapByIdIn(Collection)} で一括解決する（名前の N+1 を避ける）。</p>
+     */
+    @Query("SELECT t.id FROM TeamEntity t WHERE t.archivedAt IS NULL ORDER BY t.id ASC")
+    Page<Long> findActiveTeamIdsForBeta(Pageable pageable);
 }

@@ -264,6 +264,56 @@ public class BetaGrantService {
     }
 
     // ============================================================
+    // 審査フラグ（シスアド手動・設計書 02 §4.4）
+    // ============================================================
+
+    /**
+     * 審査フラグを手動で立てる（{@code review_reason='MANUAL'}・設計書 02 §4.4・03 §4）。権利は有効のまま。
+     *
+     * <p>初期スコープではオーナー変更自動イベント（§5・B-4）は Phase 2 保留のため、本 EP が
+     * 審査フラグの唯一の起点（規約第 17 条＋手動フラグで代替）。取消済み grant へのフラグは
+     * {@link BetaPerkErrorCode#GRANT_ALREADY_REVOKED}(409)。</p>
+     *
+     * @param grantId        対象付与
+     * @param operatorUserId フラグ操作者（シスアド userId・監査用）
+     * @param tenantOrgId    テナント境界（null=プラットフォームシスアドで全 grant 対象）
+     */
+    @Transactional
+    public void flagReview(UUID grantId, Long operatorUserId, Long tenantOrgId) {
+        BetaGrantEntity grant = loadGrantInTenant(grantId, tenantOrgId);
+        try {
+            grant.flagReview(BetaReviewReason.MANUAL);
+        } catch (IllegalStateException ex) {
+            // 取消済み grant への操作。
+            throw new BusinessException(BetaPerkErrorCode.GRANT_ALREADY_REVOKED, ex);
+        }
+        betaGrantRepository.save(grant);
+        log.info("ベータ特典 審査フラグ設定 grantId={}, operatorUserId={}", grantId, operatorUserId);
+    }
+
+    /**
+     * 審査を解決する（問題なし・設計書 02 §4.4・AC-20）。{@code review_flag=false} へ戻し解決者を記録する。
+     *
+     * <p>審査待ちでない（{@code review_flag=false}）grant への解決は
+     * {@link BetaPerkErrorCode#REVIEW_NOT_FLAGGED}(409)。</p>
+     *
+     * @param grantId        対象付与
+     * @param resolverUserId 審査解決者（シスアド userId）
+     * @param tenantOrgId    テナント境界（null=プラットフォームシスアドで全 grant 対象）
+     */
+    @Transactional
+    public void resolveReview(UUID grantId, Long resolverUserId, Long tenantOrgId) {
+        BetaGrantEntity grant = loadGrantInTenant(grantId, tenantOrgId);
+        try {
+            grant.resolveReview(resolverUserId);
+        } catch (IllegalStateException ex) {
+            // review_flag=false（審査待ちでない）への解決。
+            throw new BusinessException(BetaPerkErrorCode.REVIEW_NOT_FLAGGED, ex);
+        }
+        betaGrantRepository.save(grant);
+    }
+
+    // ============================================================
     // 退会一括取消（システム・AccountPurgedEvent 起点）
     // ============================================================
 
