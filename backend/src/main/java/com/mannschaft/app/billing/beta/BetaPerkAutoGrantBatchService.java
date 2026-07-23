@@ -173,11 +173,13 @@ public class BetaPerkAutoGrantBatchService {
                     continue;
                 }
                 // 付与（バッチが既に bulk 判定済ゆえ skipCriteriaCheck=true で per-user 再評価を回避・grantedBy=null=SYSTEM）。
-                switch (grantOne(userId, phase)) {
-                    case GRANTED -> granted++;
-                    case SKIPPED -> skipped++;
-                    case FAILED -> failed++;
-                    default -> { /* 到達不能 */ }
+                GrantOutcome outcome = grantOne(userId, phase);
+                if (outcome == GrantOutcome.GRANTED) {
+                    granted++;
+                } else if (outcome == GrantOutcome.SKIPPED) {
+                    skipped++;
+                } else {
+                    failed++;
                 }
             }
 
