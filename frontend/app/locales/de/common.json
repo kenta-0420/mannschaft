@@ -228,6 +228,7 @@
     "server_retry": "Bitte versuchen Sie es spater erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
+    "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",

@@ -69,6 +69,7 @@ export function parseUserNotificationPayload(body: string): WebSocketNotificatio
     return raw as WebSocketNotificationPayload
   }
   catch {
+    // eslint-disable-next-line no-restricted-syntax -- 壊れた通知フレーム（JSON パース不能）を破棄する防御。null=不正フレームは購読側で無視
     return null
   }
 }

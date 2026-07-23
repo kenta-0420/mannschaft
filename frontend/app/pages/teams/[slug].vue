@@ -320,8 +320,17 @@ async function loadShellData() {
   try {
     await Promise.all([fetchTeam(), loadPermissions()])
     await fetchFollowStatus()
-    // ウィジェット可視性設定と予約モジュール有効フラグを並列取得（失敗は無音 fallback）
-    fetchWidgetVisibility().catch(() => {})
+    // ウィジェット可視性設定と予約モジュール有効フラグを並列取得。
+    // 非メンバー・サポーターは 403/401 が想定内（装飾的な visible:false のみ失われ、ロールゲートは
+    // defaultMinRole で生存）なので静かにフォールバック。それ以外の実エラーはログで表面化する。
+    fetchWidgetVisibility().catch((e) => {
+      const status = (e as { statusCode?: number; response?: { status?: number }; status?: number })
+        ?.statusCode ?? (e as { response?: { status?: number } })?.response?.status
+        ?? (e as { status?: number })?.status
+      if (status !== 403 && status !== 401) {
+        console.warn('[shell] ウィジェット可視性の取得に失敗（既定表示にフォールバック）', e)
+      }
+    })
     fetchReservationEnabled()
   }
   finally {

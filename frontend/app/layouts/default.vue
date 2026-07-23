@@ -25,8 +25,10 @@ onMounted(() => {
   isMounted.value = true
   // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
   // 60 秒ごとのポーリングで毎回トーストを出さないよう、ここでは再 throw のみ握りつぶす。
+  // eslint-disable-next-line no-restricted-syntax -- 受信箱バッジ取得。エラーはストア側で _handleError 済み。ここでの再throwのみ握りつぶすのが正しい
   inboxStore.fetchSummary().catch(() => {})
   inboxPollTimer = setInterval(() => {
+    // eslint-disable-next-line no-restricted-syntax -- 60秒ポーリング。ストア側で _handleError 済み・毎回トーストを出さないため握りつぶすのが正しい
     inboxStore.fetchSummary().catch(() => {})
   }, 60_000)
 
