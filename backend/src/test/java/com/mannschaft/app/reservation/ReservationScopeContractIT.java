@@ -57,12 +57,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       非管理者は 403。別チーム管理者が当該 URL を叩いても（自身が当該チームの管理者でないため）403。</li>
  *   <li><b>予約詳細 GET</b>: Service 層の所有者-or-管理者ゲート
  *       （{@code ReservationService#getReservation}）。他チームの reservationId は
- *       {@code findByIdAndTeamId} で 404（存在秘匿）。同一チーム内でも他人の予約は 403
+ *       {@code findByIdAndTeamId} で 400（存在秘匿）。同一チーム内でも他人の予約は 403
  *       （{@code RESERVATION_PERMISSION_DENIED}）。</li>
  *   <li><b>予約作成 POST</b>: {@code ReservationViewAccessGuard}（会員 or 公開）。
  *       非会員は 403。</li>
  *   <li><b>マイ予約キャンセル POST /reservations/{id}/cancel</b>: 所有権ゲート
- *       （{@code findByIdAndUserId}）。他人の予約は 404。</li>
+ *       （{@code findByIdAndUserId}）。他人の予約は 400。</li>
  * </ul>
  *
  * <p><b>本テストが炙り出した実穴（根治済み）:</b> リマインダー系 2 EP
@@ -72,7 +72,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * reservationId を URL {@code /teams/{teamA}/reservations/{teamBの予約}/reminders} に
  * 差し込む」と、チームBの予約のリマインダーを読み書きできる<b>テナント越境 BOLA</b> が成立していた。
  * {@code TeamReservationController} に {@code reservationService.assertReservationInTeam(teamId, reservationId)}
- * を敷設し、reservationId が当該チームに属さなければ 404（存在秘匿）に畳み込んで封じた。</p>
+ * を敷設し、reservationId が当該チームに属さなければ 400（存在秘匿）に畳み込んで封じた。</p>
+ *
+ * <p><b>なぜ 404 でなく 400 か:</b> reservation ドメインの {@code *_NOT_FOUND} 系は
+ * {@code Severity.WARN}→HTTP 400 のドメイン慣習に載っている。越境した既存予約も真に不在の
+ * 予約も一律 400 に収束するため、存在秘匿（BOLA 対策）は 400 で成立する（200 で漏らさないことが
+ * 要件であり、その点はここで固定する）。chat（#2465）が採った「NOT_FOUND→404」への統一は
+ * 別課題 #2468 で扱う。</p>
  *
  * <p>金型: {@code MemberScopeContractIT} / {@code ChatChannelAccessScopeContractIT}
  * （{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL Testcontainers + 手動 SecurityContext）。</p>
@@ -80,7 +86,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("reservation ドメイン 認可契約テスト（裏目付C・スコープ越境の403/404固定）")
+@DisplayName("reservation ドメイン 認可契約テスト（裏目付C・スコープ越境の403/400固定）")
 class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
@@ -236,11 +242,11 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetReservation {
 
         @Test
-        @DisplayName("別チームの予約IDを当該チームURLに差し込むと404（BOLA存在秘匿）")
-        void 越境予約IDは404() throws Exception {
+        @DisplayName("別チームの予約IDを当該チームURLに差し込むと400（BOLA存在秘匿）")
+        void 越境予約IDは400() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/reservations/{id}", teamAId, reservationBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -330,11 +336,11 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINが別チームの予約IDを差し込むと404（帰属検証）")
-        void 越境予約IDの確定は404() throws Exception {
+        @DisplayName("正当ADMINが別チームの予約IDを差し込むと400（帰属検証）")
+        void 越境予約IDの確定は400() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/reservations/{id}/confirm", teamAId, reservationBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -366,13 +372,13 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINが別チーム予約に管理メモを付けようとすると404")
-        void 越境予約IDの管理メモは404() throws Exception {
+        @DisplayName("正当ADMINが別チーム予約に管理メモを付けようとすると400")
+        void 越境予約IDの管理メモは400() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/teams/{teamId}/reservations/{id}/admin-note", teamAId, reservationBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("note", "越境メモ"))))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -385,23 +391,23 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
     class CancelMyReservation {
 
         @Test
-        @DisplayName("他人が他人の予約をキャンセルしようとすると404（所有権ゲート）")
-        void 他人のキャンセルは404() throws Exception {
+        @DisplayName("他人が他人の予約をキャンセルしようとすると400（所有権ゲート）")
+        void 他人のキャンセルは400() throws Exception {
             setAuth(memberAId); // ownerAId ではない同一チーム会員
             mockMvc.perform(post("/api/v1/reservations/{id}/cancel", reservationAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("reason", "横取り"))))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
-        @DisplayName("部外者が他人の予約をキャンセルしようとしても404")
-        void 部外者のキャンセルは404() throws Exception {
+        @DisplayName("部外者が他人の予約をキャンセルしようとしても400")
+        void 部外者のキャンセルは400() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/reservations/{id}/cancel", reservationAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("reason", "横取り"))))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -424,21 +430,21 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
     class Reminders {
 
         @Test
-        @DisplayName("正当ADMINが別チームの予約IDでリマインダー一覧を読もうとすると404（越境BOLA封鎖）")
-        void 越境リマインダー一覧は404() throws Exception {
+        @DisplayName("正当ADMINが別チームの予約IDでリマインダー一覧を読もうとすると400（越境BOLA封鎖）")
+        void 越境リマインダー一覧は400() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/reservations/{id}/reminders", teamAId, reservationBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
-        @DisplayName("正当ADMINが別チームの予約IDにリマインダーを書き込もうとすると404（越境BOLA封鎖）")
-        void 越境リマインダー作成は404() throws Exception {
+        @DisplayName("正当ADMINが別チームの予約IDにリマインダーを書き込もうとすると400（越境BOLA封鎖）")
+        void 越境リマインダー作成は400() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/reservations/{id}/reminders", teamAId, reservationBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(reminderBody())))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
