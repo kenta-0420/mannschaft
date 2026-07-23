@@ -559,7 +559,45 @@ public enum VillageErrorCode implements ErrorCode {
      * {@code ERROR_CODE_STATUS_MAP} で VILLAGE_103 → 409 を個別登録する。</p>
      */
     MEETUP_CAPACITY_FULL("VILLAGE_103",
-            "この寄合は定員に達しているため、これ以上「行く」を受け付けられません", Severity.WARN);
+            "この寄合は定員に達しているため、これ以上「行く」を受け付けられません", Severity.WARN),
+
+    // ==================================================================
+    // F17.3 村憲章（VILLAGE_104〜108）
+    // 設計書 docs/features/F17.3_village_charter.md §16.1
+    // ※ 設計書は VILLAGE_102 始まりだが、102(FESTIVAL_LIVE_POST_DUPLICATE)・103(MEETUP_CAPACITY_FULL)
+    //   が先取り済みのため 104 から採る。404/409 を返すコードは GlobalExceptionHandler の
+    //   ERROR_CODE_STATUS_MAP に個別登録が必要（既定 WARN は 400 に落ちるため）。
+    // ==================================================================
+
+    /**
+     * VILLAGE_104: 当該 charter に属さない条 id を指定（404）。
+     * 他村の articleId 食い違いも 404 に統一する（IDOR 対策・{@code village_id} 冗長列で照合・§AC-08）。
+     */
+    CHARTER_ARTICLE_NOT_FOUND("VILLAGE_104", "その条は見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_105: 条の本文/付則更新（{@code PUT}）で条単位 {@code @Version} 競合（層1・§7）。
+     */
+    CHARTER_ARTICLE_VERSION_CONFLICT("VILLAGE_105",
+            "他の村長が同時に編集しました。最新を読み込み直してください", Severity.WARN),
+
+    /**
+     * VILLAGE_106: 並び替え（{@code PATCH order}）のみで親 charter {@code @Version} 競合（層2・§7）。
+     * {@code POST}/{@code DELETE} は悲観ロック直列化で 409 を返さない（§6.3）。
+     */
+    CHARTER_ORDER_VERSION_CONFLICT("VILLAGE_106",
+            "並び替え中に他の村長が構成を変更しました。最新を読み込み直してください", Severity.WARN),
+
+    /**
+     * VILLAGE_107: 存在しない策定者 id を削除（404）。他 charter の drafter 食い違いも 404（§AC-16）。
+     */
+    CHARTER_DRAFTER_NOT_FOUND("VILLAGE_107", "その策定者は見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_108: 同一ユーザーの二重策定者登録（409・§5.4）。
+     * UNIQUE {@code uk_vcd_charter_user} に先立つアプリ層チェック（冪等に握り潰さず明示エラー）。
+     */
+    CHARTER_DRAFTER_DUPLICATE("VILLAGE_108", "その村人はすでに策定者です", Severity.WARN);
 
     private final String code;
     private final String message;
