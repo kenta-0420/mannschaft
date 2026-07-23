@@ -12,11 +12,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("通知種別が全て定義されている（設計書§5の25種別 + TODO_HANDED_OFF = 26）")
-    void 全26種別が定義() {
+    @DisplayName("通知種別が全て定義されている（25種別 + TODO_HANDED_OFF + BETA_PERK_* 4種 = 30）")
+    void 全30種別が定義() {
         // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
-        //       ＋ TODO_HANDED_OFF（後付け）= 計 26 種別。
-        assertThat(NotificationType.values()).hasSize(26);
+        //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
+        //       _REVIEW_FLAGGED（4 種）= 計 30 種別。
+        assertThat(NotificationType.values()).hasSize(30);
+        assertThat(NotificationType.values())
+                .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
+                        NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED);
     }
 
     @Test
