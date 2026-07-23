@@ -87,9 +87,25 @@ class VillageMatchRecruitServiceTest {
     @Mock private UserVillageNicknameRepository nicknameRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
+    /**
+     * F17.3 前工程リファクタで表示名解決が共有ヘルパ {@link VillageNicknameResolver} へ移設された。
+     * 従来の resolveUserDisplayName は nicknameRepository 既定空 → {@code "USER:#id"} を返していたため、
+     * その出力を lenient スタブで完全再現し、既存アサーションのふるまいを不変に保つ（骨抜き禁止）。
+     */
+    @Mock private VillageNicknameResolver villageNicknameResolver;
 
     @InjectMocks
     private VillageMatchRecruitService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubNicknameResolver() {
+        org.mockito.Mockito.lenient()
+                .when(villageNicknameResolver.resolve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> {
+                    Long uid = inv.getArgument(0);
+                    return uid == null ? null : "USER:#" + uid;
+                });
+    }
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final Long ACTOR = 100L;
