@@ -7,7 +7,7 @@ const visible = defineModel<boolean>('visible', { default: false })
 
 const props = withDefaults(
   defineProps<{
-    variant?: 'plans' | 'manage'
+    variant?: 'plans' | 'manage' | 'betaPerks'
   }>(),
   { variant: 'plans' },
 )
