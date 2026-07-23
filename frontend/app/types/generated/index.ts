@@ -52496,7 +52496,7 @@ export interface components {
             title?: string;
             visibility?: string;
         };
-        ActivityResultEntity: {
+        ActivityRecordResponse: {
             /** Format: date */
             activityDate?: string;
             /** @example 14:30:00 */
@@ -52508,22 +52508,17 @@ export interface components {
             createdAt?: string;
             /** Format: int64 */
             createdBy?: number;
-            /** Format: date-time */
-            deletedAt?: string;
             description?: string;
             fieldValues?: string;
             /** Format: int64 */
             id?: number;
             location?: string;
-            publishable?: boolean;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: int64 */
             scopeId?: number;
-            /** @enum {string} */
-            scopeType?: "TEAM" | "ORGANIZATION" | "COMMITTEE";
-            /** @enum {string} */
-            status?: "DRAFT" | "PUBLISHED";
+            scopeType?: string;
+            status?: string;
             /** Format: int64 */
             templateId?: number;
             title?: string;
@@ -52531,11 +52526,10 @@ export interface components {
             updatedAt?: string;
             /** Format: int64 */
             venueId?: number;
-            /** @enum {string} */
-            visibility?: "PUBLIC" | "MEMBERS_ONLY";
+            visibility?: string;
         };
-        ApiResponseActivityResultEntity: {
-            data?: components["schemas"]["ActivityResultEntity"];
+        ApiResponseActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"];
         };
         ActivityCommentResponse: {
             /** Format: int64 */
@@ -73156,8 +73150,8 @@ export interface components {
             venueAddress?: string;
             venueName?: string;
         };
-        ApiResponseListActivityResultEntity: {
-            data?: components["schemas"]["ActivityResultEntity"][];
+        ApiResponseListActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"][];
         };
         TeamPublicDetailResponse: {
             bannerUrl?: string;
@@ -92467,7 +92461,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -92493,7 +92487,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -126576,7 +126570,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
                 };
             };
         };
@@ -126603,7 +126597,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -126625,7 +126619,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -126703,7 +126697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -126778,7 +126772,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -148592,7 +148586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
                 };
             };
         };
@@ -148615,7 +148609,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -148994,7 +148988,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
                 };
             };
         };
@@ -149017,7 +149011,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -149233,7 +149227,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
             /** @description 存在しないまたは非公開 */
@@ -149242,7 +149236,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
