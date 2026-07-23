@@ -14,8 +14,9 @@ import type {
   BetaPerkCandidate,
   BetaPerkCriteriaResponse,
   BetaPerkGrantKind,
-  BetaPerkScopeKind,
 } from '~/composables/useBetaPerksApi'
+// BetaPerkScopeKind の正準は既存 useBetaPerkApi.ts（単数形）。二重 re-export 回避のためこちらから import する。
+import type { BetaPerkScopeKind } from '~/composables/useBetaPerkApi'
 
 definePageMeta({ middleware: 'auth' })
 

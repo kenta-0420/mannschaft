@@ -19,12 +19,12 @@ export type BetaPerkFlagReviewRequest = components['schemas']['BetaPerkFlagRevie
 export type BetaPerkCandidate = components['schemas']['BetaPerkCandidate']
 export type BetaPerkCriteriaResponse = components['schemas']['BetaPerkCriteriaResponse']
 export type BetaPerkCriteriaUpsertRequest = components['schemas']['BetaPerkCriteriaUpsertRequest']
-export type BetaPerkMetricProgress = components['schemas']['BetaPerkMetricProgress']
+
+// BetaPerkMetricProgress / BetaPerkScopeKind の正準は既存 useBetaPerkApi.ts（単数形・Wave2b）。
+// Nuxt 自動 import の二重 re-export 警告を避けるため、ここでは再宣言しない。
 
 /** 付与種別（設計書 02 §4.1）。 */
 export type BetaPerkGrantKind = 'INDIVIDUAL' | 'TEAM_ORG'
-/** スコープ種別（設計書 02 §4.1）。 */
-export type BetaPerkScopeKind = 'USER' | 'TEAM' | 'ORG'
 
 export function useBetaPerksApi() {
   const api = useApi()
