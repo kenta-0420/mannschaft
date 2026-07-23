@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +105,10 @@ class BetaGrantWriteFlowIT extends AbstractMySqlIntegrationTest {
     private UserBadgeRepository userBadgeRepository;
     @Autowired
     private EntitlementQueryService entitlementQueryService;
+    /** サービスと同一の時刻基準（アプリの Clock bean）。テストの範囲計算を system TZ でなくこれに合わせる
+     *  （memory feedback_it_fixture_datetime_tz_bind: CI(UTC runner)と JST の 9h ズレで範囲外になる罠の回避）。 */
+    @Autowired
+    private Clock clock;
 
     /**
      * マスタデータを手動シードする（ddl-auto=create ＝ Flyway シード無し）。
@@ -253,7 +258,9 @@ class BetaGrantWriteFlowIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("延長 append-only: extend は新 6 行を追加し既存 6 行の valid_until を UPDATE しない（新行=元max+6ヶ月）")
     void extend_isAppendOnly_originalRowsUntouched() {
-        LocalDateTime beforeGrant = LocalDateTime.now();
+        // サービスは注入 Clock で now.plusYears(2) を計算するため、テストの範囲も同じ Clock 基準にする
+        // （system TZ の LocalDateTime.now() では CI(UTC) と JST の 9h ズレで範囲外になる）。
+        LocalDateTime beforeGrant = LocalDateTime.now(clock);
         BetaGrantEntity grant = betaGrantService.grantBetaPerk(
                 GrantKind.TEAM_ORG, 1, EntitlementScopeKind.ORG, ORG_EXTEND,
                 ORG_EXTEND, true, ADMIN_ID);
@@ -262,7 +269,7 @@ class BetaGrantWriteFlowIT extends AbstractMySqlIntegrationTest {
         List<EntitlementEntity> original = activeEntitlementsOf(grant.getId());
         assertThat(original).hasSize(FULL_KEYS.size());
         LocalDateTime lowerBound = beforeGrant.plusYears(2).minusMinutes(5);
-        LocalDateTime upperBound = LocalDateTime.now().plusYears(2).plusMinutes(5);
+        LocalDateTime upperBound = LocalDateTime.now(clock).plusYears(2).plusMinutes(5);
         assertThat(original).allSatisfy(e ->
                 assertThat(e.getValidUntil()).isNotNull().isBetween(lowerBound, upperBound));
 
