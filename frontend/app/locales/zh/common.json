@@ -1574,7 +1574,8 @@
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态",
       "feedbackInbox": "意见箱（全体）",
-      "billing": "课金主数据管理"
+      "billing": "课金主数据管理",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",
