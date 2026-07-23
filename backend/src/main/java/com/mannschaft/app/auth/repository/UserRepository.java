@@ -11,7 +11,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * ユーザーリポジトリ。
@@ -288,4 +290,35 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
     List<Long> findUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
                                              @Param("maxBirthYear") int maxBirthYear);
+
+    /**
+     * F20.3 ベータ特典 Phase3 シスアド審査画面用: 指定 ID 集合の id → displayName（表示名）を一括取得する。
+     *
+     * <p>{@code display_name} は {@link com.mannschaft.app.common.EncryptedStringConverter} 非適用の平文カラムの
+     * ため、暗号化を気にせず scalar 射影できる。{@code TeamRepository#findIdAndNameByIdIn} /
+     * {@code OrganizationRepository#findIdAndNameByIdIn} と同型（N+1 回避の一括解決用）。</p>
+     *
+     * @param ids 取得対象のユーザー ID 集合
+     * @return id → displayName の Object[] リスト（[0]=id Long, [1]=displayName String）
+     */
+    @Query("SELECT u.id AS id, u.displayName AS displayName FROM UserEntity u WHERE u.id IN :ids")
+    List<Object[]> findIdAndDisplayNameByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * F20.3 ベータ特典 Phase3: ID → displayName（表示名）の Map を返すデフォルトメソッド。
+     *
+     * <p>{@link com.mannschaft.app.team.repository.TeamRepository#findNameMapByIdIn}/
+     * {@link com.mannschaft.app.organization.repository.OrganizationRepository#findNameMapByIdIn} と同シグネチャ
+     * （呼び出し側 {@code BetaPerkScopeNameResolver} が scopeKind に応じて差し替えて呼ぶための統一形）。</p>
+     *
+     * @param ids 取得対象のユーザー ID 集合
+     * @return id → displayName の Map（論理削除済みは @SQLRestriction で自動除外）
+     */
+    default Map<Long, String> findNameMapByIdIn(Collection<Long> ids) {
+        return findIdAndDisplayNameByIdIn(ids).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
+    }
 }

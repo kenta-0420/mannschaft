@@ -1574,7 +1574,8 @@
       "errorReports": "오류 보고서",
       "gdprPurge": "GDPR 삭제 현황",
       "feedbackInbox": "의견함 (전체)",
-      "billing": "결제 마스터 관리"
+      "billing": "결제 마스터 관리",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "관리자 위장 중: {label}",

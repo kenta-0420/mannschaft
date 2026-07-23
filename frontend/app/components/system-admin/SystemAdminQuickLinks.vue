@@ -190,6 +190,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
   },
+  // F20.3 Phase3: ベータ特典 審査運用（付与一覧/付与候補/条件マスタ）
+  {
+    label: t('admin.quickLinks.betaPerks'),
+    icon: 'pi pi-gift',
+    to: '/system-admin/beta-perks',
+    color: 'text-fuchsia-500',
+    bg: 'bg-fuchsia-50 dark:bg-fuchsia-900/20',
+  },
 ]
 </script>
 
