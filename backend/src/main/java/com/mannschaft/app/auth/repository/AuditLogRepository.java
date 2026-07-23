@@ -35,4 +35,21 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, Long> 
     @Modifying
     @Query("DELETE FROM AuditLogEntity a WHERE a.id <= :maxId AND a.createdAt < :threshold")
     int deleteArchivedLogs(@Param("maxId") Long maxId, @Param("threshold") LocalDateTime threshold);
+
+    /**
+     * 指定ユーザーの、指定日時以降のアクティブ日数（ログイン成功日の distinct DATE 数）を数える。
+     *
+     * <p>F20.3 ベータ特典の {@code activeDays} メトリクスの唯一の計測源（設計書 F20.3 02 §2・README §7）。
+     * {@code eventType='LOGIN_SUCCESS'}（{@code AuditEventType.LOGIN_SUCCESS} の name()）を
+     * {@code COUNT(DISTINCT DATE(created_at))} で数える。scalar（{@code long}）を返すため、呼び出し側
+     * （{@code billing.beta.LoginActivityQueryService}）は {@code AuditLogEntity} に依存しない
+     * （クロスドメイン Entity 参照 D-1 を回避）。</p>
+     *
+     * @param userId 対象ユーザー
+     * @param since  評価ウィンドウ起点（この日時以降のログインを数える）
+     * @return アクティブ日数（distinct DATE 数）
+     */
+    @Query("SELECT COUNT(DISTINCT FUNCTION('DATE', a.createdAt)) FROM AuditLogEntity a "
+            + "WHERE a.userId = :userId AND a.eventType = 'LOGIN_SUCCESS' AND a.createdAt >= :since")
+    long countDistinctLoginDaysSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 }

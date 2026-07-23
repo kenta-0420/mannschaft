@@ -302,4 +302,15 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
               AND o.deletedAt IS NULL
             """)
     long countPublicOrganizations();
+
+    /**
+     * 指定組織の作成日時（{@code created_at}）を返す。
+     *
+     * <p>F20.3 ベータ特典の TEAM_ORG {@code membershipTenureDays} メトリクス（スコープ自体の
+     * 作成日からの経過日数・設計書 F20.3 02 §2）。scalar（{@code LocalDateTime}）を返すため、
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）は {@code OrganizationEntity} に
+     * 依存しない（クロスドメイン Entity 参照 D-1 を回避）。</p>
+     */
+    @Query("SELECT o.createdAt FROM OrganizationEntity o WHERE o.id = :orgId AND o.deletedAt IS NULL")
+    Optional<java.time.LocalDateTime> findCreatedAtById(@Param("orgId") Long orgId);
 }

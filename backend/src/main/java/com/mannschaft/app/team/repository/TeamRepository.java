@@ -346,4 +346,15 @@ public interface TeamRepository
               AND t.deletedAt IS NULL
             """)
     long countPublicTeams();
+
+    /**
+     * 指定チームの作成日時（{@code created_at}）を返す。
+     *
+     * <p>F20.3 ベータ特典の TEAM_ORG {@code membershipTenureDays} メトリクス（スコープ自体の
+     * 作成日からの経過日数・設計書 F20.3 02 §2）。scalar（{@code LocalDateTime}）を返すため、
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）は {@code TeamEntity} に依存しない
+     * （クロスドメイン Entity 参照 D-1 を回避）。</p>
+     */
+    @Query("SELECT t.createdAt FROM TeamEntity t WHERE t.id = :teamId AND t.deletedAt IS NULL")
+    Optional<java.time.LocalDateTime> findCreatedAtById(@Param("teamId") Long teamId);
 }

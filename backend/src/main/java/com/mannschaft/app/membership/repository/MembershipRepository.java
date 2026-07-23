@@ -249,4 +249,15 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId,
             @Param("from") java.time.LocalDateTime from,
             @Param("to") java.time.LocalDateTime to);
+
+    /**
+     * 指定ユーザーの<b>最古の有効所属</b>（{@code left_at IS NULL}）の {@code joined_at} を返す。
+     *
+     * <p>F20.3 ベータ特典の個人 {@code membershipTenureDays} メトリクスの計測源
+     * （設計書 F20.3 02 §2・README §2）。在籍日数 = now − 本値。有効所属が無ければ空。
+     * scalar（{@code LocalDateTime}）を返すため呼び出し側はスコープに依存しない。</p>
+     */
+    @Query("SELECT MIN(m.joinedAt) FROM MembershipEntity m "
+            + "WHERE m.userId = :userId AND m.leftAt IS NULL")
+    java.util.Optional<java.time.LocalDateTime> findEarliestActiveJoinedAt(@Param("userId") Long userId);
 }
