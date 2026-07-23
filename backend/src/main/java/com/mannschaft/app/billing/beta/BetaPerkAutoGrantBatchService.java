@@ -156,10 +156,10 @@ public class BetaPerkAutoGrantBatchService {
                     betaGrantRepository.findGrantedScopeIds(phase, EntitlementScopeKind.USER, userIds));
             Map<Long, Long> activeDaysByUser = minActiveDays != null
                     ? loginActivityQueryService.countDistinctActiveDaysByUsers(userIds, since)
-                    : Collections.emptyMap();
+                    : Collections.<Long, Long>emptyMap();
             Map<Long, Long> tenureDaysByUser = minTenureDays != null
                     ? membershipQueryService.tenureDaysByUsers(userIds, now)
-                    : Collections.emptyMap();
+                    : Collections.<Long, Long>emptyMap();
 
             for (Long userId : userIds) {
                 // 付与済み（取消済み含む＝再付与不可）は skip。
