@@ -2,14 +2,17 @@ package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.service.SystemAdminDashboardService;
-import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.SystemAdminUserSummaryMapper;
+import com.mannschaft.app.auth.dto.SystemAdminUserSummaryResponse;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.SystemAdminOrganizationSummaryMapper;
+import com.mannschaft.app.organization.dto.SystemAdminOrganizationSummaryResponse;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
-import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
+import com.mannschaft.app.team.dto.SystemAdminTeamSummaryResponse;
 import com.mannschaft.app.team.repository.TeamRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +53,9 @@ public class SystemAdminDashboardController {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final OrganizationService organizationService;
+    private final SystemAdminUserSummaryMapper userSummaryMapper;
+    private final SystemAdminOrganizationSummaryMapper organizationSummaryMapper;
+    private final SystemAdminTeamSummaryMapper teamSummaryMapper;
 
     /**
      * システム管理者ダッシュボード情報を取得する。
@@ -68,8 +74,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/organizations")
     @Operation(summary = "全組織一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<Page<OrganizationEntity>>> getOrganizations(Pageable pageable) {
-        Page<OrganizationEntity> page = organizationRepository.findAll(pageable);
+    public ResponseEntity<ApiResponse<Page<SystemAdminOrganizationSummaryResponse>>> getOrganizations(Pageable pageable) {
+        Page<SystemAdminOrganizationSummaryResponse> page =
+                organizationRepository.findAll(pageable).map(organizationSummaryMapper::toSummary);
         return ResponseEntity.ok(ApiResponse.of(page));
     }
 
@@ -79,8 +86,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/teams")
     @Operation(summary = "全チーム一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<Page<TeamEntity>>> getTeams(Pageable pageable) {
-        Page<TeamEntity> page = teamRepository.findAll(pageable);
+    public ResponseEntity<ApiResponse<Page<SystemAdminTeamSummaryResponse>>> getTeams(Pageable pageable) {
+        Page<SystemAdminTeamSummaryResponse> page =
+                teamRepository.findAll(pageable).map(teamSummaryMapper::toSummary);
         return ResponseEntity.ok(ApiResponse.of(page));
     }
 
@@ -90,8 +98,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/users")
     @Operation(summary = "全ユーザー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<Page<UserEntity>>> getUsers(Pageable pageable) {
-        Page<UserEntity> page = userRepository.findAll(pageable);
+    public ResponseEntity<ApiResponse<Page<SystemAdminUserSummaryResponse>>> getUsers(Pageable pageable) {
+        Page<SystemAdminUserSummaryResponse> page =
+                userRepository.findAll(pageable).map(userSummaryMapper::toSummary);
         return ResponseEntity.ok(ApiResponse.of(page));
     }
 
