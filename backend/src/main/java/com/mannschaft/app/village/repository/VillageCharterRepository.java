@@ -22,6 +22,17 @@ public interface VillageCharterRepository extends JpaRepository<VillageCharterEn
     Optional<VillageCharterEntity> findByVillageIdAndDeletedAtIsNull(UUID villageId);
 
     /**
+     * 村の生きている憲章の <b>id だけ</b> をスカラ取得する（悲観ロック直前の同定用・§4.5/§6.3）。
+     *
+     * <p>{@link #findByIdForUpdate} の直前にエンティティ本体を先読みすると、Hibernate の
+     * 一次キャッシュがロック取得後も古い {@code @Version} を保持してしまい、親 charter のバンプ
+     * （版付き UPDATE）が {@code WHERE version=旧値} で 0 行更新＝OptimisticLock 失敗になる。
+     * よってロック前は id のみをスカラで引き、本体はロック付き読みで初めてロードして最新版を得る。</p>
+     */
+    @Query("SELECT c.id FROM VillageCharterEntity c WHERE c.villageId = :villageId AND c.deletedAt IS NULL")
+    Optional<UUID> findIdByVillageId(@Param("villageId") UUID villageId);
+
+    /**
      * 親 charter 行を悲観ロック（{@code SELECT ... FOR UPDATE}）で取得する（§4.5・§6.3・§7）。
      *
      * <p>全構造変更 EP（{@code POST}/{@code DELETE}/{@code PATCH order}）の先頭でこれを呼び、
