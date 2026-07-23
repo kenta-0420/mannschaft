@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -20,8 +21,8 @@ public record MeetupCreateRequest(
         @Size(max = 5000) String description,
         @Size(max = 300) String location,
         @NotEmpty @Size(max = 30) @Valid List<MeetupCandidateDateInput> candidateDates,
-        // F17.2 追補: GOING 定員（任意・null=無制限）。@Min(1) の下限バリデーションは出陣フェーズで付与する。
-        Integer capacity) {
+        // F17.2 追補: GOING 定員（任意・null=無制限）。指定時は 1 以上（0/負値は 400）。
+        @Min(1) Integer capacity) {
 
     /**
      * 後方互換コンストラクタ（capacity 未指定＝無制限）。

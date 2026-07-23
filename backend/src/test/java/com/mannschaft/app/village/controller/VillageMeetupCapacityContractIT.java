@@ -106,6 +106,7 @@ class VillageMeetupCapacityContractIT extends AbstractMySqlIntegrationTest {
     private static final Long U2 = 17_203_012L;
     private static final Long U3 = 17_203_013L;
     private static final Long U4 = 17_203_014L;
+    private static final Long OUTSIDER_ID = 17_203_099L; // 当該村に所属しない部外者
 
     @AfterEach
     void tearDown() {
@@ -515,6 +516,110 @@ class VillageMeetupCapacityContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(get("/api/v1/villages/{vid}/meetups", v.getId()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[*].goingCount", hasItem(2)));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 殿の台帳 AC 補完（IDOR / BOLA / 境界）— AC-16(IDOR)/AC-18(BOLA)/AC-12(境界)/AC-13(残枠)
+    // ══════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("台帳AC補完 IDOR/BOLA/境界（殿 AC-16/18/12/13）")
+    class LedgerGapCoverage {
+
+        @Test
+        @DisplayName("[殿AC-16 IDOR] 非村メンバーの capacity 操作(作成/更新/GOING)は 403（requireVillager/認可で弾く）")
+        void nonMember_capacityOps_forbidden_AC16() throws Exception {
+            VillageEntity v = persistVillage();
+            // OUTSIDER は membership を作らない（村に所属しない）
+            VillageMeetupEntity planning = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.PLANNING, 5);
+            VillageMeetupEntity confirmed = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CONFIRMED, 5);
+
+            authAs(OUTSIDER_ID);
+            // (a) capacity 付き作成 → 403（村人でない）
+            Map<String, Object> createBody = new LinkedHashMap<>();
+            createBody.put("title", "部外者の定員つき作成");
+            createBody.put("candidateDates", List.of(Map.of("date", "2026-08-01")));
+            createBody.put("capacity", 3);
+            mockMvc.perform(post("/api/v1/villages/{vid}/meetups", v.getId())
+                            .contentType(MediaType.APPLICATION_JSON).content(json(createBody)))
+                    .andExpect(status().isForbidden());
+
+            // (b) capacity 更新 → 403（幹事でも村長/長老でもない）
+            mockMvc.perform(patch("/api/v1/villages/{vid}/meetups/{mid}", v.getId(), planning.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("capacity", 9))))
+                    .andExpect(status().isForbidden());
+
+            // (c) 出欠 GOING → 403（村人でない）
+            putAttendance(v.getId(), confirmed.getId(), "GOING")
+                    .andExpect(status().isForbidden());
+
+            // capacity は書き換わっていない
+            assertThat(meetupRepository.findById(planning.getId())).get()
+                    .satisfies(m -> assertThat(m.getCapacity()).isEqualTo(5));
+        }
+
+        @Test
+        @DisplayName("[殿AC-18 BOLA] 村Aの URL で村Bの meetupId を叩く get/update/attendance は 404（VILLAGE_069・存在秘匿）")
+        void crossVillage_meetupId_notFound_AC18() throws Exception {
+            VillageEntity villageA = persistVillage();
+            VillageEntity villageB = persistVillage();
+            persistMembership(villageA.getId(), VILLAGER_ID, VillageRole.VILLAGER); // A の村人
+            VillageMeetupEntity meetupB =
+                    persistMeetup(villageB.getId(), ORGANIZER_ID, VillageMeetupStatus.CONFIRMED, 5);
+
+            authAs(VILLAGER_ID);
+            // get
+            mockMvc.perform(get("/api/v1/villages/{vid}/meetups/{mid}", villageA.getId(), meetupB.getId()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_069"));
+            // update（capacity）
+            mockMvc.perform(patch("/api/v1/villages/{vid}/meetups/{mid}", villageA.getId(), meetupB.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("capacity", 7))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_069"));
+            // attendance
+            mockMvc.perform(put("/api/v1/villages/{vid}/meetups/{mid}/attendance", villageA.getId(), meetupB.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("status", "GOING"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_069"));
+        }
+
+        @Test
+        @DisplayName("[殿AC-12 境界] capacity=1・GOING0 → 1人目 GOING 200・2人目 GOING 409(VILLAGE_103)")
+        void capacity1_boundary_secondGoing_409_AC12() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), U1, VillageRole.VILLAGER);
+            persistMembership(v.getId(), U2, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CONFIRMED, 1);
+
+            authAs(U1);
+            putAttendance(v.getId(), meetup.getId(), "GOING").andExpect(status().isOk());
+            authAs(U2);
+            putAttendance(v.getId(), meetup.getId(), "GOING")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_103"));
+
+            assertThat(attendanceRepository.countByMeetupIdAndStatus(
+                    meetup.getId(), VillageMeetupAttendanceStatus.GOING)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("[殿AC-13 残枠] GOING0 の寄合詳細は remainingSlots が capacity(非null) と一致し goingCount=0")
+        void zeroGoing_remainingEqualsCapacity_AC13() throws Exception {
+            VillageEntity v = persistVillage();
+            persistMembership(v.getId(), VILLAGER_ID, VillageRole.VILLAGER);
+            VillageMeetupEntity meetup = persistMeetup(v.getId(), ORGANIZER_ID, VillageMeetupStatus.CONFIRMED, 5);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(get("/api/v1/villages/{vid}/meetups/{mid}", v.getId(), meetup.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.capacity").value(5))
+                    .andExpect(jsonPath("$.data.goingCount").value(0))
+                    .andExpect(jsonPath("$.data.remainingSlots").value(5));
         }
     }
 

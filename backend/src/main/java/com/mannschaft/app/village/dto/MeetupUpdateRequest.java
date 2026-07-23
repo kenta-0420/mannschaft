@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -17,9 +18,9 @@ public record MeetupUpdateRequest(
         @Size(max = 5000) String description,
         @Size(max = 300) String location,
         @Size(max = 5000) String decisionsNote,
-        // F17.2 追補: GOING 定員（任意・null=更新対象外／無制限化は別途）。
-        // @Min(1) 下限バリデーション・編集権者（幹事＋村長/長老）・PLANNING/CONFIRMED 両許可は出陣フェーズで実装する。
-        Integer capacity) {
+        // F17.2 追補: GOING 定員（任意・null=更新対象外）。指定時は 1 以上（0/負値は 400）。
+        // 編集権者（幹事＋村長/長老）・PLANNING/CONFIRMED 両許可はサービス層で判定する。
+        @Min(1) Integer capacity) {
 
     /**
      * 後方互換コンストラクタ（capacity 未指定）。
