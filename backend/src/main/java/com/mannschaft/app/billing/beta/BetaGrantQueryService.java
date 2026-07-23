@@ -19,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -32,6 +35,10 @@ import java.util.UUID;
  * <p><b>/me の eligibility（AC-N4）</b>: {@link BetaPerkEligibilityService#evaluate} を本人固定で呼び、
  * criteria 未定義（{@link BetaPerkErrorCode#CRITERIA_NOT_FOUND}）は catch して {@code null} にする
  * （NPE/404 にしない・設計仕様の唯一の例外的 catch）。</p>
+ *
+ * <p><b>Phase3 追補（表示名）</b>: シスアド向け一覧/詳細に {@code scopeDisplayName}/{@code grantedByName} を載せる。
+ * 一覧（{@link #searchGrants}）はページ単位で {@link BetaPerkScopeNameResolver} を scopeKind ごと・
+ * grantedBy ごとに <b>1 回だけ</b>呼び、per-grant では呼ばない（N+1 回避）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -44,6 +51,7 @@ public class BetaGrantQueryService {
     private final EntitlementRepository entitlementRepository;
     private final BetaPerkEligibilityService eligibilityService;
     private final BetaGrantResponseMapper mapper;
+    private final BetaPerkScopeNameResolver scopeNameResolver;
 
     /** 現在のベータ段階（設計書 02 §3/§6・{@code mannschaft.beta.current-phase}）。 */
     @Value("${mannschaft.beta.current-phase:1}")
@@ -63,8 +71,15 @@ public class BetaGrantQueryService {
         Page<BetaGrantEntity> result = betaGrantRepository.searchGrantsWithScope(
                 reviewFlag, grantKind, betaPhase, scopeKind, scopeId,
                 PageRequest.of(effectivePage, effectiveSize, Sort.by("grantedAt").descending()));
-        List<BetaGrantDetailResponse> content = result.getContent().stream()
-                .map(g -> mapper.toDetail(g, resolveValidUntil(g)))
+        List<BetaGrantEntity> grants = result.getContent();
+        // Phase3 追補: 表示名はページ単位（scope種別ごと・grantedByごと）にバルク解決してから map する
+        // （per-grant で Resolver を呼ぶと N+1 になる・searchGrants 側で必ず先読みする）。
+        Map<EntitlementScopeKind, Map<Long, String>> scopeNames = resolveScopeDisplayNames(grants);
+        Map<Long, String> grantedByNames = resolveGrantedByDisplayNames(grants);
+        List<BetaGrantDetailResponse> content = grants.stream()
+                .map(g -> mapper.toDetail(g, resolveValidUntil(g),
+                        scopeNames.getOrDefault(g.getScopeKind(), Map.of()).get(g.getScopeId()),
+                        g.getGrantedBy() == null ? null : grantedByNames.get(g.getGrantedBy())))
                 .toList();
         return BetaGrantPageResponse.builder()
                 .content(content)
@@ -79,7 +94,14 @@ public class BetaGrantQueryService {
     public BetaGrantDetailResponse getDetail(UUID grantId) {
         BetaGrantEntity grant = betaGrantRepository.findById(grantId)
                 .orElseThrow(() -> new BusinessException(BetaPerkErrorCode.GRANT_NOT_FOUND));
-        return mapper.toDetail(grant, resolveValidUntil(grant));
+        // 単票のため 1 件ずつだが Resolver のシグネチャは一覧と共通（Collection<Long> size=1 呼び出し）。
+        String scopeDisplayName = scopeNameResolver
+                .resolveScopeNames(grant.getScopeKind(), List.of(grant.getScopeId()))
+                .get(grant.getScopeId());
+        String grantedByName = grant.getGrantedBy() == null ? null : scopeNameResolver
+                .resolveUserNames(List.of(grant.getGrantedBy()))
+                .get(grant.getGrantedBy());
+        return mapper.toDetail(grant, resolveValidUntil(grant), scopeDisplayName, grantedByName);
     }
 
     // ============================================================
@@ -128,6 +150,36 @@ public class BetaGrantQueryService {
             }
             throw ex;
         }
+    }
+
+    /**
+     * Phase3 追補: ページ内の grant を scopeKind ごとにグルーピングし、種別ごと <b>1 クエリ</b>で
+     * スコープ表示名を先読みする（N+1 回避）。scopeId は scopeKind をまたいで衝突しうる（例: TEAM id=5 と
+     * ORG id=5）ため、{@link EntitlementScopeKind} をキーに持つネスト Map で区別する。
+     */
+    private Map<EntitlementScopeKind, Map<Long, String>> resolveScopeDisplayNames(List<BetaGrantEntity> grants) {
+        Map<EntitlementScopeKind, Map<Long, String>> byKind = new EnumMap<>(EntitlementScopeKind.class);
+        for (EntitlementScopeKind kind : EntitlementScopeKind.values()) {
+            List<Long> ids = grants.stream()
+                    .filter(g -> g.getScopeKind() == kind)
+                    .map(BetaGrantEntity::getScopeId)
+                    .distinct()
+                    .toList();
+            if (!ids.isEmpty()) {
+                byKind.put(kind, scopeNameResolver.resolveScopeNames(kind, ids));
+            }
+        }
+        return byKind;
+    }
+
+    /** Phase3 追補: ページ内の grantedBy（付与操作者 userId・null=SYSTEM は除外）を <b>1 クエリ</b>で先読みする。 */
+    private Map<Long, String> resolveGrantedByDisplayNames(List<BetaGrantEntity> grants) {
+        List<Long> operatorIds = grants.stream()
+                .map(BetaGrantEntity::getGrantedBy)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        return operatorIds.isEmpty() ? Map.of() : scopeNameResolver.resolveUserNames(operatorIds);
     }
 
     /**

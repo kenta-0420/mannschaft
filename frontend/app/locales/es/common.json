@@ -1574,7 +1574,8 @@
       "errorReports": "Informes de errores",
       "gdprPurge": "Estado de Purga GDPR",
       "feedbackInbox": "Buzón de comentarios (Global)",
-      "billing": "Datos maestros de facturación"
+      "billing": "Datos maestros de facturación",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Suplantando a: {label}",
