@@ -25,16 +25,13 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * F17.3 村憲章 — 退会匿名化の試練テスト（AC-19・red 先行・設計書 §11.1）。
+ * F17.3 村憲章 — 退会匿名化テスト（AC-19・実装済み green・設計書 §11.1）。
  *
- * <h2>本テストの性質（重要 / 検分時に必読）</h2>
+ * <h2>検証内容</h2>
  *
- * <p><strong>試練（red）テスト</strong>。策定者ユーザーの退会（{@link UserAnonymizedEvent}）で
- * {@code village_charter_drafters} の当該行の {@code user_id} を NULL 化し、{@code nickname_snapshot}
- * は残置する処理は W1 骨格では<strong>未実装</strong>（{@code VillageUserCleanerEventListener} に
- * 憲章策定者の匿名化メソッドがまだ無い）。よって退会後も {@code user_id} が残り、
- * 「{@code user_id} が NULL 化される」を待つ本テストは red（出陣 W3 で
- * {@code anonymizeCharterDrafters} を追加して green 化）。</p>
+ * <p>策定者ユーザーの退会（{@link UserAnonymizedEvent}）で {@code VillageUserCleanerEventListener}
+ * の {@code anonymizeCharterDrafters} が {@code village_charter_drafters} の当該行の {@code user_id} を
+ * NULL 化し、{@code nickname_snapshot}（仮名史料）は残置することを検証する（実名は元々保存しない）。</p>
  *
  * <p>金型 {@link VillageMeetupCapacityConcurrencyIT} と同じく <strong>@Transactional を付けない</strong>
  * （リスナーは {@code AFTER_COMMIT}＋{@code REQUIRES_NEW}＋{@code @Async} なので、コミット済みの
@@ -42,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link #tearDown()} で後始末する。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F17.3 村憲章 退会匿名化テスト（試練・red・AC-19）")
+@DisplayName("F17.3 村憲章 退会匿名化テスト（AC-19）")
 class VillageCharterWithdrawalIT extends AbstractMySqlIntegrationTest {
 
     @Autowired private VillageUserCleanerEventListener listener;
@@ -103,7 +100,7 @@ class VillageCharterWithdrawalIT extends AbstractMySqlIntegrationTest {
         // ── 退会イベントを発火（リスナー直呼び・AFTER_COMMIT/@Async を非同期実行）───────
         listener.handleUserAnonymized(new UserAnonymizedEvent(DRAFTER_USER_ID, "x@example.com"));
 
-        // 非同期反映をバウンド付きで待つ（W1 は永遠に NULL 化されないためタイムアウト＝red）。
+        // anonymizeCharterDrafters の非同期反映（@Async）をバウンド付きポーリングで待つ。
         boolean nulled = awaitUserIdNulled(drafterId);
 
         assertThat(nulled)

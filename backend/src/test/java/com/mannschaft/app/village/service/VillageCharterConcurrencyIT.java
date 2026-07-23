@@ -40,17 +40,16 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * F17.3 村憲章 <strong>並行</strong>制御の試練テスト（AC-11b/11d/12b・red 先行・設計書 §6.3/§7）。
+ * F17.3 村憲章 <strong>並行</strong>制御テスト（AC-11b/11d/12b・実装済み green・設計書 §6.3/§7）。
  *
- * <h2>本テストの性質（重要 / 検分時に必読）</h2>
+ * <h2>検証内容</h2>
  *
- * <p><strong>試練（red）テスト</strong>。悲観ロック直列化（{@code findByIdForUpdate}）・層2 バンプは
- * W1 骨格スタブでは未実装（{@code VillageCharterService} が {@code UnsupportedOperationException} を
- * 投げる）ため、以下はいずれも red:</p>
+ * <p>全構造変更 EP が {@code findByIdForUpdate}（親 charter 行の {@code SELECT ... FOR UPDATE}）＋
+ * {@code @Transactional(READ_COMMITTED)} で直列化されることを、実コミット並行で検証する:</p>
  * <ul>
- *   <li>AC-11b: 2 管理者の並行 POST → {@code sort_order} が 0,1 の連番（現状は 0 件のまま）</li>
- *   <li>AC-11d: DELETE×PATCH order の並行でデッドロック/500 なし＋削除が反映（現状は削除されない）</li>
- *   <li>AC-12b: POST/DELETE の層2 バンプ→後続 PATCH order が古い charterVersion で 409（現状は別例外）</li>
+ *   <li>AC-11b: 2 管理者の並行 POST → 悲観ロックで直列化され {@code sort_order} が 0,1 の連番</li>
+ *   <li>AC-11d: DELETE×PATCH order の並行で「親→子」統一ロック順によりデッドロック/500 なし＋削除が反映</li>
+ *   <li>AC-12b: POST/DELETE の層2 バンプ→後続 PATCH order が古い charterVersion で 409（VILLAGE_106）</li>
  * </ul>
  *
  * <p><strong>@Transactional を付けない</strong>のが要点（金型 {@link VillageMeetupCapacityConcurrencyIT}）。
@@ -58,7 +57,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link #tearDown()} で後始末する。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F17.3 村憲章 並行制御テスト（試練・red・AC-11b/11d/12b）")
+@DisplayName("F17.3 村憲章 並行制御テスト（AC-11b/11d/12b）")
 class VillageCharterConcurrencyIT extends AbstractMySqlIntegrationTest {
 
     @Autowired private VillageCharterService charterService;
@@ -252,7 +251,7 @@ class VillageCharterConcurrencyIT extends AbstractMySqlIntegrationTest {
             barrier.await(10, TimeUnit.SECONDS);
             charterService.addArticle(villageId, new CharterArticleCreateRequest(body, null), userId);
         } catch (Exception ignored) {
-            // 悲観ロック未実装の現状は競合や UnsupportedOperationException が出る。最終 DB 状態で検証する。
+            // 悲観ロック直列化で両 POST とも成功する想定。念のため例外は握り、最終 DB 状態（sort_order）で検証する。
         }
     }
 
@@ -286,7 +285,7 @@ class VillageCharterConcurrencyIT extends AbstractMySqlIntegrationTest {
         } catch (BusinessException be) {
             return be;
         } catch (RuntimeException other) {
-            // W1 骨格では UnsupportedOperationException 等が出る（＝red）。BusinessException でないので null 返却。
+            // BusinessException 以外の想定外 RuntimeException は null 返却（テストは 409 期待を満たさず落ちる）。
             return null;
         }
     }

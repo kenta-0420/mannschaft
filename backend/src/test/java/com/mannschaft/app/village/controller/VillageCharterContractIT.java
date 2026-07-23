@@ -54,15 +54,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * F17.3 村憲章 API 契約テスト（試練 / red 先行・設計書 §17）。
+ * F17.3 村憲章 API 契約テスト（設計書 §17・実装済み green）。
  *
- * <h2>本テストの性質（重要 / 検分時に必読）</h2>
+ * <h2>カバー範囲</h2>
  *
- * <p><strong>試練（red）テスト</strong>。W1 骨格では {@code VillageCharterService} の全 EP が
- * {@code UnsupportedOperationException}（→500）を投げるスタブなので、公開ゲート・編集権限・自動採番・
- * 楽観ロック・策定者スナップショット等を検証する AC はすべて red。骨格で偶然 green になりうるのは
- * Bean Validation で弾かれる境界（AC-08b の空/2000超→400）と、未ログイン 401
- * （Controller 先頭の {@code SecurityUtils.getCurrentUserId()}）のみ。出陣（W3）で全 green 化する。</p>
+ * <p>公開ゲート（AC-01/02/03）・条文管理と編集権限（04/05/05b/06/07/08/08b）・並び順/自動採番/再連番
+ * （09/10/11/11c/12/13）・策定者（14/15/16/16b）・制定日/改定履歴（17/17b/18）・性能（20/20b）を
+ * MockMvc 経由で検証する。認可は {@code VillageCharterAccessService}（read 公開ゲート）と
+ * write 2 段ガード（{@code loadActiveVillage}→{@code requireHeadmanOrElder}）に委譲される。</p>
  *
  * <p>金型: {@link VillageMeetupCapacityContractIT} / {@link VillageEventArchiveReadContractIT}
  * （{@code AbstractMySqlIntegrationTest} + {@code @AutoConfigureMockMvc(addFilters=false)} +
@@ -73,7 +72,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F17.3 村憲章 API 契約テスト（試練・red・AC-01〜20b）")
+@DisplayName("F17.3 村憲章 API 契約テスト（AC-01〜20b）")
 class VillageCharterContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
@@ -247,6 +246,36 @@ class VillageCharterContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("AC-05b(順序) 凍結村への非モデレーターwriteは、権限403でなく状態409(VILLAGE_027)が先に返る")
+        void writeStateGateEvaluatedBeforePermission_AC05b() throws Exception {
+            // 凍結村 × 一般村人（非モデレーター）: 状態ガードが権限チェックより先ゆえ 409(VILLAGE_027)。
+            // もし順序が逆（権限が先）なら 403(VILLAGE_024) が返るはずで、本アサートで順序を実証する。
+            VillageEntity archived = persistVillage(VillageVisibility.PUBLIC);
+            persistMembership(archived.getId(), VILLAGER_ID, VillageRole.VILLAGER); // 非モデレーター
+            archived.setArchivedAt(LocalDateTime.now());
+            villageRepository.saveAndFlush(archived);
+
+            authAs(VILLAGER_ID);
+            mockMvc.perform(post("/api/v1/villages/{vid}/charter/articles", archived.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("body", "凍結村に一般村人が条"))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_027")); // 403 ではない＝状態が先
+
+            // 削除村 × 非メンバー: 状態ガードが先ゆえ 404(VILLAGE_001)（権限 403 ではない）。
+            VillageEntity deleted = persistVillage(VillageVisibility.PUBLIC);
+            deleted.setDeletedAt(LocalDateTime.now());
+            villageRepository.saveAndFlush(deleted);
+
+            authAs(OUTSIDER_ID); // 非メンバー
+            mockMvc.perform(post("/api/v1/villages/{vid}/charter/articles", deleted.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("body", "削除村に部外者が条"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_001")); // 403 ではない＝状態が先
+        }
+
+        @Test
         @DisplayName("AC-06 現役村長のPUT articlesで本文・付則が更新され、更新後versionが応答に載る")
         void headman_putArticle_updates_AC06() throws Exception {
             VillageEntity v = persistVillage(VillageVisibility.PUBLIC);
@@ -315,18 +344,18 @@ class VillageCharterContractIT extends AbstractMySqlIntegrationTest {
             persistMembership(v.getId(), HEADMAN_ID, VillageRole.HEADMAN);
             authAs(HEADMAN_ID);
 
-            // body 空 → 400（@NotBlank・骨格でも green）
+            // body 空 → 400（@NotBlank）
             mockMvc.perform(post("/api/v1/villages/{vid}/charter/articles", v.getId())
                             .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("body", ""))))
                     .andExpect(status().isBadRequest());
 
-            // body 2001字 → 400（@Size・骨格でも green）
+            // body 2001字 → 400（@Size）
             mockMvc.perform(post("/api/v1/villages/{vid}/charter/articles", v.getId())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("body", "あ".repeat(2001)))))
                     .andExpect(status().isBadRequest());
 
-            // supplement 2001字 → 400（@Size・骨格でも green）
+            // supplement 2001字 → 400（@Size）
             Map<String, Object> tooLongSupp = new LinkedHashMap<>();
             tooLongSupp.put("body", "正常本文");
             tooLongSupp.put("supplement", "い".repeat(2001));
@@ -334,7 +363,7 @@ class VillageCharterContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON).content(json(tooLongSupp)))
                     .andExpect(status().isBadRequest());
 
-            // body ちょうど2000字 → バリデーションは通る（400 ではない）。W3 で 200。
+            // body ちょうど2000字 → 境界内ゆえ通る（400 ではなく 200）。
             mockMvc.perform(post("/api/v1/villages/{vid}/charter/articles", v.getId())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("body", "う".repeat(2000)))))

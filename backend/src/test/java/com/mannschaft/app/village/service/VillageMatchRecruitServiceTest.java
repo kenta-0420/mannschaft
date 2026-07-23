@@ -23,7 +23,6 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -84,12 +83,11 @@ class VillageMatchRecruitServiceTest {
     @Mock private VillageMembershipRepository membershipRepository;
     @Mock private VillageMatchRecruitRepository recruitRepository;
     @Mock private VillageMatchRecruitApplicationRepository applicationRepository;
-    @Mock private UserVillageNicknameRepository nicknameRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     /**
      * F17.3 前工程リファクタで表示名解決が共有ヘルパ {@link VillageNicknameResolver} へ移設された。
-     * 従来の resolveUserDisplayName は nicknameRepository 既定空 → {@code "USER:#id"} を返していたため、
+     * 従来の resolveUserDisplayName はニックネーム未登録時 {@code "USER:#id"} を返していたため、
      * その出力を lenient スタブで完全再現し、既存アサーションのふるまいを不変に保つ（骨抜き禁止）。
      */
     @Mock private VillageNicknameResolver villageNicknameResolver;

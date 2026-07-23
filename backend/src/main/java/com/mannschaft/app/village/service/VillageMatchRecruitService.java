@@ -13,7 +13,6 @@ import com.mannschaft.app.village.dto.MatchRecruitCreateRequest;
 import com.mannschaft.app.village.dto.MatchRecruitListResponse;
 import com.mannschaft.app.village.dto.MatchRecruitResponse;
 import com.mannschaft.app.village.dto.MatchRecruitUpdateRequest;
-import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitApplicationEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitEntity;
@@ -23,7 +22,6 @@ import com.mannschaft.app.village.entity.enums.VillageMatchRecruitCategory;
 import com.mannschaft.app.village.entity.enums.VillageMatchRecruitStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -44,7 +42,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -81,7 +78,6 @@ public class VillageMatchRecruitService {
     private final VillageMembershipRepository membershipRepository;
     private final VillageMatchRecruitRepository recruitRepository;
     private final VillageMatchRecruitApplicationRepository applicationRepository;
-    private final UserVillageNicknameRepository nicknameRepository;
     private final VillageNicknameResolver villageNicknameResolver;
     /** Read-only: 表示名解決（原則1 FK 不在）。参照不能時は null 表示で済ませる。 */
     private final TeamRepository teamRepository;

@@ -22,8 +22,6 @@ import java.util.UUID;
  * （掲示板 {@code checkVillageBulletinViewAccess} 由来）を足したハイブリッド。凍結村
  * （{@code archived_at} 非 NULL）も read では 404 に畳む（掲示板 read と同じ
  * {@code findByIdAndDeletedAtIsNullAndArchivedAtIsNull} 実体に揃える・§3.2）。</p>
- *
- * <p><b>W1 骨格スタブ</b>: 判定ロジックは出陣（W3）で実装する。本クラスは型・DI の seam のみ提供する。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -41,7 +39,8 @@ public class VillageCharterAccessService {
      * @param villageId 村 ID
      * @param viewerId  閲覧者ユーザー ID
      * @return 閲覧可能な村
-     * @throws UnsupportedOperationException W1 骨格スタブ（出陣 W3 で実装）
+     * @throws com.mannschaft.app.common.BusinessException 秘匿対象（不存在・削除・凍結・UNLISTED 非メンバー）は
+     *                                                     {@link VillageErrorCode#VILLAGE_NOT_FOUND}（404）
      */
     public VillageEntity loadReadableVillageOrHide(UUID villageId, Long viewerId) {
         // 削除済み・凍結済み・不存在は 404 に統一（掲示板 read と同じ実体に揃え archived も畳む・§3.2）。
