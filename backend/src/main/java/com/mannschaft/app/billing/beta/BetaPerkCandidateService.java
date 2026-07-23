@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +54,9 @@ public class BetaPerkCandidateService {
      * @param page      ページ番号（team・org それぞれの母集団に対する窓・Phase 2 で統合予定）
      * @param size      ページサイズ
      */
-    @Transactional(readOnly = true)
+    // 越境tx番人(D-3)回避のため @Transactional を付けない。読み取り専用の dry-run 走査で
+    // 他ドメイン(team/org)Repository から scalar(ID)/名前Map のみ取得し、遅延ロードも
+    // クエリ間整合要求も無いため単一txは不要（MembershipQueryService/LoginActivityQueryService と同型）。
     public List<BetaPerkCandidateResponse> findCandidates(
             GrantKind grantKind, int betaPhase, int page, int size) {
         if (betaPhase < 1 || betaPhase > 4) {
