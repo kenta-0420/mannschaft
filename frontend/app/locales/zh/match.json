@@ -239,7 +239,8 @@
         },
         "complete_failed": "保存比赛结束状态失败",
         "score_load_failed": "无法获取现有评分。请重新加载页面",
-        "load_players_failed": "获取球员名单失败"
+        "load_players_failed": "获取球员名单失败",
+        "substitution_rollback_failed": "撤销换人失败。请确认换人记录"
       },
       "read_only_notice": "仅供查看。仅管理员、副管理员和记录员可记录",
       "spectator": {

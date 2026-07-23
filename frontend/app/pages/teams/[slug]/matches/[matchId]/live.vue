@@ -300,6 +300,7 @@ onMounted(async () => {
     notification.error(t('match.live.error.load_players_failed'))
   }
   // wakeLock 取得はブラウザに拒否されうる（想定内・データ影響なし）。取得失敗は無視してよい。
+  // eslint-disable-next-line no-restricted-syntax -- wakeLock はブラウザ拒否が想定内（データ影響なし）。取得失敗を無視するのが正しい
   await wakeLock.acquireWakeLock().catch(() => undefined)
   window.addEventListener('online', flushOffline)
   loading.value = false

@@ -239,7 +239,8 @@
         },
         "complete_failed": "No se pudo guardar la finalización del partido",
         "score_load_failed": "No se pudieron cargar las puntuaciones existentes. Recarga la página",
-        "load_players_failed": "No se pudo cargar la lista de jugadores"
+        "load_players_failed": "No se pudo cargar la lista de jugadores",
+        "substitution_rollback_failed": "No se pudo deshacer el cambio. Revisa el registro de la sustitución"
       },
       "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar",
       "spectator": {

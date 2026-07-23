@@ -228,6 +228,7 @@
     "server_retry": "请稍后再试。",
     "network": "网络错误",
     "unauthorized": "请先登录",
+    "section_load_failed": "该项目获取失败，请重新加载。",
     "unknown": "发生错误",
     "COMMON_001": "输入内容有误",
     "COMMON_002": "您没有执行此操作的权限",

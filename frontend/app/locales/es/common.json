@@ -228,6 +228,7 @@
     "server_retry": "Por favor, intentelo de nuevo mas tarde.",
     "network": "Se produjo un error de red",
     "unauthorized": "Por favor, inicie sesion",
+    "section_load_failed": "No se pudo cargar esta seccion. Recarga la pagina.",
     "unknown": "Se produjo un error",
     "COMMON_001": "Hay errores en los datos ingresados",
     "COMMON_002": "No tiene permiso para realizar esta accion",

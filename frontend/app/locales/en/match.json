@@ -239,7 +239,8 @@
         },
         "complete_failed": "Failed to save match completion",
         "score_load_failed": "Could not load the existing scores. Please reload the page",
-        "load_players_failed": "Failed to load the player roster"
+        "load_players_failed": "Failed to load the player roster",
+        "substitution_rollback_failed": "Failed to undo the substitution. Please check the substitution record"
       },
       "read_only_notice": "View only. Only admins, deputies and scorekeepers can record",
       "spectator": {

@@ -41,6 +41,7 @@ const { ensureLoaded, isSupported, validateFormat } = usePostalCodeValidation()
 
 // ページマウント時にポリシーを先読みしておく（フォームサブミット時の遅延を最小化）
 onMounted(() => {
+  // eslint-disable-next-line no-restricted-syntax -- ポリシー先読みは best-effort。BE が authoritative（保存時に 400 で再検証）なので取得失敗を握りつぶすのが正しい
   ensureLoaded().catch(() => {
     // 取得失敗はサイレント（BE が authoritative なので保存時に 400 が返る）
   })

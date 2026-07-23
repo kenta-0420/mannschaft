@@ -29,6 +29,7 @@ export default defineNitroPlugin((nitroApp) => {
       method: 'POST',
       headers: { 'X-Internal-Token': internalToken },
       body: payload,
+      // eslint-disable-next-line no-restricted-syntax -- SSR エラーロガーの送信失敗。ここで throw すると SSR レスポンスに影響するため握りつぶすのが正しい
     }).catch(() => {
       // ログ送信失敗はサイレントに無視（SSRレスポンスへの影響を避ける）
     })

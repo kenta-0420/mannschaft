@@ -239,7 +239,8 @@
         },
         "complete_failed": "試合終了の保存に失敗しました",
         "score_load_failed": "既存の採点を取得できませんでした。ページを再読み込みしてください",
-        "load_players_failed": "選手名簿の取得に失敗しました"
+        "load_players_failed": "選手名簿の取得に失敗しました",
+        "substitution_rollback_failed": "交代の取り消しに失敗しました。選手交代の記録を確認してください"
       },
       "read_only_notice": "閲覧専用です。記録できるのは管理者・副管理者・記録係のみです",
       "spectator": {
