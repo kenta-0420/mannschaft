@@ -92,6 +92,10 @@ mannschaft:
   # 未設定時は開発用デフォルト（localhost:3000 / localhost:8080）。本番は env で上書き。
   # 設計書: docs/security/01_authorization_baseline.md §5 / docs/security/03_security_headers_and_csp.md §6
   allowed-origins: ${MANNSCHAFT_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+  # F20.3 ベータ特典: 現在のベータ段階（1〜4）。/me の充足状況評価・自動付与バッチ（Phase 2）の対象フェーズ。
+  # デプロイ設定変更で切り替える（頻度が低くマスタ表に持つ価値なし・設計書 F20.3 02 §3/§6）。
+  beta:
+    current-phase: ${MANNSCHAFT_BETA_CURRENT_PHASE:1}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
   # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
   # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。

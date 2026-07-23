@@ -144,6 +144,11 @@ public class RedisConfig {
                 // 既定30分では取消反映が遅すぎるため短TTL。取りこぼしは60秒で自然収束（設計書 02 §8 / 01 §8）。
                 .withCacheConfiguration("entitlement:check",
                         redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
+                // F20.3 ベータ特典: 付与条件（活動実績）評価キャッシュ（10分TTL）。
+                // 活動日数・在籍日数は分刻みで変動しないため、entitlement:check（60秒）より長め。
+                // enum キーは name() で String 化する（BetaPerkEligibilityService の @Cacheable キー式）。
+                .withCacheConfiguration("betaPerk:eligibility",
+                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
                 .build();
     }
 

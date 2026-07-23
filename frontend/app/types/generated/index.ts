@@ -2720,6 +2720,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 条件マスタ取得
+         * @description 未定義は 404。
+         */
+        get: operations["getCriteria"];
+        /**
+         * 条件マスタ upsert
+         * @description 全指標 NULL は 400（無条件付与の防止）。
+         */
+        put: operations["upsertCriteria"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/announcements/{id}": {
         parameters: {
             query?: never;
@@ -13055,6 +13079,110 @@ export interface paths {
          * @description 契約行を作って発行（created_by=シスアド・REVENUE イベント非発火）。
          */
         post: operations["grant_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 付与一覧
+         * @description grantKind/betaPhase/reviewFlag/scopeKind/scopeId で絞り込み・grantedAt 降順。
+         */
+        get: operations["listGrants"];
+        put?: never;
+        /**
+         * 手動付与
+         * @description TEAM_ORG の正規経路（INDIVIDUAL も可）。organizationId は本層で解決して渡す。
+         */
+        post: operations["createGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消
+         * @description reason=TERMS_VIOLATION|ACCOUNT_TRANSFER|OTHER（WITHDRAWAL 不可）。
+         */
+        post: operations["revokeGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/resolve-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 審査解決
+         * @description review_flag=true の grant のみ（問題なし）。
+         */
+        post: operations["resolveReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/flag-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 審査フラグ設定
+         * @description review_reason=MANUAL 固定。取消済みは 409。
+         */
+        post: operations["flagReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 延長
+         * @description TEAM_ORG のみ。extensionMonths 1〜24。
+         */
+        post: operations["extendGrant"];
         delete?: never;
         options?: never;
         head?: never;
@@ -33205,6 +33333,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームのベータ特典
+         * @description メンバー以上が閲覧可。審査系フィールドは返さない。
+         */
+        get: operations["getTeamBetaPerks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/audit-logs": {
         parameters: {
             query?: never;
@@ -34635,6 +34783,26 @@ export interface paths {
          * @description scopeKind / scopeId / status は任意フィルタ・contracted_at 降順。
          */
         get: operations["searchContracts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 付与候補 dry-run
+         * @description 未付与かつ充足のスコープ抽出（付与はしない）。Phase 1 は TEAM_ORG のみ。
+         */
+        get: operations["listCandidates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38954,6 +39122,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織のベータ特典
+         * @description メンバー以上が閲覧可。審査系フィールドは返さない。
+         */
+        get: operations["getOrgBetaPerks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/audit-logs": {
         parameters: {
             query?: never;
@@ -40444,6 +40632,26 @@ export interface paths {
         };
         /** カレンダー同期設定一覧 */
         get: operations["getSyncSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分のベータ特典
+         * @description 本人固定（scopeId を受けない）。eligibility は criteria 未定義時 null。
+         */
+        get: operations["getMyBetaPerks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -49706,6 +49914,77 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        /** @description F20.3 シスアド ベータ特典 条件マスタ upsert */
+        BetaPerkCriteriaUpsertRequest: {
+            /** @example true */
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @example 30
+             */
+            evaluationWindowDays: number;
+            /**
+             * Format: int32
+             * @example 14
+             */
+            minActiveDays?: number;
+            /**
+             * Format: int32
+             * @example 5
+             */
+            minActiveMembers?: number;
+            /**
+             * Format: int32
+             * @example 30
+             */
+            minMembershipTenureDays?: number;
+        };
+        ApiResponseBetaPerkCriteriaResponse: {
+            data?: components["schemas"]["BetaPerkCriteriaResponse"];
+        };
+        /** @description F20.3 ベータ特典 条件マスタ */
+        BetaPerkCriteriaResponse: {
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * Format: int32
+             * @description activeDays の評価ウィンドウ（日）
+             * @example 30
+             */
+            evaluationWindowDays?: number;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example INDIVIDUAL
+             */
+            grantKind?: string;
+            /**
+             * Format: int32
+             * @description アクティブ日数の下限（null=評価しない）
+             * @example 14
+             */
+            minActiveDays?: number;
+            /**
+             * Format: int32
+             * @description アクティブ人数の下限（TEAM_ORG のみ・null=評価しない）
+             * @example 5
+             */
+            minActiveMembers?: number;
+            /**
+             * Format: int32
+             * @description 所属経過日数の下限（null=評価しない）
+             * @example 30
+             */
+            minMembershipTenureDays?: number;
+        };
         UpdateAnnouncementRequest: {
             body?: string;
             /** Format: date-time */
@@ -58649,6 +58928,149 @@ export interface components {
             scopeId: number;
             /** @example TEAM */
             scopeKind: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 手動付与 */
+        BetaPerkCreateGrantRequest: {
+            /**
+             * Format: int32
+             * @example 2
+             */
+            betaPhase: number;
+            /**
+             * @example TEAM_ORG
+             * @enum {string}
+             */
+            grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            /** @example 第2期 パイロット団体 */
+            note?: string;
+            /**
+             * Format: int64
+             * @example 123
+             */
+            scopeId: number;
+            /**
+             * @example TEAM
+             * @enum {string}
+             */
+            scopeKind: "USER" | "TEAM" | "ORG";
+            /**
+             * @description criteria 未達でも付与する例外運用（既定 false）
+             * @example false
+             */
+            skipCriteriaCheck?: boolean;
+        };
+        ApiResponseBetaPerkGrantDetail: {
+            data?: components["schemas"]["BetaPerkGrantDetail"];
+        };
+        /** @description F20.3 シスアド向け ベータ特典 付与詳細 */
+        BetaPerkGrantDetail: {
+            /**
+             * Format: int32
+             * @description 付与時アクティブ人数スナップショット（INDIVIDUAL は null）
+             */
+            activeMemberCountSnapshot?: number;
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /** @description 付与時の実測値/閾値の焼き付け（JSON 相当） */
+            criteriaSnapshot?: Record<string, never>;
+            /** @description 付与された機能キー集合 */
+            featureKeys?: string[];
+            /** @description 付与 ID（UUID） */
+            grantId?: string;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example TEAM_ORG
+             */
+            grantKind?: string;
+            /**
+             * Format: date-time
+             * @description 付与日時（ISO-8601）
+             */
+            grantedAt?: string;
+            /**
+             * Format: int64
+             * @description 付与操作者 userId（自動付与バッチは null=SYSTEM）
+             */
+            grantedBy?: number;
+            /**
+             * Format: int64
+             * @description テナント組織 ID（USER は null）
+             * @example 45
+             */
+            organizationId?: number;
+            /**
+             * @description 審査待ちフラグ
+             * @example false
+             */
+            reviewFlag?: boolean;
+            /**
+             * Format: date-time
+             * @description 審査フラグ設定日時
+             */
+            reviewFlaggedAt?: string;
+            /**
+             * @description 審査フラグ事由（未フラグは null）
+             * @example MANUAL
+             */
+            reviewReason?: string;
+            /**
+             * Format: date-time
+             * @description 審査解決日時
+             */
+            reviewResolvedAt?: string;
+            /**
+             * @description 取消事由（未取消は null）
+             * @example TERMS_VIOLATION
+             */
+            revokeReason?: string;
+            /**
+             * Format: date-time
+             * @description 取消日時（未取消は null）
+             */
+            revokedAt?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+            /**
+             * Format: date-time
+             * @description 有効期限（INDIVIDUAL は null）
+             */
+            validUntil?: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 取消 */
+        BetaPerkRevokeGrantRequest: {
+            /** @example 規約第17条違反のため取消 */
+            note?: string;
+            /**
+             * @example TERMS_VIOLATION
+             * @enum {string}
+             */
+            reason: "TERMS_VIOLATION" | "ACCOUNT_TRANSFER" | "OTHER";
+        };
+        /** @description F20.3 シスアド ベータ特典 審査フラグ設定 */
+        BetaPerkFlagReviewRequest: {
+            /** @example オーナー変更の疑いのため手動フラグ */
+            note?: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 延長 */
+        BetaPerkExtendGrantRequest: {
+            /**
+             * Format: int32
+             * @example 12
+             */
+            extensionMonths: number;
         };
         ApiResponseBatchTriggerResponse: {
             data?: components["schemas"]["BatchTriggerResponse"];
@@ -69967,6 +70389,48 @@ export interface components {
         ApiResponseListFiscalYearResponse: {
             data?: components["schemas"]["FiscalYearResponse"][];
         };
+        ApiResponseListBetaPerkGrantItem: {
+            data?: components["schemas"]["BetaPerkGrantItem"][];
+        };
+        /** @description F20.3 利用者向け ベータ特典 付与項目 */
+        BetaPerkGrantItem: {
+            /**
+             * Format: int32
+             * @description 付与時アクティブ人数スナップショット（INDIVIDUAL は null）
+             * @example 34
+             */
+            activeMemberCountSnapshot?: number;
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /** @description 付与された機能キー集合 */
+            featureKeys?: string[];
+            /** @description 付与 ID（UUID） */
+            grantId?: string;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example INDIVIDUAL
+             */
+            grantKind?: string;
+            /**
+             * Format: date-time
+             * @description 付与日時（ISO-8601）
+             */
+            grantedAt?: string;
+            /**
+             * Format: date-time
+             * @description 取消日時（未取消は null）
+             */
+            revokedAt?: string;
+            /**
+             * Format: date-time
+             * @description 有効期限（INDIVIDUAL は null＝サービス提供期間中無償）
+             */
+            validUntil?: string;
+        };
         ApiResponseTransitionAlertListResponse: {
             data?: components["schemas"]["TransitionAlertListResponse"];
         };
@@ -71510,6 +71974,76 @@ export interface components {
              * @example 42
              */
             totalElements?: number;
+        };
+        ApiResponseBetaPerkGrantPageResponse: {
+            data?: components["schemas"]["BetaPerkGrantPageResponse"];
+        };
+        /** @description F20.3 シスアド ベータ特典 付与一覧（ページング） */
+        BetaPerkGrantPageResponse: {
+            /** @description 付与一覧（当該ページ） */
+            content?: components["schemas"]["BetaPerkGrantDetail"][];
+            /**
+             * Format: int32
+             * @description 現在ページ番号（0 始まり）
+             * @example 0
+             */
+            page?: number;
+            /**
+             * Format: int32
+             * @description ページサイズ
+             * @example 20
+             */
+            size?: number;
+            /**
+             * Format: int64
+             * @description 総件数
+             * @example 42
+             */
+            totalElements?: number;
+        };
+        ApiResponseListBetaPerkCandidate: {
+            data?: components["schemas"]["BetaPerkCandidate"][];
+        };
+        /** @description F20.3 ベータ特典 付与候補（dry-run） */
+        BetaPerkCandidate: {
+            /**
+             * @description 表示名（チーム名 / 組織名 / ユーザー名）
+             * @example サンプルチーム
+             */
+            displayName?: string;
+            /** @description 充足した指標の進捗 */
+            metrics?: components["schemas"]["BetaPerkMetricProgress"][];
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+        };
+        /** @description F20.3 付与条件の指標進捗 */
+        BetaPerkMetricProgress: {
+            /**
+             * Format: int64
+             * @description 実測値
+             * @example 9
+             */
+            actual?: number;
+            /**
+             * @description 指標キー
+             * @example activeDays
+             */
+            metricKey?: string;
+            /**
+             * Format: int64
+             * @description 閾値（この値以上で達成）
+             * @example 14
+             */
+            required?: number;
         };
         ApiResponseListBatchEndpointSummary: {
             data?: components["schemas"]["BatchEndpointSummary"][];
@@ -75151,6 +75685,32 @@ export interface components {
             scopeId?: number;
             scopeName?: string;
             scopeType?: string;
+        };
+        ApiResponseBetaPerkMyPerksResponse: {
+            data?: components["schemas"]["BetaPerkMyPerksResponse"];
+        };
+        /** @description F20.3 付与条件の充足状況 */
+        BetaPerkEligibilityStatus: {
+            /**
+             * Format: int32
+             * @description 評価対象のベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /**
+             * @description 全ての定義済み指標を満たすか
+             * @example false
+             */
+            eligible?: boolean;
+            /** @description 指標ごとの進捗（定義済み指標のみ） */
+            metrics?: components["schemas"]["BetaPerkMetricProgress"][];
+        };
+        /** @description F20.3 自分のベータ特典 */
+        BetaPerkMyPerksResponse: {
+            /** @description 現行フェーズの充足状況（criteria 未定義時は null） */
+            eligibility?: components["schemas"]["BetaPerkEligibilityStatus"];
+            /** @description 自分に付与された特典一覧（空配列可） */
+            grants?: components["schemas"]["BetaPerkGrantItem"][];
         };
         ApiResponseStudentTimelineResponse: {
             data?: components["schemas"]["StudentTimelineResponse"];
@@ -84926,6 +85486,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBetaRestrictionConfigResponse"];
+                };
+            };
+        };
+    };
+    getCriteria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                betaPhase: number;
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkCriteriaResponse"];
+                };
+            };
+        };
+    };
+    upsertCriteria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                betaPhase: number;
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkCriteriaUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkCriteriaResponse"];
                 };
             };
         };
@@ -107373,6 +107983,158 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    listGrants: {
+        parameters: {
+            query?: {
+                grantKind?: "INDIVIDUAL" | "TEAM_ORG";
+                betaPhase?: number;
+                reviewFlag?: boolean;
+                scopeKind?: "USER" | "TEAM" | "ORG";
+                scopeId?: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantPageResponse"];
+                };
+            };
+        };
+    };
+    createGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkCreateGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    revokeGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkRevokeGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    resolveReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    flagReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkFlagReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    extendGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkExtendGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
                 };
             };
         };
@@ -143770,6 +144532,28 @@ export interface operations {
             };
         };
     };
+    getTeamBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkGrantItem"];
+                };
+            };
+        };
+    };
     getTeamAuditLogs: {
         parameters: {
             query?: {
@@ -145687,6 +146471,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingPagedContractResponse"];
+                };
+            };
+        };
+    };
+    listCandidates: {
+        parameters: {
+            query: {
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+                betaPhase: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkCandidate"];
                 };
             };
         };
@@ -151675,6 +152484,28 @@ export interface operations {
             };
         };
     };
+    getOrgBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkGrantItem"];
+                };
+            };
+        };
+    };
     getOrganizationAuditLogs: {
         parameters: {
             query?: {
@@ -153700,6 +154531,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCalendarSyncSettingsResponse"];
+                };
+            };
+        };
+    };
+    getMyBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkMyPerksResponse"];
                 };
             };
         };

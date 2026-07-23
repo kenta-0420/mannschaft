@@ -1287,6 +1287,10 @@
       "description": "F20.1 ナビゲーション項目マスタ管理（SYSTEM_ADMIN専用）"
     },
     {
+      "name": "システム管理 - ベータ特典",
+      "description": "F20.3 付与/取消/延長/審査/候補/条件マスタ（SYSTEM_ADMIN専用）"
+    },
+    {
       "name": "見守り委員訪問記録（F09.16）",
       "description": "F09.16 居住実態管理 - 見守り委員訪問記録 API"
     },
@@ -1577,6 +1581,10 @@
     {
       "name": "行動メモ管理職ダッシュボード",
       "description": "F02.5 Phase 4-β 管理職向けメモ閲覧 API"
+    },
+    {
+      "name": "ベータ特典",
+      "description": "F20.3 自分・団体のベータ特典照会"
     },
     {
       "name": "組織ウォッチリスト",
@@ -14980,6 +14988,104 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBetaRestrictionConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}": {
+      "get": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "条件マスタ取得",
+        "description": "未定義は 404。",
+        "operationId": "getCriteria",
+        "parameters": [
+          {
+            "name": "betaPhase",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "grantKind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDIVIDUAL",
+                "TEAM_ORG"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkCriteriaResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "条件マスタ upsert",
+        "description": "全指標 NULL は 400（無条件付与の防止）。",
+        "operationId": "upsertCriteria",
+        "parameters": [
+          {
+            "name": "betaPhase",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "grantKind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDIVIDUAL",
+                "TEAM_ORG"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaPerkCriteriaUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkCriteriaResponse"
                 }
               }
             }
@@ -52644,6 +52750,293 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/grants": {
+      "get": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "付与一覧",
+        "description": "grantKind/betaPhase/reviewFlag/scopeKind/scopeId で絞り込み・grantedAt 降順。",
+        "operationId": "listGrants",
+        "parameters": [
+          {
+            "name": "grantKind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDIVIDUAL",
+                "TEAM_ORG"
+              ]
+            }
+          },
+          {
+            "name": "betaPhase",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "reviewFlag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "USER",
+                "TEAM",
+                "ORG"
+              ]
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantPageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "手動付与",
+        "description": "TEAM_ORG の正規経路（INDIVIDUAL も可）。organizationId は本層で解決して渡す。",
+        "operationId": "createGrant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaPerkCreateGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/revoke": {
+      "post": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "取消",
+        "description": "reason\u003dTERMS_VIOLATION|ACCOUNT_TRANSFER|OTHER（WITHDRAWAL 不可）。",
+        "operationId": "revokeGrant",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaPerkRevokeGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/resolve-review": {
+      "post": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "審査解決",
+        "description": "review_flag\u003dtrue の grant のみ（問題なし）。",
+        "operationId": "resolveReview",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/flag-review": {
+      "post": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "審査フラグ設定",
+        "description": "review_reason\u003dMANUAL 固定。取消済みは 409。",
+        "operationId": "flagReview",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaPerkFlagReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/extend": {
+      "post": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "延長",
+        "description": "TEAM_ORG のみ。extensionMonths 1〜24。",
+        "operationId": "extendGrant",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaPerkExtendGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkGrantDetail"
                 }
               }
             }
@@ -113095,6 +113488,39 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/beta-perks": {
+      "get": {
+        "tags": [
+          "ベータ特典"
+        ],
+        "summary": "チームのベータ特典",
+        "description": "メンバー以上が閲覧可。審査系フィールドは返さない。",
+        "operationId": "getTeamBetaPerks",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBetaPerkGrantItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/audit-logs": {
       "get": {
         "tags": [
@@ -116425,6 +116851,71 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingPagedContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/beta-perks/candidates": {
+      "get": {
+        "tags": [
+          "システム管理 - ベータ特典"
+        ],
+        "summary": "付与候補 dry-run",
+        "description": "未付与かつ充足のスコープ抽出（付与はしない）。Phase 1 は TEAM_ORG のみ。",
+        "operationId": "listCandidates",
+        "parameters": [
+          {
+            "name": "grantKind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDIVIDUAL",
+                "TEAM_ORG"
+              ]
+            }
+          },
+          {
+            "name": "betaPhase",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBetaPerkCandidate"
                 }
               }
             }
@@ -127537,6 +128028,39 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/beta-perks": {
+      "get": {
+        "tags": [
+          "ベータ特典"
+        ],
+        "summary": "組織のベータ特典",
+        "description": "メンバー以上が閲覧可。審査系フィールドは返さない。",
+        "operationId": "getOrgBetaPerks",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBetaPerkGrantItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/audit-logs": {
       "get": {
         "tags": [
@@ -130675,6 +131199,28 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCalendarSyncSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/beta-perks": {
+      "get": {
+        "tags": [
+          "ベータ特典"
+        ],
+        "summary": "自分のベータ特典",
+        "description": "本人固定（scopeId を受けない）。eligibility は criteria 未定義時 null。",
+        "operationId": "getMyBetaPerks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBetaPerkMyPerksResponse"
                 }
               }
             }
@@ -152864,6 +153410,99 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "BetaPerkCriteriaUpsertRequest": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 条件マスタ upsert",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "evaluationWindowDays": {
+            "type": "integer",
+            "format": "int32",
+            "example": 30,
+            "maximum": 365,
+            "minimum": 1
+          },
+          "minActiveDays": {
+            "type": "integer",
+            "format": "int32",
+            "example": 14,
+            "minimum": 0
+          },
+          "minActiveMembers": {
+            "type": "integer",
+            "format": "int32",
+            "example": 5,
+            "minimum": 0
+          },
+          "minMembershipTenureDays": {
+            "type": "integer",
+            "format": "int32",
+            "example": 30,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "enabled",
+          "evaluationWindowDays"
+        ]
+      },
+      "ApiResponseBetaPerkCriteriaResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BetaPerkCriteriaResponse"
+          }
+        }
+      },
+      "BetaPerkCriteriaResponse": {
+        "type": "object",
+        "description": "F20.3 ベータ特典 条件マスタ",
+        "properties": {
+          "betaPhase": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ベータ段階",
+            "example": 2
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "有効フラグ",
+            "example": true
+          },
+          "evaluationWindowDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "activeDays の評価ウィンドウ（日）",
+            "example": 30
+          },
+          "grantKind": {
+            "type": "string",
+            "description": "付与種別（INDIVIDUAL / TEAM_ORG）",
+            "example": "INDIVIDUAL"
+          },
+          "minActiveDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アクティブ日数の下限（null\u003d評価しない）",
+            "example": 14
+          },
+          "minActiveMembers": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アクティブ人数の下限（TEAM_ORG のみ・null\u003d評価しない）",
+            "example": 5
+          },
+          "minMembershipTenureDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "所属経過日数の下限（null\u003d評価しない）",
+            "example": 30
           }
         }
       },
@@ -177469,6 +178108,215 @@
           "contractKind",
           "scopeId",
           "scopeKind"
+        ]
+      },
+      "BetaPerkCreateGrantRequest": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 手動付与",
+        "properties": {
+          "betaPhase": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          },
+          "grantKind": {
+            "type": "string",
+            "enum": [
+              "INDIVIDUAL",
+              "TEAM_ORG"
+            ],
+            "example": "TEAM_ORG"
+          },
+          "note": {
+            "type": "string",
+            "example": "第2期 パイロット団体",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ],
+            "example": "TEAM"
+          },
+          "skipCriteriaCheck": {
+            "type": "boolean",
+            "description": "criteria 未達でも付与する例外運用（既定 false）",
+            "example": false
+          }
+        },
+        "required": [
+          "betaPhase",
+          "grantKind",
+          "scopeId",
+          "scopeKind"
+        ]
+      },
+      "ApiResponseBetaPerkGrantDetail": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BetaPerkGrantDetail"
+          }
+        }
+      },
+      "BetaPerkGrantDetail": {
+        "type": "object",
+        "description": "F20.3 シスアド向け ベータ特典 付与詳細",
+        "properties": {
+          "activeMemberCountSnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "付与時アクティブ人数スナップショット（INDIVIDUAL は null）"
+          },
+          "betaPhase": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ベータ段階",
+            "example": 2
+          },
+          "criteriaSnapshot": {
+            "type": "object",
+            "description": "付与時の実測値/閾値の焼き付け（JSON 相当）"
+          },
+          "featureKeys": {
+            "type": "array",
+            "description": "付与された機能キー集合",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grantId": {
+            "type": "string",
+            "description": "付与 ID（UUID）"
+          },
+          "grantKind": {
+            "type": "string",
+            "description": "付与種別（INDIVIDUAL / TEAM_ORG）",
+            "example": "TEAM_ORG"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "付与日時（ISO-8601）"
+          },
+          "grantedBy": {
+            "type": "integer",
+            "format": "int64",
+            "description": "付与操作者 userId（自動付与バッチは null\u003dSYSTEM）"
+          },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "テナント組織 ID（USER は null）",
+            "example": 45
+          },
+          "reviewFlag": {
+            "type": "boolean",
+            "description": "審査待ちフラグ",
+            "example": false
+          },
+          "reviewFlaggedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "審査フラグ設定日時"
+          },
+          "reviewReason": {
+            "type": "string",
+            "description": "審査フラグ事由（未フラグは null）",
+            "example": "MANUAL"
+          },
+          "reviewResolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "審査解決日時"
+          },
+          "revokeReason": {
+            "type": "string",
+            "description": "取消事由（未取消は null）",
+            "example": "TERMS_VIOLATION"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "取消日時（未取消は null）"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "TEAM"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "有効期限（INDIVIDUAL は null）"
+          }
+        }
+      },
+      "BetaPerkRevokeGrantRequest": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 取消",
+        "properties": {
+          "note": {
+            "type": "string",
+            "example": "規約第17条違反のため取消",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "TERMS_VIOLATION",
+              "ACCOUNT_TRANSFER",
+              "OTHER"
+            ],
+            "example": "TERMS_VIOLATION"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "BetaPerkFlagReviewRequest": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 審査フラグ設定",
+        "properties": {
+          "note": {
+            "type": "string",
+            "example": "オーナー変更の疑いのため手動フラグ",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
+      "BetaPerkExtendGrantRequest": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 延長",
+        "properties": {
+          "extensionMonths": {
+            "type": "integer",
+            "format": "int32",
+            "example": 12,
+            "maximum": 24,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "extensionMonths"
         ]
       },
       "ApiResponseBatchTriggerResponse": {
@@ -208832,6 +209680,66 @@
           }
         }
       },
+      "ApiResponseListBetaPerkGrantItem": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkGrantItem"
+            }
+          }
+        }
+      },
+      "BetaPerkGrantItem": {
+        "type": "object",
+        "description": "F20.3 利用者向け ベータ特典 付与項目",
+        "properties": {
+          "activeMemberCountSnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "付与時アクティブ人数スナップショット（INDIVIDUAL は null）",
+            "example": 34
+          },
+          "betaPhase": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ベータ段階",
+            "example": 2
+          },
+          "featureKeys": {
+            "type": "array",
+            "description": "付与された機能キー集合",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grantId": {
+            "type": "string",
+            "description": "付与 ID（UUID）"
+          },
+          "grantKind": {
+            "type": "string",
+            "description": "付与種別（INDIVIDUAL / TEAM_ORG）",
+            "example": "INDIVIDUAL"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "付与日時（ISO-8601）"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "取消日時（未取消は null）"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "有効期限（INDIVIDUAL は null＝サービス提供期間中無償）"
+          }
+        }
+      },
       "ApiResponseTransitionAlertListResponse": {
         "type": "object",
         "properties": {
@@ -212915,6 +213823,108 @@
             "format": "int64",
             "description": "総件数",
             "example": 42
+          }
+        }
+      },
+      "ApiResponseBetaPerkGrantPageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BetaPerkGrantPageResponse"
+          }
+        }
+      },
+      "BetaPerkGrantPageResponse": {
+        "type": "object",
+        "description": "F20.3 シスアド ベータ特典 付与一覧（ページング）",
+        "properties": {
+          "content": {
+            "type": "array",
+            "description": "付与一覧（当該ページ）",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkGrantDetail"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "現在ページ番号（0 始まり）",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ページサイズ",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "総件数",
+            "example": 42
+          }
+        }
+      },
+      "ApiResponseListBetaPerkCandidate": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkCandidate"
+            }
+          }
+        }
+      },
+      "BetaPerkCandidate": {
+        "type": "object",
+        "description": "F20.3 ベータ特典 付与候補（dry-run）",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "表示名（チーム名 / 組織名 / ユーザー名）",
+            "example": "サンプルチーム"
+          },
+          "metrics": {
+            "type": "array",
+            "description": "充足した指標の進捗",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkMetricProgress"
+            }
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "TEAM"
+          }
+        }
+      },
+      "BetaPerkMetricProgress": {
+        "type": "object",
+        "description": "F20.3 付与条件の指標進捗",
+        "properties": {
+          "actual": {
+            "type": "integer",
+            "format": "int64",
+            "description": "実測値",
+            "example": 9
+          },
+          "metricKey": {
+            "type": "string",
+            "description": "指標キー",
+            "example": "activeDays"
+          },
+          "required": {
+            "type": "integer",
+            "format": "int64",
+            "description": "閾値（この値以上で達成）",
+            "example": 14
           }
         }
       },
@@ -222613,6 +223623,55 @@
           },
           "scopeType": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseBetaPerkMyPerksResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BetaPerkMyPerksResponse"
+          }
+        }
+      },
+      "BetaPerkEligibilityStatus": {
+        "type": "object",
+        "description": "F20.3 付与条件の充足状況",
+        "properties": {
+          "betaPhase": {
+            "type": "integer",
+            "format": "int32",
+            "description": "評価対象のベータ段階",
+            "example": 2
+          },
+          "eligible": {
+            "type": "boolean",
+            "description": "全ての定義済み指標を満たすか",
+            "example": false
+          },
+          "metrics": {
+            "type": "array",
+            "description": "指標ごとの進捗（定義済み指標のみ）",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkMetricProgress"
+            }
+          }
+        }
+      },
+      "BetaPerkMyPerksResponse": {
+        "type": "object",
+        "description": "F20.3 自分のベータ特典",
+        "properties": {
+          "eligibility": {
+            "$ref": "#/components/schemas/BetaPerkEligibilityStatus",
+            "description": "現行フェーズの充足状況（criteria 未定義時は null）"
+          },
+          "grants": {
+            "type": "array",
+            "description": "自分に付与された特典一覧（空配列可）",
+            "items": {
+              "$ref": "#/components/schemas/BetaPerkGrantItem"
+            }
           }
         }
       },
