@@ -53536,6 +53536,8 @@ export interface components {
         };
         MeetupCreateRequest: {
             candidateDates?: components["schemas"]["MeetupCandidateDateInput"][];
+            /** Format: int32 */
+            capacity?: number;
             description?: string;
             location?: string;
             title?: string;
@@ -53557,6 +53559,8 @@ export interface components {
         };
         MeetupResponse: {
             candidateDates?: components["schemas"]["MeetupCandidateDateResponse"][];
+            /** Format: int32 */
+            capacity?: number;
             /** Format: date */
             confirmedDate?: string;
             /** @example 14:30:00 */
@@ -53565,11 +53569,15 @@ export interface components {
             createdAt?: string;
             decisionsNote?: string;
             description?: string;
+            /** Format: int64 */
+            goingCount?: number;
             /** Format: uuid */
             id?: string;
             location?: string;
             /** Format: int64 */
             organizerUserId?: number;
+            /** Format: int32 */
+            remainingSlots?: number;
             /** @enum {string} */
             status?: "PLANNING" | "CONFIRMED" | "CANCELLED";
             title?: string;
@@ -64843,6 +64851,8 @@ export interface components {
             villageId: string;
         };
         MeetupUpdateRequest: {
+            /** Format: int32 */
+            capacity?: number;
             decisionsNote?: string;
             description?: string;
             location?: string;

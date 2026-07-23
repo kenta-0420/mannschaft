@@ -920,6 +920,15 @@ export interface VillageMeetupResponse {
   /** 決まったこと（幹事が記す自由記述メモ・F17.2 Wave1 ②寄合後半戦 §4.2.4）。未設定時は null。
    *  生成型 `MeetupResponse.decisionsNote` の optionality（optional）に合わせる */
   decisionsNote?: string | null
+  /** GOING（行く）出欠の定員（F17.2 追補）。null は無制限。GOING のみに効き MAYBE/ABSENT は無制約。
+   *  生成型 `MeetupResponse.capacity` の optionality（optional）に合わせる */
+  capacity?: number | null
+  /** 現在の GOING（行く）人数（F17.2 追補）。一覧・詳細ともバックエンドが実数を供給する。
+   *  生成型 `MeetupResponse.goingCount` の optionality（optional）に合わせる */
+  goingCount?: number
+  /** 残り枠（F17.2 追補）。`capacity - goingCount`（0 未満は 0 に丸め）。capacity が null（無制限）のときは null。
+   *  生成型 `MeetupResponse.remainingSlots` の optionality（optional）に合わせる */
+  remainingSlots?: number | null
   createdAt: string
   /** 詳細取得時のみ詰められる。一覧取得時は null */
   candidateDates: VillageMeetupCandidateDateResponse[] | null
@@ -964,6 +973,8 @@ export interface VillageMeetupCreateRequest {
   title: string
   description?: string | null
   location?: string | null
+  /** GOING 出欠の定員（F17.2 追補・任意）。省略/null は無制限。指定時は 1 以上（BE の @Min(1)） */
+  capacity?: number | null
   /** 候補日 object の配列 `{date, time?}` */
   candidateDates: VillageMeetupCandidateDateInput[]
 }
@@ -975,6 +986,8 @@ export interface VillageMeetupUpdateRequest {
   location?: string | null
   /** 決まったこと更新（幹事＋村長/長老・F17.2 Wave1 §4.4/AC-13）。他フィールドとは独立に認可判定される */
   decisionsNote?: string | null
+  /** GOING 定員の更新（F17.2 追補・任意）。編集権者=幹事＋村長/長老・PLANNING/CONFIRMED 両可。指定時は 1 以上 */
+  capacity?: number | null
 }
 
 /** 寄合確定リクエスト。BE: `MeetupConfirmRequest`。 */
