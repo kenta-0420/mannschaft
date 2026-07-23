@@ -116,10 +116,13 @@ class SystemAdminBetaPerkControllerTest {
                 .grantKind("TEAM_ORG")
                 .scopeKind("TEAM")
                 .scopeId(123L)
+                .scopeDisplayName("第一少年野球部")
                 .organizationId(45L)
                 .grantedAt(LocalDateTime.now())
                 .featureKeys(List.of("ads.hide"))
                 .reviewFlag(false)
+                .grantedBy(ADMIN_ID)
+                .grantedByName("殿様太郎")
                 .build();
     }
 
@@ -277,7 +280,9 @@ class SystemAdminBetaPerkControllerTest {
                         .content(List.of(detail())).page(0).size(20).totalElements(1).build());
         mockMvc.perform(get("/api/v1/system-admin/beta-perks/grants"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(1));
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].scopeDisplayName").value("第一少年野球部"))
+                .andExpect(jsonPath("$.data.content[0].grantedByName").value("殿様太郎"));
     }
 
     @Test
