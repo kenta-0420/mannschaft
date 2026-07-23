@@ -1079,6 +1079,10 @@
       "description": "F09.8.1 ピン止めカード横断取得 API"
     },
     {
+      "name": "村憲章 (F17.3)",
+      "description": "村ごとの拠りどころ＝憲章の条文・策定者・改定履歴（村ニックネーム世界）"
+    },
+    {
       "name": "F03.11 募集型予約 / キャンセルポリシー",
       "description": "キャンセルポリシー詳細・編集・削除"
     },
@@ -4515,6 +4519,96 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter/articles/{articleId}": {
+      "put": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "条の本文/付則を更新する（層1 楽観ロック・§7）",
+        "operationId": "updateArticle",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterArticleUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCharterArticleResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "条を論理削除し残る条を再連番する（悲観ロック直列化・409 なし・§6.3）",
+        "operationId": "deleteArticle",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -33018,6 +33112,132 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseFestivalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter/revisions": {
+      "post": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "改正を確定する（改定日・改定履歴を刻む里程標・条文の可視性は変えない・§8.2）",
+        "operationId": "addRevision",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterRevisionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter/drafters": {
+      "post": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "策定者を追加する（村ニックネームを焼き付け・§5.2）",
+        "operationId": "addDrafter",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterDrafterCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter/articles": {
+      "post": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "条を末尾に追加する（初回は憲章を自動生成し制定日をセット・§4.5）",
+        "operationId": "addArticle",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterArticleCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
                 }
               }
             }
@@ -84869,6 +85089,48 @@
         }
       }
     },
+    "/api/v1/villages/{villageId}/charter/articles/order": {
+      "patch": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "条の並び順を一括更新する（層2 楽観ロック・charterVersion 同送・§7）",
+        "operationId": "reorderArticles",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterArticleOrderUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/villages/{villageId}/calendar-events/{eventId}": {
       "get": {
         "tags": [
@@ -105520,6 +105782,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseChronicleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter": {
+      "get": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN）",
+        "operationId": "get_30",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
                 }
               }
             }
@@ -132968,7 +133262,7 @@
         "tags": [
           "disclosure-form-template-controller"
         ],
-        "operationId": "get_30",
+        "operationId": "get_31",
         "parameters": [
           {
             "name": "templateId",
@@ -138366,6 +138660,47 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/villages/{villageId}/charter/drafters/{drafterId}": {
+      "delete": {
+        "tags": [
+          "村憲章 (F17.3)"
+        ],
+        "summary": "策定者を削除する（更新後の憲章全体を返す・再連番・AC-16b）",
+        "operationId": "removeDrafter",
+        "parameters": [
+          {
+            "name": "villageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "drafterId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVillageCharterResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -143921,6 +144256,75 @@
             "format": "int64"
           }
         }
+      },
+      "CharterArticleUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "条文（必須・最大2000字）",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "supplement": {
+            "type": "string",
+            "description": "付則（任意・最大2000字）",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "条単位の楽観ロックversion（層1・必須）"
+          }
+        },
+        "required": [
+          "body",
+          "version"
+        ]
+      },
+      "ApiResponseCharterArticleResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CharterArticleResponse"
+          }
+        }
+      },
+      "CharterArticleResponse": {
+        "type": "object",
+        "description": "村憲章の条（自動採番・sortOrder非露出・§18.1）",
+        "properties": {
+          "articleNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "導出された条番号（第N条・sort_order昇順のindex+1・§6.1）"
+          },
+          "body": {
+            "type": "string",
+            "description": "条文（必須）"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "条ID（UUID）"
+          },
+          "supplement": {
+            "type": "string",
+            "description": "付則（任意・未設定時null）"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "条単位の楽観ロックversion（層1・PUTに同送）"
+          }
+        },
+        "required": [
+          "articleNumber",
+          "body",
+          "id",
+          "version"
+        ]
       },
       "UpdateSealRequest": {
         "type": "object",
@@ -163995,6 +164399,170 @@
             "format": "int64"
           }
         }
+      },
+      "CharterRevisionCreateRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "改定メモ（任意・最大200字）",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseVillageCharterResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/VillageCharterResponse"
+          }
+        }
+      },
+      "CharterDrafterResponse": {
+        "type": "object",
+        "description": "村憲章の策定者（村ニックネーム焼付・userId非露出・G4）",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "表示名（焼き付けた村ニックネーム・実名ではない）"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "策定者ID（UUID）"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順（0始まり）"
+          }
+        },
+        "required": [
+          "displayName",
+          "id",
+          "sortOrder"
+        ]
+      },
+      "CharterRevisionResponse": {
+        "type": "object",
+        "description": "村憲章の改定履歴（日付＋任意メモの軽量履歴・§8.3）",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "改定履歴ID（UUID）"
+          },
+          "note": {
+            "type": "string",
+            "description": "改定メモ（任意・未設定時null）"
+          },
+          "revisedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "改定日時（「改正を確定」時刻）"
+          }
+        },
+        "required": [
+          "id",
+          "revisedAt"
+        ]
+      },
+      "VillageCharterResponse": {
+        "type": "object",
+        "description": "村憲章の全体（メタ＋条＋策定者＋改定履歴・§18.1）",
+        "properties": {
+          "articles": {
+            "type": "array",
+            "description": "条一覧（自動採番済み・articleNumber昇順）",
+            "items": {
+              "$ref": "#/components/schemas/CharterArticleResponse"
+            }
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "閲覧者が現役HEADMAN/ELDERか（FEの編集UI出し分け）"
+          },
+          "drafters": {
+            "type": "array",
+            "description": "策定者一覧（sortOrder昇順）",
+            "items": {
+              "$ref": "#/components/schemas/CharterDrafterResponse"
+            }
+          },
+          "enactedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "制定日（未制定はnull）"
+          },
+          "hasCharter": {
+            "type": "boolean",
+            "description": "憲章が制定済みか（未制定はfalse・§12.2）"
+          },
+          "lastRevisedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "改定日（未改正はnull）"
+          },
+          "revisions": {
+            "type": "array",
+            "description": "改定履歴（revisedAt降順）",
+            "items": {
+              "$ref": "#/components/schemas/CharterRevisionResponse"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "親charterの楽観ロックversion（層2）。PATCH orderにcharterVersionとして同送。POST/DELETEには同送不要（悲観ロック直列化・§6.3）。未制定はnull"
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "村ID（UUID）"
+          }
+        },
+        "required": [
+          "articles",
+          "canEdit",
+          "drafters",
+          "hasCharter",
+          "revisions",
+          "villageId"
+        ]
+      },
+      "CharterDrafterCreateRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "策定者に加えるユーザーID（村ニックネームはサーバが焼付）"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "CharterArticleCreateRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "条文（必須・最大2000字）",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "supplement": {
+            "type": "string",
+            "description": "付則（任意・最大2000字）",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "body"
+        ]
       },
       "CalendarEventCreateRequest": {
         "type": "object",
@@ -194704,6 +195272,29 @@
             "minLength": 0
           }
         }
+      },
+      "CharterArticleOrderUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "articleIds": {
+            "type": "array",
+            "description": "非削除条の完全集合を並べ替えたid列（過不足・重複は400）",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1
+          },
+          "charterVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "親charterの楽観ロックversion（層2・必須）"
+          }
+        },
+        "required": [
+          "articleIds",
+          "charterVersion"
+        ]
       },
       "CalendarEventUpdateRequest": {
         "type": "object",
