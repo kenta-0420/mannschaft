@@ -76,8 +76,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code 584c3a46-b9c1-4cc2-bf74-e0a18eab1bef}）。
+     *
+     * <p>2138 → 2135（2026-07-23）: {@code admin.controller.SystemAdminDashboardController} の
+     * 一覧3エンドポイントを Summary DTO 返却に是正し、Controller からの他ドメイン Entity 参照
+     * 3 件（auth.UserEntity / organization.OrganizationEntity / team.TeamEntity）が根治で解消。
+     * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2138;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2135;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
