@@ -920,12 +920,15 @@ export interface VillageMeetupResponse {
   /** 決まったこと（幹事が記す自由記述メモ・F17.2 Wave1 ②寄合後半戦 §4.2.4）。未設定時は null。
    *  生成型 `MeetupResponse.decisionsNote` の optionality（optional）に合わせる */
   decisionsNote?: string | null
-  /** GOING（行く）出欠の定員（F17.2 追補）。null は無制限。GOING のみに効き MAYBE/ABSENT は無制約 */
-  capacity: number | null
-  /** 現在の GOING（行く）人数（F17.2 追補）。一覧・詳細ともバックエンドが実数を供給する */
-  goingCount: number
-  /** 残り枠（F17.2 追補）。`capacity - goingCount`（0 未満は 0 に丸め）。capacity が null（無制限）のときは null */
-  remainingSlots: number | null
+  /** GOING（行く）出欠の定員（F17.2 追補）。null は無制限。GOING のみに効き MAYBE/ABSENT は無制約。
+   *  生成型 `MeetupResponse.capacity` の optionality（optional）に合わせる */
+  capacity?: number | null
+  /** 現在の GOING（行く）人数（F17.2 追補）。一覧・詳細ともバックエンドが実数を供給する。
+   *  生成型 `MeetupResponse.goingCount` の optionality（optional）に合わせる */
+  goingCount?: number
+  /** 残り枠（F17.2 追補）。`capacity - goingCount`（0 未満は 0 に丸め）。capacity が null（無制限）のときは null。
+   *  生成型 `MeetupResponse.remainingSlots` の optionality（optional）に合わせる */
+  remainingSlots?: number | null
   createdAt: string
   /** 詳細取得時のみ詰められる。一覧取得時は null */
   candidateDates: VillageMeetupCandidateDateResponse[] | null
