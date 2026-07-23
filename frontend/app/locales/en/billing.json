@@ -129,6 +129,82 @@
         }
       }
     },
+    "betaPerks": {
+      "sectionTitle": "Beta perks",
+      "helpButton": "How it works",
+      "phaseBadge": "Beta phase {phase}",
+      "grantedAt": "Granted on {date}",
+      "noExpiryIndividual": "Free for as long as the service is provided",
+      "expiryTeamOrg": "Free until {date}",
+      "renewalNote": "Please wait for an announcement from us about renewal (it does not renew automatically)",
+      "featureListToggle": "View included features",
+      "memberSnapshot": "Active members at grant time: {count}",
+      "revoked": "Revoked",
+      "noGrant": "No beta perks are currently granted",
+      "eligibility": {
+        "title": "Perk eligibility progress",
+        "autoGrantNote": "Once the conditions are met, the perk is granted automatically (no application needed)",
+        "metric": {
+          "activeDays": "Active days",
+          "membershipTenureDays": "Membership tenure (days)",
+          "activeMembers": "Active members"
+        },
+        "progress": "{actual} / {required}",
+        "achieved": "Achieved! Please wait for the next automatic grant"
+      },
+      "badge": {
+        "name": "Beta tester",
+        "description": "A title awarded for your activity during the beta period"
+      },
+      "help": {
+        "title": "Guide to beta perks",
+        "about": {
+          "title": "What are beta perks?",
+          "body": "Beta perks let you use certain features for free during the beta period. Separate from any plan or add-on you contract yourself, these are granted at our discretion."
+        },
+        "autoGrant": {
+          "title": "How perks are granted (automatic)",
+          "body": "Perks are granted automatically once activity conditions such as active days are met. There's no application form. You can check your progress toward eligibility in the progress bar above."
+        },
+        "period": {
+          "title": "Duration and renewal",
+          "body": "Personal perks are free for as long as the service is provided. Team/organization perks have an expiration date, and we'll notify you as it approaches. They do not renew automatically."
+        },
+        "transfer": {
+          "title": "No transfers, and revocation",
+          "body": "Perks can't be transferred between accounts. If you violate the terms of service, a perk may be revoked."
+        }
+      },
+      "admin": {
+        "title": "Beta perk management",
+        "tabGrants": "Grants",
+        "tabCandidates": "Grant candidates",
+        "tabCriteria": "Criteria master",
+        "grantCta": "Grant a perk",
+        "revokeCta": "Revoke",
+        "extendCta": "Extend",
+        "resolveReviewCta": "Resolve review",
+        "flagReviewCta": "Flag for review",
+        "reviewFlagged": "Pending review",
+        "revokeReasonLabel": "Reason for revocation",
+        "revokeReason": {
+          "termsViolation": "Terms violation",
+          "accountTransfer": "Account transfer",
+          "other": "Other"
+        },
+        "skipCriteriaCheck": "Skip criteria check (exceptional grant)",
+        "skipCriteriaWarning": "Exceptional grants are recorded in the audit log. A note is required",
+        "extendMonthsLabel": "Extension period (months)",
+        "criteriaMinOneMetric": "Set at least one criteria metric"
+      },
+      "errors": {
+        "alreadyExists": "A perk for the same phase has already been granted to this target",
+        "criteriaNotMet": "The grant conditions aren't met",
+        "alreadyRevoked": "This perk has already been revoked",
+        "extendNotApplicable": "Personal perks can't be extended",
+        "load": "Failed to load beta perk information"
+      }
+    },
     "admin": {
       "title": "Billing master data management",
       "tabs": { "plans": "Plans", "features": "Feature catalog", "priceBands": "Member bands", "grants": "Manual grant", "contracts": "Contract search" },
