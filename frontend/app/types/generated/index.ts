@@ -71722,11 +71722,11 @@ export interface components {
             /** Format: int64 */
             totalUsers?: number;
         };
-        ApiResponsePageUserEntity: {
-            data?: components["schemas"]["PageUserEntity"];
+        ApiResponsePageSystemAdminUserSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminUserSummaryResponse"];
         };
-        PageUserEntity: {
-            content?: components["schemas"]["UserEntity"][];
+        PageSystemAdminUserSummaryResponse: {
+            content?: components["schemas"]["SystemAdminUserSummaryResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -71743,82 +71743,30 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        UserEntity: {
-            /** Format: int64 */
-            accountCreatedByWatcherUserId?: number;
+        SystemAdminUserSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            avatarUrl?: string;
-            bannerUrl?: string;
-            birthDate?: string;
-            birthDateHash?: string;
-            /** Format: int32 */
-            birthYear?: number;
-            /** @enum {string} */
-            careCategory?: "MINOR" | "ELDERLY" | "DISABILITY_SUPPORT" | "GENERAL_FAMILY";
-            careNotificationEnabled?: boolean;
-            cityCode?: string;
-            cityCodeHash?: string;
-            contactApprovalRequired?: boolean;
             contactHandle?: string;
-            countryCode?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
             displayName?: string;
-            /** @enum {string} */
-            dmReceiveFrom?: "ANYONE" | "TEAM_MEMBERS_ONLY" | "CONTACTS_ONLY";
             email?: string;
-            /** Format: int32 */
-            encryptionKeyVersion?: number;
-            firstName?: string;
-            firstNameHash?: string;
-            firstNameKana?: string;
-            /** @enum {string} */
-            followListVisibility?: "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
-            gender?: string;
-            genderHash?: string;
-            handleSearchable?: boolean;
             /** Format: int64 */
             id?: number;
-            isSearchable?: boolean;
             /** Format: date-time */
             lastLoginAt?: string;
-            lastName?: string;
-            lastNameHash?: string;
-            lastNameKana?: string;
             locale?: string;
-            nickname2?: string;
-            offlineOnly?: boolean;
-            /** @enum {string} */
-            onlineVisibility?: "NOBODY" | "CONTACTS_ONLY" | "EVERYONE";
-            passwordHash?: string;
-            phoneNumber?: string;
-            phoneNumberHash?: string;
-            postalCode?: string;
-            prefectureCode?: string;
-            prefectureCodeHash?: string;
-            /** Format: date-time */
-            privacyPolicyAcceptedAt?: string;
-            privacyPolicyVersion?: string;
-            publicProfileEnabled?: boolean;
-            /** Format: date-time */
-            purgedAt?: string;
-            /** Format: date-time */
-            reminderSentAt?: string;
-            reportingRestricted?: boolean;
             /** @enum {string} */
             status?: "PENDING_VERIFICATION" | "PENDING_PARENTAL_CONSENT" | "ACTIVE" | "FROZEN" | "ARCHIVED" | "DECEASED" | "RELOCATED";
             timezone?: string;
             /** Format: date-time */
             updatedAt?: string;
         };
-        ApiResponsePageTeamEntity: {
-            data?: components["schemas"]["PageTeamEntity"];
+        ApiResponsePageSystemAdminTeamSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminTeamSummaryResponse"];
         };
-        PageTeamEntity: {
-            content?: components["schemas"]["TeamEntity"][];
+        PageSystemAdminTeamSummaryResponse: {
+            content?: components["schemas"]["SystemAdminTeamSummaryResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -71835,72 +71783,60 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        TeamEntity: {
+        SystemAdminTeamSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            bannerUrl?: string;
             city?: string;
-            cityCode?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
-            /** Format: date */
-            establishedDate?: string;
-            /** @enum {string} */
-            establishedDatePrecision?: "YEAR" | "YEAR_MONTH" | "FULL";
-            homepageUrl?: string;
-            iconUrl?: string;
             /** Format: int64 */
             id?: number;
-            mapEmbedUrl?: string;
             /** Format: int64 */
             memberCount?: number;
             name?: string;
             nameKana?: string;
             nickname1?: string;
             nickname2?: string;
-            philosophy?: string;
             prefecture?: string;
-            prefectureCode?: string;
-            profileVisibility?: components["schemas"]["ProfileVisibility"];
-            publicEventsEnabled?: boolean;
             slug?: string;
             supporterEnabled?: boolean;
-            /** @enum {string} */
-            supporterNameDisclosure?: "DISPLAY_NAME" | "REAL_NAME";
             template?: string;
-            timelinePostsPublic?: boolean;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: int64 */
-            version?: number;
             /** @enum {string} */
             visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
         };
-        ApiResponsePageOrganizationEntity: {
-            data?: components["schemas"]["PageOrganizationEntity"];
+        ApiResponsePageSystemAdminOrganizationSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminOrganizationSummaryResponse"];
         };
-        OrganizationEntity: {
+        PageSystemAdminOrganizationSummaryResponse: {
+            content?: components["schemas"]["SystemAdminOrganizationSummaryResponse"][];
+            empty?: boolean;
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            number?: number;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            size?: number;
+            sort?: components["schemas"]["SortObject"];
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
+        SystemAdminOrganizationSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            bannerUrl?: string;
             city?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
-            /** Format: date */
-            establishedDate?: string;
-            /** @enum {string} */
-            establishedDatePrecision?: "YEAR" | "YEAR_MONTH" | "FULL";
             /** @enum {string} */
             hierarchyVisibility?: "NONE" | "BASIC" | "FULL";
-            homepageUrl?: string;
-            iconUrl?: string;
             /** Format: int64 */
             id?: number;
-            mapEmbedUrl?: string;
             name?: string;
             nameKana?: string;
             nickname1?: string;
@@ -71909,39 +71845,13 @@ export interface components {
             orgType?: "GOVERNMENT" | "MUNICIPALITY" | "COMPANY" | "HOSPITAL" | "ASSOCIATION" | "SCHOOL" | "NPO" | "COMMUNITY" | "OTHER";
             /** Format: int64 */
             parentOrganizationId?: number;
-            philosophy?: string;
             prefecture?: string;
-            profileVisibility?: components["schemas"]["ProfileVisibility"];
-            publicEventsEnabled?: boolean;
             slug?: string;
             supporterEnabled?: boolean;
-            /** @enum {string} */
-            supporterNameDisclosure?: "DISPLAY_NAME" | "REAL_NAME";
-            timelinePostsPublic?: boolean;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: int64 */
-            version?: number;
             /** @enum {string} */
             visibility?: "PUBLIC" | "PRIVATE";
-        };
-        PageOrganizationEntity: {
-            content?: components["schemas"]["OrganizationEntity"][];
-            empty?: boolean;
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            number?: number;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            size?: number;
-            sort?: components["schemas"]["SortObject"];
-            /** Format: int64 */
-            totalElements?: number;
-            /** Format: int32 */
-            totalPages?: number;
         };
         ApiResponseListBillingPlanAdminResponse: {
             data?: components["schemas"]["BillingPlanAdminResponse"][];
@@ -146360,7 +146270,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageUserEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminUserSummaryResponse"];
                 };
             };
         };
@@ -146382,7 +146292,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageTeamEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminTeamSummaryResponse"];
                 };
             };
         };
@@ -146404,7 +146314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageOrganizationEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminOrganizationSummaryResponse"];
                 };
             };
         };
