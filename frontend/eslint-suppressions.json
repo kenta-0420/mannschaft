@@ -1,35 +1,560 @@
 {
+  "app/components/Navigation/ScopeNavDropdown.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/components/chat/ChatMessageBubble.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/components/payment/PaymentAdminPanel.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/components/settings/SettingsProfileSection.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/chat/useChatWebSocket.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "app/composables/match/useMatchLiveRecorder.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useErrorReport.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useSpotlightApi.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/composables/useTodoGanttView.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/layouts/default.vue": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "app/pages/calendar.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/my/projects/[projectId].vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/organizations/[slug].vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/register.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/system-admin/analytics.vue": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "app/pages/system-admin/index.vue": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "app/pages/teams/[slug].vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/teams/[slug]/matches/[matchId]/live.vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "app/pages/teams/[slug]/projects/[projectId].vue": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "server/plugins/ssr-error-logger.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/care-events/advance-notice.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/care-links/care-link-invitation.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/care-links/care-link-management.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/committee/COMMITTEE-001.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/corkboard/corkboard-websocket.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "tests/e2e/f221-swipe-dashboard.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/mobile/mobile-immediacy.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/organizations/org-bulletin-deep.spec.ts": {
     "no-restricted-syntax": {
       "count": 1
     }
   },
   "tests/e2e/real/action-required-modals.spec.ts": {
     "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/adhd-ux-flows.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 20
+    }
+  },
+  "tests/e2e/real/admin/business-alert.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/admin/emergency-closure-realtime-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/admin/f1011-admin-console.spec.ts": {
+    "no-restricted-syntax": {
       "count": 1
     }
   },
+  "tests/e2e/real/admin/incident-banner-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/admin/reservation-authz-gate-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 6
+    }
+  },
+  "tests/e2e/real/admin/reservation-backlog-validations-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/admin/reservation-dashboard-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/admin/reservation-empty-onboarding-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/admin/reservation-f034-member-emergency-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/admin/reservation-f034-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 22
+    }
+  },
+  "tests/e2e/real/admin/reservation-nonadmin-cta-guard-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/admin/reservation-policy-mvp-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/admin/reservation-slot-override-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/admin/reservation-v2-exception-day.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/admin/reservation-v2-matrix-group.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/admin/reservation-v2-menu-template.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/admin/system-admin.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 13
+    }
+  },
+  "tests/e2e/real/advertising-spotlight.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
   "tests/e2e/real/announcement-broadcast.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 10
+    }
+  },
+  "tests/e2e/real/auth-proactive-refresh.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/avatar-presign-upload.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/blog/blog-full-e2e.spec.ts": {
     "no-restricted-syntax": {
       "count": 2
     }
   },
   "tests/e2e/real/bulletin-archive-folder.spec.ts": {
     "no-restricted-syntax": {
-      "count": 6
+      "count": 14
+    }
+  },
+  "tests/e2e/real/calendar-reminder-ux-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/chat-thread.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/dashboard-widget-order-jump.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/dashboard.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 21
     }
   },
   "tests/e2e/real/event-chat-survey-bulletin.spec.ts": {
     "no-restricted-syntax": {
+      "count": 6
+    }
+  },
+  "tests/e2e/real/f0810-basketball-continuous.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-entry-dashboard-calendar.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 11
+    }
+  },
+  "tests/e2e/real/f0810-entry1-fixture-record.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-go-turn.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/f0810-live-spectator-ws.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/f0810-match-record.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "tests/e2e/real/f0810-phase5b-canonical-match.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-position-photo.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-scored-components.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-scored-entries.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-scored-figure-gymnastics.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/f0810-shogi-turn.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/f0810-team-match-board.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "tests/e2e/real/f0810-volleyball-sets.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/f089-billing-crud-roles.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "tests/e2e/real/file-sharing-security.spec.ts": {
+    "no-restricted-syntax": {
       "count": 3
     }
   },
+  "tests/e2e/real/market-apply.real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/market.crud.real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/matching-search.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/mobile-write-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/module-activation-backfill.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/module-settings-catalog.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/org-admin.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 14
+    }
+  },
+  "tests/e2e/real/org-features.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 31
+    }
+  },
+  "tests/e2e/real/reflection/reflection-active-recall.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 11
+    }
+  },
+  "tests/e2e/real/reflection/reflection-archive.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 8
+    }
+  },
+  "tests/e2e/real/reflection/reflection-authz-phase3.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/reflection/reflection-recall.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/reflection/reflection-subject-linking.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/reflection/reflection-today-settings-export.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "tests/e2e/real/reflection/reflection-ui-crud.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "tests/e2e/real/reflection/reflection-vocab-cards-phase41.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/reflection/reflection-vocab-cards.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/repair-plan-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 20
+    }
+  },
   "tests/e2e/real/schedule-55-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/schedule-55-tz-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/schedule-reminder-update.real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "tests/e2e/real/seal-preview-defaults.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "tests/e2e/real/storage-and-personal-files.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 20
+    }
+  },
+  "tests/e2e/real/succession.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "tests/e2e/real/survey-response-real.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/team-features.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 36
+    }
+  },
+  "tests/e2e/real/tournament/F0871-tournament-crud.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/village-events-activation.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 10
+    }
+  },
+  "tests/e2e/real/village-events-wave2.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "tests/e2e/real/village-festival-banner.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/real/village-monsho-presign-upload.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 6
+    }
+  },
+  "tests/e2e/real/villages.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 12
+    }
+  },
+  "tests/e2e/real/write-ops.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 32
+    }
+  },
+  "tests/e2e/shifts/shift-auto-assign.spec.ts": {
     "no-restricted-syntax": {
       "count": 1
     }
   },
   "tests/e2e/slug/slug-url-migration.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/teams/bulletin-deep.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/validation/navigation-guard.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "tests/e2e/voting/proxy-vote.spec.ts": {
     "no-restricted-syntax": {
       "count": 1
     }

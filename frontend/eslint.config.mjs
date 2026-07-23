@@ -16,6 +16,17 @@ export default withNuxt({
         selector: "CatchClause > BlockStatement[body.length=1] > ReturnStatement:matches([argument.type='ArrayExpression'][argument.elements.length=0], [argument.type='ObjectExpression'][argument.properties.length=0], [argument.type='Literal'][argument.raw='null'], [argument.type='Identifier'][argument.name='undefined'], :not([argument]))",
         message: 'catchでエラーを握りつぶして空配列/null/空オブジェクト/undefined/空returnを返さないこと。取得失敗が0件表示に偽装される。ログ・通知・再throwで表面化させるか、握りつぶす正当な理由をコメントで明記のうえ該当行のみ eslint-disable-next-line で個別に許可すること。',
       },
+      // ルールC: Promise .catch(() => 空fallback) の握りつぶしを禁止（式本体：() => [] / null / undefined / ({}) / {}）。
+      // 取得失敗が0件表示や無反応に偽装される事故を予防する。named handler・本体2文以上・非空値返却は対象外。
+      {
+        selector: "CallExpression[callee.property.name='catch'] > ArrowFunctionExpression:matches([body.type='ArrayExpression'][body.elements.length=0], [body.type='ObjectExpression'][body.properties.length=0], [body.type='Literal'][body.raw='null'], [body.type='Identifier'][body.name='undefined'], [body.type='BlockStatement'][body.body.length=0])",
+        message: 'Promiseの.catchでエラーを握りつぶして空配列/null/空オブジェクト/undefinedを返さないこと。取得失敗が0件表示や無反応に偽装される。ログ・通知・再throwで表面化させるか、正当な理由をコメントで明記のうえ該当行を個別にeslint-disableすること。',
+      },
+      // ルールD: Promise .catch(() => { return 空fallback }) のブロック本体で単一returnの握りつぶしを禁止。
+      {
+        selector: "CallExpression[callee.property.name='catch'] > ArrowFunctionExpression > BlockStatement[body.length=1] > ReturnStatement:matches([argument.type='ArrayExpression'][argument.elements.length=0], [argument.type='ObjectExpression'][argument.properties.length=0], [argument.type='Literal'][argument.raw='null'], [argument.type='Identifier'][argument.name='undefined'], :not([argument]))",
+        message: 'Promiseの.catchでの握りつぶし返却（空配列/null/空オブジェクト/undefined/空return）を禁止。ログ・通知・再throwで表面化させるか、正当な理由をコメントで明記のうえ該当行を個別にeslint-disableすること。',
+      },
     ],
   },
 })
