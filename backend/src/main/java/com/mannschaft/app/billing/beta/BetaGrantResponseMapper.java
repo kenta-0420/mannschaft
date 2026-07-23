@@ -49,14 +49,22 @@ public class BetaGrantResponseMapper {
                 .build();
     }
 
-    /** シスアド向け詳細へマップ（審査系・criteria_snapshot を含む）。 */
-    public BetaGrantDetailResponse toDetail(BetaGrantEntity grant, LocalDateTime validUntil) {
+    /**
+     * シスアド向け詳細へマップ（審査系・criteria_snapshot を含む）。
+     *
+     * <p>Phase3 追補: {@code scopeDisplayName}/{@code grantedByName} は呼び出し側
+     * （{@link BetaGrantQueryService}）が {@code BetaPerkScopeNameResolver} でバルク解決した結果を渡す
+     * （本マッパー自体は Repository へアクセスしない・N+1 回避の責務分離）。</p>
+     */
+    public BetaGrantDetailResponse toDetail(
+            BetaGrantEntity grant, LocalDateTime validUntil, String scopeDisplayName, String grantedByName) {
         return BetaGrantDetailResponse.builder()
                 .grantId(grant.getId().toString())
                 .betaPhase(grant.getBetaPhase())
                 .grantKind(grant.getGrantKind().name())
                 .scopeKind(grant.getScopeKind().name())
                 .scopeId(grant.getScopeId())
+                .scopeDisplayName(scopeDisplayName)
                 .organizationId(grant.getOrganizationId())
                 .grantedAt(grant.getGrantedAt())
                 .validUntil(validUntil)
@@ -70,6 +78,7 @@ public class BetaGrantResponseMapper {
                 .revokedAt(grant.getRevokedAt())
                 .revokeReason(grant.getRevokeReason() == null ? null : grant.getRevokeReason().name())
                 .grantedBy(grant.getGrantedBy())
+                .grantedByName(grantedByName)
                 .build();
     }
 

@@ -116969,7 +116969,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePageUserEntity"
+                  "$ref": "#/components/schemas/ApiResponsePageSystemAdminUserSummaryResponse"
                 }
               }
             }
@@ -117000,7 +117000,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePageTeamEntity"
+                  "$ref": "#/components/schemas/ApiResponsePageSystemAdminTeamSummaryResponse"
                 }
               }
             }
@@ -117031,7 +117031,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePageOrganizationEntity"
+                  "$ref": "#/components/schemas/ApiResponsePageSystemAdminOrganizationSummaryResponse"
                 }
               }
             }
@@ -178781,6 +178781,11 @@
             "format": "int64",
             "description": "付与操作者 userId（自動付与バッチは null\u003dSYSTEM）"
           },
+          "grantedByName": {
+            "type": "string",
+            "description": "付与操作者の表示名（grantedBy が null\u003d自動付与バッチなら null・FE側でSYSTEM表示）",
+            "example": "山田太郎"
+          },
           "organizationId": {
             "type": "integer",
             "format": "int64",
@@ -178816,6 +178821,11 @@
             "type": "string",
             "format": "date-time",
             "description": "取消日時（未取消は null）"
+          },
+          "scopeDisplayName": {
+            "type": "string",
+            "description": "スコープ表示名（USER\u003dユーザー表示名/TEAM\u003dチーム名/ORG\u003d組織名。解決不能なら null）",
+            "example": "第一少年野球部"
           },
           "scopeId": {
             "type": "integer",
@@ -213744,21 +213754,21 @@
           }
         }
       },
-      "ApiResponsePageUserEntity": {
+      "ApiResponsePageSystemAdminUserSummaryResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PageUserEntity"
+            "$ref": "#/components/schemas/PageSystemAdminUserSummaryResponse"
           }
         }
       },
-      "PageUserEntity": {
+      "PageSystemAdminUserSummaryResponse": {
         "type": "object",
         "properties": {
           "content": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UserEntity"
+              "$ref": "#/components/schemas/SystemAdminUserSummaryResponse"
             }
           },
           "empty": {
@@ -213798,187 +213808,36 @@
           }
         }
       },
-      "UserEntity": {
+      "SystemAdminUserSummaryResponse": {
         "type": "object",
         "properties": {
-          "accountCreatedByWatcherUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
           "archivedAt": {
             "type": "string",
             "format": "date-time"
           },
-          "avatarUrl": {
-            "type": "string"
-          },
-          "bannerUrl": {
-            "type": "string"
-          },
-          "birthDate": {
-            "type": "string"
-          },
-          "birthDateHash": {
-            "type": "string"
-          },
-          "birthYear": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "careCategory": {
-            "type": "string",
-            "enum": [
-              "MINOR",
-              "ELDERLY",
-              "DISABILITY_SUPPORT",
-              "GENERAL_FAMILY"
-            ]
-          },
-          "careNotificationEnabled": {
-            "type": "boolean"
-          },
-          "cityCode": {
-            "type": "string"
-          },
-          "cityCodeHash": {
-            "type": "string"
-          },
-          "contactApprovalRequired": {
-            "type": "boolean"
-          },
           "contactHandle": {
-            "type": "string"
-          },
-          "countryCode": {
             "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
           },
-          "deletedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
           "displayName": {
             "type": "string"
           },
-          "dmReceiveFrom": {
-            "type": "string",
-            "enum": [
-              "ANYONE",
-              "TEAM_MEMBERS_ONLY",
-              "CONTACTS_ONLY"
-            ]
-          },
           "email": {
             "type": "string"
-          },
-          "encryptionKeyVersion": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "firstNameHash": {
-            "type": "string"
-          },
-          "firstNameKana": {
-            "type": "string"
-          },
-          "followListVisibility": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "FRIENDS_ONLY",
-              "PRIVATE"
-            ]
-          },
-          "gender": {
-            "type": "string"
-          },
-          "genderHash": {
-            "type": "string"
-          },
-          "handleSearchable": {
-            "type": "boolean"
           },
           "id": {
             "type": "integer",
             "format": "int64"
           },
-          "isSearchable": {
-            "type": "boolean"
-          },
           "lastLoginAt": {
             "type": "string",
             "format": "date-time"
           },
-          "lastName": {
-            "type": "string"
-          },
-          "lastNameHash": {
-            "type": "string"
-          },
-          "lastNameKana": {
-            "type": "string"
-          },
           "locale": {
             "type": "string"
-          },
-          "nickname2": {
-            "type": "string"
-          },
-          "offlineOnly": {
-            "type": "boolean"
-          },
-          "onlineVisibility": {
-            "type": "string",
-            "enum": [
-              "NOBODY",
-              "CONTACTS_ONLY",
-              "EVERYONE"
-            ]
-          },
-          "passwordHash": {
-            "type": "string"
-          },
-          "phoneNumber": {
-            "type": "string"
-          },
-          "phoneNumberHash": {
-            "type": "string"
-          },
-          "postalCode": {
-            "type": "string"
-          },
-          "prefectureCode": {
-            "type": "string"
-          },
-          "prefectureCodeHash": {
-            "type": "string"
-          },
-          "privacyPolicyAcceptedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "privacyPolicyVersion": {
-            "type": "string"
-          },
-          "publicProfileEnabled": {
-            "type": "boolean"
-          },
-          "purgedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "reminderSentAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "reportingRestricted": {
-            "type": "boolean"
           },
           "status": {
             "type": "string",
@@ -214001,21 +213860,21 @@
           }
         }
       },
-      "ApiResponsePageTeamEntity": {
+      "ApiResponsePageSystemAdminTeamSummaryResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PageTeamEntity"
+            "$ref": "#/components/schemas/PageSystemAdminTeamSummaryResponse"
           }
         }
       },
-      "PageTeamEntity": {
+      "PageSystemAdminTeamSummaryResponse": {
         "type": "object",
         "properties": {
           "content": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TeamEntity"
+              "$ref": "#/components/schemas/SystemAdminTeamSummaryResponse"
             }
           },
           "empty": {
@@ -214055,54 +213914,23 @@
           }
         }
       },
-      "TeamEntity": {
+      "SystemAdminTeamSummaryResponse": {
         "type": "object",
         "properties": {
           "archivedAt": {
             "type": "string",
             "format": "date-time"
           },
-          "bannerUrl": {
-            "type": "string"
-          },
           "city": {
-            "type": "string"
-          },
-          "cityCode": {
             "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
           },
-          "deletedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "establishedDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "establishedDatePrecision": {
-            "type": "string",
-            "enum": [
-              "YEAR",
-              "YEAR_MONTH",
-              "FULL"
-            ]
-          },
-          "homepageUrl": {
-            "type": "string"
-          },
-          "iconUrl": {
-            "type": "string"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
-          },
-          "mapEmbedUrl": {
-            "type": "string"
           },
           "memberCount": {
             "type": "integer",
@@ -214120,20 +213948,8 @@
           "nickname2": {
             "type": "string"
           },
-          "philosophy": {
-            "type": "string"
-          },
           "prefecture": {
             "type": "string"
-          },
-          "prefectureCode": {
-            "type": "string"
-          },
-          "profileVisibility": {
-            "$ref": "#/components/schemas/ProfileVisibility"
-          },
-          "publicEventsEnabled": {
-            "type": "boolean"
           },
           "slug": {
             "type": "string"
@@ -214141,26 +213957,12 @@
           "supporterEnabled": {
             "type": "boolean"
           },
-          "supporterNameDisclosure": {
-            "type": "string",
-            "enum": [
-              "DISPLAY_NAME",
-              "REAL_NAME"
-            ]
-          },
           "template": {
             "type": "string"
-          },
-          "timelinePostsPublic": {
-            "type": "boolean"
           },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
           },
           "visibility": {
             "type": "string",
@@ -214173,23 +213975,66 @@
           }
         }
       },
-      "ApiResponsePageOrganizationEntity": {
+      "ApiResponsePageSystemAdminOrganizationSummaryResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PageOrganizationEntity"
+            "$ref": "#/components/schemas/PageSystemAdminOrganizationSummaryResponse"
           }
         }
       },
-      "OrganizationEntity": {
+      "PageSystemAdminOrganizationSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SystemAdminOrganizationSummaryResponse"
+            }
+          },
+          "empty": {
+            "type": "boolean"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SystemAdminOrganizationSummaryResponse": {
         "type": "object",
         "properties": {
           "archivedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "bannerUrl": {
-            "type": "string"
           },
           "city": {
             "type": "string"
@@ -214197,22 +214042,6 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "deletedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "establishedDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "establishedDatePrecision": {
-            "type": "string",
-            "enum": [
-              "YEAR",
-              "YEAR_MONTH",
-              "FULL"
-            ]
           },
           "hierarchyVisibility": {
             "type": "string",
@@ -214222,18 +214051,9 @@
               "FULL"
             ]
           },
-          "homepageUrl": {
-            "type": "string"
-          },
-          "iconUrl": {
-            "type": "string"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
-          },
-          "mapEmbedUrl": {
-            "type": "string"
           },
           "name": {
             "type": "string"
@@ -214265,17 +214085,8 @@
             "type": "integer",
             "format": "int64"
           },
-          "philosophy": {
-            "type": "string"
-          },
           "prefecture": {
             "type": "string"
-          },
-          "profileVisibility": {
-            "$ref": "#/components/schemas/ProfileVisibility"
-          },
-          "publicEventsEnabled": {
-            "type": "boolean"
           },
           "slug": {
             "type": "string"
@@ -214283,23 +214094,9 @@
           "supporterEnabled": {
             "type": "boolean"
           },
-          "supporterNameDisclosure": {
-            "type": "string",
-            "enum": [
-              "DISPLAY_NAME",
-              "REAL_NAME"
-            ]
-          },
-          "timelinePostsPublic": {
-            "type": "boolean"
-          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
           },
           "visibility": {
             "type": "string",
@@ -214307,52 +214104,6 @@
               "PUBLIC",
               "PRIVATE"
             ]
-          }
-        }
-      },
-      "PageOrganizationEntity": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OrganizationEntity"
-            }
-          },
-          "empty": {
-            "type": "boolean"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },

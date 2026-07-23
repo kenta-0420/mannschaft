@@ -260,4 +260,24 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
     @Query("SELECT MIN(m.joinedAt) FROM MembershipEntity m "
             + "WHERE m.userId = :userId AND m.leftAt IS NULL")
     java.util.Optional<java.time.LocalDateTime> findEarliestActiveJoinedAt(@Param("userId") Long userId);
+
+    /**
+     * 複数ユーザーの<b>最古の有効所属</b>（{@code left_at IS NULL}）の {@code joined_at} を <b>1 クエリ</b>で
+     * 一括取得する（F20.3 Phase2 自動付与バッチの N+1 回避・設計書 F20.3 03 §6）。
+     *
+     * <p>{@link #findEarliestActiveJoinedAt} の bulk 版。{@code GROUP BY m.userId} で userId ごとの
+     * {@code MIN(joined_at)} を返し、{@code List<Object[]>}（{@code [0]=userId(Long), [1]=joinedAt(LocalDateTime)}）を
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）が Map 化して在籍日数を計算する。
+     * scalar のみ返すため {@link MembershipEntity} を呼び出し側に露出しない（クロスドメイン Entity 参照 D-1 を回避）。</p>
+     *
+     * <p><b>有効所属の無いユーザーは結果行に現れない</b>（GROUP BY の性質）。呼び出し側は欠損を在籍 0 日として扱う。
+     * 空の {@code userIds} は {@code IN ()} で不正 SQL になるため、呼び出し側でガードして本メソッドを呼ばない。</p>
+     *
+     * @param userIds 対象ユーザーID群（非空）
+     * @return {@code [userId, MIN(joinedAt)]} の配列リスト（有効所属の無いユーザーは含まれない）
+     */
+    @Query("SELECT m.userId, MIN(m.joinedAt) FROM MembershipEntity m "
+            + "WHERE m.userId IN :userIds AND m.leftAt IS NULL "
+            + "GROUP BY m.userId")
+    List<Object[]> findEarliestActiveJoinedAtByUsers(@Param("userIds") Collection<Long> userIds);
 }

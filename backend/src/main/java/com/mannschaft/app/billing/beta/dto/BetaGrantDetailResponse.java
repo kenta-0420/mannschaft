@@ -13,6 +13,11 @@ import java.util.List;
  * <p>利用者向け {@link BetaGrantItem} のフィールドに加え、審査系（{@code reviewFlag}/{@code reviewReason}/
  * {@code reviewFlaggedAt}/{@code reviewResolvedAt}）・{@code criteriaSnapshot}・{@code grantedBy}/{@code note}・
  * スコープ情報を含む。<b>SYSTEM_ADMIN 専用 EP でのみ返す</b>（利用者向け EP では {@link BetaGrantItem} を使う・03 §3）。</p>
+ *
+ * <p><b>Phase3 追補（表示名）</b>: {@code scopeDisplayName}/{@code grantedByName} はシスアド審査画面が
+ * 「誰への付与か」を ID ではなく名前で判別できるよう追加した。名前解決は
+ * {@code com.mannschaft.app.billing.beta.BetaPerkScopeNameResolver} が
+ * scope 種別ごとバルクで行い（N+1 回避）、本マッパーは解決済みの文字列を受け取るだけで越境しない。</p>
  */
 @Getter
 @Builder
@@ -33,6 +38,10 @@ public class BetaGrantDetailResponse {
 
     @Schema(description = "スコープ ID", example = "123")
     private final Long scopeId;
+
+    @Schema(description = "スコープ表示名（USER=ユーザー表示名/TEAM=チーム名/ORG=組織名。解決不能なら null）",
+            nullable = true, example = "第一少年野球部")
+    private final String scopeDisplayName;
 
     @Schema(description = "テナント組織 ID（USER は null）", nullable = true, example = "45")
     private final Long organizationId;
@@ -72,4 +81,8 @@ public class BetaGrantDetailResponse {
 
     @Schema(description = "付与操作者 userId（自動付与バッチは null=SYSTEM）", nullable = true)
     private final Long grantedBy;
+
+    @Schema(description = "付与操作者の表示名（grantedBy が null=自動付与バッチなら null・FE側でSYSTEM表示）",
+            nullable = true, example = "山田太郎")
+    private final String grantedByName;
 }

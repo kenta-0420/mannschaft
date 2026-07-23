@@ -1574,7 +1574,8 @@
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
       "feedbackInbox": "Feedback-Posteingang (Global)",
-      "billing": "Abrechnungs-Stammdaten"
+      "billing": "Abrechnungs-Stammdaten",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",

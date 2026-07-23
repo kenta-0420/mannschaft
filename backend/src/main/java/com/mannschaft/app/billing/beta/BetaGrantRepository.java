@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,27 @@ public interface BetaGrantRepository extends AbstractTenantAwareRepository<BetaG
      */
     List<BetaGrantEntity> findByScopeKindAndScopeIdOrderByGrantedAtDesc(
             EntitlementScopeKind scopeKind, Long scopeId);
+
+    /**
+     * 指定フェーズ × スコープ種別で、既に付与済み（<b>取消済みを含む</b>）のスコープIDを <b>1 クエリ</b>で
+     * 一括取得する（F20.3 Phase2 自動付与バッチの skip-set 先読み・設計書 F20.3 03 §6）。
+     *
+     * <p><b>取消済みを除外しない理由</b>: {@code uk_bg_scope_phase} 上、取消は終端で同一 scope × phase の
+     * 再付与は不可（設計書 01 §1 設計判断 1）。よって「取消済みで既に存在する」スコープも再付与対象から外す
+     * skip-set に含める必要がある（{@code revokedAt} で絞らない）。バッチはこの集合で先にメモリ内 skip 判定し、
+     * {@code grantBetaPerk} の per-user 二重付与検出（{@code GRANT_ALREADY_EXISTS}）を N+1 で叩かない。</p>
+     *
+     * @param betaPhase ベータ段階
+     * @param scopeKind スコープ種別（個人特典は {@code USER}）
+     * @param scopeIds  照合対象スコープID群（非空・ページ内ユーザーID）
+     * @return 付与済み（取消済み含む）のスコープID
+     */
+    @Query("SELECT g.scopeId FROM BetaGrantEntity g "
+            + "WHERE g.betaPhase = :betaPhase AND g.scopeKind = :scopeKind AND g.scopeId IN :scopeIds")
+    List<Long> findGrantedScopeIds(
+            @Param("betaPhase") Integer betaPhase,
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeIds") Collection<Long> scopeIds);
 
     /**
      * シスアド運用一覧のフィルタ検索（設計書 02 §4・{@code GET /system-admin/beta-perks/grants}）。

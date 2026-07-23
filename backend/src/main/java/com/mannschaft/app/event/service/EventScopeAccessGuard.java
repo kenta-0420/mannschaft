@@ -118,6 +118,43 @@ public class EventScopeAccessGuard {
     }
 
     /**
+     * {@link #requireMemberByEventId} の非スロー版（真偽返却）。
+     *
+     * <p>chat ドメインの {@code EVENT_CHAT} 閲覧・投稿認可のように、越境呼出し側が自ドメインの
+     * エラーコード（例: {@code CHANNEL_ACCESS_DENIED}）で拒否したい場合に、
+     * 「当該イベントスコープのメンバー（または SYSTEM_ADMIN）か」を真偽で返す越境窓口。
+     * village ドメインの {@code PostingIdentityService#isUserVillageMember} と同じ思想
+     * （プリミティブのみ返却・ドメイン境界原則1／エンティティを他ドメインへ漏らさない）。</p>
+     *
+     * <p>イベント不在（{@code EVENT_NOT_FOUND}）・引数 {@code null} は非メンバー扱い（{@code false}）とし、
+     * イベントの存在を漏らさない（IDOR 秘匿）。判定本体は既存基盤
+     * {@link AccessControlService} に委譲し、独自の認可述語を発明しない。</p>
+     *
+     * @param userId  操作者ユーザー ID
+     * @param eventId 対象イベント ID
+     * @return 当該イベントスコープのメンバー（または SYSTEM_ADMIN）なら {@code true}
+     */
+    public boolean isEventScopeMember(Long userId, Long eventId) {
+        if (userId == null || eventId == null) {
+            return false;
+        }
+        EventEntity event;
+        try {
+            event = eventService.findEventOrThrow(eventId);
+        } catch (BusinessException e) {
+            // イベント不在は非メンバー扱い（存在秘匿）。想定外のエラーコードは握り潰さず再送出する。
+            if (e.getErrorCode() == EventErrorCode.EVENT_NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        return accessControlService.isMember(userId, event.getScopeId(), event.getScopeType().name());
+    }
+
+    /**
      * 操作者が当該スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）であることを検証する。
      * 非該当は 403 COMMON_002。
      */

@@ -7,10 +7,25 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.event.EventScopeType;
+import com.mannschaft.app.event.EventStatus;
+import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
+import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
+import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
+import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.entity.enums.VillageType;
+import com.mannschaft.app.village.entity.enums.VillageVisibility;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import com.mannschaft.app.village.repository.VillageRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,9 +41,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -79,6 +96,15 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ChatMessageRepository messageRepository;
 
+    @Autowired
+    private VillageRepository villageRepository;
+
+    @Autowired
+    private VillageMembershipRepository villageMembershipRepository;
+
+    @Autowired
+    private EventRepository eventRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -96,6 +122,16 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long teamPublicChannelId;
     private Long teamPrivateChannelId;
     private Long dmChannelId;
+
+    // 裏目付A: VILLAGE_LOBBY / EVENT_CHAT の素通し根治用データ
+    /** 対象村の現役 USER メンバー（VILLAGE_LOBBY を閲覧できるべき主役）。 */
+    private Long villageMemberId;
+    private UUID villageId;
+    private Long villageLobbyChannelId;
+    /** EVENT_CHAT のイベントスコープ（teamA）メンバー（チャンネルメンバー行は持たない）。 */
+    private Long eventScopeMemberId;
+    private Long eventId;
+    private Long eventChatChannelId;
 
     @BeforeEach
     void setUp() {
@@ -152,8 +188,81 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
                 .channelId(teamPublicChannelId).senderId(channelMemberId)
                 .body("公開チャンネルの本文").build());
 
+        setUpVillageLobby();
+        setUpEventChat();
+
         em.flush();
         em.clear();
+    }
+
+    /**
+     * VILLAGE_LOBBY 認可用データ。村・村メンバー（USER 主体）・村ロビーチャンネルを用意する。
+     * outsiderId は村メンバーではない（非メンバーの主役）。
+     */
+    private void setUpVillageLobby() {
+        villageMemberId = insertUser("chat-authz-village-member@example.com");
+
+        VillageEntity village = villageRepository.save(VillageEntity.builder()
+                .slug("chat-authz-village-" + System.nanoTime())
+                .name("認可契約テスト村")
+                .type(VillageType.COMMUNITY)
+                .joinPolicy(VillageJoinPolicy.FREE)
+                .visibility(VillageVisibility.PUBLIC)
+                .bulletinVisibility(VillageBulletinVisibility.MEMBERS_ONLY)
+                .build());
+        villageId = village.getId();
+
+        villageMembershipRepository.save(VillageMembershipEntity.builder()
+                .villageId(villageId)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(villageMemberId)
+                .role(VillageRole.VILLAGER)
+                .joinedAt(LocalDateTime.now())
+                .build());
+
+        villageLobbyChannelId = channelRepository.save(ChatChannelEntity.builder()
+                .channelType(ChannelType.VILLAGE_LOBBY)
+                .villageId(villageId)
+                .name("認可契約 村ロビー")
+                .isPrivate(false)
+                .createdBy(villageMemberId)
+                .build()).getId();
+
+        messageRepository.save(ChatMessageEntity.builder()
+                .channelId(villageLobbyChannelId).senderId(villageMemberId)
+                .body("村ロビーの本文").build());
+    }
+
+    /**
+     * EVENT_CHAT 認可用データ。teamA スコープのイベントと EVENT_CHAT チャンネルを用意する。
+     * イベントスコープのメンバー = teamA メンバー（{@code eventScopeMemberId}）。
+     * outsiderId は teamA 非所属のためイベント非参加者（非メンバーの主役）。
+     */
+    private void setUpEventChat() {
+        eventScopeMemberId = insertUser("chat-authz-event-member@example.com");
+        MembershipTestHelper.insertMembership(em, eventScopeMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+
+        EventEntity event = eventRepository.save(EventEntity.builder()
+                .scopeType(EventScopeType.TEAM).scopeId(teamAId)
+                .slug("chat-authz-event-" + System.nanoTime())
+                .status(EventStatus.REGISTRATION_OPEN)
+                .visibility(EventVisibility.MEMBERS_ONLY)
+                .build());
+        eventId = event.getId();
+
+        eventChatChannelId = channelRepository.save(ChatChannelEntity.builder()
+                .channelType(ChannelType.EVENT_CHAT)
+                .teamId(teamAId)
+                .name("認可契約 イベントチャット")
+                .isPrivate(false)
+                .sourceType("EVENT")
+                .sourceId(eventId)
+                .createdBy(eventScopeMemberId)
+                .build()).getId();
+
+        messageRepository.save(ChatMessageEntity.builder()
+                .channelId(eventChatChannelId).senderId(eventScopeMemberId)
+                .body("イベントチャットの本文").build());
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -383,6 +492,121 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("body", "認可契約テストの投稿");
             return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 裏目付A: VILLAGE_LOBBY / EVENT_CHAT の閲覧素通し根治
+    //   旧実装は isMembershipGated() でない種別を無言 return で素通しし、
+    //   村の非メンバー・イベント非参加者でも本文一覧・スレッド・検索・投稿が通っていた。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("村ロビー・イベントチャット認可(VILLAGE_LOBBY / EVENT_CHAT)")
+    class VillageAndEventChat {
+
+        // ---- AC-1a: 村の非メンバーは VILLAGE_LOBBY を閲覧できない ----
+
+        @Test
+        @DisplayName("AC-1a: 村の非メンバーによる村ロビーのメッセージ一覧は403（CHAT_005・素通し根治）")
+        void 村非メンバーの村ロビーメッセージ一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", villageLobbyChannelId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        // ---- AC-1b: イベント非参加者は EVENT_CHAT を閲覧できない ----
+
+        @Test
+        @DisplayName("AC-1b: イベント非参加者によるイベントチャットのメッセージ一覧は403（CHAT_005・素通し根治）")
+        void イベント非参加者のイベントチャットメッセージ一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", eventChatChannelId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        // ---- AC-1c: 正当な村メンバー / イベントスコープメンバーは従来どおり200（回帰防止） ----
+
+        @Test
+        @DisplayName("AC-1c: 村の現役メンバーによる村ロビーのメッセージ一覧は200（回帰防止）")
+        void 村メンバーの村ロビーメッセージ一覧は200() throws Exception {
+            setAuthentication(villageMemberId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", villageLobbyChannelId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-1c: イベントスコープのメンバーによるイベントチャットのメッセージ一覧は200（回帰防止）")
+        void イベントスコープメンバーのイベントチャットメッセージ一覧は200() throws Exception {
+            setAuthentication(eventScopeMemberId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", eventChatChannelId))
+                    .andExpect(status().isOk());
+        }
+
+        // ---- AC-1d: list / thread / search の全読取経路で非メンバー403（経路漏れ防止） ----
+
+        @Test
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのスレッド一覧は403（経路漏れ防止）")
+        void 村非メンバーの村ロビースレッド一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/threads", villageLobbyChannelId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        @Test
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのメッセージ検索は403（経路漏れ防止）")
+        void 村非メンバーの村ロビーメッセージ検索は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages/search", villageLobbyChannelId)
+                            .param("keyword", "本文"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        @Test
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのスレッド一覧は403（経路漏れ防止）")
+        void イベント非参加者のイベントチャットスレッド一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/threads", eventChatChannelId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        @Test
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのメッセージ検索は403（経路漏れ防止）")
+        void イベント非参加者のイベントチャットメッセージ検索は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/chat/channels/{id}/messages/search", eventChatChannelId)
+                            .param("keyword", "本文"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        // ---- 投稿経路も同じゲートを通す（非メンバーの書き込みバイパス閉塞） ----
+
+        @Test
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーへのメッセージ送信は403（投稿バイパス閉塞）")
+        void 村非メンバーの村ロビー投稿は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/chat/channels/{id}/messages", villageLobbyChannelId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("body", "侵入投稿"))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+        }
+
+        @Test
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットへのメッセージ送信は403（投稿バイパス閉塞）")
+        void イベント非参加者のイベントチャット投稿は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/chat/channels/{id}/messages", eventChatChannelId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("body", "侵入投稿"))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
         }
     }
 
