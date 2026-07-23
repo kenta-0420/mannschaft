@@ -25,6 +25,7 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
+import com.mannschaft.app.village.repository.VillageMeetupAttendanceRepository;
 import com.mannschaft.app.village.repository.VillageMeetupCandidateDateRepository;
 import com.mannschaft.app.village.repository.VillageMeetupRepository;
 import com.mannschaft.app.village.repository.VillageMeetupVoteRepository;
@@ -88,6 +89,9 @@ class VillageMeetupServiceTest {
     private VillageRepository villageRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
+    /** F17.2 追補: buildResponseWithCandidates が GOING 数集計に使う（既定戻り 0）。 */
+    @Mock
+    private VillageMeetupAttendanceRepository attendanceRepository;
     @Mock
     private AuditLogService auditLogService;
     /** F17.2 Wave2 ①: 行事作成・確定の還流イベント発行（no-op モック）。 */

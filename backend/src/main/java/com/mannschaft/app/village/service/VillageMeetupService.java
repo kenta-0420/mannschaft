@@ -29,6 +29,7 @@ import com.mannschaft.app.village.entity.VillageMeetupTodoEntity;
 import com.mannschaft.app.village.entity.VillageMeetupVoteEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
+import com.mannschaft.app.village.entity.enums.VillageMeetupAttendanceStatus;
 import com.mannschaft.app.village.entity.enums.VillageMeetupStatus;
 import com.mannschaft.app.village.event.VillageEventOccurredEvent;
 import com.mannschaft.app.village.entity.enums.VillageRole;
@@ -50,6 +51,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -150,6 +152,9 @@ public class VillageMeetupService {
                 .organizerUserId(actorUserId)
                 .status(VillageMeetupStatus.PLANNING)
                 .location(request.location())
+                // F17.2 追補: 定員をそのまま保存する最小結線（試練骨格）。
+                // capacity>=1/null の下限バリデーション・満席強制は出陣フェーズで実装する。
+                .capacity(request.capacity())
                 .build();
         VillageMeetupEntity saved = meetupRepository.save(entity);
 
@@ -208,9 +213,14 @@ public class VillageMeetupService {
                 || request.description() != null
                 || request.location() != null;
         boolean touchesDecisions = request.decisionsNote() != null;
+        // F17.2 追補: capacity（定員）はフィールド単位で認可・状態ガードを分ける（decisions_note と同格）。
+        //  - 編集権者 = 幹事＋村長/長老（requireOrganizerOrModerator）。
+        //  - 状態は PLANNING/CONFIRMED 両可（CANCELLED のみ拒否・§4.5）。
+        boolean touchesCapacity = request.capacity() != null;
 
         // どのフィールドも変更しない空更新は、後方互換のため従来の「幹事・PLANNING」ガードで扱う。
-        if (touchesCore || !touchesDecisions) {
+        // capacity/decisions のみの更新は core ガードに巻き込まない（各々専用の認可・状態ガードで扱う）。
+        if (touchesCore || (!touchesDecisions && !touchesCapacity)) {
             requireOrganizer(entity, actorUserId);
             if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
                 throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
@@ -221,6 +231,13 @@ public class VillageMeetupService {
             // CANCELLED は読み取りのみ（§4.5）。PLANNING/CONFIRMED は決まったこと更新可。
             rejectIfCancelled(entity);
             entity.setDecisionsNote(request.decisionsNote());
+        }
+        if (touchesCapacity) {
+            requireOrganizerOrModerator(villageId, entity, actorUserId);
+            rejectIfCancelled(entity);
+            // 現 GOING 数より小さい定員へ縮小してもよい（既存 GOING はキックしない）。
+            // 縮小後は remaining=0 となり、以後の新規 GOING が upsertAttendance で塞がれる。
+            entity.setCapacity(request.capacity());
         }
 
         if (request.title() != null) {
@@ -356,9 +373,21 @@ public class VillageMeetupService {
         Page<VillageMeetupEntity> page = (status == null)
                 ? meetupRepository.findByVillageIdAndDeletedAtIsNull(villageId, resolved)
                 : meetupRepository.findByVillageIdAndStatusAndDeletedAtIsNull(villageId, status, resolved);
-        return page.getContent().stream()
-                // 一覧では候補日は省略（パフォーマンス）
-                .map(m -> MeetupResponse.of(m, null))
+        List<VillageMeetupEntity> content = page.getContent();
+        if (content.isEmpty()) {
+            return List.of();
+        }
+        // F17.2 追補: GOING 実数を GROUP BY で一括取得し N+1 を回避する（AC-19）。
+        List<UUID> ids = content.stream().map(VillageMeetupEntity::getId).toList();
+        Map<UUID, Long> goingByMeetup = attendanceRepository
+                .countByMeetupIdInAndStatusGrouped(ids, VillageMeetupAttendanceStatus.GOING)
+                .stream()
+                .collect(Collectors.toMap(
+                        VillageMeetupAttendanceRepository.MeetupAttendanceStatusCount::getMeetupId,
+                        VillageMeetupAttendanceRepository.MeetupAttendanceStatusCount::getCount));
+        return content.stream()
+                // 一覧では候補日は省略（パフォーマンス）。goingCount はバッチ供給・件数 0 は 0 埋め。
+                .map(m -> MeetupResponse.of(m, null, goingByMeetup.getOrDefault(m.getId(), 0L)))
                 .toList();
     }
 
@@ -545,13 +574,22 @@ public class VillageMeetupService {
      * {@link DataIntegrityViolationException} を捕捉して1回だけ再検索→更新にフォールバックする。
      * 「今の意思を上書きする」冪等操作なので、新規作成でも既存更新でも常に 200 を返す。</p>
      */
-    @Transactional
+    // isolation=READ_COMMITTED: 悲観ロック取得後の GOING 数カウントを「現在の確定値」で読むため。
+    // MySQL 既定の REPEATABLE READ では、本メソッド冒頭の非ロック読み（loadActiveVillage 等）で
+    // 確立された一貫スナップショットにカウントが引きずられ、ロック解放直後に相手が確定させた GOING 行を
+    // 取りこぼして定員超過を許す。READ_COMMITTED なら各文が最新確定を読むため、直列化が正しく効く（AC-20）。
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public MeetupAttendanceResponse upsertAttendance(UUID villageId, UUID meetupId,
                                                      MeetupAttendanceUpsertRequest request, Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         requireConfirmed(meetup);
+
+        // F17.2 追補: GOING への新規/遷移時のみ定員を強制する（MAYBE/ABSENT は無制約）。
+        if (request.status() == VillageMeetupAttendanceStatus.GOING) {
+            enforceCapacityForGoing(meetupId, actorUserId);
+        }
 
         VillageMeetupAttendanceEntity saved = writeAttendance(meetupId, actorUserId, request.status());
 
@@ -562,6 +600,42 @@ public class VillageMeetupService {
                         + "\",\"status\":\"" + request.status() + "\"}");
 
         return MeetupAttendanceResponse.of(saved, resolveUserDisplayName(actorUserId, villageId));
+    }
+
+    /**
+     * GOING 出欠の定員（capacity）を強制する（F17.2 追補）。
+     *
+     * <p>親の寄合行を悲観ロック（{@code SELECT ... FOR UPDATE}）で取得してから GOING 数を数え、
+     * 判定・書込みまでを同一トランザクションで直列化する。これにより 2 名がほぼ同時に GOING を
+     * 叩いても定員を超えない（AC-20）。@Version 楽観ロックだけでは別ユーザーが別の出欠行を insert
+     * するケースで親行が dirty にならず衝突しないため、超過を防げない。</p>
+     *
+     * <ul>
+     *   <li>capacity=null は無制限。</li>
+     *   <li>既に GOING の本人の再送は満席でも冪等成功（新規カウントに数えない）。</li>
+     *   <li>GOING 数が capacity 以上のときの新規 GOING は
+     *       {@link VillageErrorCode#MEETUP_CAPACITY_FULL}（VILLAGE_103・409）で拒否する。</li>
+     * </ul>
+     */
+    private void enforceCapacityForGoing(UUID meetupId, Long actorUserId) {
+        VillageMeetupEntity locked = meetupRepository.findByIdForUpdate(meetupId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MEETUP_NOT_FOUND));
+        Integer capacity = locked.getCapacity();
+        if (capacity == null) {
+            return; // 無制限
+        }
+        // 既に GOING の本人はカウント済み。同状態の再送は満席でも通す（冪等・本人は塞がない）。
+        boolean alreadyGoing = attendanceRepository.findByMeetupIdAndUserId(meetupId, actorUserId)
+                .map(a -> a.getStatus() == VillageMeetupAttendanceStatus.GOING)
+                .orElse(false);
+        if (alreadyGoing) {
+            return;
+        }
+        long going = attendanceRepository.countByMeetupIdAndStatus(
+                meetupId, VillageMeetupAttendanceStatus.GOING);
+        if (going >= capacity) {
+            throw new BusinessException(VillageErrorCode.MEETUP_CAPACITY_FULL);
+        }
     }
 
     /** 出欠 upsert の本体（並行 UNIQUE 競合は1回だけ再検索→更新でフォールバック）。 */
@@ -955,7 +1029,10 @@ public class VillageMeetupService {
         List<MeetupCandidateDateResponse> candidates = candidateDateRepository
                 .findByMeetupIdOrderBySortOrderAscCandidateDateAscCandidateTimeAsc(entity.getId())
                 .stream().map(MeetupCandidateDateResponse::of).toList();
-        return MeetupResponse.of(entity, candidates);
+        // F17.2 追補: GOING 実数を載せる（remainingSlots は MeetupResponse.of が capacity から算出）。
+        long goingCount = attendanceRepository.countByMeetupIdAndStatus(
+                entity.getId(), VillageMeetupAttendanceStatus.GOING);
+        return MeetupResponse.of(entity, candidates, goingCount);
     }
 
     /**
