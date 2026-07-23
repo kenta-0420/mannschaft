@@ -90,7 +90,11 @@ public class BetaPerkEligibilityService {
             metrics.add(new MetricProgress("activeMembers", actual, criteria.getMinActiveMembers()));
         }
 
-        boolean eligible = metrics.stream().allMatch(MetricProgress::met);
+        // fail-closed（無条件付与の防止・マスター方針「幽霊アカへのバラ撒き防止」）。
+        // criteria が enabled でも、当該 grant_kind に適用可能な指標が 1 つも無い（例: TEAM_ORG に
+        // activeDays 指標のみ設定＝TEAM_ORG では計測しないため絞込後 0 件）場合、allMatch は空集合で true を
+        // 返してしまう。適用指標ゼロは「判定不能」であり付与可ではない→ eligible=false（未達扱い）で締める。
+        boolean eligible = !metrics.isEmpty() && metrics.stream().allMatch(MetricProgress::met);
         return new EligibilityResult(eligible, metrics, betaPhase, criteria.getEvaluationWindowDays());
     }
 }

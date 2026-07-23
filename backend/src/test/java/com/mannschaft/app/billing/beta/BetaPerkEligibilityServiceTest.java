@@ -137,6 +137,19 @@ class BetaPerkEligibilityServiceTest {
     }
 
     @Test
+    @DisplayName("fail-closed: 適用可能な指標がゼロ(TEAM_ORGにactiveDaysのみ)は eligible=false（無条件付与を防止）")
+    void failClosed_noApplicableMetric_notEligible() {
+        // TEAM_ORG だが activeDays のみ設定＝TEAM_ORG では計測しないため絞込後は指標ゼロ。
+        given(criteriaRepository.findById(new BetaPerkCriteriaId(2, GrantKind.TEAM_ORG)))
+                .willReturn(Optional.of(criteria(GrantKind.TEAM_ORG, 14, null, null, true)));
+
+        EligibilityResult result = service.evaluate(GrantKind.TEAM_ORG, EntitlementScopeKind.TEAM, 7L, 2);
+
+        assertThat(result.eligible()).isFalse();
+        assertThat(result.metrics()).isEmpty();
+    }
+
+    @Test
     @DisplayName("TEAM_ORG: 複数指標(tenure/activeMembers)の AND。全達成で true（activeDays は計測しない）")
     void teamOrg_multipleMetrics_andTrue() {
         given(criteriaRepository.findById(new BetaPerkCriteriaId(2, GrantKind.TEAM_ORG)))
