@@ -150,6 +150,9 @@ public class VillageMeetupService {
                 .organizerUserId(actorUserId)
                 .status(VillageMeetupStatus.PLANNING)
                 .location(request.location())
+                // F17.2 追補: 定員をそのまま保存する最小結線（試練骨格）。
+                // capacity>=1/null の下限バリデーション・満席強制は出陣フェーズで実装する。
+                .capacity(request.capacity())
                 .build();
         VillageMeetupEntity saved = meetupRepository.save(entity);
 
@@ -231,6 +234,12 @@ public class VillageMeetupService {
         }
         if (request.location() != null) {
             entity.setLocation(request.location());
+        }
+        // F17.2 追補: 定員をそのまま保存する最小結線（試練骨格）。
+        // 編集権者（幹事＋村長/長老）・PLANNING/CONFIRMED 両許可・下限バリデーションは
+        // 出陣フェーズで実装する（現状は既存 core フィールドと同じ「幹事・PLANNING」ガードに乗る）。
+        if (request.capacity() != null) {
+            entity.setCapacity(request.capacity());
         }
 
         VillageMeetupEntity saved = meetupRepository.save(entity);

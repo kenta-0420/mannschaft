@@ -19,5 +19,16 @@ public record MeetupCreateRequest(
         @NotBlank @Size(max = 200) String title,
         @Size(max = 5000) String description,
         @Size(max = 300) String location,
-        @NotEmpty @Size(max = 30) @Valid List<MeetupCandidateDateInput> candidateDates) {
+        @NotEmpty @Size(max = 30) @Valid List<MeetupCandidateDateInput> candidateDates,
+        // F17.2 追補: GOING 定員（任意・null=無制限）。@Min(1) の下限バリデーションは出陣フェーズで付与する。
+        Integer capacity) {
+
+    /**
+     * 後方互換コンストラクタ（capacity 未指定＝無制限）。
+     * capacity 追加以前の 4 引数呼び出し（既存テスト等）を壊さないためのデリゲート。
+     */
+    public MeetupCreateRequest(String title, String description, String location,
+                               List<MeetupCandidateDateInput> candidateDates) {
+        this(title, description, location, candidateDates, null);
+    }
 }

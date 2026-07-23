@@ -543,7 +543,23 @@ public enum VillageErrorCode implements ErrorCode {
      * 明示エラーにする（対処療法禁止）。</p>
      */
     FESTIVAL_LIVE_POST_DUPLICATE("VILLAGE_102",
-            "この投稿は既にこのお祭りの実況として登録されています", Severity.WARN);
+            "この投稿は既にこのお祭りの実況として登録されています", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 追補 — 寄合定員（VILLAGE_103）
+    // 設計確定仕様: capacity（GOING 出欠の定員）が満席のときの新規 GOING を拒否する。
+    // ==================================================================
+
+    /**
+     * VILLAGE_103: 寄合の定員（capacity）が満席で、新規に GOING（行く）を登録できない（409）。
+     *
+     * <p>capacity は GOING 出欠のみを制約する（MAYBE/ABSENT は無制約）。既に GOING の本人が
+     * 再度 GOING を送る冪等操作は満席でも通す（本人は塞がない）。GOING→MAYBE/ABSENT で枠が空く。
+     * Severity は既定 WARN のままだと 400 に落ちるため、{@code GlobalExceptionHandler} の
+     * {@code ERROR_CODE_STATUS_MAP} で VILLAGE_103 → 409 を個別登録する。</p>
+     */
+    MEETUP_CAPACITY_FULL("VILLAGE_103",
+            "この寄合は定員に達しているため、これ以上「行く」を受け付けられません", Severity.WARN);
 
     private final String code;
     private final String message;
