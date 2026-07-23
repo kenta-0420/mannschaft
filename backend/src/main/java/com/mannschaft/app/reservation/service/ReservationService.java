@@ -497,6 +497,29 @@ public class ReservationService {
     }
 
     /**
+     * 予約が指定チームに属することを検証する（越境 BOLA 防止の軽量ゲート）。
+     *
+     * <p>リマインダー等、{@code reservationId} のみを引数に取る下流サービス
+     * （{@link ReservationReminderService}）へ委譲する前に、URL のスコープ（{@code teamId}）に
+     * 予約が属することを確かめる。属さない／不在なら
+     * {@link ReservationErrorCode#RESERVATION_NOT_FOUND}（404・存在秘匿）を投げる。</p>
+     *
+     * <p><b>なぜ必要か:</b> リマインダー系 EP の {@code @PreAuthorize} は {@code #teamId} の
+     * 管理者性だけを見る。{@code reservationId} と {@code teamId} の帰属を結ぶこの検証が無いと、
+     * あるチームの正規管理者が別チームの {@code reservationId} を推測して当該予約のリマインダーを
+     * 読み書きできる（テナント境界越えの BOLA）。GET 詳細（{@link #getReservation}）や
+     * 状態遷移 6 メソッドは {@link #findReservationOrThrow} で既に帰属を検証しているが、
+     * リマインダー系は {@code reservationId} のみを下流へ渡していたため本ゲートで補う。</p>
+     *
+     * @param teamId        URL 上のチームID（認可スコープ）
+     * @param reservationId 予約ID
+     * @throws BusinessException 予約が当該チームに属さない／存在しない場合
+     */
+    public void assertReservationInTeam(Long teamId, Long reservationId) {
+        findReservationOrThrow(teamId, reservationId);
+    }
+
+    /**
      * 予約を取得する。存在しない場合は例外をスローする。
      */
     private ReservationEntity findReservationOrThrow(Long teamId, Long reservationId) {
