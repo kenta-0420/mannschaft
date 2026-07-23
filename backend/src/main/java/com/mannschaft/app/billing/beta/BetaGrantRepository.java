@@ -32,6 +32,14 @@ public interface BetaGrantRepository extends AbstractTenantAwareRepository<BetaG
             EntitlementScopeKind scopeKind, Long scopeId);
 
     /**
+     * 指定スコープの付与を取消済み含めて付与日時降順で取得する（利用者向け照会・設計書 02 §1）。
+     * {@code /me/beta-perks} / チーム・組織照会は取消済みも {@code revokedAt} 付きで表示するため
+     * {@code RevokedAtIsNull} で絞らない。
+     */
+    List<BetaGrantEntity> findByScopeKindAndScopeIdOrderByGrantedAtDesc(
+            EntitlementScopeKind scopeKind, Long scopeId);
+
+    /**
      * シスアド運用一覧のフィルタ検索（設計書 02 §4・{@code GET /system-admin/beta-perks/grants}）。
      * 各条件は NULL で無効化（AND 絞り込み）。
      *
@@ -50,5 +58,33 @@ public interface BetaGrantRepository extends AbstractTenantAwareRepository<BetaG
             @Param("reviewFlag") Boolean reviewFlag,
             @Param("grantKind") GrantKind grantKind,
             @Param("betaPhase") Integer betaPhase,
+            Pageable pageable);
+
+    /**
+     * シスアド運用一覧のフィルタ検索（scope 絞り込み付き・設計書 02 §4）。
+     * {@link #searchGrants} に {@code scopeKind}/{@code scopeId} フィルタ（各 NULL で無効化）を加えた版。
+     * 隊2 の一覧 EP は本メソッドを用いる（{@code scopeKind}/{@code scopeId} クエリを黙殺しないため）。
+     *
+     * @param reviewFlag 審査待ちフラグ（null=無視）
+     * @param grantKind  付与種別（null=無視）
+     * @param betaPhase  ベータ段階（null=無視）
+     * @param scopeKind  スコープ種別（null=無視）
+     * @param scopeId    スコープ ID（null=無視）
+     * @param pageable   ページング
+     */
+    @Query("""
+            SELECT g FROM BetaGrantEntity g
+             WHERE (:reviewFlag IS NULL OR g.reviewFlag = :reviewFlag)
+               AND (:grantKind IS NULL OR g.grantKind = :grantKind)
+               AND (:betaPhase IS NULL OR g.betaPhase = :betaPhase)
+               AND (:scopeKind IS NULL OR g.scopeKind = :scopeKind)
+               AND (:scopeId IS NULL OR g.scopeId = :scopeId)
+            """)
+    Page<BetaGrantEntity> searchGrantsWithScope(
+            @Param("reviewFlag") Boolean reviewFlag,
+            @Param("grantKind") GrantKind grantKind,
+            @Param("betaPhase") Integer betaPhase,
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId,
             Pageable pageable);
 }
