@@ -237,7 +237,9 @@
           "title": "Error al registrar el límite del período",
           "detail": "La transición de período no se pudo guardar en el servidor. Los marcadores y los totales de tiempo de juego pueden ser inexactos. Vuelve a accionar el cronómetro para registrarlo de nuevo."
         },
-        "complete_failed": "No se pudo guardar la finalización del partido"
+        "complete_failed": "No se pudo guardar la finalización del partido",
+        "score_load_failed": "No se pudieron cargar las puntuaciones existentes. Recarga la página",
+        "load_players_failed": "No se pudo cargar la lista de jugadores"
       },
       "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar",
       "spectator": {

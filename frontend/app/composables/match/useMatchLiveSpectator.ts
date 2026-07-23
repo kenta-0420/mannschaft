@@ -199,6 +199,7 @@ export function parseLivePayload(body: string): MatchLiveUpdatePayload | null {
     // 境界の載せ替え（生成型再生成で解消・他に散らさない）。
     return raw as MatchLiveUpdatePayload
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正な STOMP フレーム（JSON パース不能）を破棄する防御。null=不正フレームは呼び出し側で無視
     return null
   }
 }

@@ -237,7 +237,9 @@
           "title": "Failed to record period boundary",
           "detail": "The period transition could not be saved to the server. Scores and playing-time totals may be inaccurate. Please re-trigger the timer to record it again."
         },
-        "complete_failed": "Failed to save match completion"
+        "complete_failed": "Failed to save match completion",
+        "score_load_failed": "Could not load the existing scores. Please reload the page",
+        "load_players_failed": "Failed to load the player roster"
       },
       "read_only_notice": "View only. Only admins, deputies and scorekeepers can record",
       "spectator": {

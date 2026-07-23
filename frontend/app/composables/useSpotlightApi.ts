@@ -106,6 +106,7 @@ export function useSpotlightApi() {
       )
       return res.data
     } catch {
+      // eslint-disable-next-line no-restricted-syntax -- 広告ビュー計上はベストエフォート（設計 §6.3）。失敗は表示体験に影響させず null 返却
       return null
     }
   }

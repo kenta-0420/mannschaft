@@ -82,6 +82,7 @@ function loadTimeHistory(): TimeHistoryEntry[] {
   try {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as TimeHistoryEntry[]
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- localStorage の破損履歴に対する防御パース。空配列復帰が正しい（機能劣化なし）
     return []
   }
 }

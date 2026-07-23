@@ -67,6 +67,7 @@ function parseJsonSafe(value: string): Record<string, unknown> {
   try {
     return JSON.parse(value) as Record<string, unknown>
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正 JSON に対する防御パース。空オブジェクト復帰が正しい（後続の正規化で欠損キーは既定値に落ちる）
     return {}
   }
 }
