@@ -20,5 +20,9 @@ onMounted(loadPermissions)
     <BillingHelpDialog v-model:visible="showHelp" variant="manage" />
 
     <BillingManagePanel scope-kind="TEAM" :scope-id="teamSlug" :can-manage="isAdmin" />
+
+    <div class="mt-6">
+      <BetaPerkSection scope-kind="TEAM" :scope-id="teamSlug" />
+    </div>
   </div>
 </template>
