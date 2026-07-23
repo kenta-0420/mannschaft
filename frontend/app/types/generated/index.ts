@@ -58997,6 +58997,11 @@ export interface components {
              */
             grantedBy?: number;
             /**
+             * @description 付与操作者の表示名（grantedBy が null=自動付与バッチなら null・FE側でSYSTEM表示）
+             * @example 山田太郎
+             */
+            grantedByName?: string;
+            /**
              * Format: int64
              * @description テナント組織 ID（USER は null）
              * @example 45
@@ -59032,6 +59037,11 @@ export interface components {
              * @description 取消日時（未取消は null）
              */
             revokedAt?: string;
+            /**
+             * @description スコープ表示名（USER=ユーザー表示名/TEAM=チーム名/ORG=組織名。解決不能なら null）
+             * @example 第一少年野球部
+             */
+            scopeDisplayName?: string;
             /**
              * Format: int64
              * @description スコープ ID

@@ -178213,6 +178213,11 @@
             "format": "int64",
             "description": "付与操作者 userId（自動付与バッチは null\u003dSYSTEM）"
           },
+          "grantedByName": {
+            "type": "string",
+            "description": "付与操作者の表示名（grantedBy が null\u003d自動付与バッチなら null・FE側でSYSTEM表示）",
+            "example": "山田太郎"
+          },
           "organizationId": {
             "type": "integer",
             "format": "int64",
@@ -178248,6 +178253,11 @@
             "type": "string",
             "format": "date-time",
             "description": "取消日時（未取消は null）"
+          },
+          "scopeDisplayName": {
+            "type": "string",
+            "description": "スコープ表示名（USER\u003dユーザー表示名/TEAM\u003dチーム名/ORG\u003d組織名。解決不能なら null）",
+            "example": "第一少年野球部"
           },
           "scopeId": {
             "type": "integer",
