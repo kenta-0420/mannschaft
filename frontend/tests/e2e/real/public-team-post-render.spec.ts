@@ -152,8 +152,13 @@ test.describe('#2456: 公開チーム投稿詳細ページ 陽性描画', () => 
       timeout: 5_000,
     })
 
-    // 404 / Not Found ページに落ちていないことの追加裏取り
-    const bodyText = await page.locator('body').textContent()
+    // 404 / Not Found ページに落ちていないことの追加裏取り。
+    // `body.textContent()` は `<script id="__NUXT_DATA__">` 等の非表示スクリプト内テキストも
+    // 拾ってしまい、Nuxt のハイドレーションペイロード（全ルート/エラーページ定義を含む）に
+    // 偶然 "404" という部分文字列が含まれるため誤検知する（実機で確認・根治）。
+    // `document.body.innerText` は非表示要素・script/style を除外した実際の描画テキストのみを
+    // 返すため、こちらを使う。
+    const bodyText = await page.evaluate(() => document.body.innerText)
     expect(bodyText).not.toMatch(/404|見つかりません|Not Found/i)
 
     await page.screenshot({
