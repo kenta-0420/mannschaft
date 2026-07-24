@@ -52,6 +52,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li><b>AC-4</b>: 一覧が該当 0 件のとき 200 かつ {@code data} が空配列。</li>
  *   <li><b>AC-11</b>: 認可回帰。認証必須 EP（{@code /api/v1/activities}）は未認証で 401。
  *       公開 EP（{@code /api/v1/public/...}）の未認証時ステータスを回帰ガードとして固定する。</li>
+ *   <li><b>AC-12</b>: {@code ActivityPublicController} の残り 4 EP（team/org 一覧・team/org 詳細）の
+ *       回帰ガード。0 件一覧の形状、詳細のフィールド契約（{@code assertActivityContract} 経由）、
+ *       および未認証時ステータスを固定する（可視性フィルタが {@code ContentVisibilityChecker} 経由の
+ *       別経路であるため、AC-3/AC-11 だけでは検出できない回帰を捕捉する）。</li>
  * </ul>
  *
  * <p><b>現状の期待挙動</b>: {@code deletedAt}（null 値でも {@code spring.jackson.default-property-inclusion}
@@ -90,10 +94,17 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
     private Long templateId;
     private Long activityId;
 
+    // AC-12: 公開活動記録EP（team/org 一覧・詳細）の回帰ガード用シード。
+    private Long orgId;
+    private Long emptyOrgId;
+    private Long orgActivityId;
+
     @BeforeEach
     void setUp() {
         teamAId = insertTeam("ACTIVITYRESP チームA");
         emptyTeamId = insertTeam("ACTIVITYRESP 空チーム");
+        orgId = insertOrganization("ACTIVITYRESP 組織A");
+        emptyOrgId = insertOrganization("ACTIVITYRESP 空組織");
 
         // 認証ユーザーを両チームのメンバーにする（checkMembership を通す）。
         MembershipTestHelper.insertMembership(em, MEMBER_ID, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
@@ -128,6 +139,28 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
                 .createdBy(MEMBER_ID)
                 .build());
         activityId = activity.getId();
+
+        // AC-12: 組織スコープの公開活動記録を 1 件シードする（team 用テンプレートを流用。
+        // template_id の FK は activity_templates の実存のみを要求し、scope 一致は強制しない）。
+        ActivityResultEntity orgActivity = resultRepository.save(ActivityResultEntity.builder()
+                .scopeType(ActivityScopeType.ORGANIZATION)
+                .scopeId(orgId)
+                .templateId(templateId)
+                .title("ACTIVITYRESP 組織活動記録")
+                .activityDate(LocalDate.now())
+                .activityTimeStart(LocalTime.of(13, 0))
+                .activityTimeEnd(LocalTime.of(15, 0))
+                .location("第二体育館")
+                .venueId(556L)
+                .description("組織合同練習")
+                .fieldValues("{\"score\":\"2-2\"}")
+                .attachments("[]")
+                .visibility(ActivityVisibility.PUBLIC)
+                .status(ActivityStatus.PUBLISHED)
+                .scheduleId(778L)
+                .createdBy(MEMBER_ID)
+                .build());
+        orgActivityId = orgActivity.getId();
 
         em.flush();
         em.clear();
@@ -277,6 +310,90 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // AC-12: 公開活動記録EP（team/org 一覧・詳細）の回帰ガード（検分指摘対応）
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Test
+    @WithMockUser(username = MEMBER_ID_STR)
+    @DisplayName("AC-12a: team 公開一覧が該当 0 件のとき 200 かつ data は空配列")
+    void ac12_teamPublicList_emptyList_空配列() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/public/teams/{teamId}/activities", emptyTeamId))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        assertThat(data.isArray()).as("data は配列である").isTrue();
+        assertThat(data.size()).as("0 件のとき空配列である").isZero();
+    }
+
+    @Test
+    @WithMockUser(username = MEMBER_ID_STR)
+    @DisplayName("AC-12b: org 公開一覧が該当 0 件のとき 200 かつ data は空配列")
+    void ac12_orgPublicList_emptyList_空配列() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities", emptyOrgId))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        assertThat(data.isArray()).as("data は配列である").isTrue();
+        assertThat(data.size()).as("0 件のとき空配列である").isZero();
+    }
+
+    @Test
+    @WithMockUser(username = MEMBER_ID_STR)
+    @DisplayName("AC-12c: team 公開詳細のレスポンスがフィールド契約を満たし deletedAt/publishable を含まない")
+    void ac12_teamPublicDetail_契約遵守() throws Exception {
+        MvcResult result = mockMvc.perform(
+                        get("/api/v1/public/teams/{teamId}/activities/{id}", teamAId, activityId))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        assertActivityContract(data);
+    }
+
+    @Test
+    @WithMockUser(username = MEMBER_ID_STR)
+    @DisplayName("AC-12d: org 公開詳細のレスポンスがフィールド契約を満たし deletedAt/publishable を含まない")
+    void ac12_orgPublicDetail_契約遵守() throws Exception {
+        MvcResult result = mockMvc.perform(
+                        get("/api/v1/public/organizations/{orgId}/activities/{id}", orgId, orgActivityId))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        assertActivityContract(data);
+    }
+
+    @Test
+    @DisplayName("AC-12e: team 公開一覧 EP の未認証時ステータス回帰ガード")
+    void ac12_teamPublicListUnauthenticated_regressionGuard() throws Exception {
+        mockMvc.perform(get("/api/v1/public/teams/{teamId}/activities", teamAId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("AC-12f: team 公開詳細 EP の未認証時ステータス回帰ガード")
+    void ac12_teamPublicDetailUnauthenticated_regressionGuard() throws Exception {
+        mockMvc.perform(get("/api/v1/public/teams/{teamId}/activities/{id}", teamAId, activityId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("AC-12g: org 公開一覧 EP の未認証時ステータス回帰ガード")
+    void ac12_orgPublicListUnauthenticated_regressionGuard() throws Exception {
+        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities", orgId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("AC-12h: org 公開詳細 EP の未認証時ステータス回帰ガード")
+    void ac12_orgPublicDetailUnauthenticated_regressionGuard() throws Exception {
+        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities/{id}", orgId, orgActivityId))
+                .andExpect(status().isUnauthorized());
+    }
+
     private Long insertTeam(String name) {
         em.createNativeQuery(
                         "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
@@ -286,6 +403,19 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+
+    private Long insertOrganization(String name) {
+        em.createNativeQuery(
+                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                                + "supporter_enabled, version, slug, created_at, updated_at) "
+                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
+                                + "CONCAT('a-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
                 .setParameter("name", name)
                 .getSingleResult()).longValue();
     }
