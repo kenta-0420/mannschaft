@@ -440,6 +440,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/charter/articles/{articleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 条の本文/付則を更新する（層1 楽観ロック・§7） */
+        put: operations["updateArticle"];
+        post?: never;
+        /** 条を論理削除し残る条を再連番する（悲観ロック直列化・409 なし・§6.3） */
+        delete: operations["deleteArticle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{userId}/seals/{sealId}": {
         parameters: {
             query?: never;
@@ -7070,6 +7088,57 @@ export interface paths {
         put?: never;
         /** 村のお祭りを中止する（HEADMAN / ELDER のみ） */
         post: operations["cancel_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 改正を確定する（改定日・改定履歴を刻む里程標・条文の可視性は変えない・§8.2） */
+        post: operations["addRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/drafters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 策定者を追加する（村ニックネームを焼き付け・§5.2） */
+        post: operations["addDrafter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 条を末尾に追加する（初回は憲章を自動生成し制定日をセット・§4.5） */
+        post: operations["addArticle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23593,6 +23662,23 @@ export interface paths {
         patch: operations["update_47"];
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/charter/articles/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 条の並び順を一括更新する（層2 楽観ロック・charterVersion 同送・§7） */
+        patch: operations["reorderArticles"];
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/calendar-events/{eventId}": {
         parameters: {
             query?: never;
@@ -30190,6 +30276,23 @@ export interface paths {
         };
         /** 指定月の村史を取得する（YYYY-MM-DD 形式） */
         get: operations["get_29"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN） */
+        get: operations["get_30"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41385,7 +41488,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_30"];
+        get: operations["get_31"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43756,6 +43859,23 @@ export interface paths {
         post?: never;
         /** 寄合の候補日を削除する（幹事のみ、投票も連動削除） */
         delete: operations["removeCandidateDate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/drafters/{drafterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 策定者を削除する（更新後の憲章全体を返す・再連番・AC-16b） */
+        delete: operations["removeDrafter"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46241,6 +46361,42 @@ export interface components {
             updatedAt?: string;
             /** Format: int64 */
             userId?: number;
+        };
+        CharterArticleUpdateRequest: {
+            /** @description 条文（必須・最大2000字） */
+            body: string;
+            /** @description 付則（任意・最大2000字） */
+            supplement?: string;
+            /**
+             * Format: int64
+             * @description 条単位の楽観ロックversion（層1・必須）
+             */
+            version: number;
+        };
+        ApiResponseCharterArticleResponse: {
+            data?: components["schemas"]["CharterArticleResponse"];
+        };
+        /** @description 村憲章の条（自動採番・sortOrder非露出・§18.1） */
+        CharterArticleResponse: {
+            /**
+             * Format: int32
+             * @description 導出された条番号（第N条・sort_order昇順のindex+1・§6.1）
+             */
+            articleNumber: number;
+            /** @description 条文（必須） */
+            body: string;
+            /**
+             * Format: uuid
+             * @description 条ID（UUID）
+             */
+            id: string;
+            /** @description 付則（任意・未設定時null） */
+            supplement?: string;
+            /**
+             * Format: int64
+             * @description 条単位の楽観ロックversion（層1・PUTに同送）
+             */
+            version: number;
         };
         UpdateSealRequest: {
             displayText?: string;
@@ -53806,6 +53962,89 @@ export interface components {
             festivalId?: string;
             /** Format: int64 */
             timelinePostId?: number;
+        };
+        CharterRevisionCreateRequest: {
+            /** @description 改定メモ（任意・最大200字） */
+            note?: string;
+        };
+        ApiResponseVillageCharterResponse: {
+            data?: components["schemas"]["VillageCharterResponse"];
+        };
+        /** @description 村憲章の策定者（村ニックネーム焼付・userId非露出・G4） */
+        CharterDrafterResponse: {
+            /** @description 表示名（焼き付けた村ニックネーム・実名ではない） */
+            displayName: string;
+            /**
+             * Format: uuid
+             * @description 策定者ID（UUID）
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description 表示順（0始まり）
+             */
+            sortOrder: number;
+        };
+        /** @description 村憲章の改定履歴（日付＋任意メモの軽量履歴・§8.3） */
+        CharterRevisionResponse: {
+            /**
+             * Format: uuid
+             * @description 改定履歴ID（UUID）
+             */
+            id: string;
+            /** @description 改定メモ（任意・未設定時null） */
+            note?: string;
+            /**
+             * Format: date-time
+             * @description 改定日時（「改正を確定」時刻）
+             */
+            revisedAt: string;
+        };
+        /** @description 村憲章の全体（メタ＋条＋策定者＋改定履歴・§18.1） */
+        VillageCharterResponse: {
+            /** @description 条一覧（自動採番済み・articleNumber昇順） */
+            articles: components["schemas"]["CharterArticleResponse"][];
+            /** @description 閲覧者が現役HEADMAN/ELDERか（FEの編集UI出し分け） */
+            canEdit: boolean;
+            /** @description 策定者一覧（sortOrder昇順） */
+            drafters: components["schemas"]["CharterDrafterResponse"][];
+            /**
+             * Format: date-time
+             * @description 制定日（未制定はnull）
+             */
+            enactedAt?: string;
+            /** @description 憲章が制定済みか（未制定はfalse・§12.2） */
+            hasCharter: boolean;
+            /**
+             * Format: date-time
+             * @description 改定日（未改正はnull）
+             */
+            lastRevisedAt?: string;
+            /** @description 改定履歴（revisedAt降順） */
+            revisions: components["schemas"]["CharterRevisionResponse"][];
+            /**
+             * Format: int64
+             * @description 親charterの楽観ロックversion（層2）。PATCH orderにcharterVersionとして同送。POST/DELETEには同送不要（悲観ロック直列化・§6.3）。未制定はnull
+             */
+            version?: number;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
+        };
+        CharterDrafterCreateRequest: {
+            /**
+             * Format: int64
+             * @description 策定者に加えるユーザーID（村ニックネームはサーバが焼付）
+             */
+            userId: number;
+        };
+        CharterArticleCreateRequest: {
+            /** @description 条文（必須・最大2000字） */
+            body: string;
+            /** @description 付則（任意・最大2000字） */
+            supplement?: string;
         };
         CalendarEventCreateRequest: {
             colorHex?: string;
@@ -64891,6 +65130,15 @@ export interface components {
             startsAt?: string;
             themeColorHex?: string;
             title?: string;
+        };
+        CharterArticleOrderUpdateRequest: {
+            /** @description 非削除条の完全集合を並べ替えたid列（過不足・重複は400） */
+            articleIds: string[];
+            /**
+             * Format: int64
+             * @description 親charterの楽観ロックversion（層2・必須）
+             */
+            charterVersion: number;
         };
         CalendarEventUpdateRequest: {
             colorHex?: string;
@@ -78908,6 +79156,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    updateArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                articleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCharterArticleResponse"];
+                };
+            };
+        };
+    };
+    deleteArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                articleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
             };
         };
     };
@@ -95964,6 +96262,84 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseFestivalResponse"];
+                };
+            };
+        };
+    };
+    addRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterRevisionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    addDrafter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterDrafterCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    addArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
                 };
             };
         };
@@ -127658,6 +128034,32 @@ export interface operations {
             };
         };
     };
+    reorderArticles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleOrderUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
     get_22: {
         parameters: {
             query?: never;
@@ -140038,6 +140440,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseChronicleResponse"];
+                };
+            };
+        };
+    };
+    get_30: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
                 };
             };
         };
@@ -155464,7 +155888,7 @@ export interface operations {
             };
         };
     };
-    get_30: {
+    get_31: {
         parameters: {
             query: {
                 organizationId: number;
@@ -158662,6 +159086,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    removeDrafter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                drafterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
             };
         };
     };

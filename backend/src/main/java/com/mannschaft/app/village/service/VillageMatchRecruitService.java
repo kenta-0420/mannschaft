@@ -13,7 +13,6 @@ import com.mannschaft.app.village.dto.MatchRecruitCreateRequest;
 import com.mannschaft.app.village.dto.MatchRecruitListResponse;
 import com.mannschaft.app.village.dto.MatchRecruitResponse;
 import com.mannschaft.app.village.dto.MatchRecruitUpdateRequest;
-import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitApplicationEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitEntity;
@@ -23,7 +22,6 @@ import com.mannschaft.app.village.entity.enums.VillageMatchRecruitCategory;
 import com.mannschaft.app.village.entity.enums.VillageMatchRecruitStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -44,7 +42,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -81,7 +78,7 @@ public class VillageMatchRecruitService {
     private final VillageMembershipRepository membershipRepository;
     private final VillageMatchRecruitRepository recruitRepository;
     private final VillageMatchRecruitApplicationRepository applicationRepository;
-    private final UserVillageNicknameRepository nicknameRepository;
+    private final VillageNicknameResolver villageNicknameResolver;
     /** Read-only: 表示名解決（原則1 FK 不在）。参照不能時は null 表示で済ませる。 */
     private final TeamRepository teamRepository;
     /** Read-only: 将来の組織募集拡張用（現 Phase は USER+TEAM のみ）。 */
@@ -613,18 +610,8 @@ public class VillageMatchRecruitService {
      * @param villageId 村 ID（{@code null} ならグローバルニックネームのみ参照）
      */
     private String resolveUserDisplayName(Long userId, UUID villageId) {
-        if (userId == null) {
-            return null;
-        }
-        if (villageId != null) {
-            Optional<UserVillageNicknameEntity> villageNick =
-                    nicknameRepository.findByUserIdAndVillageId(userId, villageId);
-            if (villageNick.isPresent()) {
-                return villageNick.get().getNickname();
-            }
-        }
-        Optional<UserVillageNicknameEntity> globalNick = nicknameRepository.findByUserIdAndVillageIdIsNull(userId);
-        return globalNick.map(UserVillageNicknameEntity::getNickname).orElse("USER:#" + userId);
+        // F17.3 前工程リファクタ: 共有ヘルパへ委譲（ふるまい不変・重複ドリフト防止・§15.4）。
+        return villageNicknameResolver.resolve(userId, villageId);
     }
 
     /** チーム ID をチーム名に解決する。参照不能・null の場合は {@code null}。 */

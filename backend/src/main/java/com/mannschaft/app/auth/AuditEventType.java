@@ -295,6 +295,22 @@ public enum AuditEventType {
     VILLAGE_AFFINITY_QUERIED(AuditEventCategory.VILLAGE),
     /** F17.2 ⑥ — 所属村一覧の公開トグルを切替（本人操作・§9.3）。 */
     VILLAGE_MEMBERSHIP_PROFILE_VISIBILITY_CHANGED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 初回制定（最初の条追加で charter 自動生成・§4.5/§16.2）。 */
+    VILLAGE_CHARTER_ENACTED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を追加（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の本文/付則を更新（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を論理削除（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_DELETED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の並び替え（PATCH order・§16.2）。 */
+    VILLAGE_CHARTER_REORDERED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を追加（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を削除（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_REMOVED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 「改正を確定」（last_revised_at 更新＋履歴追記・§8.2/§16.2）。 */
+    VILLAGE_CHARTER_REVISED(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */

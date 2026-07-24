@@ -110,6 +110,7 @@ public class VillageMeetupService {
     private final VillageMeetupCommentRepository commentRepository;
     private final VillageMeetupTodoRepository todoRepository;
     private final UserVillageNicknameRepository nicknameRepository;
+    private final VillageNicknameResolver villageNicknameResolver;
     /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -967,19 +968,8 @@ public class VillageMeetupService {
      * 村内ニックネーム → 全村共通ニックネーム → {@code "USER:#id"} の順にフォールバック。
      */
     private String resolveUserDisplayName(Long userId, UUID villageId) {
-        if (userId == null) {
-            return null;
-        }
-        if (villageId != null) {
-            Optional<UserVillageNicknameEntity> villageNick =
-                    nicknameRepository.findByUserIdAndVillageId(userId, villageId);
-            if (villageNick.isPresent()) {
-                return villageNick.get().getNickname();
-            }
-        }
-        return nicknameRepository.findByUserIdAndVillageIdIsNull(userId)
-                .map(UserVillageNicknameEntity::getNickname)
-                .orElse("USER:#" + userId);
+        // F17.3 前工程リファクタ: 共有ヘルパへ委譲（ふるまい不変・重複ドリフト防止・§15.4）。
+        return villageNicknameResolver.resolve(userId, villageId);
     }
 
     /**

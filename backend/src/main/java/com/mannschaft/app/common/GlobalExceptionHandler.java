@@ -641,6 +641,12 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_102", HttpStatus.CONFLICT),             // FESTIVAL_LIVE_POST_DUPLICATE（実況の二重タグ）
             // F17.2 追補 — 寄合定員（VILLAGE_103）
             Map.entry("VILLAGE_103", HttpStatus.CONFLICT),             // MEETUP_CAPACITY_FULL（満席で新規 GOING を拒否）
+            // F17.3 村憲章（VILLAGE_104〜108）
+            Map.entry("VILLAGE_104", HttpStatus.NOT_FOUND),           // CHARTER_ARTICLE_NOT_FOUND（IDOR 対策で 404 秘匿）
+            Map.entry("VILLAGE_105", HttpStatus.CONFLICT),            // CHARTER_ARTICLE_VERSION_CONFLICT（層1 楽観ロック）
+            Map.entry("VILLAGE_106", HttpStatus.CONFLICT),            // CHARTER_ORDER_VERSION_CONFLICT（層2 楽観ロック・PATCH order）
+            Map.entry("VILLAGE_107", HttpStatus.NOT_FOUND),           // CHARTER_DRAFTER_NOT_FOUND（IDOR 対策で 404 秘匿）
+            Map.entry("VILLAGE_108", HttpStatus.CONFLICT),            // CHARTER_DRAFTER_DUPLICATE（二重策定者登録）
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
