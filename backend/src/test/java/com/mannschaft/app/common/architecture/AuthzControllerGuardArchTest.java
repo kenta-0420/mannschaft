@@ -1,10 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
-import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -19,9 +17,6 @@ import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import java.lang.annotation.Annotation;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 
@@ -103,7 +98,7 @@ class AuthzControllerGuardArchTest {
     @ArchTest
     static final ArchRule public_controller_endpoints_must_have_authorization_signal =
         FreezingArchRule.freeze(
-            methods().that(areMappingEndpointsOfControllerClasses())
+            methods().that(ControllerEndpoints.areMappingEndpointsOfControllerClasses())
                 .should(haveAnAuthorizationSignal())
                 .because("認可根治戦役 Wave4 — 公開Controllerエンドポイント（Mappingメソッド）は "
                     + "@PreAuthorize か、AccessControlService/ContentVisibilityChecker/"
@@ -117,29 +112,8 @@ class AuthzControllerGuardArchTest {
     // ヘルパー
     // ------------------------------------------------------------------
 
-    /** 「@RestController/@Controller クラスの public Mapping メソッド」を表す述語。 */
-    private static DescribedPredicate<JavaMethod> areMappingEndpointsOfControllerClasses() {
-        return new DescribedPredicate<>(
-                "are public Mapping-annotated methods of @RestController/@Controller classes") {
-            @Override
-            public boolean test(JavaMethod method) {
-                if (!method.getModifiers().contains(JavaModifier.PUBLIC)) {
-                    return false;
-                }
-                JavaClass owner = method.getOwner();
-                if (!isControllerClass(owner)) {
-                    return false;
-                }
-                return method.isMetaAnnotatedWith(RequestMapping.class);
-            }
-        };
-    }
-
-    /** クラスに {@code @RestController} または {@code @Controller} が付いているか。 */
-    private static boolean isControllerClass(JavaClass clazz) {
-        return clazz.isAnnotatedWith(RestController.class)
-            || clazz.isAnnotatedWith(Controller.class);
-    }
+    // Controller 走査述語（areMappingEndpointsOfControllerClasses / isControllerClass）は
+    // ControllerEntityResponseArchTest（D-6）と共用するため {@link ControllerEndpoints} へ抽出済み。
 
     /** メソッドが認可シグナル（A: @PreAuthorize / B: 認可呼び出し）を持つかを検査する条件。 */
     private static ArchCondition<JavaMethod> haveAnAuthorizationSignal() {

@@ -103,6 +103,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     private static final int EXPECTED_LINES_UUID_V7_D2B = 565;
 
+    /**
+     * 越境 Repository 依存禁止ストア（D-5）の期待行数。
+     * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
+     * {@code 427c445d-37ce-4d6e-b095-a1733efe209f}）。
+     *
+     * <p>D-5 導入（2026-07-24）: D-3 の {@code @Transactional} 前提を外した一般化ルール
+     * （{@link CrossDomainRepositoryDependencyArchTest}）の初期凍結。既存負債の台帳であり、
+     * 新規の越境 Repository 依存のみを fail させる。返済（chip-away）で行数が減った場合のみ
+     * この定数を実測値へ更新する。</p>
+     */
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2025;
+
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
         new FrozenStoreExpectation(
@@ -120,7 +132,11 @@ class ArchUnitFreezeStoreIntegrityTest {
         new FrozenStoreExpectation(
             "entities should extend UuidV7Entity (D-2b)",
             "2c0ba995-682e-4f80-a5a5-f68c835b720d",
-            EXPECTED_LINES_UUID_V7_D2B)
+            EXPECTED_LINES_UUID_V7_D2B),
+        new FrozenStoreExpectation(
+            "no cross-domain repository dependency (D-5)",
+            "427c445d-37ce-4d6e-b095-a1733efe209f",
+            EXPECTED_LINES_CROSS_DOMAIN_REPO_D5)
     );
 
     @Test
@@ -160,7 +176,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     }
 
     @Test
-    @DisplayName("4つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
+    @DisplayName("5つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
         + "（--tests絞り込み実行によるストア破壊事故の検知）")
     void 凍結ストアの行数が期待値と一致する() throws IOException {
         assertTrue(Files.isDirectory(STORE_DIR),
