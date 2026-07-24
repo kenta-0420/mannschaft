@@ -1,6 +1,7 @@
 package com.mannschaft.app.activity;
 
 import com.mannschaft.app.activity.controller.ActivityController;
+import com.mannschaft.app.activity.dto.ActivityRecordResponse;
 import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.service.ActivityResultService;
@@ -32,6 +33,9 @@ import static org.mockito.Mockito.mockStatic;
  *
  * <p>POST /api/v1/activities/draft（下書き作成）と POST /api/v1/activities/{id}/publish（公開）を
  * コントローラ直接呼び出しで検証する（{@link SecurityUtils} は MockedStatic で固定）。</p>
+ *
+ * <p>DTO 化（{@code ActivityRecordResponse}）に伴い、Entity 直返し前提だったアサートを
+ * {@code ActivityMapper} 経由の DTO 前提に書き換えている。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ActivityController 下書き対応 契約テスト")
@@ -39,6 +43,9 @@ class ActivityControllerDraftTest {
 
     @Mock
     private ActivityResultService activityService;
+
+    @Mock
+    private ActivityMapper activityMapper;
 
     @InjectMocks
     private ActivityController controller;
@@ -62,16 +69,20 @@ class ActivityControllerDraftTest {
                 ActivityResultEntity saved = ActivityResultEntity.builder()
                         .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("下書き")
                         .status(ActivityStatus.DRAFT).build();
+                ActivityRecordResponse dto = ActivityRecordResponse.builder()
+                        .scopeType(ActivityScopeType.TEAM.name()).scopeId(SCOPE_ID).title("下書き")
+                        .status(ActivityStatus.DRAFT.name()).build();
                 given(activityService.createDraftActivity(
                         eq(USER_ID), eq(ActivityScopeType.TEAM), eq(SCOPE_ID), any(CreateDraftActivityRequest.class)))
                         .willReturn(saved);
+                given(activityMapper.toActivityRecordResponse(saved)).willReturn(dto);
 
-                ResponseEntity<ApiResponse<ActivityResultEntity>> response =
+                ResponseEntity<ApiResponse<ActivityRecordResponse>> response =
                         controller.createDraftActivity("TEAM", SCOPE_ID, request);
 
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
                 assertThat(response.getBody()).isNotNull();
-                assertThat(response.getBody().getData().getStatus()).isEqualTo(ActivityStatus.DRAFT);
+                assertThat(response.getBody().getData().getStatus()).isEqualTo(ActivityStatus.DRAFT.name());
             }
         }
     }
@@ -89,14 +100,18 @@ class ActivityControllerDraftTest {
                 ActivityResultEntity published = ActivityResultEntity.builder()
                         .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("公開")
                         .status(ActivityStatus.PUBLISHED).build();
+                ActivityRecordResponse dto = ActivityRecordResponse.builder()
+                        .scopeType(ActivityScopeType.TEAM.name()).scopeId(SCOPE_ID).title("公開")
+                        .status(ActivityStatus.PUBLISHED.name()).build();
                 given(activityService.publishActivity(ACTIVITY_ID, USER_ID)).willReturn(published);
+                given(activityMapper.toActivityRecordResponse(published)).willReturn(dto);
 
-                ResponseEntity<ApiResponse<ActivityResultEntity>> response =
+                ResponseEntity<ApiResponse<ActivityRecordResponse>> response =
                         controller.publishActivity(ACTIVITY_ID);
 
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(response.getBody()).isNotNull();
-                assertThat(response.getBody().getData().getStatus()).isEqualTo(ActivityStatus.PUBLISHED);
+                assertThat(response.getBody().getData().getStatus()).isEqualTo(ActivityStatus.PUBLISHED.name());
             }
         }
 

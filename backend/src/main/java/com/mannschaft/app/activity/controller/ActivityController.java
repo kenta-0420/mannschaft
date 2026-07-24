@@ -1,7 +1,9 @@
 package com.mannschaft.app.activity.controller;
 
+import com.mannschaft.app.activity.ActivityMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
+import com.mannschaft.app.activity.dto.ActivityRecordResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
 import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
@@ -42,6 +44,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ActivityController {
 
     private final ActivityResultService activityService;
+    private final ActivityMapper activityMapper;
 
 
     /**
@@ -50,7 +53,7 @@ public class ActivityController {
     @GetMapping
     @Operation(summary = "活動記録一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<ActivityResultEntity>>> listActivities(
+    public ResponseEntity<ApiResponse<List<ActivityRecordResponse>>> listActivities(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @RequestParam(value = "template_id", required = false) Long templateId,
@@ -58,7 +61,7 @@ public class ActivityController {
         Page<ActivityResultEntity> result = activityService.listActivities(
                 SecurityUtils.getCurrentUserId(),
                 ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(0, limit));
-        return ResponseEntity.ok(ApiResponse.of(result.getContent()));
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponseList(result.getContent())));
     }
 
     /**
@@ -67,8 +70,9 @@ public class ActivityController {
     @GetMapping("/{id}")
     @Operation(summary = "活動記録詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> getActivity(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.getActivity(id, SecurityUtils.getCurrentUserId())));
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> getActivity(@PathVariable Long id) {
+        ActivityResultEntity entity = activityService.getActivity(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(entity)));
     }
 
     /**
@@ -77,13 +81,13 @@ public class ActivityController {
     @PostMapping
     @Operation(summary = "活動記録作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> createActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> createActivity(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateActivityRequest request) {
         ActivityResultEntity response = activityService.createActivity(
                 SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -94,13 +98,13 @@ public class ActivityController {
     @PostMapping("/draft")
     @Operation(summary = "活動記録 下書き作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> createDraftActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> createDraftActivity(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateDraftActivityRequest request) {
         ActivityResultEntity response = activityService.createDraftActivity(
                 SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -111,9 +115,9 @@ public class ActivityController {
     @PostMapping("/{id}/publish")
     @Operation(summary = "活動記録 公開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> publishActivity(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> publishActivity(@PathVariable Long id) {
         ActivityResultEntity response = activityService.publishActivity(id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(response));
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -122,10 +126,11 @@ public class ActivityController {
     @PutMapping("/{id}")
     @Operation(summary = "活動記録更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> updateActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> updateActivity(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActivityRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request)));
+        ActivityResultEntity response = activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -145,11 +150,11 @@ public class ActivityController {
     @PostMapping("/{id}/duplicate")
     @Operation(summary = "活動記録複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> duplicateActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> duplicateActivity(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) DuplicateActivityRequest request) {
         ActivityResultEntity response = activityService.duplicateActivity(id, SecurityUtils.getCurrentUserId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**

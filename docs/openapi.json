@@ -26198,7 +26198,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -26238,7 +26238,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -82989,7 +82989,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
                 }
               }
             }
@@ -83037,7 +83037,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -83069,7 +83069,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -83192,7 +83192,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -83314,7 +83314,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -120811,7 +120811,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
                 }
               }
             }
@@ -120852,7 +120852,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -121575,7 +121575,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
                 }
               }
             }
@@ -121616,7 +121616,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -122022,7 +122022,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -122032,7 +122032,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
                 }
               }
             }
@@ -160327,7 +160327,7 @@
           "activityDate"
         ]
       },
-      "ActivityResultEntity": {
+      "ActivityRecordResponse": {
         "type": "object",
         "properties": {
           "activityDate": {
@@ -160353,10 +160353,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "deletedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
           "description": {
             "type": "string"
           },
@@ -160370,9 +160366,6 @@
           "location": {
             "type": "string"
           },
-          "publishable": {
-            "type": "boolean"
-          },
           "scheduleId": {
             "type": "integer",
             "format": "int64"
@@ -160382,19 +160375,10 @@
             "format": "int64"
           },
           "scopeType": {
-            "type": "string",
-            "enum": [
-              "TEAM",
-              "ORGANIZATION",
-              "COMMITTEE"
-            ]
+            "type": "string"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "DRAFT",
-              "PUBLISHED"
-            ]
+            "type": "string"
           },
           "templateId": {
             "type": "integer",
@@ -160412,19 +160396,15 @@
             "format": "int64"
           },
           "visibility": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "MEMBERS_ONLY"
-            ]
+            "type": "string"
           }
         }
       },
-      "ApiResponseActivityResultEntity": {
+      "ApiResponseActivityRecordResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ActivityResultEntity"
+            "$ref": "#/components/schemas/ActivityRecordResponse"
           }
         }
       },
@@ -216959,13 +216939,13 @@
           }
         }
       },
-      "ApiResponseListActivityResultEntity": {
+      "ApiResponseListActivityRecordResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ActivityResultEntity"
+              "$ref": "#/components/schemas/ActivityRecordResponse"
             }
           }
         }
