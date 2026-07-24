@@ -80,7 +80,8 @@
       "festival": "节日",
       "matchRecruit": "练习赛招募",
       "meetup": "聚会",
-      "chronicle": "村史"
+      "chronicle": "村史",
+      "charter": "村宪章"
     },
     "systemPost": {
       "authorName": "村庄活动通知",
@@ -669,6 +670,53 @@
         "meetup": "聚会"
       }
     },
+    "charter": {
+      "title": "村宪章",
+      "subtitle": "村子的约定",
+      "empty": "村宪章尚未制定",
+      "enactedAt": "制定日",
+      "lastRevisedAt": "修订日",
+      "article": {
+        "label": "第{n}条",
+        "add": "＋添加条文",
+        "bodyPlaceholder": "输入条文内容",
+        "bodyRequired": "请输入条文内容",
+        "delete": "删除条文",
+        "deleteConfirm": "确定删除该条文吗？"
+      },
+      "supplement": {
+        "add": "＋添加附则",
+        "label": "附则",
+        "placeholder": "输入附则（可选）"
+      },
+      "reorder": {
+        "hint": "可使用上下按钮调整条文顺序",
+        "up": "上移",
+        "down": "下移"
+      },
+      "drafters": {
+        "title": "制定者",
+        "add": "＋添加制定者",
+        "empty": "尚未登记制定者",
+        "delete": "删除制定者",
+        "deleteConfirm": "确定将「{name}」从制定者中删除吗？",
+        "selectPlaceholder": "选择村民"
+      },
+      "revision": {
+        "confirm": "确认修订",
+        "confirmHint": "此操作会将当前时刻记录为修订（不会改变条文的公开状态）。",
+        "confirmSuccess": "修订已确认",
+        "notePlaceholder": "修订备注（可选）",
+        "history": "修订历史",
+        "historyEmpty": "暂无修订记录"
+      },
+      "error": {
+        "loadFailed": "村宪章获取失败",
+        "mutationFailed": "操作失败",
+        "versionConflict": "另一位村长同时进行了编辑，请重新加载最新内容",
+        "drafterDuplicate": "该村民已是制定者"
+      }
+    },
     "serendipity": {
       "title": "缘分分数",
       "subtitle": "在本村积累的相遇",
@@ -892,6 +940,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "用村宪章记录村子的约定",
+        "body": "村长・长老可以制定村子的规则（条文），并公开给非成员查看（公开村在未加入者也能看到）。",
+        "steps": {
+          "step1": "打开「村宪章」标签页。",
+          "step2": "村长・长老点击「＋添加条文」撰写条文，也可以附加附则。",
+          "step3": "排序・删除会立即生效，点击「确认修订」可记录到修订历史。"
         }
       }
     },

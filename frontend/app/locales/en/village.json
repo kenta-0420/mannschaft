@@ -80,7 +80,8 @@
       "festival": "Festival",
       "matchRecruit": "Match recruit",
       "meetup": "Meetup",
-      "chronicle": "Chronicle"
+      "chronicle": "Chronicle",
+      "charter": "Village Charter"
     },
     "systemPost": {
       "authorName": "Village Event Notice",
@@ -669,6 +670,53 @@
         "meetup": "Meetup"
       }
     },
+    "charter": {
+      "title": "Village Charter",
+      "subtitle": "The village's shared promises",
+      "empty": "This village charter has not been established yet",
+      "enactedAt": "Enacted on",
+      "lastRevisedAt": "Last revised on",
+      "article": {
+        "label": "Article {n}",
+        "add": "+ Add article",
+        "bodyPlaceholder": "Enter the article text",
+        "bodyRequired": "Please enter the article text",
+        "delete": "Delete article",
+        "deleteConfirm": "Delete this article?"
+      },
+      "supplement": {
+        "add": "+ Add supplement",
+        "label": "Supplement",
+        "placeholder": "Enter a supplement (optional)"
+      },
+      "reorder": {
+        "hint": "Use the up/down buttons to reorder articles",
+        "up": "Move up",
+        "down": "Move down"
+      },
+      "drafters": {
+        "title": "Drafters",
+        "add": "+ Add drafter",
+        "empty": "No drafters have been registered yet",
+        "delete": "Remove drafter",
+        "deleteConfirm": "Remove \"{name}\" from the drafters?",
+        "selectPlaceholder": "Select a villager"
+      },
+      "revision": {
+        "confirm": "Confirm revision",
+        "confirmHint": "This records the current moment as a revision (it does not change the visibility of any article).",
+        "confirmSuccess": "Revision confirmed",
+        "notePlaceholder": "Revision note (optional)",
+        "history": "Revision history",
+        "historyEmpty": "No revisions yet"
+      },
+      "error": {
+        "loadFailed": "Failed to load the village charter",
+        "mutationFailed": "The operation failed",
+        "versionConflict": "Another village head edited this at the same time. Please reload the latest version.",
+        "drafterDuplicate": "This villager is already a drafter"
+      }
+    },
     "serendipity": {
       "title": "Serendipity score",
       "subtitle": "Accumulated encounters in this village",
@@ -892,6 +940,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Record the village's promises in the charter",
+        "body": "The village head/elders can define the village's rules (articles) and publish them even to non-members (public villages show them to prospective members too).",
+        "steps": {
+          "step1": "Open the \"Village Charter\" tab.",
+          "step2": "The village head/elders can write articles with \"+ Add article\", and attach an optional supplement.",
+          "step3": "Reordering and deleting apply immediately. Use \"Confirm revision\" to record it in the revision history."
         }
       }
     },
