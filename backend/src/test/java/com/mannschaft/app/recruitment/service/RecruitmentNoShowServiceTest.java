@@ -78,7 +78,8 @@ class RecruitmentNoShowServiceTest {
         @Test
         @DisplayName("NO_SHOW 記録が存在しない → NO_SHOW_RECORD_NOT_FOUND")
         void resolveDispute_recordNotFound_throws() {
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.empty());
+            given(noShowRepository.findByIdAndScopeTypeAndScopeId(RECORD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.resolveDispute(
                     RECORD_ID, ADMIN_ID, SCOPE_TYPE, SCOPE_ID, DisputeResolution.UPHELD))
@@ -91,13 +92,32 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("異議申立中でない記録 → INVALID_STATE_TRANSITION")
         void resolveDispute_notDisputedRecord_throws() throws Exception {
             RecruitmentNoShowRecordEntity record = buildRecord(false);
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(noShowRepository.findByIdAndScopeTypeAndScopeId(RECORD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(record));
 
             assertThatThrownBy(() -> service.resolveDispute(
                     RECORD_ID, ADMIN_ID, SCOPE_TYPE, SCOPE_ID, DisputeResolution.UPHELD))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        /**
+         * 裏目付C 根治の要: 対象記録が別スコープに属する場合、スコープ済みクエリが空を返し
+         * 不在と同一の {@code NO_SHOW_RECORD_NOT_FOUND} に畳み込まれること（ID 実在の秘匿）。
+         */
+        @Test
+        @DisplayName("別スコープの記録IDは不在と同一の NO_SHOW_RECORD_NOT_FOUND（越境封鎖）")
+        void resolveDispute_crossScopeRecord_throwsSameAsAbsent() {
+            // 自スコープ権限は通るが、スコープ済みクエリが越境IDを空に畳み込む
+            given(noShowRepository.findByIdAndScopeTypeAndScopeId(RECORD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.resolveDispute(
+                    RECORD_ID, ADMIN_ID, SCOPE_TYPE, SCOPE_ID, DisputeResolution.REVOKED))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
         }
     }
 
