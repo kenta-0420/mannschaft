@@ -37,6 +37,7 @@ import com.mannschaft.app.tournament.repository.TournamentTiebreakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +64,8 @@ public class TournamentService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave7: 大会一覧/詳細で主催組織 ADMIN/DEPUTY_ADMIN を判定するため。 */
+    private final com.mannschaft.app.common.AccessControlService accessControlService;
     /**
      * F08.7.1 連絡機能: 大会作成・シーズン継続時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -82,16 +85,47 @@ public class TournamentService {
     private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     /**
-     * 大会一覧を取得する。
+     * 大会一覧を取得する（閲覧者の可視性でフィルタする）。
+     *
+     * <p>認可根治戦役 Wave7: {@link StandingsQueryService} の per-tournament 可視性フィルタ（B-2b）と
+     * 同方針で、取得したページの各大会を F00 共通可視性 Resolver で判定し、閲覧者に見えない大会
+     * （DRAFT / 非公開等）をレスポンスから除外する。</p>
+     *
+     * <p><b>主催組織 ADMIN/DEPUTY_ADMIN は自組織の全大会を閲覧できる</b>（DRAFT 含む）。
+     * {@code TournamentVisibilityResolver} は DRAFT を「作成者と SystemAdmin のみ可視」と判定するため、
+     * 可視性フィルタだけだと「別の管理者が作成した DRAFT 大会が管理画面から消える」機能退行が起きる。
+     * 本メソッドの結果集合は {@code organization_id = orgId} で構成されるため、
+     * パス {@code orgId} を管理者判定の scope に用いても BOLA にはならない。</p>
+     *
+     * <p>可視性フィルタはページ取得後に適用するため、{@code totalElements} は当該ページで
+     * 除外した件数ぶんを差し引いた近似値になる（全件走査を避けるための意図的な割り切り）。</p>
+     *
+     * @param viewerUserId 閲覧者 user_id（未認証は {@code null}）
      */
-    public Page<TournamentResponse> listTournaments(Long orgId, String status, Pageable pageable) {
-        if (status != null) {
-            return tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
-                    orgId, TournamentStatus.valueOf(status), pageable)
-                    .map(mapper::toTournamentSummaryResponse);
+    public Page<TournamentResponse> listTournaments(Long orgId, String status, Pageable pageable,
+                                                    Long viewerUserId) {
+        Page<TournamentEntity> page = status != null
+                ? tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
+                        orgId, TournamentStatus.valueOf(status), pageable)
+                : tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
+
+        boolean orgManager = viewerUserId != null
+                && (accessControlService.isSystemAdmin(viewerUserId)
+                    || accessControlService.isAdminOrAbove(viewerUserId, orgId, "ORGANIZATION"));
+        if (orgManager) {
+            return page.map(mapper::toTournamentSummaryResponse);
         }
-        return tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable)
-                .map(mapper::toTournamentSummaryResponse);
+
+        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.TOURNAMENT,
+                page.getContent().stream().map(TournamentEntity::getId).toList(),
+                viewerUserId);
+        List<TournamentResponse> visible = page.getContent().stream()
+                .filter(t -> visibleIds.contains(t.getId()))
+                .map(mapper::toTournamentSummaryResponse)
+                .toList();
+        long excluded = (long) page.getNumberOfElements() - visible.size();
+        return new PageImpl<>(visible, pageable, page.getTotalElements() - excluded);
     }
 
     /**
@@ -113,10 +147,57 @@ public class TournamentService {
     }
 
     /**
-     * 大会詳細を取得する。
+     * 大会詳細を取得する（org 束縛＋閲覧者の可視性を検証する）。
+     *
+     * <p>認可根治戦役 Wave7: パス {@code orgId} と大会実体の {@code organizationId} を突合し
+     * （不一致は 404 で存在秘匿）、そのうえで {@code StandingsController} の
+     * {@code verifyTournamentVisible} と同じく F00 共通可視性 Resolver で判定する。
+     * 主催組織 ADMIN/DEPUTY_ADMIN は
+     * 自組織の DRAFT 大会も閲覧できる（管理画面の機能退行を防ぐ。判定 scope は
+     * <b>エンティティ由来</b>の {@code tournament.organizationId}）。</p>
+     *
+     * @param viewerUserId 閲覧者 user_id（未認証は {@code null}）
      */
-    public TournamentResponse getTournament(Long tournamentId) {
-        TournamentEntity tournament = findTournamentOrThrow(tournamentId);
+    public TournamentResponse getTournament(Long orgId, Long tournamentId, Long viewerUserId) {
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .filter(t -> orgId.equals(t.getOrganizationId()))
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+
+        boolean orgManager = viewerUserId != null
+                && (accessControlService.isSystemAdmin(viewerUserId)
+                    || accessControlService.isAdminOrAbove(
+                            viewerUserId, tournament.getOrganizationId(), "ORGANIZATION"));
+        if (!orgManager
+                && !contentVisibilityChecker.canView(
+                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        return buildTournamentResponse(tournament, tournamentId);
+    }
+
+    /**
+     * 大会詳細レスポンスを組み立てる（<b>認可判定を含まない</b>内部専用）。
+     *
+     * <p>認可根治戦役 Wave7 / {@code feedback_authz_gate_on_public_entry_not_shared_method}:
+     * 認可ゲートは公開入口である {@link #getTournament(Long, Long, Long)} にのみ置き、
+     * 既に {@code @PreAuthorize("@accessGuard.isScopeAdmin(...)")} で認可済みの書込経路
+     * （{@code createTournament} / {@code updateTournament} / {@code changeStatus} /
+     * {@code continueTournament}）は本メソッドを使う。共有メソッドにゲートを埋めると、
+     * 作成直後の DRAFT 大会（作成者以外の管理者には不可視）で自分の書込レスポンスが
+     * 404 になる巻き添えが発生するため分離している。</p>
+     *
+     * <p><b>{@code tournamentId} を引数で受ける理由</b>: 当初は {@code tournament.getId()} から
+     * 取り直していたが、呼び出し元は全員すでに {@code tournamentId} を持っており、
+     * エンティティから取り直すのは不要な間接化だった。分離前の {@code getTournament(Long)} は
+     * 引数の ID をそのまま子テーブル検索に使っていたため、取得元を変えたことは意図しない
+     * 挙動変更でもある（ID 未設定のエンティティを渡すと子テーブル検索に {@code null} が伝播する）。
+     * 呼び出し元の ID をそのまま使う分離前の流儀に戻し、取得元を一意にした。</p>
+     *
+     * @param tournament   レスポンスの本体となる大会エンティティ
+     * @param tournamentId 子テーブル（tiebreakers / statDefs）検索に使う大会 ID
+     */
+    private TournamentResponse buildTournamentResponse(TournamentEntity tournament, Long tournamentId) {
         List<TiebreakerResponse> tiebreakers = tiebreakerRepository
                 .findByTournamentIdOrderByPriorityAsc(tournamentId)
                 .stream().map(mapper::toTiebreakerResponse).toList();
@@ -253,7 +334,8 @@ public class TournamentService {
                 com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT,
                 orgId, tournamentId, userId, DEFAULT_TOURNAMENT_FOLDER);
 
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -295,7 +377,8 @@ public class TournamentService {
             saveTournamentStatDefs(tournamentId, request.getStatDefs());
         }
 
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -329,7 +412,8 @@ public class TournamentService {
         }
         tournament.changeStatus(newStatus);
         tournamentRepository.save(tournament);
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -424,7 +508,8 @@ public class TournamentService {
                     orgId, newDiv.getId(), userId, DEFAULT_DIVISION_FOLDER);
         }
 
-        return getTournament(newTournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(newTournamentId), newTournamentId);
     }
 
     TournamentEntity findTournamentOrThrow(Long tournamentId) {
