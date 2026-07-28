@@ -46,6 +46,8 @@ export function useSystemAdminApi() {
     getModules: operations.getModules,
     getModule: operations.getModule,
     updateModuleLevelAvailability: operations.updateModuleLevelAvailability,
+    updateModulePaidPlan: operations.updateModulePaidPlan,
+    updateModuleActive: operations.updateModuleActive,
     // Dashboard
     getDashboardOrganizations: dashboard.getDashboardOrganizations,
     freezeOrganization: dashboard.freezeOrganization,

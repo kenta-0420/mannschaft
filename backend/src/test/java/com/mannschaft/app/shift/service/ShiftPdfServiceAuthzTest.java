@@ -92,7 +92,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("非メンバーは COMMON_002（isMember=false で BusinessException）")
         void 非メンバー_COMMON_002() {
             // isMember が false → 最初のチェックで弾かれる
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER))
@@ -107,7 +107,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("SUPPORTER は COMMON_002（isMember=true / isSupporter=true で BusinessException）")
         void SUPPORTER_COMMON_002() {
             // メンバーだが SUPPORTER ロール → 二番目のチェックで弾かれる
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
 
@@ -121,10 +121,10 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("MEMBER（非 SUPPORTER）は認可通過し PDF バイト列を返す")
         void MEMBER_認可通過() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46}; // "%PDF" マジックバイト
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-team"), any()))
                     .willReturn(expected);
@@ -139,7 +139,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("他チームの scheduleId による IDOR は teamId 解決後に non-member 扱いで COMMON_002")
         void IDOR_他チームのscheduleId_COMMON_002() {
             // scheduleId=1 が OTHER_TEAM に紐づく。REQUESTER は TEAM_ID のメンバーだが OTHER_TEAM では非メンバー
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(OTHER_TEAM));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(OTHER_TEAM));
             given(accessControlService.isMember(REQUESTER, OTHER_TEAM, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER))
@@ -163,7 +163,7 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("SUPPORTER は COMMON_002（generatePersonalPdf でも同じ認可ルール）")
         void SUPPORTER_personalPdf_COMMON_002() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
 
@@ -177,10 +177,10 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("MEMBER（非 SUPPORTER）は個人スロットのみフィルタして PDF バイト列を返す")
         void MEMBER_personalPdf_認可通過() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46};
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-personal"), any()))
                     .willReturn(expected);

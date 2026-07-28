@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -128,10 +128,21 @@ public class VisibilityTemplateController {
      * <p>指定テンプレートに対して、対象ユーザーが閲覧可能かどうかを評価する。
      * 評価はアクセス権確認のみであり、データの変更は行わない。</p>
      *
+     * <p>認可根治 Wave4: owner はリクエストボディの値ではなく
+     * {@code SecurityUtils.getCurrentUserId()} で確定したサーバー側の値に固定する
+     * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
+     * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
+     *
+     * <p>認可: 自分のテンプレート（またはプリセット）に対する自己スコープのプレビュー EP であり、
+     * 所有者強制は Service 側の {@code getTemplate(id, currentUserId)} が担う（他人のテンプレートは 404）。
+     * 認証済みであることを {@code @PreAuthorize("isAuthenticated()")} で明示し、認可番人（AuthzControllerGuardArchTest）
+     * のシグナル A を正当に満たす。</p>
+     *
      * @param id      テンプレートID
      * @param request 評価リクエスト
      */
     @Operation(summary = "公開範囲評価", description = "指定テンプレートに対して対象ユーザーの閲覧可否を評価する")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/evaluate")
     public ResponseEntity<ApiResponse<EvaluateVisibilityResponse>> evaluate(
             @PathVariable Long id,
@@ -140,7 +151,7 @@ public class VisibilityTemplateController {
         // 自分のテンプレートまたはプリセットのみ evaluate 可能（IDOR対策）
         visibilityTemplateService.getTemplate(id, userId);
         boolean canView = visibilityTemplateEvaluator.canView(
-                request.getTargetUserId(), id, request.getOwnerUserId());
+                request.getTargetUserId(), id, userId);
         EvaluateVisibilityResponse response = EvaluateVisibilityResponse.builder()
                 .templateId(id)
                 .targetUserId(request.getTargetUserId())
@@ -154,18 +165,27 @@ public class VisibilityTemplateController {
      *
      * <p>オーナーのみアクセス可能。アクセス権確認のために getTemplate を呼び出す。</p>
      *
-     * @param id          テンプレートID
-     * @param ownerUserId テンプレートオーナーのユーザーID
+     * <p>認可根治 Wave4: owner はクエリパラメータの値ではなく
+     * {@code SecurityUtils.getCurrentUserId()} で確定したサーバー側の値に固定する
+     * （旧実装は client 供給の {@code ownerUserId} をそのまま信頼しており、
+     * 他人の ID を詐称して当該ユーザーの関係グラフをプレビュー経由で列挙できる IDOR だった）。</p>
+     *
+     * <p>認可: 自分のテンプレート（またはプリセット）に対する自己スコープのプレビュー EP であり、
+     * 所有者強制は Service 側の {@code getTemplate(id, currentUserId)} が担う（他人のテンプレートは 404）。
+     * 認証済みであることを {@code @PreAuthorize("isAuthenticated()")} で明示し、認可番人（AuthzControllerGuardArchTest）
+     * のシグナル A を正当に満たす。</p>
+     *
+     * @param id テンプレートID
      */
     @Operation(summary = "解決済みメンバー一覧取得", description = "テンプレートに基づいて閲覧可能ユーザーIDの一覧を解決して返す（プレビュー用）")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/resolved-members")
     public ResponseEntity<ApiResponse<ResolvedMembersResponse>> getResolvedMembers(
-            @PathVariable Long id,
-            @RequestParam Long ownerUserId) {
+            @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         // オーナーのみアクセス可（Service 内で TEMPLATE_NOT_FOUND で弾く）
         visibilityTemplateService.getTemplate(id, userId);
-        Set<Long> memberIds = visibilityTemplateEvaluator.resolveMemberUserIds(id, ownerUserId);
+        Set<Long> memberIds = visibilityTemplateEvaluator.resolveMemberUserIds(id, userId);
         ResolvedMembersResponse response = ResolvedMembersResponse.builder()
                 .templateId(id)
                 .totalUsers(memberIds.size())

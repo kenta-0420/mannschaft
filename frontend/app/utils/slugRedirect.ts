@@ -79,6 +79,8 @@ export async function resolveSlugRedirectPath(
     const result = await resolve(parts.entity, parts.slug)
     return computeSlugRedirectPath(parts, result)
   } catch {
+    // 解決失敗を沈黙させると一時的な不通が恒久 404 化する。SSR ログに残して検知可能にする（挙動は null フォールバック維持）。
+    console.warn('[slugRedirect] slug 解決に失敗しました', { path })
     return null
   }
 }

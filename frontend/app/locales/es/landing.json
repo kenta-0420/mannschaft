@@ -288,6 +288,7 @@
       "footer_legal": "Información legal",
       "footer_terms": "Términos de servicio",
       "footer_privacy": "Política de privacidad",
+      "footer_commerce": "Divulgación (Ley de Transacciones Comerciales)",
       "footer_contact": "Contacto",
       "skip_to_content": "Ir al contenido principal",
       "open_menu": "Abrir menú",
@@ -296,42 +297,7 @@
     "product": {
       "title": "Producto Mannschaft",
       "desc": "Una plataforma de gestión todo en uno con todo lo que tu equipo u organización necesita",
-      "features_heading": "Funciones principales",
-      "pricing_heading": "Planes de precios",
-      "pricing": {
-        "free": {
-          "name": "Gratis",
-          "price": "€0",
-          "desc": "Para individuos y equipos pequeños",
-          "features": [
-            "Todas las funciones básicas",
-            "Hasta 10 miembros",
-            "1GB de almacenamiento"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/mes",
-          "desc": "Para equipos en crecimiento",
-          "features": [
-            "Todas las funciones gratuitas",
-            "Miembros ilimitados",
-            "50GB de almacenamiento",
-            "Soporte prioritario"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contáctanos",
-          "desc": "Para grandes organizaciones",
-          "features": [
-            "Todas las funciones Pro",
-            "Integraciones personalizadas",
-            "Soporte dedicado",
-            "Garantía SLA"
-          ]
-        }
-      }
+      "features_heading": "Funciones principales"
     },
     "legal": {
       "terms": {
@@ -567,6 +533,24 @@
         "section14_content": "Podemos actualizar esta Política de vez en cuando en respuesta a cambios legales o actualizaciones del servicio.\n\n- Los cambios materiales (nuevos propósitos, nueva recopilación de datos, nuevo intercambio con terceros, etc.) se notificarán con anticipación mediante aviso en el servicio o correo electrónico\n- Los cambios menores se indicarán actualizando la fecha de «Última actualización» en esta página\n- El uso continuo del Servicio después de cualquier revisión constituye su aceptación de la Política actualizada",
         "section15_title": "Artículo 15: Contáctenos",
         "section15_content": "Para consultas sobre el manejo de información personal, exclusión publicitaria o para ejercer sus derechos, contáctenos a través del formulario de consulta del servicio. Es posible que le pidamos que proporcione su dirección de correo electrónico registrada para verificación de identidad."
+      },
+      "commerce": {
+        "title": "Divulgación conforme a la Ley de Transacciones Comerciales Específicas",
+        "seo_description": "Divulgación de Mannschaft conforme a la Ley japonesa de Transacciones Comerciales Específicas, incluyendo información del vendedor, métodos de pago y política de reembolsos/cancelaciones.",
+        "items": {
+          "seller": { "label": "Vendedor", "value": "Oficina de Operaciones de Mannschaft" },
+          "manager": { "label": "Responsable de operaciones", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "address": { "label": "Domicilio", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "phone": { "label": "Número de teléfono", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "contact": { "label": "Contacto (forma de comunicación)", "value": "Después de iniciar sesión, contáctenos a través del «Buzón de sugerencias» en la parte superior de la pantalla. Las solicitudes de divulgación del domicilio y el número de teléfono también se reciben por este medio" },
+          "price": { "label": "Precio de venta", "value": "Conforme al precio mostrado en la pantalla de compra de cada servicio, entrada, etc. (impuesto incluido)" },
+          "extraFee": { "label": "Costes adicionales al precio de venta", "value": "Los gastos de conexión a Internet y otros cargos de comunicación corren a cargo del cliente" },
+          "paymentMethod": { "label": "Método de pago", "value": "Tarjeta de crédito y otros medios de pago mostrados en cada pantalla de compra (el procesamiento de pagos utiliza el servicio de Stripe, Inc.)" },
+          "paymentTiming": { "label": "Momento del pago", "value": "El pago se confirma al completar el proceso de compra. Las suscripciones (facturación recurrente) se cobran en cada fecha de renovación" },
+          "serviceTiming": { "label": "Momento de la prestación del servicio", "value": "Disponible inmediatamente después de completar el pago" },
+          "refund": { "label": "Devoluciones, cancelaciones y reembolsos", "value": "Debido a la naturaleza del servicio, en principio no se aceptan reembolsos ni cancelaciones después de completado el pago. No obstante, en los pagos en los que un equipo u organización actúa como vendedor (entradas, cuotas, etc.), Mannschaft es una plataforma que ofrece el espacio para la transacción, y la posibilidad de reembolso y sus condiciones se rigen por la política establecida por dicho equipo u organización. Para más detalles, consulte con el vendedor correspondiente" },
+          "environment": { "label": "Entorno operativo", "value": "Se recomienda la versión más reciente de los principales navegadores (Chrome / Safari / Edge / Firefox)" }
+        }
       }
     },
     "features_detail": {

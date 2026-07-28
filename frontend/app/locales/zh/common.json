@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "连接已断开。正在尝试重新连接…"
+    },
+    "mobile": {
+      "backToList": "返回频道列表",
+      "noChannels": "还没有频道",
+      "createChannel": "创建频道"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "请稍后再试。",
     "network": "网络错误",
     "unauthorized": "请先登录",
+    "section_load_failed": "该项目获取失败，请重新加载。",
     "unknown": "发生错误",
     "COMMON_001": "输入内容有误",
     "COMMON_002": "您没有执行此操作的权限",
@@ -463,7 +469,15 @@
     "writeReply": "写回复",
     "replySubmit": "回复",
     "noReplies": "还没有回复",
-    "loadMoreReplies": "查看更多"
+    "loadMoreReplies": "查看更多",
+    "composerPlaceholder": {
+      "TEAM": "发布到团队...",
+      "VILLAGE": "发布到村子...",
+      "ORGANIZATION": "发布到组织...",
+      "PUBLIC": "在想什么？"
+    },
+    "submitLabel": "发布",
+    "pollOptionsCount": "{count}个选项"
   },
   "gallery": {
     "title": "相册",
@@ -1431,7 +1445,9 @@
       "leave_action": "退出",
       "load_error_title": "无法获取信息",
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
-      "back_to_dashboard": "返回仪表板"
+      "back_to_dashboard": "返回仪表板",
+      "retry": "重试",
+      "slow_loading": "加载时间较长，请稍候"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "反馈",
       "reports": "报告",
       "advertisers": "广告主管理",
+      "adRateCards": "广告费率卡",
+      "adCreditLimitRequests": "广告信用额度申请",
+      "affiliateSettings": "联盟营销设置",
       "auditLogs": "审计日志",
       "shiftBudget": "班次预算",
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态",
-      "feedbackInbox": "意见箱（全体）"
+      "feedbackInbox": "意见箱（全体）",
+      "billing": "课金主数据管理",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",

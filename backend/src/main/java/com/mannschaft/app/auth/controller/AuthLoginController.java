@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.dto.VerifyEmailRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,7 +63,26 @@ public class AuthLoginController {
 
     /**
      * ユーザー登録。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
+     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/register")
     @Operation(summary = "ユーザー登録")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
@@ -103,7 +123,26 @@ public class AuthLoginController {
      * ログイン。
      * ログイン成功時（2FA なし）は access_token を HttpOnly Cookie にセットする。
      * 2FA が必要な場合は MfaRequiredResponse を返し、Cookie はセットしない。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
+     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/login")
     @Operation(summary = "ログイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功")
@@ -313,7 +352,26 @@ public class AuthLoginController {
     /**
      * アクセストークンリフレッシュ。
      * リフレッシュ成功時は新しい access_token を HttpOnly Cookie にセットする。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
+     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/refresh")
     @Operation(summary = "アクセストークンリフレッシュ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リフレッシュ成功")
@@ -338,7 +396,26 @@ public class AuthLoginController {
 
     /**
      * パスワードリセット要求。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
+     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/password-reset/request")
     @Operation(summary = "パスワードリセット要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リセットメール送信完了")
@@ -352,7 +429,26 @@ public class AuthLoginController {
 
     /**
      * パスワードリセット確認。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
+     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/password-reset/confirm")
     @Operation(summary = "パスワードリセット確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "パスワードリセット完了")

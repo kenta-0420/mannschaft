@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.dto.UpdateIssuerSettingsRequest;
 import com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity;
@@ -29,6 +30,7 @@ class ReceiptIssuerSettingsServiceTest {
 
     @Mock private ReceiptIssuerSettingsRepository issuerSettingsRepository;
     @Mock private ReceiptMapper receiptMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ReceiptIssuerSettingsService service;
@@ -46,7 +48,7 @@ class ReceiptIssuerSettingsServiceTest {
             given(issuerSettingsRepository.findByScopeTypeAndScopeId(SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getSettings(SCOPE_TYPE, SCOPE_ID))
+            assertThatThrownBy(() -> service.getSettings(SCOPE_TYPE, SCOPE_ID, 100L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.ISSUER_SETTINGS_NOT_FOUND);
@@ -64,7 +66,7 @@ class ReceiptIssuerSettingsServiceTest {
                     "テスト組織", null, null, null, true, null,
                     null, null, null, null, null, null, null);
 
-            assertThatThrownBy(() -> service.upsertSettings(SCOPE_TYPE, SCOPE_ID, request))
+            assertThatThrownBy(() -> service.upsertSettings(SCOPE_TYPE, SCOPE_ID, 100L, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.INVOICE_REGISTRATION_NUMBER_REQUIRED);
@@ -77,7 +79,7 @@ class ReceiptIssuerSettingsServiceTest {
                     "テスト組織", null, null, null, true, "TXXX",
                     null, null, null, null, null, null, null);
 
-            assertThatThrownBy(() -> service.upsertSettings(SCOPE_TYPE, SCOPE_ID, request))
+            assertThatThrownBy(() -> service.upsertSettings(SCOPE_TYPE, SCOPE_ID, 100L, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.INVALID_INVOICE_REGISTRATION_NUMBER);
@@ -96,7 +98,7 @@ class ReceiptIssuerSettingsServiceTest {
             given(issuerSettingsRepository.save(any())).willReturn(saved);
             given(receiptMapper.toIssuerSettingsResponse(saved)).willReturn(null);
 
-            service.upsertSettings(SCOPE_TYPE, SCOPE_ID, request);
+            service.upsertSettings(SCOPE_TYPE, SCOPE_ID, 100L, request);
 
             verify(issuerSettingsRepository).save(any());
         }

@@ -58,6 +58,10 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 使い方ガイド本文の呼称箇所に使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+onMounted(() => { void loadResourceName() })
+
 type Step = 'menu' | 'preview'
 const step = ref<Step>('menu')
 const selectedMenuId = ref<string | null>(null)
@@ -273,7 +277,7 @@ async function confirm() {
           </AccordionHeader>
           <AccordionContent>
             <p class="text-xs text-surface-600 dark:text-surface-300">
-              {{ t('reservation.matrix.help_body') }}
+              {{ t('reservation.matrix.help_body', { resourceName }) }}
             </p>
           </AccordionContent>
         </AccordionPanel>
@@ -324,7 +328,7 @@ async function confirm() {
         </div>
 
         <div v-if="isCommon">
-          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line', { resourceName }) }}</label>
           <Select
             v-model="selectedLineId"
             data-testid="group-line-select"
@@ -336,7 +340,7 @@ async function confirm() {
           />
         </div>
         <div v-else class="text-sm">
-          <span class="text-surface-500">{{ t('reservation.field.line') }}</span>
+          <span class="text-surface-500">{{ t('reservation.field.line', { resourceName }) }}</span>
           <span class="ml-2 font-medium">{{ context.columnLineName }}</span>
         </div>
 

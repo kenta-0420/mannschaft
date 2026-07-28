@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.FamilyErrorCode;
@@ -21,9 +22,13 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class WallpaperService {
 
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
     private final TemplateWallpaperRepository templateWallpaperRepository;
+    private final AccessControlService accessControlService;
 
-    public ApiResponse<List<WallpaperResponse>> getAvailableWallpapers(String templateSlug) {
+    public ApiResponse<List<WallpaperResponse>> getAvailableWallpapers(Long teamId, Long actorUserId, String templateSlug) {
+        // 認可根治 Wave2-2C: 壁紙一覧はチーム内共有データ。非メンバーの閲覧を403で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<TemplateWallpaperEntity> wallpapers = templateWallpaperRepository.findAvailableBySlug(templateSlug);
         return ApiResponse.of(wallpapers.stream().map(this::toResponse).toList());
     }

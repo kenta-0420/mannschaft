@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
@@ -42,6 +43,7 @@ public class ProxyDelegationService {
     private final ProxyVoteMotionRepository motionRepository;
     private final ProxyVoteMapper mapper;
     private final MembershipRepository membershipRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 委任状を提出する。
@@ -136,6 +138,10 @@ public class ProxyDelegationService {
     public DelegationResponse reviewDelegation(Long delegationId, ReviewDelegationRequest request, Long reviewerId) {
         ProxyDelegationEntity delegation = delegationRepository.findById(delegationId)
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.DELEGATION_NOT_FOUND));
+
+        // 認可: 当該セッションスコープの管理者のみ承認/却下可（委任 = 票の移転のため BOLA 厳禁）
+        ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(delegation.getSessionId());
+        accessControlService.checkAdminOrAbove(reviewerId, session.resolveScopeId(), session.scopeTypeName());
 
         if (delegation.getStatus() != DelegationStatus.SUBMITTED) {
             throw new BusinessException(ProxyVoteErrorCode.DELEGATION_NOT_SUBMITTED);

@@ -92,7 +92,7 @@ public class PresenceController {
     @Operation(summary = "プレゼンスステータス一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PresenceStatusResponse>>> getStatus(@PathVariable Long teamId) {
-        return ResponseEntity.ok(presenceService.getStatus(teamId));
+        return ResponseEntity.ok(presenceService.getStatus(teamId, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -106,7 +106,7 @@ public class PresenceController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(presenceService.getHistory(teamId, userId, cursor, limit));
+        return ResponseEntity.ok(presenceService.getHistory(teamId, SecurityUtils.getCurrentUserId(), userId, cursor, limit));
     }
 
     /**
@@ -118,6 +118,6 @@ public class PresenceController {
     public ResponseEntity<ApiResponse<PresenceStatsResponse>> getStats(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "30d") String period) {
-        return ResponseEntity.ok(presenceService.getStats(teamId, period));
+        return ResponseEntity.ok(presenceService.getStats(teamId, SecurityUtils.getCurrentUserId(), period));
     }
 }

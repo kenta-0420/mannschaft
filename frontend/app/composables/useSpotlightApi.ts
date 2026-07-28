@@ -106,6 +106,7 @@ export function useSpotlightApi() {
       )
       return res.data
     } catch {
+      // eslint-disable-next-line no-restricted-syntax -- 広告ビュー計上はベストエフォート（設計 §6.3）。失敗は表示体験に影響させず null 返却
       return null
     }
   }
@@ -117,6 +118,7 @@ export function useSpotlightApi() {
    * 失敗しても遷移を妨げないよう例外は握りつぶす。</p>
    */
   function recordVisit(creativeId: number, body: SpotlightVisitRequest): void {
+    // eslint-disable-next-line no-restricted-syntax -- 広告 visit 計測は fire-and-forget（ベストエフォート）。遷移は既に実行済みで失敗を無視するのが正しい
     void api(`/api/v1/spotlight/${creativeId}/visit`, { method: 'POST', body }).catch(() => {
       // fire-and-forget: 計測失敗は無視（遷移は既にネイティブに実行済み）
     })

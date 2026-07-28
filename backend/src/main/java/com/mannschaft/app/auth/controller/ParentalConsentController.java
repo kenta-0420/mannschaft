@@ -11,6 +11,7 @@ import com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard
 import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -134,7 +135,19 @@ public class ParentalConsentController {
      *
      * <p>認証済みユーザーが承認する場合は parentUserId を自動取得する。
      * 未認証の場合（メールリンクから直接アクセス）は parentUserId = null として扱う。</p>
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 認可は capability トークン
+     * （招待メールに封入されるワンタイムトークン）で実施する。
+     * {@code ParentalConsentService.java:224-236}（{@code getApprovalRequest}）が
+     * {@code authTokenService.hashToken(token)} でハッシュ化した値を
+     * {@code parentalConsentLinkRepository.findByTokenHash} と照合し、
+     * (1) 該当リンク不在 (2) ステータスが {@code PENDING} 以外 (3) {@code expiresAt} 超過
+     * のいずれかで {@code AUTH_060} を throw して中断する。
+     * さらに {@code ParentalConsentService.java:250-252} で自己承認（子＝保護者）を
+     * {@code AUTH_062} で、{@code :257-262} で未成年保護者を {@code AUTH_063} で拒否する。
+     * 認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/approve")
     @Operation(summary = "保護者同意承認", description = "保護者がトークンを使って同意を承認する（認証不要）")
     public ResponseEntity<ApiResponse<MessageResponse>> approve(
@@ -149,7 +162,15 @@ public class ParentalConsentController {
     /**
      * 保護者が同意を否認する。全保護者が否認した場合、子アカウントは論理削除される。
      * このエンドポイントは SecurityConfig で permitAll 設定されており、認証不要。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@link #approve} と同じ
+     * capability トークン検証で認可する。{@code ParentalConsentService.java:300} の
+     * {@code rejectParentalConsent} が冒頭で {@code getApprovalRequest(token)}
+     * （{@code ParentalConsentService.java:224-236}）を呼び、トークンハッシュ照合・
+     * {@code PENDING} 判定・有効期限判定に失敗すれば {@code AUTH_060} を throw して中断する。
+     * 認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/reject")
     @Operation(summary = "保護者同意否認", description = "保護者がトークンを使って同意を否認する（認証不要）")
     public ResponseEntity<ApiResponse<MessageResponse>> reject(

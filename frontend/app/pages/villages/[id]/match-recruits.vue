@@ -14,6 +14,7 @@
 import type {
   VillageMatchApplicationCreateRequest,
   VillageMatchApplicationResponse,
+  VillageMatchApplicationReviewRequest,
   VillageMatchRecruitCategory,
   VillageMatchRecruitCreateRequest,
   VillageMatchRecruitResponse,
@@ -76,12 +77,14 @@ const statusDropdownOptions = computed(() =>
 async function loadRecruits() {
   recruitsLoading.value = true
   try {
-    recruits.value = await villageApi.listMatchRecruits(villageId.value, {
+    // BE は `{items, page, size, total}` のエンベロープを返す。items を取り出すこと。
+    const res = await villageApi.listMatchRecruits(villageId.value, {
       category: categoryFilter.value === 'ALL' ? undefined : categoryFilter.value,
       status: statusFilter.value === 'ALL' ? undefined : statusFilter.value,
       page: 0,
       size: 50,
     })
+    recruits.value = res.items
   }
   catch (error) {
     recruits.value = []
@@ -178,7 +181,7 @@ async function submitApply(body: VillageMatchApplicationCreateRequest) {
 
 async function reviewApp(
   app: VillageMatchApplicationResponse,
-  action: 'accept' | 'reject',
+  status: VillageMatchApplicationReviewRequest['status'],
 ) {
   if (!detailRecruit.value) return
   try {
@@ -186,10 +189,10 @@ async function reviewApp(
       villageId.value,
       detailRecruit.value.id,
       app.id,
-      { action },
+      { status },
     )
     success(
-      action === 'accept'
+      status === 'ACCEPTED'
         ? t('village.matchApplication.acceptSuccess')
         : t('village.matchApplication.rejectSuccess'),
     )

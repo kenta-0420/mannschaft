@@ -111,6 +111,33 @@ class SealServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SealErrorCode.DUPLICATE_VARIANT));
         }
+
+        @Test
+        @DisplayName("印鑑作成_削除済み同一variant_物理INSERTせず復活してレスポンス返却")
+        void 印鑑作成_削除済み同一variant_復活() {
+            // Given: 論理削除済みの同一 (userId, variant) 行が存在する（reviveDeleted が1件更新）
+            CreateSealRequest request = new CreateSealRequest("LAST_NAME", "山田二");
+
+            ElectronicSealEntity revivedEntity = ElectronicSealEntity.builder()
+                    .id(SEAL_ID).userId(USER_ID).variant(SealVariant.LAST_NAME)
+                    .displayText("山田二").svgData("<svg-new/>").sealHash("hash789").build();
+            SealResponse response = new SealResponse(SEAL_ID, USER_ID, "LAST_NAME", "山田二", "<svg-new/>", "hash789", 2, null, null);
+
+            given(sealRepository.existsByUserIdAndVariant(USER_ID, SealVariant.LAST_NAME)).willReturn(false);
+            given(sealGenerator.generateSvg("山田二", SealVariant.LAST_NAME)).willReturn("<svg-new/>");
+            given(sealGenerator.computeHash("<svg-new/>")).willReturn("hash789");
+            given(sealRepository.reviveDeleted(USER_ID, "LAST_NAME", "山田二", "<svg-new/>", "hash789")).willReturn(1);
+            given(sealRepository.findByUserIdAndVariant(USER_ID, SealVariant.LAST_NAME)).willReturn(Optional.of(revivedEntity));
+            given(sealMapper.toSealResponse(revivedEntity)).willReturn(response);
+
+            // When
+            SealResponse result = sealService.createSeal(USER_ID, request);
+
+            // Then: 物理 INSERT（save）は行われず、復活した既存行がそのまま返る
+            assertThat(result).isNotNull();
+            assertThat(result.getDisplayText()).isEqualTo("山田二");
+            verify(sealRepository, org.mockito.Mockito.never()).save(any(ElectronicSealEntity.class));
+        }
     }
 
     @Nested

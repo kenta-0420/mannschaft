@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
@@ -17,6 +19,18 @@ import java.util.List;
 
 /**
  * シフトポジションサービス。チーム内のシフト役割の定義・管理を担当する。
+ *
+ * <p><b>認可（認可根治 Wave6）:</b> 全 public メソッドが操作者 {@code userId} を受け取り、
+ * per-scope 認可する。更新系は<b>ポジション実体由来の teamId</b> で判定し、
+ * パス変数・クエリの scope 値を鵜呑みにしない（BOLA 封鎖）。</p>
+ *
+ * <ul>
+ *   <li><b>参照</b>: 当該チームのメンバー（SUPPORTER 不可）</li>
+ *   <li><b>作成・更新・削除</b>: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）</li>
+ * </ul>
+ *
+ * <p>認可失敗は {@code COMMON_002}（403）。同ドメインの {@code ShiftScheduleScopeContractIT} /
+ * {@code ShiftSlotScopeContractIT} の規約に揃える。</p>
  */
 @Slf4j
 @Service
@@ -25,15 +39,19 @@ import java.util.List;
 public class ShiftPositionService {
 
     private final ShiftPositionRepository positionRepository;
+    private final AccessControlService accessControlService;
     private final ShiftMapper shiftMapper;
 
     /**
      * チームのポジション一覧を取得する。
      *
      * @param teamId チームID
+     * @param userId 操作者ユーザーID
      * @return ポジション一覧
+     * @throws BusinessException 当該チームのメンバーでない場合（COMMON_002 / 403）
      */
-    public List<ShiftPositionResponse> listPositions(Long teamId) {
+    public List<ShiftPositionResponse> listPositions(Long teamId, Long userId) {
+        checkTeamMemberAccess(teamId, userId);
         List<ShiftPositionEntity> entities = positionRepository.findByTeamIdOrderByDisplayOrderAsc(teamId);
         return shiftMapper.toPositionResponseList(entities);
     }
@@ -43,10 +61,14 @@ public class ShiftPositionService {
      *
      * @param teamId チームID
      * @param req    作成リクエスト
+     * @param userId 操作者ユーザーID
      * @return 作成されたポジション
+     * @throws BusinessException 当該チームの ADMIN 以上でない場合（COMMON_002 / 403）
      */
     @Transactional
-    public ShiftPositionResponse createPosition(Long teamId, CreatePositionRequest req) {
+    public ShiftPositionResponse createPosition(Long teamId, CreatePositionRequest req, Long userId) {
+        checkTeamAdminAccess(teamId, userId);
+
         // 重複チェック
         positionRepository.findByTeamIdAndName(teamId, req.getName())
                 .ifPresent(existing -> {
@@ -69,11 +91,14 @@ public class ShiftPositionService {
      *
      * @param positionId ポジションID
      * @param req        更新リクエスト
+     * @param userId     操作者ユーザーID
      * @return 更新されたポジション
+     * @throws BusinessException 当該ポジションが属するチームの ADMIN 以上でない場合（COMMON_002 / 403）
      */
     @Transactional
-    public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req) {
+    public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req, Long userId) {
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
+        checkTeamAdminAccess(entity.getTeamId(), userId);
 
         if (req.getName() != null) {
             // 名前変更時は重複チェック
@@ -104,10 +129,13 @@ public class ShiftPositionService {
      * ポジションを削除する。
      *
      * @param positionId ポジションID
+     * @param userId     操作者ユーザーID
+     * @throws BusinessException 当該ポジションが属するチームの ADMIN 以上でない場合（COMMON_002 / 403）
      */
     @Transactional
-    public void deletePosition(Long positionId) {
+    public void deletePosition(Long positionId, Long userId) {
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
+        checkTeamAdminAccess(entity.getTeamId(), userId);
         positionRepository.delete(entity);
         log.info("シフトポジション削除: id={}", positionId);
     }
@@ -118,5 +146,36 @@ public class ShiftPositionService {
     private ShiftPositionEntity findPositionOrThrow(Long id) {
         return positionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_POSITION_NOT_FOUND));
+    }
+
+    /**
+     * 管理操作の per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作者ユーザーID
+     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
+     */
+    private void checkTeamAdminAccess(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+    }
+
+    /**
+     * 参照の per-scope 認可（当該チームのメンバー、ただし SUPPORTER は不可）。
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作者ユーザーID
+     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
+     */
+    private void checkTeamMemberAccess(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (!accessControlService.isMember(userId, teamId, "TEAM")
+                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 }

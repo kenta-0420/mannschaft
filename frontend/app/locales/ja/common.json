@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "接続が切れています。再接続を試みています…"
+    },
+    "mobile": {
+      "backToList": "チャンネル一覧に戻る",
+      "noChannels": "まだチャンネルがありません",
+      "createChannel": "チャンネルを作成"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "しばらく時間をおいて再度お試しください。",
     "network": "通信エラーが発生しました",
     "unauthorized": "ログインが必要です",
+    "section_load_failed": "この項目の取得に失敗しました（再読み込みしてください）",
     "unknown": "エラーが発生しました",
     "COMMON_001": "入力内容に不備があります",
     "COMMON_002": "この操作を行う権限がありません",
@@ -463,7 +469,15 @@
     "writeReply": "返信を書く",
     "replySubmit": "返信する",
     "noReplies": "返信はまだありません",
-    "loadMoreReplies": "もっと見る"
+    "loadMoreReplies": "もっと見る",
+    "composerPlaceholder": {
+      "TEAM": "チームに投稿...",
+      "VILLAGE": "村に投稿...",
+      "ORGANIZATION": "組織に投稿...",
+      "PUBLIC": "今どうしてる？"
+    },
+    "submitLabel": "投稿",
+    "pollOptionsCount": "{count}択"
   },
   "gallery": {
     "title": "ギャラリー",
@@ -1431,7 +1445,9 @@
       "leave_action": "退出する",
       "load_error_title": "情報を取得できませんでした",
       "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
-      "back_to_dashboard": "ダッシュボードへ戻る"
+      "back_to_dashboard": "ダッシュボードへ戻る",
+      "retry": "再試行",
+      "slow_loading": "読み込みに時間がかかっています"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "フィードバック",
       "reports": "レポート",
       "advertisers": "広告主管理",
+      "adRateCards": "広告料金カード",
+      "adCreditLimitRequests": "広告与信枠申請",
+      "affiliateSettings": "アフィリエイト設定",
       "auditLogs": "監査ログ",
       "shiftBudget": "シフト予算",
       "betaRestriction": "ベータ制限",
       "errorReports": "エラーレポート",
       "gdprPurge": "GDPR パージ状況",
-      "feedbackInbox": "目安箱（全体）"
+      "feedbackInbox": "目安箱（全体）",
+      "billing": "課金マスタ管理",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "管理者変身中: {label} のアカウントで操作しています",

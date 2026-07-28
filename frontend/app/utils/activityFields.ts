@@ -16,6 +16,7 @@ export function parseSelectOptions(
     if (!Array.isArray(parsed)) return []
     return parsed.map((o) => ({ label: String(o), value: String(o) }))
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 設定 JSON（選択肢）の防御パース。パース不能は空選択肢が正しい（安全側・機能劣化なし）
     return []
   }
 }

@@ -154,6 +154,34 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("nowTime") LocalTime nowTime);
 
     /**
+     * 司令塔第二弾（ADHD-UX戦役第四陣）: 個人ダッシュボード「今後の予定」統合用に、
+     * 指定ユーザーの CONFIRMED 予約（代表行のみ）を指定期間 {@code [fromDate, untilDate)} で取得する。
+     *
+     * <p>{@link #findUpcomingByUserId} は「現在時刻以降すべて」（上限なし）を返すのに対し、
+     * 本メソッドは日次ダッシュボードの表示ウィンドウ（days=N）に合わせた上限付き版。
+     * {@code reservations} × {@code reservation_slots} を 1 クエリで JOIN し、
+     * 呼び出し側の件数に関わらず固定 1 クエリで完結させる（N+1 回避・AC-B2-5）。</p>
+     *
+     * <p>返却は {@code Object[]}: {@code [id(Long), slotTitle(String), slotDate(LocalDate),
+     * startTime(LocalTime), endTime(LocalTime), teamId(Long)]}。並び順は日付→開始時刻の昇順。</p>
+     *
+     * @param userId    対象ユーザーID
+     * @param fromDate  取得期間の開始日（含む）
+     * @param untilDate 取得期間の終了日（含まない・排他的上限）
+     */
+    @Query("SELECT r.id, s.title, s.slotDate, s.startTime, s.endTime, r.teamId " +
+            "FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.userId = :userId AND r.status = 'CONFIRMED' " +
+            "AND r.isGroupPrimary = TRUE " +
+            "AND s.slotDate >= :fromDate AND s.slotDate < :untilDate " +
+            "ORDER BY s.slotDate ASC, s.startTime ASC")
+    List<Object[]> findUpcomingByUserIdBetween(
+            @Param("userId") Long userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("untilDate") LocalDate untilDate);
+
+    /**
      * 指定期間内のチームの予約件数を取得する（代表行のみ・F03.4.3 §5.6 #4）。
      */
     long countByTeamIdAndIsGroupPrimaryTrueAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);

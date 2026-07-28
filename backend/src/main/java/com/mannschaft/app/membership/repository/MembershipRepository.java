@@ -208,6 +208,33 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId);
 
     /**
+     * 認可根治 Wave6: 指定した複数スコープ（TEAM / ORGANIZATION 混在）のアクティブ会員の
+     * user_id 集合（DISTINCT）を返す。
+     *
+     * <p>横断検索の利用者検索が「閲覧者と同一スコープに所属する利用者」だけを候補にするために用いる。
+     * {@link #findActiveDistinctUserIdsByScope} のスコープ集合版で、所属スコープ数 N に対して
+     * DB 往復を 1 回に抑える（N+1 を発生させない）。</p>
+     *
+     * <p>「アクティブ」（{@code users.status='ACTIVE'}）判定は auth ドメインに委ねるため、本クエリは
+     * 在籍者の user_id 集合だけを返す（ドメイン境界厳守・membership から users を直接参照しない）。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param teamIds 対象チーム scopeId 集合（非空・空ならダミー値）
+     * @param orgIds  対象組織 scopeId 集合（非空・空ならダミー値）
+     * @return 在籍者の user_id 集合（DISTINCT）
+     */
+    @Query("SELECT DISTINCT m.userId FROM MembershipEntity m WHERE m.leftAt IS NULL AND ("
+            + "  (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.TEAM AND m.scopeId IN :teamIds)"
+            + "  OR (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION"
+            + "      AND m.scopeId IN :orgIds)"
+            + ")")
+    List<Long> findActiveDistinctUserIdsByScopes(
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("orgIds") Collection<Long> orgIds);
+
+    /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員のうち、joined_at が指定期間内
      * （当月初日 ≦ joined_at ＜ 翌月初日）の DISTINCT user_id 件数を返す（今月新規）。
      *
@@ -222,4 +249,35 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId,
             @Param("from") java.time.LocalDateTime from,
             @Param("to") java.time.LocalDateTime to);
+
+    /**
+     * 指定ユーザーの<b>最古の有効所属</b>（{@code left_at IS NULL}）の {@code joined_at} を返す。
+     *
+     * <p>F20.3 ベータ特典の個人 {@code membershipTenureDays} メトリクスの計測源
+     * （設計書 F20.3 02 §2・README §2）。在籍日数 = now − 本値。有効所属が無ければ空。
+     * scalar（{@code LocalDateTime}）を返すため呼び出し側はスコープに依存しない。</p>
+     */
+    @Query("SELECT MIN(m.joinedAt) FROM MembershipEntity m "
+            + "WHERE m.userId = :userId AND m.leftAt IS NULL")
+    java.util.Optional<java.time.LocalDateTime> findEarliestActiveJoinedAt(@Param("userId") Long userId);
+
+    /**
+     * 複数ユーザーの<b>最古の有効所属</b>（{@code left_at IS NULL}）の {@code joined_at} を <b>1 クエリ</b>で
+     * 一括取得する（F20.3 Phase2 自動付与バッチの N+1 回避・設計書 F20.3 03 §6）。
+     *
+     * <p>{@link #findEarliestActiveJoinedAt} の bulk 版。{@code GROUP BY m.userId} で userId ごとの
+     * {@code MIN(joined_at)} を返し、{@code List<Object[]>}（{@code [0]=userId(Long), [1]=joinedAt(LocalDateTime)}）を
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）が Map 化して在籍日数を計算する。
+     * scalar のみ返すため {@link MembershipEntity} を呼び出し側に露出しない（クロスドメイン Entity 参照 D-1 を回避）。</p>
+     *
+     * <p><b>有効所属の無いユーザーは結果行に現れない</b>（GROUP BY の性質）。呼び出し側は欠損を在籍 0 日として扱う。
+     * 空の {@code userIds} は {@code IN ()} で不正 SQL になるため、呼び出し側でガードして本メソッドを呼ばない。</p>
+     *
+     * @param userIds 対象ユーザーID群（非空）
+     * @return {@code [userId, MIN(joinedAt)]} の配列リスト（有効所属の無いユーザーは含まれない）
+     */
+    @Query("SELECT m.userId, MIN(m.joinedAt) FROM MembershipEntity m "
+            + "WHERE m.userId IN :userIds AND m.leftAt IS NULL "
+            + "GROUP BY m.userId")
+    List<Object[]> findEarliestActiveJoinedAtByUsers(@Param("userIds") Collection<Long> userIds);
 }

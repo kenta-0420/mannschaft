@@ -3,6 +3,7 @@ package com.mannschaft.app.disclosure.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DraftStatus;
@@ -50,24 +51,31 @@ public class DisclosureFormDraftService {
     private final DisclosureFormTemplateService templateService;
     private final DisclosureAutoFillService autoFillService;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     // =========================================================================
     // 取得
     // =========================================================================
 
     /**
-     * ドラフト詳細を取得する。スコープ不一致は 403 相当（DISCLOSURE_002）。
+     * ドラフト詳細を取得する。スコープ不一致は 404 相当（DISCLOSURE_002・存在秘匿）。
+     *
+     * <p>認可根治戦役 Wave3-B4: entity 由来 scope の一致検証（BOLA ガード）に加え、
+     * 呼び出し元が当該組織のメンバーであることを {@code checkMembership} で検証する
+     * （従来は認証済みなら任意組織の draftId を推測して閲覧できた）。</p>
      */
-    public DisclosureFormDraftResponse get(Long scopeId, Long draftId) {
+    public DisclosureFormDraftResponse get(Long scopeId, Long userId, Long draftId) {
         DisclosureFormDraftEntity entity = findDraftOrThrow(draftId);
         ensureScope(entity, scopeId);
+        accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
         return toResponse(entity);
     }
 
     /**
      * ドラフト一覧をページング取得する。
      */
-    public Page<DisclosureFormDraftResponse> list(Long scopeId, DraftStatus status, Pageable pageable) {
+    public Page<DisclosureFormDraftResponse> list(Long scopeId, Long userId, DraftStatus status, Pageable pageable) {
+        accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
         Pageable safePageable = pageable != null ? pageable : PageRequest.of(0, 20);
         Page<DisclosureFormDraftEntity> page = (status != null)
                 ? draftRepository.findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(
@@ -101,6 +109,7 @@ public class DisclosureFormDraftService {
      */
     @Transactional
     public DisclosureFormDraftResponse create(Long scopeId, Long userId, DisclosureFormDraftRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
         if (request.templateId() == null) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
@@ -148,6 +157,7 @@ public class DisclosureFormDraftService {
                                               DisclosureFormDraftRequest request) {
         DisclosureFormDraftEntity entity = findDraftOrThrow(draftId);
         ensureScope(entity, scopeId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
         ensureMutable(entity);
 
         if (request.version() == null) {
@@ -183,6 +193,7 @@ public class DisclosureFormDraftService {
                                                        boolean allowPersonalInfo) {
         DisclosureFormDraftEntity entity = findDraftOrThrow(draftId);
         ensureScope(entity, scopeId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
         ensureMutable(entity);
 
         DisclosureFormTemplateEntity template = templateService.getEntityOrThrow(entity.getTemplateId());
@@ -214,9 +225,10 @@ public class DisclosureFormDraftService {
      * ドラフトを論理削除する。EXPORTED 済みも履歴管理上残しつつ削除可能。
      */
     @Transactional
-    public void delete(Long scopeId, Long draftId) {
+    public void delete(Long scopeId, Long userId, Long draftId) {
         DisclosureFormDraftEntity entity = findDraftOrThrow(draftId);
         ensureScope(entity, scopeId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
         entity.softDelete();
         draftRepository.save(entity);
         log.info("重説書ドラフト削除: scopeId={}, draftId={}", scopeId, draftId);

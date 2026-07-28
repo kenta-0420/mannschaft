@@ -20,10 +20,13 @@ import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogPostTagEntity;
+import com.mannschaft.app.cms.media.BlogBodyMediaResolver;
+import com.mannschaft.app.cms.media.BlogMediaScope;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -80,6 +83,9 @@ public class BlogPostService {
     //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
     private final PaymentGateService paymentGateService;
 
+    /** 表示経路でのみ使用する本文メディア解決部品（編集経路では絶対に呼ばない。{@link #getMyPostById} 参照）。 */
+    private final BlogBodyMediaResolver blogBodyMediaResolver;
+
     /**
      * チーム別記事一覧をページング取得する。
      *
@@ -124,6 +130,12 @@ public class BlogPostService {
      *
      * <p>投稿者本人以外がアクセスした場合は POST_NOT_FOUND を返す（IDOR 対策）。</p>
      *
+     * <p><b>【重要】本文メディアの署名 URL 解決を結線してはならない</b>: 本メソッドは
+     * 編集画面（{@code pages/blog/posts/[id]/edit.vue}）専用の入口であり、<b>生の r2Key を
+     * そのまま返すのが正しい</b>。ここで署名 URL へ解決すると、利用者が編集して保存した瞬間に
+     * 期限付きの署名 URL が {@code blog_posts.body} へ永続保存され、数十分後に記事の画像が
+     * 恒久的に壊れる（保存直後は正常に見えるため発見が遅れる）。解決漏れではない。</p>
+     *
      * @param postId 記事 ID
      * @param userId 認証ユーザー ID
      * @return 該当する BlogPostResponse
@@ -162,7 +174,9 @@ public class BlogPostService {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, entity.getId(), viewerUserId);
         // 可視性(F00)通過の「後段」でペイウォール本文ゲートを適用する（可視性 deny が優先）。
-        return applyPaywallMask(cmsMapper.toBlogPostResponse(entity), entity, viewerUserId);
+        // 表示経路なので、マスクを免れた本文のみ r2Key を署名 URL へ解決する。
+        return resolveBodyMedia(
+                applyPaywallMask(cmsMapper.toBlogPostResponse(entity), entity, viewerUserId), entity);
     }
 
     /**
@@ -172,6 +186,12 @@ public class BlogPostService {
      * {@link ContentVisibilityChecker#assertCanView} に委譲する。
      * 閲覧不可の場合は {@link com.mannschaft.app.common.BusinessException}
      * ({@code VISIBILITY_001} = 403 / {@code VISIBILITY_004} = 404 相当) を投げる。
+     *
+     * <p><b>注意（本文メディアの解決）</b>: 本メソッドは現状どの Controller からも呼ばれていない
+     * （呼び出し元はテストのみ）ため、本文メディアの署名 URL 解決を結線していない。
+     * <b>表示経路として Controller に繋ぐ場合は、{@link #getBySlug} と同様に
+     * {@code resolveBodyMedia} を適用すること</b>。適用を忘れると本文に生の r2Key
+     * （{@code blog/TEAM/12/x.png}）がそのまま返り、画像が表示されない。</p>
      */
     public BlogPostResponse getById(Long id) {
         // 実存確認 + 可視性判定を ContentVisibilityChecker に一元化する。
@@ -261,6 +281,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse updatePost(Long id, Long userId, UpdateBlogPostRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
 
         Visibility visibility = request.getVisibility() != null
                 ? Visibility.valueOf(request.getVisibility()) : entity.getVisibility();
@@ -294,8 +315,9 @@ public class BlogPostService {
      * 公開ステータスを変更する。
      */
     @Transactional
-    public BlogPostResponse changeStatus(Long id, PublishRequest request) {
+    public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
         PostStatus newStatus = PostStatus.valueOf(request.getStatus());
 
         if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
@@ -317,8 +339,9 @@ public class BlogPostService {
      * 記事を論理削除する。
      */
     @Transactional
-    public void deletePost(Long id) {
+    public void deletePost(Long id, Long userId) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
         entity.softDelete();
         postRepository.save(entity);
         log.info("記事削除: postId={}", id);
@@ -330,6 +353,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse duplicatePost(Long id, Long userId) {
         BlogPostEntity original = findPostOrThrow(id);
+        checkWriteAccess(original, userId);
         String newSlug = generateSlug(original.getTitle() + "-copy");
         short readingTime = calculateReadingTime(original.getBody());
 
@@ -376,17 +400,17 @@ public class BlogPostService {
     }
 
     /**
-     * プレビュートークンを発行する（{@link BlogPostShareService} へ委譲）。
+     * プレビュートークンを発行する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public BlogPostResponse issuePreviewToken(Long id) {
-        return shareService.issuePreviewToken(id);
+    public BlogPostResponse issuePreviewToken(Long id, Long userId) {
+        return shareService.issuePreviewToken(id, userId);
     }
 
     /**
-     * プレビュートークンを無効化する（{@link BlogPostShareService} へ委譲）。
+     * プレビュートークンを無効化する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public void revokePreviewToken(Long id) {
-        shareService.revokePreviewToken(id);
+    public void revokePreviewToken(Long id, Long userId) {
+        shareService.revokePreviewToken(id, userId);
     }
 
     /**
@@ -395,6 +419,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse autoSave(Long id, Long userId, AutoSaveRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
+        checkWriteAccess(entity, userId);
 
         if (request.getTitle() != null) {
             entity.update(request.getTitle(), entity.getSlug(),
@@ -418,7 +443,7 @@ public class BlogPostService {
      * 一括ステータス変更を実行する。
      */
     @Transactional
-    public BulkActionResponse bulkAction(BulkActionRequest request) {
+    public BulkActionResponse bulkAction(BulkActionRequest request, Long userId) {
         if (request.getIds().size() > 50) {
             throw new BusinessException(CmsErrorCode.BULK_LIMIT_EXCEEDED);
         }
@@ -432,6 +457,10 @@ public class BlogPostService {
                 skippedIds.add(id);
                 continue;
             }
+            // 認可根治戦役 Wave3-B7: 一括操作は対象記事ごとに所有者/スコープADMINを検証する。
+            // 非所有者かつ非ADMINの記事が1件でも含まれる場合は即座に403で全体を中断する
+            // （fail-closed。部分適用による越境操作の既成事実化を防ぐ）。
+            checkWriteAccess(entity, userId);
 
             switch (request.getAction().toUpperCase()) {
                 case "ARCHIVE" -> {
@@ -497,17 +526,17 @@ public class BlogPostService {
     }
 
     /**
-     * 個人ブログ記事をチーム/組織に共有する（{@link BlogPostShareService} へ委譲）。
+     * 個人ブログ記事をチーム/組織に共有する（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
     public SharePostResponse sharePost(Long postId, Long userId, SharePostRequest request) {
         return shareService.sharePost(postId, userId, request);
     }
 
     /**
-     * 共有を取り消す（{@link BlogPostShareService} へ委譲）。
+     * 共有を取り消す（{@link BlogPostShareService} へ委譲。認可判定も委譲先で実施）。
      */
-    public void revokeShare(Long postId, Long shareId) {
-        shareService.revokeShare(postId, shareId);
+    public void revokeShare(Long postId, Long shareId, Long userId) {
+        shareService.revokeShare(postId, shareId, userId);
     }
 
     /**
@@ -516,6 +545,7 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
         BlogPostEntity entity = findPostOrThrow(postId);
+        checkWriteAccess(entity, userId);
 
         if (entity.getStatus() != PostStatus.PENDING_SELF_REVIEW) {
             throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
@@ -622,6 +652,41 @@ public class BlogPostService {
     }
 
     /**
+     * 表示経路の本文について、生の r2Key を署名付き表示 URL へ解決した新インスタンスを返す。
+     *
+     * <p>ペイウォールでマスクされた本文（{@code body == null}）は解決しない。
+     * マスクを解決処理で復活させてはならないためである。</p>
+     *
+     * <p><b>編集経路（{@link #getMyPostById}）では呼ばないこと</b>。署名 URL には有効期限があり、
+     * 編集画面が受け取った署名 URL がそのまま保存されると {@code blog_posts.body} へ
+     * 期限付き URL が永続保存され、数十分後に記事の画像が恒久的に壊れる。</p>
+     */
+    private BlogPostResponse resolveBodyMedia(BlogPostResponse dto, BlogPostEntity entity) {
+        BlogPostResponse.BlogPostContentDto content = dto.getContent();
+        if (content == null || content.body() == null) {
+            return dto;
+        }
+        BlogMediaScope scope = BlogMediaScope.of(
+                entity.getTeamId(), entity.getOrganizationId(), entity.getUserId());
+        if (scope == null) {
+            log.warn("本文メディア: 記事のスコープを判定できないため解決を見送る: postId={}", entity.getId());
+            return dto;
+        }
+        String resolvedBody = blogBodyMediaResolver.resolveBody(
+                content.body(), scope.scopeType(), scope.scopeId());
+        if (resolvedBody == null || resolvedBody.equals(content.body())) {
+            return dto;
+        }
+        BlogPostResponse.BlogPostContentDto resolved = new BlogPostResponse.BlogPostContentDto(
+                content.title(),
+                content.slug(),
+                resolvedBody,
+                content.excerpt(),
+                content.coverImageUrl());
+        return dto.toBuilder().content(resolved).build();
+    }
+
+    /**
      * 本文（および任意で title）をマスクした新インスタンスを返す（{@code withReaction} と同じ toBuilder パターン）。
      */
     private BlogPostResponse maskContent(BlogPostResponse dto, boolean maskTitle) {
@@ -669,6 +734,32 @@ public class BlogPostService {
     BlogPostEntity findPostOrThrow(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+    }
+
+    /**
+     * 記事書込操作の認可を検証する（認可根治戦役 Wave3-B7）。
+     *
+     * <p>投稿者本人（{@code authorId == actorUserId}）はスコープ種別を問わず許可する。
+     * それ以外は、記事が所属するスコープ（teamId優先→organizationId）の ADMIN/DEPUTY_ADMIN
+     * であることを {@link AccessControlService#checkAdminOrAbove} で要求する（違反時 403 = COMMON_002）。
+     * 個人ブログ（teamId/organizationId ともに null）で非所有者の場合はスコープ判定不能のため
+     * 直接 403（COMMON_002）とする。</p>
+     *
+     * @param entity      対象記事エンティティ
+     * @param actorUserId 操作ユーザー ID
+     * @throws BusinessException 非所有者かつスコープ ADMIN 未満の場合（COMMON_002、403）
+     */
+    private void checkWriteAccess(BlogPostEntity entity, Long actorUserId) {
+        if (actorUserId != null && actorUserId.equals(entity.getAuthorId())) {
+            return;
+        }
+        if (entity.getTeamId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), "TEAM");
+        } else if (entity.getOrganizationId() != null) {
+            accessControlService.checkAdminOrAbove(actorUserId, entity.getOrganizationId(), "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

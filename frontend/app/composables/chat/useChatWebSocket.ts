@@ -2,23 +2,9 @@ import type { Client, IFrame, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
 import { useEventBus } from '@vueuse/core'
 import { ref } from 'vue'
-import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
+import { useWsUrl } from '~/composables/useWsUrl'
 import type { ChatChannelEvent } from '~/types/chat'
 import type { BeMessageListResponse } from './chatMessageMapper'
-
-/**
- * API ベース URL から STOMP WebSocket の接続先 URL を導出する。
- *
- * - apiBase が絶対 URL（dev: `http://localhost:8080`）の場合:
- *   スキームを http→ws / https→wss に変換して `/ws` を付加する。
- *   例: `http://localhost:8080` → `ws://localhost:8080/ws`
- * - apiBase が空・相対パス（本番: 同一オリジン構成）の場合:
- *   `/ws` をそのまま返す（本番の挙動を変えない）。
- */
-function buildWsUrl(apiBase: string): string {
-  if (!apiBase) return '/ws'
-  return apiBase.replace(/^http(s?)/, 'ws$1') + '/ws'
-}
 
 // ============================================================
 // モジュールレベルのシングルトン状態（composable再呼び出しを跨いで維持）
@@ -57,11 +43,11 @@ let _isFirstConnect = true
  */
 export function useChatWebSocket() {
   const api = useApi()
-  const config = useRuntimeConfig()
   // dev 環境（FE :3000 / BE :8080 が別ポート）では apiBase が絶対 URL になるため、
-  // ws(s) スキームに変換してバックエンドの /ws エンドポイントへ正しく接続する。
-  // 本番（同一オリジン構成）では apiBase が空のため '/ws' のまま（挙動不変）。
-  const wsUrl = buildWsUrl(resolveApiBaseUrl(config))
+  // ws(s) スキームに変換してバックエンドの /ws/websocket エンドポイントへ正しく接続する
+  // （共通ヘルパー useWsUrl 経由。BE は SockJS 登録のみのため bare /ws は 400 になる）。
+  // 本番（同一オリジン構成）では apiBase が空のため '/ws/websocket' のまま（挙動不変）。
+  const wsUrl = useWsUrl()
 
   /**
    * STOMP クライアントが未接続なら接続する。
@@ -194,6 +180,7 @@ export function useChatWebSocket() {
           body: JSON.stringify({ channelId }),
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- タイピング通知は非クリティカルな補助機能。WS 不通時のサイレント失敗が正しい
       .catch(() => {}) // サイレント失敗（タイピング通知は非クリティカル）
   }
 
@@ -349,6 +336,7 @@ export function useChatWebSocket() {
           callback(frame.body)
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 購読。WS 接続不可時のサイレント失敗が正しい（補助機能・非クリティカル）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
     return () => {
       subscription?.unsubscribe()
@@ -365,6 +353,7 @@ export function useChatWebSocket() {
         if (_stompClient === null || !_stompClient.connected) return
         _stompClient.publish({ destination, body })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 送信。WS 接続不可時のサイレント失敗が正しい（本文は REST 経由・補助機能）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
   }
 

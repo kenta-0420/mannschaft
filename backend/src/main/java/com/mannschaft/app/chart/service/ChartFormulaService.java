@@ -7,8 +7,10 @@ import com.mannschaft.app.chart.dto.ChartFormulaResponse;
 import com.mannschaft.app.chart.dto.CreateFormulaRequest;
 import com.mannschaft.app.chart.dto.UpdateFormulaRequest;
 import com.mannschaft.app.chart.entity.ChartFormulaEntity;
+import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartFormulaRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,13 +33,19 @@ public class ChartFormulaService {
     private final ChartFormulaRepository formulaRepository;
     private final ChartRecordRepository recordRepository;
     private final ChartMapper chartMapper;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * 薬剤レシピ一覧を取得する。
      */
-    public List<ChartFormulaResponse> listFormulas(Long teamId, Long chartId) {
-        recordRepository.findByIdAndTeamId(chartId, teamId)
+    public List<ChartFormulaResponse> listFormulas(Long teamId, Long chartId, Long actorUserId) {
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkMembership(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         List<ChartFormulaEntity> formulas = formulaRepository.findByChartRecordIdOrderBySortOrder(chartId);
         return chartMapper.toFormulaResponseList(formulas);
@@ -47,9 +55,11 @@ public class ChartFormulaService {
      * 薬剤レシピを追加する。
      */
     @Transactional
-    public ChartFormulaResponse createFormula(Long teamId, Long chartId, CreateFormulaRequest request) {
-        recordRepository.findByIdAndTeamId(chartId, teamId)
+    public ChartFormulaResponse createFormula(Long teamId, Long chartId, Long actorUserId, CreateFormulaRequest request) {
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         long currentCount = formulaRepository.countByChartRecordId(chartId);
         if (currentCount >= MAX_FORMULAS_PER_CHART) {
@@ -82,13 +92,15 @@ public class ChartFormulaService {
      * 薬剤レシピを更新する。
      */
     @Transactional
-    public ChartFormulaResponse updateFormula(Long teamId, Long formulaId, UpdateFormulaRequest request) {
+    public ChartFormulaResponse updateFormula(Long teamId, Long formulaId, Long actorUserId, UpdateFormulaRequest request) {
         ChartFormulaEntity entity = formulaRepository.findById(formulaId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.FORMULA_NOT_FOUND));
 
         // カルテのチーム所属確認
-        recordRepository.findByIdAndTeamId(entity.getChartRecordId(), teamId)
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(entity.getChartRecordId(), teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         if (request.getPatchTestResult() != null) {
             PatchTestResult.valueOf(request.getPatchTestResult());
@@ -114,12 +126,14 @@ public class ChartFormulaService {
      * 薬剤レシピを削除する。
      */
     @Transactional
-    public void deleteFormula(Long teamId, Long formulaId) {
+    public void deleteFormula(Long teamId, Long formulaId, Long actorUserId) {
         ChartFormulaEntity entity = formulaRepository.findById(formulaId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.FORMULA_NOT_FOUND));
 
-        recordRepository.findByIdAndTeamId(entity.getChartRecordId(), teamId)
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(entity.getChartRecordId(), teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         formulaRepository.delete(entity);
         log.info("薬剤レシピ削除: formulaId={}", formulaId);

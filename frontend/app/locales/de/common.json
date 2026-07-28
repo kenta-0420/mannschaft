@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+    },
+    "mobile": {
+      "backToList": "Zurück zur Kanalliste",
+      "noChannels": "Noch keine Kanäle",
+      "createChannel": "Kanal erstellen"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "Bitte versuchen Sie es spater erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
+    "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
@@ -463,7 +469,15 @@
     "writeReply": "Antwort schreiben",
     "replySubmit": "Antworten",
     "noReplies": "Noch keine Antworten",
-    "loadMoreReplies": "Mehr anzeigen"
+    "loadMoreReplies": "Mehr anzeigen",
+    "composerPlaceholder": {
+      "TEAM": "Im Team posten...",
+      "VILLAGE": "Im Dorf posten...",
+      "ORGANIZATION": "In der Organisation posten...",
+      "PUBLIC": "Was gibt's Neues?"
+    },
+    "submitLabel": "Posten",
+    "pollOptionsCount": "{count} Optionen"
   },
   "gallery": {
     "title": "Galerie",
@@ -1431,7 +1445,9 @@
       "leave_action": "Verlassen",
       "load_error_title": "Informationen konnten nicht geladen werden",
       "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
-      "back_to_dashboard": "Zurück zum Dashboard"
+      "back_to_dashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "slow_loading": "Das Laden dauert länger als erwartet"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "Feedback",
       "reports": "Berichte",
       "advertisers": "Werbeverwaltung",
+      "adRateCards": "Anzeigen-Preiskarten",
+      "adCreditLimitRequests": "Anzeigen-Kreditlimit-Anträge",
+      "affiliateSettings": "Affiliate-Einstellungen",
       "auditLogs": "Audit-Protokolle",
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
-      "feedbackInbox": "Feedback-Posteingang (Global)"
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",

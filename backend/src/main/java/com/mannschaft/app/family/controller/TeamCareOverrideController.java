@@ -39,8 +39,9 @@ public class TeamCareOverrideController {
     public ResponseEntity<ApiResponse<TeamCareOverrideResponse>> getTeamOverride(
             @PathVariable Long teamId,
             @PathVariable Long careLinkId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         TeamCareOverrideResponse response =
-                careLinkService.getTeamOverride(SCOPE_TYPE_TEAM, teamId, careLinkId);
+                careLinkService.getTeamOverride(SCOPE_TYPE_TEAM, teamId, careLinkId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -67,7 +68,8 @@ public class TeamCareOverrideController {
     public ResponseEntity<Void> deleteTeamOverride(
             @PathVariable Long teamId,
             @PathVariable Long careLinkId) {
-        careLinkService.deleteTeamOverride(SCOPE_TYPE_TEAM, teamId, careLinkId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        careLinkService.deleteTeamOverride(SCOPE_TYPE_TEAM, teamId, careLinkId, currentUserId);
         return ResponseEntity.noContent().build();
     }
 }

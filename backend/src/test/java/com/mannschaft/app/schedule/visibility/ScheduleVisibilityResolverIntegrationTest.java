@@ -63,10 +63,14 @@ class ScheduleVisibilityResolverIntegrationTest extends AbstractMySqlIntegration
 
     @BeforeEach
     void setUp() {
-        // ロール
+        // ロール（idempotent seed）: roles は ddl-auto=create + flyway無効の共有 Testcontainer で
+        // テスト間永続するグローバル参照テーブル。同一 shard 内の非トランザクションテストが commit した
+        // 'MEMBER' が残存していると無条件 INSERT は roles.UK(name) に衝突する（Duplicate entry 'MEMBER'）。
+        // ON DUPLICATE KEY UPDATE で「在れば no-op・無ければ INSERT」にし、shard 構成に依らず堅牢化する。
         em.createNativeQuery(
                 "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
+                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW()) "
+                        + "ON DUPLICATE KEY UPDATE id = id")
                 .executeUpdate();
         em.flush();
         memberRoleId = ((Number) em.createNativeQuery(

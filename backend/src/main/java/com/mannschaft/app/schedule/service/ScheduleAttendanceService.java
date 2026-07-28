@@ -151,11 +151,17 @@ public class ScheduleAttendanceService {
     /**
      * スケジュールの出欠一覧を取得する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 個人名付き出欠一覧の漏洩を防ぐため、当該スケジュールが
+     * 属する scope（TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkMembership} 水準）。
+     * entity 由来 scope で判定するため、URL の teamId/orgId と実際のスケジュールの scope が
+     * 一致しない BOLA 越境も防ぐ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠回答一覧
      */
-    public List<AttendanceResponse> getAttendances(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public List<AttendanceResponse> getAttendances(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         return attendanceRepository.findByScheduleIdOrderByUserIdAsc(scheduleId).stream()
                 .map(this::toAttendanceResponse)
                 .toList();
@@ -164,10 +170,15 @@ public class ScheduleAttendanceService {
     /**
      * 出欠集計サマリーを取得する。ATTENDING/PARTIAL/ABSENT/UNDECIDED の各件数を返す。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: {@code getAttendances} と同じく entity 由来 scope
+     * （TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkScopeViewAccess} 水準）。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠サマリー
      */
-    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId) {
+    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         scheduleService.getSchedule(scheduleId);
 
         Map<AttendanceStatus, Integer> countMap = new HashMap<>();
@@ -352,11 +363,17 @@ public class ScheduleAttendanceService {
     /**
      * 管理者による出欠一括更新を行う。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 「管理者用」の doc どおり、当該スケジュールが属する
+     * scope（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN のみ実行可（{@code checkAdminOrAbove} 水準・
+     * entity 由来 scope）。従来は認可ゼロで一般メンバーも一括上書きできていた欠陥を是正。</p>
+     *
      * @param scheduleId スケジュールID
      * @param req        一括出欠リクエスト
+     * @param userId     操作ユーザーID
      */
     @Transactional
-    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req) {
+    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req, Long userId) {
+        scheduleService.checkScopeAdminAccess(scheduleId, userId);
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
         validateAttendanceRequired(schedule);
 
@@ -378,11 +395,14 @@ public class ScheduleAttendanceService {
     /**
      * 出欠一覧をCSV文字列として出力する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: getAttendances と同じく entity 由来 scope のメンバーのみ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return CSV文字列
      */
-    public String exportAttendancesCsv(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public String exportAttendancesCsv(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         List<ScheduleAttendanceEntity> attendances = attendanceRepository
                 .findByScheduleIdOrderByUserIdAsc(scheduleId);
 
@@ -596,14 +616,21 @@ public class ScheduleAttendanceService {
     /**
      * チームの出席率統計を取得する。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: 名簿全体・期間横断のユーザー別出席率という管理者向け集計のため、
+     * 当該チームの ADMIN/DEPUTY_ADMIN のみ取得可（{@code checkAdminOrAbove} 水準。
+     * {@code bulkUpdateAttendances} と同段）。SYSTEM_ADMIN は横断で許可。</p>
+     *
      * @param teamId チームID
      * @param from   期間開始
      * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getTeamAttendanceStats(Long teamId,
-                                                                  LocalDateTime from, LocalDateTime to) {
+                                                                  LocalDateTime from, LocalDateTime to,
+                                                                  Long userId) {
+        checkScopeAdmin(userId, teamId, "TEAM");
         // チームメンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByTeamId(teamId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -625,14 +652,19 @@ public class ScheduleAttendanceService {
     /**
      * 組織の出席率統計を取得する。
      *
-     * @param orgId 組織ID
-     * @param from  期間開始
-     * @param to    期間終了
+     * <p><b>認可（認可根治 Wave6）</b>: {@link #getTeamAttendanceStats} と同水準（ORGANIZATION 系）。</p>
+     *
+     * @param orgId  組織ID
+     * @param from   期間開始
+     * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getOrgAttendanceStats(Long orgId,
-                                                                 LocalDateTime from, LocalDateTime to) {
+                                                                 LocalDateTime from, LocalDateTime to,
+                                                                 Long userId) {
+        checkScopeAdmin(userId, orgId, "ORGANIZATION");
         // 組織メンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByOrganizationId(orgId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -702,6 +734,17 @@ public class ScheduleAttendanceService {
     }
 
     // --- プライベートメソッド ---
+
+    /**
+     * スコープ（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN 認可を強制する（認可根治 Wave6）。
+     * SYSTEM_ADMIN は横断で許可する（{@code ScheduleService.checkScopeViewAccess} と同方針）。
+     */
+    private void checkScopeAdmin(Long userId, Long scopeId, String scopeType) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+    }
 
     /**
      * メンバーリストとスケジュールリストから出欠統計を構築する。

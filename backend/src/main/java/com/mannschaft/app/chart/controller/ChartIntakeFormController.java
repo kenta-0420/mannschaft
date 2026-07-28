@@ -4,6 +4,7 @@ import com.mannschaft.app.chart.dto.IntakeFormResponse;
 import com.mannschaft.app.chart.dto.UpdateIntakeFormRequest;
 import com.mannschaft.app.chart.service.ChartIntakeFormService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -39,7 +40,7 @@ public class ChartIntakeFormController {
     public ResponseEntity<ApiResponse<List<IntakeFormResponse>>> getIntakeForms(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        List<IntakeFormResponse> response = intakeFormService.getIntakeForms(teamId, id);
+        List<IntakeFormResponse> response = intakeFormService.getIntakeForms(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -54,7 +55,8 @@ public class ChartIntakeFormController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateIntakeFormRequest request) {
-        IntakeFormResponse response = intakeFormService.updateIntakeForm(teamId, id, request);
+        IntakeFormResponse response = intakeFormService.updateIntakeForm(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

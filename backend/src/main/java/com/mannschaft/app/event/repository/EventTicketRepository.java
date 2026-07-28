@@ -25,6 +25,11 @@ public interface EventTicketRepository extends JpaRepository<EventTicketEntity, 
     Optional<EventTicketEntity> findByQrToken(String qrToken);
 
     /**
+     * チケットIDとイベントIDでチケットを取得する（親子BOLA根治: 越境ID指定を404で秘匿）。
+     */
+    Optional<EventTicketEntity> findByIdAndEventId(Long id, Long eventId);
+
+    /**
      * 参加登録IDでチケット一覧を取得する。
      */
     List<EventTicketEntity> findByRegistrationId(Long registrationId);

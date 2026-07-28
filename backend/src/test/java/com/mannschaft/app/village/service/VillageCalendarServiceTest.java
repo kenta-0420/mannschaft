@@ -82,6 +82,9 @@ class VillageCalendarServiceTest {
     private VillageCalendarEventRepository calendarRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
+    /** F17.2 Wave2 ①: 歳時記作成の還流イベント発行（no-op モック）。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private VillageCalendarService service;
@@ -146,7 +149,7 @@ class VillageCalendarServiceTest {
     }
 
     private void mockModerator(Long userId, UUID membershipId, VillageRole role) {
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, userId))
                 .willReturn(Optional.of(memberOf(membershipId, userId, role)));
     }
@@ -208,7 +211,7 @@ class VillageCalendarServiceTest {
     @DisplayName("作成: 非村人は VILLAGE_024 で拒否")
     void createEvent_byNonMember_denied() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, NON_MEMBER_USER_ID))
                 .willReturn(Optional.empty());
 

@@ -1,6 +1,7 @@
 package com.mannschaft.app.role;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -38,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -148,6 +150,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("正常変更_ロールが変更される")
         void 正常変更_ロールが変更される() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -169,6 +174,9 @@ class RoleServiceTest {
             // flush を挟まないと Hibernate の write-behind が INSERT を先に発行し、
             // user_roles の uq_user_roles_user_scope(user_id, scope_key) ユニーク制約に
             // 旧行と衝突して 500 になる（実機 E2E + general_log で実証済みのバグ）。
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -188,6 +196,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("最後のADMIN変更_ROLE_004例外")
         void 最後のADMIN変更_ROLE_004例外() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -214,13 +225,17 @@ class RoleServiceTest {
         @Test
         @DisplayName("正常除名_ユーザーロールが削除される")
         void 正常除名_ユーザーロールが削除される() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
 
-            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID);
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
 
             verify(userRoleRepository).delete(current);
         }
@@ -228,6 +243,9 @@ class RoleServiceTest {
         @Test
         @DisplayName("最後のADMIN除名_ROLE_004例外")
         void 最後のADMIN除名_ROLE_004例外() {
+            // 束1 権限昇格根治: 操作者(USER_ID)は当該スコープの ADMIN である必要がある（requireActorAdmin）。
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
             UserRoleEntity current = UserRoleEntity.builder()
                     .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
@@ -235,10 +253,95 @@ class RoleServiceTest {
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
 
-            assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID))
+            assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
+        }
+
+        @Test
+        @DisplayName("除名時_membershipsの離脱がREMOVEDと操作者付きで確定される")
+        void 除名時_membershipsの離脱がREMOVEDと操作者付きで確定される() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(membershipService.leaveByUserAndScope(
+                    TARGET_USER_ID, ScopeType.ORGANIZATION, SCOPE_ID, LeaveReason.REMOVED, USER_ID))
+                    .willReturn(true);
+
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
+
+            verify(membershipService).leaveByUserAndScope(
+                    TARGET_USER_ID, ScopeType.ORGANIZATION, SCOPE_ID, LeaveReason.REMOVED, USER_ID);
+        }
+
+        @Test
+        @DisplayName("user_roles削除はmembershipsの離脱より先にflushされる")
+        void user_roles削除はmembershipsの離脱より先にflushされる() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
+
+            InOrder order = inOrder(userRoleRepository, membershipService);
+            order.verify(userRoleRepository).delete(current);
+            order.verify(userRoleRepository).flush();
+            order.verify(membershipService).leaveByUserAndScope(
+                    TARGET_USER_ID, ScopeType.ORGANIZATION, SCOPE_ID, LeaveReason.REMOVED, USER_ID);
+        }
+
+        @Test
+        @DisplayName("membershipsの離脱が成立した場合_MembershipChangedEventを二重発火しない")
+        void membershipsの離脱が成立した場合_MembershipChangedEventを二重発火しない() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            // 委譲先（MembershipService.leave）が REMOVED イベントを発火する経路。
+            given(membershipService.leaveByUserAndScope(
+                    any(), any(), any(), any(), any())).willReturn(true);
+
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
+
+            verify(eventPublisher, never()).publishEvent(any(MembershipChangedEvent.class));
+        }
+
+        @Test
+        @DisplayName("在籍行が無い場合_MembershipChangedEventが補填発火される")
+        void 在籍行が無い場合_MembershipChangedEventが補填発火される() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(operatorAdminRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(membershipService.leaveByUserAndScope(
+                    any(), any(), any(), any(), any())).willReturn(false);
+
+            roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
+
+            ArgumentCaptor<MembershipChangedEvent> captor =
+                    ArgumentCaptor.forClass(MembershipChangedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().changeType())
+                    .isEqualTo(MembershipChangedEvent.ChangeType.REMOVED);
         }
     }
 
@@ -283,6 +386,20 @@ class RoleServiceTest {
         }
 
         @Test
+        @DisplayName("退会者purge時_membershipsの離脱がREMOVEDで確定される")
+        void 退会者purge時_membershipsの離脱がREMOVEDで確定される() {
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).teamId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndTeamId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+
+            roleService.removeMemberWithoutAdminCheck(SCOPE_ID, "TEAM", TARGET_USER_ID);
+
+            verify(membershipService).leaveByUserAndScope(
+                    TARGET_USER_ID, ScopeType.TEAM, SCOPE_ID, LeaveReason.REMOVED, null);
+        }
+
+        @Test
         @DisplayName("event_payload確認_REMOVED_userId_scopeId_scopeType")
         void event_payload確認_REMOVED_userId_scopeId_scopeType() {
             UserRoleEntity current = UserRoleEntity.builder()
@@ -292,6 +409,7 @@ class RoleServiceTest {
 
             roleService.removeMemberWithoutAdminCheck(SCOPE_ID, "TEAM", TARGET_USER_ID);
 
+            // 在籍行が無い（leaveByUserAndScope が false）ため補填発火される経路。
             ArgumentCaptor<MembershipChangedEvent> captor =
                     ArgumentCaptor.forClass(MembershipChangedEvent.class);
             verify(eventPublisher).publishEvent(captor.capture());
@@ -323,6 +441,21 @@ class RoleServiceTest {
             roleService.leaveScope(USER_ID, SCOPE_ID, "ORGANIZATION");
 
             verify(userRoleRepository).delete(current);
+        }
+
+        @Test
+        @DisplayName("自主退会時_membershipsの離脱がSELFで確定される")
+        void 自主退会時_membershipsの離脱がSELFで確定される() {
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(MEMBER_ROLE_ID).teamId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+
+            roleService.leaveScope(USER_ID, SCOPE_ID, "TEAM");
+
+            verify(membershipService).leaveByUserAndScope(
+                    USER_ID, ScopeType.TEAM, SCOPE_ID, LeaveReason.SELF, null);
         }
     }
 
@@ -484,5 +617,15 @@ class RoleServiceTest {
     private RoleEntity createMemberRole() {
         return RoleEntity.builder()
                 .id(MEMBER_ROLE_ID).name("MEMBER").displayName("メンバー").priority(4).isSystem(true).build();
+    }
+
+    /**
+     * 束1 権限昇格根治: 操作者(USER_ID)が当該スコープの ADMIN であることを表す user_roles 行。
+     * requireActorAdmin が {@code findUserRole(actor) → roleRepository.findById(roleId=ADMIN_ROLE_ID)} で
+     * ADMIN 判定するために用いる。
+     */
+    private UserRoleEntity operatorAdminRole() {
+        return UserRoleEntity.builder()
+                .id(99L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
     }
 }

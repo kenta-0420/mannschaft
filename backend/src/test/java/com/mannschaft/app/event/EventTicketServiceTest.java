@@ -134,11 +134,11 @@ class EventTicketServiceTest {
             EventTicketEntity entity = createValidTicket();
             TicketResponse response = createTicketResponse();
 
-            given(ticketRepository.findById(TICKET_ID)).willReturn(Optional.of(entity));
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(eventMapper.toTicketResponse(entity)).willReturn(response);
 
             // When
-            TicketResponse result = eventTicketService.getTicket(TICKET_ID);
+            TicketResponse result = eventTicketService.getTicket(EVENT_ID, TICKET_ID);
 
             // Then
             assertThat(result.getQrToken()).isEqualTo(QR_TOKEN);
@@ -148,10 +148,21 @@ class EventTicketServiceTest {
         @DisplayName("チケット取得_存在しない_例外スロー")
         void チケット取得_存在しない_例外スロー() {
             // Given
-            given(ticketRepository.findById(TICKET_ID)).willReturn(Optional.empty());
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketService.getTicket(TICKET_ID))
+            assertThatThrownBy(() -> eventTicketService.getTicket(EVENT_ID, TICKET_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("チケット取得_別イベント帰属(親子BOLA)_例外スロー")
+        void チケット取得_別イベント帰属_例外スロー() {
+            // Given
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, 999L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventTicketService.getTicket(999L, TICKET_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -175,7 +186,7 @@ class EventTicketServiceTest {
             given(eventMapper.toTicketResponse(entity)).willReturn(response);
 
             // When
-            TicketResponse result = eventTicketService.getTicketByQrToken(QR_TOKEN);
+            TicketResponse result = eventTicketService.getTicketByQrToken(EVENT_ID, QR_TOKEN);
 
             // Then
             assertThat(result.getQrToken()).isEqualTo(QR_TOKEN);
@@ -188,7 +199,19 @@ class EventTicketServiceTest {
             given(ticketRepository.findByQrToken(QR_TOKEN)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketService.getTicketByQrToken(QR_TOKEN))
+            assertThatThrownBy(() -> eventTicketService.getTicketByQrToken(EVENT_ID, QR_TOKEN))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("QRトークン検索_別イベント帰属(親子BOLA)_例外スロー")
+        void QRトークン検索_別イベント帰属_例外スロー() {
+            // Given: チケットは存在するが eventId=999 には属さない
+            EventTicketEntity entity = createValidTicket();
+            given(ticketRepository.findByQrToken(QR_TOKEN)).willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> eventTicketService.getTicketByQrToken(999L, QR_TOKEN))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -208,12 +231,12 @@ class EventTicketServiceTest {
             EventTicketEntity entity = createValidTicket();
             TicketResponse response = createTicketResponse();
 
-            given(ticketRepository.findById(TICKET_ID)).willReturn(Optional.of(entity));
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(ticketRepository.save(any(EventTicketEntity.class))).willReturn(entity);
             given(eventMapper.toTicketResponse(entity)).willReturn(response);
 
             // When
-            TicketResponse result = eventTicketService.cancelTicket(TICKET_ID);
+            TicketResponse result = eventTicketService.cancelTicket(EVENT_ID, TICKET_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -225,10 +248,10 @@ class EventTicketServiceTest {
         void チケットキャンセル_CANCELLED_例外スロー() {
             // Given
             EventTicketEntity entity = createCancelledTicket();
-            given(ticketRepository.findById(TICKET_ID)).willReturn(Optional.of(entity));
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketService.cancelTicket(TICKET_ID))
+            assertThatThrownBy(() -> eventTicketService.cancelTicket(EVENT_ID, TICKET_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -240,10 +263,21 @@ class EventTicketServiceTest {
                     .registrationId(REGISTRATION_ID).eventId(EVENT_ID).ticketTypeId(TICKET_TYPE_ID)
                     .qrToken(QR_TOKEN).ticketNumber("EVT1-0001").status(TicketStatus.USED).build();
 
-            given(ticketRepository.findById(TICKET_ID)).willReturn(Optional.of(entity));
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketService.cancelTicket(TICKET_ID))
+            assertThatThrownBy(() -> eventTicketService.cancelTicket(EVENT_ID, TICKET_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("チケットキャンセル_別イベント帰属(親子BOLA)_例外スロー")
+        void チケットキャンセル_別イベント帰属_例外スロー() {
+            // Given
+            given(ticketRepository.findByIdAndEventId(TICKET_ID, 999L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventTicketService.cancelTicket(999L, TICKET_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

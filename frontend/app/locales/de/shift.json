@@ -131,7 +131,8 @@
       "noDate": "Kein Datum",
       "colDate": "Datum",
       "colSlots": "Slots",
-      "editDialogTitle": "Schicht bearbeiten"
+      "editDialogTitle": "Schicht bearbeiten",
+      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen"
     },
     "slot": {
       "createTitle": "Slot anlegen",
@@ -327,6 +328,7 @@
     },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
+      "upcomingTitle": "Bevorstehende bestätigte Schichten",
       "teamFilter": {
         "all": "Alle Teams",
         "label": "Nach Team filtern"

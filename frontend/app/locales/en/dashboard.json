@@ -77,7 +77,10 @@
       "toggle_today": "Today",
       "toggle_week": "This Week",
       "empty_today": "No events today",
-      "empty_week": "No events this week"
+      "empty_week": "No events this week",
+      "kind_event": "Event",
+      "kind_shift": "Shift",
+      "kind_reservation": "Reservation"
     },
     "personal": {
       "find_team_title": "Find a New Team or Organization",
@@ -182,6 +185,25 @@
       "actionRequiredEmpty": "No items require your attention",
       "widget_notices_tab_platform": "Announcements",
       "widget_notices_platform_empty": "No announcements at this time"
+    },
+    "commandCenter": {
+      "title": "Right Now",
+      "unresolvedCount": "{count} unresolved",
+      "chipCirculation": "Circulation",
+      "chipSurvey": "Survey",
+      "chipAttendance": "Attendance",
+      "chipOverdueTodo": "Overdue TODO",
+      "deadlineOverdue": "Overdue",
+      "deadlineToday": "Today",
+      "emptyTitle": "Nothing missed 🎉",
+      "emptyMessage": "No items require your attention",
+      "partialLoadError": "Some data could not be loaded",
+      "todoCompleteAria": "Mark as complete",
+      "todoCompleteSuccess": "TODO completed",
+      "todoCompleteError": "Failed to complete the TODO",
+      "adminSectionTitle": "Pending Approvals",
+      "adminUnresolvedCount": "{count} pending approvals",
+      "adminLoadError": "Failed to load pending approvals"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",

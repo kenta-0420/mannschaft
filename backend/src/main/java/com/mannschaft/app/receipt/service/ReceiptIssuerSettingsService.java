@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
@@ -25,30 +26,37 @@ public class ReceiptIssuerSettingsService {
 
     private final ReceiptIssuerSettingsRepository issuerSettingsRepository;
     private final ReceiptMapper receiptMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 発行者設定を取得する。
+     * 認可: 指定スコープのメンバーのみ閲覧可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 操作者ユーザーID
      * @return 発行者設定レスポンス
      */
-    public IssuerSettingsResponse getSettings(ReceiptScopeType scopeType, Long scopeId) {
+    public IssuerSettingsResponse getSettings(ReceiptScopeType scopeType, Long scopeId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
         ReceiptIssuerSettingsEntity entity = findSettingsOrThrow(scopeType, scopeId);
         return receiptMapper.toIssuerSettingsResponse(entity);
     }
 
     /**
      * 発行者設定を作成または更新する（UPSERT）。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ変更可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param request   更新リクエスト
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 操作者ユーザーID
+     * @param request     更新リクエスト
      * @return 更新後の発行者設定レスポンス
      */
     @Transactional
     public IssuerSettingsResponse upsertSettings(ReceiptScopeType scopeType, Long scopeId,
-                                                  UpdateIssuerSettingsRequest request) {
+                                                  Long actorUserId, UpdateIssuerSettingsRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         validateInvoiceRegistration(request);
 
         ReceiptIssuerSettingsEntity entity = issuerSettingsRepository
@@ -106,14 +114,18 @@ public class ReceiptIssuerSettingsService {
 
     /**
      * ロゴ画像のストレージキーを更新する。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ変更可能。
      *
      * @param scopeType       スコープ種別
      * @param scopeId         スコープID
+     * @param actorUserId     操作者ユーザーID
      * @param logoStorageKey  S3 ストレージキー
      * @return 更新後の発行者設定レスポンス
      */
     @Transactional
-    public IssuerSettingsResponse updateLogo(ReceiptScopeType scopeType, Long scopeId, String logoStorageKey) {
+    public IssuerSettingsResponse updateLogo(ReceiptScopeType scopeType, Long scopeId,
+                                              Long actorUserId, String logoStorageKey) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         ReceiptIssuerSettingsEntity entity = findSettingsOrThrow(scopeType, scopeId);
         entity.updateLogoStorageKey(logoStorageKey);
         ReceiptIssuerSettingsEntity saved = issuerSettingsRepository.save(entity);
@@ -123,12 +135,15 @@ public class ReceiptIssuerSettingsService {
 
     /**
      * ロゴ画像を削除する。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ削除可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
+     * @param actorUserId 操作者ユーザーID
      */
     @Transactional
-    public void deleteLogo(ReceiptScopeType scopeType, Long scopeId) {
+    public void deleteLogo(ReceiptScopeType scopeType, Long scopeId, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         ReceiptIssuerSettingsEntity entity = findSettingsOrThrow(scopeType, scopeId);
         entity.updateLogoStorageKey(null);
         issuerSettingsRepository.save(entity);

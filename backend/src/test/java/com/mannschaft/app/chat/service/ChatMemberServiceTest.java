@@ -13,6 +13,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,6 +60,8 @@ class ChatMemberServiceTest {
     private ChatMemberService chatMemberService;
 
     private static final Long CHANNEL_ID = 1L;
+    /** 認可根治 Wave6: 公開チャンネル自己参加のスコープ所属検証で使うチームID。 */
+    private static final Long JOIN_TEAM_ID = 10L;
     private static final Long USER_ID = 100L;
     private static final Long TARGET_USER_ID = 200L;
 
@@ -79,8 +84,10 @@ class ChatMemberServiceTest {
         @DisplayName("正常系: チャンネルに参加できる")
         void チャンネルに参加できる() {
             // given
+            // 認可根治 Wave6: 公開チャンネルの自己参加は「当該チームのメンバーであること」を要求するため、
+            // teamId を持つチャンネルにする（accessControlService.checkMembership は void モックで通過）。
             ChatChannelEntity channel = ChatChannelEntity.builder()
-                    .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
+                    .channelType(ChannelType.TEAM_PUBLIC).teamId(JOIN_TEAM_ID).name("test").build();
             ChatChannelMemberEntity saved = createMember(ChannelMemberRole.MEMBER);
             MemberResponse expected = new MemberResponse(1L, CHANNEL_ID, USER_ID, "MEMBER",
                     0, null, false, false, null, null);
@@ -102,7 +109,7 @@ class ChatMemberServiceTest {
         void 既にメンバーの場合はエラー() {
             // given
             ChatChannelEntity channel = ChatChannelEntity.builder()
-                    .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
+                    .channelType(ChannelType.TEAM_PUBLIC).teamId(JOIN_TEAM_ID).name("test").build();
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
 
@@ -111,6 +118,55 @@ class ChatMemberServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.ALREADY_MEMBER));
+        }
+
+        @Test
+        @DisplayName("異常系: 他人のDMへの自己参加は拒否される（認可根治Wave6）")
+        void DMへの自己参加は拒否される() {
+            // given: DM は当事者のみで構成される。第三者の自己参加を許すと会話に侵入できてしまう。
+            ChatChannelEntity dm = ChatChannelEntity.builder()
+                    .channelType(ChannelType.DM).name("dm").build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(dm);
+
+            // when & then
+            assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 非公開チャンネルへの自己参加は拒否される（招待制・認可根治Wave6）")
+        void 非公開チャンネルへの自己参加は拒否される() {
+            // given
+            ChatChannelEntity privateChannel = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TEAM_PRIVATE).teamId(JOIN_TEAM_ID)
+                    .isPrivate(true).name("private").build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(privateChannel);
+
+            // when & then
+            assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 公開チャンネルでもスコープ非メンバーは拒否される（認可根治Wave6）")
+        void スコープ非メンバーの公開チャンネル参加は拒否される() {
+            // given: checkMembership が COMMON_002 を投げる＝チーム非所属
+            ChatChannelEntity channel = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TEAM_PUBLIC).teamId(JOIN_TEAM_ID).name("test").build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, JOIN_TEAM_ID, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
         }
     }
 
@@ -169,31 +225,74 @@ class ChatMemberServiceTest {
     }
 
     // ========================================
-    // changeRole
+    // changeRole（認可根治 Wave 1 束2: 操作者OWNER/ADMIN検証）
     // ========================================
     @Nested
     @DisplayName("changeRole")
     class ChangeRole {
 
         @Test
-        @DisplayName("正常系: ロールを変更できる")
-        void ロールを変更できる() {
+        @DisplayName("正常系: OWNERが他メンバーのロールを変更できる")
+        void OWNERが他メンバーのロールを変更できる() {
             // given
+            ChatChannelMemberEntity operator = ChatChannelMemberEntity.builder()
+                    .channelId(CHANNEL_ID).userId(USER_ID).role(ChannelMemberRole.OWNER).build();
             ChatChannelMemberEntity member = createMember(ChannelMemberRole.MEMBER);
             ChangeRoleRequest req = new ChangeRoleRequest("ADMIN");
             MemberResponse expected = new MemberResponse(1L, CHANNEL_ID, TARGET_USER_ID, "ADMIN",
                     0, null, false, false, null, null);
 
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(operator));
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, TARGET_USER_ID))
                     .willReturn(Optional.of(member));
             given(memberRepository.save(any(ChatChannelMemberEntity.class))).willReturn(member);
             given(chatMapper.toMemberResponse(any(ChatChannelMemberEntity.class))).willReturn(expected);
 
             // when
-            MemberResponse result = chatMemberService.changeRole(CHANNEL_ID, TARGET_USER_ID, req);
+            MemberResponse result = chatMemberService.changeRole(CHANNEL_ID, TARGET_USER_ID, req, USER_ID);
 
             // then
             assertThat(result.getRole()).isEqualTo("ADMIN");
+        }
+
+        @Test
+        @DisplayName("AC-1-3(red先行): 一般MEMBERが自分自身をOWNERへ昇格させようとすると403(CHANNEL_ACCESS_DENIED)")
+        void AC_1_3_一般MEMBERの自己OWNER化は拒否される() {
+            // given: 操作者(=対象者本人)は一般MEMBER
+            ChatChannelMemberEntity selfMember = ChatChannelMemberEntity.builder()
+                    .channelId(CHANNEL_ID).userId(TARGET_USER_ID).role(ChannelMemberRole.MEMBER).build();
+            ChangeRoleRequest req = new ChangeRoleRequest("OWNER");
+
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, TARGET_USER_ID))
+                    .willReturn(Optional.of(selfMember));
+
+            // when & then: 操作者=対象者=一般MEMBERが自己昇格を試みる → 403相当(CHANNEL_ACCESS_DENIED)
+            assertThatThrownBy(() -> chatMemberService.changeRole(CHANNEL_ID, TARGET_USER_ID, req, TARGET_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+
+            // 実際にロールが書き換わっていないこと（権限昇格が成立していないこと）
+            verify(memberRepository, org.mockito.Mockito.never()).save(any(ChatChannelMemberEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 操作者がチャンネルメンバーでない場合は403(CHANNEL_ACCESS_DENIED)")
+        void 操作者が非メンバーの場合は拒否される() {
+            // given
+            ChatChannelMemberEntity member = createMember(ChannelMemberRole.MEMBER);
+            ChangeRoleRequest req = new ChangeRoleRequest("ADMIN");
+            Long nonMemberOperator = 999L;
+
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, nonMemberOperator))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> chatMemberService.changeRole(CHANNEL_ID, TARGET_USER_ID, req, nonMemberOperator))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
         }
     }
 

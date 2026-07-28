@@ -8,6 +8,7 @@ import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
+import com.mannschaft.app.village.VillageAffinityRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +61,7 @@ public class SecurityConfig {
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
+    private final VillageAffinityRateLimitFilter villageAffinityRateLimitFilter;
 
     /**
      * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -175,6 +177,21 @@ public class SecurityConfig {
             dashboardScopeTabRateLimitFilterRegistration() {
         FilterRegistrationBean<DashboardScopeTabRateLimitFilter> registration =
                 new FilterRegistrationBean<>(dashboardScopeTabRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F17.2 ⑤相性表示: {@link VillageAffinityRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする（キー=userId+villageId・§8.4）。
+     */
+    @Bean
+    public FilterRegistrationBean<VillageAffinityRateLimitFilter>
+            villageAffinityRateLimitFilterRegistration() {
+        FilterRegistrationBean<VillageAffinityRateLimitFilter> registration =
+                new FilterRegistrationBean<>(villageAffinityRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -354,6 +371,42 @@ public class SecurityConfig {
                 ).permitAll()
                 // F01.9 年齢区分設定管理（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 束A（Wave 0）: SYSTEM_ADMIN 専用の admin 系 API（docs/security/01 §4）。
+                // requestMatcher 登録漏れにより、認証済みなら誰でも到達できていた（deny-by-default は
+                // 未認証しか弾かない）。以下 6 系統を SYSTEM_ADMIN 予約に格上げする。
+                //
+                // ※ per-scope（dashboard / permission-groups / feedbacks 等）はスコープ内 ADMIN が
+                //   使うため、ここではパス単位のロール予約をせず authenticated() のままとする。
+                //   これらの認可は「各 Controller の public 入口で
+                //   accessControlService.checkAdminOrAbove(userId, scopeId, scopeType) を呼ぶ」方式で
+                //   実施済み（Wave5 で回収完了。下記 §Wave5 参照）。entity 由来 scope の EP
+                //   （feedbacks の respond/status）は entity から scope を読んでから認可し、
+                //   引数差し替えによる越境は 404 で存在秘匿する。
+                //   認可の在否は番人テスト AuthzControllerGuardArchTest（Wave4）が機械的に検査する。
+                .requestMatchers("/api/v1/admin/stripe/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/reports/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/moderation/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/warning-re-reviews/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/users/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/onboarding/presets/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 Wave3 トランシェB4: F05.7 forms の SYSTEM_ADMIN 専用プリセット管理も
+                // Wave0 と同じ requestMatcher 登録漏れ（authenticated() のみで到達可能）だったため格上げする。
+                // Service 層の AccessControlService.checkSystemAdmin と二重防御になる。
+                .requestMatchers("/api/v1/admin/form-presets/**").hasRole("SYSTEM_ADMIN")
+                // 認可根治戦役 Wave5（admin 系 未回収エンドポイントの回収）:
+                // 以下 3 系統も Wave0 と同じ requestMatcher 登録漏れで authenticated() に落ちており、
+                // 認証済みなら誰でも到達できていた。いずれも「scope 引数を一切持たない」＝
+                // 全テナント横断のデータを対象とするシステム級 API のため SYSTEM_ADMIN 予約に格上げする
+                // （scope 引数を持つ per-scope API は上記 ※ のとおり Controller 入口で scope 認可する）。
+                //   - seals            : 全ユーザーの電子印鑑の一覧・一括再生成
+                //   - action-templates : 全体共通のモデレーション用アクションテンプレート CRUD
+                //   - notifications    : 全ユーザー横断の通知統計
+                // 各 Controller 入口の accessControlService.checkSystemAdmin と二重防御になる
+                // （パス単位のロール予約はフィルタチェーン、checkSystemAdmin は user_roles を見る DB 判定で、
+                //   互いに独立した機構のため一方の設定漏れをもう一方が捕捉する）。
+                .requestMatchers("/api/v1/admin/seals/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/action-templates/**").hasRole("SYSTEM_ADMIN")
+                .requestMatchers("/api/v1/admin/notifications/**").hasRole("SYSTEM_ADMIN")
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
                 // F09.19.2 スポットライト配信（サービング/計測。content|view|visit すべて認証必須。§6.1/§11）
@@ -443,7 +496,9 @@ public class SecurityConfig {
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
-            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
+            // F17.2 ⑤相性表示（§8.4・30req/分/userId+villageId）。差分攻撃を村単位で捕捉。JWT 認証後に動かす。
+            .addFilterAfter(villageAffinityRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -107,6 +107,7 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
       return res.events ?? []
     },
     onConflict: () => notification.warn(t('match.live.conflict.title'), t('match.live.conflict.detail')),
+    onCompensationFailed: () => notification.error(t('match.live.error.substitution_rollback_failed')),
   })
 
   /**

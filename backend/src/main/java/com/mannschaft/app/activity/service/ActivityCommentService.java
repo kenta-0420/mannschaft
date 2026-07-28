@@ -2,7 +2,6 @@ package com.mannschaft.app.activity.service;
 
 import com.mannschaft.app.activity.ActivityErrorCode;
 import com.mannschaft.app.activity.ActivityMapper;
-import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityCommentResponse;
 import com.mannschaft.app.activity.dto.CreateCommentRequest;
 import com.mannschaft.app.activity.dto.UpdateCommentRequest;
@@ -10,7 +9,6 @@ import com.mannschaft.app.activity.entity.ActivityCommentEntity;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityCommentRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +29,7 @@ public class ActivityCommentService {
     private final ActivityCommentRepository commentRepository;
     private final ActivityResultRepository resultRepository;
     private final ActivityMapper activityMapper;
-    private final AccessControlService accessControlService;
+    private final ActivityScopeAccessGuard scopeAccessGuard;
 
     /**
      * コメント一覧を取得する。
@@ -98,11 +96,8 @@ public class ActivityCommentService {
 
         // コメント → 活動記録 → スコープ を辿り、本人 or 管理者を検証
         ActivityResultEntity activity = findActivityOrThrow(entity.getActivityResultId());
-        ActivityScopeType scopeType = activity.getScopeType();
-        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
-            accessControlService.checkOwnerOrAdmin(
-                    userId, entity.getUserId(), activity.getScopeId(), scopeType.name());
-        }
+        scopeAccessGuard.checkOwnerOrAdmin(
+                userId, entity.getUserId(), activity.getScopeType(), activity.getScopeId());
 
         entity.softDelete();
         commentRepository.save(entity);
@@ -120,13 +115,9 @@ public class ActivityCommentService {
     /**
      * 活動記録のスコープ会員であることを検証する。
      *
-     * <p>{@code ActivityResultService} の既存実装に倣い、TEAM/ORGANIZATION のみ検証する
-     * （AccessControlService は TEAM/ORGANIZATION のみ処理するため。COMMITTEE は対象外で通す）。</p>
+     * <p>判定はスコープ種別を網羅的にディスパッチする {@link ActivityScopeAccessGuard} に委譲する。</p>
      */
     private void checkScopeMembership(Long userId, ActivityResultEntity activity) {
-        ActivityScopeType scopeType = activity.getScopeType();
-        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
-            accessControlService.checkMembership(userId, activity.getScopeId(), scopeType.name());
-        }
+        scopeAccessGuard.checkMembership(userId, activity.getScopeType(), activity.getScopeId());
     }
 }

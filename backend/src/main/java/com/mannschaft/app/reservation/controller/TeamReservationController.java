@@ -200,6 +200,9 @@ public class TeamReservationController {
     public ResponseEntity<ApiResponse<List<ReminderResponse>>> listReminders(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
+        // 越境 BOLA 防止: @PreAuthorize は #teamId の管理者性しか見ないため、
+        // reservationId が当該チームに属することを検証してから下流へ委譲する（属さなければ 404）。
+        reservationService.assertReservationInTeam(teamId, reservationId);
         List<ReminderResponse> reminders = reminderService.listReminders(reservationId);
         return ResponseEntity.ok(ApiResponse.of(reminders));
     }
@@ -215,6 +218,8 @@ public class TeamReservationController {
             @PathVariable Long teamId,
             @PathVariable Long reservationId,
             @Valid @RequestBody CreateReminderRequest request) {
+        // 越境 BOLA 防止: 別チーム管理者が他チーム予約にリマインダーを書き込むのを封じる（属さなければ 404）。
+        reservationService.assertReservationInTeam(teamId, reservationId);
         ReminderResponse response = reminderService.createReminder(reservationId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }

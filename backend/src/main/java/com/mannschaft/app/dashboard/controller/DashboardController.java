@@ -24,6 +24,7 @@ import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -31,6 +32,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -59,10 +61,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ダッシュボードコントローラー。
@@ -90,6 +94,10 @@ public class DashboardController {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 司令塔第二弾: 個人「今後の予定」への本人シフト統合用（ADHD-UX戦役第四陣）。 */
+    private final ShiftAssignmentRepository shiftAssignmentRepository;
+    /** 司令塔第二弾: 個人「今後の予定」への本人予約統合用（ADHD-UX戦役第四陣）。 */
+    private final ReservationRepository reservationRepository;
 
     /** F22.1 第二波: 統合「要対応」集計の遅延取得（第 2 段階）に使用する。 */
     private final com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
@@ -237,7 +245,8 @@ public class DashboardController {
      * 直近イベント + 出欠状況。
      */
     @GetMapping("/upcoming-events")
-    @Operation(summary = "直近イベント", description = "今後N日間のイベント + 出欠状況を横断取得")
+    @Operation(summary = "直近イベント",
+            description = "今後N日間のイベント + 本人のシフト + 本人の予約を横断統合し、開始日時昇順で返す（kind: EVENT/SHIFT/RESERVATION）")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingEvents(
             @RequestParam(defaultValue = "7") Integer days) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -246,6 +255,9 @@ public class DashboardController {
         java.time.ZoneId zone = TimezoneContextHolder.get();
         LocalDateTime from = LocalDate.now(zone).atStartOfDay();
         LocalDateTime until = from.plusDays(days);
+        // シフト・予約は slot_date（LocalDate）で絞り込むため、日付境界のみ切り出す。
+        LocalDate fromDate = from.toLocalDate();
+        LocalDate untilDate = until.toLocalDate();
 
         // 個人スケジュール（チーム・組織に紐付かないもののみ）
         List<ScheduleEntity> personalSchedules = scheduleRepository
@@ -289,6 +301,30 @@ public class DashboardController {
                 .filter(e -> visibleTeamOrgIds.contains(e.getId()))
                 .map(e -> toScheduleMapOrg(e))
                 .forEach(items::add);
+
+        // 司令塔第二弾（ADHD-UX戦役第四陣）: 本人のシフト（CONFIRMED）・予約（CONFIRMED・代表行）を統合する。
+        // それぞれ userId で絞り込み済みのため他人分の混入はない（AC-B2-2）。
+        // 各 1 クエリ + チーム名の一括解決 1 クエリのみで、items 件数に関わらず固定 3 クエリ（AC-B2-5・N+1回避）。
+        List<Object[]> shiftRows = shiftAssignmentRepository.findUpcomingByUserIdBetween(userId, fromDate, untilDate);
+        List<Object[]> reservationRows = reservationRepository.findUpcomingByUserIdBetween(userId, fromDate, untilDate);
+
+        Set<Long> teamIds = new HashSet<>();
+        for (Object[] row : shiftRows) {
+            Long teamId = (Long) row[5];
+            if (teamId != null) teamIds.add(teamId);
+        }
+        for (Object[] row : reservationRows) {
+            Long teamId = (Long) row[5];
+            if (teamId != null) teamIds.add(teamId);
+        }
+        Map<Long, TeamEntity> teamMap = teamIds.isEmpty()
+                ? Map.of()
+                : teamRepository.findAllById(teamIds).stream()
+                        .collect(Collectors.toMap(TeamEntity::getId, t -> t));
+
+        shiftRows.stream().map(row -> toShiftMap(row, teamMap)).forEach(items::add);
+        reservationRows.stream().map(row -> toReservationMap(row, teamMap)).forEach(items::add);
+
         items.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
 
         return ResponseEntity.ok(ApiResponse.of(items));
@@ -577,11 +613,80 @@ public class DashboardController {
     private Map<String, Object> toScheduleBaseMap(ScheduleEntity entity) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", entity.getId());
+        // 司令塔第二弾（ADHD-UX戦役第四陣）: kind でイベント/シフト/予約を区別する（AC-B2-1）。
+        map.put("kind", "EVENT");
         map.put("title", entity.getTitle());
         map.put("start_at", entity.getStartAt());
         map.put("end_at", entity.getEndAt());
         map.put("location", entity.getLocation());
         map.put("all_day", entity.getAllDay());
         return map;
+    }
+
+    /**
+     * シフト割当（本人分・CONFIRMED）を統合予定Mapに変換する。
+     *
+     * <p>row = {@code [id, scheduleTitle, slotDate, startTime, endTime, teamId]}
+     * （{@link ShiftAssignmentRepository#findUpcomingByUserIdBetween} の返却形）。</p>
+     */
+    private Map<String, Object> toShiftMap(Object[] row, Map<Long, TeamEntity> teamMap) {
+        Long id = (Long) row[0];
+        String title = (String) row[1];
+        LocalDate slotDate = (LocalDate) row[2];
+        LocalTime startTime = (LocalTime) row[3];
+        LocalTime endTime = (LocalTime) row[4];
+        Long teamId = (Long) row[5];
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", id);
+        map.put("kind", "SHIFT");
+        map.put("title", title);
+        map.put("start_at", LocalDateTime.of(slotDate, startTime));
+        map.put("end_at", buildEndAt(slotDate, startTime, endTime));
+        map.put("location", null);
+        map.put("all_day", false);
+        map.put("scope_type", "TEAM");
+        TeamEntity team = teamMap.get(teamId);
+        map.put("scope_name", team != null ? team.getName() : null);
+        map.put("scope_icon_url", team != null ? team.getIconUrl() : null);
+        return map;
+    }
+
+    /**
+     * 予約（本人分・CONFIRMED・代表行）を統合予定Mapに変換する。
+     *
+     * <p>row = {@code [id, slotTitle, slotDate, startTime, endTime, teamId]}
+     * （{@link ReservationRepository#findUpcomingByUserIdBetween} の返却形）。</p>
+     */
+    private Map<String, Object> toReservationMap(Object[] row, Map<Long, TeamEntity> teamMap) {
+        Long id = (Long) row[0];
+        String title = (String) row[1];
+        LocalDate slotDate = (LocalDate) row[2];
+        LocalTime startTime = (LocalTime) row[3];
+        LocalTime endTime = (LocalTime) row[4];
+        Long teamId = (Long) row[5];
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", id);
+        map.put("kind", "RESERVATION");
+        map.put("title", title != null ? title : "");
+        map.put("start_at", LocalDateTime.of(slotDate, startTime));
+        map.put("end_at", buildEndAt(slotDate, startTime, endTime));
+        map.put("location", null);
+        map.put("all_day", false);
+        map.put("scope_type", "TEAM");
+        TeamEntity team = teamMap.get(teamId);
+        map.put("scope_name", team != null ? team.getName() : null);
+        map.put("scope_icon_url", team != null ? team.getIconUrl() : null);
+        return map;
+    }
+
+    /**
+     * 終了日時を組み立てる。終了時刻が開始時刻より前（日跨ぎシフト・深夜営業予約）の場合は
+     * 翌日扱いにする。
+     */
+    private LocalDateTime buildEndAt(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
+        LocalDate endDate = endTime.isBefore(startTime) ? slotDate.plusDays(1) : slotDate;
+        return LocalDateTime.of(endDate, endTime);
     }
 }

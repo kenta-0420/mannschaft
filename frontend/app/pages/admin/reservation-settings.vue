@@ -12,6 +12,14 @@ const { t } = useI18n()
 const { success, error: showError } = useNotification()
 const { getLines, createLine, updateLine, deleteLine } = useReservationApi()
 
+/**
+ * 呼称の動的差し込み（F03.4.5 §5.2）。本ページは現状維持（構造は触らない）だが、
+ * ボタン・ダイアログ見出しの「予約対象」ラベルのみ動的化する（殿の指示）。
+ * ORGANIZATION スコープでは reservation-settings（TEAM専用API）取得が失敗し DEFAULT にフォールバックする
+ * （useResourceName の既定挙動・従来表示「予約対象」と完全一致するため回帰なし）。
+ */
+const { resourceName, load: loadResourceName } = useResourceName(scopeId)
+
 interface ReservationLineForm {
   name: string
   description: string
@@ -92,8 +100,8 @@ async function remove(item: ReservationLineResponse) {
   }
 }
 
-watch(scopeId, (v) => { if (v) load() })
-onMounted(() => { if (scopeId.value) load() })
+watch(scopeId, (v) => { if (v) { load(); void loadResourceName() } })
+onMounted(() => { if (scopeId.value) { load(); void loadResourceName() } })
 
 const historyRef = ref<{ refresh: () => void } | null>(null)
 function onNotificationSent() {
@@ -107,7 +115,7 @@ function onNotificationSent() {
       <div>
         <PageHeader :title="t('reservation.page.settings_title')"><p class="text-sm text-surface-500">{{ t('reservation.page.settings_subtitle') }}</p></PageHeader>
       </div>
-      <Button :label="t('reservation.button.add_line_long')" icon="pi pi-plus" @click="openCreate" />
+      <Button :label="t('reservation.button.add_line_long', { resourceName })" icon="pi pi-plus" @click="openCreate" />
     </div>
 
     <PageLoading v-if="loading" />
@@ -171,7 +179,7 @@ function onNotificationSent() {
 
     <Dialog
       v-model:visible="showDialog"
-      :header="editingItem ? t('reservation.dialog.line_edit_long') : t('reservation.dialog.line_create_long')"
+      :header="editingItem ? t('reservation.dialog.line_edit_long', { resourceName }) : t('reservation.dialog.line_create_long', { resourceName })"
       :style="{ width: '420px' }"
       modal
     >

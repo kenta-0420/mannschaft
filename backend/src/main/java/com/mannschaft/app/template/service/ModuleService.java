@@ -1,5 +1,8 @@
 package com.mannschaft.app.template.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
@@ -59,6 +62,7 @@ public class ModuleService {
     private final TemplateModuleRepository templateModuleRepository;
     private final TeamTemplateRepository teamTemplateRepository;
     private final TeamPlanService teamPlanService;
+    private final EntitlementQueryService entitlementQueryService;
 
     /**
      * 選択式モジュールカタログを取得する（OPTIONAL + is_active のみ）。
@@ -70,6 +74,27 @@ public class ModuleService {
         return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
                 .stream()
                 .filter(ModuleDefinitionEntity::getIsActive)
+                .map(this::toModuleResponse)
+                .toList();
+    }
+
+    /**
+     * SYSTEM_ADMIN 管理画面向けに全モジュールを取得する。
+     *
+     * <p>tenant 向けの {@link #getModuleCatalog()} が「OPTIONAL かつ is_active」に絞り込むのに対し、
+     * こちらは <b>DEFAULT/OPTIONAL・is_active の true/false を問わず全件</b>を moduleNumber 昇順で返す。
+     * これにより管理画面に DEFAULT モジュールも表示され、is_active=false へトグルした行も
+     * 一覧に残り続けて再有効化できる（無効化しても画面から消えない）。</p>
+     *
+     * <p>キャッシュは付けない。管理画面は低トラフィックで、有料要否/有効状態トグル直後の
+     * 反映を常に保証すべきため、常に最新を DB から読む。論理削除は
+     * {@code @SQLRestriction("deleted_at IS NULL")} により自動除外される。</p>
+     *
+     * @return 全モジュール詳細リスト（moduleNumber 昇順）
+     */
+    public List<ModuleResponse> getAllModulesForAdmin() {
+        return moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()
+                .stream()
                 .map(this::toModuleResponse)
                 .toList();
     }
@@ -110,8 +135,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウントと同一定義に揃え、grandfather 行は数えない
+        // （表示層でも grandfather を除外しないと FE の追加ボタンが閉じ AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return TeamModuleCatalogResponse.builder()
@@ -156,8 +184,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウント（countBy...IsGrandfatheredFalse）と同一定義に
+        // 揃え、grandfather 行は数えない（表示層でも除外しないと AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return OrgModuleCatalogResponse.builder()
@@ -252,14 +283,20 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 有料プランチェック
-            if (module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)) {
+            // 有料プランチェック（F20.1: 有料判定を isEntitled に置換・TMPL_004 は不変で維持し FE 後方互換を保つ）。
+            // 既存有料チームは後方互換ブリッジ（team_subscriptions ACTIVE → FULL 契約 → plan_features 全キー）で
+            // premium entitlement を保持するため機能は失われない。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.TEAM, teamId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
-                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                    .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                     .count();
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
@@ -442,9 +479,19 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 無料上限チェック
+            // 有料プランチェック（チーム側 toggleTeamModule と対称・穴の根治）。
+            // 有料モジュールは premium entitlement（scope=ORG）を保持していなければ有効化不可。
+            // scope は組織なので EntitlementScopeKind.ORG + orgId を渡す（チーム側は TEAM + teamId）。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.ORG, orgId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = organizationEnabledModuleRepository
-                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(orgId);
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
             }

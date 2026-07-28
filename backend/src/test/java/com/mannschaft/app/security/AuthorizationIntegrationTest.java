@@ -187,6 +187,14 @@ class AuthorizationIntegrationTest {
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new DashboardScopeTabRateLimitFilter(rateLimiterProvider);
         }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
+        }
     }
 
     @Autowired

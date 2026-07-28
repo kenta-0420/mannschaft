@@ -4,8 +4,10 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.BillingInterval;
+import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyResolver;
+import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.MembershipSubscriptionStatus;
 import com.mannschaft.app.payment.PayerRelationship;
@@ -36,6 +38,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -72,7 +75,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MembershipSubscriptionService {
 
-    /** 加入時の安全側既定 application_fee_percent（invoice 上書きが正・第四波 webhook が fee_policy_key で固定額へ）。 */
+    /**
+     * 加入時の安全側既定 {@code application_fee_percent}（invoice 上書きが正・webhook が fee_policy_key で固定額へ）。
+     *
+     * <p>通常は {@link #safeApplicationFeePercent(FeeBreakdown)} が「総手数料 ÷ 実請求額」で率を算出する。
+     * 本定数は実請求額が算出不能な異常時のみのフォールバック。</p>
+     */
     public static final BigDecimal SAFE_DEFAULT_APPLICATION_FEE_PERCENT = new BigDecimal("5");
 
     /** subscribe の二重加入防止で「有効」とみなす状態（終端 CANCELLED/EXPIRED 以外）。 */
@@ -92,6 +100,33 @@ public class MembershipSubscriptionService {
     private final StripePaymentProvider stripePaymentProvider;
     private final MemberPaymentService memberPaymentService;
     private final UserRepository userRepository;
+    /** 手数料折半の正典（純粋関数）。数式を再実装せず必ず本計算器を通す（初回サイクルと同一の値を得るため）。 */
+    private final PaymentFeeCalculator paymentFeeCalculator;
+
+    /**
+     * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
+     *
+     * <p>{@link PaymentMethodService#getOrCreateStripeCustomer} が Stripe Customer 新規作成時に渡す
+     * 実メールを取得するために呼び出す。本メソッドは payment ドメイン内で唯一 {@link UserEntity}/
+     * {@link UserRepository} を直接参照する既存の凍結済みクラス（凍結 ArchUnit
+     * {@code CrossDomainEntityImportArchTest}・D-1 の既存違反）に集約する。他クラス（例:
+     * {@code PaymentMethodService}）が新規に {@code UserEntity} を直接参照すると
+     * {@code BillingPurgeEventListener → gdpr.entity.AccountPurgeCompletionStatusEntity} と同様に
+     * <b>新規</b>のクロスドメイン Entity 依存となり番人テストが fail するため、既存の凍結済み参照範囲を再利用する。</p>
+     *
+     * <p><b>退会済みユーザーは空を返す（{@code deletedAt} 非 null）。</b>
+     * ユーザーが存在しない場合も空を返す。呼び出し側（{@code PaymentMethodService}）はこの場合
+     * Stripe Customer の新規作成自体を拒否する方針とする（判断理由は呼び出し側の Javadoc 参照）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return メールアドレス（退会済み/不在なら空）
+     */
+    @Transactional(readOnly = true)
+    public Optional<String> resolveEmailForStripeCustomer(Long userId) {
+        return userRepository.findById(userId)
+                .filter(u -> u.getDeletedAt() == null)
+                .map(UserEntity::getEmail);
+    }
 
     /**
      * 払い手視点の継続課金一覧を取得する（「自分が払い手の継続課金一覧」API の本体・02_api §4.1）。
@@ -254,8 +289,11 @@ public class MembershipSubscriptionService {
 
         // charge 成功後の DB 処理は P7 §11.1 同型で try-catch し、失敗は ERROR ログ＋再 throw（症状を隠さない）。
         try {
-            // 8. 継続課金 Price を get-or-create（recurring Price が無ければ Product/Price を作って項目に焼付）。
-            String recurringPriceId = getOrCreateRecurringPrice(item, interval);
+            // 8. 継続課金 Price を作成（案C・2明細）。手数料内訳は初回 charge と同一の policy・同一の計算器で求めるため、
+            //    2 サイクル目以降の invoice 合計は初回 PaymentIntent の金額（chargeAmount）と必ず一致する。
+            //    安全ガード（total_fee > face）は既に上の charge で評価済み（ここに到達した時点で通過している）。
+            FeeBreakdown fee = paymentFeeCalculator.calculate(faceAmount, policy);
+            RecurringPrices prices = createRecurringPrices(item, interval, fee.payerFee());
 
             // 9. membership_subscriptions を PENDING で INSERT（face/currency price-lock 焼付・初回 charge を連結）。
             //    Stripe ID は Subscription 作成後に linkStripeIds で焼き付ける。
@@ -284,23 +322,27 @@ public class MembershipSubscriptionService {
                     beneficiaryUserId, itemId, item.getAmount(), item.getCurrency(),
                     payerUserId, relationship, chargeResult.escrowTransactionId(), subscription.getId());
 
-            // 10. Stripe Subscription を案b（次サイクル開始・初回 invoice なし）で作成し ID を焼付。
+            // 10. Stripe Subscription を案b（次サイクル開始・初回 invoice なし）＋案C（2明細）で作成し ID を焼付。
             long billingCycleAnchorEpochSec = computeNextCycleAnchorEpochSec(interval);
             StripePaymentProvider.SubscriptionInfo subInfo = stripePaymentProvider.createSubscription(
                     payerCustomer.getStripeCustomerId(),
-                    recurringPriceId,
+                    prices.toPriceIds(),
                     defaultPaymentMethod,
                     payee.getStripeAccountId(),
-                    SAFE_DEFAULT_APPLICATION_FEE_PERCENT,
+                    safeApplicationFeePercent(fee),
                     billingCycleAnchorEpochSec,
                     "sub-create-" + subscription.getId());
             subscription.linkStripeIds(subInfo.subscriptionId(), payerCustomer.getStripeCustomerId());
+            subscription.linkRecurringPrices(prices.feePriceId(), prices.surchargePriceId());
             subscription = membershipSubscriptionRepository.save(subscription);
 
-            log.info("継続課金 加入 起票（PENDING・ACTIVE は初回 invoice.paid webhook）: subscriptionId={}, stripeSub={}, "
-                            + "beneficiary={}, payer={}, relationship={}, feePolicyKey={}, escrowId={}",
+            log.info("継続課金 加入 起票（PENDING・ACTIVE は初回 charge CAPTURED）: subscriptionId={}, stripeSub={}, "
+                            + "beneficiary={}, payer={}, relationship={}, feePolicyKey={}, escrowId={}, "
+                            + "face={}, payerFee={}, charge={}, appFee={}, surchargePrice={}",
                     subscription.getId(), subInfo.subscriptionId(), beneficiaryUserId, payerUserId, relationship,
-                    feePolicyKey, chargeResult.escrowTransactionId());
+                    feePolicyKey, chargeResult.escrowTransactionId(),
+                    fee.faceAmount(), fee.payerFee(), fee.chargeAmount(), fee.applicationFeeAmount(),
+                    prices.surchargePriceId());
             return subscription;
         } catch (RuntimeException e) {
             // charge は成功済み（PI・escrow 作成済）だが DB 処理が失敗。症状を隠さず ERROR ログ＋再 throw（02 §11.1 同型）。
@@ -692,24 +734,82 @@ public class MembershipSubscriptionService {
     }
 
     /**
-     * 継続課金用の Stripe Price（recurring）を get-or-create する。
+     * 継続課金用の Stripe Price（recurring）を作成する（案C・2明細サブスク・手数料折半の根治）。
      *
-     * <p>項目に Product が無ければ作成し、recurring Price を作成して項目へ焼き付ける（{@code stripeProductId}/
-     * {@code stripePriceId}）。{@code payment_items.stripePriceId} は一回払いと recurring を区別しないため、本波では
-     * 簡明に「既存 stripePriceId があればそれを recurring として用いる」のではなく、recurring 専用の Price を
-     * 都度 get-or-create する設計とし、Product を再利用する（Price は recurring であることを保証）。</p>
+     * <p><b>なぜ 2 本作るのか:</b> 手数料の正典（{@link PaymentFeeCalculator}）は「総手数料を支払側と受取側で 50/50 に
+     * 折半する」であり、支払側の実請求は {@code 額面＋payerFee}（例 10,000＋250＝10,250）である。初回サイクルは
+     * {@code ConnectChargeService.charge} が {@code chargeAmount} で PaymentIntent を作るため正しいが、
+     * recurring Price を額面のままにすると 2 サイクル目以降の invoice が 10,000 となり、
+     * {@code application_fee_amount} を 500 に上書きしても<b>受取側の着金が 9,500</b>（正: 9,750）となって
+     * 受取側が毎月「額面の折半分」を余分に負担してしまう。よって Subscription を
+     * 「会費 Price（額面）」＋「支払側手数料 Price（payerFee）」の 2 明細で構成し invoice 合計を 10,250 に揃える。</p>
+     *
+     * <p><b>{@code payerFee == 0} のときは手数料 Price を作らない</b>（単価 0 の明細を作らない・NULL 保持）。</p>
+     *
+     * <p><b>{@code payment_items.stripePriceId} は汚染しない:</b> 同カラムは一回払い（額面のみ）の Price を指すため、
+     * 金額の異なる recurring Price を書き込むと誤課金の源になる。Product のみ項目へ焼き付けて再利用し、
+     * recurring Price は契約側（{@code membership_subscriptions}）に保持する。</p>
+     *
+     * @param item      会費項目
+     * @param interval  課金周期
+     * @param payerFee  支払側の折半手数料（0 なら手数料 Price を作らない）
+     * @return 生成した recurring Price 群（会費／手数料）
      */
-    private String getOrCreateRecurringPrice(PaymentItemEntity item, BillingInterval interval) {
+    private RecurringPrices createRecurringPrices(PaymentItemEntity item, BillingInterval interval, long payerFee) {
         String productId = item.getStripeProductId();
         if (productId == null) {
             productId = stripePaymentProvider.createProduct(item.getName(), item.getId());
         }
-        String recurringPriceId = stripePaymentProvider.createRecurringPrice(
+
+        // 会費分（額面）。
+        String feePriceId = stripePaymentProvider.createRecurringPrice(
                 productId, item.getAmount(), item.getCurrency(), interval);
-        // 項目に Product/Price を焼き付け（次回以降の get-or-create で Product を再利用）。
-        item.updateStripeIds(productId, recurringPriceId);
-        paymentItemService.saveStripeIds(item);
-        return recurringPriceId;
+
+        // 支払側手数料分（payerFee）。0 円の明細は作らない。
+        String surchargePriceId = null;
+        if (payerFee > 0L) {
+            surchargePriceId = stripePaymentProvider.createRecurringPrice(
+                    productId, BigDecimal.valueOf(payerFee), item.getCurrency(), interval);
+        }
+
+        // Product のみ項目へ焼き付ける（Price 欄は一回払い用のまま触らない）。
+        if (!productId.equals(item.getStripeProductId())) {
+            item.updateStripeProductId(productId);
+            paymentItemService.saveStripeIds(item);
+        }
+        return new RecurringPrices(feePriceId, surchargePriceId);
+    }
+
+    /**
+     * 継続課金の recurring Price 群（会費／支払側手数料）。{@code surchargePriceId} は payerFee=0 のとき null。
+     */
+    private record RecurringPrices(String feePriceId, String surchargePriceId) {
+
+        /** Stripe Subscription へ渡す明細の Price ID 列（会費＋任意で手数料）。 */
+        List<String> toPriceIds() {
+            return (surchargePriceId == null)
+                    ? List.of(feePriceId)
+                    : List.of(feePriceId, surchargePriceId);
+        }
+    }
+
+    /**
+     * 安全側の {@code application_fee_percent} を「総手数料 ÷ 実請求額」で算出する（invoice 上書き失敗時の保険）。
+     *
+     * <p>{@code application_fee_percent} は<b>invoice 総額</b>に対する率なので、額面基準の 5% をそのまま渡すと
+     * 総額 10,250 の 5%＝512 となり総手数料 500 を超えて<b>取り過ぎる</b>。実請求額基準
+     * （500 ÷ 10,250 ≒ 4.88%）で渡すことで、万一 {@code invoice.created} の固定額上書きが失敗しても
+     * 手数料が正しい値の近傍に収まる。</p>
+     *
+     * <p>Stripe の {@code application_fee_percent} は<b>小数第 2 位まで</b>のため scale=2（HALF_UP）に丸める。</p>
+     */
+    private static BigDecimal safeApplicationFeePercent(FeeBreakdown fee) {
+        if (fee.chargeAmount() <= 0L) {
+            return SAFE_DEFAULT_APPLICATION_FEE_PERCENT;
+        }
+        return BigDecimal.valueOf(fee.applicationFeeAmount())
+                .multiply(BigDecimal.valueOf(100L))
+                .divide(BigDecimal.valueOf(fee.chargeAmount()), 2, java.math.RoundingMode.HALF_UP);
     }
 
     /**

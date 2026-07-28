@@ -41,6 +41,16 @@ export const useNavSettingsStore = defineStore('navSettings', {
       try {
         const { getNavSettings } = useNavSettingsApi()
         const res = await getNavSettings()
+        // BE 応答の features が配列でない場合（スキーマドリフト・不正応答等）は、
+        // visibleFeatures / visibleMobileFeatures getter の
+        // `state.features.filter is not a function` クラッシュ（サイドバー全体が死ぬ＝
+        // 全ページ影響）を防ぐため、既存の localStorage フォールバック値（loadFromStorage
+        // 済みの this.features）を温存して上書きしない。エラーは握りつぶさず記録する。
+        if (!Array.isArray(res.features)) {
+          console.warn('[useNavSettingsStore] loadFromServer: features が配列でない応答を受信。localStorage フォールバックを維持します。', res)
+          this.loaded = true
+          return
+        }
         // BE は個人並び順 + マスタ補完でソート済み。配列順をそのまま採用する。
         this.features = res.features
         this.loaded = true

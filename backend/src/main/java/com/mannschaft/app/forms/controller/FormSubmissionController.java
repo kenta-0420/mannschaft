@@ -67,7 +67,8 @@ public class FormSubmissionController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long submissionId) {
-        FormSubmissionResponse response = submissionService.getSubmission(submissionId);
+        FormSubmissionResponse response = submissionService.getSubmission(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), submissionId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

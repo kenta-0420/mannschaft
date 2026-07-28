@@ -44,11 +44,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageCreationRequestService {
 
-    /** 1ユーザーあたり 1 日に作成できる申請数の上限。 */
+    /** 1ユーザーあたり直近 24 時間（ローリング）に作成できる申請数の上限。 */
     static final int DAILY_RATE_LIMIT = 3;
-
-    /** 1ユーザーあたり同時に保有できる PENDING 申請数の上限。 */
-    static final int PENDING_LIMIT = 10;
 
     /** ガイドライン同意の有効期間（直近この時間内であること）。 */
     static final long GUIDELINE_AGREED_WITHIN_HOURS = 1L;
@@ -89,19 +86,22 @@ public class VillageCreationRequestService {
             throw new BusinessException(VillageErrorCode.GUIDELINE_NOT_AGREED);
         }
 
-        // レートリミット: 1 日 3 件
+        // レートリミット: 直近 24 時間（ローリング）で DAILY_RATE_LIMIT 件まで
         LocalDateTime now = LocalDateTime.now();
-        long dailyCount = requestRepository.countByRequesterUserIdAndCreatedAtAfter(
+        long recentCount = requestRepository.countByRequesterUserIdAndCreatedAtAfter(
                 requesterUserId, now.minusDays(1));
-        if (dailyCount >= DAILY_RATE_LIMIT) {
+        if (recentCount >= DAILY_RATE_LIMIT) {
             throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
         }
 
-        // 保有 PENDING 上限（自動承認するため実質チェック不要だが念のため残す）
-        long pendingCount = countPending(requesterUserId);
-        if (pendingCount >= PENDING_LIMIT) {
-            throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
-        }
+        // NOTE: かつて「保有 PENDING 上限（10 件）」チェックがここにあったが削除した。
+        //   本メソッドは申請を同一トランザクション内で即時 APPROVED まで進める（下記参照）ため、
+        //   PENDING 申請は蓄積されず、当該チェックは構造的に発火し得ない死条件だった。
+        //   死条件がエラーメッセージ（VILLAGE_010）に「保有10件まで」という虚偽の説明を持ち込み、
+        //   利用者の誤読を招いていたため根治として撤去する。
+        //   【回帰リスク】将来「申請 → 後日の手動承認」の 2 段階フローに戻す場合、PENDING が
+        //   複数日にわたり蓄積し得るため保有上限が再び意味を持つ。その際は VILLAGE_010 に
+        //   再び相乗りさせず、PENDING 保有上限専用のエラーコードと正確な文言を新設すること。
 
         // slug 衝突（既存村と）
         if (villageRepository.existsBySlug(req.slug())) {
@@ -310,12 +310,6 @@ public class VillageCreationRequestService {
             default:
                 throw new BusinessException(VillageErrorCode.CREATION_REQUEST_ALREADY_REVIEWED);
         }
-    }
-
-    private long countPending(Long requesterUserId) {
-        return requestRepository.findByRequesterUserIdOrderByCreatedAtDesc(requesterUserId).stream()
-                .filter(r -> r.getStatus() == VillageRequestStatus.PENDING)
-                .count();
     }
 
     private boolean isSystemAdmin(Long userId) {

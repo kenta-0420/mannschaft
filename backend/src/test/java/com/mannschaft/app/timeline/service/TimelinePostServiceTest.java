@@ -107,6 +107,9 @@ class TimelinePostServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
+    @Mock
+    private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private TimelinePostService timelinePostService;
 
@@ -293,6 +296,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            // 認可根治 Wave6: 継承後の実効スコープ（親の TEAM）に対して到達可否が評価される
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -344,6 +349,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            // 認可根治 Wave6: 継承後の実効スコープ（親の ORGANIZATION）に対して到達可否が評価される
+            given(accessControlService.isMember(USER_ID, orgId, "ORGANIZATION")).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -361,6 +368,85 @@ class TimelinePostServiceTest {
             assertThat(capturedReply.getScopeId())
                     .as("リプライのscopeIdは親のorgIdを継承していること")
                     .isEqualTo(orgId);
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 非メンバーがTEAM投稿へ継承リプライするとPOST_NOT_FOUND・保存されない")
+        void 非メンバーの継承リプライは拒否される() {
+            // given: リクエストは PUBLIC を申告するが、実際に保存されるスコープは親の TEAM
+            Long parentId = 10L;
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("継承リプライ", "PUBLIC", 0L,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("チームの元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 他人のPERSONAL投稿への継承リプライはPOST_NOT_FOUND")
+        void 他人のPERSONAL投稿への継承リプライは拒否される() {
+            // given
+            Long parentId = 11L;
+            CreatePostRequest req = new CreatePostRequest("継承リプライ", "PUBLIC", 0L,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.PERSONAL)
+                    .scopeId(OTHER_USER_ID)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("他人の個人投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave6]: 見えない投稿はリポストできない（POST_NOT_FOUND・保存されない）")
+        void 見えない投稿のリポストは拒否される() {
+            // given
+            Long repostOfId = 21L;
+            Long teamId = 51L;
+            CreatePostRequest req = new CreatePostRequest("リポスト試み", "PUBLIC", 0L,
+                    "USER", null, null, repostOfId, null, null, null);
+            TimelinePostEntity original = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("非公開チームの投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
         }
 
         @Test
@@ -963,7 +1049,7 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 10);
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 10, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -978,26 +1064,27 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getFeed("PUBLIC", 0L, null, 0);
+            timelinePostService.getFeed("PUBLIC", 0L, null, 0, USER_ID);
 
             // then
             verify(postRepository).findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), eq(PageRequest.of(0, 20)));
         }
 
         @Test
-        @DisplayName("正常系: VILLAGEスコープはscopeVillageIdで絞り込まれる")
+        @DisplayName("正常系: VILLAGEスコープはscopeVillageIdで絞り込まれる（現役メンバーのみ）")
         void VILLAGEスコープはscopeVillageIdで絞り込まれる() {
             // given
             UUID villageId = UUID.randomUUID();
             List<TimelinePostEntity> posts = List.of(createPost());
             List<PostResponse> expected = List.of(createPostResponse());
 
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(true);
             given(postRepository.findFeedByVillageId(eq(villageId), any(PageRequest.class)))
                     .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, villageId, 20);
+            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, villageId, 20, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1008,12 +1095,44 @@ class TimelinePostServiceTest {
         @DisplayName("正常系: VILLAGEスコープでscopeVillageIdがnullの場合は空リストを返す")
         void VILLAGEスコープでscopeVillageIdがnullの場合は空リストを返す() {
             // when
-            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, null, 20);
+            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, null, 20, USER_ID);
 
             // then
             assertThat(result).isEmpty();
             verify(postRepository, org.mockito.Mockito.never())
                     .findFeedByVillageId(any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave3-B7t]: VILLAGEスコープで非メンバーはVILLAGE_007（NOT_MEMBER）")
+        void VILLAGEスコープで非メンバーはNOT_MEMBER() {
+            // given
+            UUID villageId = UUID.randomUUID();
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getFeed("VILLAGE", 0L, villageId, 20, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.village.VillageErrorCode.NOT_MEMBER));
+            then(postRepository).should(org.mockito.Mockito.never()).findFeedByVillageId(any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave3-B7t]: TEAMスコープで非メンバーは403（COMMON_002）")
+        void TEAMスコープで非メンバーは403() {
+            // given
+            Long teamId = 50L;
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, teamId, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getFeed("TEAM", teamId, null, 20, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            then(postRepository).should(org.mockito.Mockito.never())
+                    .findFeedByScopeType(any(), any(), any());
         }
     }
 
@@ -1255,17 +1374,23 @@ class TimelinePostServiceTest {
     class SearchPosts {
 
         @Test
-        @DisplayName("正常系: キーワードで投稿を検索できる")
+        @DisplayName("正常系: キーワードで投稿を検索できる（可視scope絞り込み込みでリポジトリへ委譲）")
         void キーワードで投稿を検索できる() {
-            // given
+            // given: 所属チーム/組織を持つユーザー
+            Long teamId = 50L;
+            Long orgId = 70L;
             List<TimelinePostEntity> posts = List.of(createPost());
             List<PostResponse> expected = List.of(createPostResponse());
 
-            given(postRepository.searchByKeyword(eq("テスト"), eq(10))).willReturn(posts);
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(teamId));
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of(orgId));
+            given(postRepository.searchByKeyword(
+                    eq("テスト"), eq(List.of(teamId)), eq(List.of(orgId)), eq(USER_ID), eq(10)))
+                    .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.searchPosts("テスト", 10);
+            List<PostResponse> result = timelinePostService.searchPosts("テスト", 10, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1275,14 +1400,35 @@ class TimelinePostServiceTest {
         @DisplayName("正常系: limitが0以下の場合はデフォルトサイズ20で検索する")
         void limitが0以下の場合はデフォルトサイズで検索する() {
             // given
-            given(postRepository.searchByKeyword(eq("テスト"), eq(20))).willReturn(List.of());
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+            given(postRepository.searchByKeyword(
+                    eq("テスト"), eq(List.of(-1L)), eq(List.of(-1L)), eq(USER_ID), eq(20)))
+                    .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.searchPosts("テスト", 0);
+            timelinePostService.searchPosts("テスト", 0, USER_ID);
 
             // then
-            verify(postRepository).searchByKeyword("テスト", 20);
+            verify(postRepository).searchByKeyword("テスト", List.of(-1L), List.of(-1L), USER_ID, 20);
+        }
+
+        @Test
+        @DisplayName("正常系[認可根治Wave3-B7t]: 所属が空でもIN()エラーにせずダミー値(-1L)で検索する")
+        void 所属が空でもダミー値で安全に検索する() {
+            // given: 所属チーム/組織ゼロのユーザー
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+            given(postRepository.searchByKeyword(any(), anyList(), anyList(), any(), anyInt()))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when & then: 例外を投げない（PUBLIC/PERSONAL自分投稿は引き続き検索される）
+            org.assertj.core.api.Assertions.assertThatCode(
+                    () -> timelinePostService.searchPosts("テスト", 10, USER_ID))
+                    .doesNotThrowAnyException();
+            verify(postRepository).searchByKeyword("テスト", List.of(-1L), List.of(-1L), USER_ID, 10);
         }
     }
 
@@ -1377,6 +1523,108 @@ class TimelinePostServiceTest {
             // 先頭5件に制限するため PageRequest(0,5) で取得すること（DB 側 LIMIT が上限の実体）
             verify(postRepository).findRepliesByParentId(eq(POST_ID), eq(PageRequest.of(0, 5)));
         }
+
+        // ----------------------------------------
+        // 認可根治 Wave3-B7t: BOLA 対策（post自身のscopeでmembership検証）
+        // ----------------------------------------
+
+        private TimelinePostEntity scopedPost(PostScopeType scopeType, Long scopeId, UUID villageId, Long ownerId) {
+            return TimelinePostEntity.builder()
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .scopeVillageId(villageId)
+                    .userId(ownerId)
+                    .postedAsType(PostedAsType.USER)
+                    .content("scoped")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("異常系[BOLA]: TEAMスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND（404）")
+        void TEAMスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND() {
+            // given
+            Long teamId = 50L;
+            given(postRepository.findById(POST_ID))
+                    .willReturn(Optional.of(scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID)));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("正常系[BOLA]: TEAMスコープ投稿は正当メンバーが取得できる")
+        void TEAMスコープ投稿は正当メンバーが取得できる() {
+            // given
+            Long teamId = 50L;
+            given(postRepository.findById(POST_ID))
+                    .willReturn(Optional.of(scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID)));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
+            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+            given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("異常系[BOLA]: VILLAGEスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND（404）")
+        void VILLAGEスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND() {
+            // given
+            UUID villageId = UUID.randomUUID();
+            given(postRepository.findById(POST_ID))
+                    .willReturn(Optional.of(scopedPost(PostScopeType.VILLAGE, 0L, villageId, OTHER_USER_ID)));
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("異常系[BOLA]: PERSONALスコープ投稿を本人以外が取得するとPOST_NOT_FOUND（404）")
+        void PERSONALスコープ投稿を本人以外が取得するとPOST_NOT_FOUND() {
+            // given
+            given(postRepository.findById(POST_ID))
+                    .willReturn(Optional.of(scopedPost(PostScopeType.PERSONAL, OTHER_USER_ID, null, OTHER_USER_ID)));
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("正常系[BOLA]: PERSONALスコープ投稿は本人が取得できる")
+        void PERSONALスコープ投稿は本人が取得できる() {
+            // given
+            given(postRepository.findById(POST_ID))
+                    .willReturn(Optional.of(scopedPost(PostScopeType.PERSONAL, USER_ID, null, USER_ID)));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
+            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+            given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+        }
     }
 
     // ========================================
@@ -1386,19 +1634,28 @@ class TimelinePostServiceTest {
     @DisplayName("getUserPosts")
     class GetUserPosts {
 
+        /** membershipService/postingIdentityService の空所属スタブ（ダミー -1L / nilUUID 前提）。 */
+        private void givenCallerHasNoMemberships(Long callerUserId) {
+            given(membershipService.getActiveTeamIdsByUser(callerUserId)).willReturn(List.of());
+            given(membershipService.getActiveOrgIdsByUser(callerUserId)).willReturn(List.of());
+            given(postingIdentityService.getActiveVillageIdsByUser(callerUserId)).willReturn(List.of());
+        }
+
         @Test
-        @DisplayName("正常系: ユーザー投稿一覧を取得できる")
-        void ユーザー投稿一覧を取得できる() {
-            // given
+        @DisplayName("正常系[認可根治Wave3-B7t]: 本人が自分の投稿一覧を取得できる（scope不問）")
+        void 本人は自分の投稿一覧を取得できる() {
+            // given: 自分が閲覧者（callerUserId == targetUserId）
             List<TimelinePostEntity> posts = List.of(createPost());
             List<PostResponse> expected = List.of(createPostResponse());
+            givenCallerHasNoMemberships(USER_ID);
 
-            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+            given(postRepository.findByUserIdVisibleToCaller(
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
                     .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.getUserPosts(USER_ID, 10);
+            List<PostResponse> result = timelinePostService.getUserPosts(USER_ID, 10, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1408,15 +1665,39 @@ class TimelinePostServiceTest {
         @DisplayName("正常系: sizeが0以下の場合はデフォルトサイズで取得する")
         void sizeが0以下の場合はデフォルトサイズで取得する() {
             // given
-            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+            givenCallerHasNoMemberships(USER_ID);
+            given(postRepository.findByUserIdVisibleToCaller(
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getUserPosts(USER_ID, 0);
+            timelinePostService.getUserPosts(USER_ID, 0, USER_ID);
 
             // then
-            verify(postRepository).findByUserIdOrderByCreatedAtDesc(eq(USER_ID), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findByUserIdVisibleToCaller(
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), eq(PageRequest.of(0, 20)));
+        }
+
+        @Test
+        @DisplayName("正常系[認可根治Wave3-B7t/BOLA]: 他人が閲覧する場合は可視scopeをリポジトリへ渡す（自所属チーム）")
+        void 他人が閲覧する場合は可視scopeを渡す() {
+            // given: OTHER_USER_ID の投稿を USER_ID が閲覧。USER_ID は teamId=50 所属
+            Long teamId = 50L;
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(teamId));
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+            given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of());
+            given(postRepository.findByUserIdVisibleToCaller(
+                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            timelinePostService.getUserPosts(OTHER_USER_ID, 10, USER_ID);
+
+            // then: 呼び出し元の所属 teamId でリポジトリに絞り込みが渡ること（PERSONAL・非所属scopeはリポジトリ側で除外）
+            verify(postRepository).findByUserIdVisibleToCaller(
+                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), any(PageRequest.class));
         }
     }
 
@@ -1430,17 +1711,18 @@ class TimelinePostServiceTest {
         @Test
         @DisplayName("正常系: リプライ一覧を取得できる（enrich 適用・カーソル対応）")
         void リプライ一覧を取得できる() {
-            // given
+            // given: 親投稿は PUBLIC スコープ（常に可視）
             Long parentId = 5L;
             List<TimelinePostEntity> replies = List.of(createPost());
             List<PostResponse> mapped = List.of(createPostResponse());
 
+            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(replies);
             given(timelineMapper.toPostResponseList(replies)).willReturn(mapped);
 
             // when
-            List<PostResponse> result = timelinePostService.getReplies(parentId, null, 10);
+            List<PostResponse> result = timelinePostService.getReplies(parentId, null, 10, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1451,12 +1733,13 @@ class TimelinePostServiceTest {
         void sizeが0以下_デフォルトサイズ() {
             // given
             Long parentId = 5L;
+            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getReplies(parentId, null, -1);
+            timelinePostService.getReplies(parentId, null, -1, USER_ID);
 
             // then
             verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 20)));
@@ -1468,15 +1751,68 @@ class TimelinePostServiceTest {
             // given
             Long parentId = 5L;
             Long cursor = 42L;
+            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getReplies(parentId, cursor, 20);
+            timelinePostService.getReplies(parentId, cursor, 20, USER_ID);
 
             // then
             verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 20)));
+        }
+
+        @Test
+        @DisplayName("異常系[BOLA/認可根治Wave3-B7t]: 親投稿がTEAMスコープで非メンバーはPOST_NOT_FOUND（404）")
+        void 親投稿がTEAMスコープで非メンバーはPOST_NOT_FOUND() {
+            // given
+            Long parentId = 5L;
+            Long teamId = 50L;
+            TimelinePostEntity parent = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("親投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getReplies(parentId, null, 20, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            then(postRepository).should(org.mockito.Mockito.never())
+                    .findRepliesByParentIdAfterCursor(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("正常系[BOLA]: 親投稿がTEAMスコープでも正当メンバーはリプライを取得できる")
+        void 親投稿がTEAMスコープでも正当メンバーは取得できる() {
+            // given
+            Long parentId = 5L;
+            Long teamId = 50L;
+            TimelinePostEntity parent = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("親投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
+            given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when & then: 例外を投げない
+            org.assertj.core.api.Assertions.assertThatCode(
+                    () -> timelinePostService.getReplies(parentId, null, 20, USER_ID))
+                    .doesNotThrowAnyException();
         }
     }
 
@@ -1509,7 +1845,7 @@ class TimelinePostServiceTest {
             given(teamService.getSlugsByIds(anySet())).willReturn(Map.of(TEAM_ID, "team-a"));
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20);
+            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1535,7 +1871,7 @@ class TimelinePostServiceTest {
                     .willReturn(Map.of(proxyTeamId, "https://cdn/logo.png"));
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20);
+            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20, USER_ID);
 
             // then
             assertThat(result.get(0).getPostedAs()).isNotNull();
@@ -1562,7 +1898,7 @@ class TimelinePostServiceTest {
             given(organizationService.getSlugsByIds(anySet())).willReturn(Map.of(ORG_ID, "org-b"));
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20);
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
 
             // then
             assertThat(result.get(0).getScope().name()).isEqualTo("チームA");
@@ -1586,7 +1922,7 @@ class TimelinePostServiceTest {
             stubAllResolversEmpty();
 
             // when
-            timelinePostService.getFeed("TEAM", 51L, null, 20);
+            timelinePostService.getFeed("TEAM", 51L, null, 20, USER_ID);
 
             // then: 各解決メソッドは 3 投稿分ではなく 1 回のみ
             verify(nameResolverService, org.mockito.Mockito.times(1)).resolveTeamNames(anySet());
@@ -1608,7 +1944,7 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20);
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
 
             // then: 例外なし・空・名前解決は一切呼ばれない
             assertThat(result).isEmpty();
@@ -1641,7 +1977,7 @@ class TimelinePostServiceTest {
             given(nameResolverService.resolveUserDisplayNames(anySet())).willReturn(Map.of(100L, "山田太郎"));
 
             // when
-            List<PostResponse> result = timelinePostService.getPinnedPosts("TEAM", TEAM_ID);
+            List<PostResponse> result = timelinePostService.getPinnedPosts("TEAM", TEAM_ID, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -1670,10 +2006,26 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.getPinnedPosts("PUBLIC", 0L);
+            List<PostResponse> result = timelinePostService.getPinnedPosts("PUBLIC", 0L, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("異常系[認可根治Wave3-B7t]: ORGANIZATIONスコープで非メンバーは403（COMMON_002）")
+        void ORGANIZATIONスコープで非メンバーは403() {
+            // given
+            Long orgId = 60L;
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, orgId, "ORGANIZATION");
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getPinnedPosts("ORGANIZATION", orgId, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            then(postRepository).should(org.mockito.Mockito.never()).findPinnedPosts(any(), any());
         }
     }
 
@@ -1927,6 +2279,143 @@ class TimelinePostServiceTest {
                     timelinePostService.resolveScope("PUBLIC", 0L, USER_ID);
             assertThat(scope.scopeType()).isEqualTo(StorageScopeType.PERSONAL);
             assertThat(scope.scopeId()).isEqualTo(USER_ID);
+        }
+    }
+
+    // ========================================
+    // issue #2424: 村タイムライン画像添付の署名URL化（BE/FE契約不一致の根治）
+    // ========================================
+    @Nested
+    @DisplayName("issue #2424 画像添付の署名URL化")
+    class AttachmentSignedUrl {
+
+        /** timeline 画像の R2 生キー（DB に保存される形）。 */
+        private static final String IMAGE_KEY = "timeline/PUBLIC/0/tmp/abc-123.jpg";
+        /** MediaUrlResolver が返す署名付き表示 URL（presign の証跡 X-Amz-Signature を含む）。 */
+        private static final String SIGNED_URL =
+                "https://r2.example.com/" + IMAGE_KEY
+                        + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=deadbeef";
+
+        /** Mapper 変換直後の生 AttachmentResponse（image.url/thumbnailUrl は未解決＝null）を作る。 */
+        private AttachmentResponse rawImageResponse(long id, String fileKey) {
+            return AttachmentResponse.builder()
+                    .id(id)
+                    .attachmentType("IMAGE")
+                    .file(new AttachmentResponse.AttachmentFileDto(fileKey, "photo.jpg", 2048L, "image/jpeg"))
+                    .image(new AttachmentResponse.AttachmentImageDto((short) 800, (short) 600, null, null))
+                    .sortOrder((short) 0)
+                    .build();
+        }
+
+        private TimelinePostAttachmentEntity imageEntity(Long postId, String fileKey) {
+            return TimelinePostAttachmentEntity.builder()
+                    .timelinePostId(postId)
+                    .attachmentType(AttachmentType.IMAGE)
+                    .fileKey(fileKey)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("AC-1 投稿詳細: 画像添付の image.url/thumbnailUrl に署名URL（X-Amz-Signature を含む）が入る")
+        void AC1_詳細で画像に署名URLが入る() {
+            // given: PUBLIC 投稿（誰でも可視）に画像添付1件
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponseList(List.of(entity)))
+                    .willReturn(List.of(rawImageResponse(9L, IMAGE_KEY)));
+            given(mediaUrlResolver.resolveAll(anyCollection()))
+                    .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then: image に署名URLが割り当てられ、値は presign 証跡を含む
+            assertThat(result.getAttachments()).hasSize(1);
+            AttachmentResponse.AttachmentImageDto img = result.getAttachments().get(0).getImage();
+            assertThat(img.url()).isEqualTo(SIGNED_URL);
+            assertThat(img.url()).contains("X-Amz-Signature");
+            assertThat(img.thumbnailUrl()).contains("X-Amz-Signature");
+            // width/height は保持される
+            assertThat(img.imageWidth()).isEqualTo((short) 800);
+        }
+
+        @Test
+        @DisplayName("AC-2 feed（PostResponse）: attachments 配列が入り、画像は署名URL付き")
+        void AC2_一覧に添付配列と署名URLが入る() {
+            // given: PUBLIC feed に1投稿・画像添付1件
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost()));
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(POST_ID, "PUBLIC", 0L, USER_ID, "USER", null)));
+            stubAllResolversEmpty();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponse(entity)).willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(mediaUrlResolver.resolveAll(anyCollection()))
+                    .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: feed の投稿にも attachments が入り、画像は署名URL
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAttachments()).hasSize(1);
+            assertThat(result.get(0).getAttachments().get(0).getImage().url()).contains("X-Amz-Signature");
+        }
+
+        @Test
+        @DisplayName("AC-3 添付0件の投稿でも例外なく空配列を返す（feed）")
+        void AC3_添付0件でも空配列() {
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost()));
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(POST_ID, "PUBLIC", 0L, USER_ID, "USER", null)));
+            stubAllResolversEmpty();
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of());
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: attachments は null ではなく空配列
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAttachments()).isNotNull().isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-4 N+1回避: 投稿N件×添付でも resolveAll と一括取得は各1回だけ")
+        void AC4_N件でも解決は1回だけ() {
+            // given: 3投稿・各1画像
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost(), createPost(), createPost()));
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(1L, "PUBLIC", 0L, 100L, "USER", null),
+                    rawFeedPost(2L, "PUBLIC", 0L, 101L, "USER", null),
+                    rawFeedPost(3L, "PUBLIC", 0L, 102L, "USER", null)));
+            stubAllResolversEmpty();
+            given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
+                    .willReturn(List.of(
+                            imageEntity(1L, "timeline/PUBLIC/0/tmp/a.jpg"),
+                            imageEntity(2L, "timeline/PUBLIC/0/tmp/b.jpg"),
+                            imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
+            given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
+                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(mediaUrlResolver.resolveAll(anyCollection())).willReturn(Map.of());
+
+            // when
+            timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
+
+            // then: 添付の一括取得も署名解決も 1 回のみ（ループ内 resolve なし）
+            verify(attachmentRepository, org.mockito.Mockito.times(1))
+                    .findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection());
+            verify(mediaUrlResolver, org.mockito.Mockito.times(1)).resolveAll(anyCollection());
         }
     }
 }

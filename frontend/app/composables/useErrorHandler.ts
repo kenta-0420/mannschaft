@@ -17,10 +17,14 @@ export const useErrorHandler = () => {
   const { t, te } = useI18n()
   const errorReport = useErrorReport()
 
+  // #2426: BE（CommonErrorCode）が理由入りの具体的な message を返している場合、
+  // 汎用 i18n キー（例: error.COMMON_001）で上書きして理由を握りつぶさない。
+  // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string): string => {
+    if (fallback) return fallback
     const key = `error.${code}`
     if (te(key)) return t(key)
-    return fallback ?? t('error.unknown')
+    return t('error.unknown')
   }
 
   const handleApiError = (error: unknown, context?: string): void => {
@@ -31,6 +35,13 @@ export const useErrorHandler = () => {
 
     // バックエンドへ静かに送信（4xx含む全エラーを記録）
     errorReport.captureQuiet(error, { context })
+
+    // F20.1: ENTITLEMENT_003（402）は useApi の共通ハンドラが既にグローバルペイウォール
+    // モーダルを開いている（usePaywallStore）。ここで追加のトーストを出すと二重表示になるため
+    // 明示的にスキップする（設計書 04 §2）。
+    if (apiError?.data?.error?.code === 'ENTITLEMENT_003') {
+      return
+    }
 
     if (apiError?.data?.error?.code) {
       const message = resolveMessage(apiError.data.error.code, apiError.data.error.message)

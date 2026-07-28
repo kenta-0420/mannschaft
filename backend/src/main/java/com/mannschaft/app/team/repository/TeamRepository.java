@@ -40,7 +40,24 @@ public interface TeamRepository
 
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 
-    @Query("SELECT t FROM TeamEntity t WHERE t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%")
+    /**
+     * チームをキーワード検索する（公開検索）。
+     *
+     * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定する。
+     * 同 Repository の {@link #searchPublicTeams} を金型とし、可視性ラダーの解決を行わない
+     * 公開検索では「PUBLIC のみ返す」という最も安全側の流儀に揃える。
+     * 論理削除済みは Entity の {@code @SQLRestriction("deleted_at IS NULL")} が除外する。</p>
+     *
+     * @param keyword  チーム名 / カナに対する部分一致キーワード（空文字は全件相当）
+     * @param pageable ページング情報
+     * @return PUBLIC かつ未アーカイブなチームのページ
+     */
+    @Query("""
+            SELECT t FROM TeamEntity t
+            WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.archivedAt IS NULL
+              AND (t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
+            """)
     Page<TeamEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
@@ -329,4 +346,27 @@ public interface TeamRepository
               AND t.deletedAt IS NULL
             """)
     long countPublicTeams();
+
+    /**
+     * 指定チームの作成日時（{@code created_at}）を返す。
+     *
+     * <p>F20.3 ベータ特典の TEAM_ORG {@code membershipTenureDays} メトリクス（スコープ自体の
+     * 作成日からの経過日数・設計書 F20.3 02 §2）。scalar（{@code LocalDateTime}）を返すため、
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）は {@code TeamEntity} に依存しない
+     * （クロスドメイン Entity 参照 D-1 を回避）。</p>
+     */
+    @Query("SELECT t.createdAt FROM TeamEntity t WHERE t.id = :teamId AND t.deletedAt IS NULL")
+    Optional<java.time.LocalDateTime> findCreatedAtById(@Param("teamId") Long teamId);
+
+    /**
+     * F20.3 ベータ特典 付与候補 dry-run（設計書 02 §4.5）用: アクティブ（未削除・未アーカイブ）な
+     * チーム ID をページで返す。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。scalar
+     * （{@code Long}）を返すため、呼び出し側（{@code billing.beta.BetaPerkCandidateService}）は
+     * {@code TeamEntity} に依存しない（クロスドメイン Entity 参照 D-1 を回避）。表示名は
+     * {@link #findNameMapByIdIn(Collection)} で一括解決する（名前の N+1 を避ける）。</p>
+     */
+    @Query("SELECT t.id FROM TeamEntity t WHERE t.archivedAt IS NULL ORDER BY t.id ASC")
+    Page<Long> findActiveTeamIdsForBeta(Pageable pageable);
 }

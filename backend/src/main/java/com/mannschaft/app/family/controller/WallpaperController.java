@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 壁紙コントローラー。チーム向けの壁紙一覧APIを提供する。
@@ -31,6 +32,6 @@ public class WallpaperController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WallpaperResponse>>> getWallpapers(@PathVariable Long teamId) {
         // テンプレートスラッグはチーム設定から取得（現時点ではデフォルト値を使用）
-        return ResponseEntity.ok(wallpaperService.getAvailableWallpapers("family"));
+        return ResponseEntity.ok(wallpaperService.getAvailableWallpapers(teamId, SecurityUtils.getCurrentUserId(), "family"));
     }
 }

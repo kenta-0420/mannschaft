@@ -7,7 +7,9 @@ import com.mannschaft.app.cms.dto.CreateTagRequest;
 import com.mannschaft.app.cms.dto.UpdateTagRequest;
 import com.mannschaft.app.cms.entity.BlogTagEntity;
 import com.mannschaft.app.cms.repository.BlogTagRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,7 @@ public class BlogTagService {
 
     private final BlogTagRepository tagRepository;
     private final CmsMapper cmsMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * タグ一覧を取得する。
@@ -42,9 +45,21 @@ public class BlogTagService {
 
     /**
      * タグを作成する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、非メンバーでも任意のチーム/組織に
+     * タグを作成できた。{@code teamId}/{@code organizationId} に対する
+     * {@link AccessControlService#checkMembership}（メンバーであれば可、ADMIN限定ではない）を要求する。</p>
      */
     @Transactional
-    public BlogTagResponse createTag(CreateTagRequest request) {
+    public BlogTagResponse createTag(Long userId, CreateTagRequest request) {
+        if (request.getTeamId() != null) {
+            accessControlService.checkMembership(userId, request.getTeamId(), "TEAM");
+        } else if (request.getOrganizationId() != null) {
+            accessControlService.checkMembership(userId, request.getOrganizationId(), "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+
         // 重複チェック
         if (request.getTeamId() != null) {
             tagRepository.findByTeamIdAndName(request.getTeamId(), request.getName())
@@ -68,11 +83,16 @@ public class BlogTagService {
 
     /**
      * タグを更新する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、非メンバーでも任意のタグを
+     * 改名できた（BOLA）。タグが所属するスコープ（teamId優先→organizationId）の
+     * ADMIN/DEPUTY_ADMIN のみ許可する。</p>
      */
     @Transactional
-    public BlogTagResponse updateTag(Long id, UpdateTagRequest request) {
+    public BlogTagResponse updateTag(Long id, Long userId, UpdateTagRequest request) {
         BlogTagEntity entity = tagRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.TAG_NOT_FOUND));
+        checkScopeAdmin(userId, entity.getTeamId(), entity.getOrganizationId());
         entity.update(
                 request.getName(),
                 request.getColor() != null ? request.getColor() : entity.getColor(),
@@ -84,12 +104,29 @@ public class BlogTagService {
 
     /**
      * タグを削除する（物理削除）。
+     *
+     * <p>認可根治戦役 Wave3-B7: {@link #updateTag} と同一の認可方式（スコープADMIN限定）。</p>
      */
     @Transactional
-    public void deleteTag(Long id) {
+    public void deleteTag(Long id, Long userId) {
         BlogTagEntity entity = tagRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.TAG_NOT_FOUND));
+        checkScopeAdmin(userId, entity.getTeamId(), entity.getOrganizationId());
         tagRepository.delete(entity);
         log.info("タグ削除: tagId={}", id);
+    }
+
+    /**
+     * スコープ（teamId優先→organizationId）の ADMIN/DEPUTY_ADMIN であることを検証する。
+     * いずれも null の異常系は fail-closed で 403（COMMON_002）とする。
+     */
+    private void checkScopeAdmin(Long userId, Long teamId, Long organizationId) {
+        if (teamId != null) {
+            accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        } else if (organizationId != null) {
+            accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 }

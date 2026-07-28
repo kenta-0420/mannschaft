@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
@@ -50,6 +51,7 @@ class ProxyVoteSessionServiceTest {
     @Mock private ProxyVoteQuorumCalculator quorumCalculator;
     @Mock private ProxyVoteCastService castService;
     @Mock private ProxyVoteResultService resultService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ProxyVoteSessionService service;
@@ -68,7 +70,7 @@ class ProxyVoteSessionServiceTest {
                     .status(SessionStatus.OPEN).build();
             given(sessionRepository.findById(SESSION_ID)).willReturn(Optional.of(session));
 
-            assertThatThrownBy(() -> service.deleteSession(SESSION_ID))
+            assertThatThrownBy(() -> service.deleteSession(SESSION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.STATUS_MUST_BE_DRAFT);
@@ -133,7 +135,11 @@ class ProxyVoteSessionServiceTest {
         @Test
         @DisplayName("異常系: CLOSED以外のFINALIZE遷移はエラー（ProxyVoteResultService が判定しスロー）")
         void CLOSED以外FINALIZE不可() {
-            // ファサードは ProxyVoteResultService に委譲する。委譲先が同じエラーを投げる前提を検証。
+            // ファサードは認可のためセッションを取得してから ProxyVoteResultService に委譲する。
+            // 委譲先が同じエラーを投げる前提を検証。
+            ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
+                    .status(SessionStatus.CLOSED).build();
+            given(sessionRepository.findById(SESSION_ID)).willReturn(Optional.of(session));
             given(resultService.finalizeSession(anyLong(), any(), anyLong()))
                     .willThrow(new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_CLOSED));
 

@@ -403,6 +403,27 @@ class BlogPostServiceTest {
             // Then
             verify(revisionService).saveRevision(entity, USER_ID);
         }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 非所有者かつ非ADMINの更新は403(COMMON_002)")
+        void 更新_非所有者非ADMIN_例外() {
+            // Given: entity.authorId=USER_ID, teamId=TEAM_ID。実際は非所有者かつ非ADMINなので拒否。
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            Long otherUserId = 999L;
+            org.mockito.BDDMockito.willThrow(new BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(otherUserId, TEAM_ID, "TEAM");
+            UpdateBlogPostRequest request = new UpdateBlogPostRequest(
+                    "乗っ取りタイトル", null, "本文", null, null, null, null, null, null, null, null, null, null);
+
+            // When / Then
+            assertThatThrownBy(() -> service.updatePost(POST_ID, otherUserId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(postRepository, never()).save(any(BlogPostEntity.class));
+        }
     }
 
     // ========================================
@@ -424,7 +445,7 @@ class BlogPostServiceTest {
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
             // When
-            BlogPostResponse result = service.changeStatus(POST_ID, request);
+            BlogPostResponse result = service.changeStatus(POST_ID, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -439,7 +460,7 @@ class BlogPostServiceTest {
             PublishRequest request = new PublishRequest("REJECTED", null, null);
 
             // When / Then
-            assertThatThrownBy(() -> service.changeStatus(POST_ID, request))
+            assertThatThrownBy(() -> service.changeStatus(POST_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_014"));
@@ -462,10 +483,28 @@ class BlogPostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
 
             // When
-            service.deletePost(POST_ID);
+            service.deletePost(POST_ID, USER_ID);
 
             // Then
             verify(postRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 個人記事(team/org無し)を非所有者が削除しようとすると403(COMMON_002)")
+        void 削除_個人記事_非所有者_例外() {
+            BlogPostEntity entity = BlogPostEntity.builder()
+                    .userId(USER_ID).authorId(USER_ID)
+                    .title("個人記事").slug("s").body("b")
+                    .postType(PostType.BLOG).visibility(Visibility.MEMBERS_ONLY)
+                    .priority(PostPriority.NORMAL).status(PostStatus.DRAFT)
+                    .readingTimeMinutes((short) 1).build();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.deletePost(POST_ID, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(postRepository, never()).save(any(BlogPostEntity.class));
         }
     }
 
@@ -538,20 +577,20 @@ class BlogPostServiceTest {
         @DisplayName("issuePreviewToken: shareService に委譲される")
         void プレビュートークン発行_委譲() {
             BlogPostResponse expected = createPostResponse();
-            given(shareService.issuePreviewToken(POST_ID)).willReturn(expected);
+            given(shareService.issuePreviewToken(POST_ID, USER_ID)).willReturn(expected);
 
-            BlogPostResponse result = service.issuePreviewToken(POST_ID);
+            BlogPostResponse result = service.issuePreviewToken(POST_ID, USER_ID);
 
             assertThat(result).isSameAs(expected);
-            verify(shareService).issuePreviewToken(POST_ID);
+            verify(shareService).issuePreviewToken(POST_ID, USER_ID);
         }
 
         @Test
         @DisplayName("revokePreviewToken: shareService に委譲される")
         void プレビュートークン無効化_委譲() {
-            service.revokePreviewToken(POST_ID);
+            service.revokePreviewToken(POST_ID, USER_ID);
 
-            verify(shareService).revokePreviewToken(POST_ID);
+            verify(shareService).revokePreviewToken(POST_ID, USER_ID);
         }
 
         @Test
@@ -570,9 +609,9 @@ class BlogPostServiceTest {
         @Test
         @DisplayName("revokeShare: shareService に委譲される")
         void 共有取消_委譲() {
-            service.revokeShare(POST_ID, 5L);
+            service.revokeShare(POST_ID, 5L, USER_ID);
 
-            verify(shareService).revokeShare(POST_ID, 5L);
+            verify(shareService).revokeShare(POST_ID, 5L, USER_ID);
         }
     }
 
@@ -592,7 +631,7 @@ class BlogPostServiceTest {
             BulkActionRequest request = new BulkActionRequest(ids, null);
 
             // When / Then
-            assertThatThrownBy(() -> service.bulkAction(request))
+            assertThatThrownBy(() -> service.bulkAction(request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_016"));
@@ -607,7 +646,7 @@ class BlogPostServiceTest {
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
             // When
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             // Then
             assertThat(result.getProcessedCount()).isEqualTo(1);

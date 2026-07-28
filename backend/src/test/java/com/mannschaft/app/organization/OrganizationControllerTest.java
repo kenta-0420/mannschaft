@@ -3,10 +3,12 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.organization.controller.OrganizationController;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -52,6 +54,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -112,6 +115,46 @@ class OrganizationControllerTest {
     }
 
     @Test
+    @DisplayName("createOrganization: 親組織の指定がなければ認可チェックを行わない（正常系の保全）")
+    void createOrganization_親なしは認可チェックしない() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
+        given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+
+        controller.createOrganization(req);
+
+        verify(organizationService, never()).assertOrganizationExists(any());
+        verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("createOrganization: 親組織を指定すると実在確認と親組織ADMIN確認を行う")
+    void createOrganization_親指定は実在確認とADMIN確認を行う() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", ORG_ID, null);
+        given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+
+        controller.createOrganization(req);
+
+        verify(organizationService).assertOrganizationExists(ORG_ID);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+    }
+
+    @Test
+    @DisplayName("createOrganization: 親組織のADMINでなければ作成に到達しない")
+    void createOrganization_親組織ADMINでなければ作成しない() {
+        CreateOrganizationRequest req = new CreateOrganizationRequest(
+                "テスト子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", ORG_ID, null);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+        assertThatThrownBy(() -> controller.createOrganization(req))
+                .isInstanceOf(BusinessException.class);
+
+        verify(organizationService, never()).createOrganization(any(), any());
+    }
+
+    @Test
     @DisplayName("searchOrganizations: 200 OK")
     void searchOrganizations_200() {
         Pageable pageable = PageRequest.of(0, 10);
@@ -145,21 +188,36 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("updateOrganization: 200 OK")
+    @DisplayName("updateOrganization: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void updateOrganization_200() {
         UpdateOrganizationRequest req = new UpdateOrganizationRequest(
                 "更新", null, null, null, null, null, null, null, null, 0L);
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         given(organizationService.updateOrganization(ORG_ID, req)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.updateOrganization(ORG_SLUG, req).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
     }
 
     @Test
-    @DisplayName("deleteOrganization: 204 No Content")
+    @DisplayName("updateOrganization: ADMIN/DEPUTY でなければ 403 を送出し更新本体を呼ばない")
+    void updateOrganization_403_whenNotAdmin() {
+        UpdateOrganizationRequest req = new UpdateOrganizationRequest(
+                "更新", null, null, null, null, null, null, null, null, 0L);
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        assertThatThrownBy(() -> controller.updateOrganization(ORG_SLUG, req))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, org.mockito.Mockito.never()).updateOrganization(ORG_ID, req);
+    }
+
+    @Test
+    @DisplayName("deleteOrganization: 204 No Content（checkAdminOrAbove を必ず呼ぶ）")
     void deleteOrganization_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.deleteOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(organizationService).deleteOrganization(eq(ORG_ID), any());
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        verify(organizationService).deleteOrganization(ORG_ID, USER_ID);
     }
 
     @Test
@@ -201,23 +259,46 @@ class OrganizationControllerTest {
     void removeMember_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.removeMember(ORG_SLUG, 200L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(roleService).removeMember(ORG_ID, "ORGANIZATION", 200L);
+        verify(roleService).removeMember(ORG_ID, "ORGANIZATION", 200L, USER_ID);
     }
 
     @Test
-    @DisplayName("archiveOrganization: 200 OK")
+    @DisplayName("archiveOrganization: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void archiveOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.archiveOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         verify(organizationService).archiveOrganization(ORG_ID);
     }
 
     @Test
-    @DisplayName("unarchiveOrganization: 200 OK")
+    @DisplayName("unarchiveOrganization: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void unarchiveOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.unarchiveOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         verify(organizationService).unarchiveOrganization(ORG_ID);
+    }
+
+    @Test
+    @DisplayName("restoreOrganization: 204 No Content（checkSystemAdmin を必ず呼ぶ）")
+    void restoreOrganization_204() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        assertThat(controller.restoreOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        // 組織 ADMIN 判定（checkAdminOrAbove）ではなく SYSTEM_ADMIN 判定であることを固定する
+        verify(accessControlService).checkSystemAdmin(USER_ID);
+        verify(organizationService).restoreOrganization(ORG_ID);
+    }
+
+    @Test
+    @DisplayName("restoreOrganization: SYSTEM_ADMIN でなければ 403（COMMON_002）を送出する")
+    void restoreOrganization_403_whenNotSystemAdmin() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkSystemAdmin(USER_ID);
+        assertThatThrownBy(() -> controller.restoreOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, never()).restoreOrganization(any());
     }
 
     @Test
@@ -227,7 +308,34 @@ class OrganizationControllerTest {
         given(supporterService.follow(USER_ID, "ORGANIZATION", ORG_ID))
                 .willReturn(ApiResponse.of(FollowStatusResponse.approved()));
         assertThat(controller.followOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // 認可根治 Wave6: 可視性ゲート・受け入れ可否ゲートを通過してから本体を呼ぶ
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        verify(organizationService).assertSupporterEnabled(ORG_ID);
         verify(supporterService).follow(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    @Test
+    @DisplayName("followOrganization: 可視性ラダー未満は例外伝播し、サポーター登録本体を呼ばない")
+    void followOrganization_denied_whenNotVisible() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.followOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, never()).assertSupporterEnabled(ORG_ID);
+        verify(supporterService, never()).follow(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    @Test
+    @DisplayName("followOrganization: サポーター受け入れ無効は例外伝播し、サポーター登録本体を呼ばない")
+    void followOrganization_denied_whenSupporterDisabled() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED))
+                .given(organizationService).assertSupporterEnabled(ORG_ID);
+        assertThatThrownBy(() -> controller.followOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(supporterService, never()).follow(USER_ID, "ORGANIZATION", ORG_ID);
     }
 
     @Test
@@ -252,7 +360,7 @@ class OrganizationControllerTest {
     @DisplayName("getInviteTokens: 200 OK")
     void getInviteTokens_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(inviteService.getInviteTokens(ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID)).willReturn(List.of());
         assertThat(controller.getInviteTokens(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -260,15 +368,70 @@ class OrganizationControllerTest {
     @DisplayName("revokeInviteToken: 204 No Content")
     void revokeInviteToken_204() {
         assertThat(controller.revokeInviteToken(ORG_SLUG, 99L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(inviteService).revokeInviteToken(99L);
+        verify(inviteService).revokeInviteToken(99L, USER_ID);
     }
 
     @Test
-    @DisplayName("getPermissionGroups: 200 OK")
+    @DisplayName("getPermissionGroups: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void getPermissionGroups_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         given(permissionGroupService.getPermissionGroups(ORG_ID, "ORGANIZATION")).willReturn(List.of());
         assertThat(controller.getPermissionGroups(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+    }
+
+    @Test
+    @DisplayName("getPermissionGroups: ADMIN/DEPUTY でなければ 403（権限設計の閲覧を遮断）")
+    void getPermissionGroups_403_whenNotAdmin() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        assertThatThrownBy(() -> controller.getPermissionGroups(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(permissionGroupService, org.mockito.Mockito.never())
+                .getPermissionGroups(ORG_ID, "ORGANIZATION");
+    }
+
+    @Test
+    @DisplayName("getTeams: 200 OK（組織本体と同じ可視性ラダーで判定する）")
+    void getTeams_200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(organizationService.getTeams(ORG_ID)).willReturn(List.of());
+        assertThat(controller.getTeams(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+    }
+
+    @Test
+    @DisplayName("getTeams: 可視性チェックで拒否されたら配下チーム一覧を取得しない")
+    void getTeams_visibilityDenied_throws() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.getTeams(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, org.mockito.Mockito.never()).getTeams(ORG_ID);
+    }
+
+    @Test
+    @DisplayName("getAllMembers: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
+    void getAllMembers_200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(organizationService.getAllMembers(ORG_ID, "INDIVIDUAL")).willReturn(List.of());
+        assertThat(controller.getAllMembers(ORG_SLUG, "INDIVIDUAL", 50).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+    }
+
+    @Test
+    @DisplayName("getAllMembers: ADMIN/DEPUTY でなければ 403 を送出し名簿取得本体を呼ばない")
+    void getAllMembers_403_whenNotAdmin() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        assertThatThrownBy(() -> controller.getAllMembers(ORG_SLUG, "INDIVIDUAL", 50))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, org.mockito.Mockito.never()).getAllMembers(ORG_ID, "INDIVIDUAL");
     }
 
     @Test
@@ -286,7 +449,7 @@ class OrganizationControllerTest {
     void updatePermissionGroup_200() {
         PermissionGroupRequest req = new PermissionGroupRequest("更新", "ADMIN", List.of(1L));
         PermissionGroupResponse resp = new PermissionGroupResponse(50L, "更新", null, List.of(), LocalDateTime.now());
-        given(permissionGroupService.updatePermissionGroup(50L, req)).willReturn(ApiResponse.of(resp));
+        given(permissionGroupService.updatePermissionGroup(50L, req, USER_ID)).willReturn(ApiResponse.of(resp));
         assertThat(controller.updatePermissionGroup(ORG_SLUG, 50L, req).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -294,7 +457,7 @@ class OrganizationControllerTest {
     @DisplayName("deletePermissionGroup: 204 No Content")
     void deletePermissionGroup_204() {
         assertThat(controller.deletePermissionGroup(ORG_SLUG, 50L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(permissionGroupService).deletePermissionGroup(50L);
+        verify(permissionGroupService).deletePermissionGroup(50L, USER_ID);
     }
 
     @Test
@@ -310,7 +473,7 @@ class OrganizationControllerTest {
     @DisplayName("getBlocks: 200 OK")
     void getBlocks_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(blockService.getBlocks(ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(blockService.getBlocks(ORG_ID, "ORGANIZATION", USER_ID)).willReturn(List.of());
         assertThat(controller.getBlocks(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -344,11 +507,24 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("transferOwnership: 200 OK")
+    @DisplayName("transferOwnership: 200 OK（入口で checkAdminOrAbove を必ず呼ぶ）")
     void transferOwnership_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         assertThat(controller.transferOwnership(ORG_SLUG, 500L).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         verify(roleService).transferOwnership(ORG_ID, "ORGANIZATION", USER_ID, 500L);
+    }
+
+    @Test
+    @DisplayName("transferOwnership: ADMIN/DEPUTY でなければ 403 を送出し譲渡本体を呼ばない")
+    void transferOwnership_403_whenNotAdmin() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        assertThatThrownBy(() -> controller.transferOwnership(ORG_SLUG, 500L))
+                .isInstanceOf(BusinessException.class);
+        verify(roleService, org.mockito.Mockito.never())
+                .transferOwnership(ORG_ID, "ORGANIZATION", USER_ID, 500L);
     }
 
     @Test

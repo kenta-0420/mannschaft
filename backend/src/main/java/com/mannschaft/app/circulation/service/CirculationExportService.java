@@ -10,6 +10,7 @@ import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
@@ -34,9 +35,14 @@ import java.time.Duration;
  *   <li>監査ログ {@code CIRCULATION_EXPORT_REQUESTED} を発火</li>
  * </ul>
  *
- * <p>認可: Controller 側で作成者 / 受信者 / ADMIN を判定するため、本サービスでは
- * {@link #assertCanAccessExport(CirculationDocumentEntity, Long, boolean)} で
- * 作成者 OR 受信者 OR ADMIN のいずれかを満たすかを確認する。</p>
+ * <p>認可（認可根治 Wave4 是正）: 旧実装は Controller が JWT の {@code ROLE_ADMIN}
+ * （スコープを問わない文字列一致）保持有無を渡し、本サービスが無条件にバイパスしていたため、
+ * 「どこか 1 つのチーム/組織で ADMIN であれば他団体の COMPLETED 回覧の押印済み証跡 PDF を
+ * 無認可 DL できる」BOLA だった。本サービスは
+ * {@link #assertCanAccessExport(CirculationDocumentEntity, Long)} で
+ * 「作成者 OR 受信者 OR 当該文書スコープの ADMIN/DEPUTY_ADMIN（SystemAdmin 含む）」の
+ * いずれかを満たすかを {@link AccessControlService} で per-scope に確認する
+ * （{@code CirculationService#checkScopeAdminAccess} と同型）。</p>
  *
  * <p>非同期ジョブ本体は {@link CirculationExportAsyncExecutor} に分離されている。
  * これは Spring の {@code @Async} プロキシが同一 Bean 内 self-call では効かないため、
@@ -62,12 +68,19 @@ public class CirculationExportService {
     private final DomainEventPublisher eventPublisher;
 
     /**
+     * per-scope 管理者判定に使う（認可根治 Wave4）。テスト構成（Mockito {@code @InjectMocks}）で
+     * Bean 不在の場合は {@code null} 注入され、{@link #isScopeAdmin} 内でスキップする
+     * （{@code CirculationService#contentVisibilityChecker} と同じ null-safe 防御パターン）。
+     */
+    private final AccessControlService accessControlService;
+
+    /**
      * 押印済み証跡 PDF のエクスポートを要求する。
      *
      * <p>処理フロー:
      * <ol>
      *   <li>文書取得 + COMPLETED 検証（NG なら CIRCULATION_021）</li>
-     *   <li>認可検証（作成者 / 受信者 / ADMIN）</li>
+     *   <li>認可検証（作成者 / 受信者 / 当該文書スコープの ADMIN）</li>
      *   <li>既に COMPLETED であれば Pre-signed URL を返却（Controller が 302 リダイレクト）</li>
      *   <li>PENDING 中なら再生成しない（既存ジョブ完了待ち）</li>
      *   <li>NOT_GENERATED / FAILED ならステータスを PENDING にして非同期ジョブを起動</li>
@@ -75,11 +88,10 @@ public class CirculationExportService {
      *
      * @param documentId 文書 ID
      * @param actorId    呼び出しユーザー ID
-     * @param isAdmin    呼び出しユーザーが ADMIN か（Controller から渡される）
      * @return 既生成済なら {@link ExportStatusResponse}（{@code url} 入り）、それ以外は {@link ExportRequestResponse}
      */
     @Transactional
-    public Object requestExport(Long documentId, Long actorId, boolean isAdmin) {
+    public Object requestExport(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
@@ -87,7 +99,7 @@ public class CirculationExportService {
             throw new BusinessException(CirculationErrorCode.EXPORT_NOT_AVAILABLE_NON_COMPLETED);
         }
 
-        assertCanAccessExport(entity, actorId, isAdmin);
+        assertCanAccessExport(entity, actorId);
 
         // 既に COMPLETED の場合: Pre-signed URL を返す（Controller が 302 する）
         if (entity.getExportStatus() == CirculationExportStatus.COMPLETED
@@ -137,14 +149,13 @@ public class CirculationExportService {
      *
      * @param documentId 文書 ID
      * @param actorId    呼び出しユーザー ID
-     * @param isAdmin    呼び出しユーザーが ADMIN か
      * @return 生成状況レスポンス
      */
-    public ExportStatusResponse getExportStatus(Long documentId, Long actorId, boolean isAdmin) {
+    public ExportStatusResponse getExportStatus(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
-        assertCanAccessExport(entity, actorId, isAdmin);
+        assertCanAccessExport(entity, actorId);
 
         if (entity.getExportStatus() == CirculationExportStatus.NOT_GENERATED) {
             throw new BusinessException(CirculationErrorCode.EXPORT_NOT_REQUESTED);
@@ -170,14 +181,15 @@ public class CirculationExportService {
     // ─────────────────────────────────────────────
 
     /**
-     * 認可判定: 作成者 / 受信者 / ADMIN のいずれかを満たすか。
+     * 認可判定: 作成者 / 受信者 / 当該文書スコープの ADMIN のいずれかを満たすか。
+     *
+     * <p>認可根治 Wave4: グローバル {@code ROLE_ADMIN}（スコープを問わない文字列一致）による
+     * 無条件バイパスを廃し、{@link #isScopeAdmin} で当該文書の scopeType/scopeId に限定した
+     * 管理者判定に差し替えた。</p>
      *
      * @throws BusinessException {@code COMMON_002} 権限不足
      */
-    private void assertCanAccessExport(CirculationDocumentEntity entity, Long actorId, boolean isAdmin) {
-        if (isAdmin) {
-            return;
-        }
+    private void assertCanAccessExport(CirculationDocumentEntity entity, Long actorId) {
         if (actorId == null) {
             throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_000);
         }
@@ -188,9 +200,37 @@ public class CirculationExportService {
         boolean isRecipient = recipientRepository.findByDocumentIdAndUserId(entity.getId(), actorId)
                 .filter(r -> r.getStatus() != RecipientStatus.REJECTED)
                 .isPresent();
-        if (!isRecipient) {
-            throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        if (isRecipient) {
+            return;
         }
+        if (isScopeAdmin(entity, actorId)) {
+            return;
+        }
+        throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+    }
+
+    /**
+     * per-scope 管理者判定（認可根治 Wave4）。
+     *
+     * <p>{@code CirculationService#checkScopeAdminAccess} と同型のロジック:
+     * SystemAdmin は常に許可、TEAM/ORGANIZATION スコープは当該スコープの ADMIN/DEPUTY_ADMIN のみ許可、
+     * それ以外のスコープ（PERSONAL 等、team/org 管理者の概念が無い）は SystemAdmin 以外拒否する。</p>
+     *
+     * <p>{@code accessControlService} が {@code null} のテスト構成（Mockito {@code @InjectMocks}）では
+     * false を返しスキップする（既存の null-safe 防御パターン）。</p>
+     */
+    private boolean isScopeAdmin(CirculationDocumentEntity entity, Long actorId) {
+        if (accessControlService == null) {
+            return false;
+        }
+        if (accessControlService.isSystemAdmin(actorId)) {
+            return true;
+        }
+        String scopeType = entity.getScopeType();
+        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
+            return false;
+        }
+        return accessControlService.isAdminOrAbove(actorId, entity.getScopeId(), scopeType);
     }
 
 }

@@ -9,6 +9,7 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
@@ -74,6 +75,9 @@ class PersonalTodoControllerTest {
 
     @Mock
     private TodoPersonalMemoService personalMemoService;
+
+    @Mock
+    private TodoAccessGuard todoAccessGuard;
 
     @Mock
     private MessageSource messageSource;
@@ -195,15 +199,20 @@ class PersonalTodoControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
 
-                // assertDeletedTodoScope / restorePersonalTodo は void（正常系は例外なし）
+                // restorePersonalTodo は void（正常系は例外なし）。
+                // 認可は restorePersonalTodo 内の existsByTodoIdAndUserId で担保するため、
+                // コントローラーは assertDeletedTodoScope を呼ばない（本PRの根治対象。
+                // 個人TODOのscopeIdはuserIdで保存されるため、assertDeletedTodoScope(id, PERSONAL, null)は
+                // Objects.equals(userId, null)=false で常にTODO_NOT_FOUNDとなる誤りだった）。
                 given(todoService.getTodo(TODO_ID)).willReturn(ApiResponse.of(sampleTodo()));
 
                 mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(TODO_ID));
 
-                verify(todoService).assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
                 verify(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+                verify(todoService, org.mockito.Mockito.never())
+                        .assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
             }
         }
 

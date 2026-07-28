@@ -115,7 +115,8 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 ## 8. GDPR・退会
 
-- 退会は**イベント駆動**（M-4・01 §10）: `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（確定）を `BillingPurgeEventListener` が購読。**申請時は revoke せず権利維持**（撤回で復活不可のため・M-5）、**確定（purge）時に** USER スコープの ACTIVE 契約 CANCELLED＋pointer 削除＋entitlements revoke。撤回時は権利維持のまま。
+- 退会は**イベント駆動**（M-4・01 §10・**AC-45 実装済み 2026-07-11**）: `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（確定）を `BillingPurgeEventListener` が購読。**申請時は revoke せず権利維持**（撤回で復活不可のため・M-5）、**確定（purge）時に** USER スコープの PENDING/ACTIVE/PAST_DUE 契約 CANCELLED＋pointer 削除＋entitlements revoke（`REQUIRES_NEW`）。撤回時は権利維持のまま。
+- **実決済連動（AC-45）**: purge 確定時、有償契約（`psp_subscription_ref` 非 NULL）は tx 外で Stripe サブスクを**即時解約**（期末解約ではない・退会後の課金継続事故防止）。Stripe 失敗は ERROR ログで手動照合に上申（権利失効は DB 側で完了済みのため復活しない）。詳細 02 §3.5。
 - `created_by`/`revoked_by` は userId 論理参照のみで PII 非含有。表示は都度解決（退会者は匿名表示）。
 - ベータ中は金銭記録が発生しないため会計保持義務なし。Phase 2 で決済記録の保持期間を F08.9 §6 と同型で再整理する。
 

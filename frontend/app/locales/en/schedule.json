@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Attend",
+      "no": "Absent",
+      "maybe": "Maybe",
+      "respondSuccess": "Attendance response saved",
+      "respondError": "Failed to save attendance response"
+    },
+    "list": {
+      "allDay": "All day",
+      "empty": "No events for this period",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month"
+    },
     "common_delete": "Delete",
     "description_label": "Description",
     "error_title_required": "Title is required",

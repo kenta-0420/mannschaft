@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Connection lost. Attempting to reconnect…"
+    },
+    "mobile": {
+      "backToList": "Back to channel list",
+      "noChannels": "No channels yet",
+      "createChannel": "Create channel"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "Please try again later.",
     "network": "A network error occurred",
     "unauthorized": "Please log in",
+    "section_load_failed": "Failed to load this section. Please reload.",
     "unknown": "An error occurred",
     "COMMON_001": "There are errors in the input",
     "COMMON_002": "You do not have permission to perform this action",
@@ -463,7 +469,15 @@
     "writeReply": "Write a reply",
     "replySubmit": "Reply",
     "noReplies": "No replies yet",
-    "loadMoreReplies": "Show more"
+    "loadMoreReplies": "Show more",
+    "composerPlaceholder": {
+      "TEAM": "Post to your team...",
+      "VILLAGE": "Post to your village...",
+      "ORGANIZATION": "Post to your organization...",
+      "PUBLIC": "What's happening?"
+    },
+    "submitLabel": "Post",
+    "pollOptionsCount": "{count} options"
   },
   "gallery": {
     "title": "Gallery",
@@ -1431,7 +1445,9 @@
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
-      "back_to_dashboard": "Back to dashboard"
+      "back_to_dashboard": "Back to dashboard",
+      "retry": "Retry",
+      "slow_loading": "Loading is taking longer than expected"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "Feedback",
       "reports": "Reports",
       "advertisers": "Advertiser Management",
+      "adRateCards": "Ad Rate Cards",
+      "adCreditLimitRequests": "Ad Credit Limit Requests",
+      "affiliateSettings": "Affiliate Settings",
       "auditLogs": "Audit Logs",
       "shiftBudget": "Shift Budget",
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
       "gdprPurge": "GDPR Purge Status",
-      "feedbackInbox": "Feedback Inbox (Global)"
+      "feedbackInbox": "Feedback Inbox (Global)",
+      "billing": "Billing master data",
+      "betaPerks": "Beta perk management"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",

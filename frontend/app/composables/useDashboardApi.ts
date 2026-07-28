@@ -37,6 +37,11 @@ export function useDashboardApi() {
     return api<{
       data: Array<{
         id: number
+        /**
+         * 司令塔第二弾（ADHD-UX戦役第四陣）: 種別（イベント/本人シフト/本人予約）。
+         * 既存イベントは EVENT。後方互換のため未知の値でも描画は落とさない想定。
+         */
+        kind: 'EVENT' | 'SHIFT' | 'RESERVATION'
         title: string
         start_at: string
         end_at: string
@@ -61,6 +66,30 @@ export function useDashboardApi() {
         scopeId: string | null
       }>
     }>('/api/v1/todos/my')
+  }
+
+  /**
+   * 司令塔ウィジェット（WidgetCommandCenter）向け: 個人TODOの未完了一覧＋期限切れ件数。
+   * BE (DashboardService#getPersonalTodos) が overdue_count をタイムゾーン考慮済みで算出する。
+   * `getPersonalTodos` という名前は `/api/v1/todos/my`（getMyTodos）で既に使用しているため、
+   * URL に対応した名前として区別する。
+   */
+  async function getDashboardTodoSummary() {
+    return api<{
+      data: {
+        items: Array<{
+          id: number
+          title: string
+          status: string
+          priority: string
+          due_date: string | null
+          parent_id: number | null
+          depth: number
+        }>
+        overdue_count: number
+        total_incomplete: number
+      }
+    }>('/api/v1/dashboard/todos')
   }
 
   async function getActivity(params?: { cursor?: string; limit?: number }) {
@@ -185,6 +214,7 @@ export function useDashboardApi() {
     getNotices,
     getUpcomingEvents,
     getPersonalTodos,
+    getDashboardTodoSummary,
     getActivity,
     getUnreadThreads,
     getPlatformAnnouncements,

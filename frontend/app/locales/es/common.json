@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Conexión perdida. Intentando reconectar…"
+    },
+    "mobile": {
+      "backToList": "Volver a la lista de canales",
+      "noChannels": "Aún no hay canales",
+      "createChannel": "Crear canal"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "Por favor, intentelo de nuevo mas tarde.",
     "network": "Se produjo un error de red",
     "unauthorized": "Por favor, inicie sesion",
+    "section_load_failed": "No se pudo cargar esta seccion. Recarga la pagina.",
     "unknown": "Se produjo un error",
     "COMMON_001": "Hay errores en los datos ingresados",
     "COMMON_002": "No tiene permiso para realizar esta accion",
@@ -463,7 +469,15 @@
     "writeReply": "Escribir una respuesta",
     "replySubmit": "Responder",
     "noReplies": "Aún no hay respuestas",
-    "loadMoreReplies": "Ver más"
+    "loadMoreReplies": "Ver más",
+    "composerPlaceholder": {
+      "TEAM": "Publicar en el equipo...",
+      "VILLAGE": "Publicar en el pueblo...",
+      "ORGANIZATION": "Publicar en la organización...",
+      "PUBLIC": "¿Qué está pasando?"
+    },
+    "submitLabel": "Publicar",
+    "pollOptionsCount": "{count} opciones"
   },
   "gallery": {
     "title": "Galería",
@@ -1431,7 +1445,9 @@
       "leave_action": "Salir",
       "load_error_title": "No se pudo cargar la información",
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
-      "back_to_dashboard": "Volver al panel"
+      "back_to_dashboard": "Volver al panel",
+      "retry": "Reintentar",
+      "slow_loading": "La carga está tardando más de lo esperado"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "Comentarios",
       "reports": "Informes",
       "advertisers": "Gestión de anunciantes",
+      "adRateCards": "Tarifas de anuncios",
+      "adCreditLimitRequests": "Solicitudes de límite de crédito",
+      "affiliateSettings": "Configuración de afiliados",
       "auditLogs": "Registros de auditoría",
       "shiftBudget": "Presupuesto de turno",
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
       "gdprPurge": "Estado de Purga GDPR",
-      "feedbackInbox": "Buzón de comentarios (Global)"
+      "feedbackInbox": "Buzón de comentarios (Global)",
+      "billing": "Datos maestros de facturación",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Suplantando a: {label}",

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
@@ -38,9 +39,10 @@ public class TimetableSlotController {
     public ResponseEntity<ApiResponse<List<TimetableSlotResponse>>> listSlots(
             @PathVariable Long timetableId,
             @RequestParam(required = false) String day) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
         List<TimetableSlotEntity> slots = day != null
-                ? slotService.getSlotsByDay(timetableId, day)
-                : slotService.getSlots(timetableId);
+                ? slotService.getSlotsByDay(timetableId, day, actorUserId)
+                : slotService.getSlots(timetableId, actorUserId);
         List<TimetableSlotResponse> response = slots.stream().map(this::toResponse).toList();
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -59,7 +61,8 @@ public class TimetableSlotController {
                         r.getSubjectName(), r.getTeacherName(), r.getRoomName(),
                         r.getColor(), r.getNotes()))
                 .toList();
-        List<TimetableSlotEntity> updated = slotService.replaceSlots(timetableId, slotDataList, day);
+        List<TimetableSlotEntity> updated =
+                slotService.replaceSlots(timetableId, slotDataList, day, SecurityUtils.getCurrentUserId());
         var result = new BulkSlotUpdateResponse(updated.size(), updated.size());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -70,8 +73,9 @@ public class TimetableSlotController {
     public ResponseEntity<ApiResponse<List<TimetableSlotResponse>>> getTodaySlots(
             @PathVariable Long timetableId) {
         // timetableService経由でEntity取得（レイヤー原則遵守、NotFoundは例外スロー）
-        var timetable = timetableService.getByIdWithoutTeam(timetableId);
-        List<TimetableSlotService.ResolvedSlot> resolved = slotService.getTodaySlots(timetableId, timetable);
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        var timetable = timetableService.getByIdWithoutTeam(timetableId, actorUserId);
+        List<TimetableSlotService.ResolvedSlot> resolved = slotService.getTodaySlots(timetableId, timetable, actorUserId);
         List<TimetableSlotResponse> response = resolved.stream()
                 .map(r -> new TimetableSlotResponse(
                         null, null, r.periodNumber(), null,
@@ -87,8 +91,9 @@ public class TimetableSlotController {
     public ResponseEntity<ApiResponse<List<String>>> getSubjectSuggestions(
             @PathVariable Long timetableId) {
         // timetableId → teamId を解決し、チーム単位で教科名を取得する
-        var timetable = timetableService.getByIdWithoutTeam(timetableId);
-        List<String> suggestions = slotService.getSubjectSuggestions(timetable.getTeamId());
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        var timetable = timetableService.getByIdWithoutTeam(timetableId, actorUserId);
+        List<String> suggestions = slotService.getSubjectSuggestions(timetable.getTeamId(), actorUserId);
         return ResponseEntity.ok(ApiResponse.of(suggestions));
     }
 

@@ -169,7 +169,7 @@
       "book": "Reservieren",
       "list": "Reservierungen",
       "my_reservations": "Meine Reservierungen",
-      "line_manage": "Buchbare Elemente verwalten",
+      "line_manage": "{resourceName}-Verwaltung",
       "emergency_closure": "緊急休業",
       "team_page": "Reservierung"
     },
@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "Datum",
-      "line": "Buchbares Element",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Beschreibung",
       "display_order": "Anzeigereihenfolge",
@@ -213,8 +213,8 @@
       "full": "Ausgebucht"
     },
     "button": {
-      "add_line": "Buchbares Element hinzufügen",
-      "add_line_long": "Buchbares Element hinzufügen",
+      "add_line": "{resourceName} hinzufügen",
+      "add_line_long": "{resourceName} hinzufügen",
       "save": "Speichern",
       "cancel": "Abbrechen",
       "reserve": "Reservieren",
@@ -228,8 +228,8 @@
       "title": "Bestätigen",
       "line_create": "Buchbares Element erstellen",
       "line_edit": "Buchbares Element bearbeiten",
-      "line_create_long": "Buchbares Element hinzufügen",
-      "line_edit_long": "Buchbares Element bearbeiten",
+      "line_create_long": "{resourceName} hinzufügen",
+      "line_edit_long": "{resourceName} bearbeiten",
       "reserve_confirm": "Reservierung bestätigen",
       "cancel_confirm": "Diese Reservierung stornieren?",
       "line_delete_confirm": "Dieses buchbare Element löschen?",
@@ -281,9 +281,21 @@
         "member_no_slots_hint": "Bitte versuche es an einem anderen Tag"
       }
     },
-    "line_manage_title": "Verwaltung buchbarer Elemente",
+    "line_manage_title": "{resourceName}-Verwaltung",
     "line": {
       "delete_guide": "Beim Löschen wird die Zeitfenster-Vorlage dieser Linie gestoppt, und zukünftige Zeitfenster ohne Reservierungen werden automatisch entfernt. Falls aktive Reservierungen bestehen, verschieben oder stornieren Sie diese bitte zuerst."
+    },
+    "resource_name": {
+      "DEFAULT": "Buchbares Element",
+      "STAFF": "Mitarbeiter",
+      "SEAT": "Sitzplatz",
+      "COURT": "Platz",
+      "BED": "Bett",
+      "LANE": "Bahn",
+      "setting_title": "Bezeichnung für buchbare Elemente",
+      "custom_label": "Benutzerdefinierte Bezeichnung",
+      "custom_required": "Bitte geben Sie eine benutzerdefinierte Bezeichnung ein",
+      "deputy_hint": "Stellvertretende Administratoren können nur die Bezeichnung buchbarer Elemente ändern. Die Verwaltung von Linien, Menüs usw. übernehmen Administratoren."
     },
     "settings": {
       "advanced": {
@@ -569,7 +581,7 @@
     },
     "grid": {
       "title": "Verfügbarkeitsraster",
-      "help": "Zeilen sind Zeitfenster, Spalten sind Reservierungsziele. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
+      "help": "Zeilen sind Zeitfenster, Spalten sind {resourceName}. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
       "display_toggle": {
         "list": "Listenansicht",
         "grid": "Rasteransicht"
@@ -588,7 +600,7 @@
         "time": "Zeit"
       },
       "staff_filter": {
-        "label": "Nach Ziel filtern",
+        "label": "Nach {resourceName} filtern",
         "placeholder": "Alle Ziele"
       },
       "state": {
@@ -618,9 +630,9 @@
       "view_matrix": "Matrixansicht",
       "view_list": "Listenansicht",
       "view_staff_grid": "Rasteransicht nach Mitarbeiter",
-      "date_line_header": "Datum / Ziel",
+      "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
-      "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Ziel aus.",
+      "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",
       "slot_unavailable_conflict": "Dieses Zeitfenster nimmt derzeit keine Buchungen an. Bitte eine andere Uhrzeit versuchen"
     },
     "group": {
@@ -647,7 +659,7 @@
       "book": {
         "matrix_title": "Die Matrix lesen",
         "matrix_steps": {
-          "0": "Zeilen sind \"Datum × Reservierungsziel\", Spalten sind \"Uhrzeit\".",
+          "0": "Zeilen sind \"Datum × {resourceName}\", Spalten sind \"Uhrzeit\".",
           "1": "Farben: Grün = frei / Grau = gebucht / Schraffiert = nicht verfügbar / Hellgrau = geschlossen."
         },
         "filter_title": "Nach Menü filtern",
@@ -664,7 +676,7 @@
         },
         "conflict_title": "Bei Vollbelegung oder Konflikten",
         "conflict_steps": {
-          "0": "Graue Felder (gebucht, geschlossen oder nicht verfügbar) können nicht ausgewählt werden. Wähle eine andere Zeit oder ein anderes Ziel.",
+          "0": "Graue Felder (gebucht, geschlossen oder nicht verfügbar) können nicht ausgewählt werden. Wähle eine andere Zeit oder ein anderes Element (\"{resourceName}\").",
           "1": "Wenn jemand kurz vor deiner Bestätigung dasselbe Zeitfenster bucht, erscheint ein Fehler und die Ansicht wird automatisch mit der aktuellen Verfügbarkeit aktualisiert. Wähle bitte erneut ein freies Zeitfenster."
         }
       },
@@ -697,15 +709,15 @@
           "0": "Lege unter \"Geschäftszeiten\" für jeden Wochentag die Öffnungszeiten fest. Das ist die Grundlage, auf der die Zeitfenster erzeugt werden.",
           "1": "Sobald du speicherst, werden die Zeitfenster für die nächsten 28 Tage automatisch erstellt."
         },
-        "setup1_title": "2. Reservierungsziele erstellen",
+        "setup1_title": "2. {resourceName} erstellen",
         "setup1_steps": {
-          "0": "Registriere oben in diesem Tab mit \"Reservierungsziel hinzufügen\" buchbare Plätze, Mitarbeiter oder Schalter.",
-          "1": "Ohne Reservierungsziel zeigt der Tab \"Reservieren\" den Mitgliedern nichts an."
+          "0": "Registriere oben in diesem Tab mit \"{resourceName} hinzufügen\" buchbare Plätze, Mitarbeiter oder Schalter.",
+          "1": "Ohne {resourceName} zeigt der Tab \"Reservieren\" den Mitgliedern nichts an."
         },
         "setup2_title": "3. Menüs erstellen",
         "setup2_steps": {
           "0": "Registriere unten unter \"Menüs verwalten\" Menüs mit einer Dauer (in 30-Minuten-Schritten).",
-          "1": "Um ein Menü auf bestimmte Ziele zu beschränken, wähle unter \"Buchbares Element\" die Option \"Nur ausgewählte Reservierungsziele\" und wähle sie aus (standardmäßig wird es für alle angeboten)."
+          "1": "Um ein Menü auf {resourceName} zu beschränken, wähle unter \"Buchbares Element\" die Option \"Nur ausgewählte {resourceName}\" und wähle sie aus (standardmäßig wird es für alle angeboten)."
         },
         "setup3_title": "4. Einen Wochenplan erstellen",
         "setup3_steps": {
@@ -722,7 +734,7 @@
         "exception_steps": {
           "0": "Um einen bestimmten Tag zu schließen oder ausnahmsweise zu öffnen, verwende \"Diesen Tag schließen\" / \"Sonderöffnung\" im Kalender für Ausnahmetage. Um einzelne Zeitfenster im Detail anzupassen, nutze \"Einzelne Slots manuell verwalten\" unter Erweiterte Einstellungen, um sie zu erstellen, zu bearbeiten oder zu schließen.",
           "1": "Um einen bestimmten Zeitraum für Buchungen zu sperren, nutze \"Nicht verfügbare Zeiträume\" in den erweiterten Einstellungen.",
-          "2": "Beim Löschen eines Reservierungsziels wird dessen Vorlage gestoppt und zukünftige Zeitfenster ohne Reservierungen werden automatisch gelöscht. Bestehen noch aktive Reservierungen, verschiebe oder storniere sie vorher."
+          "2": "Beim Löschen von {resourceName} wird dessen Vorlage gestoppt und zukünftige Zeitfenster ohne Reservierungen werden automatisch gelöscht. Bestehen noch aktive Reservierungen, verschiebe oder storniere sie vorher."
         }
       },
       "emergency_closure": {

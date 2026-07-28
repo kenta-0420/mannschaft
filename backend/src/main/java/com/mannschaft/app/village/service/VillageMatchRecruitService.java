@@ -13,7 +13,6 @@ import com.mannschaft.app.village.dto.MatchRecruitCreateRequest;
 import com.mannschaft.app.village.dto.MatchRecruitListResponse;
 import com.mannschaft.app.village.dto.MatchRecruitResponse;
 import com.mannschaft.app.village.dto.MatchRecruitUpdateRequest;
-import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitApplicationEntity;
 import com.mannschaft.app.village.entity.VillageMatchRecruitEntity;
@@ -23,7 +22,6 @@ import com.mannschaft.app.village.entity.enums.VillageMatchRecruitCategory;
 import com.mannschaft.app.village.entity.enums.VillageMatchRecruitStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -44,7 +42,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -81,7 +78,7 @@ public class VillageMatchRecruitService {
     private final VillageMembershipRepository membershipRepository;
     private final VillageMatchRecruitRepository recruitRepository;
     private final VillageMatchRecruitApplicationRepository applicationRepository;
-    private final UserVillageNicknameRepository nicknameRepository;
+    private final VillageNicknameResolver villageNicknameResolver;
     /** Read-only: 表示名解決（原則1 FK 不在）。参照不能時は null 表示で済ませる。 */
     private final TeamRepository teamRepository;
     /** Read-only: 将来の組織募集拡張用（現 Phase は USER+TEAM のみ）。 */
@@ -251,10 +248,15 @@ public class VillageMatchRecruitService {
             p = recruitRepository.findByVillageIdAndDeletedAtIsNull(villageId, pageable);
         }
 
+        // F17.1 §5.6: matchDate は NULL 許容に緩和された（日付を持たない募集）。
+        // 日付範囲で絞り込む場合、日付を持たない募集はどの期間にも属さないため対象外とする
+        // （素の e.getMatchDate().isBefore(...) は NULL 行で NPE / 500 になる）。
         List<VillageMatchRecruitEntity> filtered = p.getContent().stream()
                 .filter(e -> category == null || e.getCategory() == category)
-                .filter(e -> matchDateFrom == null || !e.getMatchDate().isBefore(matchDateFrom))
-                .filter(e -> matchDateTo == null || !e.getMatchDate().isAfter(matchDateTo))
+                .filter(e -> matchDateFrom == null
+                        || (e.getMatchDate() != null && !e.getMatchDate().isBefore(matchDateFrom)))
+                .filter(e -> matchDateTo == null
+                        || (e.getMatchDate() != null && !e.getMatchDate().isAfter(matchDateTo)))
                 .toList();
 
         List<MatchRecruitResponse> items = mapWithDisplayNames(filtered);
@@ -511,17 +513,25 @@ public class VillageMatchRecruitService {
      * 募集に対するレビュー権限（投稿者本人 / HEADMAN / ELDER）を検証する。
      *
      * <p>状態遷移・応募審査・応募一覧で共通利用する。</p>
+     *
+     * <p><strong>検査順序が重要（#2284 §12）</strong>: 以前は「投稿者本人なら即 return」を
+     * メンバーシップ照会より<strong>前</strong>に置いていたため、投稿者が BAN されても
+     * 自分の募集の応募審査・状態遷移を続行できた（BAN 逃れの抜け道）。
+     * 現在は先に「現役メンバーであること」を確認し、その後に本人／ロールを判定する。
+     * これにより退村済み（{@code leftAt}）・BAN 済み（{@code bannedAt}）の投稿者は
+     * 本人であってもレビュー不可となる。</p>
      */
     private void ensureRecruitReviewer(UUID villageId, VillageMatchRecruitEntity recruit, Long actorUserId) {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        if (recruit.getPostedByUserId().equals(actorUserId)) {
-            return; // 投稿者本人
-        }
+        // 本人判定より先に「現役メンバーか」を確認する（BAN/退村した投稿者を弾くため）
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+        if (recruit.getPostedByUserId().equals(actorUserId)) {
+            return; // 現役の投稿者本人
+        }
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
@@ -600,18 +610,8 @@ public class VillageMatchRecruitService {
      * @param villageId 村 ID（{@code null} ならグローバルニックネームのみ参照）
      */
     private String resolveUserDisplayName(Long userId, UUID villageId) {
-        if (userId == null) {
-            return null;
-        }
-        if (villageId != null) {
-            Optional<UserVillageNicknameEntity> villageNick =
-                    nicknameRepository.findByUserIdAndVillageId(userId, villageId);
-            if (villageNick.isPresent()) {
-                return villageNick.get().getNickname();
-            }
-        }
-        Optional<UserVillageNicknameEntity> globalNick = nicknameRepository.findByUserIdAndVillageIdIsNull(userId);
-        return globalNick.map(UserVillageNicknameEntity::getNickname).orElse("USER:#" + userId);
+        // F17.3 前工程リファクタ: 共有ヘルパへ委譲（ふるまい不変・重複ドリフト防止・§15.4）。
+        return villageNicknameResolver.resolve(userId, villageId);
     }
 
     /** チーム ID をチーム名に解決する。参照不能・null の場合は {@code null}。 */

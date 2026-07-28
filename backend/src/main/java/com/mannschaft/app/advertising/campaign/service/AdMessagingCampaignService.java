@@ -8,6 +8,7 @@ import com.mannschaft.app.advertising.campaign.dto.CampaignChannelResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignDetailResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignListItemResponse;
 import com.mannschaft.app.advertising.campaign.dto.CreateCampaignRequest;
+import com.mannschaft.app.advertising.campaign.dto.EstimatedReachRangeResponse;
 import com.mannschaft.app.advertising.campaign.dto.UpdateCampaignRequest;
 import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
@@ -60,6 +61,7 @@ public class AdMessagingCampaignService {
     private final AdMessagingCampaignChannelRepository channelRepository;
     private final AdAudienceSegmentRepository segmentRepository;
     private final AdMessagingCampaignMapper mapper;
+    private final AdAudienceResolver audienceResolver;
 
     // ─────────────────────────────────────────────
     // 一覧 / 詳細 (scope ベース)
@@ -88,6 +90,23 @@ public class AdMessagingCampaignService {
         List<AdMessagingCampaignChannel> channels = channelRepository.findByCampaignId(campaignId);
         List<AdAudienceSegment> segments = segmentRepository.findByCampaignId(campaignId);
         return mapper.toDetail(campaign, channels, segments);
+    }
+
+    /**
+     * F09.19.7 §10.2 / AC-7.2: 推定リーチのレンジを返す（ウィザード Step4 用）。
+     *
+     * <p>まず {@code (scopeType, scopeId)} で当該キャンペーンの所有を検証する（越境は
+     * {@link AdCampaignErrorCode#AD_CAMPAIGN_NOT_FOUND}）。所有確認後に
+     * {@link AdAudienceResolver#estimateReach} で個別ユーザーを特定しないレンジ表示を返す。</p>
+     *
+     * @param campaignId 対象キャンペーン
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープ ID
+     * @return 推定リーチのレンジ（range / label）
+     */
+    public EstimatedReachRangeResponse preview(UUID campaignId, ScopeType scopeType, Long scopeId) {
+        findCampaignOrThrow(campaignId, scopeType, scopeId);
+        return audienceResolver.estimateReach(campaignId);
     }
 
     // ─────────────────────────────────────────────

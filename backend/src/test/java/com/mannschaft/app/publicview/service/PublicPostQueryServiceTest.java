@@ -3,6 +3,7 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.media.BlogBodyMediaResolver;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
@@ -68,6 +69,12 @@ class PublicPostQueryServiceTest {
     @Mock private IdentityVisibilityResolver identityVisibilityResolver;
     @Mock private MediaUrlResolver mediaUrlResolver;
     @Mock private PaymentGateService paymentGateService;
+    /**
+     * 本文メディアの署名 URL 解決部品。本クラスの主題はペイウォールであり
+     * メディア解決ではないため、{@code stubDetail} で本文を素通しさせる
+     * （本テストの本文にはメディアキーが含まれず、実物の resolver も素通しする）。
+     */
+    @Mock private BlogBodyMediaResolver blogBodyMediaResolver;
     @InjectMocks private PublicPostQueryService service;
 
     @Test
@@ -161,6 +168,10 @@ class PublicPostQueryServiceTest {
             lenient().when(mediaUrlResolver.resolve(any())).thenReturn(null);
             lenient().when(identityVisibilityResolver.resolveIdentityForViewer(any(), any(), any(), any()))
                     .thenReturn(new DisplayIdentity("投稿者", null, false, true));
+            // 本文メディア解決は素通し（本テストの主題はペイウォール判定であり、
+            // 解決対象のメディアキーを含まない本文では実物も同じく素通しする）。
+            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+                    .thenAnswer(inv -> inv.getArgument(0));
         }
 
         @Test

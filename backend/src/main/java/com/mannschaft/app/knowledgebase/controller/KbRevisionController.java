@@ -47,7 +47,7 @@ public class KbRevisionController {
         String userRole = accessControlService.getRoleName(userId, teamId, SCOPE_TYPE);
 
         List<KbPageRevisionSummaryResponse> result = kbRevisionService
-                .getRevisions(pageId, userId, userRole)
+                .getRevisions(pageId, SCOPE_TYPE, teamId, userId, userRole)
                 .getData()
                 .stream()
                 .map(mapper::toRevisionSummary)
@@ -73,7 +73,8 @@ public class KbRevisionController {
 
         return ApiResponse.of(
                 mapper.toRevisionResponse(
-                        kbRevisionService.getRevision(pageId, revisionId, userId, userRole).getData()
+                        kbRevisionService.getRevision(pageId, revisionId, SCOPE_TYPE, teamId, userId, userRole)
+                                .getData()
                 )
         );
     }
@@ -96,7 +97,8 @@ public class KbRevisionController {
 
         return ApiResponse.of(
                 mapper.toResponse(
-                        kbRevisionService.restoreRevision(pageId, revisionId, userId, userRole).getData()
+                        kbRevisionService.restoreRevision(pageId, revisionId, SCOPE_TYPE, teamId, userId, userRole)
+                                .getData()
                 )
         );
     }

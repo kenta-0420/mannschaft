@@ -16,6 +16,7 @@ interface RawActionItem {
   scope_name: string
   item_id: string
   title: string
+  circulated_at: string | null
   deadline: string | null
   starts_at: string | null
 }
@@ -34,6 +35,7 @@ export interface PersonalActionItem {
   scopeName: string
   itemId: string
   title: string
+  circulatedAt: string | null
   deadline: string | null
   startsAt: string | null
 }
@@ -54,6 +56,7 @@ export function usePersonalActionRequired() {
         scopeName: i.scope_name,
         itemId: i.item_id,
         title: i.title,
+        circulatedAt: i.circulated_at,
         deadline: i.deadline,
         startsAt: i.starts_at,
       })),

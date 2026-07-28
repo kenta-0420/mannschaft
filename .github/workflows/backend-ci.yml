@@ -22,6 +22,14 @@
 #   のため ArchUnit（バイトコード解析）では検知不能。ソースレベルの bash grep で
 #   BaseEntity 継承クラスへの @Builder(toBuilder=true) 残存を CI で検出する。
 #   lint ジョブは detect ジョブと並列に shard ジョブと並走し、gate の needs に追加。
+# 2026-07-20: shard を 4 → 6 分割へ拡張（timeout 逼迫の根治）。テスト総量の増加で
+#   各 shard の実測が 43〜55 分に達し、timeout-minutes: 60 に対する余裕が 1 割を
+#   切っていた。その結果 shard が 1h0m 台で cancelled となり、集約ゲートを道連れに
+#   して「テストは全て通っているのに CI が赤」という事象が複数 PR で発生していた。
+#   N=6 適用後の実測は 26〜46 分（最長 46 分・上限まで 14 分＝23% の余裕）。
+#   env.SHARD_TOTAL と matrix.shard を同じ N に揃えるだけで済む
+#   （build.gradle.kts のシャードフィルタはプロパティ駆動のため無改修）。
+#   詳細な数値と N 選定の根拠・残る課題はファイル末尾の備考を参照。
 # =============================================================================
 
 name: Backend — CI (PR Check)
@@ -39,8 +47,8 @@ concurrency:
 
 env:
   JAVA_VERSION: "21"
-  # テストシャード数。N=4 を既定とする（理由はファイル末尾の備考を参照）。
-  SHARD_TOTAL: "4"
+  # テストシャード数。N=6 を既定とする（理由はファイル末尾の備考を参照）。
+  SHARD_TOTAL: "6"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -57,6 +65,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend_changed: ${{ steps.changes.outputs.backend_changed }}
+      migrations_changed: ${{ steps.changes.outputs.migrations_changed }}
     steps:
       # 変更検出のため PR の base...head 差分を見られるよう全履歴を取得する
       - name: Checkout source
@@ -73,6 +82,8 @@ jobs:
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "[INFO] non-PR event (${{ github.event_name }}) → backend_changed=true (full build)"
             echo "backend_changed=true" >> "$GITHUB_OUTPUT"
+            # 手動実行時はマイグレーションテストも含めたフル実行とする（安全側）
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -91,6 +102,20 @@ jobs:
           else
             echo "[INFO] no backend changes (docs-only 等) → backend_changed=false（compile/test skip）"
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Flyway マイグレーション（db/migration/**）の変更有無を判定する。
+          # 変更があれば Flyway 再生テスト（65 クラス）を従来どおり実行し、
+          # 無ければ除外して壁時計を短縮する（build.gradle.kts の
+          # -PexcludeMigrationTests を参照）。
+          # マイグレーションテスト本体・build.gradle.kts・本 workflow の変更時も
+          # 安全側に倒してフル実行する。
+          if echo "${CHANGED}" | grep -E '^(backend/src/main/resources/db/migration/|backend/src/test/java/.*/migration/|backend/build\.gradle\.kts$|\.github/workflows/backend-ci\.yml$)' > /dev/null; then
+            echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[INFO] migration 無変更 → migrations_changed=false（Flyway 再生テストを除外）"
+            echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
   # ---------------------------------------------------------------------------
@@ -144,9 +169,9 @@ jobs:
           echo "[OK] @Builder(toBuilder=true) 違反なし（BaseEntity継承クラス）"
 
   # ---------------------------------------------------------------------------
-  # shard: compile + test を 4 並列で実行する（Docker required for Testcontainers）
+  # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
   #
-  # matrix で shard=0..3 の 4 ランナーへ分散する。各 shard は build.gradle.kts の
+  # matrix で shard=0..5 の 6 ランナーへ分散する。各 shard は build.gradle.kts の
   # シャードフィルタ（-Pshard.total / -Pshard.index）で「完全修飾クラス名の安定
   # ハッシュ % total == index」のテストクラスのみを実行する。
   #
@@ -167,7 +192,7 @@ jobs:
       # 1 shard が失敗しても他 shard を最後まで走らせ、全失敗を一度に把握できるようにする。
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5]
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -211,13 +236,28 @@ jobs:
       # --build-cache: キャッシュヒット時にテストタスクの再実行をスキップ
       # --continue: 全テスト失敗を収集（最初の失敗で打ち切りしない）
       # -Pshard.total / -Pshard.index: build.gradle.kts のシャードフィルタを起動
+      # -PexcludeMigrationTests: db/migration/** 無変更の PR では Flyway 再生テスト
+      #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
+      #   migration を触る PR では false となり従来どおり全件実行する。
+      #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
         run: >-
           ./gradlew test --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
+          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      # test-results の XML（JUnit 形式）。HTML レポートと違い各テストの time 属性を
+      # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 7
 
       - name: テスト結果レポートをアップロード
         if: always()
@@ -293,19 +333,46 @@ jobs:
 # =============================================================================
 # 備考: シャード数 N=4 の根拠
 # -----------------------------------------------------------------------------
-# - 高速化前のフル test は約 56 分。N=4 で理想的には 1 shard あたり約 14 分まで短縮。
-#   実際には各 shard で JVM ウォームアップ・Testcontainers の MySQL 起動・Gradle
-#   セットアップの固定コスト（数分）が乗るため、壁時計は概ね 18〜22 分が見込み。
+# - N=4 導入時（当初）: 高速化前のフル test 約 56 分に対し、1 shard の壁時計は
+#   18〜22 分の見込みだった（JVM ウォームアップ・Testcontainers の MySQL 起動・
+#   Gradle セットアップの固定コストが数分乗るため、理想の 14 分より長くなる）。
+#
+# - 【2026-07-20 実測・N=4 → N=6 へ拡張】その後スイートが倍以上に育ち、実測は
+#   各 shard 43〜55 分に達していた（認可 IDOR 監査戦役で Testcontainers 実 MySQL
+#   を伴う契約 IT を約 180 件追加したことが主因）。timeout-minutes: 60 に対して
+#   余裕が 1 割を切り、ランナーの当たり外れや Testcontainers の起動揺れといった
+#   通常のばらつきだけで 60 分を跨ぐようになっていた（実際に shard が 1h0m03s /
+#   1h0m44s で cancelled となり、集約ジョブ Compile & Test を道連れにした事例が
+#   複数発生。テスト自体は失敗していない）。
+#   ※ 4 本すべてが同じ帯（43〜55 分）に固まっていたため、特定 shard の偏りでは
+#     なく「スイート全体が上限に張り付いた」状態だった。配分ではなく総量の問題。
+#
+# - 【N=6 適用後の実測（同日）】26 / 37 / 37 / 40 / 42 / 46 分。
+#   最長 46 分で上限まで 14 分（23%）の余裕。cancelled のリスクは大きく下がったが、
+#   当初見込んだ「30〜38 分」には届かなかった。理由は JVM ウォームアップ・
+#   Testcontainers の MySQL 起動・Gradle セットアップといった固定コストが
+#   shard 分割では減らないため（分割数に比例して壁時計が縮むわけではない）。
+#   N を増やす際はこの固定コストを勘定に入れること。
+#
+# - 【残る課題】上記実測は 26 分〜46 分と 20 分ばらついている。振り分けが
+#   「完全修飾クラス名の安定ハッシュ % total」で*実行時間を考慮していない*ため、
+#   重い Testcontainers IT が偏った shard が最長を決めてしまう。さらに余裕を
+#   増やしたい場合、N を増やすより (a) 実行時間ベースの振り分け（前回計測の
+#   フィードバック）や (b) Testcontainers のコンテナ再利用（singleton 化による
+#   固定コスト削減）の方が費用対効果が高い。
+#
 # - N をさらに増やす（例 8）と 1 shard の実行は短くなるが、固定コストがランナー数
 #   ぶん multiplied され「総 CI 分数（GitHub の課金/枠消費）」が増大する。private
 #   リポジトリ化後はこの総分数がコストに直結するため、壁時計の短縮効果が逓減する
-#   N=8 以降は割に合わない。
-# - N=4 は「壁時計を実用上 1/3 程度に短縮しつつ、固定コストの multiply を 4 倍に
-#   抑える」バランス点。ubuntu-latest の同時実行枠（無料枠でも 20 並列まで可）にも
-#   十分収まる。
+#   N=8 以降は割に合わない。N=6 は「上限に対する余裕を回復しつつ、固定コストの
+#   multiply を 6 倍に留める」現時点のバランス点。ubuntu-latest の同時実行枠
+#   （無料枠でも 20 並列まで可）にも収まる。
+#
 # - 将来テスト総量が増えて 1 shard が再び長くなった場合は、env.SHARD_TOTAL と
 #   matrix.shard の配列を同じ N に合わせて増やすだけで拡張できる（build.gradle.kts
-#   側はプロパティ駆動のため無改修）。
+#   側はプロパティ駆動のため無改修）。ただし N を増やすのは対症療法であり、総量が
+#   さらに増える局面では Testcontainers のコンテナ再利用（singleton 化）による
+#   固定コスト削減の方が本命であることに留意する。
 #
 # 備考: openapi.json の生成は CI ではなくローカルで行う運用とする。
 #   Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット

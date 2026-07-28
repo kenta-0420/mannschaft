@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.DelegationStatus;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
@@ -38,6 +39,7 @@ class ProxyDelegationServiceTest {
     @Mock private ProxyVoteMotionRepository motionRepository;
     @Mock private ProxyVoteMapper mapper;
     @Mock private com.mannschaft.app.membership.repository.MembershipRepository membershipRepository;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ProxyDelegationService service;
@@ -123,6 +125,11 @@ class ProxyDelegationServiceTest {
             ProxyDelegationEntity delegation = ProxyDelegationEntity.builder()
                     .sessionId(SESSION_ID).delegatorId(USER_ID).status(DelegationStatus.ACCEPTED).build();
             given(delegationRepository.findById(1L)).willReturn(Optional.of(delegation));
+            // 認可のため当該セッションを取得する（scope 管理者判定）。ここではモック AC が no-op で通過。
+            given(sessionService.findSessionOrThrow(SESSION_ID)).willReturn(
+                    ProxyVoteSessionEntity.builder()
+                            .scopeType(com.mannschaft.app.proxyvote.ProxyVoteScopeType.TEAM)
+                            .teamId(5L).status(SessionStatus.OPEN).build());
 
             ReviewDelegationRequest request = new ReviewDelegationRequest("ACCEPTED");
 

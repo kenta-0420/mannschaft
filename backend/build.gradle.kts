@@ -289,6 +289,52 @@ tasks.withType<Test> {
         }
     }
 
+    // =====================================================================
+    // Flyway マイグレーション再生テストの条件付き除外（backend CI 高速化③）
+    // ---------------------------------------------------------------------
+    // -PexcludeMigrationTests=true を受け取ると、Flyway マイグレーション再生テスト
+    // （V1 → 最新までの 150 本超を毎回リプレイして 1 件 assert するクラス群）を除外する。
+    //
+    // 【なぜ必要か】実測（PR #2380）で、これらが各 shard の計測テスト時間の
+    //   72〜88% を占めていた。1 クラス＝テスト 1 件で 60〜113 秒かかる。
+    //   一方これらが検証するのは「マイグレーション SQL 自体の正しさ」であり、
+    //   db/migration/** が変わらない PR では結果が変わり得ない。
+    //
+    // 【抑制ではなく条件付き実行】db/migration/** を触る PR では CI 側が本プロパティ
+    //   を渡さない＝従来どおり全件実行する。加えて backend-nightly-full.yml が
+    //   毎晩フル実行し、除外分がどの PR でも走らないまま腐ることを防ぐ。
+    //   （免罪符化の防止。memory: feedback_baseline_suppression_is_debt）
+    //
+    // 【セレクタ】「.migration. パッケージ配下」かつ「単純クラス名に Flyway を含む」
+    //   の AND を取る。防御的に AND とする理由:
+    //   - パッケージのみだと MigrationPrimaryKeyConventionTest（規約 guard・コンテナ不要）
+    //     や StoragePathMigrationBatchServiceTest（Mockito 単体テスト）まで巻き込む。
+    //   - クラス名 Flyway のみだと FlywayTimestampNamingGuardTest（採番 guard・高速）や
+    //     SharedFileLinkFlywayColumnIT / ProxyInputConsentS3KeyFlywaySchemaTest
+    //     （こちらは @SpringBootTest を使う＝性質が異なる）まで巻き込む。
+    //   AND により対象は 65 クラス。全件が MySQLContainer を自前起動し、
+    //   @SpringBootTest を使わない純 Flyway + 生 JDBC のテストであることを確認済み。
+    // =====================================================================
+    val excludeMigrationTests =
+        (project.findProperty("excludeMigrationTests") as String?)?.toBoolean() ?: false
+    if (excludeMigrationTests) {
+        logger.lifecycle(
+            "[migration] Flyway マイグレーション再生テストを除外する" +
+                "（db/migration/** 無変更のため。フル実行は backend-nightly-full.yml が担保）"
+        )
+        exclude { element ->
+            if (element.isDirectory) return@exclude false
+            val path = element.path
+            if (!path.endsWith(".class")) return@exclude false
+            val simpleName = path
+                .removeSuffix(".class")
+                .substringAfterLast('/')
+                .substringBefore('$')
+            // migration パッケージ配下 かつ 単純クラス名に Flyway を含む → 除外
+            path.contains("/migration/") && simpleName.contains("Flyway")
+        }
+    }
+
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。

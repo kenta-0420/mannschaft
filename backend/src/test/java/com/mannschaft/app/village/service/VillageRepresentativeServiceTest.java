@@ -151,7 +151,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity teamMembership = membership(VillageSubjectType.TEAM, TEAM_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
@@ -198,7 +198,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity orgMembership = membership(VillageSubjectType.ORGANIZATION, ORG_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ELDER_USER_ID)))
                 .willReturn(Optional.of(elderMembership));
         given(membershipRepository.findById(orgMembership.getId())).willReturn(Optional.of(orgMembership));
@@ -232,7 +232,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity villager = membership(VillageSubjectType.USER, VILLAGER_USER_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(VILLAGER_USER_ID)))
                 .willReturn(Optional.of(villager));
 
@@ -254,7 +254,7 @@ class VillageRepresentativeServiceTest {
     @DisplayName("04. grant 失敗 — 実行者が村人でない → VILLAGE_024")
     void grant_notMember_forbidden() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.empty());
 
@@ -277,7 +277,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity userMembership = membership(VillageSubjectType.USER, REPRESENTATIVE_USER_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(userMembership.getId())).willReturn(Optional.of(userMembership));
@@ -303,7 +303,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity teamMembership = membership(VillageSubjectType.TEAM, TEAM_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
@@ -330,7 +330,7 @@ class VillageRepresentativeServiceTest {
         VillageMembershipEntity teamMembership = membership(VillageSubjectType.TEAM, TEAM_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
@@ -377,7 +377,7 @@ class VillageRepresentativeServiceTest {
         VillageRepresentativeEntity rep = representative(membershipId, REPRESENTATIVE_USER_ID);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(representativeRepository.findById(rep.getId())).willReturn(Optional.of(rep));
@@ -410,7 +410,7 @@ class VillageRepresentativeServiceTest {
         UUID repId = UUID.randomUUID();
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(representativeRepository.findById(repId)).willReturn(Optional.empty());
@@ -433,7 +433,7 @@ class VillageRepresentativeServiceTest {
         rep.setRevokedAt(LocalDateTime.now().minusDays(1));
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
                 .willReturn(Optional.of(headmanMembership));
         given(representativeRepository.findById(rep.getId())).willReturn(Optional.of(rep));

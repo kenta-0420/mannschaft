@@ -1,15 +1,20 @@
 package com.mannschaft.app.timeline.controller;
 
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +51,20 @@ class TimelineFeedControllerTest {
 
     private static final Long TEAM_INTERNAL_ID = 10L;
     private static final String TEAM_SLUG = "test-team";
+    private static final Long USER_ID = 100L;
+
+    private MockedStatic<SecurityUtils> securityUtils;
+
+    @BeforeEach
+    void setUpSecurityUtils() {
+        securityUtils = Mockito.mockStatic(SecurityUtils.class);
+        securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+    }
+
+    @AfterEach
+    void tearDownSecurityUtils() {
+        securityUtils.close();
+    }
 
     @Nested
     @DisplayName("getFeed - リゾルバ委譲")
@@ -55,9 +74,9 @@ class TimelineFeedControllerTest {
         @DisplayName("リゾルバで解決した内部ID で getFeed / getPinnedPosts を呼ぶ")
         void resolvesViaResolverThenDelegates() {
             given(scopeIdResolver.resolve("TEAM", TEAM_SLUG)).willReturn(TEAM_INTERNAL_ID);
-            given(postService.getFeed(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), anyInt()))
+            given(postService.getFeed(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of());
-            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID)))
+            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), eq(USER_ID)))
                     .willReturn(List.of());
 
             ResponseEntity<TimelineFeedResponse> response =
@@ -65,8 +84,8 @@ class TimelineFeedControllerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(scopeIdResolver).resolve("TEAM", TEAM_SLUG);
-            verify(postService).getFeed("TEAM", TEAM_INTERNAL_ID, null, 20);
-            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID);
+            verify(postService).getFeed("TEAM", TEAM_INTERNAL_ID, null, 20, USER_ID);
+            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, null, USER_ID);
         }
 
         @Test
@@ -75,9 +94,9 @@ class TimelineFeedControllerTest {
             PostResponse pinnedPost = PostResponse.builder().id(1L).build();
             PostResponse normalPost = PostResponse.builder().id(2L).build();
             given(scopeIdResolver.resolve("PUBLIC", "0")).willReturn(0L);
-            given(postService.getFeed(eq("PUBLIC"), eq(0L), any(), anyInt()))
+            given(postService.getFeed(eq("PUBLIC"), eq(0L), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of(normalPost));
-            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L)))
+            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L), any(), eq(USER_ID)))
                     .willReturn(List.of(pinnedPost));
 
             ResponseEntity<TimelineFeedResponse> response =

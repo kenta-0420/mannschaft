@@ -6,12 +6,14 @@ import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventRegistrationEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventTicketRepository;
 import com.mannschaft.app.event.service.EventCheckinService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.event.service.EventTicketService;
 import com.mannschaft.app.family.service.CareEventNotificationService;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +68,9 @@ class EventCheckinServiceTest {
     @Mock
     private CareEventNotificationService careEventNotificationService;
 
+    @Mock
+    private EventScopeAccessGuard eventScopeAccessGuard;
+
     @InjectMocks
     private EventCheckinService eventCheckinService;
 
@@ -76,6 +81,8 @@ class EventCheckinServiceTest {
     private static final Long EVENT_ID = 1L;
     private static final Long TICKET_ID = 10L;
     private static final Long STAFF_USER_ID = 100L;
+    private static final Long SELF_USER_ID = 200L;
+    private static final Long REGISTRATION_ID = 5L;
     private static final String QR_TOKEN = "valid-qr-token";
 
     private EventTicketEntity createValidTicket() {
@@ -256,7 +263,12 @@ class EventCheckinServiceTest {
                     LocalDateTime.now(), null, LocalDateTime.now()
             );
 
+            EventRegistrationEntity registration = EventRegistrationEntity.builder()
+                    .eventId(EVENT_ID).userId(SELF_USER_ID).ticketTypeId(3L)
+                    .status(RegistrationStatus.APPROVED).quantity(1).build();
+
             given(ticketService.findTicketByQrTokenOrThrow(QR_TOKEN)).willReturn(ticket);
+            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(registration));
             given(checkinRepository.existsByTicketId(any())).willReturn(false);
             given(ticketRepository.save(any(EventTicketEntity.class))).willReturn(ticket);
             given(checkinRepository.save(any(EventCheckinEntity.class))).willAnswer(inv -> {
@@ -269,10 +281,46 @@ class EventCheckinServiceTest {
             given(eventMapper.toCheckinResponse(any(EventCheckinEntity.class))).willReturn(response);
 
             // When
-            CheckinResponse result = eventCheckinService.selfCheckin(request);
+            CheckinResponse result = eventCheckinService.selfCheckin(SELF_USER_ID, request);
 
             // Then
             assertThat(result.getCheckinType()).isEqualTo("SELF");
+        }
+
+        @Test
+        @DisplayName("セルフチェックイン_本人でない_例外スロー")
+        void セルフチェックイン_本人でない_例外スロー() {
+            // Given
+            SelfCheckinRequest request = new SelfCheckinRequest(QR_TOKEN);
+            EventTicketEntity ticket = createValidTicket();
+            EventRegistrationEntity registration = EventRegistrationEntity.builder()
+                    .eventId(EVENT_ID).userId(SELF_USER_ID).ticketTypeId(3L)
+                    .status(RegistrationStatus.APPROVED).quantity(1).build();
+
+            given(ticketService.findTicketByQrTokenOrThrow(QR_TOKEN)).willReturn(ticket);
+            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(registration));
+
+            // When & Then: 実行者(999L)がチケットの本人(SELF_USER_ID)と異なる
+            assertThatThrownBy(() -> eventCheckinService.selfCheckin(999L, request))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("セルフチェックイン_ゲスト参加(userId無し)_例外スロー")
+        void セルフチェックイン_ゲスト参加_例外スロー() {
+            // Given
+            SelfCheckinRequest request = new SelfCheckinRequest(QR_TOKEN);
+            EventTicketEntity ticket = createValidTicket();
+            EventRegistrationEntity guestRegistration = EventRegistrationEntity.builder()
+                    .eventId(EVENT_ID).guestName("ゲスト").guestEmail("guest@example.com").ticketTypeId(3L)
+                    .status(RegistrationStatus.APPROVED).quantity(1).build();
+
+            given(ticketService.findTicketByQrTokenOrThrow(QR_TOKEN)).willReturn(ticket);
+            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(guestRegistration));
+
+            // When & Then
+            assertThatThrownBy(() -> eventCheckinService.selfCheckin(SELF_USER_ID, request))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 

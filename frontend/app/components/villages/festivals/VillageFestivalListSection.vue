@@ -21,7 +21,6 @@ defineProps<{
   statusFilter: StatusFilter
   statusFilterTabs: { value: StatusFilter, i18nKey: string }[]
   canManage: boolean
-  buildBannerUrl: (r2Key: string | null) => string | null
 }>()
 
 const emit = defineEmits<{
@@ -91,8 +90,8 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
       >
         <div class="h-28 bg-surface-100 dark:bg-surface-800 flex items-center justify-center overflow-hidden">
           <img
-            v-if="buildBannerUrl(f.bannerR2Key)"
-            :src="buildBannerUrl(f.bannerR2Key) ?? undefined"
+            v-if="f.bannerUrl"
+            :src="f.bannerUrl"
             :alt="f.title"
             class="w-full h-full object-cover"
           >

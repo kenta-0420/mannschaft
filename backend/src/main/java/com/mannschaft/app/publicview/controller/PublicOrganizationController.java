@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicOrganizationResponse;
 import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,24 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><strong>IDOR / エニュメレーション対策</strong>: PRIVATE / archived / 削除済 / 不在は
  * 一律 {@link com.mannschaft.app.publicview.error.PublicViewErrorCode#PUBLIC_001} (404) を返し
  * 状態を区別しない。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig.java:274 — requestMatchers(GET, "/api/v1/public/organizations/*").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 公開組織ページ。<b>公開設定された組織のみ</b>を抑制版 DTO で返し、不在／非公開／削除済みは一律
+ * 404 で状態を区別しない（IDOR・エニュメレーション対策）。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic
 @RestController
 @RequestMapping("/api/v1/public/organizations")
 @Tag(name = "公開組織ページ API (F19.1)")

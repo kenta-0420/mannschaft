@@ -3,6 +3,8 @@ package com.mannschaft.app.chat.event;
 import com.mannschaft.app.admin.service.AdminBusinessAlertService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class InquiryChatEventListener {
     private final NotificationService notificationService;
     private final StringRedisTemplate redisTemplate;
     private final AdminBusinessAlertService adminBusinessAlertService;
+    private final NotificationDispatchService notificationDispatchService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -64,20 +67,27 @@ public class InquiryChatEventListener {
                 continue;
             }
             try {
-                notificationService.createNotification(
+                // sourceType=CHAT_MESSAGE の実体はメッセージ ID。従来はチャンネル ID を渡しており、
+                // F00 ChatMessageVisibilityResolver が対象を解決できず全受信者で visibility deny になっていた。
+                NotificationEntity created = notificationService.createNotification(
                         recipientId,
                         "INQUIRY_RECEIVED",
                         NotificationPriority.HIGH,
                         title,
                         body,
                         "CHAT_MESSAGE",
-                        event.getChannelId(),
+                        event.getMessageId(),
                         NotificationScopeType.TEAM,
                         event.getTeamId(),
                         "/teams/" + event.getTeamId() + "/chat?channel=" + event.getChannelId(),
                         event.getActorUserId()
                 );
                 adminBusinessAlertService.invalidateCache(recipientId);
+                // DB 作成した通知を WS/Push でリアルタイム配信する（他の通知経路と同一パターン）。
+                // visibility deny 等で通知が作られなかった場合 (null) は配信しない。
+                if (created != null) {
+                    notificationDispatchService.dispatch(created);
+                }
             } catch (Exception e) {
                 log.warn("問い合わせ通知の送信に失敗しました: recipientId={}, channelId={}", recipientId, event.getChannelId(), e);
             }

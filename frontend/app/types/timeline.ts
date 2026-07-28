@@ -4,6 +4,12 @@ export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LI
 export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
 export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
 
+/**
+ * 村行事の自動投稿種別（F17.2 Wave2 ①フィード還流・§3.2）。
+ * 非 null なら村の行事案内名義のシステム投稿。通常投稿は null/undefined。
+ */
+export type SystemPostType = 'EVENT_CREATED' | 'EVENT_UPCOMING' | 'MEETUP_CONFIRMED' | 'FESTIVAL_STARTED'
+
 export const CONTENT_TRUNCATE_LENGTH = 500
 
 export interface TimelineUser {
@@ -22,30 +28,60 @@ export interface PostedAs {
   avatarUrl?: string
 }
 
-export interface TimelineAttachment {
-  id: number
-  attachmentType: TimelineAttachmentType
+/** 添付ファイル本体（file_key はR2生キー。表示URLは image/video 側の署名URLを使う）。 */
+export interface TimelineAttachmentFile {
   fileKey?: string
+  originalFilename?: string
   fileSize?: number
   mimeType?: string
-  url?: string
-  thumbnailUrl?: string
+}
+
+/**
+ * 画像添付。url/thumbnailUrl はBEが MediaUrlResolver で解決した署名付き表示URL（issue #2424）。
+ * DBには生キーしか無いためBEが署名して返す（FEはR2を署名できない）。画像は別サムネイルを
+ * 持たないため thumbnailUrl は url と同一値。
+ */
+export interface TimelineAttachmentImage {
   imageWidth?: number
   imageHeight?: number
+  url?: string
+  thumbnailUrl?: string
+}
+
+/** 動画添付（videoUrl/videoThumbnailUrl は署名URLまたは外部URL）。 */
+export interface TimelineAttachmentVideo {
   videoUrl?: string
   videoThumbnailUrl?: string
-  videoThumbnailKey?: string
   videoTitle?: string
+  videoThumbnailKey?: string
   videoDurationSeconds?: number
   videoCodec?: string
   videoWidth?: number
   videoHeight?: number
   videoProcessingStatus?: VideoProcessingStatus
+}
+
+/** リンクプレビュー添付（OGP）。 */
+export interface TimelineAttachmentLink {
   linkUrl?: string
   ogTitle?: string
   ogDescription?: string
   ogImageUrl?: string
   ogSiteName?: string
+}
+
+/**
+ * タイムライン投稿の添付。BE の {@code TimelineAttachmentResponse}（ネスト形 file/image/video/link）と
+ * 1:1 対応する。生成型 {@code components['schemas']['TimelineAttachmentResponse']} と同形。
+ */
+export interface TimelineAttachment {
+  id: number
+  attachmentType: TimelineAttachmentType
+  sortOrder?: number
+  file?: TimelineAttachmentFile
+  image?: TimelineAttachmentImage
+  video?: TimelineAttachmentVideo
+  link?: TimelineAttachmentLink
 }
 
 export interface TimelinePollOption {
@@ -118,6 +154,12 @@ export interface TimelinePostResponse {
   content: PostContentDto
   stats: PostStatsDto
   audit: PostAuditDto
+  /**
+   * 村行事のシステム自動投稿種別（F17.2 Wave2 §3.9(b)）。BE: `PostResponse.systemPostType`。
+   * 非 null/undefined のときは `user`/`postedAs` とも null（投稿者不在）なので、
+   * 表示名・アバターは i18n の固定表示（`village.systemPost.authorName`）にフォールバックする。
+   */
+  systemPostType?: SystemPostType | null
   // --- フィード固有の enrichment フィールド（バックエンドから付加されるが PostResponse 外） ---
   user: TimelineUser | null
   postedAs: PostedAs | null

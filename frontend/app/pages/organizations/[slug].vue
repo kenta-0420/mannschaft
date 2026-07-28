@@ -232,8 +232,17 @@ async function loadShellData() {
     fetchAncestors(),
     fetchChildren(true),
   ])
-  // ウィジェット可視性設定を取得（非メンバー・サポーターは403になるため catch して空のまま）
-  fetchWidgetVisibility().catch(() => {})
+  // ウィジェット可視性設定を取得。非メンバー・サポーターは 403/401 が想定内（装飾的な
+  // visible:false のみ失われ、ロールゲートは defaultMinRole で生存）なので静かにフォールバック。
+  // それ以外の実エラーは既定表示に落ちる旨をログで表面化する（症状を隠さない）。
+  fetchWidgetVisibility().catch((e) => {
+    const status = (e as { statusCode?: number; response?: { status?: number }; status?: number })
+      ?.statusCode ?? (e as { response?: { status?: number } })?.response?.status
+      ?? (e as { status?: number })?.status
+    if (status !== 403 && status !== 401) {
+      console.warn('[shell] ウィジェット可視性の取得に失敗（既定表示にフォールバック）', e)
+    }
+  })
 }
 
 // シェル対象ルートに居るときだけデータをロードする。

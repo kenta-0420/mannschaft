@@ -17,8 +17,10 @@ const hasAnyInquiryChannel = computed(() =>
 async function fetchSummary() {
   try {
     const res = await getSummary()
-    teams.value = res.data.teams
-    totalPending.value = res.data.totalPending
+    // 実応答は二重ネスト（ApiResponse.data → AdminBusinessAlertSummaryResponse.data）。
+    // 型定義（~/types/admin-business-alert.ts）参照。BA-003 実機E2Eで検証済みの形状。
+    teams.value = res.data.data.teams
+    totalPending.value = res.data.data.totalPending
   }
   catch {
     // サイレント - 取得失敗時は前回データをそのまま表示
@@ -45,7 +47,7 @@ const notificationStore = useNotificationStore()
 watch(
   () => notificationStore.latestNotification,
   (notification) => {
-    if (notification && ALERT_TYPES.includes(notification.notificationType)) {
+    if (notification?.notificationType && ALERT_TYPES.includes(notification.notificationType)) {
       fetchSummary()
     }
   },

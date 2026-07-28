@@ -2,10 +2,12 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.reflection.RecallDirection;
 import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.customizers.ParameterCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -26,6 +28,35 @@ import java.util.stream.Collectors;
  */
 @Configuration
 public class OpenApiConfig {
+
+    /**
+     * 型付きパス変数 {@link OrgScopeId} / {@link TeamScopeId}（課題 #12・案A）を、OpenAPI 上では
+     * 素の {@code Long}（{@code integer/int64}）として出力する。
+     *
+     * <p><b>なぜ {@code ParameterCustomizer} なのか（根本原因）:</b> これらの型には
+     * {@code Converter<String, OrgScopeId>} / {@code Converter<String, TeamScopeId>} が登録されている。
+     * springdoc はパス変数のスキーマを解決する際、登録済みコンバータの<b>ソース型（String）</b>を見て
+     * {@code {type: string}} と推論する。この推論はパラメータ処理段で行われ、モデル層の型置換
+     * （{@code SpringDocUtils.replaceWithClass}）を<b>素通り</b>するため、置換方式では
+     * {@code {orgId}}/{@code {teamId}} が {@code integer} から {@code string} へドリフトしてしまう
+     * （当初 replaceWithClass を試みたが CI の OpenAPI Drift Check で string 化が判明）。
+     * そこでパラメータ処理の正当な拡張点である {@code ParameterCustomizer} で、対象型のパス変数の
+     * スキーマを {@code integer/int64} に明示上書きし、従来（{@code Long} 時代）の表現を維持して
+     * 生成物のドリフトを根治する。対象は本 2 型のパス変数のみ（3 コントローラ計 11 箇所）。</p>
+     */
+    @Bean
+    public ParameterCustomizer scopeIdParameterCustomizer() {
+        return (parameterModel, methodParameter) -> {
+            if (parameterModel == null) {
+                return null;
+            }
+            Class<?> type = methodParameter.getParameterType();
+            if (type == OrgScopeId.class || type == TeamScopeId.class) {
+                parameterModel.setSchema(new IntegerSchema().format("int64"));
+            }
+            return parameterModel;
+        };
+    }
 
     /**
      * servers フィールドを相対パス {@code "/"} に正規化する。

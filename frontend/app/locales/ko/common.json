@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+    },
+    "mobile": {
+      "backToList": "채널 목록으로 돌아가기",
+      "noChannels": "아직 채널이 없습니다",
+      "createChannel": "채널 만들기"
     }
   },
   "button": {
@@ -223,6 +228,7 @@
     "server_retry": "잠시 후 다시 시도해 주세요.",
     "network": "네트워크 오류가 발생했습니다",
     "unauthorized": "로그인이 필요합니다",
+    "section_load_failed": "이 항목을 불러오지 못했습니다. 새로고침해 주세요.",
     "unknown": "오류가 발생했습니다",
     "COMMON_001": "입력 내용에 오류가 있습니다",
     "COMMON_002": "이 작업을 수행할 권한이 없습니다",
@@ -463,7 +469,15 @@
     "writeReply": "답글 작성",
     "replySubmit": "답글",
     "noReplies": "아직 답글이 없습니다",
-    "loadMoreReplies": "더 보기"
+    "loadMoreReplies": "더 보기",
+    "composerPlaceholder": {
+      "TEAM": "팀에 게시...",
+      "VILLAGE": "마을에 게시...",
+      "ORGANIZATION": "조직에 게시...",
+      "PUBLIC": "지금 무슨 일이 있나요?"
+    },
+    "submitLabel": "게시",
+    "pollOptionsCount": "{count}개 선택지"
   },
   "gallery": {
     "title": "갤러리",
@@ -1431,7 +1445,9 @@
       "leave_action": "나가기",
       "load_error_title": "정보를 가져올 수 없습니다",
       "load_error_body": "잠시 후 다시 시도해 주세요. 권한이 없으면 표시되지 않을 수 있습니다.",
-      "back_to_dashboard": "대시보드로 돌아가기"
+      "back_to_dashboard": "대시보드로 돌아가기",
+      "retry": "다시 시도",
+      "slow_loading": "로딩이 지연되고 있습니다"
     }
   },
   "teamHub": {
@@ -1549,12 +1565,17 @@
       "feedback": "피드백",
       "reports": "리포트",
       "advertisers": "광고주 관리",
+      "adRateCards": "광고 요금 카드",
+      "adCreditLimitRequests": "광고 여신 한도 신청",
+      "affiliateSettings": "제휴 설정",
       "auditLogs": "감사 로그",
       "shiftBudget": "교대 예산",
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서",
       "gdprPurge": "GDPR 삭제 현황",
-      "feedbackInbox": "의견함 (전체)"
+      "feedbackInbox": "의견함 (전체)",
+      "billing": "결제 마스터 관리",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "관리자 위장 중: {label}",

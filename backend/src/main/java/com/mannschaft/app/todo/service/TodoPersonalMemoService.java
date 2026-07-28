@@ -3,11 +3,12 @@ package com.mannschaft.app.todo.service;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.todo.TodoErrorCode;
+import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.PersonalMemoRequest;
 import com.mannschaft.app.todo.dto.PersonalMemoResponse;
 import com.mannschaft.app.todo.entity.TodoPersonalMemoEntity;
 import com.mannschaft.app.todo.repository.TodoPersonalMemoRepository;
-import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,17 +26,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class TodoPersonalMemoService {
 
     private final TodoPersonalMemoRepository personalMemoRepository;
-    private final TodoRepository todoRepository;
+    private final TodoAccessGuard todoAccessGuard;
 
     /**
      * 個人メモを取得する（本人のみ）。
      *
-     * @param todoId 対象TODO ID
-     * @param userId 操作ユーザーID
+     * @param todoId    対象TODO ID
+     * @param scopeType path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   path 内部スコープ ID（内部 teamId / orgId）
+     * @param userId    操作ユーザーID
      * @return 個人メモ
      */
-    public ApiResponse<PersonalMemoResponse> getPersonalMemo(Long todoId, Long userId) {
-        verifyTodoExists(todoId);
+    public ApiResponse<PersonalMemoResponse> getPersonalMemo(Long todoId,
+                                                             TodoScopeType scopeType, Long scopeId,
+                                                             Long userId) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, userId);
         TodoPersonalMemoEntity memo = personalMemoRepository.findByTodoIdAndUserId(todoId, userId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.PERSONAL_MEMO_NOT_FOUND));
         return ApiResponse.of(toResponse(memo));
@@ -44,15 +50,20 @@ public class TodoPersonalMemoService {
     /**
      * 個人メモをUPSERTする（存在すれば UPDATE、なければ INSERT）。
      *
-     * @param todoId  対象TODO ID
-     * @param userId  操作ユーザーID
-     * @param request 作成・更新リクエスト
+     * @param todoId    対象TODO ID
+     * @param scopeType path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   path 内部スコープ ID（内部 teamId / orgId）
+     * @param userId    操作ユーザーID
+     * @param request   作成・更新リクエスト
      * @return 作成・更新されたメモ
      */
     @Transactional
-    public ApiResponse<PersonalMemoResponse> upsertPersonalMemo(Long todoId, Long userId,
+    public ApiResponse<PersonalMemoResponse> upsertPersonalMemo(Long todoId,
+                                                                  TodoScopeType scopeType, Long scopeId,
+                                                                  Long userId,
                                                                   PersonalMemoRequest request) {
-        verifyTodoExists(todoId);
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, userId);
 
         TodoPersonalMemoEntity memo = personalMemoRepository
                 .findByTodoIdAndUserId(todoId, userId)
@@ -75,12 +86,15 @@ public class TodoPersonalMemoService {
     /**
      * 個人メモを物理削除する。
      *
-     * @param todoId 対象TODO ID
-     * @param userId 操作ユーザーID
+     * @param todoId    対象TODO ID
+     * @param scopeType path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   path 内部スコープ ID（内部 teamId / orgId）
+     * @param userId    操作ユーザーID
      */
     @Transactional
-    public void deletePersonalMemo(Long todoId, Long userId) {
-        verifyTodoExists(todoId);
+    public void deletePersonalMemo(Long todoId, TodoScopeType scopeType, Long scopeId, Long userId) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, userId);
         // 存在確認（存在しなければ404）
         personalMemoRepository.findByTodoIdAndUserId(todoId, userId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.PERSONAL_MEMO_NOT_FOUND));
@@ -90,14 +104,6 @@ public class TodoPersonalMemoService {
     }
 
     // --- プライベートメソッド ---
-
-    /**
-     * TODOの存在を確認する。
-     */
-    private void verifyTodoExists(Long todoId) {
-        todoRepository.findByIdAndDeletedAtIsNull(todoId)
-                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
-    }
 
     /**
      * エンティティをレスポンスDTOに変換する。

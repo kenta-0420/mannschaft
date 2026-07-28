@@ -41,8 +41,14 @@
 | PUT | `/api/v1/organizations/{slug}/members/{userId}/permission-groups` | 必要（ADMIN）| 組織 DEPUTY_ADMIN / MEMBER への権限グループ一括設定 |
 | GET | `/api/v1/teams/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象チームでの権限確認用）|
 | GET | `/api/v1/organizations/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象組織での権限確認用）|
-| POST | `/api/v1/teams/{slug}/transfer-ownership` | 必要（ADMIN）| チーム ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
-| POST | `/api/v1/organizations/{slug}/transfer-ownership` | 必要（ADMIN）| 組織 ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers` | 必要（ADMIN）| チーム オーナー委譲を打診（承諾型オファー作成・PENDING）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept` | 必要（指名相手）| 委譲を承諾（対象→ADMIN、発行者→MEMBER 降格を実行）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline` | 必要（指名相手）| 委譲を辞退（ロール不変）|
+| DELETE | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}` | 必要（発行者/ADMIN）| 委譲オファーを取消（ロール不変）|
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers` | 必要（ADMIN）| 組織 オーナー委譲を打診（team と同一仕様）|
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept` | 必要（指名相手）| 組織委譲を承諾 |
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline` | 必要（指名相手）| 組織委譲を辞退 |
+| DELETE | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}` | 必要（発行者/ADMIN）| 組織委譲オファーを取消 |
 | GET | `/api/v1/permissions` | 必要（ADMIN+）| パーミッションカタログ一覧 |
 | GET | `/api/v1/me/teams` | 必要 | 自分が所属するチーム一覧（ロール・参加日時付き）|
 | GET | `/api/v1/me/organizations` | 必要 | 自分が所属する組織一覧（ロール・参加日時付き）|
@@ -1016,36 +1022,32 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `POST /api/v1/teams/{slug}/transfer-ownership`
+#### オーナー委譲（承諾型・2ステップ / 2026-07-18 承諾型化）
 
-ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユーザー→ADMIN」「自分→DEPUTY_ADMIN」を同時に実行する。
+> **⚠️ 旧即時 API の廃止**: 旧 `POST /api/v1/teams/{slug}/transfer-ownership`（押した瞬間に即時昇格・降格）は **廃止し、承諾型の 2 ステップ API に置き換える**。旧エンドポイントは後方互換の観点から一時的に「内部で PENDING オファーを作成して 201 を返す」ラッパーとして残すことも可能だが、既定は **廃止（410 Gone または新エンドポイントへ 308 誘導）** とし、FE を新 API へ全面移行する。ビジネスロジックは [03_business_logic.md「オーナー委譲 承諾フロー（2ステップ・承諾型）」](03_business_logic.md) を参照。
+
+##### `POST /api/v1/teams/{slug}/transfer-ownership-offers`（打診）
+
+ADMIN が別メンバーへオーナー委譲を打診する。この時点ではロールは変わらず PENDING オファーを作成するのみ。
 
 **リクエストボディ**
 ```json
-{
-  "target_user_id": 42
-}
+{ "targetUserId": 42 }
 ```
+> **パラメータ名**: BE は `targetUserId`（旧 `target_user_id` から camelCase 統一）。FE composable が旧来 `newAdminUserId` を送っていた不一致は本承諾型化に伴い `targetUserId` へ統一する（03_business_logic.md 既知課題参照）。
 
-**レスポンス（200 OK）**
+**レスポンス（201 Created）**
 ```json
 {
   "data": {
-    "new_admin": {
-      "user_id": 42,
-      "display_name": "田中太郎",
-      "role": "ADMIN"
-    },
-    "previous_admin": {
-      "user_id": 1,
-      "display_name": "佐藤一郎",
-      "role": "DEPUTY_ADMIN"
-    }
+    "offerId": "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "status": "PENDING",
+    "target": { "user_id": 42, "display_name": "田中太郎" },
+    "issuedBy": { "user_id": 1, "display_name": "佐藤一郎" },
+    "expiresAt": "2026-07-25T09:00:00Z"
   }
 }
 ```
-
-> - `POST /organizations/{slug}/transfer-ownership` も同一仕様（スコープが組織に変わるのみ）
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1053,8 +1055,38 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 | 401 | 未認証 |
 | 403 | 操作者が ADMIN でない |
 | 404 | チーム/組織が存在しない / 論理削除済み / 対象ユーザーがメンバーでない |
-| 422 | 対象ユーザーが 2FA 未設定（ADMIN 昇格には 2FA 必須）|
-| 422 | アーカイブ済みチーム/組織 |
+| 409 | 同一スコープに未処理（PENDING）のオファーが既存 |
+| 422 | 対象ユーザーが 2FA 未設定 / 操作者 == 対象 / アーカイブ済み |
+
+##### `POST /api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept`（承諾＝実行）
+
+**指名相手本人のみ** が承諾できる。承諾で初めて「対象→ADMIN 昇格」「発行者→MEMBER 降格」を実行する。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "new_admin":      { "user_id": 42, "display_name": "田中太郎", "role": "ADMIN" },
+    "previous_admin": { "user_id": 1,  "display_name": "佐藤一郎", "role": "MEMBER" }
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 401 | 未認証 |
+| 403 | **実行ユーザー ≠ オファーの指名相手（宛先照合 = IDOR 防止）** |
+| 409 | オファーが PENDING でない（既に承諾/辞退/取消済み）/ 発行者が既に ADMIN でない |
+| 410 | オファーが期限切れ（EXPIRED）|
+| 422 | 実行ユーザーが 2FA 未設定 / アーカイブ済み |
+
+##### `POST .../transfer-ownership-offers/{offerId}/decline`（辞退）／`DELETE .../transfer-ownership-offers/{offerId}`（取消）
+
+- **decline**: 指名相手本人のみ。`status=DECLINED`。ロール不変。403 は宛先不一致。
+- **DELETE（取消）**: 発行者または対象スコープ ADMIN のみ。`status=CANCELLED`。ロール不変。
+
+> - `POST /organizations/{slug}/transfer-ownership-offers`（および accept/decline/DELETE）も同一仕様（スコープが組織に変わるのみ）
 
 ---
 

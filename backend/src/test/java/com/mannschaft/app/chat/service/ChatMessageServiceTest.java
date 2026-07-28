@@ -17,8 +17,10 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -84,6 +87,10 @@ class ChatMessageServiceTest {
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
+    /** 裏目付A: EVENT_CHAT の閲覧・投稿認可（イベントスコープ・メンバー判定）。 */
+    @Mock
+    private EventScopeAccessGuard eventScopeAccessGuard;
+
     /** 送信者の表示名・アバター解決用（common 経由・sender 付与・N+1 回避の一括解決）。 */
     @Mock
     private com.mannschaft.app.common.NameResolverService nameResolver;
@@ -95,6 +102,28 @@ class ChatMessageServiceTest {
     private static final Long MESSAGE_ID = 10L;
     private static final Long SENDER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
+
+    /**
+     * 認可根治 Wave6: {@code checkChannelViewAccess} / {@code checkChannelPostAccess} が
+     * 通常チャンネルでチャンネルメンバーシップを要求するようになったため、
+     * 本テストの既定シナリオ（＝正当なメンバーによる操作）が成立するよう既定スタブを置く。
+     *
+     * <p>認可そのものの検証は実 DB を使う {@code ChatChannelAccessScopeContractIT}（契約テスト）が担う。
+     * ここは「認可を通過した後のドメインロジック」を検証する層と役割分担する。</p>
+     *
+     * <p>{@code lenient()} 必須: 編集・削除・大会チャット系など認可検査に到達しないテストが多数あり、
+     * strict stub のままだと {@code UnnecessaryStubbingException} で一斉に落ちる。</p>
+     */
+    @BeforeEach
+    void setUpDefaultChannelAccess() {
+        // createChannel() は id 未設定（null）のため anyLong() ではなく any() で受ける。
+        lenient().when(memberRepository.existsByChannelIdAndUserId(any(), any())).thenReturn(true);
+        lenient().when(channelService.findChannelOrThrow(any())).thenReturn(createChannel());
+        // 裏目付A: VILLAGE_LOBBY / EVENT_CHAT も既定は「正当なメンバー」として通す
+        //（非メンバー 403 の検証は実 DB を使う ChatChannelAccessScopeContractIT が担う）。
+        lenient().when(postingIdentityService.isUserVillageMember(any(), any())).thenReturn(true);
+        lenient().when(eventScopeAccessGuard.isEventScopeMember(any(), any())).thenReturn(true);
+    }
 
     private ChatChannelEntity createChannel() {
         return ChatChannelEntity.builder()
@@ -235,6 +264,28 @@ class ChatMessageServiceTest {
             // then: 添付保存後に recordAttachmentUpload が呼ばれる
             verify(chatAttachmentService).recordAttachmentUpload(
                     eq(channel), any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class), eq(SENDER_ID));
+        }
+
+        @Test
+        @DisplayName("【未読カウント根治・red先行】メッセージ送信で送信者以外の全メンバーの未読カウントが一括インクリメントされる")
+        void 送信者以外のメンバーの未読カウントが一括インクリメントされる() {
+            // given
+            SendMessageRequest req = new SendMessageRequest("未読カウント検証", null, null, null);
+            ChatChannelEntity channel = createChannel();
+            ChatMessageEntity saved = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: dead code 化していた incrementUnreadCount() の代わりに、
+            // 送信者以外の全メンバーの unread_count を一括 UPDATE するリポジトリメソッドが呼ばれること
+            // （N+1 回避のためメンバー数に依存しない1クエリで実装する設計）
+            verify(memberRepository).incrementUnreadCountForOthers(CHANNEL_ID, SENDER_ID);
         }
     }
 
@@ -428,7 +479,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, 10);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 10);
 
             // then
             assertThat(result).isNotNull();
@@ -452,7 +503,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, cursor, 10);
 
             // then
             assertThat(result).isNotNull();
@@ -478,7 +529,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, 2);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 2);
 
             // then
             assertThat(result.getMeta().isHasNext()).isTrue();
@@ -494,7 +545,7 @@ class ChatMessageServiceTest {
 
             // when
             CursorPagedResponse<MessageResponse> result =
-                    chatMessageService.listMessages(CHANNEL_ID, null, null);
+                    chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, null);
 
             // then
             assertThat(result).isNotNull();
@@ -510,7 +561,7 @@ class ChatMessageServiceTest {
                     .willReturn(List.of());
 
             // when
-            chatMessageService.listMessages(CHANNEL_ID, null, 200);
+            chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 200);
 
             // then
             verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
@@ -1091,7 +1142,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+            chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, cursor, 10);
 
             // then: 3 メッセージでも表示名・アバターの一括解決はそれぞれ 1 回のみ（メッセージ数に依存しない）
             verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());

@@ -254,3 +254,18 @@ CLAUDE.md 障害対応原則（症状を隠さない・対処療法禁止）に�
 - 各 Query Service が認可違反（COMMON_002）を内部で投げた場合 → **API 全体が 403**（縮退しないことの検証）。
 - N+1 検出: 各ドメイン×プレビュー3件で発行 SQL 数が上限以下（Datasource プロキシでカウント）。
 - 各 Query Service の WHERE にスコープ絞り込み（`team_id` / `issuer_scope_id`）が含まれること（テナント越境防止の番人テスト）。
+
+---
+
+## 9. 個人横断集約（ダッシュボード司令塔第二弾・別軍議）による本 API の再利用
+
+ADHD-UX戦役 第四陣「ダッシュボード司令塔化 第二弾」（本書とは別軍議・[F22.1_swipe_scope_dashboard](../F22.1_swipe_scope_dashboard/README.md) の個人司令塔ウィジェット拡張）で、複数チーム/組織を管理するユーザー向けに `AdminActionRequiredFacade` を**スコープ横断で再利用**する新規エンドポイントを追加した。
+
+| 状態 | メソッド | パス | 認証 | 説明 |
+|------|---------|-----|------|------|
+| 🟢 | GET | `/api/v1/dashboard/admin-action-required` | 必要（本人のみ） | 呼び出しユーザーが ADMIN/DEPUTY_ADMIN として管理する**全チーム・全組織**の承認待ちをフラットリストで横断集約 |
+
+- 実体: `com.mannschaft.app.dashboard.service.PersonalAdminActionRequiredService`（Controller: `PersonalAdminActionRequiredController`）。`PersonalActionRequiredService`（F22.1 個人横断「要対応」）を金型とし、認可対象を ADMIN/DEPUTY_ADMIN スコープのみに絞る点が異なる。
+- スコープ列挙: `AccessControlService#findAdminOrAboveScopeIds`（新設）が `user_roles` を 1 回クエリしロール ID でメモリフィルタするため、管理スコープ数 N に対し N+1 を発生させない。
+- 各スコープごとに本書の `AdminActionRequiredFacade#getAdminActionRequired` を `CompletableFuture` で並行呼び出しし（per-scope `checkAdminOrAbove` による二重防御は温存）、`total_pending` を合算・`items` をフラット化して返す。1 スコープの取得失敗は当該スコープのみ 0 件に縮退し他スコープは返す（本書 §4.3 の縮退方針を踏襲）。
+- `/team/{slug}/admin-action-required`・`/organization/{slug}/admin-action-required`（本書 §2）は**変更なし**。個人横断エンドポイントは既存 API を消費するのみで、`AdminActionRequiredFacade` 自体・DTO 構造には手を入れない。

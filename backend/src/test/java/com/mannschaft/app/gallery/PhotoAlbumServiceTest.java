@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -56,6 +57,9 @@ class PhotoAlbumServiceTest {
     /** F00 Phase E-5: ContentVisibilityChecker モック。 */
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave3-B5: 書込CRUD の scope 認可用モック。 */
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private PhotoAlbumService service;
@@ -211,8 +215,20 @@ class PhotoAlbumServiceTest {
         void 削除_正常_論理削除() {
             PhotoAlbumEntity entity = PhotoAlbumEntity.builder().teamId(TEAM_ID).title("削除用").build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(entity));
-            service.deleteAlbum(ALBUM_ID);
+            service.deleteAlbum(ALBUM_ID, USER_ID);
             verify(albumRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("異常系: ADMIN権限なしはBusinessException（認可根治戦役 Wave3-B5）")
+        void 削除_非ADMIN_例外() {
+            PhotoAlbumEntity entity = PhotoAlbumEntity.builder().teamId(TEAM_ID).title("削除用").build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.deleteAlbum(ALBUM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 }

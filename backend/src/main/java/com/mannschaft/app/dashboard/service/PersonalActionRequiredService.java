@@ -138,6 +138,7 @@ public class PersonalActionRequiredService {
                     scopeName,
                     c.id() != null ? String.valueOf(c.id()) : null,
                     c.title(),
+                    c.circulatedAt(),  // 回覧日時（per-scope facade の値をそのまま通す）
                     deadlineAt,
                     null  // startsAt は circulation では使用しない
             ));
@@ -153,6 +154,7 @@ public class PersonalActionRequiredService {
                     scopeName,
                     s.id() != null ? String.valueOf(s.id()) : null,
                     s.title(),
+                    null,  // circulatedAt は survey では使用しない
                     s.deadline(),
                     null  // startsAt は survey では使用しない
             ));
@@ -168,6 +170,7 @@ public class PersonalActionRequiredService {
                     scopeName,
                     a.scheduleId() != null ? String.valueOf(a.scheduleId()) : null,
                     a.eventTitle(),
+                    null,          // circulatedAt は attendance では使用しない
                     null,          // deadline は attendance では使用しない
                     a.startsAt()
             ));

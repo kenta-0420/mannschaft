@@ -2,7 +2,11 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.MonshoUploadUrlResponse;
 import com.mannschaft.app.village.dto.VillageCreateRequest;
 import com.mannschaft.app.village.dto.VillageResponse;
 import com.mannschaft.app.village.dto.VillageSearchResponse;
@@ -30,6 +34,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -71,11 +76,24 @@ public class VillageService {
     /** 村作成レートリミット（件/日/ユーザー） */
     private static final int VILLAGE_CREATION_DAILY_LIMIT = 3;
 
+    /** 村紋（monsho）アップロードで許可する MIME タイプ（#2355）。 */
+    private static final java.util.Set<String> ALLOWED_MONSHO_MIME =
+            java.util.Set.of("image/jpeg", "image/png", "image/webp");
+
+    /** 村紋アップロードのファイルサイズ上限（バイト）。ProfileMedia ICON=5MB を手本（#2355）。 */
+    private static final long MONSHO_MAX_BYTES = 5L * 1024 * 1024;
+
+    /** 村紋アップロード用 presigned URL の有効期限（秒）（#2355）。 */
+    private static final long MONSHO_UPLOAD_TTL_SECONDS = 600L;
+
     private final VillageRepository villageRepository;
     private final VillageSearchRepository villageSearchRepository;
     private final VillageMembershipRepository membershipRepository;
     private final UserVillagePinRepository pinRepository;
     private final AccessControlService accessControlService;
+    private final R2StorageService r2StorageService;
+    /** 生の R2 キーを表示用の署名付き URL へ解決する共通部品（#2355 / VillagePinService と同方式）。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ─────────────────────────────────────────────
     // 作成
@@ -287,6 +305,73 @@ public class VillageService {
         return entity;
     }
 
+    /**
+     * 村紋（monsho）アップロード用の presigned PUT URL を発行する（F17 Phase 2 U7 / #2355）。
+     *
+     * <p>HEADMAN または SYSTEM_ADMIN のみ実行可能。MIME タイプ（image/jpeg / image/png / image/webp）と
+     * ファイルサイズ上限を検証したうえで、R2 キー規約
+     * {@code village/{villageId}/monsho/{UUID.randomUUID()}.{ext}} に従いキーを組み立て、
+     * {@code r2StorageService.generateUploadUrl} で署名付き PUT URL を払い出す。</p>
+     *
+     * <p><strong>検証順序（IDOR 配慮）:</strong> 認可（村の存在確認 → HEADMAN/SYSTEM_ADMIN 判定）を
+     * MIME/サイズ検証より必ず先に行う。これにより不正入力でも他人の村の存在有無を漏らさない。</p>
+     *
+     * <p><strong>読取との差異:</strong> 本メソッドは PUT アップロード用の presigned URL を発行するのみ。
+     * 返却する {@code r2Key} は生キーであり、本メソッド自身は読取（表示）側の署名 URL 化（presigned GET）を
+     * 行わない。読取は別途 {@code MediaUrlResolver} が村取得 API（{@code monshoUrl} 等）で presigned GET URL
+     * として解決して返す。FE は署名 URL をそのまま {@code <img src>} に渡すのみで、公開 URL 組み立ては行わない。</p>
+     *
+     * @param villageId       対象村
+     * @param contentType     アップロードする画像の Content-Type
+     * @param fileSize        アップロードする画像のバイト数
+     * @param requesterUserId 実行者ユーザー ID
+     * @return presigned PUT URL / R2 キー / 有効期限（秒）
+     */
+    @Transactional(readOnly = true)
+    public MonshoUploadUrlResponse generateMonshoUploadUrl(
+            UUID villageId, String contentType, long fileSize, Long requesterUserId) {
+        // 1〜2. 認可を先に（IDOR 配慮: 不正入力でも村の存在有無を漏らさない）
+        VillageEntity entity = findActiveOrThrow(villageId);
+        requireHeadmanOrSystemAdmin(entity, requesterUserId);
+
+        // 3. MIME 検証
+        if (contentType == null || !ALLOWED_MONSHO_MIME.contains(contentType)) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        }
+
+        // 4. サイズ検証（0 以下・上限超過は不正）
+        if (fileSize <= 0 || fileSize > MONSHO_MAX_BYTES) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        }
+
+        // 5〜6. R2 キー組み立て（village/{villageId}/monsho/{uuid}.{ext}）
+        String ext = resolveMonshoExtension(contentType);
+        String r2Key = String.format("village/%s/monsho/%s.%s", villageId, UUID.randomUUID(), ext);
+
+        // 7. presigned PUT URL 発行（TTL=600 秒）
+        PresignedUploadResult result = r2StorageService.generateUploadUrl(
+                r2Key, contentType, Duration.ofSeconds(MONSHO_UPLOAD_TTL_SECONDS));
+
+        log.info("村紋アップロードURL発行: villageId={}, byUser={}", villageId, requesterUserId);
+
+        // 8. レスポンス組み立て
+        return new MonshoUploadUrlResponse(
+                result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
+    }
+
+    /**
+     * 村紋の Content-Type から拡張子を解決する（#2355）。
+     * 許可済み MIME のみ呼ばれる前提（未知の型は呼び出し側で 400 済み）。
+     */
+    private String resolveMonshoExtension(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
+        };
+    }
+
     // ─────────────────────────────────────────────
     // 検索
     // ─────────────────────────────────────────────
@@ -320,8 +405,19 @@ public class VillageService {
 
         Page<VillageEntity> result = villageSearchRepository.findAll(spec, pageable);
 
+        // 一覧では同一キー（例: 同一運営が使い回す村アイコン）が複数行に現れうるため、
+        // 行ごとに resolve() を個別に呼ばず resolveAll() で一括解決してメモ化する（N+1 防止 / AC-7）。
+        List<String> allKeys = result.getContent().stream()
+                .flatMap(v -> java.util.stream.Stream.of(
+                        v.getIconR2Key(), v.getCoverR2Key(), v.getMonshoR2Key()))
+                .toList();
+        java.util.Map<String, String> resolvedUrls = mediaUrlResolver.resolveAll(allKeys);
+
         List<VillageResponse> items = result.getContent().stream()
-                .map(v -> toResponse(v, requesterUserId, false))
+                .map(v -> toResponse(v, requesterUserId, false,
+                        resolvedUrls.get(v.getIconR2Key()),
+                        resolvedUrls.get(v.getCoverR2Key()),
+                        resolvedUrls.get(v.getMonshoR2Key())))
                 .toList();
 
         return VillageSearchResponse.builder()
@@ -390,12 +486,31 @@ public class VillageService {
     }
 
     /**
-     * {@link VillageEntity} を {@link VillageResponse} に変換する。
+     * {@link VillageEntity} を {@link VillageResponse} に変換する（単票用: create/get/update）。
+     *
+     * <p>icon/cover/monsho の3キーを {@link MediaUrlResolver#resolve} で個別に署名 URL 解決する。
+     * 一覧（{@link #search}）は行数分の presign を避けるため、事前に {@code resolveAll} で
+     * バッチ解決した結果を {@link #toResponse(VillageEntity, Long, boolean, String, String, String)}
+     * へ直接渡す別経路を使う。</p>
      *
      * @param includePrivateView 詳細表示モード（{@code guidelineMd} などを返す）かどうか。
      *                           検索結果モードでは false。
      */
     private VillageResponse toResponse(VillageEntity v, Long requesterUserId, boolean includePrivateView) {
+        String iconUrl = mediaUrlResolver.resolve(v.getIconR2Key());
+        String coverUrl = mediaUrlResolver.resolve(v.getCoverR2Key());
+        String monshoUrl = mediaUrlResolver.resolve(v.getMonshoR2Key());
+        return toResponse(v, requesterUserId, includePrivateView, iconUrl, coverUrl, monshoUrl);
+    }
+
+    /**
+     * {@link VillageEntity} を {@link VillageResponse} に変換する（画像 URL 解決済みを受け取る版）。
+     *
+     * <p>{@link #search} が {@code resolveAll} で一括解決した結果をここへ渡すことで、
+     * 同一 R2 キーを共有する行でも presign が行数分走らないようにする（N+1 防止 / AC-7）。</p>
+     */
+    private VillageResponse toResponse(VillageEntity v, Long requesterUserId, boolean includePrivateView,
+                                        String iconUrl, String coverUrl, String monshoUrl) {
         boolean isMember = isMember(v.getId(), requesterUserId);
         boolean isPinned = isPinned(v.getId(), requesterUserId);
         VillageRole myRole = null;
@@ -415,8 +530,9 @@ public class VillageService {
                 .visibility(v.getVisibility())
                 .bulletinVisibility(v.getBulletinVisibility())
                 .category(v.getCategory())
-                .iconR2Key(v.getIconR2Key())
-                .coverR2Key(v.getCoverR2Key())
+                .iconUrl(iconUrl)
+                .coverUrl(coverUrl)
+                .monshoUrl(monshoUrl)
                 .guidelineMd(includePrivateView ? v.getGuidelineMd() : null)
                 .memberCount(v.getMemberCountCache() != null ? v.getMemberCountCache() : 0L)
                 .isOfficial(v.getType() == VillageType.OFFICIAL)

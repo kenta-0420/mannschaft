@@ -41,6 +41,7 @@ const { ensureLoaded, isSupported, validateFormat } = usePostalCodeValidation()
 
 // ページマウント時にポリシーを先読みしておく（フォームサブミット時の遅延を最小化）
 onMounted(() => {
+  // eslint-disable-next-line no-restricted-syntax -- ポリシー先読みは best-effort。BE が authoritative（保存時に 400 で再検証）なので取得失敗を握りつぶすのが正しい
   ensureLoaded().catch(() => {
     // 取得失敗はサイレント（BE が authoritative なので保存時に 400 が返る）
   })
@@ -373,6 +374,16 @@ const onSubmit = handleSubmit(async (values) => {
         <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
           {{ $t(errors.privacyPolicyAccepted) }}
         </small>
+      </div>
+
+      <div class="text-center">
+        <NuxtLink
+          to="/commerce-disclosure"
+          target="_blank"
+          class="text-xs text-surface-400 hover:text-primary hover:underline"
+        >
+          {{ $t('landing.layout.footer_commerce') }}
+        </NuxtLink>
       </div>
 
       <Button

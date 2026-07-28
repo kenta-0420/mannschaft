@@ -10,9 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,8 +31,12 @@ import java.net.URI;
  *   <li>{@code GET /api/v1/circulations/{documentId}/export/status} — 現在の生成状況を返却</li>
  * </ul>
  *
- * <p>認可: Service 層で「作成者 / 受信者 / ADMIN」を判定する。
- * Controller では {@code SecurityContextHolder} から ROLE_ADMIN 保有有無を引き出して Service に渡す。</p>
+ * <p>認可（認可根治 Wave4 是正）: Service 層で「作成者 / 受信者 / 当該文書スコープの ADMIN」を
+ * per-scope に判定する。旧実装は Controller が JWT の {@code ROLE_ADMIN}（スコープを問わない
+ * 文字列一致）保有有無を判定して Service に渡し、無条件バイパスさせていたため、
+ * どこか 1 つのチーム/組織で ADMIN であれば他団体の COMPLETED 回覧の押印済み証跡 PDF を
+ * 無認可 DL できる BOLA だった。Controller はグローバル admin 判定を一切行わず、
+ * {@code actorId} のみを Service に渡す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/circulations/{documentId}/export")
@@ -55,9 +56,8 @@ public class CirculationExportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "非同期生成ジョブ受付")
     public ResponseEntity<?> requestExport(@PathVariable Long documentId) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        boolean isAdmin = currentUserHasAdminRole();
 
-        Object result = exportService.requestExport(documentId, actorId, isAdmin);
+        Object result = exportService.requestExport(documentId, actorId);
 
         // COMPLETED かつ URL 入りの場合は 302 リダイレクト
         if (result instanceof ExportStatusResponse status
@@ -82,27 +82,8 @@ public class CirculationExportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ExportStatusResponse>> getStatus(@PathVariable Long documentId) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        boolean isAdmin = currentUserHasAdminRole();
 
-        ExportStatusResponse response = exportService.getExportStatus(documentId, actorId, isAdmin);
+        ExportStatusResponse response = exportService.getExportStatus(documentId, actorId);
         return ResponseEntity.ok(ApiResponse.of(response));
-    }
-
-    /**
-     * 現在の Authentication が ROLE_ADMIN を保持しているかを判定する。
-     *
-     * @return ROLE_ADMIN を持つ場合 {@code true}
-     */
-    private boolean currentUserHasAdminRole() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            return false;
-        }
-        for (GrantedAuthority authority : authentication.getAuthorities()) {
-            if ("ROLE_ADMIN".equals(authority.getAuthority())) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -145,6 +146,48 @@ public class VillageJoinRequestService {
         Page<VillageJoinRequestEntity> p =
                 joinRequestRepository.findByVillageIdAndStatus(villageId, targetStatus, pageable);
         return p.map(JoinRequestResponse::from);
+    }
+
+    // ========================================================================
+    // 4.4.4 自分の申請一覧（申請者向け）
+    // ========================================================================
+
+    /**
+     * 操作者自身が出した参加申請の履歴を取得する（新しい順）。
+     *
+     * <h3>なぜ審査者向け一覧と別 EP なのか</h3>
+     * <p>{@link #listForReviewers} は {@link #ensureReviewer} により HEADMAN/ELDER 限定である。
+     * 一方、申請者は<b>定義上まだ村の非メンバー</b>であり、審査者一覧を開放するわけにはいかない。
+     * そのため「自分の申請だけ」を返す専用 EP を設ける。</p>
+     *
+     * <h3>認可（IDOR 閉塞）</h3>
+     * <p>本メソッドは「誰の申請を返すか」を引数の {@code actorUserId}（= Controller が
+     * {@code SecurityUtils.getCurrentUserId()} から解決した認証済みユーザー）だけで決める。
+     * リポジトリ側で {@code requesterUserId} を絞り込むため、<b>他人の行はそもそも読まない</b>。
+     * 「取得してから所有者を検証する」方式は検証漏れがそのまま漏洩になるため採らない。
+     * 独自の認可述語も新設しない（絞り込みキーは取下げの認可条件と同一）。</p>
+     *
+     * <h3>メンバーシップ判定を行わない理由</h3>
+     * <p>申請者は承認されるまで非メンバーである。ここでメンバーシップを要求すると
+     * 「申請中は自分の申請を見られない」という矛盾が生じるため、メンバーシップ層には触れない。</p>
+     *
+     * @param villageId   対象の村
+     * @param actorUserId 認証済みユーザー ID（クライアント指定値を渡してはならない）
+     * @return 自分の申請（0 件なら空リスト。「申請が無い」は 404 ではない）
+     */
+    @Transactional(readOnly = true)
+    public List<JoinRequestResponse> listMine(UUID villageId, Long actorUserId) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        // 村の存在・凍結チェックは本 Service の他メソッドと同一の流儀に揃える
+        loadActiveVillage(villageId);
+
+        return joinRequestRepository
+                .findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(villageId, actorUserId)
+                .stream()
+                .map(JoinRequestResponse::from)
+                .toList();
     }
 
     // ========================================================================
@@ -299,7 +342,12 @@ public class VillageJoinRequestService {
     }
 
     /**
-     * 操作者が村長または長老（審査権限保持者）であることを検証する。
+     * 操作者が<strong>現役</strong>の村長または長老（審査権限保持者）であることを検証する。
+     *
+     * <p>「現役」の判定（退村済み {@code leftAt} / BAN 済み {@code bannedAt} の除外）は
+     * {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 以前は BAN を検査しておらず、BAN された長老が参加申請の審査一覧を閲覧し、
+     * 承認・却下まで実行できた（＝BAN されたまま村の門番を続けられた）。</p>
      *
      * @return 操作者のメンバーシップ（{@code reviewer_membership_id} 記録に使用）
      */
@@ -308,8 +356,7 @@ public class VillageJoinRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);

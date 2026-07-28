@@ -13,6 +13,7 @@ import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -73,7 +74,24 @@ public class AuthWebAuthnController {
 
     /**
      * WebAuthnログイン開始。登録済みcredential一覧とチャレンジを返す。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:220-221 — requestMatchers("/api/v1/auth/webauthn/login/begin",
+     * "/api/v1/auth/webauthn/login/complete").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * WebAuthn パスキーログインは<b>第一要素として未認証で呼ばれる</b>ため公開必須。チャレンジ・署名の検証は認証処理そのものが行う。
+     * <b>クラス付与は不可</b>: 同クラスの register / reauthenticate / credentials
+     * 系 7 メソッドは認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/login/begin")
     @Operation(summary = "WebAuthnログイン開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チャレンジ生成成功")
@@ -85,7 +103,24 @@ public class AuthWebAuthnController {
 
     /**
      * WebAuthnログイン完了。
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:220-221 — requestMatchers("/api/v1/auth/webauthn/login/begin",
+     * "/api/v1/auth/webauthn/login/complete").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * WebAuthn パスキーログインは<b>第一要素として未認証で呼ばれる</b>ため公開必須。チャレンジ・署名の検証は認証処理そのものが行う。
+     * <b>クラス付与は不可</b>: 同クラスの register / reauthenticate / credentials
+     * 系 7 メソッドは認証必須のためクラスへ貼ると誤った証跡になる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @IntentionallyPublic
     @PostMapping("/login/complete")
     @Operation(summary = "WebAuthnログイン完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功")

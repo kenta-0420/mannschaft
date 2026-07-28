@@ -8,7 +8,9 @@ import com.mannschaft.app.event.dto.EventRsvpRequest;
 import com.mannschaft.app.event.dto.EventRsvpResponseDto;
 import com.mannschaft.app.event.dto.EventRsvpSummaryResponse;
 import com.mannschaft.app.event.dto.LateNoticeRequest;
+import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.service.EventRsvpService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +31,13 @@ import java.util.List;
  * 組織・チームスコープのイベントRSVP機能を提供する。
  *
  * <p>F03.12 Phase8 §15 で事前遅刻連絡・事前欠席連絡・事前通知一覧エンドポイントを追加。</p>
+ *
+ * <p><b>認可（認可根治 Wave3-B12event）:</b> 全 EP に認可が一切敷設されておらず、非メンバーでも
+ * 任意イベントの RSVP 一覧（氏名・出欠・コメント）を閲覧でき、代理連絡（本人 or 見守り者専用の
+ * はずの遅刻/欠席連絡）も無関係な第三者が送信できた。一覧・送信・更新・集計は
+ * {@link EventScopeAccessGuard#requireScopeMember} で当該スコープメンバーに限定し、
+ * 主催者向け事前通知一覧（{@code getAdvanceNotices}）は
+ * {@link EventScopeAccessGuard#requireScopeAdmin} で ADMIN/DEPUTY_ADMIN に限定する。</p>
  */
 @RestController
 @Tag(name = "RSVP出欠確認", description = "F03.8 Phase2 イベントRSVP出欠確認API")
@@ -36,6 +45,7 @@ import java.util.List;
 public class EventRsvpController {
 
     private final EventRsvpService rsvpService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     // ================================================================
     // 組織スコープ
@@ -50,6 +60,8 @@ public class EventRsvpController {
     public ResponseEntity<ApiResponse<List<EventRsvpResponseDto>>> listOrgRsvp(
             @PathVariable Long orgId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.ORGANIZATION, orgId, eventId);
         List<EventRsvpResponseDto> list = rsvpService.getRsvpList(eventId);
         return ResponseEntity.ok(ApiResponse.of(list));
     }
@@ -64,8 +76,9 @@ public class EventRsvpController {
             @PathVariable Long orgId,
             @PathVariable Long eventId,
             @Valid @RequestBody EventRsvpRequest request) {
-        EventRsvpResponseDto dto = rsvpService.submitRsvp(
-                eventId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.ORGANIZATION, orgId, eventId);
+        EventRsvpResponseDto dto = rsvpService.submitRsvp(eventId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(dto));
     }
 
@@ -79,8 +92,9 @@ public class EventRsvpController {
             @PathVariable Long orgId,
             @PathVariable Long eventId,
             @Valid @RequestBody EventRsvpRequest request) {
-        EventRsvpResponseDto dto = rsvpService.updateRsvp(
-                eventId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.ORGANIZATION, orgId, eventId);
+        EventRsvpResponseDto dto = rsvpService.updateRsvp(eventId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(dto));
     }
 
@@ -93,6 +107,8 @@ public class EventRsvpController {
     public ResponseEntity<ApiResponse<EventRsvpSummaryResponse>> getOrgRsvpSummary(
             @PathVariable Long orgId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.ORGANIZATION, orgId, eventId);
         EventRsvpSummaryResponse summary = rsvpService.getRsvpSummary(eventId);
         return ResponseEntity.ok(ApiResponse.of(summary));
     }
@@ -110,6 +126,8 @@ public class EventRsvpController {
     public ResponseEntity<ApiResponse<List<EventRsvpResponseDto>>> listTeamRsvp(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         List<EventRsvpResponseDto> list = rsvpService.getRsvpList(eventId);
         return ResponseEntity.ok(ApiResponse.of(list));
     }
@@ -124,8 +142,9 @@ public class EventRsvpController {
             @PathVariable Long teamId,
             @PathVariable Long eventId,
             @Valid @RequestBody EventRsvpRequest request) {
-        EventRsvpResponseDto dto = rsvpService.submitRsvp(
-                eventId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.TEAM, teamId, eventId);
+        EventRsvpResponseDto dto = rsvpService.submitRsvp(eventId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(dto));
     }
 
@@ -139,8 +158,9 @@ public class EventRsvpController {
             @PathVariable Long teamId,
             @PathVariable Long eventId,
             @Valid @RequestBody EventRsvpRequest request) {
-        EventRsvpResponseDto dto = rsvpService.updateRsvp(
-                eventId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.TEAM, teamId, eventId);
+        EventRsvpResponseDto dto = rsvpService.updateRsvp(eventId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(dto));
     }
 
@@ -153,6 +173,8 @@ public class EventRsvpController {
     public ResponseEntity<ApiResponse<EventRsvpSummaryResponse>> getTeamRsvpSummary(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventRsvpSummaryResponse summary = rsvpService.getRsvpSummary(eventId);
         return ResponseEntity.ok(ApiResponse.of(summary));
     }
@@ -174,8 +196,9 @@ public class EventRsvpController {
             @PathVariable Long teamId,
             @PathVariable Long eventId,
             @Valid @RequestBody LateNoticeRequest request) {
-        AdvanceNoticeResponse response = rsvpService.submitLateNotice(
-                eventId, teamId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.TEAM, teamId, eventId);
+        AdvanceNoticeResponse response = rsvpService.submitLateNotice(eventId, teamId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -191,8 +214,9 @@ public class EventRsvpController {
             @PathVariable Long teamId,
             @PathVariable Long eventId,
             @Valid @RequestBody AbsenceNoticeRequest request) {
-        AdvanceNoticeResponse response = rsvpService.submitAbsenceNotice(
-                eventId, teamId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeMember(userId, EventScopeType.TEAM, teamId, eventId);
+        AdvanceNoticeResponse response = rsvpService.submitAbsenceNotice(eventId, teamId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -207,6 +231,8 @@ public class EventRsvpController {
     public ResponseEntity<ApiResponse<List<AdvanceNoticeResponse>>> getAdvanceNotices(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         List<AdvanceNoticeResponse> list = rsvpService.getAdvanceNotices(eventId, teamId);
         return ResponseEntity.ok(ApiResponse.of(list));
     }

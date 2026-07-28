@@ -38,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -643,20 +645,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("出欠一覧取得_正常_一覧を返す")
         void 出欠一覧取得_正常_一覧を返す() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID);
+            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getStatus()).isEqualTo("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("出欠一覧取得_非権限者_COMMON_002")
+        void 出欠一覧取得_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendances(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID);
         }
     }
 
@@ -681,12 +697,102 @@ class ScheduleAttendanceServiceTest {
                     .willReturn(List.of(row1, row2));
 
             // when
-            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID);
+            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getAttending()).isEqualTo(3);
             assertThat(result.getAbsent()).isEqualTo(1);
             assertThat(result.getTotal()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("出欠サマリー取得_scope外の利用者_COMMON_002")
+        void 出欠サマリー取得_scope外の利用者_COMMON_002() {
+            // given: checkScopeViewAccess が entity 由来 scope で弾く
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // 出席率統計の認可（認可根治 Wave6）
+    // ========================================
+
+    @Nested
+    @DisplayName("出席率統計の認可（認可根治 Wave6）")
+    class AttendanceStatsAuthorization {
+
+        /** 期間フィクスチャ。文字列リテラルでなく LocalDateTime で bind する（TZ ズレ事故の回避）。 */
+        private static final LocalDateTime FROM = LocalDateTime.of(2026, 4, 1, 0, 0);
+        private static final LocalDateTime TO = LocalDateTime.of(2026, 4, 30, 23, 59);
+
+        @Test
+        @DisplayName("チーム統計_チーム管理者でない_COMMON_002")
+        void チーム統計_チーム管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> attendanceService.getTeamAttendanceStats(
+                    TEAM_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可前にリポジトリを引いていないこと（漏洩経路が残っていないこと）
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("組織統計_組織管理者でない_COMMON_002")
+        void 組織統計_組織管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> attendanceService.getOrgAttendanceStats(
+                    ORG_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("チーム統計_正常_チーム管理者は取得できる")
+        void チーム統計_正常_チーム管理者は取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(userRoleRepository.findByTeamId(org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getTeamAttendanceStats(TEAM_ID, FROM, TO, USER_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("組織統計_正常_SYSTEM_ADMINは横断で取得できる")
+        void 組織統計_正常_SYSTEM_ADMINは横断で取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(userRoleRepository.findByOrganizationId(org.mockito.ArgumentMatchers.eq(ORG_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getOrgAttendanceStats(ORG_ID, FROM, TO, USER_ID)).isEmpty();
+
+            // SYSTEM_ADMIN は per-scope 判定を通さない
+            org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 
@@ -715,10 +821,11 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", "管理者承認")));
 
             // when
-            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req);
+            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID);
 
             // then
             verify(attendanceRepository).save(any(ScheduleAttendanceEntity.class));
+            verify(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
         }
 
         @Test
@@ -732,10 +839,28 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
 
             // when & then
-            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req))
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.ATTENDANCE_NOT_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("一括更新_非権限者_COMMON_002")
+        void 一括更新_非権限者_COMMON_002() {
+            // given: checkScopeAdminAccess（ScheduleService 側）が COMMON_002 を投げるケース
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            BulkAttendanceRequest req = new BulkAttendanceRequest(
+                    List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).save(any(ScheduleAttendanceEntity.class));
         }
     }
 
@@ -750,21 +875,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("CSV出力_正常_ヘッダーとデータを含む")
         void CSV出力_正常_ヘッダーとデータを含む() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             attendance.respond(AttendanceStatus.ATTENDING, "参加します");
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID);
+            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(csv).startsWith("ユーザーID,ステータス,コメント,回答日時");
             assertThat(csv).contains("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("CSV出力_非権限者_COMMON_002")
+        void CSV出力_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 

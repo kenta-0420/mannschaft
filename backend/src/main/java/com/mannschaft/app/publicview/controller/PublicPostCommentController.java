@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicPostCommentRequest;
 import com.mannschaft.app.publicview.dto.PublicPostCommentResponse;
 import com.mannschaft.app.publicview.service.PublicPostCommentService;
@@ -52,10 +53,26 @@ public class PublicPostCommentController {
      *
      * <p>SecurityConfig で {@code /api/v1/public/blog-posts/{postId}/comments} が permitAll に設定されている。</p>
      *
+     *
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig.java:341 — requestMatchers(GET, "/api/v1/public/blog-posts/&#42;/comments").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * F19.1 Phase 6-B 公開投稿のコメント<b>一覧取得のみ</b>。公開ブログ記事に紐づく公開コメントを未ログイン訪問者にも見せることが公開ページの要件。
+     * <b>クラス付与は不可</b>: 同クラスの {@code postComment}（POST）/ {@code deleteComment}（DELETE）
+     * は<b>認証必須の書込</b>であり、クラスへ貼ると無認可書込を承認したことになる。
+     * </p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      * @param postId   対象 BlogPost の ID
      * @param pageable ページネーション（デフォルト 20 件）
      * @return コメントのページ
      */
+    @IntentionallyPublic
     @GetMapping
     @Operation(
             summary = "公開投稿コメント一覧取得（未ログイン公開）",

@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -42,17 +43,26 @@ public class PerformanceStatsService {
     private final PerformanceMetricService metricService;
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * チーム統計ダッシュボードを取得する。
      *
-     * @param teamId   チームID
-     * @param metricId 指標IDフィルタ（null の場合は全件）
-     * @param dateFrom 期間開始日
-     * @param dateTo   期間終了日
+     * @param teamId      チームID
+     * @param actorUserId 操作ユーザーID
+     * @param metricId    指標IDフィルタ（null の場合は全件）
+     * @param dateFrom    期間開始日
+     * @param dateTo      期間終了日
      * @return チーム統計レスポンス
      */
-    public TeamStatsResponse getTeamStats(Long teamId, Long metricId, LocalDate dateFrom, LocalDate dateTo) {
+    public TeamStatsResponse getTeamStats(Long teamId, Long actorUserId, Long metricId,
+                                           LocalDate dateFrom, LocalDate dateTo) {
+        // 閲覧系: checkMembership。他チームの統計・ランキング越境を防ぐ。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceMetricEntity> metrics;
         if (metricId != null) {
             PerformanceMetricEntity m = metricService.getMetricEntity(teamId, metricId);
@@ -118,14 +128,18 @@ public class PerformanceStatsService {
     /**
      * 特定メンバーのパフォーマンスを取得する。
      *
-     * @param teamId   チームID
-     * @param userId   ユーザーID
-     * @param dateFrom 期間開始日
-     * @param dateTo   期間終了日
+     * @param teamId      チームID
+     * @param userId      ユーザーID
+     * @param actorUserId 操作ユーザーID
+     * @param dateFrom    期間開始日
+     * @param dateTo      期間終了日
      * @return メンバーパフォーマンスレスポンス
      */
-    public MemberPerformanceResponse getMemberPerformance(Long teamId, Long userId,
+    public MemberPerformanceResponse getMemberPerformance(Long teamId, Long userId, Long actorUserId,
                                                            LocalDate dateFrom, LocalDate dateTo) {
+        // 閲覧系: checkMembership。特定メンバー（userIdパス）の成績・健康関連データの越境を防ぐ。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);
         LocalDate from = dateFrom != null ? dateFrom : LocalDate.now().minusMonths(3);
         LocalDate to = dateTo != null ? dateTo : LocalDate.now();
@@ -296,15 +310,25 @@ public class PerformanceStatsService {
     /**
      * スケジュール紐付きパフォーマンス一覧を取得する。
      *
-     * @param teamId     チームID
-     * @param scheduleId スケジュールID
+     * @param teamId      チームID
+     * @param scheduleId  スケジュールID
+     * @param actorUserId 操作ユーザーID
      * @return スケジュールパフォーマンスレスポンス
      */
-    public SchedulePerformanceResponse getSchedulePerformance(Long teamId, Long scheduleId) {
-        List<PerformanceRecordEntity> records = recordRepository.findByScheduleIdOrderByUserIdAscMetricIdAsc(scheduleId);
+    public SchedulePerformanceResponse getSchedulePerformance(Long teamId, Long scheduleId, Long actorUserId) {
+        // 閲覧系: checkMembership。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);
         Map<Long, PerformanceMetricEntity> metricMap = metrics.stream()
                 .collect(Collectors.toMap(PerformanceMetricEntity::getId, m -> m));
+
+        // BOLA厳禁: scheduleId 自体は teamId で絞られていないクエリのため、対象チームの指標に
+        // 紐づかない記録（他チームの scheduleId が偶然一致するケース等）を除外して越境を防ぐ。
+        List<PerformanceRecordEntity> records = recordRepository.findByScheduleIdOrderByUserIdAscMetricIdAsc(scheduleId)
+                .stream()
+                .filter(r -> metricMap.containsKey(r.getMetricId()))
+                .toList();
 
         Map<Long, List<PerformanceRecordEntity>> byUser = records.stream()
                 .collect(Collectors.groupingBy(PerformanceRecordEntity::getUserId, LinkedHashMap::new, Collectors.toList()));
@@ -334,15 +358,25 @@ public class PerformanceStatsService {
     /**
      * 活動記録紐付きパフォーマンス一覧を取得する。
      *
-     * @param teamId     チームID
-     * @param activityId 活動記録ID
+     * @param teamId      チームID
+     * @param activityId  活動記録ID
+     * @param actorUserId 操作ユーザーID
      * @return スケジュールパフォーマンスレスポンス（同じフォーマットを再利用）
      */
-    public SchedulePerformanceResponse getActivityPerformance(Long teamId, Long activityId) {
-        List<PerformanceRecordEntity> records = recordRepository.findByActivityResultIdOrderByUserIdAscMetricIdAsc(activityId);
+    public SchedulePerformanceResponse getActivityPerformance(Long teamId, Long activityId, Long actorUserId) {
+        // 閲覧系: checkMembership。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);
         Map<Long, PerformanceMetricEntity> metricMap = metrics.stream()
                 .collect(Collectors.toMap(PerformanceMetricEntity::getId, m -> m));
+
+        // BOLA厳禁: activityId 自体は teamId で絞られていないクエリのため、対象チームの指標に
+        // 紐づかない記録（他チームの activityId が偶然一致するケース等）を除外して越境を防ぐ。
+        List<PerformanceRecordEntity> records = recordRepository.findByActivityResultIdOrderByUserIdAscMetricIdAsc(activityId)
+                .stream()
+                .filter(r -> metricMap.containsKey(r.getMetricId()))
+                .toList();
 
         Map<Long, List<PerformanceRecordEntity>> byUser = records.stream()
                 .collect(Collectors.groupingBy(PerformanceRecordEntity::getUserId, LinkedHashMap::new, Collectors.toList()));

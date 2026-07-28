@@ -16,8 +16,11 @@ import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
+import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
+import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -29,12 +32,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -56,6 +62,35 @@ public class RoleService {
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MembershipService membershipService;
+
+    /** 束1 権限昇格根治: 操作者が持つべき権限ロール（user_roles 由来）。 */
+    private static final Set<String> ADMIN_ROLE_NAMES = Set.of("ADMIN", "DEPUTY_ADMIN");
+
+    /**
+     * 束1 権限昇格根治（Service 層二重防御）: ロール変更・除名の操作者が当該スコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する。違反時は 403（COMMON_002）。
+     *
+     * <p>本メソッドは {@link com.mannschaft.app.common.AccessControlService} を注入せずに
+     * {@code user_roles}＋{@code roles} を直接引く「ローカル私設ヘルパー」である。
+     * AccessControlService は RoleService に依存するため、逆に注入すると DI 循環が発生する。
+     * ADMIN/DEPUTY_ADMIN は {@code user_roles} 由来の権限ロールであり判定に memberships は不要
+     * （所属ロール MEMBER/SUPPORTER では権限昇格・除名を許可しない）。</p>
+     *
+     * @param scopeId     スコープ ID（チーム ID or 組織 ID）
+     * @param scopeType   スコープ種別（{@code TEAM} or {@code ORGANIZATION}）
+     * @param actorUserId 操作者ユーザー ID
+     * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
+     */
+    private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
+        boolean isAdmin = findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter(ADMIN_ROLE_NAMES::contains)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
 
     /**
      * ユーザーにロールを割り当てる。
@@ -99,12 +134,53 @@ public class RoleService {
     }
 
     /**
+     * スコープ内のユーザー（ロール割当）一覧を取得する。
+     *
+     * <p>認可根治 Wave5: 従来は {@code AdminDashboardController} が {@code UserRoleRepository} を
+     * 直叩きし {@code Page<UserRoleEntity>} を生返却していた（Entity をレスポンスに晒さない規約に違反）。
+     * ドメイン境界の原則に従い、role ドメインの本メソッドで entity → DTO 変換まで完結させ、
+     * admin ドメインが {@code UserRoleEntity} を参照しなくて済むようにする。</p>
+     *
+     * <p><b>認可は呼び出し元（Controller の public 入口）の責務</b>。
+     * {@code AdminDashboardController#getUsers} が
+     * {@code accessControlService.checkAdminOrAbove} で scope 認可済みであることを前提とする。</p>
+     *
+     * @param scopeId   スコープID（チームID または 組織ID）
+     * @param scopeType スコープ種別（TEAM/ORGANIZATION）
+     * @param pageable  ページネーション情報
+     * @return スコープ内のロール割当ページ
+     */
+    public Page<ScopeUserRoleResponse> getScopeUsers(Long scopeId, String scopeType, Pageable pageable) {
+        Page<UserRoleEntity> page = "TEAM".equals(scopeType)
+                ? userRoleRepository.findByTeamId(scopeId, pageable)
+                : userRoleRepository.findByOrganizationId(scopeId, pageable);
+        return page.map(RoleService::toScopeUserRoleResponse);
+    }
+
+    /** {@link UserRoleEntity} をスコープ内ユーザー DTO へ変換する。 */
+    private static ScopeUserRoleResponse toScopeUserRoleResponse(UserRoleEntity entity) {
+        return new ScopeUserRoleResponse(
+                entity.getId(),
+                entity.getUserId(),
+                entity.getRoleId(),
+                entity.getTeamId(),
+                entity.getOrganizationId(),
+                entity.getGrantedBy(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
+    /**
      * ユーザーのロールを変更する。最後のADMIN保護チェック付き。
      */
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
+        // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
+        requireActorAdmin(scopeId, scopeType, changedBy);
+
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -167,7 +243,10 @@ public class RoleService {
      */
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
-    public void removeMember(Long scopeId, String scopeType, Long targetUserId) {
+    public void removeMember(Long scopeId, String scopeType, Long targetUserId, Long operatorUserId) {
+        // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
+        requireActorAdmin(scopeId, scopeType, operatorUserId);
+
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -175,11 +254,11 @@ public class RoleService {
         checkLastAdmin(scopeId, scopeType, current);
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.info("メンバー除名完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, targetUserId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        leaveMembershipForRoleRevoke(targetUserId, scopeId, scopeType, LeaveReason.REMOVED, operatorUserId);
     }
 
     /**
@@ -187,7 +266,7 @@ public class RoleService {
      *
      * <p><b>⚠️ AccountPurgeService 等の管理者操作専用。通常の API からは呼ばないこと。</b></p>
      *
-     * <p>本メソッドは {@link #removeMember(Long, String, Long)} と同等のロジックを実行するが、
+     * <p>本メソッドは {@link #removeMember(Long, String, Long, Long)} と同等のロジックを実行するが、
      * {@link #checkLastAdmin(Long, String, UserRoleEntity)} を呼ばないため、
      * 「最後の ADMIN を除名」しても {@link RoleErrorCode#ROLE_004} を投げない。
      * 退会済ユーザーの 30 日後物理削除（{@code AccountPurgeService#purgeUser}）の経路で
@@ -213,12 +292,14 @@ public class RoleService {
         // checkLastAdmin はあえて呼ばない（安全弁メソッドの本質）
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.warn("メンバー除名完了（ADMIN保護バイパス）: scopeType={}, scopeId={}, userId={}",
                 scopeType, scopeId, targetUserId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        // 本メソッドは ADMIN 保護をバイパスする安全弁だが、直前の user_roles 削除を flush 済みのため
+        // membership 側の最後の ADMIN 保護（user_roles 参照）も同様に発火せず、保護バイパスの性質を保つ。
+        leaveMembershipForRoleRevoke(targetUserId, scopeId, scopeType, LeaveReason.REMOVED, null);
     }
 
     /**
@@ -234,11 +315,11 @@ public class RoleService {
         checkLastAdmin(scopeId, scopeType, current);
 
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         log.info("スコープ退会完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
+        leaveMembershipForRoleRevoke(userId, scopeId, scopeType, LeaveReason.SELF, null);
     }
 
     /**
@@ -448,6 +529,36 @@ public class RoleService {
         req.setInvitedBy(invitedBy);
         req.setSource(source);
         membershipService.join(req);
+    }
+
+    /**
+     * F00.5 認可基盤: 権限ロール剥奪（除名・退会）に伴い memberships の在籍を終了させる。
+     *
+     * <p>認可の真実の源は memberships（{@code AccessControlService.isMember} /
+     * {@code findAffiliatedScopeIds} はいずれも {@code left_at IS NULL} のみを在籍とみなす）。
+     * 除名・退会では {@code user_roles} の削除と同一トランザクション内で {@code left_at} を確定させ、
+     * 両系統が常に同時に成立するようにする（片方だけ成功する状態を作らない）。
+     * {@link #joinMembershipForRoleGrant} の対称処理であり、退会の実処理は
+     * {@link MembershipService#leaveByUserAndScope} に委譲する（本クラスで独自実装しない）。</p>
+     *
+     * <p>{@code MembershipChangedEvent(REMOVED)} は委譲先が発火するため、本メソッドは
+     * <b>アクティブ membership が無く委譲先が何もしなかった場合に限り</b>同イベントを補填発火する。
+     * これによりダッシュボードキャッシュ無効化・メンバー数減算の通知は、在籍行の有無に関わらず
+     * ちょうど 1 回だけ発火する。</p>
+     *
+     * <p>本メソッドは role ドメインから membership ドメインの Service を呼ぶ越境呼び出しである
+     * （CLAUDE.md 原則 5）。Repository は直接参照せず Service 窓口経由に限定し、
+     * 将来のイベント駆動化候補として記録する。</p>
+     */
+    private void leaveMembershipForRoleRevoke(Long userId, Long scopeId, String scopeType,
+                                              LeaveReason leaveReason, Long removedBy) {
+        ScopeType scope = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        boolean ended = membershipService.leaveByUserAndScope(userId, scope, scopeId, leaveReason, removedBy);
+        if (!ended) {
+            // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）。
+            eventPublisher.publishEvent(new MembershipChangedEvent(
+                    userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+        }
     }
 
     /**

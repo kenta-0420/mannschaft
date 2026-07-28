@@ -32,6 +32,7 @@ import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoSharedMemoService;
 import com.mannschaft.app.todo.service.TodoStatusService;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -75,6 +76,7 @@ public class OrgTodoController {
     private final TodoScheduleLinkService scheduleLinkService;
     private final TodoSharedMemoService sharedMemoService;
     private final TodoPersonalMemoService personalMemoService;
+    private final TodoAccessGuard todoAccessGuard;
 
 
     /**
@@ -91,6 +93,8 @@ public class OrgTodoController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "RECENT") String sort) {
+        // 認可根治（Wave5 todo硬化A）: scope 級 membership 検証（非メンバー 403）。
+        todoAccessGuard.requireScopeMember(TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         TodoStatus todoStatus = status != null ? TodoStatus.valueOf(status) : null;
         return ResponseEntity.ok(todoService.listTodos(
                 TodoScopeType.ORGANIZATION, orgId, todoStatus, page, size, sort));
@@ -105,8 +109,11 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> createTodo(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTodoRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        // 認可根治（Wave5 todo硬化A）: scope 級 membership 検証（非メンバー 403）。
+        todoAccessGuard.requireScopeMember(TodoScopeType.ORGANIZATION, orgId, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(todoService.createTodo(TodoScopeType.ORGANIZATION, orgId, request, SecurityUtils.getCurrentUserId()));
+                .body(todoService.createTodo(TodoScopeType.ORGANIZATION, orgId, request, userId));
     }
 
     /**
@@ -118,8 +125,8 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> getTodo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        // F02.3.1 後続 C-7: IDOR 対策 — path scope と TODO scope の整合確認
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoService.getTodo(id));
     }
 
@@ -132,6 +139,8 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getChildTodos(
             @PathVariable Long orgId,
             @PathVariable Long id) {
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoService.getChildTodos(TodoScopeType.ORGANIZATION, orgId, id));
     }
 
@@ -145,8 +154,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTodoRequest request) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoService.updateTodo(id, request));
     }
 
@@ -160,9 +169,10 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody PatchTodoRequest request) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         Long userId = SecurityUtils.getCurrentUserId();
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        // 担当者限定の 404（patchTodo 内 existsByTodoIdAndUserId）は現行維持。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, userId);
         return ResponseEntity.ok(todoService.patchTodo(id, userId, request));
     }
 
@@ -175,8 +185,8 @@ public class OrgTodoController {
     public ResponseEntity<Void> deleteTodo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ 作成者 or ADMIN 検証（非該当 403）。
+        todoAccessGuard.verifyScopeAndOwnerOrAdmin(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         todoService.deleteTodo(id);
         return ResponseEntity.noContent().build();
     }
@@ -190,8 +200,8 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> restoreTodo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        // F02.3.1 後続 C-7: IDOR 対策（削除済み todo の scope 整合確認）
-        todoService.assertDeletedTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ 作成者 or ADMIN 検証（非該当 403）。
+        todoAccessGuard.verifyScopeAndOwnerOrAdmin(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         todoService.restoreTodo(id);
         return ResponseEntity.ok(todoService.getTodo(id));
     }
@@ -206,8 +216,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody TodoStatusChangeRequest request) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoStatusService.changeStatus(id, request, SecurityUtils.getCurrentUserId()));
     }
 
@@ -220,8 +230,12 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<List<TodoStatusChangeResponse>>> bulkChangeStatus(
             @PathVariable Long orgId,
             @Valid @RequestBody BulkStatusChangeRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        // 認可根治（Wave5 todo硬化A）: scope 級 membership 検証（非メンバー 403）。
+        // 越境 id 混入は Service 側の scope 絞りで対象外にする（BOLA 根治）。
+        todoAccessGuard.requireScopeMember(TodoScopeType.ORGANIZATION, orgId, userId);
         return ResponseEntity.ok(todoStatusService.bulkChangeStatus(
-                TodoScopeType.ORGANIZATION, orgId, request, SecurityUtils.getCurrentUserId()));
+                TodoScopeType.ORGANIZATION, orgId, request, userId));
     }
 
     // --- 担当者 ---
@@ -236,8 +250,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody AddAssigneeRequest request) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(todoAssigneeService.addAssignee(id, request, SecurityUtils.getCurrentUserId()));
     }
@@ -252,8 +266,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @PathVariable Long userId) {
-        // F02.3.1 後続 C-7: IDOR 対策
-        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        // 認可根治（Wave5 todo硬化A）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         todoAssigneeService.removeAssignee(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -271,7 +285,9 @@ public class OrgTodoController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(commentService.listComments(id, page, size));
+        // 認可根治（早馬 BOLA 閉塞）: path scope 束縛＋membership 検証は Service で実施する。
+        return ResponseEntity.ok(commentService.listComments(
+                id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId(), page, size));
     }
 
     /**
@@ -285,7 +301,8 @@ public class OrgTodoController {
             @PathVariable Long id,
             @Valid @RequestBody CreateCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(commentService.addComment(id, request, SecurityUtils.getCurrentUserId()));
+                .body(commentService.addComment(
+                        id, TodoScopeType.ORGANIZATION, orgId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -299,7 +316,8 @@ public class OrgTodoController {
             @PathVariable Long id,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
-        return ResponseEntity.ok(commentService.updateComment(id, commentId, request, SecurityUtils.getCurrentUserId()));
+        return ResponseEntity.ok(commentService.updateComment(
+                id, TodoScopeType.ORGANIZATION, orgId, commentId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -328,8 +346,10 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody LinkScheduleRequest request) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
         scheduleLinkService.linkScheduleToTodo(
-                request.getScheduleId(), id, request.getParentId(), SecurityUtils.getCurrentUserId());
+                request.getScheduleId(), id, TodoScopeType.ORGANIZATION, orgId,
+                request.getParentId(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -342,7 +362,9 @@ public class OrgTodoController {
     public ResponseEntity<Void> unlinkSchedule(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        scheduleLinkService.unlinkScheduleFromTodo(id, SecurityUtils.getCurrentUserId());
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        scheduleLinkService.unlinkScheduleFromTodo(
+                id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -359,6 +381,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        // 認可根治（Wave5 todo硬化A）: scope 級 membership 検証（非メンバー 403）。
+        todoAccessGuard.requireScopeMember(TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         if (from.isAfter(to)) {
             return ResponseEntity.badRequest().build();
         }
@@ -378,6 +402,11 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody ProgressRateRequest request) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        // setProgressRate は ActionMemoService からも呼ばれる共有メソッドのため、
+        // ガードは共有メソッドではなく public 入口（本 Controller）で敷く。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId,
+                SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoService.setProgressRate(id, request.getProgressRate()));
     }
 
@@ -391,6 +420,9 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody ProgressModeRequest request) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.ORGANIZATION, orgId,
+                SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
     }
 
@@ -407,8 +439,9 @@ public class OrgTodoController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, size,
-                SecurityUtils.getCurrentUserId()));
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        return ResponseEntity.ok(sharedMemoService.getSharedMemos(
+                id, TodoScopeType.ORGANIZATION, orgId, page, size, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -422,8 +455,10 @@ public class OrgTodoController {
             @PathVariable Long id,
             @Valid @RequestBody SharedMemoEntryRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(sharedMemoService.addSharedMemo(id, currentUserId, request, currentUserId));
+                .body(sharedMemoService.addSharedMemo(
+                        id, TodoScopeType.ORGANIZATION, orgId, currentUserId, request, currentUserId));
     }
 
     /**
@@ -437,7 +472,9 @@ public class OrgTodoController {
             @PathVariable Long id,
             @PathVariable Long memoId,
             @Valid @RequestBody SharedMemoEntryRequest request) {
-        return ResponseEntity.ok(sharedMemoService.updateSharedMemo(id, memoId, SecurityUtils.getCurrentUserId(), request));
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        return ResponseEntity.ok(sharedMemoService.updateSharedMemo(
+                id, TodoScopeType.ORGANIZATION, orgId, memoId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -450,7 +487,9 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @PathVariable Long memoId) {
-        sharedMemoService.deleteSharedMemo(id, memoId, SecurityUtils.getCurrentUserId());
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        sharedMemoService.deleteSharedMemo(
+                id, TodoScopeType.ORGANIZATION, orgId, memoId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -465,7 +504,9 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<PersonalMemoResponse>> getPersonalMemo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        return ResponseEntity.ok(personalMemoService.getPersonalMemo(id, SecurityUtils.getCurrentUserId()));
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        return ResponseEntity.ok(personalMemoService.getPersonalMemo(
+                id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -478,7 +519,9 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody PersonalMemoRequest request) {
-        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(id, SecurityUtils.getCurrentUserId(), request));
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(
+                id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -490,7 +533,9 @@ public class OrgTodoController {
     public ResponseEntity<Void> deletePersonalMemo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        personalMemoService.deletePersonalMemo(id, SecurityUtils.getCurrentUserId());
+        // 認可根治（Wave5 todo硬化B）: scope 束縛＋membership 検証は Service で実施する（署名拡張）。
+        personalMemoService.deletePersonalMemo(
+                id, TodoScopeType.ORGANIZATION, orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

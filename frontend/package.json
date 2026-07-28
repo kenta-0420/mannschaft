@@ -12,6 +12,7 @@
     "typecheck": "nuxt typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:prune": "eslint . --prune-suppressions",
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -96,6 +97,10 @@
     "esbuild": "^0.28.1",
     "h3": "^1.15.11",
     "crossws": "^0.4.5",
-    "simple-git": "^3.36.0"
+    "simple-git": "^3.36.0",
+    "sharp": "^0.35.3",
+    "@redocly/openapi-core": {
+      "js-yaml": "^4.3.0"
+    }
   }
 }

@@ -23,7 +23,6 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -84,12 +83,27 @@ class VillageMatchRecruitServiceTest {
     @Mock private VillageMembershipRepository membershipRepository;
     @Mock private VillageMatchRecruitRepository recruitRepository;
     @Mock private VillageMatchRecruitApplicationRepository applicationRepository;
-    @Mock private UserVillageNicknameRepository nicknameRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
+    /**
+     * F17.3 前工程リファクタで表示名解決が共有ヘルパ {@link VillageNicknameResolver} へ移設された。
+     * 従来の resolveUserDisplayName はニックネーム未登録時 {@code "USER:#id"} を返していたため、
+     * その出力を lenient スタブで完全再現し、既存アサーションのふるまいを不変に保つ（骨抜き禁止）。
+     */
+    @Mock private VillageNicknameResolver villageNicknameResolver;
 
     @InjectMocks
     private VillageMatchRecruitService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubNicknameResolver() {
+        org.mockito.Mockito.lenient()
+                .when(villageNicknameResolver.resolve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> {
+                    Long uid = inv.getArgument(0);
+                    return uid == null ? null : "USER:#" + uid;
+                });
+    }
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final Long ACTOR = 100L;
@@ -336,6 +350,11 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // 投稿者本人であっても「現役メンバーであること」が前提（#2284 §12）。
+        // BAN / 退村した投稿者は自分の募集でもレビュー不可のため、現役メンバーシップを stub する。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         MatchRecruitResponse res = service.closeRecruit(VILLAGE_ID, entity.getId(), ACTOR);
@@ -353,7 +372,7 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(roleMembership(ACTOR, VillageRole.HEADMAN)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -373,7 +392,7 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
 
@@ -569,6 +588,11 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // 投稿者本人であっても「現役メンバーであること」が前提（#2284 §12）。
+        // BAN / 退村した投稿者は自分の募集でもレビュー不可のため、現役メンバーシップを stub する。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(applicationRepository.findById(app.getId())).willReturn(Optional.of(app));
         given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 

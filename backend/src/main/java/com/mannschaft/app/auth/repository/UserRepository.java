@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,7 +11,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * ユーザーリポジトリ。
@@ -40,6 +43,28 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     List<UserEntity> findByIdIn(Collection<Long> ids);
 
+    /**
+     * F20.3 Phase2 自動付与バッチの走査対象＝活性ユーザーIDをページング列挙する（設計書 F20.3 03 §6）。
+     *
+     * <p><b>JPQL で scalar（{@code Long}）だけを射影する</b>: 呼び出し元（{@code billing.beta} の
+     * {@code BetaPerkAutoGrantBatchService}）は billing ドメインだが、他ドメイン Entity（{@link UserEntity}）を
+     * 受け取らず ID スカラのみを扱うため、クロスドメイン Entity 参照番人（D-1）に抵触しない
+     * （{@code LoginActivityQueryService} が {@code AuditLogRepository} を scalar 参照するのと同型）。</p>
+     *
+     * <p><b>native SQL を使わない理由</b>: {@link org.hibernate.annotations.SQLRestriction @SQLRestriction}
+     * （{@code deleted_at IS NULL}）は JPQL/HQL にのみ効き、native SQL は貫通してしまう。native だと退会申請直後に
+     * 弱匿名化で {@code deleted_at} を立てた（＝退会撤回ウィンドウ中の）ユーザーまで拾ってしまうため、必ず JPQL で
+     * {@code status = ACTIVE AND deleted_at IS NULL} を明示評価する（{@code deleted_at IS NULL} は @SQLRestriction と
+     * 二重だが意図を明示するため冪等に併記）。安定ページングのため {@code id} 昇順で並べる。</p>
+     *
+     * @param pageable ページング（ソートは {@code id} 昇順を渡す）
+     * @return 活性ユーザーの id ページ
+     */
+    @Query("SELECT u.id FROM UserEntity u "
+            + "WHERE u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE "
+            + "AND u.deletedAt IS NULL")
+    Page<Long> findActiveUserIdsForBeta(Pageable pageable);
+
     boolean existsByEmail(String email);
 
     /**
@@ -56,8 +81,41 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT * FROM users WHERE email = :email LIMIT 1", nativeQuery = true)
     Optional<UserEntity> findByEmailIncludingDeleted(@Param("email") String email);
 
-    @org.springframework.data.jpa.repository.Query("SELECT u FROM UserEntity u WHERE u.displayName LIKE %:keyword% OR u.email LIKE %:keyword%")
-    java.util.List<UserEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用の利用者検索。閲覧者と同一スコープに在籍する利用者に限定する。
+     *
+     * <p>絞り込みは 3 条件の AND とする:</p>
+     * <ol>
+     *   <li>{@code visibleUserIds} — 閲覧者が所属するチーム／組織に在籍する利用者のみを候補とする
+     *       （所属を共有しない相手は横断検索に出さない）</li>
+     *   <li>{@code isSearchable = true} — 利用者本人が設定した検索許可フラグを尊重する
+     *       （退会時の匿名化でも false になるため、匿名化済みアカウントも除外される）</li>
+     *   <li>{@code status = ACTIVE} — 停止中・保留中のアカウントは候補にしない</li>
+     * </ol>
+     *
+     * <p>検索述語は {@code displayName} のみとする。{@code email} を述語に含めると
+     * 「そのメールアドレスが登録済みか」を照会できてしまい、表示名検索という本来の用途にも不要なため
+     * 除外する。論理削除済みは {@code UserEntity} の {@code @SQLRestriction} が除外する。</p>
+     *
+     * <p>呼び出し側は {@code visibleUserIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword        検索キーワード（表示名の部分一致）
+     * @param visibleUserIds 閲覧者と所属を共有する利用者 ID 集合（非空・空ならダミー値）
+     * @param pageable       取得件数
+     * @return 同一スコープ内の検索結果
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT u FROM UserEntity u
+            WHERE u.displayName LIKE %:keyword%
+              AND u.id IN :visibleUserIds
+              AND u.isSearchable = true
+              AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+            """)
+    java.util.List<UserEntity> searchByKeyword(
+            @org.springframework.data.repository.query.Param("keyword") String keyword,
+            @org.springframework.data.repository.query.Param("visibleUserIds") java.util.Collection<Long> visibleUserIds,
+            org.springframework.data.domain.Pageable pageable);
 
     long countByStatus(UserEntity.UserStatus status);
 
@@ -232,4 +290,35 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
     List<Long> findUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
                                              @Param("maxBirthYear") int maxBirthYear);
+
+    /**
+     * F20.3 ベータ特典 Phase3 シスアド審査画面用: 指定 ID 集合の id → displayName（表示名）を一括取得する。
+     *
+     * <p>{@code display_name} は {@link com.mannschaft.app.common.EncryptedStringConverter} 非適用の平文カラムの
+     * ため、暗号化を気にせず scalar 射影できる。{@code TeamRepository#findIdAndNameByIdIn} /
+     * {@code OrganizationRepository#findIdAndNameByIdIn} と同型（N+1 回避の一括解決用）。</p>
+     *
+     * @param ids 取得対象のユーザー ID 集合
+     * @return id → displayName の Object[] リスト（[0]=id Long, [1]=displayName String）
+     */
+    @Query("SELECT u.id AS id, u.displayName AS displayName FROM UserEntity u WHERE u.id IN :ids")
+    List<Object[]> findIdAndDisplayNameByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * F20.3 ベータ特典 Phase3: ID → displayName（表示名）の Map を返すデフォルトメソッド。
+     *
+     * <p>{@link com.mannschaft.app.team.repository.TeamRepository#findNameMapByIdIn}/
+     * {@link com.mannschaft.app.organization.repository.OrganizationRepository#findNameMapByIdIn} と同シグネチャ
+     * （呼び出し側 {@code BetaPerkScopeNameResolver} が scopeKind に応じて差し替えて呼ぶための統一形）。</p>
+     *
+     * @param ids 取得対象のユーザー ID 集合
+     * @return id → displayName の Map（論理削除済みは @SQLRestriction で自動除外）
+     */
+    default Map<Long, String> findNameMapByIdIn(Collection<Long> ids) {
+        return findIdAndDisplayNameByIdIn(ids).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
+    }
 }

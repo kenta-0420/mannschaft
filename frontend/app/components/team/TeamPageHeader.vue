@@ -2,17 +2,6 @@
 import type { TeamResponse } from '~/types/team'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
-defineProps<{
-  team: TeamResponse
-  displayName: string
-  roleName: string | null
-  isAdmin: boolean
-  isAdminOrDeputy: boolean
-  followStatus: 'NONE' | 'PENDING' | 'APPROVED'
-  followLoading: boolean
-  templateLabel: Record<string, string>
-}>()
-
 const emit = defineEmits<{
   back: []
   applySupporter: []
@@ -23,8 +12,56 @@ const emit = defineEmits<{
   bannerUpdated: [url: string | null]
 }>()
 
+const props = defineProps<{
+  team: TeamResponse
+  displayName: string
+  roleName: string | null
+  isAdmin: boolean
+  isAdminOrDeputy: boolean
+  followStatus: 'NONE' | 'PENDING' | 'APPROVED'
+  followLoading: boolean
+  templateLabel: Record<string, string>
+}>()
+
+const { t } = useI18n()
+
 // F02.8 告知ウィザード（ローカル管理）
 const showBroadcastWizard = ref(false)
+
+/**
+ * モバイル(<sm)向け「⋯」オーバーフローメニュー。
+ * 低頻度アクション（市場出品導線・チーム内告知・チームから退出）をここへ格納し、
+ * デスクトップ(sm以上)は従来どおりインライン表示のまま維持する。
+ */
+const overflowMenu = ref()
+function toggleOverflowMenu(event: Event) {
+  overflowMenu.value.toggle(event)
+}
+const overflowMenuItems = computed(() => {
+  const items: { label: string, icon: string, command: () => void }[] = []
+  if (props.isAdminOrDeputy) {
+    items.push({
+      label: t('market.action.post'),
+      icon: 'pi pi-tag',
+      command: () => navigateTo(`/teams/${props.team.slug}/recruitment-listings/new`),
+    })
+  }
+  if (props.roleName && props.roleName !== 'SUPPORTER') {
+    items.push({
+      label: t('announcement.broadcast_button_team'),
+      icon: 'pi pi-bullhorn',
+      command: () => { showBroadcastWizard.value = true },
+    })
+  }
+  if (!props.isAdmin && props.roleName) {
+    items.push({
+      label: 'チームから退出',
+      icon: 'pi pi-sign-out',
+      command: () => emit('showLeaveConfirm'),
+    })
+  }
+  return items
+})
 </script>
 
 <template>
@@ -39,7 +76,7 @@ const showBroadcastWizard = ref(false)
     @banner-updated="(url) => emit('bannerUpdated', url)"
   >
     <!-- 名前行 + アクション群 -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 pt-1">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2 pt-1">
       <!-- 左: 戻る + 名前 + メタ情報 -->
       <div class="flex flex-col gap-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
@@ -105,6 +142,8 @@ const showBroadcastWizard = ref(false)
             @click="emit('applySupporter')"
           />
         </template>
+        <!-- 低頻度アクション（市場出品導線・チーム内告知・チームから退出）:
+             デスクトップ(sm以上)は従来どおりインライン表示 -->
         <Button
           v-if="isAdminOrDeputy"
           :label="$t('market.action.post')"
@@ -112,6 +151,7 @@ const showBroadcastWizard = ref(false)
           severity="secondary"
           outlined
           size="small"
+          class="hidden sm:inline-flex"
           @click="navigateTo(`/teams/${team.slug}/recruitment-listings/new`)"
         />
         <Button
@@ -120,6 +160,7 @@ const showBroadcastWizard = ref(false)
           icon="pi pi-bullhorn"
           severity="secondary"
           size="small"
+          class="hidden sm:inline-flex"
           @click="showBroadcastWizard = true"
         />
         <Button
@@ -129,8 +170,23 @@ const showBroadcastWizard = ref(false)
           severity="danger"
           outlined
           size="small"
+          class="hidden sm:inline-flex"
           @click="emit('showLeaveConfirm')"
         />
+
+        <!-- モバイル(<sm): 低頻度アクションを「⋯」オーバーフローメニューへ格納 -->
+        <div v-if="overflowMenuItems.length > 0" class="sm:hidden">
+          <Button
+            icon="pi pi-ellipsis-v"
+            text
+            rounded
+            severity="secondary"
+            size="small"
+            :aria-label="$t('common.menu')"
+            @click="toggleOverflowMenu"
+          />
+          <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
+        </div>
       </div>
     </div>
   </ProfileHeader>

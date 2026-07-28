@@ -6,6 +6,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
@@ -85,17 +86,48 @@ public class OrganizationController {
     // 組織 CRUD
     // ========================================
 
+    /**
+     * 組織を作成する。
+     *
+     * <p>親組織（{@code parentOrganizationId}）を指定する場合は、
+     * <b>指定した親組織が実在すること</b>（不在は {@code ORG_001} → 404）と、
+     * <b>操作者がその親組織の ADMIN/DEPUTY 相当であること</b>（不足は {@code COMMON_002} → 403）を要求する。
+     * 判定は同クラスの兄弟 EP（{@code renameSlug} / {@code deleteOrganization} 等）と同じ
+     * {@code AccessControlService.checkAdminOrAbove} に委譲し、独自 gate を作らない（F00 正準）。</p>
+     *
+     * <p>親組織の指定が無い（null）場合は従来どおり認可を要求せず、認証済みユーザーであれば作成できる。
+     * 大多数の組織作成はこの経路であり、ここに認可を課すと正常系を壊す。</p>
+     */
     @PostMapping
     @Operation(summary = "組織作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "指定した親組織の ADMIN/DEPUTY 権限がない")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "指定した親組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<OrganizationResponse>> createOrganization(
             @Valid @RequestBody CreateOrganizationRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long parentOrgId = req.getParentOrganizationId();
+        if (parentOrgId != null) {
+            // 親組織の実在確認（不在は 404 で秘匿）→ 親組織 ADMIN/DEPUTY 相当の権限確認（403）の順。
+            organizationService.assertOrganizationExists(parentOrgId);
+            accessControlService.checkAdminOrAbove(userId, parentOrgId, SCOPE_TYPE);
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(organizationService.createOrganization(SecurityUtils.getCurrentUserId(), req));
+                .body(organizationService.createOrganization(userId, req));
     }
 
+    /**
+     * 組織をキーワード検索する。
+     *
+     * <p>結果は <b>PUBLIC かつ未アーカイブ</b>の組織のみに限定される（可視性フィルタは
+     * {@code OrganizationRepository#searchByKeyword} のクエリが担保。論理削除は
+     * {@code @SQLRestriction} が除外）。未認証でも呼べる公開検索であるため、
+     * チームの {@code searchPublicTeams} と同じく「公開スコープのみ」という最も安全側の流儀に揃える。</p>
+     */
     @GetMapping("/search")
-    @Operation(summary = "組織検索")
+    @Operation(summary = "組織検索（PUBLIC かつ未アーカイブの組織のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<OrganizationSummaryResponse>> searchOrganizations(
             @RequestParam(required = false) String keyword, Pageable pageable) {
@@ -127,11 +159,16 @@ public class OrganizationController {
     }
 
     @PatchMapping("/{slug}")
-    @Operation(summary = "組織更新")
+    @Operation(summary = "組織更新（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<OrganizationResponse>> updateOrganization(
             @PathVariable String slug, @Valid @RequestBody UpdateOrganizationRequest req) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 組織そのものの設定変更は当該組織の ADMIN/DEPUTY 相当のみ許可する
+        // （同一クラスの兄弟 EP renameSlug と同じ流儀に揃える）。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(organizationService.updateOrganization(id, req));
     }
 
@@ -147,11 +184,15 @@ public class OrganizationController {
     }
 
     @DeleteMapping("/{slug}")
-    @Operation(summary = "組織削除")
+    @Operation(summary = "組織削除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> deleteOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）
+        accessControlService.checkAdminOrAbove(userId, id, SCOPE_TYPE);
         organizationService.deleteOrganization(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -184,7 +225,10 @@ public class OrganizationController {
             @PathVariable String slug, @PathVariable Long userId,
             @Valid @RequestBody RoleChangeRequest req) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.changeRole(id, SCOPE_TYPE, userId, req, SecurityUtils.getCurrentUserId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 当該組織の ADMIN/DEPUTY_ADMIN のみロール変更可。
+        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
+        roleService.changeRole(id, SCOPE_TYPE, userId, req, currentUserId);
         return ResponseEntity.ok().build();
     }
 
@@ -194,7 +238,10 @@ public class OrganizationController {
     public ResponseEntity<Void> removeMember(
             @PathVariable String slug, @PathVariable Long userId) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.removeMember(id, SCOPE_TYPE, userId);
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        // 束1 権限昇格根治（入口二重防御）: 当該組織の ADMIN/DEPUTY_ADMIN のみ除名可。
+        accessControlService.checkAdminOrAbove(operatorUserId, id, SCOPE_TYPE);
+        roleService.removeMember(id, SCOPE_TYPE, userId, operatorUserId);
         return ResponseEntity.noContent().build();
     }
 
@@ -203,19 +250,30 @@ public class OrganizationController {
     // ========================================
 
     @PatchMapping("/{slug}/archive")
-    @Operation(summary = "組織アーカイブ")
+    @Operation(summary = "組織アーカイブ（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> archiveOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        // なお SYSTEM_ADMIN による凍結は SystemAdminDashboardController の別 EP
+        //（/api/v1/system-admin/** = SecurityConfig で hasRole("SYSTEM_ADMIN")）が担う。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         organizationService.archiveOrganization(id);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{slug}/unarchive")
-    @Operation(summary = "組織アーカイブ解除")
+    @Operation(summary = "組織アーカイブ解除（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> unarchiveOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（兄弟 EP renameSlug と同じ流儀）。
+        // SYSTEM_ADMIN による凍結解除は SystemAdminDashboardController の別 EP が担う。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         organizationService.unarchiveOrganization(id);
         return ResponseEntity.ok().build();
     }
@@ -227,10 +285,20 @@ public class OrganizationController {
     @PostMapping("/{slug}/follow")
     @Operation(summary = "組織サポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<FollowStatusResponse>> followOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        Long userId = SecurityUtils.getCurrentUserId();
+        // F00 正準: サポーター自己登録は「当該組織を閲覧できる利用者」に限る。
+        // 兄弟 EP getOrganization / getMembers と同じ visibility ラダーへ委譲し、独自述語を作らない。
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, id, userId);
+        // 運営者が受け入れを無効化している組織への自己登録は拒否する。
+        organizationService.assertSupporterEnabled(id);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
+                .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
     @DeleteMapping("/{slug}/follow")
@@ -255,12 +323,18 @@ public class OrganizationController {
     // サポーター管理（管理者向け）
     // ========================================
 
+    // 認可根治戦役 Wave3-B1b: 以下 7EP は双子コントローラー TeamController（Wave3-B5 済）と
+    // 完全に同型のエンドポイントであり、申請者の個人情報（氏名・メッセージ）や承認/却下操作を扱うため
+    // checkAdminOrAbove で保護する（非会員/一般メンバーの無防備アクセスを根治。SupporterService 側は既に
+    // applicationId ↔ scope の不一致を SUPPORTER_003 として存在秘匿する実装済み・BOLA対策は温存）。
+
     @GetMapping("/{slug}/supporters")
     @Operation(summary = "承認済みサポーター一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterResponse>> getSupporters(
             @PathVariable String slug, Pageable pageable) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(supporterService.getSupporters(SCOPE_TYPE, id, pageable));
     }
 
@@ -270,6 +344,7 @@ public class OrganizationController {
     public ResponseEntity<PagedResponse<SupporterApplicationResponse>> getSupporterApplications(
             @PathVariable String slug, Pageable pageable) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(supporterService.getApplications(SCOPE_TYPE, id, pageable));
     }
 
@@ -279,6 +354,7 @@ public class OrganizationController {
     public ResponseEntity<Void> approveSupporterApplication(
             @PathVariable String slug, @PathVariable Long applicationId) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.approve(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -289,6 +365,7 @@ public class OrganizationController {
     public ResponseEntity<Void> rejectSupporterApplication(
             @PathVariable String slug, @PathVariable Long applicationId) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.reject(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -299,6 +376,7 @@ public class OrganizationController {
     public ResponseEntity<Void> bulkApproveSupporterApplications(
             @PathVariable String slug, @Valid @RequestBody BulkApproveRequest request) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         supporterService.bulkApprove(request, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
@@ -308,6 +386,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(supporterService.getSettings(SCOPE_TYPE, id)));
     }
 
@@ -317,6 +396,7 @@ public class OrganizationController {
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> updateSupporterSettings(
             @PathVariable String slug, @RequestBody UpdateSupporterSettingsRequest request) {
         Long id = organizationService.resolveOrgId(slug);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(supporterService.updateSettings(SCOPE_TYPE, id, request)));
     }
 
@@ -339,7 +419,8 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        return ResponseEntity.ok(ApiResponse.of(inviteService.getInviteTokens(id, SCOPE_TYPE)));
+        return ResponseEntity.ok(ApiResponse.of(
+                inviteService.getInviteTokens(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/{slug}/invite-tokens/{tokenId}")
@@ -347,7 +428,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "失効成功")
     public ResponseEntity<Void> revokeInviteToken(
             @PathVariable String slug, @PathVariable Long tokenId) {
-        inviteService.revokeInviteToken(tokenId);
+        inviteService.revokeInviteToken(tokenId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -356,11 +437,16 @@ public class OrganizationController {
     // ========================================
 
     @GetMapping("/{slug}/permission-groups")
-    @Operation(summary = "権限グループ一覧")
+    @Operation(summary = "権限グループ一覧（ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
             @PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 権限グループは組織の権限設計そのものであり、作成/更新/削除
+        //（PermissionGroupService 側で checkAdminOrAbove 済み）と同じ粒度で読み取りも保護する。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(
                 permissionGroupService.getPermissionGroups(id, SCOPE_TYPE)));
     }
@@ -381,7 +467,8 @@ public class OrganizationController {
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
             @PathVariable String slug, @PathVariable Long groupId,
             @Valid @RequestBody PermissionGroupRequest req) {
-        return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(groupId, req));
+        return ResponseEntity.ok(
+                permissionGroupService.updatePermissionGroup(groupId, req, SecurityUtils.getCurrentUserId()));
     }
 
     @DeleteMapping("/{slug}/permission-groups/{groupId}")
@@ -389,7 +476,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
             @PathVariable String slug, @PathVariable Long groupId) {
-        permissionGroupService.deletePermissionGroup(groupId);
+        permissionGroupService.deletePermissionGroup(groupId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -414,7 +501,8 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
-        return ResponseEntity.ok(ApiResponse.of(blockService.getBlocks(id, SCOPE_TYPE)));
+        return ResponseEntity.ok(ApiResponse.of(
+                blockService.getBlocks(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{slug}/blocks")
@@ -455,15 +543,32 @@ public class OrganizationController {
     }
 
     @PostMapping("/{slug}/transfer-ownership")
-    @Operation(summary = "オーナー譲渡")
+    @Operation(summary = "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<Void> transferOwnership(
             @PathVariable String slug, @RequestParam Long targetUserId) {
         Long id = organizationService.resolveOrgId(slug);
-        roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 入口二重防御（changeRole / removeMember と同じ流儀）。
+        // RoleService#transferOwnership は最終判定として「操作者が当該スコープの ADMIN」を要求するため、
+        // 本ガードは判定を緩めない（ADMIN/DEPUTY で入口を絞り、ADMIN 以外は Service 側で弾かれる）。
+        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
+        roleService.transferOwnership(id, SCOPE_TYPE, currentUserId, targetUserId);
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 呼び出し者自身を当該組織から退会させる。
+     *
+     * <p>認可は {@code RoleService#leaveScope} が担う。同メソッドは
+     * {@code (userId, scopeId, scopeType)} の複合キーで {@code user_roles} を引き、
+     * 行が無ければ {@code ROLE_001} を送出する＝<b>自分の所属行しか操作できない</b>
+     * （認可根治戦役の判定規律「リポジトリ引きの時点で currentUserId と複合キー化」に合致）。
+     * 対象ユーザーは常に {@code SecurityUtils.getCurrentUserId()} であり、path から与えられない。</p>
+     */
+    @AuthorizedInService
     @DeleteMapping("/{slug}/me")
     @Operation(summary = "組織退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
@@ -483,7 +588,13 @@ public class OrganizationController {
      * <p>未認証でもアクセス可能（対象組織が PUBLIC の場合）。PRIVATE の場合は未認証で 401・
      * 非メンバー＆非子孫メンバーで 403 を返す。各祖先はその visibility / hierarchyVisibility に応じて
      * フル情報・限定情報・プレースホルダ（{@code hidden: true}）のいずれかとして返す。</p>
+     *
+     * <p>認可は {@code OrganizationHierarchyService#getAncestors} が担う（requesterId と対象組織の
+     * visibility を突き合わせ、PRIVATE なら未認証 401 / 非メンバー かつ 非子孫メンバー 403）。
+     * 「子孫組織のメンバーにも祖先チェーンを見せる」判定は {@code ContentVisibilityChecker} の
+     * ラダーでは表現できないため、白名簿クラスへ寄せずに Service 側で判定している。</p>
      */
+    @AuthorizedInService
     @GetMapping("/{slug}/ancestors")
     @Operation(summary = "祖先組織一覧（階層パンくず用）",
             description = "対象組織の上位組織チェーンを root から直近の親の順に返す。" +
@@ -503,7 +614,13 @@ public class OrganizationController {
 
     /**
      * 対象組織の直近の子組織一覧を返す（深い孫は含まない）。
+     *
+     * <p>認可は {@code OrganizationHierarchyService#getChildren} が担う（未認証は 401、
+     * PRIVATE 組織は直接所属メンバー以外 403。さらに PRIVATE な子組織は呼び出し者が
+     * その子組織のメンバーである場合のみ結果に含める＝行単位フィルタ）。
+     * 行単位フィルタは {@code ContentVisibilityChecker} の単一 assert では表現できない。</p>
      */
+    @AuthorizedInService
     @GetMapping("/{slug}/children")
     @Operation(summary = "直近の子組織一覧",
             description = "parent_organization_id = id かつ未削除の子組織のみ返す。" +
@@ -530,8 +647,16 @@ public class OrganizationController {
     @GetMapping("/{slug}/teams")
     @Operation(summary = "組織所属チーム一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 組織の配下構成（所属チーム）は組織本体・メンバー一覧と同じ visibility ラダーで保護する
+        //（兄弟 EP getOrganization / getMembers と同じ流儀）。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(ApiResponse.of(organizationService.getTeams(id)));
     }
 
@@ -540,13 +665,19 @@ public class OrganizationController {
     // ========================================
 
     @GetMapping("/{slug}/members/all")
-    @Operation(summary = "組織配下全メンバー一覧（カスケード通知用）")
+    @Operation(summary = "組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "当該組織の ADMIN/DEPUTY でない")
     public ResponseEntity<CursorPagedResponse<OrgAllMembersResponse>> getAllMembers(
             @PathVariable String slug,
             @RequestParam(defaultValue = "INDIVIDUAL") String scope,
             @RequestParam(defaultValue = "50") int size) {
         Long id = organizationService.resolveOrgId(slug);
+        // 本 EP は「カスケード通知の宛先選択」という管理者機能のための名簿取得であり、
+        // 配下チームまで含めた全メンバーを横断で返す。可視性ラダー（getMembers）より広い母集団を
+        // 扱うため、供給先の運用主体である ADMIN/DEPUTY 相当に限定する。
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         List<OrgAllMembersResponse> members = organizationService.getAllMembers(id, scope);
         var meta = new CursorPagedResponse.CursorMeta(null, false, size);
         return ResponseEntity.ok(CursorPagedResponse.of(members, meta));
@@ -559,8 +690,13 @@ public class OrganizationController {
     @PatchMapping("/{slug}/restore")
     @Operation(summary = "組織復元（SYSTEM_ADMINのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可）")
     public ResponseEntity<Void> restoreOrganization(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
+        // 本 EP は SYSTEM_ADMIN 専用（Service 側 Javadoc・@Operation の宣言どおり）。
+        // 組織 ADMIN に開放すると自組織を任意に復活させられるため checkAdminOrAbove では緩すぎる。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         organizationService.restoreOrganization(id);
         return ResponseEntity.noContent().build();
     }

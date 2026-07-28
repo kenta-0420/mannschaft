@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "新しいチーム・組織を見つける",
@@ -182,6 +185,25 @@
       "actionRequiredEmpty": "対応が必要な項目はありません",
       "widget_notices_tab_platform": "運営お知らせ",
       "widget_notices_platform_empty": "現在お知らせはありません"
+    },
+    "commandCenter": {
+      "title": "今やること",
+      "unresolvedCount": "未対応 {count}件",
+      "chipCirculation": "回覧",
+      "chipSurvey": "アンケート",
+      "chipAttendance": "出欠",
+      "chipOverdueTodo": "期限切れTODO",
+      "deadlineOverdue": "期限切れ",
+      "deadlineToday": "今日",
+      "emptyTitle": "取りこぼしなし🎉",
+      "emptyMessage": "対応が必要な項目はありません",
+      "partialLoadError": "一部のデータを取得できませんでした",
+      "todoCompleteAria": "完了にする",
+      "todoCompleteSuccess": "TODOを完了しました",
+      "todoCompleteError": "TODOの完了に失敗しました",
+      "adminSectionTitle": "承認待ち",
+      "adminUnresolvedCount": "承認待ち {count}件",
+      "adminLoadError": "承認待ちの取得に失敗しました"
     },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",

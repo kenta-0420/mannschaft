@@ -19,16 +19,25 @@ const props = defineProps<{
   isAdmin: boolean
   isAdminOrDeputy: boolean
   activeTab: number
+  /**
+   * 呼称の動的差し込み（F03.4.5 §5.2）。呼び出し元（TeamReservationGuideModal）が
+   * useResourceName で解決した値をそのまま渡す（本コンポーネント自身は API を叩かない）。
+   * 未指定時は「予約対象」相当のフォールバック文言を使う。
+   */
+  resourceName?: string
 }>()
 
 const { t, tm } = useI18n()
 
 type StepRecord = Record<string, string>
 
+/** 呼称キーを含まない文言では無視される（i18n は未使用の補間パラメータを許容する）。 */
+const guideParams = computed(() => ({ resourceName: props.resourceName ?? t('reservation.resource_name.DEFAULT') }))
+
 function resolveList(key: string): string[] {
   const raw = tm(key) as StepRecord | null
   if (!raw || typeof raw !== 'object') return []
-  return Object.keys(raw).map(k => t(`${key}.${k}`))
+  return Object.keys(raw).map(k => t(`${key}.${k}`, guideParams.value))
 }
 
 interface GuideCard {
@@ -114,7 +123,7 @@ const cards = computed<GuideCard[]>(() => {
         </div>
         <div class="w-full">
           <h2 class="mb-2 text-lg font-semibold">
-            {{ t(card.titleKey) }}
+            {{ t(card.titleKey, guideParams) }}
           </h2>
           <ol class="list-decimal space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
             <li

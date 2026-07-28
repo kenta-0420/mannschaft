@@ -1,5 +1,8 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
+import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -11,11 +14,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +33,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -141,6 +154,65 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody().getError().getFieldErrors()).hasSize(1);
             assertThat(response.getBody().getError().getFieldErrors().get(0).getField()).isEqualTo("email");
+        }
+    }
+
+    // ========================================
+    // handleFeatureNotEntitled（F20.1 402 details 追補）
+    // ========================================
+
+    @Nested
+    @DisplayName("handleFeatureNotEntitled")
+    class HandleFeatureNotEntitled {
+
+        private EntitlementNotEntitledDetails details(Integer addonPriceJpy) {
+            return EntitlementNotEntitledDetails.builder()
+                    .featureKey("ads.hide")
+                    .addonAvailable(true)
+                    .addonPriceJpy(addonPriceJpy)
+                    .plansContaining(List.of("FULL"))
+                    .scopeKind("TEAM")
+                    .scopeId(123L)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: 402 Payment Required・envelope（error.code=ENTITLEMENT_003）＋details 直列化")
+        void handleFeatureNotEntitled_402WithDetails() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(500));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ENTITLEMENT_003");
+            assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+            assertThat(response.getBody().getError().getDetails()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getFeatureKey()).isEqualTo("ads.hide");
+            assertThat(response.getBody().getError().getDetails().isAddonAvailable()).isTrue();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isEqualTo(500);
+            assertThat(response.getBody().getError().getDetails().getPlansContaining()).containsExactly("FULL");
+            assertThat(response.getBody().getError().getDetails().getScopeKind()).isEqualTo("TEAM");
+            assertThat(response.getBody().getError().getDetails().getScopeId()).isEqualTo(123L);
+        }
+
+        @Test
+        @DisplayName("正常系: addonPriceJpy=null 時は details.addonPriceJpy が null のまま一貫して返る")
+        void handleFeatureNotEntitled_addonPriceJpyNull() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(null));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isNull();
         }
     }
 
@@ -293,6 +365,224 @@ class GlobalExceptionHandlerTest {
     }
 
     // ========================================
+    // handleResponseStatusException
+    //
+    // 共通基盤バグの再発防止:
+    // ResponseStatusException 用ハンドラが無いと catch-all の handleUnexpectedException に落ち、
+    // 本来のステータスを失って 500 COMMON_999 に化ける（実測: 画像枚数上限 422 → 500）。
+    // ここでステータスが保たれることを機械的に固定する。
+    // ========================================
+
+    @Nested
+    @DisplayName("handleResponseStatusException")
+    class HandleResponseStatusException {
+
+        @ParameterizedTest(name = "{0} を投げたら {0} が返り、code={1}")
+        @DisplayName("正常系: 送出したステータスがそのまま保たれる（500 に化けない）")
+        @CsvSource({
+                "BAD_REQUEST,            COMMON_001",
+                "UNAUTHORIZED,           COMMON_000",
+                "FORBIDDEN,              COMMON_002",
+                "NOT_FOUND,              COMMON_005",
+                "METHOD_NOT_ALLOWED,     COMMON_004",
+                "CONFLICT,               COMMON_003",
+                "UNPROCESSABLE_ENTITY,   COMMON_001",
+                "PAYLOAD_TOO_LARGE,      COMMON_001",
+                "TOO_MANY_REQUESTS,      COMMON_001",
+                "GONE,                   COMMON_001"
+        })
+        void handleResponseStatusException_ステータスが保たれる(HttpStatus status, String expectedCode) {
+            // Given
+            ResponseStatusException ex = new ResponseStatusException(status, "理由メッセージ");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then: 500 COMMON_999 に化けていないこと
+            assertThat(response.getStatusCode()).isEqualTo(status);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo(expectedCode);
+            assertThat(response.getBody().getError().getMessage()).isEqualTo("理由メッセージ");
+            assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("正常系: 画像枚数上限の 422 が 500 に化けず 422 のまま返る（実測不具合の回帰テスト）")
+        void handleResponseStatusException_画像枚数上限422() {
+            // Given: BlogMediaService が投げるのと同型の例外
+            ResponseStatusException ex = new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY, "画像の枚数が上限に達しています");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isNotEqualTo("COMMON_999");
+            assertThat(response.getBody().getError().getMessage())
+                    .isEqualTo("画像の枚数が上限に達しています");
+        }
+
+        @Test
+        @DisplayName("正常系: reason が無い場合は ErrorCode の多言語メッセージにフォールバックする")
+        void handleResponseStatusException_reason無し_多言語メッセージ() {
+            // Given
+            when(messageSource.getMessage(eq("error.common.005"), any(), any()))
+                    .thenReturn("リソースが見つかりません");
+            ResponseStatusException ex = new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_005");
+            assertThat(response.getBody().getError().getMessage()).isEqualTo("リソースが見つかりません");
+        }
+
+        @Test
+        @DisplayName("正常系: 5xx は reason を伏せて COMMON_999 の定型文を返す（内部情報の露出防止）")
+        void handleResponseStatusException_5xx_reasonを伏せる() {
+            // Given
+            ResponseStatusException ex = new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "内部の詳細な失敗理由");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+            assertThat(response.getBody().getError().getMessage())
+                    .isEqualTo(CommonErrorCode.COMMON_999.getMessage())
+                    .doesNotContain("内部の詳細な失敗理由");
+        }
+
+        @Test
+        @DisplayName("正常系: 例外が保持するレスポンスヘッダを引き継ぐ（Retry-After 等）")
+        void handleResponseStatusException_ヘッダ引継ぎ() {
+            // Given
+            // ResponseStatusException のヘッダは getHeaders() のオーバーライドで表現される
+            ResponseStatusException ex =
+                    new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "レート制限") {
+                        @Override
+                        public HttpHeaders getHeaders() {
+                            HttpHeaders headers = new HttpHeaders();
+                            headers.add("Retry-After", "120");
+                            return headers;
+                        }
+                    };
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("120");
+        }
+
+        /**
+         * ハンドラの「選択」を検証する。ハンドラメソッドを直接呼ぶテストでは
+         * 「{@code @ExceptionHandler(Exception.class)} の総受けに落ちていないこと」を証明できないため、
+         * 実際の {@code ExceptionHandlerExceptionResolver} を通す MockMvc で確認する。
+         * 本バグの本質は「解決順序で catch-all に吸われる」ことなので、この経路の固定が要となる。
+         */
+        @Test
+        @DisplayName("正常系: MVC 経由でも catch-all(Exception) に吸われず 422 のまま返る")
+        void handleResponseStatusException_MVC経由で総受けに吸われない() throws Exception {
+            // Given: 422 を投げるだけの controller と、本物の GlobalExceptionHandler を載せた MockMvc
+            @org.springframework.web.bind.annotation.RestController
+            class ThrowingController {
+                @org.springframework.web.bind.annotation.GetMapping("/test-rse")
+                public String throwRse() {
+                    throw new ResponseStatusException(
+                            HttpStatus.UNPROCESSABLE_ENTITY, "画像の枚数が上限に達しています");
+                }
+            }
+
+            MockMvc mockMvc = MockMvcBuilders
+                    .standaloneSetup(new ThrowingController())
+                    .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                    .build();
+
+            // When / Then
+            mockMvc.perform(get("/test-rse"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                    .andExpect(jsonPath("$.error.message").value("画像の枚数が上限に達しています"));
+        }
+
+        /**
+         * IDOR/BOLA 対策の「存在秘匿 404」が MVC 経路でも 404 のまま返ることを固定する。
+         * ProfileMediaService 等は権限が無いリソースを 403 ではなく 404 で秘匿する設計だが、
+         * catch-all に吸われて 500 になると設計が意図した秘匿の形にならない。
+         * 本 PR が最重要と位置づける経路のため、MVC 経路で機械的に固定する。
+         */
+        @Test
+        @DisplayName("正常系: MVC 経由で存在秘匿の 404 が 500 に化けず 404 のまま返る")
+        void handleResponseStatusException_MVC経由で存在秘匿404が保たれる() throws Exception {
+            // Given: 存在秘匿の 404 を投げる controller（reason 未設定＝情報を与えない形）
+            @org.springframework.web.bind.annotation.RestController
+            class ConcealingController {
+                @org.springframework.web.bind.annotation.GetMapping("/test-conceal")
+                public String conceal() {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+                }
+            }
+
+            when(messageSource.getMessage(eq("error.common.005"), any(), any()))
+                    .thenReturn("リソースが見つかりません");
+
+            MockMvc mockMvc = MockMvcBuilders
+                    .standaloneSetup(new ConcealingController())
+                    .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                    .build();
+
+            // When / Then: 403 でも 500 でもなく 404 で秘匿されること
+            mockMvc.perform(get("/test-conceal"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_005"))
+                    .andExpect(jsonPath("$.error.message").value("リソースが見つかりません"));
+        }
+
+        @Test
+        @DisplayName("正常系: 4xx は error_reports に記録しない / 5xx は severity=MEDIUM で記録する")
+        void handleResponseStatusException_記録方針() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+            @SuppressWarnings("unchecked")
+            ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+            @SuppressWarnings("unchecked")
+            ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+            org.mockito.Mockito.lenient().when(serviceProvider.getIfAvailable()).thenReturn(service);
+            org.mockito.Mockito.lenient().when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+            GlobalExceptionHandler handler =
+                    new GlobalExceptionHandler(messageSource, serviceProvider, notifierProvider);
+            HttpServletRequest req = mock(HttpServletRequest.class);
+
+            // 4xx: 記録しない
+            handler.handleResponseStatusException(
+                    new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "上限超過"), req);
+            verify(service, never()).recordBackendException(any(), any(), any());
+
+            // 5xx: severity=MEDIUM で記録する
+            ResponseStatusException serverError =
+                    new ResponseStatusException(HttpStatus.BAD_GATEWAY, "upstream 失敗");
+            handler.handleResponseStatusException(serverError, req);
+            verify(service).recordBackendException(
+                    eq(serverError), eq(req), eq(ErrorReportSeverity.MEDIUM));
+        }
+    }
+
+    // ========================================
     // handleUnexpectedException
     // ========================================
 
@@ -434,6 +724,39 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("FILE_SHARING_001");
+        }
+
+        @Test
+        @DisplayName("認可根治 Wave3-B12event: EVENT_NOT_FOUND（EVENT_001）は個別マッピングで 404 NotFound になる"
+                + "（スコープ帰属不一致・IDOR 秘匿・WARN 既定 400 の上書き回帰固定）")
+        void resolveHttpStatus_EVENT_001_404() {
+            // EventScopeAccessGuard 等の Javadoc は「404 で秘匿する」と明記していたが、
+            // 個別マッピング未登録のため Severity.WARN 既定の 400 のままだった実装漏れを根治した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.EVENT_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("認可根治 Wave3-B12event: 参加登録/チケット/招待トークン/チケット種別/タイムテーブル項目の "
+                + "NOT_FOUND 系（親子BOLA秘匿）は個別マッピングで 404 NotFound になる")
+        void resolveHttpStatus_eventSubResourceNotFound_404() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.REGISTRATION_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.INVITE_TOKEN_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_TYPE_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TIMETABLE_ITEM_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @Test

@@ -30,6 +30,11 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     Optional<EventRegistrationEntity> findByEventIdAndUserId(Long eventId, Long userId);
 
     /**
+     * 参加登録IDとイベントIDで参加登録を取得する（親子BOLA根治: 越境ID指定を404で秘匿）。
+     */
+    Optional<EventRegistrationEntity> findByIdAndEventId(Long id, Long eventId);
+
+    /**
      * ユーザーの特定イベントへの登録が存在するか確認する。
      */
     boolean existsByEventIdAndUserId(Long eventId, Long userId);
