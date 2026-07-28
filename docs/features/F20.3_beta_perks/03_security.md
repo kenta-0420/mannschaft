@@ -103,4 +103,4 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 | B-3 | 取消時のバッジ剥奪 | **✅ (a) 確定**: 剥奪しない（不正取得断定時のみ手動剥奪） |
 | B-4 `[P2]` | オーナー変更イベントの有無・新設 | **✅ 新設確定 → 2026-07-08 マスター決定で Phase 2 保留（初期スコープ外）**（README 冒頭 Phase 2 保留ブロック）: team ドメインに最小 publish を新設するのは Phase 2。**初期は規約第 17 条＋手動 flag-review が代替**（ブロックしない・実装時に既存確認） |
 | B-5 | ベータ称号 system badge の scope | 🔧 **実装前確定条件として残置**（御裁可）: gamification grep で sentinel scope 可否確定（主フロー非依存・§F20.3 README §9.1） |
-| —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | 🕒 F10.8 実装完了まで `min_active_days=NULL` 運用で自動付与本番有効化せず手動審査のみ（ブロックしない・README §2） |
+| —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | 🕒 F10.8 実装完了まで `min_active_days=NULL` 運用で自動付与本番有効化せず手動審査のみ（ブロックしない・README §2）。**2026-07-28 追記**: マスター御裁可で `INDIVIDUAL` の `min_active_days` に 14 を投入済み（V168・TEAM_ORG は引き続き NULL）だが、計測経路未実装ゆえ `mannschaft.beta.auto-grant.enabled=false` のまま変更なし |
