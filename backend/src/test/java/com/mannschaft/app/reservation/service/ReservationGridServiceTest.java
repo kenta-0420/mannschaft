@@ -59,6 +59,9 @@ class ReservationGridServiceTest {
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private NameResolverService nameResolverService;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
@@ -77,11 +80,13 @@ class ReservationGridServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReservationGridService(
-                slotRepository, lineRepository, blockedTimeRepository,
+                slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, nameResolverService, viewAccessGuard,
                 menuRepository, menuLineRepository);
-        // 既定: ブロックなし・ラインなし・氏名解決は空（各テストで上書き）。
+        // 既定: ブロックなし・定期ルールなし・ラインなし・氏名解決は空（各テストで上書き）。
         given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+                .willReturn(List.of());
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
                 .willReturn(List.of());
         given(lineRepository.findByTeamIdAndIsActiveTrueOrderByDisplayOrderAsc(TEAM_ID))
                 .willReturn(List.of());
@@ -214,11 +219,13 @@ class ReservationGridServiceTest {
         assertThat(columnOf(grid, STAFF_A).cells().get(0).state()).isEqualTo(GridCellState.BOOKED);
 
         // レコードコンポーネント名を検査：user/name/reservation/note を含む PII フィールドが存在しないこと。
+        // unavailableReason は「公開定期予約不可枠の事由ラベル」（is_public=TRUE 限定・業務ラベル・W2-2）で
+        // 予約者 PII を含まない（reason_no_pii ガイドで個人名混入を防止）。許可リストに追加し PII 語検査は維持する。
         List<String> componentNames = java.util.Arrays.stream(
                         ReservationGridResponse.GridCellDto.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();
         assertThat(componentNames)
-                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price");
+                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price", "unavailableReason");
         assertThat(componentNames).noneMatch(n -> {
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
@@ -346,5 +353,89 @@ class ReservationGridServiceTest {
         assertThat(cell.slotId()).isEqualTo(1L);
         assertThat(cell.price()).isEqualByComparingTo("5000.00");
         assertThat(col.lineIds()).containsExactly(11L);
+    }
+
+    // ========================================
+    // F03.4.5 §4.4 W2-2: 定期予約不可枠 unavailableReason（AC R-4 / R-10）
+    // ========================================
+
+    private com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity recurringRule(
+            Long lineId, LocalTime start, LocalTime end, boolean isPublic, String reason) {
+        return com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity.builder()
+                .teamId(TEAM_ID).lineId(lineId)
+                .dayOfWeek(com.mannschaft.app.reservation.ReservationDayOfWeek.from(DATE))
+                .startTime(start).endTime(end)
+                .reason(reason).isPublic(isPublic).isActive(true).build();
+    }
+
+    @Test
+    @DisplayName("R-4: is_public=TRUE の定期ルールに該当するセルは UNAVAILABLE＋unavailableReason=reason")
+    void R4_公開定期ルールはreason同梱() {
+        givenSlots(slot(1L, STAFF_A, LocalTime.of(19, 0), LocalTime.of(20, 0)));
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                .willReturn(List.of(recurringRule(null, LocalTime.of(19, 0), LocalTime.of(20, 0), true, "研修")));
+
+        ReservationGridResponse grid = service.getGrid(TEAM_ID, USER_ID, DATE, List.of(STAFF_A));
+
+        ReservationGridResponse.GridCellDto cell = columnOf(grid, STAFF_A).cells().get(0);
+        assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
+        assertThat(cell.unavailableReason()).isEqualTo("研修");
+    }
+
+    @Test
+    @DisplayName("R-4: is_public=FALSE の定期ルールに該当するセルは UNAVAILABLE だが unavailableReason=null")
+    void R4_非公開定期ルールはreasonなし() {
+        givenSlots(slot(1L, STAFF_A, LocalTime.of(19, 0), LocalTime.of(20, 0)));
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                .willReturn(List.of(recurringRule(null, LocalTime.of(19, 0), LocalTime.of(20, 0), false, "私用")));
+
+        ReservationGridResponse grid = service.getGrid(TEAM_ID, USER_ID, DATE, List.of(STAFF_A));
+
+        ReservationGridResponse.GridCellDto cell = columnOf(grid, STAFF_A).cells().get(0);
+        assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
+        assertThat(cell.unavailableReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("R-4: 通常の AVAILABLE/BOOKED セルは unavailableReason=null のまま（従来表示と完全一致）")
+    void R4_通常セルはreasonなし() {
+        givenSlots(slot(1L, STAFF_A, LocalTime.of(10, 0), LocalTime.of(11, 0), SlotStatus.AVAILABLE));
+
+        ReservationGridResponse grid = service.getGrid(TEAM_ID, USER_ID, DATE, List.of(STAFF_A));
+
+        assertThat(columnOf(grid, STAFF_A).cells().get(0).unavailableReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("R-10: 単発blocked_times（常に非公開）とpublic定期ルールが同一セルに重畳→非公開優先でreason=null")
+    void R10_単発と定期の重畳は非公開優先() {
+        givenSlots(slot(1L, STAFF_A, LocalTime.of(19, 0), LocalTime.of(20, 0)));
+        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+                .willReturn(List.of(block(ReservationBlockedResourceType.STAFF, STAFF_A,
+                        LocalTime.of(19, 0), LocalTime.of(20, 0))));
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                .willReturn(List.of(recurringRule(null, LocalTime.of(19, 0), LocalTime.of(20, 0), true, "研修")));
+
+        ReservationGridResponse grid = service.getGrid(TEAM_ID, USER_ID, DATE, List.of(STAFF_A));
+
+        ReservationGridResponse.GridCellDto cell = columnOf(grid, STAFF_A).cells().get(0);
+        assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
+        assertThat(cell.unavailableReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("R-4: 複数の public 定期ルールが該当する場合は開始時刻昇順で最初の reason を採用（決定的）")
+    void R4_複数公開ルールは開始時刻昇順の先頭() {
+        givenSlots(slot(1L, STAFF_A, LocalTime.of(9, 0), LocalTime.of(12, 0)));
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                .willReturn(List.of(
+                        recurringRule(null, LocalTime.of(10, 0), LocalTime.of(11, 0), true, "後発ルール"),
+                        recurringRule(null, LocalTime.of(9, 30), LocalTime.of(10, 30), true, "先発ルール")));
+
+        ReservationGridResponse grid = service.getGrid(TEAM_ID, USER_ID, DATE, List.of(STAFF_A));
+
+        ReservationGridResponse.GridCellDto cell = columnOf(grid, STAFF_A).cells().get(0);
+        assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
+        assertThat(cell.unavailableReason()).isEqualTo("先発ルール");
     }
 }

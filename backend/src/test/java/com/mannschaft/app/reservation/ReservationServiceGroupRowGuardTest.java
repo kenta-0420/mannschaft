@@ -77,6 +77,9 @@ class ReservationServiceGroupRowGuardTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private com.mannschaft.app.reservation.service.ReservationGroupSummaryResolver groupSummaryResolver;
 
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
@@ -100,7 +103,8 @@ class ReservationServiceGroupRowGuardTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
+                unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
                 FIXED_CLOCK);

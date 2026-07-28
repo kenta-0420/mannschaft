@@ -99,6 +99,9 @@ class ReservationGroupServiceTest {
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private ReservationReminderRepository reminderRepository;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
@@ -161,7 +164,8 @@ class ReservationGroupServiceTest {
         TransactionTemplate txTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
         service = new ReservationGroupService(
                 reservationRepository, slotRepository, slotService, lineRepository, menuRepository,
-                menuLineRepository, blockedTimeRepository, reminderRepository, viewAccessGuard,
+                menuLineRepository, blockedTimeRepository, recurringBlockedTimeRepository, reminderRepository,
+                viewAccessGuard,
                 reservationPolicyService, unavailabilityChecker, accessControlService, eventPublisher,
                 auditLogService,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),

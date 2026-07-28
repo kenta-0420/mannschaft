@@ -17,6 +17,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationReminderEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
@@ -26,6 +27,7 @@ import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepositor
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -83,6 +85,8 @@ public class ReservationGroupService {
     private final ReservationMenuRepository menuRepository;
     private final ReservationMenuLineRepository menuLineRepository;
     private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し）の active ルール参照。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
     private final ReservationReminderRepository reminderRepository;
     /** 予約閲覧の view ゲート（会員 or 公開）。単枠予約・グリッドと同一述語を共有する（§4）。 */
     private final ReservationViewAccessGuard viewAccessGuard;
@@ -210,11 +214,13 @@ public class ReservationGroupService {
             }
         }
 
-        // 2-g. 予約不可枠（機能B 単一ユーティリティ・違反 009）
+        // 2-g. 予約不可枠（機能B+F03.4.5 §4.2 単一ユーティリティ・違反 009）
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
                 .findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, firstSlot.getSlotDate());
+        List<ReservationRecurringBlockedTimeEntity> recurringRules =
+                recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         for (ReservationSlotEntity slot : slots) {
-            if (unavailabilityChecker.isBlockedByAny(slot, blocks)) {
+            if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules)) {
                 throw new BusinessException(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             }
         }
