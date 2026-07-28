@@ -252,8 +252,17 @@ export const useAuthStore = defineStore('auth', {
         : Promise.resolve()
 
       // ③ 遷移を即時実行（クリーンアップ完了を待たない）。
+      //
+      // 既に遷移先と同一の URL にいる場合は navigateTo を撃たない。
+      // ログイン画面に留まったまま失効を検知した場合や、複数経路から logout が呼ばれた場合に、
+      // 同じ /login?reason=... へ繰り返し遷移してちらつき・ループを起こすのを防ぐ。
+      // state / localStorage のクリア（①）は上で済んでいるため、遷移を省いても失効処理は完結する。
       const loginPath = options?.reason ? `/login?reason=${options.reason}` : '/login'
-      navigateTo(loginPath)
+      const alreadyOnLoginPath = import.meta.client
+        && `${window.location.pathname}${window.location.search}` === loginPath
+      if (!alreadyOnLoginPath) {
+        navigateTo(loginPath)
+      }
 
       // ④ 遷移後もクリーンアップ Promise が完了するまで呼び出し元が await できるよう返す。
       //   通常の呼び出し元は await logout() で完了を待てるが、遷移は ③ で先行済みのため
