@@ -141,6 +141,11 @@ class FlywayFromScratchMigrationTest {
      *       Entity は {@code @GeneratedColumn} で生成カラムを宣言しているが、
      *       Flyway（V11.030）は生成カラムではなく関数インデックスで同じ一意制約を実装しており、
      *       列そのものが存在しない。</li>
+     *   <li><b>{@code BaseEntity} の {@code created_at} / {@code updated_at}（17 件）</b> —
+     *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
+     *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
+     *       {@code @PreUpdate} で必ず書き込むが、これらのテーブルの CREATE TABLE は
+     *       片方または両方を作っていない。</li>
      * </ul>
      */
     private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of(
@@ -167,7 +172,24 @@ class FlywayFromScratchMigrationTest {
         // --- 生成カラム vs 関数インデックスの設計不一致（要設計判断）---
         "shift_budget_allocations.team_id_uq",
         "shift_budget_allocations.project_id_uq",
-        "shift_budget_allocations.deleted_at_uq"
+        "shift_budget_allocations.deleted_at_uq",
+        // --- BaseEntity の created_at / updated_at を CREATE TABLE が作っていない ---
+        "ad_conversions.updated_at",
+        "analytics_alert_history.updated_at",
+        "attendance_transition_alerts.updated_at",
+        "budget_transaction_attachments.updated_at",
+        "chart_body_marks.updated_at",
+        "chart_photos.updated_at",
+        "committee_distribution_logs.updated_at",
+        "daily_attendance_records.created_at",
+        "job_check_ins.updated_at",
+        "line_message_logs.updated_at",
+        "onboarding_step_completions.updated_at",
+        "parking_applications.updated_at",
+        "period_attendance_records.created_at",
+        "proxy_votes.created_at",
+        "proxy_votes.updated_at",
+        "webhook_event_subscriptions.updated_at"
     );
 
     /**
@@ -392,7 +414,15 @@ class FlywayFromScratchMigrationTest {
                 .build();
     }
 
-    /** {@code com.mannschaft.app} 配下の JPA マッピング対象クラスを走査する。 */
+    /**
+     * {@code com.mannschaft.app} 配下の JPA マッピング対象クラス（本番ソースセットのみ）を走査する。
+     *
+     * <p>テストソースセットにも番人メタテスト用のダミー Entity
+     * （{@code DummyD6ExposedEntity} 等）が存在する。これらは Flyway に対応テーブルを持たないのが
+     * 正しい姿であり、本テストの対象は本番の Entity のみであるため、
+     * クラスの出所（{@code build/classes/java/test}）で機械的に除外する。
+     * 台帳に載せて握りつぶすのではなく、そもそも検査対象から外すのが筋である。</p>
+     */
     private static List<Class<?>> scanMappedClasses() throws ClassNotFoundException {
         // 既定の isCandidateComponent は「具象かつ独立したクラス」だけを通すため、
         // abstract な @MappedSuperclass（BaseEntity / UuidV7Entity）が漏れる。全件通すよう上書きする。
@@ -411,13 +441,28 @@ class FlywayFromScratchMigrationTest {
         List<Class<?>> classes = new ArrayList<>();
         for (BeanDefinition definition : scanner.findCandidateComponents(ENTITY_BASE_PACKAGE)) {
             String className = definition.getBeanClassName();
-            if (className != null) {
-                classes.add(Class.forName(className));
+            if (className == null) {
+                continue;
+            }
+            Class<?> mappedClass = Class.forName(className);
+            if (!isFromTestSourceSet(mappedClass)) {
+                classes.add(mappedClass);
             }
         }
         assertThat(classes)
                 .as("com.mannschaft.app 配下の JPA マッピングクラスが走査できること")
                 .isNotEmpty();
         return classes;
+    }
+
+    /** クラスがテストソースセット（{@code build/classes/java/test}）由来かどうかを判定する。 */
+    private static boolean isFromTestSourceSet(Class<?> clazz) {
+        java.security.ProtectionDomain domain = clazz.getProtectionDomain();
+        if (domain == null || domain.getCodeSource() == null
+                || domain.getCodeSource().getLocation() == null) {
+            return false; // 出所不明なら本番扱い（検査する側に倒す）
+        }
+        String location = domain.getCodeSource().getLocation().getPath();
+        return location.contains("/classes/java/test");
     }
 }
