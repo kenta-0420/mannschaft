@@ -554,6 +554,28 @@
       "need_business_hours_hint": "먼저 영업시간을 설정해 주세요",
       "generated_zero_hint": "슬롯이 생성되지 않았습니다(영업시간 외 또는 정기 휴무일). 영업시간을 확인해 주세요"
     },
+    "recurring_block": {
+      "title": "매주 예약 불가",
+      "add": "예약 불가 추가",
+      "edit": "예약 불가 편집",
+      "delete_confirm": "이 정기 예약 불가 규칙을 삭제하시겠습니까?",
+      "reason": "사유",
+      "reason_no_pii": "사유에 개인 이름이나 고객 정보를 포함하지 마세요(전체 회원에게 공개됩니다)",
+      "reason_placeholder": "예: 교육, 강습, 청소, 유지보수",
+      "is_public": "회원에게 사유 표시",
+      "is_public_note": "ON으로 설정하면 예약 현황에 이 라벨이 표시됩니다",
+      "line_all": "팀 전체",
+      "limit_reached": "정기 예약 불가 규칙은 최대 50개까지 등록할 수 있습니다",
+      "full_day_hint": "하루 종일 휴무로 설정하려면 영업시간에서 정기 휴무일로 설정해 주세요",
+      "impact_warning": "향후 90일 이내에 중복되는 예약이 {n}건 있습니다",
+      "day_empty": "이 요일에는 예약 불가 규칙이 없습니다",
+      "message": {
+        "load_failed": "정기 예약 불가 규칙을 불러오지 못했습니다",
+        "create_success": "정기 예약 불가 규칙을 등록했습니다",
+        "update_success": "정기 예약 불가 규칙을 수정했습니다",
+        "delete_success": "정기 예약 불가 규칙을 삭제했습니다"
+      }
+    },
     "business_hours": {
       "title": "영업시간",
       "day_open": "영업함",

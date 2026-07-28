@@ -554,6 +554,28 @@
       "need_business_hours_hint": "Please set business hours first",
       "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours"
     },
+    "recurring_block": {
+      "title": "Weekly unavailability",
+      "add": "Add unavailability",
+      "edit": "Edit unavailability",
+      "delete_confirm": "Delete this recurring unavailability rule?",
+      "reason": "Reason",
+      "reason_no_pii": "Do not include personal names or customer information in the reason (it will be shown to all members)",
+      "reason_placeholder": "e.g. Training, Class, Cleaning, Maintenance",
+      "is_public": "Show reason to members",
+      "is_public_note": "When ON, this label is shown on the availability view",
+      "line_all": "Whole team",
+      "limit_reached": "You can register up to 50 recurring unavailability rules",
+      "full_day_hint": "To close all day, set the day as a regular closed day in business hours instead",
+      "impact_warning": "There are {n} overlapping reservations in the next 90 days",
+      "day_empty": "No unavailability rules for this day",
+      "message": {
+        "load_failed": "Failed to load recurring unavailability rules",
+        "create_success": "Recurring unavailability rule created",
+        "update_success": "Recurring unavailability rule updated",
+        "delete_success": "Recurring unavailability rule deleted"
+      }
+    },
     "business_hours": {
       "title": "Business hours",
       "day_open": "Open",

@@ -18,17 +18,36 @@
  *   （フルネーム送信は Jackson デシリアライズ失敗で 400 — 設計書 §3.1/§4/§10 明記）。
  * - エラーは BE コードで判定して表示（握りつぶし禁止）: RESERVATION_037(400) 上限500行。
  *
- * §4 の定期予約不可枠（赤系・事由ラベル付き併記表示）は W2-2（第二隊以降）でこのファイルへ統合する。
+ * 【F03.4.5 W2-2-FE §4 B) 定期予約不可枠 統合（本隊）】
+ * - 曜日ごとのグルーピング表示に、枠テンプレ（青系）と定期予約不可（赤系・事由ラベル付き）を
+ *   並べて表示する（§4.5）。各曜日行に「＋枠テンプレ」（既存 openCreate へ day 引数追加）と
+ *   「＋予約不可」（新設 openCreateRecurring）の2ボタンを置く。
+ * - 定期不可の追加/編集ダイアログは `ReservationUnavailabilityManager.vue` の金型（時刻 Select・
+ *   impact 警告）を写経。`reason` は必須（BE `@NotBlank` 実測）・`isPublic` ON 時は
+ *   `reason_no_pii` 注意ガイドを必須表示（§4.4/AC R-9）・全日型は作らせない（start/end 必須・§4.3）。
+ * - dayOfWeek は必ず3文字大文字（'MON'..'SUN'）で送る（BE `ReservationDayOfWeek` enum・
+ *   'MONDAY' 等フルネームは Jackson デシリアライズ失敗で 400）。
+ * - エラーコード（BE PR #2232 実測）: 409=RESERVATION_027（overlap する active 予約・機能B と共用）／
+ *   400=RESERVATION_052（上限50行）／404=RESERVATION_051（IDOR秘匿・他チーム ruleId）。
+ * - 単発の予約不可枠（機能B・`ReservationUnavailabilityManager`）は詳細設定 Accordion に残置（§4.5・変更なし）。
  *
- * 金型: LineManager.vue（CRUDダイアログ型）。最終ゲートは BE。
+ * 金型: LineManager.vue（CRUDダイアログ型）／ReservationUnavailabilityManager.vue（impact 判定作法）。
+ * 最終ゲートは BE。
  */
 import type { components } from '~/types/generated'
 import type { ReservationDayOfWeekCode } from '~/composables/useReservationApi'
-import { RESERVATION_DAY_OPTIONS, buildHalfHourTimeOptions, toHm } from '~/composables/useReservationDayOptions'
+import {
+  RESERVATION_DAY_OPTIONS,
+  buildHalfHourTimeOptions,
+  toHm,
+  isValidHalfHourRange,
+} from '~/composables/useReservationDayOptions'
 
 type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type SlotGenerationResultDto = components['schemas']['SlotGenerationResultDto']
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
+type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
 
 const props = defineProps<{
   teamId: string
@@ -159,10 +178,14 @@ async function loadLines() {
   }
 }
 
-function openCreate() {
+/**
+ * テンプレ作成ダイアログを開く。`day` 指定時（曜日行の「＋枠テンプレ」クイック追加）は
+ * 当該曜日のみ選択済みで開く。無指定（ヘッダーの「テンプレートを追加」・複数曜日対応）は従来どおり空。
+ */
+function openCreate(day?: ReservationDayOfWeekCode) {
   editingTemplate.value = null
   form.value = defaultForm()
-  selectedDays.value = []
+  selectedDays.value = day ? [day] : []
   showDialog.value = true
 }
 
@@ -319,27 +342,264 @@ async function remove(template: SlotTemplateResponse) {
   }
 }
 
+// === §4 B) 定期予約不可枠（週次繰り返し・赤系併記表示）===
+
+const recurringRules = ref<RecurringBlockedTimeResponse[]>([])
+const recurringLoading = ref(true)
+const showRecurringDialog = ref(false)
+const editingRule = ref<RecurringBlockedTimeResponse | null>(null)
+const recurringSaving = ref(false)
+
+interface RecurringForm {
+  dayOfWeek: ReservationDayOfWeekCode
+  lineId: number
+  startTime: string
+  endTime: string
+  reason: string
+  isPublic: boolean
+  isActive: boolean
+}
+
+function defaultRecurringForm(day?: ReservationDayOfWeekCode): RecurringForm {
+  return {
+    dayOfWeek: day ?? 'MON',
+    lineId: COMMON_LINE,
+    startTime: '19:00',
+    endTime: '20:00',
+    reason: '',
+    isPublic: false,
+    isActive: true,
+  }
+}
+
+const recurringForm = ref<RecurringForm>(defaultRecurringForm())
+
+/** 曜日 Select の選択肢（単一選択・§4.5）。値は3文字大文字コード。 */
+const recurringDayOptions = computed(() =>
+  RESERVATION_DAY_OPTIONS.map(d => ({ label: t(d.labelKey), value: d.value })),
+)
+
+/** 全日型は作らせない（§4.3）: 両時刻が有効な半開区間（start < end）のときのみ true。 */
+const recurringTimeRangeValid = computed(() =>
+  isValidHalfHourRange(recurringForm.value.startTime, recurringForm.value.endTime),
+)
+
+/** 事由（reason）は必須（BE `@NotBlank`・§4.1）。 */
+const recurringReasonValid = computed(() =>
+  recurringForm.value.reason.trim().length > 0 && recurringForm.value.reason.trim().length <= 100,
+)
+
+const recurringImpact = ref<RecurringBlockedTimeImpactResponse | null>(null)
+const recurringImpactLoading = ref(false)
+let recurringImpactToken = 0
+
+/** impact 判定用の有効リクエスト（時刻レンジが無効な間は null＝impact を呼ばない）。 */
+const recurringEffectiveRequest = computed(() => {
+  if (!recurringTimeRangeValid.value) return null
+  return {
+    dayOfWeek: recurringForm.value.dayOfWeek,
+    startTime: `${recurringForm.value.startTime}:00`,
+    endTime: `${recurringForm.value.endTime}:00`,
+    lineId: recurringForm.value.lineId === COMMON_LINE ? undefined : recurringForm.value.lineId,
+  }
+})
+
+async function refreshRecurringImpact() {
+  const req = recurringEffectiveRequest.value
+  if (!req) {
+    recurringImpact.value = null
+    return
+  }
+  const token = ++recurringImpactToken
+  recurringImpactLoading.value = true
+  try {
+    const res = await reservationApi.getRecurringBlockedTimeImpact(props.teamId, req)
+    if (token === recurringImpactToken) recurringImpact.value = res.data
+  }
+  catch {
+    // impact 取得失敗は登録可否に影響させない（BE の 409 が最終防御・ReservationUnavailabilityManager と同方針）
+    if (token === recurringImpactToken) recurringImpact.value = null
+  }
+  finally {
+    if (token === recurringImpactToken) recurringImpactLoading.value = false
+  }
+}
+
+watch(recurringEffectiveRequest, refreshRecurringImpact, { deep: true })
+
+const recurringHasConflict = computed(() => (recurringImpact.value?.affectedCount ?? 0) > 0)
+
+const recurringSaveDisabled = computed(() =>
+  recurringSaving.value
+  || !recurringTimeRangeValid.value
+  || !recurringReasonValid.value
+  || recurringImpactLoading.value
+  || recurringHasConflict.value,
+)
+
+async function loadRecurringRules() {
+  recurringLoading.value = true
+  try {
+    const res = await reservationApi.listRecurringBlockedTimes(props.teamId)
+    recurringRules.value = res.data ?? []
+  }
+  catch {
+    recurringRules.value = []
+    notification.error(t('reservation.recurring_block.message.load_failed'))
+  }
+  finally {
+    recurringLoading.value = false
+  }
+}
+
+/** 曜日別グルーピング（§4.5・§3.2 の「曜日ごとのグルーピング表示」）。 */
+function templatesByDay(day: ReservationDayOfWeekCode): SlotTemplateResponse[] {
+  return templates.value.filter(tpl => tpl.dayOfWeek === day)
+}
+function rulesByDay(day: ReservationDayOfWeekCode): RecurringBlockedTimeResponse[] {
+  return recurringRules.value.filter(r => r.dayOfWeek === day)
+}
+
+/** テンプレ・定期不可のいずれかが1件でもあれば曜日グルーピング表示、無ければ従来の空状態を出す。 */
+const hasAnyContent = computed(() => templates.value.length > 0 || recurringRules.value.length > 0)
+
+/** 定期不可の追加ダイアログを開く（曜日行の「＋予約不可」クイック追加は day 指定で開く）。 */
+function openCreateRecurring(day?: ReservationDayOfWeekCode) {
+  editingRule.value = null
+  recurringForm.value = defaultRecurringForm(day)
+  recurringImpact.value = null
+  showRecurringDialog.value = true
+}
+
+function openEditRecurring(rule: RecurringBlockedTimeResponse) {
+  editingRule.value = rule
+  recurringForm.value = {
+    dayOfWeek: (RESERVATION_DAY_OPTIONS.find(d => d.value === rule.dayOfWeek)?.value ?? 'MON'),
+    lineId: rule.lineId ?? COMMON_LINE,
+    startTime: toHm(rule.startTime),
+    endTime: toHm(rule.endTime),
+    reason: rule.reason ?? '',
+    isPublic: rule.isPublic ?? false,
+    isActive: rule.isActive ?? true,
+  }
+  recurringImpact.value = null
+  showRecurringDialog.value = true
+}
+
+/** BE エラーコード → 利用者向け文言（握りつぶさない。§4.6/§10 実測: 051=NOT_FOUND・052=上限・027=409共用） */
+function notifyRecurringSaveError(err: unknown) {
+  const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
+  if (code === 'RESERVATION_052') {
+    notification.error(t('dialog.error'), t('reservation.recurring_block.limit_reached'))
+    return
+  }
+  if (code === 'RESERVATION_027') {
+    // overlap する active 予約が残ったまま登録した競合（最終防御・機能B と同一コード共用）
+    notification.error(t('dialog.error'), t('reservation.unavailability.error.has_active_reservations'))
+    refreshRecurringImpact()
+    return
+  }
+  handleApiError(err)
+}
+
+async function saveRecurring() {
+  const req = recurringEffectiveRequest.value
+  if (!req || recurringSaveDisabled.value) return
+  recurringSaving.value = true
+  try {
+    if (editingRule.value?.id) {
+      await reservationApi.updateRecurringBlockedTime(props.teamId, editingRule.value.id, {
+        dayOfWeek: req.dayOfWeek,
+        startTime: req.startTime,
+        endTime: req.endTime,
+        reason: recurringForm.value.reason.trim(),
+        isPublic: recurringForm.value.isPublic,
+        isActive: recurringForm.value.isActive,
+        ...(recurringForm.value.lineId === COMMON_LINE ? { clearLineId: true } : { lineId: recurringForm.value.lineId }),
+      })
+      notification.success(t('reservation.recurring_block.message.update_success'))
+    }
+    else {
+      await reservationApi.createRecurringBlockedTime(props.teamId, {
+        dayOfWeek: req.dayOfWeek,
+        startTime: req.startTime,
+        endTime: req.endTime,
+        reason: recurringForm.value.reason.trim(),
+        isPublic: recurringForm.value.isPublic,
+        ...(recurringForm.value.lineId === COMMON_LINE ? {} : { lineId: recurringForm.value.lineId }),
+      })
+      notification.success(t('reservation.recurring_block.message.create_success'))
+    }
+    showRecurringDialog.value = false
+    await loadRecurringRules()
+  }
+  catch (err) {
+    notifyRecurringSaveError(err)
+  }
+  finally {
+    recurringSaving.value = false
+  }
+}
+
+/** 一時停止/再開（isActive トグル）。§4.6 の PATCH を再利用。 */
+async function toggleRecurringActive(rule: RecurringBlockedTimeResponse) {
+  if (!rule.id) return
+  try {
+    await reservationApi.updateRecurringBlockedTime(props.teamId, rule.id, {
+      isActive: !(rule.isActive ?? true),
+    })
+    await loadRecurringRules()
+  }
+  catch (err) {
+    handleApiError(err)
+  }
+}
+
+/** 物理削除（履歴価値なし・§4.6）。確認ダイアログを経由する（多重マウント回避のため既存 confirm() 作法を踏襲）。 */
+async function removeRecurring(rule: RecurringBlockedTimeResponse) {
+  if (!rule.id) return
+  if (!confirm(t('reservation.recurring_block.delete_confirm'))) return
+  try {
+    await reservationApi.deleteRecurringBlockedTime(props.teamId, rule.id)
+    notification.success(t('reservation.recurring_block.message.delete_success'))
+    await loadRecurringRules()
+  }
+  catch (err) {
+    handleApiError(err)
+  }
+}
+
 onMounted(async () => {
   await loadPermissions()
-  await Promise.all([loadTemplates(), loadLines()])
+  await Promise.all([loadTemplates(), loadLines(), loadRecurringRules()])
 })
 
 // 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
-defineExpose({ refresh: loadTemplates, items: templates })
+defineExpose({ refresh: async () => { await Promise.all([loadTemplates(), loadRecurringRules()]) }, items: templates })
 </script>
 
 <template>
   <div>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h3 class="text-lg font-semibold">{{ t('reservation.template.title') }}</h3>
-      <Button
-        v-if="isAdmin"
-        :label="t('reservation.template.add')"
-        icon="pi pi-plus"
-        size="small"
-        data-testid="template-add"
-        @click="openCreate"
-      />
+      <div v-if="isAdmin" class="flex flex-wrap gap-2">
+        <Button
+          :label="t('reservation.template.add')"
+          icon="pi pi-plus"
+          size="small"
+          data-testid="template-add"
+          @click="openCreate()"
+        />
+        <Button
+          :label="t('reservation.recurring_block.add')"
+          icon="pi pi-plus"
+          size="small"
+          severity="danger"
+          outlined
+          data-testid="recurring-add"
+          @click="openCreateRecurring()"
+        />
+      </div>
     </div>
 
     <!-- 保存直後の自動反映ガイド（regenerate_guide 改訂値・§11） -->
@@ -347,33 +607,117 @@ defineExpose({ refresh: loadTemplates, items: templates })
       {{ t('reservation.template.regenerate_guide') }}
     </Message>
 
-    <!-- 一覧 -->
-    <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
-    <div v-else-if="templates.length > 0" class="space-y-2">
+    <!-- 使い方の一言: 青=枠テンプレ・赤=定期予約不可（§4.5「営業の設計図」が1画面） -->
+    <p v-if="hasAnyContent" class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
+      <span class="flex items-center gap-1">
+        <span class="inline-block size-2.5 rounded-full bg-blue-400" />{{ t('reservation.template.title') }}
+      </span>
+      <span class="flex items-center gap-1">
+        <span class="inline-block size-2.5 rounded-full bg-red-400" />{{ t('reservation.recurring_block.title') }}
+      </span>
+    </p>
+
+    <!-- 一覧（曜日ごとのグルーピング表示・§3.2/§4.5） -->
+    <div v-if="loading || recurringLoading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
+    <div v-else-if="hasAnyContent" class="space-y-3">
       <div
-        v-for="template in templates"
-        :key="template.id"
-        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
-        :class="template.isActive === false ? 'opacity-60' : ''"
+        v-for="day in RESERVATION_DAY_OPTIONS"
+        :key="day.value"
+        class="rounded-lg border border-surface-200 dark:border-surface-700"
       >
-        <div class="min-w-0 flex-1">
-          <p class="font-medium">
-            {{ dayLabel(template.dayOfWeek) }}
-            {{ toHm(template.startTime) }} - {{ toHm(template.endTime) }}
-            <span class="ml-2 text-sm text-surface-500">
-              {{ template.lineId != null ? (template.lineName ?? '') : t('reservation.template.line_common') }}
-            </span>
-          </p>
-          <div class="mt-0.5 flex flex-wrap gap-2 text-xs text-surface-500">
-            <span>{{ t('reservation.template.capacity') }}: {{ template.capacity }}</span>
-            <span v-if="template.cellCount != null">
-              {{ t('reservation.template.cell_count', { n: template.cellCount }) }}
-            </span>
-            <span v-if="template.isActive === false">{{ t('reservation.state.inactive') }}</span>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 p-2 dark:border-surface-700">
+          <span class="text-sm font-semibold">{{ t(day.labelKey) }}</span>
+          <div v-if="isAdmin" class="flex gap-1">
+            <Button
+              icon="pi pi-plus"
+              text
+              rounded
+              size="small"
+              :aria-label="t('reservation.template.add')"
+              :data-testid="`day-template-add-${day.value}`"
+              @click="openCreate(day.value)"
+            />
+            <Button
+              icon="pi pi-plus"
+              text
+              rounded
+              size="small"
+              severity="danger"
+              :aria-label="t('reservation.recurring_block.add')"
+              :data-testid="`day-recurring-add-${day.value}`"
+              @click="openCreateRecurring(day.value)"
+            />
           </div>
         </div>
-        <Button v-if="isAdmin" icon="pi pi-pencil" text rounded size="small" @click="openEdit(template)" />
-        <Button v-if="isAdmin" icon="pi pi-trash" text rounded size="small" severity="danger" @click="remove(template)" />
+        <div class="space-y-2 p-2">
+          <!-- 枠テンプレ（青系） -->
+          <div
+            v-for="template in templatesByDay(day.value)"
+            :key="template.id"
+            class="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20"
+            :class="template.isActive === false ? 'opacity-60' : ''"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">
+                {{ dayLabel(template.dayOfWeek) }}
+                {{ toHm(template.startTime) }} - {{ toHm(template.endTime) }}
+                <span class="ml-2 text-sm text-surface-500">
+                  {{ template.lineId != null ? (template.lineName ?? '') : t('reservation.template.line_common') }}
+                </span>
+              </p>
+              <div class="mt-0.5 flex flex-wrap gap-2 text-xs text-surface-500">
+                <span>{{ t('reservation.template.capacity') }}: {{ template.capacity }}</span>
+                <span v-if="template.cellCount != null">
+                  {{ t('reservation.template.cell_count', { n: template.cellCount }) }}
+                </span>
+                <span v-if="template.isActive === false">{{ t('reservation.state.inactive') }}</span>
+              </div>
+            </div>
+            <Button v-if="isAdmin" icon="pi pi-pencil" text rounded size="small" @click="openEdit(template)" />
+            <Button v-if="isAdmin" icon="pi pi-trash" text rounded size="small" severity="danger" @click="remove(template)" />
+          </div>
+
+          <!-- 定期予約不可（赤系・事由ラベル付き・§4.4/§4.5） -->
+          <div
+            v-for="rule in rulesByDay(day.value)"
+            :key="rule.id"
+            class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50/60 p-3 dark:border-red-900 dark:bg-red-950/20"
+            :class="rule.isActive === false ? 'opacity-60' : ''"
+            :data-testid="`recurring-row-${rule.id}`"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">
+                {{ dayLabel(rule.dayOfWeek) }}
+                {{ toHm(rule.startTime) }} - {{ toHm(rule.endTime) }}
+                <span class="ml-2 text-sm text-surface-500">
+                  {{ rule.lineId != null ? (rule.lineName ?? '') : t('reservation.recurring_block.line_all') }}
+                </span>
+              </p>
+              <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                <span>{{ t('reservation.recurring_block.reason') }}: {{ rule.reason }}</span>
+                <Tag v-if="rule.isPublic" :value="t('reservation.recurring_block.is_public')" severity="info" />
+                <span v-if="rule.isActive === false">{{ t('reservation.state.inactive') }}</span>
+              </div>
+            </div>
+            <Button
+              v-if="isAdmin"
+              :icon="rule.isActive === false ? 'pi pi-play' : 'pi pi-pause'"
+              text
+              rounded
+              size="small"
+              @click="toggleRecurringActive(rule)"
+            />
+            <Button v-if="isAdmin" icon="pi pi-pencil" text rounded size="small" @click="openEditRecurring(rule)" />
+            <Button v-if="isAdmin" icon="pi pi-trash" text rounded size="small" severity="danger" @click="removeRecurring(rule)" />
+          </div>
+
+          <p
+            v-if="templatesByDay(day.value).length === 0 && rulesByDay(day.value).length === 0"
+            class="text-xs text-surface-400"
+          >
+            {{ t('reservation.recurring_block.day_empty') }}
+          </p>
+        </div>
       </div>
     </div>
     <DashboardEmptyState
@@ -400,7 +744,7 @@ defineExpose({ refresh: loadTemplates, items: templates })
             :label="t('reservation.template.add')"
             icon="pi pi-plus"
             size="small"
-            @click="openCreate"
+            @click="openCreate()"
           />
         </div>
       </template>
@@ -501,6 +845,150 @@ defineExpose({ refresh: loadTemplates, items: templates })
           :disabled="saveDisabled"
           data-testid="template-save"
           @click="save"
+        />
+      </template>
+    </Dialog>
+
+    <!-- 定期予約不可 作成・編集ダイアログ（§4.5・ReservationUnavailabilityManager 金型写経） -->
+    <Dialog
+      v-model:visible="showRecurringDialog"
+      :header="editingRule ? t('reservation.recurring_block.edit') : t('reservation.recurring_block.add')"
+      :style="{ width: '460px' }"
+      modal
+    >
+      <div class="flex flex-col gap-4">
+        <!-- 曜日（単一選択・値は3文字大文字コード） -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('reservation.template.day_of_week') }} <span class="text-red-500">*</span>
+          </label>
+          <Select
+            v-model="recurringForm.dayOfWeek"
+            :options="recurringDayOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            data-testid="recurring-day-select"
+          />
+        </div>
+
+        <!-- 対象ライン（既定=チーム全体） -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.template.line') }}</label>
+          <Select
+            v-model="recurringForm.lineId"
+            :options="lineOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            data-testid="recurring-line-select"
+          />
+        </div>
+
+        <!-- 開始・終了時刻（30分刻み・全日型は作らせない＝show-clear を付けない） -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('reservation.template.time_range') }} <span class="text-red-500">*</span>
+          </label>
+          <div class="flex flex-wrap items-center gap-2">
+            <Select
+              v-model="recurringForm.startTime"
+              :options="timeOptions"
+              option-label="label"
+              option-value="value"
+              class="w-32"
+              data-testid="recurring-start-time"
+            />
+            <span class="text-surface-400">-</span>
+            <Select
+              v-model="recurringForm.endTime"
+              :options="timeOptions"
+              option-label="label"
+              option-value="value"
+              class="w-32"
+              data-testid="recurring-end-time"
+            />
+          </div>
+          <p v-if="!recurringTimeRangeValid" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+            {{ t('reservation.template.error.time_range_invalid') }}
+          </p>
+          <p class="mt-1 text-xs text-surface-500">
+            {{ t('reservation.recurring_block.full_day_hint') }}
+          </p>
+        </div>
+
+        <!-- 事由（必須・PII実防御プレースホルダ） -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('reservation.recurring_block.reason') }} <span class="text-red-500">*</span>
+          </label>
+          <InputText
+            v-model="recurringForm.reason"
+            maxlength="100"
+            :placeholder="t('reservation.recurring_block.reason_placeholder')"
+            class="w-full"
+            data-testid="recurring-reason"
+          />
+          <!-- is_public=ON 時のみ必須表示（§4.4/AC R-9・vitest: トグルON/OFFでの表示切替番人） -->
+          <p
+            v-if="recurringForm.isPublic"
+            class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+            data-testid="recurring-reason-no-pii"
+          >
+            {{ t('reservation.recurring_block.reason_no_pii') }}
+          </p>
+        </div>
+
+        <!-- 会員への公開可否 -->
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium">{{ t('reservation.recurring_block.is_public') }}</label>
+            <ToggleSwitch v-model="recurringForm.isPublic" data-testid="recurring-is-public-toggle" />
+          </div>
+          <p class="mt-1 text-xs text-surface-500">
+            {{ t('reservation.recurring_block.is_public_note') }}
+          </p>
+        </div>
+
+        <!-- 有効/無効（編集時のみ・一時停止） -->
+        <div v-if="editingRule" class="flex items-center justify-between">
+          <label class="text-sm font-medium">{{ t('reservation.template.is_active') }}</label>
+          <ToggleSwitch v-model="recurringForm.isActive" />
+        </div>
+
+        <!-- impact 警告（90日 horizon の overlap active 予約プレビュー・§4.3） -->
+        <Message v-if="recurringHasConflict" severity="warn" :closable="false">
+          <div class="space-y-2">
+            <p class="text-sm font-medium">
+              {{ t('reservation.recurring_block.impact_warning', { n: recurringImpact?.affectedCount ?? 0 }) }}
+            </p>
+            <ul class="space-y-1 text-xs">
+              <li
+                v-for="r in recurringImpact?.reservations ?? []"
+                :key="r.reservationId"
+                class="flex flex-wrap gap-x-2"
+              >
+                <span class="font-medium">{{ r.userName }}</span>
+                <span class="text-surface-500">{{ toHm(r.startTime) }} - {{ toHm(r.endTime) }}</span>
+                <span v-if="r.staffName" class="text-surface-500">/ {{ r.staffName }}</span>
+              </li>
+            </ul>
+          </div>
+        </Message>
+        <span v-if="recurringImpactLoading" class="text-xs text-surface-500">
+          {{ t('reservation.unavailability.impact.checking') }}
+        </span>
+      </div>
+
+      <template #footer>
+        <Button :label="t('reservation.button.cancel')" text @click="showRecurringDialog = false" />
+        <Button
+          :label="t('reservation.button.save')"
+          icon="pi pi-check"
+          :loading="recurringSaving"
+          :disabled="recurringSaveDisabled"
+          data-testid="recurring-save"
+          @click="saveRecurring"
         />
       </template>
     </Dialog>

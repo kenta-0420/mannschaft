@@ -16,6 +16,12 @@ export interface MatrixCellInput {
   endTime?: string
   state?: MatrixCellState
   price?: number
+  /**
+   * F03.4.5 §4.4: state=UNAVAILABLE かつ判定元が is_public=TRUE の定期予約不可ルールのときのみ
+   * BE が値を詰める（それ以外＝単発 blocked_times 由来・is_public=FALSE は null/undefined）。
+   * FE は「値があれば出す・無ければ従来表示」だけを守り、公開判定を再実装しない。
+   */
+  unavailableReason?: string | null
 }
 
 /** 固定30分ヘッダの1列。 */
@@ -181,4 +187,23 @@ export function isPastCell(date: string, cellStartTime: string | undefined, toda
 export function mondayOffsetDays(dow: number): number {
   // 月曜=0, 火=1, ..., 日=6 になるようシフトする
   return (dow + 6) % 7
+}
+
+/**
+ * UNAVAILABLE セルの事由ラベル（F03.4.5 §4.4）。
+ *
+ * `unavailableReason` は「is_public=TRUE の定期予約不可ルール」由来のときのみ BE が値を詰める
+ * （単発 blocked_times 由来・非公開ルールは null/undefined）。FE は「値があれば出す・無ければ
+ * 従来表示のまま」だけを守り、公開可否を FE 側で再判定しない
+ * （`feedback_type_lie_undefined_fallback_silent_death` の型の嘘対策・純関数化してテスト可能にする）。
+ */
+export function cellUnavailableReason(cell: MatrixCellInput | undefined): string | null {
+  if (!cell || cell.state !== 'UNAVAILABLE') return null
+  return cell.unavailableReason ?? null
+}
+
+/** RowSlot（ヘッダ整列後のマス）から事由ラベルを取り出す（SlotMatrixPicker 用）。 */
+export function unavailableReasonOfSlot(slot: RowSlot | undefined): string | null {
+  if (!slot || slot.kind !== 'cell') return null
+  return cellUnavailableReason(slot.cell)
 }

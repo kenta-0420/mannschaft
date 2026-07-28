@@ -554,6 +554,28 @@
       "need_business_hours_hint": "请先设置营业时间",
       "generated_zero_hint": "未创建任何时段（因不在营业时间内或为定休日）。请确认营业时间设置"
     },
+    "recurring_block": {
+      "title": "每周预约不可时段",
+      "add": "添加预约不可时段",
+      "edit": "编辑预约不可时段",
+      "delete_confirm": "确定要删除此定期预约不可规则吗？",
+      "reason": "事由",
+      "reason_no_pii": "请勿在事由中包含个人姓名或客户信息（将对所有会员公开）",
+      "reason_placeholder": "例：培训、课程、清洁、维护",
+      "is_public": "向会员显示事由",
+      "is_public_note": "开启后，此标签将显示在空档状态中",
+      "line_all": "整个团队",
+      "limit_reached": "定期预约不可规则最多可注册50条",
+      "full_day_hint": "如需整天休息，请改用营业时间设置定休日",
+      "impact_warning": "未来90天内有 {n} 件重叠的预约",
+      "day_empty": "该日没有预约不可规则",
+      "message": {
+        "load_failed": "获取定期预约不可规则失败",
+        "create_success": "已注册定期预约不可规则",
+        "update_success": "已更新定期预约不可规则",
+        "delete_success": "已删除定期预约不可规则"
+      }
+    },
     "business_hours": {
       "title": "营业时间",
       "day_open": "营业",
