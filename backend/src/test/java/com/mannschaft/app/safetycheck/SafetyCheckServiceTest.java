@@ -249,9 +249,11 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, SafetyCheckStatus.ACTIVE, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks("TEAM", SCOPE_ID, "ACTIVE", 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
+                    "TEAM", SCOPE_ID, "ACTIVE", 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -268,9 +270,11 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks("TEAM", SCOPE_ID, null, 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
+                    "TEAM", SCOPE_ID, null, 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -293,9 +297,10 @@ class SafetyCheckServiceTest {
             SafetyCheckResponse response = createCheckResponse();
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            SafetyCheckResponse result = safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID);
+            SafetyCheckResponse result = safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("地震発生");
@@ -308,7 +313,7 @@ class SafetyCheckServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID))
+            assertThatThrownBy(() -> safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND));
@@ -471,9 +476,10 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.getHistory("TEAM", SCOPE_ID, 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.getHistory("TEAM", SCOPE_ID, 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
