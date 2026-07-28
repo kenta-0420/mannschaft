@@ -217,9 +217,13 @@ public class SafetyTemplateService {
      * スコープ所有のテンプレートを更新する（スコープ入口）。
      *
      * <p><b>認可（BOLA 封鎖）</b>: bare id EP のため entity を fetch し
-     * <b>entity 由来のスコープ</b>の ADMIN/DEPUTY_ADMIN のみ許可する。権限が無い場合と
-     * スコープ null（システム既定テンプレート）はいずれも {@code TEMPLATE_NOT_FOUND}（404）に
-     * 収束させ、存在を秘匿する。</p>
+     * <b>entity 由来のスコープ</b>で二段階に判定する。</p>
+     * <ol>
+     *   <li>スコープ非メンバー（部外者・別団体の ADMIN による越境）およびスコープ null
+     *       （システム既定テンプレート）は {@code TEMPLATE_NOT_FOUND}（404）で存在を秘匿する。</li>
+     *   <li>スコープのメンバーだが ADMIN/DEPUTY_ADMIN でない場合は 403（{@code ACCESS_DENIED}）。
+     *       当該メンバーは一覧・詳細で当該テンプレートを既に閲覧できるため、存在秘匿の意味がない。</li>
+     * </ol>
      *
      * @param templateId テンプレートID
      * @param req        更新リクエスト
@@ -233,9 +237,13 @@ public class SafetyTemplateService {
         if (entity.getScopeId() == null || entity.getScopeType() == null
                 || entity.getScopeType() == SafetyCheckScopeType.GROUP
                 || userId == null
-                || !accessControlService.isAdminOrAbove(
+                || !accessControlService.isMember(
                         userId, entity.getScopeId(), entity.getScopeType().name())) {
             throw new BusinessException(SafetyCheckErrorCode.TEMPLATE_NOT_FOUND);
+        }
+        if (!accessControlService.isAdminOrAbove(
+                userId, entity.getScopeId(), entity.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.ACCESS_DENIED);
         }
         return updateTemplate(templateId, req);
     }

@@ -45,8 +45,12 @@ public class SafetyFollowupService {
      * <b>entity 由来のスコープ</b>を解決し、そのスコープの ADMIN/DEPUTY_ADMIN のみ許可する
      * （同ドメインの {@code SafetyCheckService#closeSafetyCheck} /
      * {@code #getResults} / {@code #getUnrespondedUsers} と同じ束3 AC-1-4 の作法）。
-     * 権限が無い場合・親を辿れない場合は 403 ではなく
-     * {@code FOLLOWUP_NOT_FOUND}（404）に収束させ、要支援者レコードの存在を秘匿する。</p>
+     * 判定は二段階:</p>
+     * <ol>
+     *   <li>スコープ非メンバー（部外者・別団体の ADMIN による越境）および親を辿れない場合は
+     *       {@code FOLLOWUP_NOT_FOUND}（404）に収束させ、要支援者レコードの存在を秘匿する。</li>
+     *   <li>スコープのメンバーだが ADMIN/DEPUTY_ADMIN でない場合は 403（{@code ACCESS_DENIED}）。</li>
+     * </ol>
      *
      * <p>番人テスト {@code AuthzControllerGuardArchTest} は Controller 起点で 2 ホップまでしか
      * 委譲を辿らないため、{@code accessControlService} は本メソッドから<b>直接</b>呼ぶこと。</p>
@@ -64,9 +68,13 @@ public class SafetyFollowupService {
         SafetyCheckEntity check = resolveSafetyCheckOrHide(entity);
         if (check.getScopeType() == SafetyCheckScopeType.GROUP
                 || actorUserId == null
-                || !accessControlService.isAdminOrAbove(
+                || !accessControlService.isMember(
                         actorUserId, check.getScopeId(), check.getScopeType().name())) {
             throw new BusinessException(SafetyCheckErrorCode.FOLLOWUP_NOT_FOUND);
+        }
+        if (!accessControlService.isAdminOrAbove(
+                actorUserId, check.getScopeId(), check.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.ACCESS_DENIED);
         }
 
         FollowupStatus status = request.getFollowupStatus() != null
