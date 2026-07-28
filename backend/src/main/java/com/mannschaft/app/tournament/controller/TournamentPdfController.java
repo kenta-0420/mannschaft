@@ -5,6 +5,8 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
@@ -33,6 +35,14 @@ import java.util.Map;
 /**
  * PDF出力コントローラー。
  * 4 endpoints: standings PDF, bracket PDF, rankings PDF, matrix PDF
+ *
+ * <p>認可根治戦役 Wave7（tournament）: 本コントローラーの 4 本は、同一データを JSON で返す
+ * {@link StandingsController} が冒頭で {@code verifyTournamentVisible(tId)} を呼んでいるのに対し、
+ * PDF 版だけ可視性ガードを素通りしていた（非公開＝DRAFT/PRIVATE/MEMBERS_ONLY 等の大会の順位表・
+ * トーナメント表・個人ランキング・対戦マトリクスが PDF 経由で取得できる状態）。
+ * JSON 版と PDF 版で同一の可視性判定になるよう {@link ContentVisibilityChecker} を挿入し、
+ * 併せて {@code findTournamentOrThrow} に欠落していたパス {@code orgId} と大会実体の
+ * {@code organizationId} の突合を追加した（不一致は IDOR 防止のため 404 で存在秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments/{tId}")
@@ -45,12 +55,14 @@ public class TournamentPdfController {
     private final TournamentDivisionRepository divisionRepository;
     private final StandingsQueryService standingsQueryService;
     private final RankingsCalculationService rankingsCalculationService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     @GetMapping("/divisions/{divId}/standings/pdf")
     @Operation(summary = "順位表PDF")
     public ResponseEntity<byte[]> getStandingsPdf(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
-        TournamentEntity tournament = findTournamentOrThrow(tId);
+        verifyTournamentVisible(tId);
+        TournamentEntity tournament = findTournamentOrThrow(orgId, tId);
         TournamentDivisionEntity division = findDivisionOrThrow(divId, tId);
 
         List<StandingResponse> standings = standingsQueryService.getStandings(divId);
@@ -75,7 +87,8 @@ public class TournamentPdfController {
     @Operation(summary = "トーナメント表PDF")
     public ResponseEntity<byte[]> getBracketPdf(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        TournamentEntity tournament = findTournamentOrThrow(tId);
+        verifyTournamentVisible(tId);
+        TournamentEntity tournament = findTournamentOrThrow(orgId, tId);
 
         List<?> rounds = Collections.emptyList();
 
@@ -98,10 +111,13 @@ public class TournamentPdfController {
     @Operation(summary = "個人ランキングPDF")
     public ResponseEntity<byte[]> getRankingsPdf(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable String statKey) {
-        TournamentEntity tournament = findTournamentOrThrow(tId);
+        verifyTournamentVisible(tId);
+        TournamentEntity tournament = findTournamentOrThrow(orgId, tId);
 
         // 全件取得（PDF用なのでページネーション不要、上限1000件）
         // F08.7 項目①: 閲覧者 ID を伝播し F19.1 本人可視性で名前解決する。
+        // NOTE: この viewerUserId は F19.1 の氏名マスキング用であって認可ではない。
+        //       認可（可視性ガード）は上の verifyTournamentVisible(tId) が担う。
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         var rankingsPage = rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(0, 1000), viewerUserId);
         var rankings = rankingsPage.getContent();
@@ -131,7 +147,8 @@ public class TournamentPdfController {
     @Operation(summary = "対戦マトリクスPDF")
     public ResponseEntity<byte[]> getMatrixPdf(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
-        TournamentEntity tournament = findTournamentOrThrow(tId);
+        verifyTournamentVisible(tId);
+        TournamentEntity tournament = findTournamentOrThrow(orgId, tId);
         TournamentDivisionEntity division = findDivisionOrThrow(divId, tId);
 
         MatrixResponse matrix = standingsQueryService.getMatrix(divId);
@@ -155,8 +172,26 @@ public class TournamentPdfController {
 
     // ===== Private =====
 
-    private TournamentEntity findTournamentOrThrow(Long tournamentId) {
+    /**
+     * 大会 visibility ガード。{@link StandingsController#verifyTournamentVisible} と同一実装で、
+     * JSON 版と PDF 版の可視性判定を一致させる。不可視は IDOR 防止のため 404。
+     *
+     * @param tournamentId 大会 ID（可視性は常にこの親 tournament で判定する）
+     */
+    private void verifyTournamentVisible(Long tournamentId) {
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 大会をパスの {@code orgId} に束縛して取得する。不存在・他組織の大会は 404 で存在秘匿する
+     * （{@code resolveParticipant} 系の {@code filter(t -> orgId.equals(t.getOrganizationId()))} と同流儀）。
+     */
+    private TournamentEntity findTournamentOrThrow(Long orgId, Long tournamentId) {
         return tournamentRepository.findById(tournamentId)
+                .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
     }
 
