@@ -216,11 +216,15 @@ public class AnnouncementFeedController {
      * </p>
      *
      * <p>
-     * {@code teamId} は Service まで通す。当該チームのメンバー以上であることと、
-     * {@code announcementId} が当該チームに帰属することの検証に用いる（認可根治「裏目付」C-social）。
+     * <b>認可は可視性ベース（「見える＝既読にできる」・設計書 F02.6 §6.2.1）</b>。
+     * {@code teamId} は Service まで通し、(1) {@code announcementId} が当該チームに帰属すること、
+     * (2) そのお知らせが<b>当該チームの一覧でその閲覧者に見えること</b>の検証に用いる。
+     * 在籍（メンバーシップ）では判定しない — 一覧は非メンバーにも {@code PUBLIC} を返すため、
+     * 在籍で絞ると「見えているのに既読にできない」不整合が生じる。逆に在籍だけを見ると
+     * 応援者が一覧に出ない内輪限定を既読化できてしまう。
      * </p>
      *
-     * @param teamId         チーム ID（メンバーシップ検証・スコープ帰属検証に使用）
+     * @param teamId         チーム ID（スコープ帰属検証・可視性検証に使用。捨ててはならない）
      * @param announcementId お知らせフィード ID
      * @return 200 OK（既読結果）
      */
