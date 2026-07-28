@@ -34,7 +34,9 @@
           />
         </NuxtLink>
 
+        <!-- 自動割当は管理者専用（BE が per-scope 認可で 403 を返す） -->
         <Button
+          v-if="isScopeAdmin"
           :label="$t('shift.autoAssign.history')"
           icon="pi pi-history"
           severity="secondary"
@@ -43,6 +45,7 @@
           @click="historyVisible = true"
         />
         <Button
+          v-if="isScopeAdmin"
           :label="$t('shift.autoAssign.button')"
           icon="pi pi-bolt"
           size="small"
@@ -140,6 +143,9 @@ const scheduleId = computed(() => Number(route.params.scheduleId))
 // 新実装: /api/v1/teams/{id}/me/permissions から取得した roleName で判定する。
 const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 const isSupporter = computed(() => roleName.value === 'SUPPORTER')
+// 認可根治 Wave7: 自動割当（実行・確定・破棄・履歴）は BE 側で当該チームの ADMIN/DEPUTY_ADMIN 限定に
+// なった。一般メンバーには導線を出さない（出すと必ず 403 になる死んだボタンになる）。
+const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
@@ -198,7 +204,13 @@ const unassignedMembers = computed(() =>
 
 // 初期データ取得
 onMounted(async () => {
-  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), fetchRuns(), loadPermissions()])
+  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), loadPermissions()])
+  // 認可根治 Wave7: 実行履歴 API は管理者専用になったため、権限解決後に管理者のときだけ取得する。
+  // 従来どおり Promise.all に混ぜたままだと、一般メンバーでは 403 で Promise.all ごと失敗し
+  // ボード画面全体が描画されなくなる（エラーを握りつぶさず、そもそも呼ばない形で解消する）。
+  if (isScopeAdmin.value) {
+    await fetchRuns()
+  }
 })
 
 async function loadSchedule(): Promise<void> {
