@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
@@ -66,7 +67,8 @@ class BetaPerkEligibilityServiceTest {
     void acN1_activeDaysZero_notEligible() {
         given(criteriaRepository.findById(new BetaPerkCriteriaId(1, GrantKind.INDIVIDUAL)))
                 .willReturn(Optional.of(criteria(GrantKind.INDIVIDUAL, 14, null, null, true)));
-        given(loginActivityQueryService.countDistinctActiveDays(eq(42L), any())).willReturn(0L);
+        // F20.3 TZ 是正: since 受け取り → windowDays + nowUtc 受け取りへシグネチャ変更。
+        given(loginActivityQueryService.countDistinctActiveDaysWithin(eq(42L), anyInt(), any())).willReturn(0L);
 
         EligibilityResult result = service.evaluate(
                 GrantKind.INDIVIDUAL, EntitlementScopeKind.USER, 42L, 1);

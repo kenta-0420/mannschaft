@@ -81,8 +81,46 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       {@code listRootFolders} / {@code createFolder} 計 4 件
      *       — {@code SharedFolderService} に per-scope 認可を新設</li>
      * </ul>
+     *
+     * <p>795 → 777（2026-07-28・認可根治戦役 Wave7 tournament）: tournament ドメインの
+     * 認可欠落 18 エンドポイントを根治し、凍結が解消された。内訳は
+     * {@code TournamentEntryMemberController} 6 本・{@code TournamentEntryTemplateController} 6 本
+     * （{@code AccessControlService} による参加チーム／主催組織 scope 判定を敷設）、
+     * {@code TournamentPdfController} 4 本
+     * （JSON 版 {@code StandingsController} にある {@code ContentVisibilityChecker} 可視性ガードを
+     * PDF 版にも適用）、{@code TournamentController} の {@code listTournaments}/{@code getTournament}
+     * 2 本（読取可視性の先送り方針を撤回し F00 共通可視性を適用）。
+     * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
+     *
+     * <p>795 → 783（2026-07-28・認可根治 Wave7）: safetycheck / school / proxy の 12 EP に
+     * per-scope 認可を敷設し、番人が「認可シグナルあり」と判定するようになったため凍結ストアから
+     * 解消。内訳は {@code SafetyCheckController}（listSafetyChecks / getSafetyCheck / getHistory）3、
+     * {@code SafetyTemplateController}（listTemplates / getTemplate / createTemplate / updateTemplate）4、
+     * {@code SafetyFollowupController.updateFollowup} 1、{@code FamilyAttendanceNoticeController}
+     * （getTeamNotices / acknowledgeNotice / applyToRecord）3、
+     * {@code ProxyMonthlySummaryController.getDownloadUrl} 1。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一 PR で {@code *ScopeContractIT} を新設して検証）。</p>
+     *
+     * <p>783 → 774（2026-07-28・認可根治戦役 Wave7 第二陣）: 認可の敷設が未回収だった 2 ドメインを
+     * 根治し、計 9 エンドポイントの違反が解消したため縮小。内訳は
+     * {@code service.controller.ServiceRecordFieldController} の 7 件（{@code ServiceRecordFieldService} へ
+     * {@code AccessControlService} を注入し、参照=checkMembership／変更=checkAdminOrAbove を敷設）と、
+     * {@code proxyvote.controller.ProxyVoteMotionController} の 2 件（{@code startVote} / {@code endVote} に
+     * {@code checkOwnerOrAdmin} を敷設）。いずれも Controller → Service の 1 ホップ委譲で
+     * {@link AuthzControllerGuardArchTest} の認可シグナル判定に到達する。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一コミットにストア差分・実装差分・契約テストを含む）。</p>
+     *
+     * <p>777 と 774 は共通の 795 から別々に分岐した並行根治の結果であり、{@code main} 統合時点で
+     * 両方を合流させる必要がある。774 → 756（2026-07-29・Wave7 tournament ブランチの
+     * {@code main} 追随統合）: tournament ドメイン 18 エンドポイントの根治を {@code main} 側の
+     * 774（tournament 以外の Wave7 根治を反映済み）に適用し、重複なく統合した結果の行数。</p>
+     *
+     * <p>756 → 745（2026-07-29・Wave7 shift/filesharing ブランチの {@code main} 追随統合）: 本ブランチが
+     * 個別に根治していた shift / filesharing の 11 エンドポイント（上記 795→784 の内訳と同一）を、
+     * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
+     * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 784;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 745;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

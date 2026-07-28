@@ -68,6 +68,8 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 
 - `GET /me/beta-perks` の `eligibility` 評価は F10.8 生ログの集計を伴うため、**ユーザー単位で結果を短期キャッシュ**（Valkey・TTL 10 分・キー `betaPerk:eligibility:{userId}`）。リロード連打で集計クエリを乱発させない。
 - 自動付与バッチはページング＋`@SchedulerLock`（多重起動防止）。1 万人規模（第 4 段階）で 1 走査が現実時間で終わることを P2 実装時に計測（`page_view_logs` 集計はユーザー毎ではなく**ウィンドウ内の一括 GROUP BY で先読み**する実装ノートを付す）。
+  - **【2026-07-28 追記】** activeDays 集計はユーザー各自の TZ で日境界を切る（02 §3.1）が、**クエリ本数はユーザー数ではなくオフセットの種類数に比例**する（同一オフセットのユーザーを 1 群に束ねて群ごと 1 クエリ）。TZ 解決も `UserTimezoneCache#getTimezones`（TTL 5 分キャッシュ＋ミス分 1 クエリ）でページ 1 回に畳むため、N+1 非退行は維持される。
+  - **【2026-07-28 追記】活動実績ゲート必須**: `min_active_days=NULL` の criteria ではユーザー走査に入らず付与 0 で終了する。在籍日数のみを条件にした自動付与（＝休眠アカウントへのバラ撒き）をコードで機械的に禁止した（README §2 主原則・02 §3）。
 - シスアド EP は audit_logs 記録のみ（専用レート制限なし）。
 
 ---
@@ -103,4 +105,4 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 | B-3 | 取消時のバッジ剥奪 | **✅ (a) 確定**: 剥奪しない（不正取得断定時のみ手動剥奪） |
 | B-4 `[P2]` | オーナー変更イベントの有無・新設 | **✅ 新設確定 → 2026-07-08 マスター決定で Phase 2 保留（初期スコープ外）**（README 冒頭 Phase 2 保留ブロック）: team ドメインに最小 publish を新設するのは Phase 2。**初期は規約第 17 条＋手動 flag-review が代替**（ブロックしない・実装時に既存確認） |
 | B-5 | ベータ称号 system badge の scope | 🔧 **実装前確定条件として残置**（御裁可）: gamification grep で sentinel scope 可否確定（主フロー非依存・§F20.3 README §9.1） |
-| —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | 🕒 F10.8 実装完了まで `min_active_days=NULL` 運用で自動付与本番有効化せず手動審査のみ（ブロックしない・README §2） |
+| —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | 🕒 F10.8 実装完了まで `min_active_days=NULL` 運用で自動付与本番有効化せず手動審査のみ（ブロックしない・README §2）。**2026-07-28 追記**: マスター御裁可で `INDIVIDUAL` の `min_active_days` に 14 を投入済み（V169・TEAM_ORG は引き続き NULL）だが、計測経路未実装ゆえ `mannschaft.beta.auto-grant.enabled=false` のまま変更なし |

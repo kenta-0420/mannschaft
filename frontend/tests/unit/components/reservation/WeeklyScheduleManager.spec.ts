@@ -26,6 +26,12 @@ const mockGetLines = vi.fn()
 const mockCreateSlotTemplate = vi.fn()
 const mockUpdateSlotTemplate = vi.fn()
 const mockDeleteSlotTemplate = vi.fn()
+// F03.4.5 W2-2-FE §4 B) 定期予約不可枠（週次繰り返し）
+const mockListRecurringBlockedTimes = vi.fn()
+const mockCreateRecurringBlockedTime = vi.fn()
+const mockUpdateRecurringBlockedTime = vi.fn()
+const mockDeleteRecurringBlockedTime = vi.fn()
+const mockGetRecurringBlockedTimeImpact = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -34,6 +40,11 @@ vi.mock('~/composables/useReservationApi', () => ({
     createSlotTemplate: mockCreateSlotTemplate,
     updateSlotTemplate: mockUpdateSlotTemplate,
     deleteSlotTemplate: mockDeleteSlotTemplate,
+    listRecurringBlockedTimes: mockListRecurringBlockedTimes,
+    createRecurringBlockedTime: mockCreateRecurringBlockedTime,
+    updateRecurringBlockedTime: mockUpdateRecurringBlockedTime,
+    deleteRecurringBlockedTime: mockDeleteRecurringBlockedTime,
+    getRecurringBlockedTimeImpact: mockGetRecurringBlockedTimeImpact,
   }),
 }))
 
@@ -118,10 +129,19 @@ beforeEach(() => {
   mockCreateSlotTemplate.mockReset()
   mockUpdateSlotTemplate.mockReset()
   mockDeleteSlotTemplate.mockReset()
+  mockListRecurringBlockedTimes.mockReset()
+  mockCreateRecurringBlockedTime.mockReset()
+  mockUpdateRecurringBlockedTime.mockReset()
+  mockDeleteRecurringBlockedTime.mockReset()
+  mockGetRecurringBlockedTimeImpact.mockReset()
   mockNotifySuccess.mockReset()
   mockNotifyError.mockReset()
   mockNotifyWarn.mockReset()
   mockGetLines.mockResolvedValue({ data: [] })
+  // 既存テスト（定期予約不可を扱わないシナリオ）が想定外の警告トースト等で汚染されないよう、
+  // 既定は「0件」で安定させる（onMounted の loadRecurringRules が必ず呼ぶため）。
+  mockListRecurringBlockedTimes.mockResolvedValue({ data: [] })
+  mockGetRecurringBlockedTimeImpact.mockResolvedValue({ data: { affectedCount: 0, reservations: [] } })
 })
 
 afterEach(() => {
@@ -422,5 +442,305 @@ describe('WeeklyScheduleManager.vue', () => {
     expect(focusBtn.exists()).toBe(true)
     await focusBtn.trigger('click')
     expect(wrapper.emitted('focus-business-hours')).toBeTruthy()
+  })
+})
+
+/**
+ * F03.4.5 W2-2-FE §4 B) 定期予約不可枠（週次繰り返し）— WeeklyScheduleManager 統合分のユニットテスト。
+ *
+ * 最重要観点（AC-R-FE1★）: 曜日 value の3文字コード変換。
+ *   `openCreateRecurring(day)`（曜日行の「＋予約不可」クイック追加）で開いたダイアログの保存が、
+ *   `createRecurringBlockedTime` に渡す dayOfWeek を必ず 'TUE' 形式で送ること（'TUESDAY' を送らない）。
+ *
+ * AC-R-9（§4.4/design R-9）: is_public トグルON時のみ reason_no_pii 注意ガイドが表示される（ON/OFF切替の番人）。
+ * AC-R-FE4（§4.3）: 全日型を作らせない — 時刻 Select に show-clear が付かず、時刻レンジ無効時は保存不可。
+ */
+describe('WeeklyScheduleManager.vue — 定期予約不可枠（§4 B・W2-2-FE）', () => {
+  it('AC-R-FE1★【最重要】: ヘッダーの「予約不可を追加」（曜日未指定＝既定MON）で保存すると、dayOfWeek は3文字コード MON で createRecurringBlockedTime に渡る（MONDAY を送らない）', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateRecurringBlockedTime.mockResolvedValue({
+      data: { id: 'rule-1', dayOfWeek: 'MON', startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+
+    // 事由（必須）を入力（曜日・時刻は既定値のまま: dayOfWeek='MON'・19:00-20:00）
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')
+    expect(reasonInput).not.toBeNull()
+    reasonInput!.value = 'Training'
+    reasonInput!.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    const saveBtn = document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')
+    expect(saveBtn).not.toBeNull()
+    expect(saveBtn!.disabled, '曜日・時刻(既定19:00-20:00)・事由が揃っていれば保存可能').toBe(false)
+    saveBtn!.click()
+    await flush()
+
+    expect(mockCreateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    const [teamId, body] = mockCreateRecurringBlockedTime.mock.calls[0] as [string, Record<string, unknown>]
+    expect(teamId).toBe('team-slug')
+    // 最重要: 3文字大文字コードで送ること（'MONDAY' は BE デシリアライズで 400）
+    expect(body.dayOfWeek).toBe('MON')
+    expect(body.dayOfWeek).not.toBe('MONDAY')
+    expect(VALID_DAY_CODES).toContain(body.dayOfWeek)
+    expect(body.startTime).toBe('19:00:00')
+    expect(body.endTime).toBe('20:00:00')
+    expect(body.reason).toBe('Training')
+    // 既定はチーム全体（lineId 未指定）
+    expect(body.lineId).toBeUndefined()
+  })
+
+  it('AC-R-FE1b: 曜日行の「＋予約不可」クイック追加（day引数）で開くと、選択済み曜日が3文字コードのまま保存される', async () => {
+    // 曜日グルーピング行のクイック追加ボタンから開いた場合の day 引数経路（Select 操作なしで固定される）を検証する。
+    mockGetSlotTemplates.mockResolvedValue({
+      data: {
+        templates: [{ id: 'tpl-1', dayOfWeek: 'MON', startTime: '10:00:00', endTime: '13:00:00', capacity: 1, isActive: true }],
+        meta: { totalTemplates: 1, limit: 500 },
+      },
+    })
+    mockCreateRecurringBlockedTime.mockResolvedValue({
+      data: { id: 'rule-2', dayOfWeek: 'FRI', startTime: '19:00:00', endTime: '20:00:00', reason: 'Cleaning', isPublic: false, isActive: true },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    // 曜日グルーピング表示（1件テンプレがあるため表示される）から金曜行のクイック追加を押す
+    await wrapper.find('[data-testid="day-recurring-add-FRI"]').trigger('click')
+    await flush()
+
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')
+    expect(reasonInput).not.toBeNull()
+    reasonInput!.value = 'Cleaning'
+    reasonInput!.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')!.click()
+    await flush()
+
+    expect(mockCreateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    const [, body] = mockCreateRecurringBlockedTime.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.dayOfWeek).toBe('FRI')
+    expect(body.dayOfWeek).not.toBe('FRIDAY')
+  })
+
+  it('AC-R-9: is_public トグルをONにすると reason_no_pii 注意ガイドが表示され、OFFに戻すと消える', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+
+    // 既定 isPublic=false のため注意ガイドは非表示
+    expect(document.body.querySelector('[data-testid="recurring-reason-no-pii"]')).toBeNull()
+
+    // トグルON（native checkbox の click() はjsdomでも既定のtoggle動作＋change発火を行う。
+    // 既存 monBtn!.click() 系パターンと同様、raw DOM操作を用いる — Dialog は Teleport 先が
+    // document.body のため wrapper.find() では到達できない）
+    const toggleInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-is-public-toggle"] input')
+    expect(toggleInput).not.toBeNull()
+    toggleInput!.click()
+    await flush()
+
+    expect(document.body.querySelector('[data-testid="recurring-reason-no-pii"]'), 'ON時は必ず表示される（AC R-9）').not.toBeNull()
+
+    // トグルOFFへ戻す
+    toggleInput!.click()
+    await flush()
+
+    expect(document.body.querySelector('[data-testid="recurring-reason-no-pii"]'), 'OFFに戻すと消える').toBeNull()
+  })
+
+  it('AC-R-FE4（§4.3）: 全日型を作らせない — 時刻レンジが無効（開始=終了）の間は保存不可、時刻 Select に show-clear が付かない', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+
+    // 構造的な全日型拒否: 開始/終了 Select のどちらにも PrimeVue の clearicon（show-clear の目印）が無い。
+    // 定期予約不可の時刻選択は空にできない作りになっている（§4.3 設計判断のUI裏取り）。
+    const startSelect = document.body.querySelector('[data-testid="recurring-start-time"]')
+    const endSelect = document.body.querySelector('[data-testid="recurring-end-time"]')
+    expect(startSelect).not.toBeNull()
+    expect(endSelect).not.toBeNull()
+    expect(startSelect!.querySelector('[data-pc-section="clearicon"]')).toBeNull()
+    expect(endSelect!.querySelector('[data-pc-section="clearicon"]')).toBeNull()
+
+    // 事由未入力の間は（既定の時刻レンジ19:00-20:00は有効でも）保存不可
+    const saveBtn = document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')
+    expect(saveBtn!.disabled, '事由未入力の間は保存できない（BE @NotBlank と整合）').toBe(true)
+    expect(mockCreateRecurringBlockedTime).not.toHaveBeenCalled()
+  })
+
+  it('AC-R-6: 409（RESERVATION_027・overlapする active 予約）応答は握りつぶさず、機能Bと同一のエラーメッセージで通知する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateRecurringBlockedTime.mockRejectedValue({ data: { error: { code: 'RESERVATION_027' } } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reasonInput.value = 'Training'
+    reasonInput.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')!.click()
+    await flush()
+
+    expect(mockCreateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    expect(mockNotifyError).toHaveBeenCalledTimes(1)
+    // ダイアログは閉じたままにならず、エラーで留まる（成功トーストは出ない）
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+  })
+
+  it('AC-R-5: 上限超過（RESERVATION_052）は専用の上限メッセージで通知する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateRecurringBlockedTime.mockRejectedValue({ data: { error: { code: 'RESERVATION_052' } } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reasonInput.value = 'Training'
+    reasonInput.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')!.click()
+    await flush()
+
+    expect(mockNotifyError).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyError.mock.calls[0] as [string, string]
+    expect(message).toContain('50')
+  })
+
+  it('AC-R-list: 一覧取得済みの定期不可ルールは該当曜日行に赤系で描画され、事由・公開バッジが表示される', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [{
+        id: 'rule-9',
+        teamId: 10,
+        lineId: null,
+        lineName: null,
+        dayOfWeek: 'TUE',
+        startTime: '19:00:00',
+        endTime: '20:00:00',
+        reason: 'Training',
+        isPublic: true,
+        isActive: true,
+      }],
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    expect(wrapper.find('[data-testid="recurring-row-rule-9"]').exists()).toBe(true)
+    expect(wrapper.html()).toContain('Training')
+  })
+
+  it('AC-R-toggle1: 一時停止/再開が成功すると updateRecurringBlockedTime に isActive のみが渡り、一覧が再読込される', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [{
+        id: 'rule-9', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'TUE',
+        startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true,
+      }],
+    })
+    mockUpdateRecurringBlockedTime.mockResolvedValue({
+      data: { id: 'rule-9', dayOfWeek: 'TUE', startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: false },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    const listCallsBefore = mockListRecurringBlockedTimes.mock.calls.length
+    await wrapper.find('[data-testid="recurring-toggle-rule-9"]').trigger('click')
+    await flush()
+
+    expect(mockUpdateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    const [teamId, ruleId, body] = mockUpdateRecurringBlockedTime.mock.calls[0] as [string, string, Record<string, unknown>]
+    expect(teamId).toBe('team-slug')
+    expect(ruleId).toBe('rule-9')
+    expect(body).toEqual({ isActive: false })
+    // 一覧が再読込される（一時停止後の表示反映）
+    expect(mockListRecurringBlockedTimes.mock.calls.length).toBeGreaterThan(listCallsBefore)
+  })
+
+  it('AC-R-toggle2（検分指摘・軽2）: 一時停止/再開が409（RESERVATION_027）で失敗すると、保存経路と同じコード判定を通りつつ「一時停止/再開」文脈のメッセージで通知される（登録文脈の文言を誤用しない）', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [{
+        id: 'rule-9', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'TUE',
+        startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true,
+      }],
+    })
+    mockUpdateRecurringBlockedTime.mockRejectedValue({ data: { error: { code: 'RESERVATION_027' } } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-toggle-rule-9"]').trigger('click')
+    await flush()
+
+    expect(mockUpdateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    expect(mockNotifyError).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyError.mock.calls[0] as [string, string]
+    // 一時停止/再開文脈の専用メッセージ（en: "Could not pause/resume ..."）で通知され、
+    // 保存(作成/更新)文脈の "overlapping reservations" 系メッセージとは異なる文言になること
+    // （handleApiError への直呼びだった旧実装は文言が経路ごとに不揃いだった）。
+    expect(message.toLowerCase()).toContain('pause')
+    // handleApiError（汎用フォールバック）は呼ばれない（コード判定で分岐している証跡）
+    expect(mockHandleApiError).not.toHaveBeenCalled()
   })
 })

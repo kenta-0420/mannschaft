@@ -1,6 +1,8 @@
 package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -47,6 +49,10 @@ class AnnouncementReadProxyInputTest {
     @Mock
     private AccessControlService accessControlService;
 
+    /** 既読の可視性ゲートが使う閲覧者ロール解決（一覧側と同一の正準経路）。 */
+    @Mock
+    private RoleResolver roleResolver;
+
     // AnnouncementCreationService のモック（AnnouncementReadService が buildAndSaveAnnouncementProxyRecord を呼ぶ）
     @InjectMocks
     private AnnouncementCreationService announcementCreationService;
@@ -55,9 +61,26 @@ class AnnouncementReadProxyInputTest {
     private AnnouncementReadService announcementReadService;
 
     private static final Long ANNOUNCEMENT_ID = 200L;
+    private static final Long TEAM_ID = 77L;
     private static final Long USER_ID = 10L;
     private static final Long CONSENT_ID = 50L;
     private static final Long PROXY_RECORD_ID = 888L;
+
+    /**
+     * 呼び出し元スコープ（TEAM_ID）に帰属するお知らせフィードを組み立てる。
+     *
+     * <p>認可根治「裏目付」C-social により {@code markAsRead} はスコープ帰属を照合するため、
+     * 単体テストでも当該スコープのフィードを返す必要がある。</p>
+     */
+    private AnnouncementFeedEntity buildScopedFeed() {
+        return AnnouncementFeedEntity.builder()
+                .scopeType(AnnouncementScopeType.TEAM)
+                .scopeId(TEAM_ID)
+                .sourceType(AnnouncementSourceType.BLOG_POST)
+                .sourceId(1L)
+                .titleCache("代理確認テスト用お知らせ")
+                .build();
+    }
 
     @BeforeEach
     void setUp() {
@@ -100,14 +123,16 @@ class AnnouncementReadProxyInputTest {
             // Given
             AnnouncementReadStatusEntity savedStatus = createSavedStatus();
 
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class))).willReturn(savedStatus);
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
             // Then: save が1回のみ呼ばれ、proxyInputRecordRepository は呼ばれない
             verify(readStatusRepository, times(1)).save(any(AnnouncementReadStatusEntity.class));
@@ -120,7 +145,8 @@ class AnnouncementReadProxyInputTest {
             // Given
             AnnouncementReadStatusEntity savedStatus = createSavedStatus();
 
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
 
@@ -130,7 +156,8 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
             // Then: 保存時のエンティティは isProxyConfirmed=false
             AnnouncementReadStatusEntity captured = captor.getValue();
@@ -144,12 +171,14 @@ class AnnouncementReadProxyInputTest {
             // Given
             AnnouncementReadStatusEntity existingStatus = createSavedStatus();
 
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.of(existingStatus));
 
             // When
-            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
@@ -202,7 +231,8 @@ class AnnouncementReadProxyInputTest {
                     .proxyInputRecordId(PROXY_RECORD_ID)
                     .build();
 
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
@@ -214,7 +244,8 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputRecordRepository.save(any(ProxyInputRecordEntity.class))).willReturn(proxyRecord);
 
             // When
-            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
             // Then: readStatusRepository.save が2回呼ばれる（初回保存 + 代理フラグ付き更新）
             verify(readStatusRepository, times(2)).save(any(AnnouncementReadStatusEntity.class));
@@ -257,7 +288,8 @@ class AnnouncementReadProxyInputTest {
                     .proxyInputRecordId(PROXY_RECORD_ID)
                     .build();
 
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
@@ -269,7 +301,8 @@ class AnnouncementReadProxyInputTest {
                     .willReturn(Optional.of(existingProxyRecord));
 
             // When
-            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
             // Then: proxyInputRecordRepository.save は呼ばれない（既存レコードを使用）
             verify(proxyInputRecordRepository, never()).save(any(ProxyInputRecordEntity.class));
