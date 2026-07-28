@@ -183,6 +183,7 @@ type HeaderTab =
   | 'matchRecruit'
   | 'meetup'
   | 'chronicle'
+  | 'charter'
 
 /** ルート末尾セグメント（kebab）→ VillageHeader の activeTab キー。 */
 const SEGMENT_TO_TAB: Record<string, HeaderTab> = {
@@ -195,6 +196,9 @@ const SEGMENT_TO_TAB: Record<string, HeaderTab> = {
   'match-recruits': 'matchRecruit',
   meetups: 'meetup',
   chronicles: 'chronicle',
+  // F17.3: 村憲章タブ。欠落すると /villages/{id}/charter に居ても activeTab が
+  // `?? 'bulletin'` に落ち、掲示板タブが誤ってハイライトされる（設計書§9.1 🔴2）。
+  charter: 'charter',
 }
 
 const activeTab = computed<HeaderTab>(() => {

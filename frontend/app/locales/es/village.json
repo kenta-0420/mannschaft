@@ -80,7 +80,8 @@
       "festival": "Festival",
       "matchRecruit": "Reclutamiento de partidos",
       "meetup": "Reunión",
-      "chronicle": "Crónica de la aldea"
+      "chronicle": "Crónica de la aldea",
+      "charter": "Carta de la aldea"
     },
     "systemPost": {
       "authorName": "Aviso de eventos de la aldea",
@@ -669,6 +670,55 @@
         "meetup": "Reunión"
       }
     },
+    "charter": {
+      "title": "Carta de la aldea",
+      "subtitle": "Las promesas compartidas de la aldea",
+      "empty": "Todavía no se ha establecido la carta de esta aldea",
+      "enactedAt": "Fecha de promulgación",
+      "lastRevisedAt": "Última revisión",
+      "article": {
+        "label": "Artículo {n}",
+        "add": "+ Añadir artículo",
+        "bodyPlaceholder": "Escribe el texto del artículo",
+        "bodyRequired": "Escribe el texto del artículo",
+        "delete": "Eliminar artículo",
+        "deleteConfirm": "¿Eliminar este artículo?"
+      },
+      "supplement": {
+        "add": "+ Añadir anexo",
+        "label": "Anexo",
+        "placeholder": "Escribe un anexo (opcional)"
+      },
+      "reorder": {
+        "hint": "Usa los botones de subir/bajar para reordenar los artículos",
+        "up": "Subir",
+        "down": "Bajar"
+      },
+      "drafters": {
+        "title": "Redactores",
+        "add": "+ Añadir redactor",
+        "empty": "Todavía no hay redactores registrados",
+        "delete": "Quitar redactor",
+        "deleteConfirm": "¿Quitar a \"{name}\" de los redactores?",
+        "selectPlaceholder": "Selecciona un aldeano",
+        "loadMembersFailed": "No se pudo cargar la lista de habitantes, por lo que no se pueden añadir redactores.",
+        "reloadMembers": "Recargar"
+      },
+      "revision": {
+        "confirm": "Confirmar revisión",
+        "confirmHint": "Esto registra el momento actual como una revisión (no cambia la visibilidad de ningún artículo).",
+        "confirmSuccess": "Revisión confirmada",
+        "notePlaceholder": "Nota de la revisión (opcional)",
+        "history": "Historial de revisiones",
+        "historyEmpty": "Todavía no hay revisiones"
+      },
+      "error": {
+        "loadFailed": "No se pudo cargar la carta de la aldea",
+        "mutationFailed": "La operación falló",
+        "versionConflict": "Otro jefe de aldea editó esto al mismo tiempo. Vuelve a cargar la versión más reciente.",
+        "drafterDuplicate": "Este aldeano ya es redactor"
+      }
+    },
     "serendipity": {
       "title": "Puntuación de afinidad",
       "subtitle": "Encuentros acumulados en esta aldea",
@@ -892,6 +942,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Deja constancia de las promesas de la aldea en la carta",
+        "body": "El jefe de la aldea o los ancianos pueden definir las reglas de la aldea (artículos) y publicarlas incluso a quienes no son miembros (las aldeas públicas las muestran también a los futuros miembros).",
+        "steps": {
+          "step1": "Abre la pestaña \"Carta de la aldea\".",
+          "step2": "El jefe de la aldea o los ancianos pueden escribir artículos con \"+ Añadir artículo\" y adjuntar un anexo opcional.",
+          "step3": "Reordenar y eliminar se aplican de inmediato. Usa \"Confirmar revisión\" para registrarlo en el historial."
         }
       }
     },
