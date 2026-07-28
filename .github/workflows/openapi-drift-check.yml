@@ -22,18 +22,52 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 段階運用（Stage A → B → C）:
 #   - Stage A: 安定観測。本ゲートを「非必須チェック」として追加し、runner で
-#              generateOpenApiDocs が安定して完走することを観測する（← 現在ここ）。
+#              generateOpenApiDocs が安定して完走することを観測する。
 #   - Stage B: 実 fail 運用（非必須のまま）。ドリフト PR は本ゲートが赤くなるが、
 #              main ブランチ保護の required には未追加なのでマージ自体はブロックしない。
 #   - Stage C: 必須化。main ブランチ保護 Ruleset の required status checks に
-#              「OpenAPI Drift Check」を追加する（= リポジトリ設定。殿/マスターが別途実施）。
+#              「OpenAPI Drift Check」を追加する（← **現在ここ**。登録済み）。
 #
 # 重要:
-#   - 本 workflow は新規追加のみ。既存の必須チェック（backend-ci.yml の "Compile & Test" 等）は
+#   - 本 workflow は既存の必須チェック（backend-ci.yml の "Compile & Test" 等）を
 #     一切改名・改変しない（既存 PR のマージ性を壊さないため）。
-#   - paths フィルタでコストを限定する。@Schema は controller / dto 配下に集中するため、
-#     これらと OpenApiConfig / openapi-gen プロファイル / build.gradle.kts / 本 workflow 以外を
-#     触らない PR では本 workflow は起動せず skip = CI コストが発生しない。
+#   - チェック名「OpenAPI Drift Check」は main の Ruleset に required として登録済み。
+#     **ジョブ名 / workflow 名を変更すると全 PR が永久ブロックされる。絶対に変えないこと。**
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 2026-07-28: paths フィルタ起因の「永久 pending → BLOCKED」を根治（本ファイルの主変更）
+#
+#   【何が起きたか】
+#     Stage C（required 登録）後、`on.pull_request.paths` に当たらない PR
+#     （= Service / Repository / Entity / common だけ触る BE の PR・FE のみの PR・
+#       ドキュメントのみの PR）で、本 workflow が **そもそも起動しなかった**。
+#     GitHub の required status check は「その名前の結果が報告されるまで待つ」仕様のため、
+#     起動しなかった workflow は成功も失敗も報告せず **永久 pending** となり、
+#     PR は他の全チェックが緑でも mergeStateStatus=BLOCKED でマージ不能になる。
+#
+#   【実例】
+#     PR #2484 — 12 チェック全緑・Failed 0 にもかかわらず BLOCKED。
+#     `gh api repos/<owner>/<repo>/commits/<sha>/check-runs` に
+#     「OpenAPI Drift Check」の check-run が **一件も存在しなかった**。
+#     やむなく `--admin` で越える運用事故になった。
+#     （変更ファイルは common/GlobalExceptionHandler.java 等で paths に当たらなかった）
+#
+#   【なぜ paths をトリガーから外し、ステップ側の if に移したか】
+#     - トリガーの paths は「workflow を起動しない」＝ **結果を報告しない**。
+#       required check とは構造的に噛み合わない（backend-ci.yml が 2026-05-25 に
+#       同じ理由で全 PR トリガー化しており、その先例に揃えた）。
+#     - 代わりに **ジョブは全 PR で必ず起動し、必ず success を報告する**。
+#       関連変更が無い PR では重いステップ（Java/Gradle セットアップ・
+#       generateOpenApiDocs・drift 判定）を step-level の `if` で skip して即終了する。
+#     - **ジョブごと skip（job-level `if`）にはしない**。skipped な required check を
+#       Ruleset がどう扱うかは曖昧な挙動に依存するため、
+#       「常に走って常に緑を返す」形にして曖昧さを排除している。
+#
+#   【コスト設計】
+#     無関係 PR でも runner は起動するが、checkout（fetch-depth: 0）と数秒の
+#     パス判定だけで終わる。最長 30 分かかりうる generateOpenApiDocs は必ず
+#     `if: steps.changes.outputs.openapi_related == 'true'` の配下に置くこと。
+#     ここを条件付きから外すと CI 料金が跳ね上がる。
 # =============================================================================
 
 name: OpenAPI Drift Check
@@ -42,13 +76,11 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "backend/src/main/java/**/controller/**"
-      - "backend/src/main/java/**/dto/**"
-      - "backend/src/main/java/**/config/OpenApiConfig.java"
-      - "backend/src/main/resources/application-openapi-gen.yml"
-      - "backend/build.gradle.kts"
-      - ".github/workflows/openapi-drift-check.yml"
+    # ⚠️ ここに paths: を復活させてはならない。
+    # required status check「OpenAPI Drift Check」が報告されず永久 pending になり、
+    # 無関係な PR まで全て BLOCKED になる（上記 2026-07-28 の項を参照）。
+    # 実行対象の絞り込みは下の「関連変更パス検出」ステップ + 各ステップの if で行う。
+  workflow_dispatch:
 
 # 同一 PR の新規 push で前回 run をキャンセル（既存 CI と独立した group）
 concurrency:
@@ -59,6 +91,13 @@ env:
   JAVA_VERSION: "21"
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # drift-check
+  #
+  # ジョブは 1 本のまま・ジョブ名も「OpenAPI Drift Check」のまま維持する
+  # （main Ruleset の required status check 登録名と一致させるため）。
+  # ジョブ自体に if: を付けないこと（skipped な required check を避けるため）。
+  # ---------------------------------------------------------------------------
   drift-check:
     name: OpenAPI Drift Check
     runs-on: ubuntu-latest
@@ -68,10 +107,62 @@ jobs:
         working-directory: ./backend
 
     steps:
+      # PR の base...head 差分を見て関連変更を判定するため全履歴を取得する。
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # 関連変更パス検出（旧 on.pull_request.paths と同一の 6 パターン）
+      #
+      # 判定の流儀は backend-ci.yml の detect ジョブに揃えている:
+      #   - 3 ドット（BASE...HEAD = merge-base...head）で「PR が実際に加えた純変更」のみ対象。
+      #     2 ドットだと base が分岐後に進めた変更まで拾い、無関係 PR で重い生成が走る。
+      #   - 結果は $GITHUB_OUTPUT に書き出し、後続ステップの if で参照する。
+      #   - pull_request 以外のイベント（workflow_dispatch 等）は PR コンテキストが無いため
+      #     安全側（= 検査を実行する）にフォールバックする。
+      #
+      # ⚠️ このジョブは defaults.run.working-directory: ./backend が効くため、
+      #    git をリポジトリルート基準で叩けるよう working-directory を明示的に上書きする。
+      #    （backend/ 基準のままだと git diff の相対パスがずれて誤判定する）
+      # -----------------------------------------------------------------------
+      - name: 関連変更パス検出
+        id: changes
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "[INFO] non-PR event (${{ github.event_name }}) → openapi_related=true（安全側でフル実行）"
+            echo "openapi_related=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "[INFO] diff range: ${BASE_SHA}...${HEAD_SHA}"
+          CHANGED=$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")
+          echo "----- changed files -----"
+          echo "${CHANGED}"
+          echo "-------------------------"
+          # 旧 on.pull_request.paths の 6 パターンを正規表現へ落としたもの（増減させないこと）:
+          #   1. backend/src/main/java/**/controller/**
+          #   2. backend/src/main/java/**/dto/**
+          #   3. backend/src/main/java/**/config/OpenApiConfig.java
+          #   4. backend/src/main/resources/application-openapi-gen.yml
+          #   5. backend/build.gradle.kts
+          #   6. .github/workflows/openapi-drift-check.yml
+          # glob の `**` は「0 個以上のパスセグメント」なので `(.*/)?` に対応させる。
+          PATTERN='^(backend/src/main/java/(.*/)?(controller|dto)/|backend/src/main/java/(.*/)?config/OpenApiConfig\.java$|backend/src/main/resources/application-openapi-gen\.yml$|backend/build\.gradle\.kts$|\.github/workflows/openapi-drift-check\.yml$)'
+          if echo "${CHANGED}" | grep -E "${PATTERN}" > /dev/null; then
+            echo "[INFO] OpenAPI 関連の変更を検出 → openapi_related=true（ドリフト検査を実行）"
+            echo "openapi_related=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[INFO] OpenAPI 関連の変更なし → openapi_related=false（重いステップを skip し success で終了）"
+            echo "openapi_related=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: steps.changes.outputs.openapi_related == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
@@ -79,9 +170,10 @@ jobs:
           # Gradle キャッシュは下の setup-gradle に一本化するため、ここでは有効化しない。
 
       # backend-ci.yml と同じ作法で Gradle 依存・wrapper・ビルドキャッシュを共有する。
-      # 本 workflow は on: pull_request のみで main への push では起動しないため、
+      # 本 workflow は on: pull_request 主体で main への push では起動しないため、
       # PR ビルドでもキャッシュを育てられるよう cache-read-only: false を明示する。
       - name: Set up Gradle（依存＋ビルドキャッシュ）
+        if: steps.changes.outputs.openapi_related == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
@@ -90,16 +182,20 @@ jobs:
             notifications
 
       - name: Grant Gradle wrapper execute permission
+        if: steps.changes.outputs.openapi_related == 'true'
         run: chmod +x gradlew
 
       # openapi-gen プロファイル（H2・:8082 フォーク・MySQL/Redis 不要）で docs/openapi.json を生成。
       # 生成先は build.gradle.kts の openApi{} 設定によりリポジトリルートの docs/openapi.json。
+      # ⚠️ 最長 30 分かかる重量ステップ。必ず if 条件付きのままにすること（コスト設計の要）。
       - name: Generate OpenAPI docs
+        if: steps.changes.outputs.openapi_related == 'true'
         run: ./gradlew generateOpenApiDocs --no-daemon --build-cache
 
       # 生成後の docs/openapi.json に差分があれば「BE 変更が未反映」とみなして fail する。
       # working-directory は backend なのでリポジトリルートのパスを ../ で指定する。
       - name: Check for OpenAPI drift
+        if: steps.changes.outputs.openapi_related == 'true'
         run: |
           if ! git diff --exit-code ../docs/openapi.json; then
             echo ""
@@ -111,3 +207,14 @@ jobs:
             exit 1
           fi
           echo "docs/openapi.json は BE の現状と同期しています。"
+
+      # 関連変更が無い PR はここで明示的に「スキップした」旨を残して success で終わる。
+      # これにより required status check「OpenAPI Drift Check」が必ず結果を報告し、
+      # 永久 pending → BLOCKED を構造的に防ぐ。
+      - name: OpenAPI ドリフト検査をスキップ
+        if: steps.changes.outputs.openapi_related != 'true'
+        run: |
+          echo "OpenAPI 関連ファイル（controller / dto / OpenApiConfig.java /"
+          echo "application-openapi-gen.yml / build.gradle.kts / 本 workflow）の変更が"
+          echo "無いため、OpenAPI ドリフト検査をスキップしました。"
+          echo "required status check としては success を報告します。"
