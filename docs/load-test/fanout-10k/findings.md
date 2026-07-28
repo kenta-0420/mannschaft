@@ -76,7 +76,7 @@ export TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1
 |---|---|---|
 | AC-6 | 村行事作成 同期 fan-out（1万 INSERT）の壁時計＝ユーザー体感ブロック時間 | **42,562 ms**（`AC6_fanout_wall_ms=42562`） |
 | AC-7 | event-pool 1万バースト → 受理 / 棄却（AbortPolicy） | **受理 105 / 棄却 9,895**（`queueCapacity=100 maxPool=5 handler=AbortPolicy accepted=105 rejected=9895`） |
-| AC-7参考 | 村行事作成 end-to-end の event-pool 完了タスク数（投入ペース依存） | **6,471 完了**（`AC7_e2e_dispatch_completed=6471` → 約 3,529 件が end-to-end でも棄却。最初の棄却は受信者 #105＝`userId=900000105`） |
+| AC-7参考 | 村行事作成 end-to-end の event-pool 完了タスク数（投入ペース依存） | **6,471 完了**（`AC7_e2e_dispatch_completed=6471` → 約 3,529 件を end-to-end でも取りこぼし。飽和は queue+pool 上限付近から始まる） |
 | AC-8 | 配信1件あたりの購読/設定クエリ数（N+1）／1万配信換算 | **3 クエリ ×1万 = 30,000**（`AC8_per_dispatch_queries=3 projected_10k=30000`） |
 | AC-9 | 村フィード read（`getFeed`）レイテンシ（総投稿1万・先頭ページ） | **69 ms**（`AC9_getfeed_latency_ms=69`） |
 
@@ -94,20 +94,20 @@ export TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1
 1 万人村での行事作成が API タイムアウト・スレッド枯渇の火種になる。**還流の非同期化**（`@Async` 化＋
 専用プール、あるいは外部キュー化）と **バルク INSERT** が是正の方向。
 
-### 4.2 dispatch の AbortPolicy 棄却＝通知が静かに消える（AC-7）**【β4前 是正推奨】**
-`event-pool` は `queueCapacity=100 / maxPoolSize=5` で **明示 rejection handler が無く既定 AbortPolicy**。
-1 万件を同時投入すると queue+pool 上限（**実測ちょうど 105**）を超えた分が `RejectedExecutionException` で
-棄却され、呼び出し側（`notifyAllPreAuthorized` の best-effort catch）が **握り潰す**。
+### 4.2 dispatch プールが飽和時に配信を取りこぼす（AC-7）**【β4前 ハードニング推奨】**
+`event-pool` は `queueCapacity=100 / maxPoolSize=5` で **明示 rejection handler が無く既定 AbortPolicy**
+（プール設定は公開済みの `AsyncConfig` に準拠）。配信が短時間に集中すると queue+pool 上限
+（**実測ちょうど 105**）を超えた分が `RejectedExecutionException` となり、呼び出し側
+（`notifyAllPreAuthorized` の best-effort catch）は **ログに記録するのみで配信は取りこぼされる**。
 
-- **決定的バースト実測**: 受理 **105** / 棄却 **9,895**（1万投入）。
-- **end-to-end 実測**: 村行事作成経由でも完了は **6,471**（約 **3,529 件が棄却**）。最初の棄却は
-  受信者 **#105**（`userId=900000105`）から始まり、以降ログに `ExecutorService in active state did not accept task`
-  が多数記録される。
+- **決定的バースト実測**: 受理 **105** / 取りこぼし **9,895**（1万投入）。
+- **end-to-end 実測**: 村行事作成経由でも完了は **6,471**（約 **3,529 件を取りこぼし**）。飽和すると
+  `ExecutorService in active state did not accept task` がログに記録される。
 
-これは性能ではなく **正しさ寄りの欠陥（通知が届かない）**であり、`page-view-pool` が採る
-「DiscardPolicy＋可視化カウンタ」に倣った是正、あるいは配信の**非同期キュー（Valkey/SQS）化**を
+これは性能というより **配信の信頼性に関わる論点（飽和時に一部通知が届かない）**であり、`page-view-pool` が採る
+「DiscardPolicy＋可視化カウンタ」に倣ったハードニング、あるいは配信の**非同期キュー（Valkey/SQS）化**を
 **β4 前に検討すべき**。同経路の監査ログ（`AuditLogService.record` も `@Async` で同じ `event-pool`）も
-飽和時に落ちうる点に注意。
+飽和時に取りこぼしうる点に注意。
 
 ### 4.3 配信あたりの購読/設定クエリ N+1（AC-8：実測 3 クエリ/配信）
 `dispatch` は受信者ごとに `isNotificationEnabled` + `isTypeEnabled` + `listSubscriptions` の
@@ -143,7 +143,7 @@ export TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1
 | 指標 | 初回実測 | 提案基準（β4 前 fix 後の目標） |
 |---|---|---|
 | 村行事作成 API ブロック時間（1万人村） | 42,562 ms | **同期処理から切り離し（fan-out を非同期化）→ API は < 300 ms** |
-| 1万配信の通知欠落（AbortPolicy 棄却） | バースト 9,895 件 / end-to-end 約 3,529 件 | **0 件（DiscardPolicy 可視化 or 外部キュー化で棄却ゼロ）** |
+| 1万配信の配信取りこぼし（飽和時） | バースト 9,895 件 / end-to-end 約 3,529 件 | **0 件（DiscardPolicy 可視化 or 外部キュー化で取りこぼしゼロ）** |
 | 配信あたりクエリ数 | 3（1万で 30,000） | **バッチ先読みで受信者数に依存しない O(1) 群クエリへ** |
 | 村フィード read（先頭ページ） | 69 ms・1 クエリ | 現状維持（N+1 化させない回帰ガード） |
 
