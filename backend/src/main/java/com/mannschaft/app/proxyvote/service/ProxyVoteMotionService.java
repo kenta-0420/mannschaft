@@ -222,8 +222,8 @@ public class ProxyVoteMotionService {
     public SessionResponse startAllVotes(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
         // 認可: 作成者またはスコープ管理者のみ一括投票開始可（entity 由来スコープで BOLA 防止）。
-        // 従来は末尾の getSession() が副次的に checkMembership を行うのみで、書込後に一般会員でも
-        // 通過し得た。個別の startVote/endVote と同じ粒度（checkOwnerOrAdmin）へ引き上げる。
+        // 認可判定は後続呼び出しの副作用に委ねず、書込より前の明示的なゲートとして敷く。
+        // 粒度は個別の startVote / endVote と同じ checkOwnerOrAdmin に揃えている。
         accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
                 session.resolveScopeId(), session.scopeTypeName());
 

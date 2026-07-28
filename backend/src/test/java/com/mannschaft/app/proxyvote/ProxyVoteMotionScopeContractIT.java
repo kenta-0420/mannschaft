@@ -31,15 +31,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — proxyvote ドメイン（F08.3 議案の投票開始／終了）API 契約テスト。
  *
- * <p>{@code ProxyVoteMotionController} の兄弟 7 エンドポイントは操作ユーザーを Service へ渡して
- * 認可していたのに対し、{@code startVote} / {@code endVote} だけが操作ユーザーを渡しておらず、
- * 認可判定自体が不可能な状態だった。</p>
+ * <p>{@code ProxyVoteMotionController} の兄弟エンドポイントが操作ユーザーを Service へ渡して
+ * 認可しているのに対し、{@code startVote} / {@code endVote} は操作ユーザーを受け取らない
+ * シグネチャのままで、認可の敷設が未回収だった構造を是正した。</p>
  *
  * <p>敷設した認可は同一ドメインの兄弟（{@code addMotion} / {@code updateMotion} /
  * {@code deleteMotion}）に揃えた {@code checkOwnerOrAdmin}
  * （セッション作成者 <b>または</b> 当該スコープの ADMIN/DEPUTY_ADMIN）。
- * 併せて {@code startAllVotes} も同粒度へ引き上げた（従来は末尾の {@code getSession} による
- * {@code checkMembership} が副次的に効くのみで、一般会員でも通過し得た）。</p>
+ * 併せて {@code startAllVotes} も同粒度へ引き上げた（認可判定を後続呼び出しの副作用に委ねず、
+ * 書込前の明示的なゲートとして敷き直した）。</p>
  *
  * <p><b>BOLA 検証の要点</b>: これらの EP の URL は {@code /proxy-votes/motions/{motionId}} で
  * path 上にスコープを持たない。したがって認可スコープは必ず
@@ -274,7 +274,7 @@ class ProxyVoteMotionScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非ADMINメンバー（非作成者）は403（従来はmembershipのみで通過し得た）")
+        @DisplayName("非ADMINメンバー（非作成者）は403")
         void 非ADMINメンバーは403() throws Exception {
             setAuth(memberTeamAId);
             mockMvc.perform(patch("/api/v1/proxy-votes/{id}/start-all-votes", sessionTeamAId))

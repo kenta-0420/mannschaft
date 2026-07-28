@@ -36,9 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — service ドメイン（F07.1 カスタムフィールド定義・設定）API 契約テスト。
  *
- * <p>{@code ServiceRecordFieldController} の 7 エンドポイントは
- * {@code AccessControlService} が一切敷設されておらず、任意チームのフィールド定義・機能設定を
- * 閲覧／作成／更新／無効化／並び替え／設定変更できる状態だった。</p>
+ * <p>{@code ServiceRecordFieldController} が委譲する {@code ServiceRecordFieldService} は
+ * {@code AccessControlService} を保持しておらず、スコープ認可が未回収のまま残っていた構造だった。
+ * 本テストは 7 エンドポイントへ敷設した認可の契約を固定する。</p>
  *
  * <p>金型: {@code EquipmentScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext + {@code MembershipTestHelper}）。</p>
