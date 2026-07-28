@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -68,6 +69,14 @@ class LoginActivityQueryServiceTest {
     /** America/Los_Angeles の 7 月時点の数値オフセット（PDT = 夏時間 −07:00）。 */
     private static final String PDT_OFFSET = "-07:00";
 
+    /**
+     * {@code created_at} の格納基準 TZ（{@code mannschaft.audit.stored-zone-offset} の既定値）。
+     * {@code @Value} フィールドは {@code @RequiredArgsConstructor} の対象外（final でないため）ゆえ、
+     * 本テストではプロダクションの既定値と同じ {@code "+00:00"} を {@link ReflectionTestUtils} で明示的に注入する
+     * （application.yml 未経由の素の Mockito 構成では未設定＝null のままになるため）。
+     */
+    private static final String STORED_ZONE_OFFSET = "+00:00";
+
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private UserTimezoneCache userTimezoneCache;
 
@@ -76,6 +85,7 @@ class LoginActivityQueryServiceTest {
     @BeforeEach
     void setUp() {
         service = new LoginActivityQueryService(auditLogRepository, userTimezoneCache);
+        ReflectionTestUtils.setField(service, "storedZoneOffset", STORED_ZONE_OFFSET);
     }
 
     /** bulk 集計の 1 行（{@code [0]=userId, [1]=days}）。 */
@@ -104,9 +114,9 @@ class LoginActivityQueryServiceTest {
         timezones.put(2L, "America/Los_Angeles");
         timezones.put(3L, "Asia/Tokyo");
         when(userTimezoneCache.getTimezones(any())).thenReturn(timezones);
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(JST_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
                 .thenReturn(rows(row(1L, 3L), row(3L, 5L)));
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(PDT_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(PDT_OFFSET)))
                 .thenReturn(rows(row(2L, 7L)));
 
         Map<Long, Long> result =
@@ -123,7 +133,7 @@ class LoginActivityQueryServiceTest {
         ArgumentCaptor<Collection<Long>> userIdsCaptor = ArgumentCaptor.forClass(Collection.class);
         ArgumentCaptor<String> offsetCaptor = ArgumentCaptor.forClass(String.class);
         verify(auditLogRepository, times(2)).countDistinctLoginDaysSinceByUsers(
-                userIdsCaptor.capture(), any(), offsetCaptor.capture());
+                userIdsCaptor.capture(), any(), eq(STORED_ZONE_OFFSET), offsetCaptor.capture());
 
         List<String> offsets = offsetCaptor.getAllValues();
         List<Collection<Long>> userIdGroups = userIdsCaptor.getAllValues();
@@ -152,7 +162,7 @@ class LoginActivityQueryServiceTest {
         timezones.put(2L, "");
         timezones.put(3L, null);
         when(userTimezoneCache.getTimezones(any())).thenReturn(timezones);
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(JST_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
                 .thenReturn(rows(row(1L, 1L), row(2L, 2L), row(3L, 3L)));
 
         Map<Long, Long> result =
@@ -164,7 +174,7 @@ class LoginActivityQueryServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<Long>> userIdsCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(auditLogRepository, times(1)).countDistinctLoginDaysSinceByUsers(
-                userIdsCaptor.capture(), any(), eq(JST_OFFSET));
+                userIdsCaptor.capture(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET));
         assertThat(userIdsCaptor.getValue()).containsExactlyInAnyOrder(1L, 2L, 3L);
     }
 
@@ -183,14 +193,14 @@ class LoginActivityQueryServiceTest {
     @DisplayName("AC-TZ5: since は「JST当日00:00 − 60日」を UTC 化した 2026-05-28T15:00 と厳密一致する")
     void acTz5_sinceBoundaryIsUserTimezoneMidnightConvertedToUtc() {
         when(userTimezoneCache.getTimezones(any())).thenReturn(Map.of(1L, "Asia/Tokyo"));
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(JST_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
                 .thenReturn(rows(row(1L, 60L)));
 
         service.countDistinctActiveDaysWithinByUsers(List.of(1L), WINDOW_DAYS, NOW_UTC);
 
         ArgumentCaptor<LocalDateTime> sinceCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(auditLogRepository).countDistinctLoginDaysSinceByUsers(
-                any(), sinceCaptor.capture(), eq(JST_OFFSET));
+                any(), sinceCaptor.capture(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET));
 
         // JST 2026-05-29 00:00:00 = UTC 2026-05-28 15:00:00
         assertThat(sinceCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 5, 28, 15, 0, 0));
@@ -212,13 +222,15 @@ class LoginActivityQueryServiceTest {
     void acTz5_perUser_sameBoundaryRule() {
         lenient().when(userTimezoneCache.getTimezone(1L)).thenReturn("Asia/Tokyo");
         lenient().when(userTimezoneCache.getTimezones(any())).thenReturn(Map.of(1L, "Asia/Tokyo"));
-        when(auditLogRepository.countDistinctLoginDaysSince(eq(1L), any(), eq(JST_OFFSET))).thenReturn(21L);
+        when(auditLogRepository.countDistinctLoginDaysSince(eq(1L), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
+                .thenReturn(21L);
 
         long days = service.countDistinctActiveDaysWithin(1L, WINDOW_DAYS, NOW_UTC);
 
         assertThat(days).isEqualTo(21L);
         ArgumentCaptor<LocalDateTime> sinceCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(auditLogRepository).countDistinctLoginDaysSince(eq(1L), sinceCaptor.capture(), eq(JST_OFFSET));
+        verify(auditLogRepository).countDistinctLoginDaysSince(
+                eq(1L), sinceCaptor.capture(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET));
         assertThat(sinceCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 5, 28, 15, 0, 0));
     }
 
@@ -237,14 +249,14 @@ class LoginActivityQueryServiceTest {
         Map<Long, String> timezones = userIds.stream()
                 .collect(Collectors.toMap(id -> id, id -> "Asia/Tokyo"));
         when(userTimezoneCache.getTimezones(any())).thenReturn(timezones);
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(JST_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
                 .thenReturn(rows(row(1L, 10L)));
 
         Map<Long, Long> result = service.countDistinctActiveDaysWithinByUsers(userIds, WINDOW_DAYS, NOW_UTC);
 
         assertThat(result).hasSize(500);
         verify(userTimezoneCache, times(1)).getTimezones(any());
-        verify(auditLogRepository, times(1)).countDistinctLoginDaysSinceByUsers(any(), any(), any());
+        verify(auditLogRepository, times(1)).countDistinctLoginDaysSinceByUsers(any(), any(), any(), any());
     }
 
     /**
@@ -260,12 +272,12 @@ class LoginActivityQueryServiceTest {
         timezones.put(2L, "America/Los_Angeles");
         timezones.put(3L, "Asia/Tokyo");
         when(userTimezoneCache.getTimezones(any())).thenReturn(timezones);
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), any()))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), any(), any()))
                 .thenReturn(rows());
 
         service.countDistinctActiveDaysWithinByUsers(userIds, WINDOW_DAYS, NOW_UTC);
 
-        verify(auditLogRepository, never()).countDistinctLoginDaysSince(any(), any(), any());
+        verify(auditLogRepository, never()).countDistinctLoginDaysSince(any(), any(), any(), any());
     }
 
     // ============================================================
@@ -285,7 +297,7 @@ class LoginActivityQueryServiceTest {
         when(userTimezoneCache.getTimezones(any()))
                 .thenReturn(Map.of(1L, "Asia/Tokyo", 2L, "Asia/Tokyo"));
         // 2L はログイン記録が無く GROUP BY の結果に現れない。
-        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(JST_OFFSET)))
+        when(auditLogRepository.countDistinctLoginDaysSinceByUsers(any(), any(), eq(STORED_ZONE_OFFSET), eq(JST_OFFSET)))
                 .thenReturn(rows(row(1L, 4L)));
 
         Map<Long, Long> result =

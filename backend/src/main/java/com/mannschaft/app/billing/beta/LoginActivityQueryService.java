@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.DateTimeException;
@@ -64,6 +65,17 @@ import java.util.Set;
  *       クロスドメイン Entity 参照番人（D-1）にも抵触しない。TZ 解決も auth の Repository を直接触らず
  *       {@code common} の {@link UserTimezoneCache} 経由で行う（D-5 の越境 Repository 依存を増やさない）。</li>
  * </ul></p>
+ *
+ * <h3>{@code audit_logs.created_at} の格納基準 TZ は設定値（2026-07-28 是正）</h3>
+ * <p>{@link AuditLogRepository} の {@code CONVERT_TZ(created_at, storedZoneOffset, tzOffset)} における
+ * <b>変換元</b> {@code storedZoneOffset} は、{@code audit_logs.created_at} が<b>どの TZ の壁時計として
+ * 格納されているか</b>を表す前提値であり、以前は SQL に {@code '+00:00'} 直書きだった。この前提は
+ * {@code spring.jpa.properties.hibernate.jdbc.time_zone} と JVM 既定 TZ に依存し、<b>環境によって割れている
+ * 可能性がある</b>（現状 {@code test} プロファイルにのみ {@code hibernate.jdbc.time_zone: UTC} の明示指定があり、
+ * 本番の格納基準は未決着）。そこで本サービスはこの値をリテラルではなく設定キー
+ * {@code mannschaft.audit.stored-zone-offset}（既定 {@code "+00:00"}＝UTC・{@code application.yml} 参照）から
+ * {@code @Value} で受け取り、リポジトリへバインドパラメータとして渡す。格納基準が UTC でない環境では、
+ * この設定値を実態に合わせて上書きすることで、SQL を触らずに前提を差し替えられる。</p>
  */
 @Slf4j
 @Service
@@ -75,6 +87,15 @@ public class LoginActivityQueryService {
 
     private final AuditLogRepository auditLogRepository;
     private final UserTimezoneCache userTimezoneCache;
+
+    /**
+     * {@code audit_logs.created_at} の格納基準 TZ（{@code "+00:00"} 形式・既定 UTC）。
+     * {@code CONVERT_TZ} の変換元として {@link AuditLogRepository} へそのまま渡す。
+     * 既定値のみで運用する限り挙動は変わらない（{@code application.yml} の
+     * {@code mannschaft.audit.stored-zone-offset} 参照）。
+     */
+    @Value("${mannschaft.audit.stored-zone-offset:+00:00}")
+    private String storedZoneOffset;
 
     /**
      * 指定ユーザーの、直近 {@code windowDays} 日間のアクティブ日数（ログイン成功日の distinct 数）を返す。
@@ -94,7 +115,7 @@ public class LoginActivityQueryService {
         }
         ZoneOffset offset = resolveOffset(userTimezoneCache.getTimezone(userId), nowUtc);
         return auditLogRepository.countDistinctLoginDaysSince(
-                userId, windowStartUtc(offset, windowDays, nowUtc), formatOffset(offset));
+                userId, windowStartUtc(offset, windowDays, nowUtc), storedZoneOffset, formatOffset(offset));
     }
 
     /**
@@ -143,7 +164,7 @@ public class LoginActivityQueryService {
             String offsetId = group.getKey();
             LocalDateTime since = windowStartUtc(ZoneOffset.of(offsetId), windowDays, nowUtc);
             for (Object[] row : auditLogRepository.countDistinctLoginDaysSinceByUsers(
-                    group.getValue(), since, offsetId)) {
+                    group.getValue(), since, storedZoneOffset, offsetId)) {
                 result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
             }
         }

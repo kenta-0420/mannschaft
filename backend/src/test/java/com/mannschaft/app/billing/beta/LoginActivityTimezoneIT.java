@@ -39,9 +39,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <h3>実装契約（本 IT が要求するシグネチャ・実装は本 IT の後に行う）</h3>
  * <pre>{@code
  * // com.mannschaft.app.auth.repository.AuditLogRepository
- * long countDistinctLoginDaysSince(Long userId, LocalDateTime since, String tzOffset);
- * List<Object[]> countDistinctLoginDaysSinceByUsers(Collection<Long> userIds, LocalDateTime since, String tzOffset);
- * //   tzOffset は "+09:00" 形式。UTC 格納値をこのオフセットへ変換してから日付を切る。
+ * long countDistinctLoginDaysSince(Long userId, LocalDateTime since, String storedZoneOffset, String tzOffset);
+ * List<Object[]> countDistinctLoginDaysSinceByUsers(
+ *     Collection<Long> userIds, LocalDateTime since, String storedZoneOffset, String tzOffset);
+ * //   tzOffset は "+09:00" 形式。storedZoneOffset（格納基準TZ、既定 "+00:00"）格納値をこのオフセットへ
+ * //   変換してから日付を切る（2026-07-28 是正: storedZoneOffset を SQL 直書きからバインドパラメータへ切り出し）。
  *
  * // com.mannschaft.app.billing.beta.LoginActivityQueryService
  * long countDistinctActiveDaysWithin(Long userId, int windowDays, LocalDateTime nowUtc);
@@ -284,10 +286,12 @@ class LoginActivityTimezoneIT extends AbstractMySqlIntegrationTest {
         seedJstMidnightCrossing(user, nowUtc);
         LocalDateTime since = nowUtc.minusDays(WINDOW_DAYS);
 
-        assertThat(auditLogRepository.countDistinctLoginDaysSince(user, since, "+00:00"))
+        // 格納基準（storedZoneOffset）は seed が生 UTC 文字列リテラルのため "+00:00" 固定。
+        // 変換先（第4引数 tzOffset）だけを振って効果を検証する。
+        assertThat(auditLogRepository.countDistinctLoginDaysSince(user, since, "+00:00", "+00:00"))
                 .as("UTC で切れば 14:30 と 15:30 は同日")
                 .isEqualTo(1L);
-        assertThat(auditLogRepository.countDistinctLoginDaysSince(user, since, "+09:00"))
+        assertThat(auditLogRepository.countDistinctLoginDaysSince(user, since, "+00:00", "+09:00"))
                 .as("+09:00 で切れば 23:30 と翌 00:30 で別日")
                 .isEqualTo(2L);
     }

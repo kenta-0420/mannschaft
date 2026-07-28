@@ -131,9 +131,10 @@ for user in activeUsers（ページング・凍結除外・**退会申請中（W
 
 | 対象 | 是正後の扱い |
 |---|---|
-| 日付の切り出し | `COUNT(DISTINCT DATE(CONVERT_TZ(created_at, '+00:00', :tzOffset)))`。`tzOffset` は**その瞬間の実オフセット**（夏時間反映。7 月の `America/Los_Angeles` は `-07:00`）を `"+09:00"` 形式で渡す |
-| 評価ウィンドウ起点 `since` | 「本人現地の**当日 00:00**」から `windowDays` 日前の 00:00 を UTC 化した値。`WHERE created_at >= :since` は **UTC 同士の比較のまま**（変換すると `audit_logs(user_id, created_at)` のインデックスが効かない） |
+| 日付の切り出し | `COUNT(DISTINCT DATE(CONVERT_TZ(created_at, :storedZoneOffset, :tzOffset)))`。`tzOffset` は**その瞬間の実オフセット**（夏時間反映。7 月の `America/Los_Angeles` は `-07:00`）を `"+09:00"` 形式で渡す |
+| 評価ウィンドウ起点 `since` | 「本人現地の**当日 00:00**」から `windowDays` 日前の 00:00 を UTC 化した値。`WHERE created_at >= :since` は **格納基準 TZ 同士の比較のまま**（変換すると `audit_logs(user_id, created_at)` のインデックスが効かない） |
 
+- **`storedZoneOffset`（変換元）は SQL 直書きではなく設定値**（2026-07-28 是正）: `audit_logs.created_at` が「どの TZ の壁時計として格納されているか」を表す前提値であり、`mannschaft.audit.stored-zone-offset`（`application.yml`・既定 `"+00:00"`＝UTC）から `LoginActivityQueryService` が `@Value` で受け取り、`AuditLogRepository` へバインドパラメータとして渡す（SQL 文字列連結はしない）。格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone` と JVM 既定 TZ に依存し、現状 `test` プロファイルにのみ `hibernate.jdbc.time_zone: UTC` の明示指定がある（本番の格納基準は未決着のため、実態が UTC でない環境ではこの設定値を上書きする）。
 - **オフセット文字列で渡す**（`'Asia/Tokyo'` のような IANA 名は MySQL の tz テーブル未投入環境で `CONVERT_TZ` が黙って NULL を返し、**集計が静かに 0 になる**）。
 - **N+1 回避**: bulk 経路は TZ 解決を `UserTimezoneCache#getTimezones`（TTL 5 分キャッシュ＋ミス分 1 クエリ）で 1 回に畳み、**同一オフセットのユーザーを 1 群に束ねて群ごとに 1 クエリ**だけ撃つ（クエリ数はユーザー数ではなくオフセットの種類数に比例）。
 - **TZ 値が不正/空/NULL** のユーザーは既定 `Asia/Tokyo` へフォールバックする（WARN ログ）。一方、**TZ 解決自体が例外で失敗した場合は握り潰さず伝播**させる（「引けないので全員 0 日」は付与漏れを静かに生むため）。
