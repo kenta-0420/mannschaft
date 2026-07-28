@@ -198,11 +198,14 @@ public class AnnouncementFeedService {
     /**
      * お知らせを既読にする（冪等）。
      *
+     * <p>スコープ（URL のパス変数由来）を下流へ通し、メンバーシップ検証とスコープ帰属検証を
+     * {@link AnnouncementReadService} に行わせる。</p>
+     *
      * @see AnnouncementReadService#markAsRead
      */
     @Transactional
-    public void markAsRead(Long announcementId, Long userId) {
-        readService.markAsRead(announcementId, userId);
+    public void markAsRead(AnnouncementScopeType scopeType, Long scopeId, Long announcementId, Long userId) {
+        readService.markAsRead(scopeType, scopeId, announcementId, userId);
     }
 
     /**

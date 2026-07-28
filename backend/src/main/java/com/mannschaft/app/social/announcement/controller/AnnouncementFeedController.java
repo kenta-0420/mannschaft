@@ -215,20 +215,26 @@ public class AnnouncementFeedController {
      * 既に既読の場合はノーオペレーション（200 OK を返す）。
      * </p>
      *
-     * @param teamId         チーム ID（パス整合性確認用）
+     * <p>
+     * {@code teamId} は Service まで通す。当該チームのメンバー以上であることと、
+     * {@code announcementId} が当該チームに帰属することの検証に用いる（認可根治「裏目付」C-social）。
+     * </p>
+     *
+     * @param teamId         チーム ID（メンバーシップ検証・スコープ帰属検証に使用）
      * @param announcementId お知らせフィード ID
      * @return 200 OK（既読結果）
      */
     @PostMapping("/{id}/read")
     @Operation(
             summary = "既読マーク",
-            description = "指定したお知らせを既読にする。冪等。既に既読の場合はノーオペレーション。")
+            description = "指定したお知らせを既読にする。冪等。既に既読の場合はノーオペレーション。"
+                    + "当該チームのメンバー以上のみ可。他チームのお知らせ ID は受け付けない。")
     public ResponseEntity<ApiResponse<Map<String, Object>>> markAsRead(
             @PathVariable Long teamId,
             @PathVariable("id") Long announcementId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAsRead(announcementId, userId);
+        announcementFeedService.markAsRead(AnnouncementScopeType.TEAM, teamId, announcementId, userId);
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "id", announcementId,
@@ -248,7 +254,8 @@ public class AnnouncementFeedController {
     @PostMapping("/read-all")
     @Operation(
             summary = "全件既読",
-            description = "チームスコープの全未読お知らせを一括既読にする。")
+            description = "チームスコープの全未読お知らせを一括既読にする。"
+                    + "当該チームのメンバー以上のみ可。")
     public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead(
             @PathVariable Long teamId) {
 

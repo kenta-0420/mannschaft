@@ -483,14 +483,16 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("正常系: 未読 → 既読に変更（save が呼ばれる）")
         void markAsRead_正常_未読から既読() {
-            // Given: お知らせが存在し、未読状態
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            // Given: 当該スコープに帰属するお知らせが存在し、未読状態
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
                     .willReturn(Optional.empty()); // 未読
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
             // Then: 既読レコードが保存される
             verify(readStatusRepository).save(any(AnnouncementReadStatusEntity.class));
@@ -499,8 +501,9 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("正常系: 既に既読の場合は save が呼ばれない（冪等）")
         void markAsRead_正常_既読済みは冪等() {
-            // Given: お知らせが存在し、既読済み
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            // Given: 当該スコープに帰属するお知らせが存在し、既読済み
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
             AnnouncementReadStatusEntity existingStatus = AnnouncementReadStatusEntity.builder()
                     .announcementFeedId(ANNOUNCEMENT_ID)
                     .userId(AUTHOR_USER_ID)
@@ -509,10 +512,44 @@ class AnnouncementFeedServiceTest {
                     .willReturn(Optional.of(existingStatus)); // 既読済み
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 別スコープのお知らせ ID は ANNOUNCE_001（越境の存在秘匿）")
+        void markAsRead_異常_越境スコープはANNOUNCE_001() {
+            // Given: お知らせは存在するが teamB（別スコープ）に帰属する
+            AnnouncementFeedEntity otherScopeFeed = AnnouncementFeedEntity.builder()
+                    .scopeType(AnnouncementScopeType.TEAM)
+                    .scopeId(TEAM_ID + 1)
+                    .sourceType(AnnouncementSourceType.BLOG_POST)
+                    .sourceId(BLOG_POST_ID)
+                    .titleCache("別チームのお知らせ")
+                    .build();
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(otherScopeFeed));
+
+            // When / Then
+            assertThatThrownBy(() -> announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ANNOUNCE_001"));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+        }
+
+        /** 当該スコープ（TEAM_ID）に帰属するお知らせフィードを組み立てる。 */
+        private AnnouncementFeedEntity buildScopedFeed() {
+            return AnnouncementFeedEntity.builder()
+                    .scopeType(AnnouncementScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .sourceType(AnnouncementSourceType.BLOG_POST)
+                    .sourceId(BLOG_POST_ID)
+                    .titleCache("お知らせ")
+                    .build();
         }
     }
 
