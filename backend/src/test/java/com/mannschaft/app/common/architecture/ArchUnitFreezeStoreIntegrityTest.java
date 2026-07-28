@@ -69,8 +69,20 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 実際に違反が解消されたことを確認した上で、この定数を実測行数
      * （{@code wc -l backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256}）
      * に更新し、ストアファイルの変更と同じコミットに含めること。
+     *
+     * <p>795 → 784（2026-07-28 / 認可根治 Wave7）: 以下 11 エンドポイントに実効的な認可
+     * （{@code AccessControlService} 呼び出し）を敷設したことで違反が解消。違反隠蔽ではなく根治。</p>
+     * <ul>
+     *   <li>{@code ShiftAutoAssignController} 6 件（実行 / 確定 / 破棄 / 履歴一覧 / 履歴詳細 / 目視確認）
+     *       — {@code ShiftAutoAssignService} に per-scope 管理者認可を新設</li>
+     *   <li>{@code ShiftChangeRequestController.createChangeRequest} 1 件
+     *       — スケジュール実体からチームを解決しメンバーシップを強制</li>
+     *   <li>{@code TeamFolderController} / {@code OrgFolderController} の
+     *       {@code listRootFolders} / {@code createFolder} 計 4 件
+     *       — {@code SharedFolderService} に per-scope 認可を新設</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 795;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 784;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

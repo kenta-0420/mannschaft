@@ -271,7 +271,7 @@ public class ShiftAutoAssignService {
      */
     public AssignmentRunResponse getAssignmentRunDetail(Long runId, Long userId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        checkRunAdminAccess(run, null, userId);
+        checkRunAdminAccessConcealed(run, userId);
 
         List<ShiftAssignmentEntity> assignments = assignmentRepository.findAllByRunId(runId);
         return toRunResponse(
@@ -296,7 +296,7 @@ public class ShiftAutoAssignService {
     @Transactional
     public void confirmVisualReview(Long runId, String note, Long userId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        checkRunAdminAccess(run, null, userId);
+        checkRunAdminAccessConcealed(run, userId);
 
         if (run.getStatus() != ShiftAssignmentRunStatus.SUCCEEDED) {
             throw new BusinessException(ShiftErrorCode.INVALID_ASSIGNMENT_RUN_STATUS);
@@ -375,7 +375,7 @@ public class ShiftAutoAssignService {
      * @param userId             操作ユーザー ID
      */
     private void checkRunAdminAccess(ShiftAssignmentRunEntity run, Long expectedScheduleId, Long userId) {
-        if (expectedScheduleId != null && !expectedScheduleId.equals(run.getScheduleId())) {
+        if (!expectedScheduleId.equals(run.getScheduleId())) {
             // パスのスケジュールに属さない run は「存在しない」と同じ応答に寄せる。
             throw new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
         }
@@ -385,6 +385,32 @@ public class ShiftAutoAssignService {
             return;
         }
         accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+    }
+
+    /**
+     * run 実体由来の管理者認可（<b>存在秘匿版</b>）。権限が無い場合も 403 ではなく
+     * {@code ASSIGNMENT_RUN_NOT_FOUND}（404）を返す。
+     *
+     * <p>パスにスコープを持たない {@code /assignment-runs/{runId}} 系の EP 専用。403 と 404 を
+     * 撃ち分けると「その runId が実在する」ことが観測でき、他チームの割当実行の有無を総当りで
+     * 探れてしまう。同ドメインの {@code ShiftChangeRequestService#get}（越境は
+     * {@code CHANGE_REQUEST_NOT_FOUND}）と同一方針。</p>
+     *
+     * <p>{@code checkAdminOrAbove}（例外送出）でなく {@code isAdminOrAbove}（真偽）を使うのは、
+     * 例外を握り潰して詰め替えるのではなく<b>最初から意図した応答を組み立てる</b>ため。</p>
+     *
+     * @param run    対象の実行ログ
+     * @param userId 操作ユーザー ID
+     */
+    private void checkRunAdminAccessConcealed(ShiftAssignmentRunEntity run, Long userId) {
+        ShiftScheduleEntity schedule = scheduleRepository.findById(run.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND));
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (!accessControlService.isAdminOrAbove(userId, schedule.getTeamId(), "TEAM")) {
+            throw new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
+        }
     }
 
     private ShiftAssignmentStrategy findStrategy(AssignmentStrategyType type) {
