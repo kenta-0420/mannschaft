@@ -101,17 +101,31 @@ public class BulletinThreadService {
     /**
      * カテゴリ指定でスレッド一覧をページング取得する。所属メンバーのみ。
      *
+     * <p><b>帰属検証（越境 BOLA 封鎖）</b>: {@code categoryId} は URL のスコープに属するもので
+     * なければならない。所属判定（{@link BulletinAccessGuard#checkMembership}）は URL の
+     * {@code scopeType/scopeId} に対してしか効かないため、カテゴリ側の帰属を検証しないと
+     * 「自スコープの URL に他スコープの categoryId を差し込む」だけで他テナントのスレッド
+     * （タイトル・本文・投稿者）を読み出せてしまう。近隣の {@link #createThread} と同じ
+     * {@link BulletinCategoryService#findCategoryOrThrow} で検証し、さらに取得クエリ自体も
+     * スコープ条件付き finder に切り替えて二重に塞ぐ（fail-closed）。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
-     * @param categoryId カテゴリID
+     * @param categoryId カテゴリID（当該スコープに属すること）
      * @param userId     操作ユーザーID
      * @param pageable   ページング情報
      * @return スレッドレスポンスのページ
+     * @throws BusinessException カテゴリが当該スコープに存在しない
+     *                           （{@link BulletinErrorCode#CATEGORY_NOT_FOUND}・404）
      */
     public Page<ThreadResponse> listThreadsByCategory(ScopeType scopeType, Long scopeId, Long categoryId, Long userId, Pageable pageable) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
+        // カテゴリの帰属検証。越境 ID と不在 ID はいずれも CATEGORY_NOT_FOUND で同一応答となり、
+        // 応答差分から他スコープのカテゴリ実在を判別できない（実在オラクル封じ）。
+        categoryService.findCategoryOrThrow(scopeType, scopeId, categoryId);
         Page<BulletinThreadEntity> page =
-                threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(categoryId, pageable);
+                threadRepository.findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                        scopeType, scopeId, categoryId, pageable);
         return enrichPage(page, userId);
     }
 

@@ -196,8 +196,8 @@ class BulletinThreadServiceTest {
             BulletinThreadEntity entity = createDefaultThread();
             ThreadResponse response = createThreadResponse();
             Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
-            given(threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
-                    CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
+            given(threadRepository.findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
             given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
 
             // When
@@ -207,6 +207,27 @@ class BulletinThreadServiceTest {
             // Then
             assertThat(result.getContent()).hasSize(1);
             verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+            // カテゴリの帰属検証が呼ばれること（越境 categoryId 差し込みの封鎖）
+            verify(categoryService).findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+        }
+
+        @Test
+        @DisplayName("カテゴリ指定一覧取得_越境categoryId_CATEGORY_NOT_FOUNDで遮断されスレッド取得に到達しない")
+        void カテゴリ指定一覧取得_越境categoryId_遮断() {
+            // Given: 当該スコープに属さない categoryId は findCategoryOrThrow が 404 を投げる
+            given(categoryService.findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+                    .willThrow(new BusinessException(BulletinErrorCode.CATEGORY_NOT_FOUND));
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinThreadService.listThreadsByCategory(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID, PageRequest.of(0, 10)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.CATEGORY_NOT_FOUND));
+            // 遮断後にスレッド取得クエリへ到達していないこと
+            verify(threadRepository, never())
+                    .findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                            any(), anyLong(), anyLong(), any());
         }
     }
 
