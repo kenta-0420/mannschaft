@@ -83,7 +83,8 @@ public class ProxyVoteScheduledService {
                 .findByVotingStatusAndVoteDeadlineAtLessThanEqualAndVoteDeadlineAtIsNotNull(VotingStatus.VOTING, now);
         for (ProxyVoteMotionEntity motion : expiredMotions) {
             try {
-                motionService.endVote(motion.getId());
+                // システム起点（実行ユーザー不在）のため認可を伴わない専用入口を使う。
+                motionService.endVoteBySystem(motion.getId());
                 log.info("投票タイマー自動終了: motionId={}", motion.getId());
             } catch (Exception e) {
                 log.error("投票タイマー自動終了エラー: motionId={}", motion.getId(), e);
