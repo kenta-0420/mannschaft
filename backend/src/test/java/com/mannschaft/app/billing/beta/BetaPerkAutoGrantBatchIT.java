@@ -167,6 +167,66 @@ class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
         assertThat(grantsOf(below)).isEmpty();
     }
 
+    /**
+     * AC-C2（境界・実DB）: {@code beta_perk_criteria.min_active_days = 14} を手動シードしたとき、
+     * activeDays=14 のユーザーは付与され {@code beta_grants} と {@code entitlements} に行ができ、
+     * activeDays=13 のユーザーには付与されない。
+     *
+     * <p>{@link #boundary_exactlyMinGrants_minMinusOneSkips}（min=5）と同じ境界則を、運用で実際に用いる
+     * しきい値 14 かつ<b>付与の副作用（entitlements 発行）まで実 DB で</b>確認する。判定だけでなく書き込み側の
+     * 連鎖が閾値変更で壊れないことを固定する。</p>
+     */
+    @Test
+    @DisplayName("AC-C2 境界(実DB): min_active_days=14 で activeDays=14 は付与＋entitlements発行・13 は非付与")
+    void acC2_minActiveDays14_boundaryGrantsAndIssuesEntitlements() {
+        setEnabled(true);
+        // phase1 criteria を min_active_days=14 へ上書き（合成キー upsert）。
+        criteriaRepository.save(BetaPerkCriteriaEntity.builder()
+                .betaPhase(PHASE).grantKind(GrantKind.INDIVIDUAL).evaluationWindowDays(WINDOW_DAYS)
+                .minActiveDays(14).minMembershipTenureDays(null).minActiveMembers(null)
+                .enabled(true).build());
+        Long exact = persistActiveUser();
+        insertLoginDays(exact, 14);
+        Long below = persistActiveUser();
+        insertLoginDays(below, 13);
+
+        batch.execute();
+
+        assertThat(grantsOf(exact)).as("activeDays=14 は境界『以上』ゆえ付与される").hasSize(1);
+        assertThat(activeEntitlementsOf(firstGrantId(exact)))
+                .as("付与された grant から FULL プラン相当の entitlements が発行される")
+                .hasSize(FULL_KEYS.size());
+        assertThat(grantsOf(below)).as("activeDays=13 は閾値未満ゆえ非付与").isEmpty();
+    }
+
+    /**
+     * AC-C4（幽霊アカウントの穴）: {@code min_active_days=NULL} ／ {@code min_membership_tenure_days=30} の
+     * criteria では、在籍 30 日超でも<b>ログイン記録が 1 件も無いユーザーには 1 件も付与しない</b>。
+     *
+     * <p>在籍日数だけを条件にすると「登録して放置しただけのアカウント」に自動でベータ特典がばら撒かれる
+     * （＝活動実績ゲートの趣旨に反する）。現行実装は {@code minActiveDays == null} のとき activeDays を一切見ない
+     * ため付与してしまうので red。</p>
+     */
+    @Test
+    @DisplayName("AC-C4: min_active_days=NULL・在籍30日条件でも、ログイン0の幽霊アカウントには付与しない")
+    void acC4_tenureOnlyCriteria_doesNotGrantToUserWithoutAnyLogin() {
+        setEnabled(true);
+        // 在籍日数のみを条件にした criteria（activeDays 指標は NULL）。
+        criteriaRepository.save(BetaPerkCriteriaEntity.builder()
+                .betaPhase(PHASE).grantKind(GrantKind.INDIVIDUAL).evaluationWindowDays(WINDOW_DAYS)
+                .minActiveDays(null).minMembershipTenureDays(30).minActiveMembers(null)
+                .enabled(true).build());
+        // 在籍 40 日（閾値 30 を超える）だが、ログイン記録は 1 件も無い＝完全な休眠アカウント。
+        Long ghost = persistActiveUser();
+        persistActiveMembership(ghost, LocalDateTime.now(clock).minusDays(40));
+
+        batch.execute();
+
+        assertThat(grantsOf(ghost))
+                .as("在籍日数を満たしていても活動実績ゼロなら自動付与の対象外（バラ撒き防止）")
+                .isEmpty();
+    }
+
     // ============================================================
     // AC-N3: enabled=false は付与0
     // ============================================================
