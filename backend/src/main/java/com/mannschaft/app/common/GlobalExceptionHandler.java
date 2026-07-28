@@ -168,6 +168,12 @@ public class GlobalExceptionHandler {
             //   （Severity.WARN 既定の 400 を上書き）。
             Map.entry("AUTH_026", HttpStatus.UNAUTHORIZED), // リプレイ検出・全セッション無効化 → 401
             Map.entry("AUTH_039", HttpStatus.UNAUTHORIZED), // 全デバイスセッション無効化後のアクセス → 401
+            // AUTH_007（リフレッシュトークンが無効／リボーク済み）も「認証情報が無効」の意味論であり、
+            // 兄弟の AUTH_026 / AUTH_039 と同じく 401 が正しい（Severity.WARN 既定の 400 を上書き）。
+            // 400 のままだと監視・アラートで認証失敗として集計できず、クライアント側も
+            // 「400 も認証失敗とみなす」特例分岐で補償せざるを得なかった。
+            // 使用箇所は AuthTokenRotationService（refresh フロー）のみで他ドメインへの巻き添えは無い。
+            Map.entry("AUTH_007", HttpStatus.UNAUTHORIZED), // refresh_token 無効/失効/不在 → 401
             // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
             Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
