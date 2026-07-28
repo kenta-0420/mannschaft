@@ -175,7 +175,7 @@ public class TournamentService {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
 
-        return buildTournamentResponse(tournament);
+        return buildTournamentResponse(tournament, tournamentId);
     }
 
     /**
@@ -188,9 +188,18 @@ public class TournamentService {
      * {@code continueTournament}）は本メソッドを使う。共有メソッドにゲートを埋めると、
      * 作成直後の DRAFT 大会（作成者以外の管理者には不可視）で自分の書込レスポンスが
      * 404 になる巻き添えが発生するため分離している。</p>
+     *
+     * <p><b>{@code tournamentId} を引数で受ける理由</b>: 当初は {@code tournament.getId()} から
+     * 取り直していたが、呼び出し元は全員すでに {@code tournamentId} を持っており、
+     * エンティティから取り直すのは不要な間接化だった。分離前の {@code getTournament(Long)} は
+     * 引数の ID をそのまま子テーブル検索に使っていたため、取得元を変えたことは意図しない
+     * 挙動変更でもある（ID 未設定のエンティティを渡すと子テーブル検索に {@code null} が伝播する）。
+     * 呼び出し元の ID をそのまま使う分離前の流儀に戻し、取得元を一意にした。</p>
+     *
+     * @param tournament   レスポンスの本体となる大会エンティティ
+     * @param tournamentId 子テーブル（tiebreakers / statDefs）検索に使う大会 ID
      */
-    private TournamentResponse buildTournamentResponse(TournamentEntity tournament) {
-        Long tournamentId = tournament.getId();
+    private TournamentResponse buildTournamentResponse(TournamentEntity tournament, Long tournamentId) {
         List<TiebreakerResponse> tiebreakers = tiebreakerRepository
                 .findByTournamentIdOrderByPriorityAsc(tournamentId)
                 .stream().map(mapper::toTiebreakerResponse).toList();
@@ -328,7 +337,7 @@ public class TournamentService {
                 orgId, tournamentId, userId, DEFAULT_TOURNAMENT_FOLDER);
 
         // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
-        return buildTournamentResponse(findTournamentOrThrow(tournamentId));
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -371,7 +380,7 @@ public class TournamentService {
         }
 
         // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
-        return buildTournamentResponse(findTournamentOrThrow(tournamentId));
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -406,7 +415,7 @@ public class TournamentService {
         tournament.changeStatus(newStatus);
         tournamentRepository.save(tournament);
         // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
-        return buildTournamentResponse(findTournamentOrThrow(tournamentId));
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -502,7 +511,7 @@ public class TournamentService {
         }
 
         // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
-        return buildTournamentResponse(findTournamentOrThrow(newTournamentId));
+        return buildTournamentResponse(findTournamentOrThrow(newTournamentId), newTournamentId);
     }
 
     TournamentEntity findTournamentOrThrow(Long tournamentId) {
