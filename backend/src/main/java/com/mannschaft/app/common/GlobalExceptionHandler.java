@@ -1119,7 +1119,25 @@ public class GlobalExceptionHandler {
             // entity 由来スコープで認可する。存在しない／越境の議案・セッションは同一コードで
             // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND)            // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND),           // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            // ─────────────────────────────────────────────────────────────
+            // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
+            //
+            // 下記は「サーバ側の障害ではなくクライアント起因」と分類したため Severity を
+            // ERROR → WARN に正した（＝既定 400）うえで、既定の 400 では粗すぎるものだけを
+            // ここで上書きする。判定規準は本ファイル既存の慣例に合わせた:
+            //   - リクエストのペイロード自体が不正/過大 → 400（既定のまま。ここには載せない）
+            //   - サーバ側に既に積まれた資源の件数上限・保存済み状態との競合 → 409 Conflict
+            //     （先例: PERSONAL_TIMETABLE_010 / SOCIAL_111 / SHIFT_BUDGET_011 …）
+            Map.entry("EVENT_008", HttpStatus.CONFLICT),                 // MAX_TICKET_TYPES（登録済みチケット種別数が上限）
+            Map.entry("EVENT_009", HttpStatus.CONFLICT),                 // MAX_TIMETABLE_ITEMS（登録済みタイムテーブル項目数が上限）
+            Map.entry("RESERVATION_015", HttpStatus.CONFLICT),           // MAX_REMINDERS_EXCEEDED（予約に紐づく既存リマインダー数が上限）
+            Map.entry("SEARCH_005", HttpStatus.CONFLICT),                // MAX_SAVED_QUERIES_EXCEEDED（保存済みクエリ数が上限）
+            Map.entry("SHIFT_017", HttpStatus.CONFLICT),                 // SLOT_ASSIGNMENT_EXCEEDED（現在の割当状況と必要人数の競合）
+            // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
+            // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
+            // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED)    // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
     );
 
     /**
@@ -1640,6 +1658,24 @@ public class GlobalExceptionHandler {
      * ErrorCode から HttpStatus を解決する。
      * 個別マッピング（ERROR_CODE_STATUS_MAP）が存在すればそちらを優先し、
      * なければ Severity に基づくデフォルトマッピングを返す。
+     *
+     * <p><strong>{@link ErrorCode.Severity} の唯一の消費者はこのメソッドである。</strong>
+     * ログレベルの決定には使われていない（{@link #handleBusinessException} は severity に
+     * 関わらず常に {@code log.warn}）。したがって {@code Severity.ERROR} を付けることは
+     * 実質的に「既定で HTTP 500 を返す」宣言と同義であり、クライアント起因のエラーに
+     * 付けてはならない。500 になると {@code status.is5xxServerError()} 経由で
+     * error_reports への記録と Slack エスカレーションまで走るため、入力不備のたびに
+     * 障害アラートが鳴る。</p>
+     *
+     * <p>是正の手順（対処療法の禁止）:</p>
+     * <ol>
+     *   <li>クライアント起因なら、まず ErrorCode 定義側の {@code Severity} を WARN に正す
+     *       （宣言箇所で意図が読めるようになる）。既定の 400 で妥当ならこれで足りる。</li>
+     *   <li>既定の 400 では粗すぎる場合（不在は 404・重複や状態競合は 409 など）に限り
+     *       {@link #ERROR_CODE_STATUS_MAP} へ明示登録する。</li>
+     * </ol>
+     * <p>「Severity.ERROR のまま STATUS_MAP に 4xx を足す」だけの直し方は、定義側に誤分類を
+     * 残したまま症状だけを隠すため禁止する。</p>
      *
      * @param errorCode エラーコード
      * @return 対応する HttpStatus

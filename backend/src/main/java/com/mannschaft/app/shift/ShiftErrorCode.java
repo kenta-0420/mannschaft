@@ -27,7 +27,7 @@ public enum ShiftErrorCode implements ErrorCode {
     SWAP_REQUEST_NOT_FOUND("SHIFT_005", "交代リクエストが見つかりません", Severity.WARN),
 
     /** 開始日と終了日の整合性エラー */
-    INVALID_DATE_RANGE("SHIFT_010", "開始日は終了日より前である必要があります", Severity.ERROR),
+    INVALID_DATE_RANGE("SHIFT_010", "開始日は終了日より前である必要があります", Severity.WARN),
 
     /** 希望提出期限超過 */
     REQUEST_DEADLINE_PASSED("SHIFT_011", "希望提出期限を過ぎています", Severity.WARN),
@@ -45,10 +45,10 @@ public enum ShiftErrorCode implements ErrorCode {
     REQUEST_ALREADY_EXISTS("SHIFT_015", "既に希望を提出済みです", Severity.WARN),
 
     /** 自分自身への交代リクエスト */
-    SWAP_SELF_REQUEST("SHIFT_016", "自分自身に交代リクエストを送ることはできません", Severity.ERROR),
+    SWAP_SELF_REQUEST("SHIFT_016", "自分自身に交代リクエストを送ることはできません", Severity.WARN),
 
     /** アサイン人数超過 */
-    SLOT_ASSIGNMENT_EXCEEDED("SHIFT_017", "シフト枠の必要人数を超過しています", Severity.ERROR),
+    SLOT_ASSIGNMENT_EXCEEDED("SHIFT_017", "シフト枠の必要人数を超過しています", Severity.WARN),
 
     /** 楽観的ロック競合 */
     OPTIMISTIC_LOCK_CONFLICT("SHIFT_018", "他のユーザーによって更新されています。再度お試しください", Severity.WARN),
