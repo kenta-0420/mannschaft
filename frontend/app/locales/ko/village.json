@@ -80,7 +80,8 @@
       "festival": "축제",
       "matchRecruit": "연습 경기 모집",
       "meetup": "모임",
-      "chronicle": "마을 역사"
+      "chronicle": "마을 역사",
+      "charter": "마을 헌장"
     },
     "systemPost": {
       "authorName": "마을 행사 안내",
@@ -669,6 +670,55 @@
         "meetup": "모임"
       }
     },
+    "charter": {
+      "title": "마을 헌장",
+      "subtitle": "마을의 약속",
+      "empty": "아직 마을 헌장이 제정되지 않았습니다",
+      "enactedAt": "제정일",
+      "lastRevisedAt": "개정일",
+      "article": {
+        "label": "제{n}조",
+        "add": "＋조항 추가",
+        "bodyPlaceholder": "조문을 입력하세요",
+        "bodyRequired": "조문을 입력해 주세요",
+        "delete": "조항 삭제",
+        "deleteConfirm": "이 조항을 삭제하시겠습니까?"
+      },
+      "supplement": {
+        "add": "＋부칙 추가",
+        "label": "부칙",
+        "placeholder": "부칙을 입력하세요（선택）"
+      },
+      "reorder": {
+        "hint": "위/아래 버튼으로 조항 순서를 변경할 수 있습니다",
+        "up": "위로",
+        "down": "아래로"
+      },
+      "drafters": {
+        "title": "제정자",
+        "add": "＋제정자 추가",
+        "empty": "아직 등록된 제정자가 없습니다",
+        "delete": "제정자 삭제",
+        "deleteConfirm": "\"{name}\"님을 제정자에서 삭제하시겠습니까?",
+        "selectPlaceholder": "마을 주민 선택",
+        "loadMembersFailed": "마을 주민 목록을 불러오지 못해 제정자를 추가할 수 없습니다.",
+        "reloadMembers": "다시 불러오기"
+      },
+      "revision": {
+        "confirm": "개정 확정",
+        "confirmHint": "이 시점을 개정으로 기록합니다（조문의 공개 상태는 변경되지 않습니다）.",
+        "confirmSuccess": "개정을 확정했습니다",
+        "notePlaceholder": "개정 메모（선택）",
+        "history": "개정 이력",
+        "historyEmpty": "아직 개정 이력이 없습니다"
+      },
+      "error": {
+        "loadFailed": "마을 헌장을 가져오지 못했습니다",
+        "mutationFailed": "작업에 실패했습니다",
+        "versionConflict": "다른 촌장이 동시에 수정했습니다. 최신 내용을 다시 불러와 주세요",
+        "drafterDuplicate": "해당 주민은 이미 제정자입니다"
+      }
+    },
     "serendipity": {
       "title": "인연 점수",
       "subtitle": "이 마을에서 쌓인 만남",
@@ -892,6 +942,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "마을 헌장으로 마을의 약속을 남기기",
+        "body": "촌장・원로가 마을의 규칙（조문）을 정하고 비회원에게도 공개할 수 있습니다（공개 마을은 미가입자에게도 보입니다）.",
+        "steps": {
+          "step1": "\"마을 헌장\" 탭을 엽니다.",
+          "step2": "촌장・원로는 \"＋조항 추가\"로 조문을 작성하고, 필요하면 부칙도 첨부할 수 있습니다.",
+          "step3": "순서 변경・삭제는 즉시 반영되며, \"개정 확정\"으로 개정 이력에 기록할 수 있습니다."
         }
       }
     },
