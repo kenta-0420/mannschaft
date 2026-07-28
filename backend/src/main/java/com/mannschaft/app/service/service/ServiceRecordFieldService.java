@@ -1,5 +1,6 @@
 package com.mannschaft.app.service.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.service.FieldType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
@@ -28,6 +29,18 @@ import java.util.stream.Collectors;
 
 /**
  * カスタムフィールド定義・設定サービス。
+ *
+ * <p><b>認可方針（認可根治戦役 Wave7）:</b> 兄弟である {@link ServiceRecordService} /
+ * {@code ServiceRecordExportService} と同じく {@link AccessControlService} でスコープ認可する。
+ * 参照系（一覧・設定取得）は {@code checkMembership}、フィールド定義や機能設定を書き換える
+ * 変更系は {@code checkAdminOrAbove} を敷く（{@code ServiceRecordService} の
+ * 参照=membership／変更=adminOrAbove の粒度に揃えた）。</p>
+ *
+ * <p><b>BOLA 厳禁:</b> 単一フィールドを対象とする操作は {@code findByIdAndTeamId} で
+ * path の teamId に束縛して fetch し、認可は fetch 済み entity 由来の teamId で行う。
+ * path の teamId を鵜呑みにしない。束縛に失敗した場合（他チームのフィールドIDを
+ * 自チームの teamId で叩いた場合）は {@code SERVICE_RECORD_002} で存在秘匿する
+ * （{@code GlobalExceptionHandler} で 404 にマップ済み）。</p>
  */
 @Slf4j
 @Service
@@ -39,6 +52,10 @@ public class ServiceRecordFieldService {
     private final ServiceRecordSettingsRepository settingsRepository;
     private final ServiceRecordMapper mapper;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     private static final int MAX_ACTIVE_FIELDS = 20;
 
@@ -47,7 +64,9 @@ public class ServiceRecordFieldService {
     /**
      * カスタムフィールド定義一覧を取得する。
      */
-    public List<FieldResponse> listFields(Long teamId) {
+    public List<FieldResponse> listFields(Long teamId, Long actorUserId) {
+        // 認可: チーム会員のみフィールド定義を参照可（越境の定義漏洩を防止）。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return fieldRepository.findByTeamIdOrderBySortOrder(teamId)
                 .stream()
                 .map(mapper::toFieldResponse)
@@ -58,7 +77,10 @@ public class ServiceRecordFieldService {
      * カスタムフィールドを作成する。
      */
     @Transactional
-    public FieldResponse createField(Long teamId, CreateFieldRequest request) {
+    public FieldResponse createField(Long teamId, Long actorUserId, CreateFieldRequest request) {
+        // 認可: 作成先スコープ（path の teamId）の管理者のみフィールドを定義可。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         long activeCount = fieldRepository.countByTeamIdAndIsActiveTrue(teamId);
         if (activeCount >= MAX_ACTIVE_FIELDS) {
             throw new BusinessException(ServiceRecordErrorCode.FIELD_LIMIT_EXCEEDED);
@@ -86,9 +108,11 @@ public class ServiceRecordFieldService {
      * カスタムフィールドを更新する（再有効化含む）。
      */
     @Transactional
-    public FieldResponse updateField(Long teamId, Long id, UpdateFieldRequest request) {
+    public FieldResponse updateField(Long teamId, Long id, Long actorUserId, UpdateFieldRequest request) {
         ServiceRecordFieldEntity entity = fieldRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.FIELD_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する（path teamId 鵜呑み禁止）。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         // 再有効化時の上限チェック
         if (Boolean.TRUE.equals(request.getIsActive()) && !Boolean.TRUE.equals(entity.getIsActive())) {
@@ -119,9 +143,11 @@ public class ServiceRecordFieldService {
      * カスタムフィールドを無効化する。
      */
     @Transactional
-    public void deactivateField(Long teamId, Long id) {
+    public void deactivateField(Long teamId, Long id, Long actorUserId) {
         ServiceRecordFieldEntity entity = fieldRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.FIELD_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する（path teamId 鵜呑み禁止）。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         entity.deactivate();
         fieldRepository.save(entity);
         log.info("カスタムフィールド無効化: fieldId={}", id);
@@ -131,7 +157,12 @@ public class ServiceRecordFieldService {
      * カスタムフィールドの並び順を一括更新する。
      */
     @Transactional
-    public SortOrderResponse updateSortOrder(Long teamId, FieldSortOrderRequest request) {
+    public SortOrderResponse updateSortOrder(Long teamId, Long actorUserId, FieldSortOrderRequest request) {
+        // 認可: 対象スコープ（path の teamId）の管理者のみ並び替え可。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
+        // BOLA厳禁: 並び替え対象は teamId 束縛で取得した集合に限定する。
+        // 他チームの fieldId を混ぜても fieldMap に不在となり FIELD_NOT_FOUND（404 秘匿）になる。
         Map<Long, ServiceRecordFieldEntity> fieldMap = fieldRepository.findByTeamIdOrderBySortOrder(teamId)
                 .stream()
                 .collect(Collectors.toMap(ServiceRecordFieldEntity::getId, f -> f));
@@ -156,7 +187,9 @@ public class ServiceRecordFieldService {
     /**
      * 機能設定を取得する。
      */
-    public SettingsResponse getSettings(Long teamId) {
+    public SettingsResponse getSettings(Long teamId, Long actorUserId) {
+        // 認可: チーム会員のみ機能設定を参照可。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         ServiceRecordSettingsEntity settings = settingsRepository.findByTeamId(teamId)
                 .orElseGet(() -> createDefaultSettings(teamId));
         return mapper.toSettingsResponse(settings);
@@ -166,7 +199,10 @@ public class ServiceRecordFieldService {
      * 機能設定を更新する。
      */
     @Transactional
-    public SettingsResponse updateSettings(Long teamId, UpdateSettingsRequest request) {
+    public SettingsResponse updateSettings(Long teamId, Long actorUserId, UpdateSettingsRequest request) {
+        // 認可: 対象スコープ（path の teamId）の管理者のみ機能設定を変更可。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         ServiceRecordSettingsEntity settings = settingsRepository.findByTeamId(teamId)
                 .orElseGet(() -> createDefaultSettings(teamId));
 

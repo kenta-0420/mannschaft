@@ -78,8 +78,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （getTeamNotices / acknowledgeNotice / applyToRecord）3、
      * {@code ProxyMonthlySummaryController.getDownloadUrl} 1。
      * 違反隠蔽ではなく正当な根治に伴う縮小（同一 PR で {@code *ScopeContractIT} を新設して検証）。</p>
+     *
+     * <p>783 → 774（2026-07-28・認可根治戦役 Wave7 第二陣）: 認可の敷設が未回収だった 2 ドメインを
+     * 根治し、計 9 エンドポイントの違反が解消したため縮小。内訳は
+     * {@code service.controller.ServiceRecordFieldController} の 7 件（{@code ServiceRecordFieldService} へ
+     * {@code AccessControlService} を注入し、参照=checkMembership／変更=checkAdminOrAbove を敷設）と、
+     * {@code proxyvote.controller.ProxyVoteMotionController} の 2 件（{@code startVote} / {@code endVote} に
+     * {@code checkOwnerOrAdmin} を敷設）。いずれも Controller → Service の 1 ホップ委譲で
+     * {@link AuthzControllerGuardArchTest} の認可シグナル判定に到達する。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一コミットにストア差分・実装差分・契約テストを含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 783;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 774;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

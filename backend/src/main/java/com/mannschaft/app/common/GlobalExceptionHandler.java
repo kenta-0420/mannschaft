@@ -1109,7 +1109,17 @@ public class GlobalExceptionHandler {
             Map.entry("TICKET_001", HttpStatus.NOT_FOUND),               // PRODUCT_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
             Map.entry("TICKET_002", HttpStatus.NOT_FOUND),               // BOOK_NOT_FOUND（teamId 束縛＋所有者不一致 → 404）
             Map.entry("TICKET_003", HttpStatus.NOT_FOUND),               // CONSUMPTION_NOT_FOUND（親book不一致BOLA → 404）
-            Map.entry("TICKET_004", HttpStatus.NOT_FOUND)                // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
+            Map.entry("TICKET_004", HttpStatus.NOT_FOUND),               // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave7: service（F07.1 カスタムフィールド定義・設定）は teamId 束縛で
+            // fetch した entity 由来スコープで認可する。他チームのフィールド ID を自チームの
+            // teamId で叩いた場合（BOLA）も同一コードで返す存在秘匿の要のため 404
+            //（Severity.WARN 既定の 400 のままだと「404 で秘匿したつもり」の看板倒れになる）。
+            Map.entry("SERVICE_RECORD_002", HttpStatus.NOT_FOUND),       // FIELD_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave7: proxyvote（F08.3 議案の投票開始/終了）は motionId → session の
+            // entity 由来スコープで認可する。存在しない／越境の議案・セッションは同一コードで
+            // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
+            Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND)            // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
     );
 
     /**
