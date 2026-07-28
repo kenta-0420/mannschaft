@@ -227,8 +227,7 @@ public class AnnouncementFeedController {
     @PostMapping("/{id}/read")
     @Operation(
             summary = "既読マーク",
-            description = "指定したお知らせを既読にする。冪等。既に既読の場合はノーオペレーション。"
-                    + "当該チームのメンバー以上のみ可。他チームのお知らせ ID は受け付けない。")
+            description = "指定したお知らせを既読にする。冪等。既に既読の場合はノーオペレーション。")
     public ResponseEntity<ApiResponse<Map<String, Object>>> markAsRead(
             @PathVariable Long teamId,
             @PathVariable("id") Long announcementId) {
@@ -254,8 +253,7 @@ public class AnnouncementFeedController {
     @PostMapping("/read-all")
     @Operation(
             summary = "全件既読",
-            description = "チームスコープの全未読お知らせを一括既読にする。"
-                    + "当該チームのメンバー以上のみ可。")
+            description = "チームスコープの全未読お知らせを一括既読にする。")
     public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead(
             @PathVariable Long teamId) {
 
