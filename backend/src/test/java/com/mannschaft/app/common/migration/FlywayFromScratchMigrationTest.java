@@ -8,6 +8,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy;
 import org.hibernate.boot.model.relational.Namespace;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -25,7 +26,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.boot.orm.jpa.hibernate.CamelCaseToUnderscoresNamingStrategy;
 import org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -375,7 +375,10 @@ class FlywayFromScratchMigrationTest {
      *
      * <p>命名戦略は Spring Boot の既定（{@code application.yml} でも上書きしていない）と
      * 同一のものを明示適用する。これにより「Hibernate が実際に発行する物理列名」を
-     * 権威ある形で得られる。</p>
+     * 権威ある形で得られる。Spring Boot 3.5 の {@code HibernateProperties.Naming} の既定は
+     * physical = {@link CamelCaseToUnderscoresNamingStrategy}（Hibernate 本体のクラス。
+     * Spring の {@code SpringPhysicalNamingStrategy} が Hibernate へ移管されたもの）、
+     * implicit = {@link SpringImplicitNamingStrategy} である。</p>
      */
     private static Metadata buildHibernateMetadata(StandardServiceRegistry registry)
             throws ClassNotFoundException {
