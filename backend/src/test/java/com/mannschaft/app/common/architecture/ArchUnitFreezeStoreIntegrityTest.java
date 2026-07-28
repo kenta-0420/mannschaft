@@ -69,8 +69,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 実際に違反が解消されたことを確認した上で、この定数を実測行数
      * （{@code wc -l backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256}）
      * に更新し、ストアファイルの変更と同じコミットに含めること。
+     *
+     * <p>795 → 777（2026-07-28・認可根治戦役 Wave7 tournament）: tournament ドメインの
+     * 認可欠落 18 エンドポイントを根治し、凍結が解消された。内訳は
+     * {@code TournamentEntryMemberController} 6 本・{@code TournamentEntryTemplateController} 6 本
+     * （{@code currentUserId} を受け取りながら本体で一度も参照していない「死んだ引数」を
+     * {@code AccessControlService} による実判定に置換）、{@code TournamentPdfController} 4 本
+     * （JSON 版 {@code StandingsController} にある {@code ContentVisibilityChecker} 可視性ガードを
+     * PDF 版にも適用）、{@code TournamentController} の {@code listTournaments}/{@code getTournament}
+     * 2 本（読取可視性の先送り方針を撤回し F00 共通可視性を適用）。
+     * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 795;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 777;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
