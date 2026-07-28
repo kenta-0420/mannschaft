@@ -73398,8 +73398,41 @@ export interface components {
             venueAddress?: string;
             venueName?: string;
         };
-        ApiResponseListActivityRecordResponse: {
-            data?: components["schemas"]["ActivityRecordResponse"][];
+        ApiResponseListPublicActivitySummary: {
+            data?: components["schemas"]["PublicActivitySummary"][];
+        };
+        PublicActivitySummary: {
+            /** Format: date */
+            activityDate?: string;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string;
+            /** @example 14:30:00 */
+            activityTimeStart?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int64 */
+            id?: number;
+            scopeRef?: components["schemas"]["PublicScopeRef"];
+            title?: string;
+        };
+        ApiResponsePublicActivityDetail: {
+            data?: components["schemas"]["PublicActivityDetail"];
+        };
+        PublicActivityDetail: {
+            /** Format: date */
+            activityDate?: string;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string;
+            /** @example 14:30:00 */
+            activityTimeStart?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int64 */
+            id?: number;
+            scopeRef?: components["schemas"]["PublicScopeRef"];
+            title?: string;
         };
         TeamPublicDetailResponse: {
             bannerUrl?: string;
@@ -77626,6 +77659,9 @@ export interface components {
         };
         ApiResponseListActivityTemplateResponse: {
             data?: components["schemas"]["ActivityTemplateResponse"][];
+        };
+        ApiResponseListActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"][];
         };
         ApiResponseListActivityCommentResponse: {
             data?: components["schemas"]["ActivityCommentResponse"][];
@@ -149010,7 +149046,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description チームが存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
                 };
             };
         };
@@ -149033,7 +149078,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };
@@ -149412,7 +149466,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description 組織が存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
                 };
             };
         };
@@ -149435,7 +149498,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };
@@ -149651,16 +149723,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
-            /** @description 存在しないまたは非公開 */
+            /** @description 存在しない / 非公開 / 下書き / 削除済み / 親スコープが非公開（区別しない） */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };

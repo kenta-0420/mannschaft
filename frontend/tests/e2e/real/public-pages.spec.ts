@@ -9,9 +9,15 @@
  *
  * テストデータ（seed-e2e-data.js 投入済み前提）:
  * - ID=1: seed で最初に作成される PUBLIC な活動記録
- *         title: '春季合宿2026', location: '長野県・菅平高原'
+ *         title: '春季合宿2026', activityDate: '2026-03-25',
+ *         所属スコープ: TEAM 'FC東京U-18（テスト）'（visibility=PUBLIC）
  * - ID=2: MEMBERS_ONLY な活動記録（バックエンドが未認証に 404 を返す）
  * - ID=9999999: 存在しない ID
+ *
+ * NOTE: seed は location='長野県・菅平高原' も投入しているが、公開 API
+ * （PublicActivityDetail）は御裁可済み 8 項目のみを返し location は**禁則フィールド**である。
+ * よって公開ページに開催場所は出ない。ここを assert してはならない
+ * （出てしまったら公開 DTO の漏洩であり、BE 契約テスト側で落ちるべき事象）。
  *
  * 認証状態:
  * - 全テスト: storageState を空にして未認証状態で実行する
@@ -62,9 +68,16 @@ test.describe('PUB-001〜008: /activity/[id] 公開活動記録ページ', () =>
   })
 
   /**
-   * PUB-003: 場所「長野県・菅平高原」が表示される
+   * PUB-003: 記録の中身（スコープ名・活動日・本文）が表示される
+   *
+   * 「公開ページに記録の内容が表示される」ことを守るテスト。
+   * 旧版は開催場所（location）を assert していたが、公開 API の禁則フィールドとなり
+   * 返らなくなったため、公開してよい 8 項目のうち画面に出る要素で守り直す。
+   * - scopeRef.scopeName（所属チーム名）
+   * - activityDate（活動日）
+   * - description（本文）
    */
-  test('PUB-003: 場所「長野県・菅平高原」が表示される', async ({ page }) => {
+  test('PUB-003: 記録の中身（スコープ名・活動日・本文）が表示される', async ({ page }) => {
     await page.goto('/activity/1')
     await waitForHydration(page)
 
@@ -72,7 +85,18 @@ test.describe('PUB-001〜008: /activity/[id] 公開活動記録ページ', () =>
     await expect(page.getByRole('heading', { name: '春季合宿2026' })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByText('長野県・菅平高原')).toBeVisible({ timeout: 5_000 })
+
+    // スコープ名（BE: PublicScopeRef.scopeName）
+    await expect(page.getByText('FC東京U-18（テスト）')).toBeVisible({ timeout: 5_000 })
+    // 活動日
+    await expect(page.getByText('2026-03-25')).toBeVisible({ timeout: 5_000 })
+    // 本文（seed の description）
+    await expect(page.getByText('菅平高原での春季合宿。', { exact: false })).toBeVisible({
+      timeout: 5_000,
+    })
+
+    // 開催場所は公開 DTO の禁則フィールド。表示されていたら漏洩である。
+    await expect(page.getByText('長野県・菅平高原')).toHaveCount(0)
   })
 
   /**
