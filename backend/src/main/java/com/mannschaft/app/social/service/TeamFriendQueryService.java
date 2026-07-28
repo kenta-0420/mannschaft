@@ -62,9 +62,17 @@ public class TeamFriendQueryService {
      * @param publicOnly {@code true} の場合 {@code is_public = TRUE} のみ返却（SUPPORTER 向け）
      * @return フレンドチーム一覧
      */
+    // 【重要】キャッシュキーには必ず #userId を含めること。
+    // 本メソッドはキャッシュ判定の「後」に checkMembership を実行するため、キーが閲覧者を
+    // 識別しないと「別ユーザーが温めたエントリにヒット → 所属チェックを素通り」する
+    // 潜在的な認可バイパスになる（現状は Controller → listFriendsResponse → listFriends が
+    // 同一 Bean 内の自己呼び出しで AOP プロキシを経由せず、キャッシュが実質無効なため
+    // 顕在化していないが、自己呼び出しを解消するリファクタで即座に事故る構造だった）。
+    // キーに userId を含めることで、キャッシュヒットは「同一ユーザーが直前に所属チェックを
+    // 通過した」場合に限定される（TTL 満了までの反映遅延は role-permissions 等と同じ扱い）。
     @Cacheable(
             value = "teamFriendList",
-            key = "#teamId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #publicOnly",
+            key = "#teamId + ':' + #userId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #publicOnly",
             condition = "#pageable != null"
     )
     public Page<TeamFriendView> listFriends(Long teamId, Long userId,

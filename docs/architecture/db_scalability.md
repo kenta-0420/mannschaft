@@ -445,6 +445,28 @@ spring:
       cache-null-values: false
 ```
 
+#### 4-E-2. キャッシュ基盤障害時の fail-open（`LoggingCacheErrorHandler`）
+
+Spring 既定の `SimpleCacheErrorHandler` はキャッシュ操作の例外を**そのまま再送出**するため、
+Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleService.changeRole` 等）が
+`RedisConnectionFailureException` で 500 になる。すなわち
+**「キャッシュ基盤が落ちると降格・除名ができない」**状態だった。
+
+方針（マスター御裁可・可用性優先）: **Redis が落ちている間も権限の変更は成功させる。**
+緊急時に悪意あるユーザーを降格・除名できない方が、旧権限が最大 TTL ぶん残ることより危険なため。
+
+| クラス | 役割 |
+|---|---|
+| `LoggingCacheErrorHandler` | get / put / evict / clear の 4 フックで例外を握り潰し、`log.warn` ＋ Micrometer カウンタで可視化する |
+| `CacheErrorHandlingConfig` | `CachingConfigurer#errorHandler()` としてハンドラを配線する（素の `@Bean CacheErrorHandler` は Spring が拾わない） |
+
+- **安全性の根拠**: TTL 無しのキャッシュは 1 件も無く（既定 30 分・認可系は 5 分以下）、evict を取りこぼしても**自然収束**する。
+  番人テスト `CacheConfigurationGuardTest` が「TTL 無しキャッシュの混入」を機械的に拒否する
+- **「静かな無効化」にしない**: fail-open は必ず `mannschaft.cache.failopen`（tag: `operation` = get/put/evict/clear, `cache` = キャッシュ名）で観測できる。
+  `operation=evict` / `clear` は認可情報が腐りうるため、get/put より重い扱いとする
+- 既存の fail-open 実装（`ValkeyRateLimiter` / `MembershipChangedListener` / `EntitlementCacheEvictor`）と同方針であり、
+  本ハンドラはそれをアノテーション経由の `@Cacheable`/`@CacheEvict` にも水平展開したもの
+
 ---
 
 ## 今後の課題
@@ -469,6 +491,8 @@ spring:
 | 最大パーティションサイズ | 5GB 超でアラート | `audit_logs` の月次パーティションサイズ監視 |
 | `notifications` テーブル行数 | 5000万行超でアラート | クリーンアップバッチが正常動作しているかの確認 |
 | Valkey キャッシュヒット率 | 70% 未満でアラート | キャッシュ設定の見直しトリガー |
+| `mannschaft.cache.failopen`（`operation=evict`/`clear`） | 発生でアラート | キャッシュ無効化の失敗＝認可情報の反映遅延。Valkey 断の一次シグナル（§4-E-2） |
+| `mannschaft.cache.failopen`（`operation=get`/`put`） | 継続発生でアラート | キャッシュが機能せず DB に素通りしている状態（性能劣化の予兆） |
 | リードレプリカ遅延 | 5秒超でアラート | レプリカ遅延によるデータ不整合リスク |
 | `AuditLogArchiveBatchService` 実行時間 | 10分超でアラート | R2 アップロード・DROP PARTITION の異常検知 |
 
