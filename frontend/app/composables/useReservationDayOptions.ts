@@ -43,3 +43,13 @@ export function hmToMinutes(value: string): number {
   const [h, m] = value.split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
 }
+
+/**
+ * 開始・終了時刻の組が有効な半開区間か判定する（F03.4.5 §4.3・全日型拒否の根拠）。
+ * 定期予約不可枠は「全日型（start/end 未指定）を作らせない」設計判断のため、
+ * 両方が非空かつ start < end のときのみ有効とする（等しい/逆転/欠落はすべて無効）。
+ */
+export function isValidHalfHourRange(start: string | null | undefined, end: string | null | undefined): boolean {
+  if (!start || !end) return false
+  return start < end
+}

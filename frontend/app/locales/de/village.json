@@ -80,7 +80,8 @@
       "festival": "Festival",
       "matchRecruit": "Spielrekrutierung",
       "meetup": "Treffen",
-      "chronicle": "Dorfchronik"
+      "chronicle": "Dorfchronik",
+      "charter": "Dorfsatzung"
     },
     "systemPost": {
       "authorName": "Dorf-Veranstaltungshinweis",
@@ -669,6 +670,55 @@
         "meetup": "Treffen"
       }
     },
+    "charter": {
+      "title": "Dorfsatzung",
+      "subtitle": "Die gemeinsamen Versprechen des Dorfes",
+      "empty": "Für dieses Dorf wurde noch keine Satzung erlassen",
+      "enactedAt": "Erlassen am",
+      "lastRevisedAt": "Zuletzt geändert am",
+      "article": {
+        "label": "Artikel {n}",
+        "add": "+ Artikel hinzufügen",
+        "bodyPlaceholder": "Artikeltext eingeben",
+        "bodyRequired": "Bitte gib den Artikeltext ein",
+        "delete": "Artikel löschen",
+        "deleteConfirm": "Diesen Artikel löschen?"
+      },
+      "supplement": {
+        "add": "+ Anhang hinzufügen",
+        "label": "Anhang",
+        "placeholder": "Anhang eingeben (optional)"
+      },
+      "reorder": {
+        "hint": "Mit den Auf-/Ab-Schaltflächen die Reihenfolge der Artikel ändern",
+        "up": "Nach oben",
+        "down": "Nach unten"
+      },
+      "drafters": {
+        "title": "Verfasser",
+        "add": "+ Verfasser hinzufügen",
+        "empty": "Es sind noch keine Verfasser eingetragen",
+        "delete": "Verfasser entfernen",
+        "deleteConfirm": "„{name}“ aus den Verfassern entfernen?",
+        "selectPlaceholder": "Dorfbewohner auswählen",
+        "loadMembersFailed": "Die Liste der Dorfbewohner konnte nicht geladen werden, daher können keine Verfasser hinzugefügt werden.",
+        "reloadMembers": "Neu laden"
+      },
+      "revision": {
+        "confirm": "Änderung bestätigen",
+        "confirmHint": "Dies vermerkt den aktuellen Zeitpunkt als Änderung (die Sichtbarkeit der Artikel ändert sich dadurch nicht).",
+        "confirmSuccess": "Änderung bestätigt",
+        "notePlaceholder": "Notiz zur Änderung (optional)",
+        "history": "Änderungshistorie",
+        "historyEmpty": "Noch keine Änderungen"
+      },
+      "error": {
+        "loadFailed": "Die Dorfsatzung konnte nicht geladen werden",
+        "mutationFailed": "Der Vorgang ist fehlgeschlagen",
+        "versionConflict": "Ein anderer Dorfvorsteher hat dies gleichzeitig bearbeitet. Bitte lade die neueste Version neu.",
+        "drafterDuplicate": "Dieser Dorfbewohner ist bereits Verfasser"
+      }
+    },
     "serendipity": {
       "title": "Affinitätspunkte",
       "subtitle": "Gesammelte Begegnungen in diesem Dorf",
@@ -892,6 +942,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Die Versprechen des Dorfes in der Satzung festhalten",
+        "body": "Der Dorfvorsteher/die Ältesten können die Regeln des Dorfes (Artikel) festlegen und sie auch für Nichtmitglieder veröffentlichen (öffentliche Dörfer zeigen sie auch künftigen Mitgliedern).",
+        "steps": {
+          "step1": "Öffne den Tab „Dorfsatzung“.",
+          "step2": "Der Dorfvorsteher/die Ältesten können mit „+ Artikel hinzufügen“ Artikel verfassen und optional einen Anhang beifügen.",
+          "step3": "Neuanordnung und Löschen wirken sofort. Mit „Änderung bestätigen“ wird dies in der Änderungshistorie vermerkt."
         }
       }
     },

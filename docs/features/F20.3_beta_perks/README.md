@@ -72,7 +72,7 @@
 
 | メトリクス | 定義（正準） | データソース |
 |---|---|---|
-| `activeDays` | 評価ウィンドウ内のアクティブ日数 = **`COUNT(DISTINCT DATE(created_at))`**（本人のログイン成功ログ） | **`audit_logs` の `LOGIN_SUCCESS`**（`AuditEventType.LOGIN_SUCCESS`・`user_id = 対象`・月次パーティション）。※F10.8 `page_view_logs` は **TEAM/ORGANIZATION スコープ限定で USER を持たない**ため使えない（§7・§9.1 で確定）。「閲覧ビーコン」は本メトリクスの源ではない |
+| `activeDays` | 評価ウィンドウ内のアクティブ日数 = **`COUNT(DISTINCT DATE(created_at))`**（本人のログイン成功ログ）。**【2026-07-28 是正】日境界は「ユーザー各自の `users.timezone`」で切る**（`CONVERT_TZ` で現地時刻へ変換してから日付を数え、評価ウィンドウ起点も「本人現地の当日 00:00 − windowDays」を UTC 化した値を使う）。UTC で切ると JST 深夜帯のログインが前日に寄り、日数が体感とずれるため（02 §3.1） | **`audit_logs` の `LOGIN_SUCCESS`**（`AuditEventType.LOGIN_SUCCESS`・`user_id = 対象`・月次パーティション）。※F10.8 `page_view_logs` は **TEAM/ORGANIZATION スコープ限定で USER を持たない**ため使えない（§7・§9.1 で確定）。「閲覧ビーコン」は本メトリクスの源ではない |
 | `membershipTenureDays` | **INDIVIDUAL=本人の最古有効所属 `memberships.joined_at` 最小値（`left_at IS NULL` 行）からの経過日数** ／ **TEAM_ORG=スコープ自体の作成日（`teams.created_at`/`organizations.created_at`）からの経過日数**（02 §2 と両建て一致） | `memberships`（INDIVIDUAL）／`teams`・`organizations`（TEAM_ORG） |
 | `activeMembers`（TEAM_ORG のみ） | アクティブ人数（`countActiveDistinctUsersByScope`・DISTINCT user・F20.1 01 §3.4） | `memberships` |
 
@@ -80,6 +80,8 @@
 - 判定時の**実測値と閾値を `beta_grants.criteria_snapshot`（JSON）に焼き付け**る（後から「何を満たして付与されたか」を監査可能に・遡及不能）。
 
 > **★自動付与の本番有効化条件（③・「参加しただけでは付与しない」主原則の担保）**: `membershipTenureDays`（在籍日数）だけで自動付与すると「在籍 30 日の完全無活動ユーザー」に付与され得て、主原則違反かつ売買対策の前提（活動実績）が崩れる。よって **`activeDays` 計測源（`audit_logs` LOGIN_SUCCESS）の結線を自動付与バッチ本番有効化の前提条件**とする。**`min_active_days=NULL`（activeDays 未計測）のまま自動付与バッチを本番有効化しない** — その tenure-only 期間は**シスアド審査付きの手動付与のみ**で運用する（02 §3・§9 実装前確定条件）。
+>
+> **【2026-07-28 追記・機械的ゲート化】** 上記は運用ルールだけでは守り切れないため、**`BetaPerkAutoGrantBatchService` のコードで強制**した。`min_active_days == NULL` の criteria では**ユーザー走査に入る前に WARN ログを残して付与 0 で終了**する（在籍日数のみ設定済みでも同じ）。従来は「両指標とも NULL のときだけ」止まる実装で、在籍日数だけ設定した状態で `enabled=true` にすると**一度も使っていない休眠アカウントにも自動で配られる穴**が残っていた。シスアドが `min_active_days` を設定するまで自動付与は動かない。
 
 ---
 
@@ -162,6 +164,8 @@
   - **`audit_logs` の `LOGIN_SUCCESS`（`AuditEventType.LOGIN_SUCCESS`・実在・月次パーティション）** — 日別のログイン成功を `COUNT(DISTINCT DATE(created_at))` で数えられる＝**`activeDays` の実データ源として最有力**。
   - **gamification `point_transactions` の `DAILY_LOGIN`（実在）** — 日次ログインポイントの付与履歴で日別在籍を代替できる。
   - → **`activeDays` の計測経路（audit_logs LOGIN_SUCCESS を第一候補とする）を実装前に確定**する（§9 実装前確定条件）。それまでは `beta_perk_criteria.min_active_days=NULL` 運用で `membershipTenureDays` のみで自動付与を成立させる（02 §2・§3）。
+  - **2026-07-28 追記**: マスター御裁可（活動日数 14 日／評価ウィンドウ 60 日）に基づき、`beta_perk_criteria` の `min_active_days` へ **`INDIVIDUAL` 行のみ 14 を投入済み**（`V169` migration）。`TEAM_ORG` は活動日数を評価しない指標のため引き続き `NULL`。ただし `mannschaft.beta.auto-grant.enabled`（既定 `false`）が有効化されない限り本番の自動付与は発火しない — 本番有効化には規約第 27 条の弁護士レビューとマスター承認が別途必要。閾値の運用変更は `PUT /api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}` が正準経路（`SystemAdminBetaPerkController`）。
+  - **2026-07-28 追記（日境界の TZ 是正）**: `COUNT(DISTINCT DATE(created_at))` は `created_at` が UTC 格納のため、**素で数えると日境界が UTC に寄る**（JST 23:30 と翌 JST 00:30 のログインが 1 日に潰れ、UTC 23:00 と翌 UTC 01:00 が 2 日に割れる）。現行実装は `CONVERT_TZ(created_at, '+00:00', :tzOffset)` で**ユーザー各自の `users.timezone`**（その瞬間の実オフセット・夏時間反映）へ変換してから日付を切り、評価ウィンドウ起点も「本人現地の当日 00:00 − windowDays」を UTC 化した値を用いる。バッチ経路は同一オフセットのユーザーを 1 群に束ねて群ごと 1 クエリで集計する（N+1 回避）。詳細は 02 §3.1。
   - **根拠**: 利用イベント 1 種の追加で済み、収集・保持・パーティション・匿名化の基盤を再発明しない。FE ビーコンの取りこぼしは傾向データ用途で許容。BE 側の正確な二重記録は Phase 2 拡張。
 - **人数分布**: `beta_grants` のスナップショット＋`memberships` のアドホック集計で足りる（専用テーブルなし）。
 - **集計ダッシュボードは F20.1 側の将来拡張**（Phase 2）であり本設計では作らない。
@@ -197,7 +201,7 @@
 
 | 条件 | 内容 | それまでの運用 |
 |---|---|---|
-| **個人 activeDays の計測源** | F10.8 は USER スコープ非対応（§7）。`audit_logs` の `LOGIN_SUCCESS` を第一候補に日別在籍を数える経路を確定する | `min_active_days=NULL` で `membershipTenureDays` のみで自動付与（02 §2・§3） |
+| **個人 activeDays の計測源** | F10.8 は USER スコープ非対応（§7）。`audit_logs` の `LOGIN_SUCCESS` を第一候補に日別在籍を数える経路を確定する | `min_active_days=NULL` で `membershipTenureDays` のみで自動付与（02 §2・§3）。**2026-07-28 追記**: 閾値自体は `INDIVIDUAL` のみ 14 を投入済み（V169）。計測経路（`LoginActivityQueryService`）は `audit_logs` の `LOGIN_SUCCESS` を**ユーザー各自の TZ で日境界を切って**数える実装で結線済み（02 §3.1）。本番有効化は引き続き `mannschaft.beta.auto-grant.enabled=false` と規約レビューでゲートする |
 | **F10.8 content type enum への `FEATURE` 追加** | enum 名は F10.8 実装時に確定（§7）。TEAM/ORG 利用の傾向計測用 | F10.8 実装完了まで機能利用計測は保留（自動付与判定には不使用ゆえブロックしない） |
 | **ベータ称号の scope 取り扱い（B-5・F）** | **実装着手前に gamification ドメインを grep**（`findBy...ScopeTypeAndScopeId` 系クエリ・バッジ数上限制約 `GAMIFICATION_*` の有無）して sentinel scope（`PLATFORM`/`0`）の可否を確定する。sentinel が波及するなら別方式（例: badges を使わず billing 独自の称号表示）を検討 | 特典付与自体はバッジ授与に依存しない（授与失敗は補助チャネルとして握って継続・付与本体＝entitlements 発行は成立）。主フロー非依存ゆえ🟢を阻害しない |
 
@@ -208,3 +212,4 @@
 | 日付 | 内容 |
 |---|---|
 | 2026-07-08 | 初版。マスター合意済み要求仕様（特典= BETA_GRANT entitlement・個人=活動実績×USER 限定×「サービス提供期間中無償」・チーム/組織=最低 2 年×人数バンドスナップショット×オーナー変更 review_flag・売買対策 2 層・F10.8 最小連携・F04.7 バッジ流用）を反映して起草。規約は実確認（第 26 条=言語条項・第 17 条=譲渡禁止の一般受け皿・特典専用条項なし→改訂要件化） |
+| 2026-07-28 | **activeDays の日境界をユーザー各自のタイムゾーンへ是正**（`CONVERT_TZ` で現地時刻へ変換してから日付を切り、評価ウィンドウ起点も本人現地の当日 00:00 基準にする。§2・§7・02 §2/§3.1）。**自動付与ゲートを厳格化**（`min_active_days=NULL` なら走査せず付与 0＝在籍日数のみでの自動付与を機械的に禁止・§2 の主原則・02 §3）。閾値運用 API のパス誤記（`/api/v1/admin/...`）を正準の `/api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}` へ訂正 |

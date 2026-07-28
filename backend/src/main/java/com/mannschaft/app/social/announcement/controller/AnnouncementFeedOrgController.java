@@ -214,7 +214,17 @@ public class AnnouncementFeedOrgController {
      * 既に既読の場合はノーオペレーション（200 OK を返す）。
      * </p>
      *
-     * @param orgId          組織 ID（パス整合性確認用）
+     * <p>
+     * <b>認可は可視性ベース（「見える＝既読にできる」・設計書 F02.6 §6.2.1）</b>。
+     * {@code orgId} は Service まで通し、(1) {@code announcementId} が当該組織に帰属すること、
+     * (2) そのお知らせが<b>当該組織の一覧でその閲覧者に見えること</b>の検証に用いる。
+     * 在籍（メンバーシップ）では判定しない — 一覧は非メンバーにも {@code PUBLIC} を返すため、
+     * 在籍で絞ると「見えているのに既読にできない」不整合が生じる。逆に在籍だけを見ると
+     * 応援者が一覧に出ない内輪限定を既読化できてしまう。配下チームのみ所属者は
+     * 組織スコープでは {@code PUBLIC} 可視となり、一覧・既読の集合が一致する。
+     * </p>
+     *
+     * @param orgId          組織 ID（スコープ帰属検証・可視性検証に使用。捨ててはならない）
      * @param announcementId お知らせフィード ID
      * @return 200 OK（既読結果）
      */
@@ -227,7 +237,7 @@ public class AnnouncementFeedOrgController {
             @PathVariable("id") Long announcementId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAsRead(announcementId, userId);
+        announcementFeedService.markAsRead(AnnouncementScopeType.ORGANIZATION, orgId, announcementId, userId);
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "id", announcementId,

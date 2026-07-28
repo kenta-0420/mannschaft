@@ -47,4 +47,30 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
     List<RecruitmentNoShowRecordEntity> findByScopeTypeAndScopeId(
             @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
             @Param("scopeId") Long scopeId);
+
+    /**
+     * スコープ帰属を検証しながら NO_SHOW 記録を 1 件取得する（管理操作用）。
+     *
+     * <p>NO_SHOW 記録は自身にスコープ列を持たず、紐づく募集枠（{@code recruitment_listings}）の
+     * {@code scope_type}/{@code scope_id} が唯一のテナント境界である。よって管理者向けの
+     * 単票操作では、パス由来の親スコープに対する権限確認（{@code checkAdminOrAbove}）だけでなく
+     * 「その記録が本当に当該スコープに属するか」をこのクエリで併せて検証する必要がある。
+     * {@code findById} での直引きは、自スコープの管理者が他スコープの記録 ID を URL に差し込む
+     * テナント越境（BOLA）を許してしまう。</p>
+     *
+     * <p>兄弟の {@link #findByScopeTypeAndScopeId} と同じ JOIN 条件を単票向けに絞ったもの。
+     * 不在・越境のいずれも {@link java.util.Optional#empty()} に畳み込まれるため、
+     * 呼出元が同一の {@code NO_SHOW_RECORD_NOT_FOUND} を投げることで ID の実在も秘匿できる。</p>
+     */
+    @Query("""
+            SELECT r FROM RecruitmentNoShowRecordEntity r
+            JOIN RecruitmentListingEntity l ON l.id = r.listingId
+            WHERE r.id = :recordId
+              AND l.scopeType = :scopeType
+              AND l.scopeId = :scopeId
+            """)
+    Optional<RecruitmentNoShowRecordEntity> findByIdAndScopeTypeAndScopeId(
+            @Param("recordId") Long recordId,
+            @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
 }

@@ -367,6 +367,10 @@
       "description": "F05.5 PR-D 公開ファイルリンク（未認証可）"
     },
     {
+      "name": "予約管理",
+      "description": "F03.4.5 定期予約不可枠（週次繰り返し）"
+    },
+    {
       "name": "カルテ",
       "description": "F07.4 カルテCRUD・コピー・共有・ピン留め"
     },
@@ -39883,6 +39887,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBlockedTimeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "定期予約不可枠一覧",
+        "operationId": "listRules",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRecurringBlockedTimeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "定期予約不可枠作成",
+        "operationId": "createRule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecurringBlockedTimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringBlockedTimeResponse"
                 }
               }
             }
@@ -87786,6 +87862,89 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/{ruleId}": {
+      "delete": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "定期予約不可枠削除",
+        "operationId": "deleteRule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "定期予約不可枠更新",
+        "operationId": "updateRule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecurringBlockedTimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringBlockedTimeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-notification-recipients/{recipientId}": {
       "delete": {
         "tags": [
@@ -102382,7 +102541,7 @@
         ],
         "summary": "出席要件規程削除",
         "description": "指定IDの出席要件規程を削除する。",
-        "operationId": "deleteRule",
+        "operationId": "deleteRule_1",
         "parameters": [
           {
             "name": "ruleId",
@@ -102406,7 +102565,7 @@
         ],
         "summary": "出席要件規程更新",
         "description": "指定IDの出席要件規程を部分更新する。",
-        "operationId": "updateRule",
+        "operationId": "updateRule_1",
         "parameters": [
           {
             "name": "ruleId",
@@ -109423,6 +109582,82 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBlockedTimeImpactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/impact": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "定期予約不可枠 登録前の影響プレビュー",
+        "operationId": "getImpact",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "dayOfWeek",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MON",
+                "TUE",
+                "WED",
+                "THU",
+                "FRI",
+                "SAT",
+                "SUN"
+              ]
+            }
+          },
+          {
+            "name": "startTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringBlockedTimeImpactResponse"
                 }
               }
             }
@@ -169744,6 +169979,104 @@
           }
         }
       },
+      "CreateRecurringBlockedTimeRequest": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "endTime",
+          "startTime"
+        ]
+      },
+      "ApiResponseRecurringBlockedTimeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecurringBlockedTimeResponse"
+          }
+        }
+      },
+      "RecurringBlockedTimeResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dayOfWeek": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CreateNotificationRecipientRequest": {
         "type": "object",
         "properties": {
@@ -196325,6 +196658,49 @@
           }
         }
       },
+      "UpdateRecurringBlockedTimeRequest": {
+        "type": "object",
+        "properties": {
+          "clearLineId": {
+            "type": "boolean"
+          },
+          "dayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          }
+        }
+      },
       "UpdateNotificationRecipientRequest": {
         "type": "object",
         "properties": {
@@ -206318,6 +206694,9 @@
               "CLOSED",
               "UNAVAILABLE"
             ]
+          },
+          "unavailableReason": {
+            "type": "string"
           }
         }
       },
@@ -206526,6 +206905,40 @@
           },
           "userName": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseListRecurringBlockedTimeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringBlockedTimeResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseRecurringBlockedTimeImpactResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecurringBlockedTimeImpactResponse"
+          }
+        }
+      },
+      "RecurringBlockedTimeImpactResponse": {
+        "type": "object",
+        "properties": {
+          "affectedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reservations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImpactedReservationDto"
+            }
           }
         }
       },

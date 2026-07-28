@@ -122,16 +122,31 @@ public class RecruitmentNoShowService {
     /**
      * 管理者が異議申立を解決する。
      * REVOKED の場合、ペナルティ再計算が必要（PenaltyService に委譲）。
+     *
+     * <p><b>認可は二段構え</b>（裏目付C）:</p>
+     * <ol>
+     *   <li>パス由来の親スコープに対する管理者権限（{@code checkAdminOrAbove}）</li>
+     *   <li>対象記録が<b>当該スコープに帰属するか</b>（{@code findByIdAndScopeTypeAndScopeId}）</li>
+     * </ol>
+     *
+     * <p>1 だけでは「自スコープの管理者が、他スコープの記録 ID を URL に差し込む」テナント越境
+     * （BOLA・書き込み）が成立する。兄弟の {@link #getNoShowsByScope} が最初からスコープ済み
+     * クエリを使っているのに対し本メソッドだけが {@code findById} 直引きで規律を破っていたため、
+     * 同ドメインの {@code RecruitmentListingService#createFromTemplate} /
+     * {@code RecruitmentSubcategoryService} と同じ「スコープ済みクエリで畳み込む」型に揃えた。
+     * 不在と越境はいずれも {@code NO_SHOW_RECORD_NOT_FOUND} に収束し、ID の実在も秘匿される。</p>
      */
     @Transactional
     public RecruitmentNoShowRecordEntity resolveDispute(
             Long recordId, Long adminUserId,
             RecruitmentScopeType scopeType, Long scopeId,
             DisputeResolution resolution) {
-        // §13 認可: 当該スコープの管理者権限を確認
+        // §13 認可 (1/2): 当該スコープの管理者権限を確認
         accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
 
-        RecruitmentNoShowRecordEntity record = noShowRepository.findById(recordId)
+        // §13 認可 (2/2): 対象記録が当該スコープに帰属することを検証（テナント越境の封鎖）
+        RecruitmentNoShowRecordEntity record = noShowRepository
+                .findByIdAndScopeTypeAndScopeId(recordId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
 
         if (!record.isDisputed()) {

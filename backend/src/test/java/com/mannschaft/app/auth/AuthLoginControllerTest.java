@@ -326,17 +326,91 @@ class AuthLoginControllerTest {
                 .andExpect(cookie().maxAge("refresh_token", 604800));
     }
 
+    // ──────────────────────────────────────────────
+    // POST /api/v1/auth/refresh — 失敗経路の HTTP ステータス契約
+    //
+    // AUTH_007（リフレッシュトークン無効／リボーク済み）は「認証情報が無効」の意味論であり、
+    // 401 Unauthorized を返さなければならない。AuthErrorCode の Severity.WARN 既定は 400 のため、
+    // GlobalExceptionHandler.ERROR_CODE_STATUS_MAP での明示上書きが必要
+    //（docs/security/06_business_logic_and_abuse_prevention.md §7.4 / §7.5）。
+    //
+    // AuthTokenRotationService の失敗経路（Cookie 欠落 / 不在トークン / 明示ログアウト済み /
+    // 期限切れ）はすべて AUTH_007 に収束するため、Controller 層の契約としては
+    // 「AUTH_007 が送出されたら 401」を経路ごとに固定する。
+    // 各分岐が実際に AUTH_007 を投げること自体は AuthTokenRotationServiceTest が検証する。
+    // ──────────────────────────────────────────────
+
     @Test
-    @DisplayName("POST /refresh — Cookie 無し（null）: 400 + AUTH_007 を返す（NPE→500 根治）")
-    void refresh_noCookie_returns400WithAuth007() throws Exception {
-        // Given: Cookie が存在しない場合、AuthService は AUTH_007 の BusinessException を投げる（実装後）
+    @DisplayName("POST /refresh — Cookie 無し（null）: 401 + AUTH_007 を返す（NPE→500 根治）")
+    void refresh_noCookie_returns401WithAuth007() throws Exception {
+        // Given: Cookie が存在しない場合、AuthService は AUTH_007 の BusinessException を投げる
         given(authService.refreshAccessToken(any(), any()))
                 .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
 
-        // When / Then: Cookie なしでアクセス → 400 + AUTH_007
+        // When / Then: Cookie なしでアクセス → 401 + AUTH_007
         mockMvc.perform(post("/api/v1/auth/refresh"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — Cookie が空白のみ: 401 + AUTH_007 を返す")
+    void refresh_blankCookie_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(any(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "   ")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — DB に存在しないトークン: 401 + AUTH_007 を返す")
+    void refresh_unknownToken_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "not-in-db")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 明示ログアウト済み（後継ポインタ無しの revoked）: 401 + AUTH_007 を返す")
+    void refresh_revokedWithoutSuccessor_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "revoked-by-logout")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 有効期限切れトークン: 401 + AUTH_007 を返す")
+    void refresh_expiredToken_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "expired-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 真リプレイ検出（AUTH_026）は従来どおり 401 のまま（挙動不変の確認）")
+    void refresh_replayDetected_stillReturns401WithAuth026() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_026));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "replayed-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_026"));
     }
 
     // ──────────────────────────────────────────────

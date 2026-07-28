@@ -9184,6 +9184,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 定期予約不可枠一覧 */
+        get: operations["listRules"];
+        put?: never;
+        /** 定期予約不可枠作成 */
+        post: operations["createRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-notification-recipients": {
         parameters: {
             query?: never;
@@ -24518,6 +24536,24 @@ export interface paths {
         patch: operations["updateBlockedTime"];
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 定期予約不可枠削除 */
+        delete: operations["deleteRule"];
+        options?: never;
+        head?: never;
+        /** 定期予約不可枠更新 */
+        patch: operations["updateRule"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-notification-recipients/{recipientId}": {
         parameters: {
             query?: never;
@@ -29015,14 +29051,14 @@ export interface paths {
          * 出席要件規程削除
          * @description 指定IDの出席要件規程を削除する。
          */
-        delete: operations["deleteRule"];
+        delete: operations["deleteRule_1"];
         options?: never;
         head?: never;
         /**
          * 出席要件規程更新
          * @description 指定IDの出席要件規程を部分更新する。
          */
-        patch: operations["updateRule"];
+        patch: operations["updateRule_1"];
         trace?: never;
     };
     "/api/v1/appeals/{id}/submit": {
@@ -31800,6 +31836,23 @@ export interface paths {
         };
         /** 予約不可枠 登録前の影響プレビュー */
         get: operations["getBlockedTimeImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 定期予約不可枠 登録前の影響プレビュー */
+        get: operations["getImpact"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55945,6 +55998,42 @@ export interface components {
             /** @example 14:30:00 */
             startTime?: string;
         };
+        CreateRecurringBlockedTimeRequest: {
+            /** @enum {string} */
+            dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime: string;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime: string;
+        };
+        ApiResponseRecurringBlockedTimeResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeResponse"];
+        };
+        RecurringBlockedTimeResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            dayOfWeek?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: uuid */
+            id?: string;
+            isActive?: boolean;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            lineName?: string;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CreateNotificationRecipientRequest: {
             email?: string;
             isEnabled?: boolean;
@@ -65530,6 +65619,20 @@ export interface components {
              */
             teamId?: number;
         };
+        UpdateRecurringBlockedTimeRequest: {
+            clearLineId?: boolean;
+            /** @enum {string} */
+            dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime?: string;
+            isActive?: boolean;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+        };
         UpdateNotificationRecipientRequest: {
             isEnabled?: boolean;
             label?: string;
@@ -69123,6 +69226,7 @@ export interface components {
             startTime?: string;
             /** @enum {string} */
             state?: "AVAILABLE" | "BOOKED" | "CLOSED" | "UNAVAILABLE";
+            unavailableReason?: string;
         };
         GridColumnDto: {
             cells?: components["schemas"]["GridCellDto"][];
@@ -69197,6 +69301,17 @@ export interface components {
             /** Format: int64 */
             userId?: number;
             userName?: string;
+        };
+        ApiResponseListRecurringBlockedTimeResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeResponse"][];
+        };
+        ApiResponseRecurringBlockedTimeImpactResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeImpactResponse"];
+        };
+        RecurringBlockedTimeImpactResponse: {
+            /** Format: int32 */
+            affectedCount?: number;
+            reservations?: components["schemas"]["ImpactedReservationDto"][];
         };
         ApiResponseNotificationRecipientListResponse: {
             data?: components["schemas"]["NotificationRecipientListResponse"];
@@ -100406,6 +100521,54 @@ export interface operations {
             };
         };
     };
+    listRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRecurringBlockedTimeResponse"];
+                };
+            };
+        };
+    };
+    createRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringBlockedTimeRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeResponse"];
+                };
+            };
+        };
+    };
     listRecipients: {
         parameters: {
             query?: never;
@@ -129677,6 +129840,54 @@ export interface operations {
             };
         };
     };
+    deleteRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecurringBlockedTimeRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeResponse"];
+                };
+            };
+        };
+    };
     deleteRecipient: {
         parameters: {
             query?: never;
@@ -138582,7 +138793,7 @@ export interface operations {
             };
         };
     };
-    deleteRule: {
+    deleteRule_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -138602,7 +138813,7 @@ export interface operations {
             };
         };
     };
-    updateRule: {
+    updateRule_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -142571,6 +142782,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeImpactResponse"];
+                };
+            };
+        };
+    };
+    getImpact: {
+        parameters: {
+            query: {
+                dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+                startTime: string;
+                endTime: string;
+                lineId?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeImpactResponse"];
                 };
             };
         };

@@ -26,6 +26,7 @@ const cards: GuideCard[] = [
   { key: 'events', icon: 'pi pi-star', iconClass: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400' },
   { key: 'meetup', icon: 'pi pi-calendar-plus', iconClass: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
   { key: 'chronicle', icon: 'pi pi-book', iconClass: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
+  { key: 'charter', icon: 'pi pi-file-edit', iconClass: 'bg-lime-100 text-lime-600 dark:bg-lime-900/30 dark:text-lime-400' },
 ]
 </script>
 

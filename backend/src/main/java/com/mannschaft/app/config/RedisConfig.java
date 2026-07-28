@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,12 @@ import java.time.Duration;
  *
  * <p>デフォルト TTL 30分、JSON シリアライゼーション、Java 8 Date/Time API 対応。
  * キー命名規則: {@code mannschaft:cache:{キー名}}</p>
+ *
+ * <p>キャッシュ基盤（Valkey）障害時の fail-open は {@link CacheErrorHandlingConfig}
+ * （{@link CachingConfigurer#errorHandler()} 経由で {@link LoggingCacheErrorHandler} を登録）が担う。
+ * Spring 既定の {@code SimpleCacheErrorHandler} は例外を再送出するため、
+ * これが無いと Valkey 断のときに {@code @CacheEvict} を持つミューテーション
+ * （権限変更等）が巻き添えで 500 になる。</p>
  */
 @Configuration
 @EnableCaching
@@ -149,6 +156,13 @@ public class RedisConfig {
                 // enum キーは name() で String 化する（BetaPerkEligibilityService の @Cacheable キー式）。
                 .withCacheConfiguration("betaPerk:eligibility",
                         redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
+                // F00 可視性テンプレート: コンテンツ可視性の判定に使う「閲覧認可の中核」キャッシュ。
+                // VisibilityTemplateEvaluator#getTemplateRules の Javadoc は「TTL=5分」と宣言しているが
+                // 個別設定が無く既定 30 分に落ちていた（ドリフト是正）。
+                // 認可に効くキャッシュは role-permissions と同水準（5分）まで短縮し、
+                // evict 取りこぼし時の窓を最小化する。
+                .withCacheConfiguration("visibilityTemplate",
+                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
                 .build();
     }
 
@@ -176,7 +190,8 @@ public class RedisConfig {
      * <p><b>本番挙動は不変</b>: 本 Bean は {@code test} プロファイルでのみ有効化され、本番／開発では
      * 従来どおり {@link RedisCacheManager}（Valkey）が使われる。テスト以外に一切影響しない。
      * なお「Redis 断で {@code @CacheEvict} が書き込みを巻き込んで失敗する」本番の耐障害性課題は
-     * 本修正の対象外（別バックログとして切り出す）。</p>
+     * 別バックログとして切り出され、{@link CacheErrorHandlingConfig}
+     * （{@link LoggingCacheErrorHandler}）で解決済みである。</p>
      */
     @Bean
     @Profile("test")
