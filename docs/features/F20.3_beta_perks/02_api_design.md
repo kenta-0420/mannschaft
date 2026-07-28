@@ -97,6 +97,10 @@ public class BetaPerkEligibilityService {
 - **AND 判定・境界は「以上」**（`actual >= required`）。指標が 1 つも定義されない criteria はマスタ CRUD で保存不可（`BETA_PERK_009`・01 §2）。
 - **新設サービス（L4・実装者向けシグネチャ明示）**:
   - `LoginActivityQueryService.countDistinctActiveDays(Long userId, LocalDateTime since) : long` — `audit_logs` の `LOGIN_SUCCESS` を `SELECT COUNT(DISTINCT DATE(created_at)) WHERE user_id=:userId AND event_type='LOGIN_SUCCESS' AND created_at >= :since` で数える（billing.beta ドメインに新設・audit ドメインの Repository を read-only 参照 or 専用クエリメソッド追加）。**個人の activeDays 唯一の源**（F10.8 は USER 非対応・README §7）。
+  - **【2026-07-28 是正】上記シグネチャは「日境界をユーザー各自のタイムゾーンで切る」ため下記へ変更済み**（実装が正準）:
+    - `countDistinctActiveDaysWithin(Long userId, int windowDays, LocalDateTime nowUtc) : long`
+    - `countDistinctActiveDaysWithinByUsers(Collection<Long> userIds, int windowDays, LocalDateTime nowUtc) : Map<Long, Long>`（bulk・**記録の無いユーザーも 0 日で載る**）
+    - 呼び出し側が `since` を自前計算して渡す形をやめ、**ウィンドウ起点の算出も本サービスの責務**とした（本人照会 `evaluate` と自動付与バッチで日境界がずれると「進捗表示は 14 日なのに付与されない」不整合が起きるため、規則を 1 か所に閉じる）。詳細は §3 のタイムゾーン節。
   - `MembershipQueryService.tenureDays(EntitlementScopeKind, Long scopeId, LocalDateTime now) : long` — INDIVIDUAL=本人の最古有効所属 `joined_at`（`left_at IS NULL`）／TEAM_ORG=`teams`/`organizations.created_at` からの経過日数（README §2 両建て）。
   - `MembershipQueryService.activeMemberCount(...)` は F20.1 01 §3.4 の `countActiveDistinctUsersByScope` 再利用（新規メソッドを足さない）。
 
@@ -106,6 +110,7 @@ public class BetaPerkEligibilityService {
 
 - `BetaPerkAutoGrantBatchService`・**毎日 04:00 JST**（`@Scheduled(cron="0 0 4 * * *", zone="Asia/Tokyo")`）・`@SchedulerLock` 多重起動防止・`Clock` 注入・ページング走査（F08.9 の進学予告バッチと同型の作法）。
 - **★本番有効化の前提条件（③・活動実績の担保）**: 対象フェーズの `beta_perk_criteria.min_active_days` が **NULL（activeDays 未計測）の間はバッチを本番有効化しない**（tenure-only では無活動ユーザーに付与され主原則違反・README §2）。`activeDays` 計測源（`LoginActivityQueryService`・§2）の結線後に `min_active_days` を設定してから本番有効化する。それまでの付与は**シスアド審査付き手動付与のみ**（§4.1・`skipCriteriaCheck` は使わず criteria 充足を審査で確認）。運用フラグ `mannschaft.beta.auto-grant.enabled`（既定 false）でバッチ実行自体をゲートする。
+- **【2026-07-28 追記】この前提条件を運用ルールからコードの機械的ゲートへ格上げ**した。`min_active_days == NULL` の criteria では、バッチは**ユーザー走査にすら入らず WARN ログを残して付与 0 で正常終了**する（在籍日数だけが設定済みでも同様）。従来は「両指標が NULL のときだけ」止まっていたため、在籍日数のみ設定した状態で `enabled=true` にすると**活動実績ゼロの休眠アカウントにも配られる穴**があった（README §82 の主原則違反）。
 - 処理（擬似コード）:
 
 ```
@@ -119,6 +124,20 @@ for user in activeUsers（ページング・凍結除外・**退会申請中（W
 ```
 
 - `currentPhase`（現在のベータ段階）は**アプリ設定値**（`mannschaft.beta.current-phase`・application.yml/環境変数）。段階の切替はデプロイ設定変更（頻度が低くマスタ表に持つ価値なし）。
+
+#### 3.1 activeDays の日境界は「ユーザー各自のタイムゾーン」（2026-07-28 追記・是正）
+
+`audit_logs.created_at` は **UTC 格納**である。素の `DATE(created_at)` で数えると日境界が UTC に寄り、**JST 23:30 と翌 JST 00:30 のログイン（同一 UTC 日）が 1 日に潰れる**／逆に UTC 23:00 と翌 UTC 01:00（JST では同日）が 2 日に割れる。activeDays は付与可否を直接左右するため、以下の 2 点を `users.timezone` に基づいて解決する。
+
+| 対象 | 是正後の扱い |
+|---|---|
+| 日付の切り出し | `COUNT(DISTINCT DATE(CONVERT_TZ(created_at, '+00:00', :tzOffset)))`。`tzOffset` は**その瞬間の実オフセット**（夏時間反映。7 月の `America/Los_Angeles` は `-07:00`）を `"+09:00"` 形式で渡す |
+| 評価ウィンドウ起点 `since` | 「本人現地の**当日 00:00**」から `windowDays` 日前の 00:00 を UTC 化した値。`WHERE created_at >= :since` は **UTC 同士の比較のまま**（変換すると `audit_logs(user_id, created_at)` のインデックスが効かない） |
+
+- **オフセット文字列で渡す**（`'Asia/Tokyo'` のような IANA 名は MySQL の tz テーブル未投入環境で `CONVERT_TZ` が黙って NULL を返し、**集計が静かに 0 になる**）。
+- **N+1 回避**: bulk 経路は TZ 解決を `UserTimezoneCache#getTimezones`（TTL 5 分キャッシュ＋ミス分 1 クエリ）で 1 回に畳み、**同一オフセットのユーザーを 1 群に束ねて群ごとに 1 クエリ**だけ撃つ（クエリ数はユーザー数ではなくオフセットの種類数に比例）。
+- **TZ 値が不正/空/NULL** のユーザーは既定 `Asia/Tokyo` へフォールバックする（WARN ログ）。一方、**TZ 解決自体が例外で失敗した場合は握り潰さず伝播**させる（「引けないので全員 0 日」は付与漏れを静かに生むため）。
+- **DST の割り切り**: 群の `since` は現在のオフセットで当日 00:00 を求めるため、評価ウィンドウが夏時間切替を跨ぐ場合に起点が最大 1 時間ずれる。日数カウント側はレコードごとに正しいオフセットで切られるため影響はなく、厳密化すると群分けが崩れ N+1 に戻るため、この精度で固定する。
 - 通知: 付与成功時に本人へアプリ内通知（`NotificationHelper.notify` 正準経路）＋文言は 04 §2（「ベータ特典が付与されました」・**「サービス提供期間中無償」文言**）。
 
 ---

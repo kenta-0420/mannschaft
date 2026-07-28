@@ -338,8 +338,16 @@ class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
     // bulk クエリ単体の正しさ（Repository/QueryService 経由）
     // ============================================================
 
+    /**
+     * bulk activeDays の正しさ（F20.3 TZ 是正後のシグネチャ）。
+     *
+     * <p>2026-07-28 の TZ 是正で {@code countDistinctActiveDaysByUsers(userIds, since)} は
+     * {@code countDistinctActiveDaysWithinByUsers(userIds, windowDays, nowUtc)} へ変わり、<b>記録の無いユーザーも
+     * 0 日として Map に載る</b>契約（AC-N1）になった。ユーザー TZ 別の日境界そのものは
+     * {@code LoginActivityTimezoneIT} が担う。</p>
+     */
     @Test
-    @DisplayName("bulk activeDays: 複数ユーザーの distinct ログイン日数を1クエリで正しく返す（記録なしは欠損）")
+    @DisplayName("bulk activeDays: 複数ユーザーの distinct ログイン日数を返す（記録なしは 0 埋め）")
     void bulk_activeDays_correct() {
         Long u3 = persistActiveUser();
         insertLoginDays(u3, 3);
@@ -347,12 +355,11 @@ class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
         insertLoginDays(u7, 7);
         Long uNone = persistActiveUser(); // ログインなし
 
-        LocalDateTime since = LocalDateTime.now(clock).minusDays(WINDOW_DAYS);
-        Map<Long, Long> map = loginActivityQueryService
-                .countDistinctActiveDaysByUsers(List.of(u3, u7, uNone), since);
+        Map<Long, Long> map = loginActivityQueryService.countDistinctActiveDaysWithinByUsers(
+                List.of(u3, u7, uNone), WINDOW_DAYS, LocalDateTime.now(clock));
 
         assertThat(map).containsEntry(u3, 3L).containsEntry(u7, 7L);
-        assertThat(map).doesNotContainKey(uNone); // 記録なしは欠損（呼び出し側で 0 扱い）。
+        assertThat(map).containsEntry(uNone, 0L); // 記録なしは欠損させず 0 で載せる（AC-N1）。
     }
 
     @Test

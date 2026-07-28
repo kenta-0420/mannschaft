@@ -15,7 +15,7 @@
 --
 -- 【既に運用で値が入っている行は上書きしない】
 --   beta_perk_criteria の閾値は運用値であり、シスアド運用 API
---   （PUT /api/v1/admin/beta-perks/criteria/{betaPhase}/{grantKind}）が
+--   （PUT /api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}）が
 --   正準の変更手段である（README §2・02_api_design.md §6）。本 migration は
 --   「F10.8 実装前は NULL 運用」としていた初期値に対する一度きりの値投入に
 --   すぎず、シスアドが既に運用変更した行を巻き戻してはならない。そのため
