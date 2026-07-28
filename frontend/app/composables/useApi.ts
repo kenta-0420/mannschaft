@@ -67,7 +67,10 @@ export function performTokenRefresh(
     }
     catch (error) {
       // 401/403/400 ＝ refresh_token が無効な本物の認証失敗。
-      // 400: revoke 済みトークン（パスワード変更・退会・全デバイスログアウト後）でも返される。
+      // 401: 現行 BE の正規レスポンス。AUTH_007（無効/リボーク済み）は
+      //      GlobalExceptionHandler.ERROR_CODE_STATUS_MAP で 401 にマップされている。
+      // 400: 旧 BE（AUTH_007 が Severity.WARN 既定の 400 で返っていた頃）およびモバイル等の
+      //      旧クライアント互換のため、引き続き認証失敗として扱う。後方互換目的で残す。
       // それ以外（timeout/abort/ネットワークエラー/レスポンス無し/5xx）は一時的とみなし、
       // ログアウトさせない（回線が遅いだけのユーザーを誤ってログアウトさせないため）。
       const status = (error as { response?: { status?: number } })?.response?.status
@@ -108,6 +111,38 @@ const PROACTIVE_REFRESH_RETRY_DELAY_MS = 30_000
 // タイマーハンドルは module-scope で保持する（refreshPromise と同様の single-flight パターン。AC-5）。
 let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
+// 'auth_failed' を掴んだログアウト処理の single-flight ガード。
+// auth_failed は「先回りリフレッシュ経路（armProactiveRefresh の fire）」と
+// 「401 interceptor 経路（onResponseError）」の両方から同時に観測され得る
+// （performTokenRefresh は 1 本の Promise を共有するため、両者が同じ 'auth_failed' を受け取る）。
+// ガードが無いと logout が二重に走り、navigateTo('/login?reason=...') が二重発火する。
+let authFailureLogoutPromise: Promise<void> | null = null
+
+/**
+ * refresh_token が本当に無効（auth_failed）だったときのログアウトを 1 回に束ねる。
+ *
+ * 複数経路が同時に auth_failed を掴んでも logout は 1 回しか実行されず、
+ * 呼び出し元はいずれも同じ Promise を await できる。
+ * ログアウト完了後はガードを解除し、再ログイン後の失効でも再びログアウトできるようにする。
+ */
+export function handleAuthFailureLogout(
+  authStore: ReturnType<typeof useAuthStore>,
+): Promise<void> {
+  if (authFailureLogoutPromise) {
+    return authFailureLogoutPromise
+  }
+  authFailureLogoutPromise = (async () => {
+    try {
+      // reason=session_expired を付与し、ログイン画面でセッション失効の案内を表示する。
+      await authStore.logout({ reason: 'session_expired' })
+    }
+    finally {
+      authFailureLogoutPromise = null
+    }
+  })()
+  return authFailureLogoutPromise
+}
+
 /**
  * 武装中の先回りリフレッシュタイマーを解除する（AC-3）。ログアウト時に呼ぶこと。
  */
@@ -131,8 +166,13 @@ export function disarmProactiveRefresh(): void {
  *   発火するよう遅延を計算する。既に過去/バッファ以内なら即時（遅延0）で発火する（AC-4）。
  * - 発火後 performTokenRefresh が 'refreshed' を返せば、setTokens 内で書き込まれた新しい
  *   tokenExpiresAt に基づいて次のタイマーを再武装する（AC-2。セッションが続く限り失効させない）。
- * - 'refreshed' 以外（transient / auth_failed）の場合は諦めず、短い遅延で再武装してリトライする
- *   （AC-7。リアクティブ 401 ノイズに戻さないため）。
+ * - 'transient'（timeout / ネットワーク / 5xx）の場合は諦めず、短い遅延で再武装してリトライする
+ *   （AC-7。リアクティブ 401 ノイズに戻さず、回線が遅いだけのユーザーをログアウトさせないため）。
+ * - 'auth_failed'（refresh_token が本当に無効）の場合は再武装せず、ログアウトして /login へ誘導する
+ *   （AC-8）。何度リトライしても回復しないため、再武装すると「確実に失敗するリクエストを 30 秒おきに
+ *   永久に投げ続ける」ゾンビセッション（localStorage の currentUser が残り isAuthenticated が true の
+ *   まま）になる。認証必須 API を 1 本も撃たないページに留まった場合、401 interceptor 側の
+ *   ログアウトによる自然治癒も期待できない。
  * - SSR では張らない（AC-6。import.meta.client ガード）。
  *
  * config / authStore は performTokenRefresh と同様に引数で受け取る。setTimeout コールバック内で
@@ -154,6 +194,9 @@ export function armProactiveRefresh(
   if (!import.meta.client) return
 
   disarmProactiveRefresh()
+  // 武装＝生存中のセッションが（再）確立された状態。過去のログアウト処理のガードが
+  // 何らかの理由で残っていても、ここで解除して再ログイン後の失効に備える。
+  authFailureLogoutPromise = null
 
   const raw = localStorage.getItem('tokenExpiresAt')
   const expiresAtMs = raw ? Number(raw) : 0
@@ -165,13 +208,24 @@ export function armProactiveRefresh(
       if (result === 'refreshed') {
         // 新しい tokenExpiresAt（setTokens 内で書き込み済み）に基づいて次のタイマーを再武装する。
         armProactiveRefresh(config, authStore)
+        return
       }
-      else {
-        // transient / auth_failed は諦めず短い遅延で再武装し回復を試みる。
+      if (result === 'transient') {
+        // timeout / ネットワーク / 5xx の一時的失敗。回線が遅いだけのユーザーを誤ってログアウト
+        // させないため、諦めず短い遅延で再武装して回復を試みる（AC-7）。
         proactiveRefreshTimer = setTimeout(() => {
           armProactiveRefresh(config, authStore)
         }, PROACTIVE_REFRESH_RETRY_DELAY_MS)
+        return
       }
+      // 'auth_failed': refresh_token が本当に無効。リトライしても永久に回復しないため
+      // 再武装せずログアウトして /login へ誘導する（AC-8）。
+      //
+      // ここは必ず performTokenRefresh の await より後（= 最速でもネットワーク応答後）に実行される。
+      // auth.client プラグインの起動時武装（遅延0で同期発火する経路）でも、logout 内の
+      // navigateTo がプラグインの同期実行フェーズに割り込むことはなく、app mount をブロックしない
+      //（白画面根治の前提を維持。armProactiveRefresh は同期関数で Promise を await しない）。
+      await handleAuthFailureLogout(authStore)
     })()
   }
 
@@ -252,8 +306,9 @@ export function useApi() {
           const result = await performTokenRefresh(config, authStore)
           if (result === 'auth_failed') {
             // refresh_token が無効な本物の認証失敗。ログアウトして /login へ誘導する。
-            // reason=session_expired を付与し、ログイン画面でセッション失効の案内を表示する。
-            await authStore.logout({ reason: 'session_expired' })
+            // 先回りリフレッシュ経路（armProactiveRefresh の fire）と同じ single-flight ヘルパーを
+            // 通し、両経路が同一の auth_failed を掴んでも logout が二重に走らないようにする。
+            await handleAuthFailureLogout(authStore)
             // throw してリトライを中断する（リフレッシュ失敗 = ログアウト済み）
             throw new Error('token_refresh_failed')
           }

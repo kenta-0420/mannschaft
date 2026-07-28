@@ -56,6 +56,8 @@ class FamilyAttendanceNoticeServiceTest {
     private static final Long STUDENT_ID = 10L;
     private static final Long TEAM_ID = 100L;
     private static final Long NOTICE_ID = 200L;
+    /** 担任（＝チーム ADMIN 相当）のユーザーID。 */
+    private static final Long TEACHER_ID = 99L;
     private static final LocalDate TODAY = LocalDate.of(2026, 5, 1);
 
     @Mock
@@ -148,7 +150,7 @@ class FamilyAttendanceNoticeServiceTest {
             setId(acknowledged, NOTICE_ID);
             given(noticeRepository.save(any())).willReturn(acknowledged);
 
-            FamilyAttendanceNoticeResponse response = service.acknowledgeNotice(NOTICE_ID, 99L);
+            FamilyAttendanceNoticeResponse response = service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 99L);
 
             assertThat(response.getStatus()).isEqualTo("ACKNOWLEDGED");
             verify(notificationService).notifyFamilyNoticeAcknowledged(any());
@@ -159,7 +161,7 @@ class FamilyAttendanceNoticeServiceTest {
         void 存在しないnoticeId_FAMILY_NOTICE_NOT_FOUND() {
             given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.acknowledgeNotice(NOTICE_ID, 99L))
+            assertThatThrownBy(() -> service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 99L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND));
@@ -185,7 +187,7 @@ class FamilyAttendanceNoticeServiceTest {
             setId(applied, NOTICE_ID);
             given(noticeRepository.save(any())).willReturn(applied);
 
-            FamilyAttendanceNoticeResponse response = service.applyToAttendanceRecord(NOTICE_ID, 99L);
+            FamilyAttendanceNoticeResponse response = service.applyToAttendanceRecord(TEAM_ID, NOTICE_ID, 99L);
 
             assertThat(response.isAppliedToRecord()).isTrue();
             assertThat(response.getStatus()).isEqualTo("APPLIED");
@@ -198,7 +200,7 @@ class FamilyAttendanceNoticeServiceTest {
             setId(entity, NOTICE_ID);
             given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.applyToAttendanceRecord(NOTICE_ID, 99L))
+            assertThatThrownBy(() -> service.applyToAttendanceRecord(TEAM_ID, NOTICE_ID, 99L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED));
@@ -223,7 +225,7 @@ class FamilyAttendanceNoticeServiceTest {
             given(noticeRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(TEAM_ID, TODAY))
                     .willReturn(List.of(unack, acked));
 
-            FamilyNoticeListResponse response = service.getTeamNotices(TEAM_ID, TODAY);
+            FamilyNoticeListResponse response = service.getTeamNotices(TEAM_ID, TODAY, TEACHER_ID);
 
             assertThat(response.getTotalCount()).isEqualTo(2);
             assertThat(response.getUnacknowledgedCount()).isEqualTo(1);
@@ -279,7 +281,7 @@ class FamilyAttendanceNoticeServiceTest {
             given(noticeRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            service.acknowledgeNotice(NOTICE_ID, 99L);
+            service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 99L);
 
             // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
             FamilyAttendanceNoticeEntity saved = captor.getValue();
@@ -302,7 +304,7 @@ class FamilyAttendanceNoticeServiceTest {
             given(noticeRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            service.applyToAttendanceRecord(NOTICE_ID, 99L);
+            service.applyToAttendanceRecord(TEAM_ID, NOTICE_ID, 99L);
 
             // Then: 同一インスタンス・id 保持・appliedToRecord=true 反映
             FamilyAttendanceNoticeEntity saved = captor.getValue();

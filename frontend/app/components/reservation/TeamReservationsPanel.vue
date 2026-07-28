@@ -4,6 +4,7 @@ import type { components } from '~/types/generated'
 
 type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
 type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
 
 const props = defineProps<{ teamId: string }>()
 
@@ -61,12 +62,26 @@ const managementAccordionValue = ref<string[]>([])
 /** アコーディオン件数バッジ用の子コンポーネント参照（既存 FriendFolderList/friend-folders.vue と同一パターン）。 */
 const lineManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationLineResponse[] } | null>(null)
 const menuManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationMenuResponse[] } | null>(null)
-const slotTemplateManagerRef = ref<{ refresh: () => Promise<void>; items: SlotTemplateResponse[] } | null>(null)
+// 検分指摘（軽4）: 週間スケジュールのバッジは「枠テンプレ＋定期予約不可」の合算件数を表すため、
+// recurringItems（WeeklyScheduleManager 側で追加 expose・§4.5）も型に含める。
+const slotTemplateManagerRef = ref<{
+  refresh: () => Promise<void>
+  items: SlotTemplateResponse[]
+  recurringItems: RecurringBlockedTimeResponse[]
+} | null>(null)
 const businessHoursManagerRef = ref<{ refresh: () => Promise<void> } | null>(null)
 
 const lineCount = computed(() => lineManagerRef.value?.items?.length ?? 0)
 const menuCount = computed(() => menuManagerRef.value?.items?.length ?? 0)
-const templateCount = computed(() => slotTemplateManagerRef.value?.items?.length ?? 0)
+/**
+ * 週間スケジュールセクションの件数バッジ（検分指摘・軽4）。
+ * 「枠テンプレのみ」を数えていたため、定期予約不可枠だけ登録したチームで実データがあるのに
+ * バッジが (0) と表示され利用者を欺いていた。枠テンプレ＋定期予約不可ルールの合算に修正する。
+ */
+const weeklyScheduleCount = computed(() =>
+  (slotTemplateManagerRef.value?.items?.length ?? 0)
+  + (slotTemplateManagerRef.value?.recurringItems?.length ?? 0),
+)
 
 /**
  * ④週間スケジュールの空状態から「①営業時間を設定する」導線が押されたとき、
@@ -371,11 +386,13 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2） -->
+            <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2）。
+                 ラベルは「枠テンプレ」限定表現ではなく、枠テンプレ＋定期予約不可を包含する
+                 「週間スケジュール」（検分指摘・軽4）。 -->
             <AccordionPanel value="weekly_schedule">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.template.title'), n: templateCount }) }}
+                  {{ t('reservation.management.section_count', { label: t('reservation.weekly_schedule.section_title'), n: weeklyScheduleCount }) }}
                 </span>
               </AccordionHeader>
               <AccordionContent>

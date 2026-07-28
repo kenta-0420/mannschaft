@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import type { ReservationLineResponse } from '~/types/reservation'
 import type { components } from '~/types/generated'
+import { cellUnavailableReason } from '~/utils/reservationMatrix'
 
 // === 生成型（真実のソース = openapi-typescript）===
 type GridColumnDto = components['schemas']['GridColumnDto']
@@ -182,6 +183,11 @@ function stateLabel(state: CellState | undefined): string {
     default:
       return ''
   }
+}
+
+/** UNAVAILABLE セルの事由ラベル（純関数 `cellUnavailableReason` に委譲。§4.4）。 */
+function cellReason(cell: GridCellDto | undefined): string | null {
+  return cellUnavailableReason(cell)
 }
 
 /**
@@ -419,10 +425,15 @@ defineExpose({
                 class="rounded-md border p-2 text-center text-[11px] transition-all"
                 :class="cellStateClass(rc.cell?.state)"
                 :disabled="rc.cell?.state !== 'AVAILABLE'"
-                :aria-label="stateLabel(rc.cell?.state)"
+                :aria-label="cellReason(rc.cell) ? `${stateLabel(rc.cell?.state)}: ${cellReason(rc.cell)}` : stateLabel(rc.cell?.state)"
+                :title="cellReason(rc.cell) ?? undefined"
                 @click="onCellClick(rc)"
               >
-                <span v-if="rc.cell">{{ stateLabel(rc.cell.state) }}</span>
+                <span v-if="rc.cell && cellReason(rc.cell)" class="block leading-tight">
+                  <span class="block">×</span>
+                  <span class="block truncate text-[10px]">{{ cellReason(rc.cell) }}</span>
+                </span>
+                <span v-else-if="rc.cell">{{ stateLabel(rc.cell.state) }}</span>
                 <span v-else class="text-surface-300 dark:text-surface-600">—</span>
               </button>
             </template>

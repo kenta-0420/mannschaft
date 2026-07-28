@@ -101,12 +101,28 @@ Access Token の期限切れで 401 が返った場合、即座にログイン�
 ```
 1. 401 受信
 2. Refresh Token で POST /api/v1/auth/refresh を呼ぶ
-   ├── 成功 → 新しい Access Token + Refresh Token を localStorage に保存
-   │         → 元のリクエストを新トークンで自動リトライ
-   └── 失敗（Refresh Token も期限切れ等）
-             → AuthStore をクリア + ログイン画面へリダイレクト
+   ├── 'refreshed'（成功）→ 新しい Access Token + Refresh Token を保存（Cookie / in-memory）
+   │                        → 元のリクエストを新トークンで自動リトライ + 先回りタイマーを再武装
+   ├── 'auth_failed'（401/403。Refresh Token が無効・失効済み）
+   │                        → AuthStore をクリア + /login?reason=session_expired へリダイレクト
+   └── 'transient'（timeout / ネットワーク断 / 5xx）
+                            → ログアウトしない（回線が遅いだけのユーザーを落とさない）
 ```
+- **返り値は 3 状態**: `performTokenRefresh` は boolean ではなく `'refreshed' | 'auth_failed' | 'transient'` を返す。boolean だと「本物の認証失敗」と「一時的な失敗」が区別できず、回線が遅いだけのユーザーを誤ってログアウトさせてしまう
+- **`auth_failed` の判定は 401/403**: バックエンドは無効な refresh_token に対し `AUTH_007` を **401** で返す（`GlobalExceptionHandler.ERROR_CODE_STATUS_MAP`。`docs/security/06` §7.5）。`400` も認証失敗として受理するが、これは旧 BE・旧モバイルクライアント互換の後方互換措置であり、新規実装が 400 に依存してはならない
 - **二重リフレッシュ防止**: 複数リクエストが同時に 401 を受けた場合、リフレッシュ処理は1回だけ実行し、他のリクエストはその結果を待つ（Promise の共有パターン）
+- **二重ログアウト防止**: `auth_failed` は「先回りリフレッシュ経路」と「401 interceptor 経路」の双方から同時に観測され得るため、ログアウトは `handleAuthFailureLogout()` の single-flight ガードを必ず経由する（`navigateTo` の二重発火を防ぐ）
+
+### 先回り（proactive）リフレッシュ
+`armProactiveRefresh()` が access_token 失効の 60 秒前にリフレッシュを発火し、背景ポーラーが 401 ノイズを出す前にトークンを新鮮に保つ。発火結果による分岐は上記 3 状態と対応する:
+
+| 結果 | 挙動 |
+|---|---|
+| `refreshed` | 新しい失効時刻でタイマーを再武装する |
+| `transient` | 30 秒後に再武装してリトライする（ログアウトしない）|
+| `auth_failed` | **再武装せず**ログアウトする。リトライしても永久に回復しないため、再武装すると確実に失敗するリクエストを 30 秒おきに投げ続けるゾンビセッションになる |
+
+タイマーは常に 1 本のみ武装し、SSR では張らない（`import.meta.client` ガード）。ログアウト時は `disarmProactiveRefresh()` で解除する。
 
 ### 型安全な API 呼び出し
 OpenAPI Generator で自動生成された型を活用し、API レスポンスに型パラメータを付与する:

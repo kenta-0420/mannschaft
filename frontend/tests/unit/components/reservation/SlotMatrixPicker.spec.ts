@@ -183,4 +183,51 @@ describe('SlotMatrixPicker.vue', () => {
     // 左の行ヘッダ列（日付×予約対象）は既存どおり left-0 sticky を維持
     expect(html).toMatch(/sticky left-0 z-10/)
   })
+
+  it('AC-7（F03.4.5 §4.4）: UNAVAILABLE セルに unavailableReason があれば「×事由」を描画し、無ければ従来の「Unavailable」表示のまま', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        axis: 'LINE',
+        meta: null,
+        days: [
+          {
+            date: tomorrow,
+            columns: [
+              {
+                lineId: 1,
+                lineName: 'Seat1',
+                lineIds: [],
+                cells: [
+                  // is_public=TRUE の定期ルール由来: 事由ラベル付き
+                  { slotId: 301, startTime: '19:00', endTime: '19:30', state: 'UNAVAILABLE', unavailableReason: 'Training' },
+                  // 単発 blocked_times 由来・非公開ルール由来: unavailableReason は BE から届かない（null/undefined）
+                  { slotId: 302, startTime: '19:30', endTime: '20:00', state: 'UNAVAILABLE' },
+                ],
+              },
+              { lineId: null, lineName: null, lineIds: [], cells: [] },
+            ],
+          },
+        ],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    // 事由ありセル: × と事由文字列を描画し、aria-label/title にも事由が載る
+    const reasonCell = wrapper.findAll('button').find(b => b.text().includes('Training'))
+    expect(reasonCell, '事由ラベル付きセルが描画されること').toBeTruthy()
+    expect(reasonCell!.text()).toContain('×')
+    expect(reasonCell!.attributes('aria-label')).toContain('Training')
+    expect(reasonCell!.attributes('title')).toBe('Training')
+
+    // 事由なしセル（従来表示）: 「Unavailable」のみ・× や余計な文言を出さない（型の嘘フォールバック禁止の裏取り）
+    const plainCell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('19:30') && b.attributes('aria-label')?.includes('Unavailable'))
+    expect(plainCell, '事由なしセルが従来どおり Unavailable 表示のままであること').toBeTruthy()
+    expect(plainCell!.text()).toBe('Unavailable')
+    expect(plainCell!.text()).not.toContain('×')
+  })
 })

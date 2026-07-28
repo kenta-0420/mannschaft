@@ -110,16 +110,23 @@ public class SafetyCheckService {
     /**
      * 安否確認一覧を取得する。
      *
+     * <p><b>認可</b>: 安否確認の本文は災害時の機微情報を含むため、宣言スコープのメンバーのみ閲覧可
+     * （回答は非 ADMIN メンバーも行うため {@code checkMembership}。回答状況・未回答者一覧といった
+     * 個人の安否そのものは従来どおり {@link #getResults} / {@link #getUnrespondedUsers} 側で
+     * {@code checkAdminOrAbove} に限定される）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param status    ステータス（null の場合は全件）
      * @param page      ページ番号
      * @param size      ページサイズ
+     * @param userId    操作者ID
      * @return 安否確認一覧
      */
     public Page<SafetyCheckResponse> listSafetyChecks(String scopeType, Long scopeId,
-                                                       String status, int page, int size) {
+                                                       String status, int page, int size, Long userId) {
         SafetyCheckScopeType scope = parseScopeType(scopeType);
+        requireScopeMember(userId, scope, scopeId);
         PageRequest pageRequest = PageRequest.of(page, size);
 
         Page<SafetyCheckEntity> entities;
@@ -138,11 +145,24 @@ public class SafetyCheckService {
     /**
      * 安否確認詳細を取得する。
      *
+     * <p><b>認可（BOLA 封鎖）</b>: URL にスコープを持たない bare id EP のため、
+     * まず entity を fetch し <b>entity 由来のスコープ</b>（{@code scopeType}/{@code scopeId}）で
+     * メンバーシップを判定する。権限が無い場合は 403 ではなく
+     * {@code SAFETY_CHECK_NOT_FOUND}（404）で存在を秘匿する。</p>
+     *
      * @param safetyCheckId 安否確認ID
+     * @param userId        操作者ID
      * @return 安否確認詳細
      */
-    public SafetyCheckResponse getSafetyCheck(Long safetyCheckId) {
+    public SafetyCheckResponse getSafetyCheck(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // entity 由来スコープのメンバーでなければ存在秘匿（404）。番人テストの 2 ホップ制約のため
+        // accessControlService は本メソッドから直接呼ぶこと。
+        if (entity.getScopeType() == SafetyCheckScopeType.GROUP
+                || userId == null
+                || !accessControlService.isMember(userId, entity.getScopeId(), entity.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND);
+        }
         return mapper.toSafetyCheckResponse(entity);
     }
 
@@ -242,14 +262,18 @@ public class SafetyCheckService {
     /**
      * 安否確認履歴を取得する（クローズ済み）。
      *
+     * <p><b>認可</b>: {@link #listSafetyChecks} と同一（宣言スコープのメンバーのみ）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param page      ページ番号
      * @param size      ページサイズ
+     * @param userId    操作者ID
      * @return 履歴一覧
      */
-    public Page<SafetyCheckResponse> getHistory(String scopeType, Long scopeId, int page, int size) {
+    public Page<SafetyCheckResponse> getHistory(String scopeType, Long scopeId, int page, int size, Long userId) {
         SafetyCheckScopeType scope = parseScopeType(scopeType);
+        requireScopeMember(userId, scope, scopeId);
         PageRequest pageRequest = PageRequest.of(page, size);
 
         return safetyCheckRepository.findClosedByScopeOrderByClosedAtDesc(scope, scopeId, pageRequest)
@@ -300,6 +324,23 @@ public class SafetyCheckService {
     SafetyCheckEntity findSafetyCheckOrThrow(Long id) {
         return safetyCheckRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND));
+    }
+
+    /**
+     * 宣言スコープのメンバーであることを要求する（参照系の入口ガード）。
+     *
+     * <p>{@code GROUP} スコープは {@code scopeId} がチーム／組織 ID ではなくグループ ID を指し、
+     * {@code memberships} で所属解決ができない（{@code ScopeType.valueOf("GROUP")} は例外）。
+     * {@code SafetyCheckRepository#searchByKeyword} の既存方針と揃え <b>fail-closed</b> で拒否する。</p>
+     *
+     * <p>番人テスト {@code AuthzControllerGuardArchTest} は Controller 起点で 2 ホップまでしか
+     * 委譲を辿らないため、{@code accessControlService} は本メソッドから<b>直接</b>呼ぶこと。</p>
+     */
+    private void requireScopeMember(Long userId, SafetyCheckScopeType scope, Long scopeId) {
+        if (scope == SafetyCheckScopeType.GROUP || userId == null
+                || !accessControlService.isMember(userId, scopeId, scope.name())) {
+            throw new BusinessException(SafetyCheckErrorCode.ACCESS_DENIED);
+        }
     }
 
     /**

@@ -15,7 +15,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
  * - AC-4: tokenExpiresAt が既に過去/バッファ以内なら遅延0（即時）で発火する
  * - AC-5: 多重に arm しても常にタイマーは1本のみ（再武装時に前のタイマーをクリアする）
  * - AC-6: クライアント限定（import.meta.client=false では武装しない）
- * - AC-7: 先回りリフレッシュが失敗（transient等）した場合、短い遅延（30秒）で再武装し回復を試みる
+ * - AC-7: 先回りリフレッシュが失敗（transient）した場合、短い遅延（30秒）で再武装し回復を試みる
+ * - AC-8: 先回りリフレッシュが auth_failed（refresh_token が本当に無効）だった場合は再武装せず
+ *         logout({ reason: 'session_expired' }) する。再武装すると「何度リトライしても回復しない
+ *         リクエストを 30 秒おきに永久に投げ続ける」ゾンビセッションになるため（本ファイルの根治点）。
  */
 
 const mockOfetch = vi.fn()
@@ -27,7 +30,8 @@ vi.mock('~/composables/useApiBaseUrl', () => ({
   resolveApiBaseUrl: () => 'http://localhost:8080',
 }))
 
-const { armProactiveRefresh, disarmProactiveRefresh } = await import('~/composables/useApi')
+const { armProactiveRefresh, disarmProactiveRefresh, handleAuthFailureLogout }
+  = await import('~/composables/useApi')
 
 type RefreshConfig = Parameters<typeof armProactiveRefresh>[0]
 type RefreshAuthStore = Parameters<typeof armProactiveRefresh>[1]
@@ -227,5 +231,80 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     await vi.advanceTimersByTimeAsync(5_000)
     await flushPromises()
     expect(mockOfetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('AC-7: transient 失敗では logout せず再武装のみ行う（回線が遅いだけのユーザーを落とさない）', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 503'), { response: { status: 503, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+    // transient はログアウトしない
+    expect(authStore.logout).not.toHaveBeenCalled()
+    // かつ再武装されている（30秒後のリトライタイマーが1本張られている）
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  it('AC-8: auth_failed（refresh が 401）では再武装せず logout({reason:"session_expired"}) を呼ぶ', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    // refresh_token が本当に無効 → 何度リトライしても回復しない
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 401'), { response: { status: 401, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+
+    // ログアウトが1回だけ呼ばれる（セッション失効の理由付きで /login へ誘導される）
+    expect(authStore.logout).toHaveBeenCalledTimes(1)
+    expect(authStore.logout).toHaveBeenCalledWith({ reason: 'session_expired' })
+
+    // 再武装されていない（リトライタイマーが1本も残っていない）
+    expect(vi.getTimerCount()).toBe(0)
+
+    // 30秒後どころか24時間進めても二度と refresh は撃たれない（永久リトライの根治）
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60_000)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-8: auth_failed が複数経路で同時に観測されても logout は1回に束ねられる（二重ログアウト防止）', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 401'), { response: { status: 401, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+    // logout は解決を遅らせ、「1回目の logout 実行中に2回目が来る」並行状況を作る。
+    let resolveLogout: (() => void) | undefined
+    authStore.logout.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveLogout = resolve
+        }),
+    )
+
+    // 先回りリフレッシュ経路と 401 interceptor 経路の双方が同一の auth_failed を掴む状況を、
+    // handleAuthFailureLogout を 2 回呼ぶことで再現する。
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+
+    void handleAuthFailureLogout(asAuthStore(authStore))
+    await flushPromises()
+
+    expect(authStore.logout).toHaveBeenCalledTimes(1)
+
+    resolveLogout?.()
+    await flushPromises()
   })
 })

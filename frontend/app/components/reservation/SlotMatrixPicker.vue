@@ -21,6 +21,7 @@ import {
   computeStartableIndices,
   isPastCell,
   mondayOffsetDays,
+  unavailableReasonOfSlot,
   type MatrixCellInput,
   type RowSlot,
 } from '~/utils/reservationMatrix'
@@ -237,6 +238,11 @@ function cellStateClass(row: MatrixRowVM, headerIndex: number): string {
   return 'cursor-pointer border-surface-200 text-green-700 hover:border-primary hover:bg-primary/5 dark:border-surface-600 dark:text-green-400'
 }
 
+/** UNAVAILABLE セルの事由ラベル（純関数 `unavailableReasonOfSlot` に委譲。§4.4）。 */
+function unavailableReasonOf(row: MatrixRowVM, headerIndex: number): string | null {
+  return unavailableReasonOfSlot(row.aligned[headerIndex])
+}
+
 function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind === 'empty') return '—'
@@ -245,7 +251,10 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
     case 'AVAILABLE': return t('reservation.grid.state.available')
     case 'BOOKED': return t('reservation.grid.state.booked')
     case 'CLOSED': return t('reservation.grid.state.closed')
-    case 'UNAVAILABLE': return t('reservation.grid.state.unavailable')
+    case 'UNAVAILABLE': {
+      const reason = unavailableReasonOf(row, headerIndex)
+      return reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+    }
     default: return ''
   }
 }
@@ -420,7 +429,7 @@ defineExpose({
               :class="cellStateClass(row, ci)"
               :disabled="isCellDisabled(row, ci)"
               :aria-label="cellAriaLabel(row, ci)"
-              :title="row.startable && slot.kind === 'cell' && slot.span === 1 && !row.startable.has(ci) && slot.cell.state === 'AVAILABLE' ? t('reservation.matrix.cannot_start_here', { menu: menuFilterOptions.find(o => o.value === filterMenuId)?.label ?? '' }) : undefined"
+              :title="unavailableReasonOf(row, ci) ?? (row.startable && slot.kind === 'cell' && slot.span === 1 && !row.startable.has(ci) && slot.cell.state === 'AVAILABLE' ? t('reservation.matrix.cannot_start_here', { menu: menuFilterOptions.find(o => o.value === filterMenuId)?.label ?? '' }) : undefined)"
               @click="onCellClick(row, ci)"
             >
               {{ cellLabel(row, ci) }}

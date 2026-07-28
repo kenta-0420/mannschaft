@@ -72,9 +72,11 @@ public class BetaPerkEligibilityService {
         List<MetricProgress> metrics = new ArrayList<>();
 
         // activeDays: INDIVIDUAL（本人ログイン日数）のみ計測可能（TEAM_ORG は USER を持たない・README §7）。
+        // 評価ウィンドウ起点の算出は LoginActivityQueryService に委譲する（日境界を本人の TZ で切るため、
+        // 呼び出し側で since を素の日時差から作ってはならない・自動付与バッチと同一規則）。
         if (grantKind == GrantKind.INDIVIDUAL && criteria.getMinActiveDays() != null) {
-            long actual = loginActivityQueryService.countDistinctActiveDays(
-                    scopeId, now.minusDays(criteria.getEvaluationWindowDays()));
+            long actual = loginActivityQueryService.countDistinctActiveDaysWithin(
+                    scopeId, criteria.getEvaluationWindowDays(), now);
             metrics.add(new MetricProgress("activeDays", actual, criteria.getMinActiveDays()));
         }
 
