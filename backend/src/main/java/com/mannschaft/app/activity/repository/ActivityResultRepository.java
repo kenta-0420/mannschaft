@@ -59,24 +59,6 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
     Optional<ActivityResultEntity> findByIdAndVisibilityAndStatus(
             Long id, ActivityVisibility visibility, ActivityStatus status);
 
-    /**
-     * スコープ配下の「公開済み活動記録」だけをページング取得する（匿名公開一覧の正準）。
-     *
-     * <p>可視性の絞り込みを <b>SQL 前段で行う</b>のが要点。取得後にアプリ側で filter すると
-     * {@code Page} の総件数・ページ内件数が「フィルタ前の件数」のままになり、
-     * ページャが実態と乖離する（実際 {@code new PageImpl<>(filtered, pageable, filtered.size())}
-     * によって総件数がページ内件数へ化ける不具合が発生していた。契約テスト AC-29）。</p>
-     *
-     * <p>本クエリはあくまで <b>前段の絞り込み</b>であり、可視性判定の正準は引き続き
-     * F00 {@code ContentVisibilityChecker} である（多層防御）。</p>
-     *
-     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済は自動除外される。</p>
-     */
-    Page<ActivityResultEntity>
-        findByScopeTypeAndScopeIdAndVisibilityAndStatusOrderByActivityDateDescIdDesc(
-            ActivityScopeType scopeType, Long scopeId, ActivityVisibility visibility,
-            ActivityStatus status, Pageable pageable);
-
     long countByScopeTypeAndScopeId(ActivityScopeType scopeType, Long scopeId);
 
     long countByScopeTypeAndScopeIdAndTemplateId(ActivityScopeType scopeType, Long scopeId, Long templateId);

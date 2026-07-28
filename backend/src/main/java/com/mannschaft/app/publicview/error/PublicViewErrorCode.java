@@ -100,7 +100,7 @@ public enum PublicViewErrorCode implements ErrorCode {
     /**
      * F06.4 公開活動記録: 活動記録が存在しないか公開されていません (404 へ正規化)。
      *
-     * <p>匿名公開経路（{@code /api/v1/public/**/activities/**}）の <b>唯一の失敗コード</b>。
+     * <p>匿名公開経路（{@code /api/v1/public} 配下の activities 系 5 EP）の <b>唯一の失敗コード</b>。
      * 「存在しない」「visibility が PUBLIC でない」「status が DRAFT」「論理削除済み」
      * 「親スコープ（チーム / 組織）が非公開・凍結・停止」「パス変数と実スコープの不一致（詐称）」の
      * <b>すべてを本コード 1 つに倒す</b>ことで、ステータスコードもレスポンスボディも

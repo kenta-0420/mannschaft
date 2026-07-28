@@ -87,39 +87,40 @@ public class ActivityResultService {
     /**
      * 公開活動記録一覧をページング取得する。
      *
-     * <p><b>二段構えの可視性フィルタ（多層防御）</b>:</p>
-     * <ol>
-     *   <li><b>SQL 前段</b>: {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} だけを
-     *       DB で絞り込む。ページング・総件数を <b>DB に正しく計算させる</b>ためであり、
-     *       取得後にアプリ側で filter するだけの旧実装は総件数が壊れていた
-     *       （{@code new PageImpl<>(filtered, pageable, filtered.size())} により総件数が
-     *       ページ内件数へ化け、ページャが 1 ページしかないように見えていた。契約テスト AC-29）。</li>
-     *   <li><b>F00 正準</b>: {@link ContentVisibilityChecker#filterAccessible(ReferenceType,
-     *       java.util.Collection, Long)}（未認証 userId=null）で再評価する。
-     *       可視性判定の単一真実源は引き続き F00 側であり、SQL 前段はその冗長化にすぎない。</li>
-     * </ol>
+     * <p>F00 Phase E-1: 旧 {@code visibility = PUBLIC} 直接フィルタを廃止し、
+     * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
+     * 経由（未認証 userId=null）に一本化。PUBLIC かつ PUBLISHED のみが Resolver を通過するため、
+     * 下書き（DRAFT）・会員限定・論理削除済みは一覧に現れない。
+     * 判定は ID 集合の <b>1 回のバッチ呼び出し</b>で行うため、件数に比例した SQL は発行されない（N+1 禁止）。</p>
      *
-     * <p>F00 が SQL 前段より厳しく落とした件数分は総件数から差し引く（このページで落ちた件数を減算）。
-     * 実運用では両者の判定が一致するため差し引きは 0 件になる。</p>
+     * <p><b>総件数の是正（契約テスト AC-29）</b>: 旧実装は
+     * {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、
+     * <b>総件数がページ内件数へ化けていた</b>（55 件あってもページャが「20 件・1 ページ」に見え、
+     * 2 ページ目以降へ辿り着けなかった）。DB が算出した総件数
+     * （{@code allPage.getTotalElements()}）を基準にし、F00 が<b>このページで</b>落とした件数だけを
+     * 差し引いて返す。</p>
+     *
+     * <p><b>既知の近似</b>: 差し引けるのは「現在のページで落ちた件数」だけであり、
+     * 後続ページに非公開記録が含まれる場合、総件数は実際の公開件数よりわずかに多くなる
+     * （旧実装のように総件数が壊れることはない）。可視性の絞り込みを SQL 前段に降ろせば厳密化できるが、
+     * それは F00 Phase E-1 の「可視性判定は F00 に一本化する」方針に反するため採らない。</p>
      *
      * <p><b>注意</b>: 本メソッドは親スコープ（チーム / 組織）の公開性を検証<b>しない</b>。
      * 匿名公開経路では {@code PublicActivityQueryService} が親スコープを先に検証すること。</p>
      */
     public Page<ActivityResultEntity> listPublicActivities(ActivityScopeType scopeType, Long scopeId,
                                                             Pageable pageable) {
-        // (1) SQL 前段: PUBLIC かつ PUBLISHED のみ（ページング上限は呼び出し元が制御）
-        Page<ActivityResultEntity> allPage = resultRepository
-                .findByScopeTypeAndScopeIdAndVisibilityAndStatusOrderByActivityDateDescIdDesc(
-                        scopeType, scopeId, ActivityVisibility.PUBLIC,
-                        ActivityStatus.PUBLISHED, pageable);
+        // scopeType + scopeId 配下の全活動記録を取得（ページング上限は呼び出し元が制御）
+        Page<ActivityResultEntity> allPage =
+                resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                        scopeType, scopeId, pageable);
         List<ActivityResultEntity> all = allPage.getContent();
 
         if (all.isEmpty()) {
             return allPage;
         }
 
-        // (2) F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）。
-        //     ID 集合を 1 回のバッチ呼び出しで判定するため件数に比例した SQL は発行されない（N+1 禁止）。
+        // F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）
         Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.ACTIVITY_RESULT,
                 all.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
@@ -130,7 +131,7 @@ public class ActivityResultService {
                 .collect(Collectors.toList());
 
         if (filtered.size() == all.size()) {
-            // F00 が追加で落としたものは無し → DB が算出した総件数をそのまま活かす
+            // 全件が公開 → DB が算出した総件数・ページ情報をそのまま活かす
             return allPage;
         }
         long removedInThisPage = (long) all.size() - filtered.size();
