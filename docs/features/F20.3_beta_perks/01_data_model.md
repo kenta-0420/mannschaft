@@ -94,7 +94,7 @@ CREATE TABLE beta_perk_criteria (
 
 - **全指標 NULL 可＝「機構として指標を固定し、有効化は運用」**。ただし**全指標 NULL の行は「無条件付与」になるため、シスアド CRUD で最低 1 指標の NOT NULL を強制**する（「参加しただけで付与」をマスタ設定ミスで起こさない・02 §6 バリデーション。`BETA_PERK_009` 400）。
 - 初期シード（8 行=4 フェーズ×2 種別・値は**例示・運用値**）: INDIVIDUAL=`(window=60, min_active_days=NULL, min_tenure=30, min_members=NULL)`／TEAM_ORG=`(window=60, NULL, 30, 5)`。`min_active_days` は F10.8 実装後に運用で設定。
-- **2026-07-28 追記**: マスター御裁可（活動日数 14 日／評価ウィンドウ 60 日）に基づき、`V168.20260728050056__update_beta_perk_criteria_min_active_days.sql` で **`INDIVIDUAL` 行のみ `min_active_days` に 14 を投入済み**（`TEAM_ORG` は引き続き `NULL` 運用のまま — 活動日数は個人指標であり判定サービスも INDIVIDUAL のときのみ参照するため）。既に運用で値が入っている行は上書きしない（`WHERE min_active_days IS NULL` 条件つき）。ただし `mannschaft.beta.auto-grant.enabled` の既定は `false` のため、この値を入れても本番で自動付与が走るわけではない（本番有効化には規約第 27 条の弁護士レビュー＋マスター承認が別途必要）。
+- **2026-07-28 追記**: マスター御裁可（活動日数 14 日／評価ウィンドウ 60 日）に基づき、`V169.20260728050056__update_beta_perk_criteria_min_active_days.sql` で **`INDIVIDUAL` 行のみ `min_active_days` に 14 を投入済み**（`TEAM_ORG` は引き続き `NULL` 運用のまま — 活動日数は個人指標であり判定サービスも INDIVIDUAL のときのみ参照するため）。既に運用で値が入っている行は上書きしない（`WHERE min_active_days IS NULL` 条件つき）。ただし `mannschaft.beta.auto-grant.enabled` の既定は `false` のため、この値を入れても本番で自動付与が走るわけではない（本番有効化には規約第 27 条の弁護士レビュー＋マスター承認が別途必要）。
 - Repository: `BetaPerkCriteriaRepository extends JpaRepository<BetaPerkCriteriaEntity, BetaPerkCriteriaId>`（複合キー・`@IdClass`。非テナント・`fee_policies` 前例）。
 
 ---
