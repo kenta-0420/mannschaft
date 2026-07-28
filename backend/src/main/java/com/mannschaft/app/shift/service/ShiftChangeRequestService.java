@@ -45,10 +45,8 @@ public class ShiftChangeRequestService {
      * - MEMBER: 自チームのスケジュールのみ依頼可
      * - オープンコール（A-3）: 月3件上限チェック
      *
-     * <p><b>認可（認可根治 Wave7）:</b> 旧実装は Javadoc に「MEMBER: 自チームのスケジュールのみ依頼可」
-     * と書きながら<b>スケジュールの存在確認しか行っておらず</b>、非メンバーが任意チームの
-     * {@code scheduleId} / {@code slotId} に対して変更依頼を投入できた。本実装では
-     * {@code scheduleId} から解決したチームへの所属をサーバー側で強制する
+     * <p><b>認可（認可根治 Wave7）:</b> 「MEMBER: 自チームのスケジュールのみ依頼可」という方針を、
+     * {@code scheduleId} から解決したチームへの所属をサーバー側で強制することで実効化する
      * （同一クラスの {@code list}（Wave6）・{@code withdraw} と同じ「実体由来 scope」の作法）。</p>
      *
      * <p><b>BOLA 封鎖:</b> {@code slotId} が指定された場合、その枠が当該スケジュールに属することを

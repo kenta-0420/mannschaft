@@ -225,7 +225,7 @@ class ShiftChangeRequestServiceAuthzTest {
     }
 
     @Test
-    @DisplayName("create: 非メンバーは COMMON_002（存在確認だけで通っていた穴の封鎖）")
+    @DisplayName("create: 非メンバーは COMMON_002（メンバーシップ検証で拒否）")
     void create_非メンバーはCOMMON_002() {
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
                 ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));

@@ -32,16 +32,13 @@ import java.util.Set;
 /**
  * F05.5 フォルダ詳細／一覧／作成のクエリ・コマンドサービス（{@code /api/v1/files/folders}）。
  *
- * <p>本サービスは {@link SharedFolderService#getFolder} の<b>認可素通り問題</b>を回避するために新設した。
- * 当時の {@code getFolder} は {@link FolderScopeAccessGuard} を呼ぶのみで、大会以外（TEAM/ORG/PERSONAL）の
- * スコープでは認可が一切効かず、フォルダ ID を渡すだけで他チーム・他人のフォルダ内容が取得できる
- * 情報漏洩があった。本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる。</p>
+ * <p>本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる
+ * （大会以外の TEAM/ORG/PERSONAL スコープを {@link FolderScopeAccessGuard} に委ねない独立実装として新設した）。</p>
  *
  * <p><b>認可根治 Wave7 での更新:</b> {@link SharedFolderService} 側にも同一ポリシーの認可
- * （{@code checkFolderViewAccess} / {@code checkFolderManageAccess}）を敷設したため、
- * 「素通りだから本サービスを使え」という回避関係は解消した。両者は<b>同一の認可マトリクス</b>を持つ。
- * 本サービスは引き続き汎用 EP（{@code /api/v1/files/folders}）の窓口として、パンくず・カスケード削除・
- * 容量戻し・最低可視ロール（B）といった付加ロジックを担当する。</p>
+ * （{@code checkFolderViewAccess} / {@code checkFolderManageAccess}）を敷設したため、両者は
+ * <b>同一の認可マトリクス</b>を持つ。本サービスは引き続き汎用 EP（{@code /api/v1/files/folders}）の
+ * 窓口として、パンくず・カスケード削除・容量戻し・最低可視ロール（B）といった付加ロジックを担当する。</p>
  *
  * <p>認可マトリクス:</p>
  * <ul>
@@ -176,7 +173,6 @@ public class SharedFolderQueryService {
         String scopeType = request.getScopeType();
         authorizeScopeView(scopeType, scopeId, userId);
         // 認可根治 Wave7: parentId 指定時は親が同一スコープであることを検証する（接ぎ木封鎖）。
-        // 従来は親の所有者・スコープを一切見ておらず、他チーム配下へ自分のフォルダをぶら下げられた。
         checkParentWithinScope(request.getParentId(), FileScopeType.valueOf(scopeType), scopeId, userId);
         validateFolderNameUnique(request.getParentId(), request.getName());
 
@@ -213,12 +209,12 @@ public class SharedFolderQueryService {
      *
      * <p>従来 {@code SharedFolderController} に DELETE マッピングが無く、FE の
      * {@code DELETE /api/v1/files/folders/{id}} が非存在ルート → 500 になっていた根治。
-     * 当時の {@link SharedFolderService#deleteFolder} は (1) 認可が大会スコープの guard のみで
-     * PERSONAL/TEAM/ORG が素通り（漏洩）、(2) フォルダ単体しか soft-delete せず配下ファイル・
-     * サブフォルダが孤児化、(3) 容量戻しが無く {@code usedBytes} が減らない、という三重の欠陥が
-     * あったため流用しない。（(1) の認可素通りは認可根治 Wave7 で解消済み＝
-     * {@code SharedFolderService#checkFolderManageAccess}。(2)(3) は依然として本メソッドのみが
-     * 満たすため、FE の汎用削除 EP は引き続き本メソッドを使う。）本メソッドは:</p>
+     * {@link SharedFolderService#deleteFolder} は (1) 認可がスコープ別に個別実装されていない、
+     * (2) フォルダ単体しか soft-delete せず配下ファイル・サブフォルダが孤児化する、
+     * (3) 容量戻しが無く {@code usedBytes} が減らない、という理由で流用しない。
+     *（(1) は認可根治 Wave7 で {@code SharedFolderService#checkFolderManageAccess} により
+     * 是正済み。(2)(3) は依然として本メソッドのみが満たすため、FE の汎用削除 EP は
+     * 引き続き本メソッドを使う。）本メソッドは:</p>
      * <ul>
      *   <li><b>認可</b>: {@link #authorizeDelete} で「閲覧より強い」削除権限を当てる
      *       （他人個人=404・TEAM/ORG は<b>管理者(ADMIN/DEPUTY_ADMIN)のみ</b>・一般メンバーは 403・

@@ -35,11 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — filesharing ドメイン（共有フォルダ {@code SharedFolderService} 系）認可契約テスト。
  *
- * <p><b>封鎖する穴:</b> {@code SharedFolderService} は {@code AccessControlService} を一切参照しておらず、
- * 唯一の依存ガード {@code FolderScopeAccessGuard} は大会／ディビジョン以外（TEAM / ORGANIZATION /
- * PERSONAL）では no-op（素通り）だった。そのため teamId / organizationId / folderId を渡すだけで
- * 任意のチーム・組織のフォルダ階層を閲覧・作成・更新・削除できた。
- * とりわけルート一覧 API は <b>{@code userId} を引数に取らず認可が原理的に不可能</b>だった。</p>
+ * <p><b>検証範囲:</b> {@code SharedFolderService} が {@code AccessControlService} を用いて
+ * TEAM / ORGANIZATION / PERSONAL の各スコープで per-scope 認可（メンバー / 管理者）を
+ * 実効的に強制していることを、ルート一覧・子一覧・詳細・作成・更新・削除の全経路で検証する。</p>
  *
  * <p>是正の手本は同一ドメインで既に根治済みのファイル側
  * （{@code SharedFileService#listFiles} → {@code SharedFolderQueryService#authorizeFolderViewById}）。</p>
@@ -140,7 +138,7 @@ class SharedFolderScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 1. GET /teams/{teamId}/folders（ルート一覧・従来 userId すら受け取れなかった穴）
+    // 1. GET /teams/{teamId}/folders（ルート一覧の認可契約）
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested

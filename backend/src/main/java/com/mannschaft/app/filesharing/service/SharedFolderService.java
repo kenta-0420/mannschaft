@@ -22,11 +22,9 @@ import java.util.Objects;
 /**
  * 共有フォルダサービス。フォルダのCRUDと階層管理を担当する。
  *
- * <p><b>認可（認可根治 Wave7 — F05.5 フラット認可の是正）:</b> 従来、本サービスは
- * {@link AccessControlService} を<b>一切参照しておらず</b>、唯一の依存ガード
- * {@link FolderScopeAccessGuard} は大会／ディビジョン以外（TEAM / ORGANIZATION / PERSONAL）で
- * no-op（素通り）だった。そのため folderId / teamId / organizationId を渡すだけで
- * 任意のチーム・組織のフォルダ階層を閲覧・作成・更新・削除できた。</p>
+ * <p><b>認可（認可根治 Wave7 — F05.5 フラット認可の是正）:</b> {@link FolderScopeAccessGuard} は
+ * 大会／ディビジョンスコープ専用のガードであり、TEAM / ORGANIZATION / PERSONAL スコープの認可は
+ * 本サービスが {@link AccessControlService} を用いて自前で当てる。</p>
  *
  * <p>本改修で、同一ドメインで既に根治済みの
  * {@code SharedFolderQueryService#authorizeView} / {@code #authorizeDelete}（および
@@ -63,9 +61,8 @@ public class SharedFolderService {
     /**
      * チームのルートフォルダ一覧を取得する。
      *
-     * <p>認可（Wave7）: 当該チームのメンバーのみ。従来は {@code userId} を引数に取らず
-     * <b>認可が原理的に不可能</b>だったため、任意チームのルートフォルダ名・説明・
-     * {@code minVisibleRole} / {@code downloadDisabled} が列挙できた。</p>
+     * <p>認可（Wave7）: 当該チームのメンバーのみ閲覧可（{@code userId} を引数に取り
+     * {@code checkMembership} で強制する）。</p>
      *
      * @param teamId チームID
      * @param userId 操作ユーザーID
@@ -207,10 +204,8 @@ public class SharedFolderService {
      * 個人フォルダを作成する。
      *
      * <p><b>接ぎ木封鎖（Wave7）:</b> {@code userId} は SecurityContext 由来のため所有者のなりすましは
-     * 起きないが、旧実装は {@code request.getParentId()} の<b>所有者検証が無かった</b>
-     *（{@code validateFolderNameUnique} は同名重複しか見ない）。そのため他チーム／他人配下の
-     * folderId を {@code parentId} に指定して PERSONAL フォルダを接ぎ木できた。
-     * 本実装では親が<b>自分の PERSONAL フォルダ</b>であることを強制する。</p>
+     * 起きない。本実装では、{@code request.getParentId()} で指定された親が
+     * <b>自分の PERSONAL フォルダ</b>であることを強制する。</p>
      *
      * @param userId  ユーザーID
      * @param request 作成リクエスト

@@ -44,10 +44,8 @@ import java.util.stream.Collectors;
 /**
  * シフト自動割当サービス。割当アルゴリズムの実行・確定・取消・履歴管理を担当する。
  *
- * <p><b>認可（認可根治 Wave7）:</b> 従来、本サービスは {@link AccessControlService} を
- * <b>一切参照しておらず</b>、公開エンドポイントから渡された {@code scheduleId} / {@code runId} を
- * そのまま信用して実行・確定・破棄・履歴閲覧を行っていた（呼び出し元まかせ認可）。
- * 本改修で全 public 入口に per-scope 認可を敷設した。方針は同ドメインの兄弟
+ * <p><b>認可（認可根治 Wave7）:</b> {@link AccessControlService} を用いて全 public 入口に
+ * per-scope 認可を敷設した。方針は同ドメインの兄弟
  * {@code ShiftScheduleService#checkScheduleAdminAccess} / {@code ShiftSlotService#checkScheduleAdminAccess}
  * と同一（SYSTEM_ADMIN 短絡許可 → 当該チームの ADMIN/DEPUTY_ADMIN のみ）。</p>
  *
@@ -75,8 +73,8 @@ public class ShiftAutoAssignService {
     /**
      * 自動割当を実行する。
      *
-     * <p>認可（Wave7）: スケジュール実体から解決したチームの ADMIN/DEPUTY_ADMIN のみ実行可。
-     * {@code triggeredBy} は従来ログ記録用にしか使われておらず、認可判定には一切使われていなかった。</p>
+     * <p>認可（Wave7）: スケジュール実体から解決したチームの ADMIN/DEPUTY_ADMIN のみ実行可
+     * （{@code triggeredBy} を用いて判定する）。</p>
      *
      * @param scheduleId  スケジュールID
      * @param request     自動割当リクエスト
@@ -285,8 +283,7 @@ public class ShiftAutoAssignService {
      * 目視確認を完了させる。
      *
      * <p>認可（Wave7）: 本 API は {@code confirmAutoAssign} の前提条件
-     * （{@code VISUAL_REVIEW_REQUIRED}）を解除する操作であり、無認可のまま残すと
-     * 確定 API の事前条件を攻撃者が自力で満たせてしまう。確定と<b>同一粒度</b>
+     * （{@code VISUAL_REVIEW_REQUIRED}）を解除する操作のため、確定と<b>同一粒度</b>
      * （run 実体由来のチームの ADMIN/DEPUTY_ADMIN）で独立に認可する。</p>
      *
      * @param runId  実行ログID

@@ -29,8 +29,8 @@ import java.util.List;
  * これらは従来コントローラが存在せず 500 になっていた（チーム／組織のファイル画面が機能しなかった）。</p>
  *
  * <p>認可は {@link SharedFolderQueryService} が folderId / scope からスコープを解決して自前で当てる
- * （新設当時の {@code SharedFolderService#getFolder} は認可が素通りだったため流用しなかった。
- * 認可根治 Wave7 で {@code SharedFolderService} 側も同一ポリシーへ是正済み）。未認証は
+ * （本コントローラは新設当初から独立してスコープ別認可を解決する設計とし、
+ * 認可根治 Wave7 で {@code SharedFolderService} 側も同一ポリシーへ整合済み）。未認証は
  * {@link SecurityUtils#getCurrentUserId()} が COMMON_000（401）を投げる。</p>
  */
 @RestController

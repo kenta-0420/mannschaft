@@ -33,9 +33,8 @@ package com.mannschaft.app.filesharing.service;
  *
  * <p>したがって<b>本ガードは大会／ディビジョン専用</b>である。実装は依然として
  * 「大会以外のスコープでは何もしない」防御的な no-op を保持してよいが、呼び出し側は
- * 本ガードを<b>大会／ディビジョンスコープの分岐からのみ</b>呼ぶこと（TEAM/ORG/PERSONAL を
- * 本ガードだけに委ねると、認可番人には「認可あり」と観測されるのに実効ゼロという
- * <b>看板倒れ</b>が再発する。これが Wave7 で検出された穴そのものである）。</p>
+ * 本ガードを<b>大会／ディビジョンスコープの分岐からのみ</b>呼ぶこと（TEAM/ORG/PERSONAL の認可は
+ * 上記のとおり {@link SharedFolderQueryService} / {@link SharedFolderService} 側で担保する）。</p>
  *
  * <p><b>ガードを廃止しない理由:</b> 本インターフェースは filesharing → tournament の循環依存を
  * 避けるための依存性逆転ポート（DIP）であり、大会／ディビジョンの連絡スペース認可を

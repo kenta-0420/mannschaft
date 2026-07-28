@@ -42,15 +42,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — shift ドメイン（自動割当 {@code ShiftAutoAssignController}）認可契約テスト。
  *
- * <p><b>封鎖する穴:</b> {@code ShiftAutoAssignService} は {@code AccessControlService} を
- * 一切参照しておらず、全 public メソッドに認可判定が無かった。{@code scheduleId} / {@code runId} を
- * 渡すだけで他チームのシフト表に対する自動割当の実行・確定・破棄・履歴閲覧ができた。</p>
+ * <p><b>検証範囲:</b> {@code ShiftAutoAssignService} が {@code AccessControlService} を用いて
+ * 全 public メソッド（実行・確定・破棄・履歴閲覧）に per-scope 管理者認可を強制していることを、
+ * {@code scheduleId} / {@code runId} 経由の各エンドポイントで検証する。</p>
  *
- * <p><b>とりわけ重要な検証（2 段攻撃の封鎖）:</b> 確定 API は「run が
+ * <p><b>とりわけ重要な検証（2 段階の独立防御）:</b> 確定 API は「run が
  * {@code CONFIRMED}（＝目視確認済み）でなければ {@code VISUAL_REVIEW_REQUIRED}」という
- * 事前条件を持つが、その事前条件を満たす目視確認 API 自体も無認可だった。
- * 「目視確認 → 確定」の 2 リクエストで前提を自力で満たされないよう、
- * <b>両者が独立に拒否されること</b>を {@link TwoStepAttack} で明示検証する。</p>
+ * 事前条件を持つ。目視確認 API と確定 API の<b>両者が独立に認可拒否されること</b>を
+ * {@link TwoStepAttack} で明示検証する（一方の認可がもう一方の防御を代替しないことを保証する）。</p>
  *
  * <p>金型: {@code EquipmentScopeContractIT} / {@code ShiftChangeRequestScopeContractIT}（同ドメイン）。</p>
  *
@@ -468,10 +467,9 @@ class ShiftAutoAssignScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * 本 PR の主眼。旧実装では両 API とも無認可だったため、攻撃者は
-     * 「目視確認 API で自ら事前条件（{@code VISUAL_REVIEW_REQUIRED}）を解除」→
-     * 「確定 API で他チームの勤務表を書き換え」という 2 リクエストの連鎖が成立した。
-     * <b>2 段の各段が独立に拒否されること</b>と、<b>連鎖を実行しても run の状態が
+     * 本 PR の主眼。目視確認 API と確定 API は連続する 2 つの操作だが、認可は互いに独立して
+     * 効いていなければならない（一方の認可が他方の前提を代替してはならない）。
+     * <b>2 段の各段が独立に拒否されること</b>と、<b>一方を実行しても run の状態が
      * SUCCEEDED のまま（＝確定の前提が満たされない）こと</b>を検証する。
      */
     @Nested
