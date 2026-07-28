@@ -15,7 +15,7 @@ import org.springframework.cache.interceptor.CacheInterceptor;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFailureException;
+import org.springframework.data.redis.RedisConnectionFailureException;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

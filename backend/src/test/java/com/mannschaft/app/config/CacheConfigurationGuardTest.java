@@ -95,9 +95,11 @@ class CacheConfigurationGuardTest {
         void 既定TTLが有限である() {
             Duration defaultTtl = ttlOf(new RedisConfig().redisCacheConfiguration());
 
+            // AssertJ の AbstractDurationAssert に isNotZero() は存在しない。
+            // 「TTL > 0（＝ Duration.ZERO の無期限ではない）」は isPositive() で表現する。
             assertThat(defaultTtl)
                     .as("既定 TTL が Duration.ZERO（無期限）だと、個別指定の無いキャッシュが永久に腐る")
-                    .isNotZero()
+                    .isPositive()
                     .isEqualTo(MAX_ALLOWED_TTL);
         }
 
@@ -112,7 +114,7 @@ class CacheConfigurationGuardTest {
                 assertThat(ttl)
                         .as("キャッシュ '%s' の TTL が無期限（Duration.ZERO）になっている。"
                                 + "fail-open は TTL による自然収束を前提にしているため無期限は禁止", cacheName)
-                        .isNotZero();
+                        .isPositive();
                 assertThat(ttl)
                         .as("キャッシュ '%s' の TTL が既定 30 分を超えている", cacheName)
                         .isLessThanOrEqualTo(MAX_ALLOWED_TTL);
