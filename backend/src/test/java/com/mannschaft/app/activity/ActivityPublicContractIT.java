@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -73,7 +74,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p><b>フィクスチャ方針</b>: {@code application-test.yml} は {@code ddl-auto=create} +
  * {@code flyway.enabled=false} のため Flyway シードが入らない。teams / organizations /
  * activity_results はすべて native SQL で手動 seed する。ポートは固定しない
- * （{@code @SpringBootTest} 既定 + Testcontainers 自動採番）。</p>
+ * （{@code @SpringBootTest} 既定 + Testcontainers 自動採番）。
+ * <b>日時・時刻列は必ずパラメータ bind すること</b>（{@code hibernate.jdbc.time_zone: UTC} と
+ * JVM の JST で 9 時間ずれるため。詳細は {@code insertActivity} の Javadoc）。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -850,6 +853,16 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
      * activity_results を 1 行挿入する。除外必須項目（location / venue_id / template_id /
      * schedule_id / created_by / field_values / attachments）にはすべて「漏れたら分かる」値を入れる。
      *
+     * <p><b>時刻列は必ず {@link LocalTime} パラメータで bind すること（SQL 文字列リテラル禁止）</b>:
+     * {@code application-test.yml} は {@code hibernate.jdbc.time_zone: UTC} を設定しており、
+     * Hibernate は TIME 列を「DB は UTC で保持している」前提で読み書きする。
+     * 一方 JVM は JST で動くため、{@code '10:00:00'} という<b>文字列リテラル</b>で INSERT すると
+     * 書き込み側だけが TZ 変換を経ず、読み出し時に UTC 10:00 → JST 19:00 と <b>9 時間ずれて</b>返る。
+     * {@code setParameter("timeStart", LocalTime.of(10, 0))} と bind すれば書き込み側も
+     * 同じ TZ 経路を通り、実アプリ（JPA 経由で LocalTime を保存）と等価な往復になる。
+     * 実際に本テストの AC-8 実値検証が {@code "19:00:00"} を受け取って落ちた
+     * （memory {@code feedback_it_fixture_datetime_tz_bind} と同型のフィクスチャ不整合）。</p>
+     *
      * @param timeStart 開始時刻（{@code null} 可 = AC-23 用）
      * @param timeEnd   終了時刻（{@code null} 可 = AC-23 用）
      * @param description 説明（{@code null} 可 = AC-24 用）
@@ -863,7 +876,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
                 + "field_values, attachments, visibility, status, schedule_id, created_by, "
                 + "deleted_at, created_at, updated_at) VALUES ("
                 + "'" + scopeType + "', :scopeId, " + SECRET_TEMPLATE_ID + ", :title, '" + ACTIVITY_DATE + "', "
-                + sqlLiteral(timeStart) + ", " + sqlLiteral(timeEnd) + ", "
+                + (timeStart == null ? "NULL" : ":timeStart") + ", "
+                + (timeEnd == null ? "NULL" : ":timeEnd") + ", "
                 + ":location, " + SECRET_VENUE_ID + ", "
                 + (description == null ? "NULL" : ":description") + ", "
                 + ":fieldValues, :attachments, "
@@ -876,6 +890,13 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("location", SECRET_LOCATION)
                 .setParameter("fieldValues", SECRET_FIELD_VALUES)
                 .setParameter("attachments", SECRET_ATTACHMENTS);
+        // TIME 列は LocalTime bind（上記 Javadoc の TZ 経路一致）。null は SQL の NULL リテラルのまま。
+        if (timeStart != null) {
+            query.setParameter("timeStart", LocalTime.parse(timeStart));
+        }
+        if (timeEnd != null) {
+            query.setParameter("timeEnd", LocalTime.parse(timeEnd));
+        }
         if (description != null) {
             query.setParameter("description", description);
         }
@@ -898,8 +919,4 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         em.clear();
     }
 
-    /** {@code null} を SQL の {@code NULL} リテラルへ、非 null をクォート済みリテラルへ変換する。 */
-    private static String sqlLiteral(String value) {
-        return value == null ? "NULL" : "'" + value + "'";
-    }
 }
