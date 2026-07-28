@@ -3,11 +3,13 @@ package com.mannschaft.app.recruitment;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentSubcategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentSubcategoryRepository;
@@ -100,6 +102,9 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private RecruitmentCategoryRepository categoryRepository;
+
+    @Autowired
     private RecruitmentListingRepository listingRepository;
 
     @Autowired
@@ -119,6 +124,17 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long teamAId;
     private Long teamBId;
+
+    /**
+     * 実在する大カテゴリの ID。
+     *
+     * <p>{@code RecruitmentListingService#create} は {@code categoryRepository.existsById} で
+     * カテゴリの実在を検証し、不在なら {@code CATEGORY_NOT_SPECIFIED}（{@code Severity.ERROR}
+     * → HTTP 500）を投げる。test profile の schema は Entity 由来で生成され Flyway のシードが
+     * 走らないため、{@code recruitment_categories} は空である。よって固定値の categoryId を
+     * 使い回すと from-template の正常系が 500 になる。テスト内で実カテゴリを 1 件作って使う。</p>
+     */
+    private Long categoryId;
 
     /** teamA の ADMIN（正当な管理者）。 */
     private Long adminAId;
@@ -164,6 +180,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
+
+        categoryId = insertCategory();
 
         listingAId = insertListing(teamAId, adminAId);
         listingBId = insertListing(teamBId, adminBId);
@@ -622,12 +640,27 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
+    /**
+     * 大カテゴリを 1 件作る。
+     *
+     * <p>{@code code} は unique 制約付きなので、他テストと衝突しないドメイン固有のプレフィックスを使う。</p>
+     */
+    private Long insertCategory() {
+        return categoryRepository.save(RecruitmentCategoryEntity.builder()
+                .code("RCRTSIB_TEST")
+                .nameI18nKey("recruitment.category.rcrtsibTest")
+                .defaultParticipationType(RecruitmentParticipationType.INDIVIDUAL)
+                .displayOrder(0)
+                .isActive(true)
+                .build()).getId();
+    }
+
     private Long insertListing(Long teamId, Long createdBy) {
         LocalDateTime start = LocalDateTime.now().plusDays(30);
         return listingRepository.save(RecruitmentListingEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM)
                 .scopeId(teamId)
-                .categoryId(1L)
+                .categoryId(categoryId)
                 .title("RCRTSIB 募集")
                 .participationType(RecruitmentParticipationType.INDIVIDUAL)
                 .startAt(start)
@@ -653,7 +686,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long insertSubcategory(Long teamId, Long createdBy) {
         return subcategoryRepository.save(RecruitmentSubcategoryEntity.builder()
-                .categoryId(1L)
+                .categoryId(categoryId)
                 .scopeType(RecruitmentScopeType.TEAM)
                 .scopeId(teamId)
                 .name("RCRTSIB サブカテゴリ")
@@ -666,7 +699,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         return templateRepository.save(RecruitmentTemplateEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM)
                 .scopeId(teamId)
-                .categoryId(1L)
+                .categoryId(categoryId)
                 .templateName("RCRTSIB テンプレート")
                 .title("RCRTSIB テンプレート募集")
                 .createdBy(createdBy)
