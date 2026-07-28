@@ -300,7 +300,8 @@ class AnnouncementFeedControllerTest {
         void markAsRead_正常系_200() throws Exception {
             // Given
             willDoNothing().given(announcementFeedService)
-                    .markAsRead(eq(ANNOUNCEMENT_ID), eq(USER_ID));
+                    .markAsRead(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID),
+                            eq(ANNOUNCEMENT_ID), eq(USER_ID));
 
             // When / Then
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", TEAM_ID, ANNOUNCEMENT_ID))
