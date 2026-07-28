@@ -153,7 +153,7 @@ public class TournamentService {
      * <p>認可根治戦役 Wave7: 従来は {@code orgId} 突合も可視性判定も無く、任意組織の
      * 非公開大会の詳細を取得できる状態だった。パス {@code orgId} と大会実体の
      * {@code organizationId} を突合し（不一致は 404 で存在秘匿）、そのうえで
-     * {@link StandingsController} の {@code verifyTournamentVisible} と同じく
+     * {@code StandingsController} の {@code verifyTournamentVisible} と同じく
      * F00 共通可視性 Resolver で判定する。主催組織 ADMIN/DEPUTY_ADMIN は
      * 自組織の DRAFT 大会も閲覧できる（管理画面の機能退行を防ぐ。判定 scope は
      * <b>エンティティ由来</b>の {@code tournament.organizationId}）。</p>

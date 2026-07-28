@@ -173,7 +173,7 @@ public class TournamentPdfController {
     // ===== Private =====
 
     /**
-     * 大会 visibility ガード。{@link StandingsController#verifyTournamentVisible} と同一実装で、
+     * 大会 visibility ガード。{@code StandingsController#verifyTournamentVisible} と同一実装で、
      * JSON 版と PDF 版の可視性判定を一致させる。不可視は IDOR 防止のため 404。
      *
      * @param tournamentId 大会 ID（可視性は常にこの親 tournament で判定する）
