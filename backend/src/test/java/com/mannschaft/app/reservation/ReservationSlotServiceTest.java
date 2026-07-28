@@ -56,6 +56,10 @@ class ReservationSlotServiceTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
 
+    /** F03.4.5 §4 W2-2: 定期予約不可枠の active ルール参照。 */
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+
     /** F03.4.2: 枠のライン軸（lineId）検証用のライン参照。 */
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
@@ -87,7 +91,8 @@ class ReservationSlotServiceTest {
         // @InjectMocks は Clock を mock で埋めてしまい LocalDate.now(clock) が NPE になるため、
         // 固定 Clock を明示注入してサービスを生成する。
         service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper,
-                blockedTimeRepository, unavailabilityChecker, lineRepository, FIXED_CLOCK,
+                blockedTimeRepository, recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
+                FIXED_CLOCK,
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
     }
 

@@ -80,7 +80,8 @@
       "festival": "お祭り",
       "matchRecruit": "練習試合・募集",
       "meetup": "寄合",
-      "chronicle": "村史"
+      "chronicle": "村史",
+      "charter": "村憲章"
     },
     "systemPost": {
       "authorName": "村の行事案内",
@@ -669,6 +670,55 @@
         "meetup": "寄合"
       }
     },
+    "charter": {
+      "title": "村憲章",
+      "subtitle": "村の約束ごと",
+      "empty": "まだ村憲章は定められていません",
+      "enactedAt": "制定日",
+      "lastRevisedAt": "改定日",
+      "article": {
+        "label": "第{n}条",
+        "add": "＋条を追加",
+        "bodyPlaceholder": "条文を入力",
+        "bodyRequired": "条文を入力してください",
+        "delete": "条を削除",
+        "deleteConfirm": "この条を削除しますか？"
+      },
+      "supplement": {
+        "add": "＋付則を追加",
+        "label": "付則",
+        "placeholder": "付則を入力（任意）"
+      },
+      "reorder": {
+        "hint": "上下ボタンで条の並び順を変更できます",
+        "up": "上へ",
+        "down": "下へ"
+      },
+      "drafters": {
+        "title": "策定者",
+        "add": "＋策定者を追加",
+        "empty": "策定者はまだ登録されていません",
+        "delete": "策定者を削除",
+        "deleteConfirm": "「{name}」を策定者から削除しますか？",
+        "selectPlaceholder": "村人を選択",
+        "loadMembersFailed": "村人一覧を取得できなかったため、策定者を追加できません。",
+        "reloadMembers": "再取得"
+      },
+      "revision": {
+        "confirm": "改正を確定",
+        "confirmHint": "この時点を改定として記録します（条文の公開状態は変わりません）。",
+        "confirmSuccess": "改正を確定しました",
+        "notePlaceholder": "改定メモ（任意）",
+        "history": "改定履歴",
+        "historyEmpty": "改定履歴はまだありません"
+      },
+      "error": {
+        "loadFailed": "村憲章の取得に失敗しました",
+        "mutationFailed": "操作に失敗しました",
+        "versionConflict": "他の村長が同時に編集しました。最新を読み込み直してください",
+        "drafterDuplicate": "その村人はすでに策定者です"
+      }
+    },
     "serendipity": {
       "title": "ご縁スコア",
       "subtitle": "村での出会いの積み重ね",
@@ -892,6 +942,15 @@
           "step1": "「村史」タブを開きます。",
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "村憲章で村の約束ごとを残す",
+        "body": "村長・長老が村のルール（条文）を定め、村人以外にも公開できる約束ごとです（公開村は未参加者にも見えます）。",
+        "steps": {
+          "step1": "「村憲章」タブを開きます。",
+          "step2": "村長・長老は「＋条を追加」で条文を書き、必要なら付則も添えられます。",
+          "step3": "並び替え・削除もその場で反映され、「改正を確定」で改定履歴に記録できます。"
         }
       }
     },

@@ -32,6 +32,7 @@ const props = defineProps<{
     | 'matchRecruit'
     | 'meetup'
     | 'chronicle'
+    | 'charter'
 }>()
 
 const emit = defineEmits<{
@@ -115,6 +116,7 @@ interface TabDef {
     | 'matchRecruit'
     | 'meetup'
     | 'chronicle'
+    | 'charter'
   to: string
   icon: string
   i18nKey: string
@@ -179,6 +181,14 @@ const tabs = computed<TabDef[]>(() => [
     to: `/villages/${props.village.id}/chronicles`,
     icon: 'pi pi-book',
     i18nKey: 'village.tab.chronicle',
+  },
+  // F17.3: 村憲章（非メンバーにも表示・PUBLIC 村は未参加者にも公開・§3.2/§9.1）
+  {
+    key: 'charter',
+    to: `/villages/${props.village.id}/charter`,
+    // chronicle が pi-book 使用中のため重複回避。憲章＝条文文書らしいアイコン（設計書§9.1 🟡F）。
+    icon: 'pi pi-file-edit',
+    i18nKey: 'village.tab.charter',
   },
 ])
 

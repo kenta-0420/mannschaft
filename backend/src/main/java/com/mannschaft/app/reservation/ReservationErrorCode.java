@@ -366,7 +366,29 @@ public enum ReservationErrorCode implements ErrorCode {
      * 予約バケットを消費させない）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
      */
     WAITLIST_RATE_LIMITED("RESERVATION_050",
-            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN),
+
+    // ===== F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し・事由ラベル・公開可否）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_050）の次から連番で確定した（feedback_flyway_version_sort_after_global_max
+    // と同じ「実物最大値から採番」の作法を ErrorCode にも適用・2026-07-10）。
+
+    /**
+     * 定期予約不可枠が見つからない（PATCH/DELETE 対象不在・IDOR 秘匿含む・404）。
+     *
+     * <p>§4.6: {@code findByIdAndTeamId} で解決できない場合に throw する。他チームの ruleId を掴んだ
+     * 場合も同一の 404 で秘匿する。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    RECURRING_BLOCKED_TIME_NOT_FOUND("RESERVATION_051", "定期予約不可枠が見つかりません", Severity.WARN),
+
+    /**
+     * 定期予約不可枠の上限（1チーム50行）超過（入力上限超過なので400）。
+     *
+     * <p>§4.1: Service 層（{@code ReservationRecurringBlockedTimeService.createRule}）で担保する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    RECURRING_BLOCKED_TIME_LIMIT_EXCEEDED("RESERVATION_052",
+            "定期予約不可枠はチームあたり最大50件までです", Severity.WARN);
 
     private final String code;
     private final String message;
