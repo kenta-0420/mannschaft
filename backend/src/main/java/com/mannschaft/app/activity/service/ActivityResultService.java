@@ -3,6 +3,7 @@ package com.mannschaft.app.activity.service;
 import com.mannschaft.app.activity.ActivityErrorCode;
 import com.mannschaft.app.activity.ActivityMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
+import com.mannschaft.app.activity.ActivityStatus;
 import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
@@ -86,24 +87,39 @@ public class ActivityResultService {
     /**
      * 公開活動記録一覧をページング取得する。
      *
-     * <p>F00 Phase E-1: 旧 {@code visibility = PUBLIC} 直接フィルタを廃止し、
-     * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
-     * 経由（未認証 userId=null）に一本化。PUBLIC のみが Resolver を通過するため
-     * 動作は旧実装と等価だが、可視性判定の一元管理が実現される。</p>
+     * <p><b>二段構えの可視性フィルタ（多層防御）</b>:</p>
+     * <ol>
+     *   <li><b>SQL 前段</b>: {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} だけを
+     *       DB で絞り込む。ページング・総件数を <b>DB に正しく計算させる</b>ためであり、
+     *       取得後にアプリ側で filter するだけの旧実装は総件数が壊れていた
+     *       （{@code new PageImpl<>(filtered, pageable, filtered.size())} により総件数が
+     *       ページ内件数へ化け、ページャが 1 ページしかないように見えていた。契約テスト AC-29）。</li>
+     *   <li><b>F00 正準</b>: {@link ContentVisibilityChecker#filterAccessible(ReferenceType,
+     *       java.util.Collection, Long)}（未認証 userId=null）で再評価する。
+     *       可視性判定の単一真実源は引き続き F00 側であり、SQL 前段はその冗長化にすぎない。</li>
+     * </ol>
+     *
+     * <p>F00 が SQL 前段より厳しく落とした件数分は総件数から差し引く（このページで落ちた件数を減算）。
+     * 実運用では両者の判定が一致するため差し引きは 0 件になる。</p>
+     *
+     * <p><b>注意</b>: 本メソッドは親スコープ（チーム / 組織）の公開性を検証<b>しない</b>。
+     * 匿名公開経路では {@code PublicActivityQueryService} が親スコープを先に検証すること。</p>
      */
     public Page<ActivityResultEntity> listPublicActivities(ActivityScopeType scopeType, Long scopeId,
                                                             Pageable pageable) {
-        // scopeType + scopeId 配下の全活動記録を取得（ページング上限は呼び出し元が制御）
-        Page<ActivityResultEntity> allPage =
-                resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
-                        scopeType, scopeId, pageable);
+        // (1) SQL 前段: PUBLIC かつ PUBLISHED のみ（ページング上限は呼び出し元が制御）
+        Page<ActivityResultEntity> allPage = resultRepository
+                .findByScopeTypeAndScopeIdAndVisibilityAndStatusOrderByActivityDateDescIdDesc(
+                        scopeType, scopeId, ActivityVisibility.PUBLIC,
+                        ActivityStatus.PUBLISHED, pageable);
         List<ActivityResultEntity> all = allPage.getContent();
 
         if (all.isEmpty()) {
             return allPage;
         }
 
-        // F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）
+        // (2) F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）。
+        //     ID 集合を 1 回のバッチ呼び出しで判定するため件数に比例した SQL は発行されない（N+1 禁止）。
         Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.ACTIVITY_RESULT,
                 all.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
@@ -113,7 +129,13 @@ public class ActivityResultService {
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(filtered, pageable, filtered.size());
+        if (filtered.size() == all.size()) {
+            // F00 が追加で落としたものは無し → DB が算出した総件数をそのまま活かす
+            return allPage;
+        }
+        long removedInThisPage = (long) all.size() - filtered.size();
+        return new PageImpl<>(filtered, pageable,
+                Math.max(0L, allPage.getTotalElements() - removedInThisPage));
     }
 
     /**
@@ -148,14 +170,22 @@ public class ActivityResultService {
      * 公開活動記録を ID で取得する（スコープ不問）。
      *
      * <p>F06.4 SNS シェア用。フロントエンドがスコープ（team/org）を意識せずに
-     * ID 直引きで PUBLIC な記録を取得するために使用する。
-     * visibility が PUBLIC でない場合、または存在しない場合は空を返す。</p>
+     * ID 直引きで公開済みの記録を取得するために使用する。</p>
+     *
+     * <p><b>status 条件は必須</b>: 旧実装は {@code findByIdAndVisibility(id, PUBLIC)} のみで
+     * status を見ておらず、{@code visibility=PUBLIC} のまま公開していない下書き
+     * （{@code status=DRAFT}）が匿名で読めてしまっていた（契約テスト AC-11）。
+     * 論理削除済みは {@code @SQLRestriction("deleted_at IS NULL")} が自動除外する。</p>
+     *
+     * <p><b>注意</b>: 本メソッドは親スコープ（チーム / 組織）の公開性を検証<b>しない</b>。
+     * 匿名公開経路では {@code PublicActivityQueryService} 経由で使うこと。</p>
      *
      * @param id 活動記録 ID
-     * @return visibility=PUBLIC の活動記録（存在しない/PUBLIC でない場合は空）
+     * @return visibility=PUBLIC かつ status=PUBLISHED の活動記録（該当なしは空）
      */
     public Optional<ActivityResultEntity> findPublicActivityById(Long id) {
-        return resultRepository.findByIdAndVisibility(id, ActivityVisibility.PUBLIC);
+        return resultRepository.findByIdAndVisibilityAndStatus(
+                id, ActivityVisibility.PUBLIC, ActivityStatus.PUBLISHED);
     }
 
     /**

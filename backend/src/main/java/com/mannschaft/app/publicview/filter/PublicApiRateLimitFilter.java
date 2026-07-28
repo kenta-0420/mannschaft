@@ -44,6 +44,11 @@ import java.util.regex.Pattern;
  *   <li>{@code GET /api/v1/public/organizations/{id}/posts}（F19.1 Phase 1）</li>
  *   <li>{@code GET /api/v1/public/organizations/{id}/posts/{postId}}（F19.1 Phase 1）</li>
  *   <li>{@code GET /api/v1/public/organizations/{id}/events}（F19.1 Phase 4 で活性化）</li>
+ *   <li>{@code GET /api/v1/public/activities/{id}}（F06.4 公開活動記録・ID 直引き）</li>
+ *   <li>{@code GET /api/v1/public/teams/{id}/activities}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/teams/{id}/activities/{activityId}}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{id}/activities}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{id}/activities/{activityId}}（F06.4）</li>
  * </ul>
  *
  * <p>レート上限（パス分類ごとに独立した zone を持つ）:</p>
@@ -107,8 +112,25 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     // F21.1 §5.5: 公開FAQ（/faqs）をレート制限対象に追加（PUBLIC_API バケットを共有）。
     // F01.2 §5.9.5: slug 解決 `/api/v1/public/(teams|organizations)/slug-resolve` も
     //   この `([^/]+)` グループ（slug-resolve）にマッチするため PUBLIC_API バケットで自動的にレート制限される。
+    // F06.4: 公開活動記録（/activities・/activities/{id}）をレート制限対象に追加（PUBLIC_API バケットを共有）。
+    //   未認証で ID 総当りが可能な経路のため、他の公開系と同じ 60/min/IP で列挙攻撃を抑止する。
+    //   ※ 既存 capture グループ 1〜3 の番号を変えないよう、追加は<b>グループ 3 の選択肢の中</b>に入れる
+    //     （recordRateLimitAudit が group(1)/(2)/(3) を参照している）。
     private static final Pattern PUBLIC_API_PATH =
-            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events|/faqs)?$");
+            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)"
+                    + "(/posts(/[^/]+)?|/events|/faqs|/activities(/[^/]+)?)?$");
+
+    /**
+     * F06.4: スコープ非依存の公開活動記録 単票パス
+     * （{@code GET /api/v1/public/activities/{id}}）をマッチする。
+     *
+     * <p>SNS シェア用の ID 直引き経路。未認証で ID を総当りできるため PUBLIC_API バケット
+     * （60/min/IP・200/min/user）を共有してレート制限する。
+     * {@code /api/v1/public/activities}（末尾 ID なし）はエンドポイントが存在しないため
+     * {@code ([^/]+)} 必須としてマッチさせない。</p>
+     */
+    private static final Pattern PUBLIC_ACTIVITY_BY_ID_PATH =
+            Pattern.compile("^/api/v1/public/activities/([^/]+)$");
 
     /**
      * F19.1 Phase 4: 公開検索 API パスパターン。
@@ -218,6 +240,7 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         }
         if (PUBLIC_API_PATH.matcher(path).matches()
                 || PUBLIC_SEARCH_PATH.matcher(path).matches()
+                || PUBLIC_ACTIVITY_BY_ID_PATH.matcher(path).matches()
                 || MARKET_API_PATH.matcher(path).matches()
                 || PUBLIC_FILE_LINKS_PATH.matcher(path).matches()) {
             return Target.PUBLIC_API;
