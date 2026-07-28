@@ -10,8 +10,10 @@ import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
+import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -40,7 +42,9 @@ public class ReservationSlotService {
     private final ReservationMapper reservationMapper;
     /** 機能B: 空き枠一覧から予約不可枠に該当する slot を除外するためのブロック時間参照。 */
     private final ReservationBlockedTimeRepository blockedTimeRepository;
-    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
+    /** F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し）の active ルール参照。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B / §4.2）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     /** F03.4.2: 枠のライン軸（lineId）検証用のライン参照（同一 reservation ドメイン内）。 */
     private final com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
@@ -84,14 +88,16 @@ public class ReservationSlotService {
                 slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                         teamId, SlotStatus.AVAILABLE, from, to);
 
-        // 機能B（§5.B）: 予約不可枠に該当する slot を空き枠一覧から除外する。
+        // 機能B（§5.B）＋F03.4.5 §4.2: 単発/定期いずれかの予約不可枠に該当する slot を空き枠一覧から除外する。
         // 判定は createReservation / グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
                 blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
-        List<ReservationSlotEntity> visible = blocks.isEmpty()
+        List<ReservationRecurringBlockedTimeEntity> recurringRules =
+                recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
+        List<ReservationSlotEntity> visible = (blocks.isEmpty() && recurringRules.isEmpty())
                 ? slots
                 : slots.stream()
-                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks))
+                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules))
                         .toList();
 
         return enrichLineNames(reservationMapper.toSlotResponseList(visible));
