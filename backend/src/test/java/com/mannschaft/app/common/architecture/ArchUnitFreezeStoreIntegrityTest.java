@@ -73,8 +73,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>795 → 777（2026-07-28・認可根治戦役 Wave7 tournament）: tournament ドメインの
      * 認可欠落 18 エンドポイントを根治し、凍結が解消された。内訳は
      * {@code TournamentEntryMemberController} 6 本・{@code TournamentEntryTemplateController} 6 本
-     * （{@code currentUserId} を受け取りながら本体で一度も参照していない「死んだ引数」を
-     * {@code AccessControlService} による実判定に置換）、{@code TournamentPdfController} 4 本
+     * （{@code AccessControlService} による参加チーム／主催組織 scope 判定を敷設）、
+     * {@code TournamentPdfController} 4 本
      * （JSON 版 {@code StandingsController} にある {@code ContentVisibilityChecker} 可視性ガードを
      * PDF 版にも適用）、{@code TournamentController} の {@code listTournaments}/{@code getTournament}
      * 2 本（読取可視性の先送り方針を撤回し F00 共通可視性を適用）。

@@ -36,13 +36,12 @@ import java.util.Map;
  * PDF出力コントローラー。
  * 4 endpoints: standings PDF, bracket PDF, rankings PDF, matrix PDF
  *
- * <p>認可根治戦役 Wave7（tournament）: 本コントローラーの 4 本は、同一データを JSON で返す
- * {@link StandingsController} が冒頭で {@code verifyTournamentVisible(tId)} を呼んでいるのに対し、
- * PDF 版だけ可視性ガードを素通りしていた（非公開＝DRAFT/PRIVATE/MEMBERS_ONLY 等の大会の順位表・
- * トーナメント表・個人ランキング・対戦マトリクスが PDF 経由で取得できる状態）。
- * JSON 版と PDF 版で同一の可視性判定になるよう {@link ContentVisibilityChecker} を挿入し、
- * 併せて {@code findTournamentOrThrow} に欠落していたパス {@code orgId} と大会実体の
- * {@code organizationId} の突合を追加した（不一致は IDOR 防止のため 404 で存在秘匿）。</p>
+ * <p>認可根治戦役 Wave7（tournament）: 本コントローラーの 4 本（順位表 / トーナメント表 /
+ * 個人ランキング / 対戦マトリクスの PDF）は、同一データを JSON で返す
+ * {@link StandingsController} が冒頭で呼んでいる {@code verifyTournamentVisible(tId)} と同じ
+ * 可視性判定を {@link ContentVisibilityChecker} で行う。JSON 版と PDF 版で常に同一の可視性判定
+ * になるよう揃えたうえで、{@code findTournamentOrThrow} にパス {@code orgId} と大会実体の
+ * {@code organizationId} の突合も追加した（不一致は IDOR 防止のため 404 で存在秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments/{tId}")

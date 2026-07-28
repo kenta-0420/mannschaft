@@ -27,17 +27,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — 大会 PDF 出力／大会一覧・詳細の可視性契約テスト。
  *
- * <p><b>是正した穴B（PDF の可視性素通り）</b>: {@code TournamentPdfController} の 4 本
+ * <p><b>PDF 経路の可視性判定</b>: {@code TournamentPdfController} の 4 本
  * （順位表 / トーナメント表 / 個人ランキング / 対戦マトリクス）は、<b>同一データを JSON で返す</b>
- * {@code StandingsController} が冒頭で {@code verifyTournamentVisible(tId)} を呼んでいるのに対し、
- * 可視性ガードを完全に素通りしていた。パスも {@code .../standings} と {@code .../standings/pdf} という
- * 兄弟関係にあり、非公開大会の内容が PDF 経由で抜ける状態だった。加えて
- * {@code findTournamentOrThrow} にパス {@code orgId} と大会実体 {@code organizationId} の
- * 突合が無かった。</p>
+ * {@code StandingsController} が冒頭で呼んでいる {@code verifyTournamentVisible(tId)} と
+ * 同一の可視性ガードを通す。パスも {@code .../standings} と {@code .../standings/pdf} という
+ * 兄弟関係にあり、両者が常に同じ結果になることを本テストで担保する。加えて
+ * {@code findTournamentOrThrow} でパス {@code orgId} と大会実体 {@code organizationId} の
+ * 突合も行う。</p>
  *
- * <p><b>是正した穴C（読取の可視性先送り）</b>: {@code TournamentController} の
- * {@code listTournaments} / {@code getTournament} は org 突合も可視性判定も無く、
- * 任意組織の全大会（DRAFT / 非公開含む）を一覧・詳細取得できた。</p>
+ * <p><b>大会一覧・詳細の可視性判定</b>: {@code TournamentController} の
+ * {@code listTournaments} / {@code getTournament} は org 突合のうえで F00 共通可視性を適用し、
+ * 閲覧者に見える大会のみ（主催組織 ADMIN/DEPUTY_ADMIN は DRAFT を含む自組織の全大会）を返す。</p>
  *
  * <p><b>本テストの主眼</b>: JSON 版と PDF 版で<b>同じ可視性判定になる</b>ことを、
  * 同一の認証主体・同一の大会に対して両方を叩いて突き合わせることで機械的に保証する。</p>
@@ -65,7 +65,7 @@ class TournamentPdfScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long orgAdminAId;
     /** ORG A の一般メンバー */
     private Long memberAId;
-    /** ORG B の ADMIN（別 scope の越境攻撃者） */
+    /** ORG B の ADMIN（別 scope からの越境検証用） */
     private Long orgAdminBId;
     /** どこにも所属しない非メンバー */
     private Long outsiderId;
@@ -116,7 +116,7 @@ class TournamentPdfScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 1. 非公開大会の PDF が取得できないこと（穴B の核心）
+    // 1. 非公開大会の PDF アクセス制御
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
@@ -248,7 +248,7 @@ class TournamentPdfScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 4. 大会詳細 GET（穴C）
+    // 4. 大会詳細 GET（可視性＋org束縛）
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
@@ -313,7 +313,7 @@ class TournamentPdfScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 5. 大会一覧 GET（穴C）
+    // 5. 大会一覧 GET（可視性フィルタ）
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested

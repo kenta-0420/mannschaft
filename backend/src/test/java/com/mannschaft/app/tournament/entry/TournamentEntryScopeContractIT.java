@@ -34,13 +34,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 認可根治戦役 Wave7 — tournament エントリー表／エントリーテンプレート API 契約テスト。
  *
- * <p><b>是正した穴</b>: {@code TournamentEntryMemberService} と
- * {@code TournamentEntryTemplateService} は {@code currentUserId} をメソッドシグネチャと
- * javadoc に持ちながら本体で一度も参照していなかった（「死んだ引数」）。Controller が
- * {@code SecurityUtils.getCurrentUserId()} を渡しているため認可しているように見えるが、
- * 値は捨てられていた。既存の {@code resolveParticipant} /
- * {@code validateTeamBelongsToOrg} は orgId↔tId↔divId↔pId の階層整合性検査であって
- * <b>呼び手の権原とは無関係</b>であり、認可としては機能していなかった。</p>
+ * <p><b>認可 scope の判定方針</b>: {@code TournamentEntryMemberService} と
+ * {@code TournamentEntryTemplateService} の各操作は、Controller から渡される
+ * {@code currentUserId} を参加チーム（<b>エンティティ由来</b> {@code participant.teamId}）
+ * または主催組織（<b>エンティティ由来</b> {@code tournament.organizationId}）の scope に対して
+ * {@code AccessControlService} で判定する。既存の {@code resolveParticipant} /
+ * {@code validateTeamBelongsToOrg} は orgId↔tId↔divId↔pId の階層整合性検査であり、
+ * この scope 認可とは独立した別の検証として両方を敷く。</p>
  *
  * <p><b>本テストの主眼</b>: 引数を足しただけで終わっていないこと ——
  * {@code currentUserId} が実際に認可判定に使われていることを、
@@ -85,7 +85,7 @@ class TournamentEntryScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** ORG A の ADMIN（主催者・正当） */
     private Long orgAdminAId;
-    /** ORG B の ADMIN（別 scope の越境攻撃者） */
+    /** ORG B の ADMIN（別 scope からの越境検証用） */
     private Long orgAdminBId;
     /** TEAM A の ADMIN（参加チーム管理者・正当） */
     private Long teamAdminAId;

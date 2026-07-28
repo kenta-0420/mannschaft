@@ -87,10 +87,9 @@ public class TournamentService {
     /**
      * 大会一覧を取得する（閲覧者の可視性でフィルタする）。
      *
-     * <p>認可根治戦役 Wave7: 従来は {@code findByOrganizationId...} のみで可視性条件が無く、
-     * 任意組織の全大会（DRAFT / 非公開含む）を一覧できる状態だった。
-     * {@link StandingsQueryService} の per-tournament 可視性フィルタ（B-2b）と同方針で、
-     * 取得したページの各大会を F00 共通可視性 Resolver で判定して除外する。</p>
+     * <p>認可根治戦役 Wave7: {@link StandingsQueryService} の per-tournament 可視性フィルタ（B-2b）と
+     * 同方針で、取得したページの各大会を F00 共通可視性 Resolver で判定し、閲覧者に見えない大会
+     * （DRAFT / 非公開等）をレスポンスから除外する。</p>
      *
      * <p><b>主催組織 ADMIN/DEPUTY_ADMIN は自組織の全大会を閲覧できる</b>（DRAFT 含む）。
      * {@code TournamentVisibilityResolver} は DRAFT を「作成者と SystemAdmin のみ可視」と判定するため、
@@ -150,11 +149,10 @@ public class TournamentService {
     /**
      * 大会詳細を取得する（org 束縛＋閲覧者の可視性を検証する）。
      *
-     * <p>認可根治戦役 Wave7: 従来は {@code orgId} 突合も可視性判定も無く、任意組織の
-     * 非公開大会の詳細を取得できる状態だった。パス {@code orgId} と大会実体の
-     * {@code organizationId} を突合し（不一致は 404 で存在秘匿）、そのうえで
-     * {@code StandingsController} の {@code verifyTournamentVisible} と同じく
-     * F00 共通可視性 Resolver で判定する。主催組織 ADMIN/DEPUTY_ADMIN は
+     * <p>認可根治戦役 Wave7: パス {@code orgId} と大会実体の {@code organizationId} を突合し
+     * （不一致は 404 で存在秘匿）、そのうえで {@code StandingsController} の
+     * {@code verifyTournamentVisible} と同じく F00 共通可視性 Resolver で判定する。
+     * 主催組織 ADMIN/DEPUTY_ADMIN は
      * 自組織の DRAFT 大会も閲覧できる（管理画面の機能退行を防ぐ。判定 scope は
      * <b>エンティティ由来</b>の {@code tournament.organizationId}）。</p>
      *
