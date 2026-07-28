@@ -33,7 +33,9 @@ import java.util.Set;
  *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
- *   <li>既読マーク: メンバー以上（冪等）</li>
+ *   <li>既読マーク: <b>その閲覧者に一覧で見えているお知らせ</b>（＝可視性ベース。冪等）。
+ *       一覧は非メンバーにも PUBLIC を返すため、既読も同じ集合に揃える
+ *       （{@link AnnouncementReadService} のクラス Javadoc 参照）</li>
  * </ul>
  * </p>
  *
@@ -198,8 +200,8 @@ public class AnnouncementFeedService {
     /**
      * お知らせを既読にする（冪等）。
      *
-     * <p>スコープ（URL のパス変数由来）を下流へ通し、メンバーシップ検証とスコープ帰属検証を
-     * {@link AnnouncementReadService} に行わせる。</p>
+     * <p>スコープ（URL のパス変数由来）を下流へ通し、スコープ帰属検証と可視性検証を
+     * {@link AnnouncementReadService} に行わせる（規則は「見える＝既読にできる」）。</p>
      *
      * @see AnnouncementReadService#markAsRead
      */

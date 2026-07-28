@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,19 +38,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 認可番人「裏目付」第三陣・部隊C-social — social/announcement ドメイン認可契約テスト。
+ * 認可番人「裏目付」第二陣・部隊C-social — social/announcement ドメイン認可契約テスト。
  *
  * <p><b>目的</b>: お知らせウィジェット（F02.6）とフレンドチーム（F01.5）の IDOR 面を持つ
  * 読取/書込 EP について、認可が<b>実 HTTP + 実 MySQL 経路で本当にゲートしているか</b>を固定する。</p>
  *
- * <p><b>本テストが炙り出した実穴（本 PR 第2コミットで根治）:</b></p>
+ * <p><b>既読系の規則（マスター御裁可 2026-07-28）</b>:
+ * <b>「自分に見えているお知らせなら既読にしてよい」</b>。一覧に出る集合と既読にできる集合を
+ * 一致させる。判定は一覧側と同一の正準経路（{@code RoleResolver#resolveViewerRole} →
+ * {@link AnnouncementVisibility#allowedFor}）を流用する。</p>
+ *
+ * <p><b>本テストが炙り出した／固定した実穴:</b></p>
  * <ul>
- *   <li><b>既読マーク</b>: Service が「お知らせ ID の存在確認」だけを行い、URL のスコープとの
- *       帰属照合もメンバーシップ照合も行っていなかった。Controller はパス変数のスコープ ID を
- *       Service に渡さず捨てていた。結果、認証済みでありさえすれば無関係なスコープの URL で
+ *   <li><b>越境既読</b>（AC-S2）: Service が「お知らせ ID の存在確認」だけを行い、URL のスコープとの
+ *       帰属照合を行っていなかった。認証済みでありさえすれば無関係なスコープの URL で
  *       他テナントのお知らせに既読行を作れた（書き込み副作用 + 実在オラクル）。</li>
- *   <li><b>一括既読</b>: スコープに対するメンバーシップ検証が皆無で、非メンバーが他テナントの
- *       スコープ配下の全お知らせに対し自分の既読行を一括生成できた（DB 汚染）。</li>
+ *   <li><b>一括既読</b>（AC-S5）: スコープ・可視性の検証が皆無で、非メンバーが他テナントのスコープ配下の
+ *       <b>内輪限定を含む全お知らせ</b>に自分の既読行を一括生成できた（DB 汚染）。</li>
+ *   <li><b>応援者への内輪露出</b>（AC-S5b）: 既読系が {@link AnnouncementVisibility} を一切見ておらず、
+ *       応援者が一覧に出ない {@code MEMBERS_AND_ABOVE} のお知らせを既読化できた。応答差分から
+ *       内輪お知らせ ID の実在も判別でき、さらに後日 MEMBER に昇格した際に既読済み扱いとなり
+ *       未読バッジに出ない（通知の見落とし）。</li>
+ *   <li><b>削除済み・期限切れ</b>（AC-S1c）: 一覧に出ないお知らせを単件既読化でき、実在も判別できた。</li>
  * </ul>
  *
  * <p><b>期待ステータスの根拠（AC-S11）</b>:
@@ -57,12 +67,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <b>1 件も登録されていない</b>。未登録コードは {@code resolveHttpStatus} の既定
  * （{@code Severity.WARN → HTTP 400}）にフォールバックするため、{@code AnnouncementErrorCode} の
  * Javadoc が「(404)」「(403)」と書いていても<b>実際に返るのは 400</b> である。一方
- * {@code COMMON_002}（認可拒否）は 403 に、{@code SOCIAL_105} は 403 に、{@code SOCIAL_110} は
- * 404 に明示マップ済みなので、そちらは 403/404 が返る。本テストは<b>実挙動</b>に期待値を合わせる
+ * {@code SOCIAL_105} は 403 に、{@code SOCIAL_110} は 404 に明示マップ済みなので、そちらは
+ * 403/404 が返る。本テストは<b>実挙動</b>に期待値を合わせる
  * （{@code ANNOUNCE_*} の 404/403 への統一は別課題 #2468）。</p>
  *
- * <p><b>実在オラクル封じ（AC-S7）</b>: 「越境した実在 ID」と「そもそも存在しない ID」が
- * 同一ステータス・<b>同一エラーコード</b>で返ることを固定する。片方だけ別応答だと ID の実在が漏れる。</p>
+ * <p><b>実在オラクル封じ（AC-S7）</b>: 「越境した実在 ID」「そもそも存在しない ID」
+ * 「自分には可視でない ID」の 3 つが同一ステータス・<b>同一エラーコード</b>で返ることを固定する。
+ * どれか 1 つでも別応答だと ID の実在・可視性が漏れる。</p>
  *
  * <p>金型: {@code ReservationScopeContractIT} / {@code ChatChannelAccessScopeContractIT}
  * （{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL Testcontainers + 手動 SecurityContext）。</p>
@@ -70,7 +81,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("social/announcement ドメイン 認可契約テスト（裏目付C・スコープ帰属とメンバーシップの固定）")
+@DisplayName("social/announcement ドメイン 認可契約テスト（裏目付C・見える＝既読にできる の固定）")
 class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** 実在しないお知らせ ID（実在オラクル封じの対照群）。 */
@@ -93,26 +104,38 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long teamAId;
     private Long teamBId;
+    /** orgA の配下チーム（team_org_memberships で ACTIVE 連結）。 */
+    private Long childTeamAId;
     private Long orgAId;
     private Long orgBId;
 
     /** teamA / orgA の ADMIN（正当な管理者）。 */
     private Long adminAId;
-    /** teamA / orgA の非管理者メンバー（既読は可・ピン留めは不可）。 */
+    /** teamA / orgA の非管理者メンバー。内輪限定も見えるし既読にもできる。 */
     private Long memberAId;
-    /** teamB / orgB の ADMIN（越境攻撃者。teamA・orgA の URL には遮断される）。 */
+    /** teamA の応援者（SUPPORTER）。内輪限定は見えず既読にもできない（AC-S5b）。 */
+    private Long supporterAId;
+    /** orgA 直属ではなく配下チーム childTeamA のみに所属する者（AC-S6 の配下ケース）。 */
+    private Long childMemberAId;
+    /** teamB / orgB の ADMIN（越境攻撃者）。 */
     private Long adminBId;
     /** どこにも所属しない完全な部外者。 */
     private Long outsiderId;
 
-    /** teamA のお知らせ（MEMBERS_AND_ABOVE）。 */
+    /** teamA のお知らせ（MEMBERS_AND_ABOVE = 内輪限定）。 */
     private Long annAId;
     /** teamA のお知らせ（PUBLIC。非メンバーにも一覧で見える）。 */
     private Long annAPublicId;
+    /** teamA の内輪限定お知らせだが元コンテンツ削除済み（一覧に出ない）。 */
+    private Long annADeletedId;
+    /** teamA の内輪限定お知らせだが期限切れ（一覧に出ない）。 */
+    private Long annAExpiredId;
     /** teamB のお知らせ（越境 announcementId として teamA の URL に差し込む主役）。 */
     private Long annBId;
-    /** orgA のお知らせ。 */
+    /** orgA のお知らせ（MEMBERS_AND_ABOVE）。 */
     private Long orgAnnAId;
+    /** orgA のお知らせ（PUBLIC）。 */
+    private Long orgAnnAPublicId;
     /** orgB のお知らせ（越境 announcementId として orgA の URL に差し込む主役）。 */
     private Long orgAnnBId;
 
@@ -125,15 +148,20 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
     void setUp() {
         teamAId = insertTeam("ANNAUTHZ チームA");
         teamBId = insertTeam("ANNAUTHZ チームB");
+        childTeamAId = insertTeam("ANNAUTHZ 配下チームA");
         orgAId = insertOrganization("ANNAUTHZ 組織A");
         orgBId = insertOrganization("ANNAUTHZ 組織B");
+        // childTeamA を orgA の配下として連結する（配下チームのみ所属者の裏取り用）。
+        insertTeamOrgMembership(childTeamAId, orgAId);
 
         adminAId = insertUser("annauthz-admin-a@example.com");
         memberAId = insertUser("annauthz-member-a@example.com");
+        supporterAId = insertUser("annauthz-supporter-a@example.com");
+        childMemberAId = insertUser("annauthz-child-member-a@example.com");
         adminBId = insertUser("annauthz-admin-b@example.com");
         outsiderId = insertUser("annauthz-outsider@example.com");
 
-        // isScopeAdmin / isAdminOrAbove（user_roles）と isMember（memberships）は別系統のため、
+        // isAdminOrAbove（user_roles）と isMember（memberships）は別系統のため、
         // ADMIN 役にも memberships 行を張る（Wave 踏襲の既知の地雷）。
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
@@ -142,6 +170,13 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
 
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+
+        // 応援者（role_kind = SUPPORTER）。isMember は role_kind を見ないため在籍判定なら通ってしまうが、
+        // 可視性ゲートでは MEMBERS_AND_ABOVE を見られない。
+        MembershipTestHelper.insertMembership(em, supporterAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+
+        // 配下チームのみ所属者（orgA には直属しない）。
+        MembershipTestHelper.insertMembership(em, childMemberAId, ScopeType.TEAM, childTeamAId, RoleKind.MEMBER);
 
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
@@ -160,6 +195,14 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
                 AnnouncementVisibility.MEMBERS_AND_ABOVE);
         orgAnnBId = saveFeed(AnnouncementScopeType.ORGANIZATION, orgBId, 1005L,
                 AnnouncementVisibility.MEMBERS_AND_ABOVE);
+        orgAnnAPublicId = saveFeed(AnnouncementScopeType.ORGANIZATION, orgAId, 1006L,
+                AnnouncementVisibility.PUBLIC);
+
+        // 一覧に出ない 2 種（削除済み・期限切れ）。既読化もできないことを固定する（AC-S1c）。
+        annADeletedId = saveFeed(AnnouncementScopeType.TEAM, teamAId, 1007L,
+                AnnouncementVisibility.MEMBERS_AND_ABOVE, LocalDateTime.now().minusDays(1), null);
+        annAExpiredId = saveFeed(AnnouncementScopeType.TEAM, teamAId, 1008L,
+                AnnouncementVisibility.MEMBERS_AND_ABOVE, null, LocalDateTime.now().minusHours(1));
 
         folderAId = folderRepository.save(TeamFriendFolderEntity.builder()
                 .ownerTeamId(teamAId).name("ANNAUTHZ フォルダA").build()).getId();
@@ -183,30 +226,69 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("1. POST /teams/{teamId}/announcements/{id}/read（既読マーク）")
     class TeamMarkAsRead {
 
-        /** AC-S1: 当該チームに無所属の認証済みユーザーの既読は遮断される（COMMON_002 → 403）。 */
+        /** AC-S1（改訂）: 非メンバーが<b>自分に可視でない</b>内輪限定を既読化しようとすると遮断される。 */
         @Test
-        @DisplayName("AC-S1 部外者の既読は403（メンバーシップ検証）")
-        void ac_s1_部外者の既読は403() throws Exception {
+        @DisplayName("AC-S1 部外者が内輪限定を既読化しようとすると遮断（可視性ゲート）")
+        void ac_s1_部外者の内輪限定既読は遮断() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAId, outsiderId)).isZero();
         }
 
-        /** AC-S1: 別テナントの正当 ADMIN であっても当該チームには無所属なので遮断される。 */
+        /** AC-S1（改訂）: 別テナントの正当 ADMIN も teamA では非メンバー扱いで内輪限定は見えない。 */
         @Test
-        @DisplayName("AC-S1 別テナントADMINの既読は403（メンバーシップ検証）")
-        void ac_s1_別テナントADMINの既読は403() throws Exception {
+        @DisplayName("AC-S1 別テナントADMINが内輪限定を既読化しようとすると遮断")
+        void ac_s1_別テナントADMINの内輪限定既読は遮断() throws Exception {
             setAuth(adminBId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAId, adminBId)).isZero();
         }
 
-        /** AC-S2: 別テナントの announcementId を自チームの URL に差し込むと遮断される（ANNOUNCE_001 → 400）。 */
+        /**
+         * AC-S1b（新設）: 非メンバーでも PUBLIC のお知らせは既読にできる（200）。
+         *
+         * <p>一覧は非メンバーにも PUBLIC を返す（AC-S9）。既読をメンバー必須にすると
+         * 「見えているのにクリックしても何も起きない」機能退行になるため、その回帰ガードである。</p>
+         */
         @Test
-        @DisplayName("AC-S2 越境announcementIdの既読は400（スコープ帰属検証）")
-        void ac_s2_越境announcementIdの既読は400() throws Exception {
+        @DisplayName("AC-S1b 部外者でもPUBLICのお知らせは既読にできる（退行ガード）")
+        void ac_s1b_部外者でもPUBLICは既読可() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAPublicId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(annAPublicId, outsiderId)).isEqualTo(1);
+        }
+
+        /** AC-S1c: 一覧に出ない「元コンテンツ削除済み」は正当メンバーでも既読化できない。 */
+        @Test
+        @DisplayName("AC-S1c 削除済みお知らせは正当メンバーでも既読化できない")
+        void ac_s1c_削除済みは既読化できない() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annADeletedId))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+            assertThat(countReadStatus(annADeletedId, memberAId)).isZero();
+        }
+
+        /** AC-S1c: 一覧に出ない「期限切れ」は正当メンバーでも既読化できない。 */
+        @Test
+        @DisplayName("AC-S1c 期限切れお知らせは正当メンバーでも既読化できない")
+        void ac_s1c_期限切れは既読化できない() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAExpiredId))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+            assertThat(countReadStatus(annAExpiredId, memberAId)).isZero();
+        }
+
+        /** AC-S2: 別テナントの announcementId を自チームの URL に差し込むと遮断される。 */
+        @Test
+        @DisplayName("AC-S2 越境announcementIdの既読は遮断（スコープ帰属検証）")
+        void ac_s2_越境announcementIdの既読は遮断() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annBId))
                     .andExpect(status().isBadRequest())
@@ -236,22 +318,52 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(countReadStatus(annAId, memberAId)).isEqualTo(1);
         }
 
-        /** AC-S7: 不在 ID と越境 ID が同一応答（実在オラクルを塞ぐ）。 */
+        /**
+         * AC-S5b（新設）: 応援者は内輪限定（MEMBERS_AND_ABOVE）を既読化できない。
+         *
+         * <p>本 PR 以前からの残穴の回帰ガード。応援者には一覧に出ないお知らせであり、
+         * 既読化できると (1) 応答差分から内輪お知らせ ID の実在が判別でき、
+         * (2) 後日 MEMBER に昇格した際に既読済み扱いで未読バッジに出ない。</p>
+         */
         @Test
-        @DisplayName("AC-S7 不在IDと越境IDは同一応答（実在オラクル封じ）")
-        void ac_s7_不在IDと越境IDは同一応答() throws Exception {
-            setAuth(memberAId);
-            String missing = mockMvc.perform(
-                            post("/api/v1/teams/{teamId}/announcements/{id}/read",
-                                    teamAId, MISSING_ANNOUNCEMENT_ID))
+        @DisplayName("AC-S5b 応援者は内輪限定を既読化できない（残穴ガード）")
+        void ac_s5b_応援者は内輪限定を既読化できない() throws Exception {
+            setAuth(supporterAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
                     .andExpect(status().isBadRequest())
-                    .andReturn().getResponse().getContentAsString();
-            String crossTenant = mockMvc.perform(
-                            post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annBId))
-                    .andExpect(status().isBadRequest())
-                    .andReturn().getResponse().getContentAsString();
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+            assertThat(countReadStatus(annAId, supporterAId)).isZero();
+        }
+
+        /** AC-S5b: 応援者にも見える PUBLIC は既読にできる（過剰遮断していないことの裏取り）。 */
+        @Test
+        @DisplayName("AC-S5b 応援者でも可視なPUBLICは既読にできる")
+        void ac_s5b_応援者でもPUBLICは既読可() throws Exception {
+            setAuth(supporterAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAPublicId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(annAPublicId, supporterAId)).isEqualTo(1);
+        }
+
+        /** AC-S7: 不在 ID・越境 ID・不可視 ID がすべて同一応答（実在オラクルを塞ぐ）。 */
+        @Test
+        @DisplayName("AC-S7 不在ID・越境ID・不可視IDは同一応答（実在オラクル封じ）")
+        void ac_s7_不在越境不可視は同一応答() throws Exception {
+            setAuth(supporterAId);
+            String missing = readAndReturnBody(teamAId, MISSING_ANNOUNCEMENT_ID);
+            String crossTenant = readAndReturnBody(teamAId, annBId);
+            String invisible = readAndReturnBody(teamAId, annAId);
 
             assertThat(errorCodeOf(crossTenant)).isEqualTo(errorCodeOf(missing));
+            assertThat(errorCodeOf(invisible)).isEqualTo(errorCodeOf(missing));
+        }
+
+        /** 既読 EP を叩き 400 であることを確認したうえでレスポンス本文を返す。 */
+        private String readAndReturnBody(Long teamId, Long announcementId) throws Exception {
+            return mockMvc.perform(
+                            post("/api/v1/teams/{teamId}/announcements/{id}/read", teamId, announcementId))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
         }
     }
 
@@ -263,37 +375,62 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("2. POST /teams/{teamId}/announcements/read-all（一括既読）")
     class TeamMarkAllAsRead {
 
-        /** AC-S5: 非メンバーの一括既読は遮断され、既読行が 1 件も作られない。 */
+        /**
+         * AC-S5（改訂）: 非メンバーの一括既読は、可視なもの（PUBLIC）だけが既読化され、
+         * 不可視のもの（内輪限定）には既読行が 1 件も作られない。
+         */
         @Test
-        @DisplayName("AC-S5 部外者の一括既読は403かつDBに行が作られない")
-        void ac_s5_部外者の一括既読は403かつ行が作られない() throws Exception {
+        @DisplayName("AC-S5 部外者の一括既読はPUBLICのみ既読化され内輪限定には行が作られない")
+        void ac_s5_部外者の一括既読は可視分のみ() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamAId))
-                    .andExpect(status().isForbidden());
-            assertThat(countReadStatusByUser(outsiderId)).isZero();
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(annAPublicId, outsiderId)).isEqualTo(1);
+            assertThat(countReadStatus(annAId, outsiderId)).isZero();
+            // 一覧に出ない（削除済み・期限切れ）ものにも行は作られない
+            assertThat(countReadStatus(annADeletedId, outsiderId)).isZero();
+            assertThat(countReadStatus(annAExpiredId, outsiderId)).isZero();
+            // 他テナントへは一切波及しない
+            assertThat(countReadStatus(annBId, outsiderId)).isZero();
+            assertThat(countReadStatusByUser(outsiderId)).isEqualTo(1);
         }
 
-        /** AC-S5: 別テナントの正当 ADMIN による一括既読も遮断され、DB が汚染されない。 */
+        /** AC-S5（改訂）: 別テナント ADMIN の一括既読でも内輪限定には行が作られない。 */
         @Test
-        @DisplayName("AC-S5 別テナントADMINの一括既読は403かつDBに行が作られない")
-        void ac_s5_別テナントADMINの一括既読は403かつ行が作られない() throws Exception {
+        @DisplayName("AC-S5 別テナントADMINの一括既読でも内輪限定には行が作られない")
+        void ac_s5_別テナントADMINの一括既読は内輪に及ばない() throws Exception {
             setAuth(adminBId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamAId))
-                    .andExpect(status().isForbidden());
-            assertThat(countReadStatusByUser(adminBId)).isZero();
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(annAId, adminBId)).isZero();
         }
 
-        /** AC-S3 / AC-S5: 正当メンバーの一括既読は 200 で、自スコープ分だけ既読行が作られる（非回帰）。 */
+        /** AC-S5b（新設）: 応援者の一括既読でも内輪限定には行が作られない（残穴ガード）。 */
         @Test
-        @DisplayName("AC-S3 正当メンバーの一括既読は200で自スコープ分のみ既読化（非回帰）")
+        @DisplayName("AC-S5b 応援者の一括既読でも内輪限定には行が作られない（残穴ガード）")
+        void ac_s5b_応援者の一括既読は内輪に及ばない() throws Exception {
+            setAuth(supporterAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamAId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(annAId, supporterAId)).isZero();
+            // 応援者に可視な PUBLIC は既読化される（過剰遮断していない）
+            assertThat(countReadStatus(annAPublicId, supporterAId)).isEqualTo(1);
+        }
+
+        /** AC-S3: 正当メンバーの一括既読は 200 で、可視な自スコープ分だけ既読化される（非回帰）。 */
+        @Test
+        @DisplayName("AC-S3 正当メンバーの一括既読は200で可視な自スコープ分のみ既読化（非回帰）")
         void ac_s3_正当メンバーの一括既読は200() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamAId))
                     .andExpect(status().isOk());
-            // teamA の 2 件だけが既読化され、teamB / orgB のお知らせには波及しない。
             assertThat(countReadStatus(annAId, memberAId)).isEqualTo(1);
             assertThat(countReadStatus(annAPublicId, memberAId)).isEqualTo(1);
+            // 一覧に出ないもの・他テナントには波及しない
+            assertThat(countReadStatus(annADeletedId, memberAId)).isZero();
+            assertThat(countReadStatus(annAExpiredId, memberAId)).isZero();
             assertThat(countReadStatus(annBId, memberAId)).isZero();
+            assertThat(countReadStatusByUser(memberAId)).isEqualTo(2);
         }
     }
 
@@ -305,20 +442,70 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("3. /organizations/{orgId}/announcements（組織スコープ版）")
     class OrgAnnouncements {
 
-        /** AC-S6 + AC-S1: 組織に無所属の認証済みユーザーの既読は遮断される。 */
+        /** AC-S6 + AC-S1: 組織に無所属の認証済みユーザーは内輪限定を既読化できない。 */
         @Test
-        @DisplayName("AC-S6 部外者の組織既読は403")
-        void ac_s6_部外者の組織既読は403() throws Exception {
+        @DisplayName("AC-S6 部外者の組織内輪限定既読は遮断")
+        void ac_s6_部外者の組織既読は遮断() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(orgAnnAId, outsiderId)).isZero();
+        }
+
+        /** AC-S6 + AC-S1: 別テナント ADMIN による組織単件既読も遮断される（検分指摘の欠落ケース）。 */
+        @Test
+        @DisplayName("AC-S6 別テナントADMINの組織単件既読は遮断")
+        void ac_s6_別テナントADMINの組織既読は遮断() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+            assertThat(countReadStatus(orgAnnAId, adminBId)).isZero();
+        }
+
+        /** AC-S6 + AC-S1b: 組織非メンバーでも PUBLIC の組織お知らせは既読にできる。 */
+        @Test
+        @DisplayName("AC-S6 部外者でも組織のPUBLICお知らせは既読にできる（退行ガード）")
+        void ac_s6_部外者でも組織PUBLICは既読可() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read",
+                            orgAId, orgAnnAPublicId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAPublicId, outsiderId)).isEqualTo(1);
+        }
+
+        /**
+         * AC-S6: 配下チームのみ所属者は、組織の可視なお知らせ（PUBLIC）を既読化できる。
+         *
+         * <p>組織告知は配下チームへ配信されるため、配下所属者が「見えているのに既読にできない」
+         * 状態を作らないことの回帰ガード。可視でない内輪限定については下のケースで遮断を固定する。</p>
+         */
+        @Test
+        @DisplayName("AC-S6 配下チームのみ所属者は組織の可視なお知らせを既読にできる（退行ガード）")
+        void ac_s6_配下チーム所属者は可視な組織お知らせを既読可() throws Exception {
+            setAuth(childMemberAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read",
+                            orgAId, orgAnnAPublicId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAPublicId, childMemberAId)).isEqualTo(1);
+        }
+
+        /** AC-S6: 配下チームのみ所属者に組織の内輪限定は一覧に出ないため既読化もできない。 */
+        @Test
+        @DisplayName("AC-S6 配下チームのみ所属者は組織の内輪限定を既読化できない")
+        void ac_s6_配下チーム所属者は組織内輪限定を既読化できない() throws Exception {
+            setAuth(childMemberAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+            assertThat(countReadStatus(orgAnnAId, childMemberAId)).isZero();
         }
 
         /** AC-S6 + AC-S2: 別組織の announcementId を自組織の URL に差し込むと遮断される。 */
         @Test
-        @DisplayName("AC-S6 越境announcementIdの組織既読は400（スコープ帰属検証）")
-        void ac_s6_越境announcementIdの組織既読は400() throws Exception {
+        @DisplayName("AC-S6 越境announcementIdの組織既読は遮断（スコープ帰属検証）")
+        void ac_s6_越境announcementIdの組織既読は遮断() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnBId))
                     .andExpect(status().isBadRequest())
@@ -338,32 +525,61 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(countReadStatus(orgAnnAId, memberAId)).isEqualTo(1);
         }
 
-        /** AC-S6 + AC-S5: 非メンバーの組織一括既読は遮断され、DB に行が作られない。 */
+        /** AC-S6 + AC-S5: 非メンバーの組織一括既読では内輪限定に行が作られない。 */
         @Test
-        @DisplayName("AC-S6 部外者の組織一括既読は403かつDBに行が作られない")
-        void ac_s6_部外者の組織一括既読は403かつ行が作られない() throws Exception {
+        @DisplayName("AC-S6 部外者の組織一括既読は内輪限定に行を作らない")
+        void ac_s6_部外者の組織一括既読は可視分のみ() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/read-all", orgAId))
-                    .andExpect(status().isForbidden());
-            assertThat(countReadStatusByUser(outsiderId)).isZero();
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAId, outsiderId)).isZero();
+            assertThat(countReadStatus(orgAnnAPublicId, outsiderId)).isEqualTo(1);
         }
 
-        /** AC-S6 + AC-S7: 組織版でも不在 ID と越境 ID が同一応答。 */
+        /**
+         * AC-S6 + AC-S5: 別テナント ADMIN の組織一括既読でも内輪限定に行が作られない
+         * （検分指摘の欠落ケース）。
+         */
         @Test
-        @DisplayName("AC-S6 組織版でも不在IDと越境IDは同一応答（実在オラクル封じ）")
-        void ac_s6_組織版の実在オラクル封じ() throws Exception {
+        @DisplayName("AC-S6 別テナントADMINの組織一括既読は内輪限定に行を作らない")
+        void ac_s6_別テナントADMINの組織一括既読は内輪に及ばない() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/read-all", orgAId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAId, adminBId)).isZero();
+        }
+
+        /** AC-S6 + AC-S3: 正当メンバーの組織一括既読は 200 で DB 行数が正しい（検分指摘の欠落ケース）。 */
+        @Test
+        @DisplayName("AC-S6 正当メンバーの組織一括既読は200でDB行数が正しい（非回帰）")
+        void ac_s6_正当メンバーの組織一括既読は200() throws Exception {
             setAuth(memberAId);
-            String missing = mockMvc.perform(
-                            post("/api/v1/organizations/{orgId}/announcements/{id}/read",
-                                    orgAId, MISSING_ANNOUNCEMENT_ID))
-                    .andExpect(status().isBadRequest())
-                    .andReturn().getResponse().getContentAsString();
-            String crossTenant = mockMvc.perform(
-                            post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnBId))
-                    .andExpect(status().isBadRequest())
-                    .andReturn().getResponse().getContentAsString();
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/read-all", orgAId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAId, memberAId)).isEqualTo(1);
+            assertThat(countReadStatus(orgAnnAPublicId, memberAId)).isEqualTo(1);
+            assertThat(countReadStatus(orgAnnBId, memberAId)).isZero();
+            assertThat(countReadStatusByUser(memberAId)).isEqualTo(2);
+        }
+
+        /** AC-S6 + AC-S7: 組織版でも不在 ID・越境 ID・不可視 ID が同一応答。 */
+        @Test
+        @DisplayName("AC-S6 組織版でも不在ID・越境ID・不可視IDは同一応答（実在オラクル封じ）")
+        void ac_s6_組織版の実在オラクル封じ() throws Exception {
+            setAuth(childMemberAId);
+            String missing = readAndReturnBody(orgAId, MISSING_ANNOUNCEMENT_ID);
+            String crossTenant = readAndReturnBody(orgAId, orgAnnBId);
+            String invisible = readAndReturnBody(orgAId, orgAnnAId);
 
             assertThat(errorCodeOf(crossTenant)).isEqualTo(errorCodeOf(missing));
+            assertThat(errorCodeOf(invisible)).isEqualTo(errorCodeOf(missing));
+        }
+
+        private String readAndReturnBody(Long orgId, Long announcementId) throws Exception {
+            return mockMvc.perform(
+                            post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgId, announcementId))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
         }
     }
 
@@ -463,9 +679,25 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.length()").value(1));
         }
 
-        /** AC-S9: 正当メンバーは MEMBERS_AND_ABOVE も含めて見える（非回帰）。 */
+        /**
+         * AC-S9: 応援者の一覧に内輪限定は出ない。
+         *
+         * <p>AC-S5b（応援者は内輪限定を既読化できない）と対になり、
+         * 「一覧に出る集合＝既読にできる集合」であることを両側から固定する。</p>
+         */
         @Test
-        @DisplayName("AC-S9 正当メンバーの一覧は内輪も含む（非回帰）")
+        @DisplayName("AC-S9 応援者の一覧に内輪限定は出ない（既読可能集合と一致）")
+        void ac_s9_応援者の一覧に内輪限定は出ない() throws Exception {
+            setAuth(supporterAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/announcements", teamAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(annAPublicId));
+        }
+
+        /** AC-S9: 正当メンバーは MEMBERS_AND_ABOVE も含めて見える（削除済み・期限切れは除く。非回帰）。 */
+        @Test
+        @DisplayName("AC-S9 正当メンバーの一覧は内輪も含む（削除済み・期限切れは除く／非回帰）")
         void ac_s9_正当メンバーの一覧は内輪も含む() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/announcements", teamAId))
@@ -605,14 +837,28 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long saveFeed(AnnouncementScopeType scopeType, Long scopeId, Long sourceId, String visibility) {
-        return feedRepository.save(AnnouncementFeedEntity.builder()
+        return saveFeed(scopeType, scopeId, sourceId, visibility, null, null);
+    }
+
+    /**
+     * お知らせフィードを 1 件保存する。
+     *
+     * @param sourceDeletedAt 元コンテンツ削除日時（null = 未削除）。非 null なら一覧に出ない
+     * @param expiresAt       表示終了日時（null = 期限なし）。過去日時なら一覧に出ない
+     */
+    private Long saveFeed(AnnouncementScopeType scopeType, Long scopeId, Long sourceId, String visibility,
+                          LocalDateTime sourceDeletedAt, LocalDateTime expiresAt) {
+        AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .sourceType(AnnouncementSourceType.BLOG_POST)
                 .sourceId(sourceId)
                 .titleCache("ANNAUTHZ お知らせ " + sourceId)
                 .visibility(visibility)
-                .build()).getId();
+                .sourceDeletedAt(sourceDeletedAt)
+                .expiresAt(expiresAt)
+                .build();
+        return feedRepository.save(feed).getId();
     }
 
     /**
@@ -714,5 +960,16 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
                 .setParameter("name", name)
                 .getSingleResult()).longValue();
+    }
+
+    /** チームを組織の配下（ACTIVE）として連結する。 */
+    private void insertTeamOrgMembership(Long teamId, Long orgId) {
+        em.createNativeQuery(
+                        "INSERT INTO team_org_memberships (team_id, organization_id, status, "
+                                + "invited_at, created_at) "
+                                + "VALUES (:tid, :oid, 'ACTIVE', NOW(), NOW())")
+                .setParameter("tid", teamId)
+                .setParameter("oid", orgId)
+                .executeUpdate();
     }
 }

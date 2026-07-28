@@ -11,6 +11,8 @@ import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepositor
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
@@ -101,6 +103,10 @@ class AnnouncementFeedServiceTest {
 
     @Mock
     private AnnouncementReadStatusRepository readStatusRepository;
+
+    /** 既読の可視性ゲートが使う閲覧者ロール解決（一覧側と同一の正準経路）。 */
+    @Mock
+    private RoleResolver roleResolver;
 
     @InjectMocks
     private AnnouncementReadService announcementReadService;
@@ -483,9 +489,10 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("正常系: 未読 → 既読に変更（save が呼ばれる）")
         void markAsRead_正常_未読から既読() {
-            // Given: 当該スコープに帰属するお知らせが存在し、未読状態
+            // Given: 当該スコープに帰属し、閲覧者（MEMBER）に可視なお知らせが存在し、未読状態
             given(feedRepository.findById(ANNOUNCEMENT_ID))
                     .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
                     .willReturn(Optional.empty()); // 未読
             given(proxyInputContext.isProxy()).willReturn(false);
@@ -501,9 +508,10 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("正常系: 既に既読の場合は save が呼ばれない（冪等）")
         void markAsRead_正常_既読済みは冪等() {
-            // Given: 当該スコープに帰属するお知らせが存在し、既読済み
+            // Given: 当該スコープに帰属し、閲覧者（MEMBER）に可視なお知らせが存在し、既読済み
             given(feedRepository.findById(ANNOUNCEMENT_ID))
                     .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.MEMBER);
             AnnouncementReadStatusEntity existingStatus = AnnouncementReadStatusEntity.builder()
                     .announcementFeedId(ANNOUNCEMENT_ID)
                     .userId(AUTHOR_USER_ID)
@@ -541,14 +549,59 @@ class AnnouncementFeedServiceTest {
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
         }
 
-        /** 当該スコープ（TEAM_ID）に帰属するお知らせフィードを組み立てる。 */
+        @Test
+        @DisplayName("異常系: 応援者に内輪限定（MEMBERS_AND_ABOVE）は ANNOUNCE_001（可視性ゲート）")
+        void markAsRead_異常_応援者に内輪限定はANNOUNCE_001() {
+            // Given: 当該スコープの内輪限定お知らせ。閲覧者は SUPPORTER なので一覧にも出ない。
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.SUPPORTER);
+
+            // When / Then: 越境と同一のエラーコードに畳み込まれる（存在秘匿）
+            assertThatThrownBy(() -> announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ANNOUNCE_001"));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: 非メンバー（PUBLIC ロール）でも PUBLIC のお知らせは既読にできる")
+        void markAsRead_正常_非メンバーでもPUBLICは既読可() {
+            // Given: PUBLIC 可視のお知らせ。閲覧者はロールなし（＝一覧では PUBLIC のみ見える）。
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed(AnnouncementVisibility.PUBLIC)));
+            givenViewerRole(ViewerRole.PUBLIC);
+            given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .willReturn(Optional.empty());
+            given(proxyInputContext.isProxy()).willReturn(false);
+
+            // When
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+
+            // Then
+            verify(readStatusRepository).save(any(AnnouncementReadStatusEntity.class));
+        }
+
+        private void givenViewerRole(ViewerRole viewerRole) {
+            given(roleResolver.resolveViewerRole(AUTHOR_USER_ID, "TEAM", TEAM_ID)).willReturn(viewerRole);
+        }
+
+        /** 当該スコープ（TEAM_ID）に帰属する内輪限定のお知らせフィードを組み立てる。 */
         private AnnouncementFeedEntity buildScopedFeed() {
+            return buildScopedFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE);
+        }
+
+        private AnnouncementFeedEntity buildScopedFeed(String visibility) {
             return AnnouncementFeedEntity.builder()
                     .scopeType(AnnouncementScopeType.TEAM)
                     .scopeId(TEAM_ID)
                     .sourceType(AnnouncementSourceType.BLOG_POST)
                     .sourceId(BLOG_POST_ID)
                     .titleCache("お知らせ")
+                    .visibility(visibility)
                     .build();
         }
     }

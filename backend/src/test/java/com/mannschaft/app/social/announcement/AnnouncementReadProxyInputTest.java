@@ -1,6 +1,8 @@
 package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -46,6 +48,10 @@ class AnnouncementReadProxyInputTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    /** 既読の可視性ゲートが使う閲覧者ロール解決（一覧側と同一の正準経路）。 */
+    @Mock
+    private RoleResolver roleResolver;
 
     // AnnouncementCreationService のモック（AnnouncementReadService が buildAndSaveAnnouncementProxyRecord を呼ぶ）
     @InjectMocks
@@ -118,6 +124,7 @@ class AnnouncementReadProxyInputTest {
             AnnouncementReadStatusEntity savedStatus = createSavedStatus();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class))).willReturn(savedStatus);
@@ -139,6 +146,7 @@ class AnnouncementReadProxyInputTest {
             AnnouncementReadStatusEntity savedStatus = createSavedStatus();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
 
@@ -164,6 +172,7 @@ class AnnouncementReadProxyInputTest {
             AnnouncementReadStatusEntity existingStatus = createSavedStatus();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.of(existingStatus));
 
@@ -223,6 +232,7 @@ class AnnouncementReadProxyInputTest {
                     .build();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
@@ -279,6 +289,7 @@ class AnnouncementReadProxyInputTest {
                     .build();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
