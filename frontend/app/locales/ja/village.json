@@ -700,7 +700,9 @@
         "empty": "策定者はまだ登録されていません",
         "delete": "策定者を削除",
         "deleteConfirm": "「{name}」を策定者から削除しますか？",
-        "selectPlaceholder": "村人を選択"
+        "selectPlaceholder": "村人を選択",
+        "loadMembersFailed": "村人一覧を取得できなかったため、策定者を追加できません。",
+        "reloadMembers": "再取得"
       },
       "revision": {
         "confirm": "改正を確定",

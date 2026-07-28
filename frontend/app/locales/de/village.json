@@ -700,7 +700,9 @@
         "empty": "Es sind noch keine Verfasser eingetragen",
         "delete": "Verfasser entfernen",
         "deleteConfirm": "„{name}“ aus den Verfassern entfernen?",
-        "selectPlaceholder": "Dorfbewohner auswählen"
+        "selectPlaceholder": "Dorfbewohner auswählen",
+        "loadMembersFailed": "Die Liste der Dorfbewohner konnte nicht geladen werden, daher können keine Verfasser hinzugefügt werden.",
+        "reloadMembers": "Neu laden"
       },
       "revision": {
         "confirm": "Änderung bestätigen",

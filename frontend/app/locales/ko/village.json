@@ -700,7 +700,9 @@
         "empty": "아직 등록된 제정자가 없습니다",
         "delete": "제정자 삭제",
         "deleteConfirm": "\"{name}\"님을 제정자에서 삭제하시겠습니까?",
-        "selectPlaceholder": "마을 주민 선택"
+        "selectPlaceholder": "마을 주민 선택",
+        "loadMembersFailed": "마을 주민 목록을 불러오지 못해 제정자를 추가할 수 없습니다.",
+        "reloadMembers": "다시 불러오기"
       },
       "revision": {
         "confirm": "개정 확정",

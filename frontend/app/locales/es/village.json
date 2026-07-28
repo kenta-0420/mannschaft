@@ -700,7 +700,9 @@
         "empty": "Todavía no hay redactores registrados",
         "delete": "Quitar redactor",
         "deleteConfirm": "¿Quitar a \"{name}\" de los redactores?",
-        "selectPlaceholder": "Selecciona un aldeano"
+        "selectPlaceholder": "Selecciona un aldeano",
+        "loadMembersFailed": "No se pudo cargar la lista de habitantes, por lo que no se pueden añadir redactores.",
+        "reloadMembers": "Recargar"
       },
       "revision": {
         "confirm": "Confirmar revisión",

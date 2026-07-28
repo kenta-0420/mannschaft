@@ -272,16 +272,21 @@ async function moveArticle(index: number, direction: -1 | 1) {
 
 const villageMembers = ref<MembershipResponse[]>([])
 const membersLoading = ref(false)
+const membersLoadError = ref(false)
 
 async function loadVillageMembers() {
   membersLoading.value = true
+  membersLoadError.value = false
   try {
     const res = await listMembers(villageId.value, { size: 100 })
     villageMembers.value = res.content.filter(m => m.subjectType === 'USER')
   }
   catch {
-    // 策定者候補の取得失敗は一覧表示自体を止めない（追加操作のみ不可になる）。
+    // 策定者候補の取得失敗は憲章本体の表示までは止めない（追加操作のみ不可になる）が、
+    // 「村人が 0 人」と誤認させないよう失敗自体は画面に出して再取得導線を与える
+    // （CLAUDE.md「症状を隠さない」）。
     villageMembers.value = []
+    membersLoadError.value = true
   }
   finally {
     membersLoading.value = false
@@ -583,6 +588,26 @@ onMounted(() => {
             />
           </li>
         </ul>
+
+        <!-- 策定者候補の取得失敗は握りつぶさず明示し、再取得導線を出す -->
+        <Message
+          v-if="canEdit && membersLoadError"
+          severity="warn"
+          :closable="false"
+          class="mt-3"
+        >
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span>{{ t('village.charter.drafters.loadMembersFailed') }}</span>
+            <Button
+              :label="t('village.charter.drafters.reloadMembers')"
+              icon="pi pi-refresh"
+              size="small"
+              text
+              :loading="membersLoading"
+              @click="loadVillageMembers"
+            />
+          </div>
+        </Message>
 
         <div v-if="canEdit" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select

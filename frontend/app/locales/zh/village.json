@@ -700,7 +700,9 @@
         "empty": "尚未登记制定者",
         "delete": "删除制定者",
         "deleteConfirm": "确定将「{name}」从制定者中删除吗？",
-        "selectPlaceholder": "选择村民"
+        "selectPlaceholder": "选择村民",
+        "loadMembersFailed": "未能获取村民列表，因此无法添加制定者。",
+        "reloadMembers": "重新获取"
       },
       "revision": {
         "confirm": "确认修订",

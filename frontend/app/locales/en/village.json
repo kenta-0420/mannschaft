@@ -700,7 +700,9 @@
         "empty": "No drafters have been registered yet",
         "delete": "Remove drafter",
         "deleteConfirm": "Remove \"{name}\" from the drafters?",
-        "selectPlaceholder": "Select a villager"
+        "selectPlaceholder": "Select a villager",
+        "loadMembersFailed": "The village member list could not be loaded, so drafters cannot be added.",
+        "reloadMembers": "Reload"
       },
       "revision": {
         "confirm": "Confirm revision",
