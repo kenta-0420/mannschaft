@@ -521,6 +521,9 @@
       "line_not_available": "Dieses Menü ist für das ausgewählte Reservierungsziel nicht verfügbar",
       "duration_minutes_label": "{m} Min."
     },
+    "weekly_schedule": {
+      "section_title": "Wochenplan"
+    },
     "template": {
       "title": "Wochenvorlagen",
       "add": "Vorlage hinzufügen",
@@ -553,6 +556,31 @@
       "auto_generated_partial": "Bei {failed} von {total} Wochentagen ist die Slot-Erzeugung fehlgeschlagen (die gespeicherten Tage bleiben gültig)",
       "need_business_hours_hint": "Bitte legen Sie zuerst die Geschäftszeiten fest",
       "generated_zero_hint": "Es wurden keine Slots erstellt (außerhalb der Geschäftszeiten oder an einem Ruhetag). Bitte prüfen Sie die Geschäftszeiten"
+    },
+    "recurring_block": {
+      "title": "Wöchentliche Sperrzeit",
+      "add": "Sperrzeit hinzufügen",
+      "edit": "Sperrzeit bearbeiten",
+      "delete_confirm": "Diese wiederkehrende Sperrzeit-Regel löschen?",
+      "reason": "Grund",
+      "reason_no_pii": "Bitte keine Namen oder Kundendaten im Grund angeben (wird allen Mitgliedern angezeigt)",
+      "reason_placeholder": "z. B. Schulung, Kurs, Reinigung, Wartung",
+      "is_public": "Grund den Mitgliedern anzeigen",
+      "is_public_note": "Bei Aktivierung wird dieses Label in der Verfügbarkeitsansicht angezeigt",
+      "line_all": "Gesamtes Team",
+      "limit_reached": "Es können maximal 50 wiederkehrende Sperrzeit-Regeln registriert werden",
+      "full_day_hint": "Für einen ganztägigen Ruhetag stattdessen in den Geschäftszeiten einen regulären Ruhetag festlegen",
+      "impact_warning": "In den nächsten 90 Tagen gibt es {n} überschneidende Reservierungen",
+      "day_empty": "Für diesen Tag gibt es keine Sperrzeit-Regeln",
+      "message": {
+        "load_failed": "Wiederkehrende Sperrzeit-Regeln konnten nicht geladen werden",
+        "create_success": "Wiederkehrende Sperrzeit-Regel erstellt",
+        "update_success": "Wiederkehrende Sperrzeit-Regel aktualisiert",
+        "delete_success": "Wiederkehrende Sperrzeit-Regel gelöscht"
+      },
+      "error": {
+        "toggle_conflict": "Pausieren/Fortsetzen fehlgeschlagen. In diesem Zeitraum gibt es überschneidende Reservierungen"
+      }
     },
     "business_hours": {
       "title": "Geschäftszeiten",

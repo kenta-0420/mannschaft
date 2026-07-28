@@ -8,6 +8,8 @@ import {
   collectConsecutiveSlotIds,
   canExtend,
   isPastCell,
+  cellUnavailableReason,
+  unavailableReasonOfSlot,
   type MatrixCellInput,
 } from '~/utils/reservationMatrix'
 
@@ -246,5 +248,41 @@ describe('isPastCell（B6: 過去セルの disabled 判定）', () => {
 
   it('未来日は disabled でない', () => {
     expect(isPastCell('2026-07-09', '00:00', '2026-07-08', 600)).toBe(false)
+  })
+})
+
+describe('cellUnavailableReason / unavailableReasonOfSlot（F03.4.5 §4.4: 定期予約不可枠の事由ラベル）', () => {
+  it('state=UNAVAILABLE かつ unavailableReason ありなら値を返す（is_public=TRUE の定期ルール由来）', () => {
+    const cell: MatrixCellInput = { state: 'UNAVAILABLE', unavailableReason: '研修' }
+    expect(cellUnavailableReason(cell)).toBe('研修')
+  })
+
+  it('state=UNAVAILABLE だが unavailableReason が無ければ null（単発 blocked_times 由来・非公開ルール由来）', () => {
+    const cell: MatrixCellInput = { state: 'UNAVAILABLE' }
+    expect(cellUnavailableReason(cell)).toBeNull()
+    expect(cellUnavailableReason({ state: 'UNAVAILABLE', unavailableReason: null })).toBeNull()
+  })
+
+  it('state が UNAVAILABLE 以外なら unavailableReason があっても無視する（BE契約上ありえないが FE は state を正とする）', () => {
+    expect(cellUnavailableReason({ state: 'AVAILABLE', unavailableReason: '研修' })).toBeNull()
+  })
+
+  it('cell が undefined なら null', () => {
+    expect(cellUnavailableReason(undefined)).toBeNull()
+  })
+
+  it('unavailableReasonOfSlot: RowSlot 経由でも同じ判定になる（alignRowToHeader が cell 参照をそのまま保持することの番人）', () => {
+    const header = buildTimeHeader([{ startTime: '19:00', endTime: '19:30' }])
+    const cells: MatrixCellInput[] = [
+      { slotId: 1, startTime: '19:00', endTime: '19:30', state: 'UNAVAILABLE', unavailableReason: '研修' },
+    ]
+    const row = alignRowToHeader(cells, header)
+    expect(unavailableReasonOfSlot(row[0])).toBe('研修')
+  })
+
+  it('unavailableReasonOfSlot: covered/empty マスは null', () => {
+    expect(unavailableReasonOfSlot({ kind: 'empty' })).toBeNull()
+    expect(unavailableReasonOfSlot({ kind: 'covered' })).toBeNull()
+    expect(unavailableReasonOfSlot(undefined)).toBeNull()
   })
 })

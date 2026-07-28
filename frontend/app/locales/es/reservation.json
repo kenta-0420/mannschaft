@@ -521,6 +521,9 @@
       "line_not_available": "Este menú no está disponible para el objetivo de reserva seleccionado",
       "duration_minutes_label": "{m} min"
     },
+    "weekly_schedule": {
+      "section_title": "Horario semanal"
+    },
     "template": {
       "title": "Plantillas semanales",
       "add": "Añadir plantilla",
@@ -553,6 +556,31 @@
       "auto_generated_partial": "No se pudieron crear franjas en {failed} de {total} días (los días guardados siguen activos)",
       "need_business_hours_hint": "Configura primero el horario comercial",
       "generated_zero_hint": "No se creó ninguna franja (fuera del horario comercial o día de cierre). Revisa el horario comercial"
+    },
+    "recurring_block": {
+      "title": "Indisponibilidad semanal",
+      "add": "Añadir indisponibilidad",
+      "edit": "Editar indisponibilidad",
+      "delete_confirm": "¿Eliminar esta regla de indisponibilidad recurrente?",
+      "reason": "Motivo",
+      "reason_no_pii": "No incluyas nombres personales ni datos de clientes en el motivo (se mostrará a todos los miembros)",
+      "reason_placeholder": "Ej.: Capacitación, Clase, Limpieza, Mantenimiento",
+      "is_public": "Mostrar motivo a los miembros",
+      "is_public_note": "Al activarlo, esta etiqueta se muestra en la vista de disponibilidad",
+      "line_all": "Todo el equipo",
+      "limit_reached": "Puedes registrar hasta 50 reglas de indisponibilidad recurrente",
+      "full_day_hint": "Para cerrar todo el día, configúralo como día de cierre regular en el horario comercial",
+      "impact_warning": "Hay {n} reservas superpuestas en los próximos 90 días",
+      "day_empty": "No hay reglas de indisponibilidad para este día",
+      "message": {
+        "load_failed": "Error al cargar las reglas de indisponibilidad recurrente",
+        "create_success": "Regla de indisponibilidad recurrente creada",
+        "update_success": "Regla de indisponibilidad recurrente actualizada",
+        "delete_success": "Regla de indisponibilidad recurrente eliminada"
+      },
+      "error": {
+        "toggle_conflict": "No se pudo pausar/reanudar: hay reservas superpuestas en este horario"
+      }
     },
     "business_hours": {
       "title": "Horario comercial",
