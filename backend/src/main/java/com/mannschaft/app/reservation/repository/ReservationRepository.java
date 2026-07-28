@@ -322,4 +322,35 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("blockedDate") LocalDate blockedDate,
             @Param("resourceId") Long resourceId,
             @Param("statuses") List<ReservationStatus> statuses);
+
+    /**
+     * F03.4.5 §4.3（W2-2）: 定期予約不可枠の409ガード/impactが用いる、日付レンジ内の active 予約を
+     * 枠情報付き projection（{@link ReservationRecurringOverlapRow}）で取得する。
+     *
+     * <p>曜日一致・時間帯 overlap の判定は Service 層（{@code ReservationUnavailabilityChecker} と
+     * 同一の半開区間・3文字曜日変換）で行うため、本クエリでは team・日付レンジ・ライン軸のみで絞り込む。
+     * ライン軸: {@code lineId=null}（ルールがチーム全体）は全 slot（共通枠含む）を対象、
+     * {@code lineId} 指定時はそのラインの slot のみ（共通枠 {@code s.lineId IS NULL} は対象外＝
+     * §4.2「ライン指定ルールの対象外」と同一規則）。</p>
+     *
+     * @param teamId   チームID
+     * @param from     判定horizon開始（通常は今日）
+     * @param to       判定horizon終了（通常は今日+90日）
+     * @param lineId   ルールの対象ライン（null = チーム全体・全 slot 対象）
+     * @param statuses active とみなすステータス（PENDING / CONFIRMED）
+     * @return 該当レンジ内の active 予約 × 枠情報のリスト（曜日・時間帯フィルタは呼び出し側で行う）
+     */
+    @Query("SELECT new com.mannschaft.app.reservation.repository.ReservationRecurringOverlapRow("
+            + "r.id, r.userId, s.id, s.slotDate, s.lineId, s.staffUserId, s.startTime, s.endTime, r.status) "
+            + "FROM ReservationEntity r, ReservationSlotEntity s "
+            + "WHERE r.reservationSlotId = s.id "
+            + "AND r.teamId = :teamId AND r.status IN :statuses "
+            + "AND s.slotDate BETWEEN :from AND :to "
+            + "AND (:lineId IS NULL OR s.lineId = :lineId)")
+    List<ReservationRecurringOverlapRow> findActiveReservationsInRangeForRecurringGuard(
+            @Param("teamId") Long teamId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("lineId") Long lineId,
+            @Param("statuses") List<ReservationStatus> statuses);
 }

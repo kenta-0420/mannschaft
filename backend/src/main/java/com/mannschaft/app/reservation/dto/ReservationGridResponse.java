@@ -103,16 +103,22 @@ public class ReservationGridResponse {
      * <p><b>予約者 PII を構造的に含めない</b>（C-4）。userId / userName / reservation 等のフィールドは
      * 意図的に持たない。</p>
      *
-     * @param slotId    予約枠ID（この ID から {@code getSlot} を引いても PII は露出しない・§4.C）
-     * @param startTime 枠の開始時刻
-     * @param endTime   枠の終了時刻
-     * @param state     セル状態（{@link GridCellState}）
-     * @param price     予約料金（表示用・{@code null} 可）。枠のメタデータであり PII ではない
+     * @param slotId            予約枠ID（この ID から {@code getSlot} を引いても PII は露出しない・§4.C）
+     * @param startTime         枠の開始時刻
+     * @param endTime           枠の終了時刻
+     * @param state             セル状態（{@link GridCellState}）
+     * @param price             予約料金（表示用・{@code null} 可）。枠のメタデータであり PII ではない
+     * @param unavailableReason {@code state=UNAVAILABLE} かつ判定元が {@code is_public=TRUE} の定期予約不可枠
+     *                          （F03.4.5 §4）のときのみ事由ラベルを載せる（{@code null} 可）。単発 blocked_times
+     *                          （常に非公開）由来・is_public=FALSE の定期ルール由来はいずれも {@code null}。
+     *                          単発と public 定期ルールが同一セルに重畳する場合も非公開優先で {@code null}
+     *                          （§4.4・「休業日なのに研修と誤案内」を防ぐ）
      */
     public record GridCellDto(
             Long slotId,
             LocalTime startTime,
             LocalTime endTime,
             GridCellState state,
-            BigDecimal price) {}
+            BigDecimal price,
+            String unavailableReason) {}
 }

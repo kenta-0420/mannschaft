@@ -865,6 +865,8 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_046", HttpStatus.NOT_FOUND),              // WAITLIST_ENTRY_NOT_FOUND（IDOR 秘匿）
             Map.entry("RESERVATION_047", HttpStatus.CONFLICT),               // WAITLIST_ALREADY_REGISTERED
             Map.entry("RESERVATION_050", HttpStatus.TOO_MANY_REQUESTS),      // WAITLIST_RATE_LIMITED
+            // F03.4.5 §4 W2-2 定期予約不可枠（052=上限50行は既定400・051→404・027 は既存409を再利用）
+            Map.entry("RESERVATION_051", HttpStatus.NOT_FOUND),              // RECURRING_BLOCKED_TIME_NOT_FOUND（IDOR秘匿）
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED

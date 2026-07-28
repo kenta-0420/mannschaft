@@ -13,11 +13,13 @@ import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +86,8 @@ public class ReservationGridService {
     private final ReservationSlotRepository slotRepository;
     private final ReservationLineRepository lineRepository;
     private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し）の active ルール参照。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     private final NameResolverService nameResolverService;
     private final ReservationViewAccessGuard viewAccessGuard;
@@ -161,6 +166,11 @@ public class ReservationGridService {
             }
         }
 
+        // F03.4.5 §4 W2-2: 定期予約不可枠の active ルールは日付に依らずチーム単位で 1 回だけ取得する
+        // （§11 定数クエリ・上限50行のメモリ突合・単日/レンジ双方で共有）。
+        List<ReservationRecurringBlockedTimeEntity> recurringRules =
+                recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
+
         if (date != null) {
             // ── 単日呼び（従来契約: date/columns 非 null・days null）──
             List<ReservationSlotEntity> slots =
@@ -168,8 +178,8 @@ public class ReservationGridService {
             List<ReservationBlockedTimeEntity> blocks =
                     blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, date);
             List<ReservationGridResponse.GridColumnDto> columns = (axis == GridAxis.LINE)
-                    ? buildLineColumns(lineColumns, slots, blocks)
-                    : buildStaffColumns(slots, blocks, staffUserIds,
+                    ? buildLineColumns(lineColumns, slots, blocks, recurringRules)
+                    : buildStaffColumns(slots, blocks, recurringRules, staffUserIds,
                             resolveStaffNames(staffUserIds, slots), resolveLineIdsByStaff(activeLines));
             return ReservationGridResponse.builder()
                     .date(date)
@@ -199,8 +209,8 @@ public class ReservationGridService {
             List<ReservationSlotEntity> daySlots = slotsByDate.getOrDefault(d, List.of());
             // 予約不可枠は checker が日付一致を内包判定するためレンジ全件を渡してよい（該当日以外は非マッチ）。
             List<ReservationGridResponse.GridColumnDto> columns = (axis == GridAxis.LINE)
-                    ? buildLineColumns(lineColumns, daySlots, blocks)
-                    : buildStaffColumns(daySlots, blocks, staffUserIds, staffNames, lineIdsByStaff);
+                    ? buildLineColumns(lineColumns, daySlots, blocks, recurringRules)
+                    : buildStaffColumns(daySlots, blocks, recurringRules, staffUserIds, staffNames, lineIdsByStaff);
             days.add(new ReservationGridResponse.GridDayDto(d, columns));
         }
         return ReservationGridResponse.builder()
@@ -270,6 +280,7 @@ public class ReservationGridService {
     private List<ReservationGridResponse.GridColumnDto> buildStaffColumns(
             List<ReservationSlotEntity> daySlots,
             Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
             List<Long> requestedStaffUserIds,
             Map<Long, String> staffNames,
             Map<Long, List<Long>> lineIdsByStaff) {
@@ -280,7 +291,7 @@ public class ReservationGridService {
         for (Long staffKey : staffKeys) {
             List<ReservationGridResponse.GridCellDto> cells = daySlots.stream()
                     .filter(s -> staffKey.equals(s.getStaffUserId()))
-                    .map(s -> toCell(s, blocks))
+                    .map(s -> toCell(s, blocks, recurringRules))
                     .toList();
             columns.add(new ReservationGridResponse.GridColumnDto(
                     staffKey,
@@ -295,7 +306,7 @@ public class ReservationGridService {
         if (hasCommonSlot) {
             List<ReservationGridResponse.GridCellDto> commonCells = daySlots.stream()
                     .filter(s -> s.getStaffUserId() == null)
-                    .map(s -> toCell(s, blocks))
+                    .map(s -> toCell(s, blocks, recurringRules))
                     .toList();
             // 共通列は staffUserId=null・氏名 null（FE が i18n ラベルで描画）・lineIds は常に空。
             columns.add(new ReservationGridResponse.GridColumnDto(
@@ -319,19 +330,20 @@ public class ReservationGridService {
     private List<ReservationGridResponse.GridColumnDto> buildLineColumns(
             List<ReservationLineEntity> lineColumns,
             List<ReservationSlotEntity> daySlots,
-            Collection<ReservationBlockedTimeEntity> blocks) {
+            Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
         List<ReservationGridResponse.GridColumnDto> columns = new ArrayList<>();
         for (ReservationLineEntity line : lineColumns) {
             List<ReservationGridResponse.GridCellDto> cells = daySlots.stream()
                     .filter(s -> line.getId().equals(s.getLineId()))
-                    .map(s -> toCell(s, blocks))
+                    .map(s -> toCell(s, blocks, recurringRules))
                     .toList();
             columns.add(new ReservationGridResponse.GridColumnDto(
                     null, null, line.getId(), line.getName(), List.of(), cells));
         }
         List<ReservationGridResponse.GridCellDto> commonCells = daySlots.stream()
                 .filter(s -> s.getLineId() == null)
-                .map(s -> toCell(s, blocks))
+                .map(s -> toCell(s, blocks, recurringRules))
                 .toList();
         columns.add(new ReservationGridResponse.GridColumnDto(
                 null, null, null, null, List.of(), commonCells));
@@ -397,35 +409,64 @@ public class ReservationGridService {
     }
 
     /**
-     * slot を 1 セルへ写像する。state 決定順は「機能B overlap（最優先で UNAVAILABLE）→ slot_status 写像」。
-     * 予約者 PII は一切載せない（slotId / 時間帯 / state / price のみ）。
+     * slot を 1 セルへ写像する。state 決定順は「機能B/§4.2 overlap（最優先で UNAVAILABLE）→
+     * slot_status 写像」。予約者 PII は一切載せない（slotId / 時間帯 / state / price / unavailableReason のみ）。
      */
     private ReservationGridResponse.GridCellDto toCell(
-            ReservationSlotEntity slot, Collection<ReservationBlockedTimeEntity> blocks) {
-        GridCellState state = resolveState(slot, blocks);
+            ReservationSlotEntity slot,
+            Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
+        CellStateResult result = resolveState(slot, blocks, recurringRules);
         return new ReservationGridResponse.GridCellDto(
                 slot.getId(),
                 slot.getStartTime(),
                 slot.getEndTime(),
-                state,
-                slot.getPrice());
+                result.state(),
+                slot.getPrice(),
+                result.unavailableReason());
     }
 
     /**
-     * セル state を決定する（§4.C）。予約不可枠 overlap を最優先で UNAVAILABLE 上書きし、
-     * それ以外は slot_status（AVAILABLE→AVAILABLE / FULL→BOOKED / CLOSED→CLOSED）を写像する。
+     * セル state（＋F03.4.5 §4.4 unavailableReason）を決定する。
+     *
+     * <h2>決定順（§4.C・§4.4）</h2>
+     * <ol>
+     *   <li>単発予約不可枠（機能B・常に非公開）に該当 → UNAVAILABLE・reason=null（非公開優先）</li>
+     *   <li>単発は非該当だが定期予約不可枠（§4）のいずれかに該当 → UNAVAILABLE・reason=該当ルールのうち
+     *       {@code is_public=TRUE} で開始時刻が最も早いものの {@code reason}（無ければ null）</li>
+     *   <li>いずれも非該当 → slot_status を写像（AVAILABLE→AVAILABLE / FULL→BOOKED / CLOSED→CLOSED）</li>
+     * </ol>
      */
-    private GridCellState resolveState(
-            ReservationSlotEntity slot, Collection<ReservationBlockedTimeEntity> blocks) {
-        // 最優先: 機能B の予約不可枠 overlap（空き枠除外・作成拒否と同一ユーティリティ）。
+    private CellStateResult resolveState(
+            ReservationSlotEntity slot,
+            Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
+        // 最優先: 機能B の単発予約不可枠 overlap（常に非公開＝unavailableReason は null 固定）。
         if (unavailabilityChecker.isBlockedByAny(slot, blocks)) {
-            return GridCellState.UNAVAILABLE;
+            return new CellStateResult(GridCellState.UNAVAILABLE, null);
+        }
+        // 次点: F03.4.5 §4 定期予約不可枠。該当があれば UNAVAILABLE。
+        // reason は is_public=TRUE のうち開始時刻昇順で最初のものを採用（決定的・AC R-4）。
+        List<ReservationRecurringBlockedTimeEntity> matchedRecurring = recurringRules.stream()
+                .filter(r -> unavailabilityChecker.isRecurringBlocked(slot, r))
+                .toList();
+        if (!matchedRecurring.isEmpty()) {
+            String publicReason = matchedRecurring.stream()
+                    .filter(ReservationRecurringBlockedTimeEntity::isPublicRule)
+                    .min(Comparator.comparing(ReservationRecurringBlockedTimeEntity::getStartTime))
+                    .map(ReservationRecurringBlockedTimeEntity::getReason)
+                    .orElse(null);
+            return new CellStateResult(GridCellState.UNAVAILABLE, publicReason);
         }
         SlotStatus status = slot.getSlotStatus();
-        return switch (status) {
+        GridCellState state = switch (status) {
             case FULL -> GridCellState.BOOKED;
             case CLOSED -> GridCellState.CLOSED;
             case AVAILABLE -> GridCellState.AVAILABLE;
         };
+        return new CellStateResult(state, null);
     }
+
+    /** セル state 決定結果（内部専用・F03.4.5 §4.4）。 */
+    private record CellStateResult(GridCellState state, String unavailableReason) {}
 }
