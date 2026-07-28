@@ -93,6 +93,11 @@ class ReservationServiceTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
 
+    /** F03.4.5 §4 W2-2: 定期予約不可枠の active ルール参照。 */
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（RESERVATION_009 の実 throw を実検証）。 */
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
             new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
@@ -134,7 +139,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
+                unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
                 FIXED_CLOCK);
@@ -173,7 +179,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
+                unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
                 fixed);

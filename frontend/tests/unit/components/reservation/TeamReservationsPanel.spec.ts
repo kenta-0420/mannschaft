@@ -41,6 +41,9 @@ const mockGetSlotGrid = vi.fn()
 const mockGetMenus = vi.fn()
 const mockListMyReservations = vi.fn()
 const mockCreateReservation = vi.fn()
+// 検分指摘（軽4）: 週間スケジュールの件数バッジ（枠テンプレ＋定期予約不可の合算）を検証するために追加。
+const mockGetSlotTemplates = vi.fn()
+const mockListRecurringBlockedTimes = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -51,6 +54,8 @@ vi.mock('~/composables/useReservationApi', () => ({
     getMenus: mockGetMenus,
     listMyReservations: mockListMyReservations,
     createReservation: mockCreateReservation,
+    getSlotTemplates: mockGetSlotTemplates,
+    listRecurringBlockedTimes: mockListRecurringBlockedTimes,
   }),
 }))
 
@@ -94,6 +99,8 @@ beforeEach(() => {
   mockGetMenus.mockReset()
   mockListMyReservations.mockReset()
   mockCreateReservation.mockReset()
+  mockGetSlotTemplates.mockReset()
+  mockListRecurringBlockedTimes.mockReset()
   localStorage.clear()
 
   mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
@@ -102,6 +109,9 @@ beforeEach(() => {
   mockGetSlotGrid.mockResolvedValue({ data: { axis: 'LINE', days: [] } })
   mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyReservations.mockResolvedValue({ data: [] })
+  // 既定は枠テンプレ・定期予約不可とも0件（badge検証テストのみ個別に上書きする）。
+  mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
+  mockListRecurringBlockedTimes.mockResolvedValue({ data: [] })
 
   // 既定は非管理者（MEMBER）。admin タブ構成を検証するテストのみ個別に上書きする。
   roleOverride.isAdmin = false
@@ -312,6 +322,32 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(idxWeekly, '④週間スケジュール → ⑤例外日カレンダー の順').toBeLessThan(idxException)
     expect(idxException, '⑤例外日カレンダー → ⑥詳細設定 の順').toBeLessThan(idxAdvanced)
     expect(idxAdvanced, '⑥詳細設定の内側に「個別の枠を手動管理」ラベル（SlotManager）がある').toBeLessThan(idxSlotManageLabel)
+  })
+
+  it('AC-BADGE1（検分指摘・軽4）: 週間スケジュールの件数バッジは枠テンプレ＋定期予約不可ルールの合算になる（定期不可のみ登録時に(0)と誤表示しない）', async () => {
+    // 旧実装は `templateCount = slotTemplateManagerRef.value?.items?.length`（枠テンプレのみ参照）だったため、
+    // 定期予約不可枠だけ登録したチームで実データがあるのにバッジが (0) と表示され利用者を欺いていた。
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    // 枠テンプレは0件のまま、定期予約不可ルールのみ2件登録済みのチームを再現する。
+    mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [
+        { id: 'rule-1', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'TUE', startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true },
+        { id: 'rule-2', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'WED', startTime: '09:00:00', endTime: '12:00:00', reason: 'Cleaning', isPublic: true, isActive: true },
+      ],
+    })
+
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    // 新しいラベル（枠テンプレ限定の「Weekly Templates」ではなく、両方を包含する「Weekly schedule」）に
+    // 合算件数(2)が乗ること。旧実装なら templates.length=0 のため "(0)" になっていたはずの箇所。
+    expect(wrapper.text(), 'テンプレ0件・定期不可2件で合算(2)がバッジに出ること').toContain('Weekly schedule (2)')
+    expect(wrapper.text()).not.toContain('Weekly schedule (0)')
   })
 
   it('AC-DEPUTY-1（マスター裁可2026-07-11）: DEPUTY_ADMIN は②予約対象タブが見える（呼称設定のためタブ開放）', async () => {
