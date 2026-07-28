@@ -70,7 +70,7 @@ public class SafetyCheckController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
-                scopeType, scopeId, status, page, size);
+                scopeType, scopeId, status, page, size, SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -84,7 +84,8 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> getSafetyCheck(
             @PathVariable Long safetyCheckId) {
-        SafetyCheckResponse response = safetyCheckService.getSafetyCheck(safetyCheckId);
+        SafetyCheckResponse response = safetyCheckService.getSafetyCheck(
+                safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -165,7 +166,8 @@ public class SafetyCheckController {
             @RequestParam Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<SafetyCheckResponse> result = safetyCheckService.getHistory(scopeType, scopeId, page, size);
+        Page<SafetyCheckResponse> result = safetyCheckService.getHistory(
+                scopeType, scopeId, page, size, SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));

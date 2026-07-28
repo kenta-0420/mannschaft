@@ -51,6 +51,8 @@ public class FamilyAttendanceNoticeController {
     /**
      * 担任が当日の保護者連絡一覧を取得する。
      *
+     * <p>権限: 対象チームの ADMIN/DEPUTY_ADMIN（＝教員相当）のみ。Service 層で検証する。</p>
+     *
      * @param teamId クラスチームID
      * @param date   対象日（YYYY-MM-DD）
      * @return 連絡一覧（未確認件数付き）
@@ -60,7 +62,8 @@ public class FamilyAttendanceNoticeController {
     public ApiResponse<FamilyNoticeListResponse> getTeamNotices(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ApiResponse.of(noticeService.getTeamNotices(teamId, date));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(noticeService.getTeamNotices(teamId, date, currentUserId));
     }
 
     /**
@@ -76,7 +79,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.acknowledgeNotice(noticeId, currentUserId));
+        return ApiResponse.of(noticeService.acknowledgeNotice(teamId, noticeId, currentUserId));
     }
 
     /**
@@ -92,7 +95,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.applyToAttendanceRecord(noticeId, currentUserId));
+        return ApiResponse.of(noticeService.applyToAttendanceRecord(teamId, noticeId, currentUserId));
     }
 
     /**

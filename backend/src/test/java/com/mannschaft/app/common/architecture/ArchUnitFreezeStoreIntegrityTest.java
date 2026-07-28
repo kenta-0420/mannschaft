@@ -69,8 +69,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 実際に違反が解消されたことを確認した上で、この定数を実測行数
      * （{@code wc -l backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256}）
      * に更新し、ストアファイルの変更と同じコミットに含めること。
+     *
+     * <p>795 → 783（2026-07-28・認可根治 Wave7）: safetycheck / school / proxy の 12 EP に
+     * per-scope 認可を敷設し、番人が「認可シグナルあり」と判定するようになったため凍結ストアから
+     * 解消。内訳は {@code SafetyCheckController}（listSafetyChecks / getSafetyCheck / getHistory）3、
+     * {@code SafetyTemplateController}（listTemplates / getTemplate / createTemplate / updateTemplate）4、
+     * {@code SafetyFollowupController.updateFollowup} 1、{@code FamilyAttendanceNoticeController}
+     * （getTeamNotices / acknowledgeNotice / applyToRecord）3、
+     * {@code ProxyMonthlySummaryController.getDownloadUrl} 1。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一 PR で {@code *ScopeContractIT} を新設して検証）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 795;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 783;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
