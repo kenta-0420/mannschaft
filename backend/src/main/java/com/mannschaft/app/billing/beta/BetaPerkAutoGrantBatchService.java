@@ -62,12 +62,17 @@ import java.util.Set;
  * <p>毎日 04:00 JST。{@code @SchedulerLock} で多重ノード起動を防ぎ、{@link Clock} 注入で評価ウィンドウ・在籍日数の
  * 境界（AC-B1）を決定論的に検証できる。金型: {@code GuardianshipProgressionNoticeBatchService}。</p>
  *
- * <h3>タイムゾーン境界（要監視・殿がマスターに諮る論点）</h3>
- * <p>activeDays は {@code audit_logs} の {@code COUNT(DISTINCT DATE(created_at))}（{@code AuditLogRepository}）で数え、
- * {@code DATE()} の日境界は<b>DB セッションの time_zone</b>に従う。本バッチは cron を {@code Asia/Tokyo}（JST 日次）で
- * 回す設計正準を前提とし、本 Wave では {@code CONVERT_TZ} 正準化を導入していない（本番 DB セッション tz が JST でない
- * 場合、活性日の日境界が UTC でカウントされ JST 深夜帯のログインが前日/翌日に寄る可能性がある）。{@code CONVERT_TZ}
- * 正準化の要否は殿がマスターに諮る論点として本コメントに残す（勝手に入れも外しもせず、判断根拠を明示）。</p>
+ * <h3>タイムゾーン境界（2026-07-28 是正済み）</h3>
+ * <p>activeDays の日境界は<b>ユーザー各自の {@code users.timezone}</b> で切る（{@link LoginActivityQueryService}）。
+ * {@code CONVERT_TZ(created_at, '+00:00', :tzOffset)} で現地時刻へ変換してから日付を数え、評価ウィンドウ起点も
+ * 「本人現地の当日 00:00 − windowDays」を UTC 化した値を用いる。旧実装は {@code DATE(created_at)} を素で切っており
+ * 日境界が DB セッション tz（実質 UTC）に寄っていたため、JST 深夜帯のログインが前日に数えられていた。
+ * 本バッチは {@link Clock}（UTC）から基準時刻を取り、TZ 解決はページ単位の bulk（オフセット群ごと 1 クエリ）で行う。</p>
+ *
+ * <h3>活動実績ゲート必須（幽霊アカウント対策・README §82）</h3>
+ * <p>{@code min_active_days} が未設定（NULL）の criteria では<b>1 件も付与しない</b>（ユーザー走査にも入らない）。
+ * 在籍日数だけを条件にすると「登録して放置しただけのアカウント」に特典がばら撒かれ、「参加しただけでは付与しない」
+ * 主原則と売買対策の前提（活動実績）が崩れるため、シスアドが {@code min_active_days} を設定するまで自動付与は動かない。</p>
  *
  * <p>設計書: docs/features/F20.3_beta_perks/03_security.md §6 / 02_api_design.md §3</p>
  */
@@ -135,9 +140,18 @@ public class BetaPerkAutoGrantBatchService {
                     phase);
             return;
         }
+        // 活動実績ゲート必須（幽霊アカウントの穴・README §82）: 在籍日数は「登録から何日経ったか」しか見ないため、
+        // これだけを条件にすると一度も使っていない休眠アカウントにも時間の経過だけで特典が配られる。自動付与は
+        // activeDays が設定されていることを必須とし、未設定なら走査にも入らず付与0で正常終了する
+        // （tenure-only 期間はシスアド審査付きの手動付与のみで運用する）。
+        if (minActiveDays == null) {
+            log.warn("ベータ特典 自動付与バッチ完了: phase={} の INDIVIDUAL criteria に min_active_days 未設定"
+                    + "（活動実績ゲート必須・在籍日数のみの自動付与は主原則違反）ゆえ付与0", phase);
+            return;
+        }
 
         LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime since = now.minusDays(criteria.getEvaluationWindowDays());
+        int windowDays = criteria.getEvaluationWindowDays();
 
         int granted = 0;
         int skipped = 0;
@@ -154,9 +168,9 @@ public class BetaPerkAutoGrantBatchService {
             // ページ内定数本クエリの bulk 先読み（AC-P1/P2）。
             Set<Long> alreadyGranted = new HashSet<>(
                     betaGrantRepository.findGrantedScopeIds(phase, EntitlementScopeKind.USER, userIds));
-            Map<Long, Long> activeDaysByUser = minActiveDays != null
-                    ? loginActivityQueryService.countDistinctActiveDaysByUsers(userIds, since)
-                    : Collections.<Long, Long>emptyMap();
+            // activeDays はユーザー各自の TZ で日境界を切る（ウィンドウ起点の算出も QueryService 側の責務）。
+            Map<Long, Long> activeDaysByUser =
+                    loginActivityQueryService.countDistinctActiveDaysWithinByUsers(userIds, windowDays, now);
             Map<Long, Long> tenureDaysByUser = minTenureDays != null
                     ? membershipQueryService.tenureDaysByUsers(userIds, now)
                     : Collections.<Long, Long>emptyMap();

@@ -28,7 +28,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -87,11 +86,15 @@ class BetaPerkAutoGrantBatchServiceTest {
     }
 
     // ============================================================
-    // AC-N3: enabled=false は完全 no-op
+    // AC-N3 / AC-C3: enabled=false は完全 no-op
     // ============================================================
 
+    /**
+     * AC-N3 / AC-C3: {@code mannschaft.beta.auto-grant.enabled=false} なら 1 件も付与しない
+     * （走査すら行わない完全 no-op）。本番の起動ゲートはこの 1 フラグのみ。
+     */
     @Test
-    @DisplayName("AC-N3: enabled=false なら一切走査せず付与0（no-op）")
+    @DisplayName("AC-N3/AC-C3: auto-grant.enabled=false なら一切走査せず付与0（no-op）")
     void disabled_isNoOp() {
         ReflectionTestUtils.setField(batch, "autoGrantEnabled", false);
 
@@ -160,15 +163,16 @@ class BetaPerkAutoGrantBatchServiceTest {
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of());
         // 全員 activeDays 十分（付与される）。
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(10L, 9L, 11L, 9L, 12L, 9L, 13L, 9L, 14L, 9L));
 
         batch.execute();
 
         // bulk は 1 ページ 1 回のみ（ユーザー数 5 でも 1 回）。
-        verify(loginActivityQueryService, times(1)).countDistinctActiveDaysByUsers(any(), any());
+        verify(loginActivityQueryService, times(1))
+                .countDistinctActiveDaysWithinByUsers(any(), anyInt(), any());
         // per-user 版（@Cacheable evaluate の代替経路）は一切呼ばない。
-        verify(loginActivityQueryService, never()).countDistinctActiveDays(anyLong(), any());
+        verify(loginActivityQueryService, never()).countDistinctActiveDaysWithin(anyLong(), anyInt(), any());
         // 5 人全員に付与（skipCriteriaCheck=true / grantedBy=null）。
         verify(betaGrantService, times(5)).grantBetaPerk(
                 eq(GrantKind.INDIVIDUAL), eq(PHASE), eq(EntitlementScopeKind.USER),
@@ -189,7 +193,7 @@ class BetaPerkAutoGrantBatchServiceTest {
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of());
         // 100=ちょうど5（付与）／101=4（非付与）。
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(100L, 5L, 101L, 4L));
 
         batch.execute();
@@ -215,7 +219,7 @@ class BetaPerkAutoGrantBatchServiceTest {
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of());
         // 200=両方満たす／201=activeDays不足／202=在籍不足。
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(200L, 5L, 201L, 4L, 202L, 10L));
         when(membershipQueryService.tenureDaysByUsers(any(), any()))
                 .thenReturn(Map.of(200L, 90L, 201L, 200L, 202L, 89L));
@@ -243,7 +247,7 @@ class BetaPerkAutoGrantBatchServiceTest {
         // 300 は既付与（取消済み含む）。
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of(300L));
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(300L, 30L, 301L, 30L));
 
         batch.execute();
@@ -267,7 +271,7 @@ class BetaPerkAutoGrantBatchServiceTest {
         stubSinglePage(users);
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of());
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(400L, 30L, 401L, 30L));
         // 400 は付与失敗（想定外例外）、401 は成功。
         when(betaGrantService.grantBetaPerk(
@@ -292,7 +296,7 @@ class BetaPerkAutoGrantBatchServiceTest {
         stubSinglePage(users);
         when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
                 .thenReturn(List.of());
-        when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
                 .thenReturn(Map.of(500L, 30L, 501L, 30L, 502L, 30L));
         when(betaGrantService.grantBetaPerk(
                 eq(GrantKind.INDIVIDUAL), eq(PHASE), eq(EntitlementScopeKind.USER),
@@ -312,28 +316,68 @@ class BetaPerkAutoGrantBatchServiceTest {
                 eq(502L), isNull(), eq(true), isNull());
     }
 
+    // ============================================================
+    // AC-C4: 活動実績ゲート必須（幽霊アカウント穴の根治）
+    // ============================================================
+
+    /**
+     * AC-C4: {@code minActiveDays=null} かつ {@code minMembershipTenureDays=30}（＝在籍日数だけ設定済み）の
+     * criteria では <b>1 件も付与しない</b>。
+     *
+     * <p><b>穴</b>: 在籍日数は「登録してから何日経ったか」しか見ないため、一度も使っていない幽霊アカウントでも
+     * 時間の経過だけで特典を得られてしまう。自動付与は「活動実績ゲート（activeDays）が非 NULL であること」を
+     * 必須条件とし、activeDays 未設定の criteria は<b>無条件付与相当</b>として付与 0 で正常終了する
+     * （シスアドが activeDays を設定するまで自動付与は動かない）。</p>
+     *
+     * <p>※ 本テストは旧 {@code tenureOnly_doesNotQueryActiveDays}（在籍のみで付与される想定）を置き換える。
+     * 旧テストは「両指標 NULL のときだけ止まる」現行実装の挙動をそのまま追認しており、本 AC と両立しない。</p>
+     */
     @Test
-    @DisplayName("在籍日数指標のみ（activeDays 未設定）なら activeDays bulk を呼ばず在籍で判定する")
-    void tenureOnly_doesNotQueryActiveDays() {
+    @DisplayName("AC-C4: 在籍日数のみ（activeDays 未設定）の criteria では幽霊アカ防止のため付与0")
+    void acC4_tenureOnlyCriteria_grantsNothing() {
         BetaPerkCriteriaEntity tenureOnly = BetaPerkCriteriaEntity.builder()
                 .betaPhase(PHASE).grantKind(GrantKind.INDIVIDUAL).evaluationWindowDays(30)
-                .minActiveDays(null).minMembershipTenureDays(90).minActiveMembers(null)
+                .minActiveDays(null).minMembershipTenureDays(30).minActiveMembers(null)
                 .enabled(true).build();
         when(criteriaRepository.findById(new BetaPerkCriteriaId(PHASE, GrantKind.INDIVIDUAL)))
                 .thenReturn(Optional.of(tenureOnly));
-        List<Long> users = List.of(600L);
-        stubSinglePage(users);
-        when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
-                .thenReturn(List.of());
-        lenient().when(loginActivityQueryService.countDistinctActiveDaysByUsers(any(), any()))
-                .thenReturn(Map.of());
-        when(membershipQueryService.tenureDaysByUsers(any(), any())).thenReturn(Map.of(600L, 100L));
 
         batch.execute();
 
-        verify(loginActivityQueryService, never()).countDistinctActiveDaysByUsers(any(), any());
+        // 1 件も付与しない（活動実績ゲート未設定は無条件付与相当）。
+        verify(betaGrantService, never()).grantBetaPerk(any(), anyInt(), any(), anyLong(), any(), anyBoolean(), any());
+        // ユーザー走査・bulk 集計にも入らない（criteria 段階で止まる）。
+        verify(userRepository, never()).findActiveUserIdsForBeta(any());
+        verify(loginActivityQueryService, never()).countDistinctActiveDaysWithinByUsers(any(), anyInt(), any());
+    }
+
+    // ============================================================
+    // AC-C2: activeDays の境界（min ちょうどは付与・min-1 は非付与）
+    // ============================================================
+
+    /**
+     * AC-C2: {@code minActiveDays=14} のとき、activeDays=14 のユーザーは付与され、13 のユーザーは付与されない。
+     * 境界は「以上（{@code actual >= required}）」。TZ 是正で集計値の作り方が変わっても、
+     * 判定側の境界規則は不変であることを固定する。
+     */
+    @Test
+    @DisplayName("AC-C2: minActiveDays=14 なら activeDays=14 は付与・13 は非付与（境界は「以上」）")
+    void acC2_activeDaysBoundaryAtFourteen() {
+        when(criteriaRepository.findById(new BetaPerkCriteriaId(PHASE, GrantKind.INDIVIDUAL)))
+                .thenReturn(Optional.of(activeDaysCriteria(14)));
+        List<Long> users = List.of(700L, 701L);
+        stubSinglePage(users);
+        when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
+                .thenReturn(List.of());
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
+                .thenReturn(Map.of(700L, 14L, 701L, 13L));
+
+        batch.execute();
+
         verify(betaGrantService, times(1)).grantBetaPerk(
                 eq(GrantKind.INDIVIDUAL), eq(PHASE), eq(EntitlementScopeKind.USER),
-                eq(600L), isNull(), eq(true), isNull());
+                eq(700L), isNull(), eq(true), isNull());
+        verify(betaGrantService, never()).grantBetaPerk(
+                any(), anyInt(), any(), eq(701L), any(), anyBoolean(), any());
     }
 }

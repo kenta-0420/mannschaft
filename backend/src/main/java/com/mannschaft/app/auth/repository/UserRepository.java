@@ -194,6 +194,27 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<String> findTimezoneById(@org.springframework.data.repository.query.Param("userId") Long userId);
 
     /**
+     * 複数ユーザーの timezone を <b>1 クエリ</b>で一括取得する（{@link #findTimezoneById} の bulk 版）。
+     *
+     * <p>F20.3 ベータ特典の {@code activeDays} 集計は「ユーザー各自の TZ で日境界を切る」ため、自動付与バッチが
+     * 1 ページ分（最大 500 件）のユーザー TZ をまとめて解決する必要がある。per-user の {@code findTimezoneById} を
+     * ページ内ユーザー数だけ撃つと N+1 になるため、本メソッドで 1 クエリに畳む
+     * （{@code com.mannschaft.app.common.timezone.UserTimezoneCache#getTimezones} が唯一の呼び出し元）。</p>
+     *
+     * <p>絞り込み条件は {@link #findTimezoneById} と同一（{@code deletedAt IS NULL}）。<b>論理削除済み・未存在の
+     * ユーザーは結果行に現れない</b>ため、呼び出し側で既定値へフォールバックすること。{@code timezone} が NULL の
+     * 行は {@code [id, null]} として返る。空の {@code userIds} は {@code IN ()} で不正 SQL になるため、
+     * 呼び出し側でガードして本メソッドを呼ばない。</p>
+     *
+     * @param userIds 対象ユーザーID群（非空）
+     * @return {@code [userId(Long), timezone(String)]} の配列リスト（未存在・論理削除済みは含まれない）
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT u.id, u.timezone FROM UserEntity u WHERE u.id IN :userIds AND u.deletedAt IS NULL")
+    List<Object[]> findTimezonesByIdIn(
+            @org.springframework.data.repository.query.Param("userIds") Collection<Long> userIds);
+
+    /**
      * 物理削除対象ユーザーを取得する。
      * @SQLRestriction("deleted_at IS NULL") をバイパスするためネイティブSQLを使用。
      */

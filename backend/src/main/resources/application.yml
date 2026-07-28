@@ -101,6 +101,14 @@ mannschaft:
     # MANNSCHAFT_BETA_AUTO_GRANT_ENABLED=true（relaxed binding）で明示切替する。
     auto-grant:
       enabled: ${MANNSCHAFT_BETA_AUTO_GRANT_ENABLED:false}
+  # F20.3 activeDays 集計（LoginActivityQueryService / AuditLogRepository）専用。
+  # audit_logs.created_at が「どの TZ の壁時計として格納されているか」を表す前提値（CONVERT_TZ の変換元）。
+  # 格納基準は spring.jpa.properties.hibernate.jdbc.time_zone と JVM 既定 TZ に依存し、
+  # 現状 test プロファイル（application-test.yml）にのみ hibernate.jdbc.time_zone: UTC の明示指定がある
+  # （main/prod は未指定＝本番の格納基準は未決着）。
+  # 既定 "+00:00"（UTC）は現行挙動と完全同一。格納基準が UTC でない環境ではこの値を実態に合わせて上書きすること。
+  audit:
+    stored-zone-offset: ${MANNSCHAFT_AUDIT_STORED_ZONE_OFFSET:+00:00}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
   # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
   # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。
