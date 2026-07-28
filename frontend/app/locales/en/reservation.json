@@ -521,6 +521,9 @@
       "line_not_available": "This menu is not offered for the selected reservation target",
       "duration_minutes_label": "{m} min"
     },
+    "weekly_schedule": {
+      "section_title": "Weekly schedule"
+    },
     "template": {
       "title": "Weekly Templates",
       "add": "Add template",
@@ -574,6 +577,9 @@
         "create_success": "Recurring unavailability rule created",
         "update_success": "Recurring unavailability rule updated",
         "delete_success": "Recurring unavailability rule deleted"
+      },
+      "error": {
+        "toggle_conflict": "Could not pause/resume — there are overlapping reservations in this time slot"
       }
     },
     "business_hours": {

@@ -521,6 +521,9 @@
       "line_not_available": "이 메뉴는 선택한 예약 대상에서 제공되지 않습니다",
       "duration_minutes_label": "{m}분"
     },
+    "weekly_schedule": {
+      "section_title": "주간 스케줄"
+    },
     "template": {
       "title": "주간 템플릿",
       "add": "템플릿 추가",
@@ -574,6 +577,9 @@
         "create_success": "정기 예약 불가 규칙을 등록했습니다",
         "update_success": "정기 예약 불가 규칙을 수정했습니다",
         "delete_success": "정기 예약 불가 규칙을 삭제했습니다"
+      },
+      "error": {
+        "toggle_conflict": "일시 중지/재개에 실패했습니다. 이 시간대에 중복되는 예약이 있어 조작할 수 없습니다"
       }
     },
     "business_hours": {

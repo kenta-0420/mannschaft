@@ -521,6 +521,9 @@
       "line_not_available": "Dieses Menü ist für das ausgewählte Reservierungsziel nicht verfügbar",
       "duration_minutes_label": "{m} Min."
     },
+    "weekly_schedule": {
+      "section_title": "Wochenplan"
+    },
     "template": {
       "title": "Wochenvorlagen",
       "add": "Vorlage hinzufügen",
@@ -574,6 +577,9 @@
         "create_success": "Wiederkehrende Sperrzeit-Regel erstellt",
         "update_success": "Wiederkehrende Sperrzeit-Regel aktualisiert",
         "delete_success": "Wiederkehrende Sperrzeit-Regel gelöscht"
+      },
+      "error": {
+        "toggle_conflict": "Pausieren/Fortsetzen fehlgeschlagen. In diesem Zeitraum gibt es überschneidende Reservierungen"
       }
     },
     "business_hours": {

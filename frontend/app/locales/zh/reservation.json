@@ -521,6 +521,9 @@
       "line_not_available": "该菜单不适用于所选的预约对象",
       "duration_minutes_label": "{m}分钟"
     },
+    "weekly_schedule": {
+      "section_title": "每周排程"
+    },
     "template": {
       "title": "每周模板",
       "add": "添加模板",
@@ -574,6 +577,9 @@
         "create_success": "已注册定期预约不可规则",
         "update_success": "已更新定期预约不可规则",
         "delete_success": "已删除定期预约不可规则"
+      },
+      "error": {
+        "toggle_conflict": "暂停/恢复失败。该时间段存在重叠的预约，无法操作"
       }
     },
     "business_hours": {

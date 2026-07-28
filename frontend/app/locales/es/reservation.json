@@ -521,6 +521,9 @@
       "line_not_available": "Este menú no está disponible para el objetivo de reserva seleccionado",
       "duration_minutes_label": "{m} min"
     },
+    "weekly_schedule": {
+      "section_title": "Horario semanal"
+    },
     "template": {
       "title": "Plantillas semanales",
       "add": "Añadir plantilla",
@@ -574,6 +577,9 @@
         "create_success": "Regla de indisponibilidad recurrente creada",
         "update_success": "Regla de indisponibilidad recurrente actualizada",
         "delete_success": "Regla de indisponibilidad recurrente eliminada"
+      },
+      "error": {
+        "toggle_conflict": "No se pudo pausar/reanudar: hay reservas superpuestas en este horario"
       }
     },
     "business_hours": {

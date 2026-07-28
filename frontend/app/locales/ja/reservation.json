@@ -521,6 +521,9 @@
       "line_not_available": "このメニューは選択した予約対象では提供されていません",
       "duration_minutes_label": "{m}分"
     },
+    "weekly_schedule": {
+      "section_title": "週間スケジュール"
+    },
     "template": {
       "title": "週間テンプレート",
       "add": "テンプレートを追加",
@@ -574,6 +577,9 @@
         "create_success": "定期予約不可枠を登録しました",
         "update_success": "定期予約不可枠を更新しました",
         "delete_success": "定期予約不可枠を削除しました"
+      },
+      "error": {
+        "toggle_conflict": "一時停止/再開に失敗しました。この時間帯に重複する予約があるため操作できません"
       }
     },
     "business_hours": {

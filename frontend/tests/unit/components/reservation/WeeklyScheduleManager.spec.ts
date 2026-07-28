@@ -680,4 +680,67 @@ describe('WeeklyScheduleManager.vue — 定期予約不可枠（§4 B・W2-2-FE�
     expect(wrapper.find('[data-testid="recurring-row-rule-9"]').exists()).toBe(true)
     expect(wrapper.html()).toContain('Training')
   })
+
+  it('AC-R-toggle1: 一時停止/再開が成功すると updateRecurringBlockedTime に isActive のみが渡り、一覧が再読込される', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [{
+        id: 'rule-9', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'TUE',
+        startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true,
+      }],
+    })
+    mockUpdateRecurringBlockedTime.mockResolvedValue({
+      data: { id: 'rule-9', dayOfWeek: 'TUE', startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: false },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    const listCallsBefore = mockListRecurringBlockedTimes.mock.calls.length
+    await wrapper.find('[data-testid="recurring-toggle-rule-9"]').trigger('click')
+    await flush()
+
+    expect(mockUpdateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    const [teamId, ruleId, body] = mockUpdateRecurringBlockedTime.mock.calls[0] as [string, string, Record<string, unknown>]
+    expect(teamId).toBe('team-slug')
+    expect(ruleId).toBe('rule-9')
+    expect(body).toEqual({ isActive: false })
+    // 一覧が再読込される（一時停止後の表示反映）
+    expect(mockListRecurringBlockedTimes.mock.calls.length).toBeGreaterThan(listCallsBefore)
+  })
+
+  it('AC-R-toggle2（検分指摘・軽2）: 一時停止/再開が409（RESERVATION_027）で失敗すると、保存経路と同じコード判定を通りつつ「一時停止/再開」文脈のメッセージで通知される（登録文脈の文言を誤用しない）', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockListRecurringBlockedTimes.mockResolvedValue({
+      data: [{
+        id: 'rule-9', teamId: 10, lineId: null, lineName: null, dayOfWeek: 'TUE',
+        startTime: '19:00:00', endTime: '20:00:00', reason: 'Training', isPublic: false, isActive: true,
+      }],
+    })
+    mockUpdateRecurringBlockedTime.mockRejectedValue({ data: { error: { code: 'RESERVATION_027' } } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-toggle-rule-9"]').trigger('click')
+    await flush()
+
+    expect(mockUpdateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    expect(mockNotifyError).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyError.mock.calls[0] as [string, string]
+    // 一時停止/再開文脈の専用メッセージ（en: "Could not pause/resume ..."）で通知され、
+    // 保存(作成/更新)文脈の "overlapping reservations" 系メッセージとは異なる文言になること
+    // （handleApiError への直呼びだった旧実装は文言が経路ごとに不揃いだった）。
+    expect(message.toLowerCase()).toContain('pause')
+    // handleApiError（汎用フォールバック）は呼ばれない（コード判定で分岐している証跡）
+    expect(mockHandleApiError).not.toHaveBeenCalled()
+  })
 })

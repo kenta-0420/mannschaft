@@ -486,15 +486,28 @@ function openEditRecurring(rule: RecurringBlockedTimeResponse) {
   showRecurringDialog.value = true
 }
 
-/** BE エラーコード → 利用者向け文言（握りつぶさない。§4.6/§10 実測: 051=NOT_FOUND・052=上限・027=409共用） */
-function notifyRecurringSaveError(err: unknown) {
+/**
+ * BE エラーコード → 利用者向け文言（握りつぶさない。§4.6/§10 実測: 051=NOT_FOUND・052=上限・027=409共用）。
+ *
+ * 検分指摘（軽2）: `toggleRecurringActive`（一時停止/再開）が `handleApiError` を直呼びしていたため、
+ * 保存経路（`saveRecurring`）と同じ 409(RESERVATION_027) でも表示文言が経路によって不揃いだった。
+ * 本関数へ寄せて統一し、`context` で保存/一時停止・再開を出し分ける
+ * （BE の `updateRule` が isActive のみの PATCH でも重複ガードを無条件実行する — 「規制を緩める操作なのに
+ * 409で失敗し得る」問題自体は BE 側の課題であり本PRでは直さない。別弾。FE の文言だけ文脈に合わせる）。
+ */
+function notifyRecurringSaveError(err: unknown, context: 'save' | 'toggle' = 'save') {
   const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
   if (code === 'RESERVATION_052') {
     notification.error(t('dialog.error'), t('reservation.recurring_block.limit_reached'))
     return
   }
   if (code === 'RESERVATION_027') {
-    // overlap する active 予約が残ったまま登録した競合（最終防御・機能B と同一コード共用）
+    if (context === 'toggle') {
+      // 一時停止/再開の文脈: 「登録できません」ではなく操作そのものが失敗した旨を伝える
+      notification.error(t('dialog.error'), t('reservation.recurring_block.error.toggle_conflict'))
+      return
+    }
+    // 保存（作成/更新）の文脈: overlap する active 予約が残ったまま登録した競合（最終防御・機能B と同一コード共用）
     notification.error(t('dialog.error'), t('reservation.unavailability.error.has_active_reservations'))
     refreshRecurringImpact()
     return
@@ -551,7 +564,8 @@ async function toggleRecurringActive(rule: RecurringBlockedTimeResponse) {
     await loadRecurringRules()
   }
   catch (err) {
-    handleApiError(err)
+    // 検分指摘（軽2）: 保存経路と同一のエラー判定に寄せる（409=RESERVATION_027 は「一時停止/再開」文脈の文言で通知）
+    notifyRecurringSaveError(err, 'toggle')
   }
 }
 
@@ -575,7 +589,13 @@ onMounted(async () => {
 })
 
 // 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
-defineExpose({ refresh: async () => { await Promise.all([loadTemplates(), loadRecurringRules()]) }, items: templates })
+// 検分指摘（軽4）: バッジは「枠テンプレ＋定期予約不可」の合算件数を表すため、recurringItems も供給する
+// （既存の items 契約は変更せず追加のみ＝additive）。
+defineExpose({
+  refresh: async () => { await Promise.all([loadTemplates(), loadRecurringRules()]) },
+  items: templates,
+  recurringItems: recurringRules,
+})
 </script>
 
 <template>
@@ -705,6 +725,7 @@ defineExpose({ refresh: async () => { await Promise.all([loadTemplates(), loadRe
               text
               rounded
               size="small"
+              :data-testid="`recurring-toggle-${rule.id}`"
               @click="toggleRecurringActive(rule)"
             />
             <Button v-if="isAdmin" icon="pi pi-pencil" text rounded size="small" @click="openEditRecurring(rule)" />
