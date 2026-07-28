@@ -57,7 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>詳細 2 本がパス変数 {@code teamId} / {@code orgId} と Entity の
  *       {@code scopeType} / {@code scopeId} を照合しておらず、スコープ詐称が通る（AC-16 / AC-17）</li>
  *   <li>非公開記録に {@code VISIBILITY_001} → <b>403</b> を返しており存在オラクルになっている（AC-12 / AC-18）</li>
- *   <li>一覧の limit が無上限（AC-25 / AC-26）・{@code PageImpl} 総件数がページ内件数に化ける（AC-29）</li>
+ *   <li>一覧の limit が無上限（AC-25 / AC-26）・{@code PageImpl} 総件数がページ内件数に化ける（AC-29a〜c）</li>
  * </ul>
  *
  * <p><b>御裁可済みの公開項目（AC-8 の正解）</b>: {@code id} / {@code title} / {@code activityDate} /
@@ -126,7 +126,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** AC-29 は HTTP 契約に総件数が現れないため、Service の {@link Page} を実物のまま検証する。 */
+    /** AC-29a〜c は HTTP 契約に総件数が現れないため、Service の {@link Page} を実物のまま検証する。 */
     @Autowired
     private ActivityResultService activityResultService;
 
@@ -636,7 +636,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ［性能］AC-28 / AC-29
+    // ［性能］AC-28 / AC-29a〜c
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
@@ -675,17 +675,18 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     }
 
     /**
-     * (AC-29) 一覧の総件数が正しいこと。ページサイズより多い公開記録があるとき、
-     * 総件数がページ内件数ではなく<b>実総数</b>になること。
+     * (AC-29a) 一覧の総件数が正しいこと（<b>全件公開</b>のケース）。ページサイズより多い公開記録が
+     * あるとき、総件数がページ内件数ではなく<b>実総数</b>になること。
      *
-     * <p>現状 {@code ActivityResultService#listPublicActivities} は
+     * <p>旧実装 {@code ActivityResultService#listPublicActivities} は
      * {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、総件数が
-     * ページ内件数に化ける（ページャが 1 ページしか無いように見える）。総件数は現時点の HTTP
-     * 契約に現れないため、Service の {@link Page} を実物のまま（モックなしで）検証する。</p>
+     * ページ内件数に化けていた（ページャが 1 ページしか無いように見え、2 ページ目以降へ辿り着けない）。
+     * 総件数は現時点の HTTP 契約に現れないため、Service の {@link Page} を実物のまま
+     * （モックなしで）検証する。</p>
      */
     @Test
-    @DisplayName("(AC-29) 一覧の総件数がページ内件数ではなく実総数になる")
-    void ac29_一覧の総件数が実総数になる() {
+    @DisplayName("(AC-29a) 全件公開のとき一覧の総件数はページ内件数ではなく実総数になる")
+    void ac29a_全件公開なら総件数は実総数になる() {
         Long bulkTeamId = insertTeam("総件数チーム", "act-total-team-" + System.nanoTime(),
                 "PUBLIC", false, false);
         seedBulkActivities("TEAM", bulkTeamId, 55, "TOTAL29");
@@ -699,6 +700,99 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         assertThat(page.getTotalElements())
                 .as("総件数はページ内件数(20)ではなく実総数(55)であること").isEqualTo(55L);
         assertThat(page.getTotalPages()).as("総ページ数は 3").isEqualTo(3);
+    }
+
+    /**
+     * (AC-29b) 非公開が<b>後続ページ</b>に混ざるとき、総件数は<b>上界近似</b>になること。
+     *
+     * <p>実装は「DB が算出した総件数 − <b>このページで</b> F00 が落とした件数」を返す。
+     * 1 ページ目が全件公開なら差し引きは 0 となり、後続ページに潜む非公開の分だけ
+     * 総件数は実際の公開件数より多く出る（{@code ActivityResultService#listPublicActivities}
+     * の Javadoc「既知の近似」）。</p>
+     *
+     * <p><b>この近似は殿の裁可により許容する</b>（総件数は HTTP 契約に露出しないため）。
+     * ただし「許容すること」と「検査しないこと」は別である。近似の<b>幅</b>
+     * （実公開件数 ≦ 総件数 ≦ 全行数）を固定し、旧バグ（総件数がページ内件数 20 に化ける）や
+     * 逆方向の破綻（公開件数を下回る）が再発したら必ず落ちるようにする。</p>
+     *
+     * <p>データ配置: {@code id DESC} 並びのため<b>先に入れた行ほど後ろのページ</b>に来る。
+     * 非公開 5 件を先に入れ、公開 50 件を後から入れることで「1 ページ目は全件公開・
+     * 非公開は最終ページ」という配置を作る。</p>
+     */
+    @Test
+    @DisplayName("(AC-29b) 非公開が後続ページに混ざると総件数は上界近似（実公開件数以上・全行数以下）になる")
+    void ac29b_非公開が後続ページなら総件数は上界近似になる() {
+        Long mixedTeamId = insertTeam("総件数混在チーム", "act-total-mix-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        long nonce = System.nanoTime();
+        // 後続ページに来る非公開 5 件（MEMBERS_ONLY 3 + DRAFT 2）
+        for (int i = 0; i < 3; i++) {
+            insertActivity("TEAM", mixedTeamId, "MIX29B-hidden-mo-" + nonce + "-" + i,
+                    "MEMBERS_ONLY", "PUBLISHED", false, "10:00:00", "11:00:00", "非公開");
+        }
+        for (int i = 0; i < 2; i++) {
+            insertActivity("TEAM", mixedTeamId, "MIX29B-hidden-draft-" + nonce + "-" + i,
+                    "PUBLIC", "DRAFT", false, "10:00:00", "11:00:00", "下書き");
+        }
+        // 1 ページ目以降を埋める公開 50 件
+        seedBulkActivities("TEAM", mixedTeamId, 50, "MIX29B-public");
+        em.flush();
+        em.clear();
+
+        Page<ActivityResultEntity> page = activityResultService.listPublicActivities(
+                ActivityScopeType.TEAM, mixedTeamId, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).as("1 ページ目は 20 件").hasSize(20);
+        assertThat(page.getContent())
+                .as("1 ページ目に非公開（MEMBERS_ONLY / DRAFT）が混じらないこと")
+                .allSatisfy(e -> assertThat(e.getTitle()).startsWith("MIX29B-public"));
+        assertThat(page.getTotalElements())
+                .as("総件数は上界近似: 実公開件数(50) 以上・全行数(55) 以下であること"
+                        + "（旧バグのページ内件数 20 への化けを禁止する）")
+                .isBetween(50L, 55L);
+    }
+
+    /**
+     * (AC-29c) 非公開が<b>1 ページ目</b>に混ざるとき、その分は総件数から差し引かれること。
+     *
+     * <p>AC-29b と対になる検査。実装の {@code allPage.getTotalElements() - removedInThisPage}
+     * という減算が実際に効いていることを固定する（減算を落とすと総件数が 55 のままになり本テストが落ちる）。</p>
+     *
+     * <p>データ配置: {@code id DESC} 並びなので<b>後から入れた行ほど 1 ページ目</b>に来る。
+     * 公開 50 件を先に入れ、非公開 5 件を後から入れることで「1 ページ目に非公開 5 件が乗る」配置を作る。</p>
+     */
+    @Test
+    @DisplayName("(AC-29c) 非公開が1ページ目に混ざるとその件数分が総件数から差し引かれる")
+    void ac29c_非公開が1ページ目なら総件数から差し引かれる() {
+        Long mixedTeamId = insertTeam("総件数先頭混在チーム", "act-total-mix2-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        // 先に公開 50 件（＝後ろのページに来る）
+        seedBulkActivities("TEAM", mixedTeamId, 50, "MIX29C-public");
+        // 後から非公開 5 件（＝1 ページ目に来る）
+        long nonce = System.nanoTime();
+        for (int i = 0; i < 3; i++) {
+            insertActivity("TEAM", mixedTeamId, "MIX29C-hidden-mo-" + nonce + "-" + i,
+                    "MEMBERS_ONLY", "PUBLISHED", false, "10:00:00", "11:00:00", "非公開");
+        }
+        for (int i = 0; i < 2; i++) {
+            insertActivity("TEAM", mixedTeamId, "MIX29C-hidden-draft-" + nonce + "-" + i,
+                    "PUBLIC", "DRAFT", false, "10:00:00", "11:00:00", "下書き");
+        }
+        em.flush();
+        em.clear();
+
+        Page<ActivityResultEntity> page = activityResultService.listPublicActivities(
+                ActivityScopeType.TEAM, mixedTeamId, PageRequest.of(0, 20));
+
+        assertThat(page.getContent())
+                .as("1 ページ目 20 行のうち非公開 5 件が除かれ 15 件になること").hasSize(15);
+        assertThat(page.getContent())
+                .as("除去後は公開記録のみであること")
+                .allSatisfy(e -> assertThat(e.getTitle()).startsWith("MIX29C-public"));
+        assertThat(page.getTotalElements())
+                .as("総件数は全行数(55) から このページで落とした 5 件を引いた 50 であること"
+                        + "（このケースは実公開件数と一致する）")
+                .isEqualTo(50L);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
