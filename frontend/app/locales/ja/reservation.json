@@ -521,6 +521,9 @@
       "line_not_available": "このメニューは選択した予約対象では提供されていません",
       "duration_minutes_label": "{m}分"
     },
+    "weekly_schedule": {
+      "section_title": "週間スケジュール"
+    },
     "template": {
       "title": "週間テンプレート",
       "add": "テンプレートを追加",
@@ -553,6 +556,31 @@
       "auto_generated_partial": "{total}曜日中{failed}曜日で枠の作成に失敗しました（保存済みの曜日は有効です）",
       "need_business_hours_hint": "先に営業時間を設定してください",
       "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください"
+    },
+    "recurring_block": {
+      "title": "毎週の予約不可",
+      "add": "予約不可を追加",
+      "edit": "予約不可を編集",
+      "delete_confirm": "この定期予約不可枠を削除しますか？",
+      "reason": "事由",
+      "reason_no_pii": "事由に個人名やお客様情報を含めないでください（会員全員に公開されます）",
+      "reason_placeholder": "例: 研修・スクール・清掃・メンテナンス",
+      "is_public": "会員に事由を表示する",
+      "is_public_note": "ONにすると空き状況にこのラベルが表示されます",
+      "line_all": "チーム全体",
+      "limit_reached": "定期予約不可枠は最大50件までです",
+      "full_day_hint": "終日休みにする場合は営業時間で定休日に設定してください",
+      "impact_warning": "今後90日間に重複する予約が {n} 件あります",
+      "day_empty": "この曜日の予約不可枠はありません",
+      "message": {
+        "load_failed": "定期予約不可枠の取得に失敗しました",
+        "create_success": "定期予約不可枠を登録しました",
+        "update_success": "定期予約不可枠を更新しました",
+        "delete_success": "定期予約不可枠を削除しました"
+      },
+      "error": {
+        "toggle_conflict": "一時停止/再開に失敗しました。この時間帯に重複する予約があるため操作できません"
+      }
     },
     "business_hours": {
       "title": "営業時間",

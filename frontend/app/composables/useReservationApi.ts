@@ -41,6 +41,11 @@ type SlotTemplateSaveResponse = components['schemas']['SlotTemplateSaveResponse'
 type GenerateSingleDayRequest = components['schemas']['GenerateSingleDayRequest']
 // F03.4.5 §3.2（BE #2204）: 営業時間 PUT の保存＋同期自動生成の統合レスポンス（GET は BusinessHourResponse[] のまま不変）。
 type BusinessHoursSaveResponse = components['schemas']['BusinessHoursSaveResponse']
+// F03.4.5 §4（BE PR #2232・mergeCommit 71bd24fa1）: 定期予約不可枠（週次繰り返し）CRUD5本＋impact。
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
+type CreateRecurringBlockedTimeRequest = components['schemas']['CreateRecurringBlockedTimeRequest']
+type UpdateRecurringBlockedTimeRequest = components['schemas']['UpdateRecurringBlockedTimeRequest']
+type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -376,6 +381,57 @@ export function useReservationApi() {
     )
   }
 
+  // === 定期予約不可枠（F03.4.5 §4・週次繰り返し）===
+  // 全5本 ADMIN+ の self-gate。dayOfWeek は必ず3文字大文字（'MON'..'SUN'）で送ること
+  // （フルネーム 'MONDAY' 等は Jackson デシリアライズ失敗で 400・§4.6/§10）。
+  async function listRecurringBlockedTimes(teamId: string) {
+    return api<{ data: RecurringBlockedTimeResponse[] }>(
+      `${base(teamId)}/reservation-recurring-blocked-times`,
+    )
+  }
+
+  async function createRecurringBlockedTime(teamId: string, body: CreateRecurringBlockedTimeRequest) {
+    return api<{ data: RecurringBlockedTimeResponse }>(
+      `${base(teamId)}/reservation-recurring-blocked-times`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function updateRecurringBlockedTime(
+    teamId: string,
+    ruleId: string,
+    body: UpdateRecurringBlockedTimeRequest,
+  ) {
+    return api<{ data: RecurringBlockedTimeResponse }>(
+      `${base(teamId)}/reservation-recurring-blocked-times/${ruleId}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  async function deleteRecurringBlockedTime(teamId: string, ruleId: string) {
+    return api(`${base(teamId)}/reservation-recurring-blocked-times/${ruleId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * 定期予約不可枠 作成/更新前の影響プレビュー（副作用ゼロ）。
+   * 今後90日以内に overlap する active 予約（PENDING/CONFIRMED）の件数＋一覧を返す（§4.3）。
+   */
+  async function getRecurringBlockedTimeImpact(
+    teamId: string,
+    params: { dayOfWeek: ReservationDayOfWeekCode; startTime: string; endTime: string; lineId?: number },
+  ) {
+    const query = new URLSearchParams()
+    query.set('dayOfWeek', params.dayOfWeek)
+    query.set('startTime', params.startTime)
+    query.set('endTime', params.endTime)
+    if (params.lineId != null) query.set('lineId', String(params.lineId))
+    return api<{ data: RecurringBlockedTimeImpactResponse }>(
+      `${base(teamId)}/reservation-recurring-blocked-times/impact?${query}`,
+    )
+  }
+
   // === Notification Recipients（機能D・予約通知メール宛先）===
   // teamId 配下の宛先 CRUD。全操作 ADMIN 限定（最終ゲートは BE）。
   // recipientId は UUIDv7（文字列）。GET はフリーミアム状態（enabledCount/freeLimit/maxLimit/hasPaidPlan）を同梱する。
@@ -555,6 +611,11 @@ export function useReservationApi() {
     updateBlockedTime,
     deleteBlockedTime,
     getBlockedTimeImpact,
+    listRecurringBlockedTimes,
+    createRecurringBlockedTime,
+    updateRecurringBlockedTime,
+    deleteRecurringBlockedTime,
+    getRecurringBlockedTimeImpact,
     listNotificationRecipients,
     createNotificationRecipient,
     updateNotificationRecipient,
