@@ -69,7 +69,7 @@ jobs:
     steps:
       # 変更検出のため PR の base...head 差分を見られるよう全履歴を取得する
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -136,7 +136,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: BaseEntity継承クラスの @Builder(toBuilder=true) 禁止チェック（D-5）
         run: |
@@ -195,7 +195,7 @@ jobs:
         shard: [0, 1, 2, 3, 4, 5]
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
