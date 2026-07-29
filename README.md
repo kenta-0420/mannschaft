@@ -1017,7 +1017,9 @@ docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
 cat > /mnt/c/Claude/mannschaft/backend/src/main/resources/application-local.yml << 'EOF'
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+    # serverTimezone=UTC は docker-compose.yml の MySQL（--default-time-zone=+00:00）と必ず一致させること。
+    # DB 格納時刻の基準は UTC に統一されている（Issue #2486 / backend/.claudecode.md §20）。
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: mannschaft
     password: mannschaft
   data:
