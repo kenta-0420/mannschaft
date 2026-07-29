@@ -214,8 +214,24 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamAnnualScheduleController} の参照系 3 EP × 2 系統（getAnnualView / previewCopy は
      * {@code checkMembership}、getCopyLogs は {@code checkAdminOrAbove}）計 6 件を是正し解消。
      * 同一コミットにストア差分・実装差分・{@code ScheduleAnnualScopeContractIT} 新設を含む。</p>
+     *
+     * <p>680 → 676（2026-07-29・認可根治戦役 Wave7 village ドメイン）: {@code VillageCalendarController}
+     * （{@code listByMonth} / {@code get}）・{@code VillageRepresentativeController.list}・
+     * {@code VillageSerendipityController.getRanking} の 4 EP に、村メンバーシップ検証
+     * （{@code VillageMembershipRepository#findActiveByVillageIdAndSubject} を用いた
+     * {@code requireVillager}。同クラス内の年輪サブ機能 {@code listLogs}/{@code addLog}/
+     * {@code deleteLog} と同型）を敷設する実装是正で解消。番人の呼び出しグラフ判定では
+     * {@code VillageMembershipRepository} 直呼びは認可シグナルとして拾えないため、
+     * 兄弟読取 EP と同じ {@code @PreAuthorize("isAuthenticated()")} マーカーを追加して
+     * シグナルを可視化した。残り 70 件（村ドメイン全体 74 件中）は Service 層で
+     * {@code VillageMembershipRepository} を直接参照して認可済み・または呼び出しユーザー自身の
+     * ID に固定される構造的自己スコープであることを監査で確認し、凍結のまま残した
+     * （違反隠蔽ではなく監査済み）。同一コミットにストア差分・実装差分・契約テスト拡張
+     * （{@code VillageCalendarControllerIntegrationTest} /
+     * {@code VillageRepresentativeControllerIntegrationTest} 拡張、
+     * {@code VillageSerendipityControllerIntegrationTest} 新設）を含む。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 680;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 676;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
