@@ -2100,6 +2100,7 @@ class TimelinePostServiceTest {
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            given(postVisibilityGuard.isVisible(original, USER_ID)).willReturn(true);
 
             // when
             PostResponse result = timelinePostService.createPost(req, USER_ID);

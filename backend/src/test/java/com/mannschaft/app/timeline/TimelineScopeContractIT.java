@@ -268,7 +268,13 @@ class TimelineScopeContractIT extends AbstractMySqlIntegrationTest {
             ResponseEntity<Void> response = postController.deletePost(postId);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            assertThat(postRepository.findById(postId)).isEmpty();
+            // deletePost は論理削除（TimelinePostEntity#softDelete）。同一トランザクション内では
+            // 永続化コンテキストの 1st level cache により findById が管理中の同一インスタンスを
+            // 返す（@SQLRestriction はキャッシュヒット時には評価されず、新規 SELECT 発行時のみ効く）
+            // ため、削除の成否は再取得の有無ではなく softDelete が実際に適用された状態で検証する。
+            TimelinePostEntity deleted = postRepository.findById(postId).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getStatus()).isEqualTo(PostStatus.DELETED);
         }
 
         @Test
@@ -280,7 +286,10 @@ class TimelineScopeContractIT extends AbstractMySqlIntegrationTest {
             ResponseEntity<Void> response = postController.deletePost(postId);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            assertThat(postRepository.findById(postId)).isEmpty();
+            // 論理削除の検証方針は上記「本人は削除できる」と同一（1st level cache の注記参照）。
+            TimelinePostEntity deleted = postRepository.findById(postId).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getStatus()).isEqualTo(PostStatus.DELETED);
         }
 
         @Test
