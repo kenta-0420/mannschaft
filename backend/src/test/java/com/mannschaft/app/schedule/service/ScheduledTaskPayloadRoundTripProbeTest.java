@@ -47,6 +47,30 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>TZ 汚染対策</b>: JVM 既定 TZ を Asia/Tokyo（{@code TimeZoneConfig} と同じ）に固定し、
  * {@code tearDown} で {@link TimezoneContextHolder#clear()} と JVM 既定 TZ の復元を行う
  * （{@code LocalDateTimeTimezoneSerializerTest} の作法を踏襲）。</p>
+ *
+ * <h2>⚠ 本テストは意図的に RED である（2026-07-29 実測）</h2>
+ *
+ * <p>アサーションは「往復して元の瞬間に戻る」という<b>本来あるべき挙動</b>を書いてある。
+ * 現状の本番経路はこれを満たせず、以下 2 系統で壊れている。
+ * <b>期待値を歪めて緑にすることは禁止</b>（対処療法）。本番側の修正
+ * （共通 ObjectMapper への LocalDateTime Deserializer 登録など）が入れば、
+ * 本ファイルは <b>一切変更せずに緑へ反転する</b>。</p>
+ *
+ * <ol>
+ *   <li><b>オフセットが Z 以外（{@code +09:00} / {@code -07:00}）→ 例外で materialize 失敗</b><br>
+ *       {@code InvalidFormatException: Cannot deserialize value of type java.time.LocalDateTime
+ *       from String "2026-08-01T09:00:00+09:00": ... DateTimeParseException:
+ *       Text '2026-08-01T09:00:00+09:00' could not be parsed, unparsed text found at index 19}<br>
+ *       → {@link ScheduleScheduledTaskBatchService#materializeOne} が毎回失敗し、
+ *       5 回リトライ後に status=FAILED 確定。<b>予約したアンケートは永久に生成されない</b></li>
+ *   <li><b>オフセットが Z（ユーザー TZ が UTC / 未セット）→ 例外なしで時刻が 9 時間ずれる</b><br>
+ *       Jackson 既定の lenient 処理が末尾 {@code Z} を切り落として壁時計として解釈するため、
+ *       {@code 2026-08-01T09:00}（JST）で予約したものが {@code 2026-08-01T00:00} として復元される。
+ *       <b>例外が出ないぶんこちらの方が悪質</b>（開始・締切が静かに前倒しされる）</li>
+ * </ol>
+ *
+ * <p>なお {@code MapperWiring}（書き込み側がオフセット付きであること）は緑。
+ * 壊れているのは読み戻し側のみ、という切り分けが本テストの診断価値である。</p>
  */
 @DisplayName("予約タスク payload_json 往復（共通ObjectMapper実物）実証")
 class ScheduledTaskPayloadRoundTripProbeTest {
