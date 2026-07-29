@@ -89,6 +89,8 @@ public class RecruitmentListingService {
     private final RecruitmentMapper mapper;
     private final RecruitmentTemplateService templateService;
     private final RecruitmentTemplateRepository templateRepository;
+    // #2497: 募集枠の論理削除に伴う「未解決の異議」自動取下げ（同一 recruitment ドメイン内の委譲）
+    private final RecruitmentNoShowService noShowService;
     private final ContentVisibilityChecker visibilityChecker;
     // F22.1 市: 地域整合・フレンド宛先
     private final MarketRegionValidator marketRegionValidator;
@@ -590,6 +592,21 @@ public class RecruitmentListingService {
         return mapper.toListingResponse(saved);
     }
 
+    /**
+     * 募集枠を論理削除する。
+     *
+     * <p><b>#2497: 配下の未解決異議を巻き取る。</b> 募集枠を論理削除すると、NO_SHOW 記録の
+     * スコープ帰属を得るための JOIN 先（{@code RecruitmentListingEntity}）が
+     * {@code @SQLRestriction("deleted_at IS NULL")} で引けなくなり、
+     * <b>異議解決 EP が二度と通らなくなる</b>。一方 {@code countConfirmedNoShows} は
+     * 「{@code REVOKED} 以外は算入」のため、未解決の異議はペナルティに算入され続ける。
+     * 放置すると利用者は「異議を申し立てたのに永久に裁かれず、ペナルティだけ負う」状態になるため、
+     * 論理削除と同一トランザクションで未解決の異議を {@code REVOKED}（認容）として取り下げる。
+     * 詳細な根拠は {@link RecruitmentNoShowService#autoRevokeOpenDisputesOnListingArchived} を参照。</p>
+     *
+     * @param listingId 募集枠 ID
+     * @param userId    実行ユーザー ID（スコープ管理者以上）
+     */
     @Transactional
     public void archive(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
@@ -598,7 +615,13 @@ public class RecruitmentListingService {
 
         entity.softDelete();
         listingRepository.save(entity);
-        log.info("F03.11 募集枠論理削除: id={}", listingId);
+
+        // #2497: 裁定の根拠（募集枠）が消える前に、未解決の異議をまとめて取り下げる。
+        // 同一 recruitment ドメイン内の委譲であり、トランザクションはドメインを越えない。
+        int autoRevoked = noShowService.autoRevokeOpenDisputesOnListingArchived(
+                listingId, entity.getScopeType(), entity.getScopeId(), userId);
+
+        log.info("F03.11 募集枠論理削除: id={}, 異議自動取下げ={}件", listingId, autoRevoked);
     }
 
     // ===========================================
