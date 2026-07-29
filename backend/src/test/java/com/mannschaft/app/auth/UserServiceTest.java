@@ -39,6 +39,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -697,6 +699,99 @@ class UserServiceTest {
     @Nested
     @DisplayName("updateProfile")
     class UpdateProfile {
+
+        // ============================================================
+        // Issue #2487: キャッシュ evict は「コミット確定後」でなければならない
+        // ------------------------------------------------------------
+        // コミット前に evict すると、evict とコミットの隙に別スレッドがキャッシュミス →
+        // READ_COMMITTED 下で未コミットの更新が見えない DB を読み → 旧値を TTL 5 分ぶん
+        // 再ポピュレートしてしまう（F20.1 の教訓・BillingContractService#evictAfterCommit と同型）。
+        // 下記 3 テストは「コミット前 evict」に戻すと必ず赤くなる。
+        // ============================================================
+
+        /** トランザクション同期を張った状態で updateProfile を呼び、登録された同期を返す。 */
+        private List<TransactionSynchronization> updateProfileWithinTransaction(UpdateProfileRequest req) {
+            UserEntity user = createActiveUser(); // locale=ja / timezone=Asia/Tokyo
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            TransactionSynchronizationManager.initSynchronization();
+            try {
+                userService.updateProfile(USER_ID, req);
+                return List.copyOf(TransactionSynchronizationManager.getSynchronizations());
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
+
+        @Test
+        @DisplayName("#2487: timezone 変更時、evict はコミット前には走らず afterCommit で初めて走る")
+        void updateProfile_timezone変更_evictはコミット後() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, "America/Los_Angeles",
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            // コミット前は evict されていない（ここが「コミット前 evict」への退行を機械的に弾く）
+            verify(userTimezoneCache, never()).evict(USER_ID);
+            assertThat(syncs).as("コミット後に実行する同期が 1 件登録される").hasSize(1);
+
+            // コミット確定を模して afterCommit を発火 → ここで初めて evict される
+            syncs.forEach(TransactionSynchronization::afterCommit);
+            verify(userTimezoneCache).evict(USER_ID);
+            // locale は変わっていないので evict されない
+            verify(userLocaleCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: locale 変更時も evict は afterCommit まで遅延される")
+        void updateProfile_locale変更_evictはコミット後() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "en", null, null,
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            verify(userLocaleCache, never()).evict(USER_ID);
+
+            syncs.forEach(TransactionSynchronization::afterCommit);
+            verify(userLocaleCache).evict(USER_ID);
+            verify(userTimezoneCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: ロールバック（afterCommit 未発火）ではキャッシュを捨てない（DB と乖離させない）")
+        void updateProfile_ロールバック時はevictしない() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "en", null, "America/Los_Angeles",
+                    null, null, null, null, null);
+
+            // afterCommit を発火させない ＝ ロールバックされた世界線
+            updateProfileWithinTransaction(req);
+
+            verify(userTimezoneCache, never()).evict(USER_ID);
+            verify(userLocaleCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: timezone / locale が変わらなければ同期の登録も evict も行わない")
+        void updateProfile_変更なし_evict予約もしない() {
+            // createActiveUser と同値（locale=ja / timezone=Asia/Tokyo）＝実質未変更
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "ja", null, "Asia/Tokyo",
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            assertThat(syncs).as("捨てるものが無いので同期も登録しない").isEmpty();
+            verify(userTimezoneCache, never()).evict(any());
+            verify(userLocaleCache, never()).evict(any());
+        }
 
         @Test
         @DisplayName("正常系: プロフィールが更新される")
