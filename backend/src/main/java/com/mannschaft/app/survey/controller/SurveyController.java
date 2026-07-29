@@ -12,6 +12,7 @@ import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
 import com.mannschaft.app.survey.dto.UpdateSurveyRequest;
+import com.mannschaft.app.survey.service.SurveyAccessGuard;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
 import com.mannschaft.app.team.service.TeamService;
@@ -41,6 +42,11 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * アンケートコントローラー。アンケートのCRUD・ライフサイクルAPIを提供する。
+ *
+ * <p><b>認可</b>: 変更系（作成・更新・公開・締切・削除）は {@link SurveyAccessGuard} を
+ * public 入口である本 Controller で通す。作成はスコープ会員（応援者を除く）、既存アンケートの
+ * 管理操作は作成者または ADMIN+。認可スコープはパス変数ではなくアンケート実体由来で確定し、
+ * パス変数と実体が一致しない場合は 404（存在秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/{scopeType}/{scopeId}/surveys")
@@ -50,6 +56,7 @@ public class SurveyController {
 
     private final SurveyService surveyService;
     private final SurveyResultService surveyResultService;
+    private final SurveyAccessGuard surveyAccessGuard;
     private final OrganizationService organizationService;
     private final TeamService teamService;
 
@@ -93,6 +100,8 @@ public class SurveyController {
 
     /**
      * アンケートを作成する。
+     *
+     * <p>認可: 当該スコープの会員のみ（応援者は作成不可）。非会員は 403。</p>
      */
     @PostMapping
     @Operation(summary = "アンケート作成")
@@ -103,13 +112,18 @@ public class SurveyController {
             @Valid @RequestBody CreateSurveyRequest request) {
         String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        surveyAccessGuard.checkCanCreate(currentUserId, canonicalScopeType, resolvedScopeId);
         SurveyDetailResponse response = surveyService.createSurvey(
-                canonicalScopeType, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
+                canonicalScopeType, resolvedScopeId, currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * アンケートを更新する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PatchMapping("/{surveyId}")
     @Operation(summary = "アンケート更新")
@@ -121,12 +135,17 @@ public class SurveyController {
             @Valid @RequestBody UpdateSurveyRequest request) {
         String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
         SurveyResponse response = surveyService.updateSurvey(canonicalScopeType, resolvedScopeId, surveyId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを公開する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PostMapping("/{surveyId}/publish")
     @Operation(summary = "アンケート公開")
@@ -137,12 +156,17 @@ public class SurveyController {
             @PathVariable Long surveyId) {
         String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
         SurveyResponse response = surveyService.publishSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを締め切る。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PostMapping("/{surveyId}/close")
     @Operation(summary = "アンケート締め切り")
@@ -153,12 +177,17 @@ public class SurveyController {
             @PathVariable Long surveyId) {
         String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
         SurveyResponse response = surveyService.closeSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを削除する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @DeleteMapping("/{surveyId}")
     @Operation(summary = "アンケート削除")
@@ -169,6 +198,8 @@ public class SurveyController {
             @PathVariable Long surveyId) {
         String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
         surveyService.deleteSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.noContent().build();
     }

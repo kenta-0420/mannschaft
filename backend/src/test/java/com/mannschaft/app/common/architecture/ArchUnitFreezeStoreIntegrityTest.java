@@ -120,6 +120,19 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
      * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
      *
+     * <p>745 → 735（2026-07-29・認可根治戦役 Wave7 survey ドメイン）: survey ドメインの
+     * 10 エンドポイントに認可を敷設したため縮小。内訳は
+     * {@code SurveyController}（createSurvey / updateSurvey / publishSurvey / closeSurvey /
+     * deleteSurvey）5、{@code SurveyQuestionController}（addQuestion / deleteQuestion）2、
+     * {@code SurveyResultController}（addTargets / addResultViewers）2、
+     * {@code SurveyResponseController.getMyResponses} 1。前 9 件は新設の
+     * {@code SurveyAccessGuard}（作成=スコープ会員 / 管理操作=作成者 or ADMIN+・スコープは
+     * アンケート実体由来・不一致は 404 秘匿）を Controller から呼ぶことで番人のシグナル判定に到達する。
+     * 残る 1 件（{@code getMyResponses}）は自己スコープで閉じた EP であり、
+     * {@code @AuthorizedInService} マーカーで監査済であることを明示した。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code SurveyScopeContractIT} を含む）。</p>
+     *
      * <p>745 → 744（2026-07-29）: F06.4 公開活動記録の匿名公開安全化により
      * {@code activity.controller.ActivityPublicController.getPublicActivityById} の凍結 1 件が解消。
      * 同 Controller は {@code SecurityConfig}（GET 5 本 permitAll）配下の意図的公開エンドポイント群であり、
@@ -128,8 +141,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * あわせて実装側でも親スコープ公開性検証・DRAFT 除外・スコープ詐称拒否・403→404 正規化・
      * 公開専用 DTO 化を行っており、<b>違反隠蔽ではなく認可設計の是正に伴う正当な縮小</b>である。
      * 契約は {@code ActivityPublicContractIT} が機械的に検証する。</p>
+     *
+     * <p>735 と 744 は共通の 745 から別々に分岐した並行根治の結果であり、{@code main} 統合時点で
+     * 両方を合流させる必要がある。735 → 734（2026-07-29・Wave7 survey ブランチの {@code main} 追随統合）:
+     * survey ドメイン 10 件の根治を、activity 公開安全化 1 件を反映済みの {@code main} 側 744 に適用し、
+     * 重複なく統合した結果の行数（745 − 10 − 1 = 734）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 744;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 734;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
