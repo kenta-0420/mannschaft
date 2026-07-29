@@ -220,16 +220,19 @@ public class VillageRepresentativeService {
     // ========================================================================
 
     /**
-     * 村に紐づく代表委任一覧を取得する。
+     * 村に紐づく代表委任一覧を取得する。村人（現役メンバー）のみ閲覧可。
      *
      * @param villageId       対象村
      * @param includeRevoked  {@code true} なら取消し済も含めて履歴全件を返す。
      *                        {@code false} なら現役のみ。
+     * @param actorUserId     閲覧しようとするログイン済ユーザー ID
      * @return DTO リスト（grantedAt 降順は呼出し元責務とせず、リポジトリの自然順をそのまま返す）
      */
     @Transactional(readOnly = true)
-    public List<RepresentativeResponse> listRepresentatives(UUID villageId, boolean includeRevoked) {
+    public List<RepresentativeResponse> listRepresentatives(UUID villageId, boolean includeRevoked,
+                                                             Long actorUserId) {
         loadActiveVillage(villageId);
+        requireVillager(villageId, actorUserId);
 
         List<VillageRepresentativeEntity> entities = includeRevoked
                 ? representativeRepository.findAll().stream()
@@ -320,6 +323,20 @@ public class VillageRepresentativeService {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
         return m;
+    }
+
+    /**
+     * 操作者が当該村の<strong>現役</strong>村人（役職不問）であることを検証する。
+     * 不足時は {@link VillageErrorCode#NOT_MEMBER}（IDOR 対策で 404 統一・他ドメインの
+     * {@code VillageRecruitCategoryService#requireVillager} と同じ粒度・エラーコード）。
+     */
+    private void requireVillager(UUID villageId, Long actorUserId) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
     }
 
     /**

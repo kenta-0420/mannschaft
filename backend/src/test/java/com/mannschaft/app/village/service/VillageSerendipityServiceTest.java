@@ -5,7 +5,11 @@ import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageSerendipityRankingResponse;
 import com.mannschaft.app.village.dto.VillageSerendipityScoreResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageSerendipityScoreEntity;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageSerendipityScoreRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -57,9 +61,23 @@ class VillageSerendipityServiceTest {
     private VillageSerendipityScoreRepository serendipityRepository;
     @Mock
     private VillageRepository villageRepository;
+    @Mock
+    private VillageMembershipRepository membershipRepository;
 
     @InjectMocks
     private VillageSerendipityService service;
+
+    private void givenActiveMember(Long userId) {
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
+                .villageId(VILLAGE_ID)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(userId)
+                .role(VillageRole.VILLAGER)
+                .joinedAt(LocalDateTime.now())
+                .build();
+        given(membershipRepository.findActiveByVillageIdAndSubject(VILLAGE_ID, VillageSubjectType.USER, userId))
+                .willReturn(Optional.of(m));
+    }
 
     // ========================================================================
     // getMyScore
@@ -131,9 +149,10 @@ class VillageSerendipityServiceTest {
     // ========================================================================
 
     @Test
-    @DisplayName("getRanking: 上位3件をrank連番付きで返し、totalも返す")
+    @DisplayName("getRanking: 上位3件をrank連番付きで返し、totalも返す（村人が閲覧）")
     void getRanking_returnsTopN() {
         givenActiveVillage();
+        givenActiveMember(USER_A);
         VillageSerendipityScoreEntity a = score(USER_A, 10L, 50L);
         VillageSerendipityScoreEntity b = score(USER_B, 8L, 30L);
         VillageSerendipityScoreEntity c = score(USER_C, 5L, 10L);
@@ -141,7 +160,7 @@ class VillageSerendipityServiceTest {
                 .willReturn(new PageImpl<>(List.of(a, b, c)));
         given(serendipityRepository.countByVillageId(VILLAGE_ID)).willReturn(3L);
 
-        VillageSerendipityRankingResponse response = service.getRanking(VILLAGE_ID, 3);
+        VillageSerendipityRankingResponse response = service.getRanking(VILLAGE_ID, 3, USER_A);
 
         assertThat(response.total()).isEqualTo(3L);
         assertThat(response.items()).hasSize(3);
@@ -155,12 +174,13 @@ class VillageSerendipityServiceTest {
     @DisplayName("getRanking: limit=null ならデフォルト10で問い合わせ。limit>100なら100にクリップ")
     void getRanking_limitClipping() {
         givenActiveVillage();
+        givenActiveMember(USER_A);
         given(serendipityRepository.findByVillageIdOrderByInteractionScoreDesc(eq(VILLAGE_ID), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
         given(serendipityRepository.countByVillageId(VILLAGE_ID)).willReturn(0L);
 
-        service.getRanking(VILLAGE_ID, null);
-        service.getRanking(VILLAGE_ID, 500);
+        service.getRanking(VILLAGE_ID, null, USER_A);
+        service.getRanking(VILLAGE_ID, 500, USER_A);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(serendipityRepository, org.mockito.Mockito.times(2))
@@ -168,6 +188,22 @@ class VillageSerendipityServiceTest {
         List<Pageable> captured = captor.getAllValues();
         assertThat(captured.get(0).getPageSize()).isEqualTo(10);
         assertThat(captured.get(1).getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("getRanking: 非村人は VILLAGE_007（NOT_MEMBER）で拒否")
+    void getRanking_byNonMember_forbidden() {
+        givenActiveVillage();
+        Long nonMemberUserId = 999L;
+        given(membershipRepository.findActiveByVillageIdAndSubject(VILLAGE_ID, VillageSubjectType.USER, nonMemberUserId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getRanking(VILLAGE_ID, 3, nonMemberUserId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
+
+        verify(serendipityRepository, never()).findByVillageIdOrderByInteractionScoreDesc(any(), any());
     }
 
     // ========================================================================
