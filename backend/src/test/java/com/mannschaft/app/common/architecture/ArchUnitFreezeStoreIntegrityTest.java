@@ -163,8 +163,21 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller の Javadoc に明記）。
      * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
      * {@code ConfirmableNotificationScopeContractIT} 拡張を含む）。</p>
+     *
+     * <p>719 → 709（2026-07-29・認可根治戦役 Wave7 service ドメイン・テンプレート）:
+     * {@code ServiceRecordTemplateController} の 9 エンドポイント（{@code listTeamTemplates} /
+     * {@code createTeamTemplate} / {@code getTeamTemplate} / {@code updateTeamTemplate} /
+     * {@code deleteTeamTemplate} / {@code listOrgTemplates} / {@code createOrgTemplate} /
+     * {@code updateOrgTemplate} / {@code deleteOrgTemplate}）に、兄弟 {@code ServiceRecordFieldService}
+     * と同じ {@code AccessControlService} 方式（参照=checkMembership／変更=checkAdminOrAbove、
+     * 単一テンプレート操作はテンプレート実体由来のスコープで認可し不一致は {@code TEMPLATE_NOT_FOUND}
+     * で 404 秘匿）を敷設する実装是正で 9 件解消。残る 1 件（{@code ServiceRecordController.getMyRecords}）は、
+     * リポジトリクエリが呼び出しユーザー自身の {@code memberUserId} に固定される構造的な自己スコープ EP
+     * であることを監査で確認し、{@code @AuthorizedInService} マーカーで明示した（根拠は Controller の
+     * Javadoc に明記）。違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ServiceRecordTemplateScopeContractIT} 新設を含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 719;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 709;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
