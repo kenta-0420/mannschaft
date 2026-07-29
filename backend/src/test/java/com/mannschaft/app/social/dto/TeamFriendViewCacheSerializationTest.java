@@ -41,6 +41,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       {@code ImmutableCollections$ListN} は既定コンストラクタが無く、
  *       {@code DefaultTyping.EVERYTHING} で埋め込まれた型 ID から復元できない）</li>
  * </ol>
+ *
+ * <h2>調査時の注意 — {@code Stream#toList()} の戻り値型</h2>
+ * <p>{@code javap -c java.util.stream.Stream} を読むと {@code toList()} が
+ * {@code Collections.unmodifiableList(new ArrayList<>(...))} に見え、戻り値は
+ * {@code Collections$UnmodifiableRandomAccessList} だと誤読しやすい。
+ * だがそれは<b>インタフェースの default 実装</b>であり、実際の Stream 実装
+ * {@code ReferencePipeline} が {@code toList()} を override している
+ * （{@code SharedSecrets} 経由で {@code ImmutableCollections.ListN} を生成）。
+ * 本プロジェクトの JDK21（Temurin 21.0.10）で実測した実行時の型は
+ * {@code java.util.ImmutableCollections$ListN} である。
+ * いずれにせよ既定コンストラクタは無く復元不能なので、{@code ArrayList} に集める必要性は変わらない。</p>
  */
 @DisplayName("TeamFriendView キャッシュ往復シリアライズ回帰テスト (issue #2496)")
 class TeamFriendViewCacheSerializationTest {

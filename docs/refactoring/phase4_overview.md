@@ -77,7 +77,15 @@ Spring のキャッシュ AOP（プロキシ方式）が自己呼び出しでは
 | 認可の位置 | `listFriends`（キャッシュの**外**）で `checkMembership` を実行し、通過後にキャッシュ層を呼ぶ |
 | 自己呼び出し | `@Lazy` 自己注入した `self()` 経由で `listFriendViews` を呼ぶ（`WidgetVisibilityResolver` と同型） |
 | キャッシュキー | `teamId:userId:page:size:publicOnly`。返却内容は閲覧者個人に依存しないが、認可がキャッシュ内側へ再混入した場合の多層防御として `userId` を含める |
-| キャッシュ値の型 | `List<TeamFriendView>` を **可変 `ArrayList`** で返す。`PageImpl` は `GenericJackson2JsonRedisSerializer` で復元できないため `Page` はキャッシュ外で組み立てる。`Stream#toList()` が返す `ImmutableCollections$ListN` も `DefaultTyping.EVERYTHING` の型 ID から復元できないため使わない |
+| キャッシュ値の型 | `List<TeamFriendView>` を **可変 `ArrayList`** で返す。`PageImpl` は `GenericJackson2JsonRedisSerializer` で復元できないため `Page` はキャッシュ外で組み立てる。`Stream#toList()` が返す `ImmutableCollections$ListN` も `DefaultTyping.EVERYTHING` の型 ID から復元できないため使わない（下記の注意を参照） |
+
+> **`Stream#toList()` の戻り値型についての注意**
+> `javap -c java.util.stream.Stream` を読むと `Collections.unmodifiableList(new ArrayList<>(...))` に見え、
+> 戻り値は `Collections$UnmodifiableRandomAccessList` だと誤読しやすい。だがそれは**インタフェースの
+> default 実装**であり、実際の Stream 実装 `ReferencePipeline` が `toList()` を override している
+> （`SharedSecrets` 経由で `ImmutableCollections.ListN` を生成）。
+> 本プロジェクトの JDK21（Temurin 21.0.10）で実測した実行時の型は `java.util.ImmutableCollections$ListN`。
+> いずれにせよ既定コンストラクタが無く復元不能なので、`ArrayList` に集める必要性は変わらない。
 | 失効 | すべて `allEntries = true`。キーが閲覧者・ページ・`publicOnly` の直積であり個別キー指定では必ず取りこぼす |
 
 失効の網羅（キャッシュ値を変化させ得る操作の全数）:

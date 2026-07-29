@@ -179,6 +179,14 @@ public class TeamFriendQueryService {
         // 失敗は LoggingCacheErrorHandler の fail-open で WARN に握り潰されるため、
         // 「毎回ミスするだけの効かないキャッシュ」に静かに逆戻りする。
         // java.util.ArrayList なら型 ID から問題なく復元できる。
+        //
+        // 【調査時の注意】`javap -c java.util.stream.Stream` を読むと toList() の実装が
+        // Collections.unmodifiableList(new ArrayList<>(...)) に見え、戻り値は
+        // Collections$UnmodifiableRandomAccessList だと誤読しやすい。しかしそれは
+        // インタフェースの default 実装であり、実際の Stream 実装 ReferencePipeline が
+        // toList() を override している（SharedSecrets 経由で ImmutableCollections.ListN を生成）。
+        // JDK21(Temurin 21.0.10) で実測した実行時の型は ImmutableCollections$ListN である。
+        // どちらにせよ既定コンストラクタは無く復元不能なので、本修正の必要性は変わらない。
         return rows.stream()
                 .filter(e -> !publicOnly || Boolean.TRUE.equals(e.getIsPublic()))
                 .map(e -> toView(e, teamId))
