@@ -110,6 +110,12 @@ class TimelinePostServiceTest {
     @Mock
     private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
 
+    @Mock
+    private TimelinePostVisibilityAccessGuard postVisibilityGuard;
+
+    @Mock
+    private TimelinePostAccessGuard postAccessGuard;
+
     @InjectMocks
     private TimelinePostService timelinePostService;
 
@@ -256,6 +262,7 @@ class TimelinePostServiceTest {
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -296,8 +303,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
-            // 認可根治 Wave6: 継承後の実効スコープ（親の TEAM）に対して到達可否が評価される
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
+            // 認可根治 Wave7: 継承後の実効スコープ（親の TEAM）に対して到達可否が評価される
+            given(postVisibilityGuard.isVisible(parentPost, USER_ID)).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -349,8 +356,8 @@ class TimelinePostServiceTest {
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
-            // 認可根治 Wave6: 継承後の実効スコープ（親の ORGANIZATION）に対して到達可否が評価される
-            given(accessControlService.isMember(USER_ID, orgId, "ORGANIZATION")).willReturn(true);
+            // 認可根治 Wave7: 継承後の実効スコープ（親の ORGANIZATION）に対して到達可否が評価される
+            given(postVisibilityGuard.isVisible(parentPost, USER_ID)).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -387,7 +394,7 @@ class TimelinePostServiceTest {
                     .status(PostStatus.PUBLISHED)
                     .build();
             given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+            given(postVisibilityGuard.isVisible(parentPost, USER_ID)).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
@@ -439,7 +446,7 @@ class TimelinePostServiceTest {
                     .status(PostStatus.PUBLISHED)
                     .build();
             given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+            given(postVisibilityGuard.isVisible(original, USER_ID)).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
@@ -481,6 +488,7 @@ class TimelinePostServiceTest {
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            given(postVisibilityGuard.isVisible(original, USER_ID)).willReturn(true);
 
             // when
             timelinePostService.createPost(req, USER_ID);
@@ -844,6 +852,9 @@ class TimelinePostServiceTest {
             TimelinePostEntity post = createPost();
             UpdatePostRequest req = new UpdatePostRequest("更新");
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            // 認可根治 Wave7: 所有者判定は TimelinePostAccessGuard へ委譲されるためスタブする
+            org.mockito.BDDMockito.willThrow(new BusinessException(TimelineErrorCode.NOT_POST_OWNER))
+                    .given(postAccessGuard).checkCanManage(OTHER_USER_ID, post);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.updatePost(POST_ID, req, OTHER_USER_ID))
@@ -899,7 +910,10 @@ class TimelinePostServiceTest {
             // given
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
-            // validateOwner が先にスローするため attachmentRepository は呼ばれない
+            // 認可根治 Wave7: 所有者判定は TimelinePostAccessGuard へ委譲される（先にスローするため
+            // attachmentRepository は呼ばれない）
+            org.mockito.BDDMockito.willThrow(new BusinessException(TimelineErrorCode.NOT_POST_OWNER))
+                    .given(postAccessGuard).checkCanManage(OTHER_USER_ID, post);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.deletePost(POST_ID, OTHER_USER_ID))
@@ -1448,6 +1462,7 @@ class TimelinePostServiceTest {
             List<AttachmentResponse> attachmentResponses = List.of();
 
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
             given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
@@ -1486,6 +1501,7 @@ class TimelinePostServiceTest {
             // mock 返却は LIMIT 5 の DB 結果を模し、ASC 先頭5件（id/createdAt 昇順の 11..15）とする。
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of());
             given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
@@ -1545,9 +1561,9 @@ class TimelinePostServiceTest {
         void TEAMスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND() {
             // given
             Long teamId = 50L;
-            given(postRepository.findById(POST_ID))
-                    .willReturn(Optional.of(scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID)));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+            TimelinePostEntity post = scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
@@ -1561,9 +1577,9 @@ class TimelinePostServiceTest {
         void TEAMスコープ投稿は正当メンバーが取得できる() {
             // given
             Long teamId = 50L;
-            given(postRepository.findById(POST_ID))
-                    .willReturn(Optional.of(scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID)));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
+            TimelinePostEntity post = scopedPost(PostScopeType.TEAM, teamId, null, OTHER_USER_ID);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
             given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
@@ -1582,9 +1598,9 @@ class TimelinePostServiceTest {
         void VILLAGEスコープ投稿を非メンバーが取得するとPOST_NOT_FOUND() {
             // given
             UUID villageId = UUID.randomUUID();
-            given(postRepository.findById(POST_ID))
-                    .willReturn(Optional.of(scopedPost(PostScopeType.VILLAGE, 0L, villageId, OTHER_USER_ID)));
-            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(false);
+            TimelinePostEntity post = scopedPost(PostScopeType.VILLAGE, 0L, villageId, OTHER_USER_ID);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
@@ -1611,8 +1627,9 @@ class TimelinePostServiceTest {
         @DisplayName("正常系[BOLA]: PERSONALスコープ投稿は本人が取得できる")
         void PERSONALスコープ投稿は本人が取得できる() {
             // given
-            given(postRepository.findById(POST_ID))
-                    .willReturn(Optional.of(scopedPost(PostScopeType.PERSONAL, USER_ID, null, USER_ID)));
+            TimelinePostEntity post = scopedPost(PostScopeType.PERSONAL, USER_ID, null, USER_ID);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
             given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
@@ -1713,10 +1730,12 @@ class TimelinePostServiceTest {
         void リプライ一覧を取得できる() {
             // given: 親投稿は PUBLIC スコープ（常に可視）
             Long parentId = 5L;
+            TimelinePostEntity parent = createPost();
             List<TimelinePostEntity> replies = List.of(createPost());
             List<PostResponse> mapped = List.of(createPostResponse());
 
-            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(true);
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(replies);
             given(timelineMapper.toPostResponseList(replies)).willReturn(mapped);
@@ -1733,7 +1752,9 @@ class TimelinePostServiceTest {
         void sizeが0以下_デフォルトサイズ() {
             // given
             Long parentId = 5L;
-            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
+            TimelinePostEntity parent = createPost();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(true);
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -1751,7 +1772,9 @@ class TimelinePostServiceTest {
             // given
             Long parentId = 5L;
             Long cursor = 42L;
-            given(postRepository.findById(parentId)).willReturn(Optional.of(createPost()));
+            TimelinePostEntity parent = createPost();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(true);
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -1778,7 +1801,7 @@ class TimelinePostServiceTest {
                     .status(PostStatus.PUBLISHED)
                     .build();
             given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(false);
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.getReplies(parentId, null, 20, USER_ID))
@@ -1804,7 +1827,7 @@ class TimelinePostServiceTest {
                     .status(PostStatus.PUBLISHED)
                     .build();
             given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
-            given(accessControlService.isMember(USER_ID, teamId, "TEAM")).willReturn(true);
+            given(postVisibilityGuard.isVisible(parent, USER_ID)).willReturn(true);
             given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -2077,6 +2100,7 @@ class TimelinePostServiceTest {
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+            given(postVisibilityGuard.isVisible(original, USER_ID)).willReturn(true);
 
             // when
             PostResponse result = timelinePostService.createPost(req, USER_ID);
@@ -2099,6 +2123,9 @@ class TimelinePostServiceTest {
             // given
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            // 認可根治 Wave7: 所有者判定は TimelinePostAccessGuard へ委譲されるためスタブする
+            org.mockito.BDDMockito.willThrow(new BusinessException(TimelineErrorCode.NOT_POST_OWNER))
+                    .given(postAccessGuard).checkCanManage(OTHER_USER_ID, post);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.togglePin(POST_ID, true, OTHER_USER_ID))
@@ -2322,6 +2349,7 @@ class TimelinePostServiceTest {
             TimelinePostEntity post = createPost();
             TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of(entity));
             given(timelineMapper.toAttachmentResponseList(List.of(entity)))

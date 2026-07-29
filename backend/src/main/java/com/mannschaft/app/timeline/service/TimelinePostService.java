@@ -122,6 +122,13 @@ public class TimelinePostService {
      * timeline も他ドメイン（village/blog 等）に倣って本部品を通す。存在検証は行わず署名 URL 生成のみ。
      */
     private final MediaUrlResolver mediaUrlResolver;
+    /**
+     * 投稿可視性判定の正準実装（認可根治 Wave7）。読取経路（{@link #getPostDetail} /
+     * {@link #getReplies}）・書き込み経路（リプライ/リポストの参照先検証）が共有する唯一の述語。
+     */
+    private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
+    /** 投稿の更新・削除・ピン留め切替の管理操作ゲート（本人 or TEAM/ORGANIZATION スコープの ADMIN+）。 */
+    private final TimelinePostAccessGuard postAccessGuard;
 
     /** 名前解決フォールバック（退会・削除・匿名化で Map に存在しない場合）。 */
     private static final String UNKNOWN_USER_NAME = "不明なユーザー";
@@ -448,7 +455,7 @@ public class TimelinePostService {
         if (req.getRepostOfId() != null) {
             repostOriginal = postRepository.findById(req.getRepostOfId()).orElse(null);
             if (enforceScopeAuthorization && repostOriginal != null
-                    && !isPostVisible(repostOriginal, userId)) {
+                    && !postVisibilityGuard.isVisible(repostOriginal, userId)) {
                 throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
             }
         }
@@ -550,6 +557,10 @@ public class TimelinePostService {
     /**
      * 投稿を更新する。編集履歴を記録する。
      *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 更新できる（{@link TimelinePostAccessGuard#checkCanManage}）。それ以外は
+     * {@link TimelineErrorCode#NOT_POST_OWNER}。</p>
+     *
      * @param postId 投稿ID
      * @param req    更新リクエスト
      * @param userId ユーザーID
@@ -558,7 +569,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse updatePost(Long postId, UpdatePostRequest req, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         if (req.getContent() == null || req.getContent().isBlank()) {
             throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -584,13 +595,16 @@ public class TimelinePostService {
      * <p><b>F13 Phase 4-γ</b>: 論理削除完了後に添付ファイル（IMAGE / VIDEO_FILE）の
      * 使用量を {@link StorageQuotaService#recordDeletion} で減算する。</p>
      *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 削除できる（{@link TimelinePostAccessGuard#checkCanManage}）。</p>
+     *
      * @param postId 投稿ID
      * @param userId ユーザーID
      */
     @Transactional
     public void deletePost(Long postId, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         // F13 Phase 4-γ: 削除前に添付ファイル情報を取得してクォータ減算に備える
         List<TimelinePostAttachmentEntity> attachments =
@@ -642,7 +656,7 @@ public class TimelinePostService {
         // 認可根治 Wave3-B7-timeline（BOLA 根治）: post を先に取得し、post 自身が持つ scope に対して
         // membership を検証する。不可視なら「存在しない」と同じ POST_NOT_FOUND を返し、
         // 越境アクセスの成否（対象 ID が実在するか）を漏らさない。
-        if (!isPostVisible(post, userId)) {
+        if (!postVisibilityGuard.isVisible(post, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
 
@@ -762,8 +776,8 @@ public class TimelinePostService {
      * <p>リプライは親投稿のスコープをそのまま継承して保存されるため、リクエストが申告した
      * スコープではなく <b>継承元の親投稿が属する実効スコープ</b> に対して認可を評価する。
      * 判定は読取経路（{@link #getPostDetail} / {@link #getReplies}）と同じ
-     * {@link #isPostVisible} を用い、到達できない場合は読取経路と同一の
-     * {@link TimelineErrorCode#POST_NOT_FOUND} に倒して対象 ID の実在を秘匿する。</p>
+     * {@link TimelinePostVisibilityAccessGuard#isVisible} を用い、到達できない場合は読取経路と
+     * 同一の {@link TimelineErrorCode#POST_NOT_FOUND} に倒して対象 ID の実在を秘匿する。</p>
      *
      * <p>VILLAGE スコープだけは本メソッドで判定しない。村への投稿権限は下流の
      * {@link PostingIdentityService#validatePostingIdentity} が
@@ -779,51 +793,9 @@ public class TimelinePostService {
         if (parentPost.getScopeType() == PostScopeType.VILLAGE) {
             return;
         }
-        if (!isPostVisible(parentPost, userId)) {
+        if (!postVisibilityGuard.isVisible(parentPost, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
-    }
-
-    /**
-     * 投稿 1 件の可視性を判定する（認可根治 Wave3-B7-timeline・BOLA 対策）。
-     * {@link #getPostDetail} / {@link #getReplies} が「post を先に取得し post 自身の scope で判定する」
-     * ために使う（クエリパラメータ由来の scope ではなく、DB に永続化された実 scope を正とする）。
-     *
-     * <ul>
-     *   <li>PUBLIC: 常に可視</li>
-     *   <li>TEAM/ORGANIZATION: 呼び出し元がそのスコープのメンバーであること</li>
-     *   <li>VILLAGE: 呼び出し元がその村の現役 USER メンバーであること</li>
-     *   <li>PERSONAL: 呼び出し元が投稿者本人であること</li>
-     *   <li>FRIEND_FORWARD: 転送先チームのメンバーであること（認可根治 Wave6）。
-     *       {@code scope_id} には転送を実行したチームの {@code teams.id} が入る
-     *       （唯一の生成経路である {@code FriendContentForwardService#forward} がそう積む）。
-     *       ここで参照する scope は「クエリパラメータ由来」ではなく <b>DB に永続化された
-     *       post 自身の scope</b> であるため、メンバーシップ判定は BOLA 安全に成立する</li>
-     *   <li>FRIEND_TEAM / FRIEND_ARCHIVE: 生成経路が存在しない（Phase 3 利用予定の予約値）ため
-     *       fail-closed（認可根治 Wave6。従来は無条件 pass-through だった）</li>
-     * </ul>
-     *
-     * <p><b>正路への影響が無いことの確認</b>: 本メソッドの呼び出し元は読取経路の
-     * {@link #getPostDetail} / {@link #getReplies} と、書き込み経路（認可根治 Wave6）の
-     * {@link #requireReplyableParent} / {@link #doCreatePost} のリポスト元検証で、
-     * いずれも {@code TimelinePostController} の公開 EP から呼ばれる。social ドメインの
-     * friend-feed 経路は {@code TimelinePostService} を一切利用しないため、
-     * FRIEND_* を fail-closed にしても正規導線は壊れない。</p>
-     *
-     * <p>書き込み経路が本メソッドを共用することで、「読める投稿にだけリプライ／リポストできる」
-     * という対称性がスコープ種別の追加時にも自動的に保たれる。</p>
-     */
-    private boolean isPostVisible(TimelinePostEntity post, Long userId) {
-        return switch (post.getScopeType()) {
-            case PUBLIC -> true;
-            case TEAM -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
-            case ORGANIZATION -> accessControlService.isMember(userId, post.getScopeId(), "ORGANIZATION");
-            case VILLAGE -> post.getScopeVillageId() != null
-                    && postingIdentityService.isUserVillageMember(post.getScopeVillageId(), userId);
-            case PERSONAL -> userId != null && userId.equals(post.getUserId());
-            case FRIEND_FORWARD -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
-            case FRIEND_TEAM, FRIEND_ARCHIVE -> false;
-        };
     }
 
     /**
@@ -1120,8 +1092,8 @@ public class TimelinePostService {
      * （一覧フィードと同一の表示情報）。ID 昇順で並べ、{@code cursor} 指定時はその ID より後を返す。</p>
      *
      * <p><b>認可根治 Wave3-B7-timeline（BOLA 根治）</b>: 親投稿を取得し、その scope に対して
-     * {@link #isPostVisible} で可視性を検証する。不可視なら {@link #getPostDetail} と同様に
-     * POST_NOT_FOUND を返す（越境アクセスの成否を漏らさない）。</p>
+     * {@link TimelinePostVisibilityAccessGuard#isVisible} で可視性を検証する。不可視なら
+     * {@link #getPostDetail} と同様に POST_NOT_FOUND を返す（越境アクセスの成否を漏らさない）。</p>
      *
      * @param postId 親投稿ID
      * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
@@ -1131,7 +1103,7 @@ public class TimelinePostService {
      */
     public List<PostResponse> getReplies(Long postId, Long cursor, int size, Long userId) {
         TimelinePostEntity parent = findPostOrThrow(postId);
-        if (!isPostVisible(parent, userId)) {
+        if (!postVisibilityGuard.isVisible(parent, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
@@ -1219,6 +1191,9 @@ public class TimelinePostService {
     /**
      * 投稿のピン留め状態を切り替える。
      *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 切り替えできる（{@link TimelinePostAccessGuard#checkCanManage}）。</p>
+     *
      * @param postId 投稿ID
      * @param pinned ピン留めするかどうか
      * @param userId ユーザーID
@@ -1227,7 +1202,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse togglePin(Long postId, boolean pinned, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         post.setPinned(pinned);
         post = postRepository.save(post);
@@ -1244,15 +1219,6 @@ public class TimelinePostService {
     private TimelinePostEntity findPostOrThrow(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
-    }
-
-    /**
-     * 投稿の所有者チェックを行う。
-     */
-    private void validateOwner(TimelinePostEntity post, Long userId) {
-        if (!userId.equals(post.getUserId())) {
-            throw new BusinessException(TimelineErrorCode.NOT_POST_OWNER);
-        }
     }
 
     /**
