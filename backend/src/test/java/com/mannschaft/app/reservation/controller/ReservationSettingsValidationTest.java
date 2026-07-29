@@ -24,8 +24,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import org.mockito.ArgumentCaptor;
+
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -338,19 +341,56 @@ class ReservationSettingsValidationTest {
     // ========================================
 
     @Test
-    @DisplayName("AC-6-16: pending_expire 設定変更が audit_logs に記録される")
+    @DisplayName("AC-6-16: pending_expire 設定変更が audit_logs に旧値・新値つきで記録される")
     void 仮押さえ失効設定の変更が監査記録される() throws Exception {
-        stubPolicyUpdate(48);
+        // 更新前は 24（既定）→ 48 へ変更する。監査ログは両方を持たねばならない。
+        given(policyService.getOrDefault(anyLong())).willReturn(
+                ReservationPolicyEntity.builder().teamId(TEAM_ID).pendingExpireHours(24).build());
+        given(policyService.updatePolicy(anyLong(), any(), any(), any(), any(), any()))
+                .willReturn(ReservationPolicyEntity.builder()
+                        .teamId(TEAM_ID).pendingExpireHours(48).build());
 
         mockMvc.perform(patch(PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pendingExpireHours\":48}"))
                 .andExpect(status().isOk());
 
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
         verify(auditLogService).record(
                 eq("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED"),
                 eq(ACTOR_USER_ID), isNull(), eq(TEAM_ID), isNull(), isNull(), isNull(), isNull(),
-                org.mockito.ArgumentMatchers.contains("48"));
+                metadata.capture());
+        assertThat(metadata.getValue())
+                .as("新値だけでは『何時間から何時間へ変えたか』を後から追えない")
+                .contains("\"before\"")
+                .contains("\"after\"")
+                .contains("24")
+                .contains("48");
+    }
+
+    @Test
+    @DisplayName("AC-6-16: 無効化（clear）の監査ログは旧値あり・新値 null で記録される")
+    void 仮押さえ失効の無効化が監査記録される() throws Exception {
+        given(policyService.getOrDefault(anyLong())).willReturn(
+                ReservationPolicyEntity.builder().teamId(TEAM_ID).pendingExpireHours(36).build());
+        given(policyService.updatePolicy(anyLong(), any(), any(), any(), any(), any()))
+                .willReturn(ReservationPolicyEntity.builder()
+                        .teamId(TEAM_ID).pendingExpireHours(null).build());
+
+        mockMvc.perform(patch(PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clearPendingExpireHours\":true}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService).record(
+                eq("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED"),
+                eq(ACTOR_USER_ID), isNull(), eq(TEAM_ID), isNull(), isNull(), isNull(), isNull(),
+                metadata.capture());
+        assertThat(metadata.getValue())
+                .as("『自動失効を止めた』という運用上重要な変更こそ旧値が要る")
+                .contains("36")
+                .contains("null");
     }
 
     @Test

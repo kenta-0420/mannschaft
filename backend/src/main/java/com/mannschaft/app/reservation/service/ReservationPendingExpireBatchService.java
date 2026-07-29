@@ -52,7 +52,12 @@ public class ReservationPendingExpireBatchService {
     @BatchEndpoint(name = "reservation-pending-expire",
             description = "承認されないまま期限切れになった仮押さえ(PENDING)を5分毎に自動キャンセルして枠を復帰させる")
     @Scheduled(fixedDelay = 300_000)
-    @SchedulerLock(name = "reservationPendingExpireBatch", lockAtLeastFor = "30s", lockAtMostFor = "5m")
+    // lockAtMostFor は fixedDelay（5分）と同値にしない。同値だと 1 回の実行が 5 分を超えた瞬間に
+    // ロックが失効し、次回起動と二重処理になる。ReservationEntity は @Version を持たないため、
+    // 二重処理は定員 2 以上の枠で booked_count を余分に減らす（空きが 1 多く出る）。
+    // 1 回あたりの処理量は ReservationPendingExpireService.MAX_UNITS_PER_RUN で上限化しつつ、
+    // ロック保持時間にも余裕（3 倍）を持たせて窓を閉じる（殿の裁定・2026-07-29）。
+    @SchedulerLock(name = "reservationPendingExpireBatch", lockAtLeastFor = "30s", lockAtMostFor = "15m")
     public int expirePendingReservations() {
         List<PendingExpireUnit> units = pendingExpireService.findExpirableUnits();
         if (units.isEmpty()) {

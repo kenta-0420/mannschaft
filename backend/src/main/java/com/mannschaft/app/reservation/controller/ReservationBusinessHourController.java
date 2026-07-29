@@ -262,6 +262,12 @@ public class ReservationBusinessHourController {
      *   <li>{@code resourceNameType} / {@code resourceNameCustom} … {@code reservation_team_settings}
      *       の呼称カラムを upsert 更新（F03.4.5 §5）。CUSTOM 必須検証・CUSTOM 以外への NULL 正規化は
      *       {@code ReservationTeamSettingService#updateResourceName} が担う。</li>
+     *   <li>{@code pendingExpireHours} / {@code clearPendingExpireHours} … {@code reservation_policies}
+     *       の仮押さえ自動失効設定を upsert 更新（F03.4.5 §6.3）。{@code pendingExpireHours} は
+     *       1〜168（範囲外は 400）。{@code clearPendingExpireHours=true} で自動失効を無効化（NULL 化）し、
+     *       <b>両方指定された場合は clear を優先</b>する（{@code UpdateSlotRequest.clearApprovalMode} と同形。
+     *       優先規則の実装は {@code ReservationPolicyEntity#updatePolicy}）。
+     *       本項目の変更は {@code audit_logs} に旧値・新値つきで記録する（§7）。</li>
      * </ul>
      */
     @PatchMapping
@@ -279,6 +285,9 @@ public class ReservationBusinessHourController {
         // F03.4.5 §6.3: pendingExpireHours / clearPendingExpireHours も同テーブルのため同じ分岐で扱う。
         boolean pendingExpireTouched = request.getPendingExpireHours() != null
                 || request.getClearPendingExpireHours() != null;
+        // 監査ログに旧値を載せるため、更新前の値を先に控える（更新後だと新値しか取れない）。
+        Integer previousPendingExpireHours =
+                pendingExpireTouched ? policyService.getOrDefault(teamId).getPendingExpireHours() : null;
         if (request.getApprovalMode() != null
                 || request.getCancelDeadlineHours() != null
                 || request.getRemindBeforeHours() != null
@@ -294,9 +303,13 @@ public class ReservationBusinessHourController {
             // 仮押さえ失効は「利用者の予約が管理者の設定で自動的に消える」挙動のため、
             // 設定変更そのものを追跡可能にする（定期ルール CRUD と同じ recordAudit 作法）。
             if (pendingExpireTouched) {
+                // 旧値を必ず含める。「利用者の予約が管理者設定で自動的に消える」挙動の記録が目的であり、
+                // 新値だけでは「いつ誰が何時間から何時間へ変えたのか」を後から追えない。
                 auditLogService.record("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED",
                         SecurityUtils.getCurrentUserId(), null, teamId, null, null, null, null,
-                        "{\"pendingExpireHours\":" + saved.getPendingExpireHours() + "}");
+                        String.format("{\"before\":{\"pendingExpireHours\":%s},"
+                                        + "\"after\":{\"pendingExpireHours\":%s}}",
+                                previousPendingExpireHours, saved.getPendingExpireHours()));
             }
         }
         // 予約対象の呼称（reservation_team_settings）の upsert。両方 null なら据え置き（F03.4.5 §5）。

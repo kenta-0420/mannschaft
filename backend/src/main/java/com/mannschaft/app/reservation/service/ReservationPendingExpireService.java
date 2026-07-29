@@ -11,6 +11,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +63,15 @@ public class ReservationPendingExpireService {
 
     private static final DateTimeFormatter SLOT_AT_FORMAT = DateTimeFormatter.ofPattern("M月d日 HH:mm");
 
+    /**
+     * 1 回の実行で処理する失効単位の上限（殿の裁定・2026-07-29）。
+     *
+     * <p>デプロイ初回の一斉失効・通知バーストを「5 分ごとに最大 500 単位ずつ」へ平滑化する。
+     * 上限で打ち切った回は残件がある旨をログに出し、次回起動で続きが処理される
+     * （失効条件は時刻経過なので、取りこぼしは構造的に発生しない）。</p>
+     */
+    static final int MAX_UNITS_PER_RUN = 500;
+
     private final ReservationRepository reservationRepository;
     private final ReservationSlotRepository slotRepository;
     private final ReservationSlotService slotService;
@@ -87,10 +97,17 @@ public class ReservationPendingExpireService {
      * 「{@code booked_at} からの経過時間」は <b>{@code booked_at} と同じ時間基準</b>で測る必要があるため、
      * 注入 {@code Clock} の<b>瞬間</b>（テストで固定可能）を JVM 既定ゾーンで解釈する。</p>
      *
-     * <p>なお、予約ドメインには「枠の日時（{@code slot_date}/{@code start_time}）は業務ローカル時刻だが
-     * テナントのタイムゾーンを持たない」という既存の設計負債があり（{@code ReservationWaitlistService}
-     * などの既存判定も同じ基準に依存している）、本メソッドはその既存基準に揃えている。
-     * テナント TZ の導入は本 PR のスコープ外（別途起票）。</p>
+     * <p><b>既存箇所との差異（誤解しないこと）</b>: 本メソッドは {@code booked_at} と同一基準
+     * （JVM 既定ゾーン）を採るが、<b>予約ドメインの既存判定はこれと基準が異なる</b>。
+     * {@code ReservationWaitlistService}（過去枠拒否・失効クリーンアップ）や
+     * {@code ReservationGroupService}（先頭枠が未来かの判定）は
+     * {@code LocalDateTime.now(clock)} で <b>UTC Clock を直接</b>使っており、JST 環境では
+     * 最大 9 時間ずれる既知の不具合が残っている（<b>GitHub Issue #2526</b> で別途是正）。
+     * 「既存に揃えた」ではなく「本メソッドだけ正しい基準に直した」状態である。</p>
+     *
+     * <p>根本には「枠の日時（{@code slot_date}/{@code start_time}）は業務ローカル時刻だが
+     * テナントのタイムゾーンを持たない」という設計負債がある。テナント TZ の導入は
+     * Issue #2526 で扱う（本 PR のスコープ外）。</p>
      *
      * @return 失効単位のリスト（対象なしなら空）
      */
@@ -99,11 +116,18 @@ public class ReservationPendingExpireService {
         LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
 
         // 1 本目: slot・policy を join して代表行のみ抽出する（グループは代表行基準で判定）。
+        // 1 回あたり MAX_UNITS_PER_RUN 単位で打ち切り、初回デプロイ時の一斉失効を平滑化する。
         List<ReservationEntity> primaries = reservationRepository.findExpirablePendingPrimaryRows(
                 ReservationStatus.PENDING, now, now.toLocalDate(), now.toLocalTime(),
-                ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS);
+                ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS,
+                PageRequest.of(0, MAX_UNITS_PER_RUN));
         if (primaries.isEmpty()) {
             return List.of();
+        }
+        if (primaries.size() >= MAX_UNITS_PER_RUN) {
+            // 打ち切ったことを可視化する（「静かに取りこぼしている」ように見せない）。
+            log.info("仮押さえ自動失効: 1回あたりの上限{}単位に達したため打ち切った（残件は次回起動で処理する）",
+                    MAX_UNITS_PER_RUN);
         }
 
         // 2 本目: グループ代表行の兄弟行を一括取得する（部分失効を作らないための単位化）。

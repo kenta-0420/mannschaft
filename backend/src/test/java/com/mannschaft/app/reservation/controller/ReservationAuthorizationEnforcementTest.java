@@ -244,6 +244,17 @@ class ReservationAuthorizationEnforcementTest {
     @MockitoBean
     private com.mannschaft.app.auth.service.AuditLogService auditLogService;
 
+    /**
+     * 予約設定 GET の view ゲート（main の #2519 系で Controller へ追加された依存）。
+     *
+     * <p>供給を忘れると {@code ReservationBusinessHourController} の生成が失敗し、
+     * <b>本クラスの全テスト（既存の 3 本を含む）が context ロード失敗で全滅する</b>。
+     * 最小 context を組む契約テストに Controller を足すときは、その Controller の
+     * コンストラクタ引数を全数突き合わせること。</p>
+     */
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard reservationViewAccessGuard;
+
     /** ProxyInputContextFilter 依存の JPA ロード防止（AuthorizationIntegrationTest と同様）。 */
     @MockitoBean
     @SuppressWarnings("unused")

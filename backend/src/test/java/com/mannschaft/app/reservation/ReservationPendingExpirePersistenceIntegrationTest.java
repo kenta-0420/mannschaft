@@ -158,7 +158,8 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
     private List<Long> expirableIds(LocalDateTime now) {
         return reservationRepository.findExpirablePendingPrimaryRows(
                         ReservationStatus.PENDING, now, now.toLocalDate(), now.toLocalTime(),
-                        ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS)
+                        ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS,
+                        org.springframework.data.domain.PageRequest.of(0, 500))
                 .stream()
                 .map(ReservationEntity::getId)
                 .toList();
@@ -380,6 +381,40 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
                 .untilAsserted(() -> assertThat(notificationsOf(waiter))
                         .as("遷移が起きていないので通知を撃たない（イベントの空撃ち禁止）")
                         .isEmpty());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // AC-6-10: 対象ゼロで副作用ゼロ（実 DB 観測）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("AC-6-10(実DB): 対象ゼロのチームでは通知が 1 件も作られない")
+    void 対象ゼロのチームでは通知が作られない() {
+        // UT 側は verify(never()) で「expireUnit が呼ばれない」ことを見るが、それは
+        // 「expireUnit が唯一の通知入口」という現在の構造への依存であり、将来別経路が
+        // 生えると素通りする。実 DB で「通知行が増えていない」ことを直接観測する。
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPolicy(teamId, 24);
+        // 失効条件を満たさない PENDING（未来枠・仮押さえ直後）だけを置く。
+        ReservationSlotEntity futureSlot = seedSlot(teamId, FUTURE, LocalTime.of(18, 0), SlotStatus.FULL, 1, 1);
+        ReservationEntity pending = seedPending(
+                teamId, userId, futureSlot.getId(), LocalDateTime.now().minusMinutes(5), null, true);
+
+        batchService.expirePendingReservations();
+
+        assertThat(reload(pending.getId()).getStatus())
+                .as("失効条件を満たさないので PENDING のまま")
+                .isEqualTo(ReservationStatus.PENDING);
+        assertThat(notificationsOf(userId))
+                .as("対象ゼロなら通知は 1 件も作られない（実 DB 観測）")
+                .isEmpty();
+        assertThat(slotRepository.findById(futureSlot.getId()).orElseThrow().getBookedCount())
+                .as("枠の予約数も動かない（空撃ちの decrement をしていない）")
+                .isEqualTo(1);
+        assertThat(slotRepository.findById(futureSlot.getId()).orElseThrow().getSlotStatus())
+                .as("FULL のまま（reopen もしていない）")
+                .isEqualTo(SlotStatus.FULL);
     }
 
     // ────────────────────────────────────────────────────────────

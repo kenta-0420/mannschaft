@@ -78,7 +78,24 @@ class ReservationPendingExpireBatchGuardTest {
                 .as("ロック名は ShedLockConfig の Javadoc 台帳と一致すること")
                 .isEqualTo(EXPECTED_LOCK_NAME);
         assertThat(annotation.lockAtLeastFor()).isEqualTo("30s");
-        assertThat(annotation.lockAtMostFor()).isEqualTo("5m");
+        assertThat(annotation.lockAtMostFor())
+                .as("fixedDelay(5分)と同値だとロック失効と次回起動が重なり二重処理になる。"
+                        + "@Version が無いため二重処理は booked_count を余分に減らす")
+                .isEqualTo("15m");
+    }
+
+    @Test
+    @DisplayName("lockAtMostFor が fixedDelay より長い（ロック失効と次回起動の重なりを防ぐ）")
+    void ロック保持時間が実行間隔より長い() throws Exception {
+        Scheduled scheduled = batchMethod().getAnnotation(Scheduled.class);
+        SchedulerLock lock = batchMethod().getAnnotation(SchedulerLock.class);
+
+        long fixedDelayMinutes = scheduled.fixedDelay() / 60_000L;
+        long lockAtMostForMinutes = Long.parseLong(lock.lockAtMostFor().replace("m", ""));
+
+        assertThat(lockAtMostForMinutes)
+                .as("lockAtMostFor は fixedDelay より長いこと（同値・短いと二重処理の窓が開く）")
+                .isGreaterThan(fixedDelayMinutes);
     }
 
     @Test

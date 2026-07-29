@@ -198,4 +198,101 @@ class ReservationPolicyServiceTest {
             verify(policyRepository).save(existing);
         }
     }
+
+    /**
+     * 仮押さえ自動失効時間の「値の設定」と「無効化（NULL 化）」の優先規則（F03.4.5 §6.3・AC-6-1）。
+     *
+     * <p>Controller テストは「優先ルールは Service/Entity 側の単一実装が担う」ことを前提に
+     * 素通し（両方をそのまま渡すこと）だけを検査している。その<b>委譲先</b>を検査するのが本 Nested。
+     * これが無いと {@code ReservationPolicyEntity#updatePolicy} の if 2 本を入れ替えても
+     * 全テストが緑のまま通ってしまう（＝優先規則が実質無検査になる）。</p>
+     */
+    @Nested
+    @DisplayName("updatePolicy — 仮押さえ自動失効の clear 優先規則")
+    class UpdatePolicyPendingExpire {
+
+        private ReservationPolicyEntity existingWith(Integer pendingExpireHours) {
+            return ReservationPolicyEntity.builder()
+                    .teamId(TEAM_ID)
+                    .approvalMode(ApprovalMode.AUTO)
+                    .cancelDeadlineHours(24)
+                    .remindBeforeHours("24,1")
+                    .pendingExpireHours(pendingExpireHours)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("(a) 既存行に値48とclear=trueを同時指定 → clear が勝ち NULL になる")
+        void 既存行_値とclear同時指定はclearが勝つ() {
+            ReservationPolicyEntity existing = existingWith(24);
+            given(policyRepository.findByTeamId(TEAM_ID)).willReturn(Optional.of(existing));
+            given(policyRepository.save(any(ReservationPolicyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.updatePolicy(TEAM_ID, null, null, null, 48, true);
+
+            assertThat(existing.getPendingExpireHours())
+                    .as("「無効化したい」意図の方が強い。48 が残ると自動失効が止まらない")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("(b) 既存行に値48・clear=null → 48 が設定される")
+        void 既存行_値のみ指定は値が入る() {
+            ReservationPolicyEntity existing = existingWith(24);
+            given(policyRepository.findByTeamId(TEAM_ID)).willReturn(Optional.of(existing));
+            given(policyRepository.save(any(ReservationPolicyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.updatePolicy(TEAM_ID, null, null, null, 48, null);
+
+            assertThat(existing.getPendingExpireHours()).isEqualTo(48);
+        }
+
+        @Test
+        @DisplayName("(c) 新規行で値48とclear=trueを同時指定 → NULL で作成される（既定24へ戻らない）")
+        void 新規行_値とclear同時指定はNULLで作成される() {
+            given(policyRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
+            given(policyRepository.save(any(ReservationPolicyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.updatePolicy(TEAM_ID, null, null, null, 48, true);
+
+            ArgumentCaptor<ReservationPolicyEntity> captor =
+                    ArgumentCaptor.forClass(ReservationPolicyEntity.class);
+            verify(policyRepository).save(captor.capture());
+            assertThat(captor.getValue().getPendingExpireHours())
+                    .as("@Builder.Default の 24 に戻ると『無効化したのに失効し続ける』ことになる")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("(d) 既存行に clear=false のみ → 据え置き（false は無効化ではない）")
+        void 既存行_clearFalseは据え置き() {
+            ReservationPolicyEntity existing = existingWith(36);
+            given(policyRepository.findByTeamId(TEAM_ID)).willReturn(Optional.of(existing));
+            given(policyRepository.save(any(ReservationPolicyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.updatePolicy(TEAM_ID, null, null, null, null, false);
+
+            assertThat(existing.getPendingExpireHours()).isEqualTo(36);
+        }
+
+        @Test
+        @DisplayName("(e) 新規行で無指定 → 既定 24 で作成される（DB DEFAULT と一致）")
+        void 新規行_無指定は既定24() {
+            given(policyRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
+            given(policyRepository.save(any(ReservationPolicyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, null, null, null, null);
+
+            ArgumentCaptor<ReservationPolicyEntity> captor =
+                    ArgumentCaptor.forClass(ReservationPolicyEntity.class);
+            verify(policyRepository).save(captor.capture());
+            assertThat(captor.getValue().getPendingExpireHours())
+                    .isEqualTo(ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS);
+        }
+    }
 }

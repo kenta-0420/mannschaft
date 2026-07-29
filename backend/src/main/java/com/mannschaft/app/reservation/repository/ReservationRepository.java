@@ -5,6 +5,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -391,11 +392,20 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * 一方、行が存在して {@code pending_expire_hours IS NULL} のチーム（管理者が
      * {@code clearPendingExpireHours} で明示的に無効化した状態）は (a)(b) とも対象外にする（AC-6-4）。</p>
      *
+     * <h2>1 回あたりの実行量を上限化する理由（殿の裁定・2026-07-29）</h2>
+     * <p>本機能のデプロイ初回は、{@code COALESCE(24)}（ポリシー行なし＝既定 24h）と (b)（枠終了経過は
+     * 無条件失効）の組み合わせにより<b>過去の未承認 PENDING が一撃で全件 CANCELLED ＋ 全件通知</b>に
+     * なり得る。{@link Pageable} で 1 回あたりの単位数を上限化し「5 分ごとに最大 N 単位ずつ」へ
+     * 平滑化する。加えて、上限を設けることで 1 回の実行時間が {@code lockAtMostFor} を超えて
+     * ロックが失効し二重処理される窓（{@code ReservationEntity} に {@code @Version} が無いため、
+     * 定員 2 以上の枠で空きが 1 多く出る構造的リスク）も閉じる。</p>
+     *
      * @param pendingStatus PENDING ステータス
      * @param now           判定基準時刻（注入 {@code Clock} 由来）
      * @param today         判定基準時刻の日付
      * @param nowTime       判定基準時刻の時刻
      * @param defaultHours  ポリシー行が無いチームに適用する既定時間数（24）
+     * @param pageable      1 回あたりの取得上限（実行量の平滑化）
      * @return 失効対象の代表行（単枠予約＋グループ代表行）
      */
     @Query("SELECT r FROM ReservationEntity r "
@@ -415,7 +425,8 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("now") LocalDateTime now,
             @Param("today") LocalDate today,
             @Param("nowTime") LocalTime nowTime,
-            @Param("defaultHours") Integer defaultHours);
+            @Param("defaultHours") Integer defaultHours,
+            Pageable pageable);
 
     /**
      * 複数グループの兄弟行を指定ステータスで一括取得する（§6.3・N+1 回避）。

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -176,6 +178,64 @@ class ReservationCreateRateLimitPathTest {
         assertThat(key.getAllValues())
                 .as("同一ユーザーは同一キーで数える")
                 .containsExactly("user:" + USER_ID, "user:" + USER_ID);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 順序の対称性: 両経路とも「認可 → レート消費」であること（殿の裁定2・2026-07-29）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("裁定2: 単枠・グループとも認可(assertCanView)がレート消費より先に評価される")
+    void 両経路とも認可がレート消費より先である() {
+        given(valkeyRateLimiter.tryConsume(anyString(), anyString(), anyInt(), any()))
+                .willReturn(new RateLimitResult(true, 5, 4, 0L, 1L));
+
+        tryCreateSingle();
+        tryCreateGroup();
+
+        // 呼び出し順序を検証する。同一 zone を共有しているのに片方だけ「認可前に消費」だと、
+        // 403 のはずが 429 で返る状況が生まれ調査コストになる。
+        InOrder single = inOrder(viewAccessGuard, valkeyRateLimiter);
+        single.verify(viewAccessGuard, org.mockito.Mockito.atLeastOnce()).assertCanView(TEAM_ID, USER_ID);
+        single.verify(valkeyRateLimiter, org.mockito.Mockito.atLeastOnce())
+                .tryConsume(anyString(), anyString(), anyInt(), any());
+        // 認可 2 回（単枠・グループ）に対しレート消費も 2 回で、いずれも認可が先行している。
+        verify(viewAccessGuard, org.mockito.Mockito.times(2)).assertCanView(TEAM_ID, USER_ID);
+        verify(valkeyRateLimiter, org.mockito.Mockito.times(2))
+                .tryConsume(anyString(), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("裁定2: 認可で弾かれたグループ作成はレート枠を消費しない（403 が 429 に化けない）")
+    void 認可拒否のグループ作成はレートを消費しない() {
+        org.mockito.BDDMockito.willThrow(
+                        new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED))
+                .given(viewAccessGuard).assertCanView(TEAM_ID, USER_ID);
+
+        assertThatThrownBy(this::tryCreateGroup)
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+        verify(valkeyRateLimiter, org.mockito.Mockito.never())
+                .tryConsume(anyString(), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("裁定2: 認可で弾かれた単枠作成もレート枠を消費しない")
+    void 認可拒否の単枠作成はレートを消費しない() {
+        org.mockito.BDDMockito.willThrow(
+                        new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED))
+                .given(viewAccessGuard).assertCanView(TEAM_ID, USER_ID);
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                TEAM_ID, USER_ID, new CreateReservationRequest(SLOT_ID, LINE_ID, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+        verify(valkeyRateLimiter, org.mockito.Mockito.never())
+                .tryConsume(anyString(), anyString(), anyInt(), any());
     }
 
     @Test
