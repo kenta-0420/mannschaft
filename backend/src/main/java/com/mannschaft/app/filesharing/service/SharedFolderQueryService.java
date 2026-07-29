@@ -32,10 +32,13 @@ import java.util.Set;
 /**
  * F05.5 フォルダ詳細／一覧／作成のクエリ・コマンドサービス（{@code /api/v1/files/folders}）。
  *
- * <p>本サービスは {@link SharedFolderService#getFolder} の<b>認可素通り問題</b>を回避するために新設した。
- * 既存 {@code getFolder} は {@link FolderScopeAccessGuard} を呼ぶのみで、大会以外（TEAM/ORG/PERSONAL）の
- * スコープでは認可が一切効かず、フォルダ ID を渡すだけで他チーム・他人のフォルダ内容が取得できる
- * 情報漏洩があった。本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる。</p>
+ * <p>本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる
+ * （大会以外の TEAM/ORG/PERSONAL スコープを {@link FolderScopeAccessGuard} に委ねない独立実装として新設した）。</p>
+ *
+ * <p><b>認可根治 Wave7 での更新:</b> {@link SharedFolderService} 側にも同一ポリシーの認可
+ * （{@code checkFolderViewAccess} / {@code checkFolderManageAccess}）を敷設したため、両者は
+ * <b>同一の認可マトリクス</b>を持つ。本サービスは引き続き汎用 EP（{@code /api/v1/files/folders}）の
+ * 窓口として、パンくず・カスケード削除・容量戻し・最低可視ロール（B）といった付加ロジックを担当する。</p>
  *
  * <p>認可マトリクス:</p>
  * <ul>
@@ -169,6 +172,8 @@ public class SharedFolderQueryService {
             CreateFolderRequest request, String scopeId, Long userId) {
         String scopeType = request.getScopeType();
         authorizeScopeView(scopeType, scopeId, userId);
+        // 認可根治 Wave7: parentId 指定時は親が同一スコープであることを検証する（接ぎ木封鎖）。
+        checkParentWithinScope(request.getParentId(), FileScopeType.valueOf(scopeType), scopeId, userId);
         validateFolderNameUnique(request.getParentId(), request.getName());
 
         FileScopeType type = FileScopeType.valueOf(scopeType);
@@ -204,10 +209,12 @@ public class SharedFolderQueryService {
      *
      * <p>従来 {@code SharedFolderController} に DELETE マッピングが無く、FE の
      * {@code DELETE /api/v1/files/folders/{id}} が非存在ルート → 500 になっていた根治。
-     * 既存 {@link SharedFolderService#deleteFolder} は (1) 認可が大会スコープの guard のみで
-     * PERSONAL/TEAM/ORG が素通り（漏洩）、(2) フォルダ単体しか soft-delete せず配下ファイル・
-     * サブフォルダが孤児化、(3) 容量戻しが無く {@code usedBytes} が減らない、という三重の欠陥が
-     * あったため流用しない。本メソッドは:</p>
+     * {@link SharedFolderService#deleteFolder} は (1) 認可がスコープ別に個別実装されていない、
+     * (2) フォルダ単体しか soft-delete せず配下ファイル・サブフォルダが孤児化する、
+     * (3) 容量戻しが無く {@code usedBytes} が減らない、という理由で流用しない。
+     *（(1) は認可根治 Wave7 で {@code SharedFolderService#checkFolderManageAccess} により
+     * 是正済み。(2)(3) は依然として本メソッドのみが満たすため、FE の汎用削除 EP は
+     * 引き続き本メソッドを使う。）本メソッドは:</p>
      * <ul>
      *   <li><b>認可</b>: {@link #authorizeDelete} で「閲覧より強い」削除権限を当てる
      *       （他人個人=404・TEAM/ORG は<b>管理者(ADMIN/DEPUTY_ADMIN)のみ</b>・一般メンバーは 403・
@@ -562,6 +569,45 @@ public class SharedFolderQueryService {
                     accessControlService.checkAdminOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION");
             case TOURNAMENT, TOURNAMENT_DIVISION ->
                     folderScopeAccessGuard.checkFolderPostByFolderId(folder.getId(), userId);
+        }
+    }
+
+    /**
+     * 親フォルダが作成先スコープと同一であることを検証する（認可根治 Wave7・接ぎ木封鎖）。
+     *
+     * <p>{@code parentId} が null（ルート直下）なら何もしない。非 null のとき、親が存在しない／
+     * スコープ種別が違う／同種でもスコープ ID が違う場合はいずれも {@code FOLDER_NOT_FOUND}（404）とし、
+     * 他スコープの folderId の存在有無を漏らさない。PERSONAL は操作者本人の所有であることを要求する。</p>
+     *
+     * @param parentId  リクエスト由来の親フォルダ ID（null 可）
+     * @param type      作成先スコープ種別
+     * @param scopeId   作成先スコープ ID（teamId / organizationId の文字列。PERSONAL では未使用）
+     * @param userId    操作ユーザー ID（PERSONAL の所有者判定に使う）
+     */
+    private void checkParentWithinScope(Long parentId, FileScopeType type, String scopeId, Long userId) {
+        if (parentId == null) {
+            return;
+        }
+        SharedFolderEntity parent = findFolderOrThrow(parentId);
+        if (parent.getScopeType() != type) {
+            throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
+        }
+        Long expected = switch (type) {
+            case TEAM -> parseScopeId(scopeId);
+            case ORGANIZATION -> parseScopeId(scopeId);
+            case PERSONAL -> userId;
+            // 大会スコープは本汎用 EP の対象外（authorizeScopeView が先に 404 で弾く）。
+            case TOURNAMENT, TOURNAMENT_DIVISION ->
+                    throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
+        };
+        Long actual = switch (type) {
+            case TEAM -> parent.getTeamId();
+            case ORGANIZATION -> parent.getOrganizationId();
+            case PERSONAL -> parent.getUserId();
+            case TOURNAMENT, TOURNAMENT_DIVISION -> parent.getScopeRefId();
+        };
+        if (!java.util.Objects.equals(expected, actual)) {
+            throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
         }
     }
 

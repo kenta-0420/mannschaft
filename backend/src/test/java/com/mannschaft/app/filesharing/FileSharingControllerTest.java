@@ -193,7 +193,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: チームルートフォルダ一覧が返却される")
         void チームルートフォルダ一覧_正常() {
-            given(folderService.listTeamRootFolders(TEAM_ID))
+            given(folderService.listTeamRootFolders(TEAM_ID, USER_ID))
                     .willReturn(List.of(mockFolderResponse()));
 
             ResponseEntity<ApiResponse<List<FolderResponse>>> result =
@@ -206,7 +206,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: 子フォルダ一覧が返却される")
         void 子フォルダ一覧_正常() {
-            given(folderService.listChildFolders(FOLDER_ID))
+            given(folderService.listChildFolders(FOLDER_ID, USER_ID))
                     .willReturn(List.of(mockFolderResponse()));
 
             ResponseEntity<ApiResponse<List<FolderResponse>>> result =
@@ -219,7 +219,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: フォルダ詳細が返却される")
         void フォルダ詳細_正常() {
-            given(folderService.getFolder(FOLDER_ID)).willReturn(mockFolderResponse());
+            given(folderService.getFolder(FOLDER_ID, USER_ID)).willReturn(mockFolderResponse());
 
             ResponseEntity<ApiResponse<FolderResponse>> result =
                     teamFolderController.getFolder(TEAM_ID, FOLDER_ID);
@@ -245,7 +245,7 @@ class FileSharingControllerTest {
         @DisplayName("正常系: フォルダが更新される")
         void フォルダ更新_正常() {
             UpdateFolderRequest request = new UpdateFolderRequest("更新フォルダ", null, null, null, null);
-            given(folderService.updateFolder(eq(FOLDER_ID), any())).willReturn(mockFolderResponse());
+            given(folderService.updateFolder(eq(FOLDER_ID), eq(USER_ID), any())).willReturn(mockFolderResponse());
 
             ResponseEntity<ApiResponse<FolderResponse>> result =
                     teamFolderController.updateFolder(TEAM_ID, FOLDER_ID, request);
@@ -259,7 +259,7 @@ class FileSharingControllerTest {
             ResponseEntity<Void> result = teamFolderController.deleteFolder(TEAM_ID, FOLDER_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(folderService).deleteFolder(FOLDER_ID);
+            verify(folderService).deleteFolder(FOLDER_ID, USER_ID);
         }
     }
 }

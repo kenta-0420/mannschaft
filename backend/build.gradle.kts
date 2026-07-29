@@ -200,7 +200,23 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+    // =====================================================================
+    // @Tag("perf") 運用（β4 fan-out 実測 IT の分離）
+    // ---------------------------------------------------------------------
+    // 重量級の実測 IT（合成1万人 fan-out・出欠1万・投稿1万）は CI smoke に載せると
+    // 壁時計を大きく食うため、JUnit タグ "perf" を付けて通常の `test` からは除外する。
+    // 専用タスク `perfTest`（下で register）だけが includeTags("perf") で実行する。
+    // タグ filter はタスク名で分岐して 1 箇所に閉じ、useJUnitPlatform の呼び出し順に
+    // 依存しない決定論的な構成にする。
+    // =====================================================================
+    val isPerfTask = name == "perfTest"
+    useJUnitPlatform {
+        if (isPerfTask) {
+            includeTags("perf")
+        } else {
+            excludeTags("perf")
+        }
+    }
     // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
     // 2g → 3g（OOM 対策） → 4g（F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Jackson Mixin OOM 対策）。
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
@@ -210,11 +226,14 @@ tasks.withType<Test> {
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
     // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
-    setForkEvery((project.findProperty("fork.every") as String?)?.toLong() ?: 100L)
+    // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
+    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 100L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
-    maxParallelForks = (project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2
+    // perfTask は単一クラスのため並列 fork しない（Testcontainer/測定の相互干渉を避ける）。
+    maxParallelForks =
+        if (isPerfTask) 1 else ((project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2)
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
@@ -345,6 +364,25 @@ tasks.withType<Test> {
         showExceptions = true
         showCauses = true
     }
+}
+
+// =============================================================================
+// perfTest: @Tag("perf") の重量級実測 IT だけを実行する専用タスク
+// -----------------------------------------------------------------------------
+// 使い方:
+//   cd backend
+//   ./gradlew perfTest -Pmax.parallel.forks=1
+// 通常の `test`（CI smoke）は withType<Test> の excludeTags("perf") で perf を除外する。
+// perfTest は includeTags("perf")（タスク名分岐で自動適用）で perf のみを走らせる。
+// heap / jvmArgs / testLogging 等の共通設定は withType<Test> から継承する。
+// =============================================================================
+tasks.register<Test>("perfTest") {
+    group = "verification"
+    description = "@Tag(\"perf\") の β4 fan-out 実測 IT のみを実行する（測定専用・CI smoke からは分離）"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    // 通常の check/build には載せない（明示実行のみ）。
+    shouldRunAfter(tasks.named("test"))
 }
 
 tasks.jacocoTestReport {

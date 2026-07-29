@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
@@ -43,6 +44,10 @@ class SharedFolderServiceAdditionalTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    /** 認可根治 Wave7: SharedFolderService に per-scope 認可が入ったため注入対象に追加。 */
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private SharedFolderService service;
 
@@ -84,7 +89,7 @@ class SharedFolderServiceAdditionalTest {
             given(fileSharingMapper.toFolderResponseList(any()))
                     .willReturn(List.of(mockFolderResponse("TEAM")));
 
-            List<FolderResponse> result = service.listTeamRootFolders(TEAM_ID);
+            List<FolderResponse> result = service.listTeamRootFolders(TEAM_ID, USER_ID);
 
             assertThat(result).hasSize(1);
         }
@@ -107,7 +112,7 @@ class SharedFolderServiceAdditionalTest {
             given(fileSharingMapper.toFolderResponseList(any()))
                     .willReturn(List.of(mockFolderResponse("ORGANIZATION")));
 
-            List<FolderResponse> result = service.listOrgRootFolders(ORG_ID);
+            List<FolderResponse> result = service.listOrgRootFolders(ORG_ID, USER_ID);
 
             assertThat(result).hasSize(1);
         }
@@ -149,14 +154,28 @@ class SharedFolderServiceAdditionalTest {
         @DisplayName("正常系: 子フォルダ一覧が返却される")
         void 子フォルダ一覧_正常() {
             SharedFolderEntity entity = createFolder(FileScopeType.TEAM);
+            // 認可根治 Wave7: 親フォルダ実体のスコープで閲覧認可を当てるため findById が必要。
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(entity));
             given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID))
                     .willReturn(List.of(entity));
             given(fileSharingMapper.toFolderResponseList(any()))
                     .willReturn(List.of(mockFolderResponse("TEAM")));
 
-            List<FolderResponse> result = service.listChildFolders(FOLDER_ID);
+            List<FolderResponse> result = service.listChildFolders(FOLDER_ID, USER_ID);
 
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("認可 Wave7: 他人の個人フォルダ配下は FOLDER_NOT_FOUND（404・存在秘匿）")
+        void 他人の個人フォルダ配下は404() {
+            SharedFolderEntity personal = createFolder(FileScopeType.PERSONAL);
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(personal));
+
+            assertThatThrownBy(() -> service.listChildFolders(FOLDER_ID, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
         }
     }
 
@@ -176,7 +195,7 @@ class SharedFolderServiceAdditionalTest {
             given(fileSharingMapper.toFolderResponse(entity))
                     .willReturn(mockFolderResponse("TEAM"));
 
-            FolderResponse result = service.getFolder(FOLDER_ID);
+            FolderResponse result = service.getFolder(FOLDER_ID, USER_ID);
 
             assertThat(result.getName()).isEqualTo("テストフォルダ");
         }
@@ -186,7 +205,7 @@ class SharedFolderServiceAdditionalTest {
         void フォルダ詳細_不在_例外() {
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getFolder(FOLDER_ID))
+            assertThatThrownBy(() -> service.getFolder(FOLDER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
@@ -253,18 +272,37 @@ class SharedFolderServiceAdditionalTest {
         @DisplayName("正常系: フォルダ名・説明・親フォルダが更新される")
         void フォルダ更新_全フィールド_正常() {
             SharedFolderEntity entity = createFolder(FileScopeType.TEAM);
+            // 認可根治 Wave7: 移動先の親が同一チームのフォルダであることを検証するため親も stub する。
+            SharedFolderEntity parent = createFolder(FileScopeType.TEAM);
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(entity));
+            given(folderRepository.findById(50L)).willReturn(Optional.of(parent));
             given(folderRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFolderResponse(entity))
                     .willReturn(mockFolderResponse("TEAM"));
             UpdateFolderRequest request = new UpdateFolderRequest("新名前", "新説明", 50L, null, null);
 
-            FolderResponse result = service.updateFolder(FOLDER_ID, request);
+            FolderResponse result = service.updateFolder(FOLDER_ID, USER_ID, request);
 
             assertThat(result).isNotNull();
             assertThat(entity.getName()).isEqualTo("新名前");
             assertThat(entity.getDescription()).isEqualTo("新説明");
             assertThat(entity.getParentId()).isEqualTo(50L);
+        }
+
+        @Test
+        @DisplayName("認可 Wave7: 別チーム配下への移動（接ぎ木）は FOLDER_NOT_FOUND")
+        void 別チーム配下への移動は404() {
+            SharedFolderEntity entity = createFolder(FileScopeType.TEAM);
+            SharedFolderEntity foreignParent = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.TEAM).teamId(999L).name("他チームのフォルダ").build();
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(entity));
+            given(folderRepository.findById(50L)).willReturn(Optional.of(foreignParent));
+            UpdateFolderRequest request = new UpdateFolderRequest(null, null, 50L, null, null);
+
+            assertThatThrownBy(() -> service.updateFolder(FOLDER_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
         }
 
         @Test
@@ -277,7 +315,7 @@ class SharedFolderServiceAdditionalTest {
                     .willReturn(mockFolderResponse("TEAM"));
             UpdateFolderRequest request = new UpdateFolderRequest(null, null, null, null, null);
 
-            service.updateFolder(FOLDER_ID, request);
+            service.updateFolder(FOLDER_ID, USER_ID, request);
 
             assertThat(entity.getName()).isEqualTo("テストフォルダ");
         }

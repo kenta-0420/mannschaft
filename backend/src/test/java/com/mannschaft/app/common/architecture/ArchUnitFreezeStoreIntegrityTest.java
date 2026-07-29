@@ -70,6 +70,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code wc -l backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256}）
      * に更新し、ストアファイルの変更と同じコミットに含めること。
      *
+     * <p>795 → 784（2026-07-28 / 認可根治 Wave7）: 以下 11 エンドポイントに実効的な認可
+     * （{@code AccessControlService} 呼び出し）を敷設したことで違反が解消。違反隠蔽ではなく根治。</p>
+     * <ul>
+     *   <li>{@code ShiftAutoAssignController} 6 件（実行 / 確定 / 破棄 / 履歴一覧 / 履歴詳細 / 目視確認）
+     *       — {@code ShiftAutoAssignService} に per-scope 管理者認可を新設</li>
+     *   <li>{@code ShiftChangeRequestController.createChangeRequest} 1 件
+     *       — スケジュール実体からチームを解決しメンバーシップを強制</li>
+     *   <li>{@code TeamFolderController} / {@code OrgFolderController} の
+     *       {@code listRootFolders} / {@code createFolder} 計 4 件
+     *       — {@code SharedFolderService} に per-scope 認可を新設</li>
+     * </ul>
+     *
      * <p>795 → 777（2026-07-28・認可根治戦役 Wave7 tournament）: tournament ドメインの
      * 認可欠落 18 エンドポイントを根治し、凍結が解消された。内訳は
      * {@code TournamentEntryMemberController} 6 本・{@code TournamentEntryTemplateController} 6 本
@@ -103,7 +115,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code main} 追随統合）: tournament ドメイン 18 エンドポイントの根治を {@code main} 側の
      * 774（tournament 以外の Wave7 根治を反映済み）に適用し、重複なく統合した結果の行数。</p>
      *
-     * <p>756 → 755（2026-07-29）: F06.4 公開活動記録の匿名公開安全化により
+     * <p>756 → 745（2026-07-29・Wave7 shift/filesharing ブランチの {@code main} 追随統合）: 本ブランチが
+     * 個別に根治していた shift / filesharing の 11 エンドポイント（上記 795→784 の内訳と同一）を、
+     * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
+     * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
+     *
+     * <p>745 → 744（2026-07-29）: F06.4 公開活動記録の匿名公開安全化により
      * {@code activity.controller.ActivityPublicController.getPublicActivityById} の凍結 1 件が解消。
      * 同 Controller は {@code SecurityConfig}（GET 5 本 permitAll）配下の意図的公開エンドポイント群であり、
      * 監査を経てクラスに {@link com.mannschaft.app.common.security.IntentionallyPublic} を付与した
@@ -112,7 +129,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 公開専用 DTO 化を行っており、<b>違反隠蔽ではなく認可設計の是正に伴う正当な縮小</b>である。
      * 契約は {@code ActivityPublicContractIT} が機械的に検証する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 755;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 744;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

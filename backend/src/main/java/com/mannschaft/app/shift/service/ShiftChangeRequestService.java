@@ -10,8 +10,11 @@ import com.mannschaft.app.shift.dto.ChangeRequestResponse;
 import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +37,7 @@ public class ShiftChangeRequestService {
 
     private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftScheduleRepository scheduleRepository;
+    private final ShiftSlotRepository slotRepository;
     private final AccessControlService accessControlService;
 
     /**
@@ -41,15 +45,25 @@ public class ShiftChangeRequestService {
      * - MEMBER: 自チームのスケジュールのみ依頼可
      * - オープンコール（A-3）: 月3件上限チェック
      *
+     * <p><b>認可（認可根治 Wave7）:</b> 「MEMBER: 自チームのスケジュールのみ依頼可」という方針を、
+     * {@code scheduleId} から解決したチームへの所属をサーバー側で強制することで実効化する
+     * （同一クラスの {@code list}（Wave6）・{@code withdraw} と同じ「実体由来 scope」の作法）。</p>
+     *
+     * <p><b>BOLA 封鎖:</b> {@code slotId} が指定された場合、その枠が当該スケジュールに属することを
+     * 検証する。属さない枠は<b>存在を秘匿して 404</b>（{@code SHIFT_SLOT_NOT_FOUND}）とし、
+     * 他チームの枠 ID の存在有無を観測させない。</p>
+     *
      * @param request 作成リクエスト
      * @param userId  依頼者ユーザーID
      * @return 作成された変更依頼レスポンス
      */
     @Transactional
     public ChangeRequestResponse create(CreateChangeRequestRequest request, Long userId) {
-        // スケジュール存在チェック
-        scheduleRepository.findById(request.scheduleId())
+        // スケジュール存在チェック＋所属チーム解決（scope はクライアント入力でなく実体由来）
+        ShiftScheduleEntity schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        checkRequesterMembership(schedule.getTeamId(), userId);
+        checkSlotBelongsToSchedule(request.slotId(), request.scheduleId());
 
         // オープンコールの月次上限チェック
         if (request.requestType() == ChangeRequestType.OPEN_CALL) {
@@ -216,6 +230,42 @@ public class ShiftChangeRequestService {
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+    }
+
+    /**
+     * 変更依頼の申請者が当該チームのメンバーであることを強制する（認可根治 Wave7）。
+     *
+     * <p>粒度は「メンバー」。変更依頼は一般メンバーの日常操作であり管理者に絞る性質のものではない。
+     * 非メンバーは {@code COMMON_002}（403）で弾く（{@code list} と同一方針）。
+     * ArchUnit 認可番人の委譲追跡上限（2 ホップ）に収めるため
+     * {@link AccessControlService} を本メソッドから直接呼ぶ。</p>
+     *
+     * @param teamId スケジュール実体から解決したチーム ID
+     * @param userId 申請者ユーザー ID
+     */
+    private void checkRequesterMembership(Long teamId, Long userId) {
+        accessControlService.checkMembership(userId, teamId, "TEAM");
+    }
+
+    /**
+     * 指定された枠が当該スケジュールに属することを検証する（BOLA 封鎖）。
+     *
+     * <p>{@code slotId} は任意項目（NULL = スケジュール全体への依頼）のため、NULL は素通し。
+     * 非 NULL のとき、枠が存在しない／別スケジュールの枠である場合はいずれも
+     * {@code SHIFT_SLOT_NOT_FOUND}（404）とし、他チームの枠 ID の存在有無を漏らさない。</p>
+     *
+     * @param slotId     リクエスト由来の枠 ID（null 可）
+     * @param scheduleId 対象スケジュール ID
+     */
+    private void checkSlotBelongsToSchedule(Long slotId, Long scheduleId) {
+        if (slotId == null) {
+            return;
+        }
+        ShiftSlotEntity slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+        if (!scheduleId.equals(slot.getScheduleId())) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
     }
 
     /**
