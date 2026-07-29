@@ -73,12 +73,12 @@ class ServiceRecordTemplateScopeContractIT extends AbstractMySqlIntegrationTest 
     private Long orgBId;
 
     private Long adminTeamAId;   // TEAM A の ADMIN（正当）
-    private Long adminTeamBId;   // TEAM B の ADMIN（別 scope の越境攻撃者）
+    private Long adminTeamBId;   // TEAM B の ADMIN（別 scope の越境検証用）
     private Long memberTeamAId;  // TEAM A の非 ADMIN メンバー
     private Long outsiderId;     // どこにも所属しない非メンバー
 
     private Long adminOrgAId;    // ORG A の ADMIN（正当）
-    private Long adminOrgBId;    // ORG B の ADMIN（別 scope の越境攻撃者）
+    private Long adminOrgBId;    // ORG B の ADMIN（別 scope の越境検証用）
     private Long memberOrgAId;   // ORG A の非 ADMIN メンバー
 
     private Long templateTeamAId;  // TEAM A のテンプレート
