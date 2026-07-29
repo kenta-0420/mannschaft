@@ -133,6 +133,9 @@ public class GlobalExceptionHandler {
             // F19.1 Phase 7: ブログ投稿 public_visible / 公開設定変更
             Map.entry("PUBLIC_011", HttpStatus.FORBIDDEN),         // 投稿 public_visible 変更権限なし（投稿者本人以外）
             Map.entry("PUBLIC_012", HttpStatus.FORBIDDEN),         // チーム/組織 公開設定変更権限なし
+            // F06.4 公開活動記録: 不在 / 非公開 / DRAFT / 削除済み / 親スコープ非公開 / スコープ詐称を
+            // すべて 404 に倒して存在秘匿する（403 を返すと存在オラクルになる）
+            Map.entry("PUBLIC_013", HttpStatus.NOT_FOUND),
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
@@ -204,6 +207,13 @@ public class GlobalExceptionHandler {
             Map.entry("TODO_010", HttpStatus.NOT_FOUND),             // TODO_NOT_FOUND (IDOR/BOLA 秘匿)
             // F05.4 アンケート 督促 API（権限なしのみ 403、その他は Severity.WARN 既定の 400）
             Map.entry("SURVEY_014", HttpStatus.FORBIDDEN),           // REMIND_PERMISSION_DENIED
+            // F05.4 アンケート: 不在・スコープ不一致は 404（存在秘匿）、操作権限なしは 403。
+            // 設計書 F05.4 のエラー表は全 EP で「404 アンケート不存在」「403 作成者・ADMIN 以外」と
+            // 宣言しているが、ERROR_CODE_STATUS_MAP に未登録のため Severity.WARN 既定の 400 が
+            // 返っていた（宣言と実挙動の乖離）。認可根治 Wave7 で宣言どおりに揃える。
+            Map.entry("SURVEY_001", HttpStatus.NOT_FOUND),           // SURVEY_NOT_FOUND（BOLA 秘匿を含む）
+            Map.entry("SURVEY_002", HttpStatus.NOT_FOUND),           // QUESTION_NOT_FOUND
+            Map.entry("SURVEY_022", HttpStatus.FORBIDDEN),           // OPERATION_PERMISSION_DENIED
             // F11.1 オフライン同期
             Map.entry("SYNC_002", HttpStatus.PAYLOAD_TOO_LARGE),
             Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),
@@ -1106,6 +1116,11 @@ public class GlobalExceptionHandler {
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
+            // 認可根治戦役 Wave7: テンプレートの templateId↔pathスコープ突合の BOLA 対策で
+            // TEMPLATE_NOT_FOUND を存在秘匿の404に上書きする（CMS_004 と同様、不存在・スコープ
+            // 不一致のいずれも同一コードで返す）。Severity.WARN 既定の 400 のままだと
+            // 実在有無が漏れる。
+            Map.entry("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND", HttpStatus.NOT_FOUND),
             // 認可根治戦役 Wave5: ticket（F08.5 回数券）の *_NOT_FOUND は、対象エンティティが自チーム外、
             // または顧客面で他人の所有物である場合にも同一コードで返す存在秘匿の要。
             // Severity.WARN 既定の 400 のままだと ID の実在有無が判別でき、購入者の存在が推測可能になる。
@@ -1113,16 +1128,33 @@ public class GlobalExceptionHandler {
             Map.entry("TICKET_002", HttpStatus.NOT_FOUND),               // BOOK_NOT_FOUND（teamId 束縛＋所有者不一致 → 404）
             Map.entry("TICKET_003", HttpStatus.NOT_FOUND),               // CONSUMPTION_NOT_FOUND（親book不一致BOLA → 404）
             Map.entry("TICKET_004", HttpStatus.NOT_FOUND),               // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
-            // 認可根治戦役 Wave7: service（F07.1 カスタムフィールド定義・設定）は teamId 束縛で
-            // fetch した entity 由来スコープで認可する。他チームのフィールド ID を自チームの
-            // teamId で叩いた場合（BOLA）も同一コードで返す存在秘匿の要のため 404
+            // 認可根治戦役 Wave7: service（F07.1 カスタムフィールド定義・設定、テンプレート）は
+            // teamId/organizationId 束縛で fetch した entity 由来スコープで認可する。他スコープの
+            // ID を自スコープの scopeId で叩いた場合（BOLA）も同一コードで返す存在秘匿の要のため 404
             //（Severity.WARN 既定の 400 のままだと「404 で秘匿したつもり」の看板倒れになる）。
             Map.entry("SERVICE_RECORD_002", HttpStatus.NOT_FOUND),       // FIELD_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
+            Map.entry("SERVICE_RECORD_003", HttpStatus.NOT_FOUND),       // TEMPLATE_NOT_FOUND（teamId/organizationId 束縛・IDOR 秘匿 → 404）
             // 認可根治戦役 Wave7: proxyvote（F08.3 議案の投票開始/終了）は motionId → session の
             // entity 由来スコープで認可する。存在しない／越境の議案・セッションは同一コードで
             // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND)            // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND),           // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            // ─────────────────────────────────────────────────────────────
+            // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
+            //
+            // Severity.ERROR 既定の 500 を返していたコードのうち「サーバ側の障害ではなく
+            // クライアント起因」と分類したものは、定義側の Severity を ERROR → WARN に正した
+            // （＝既定 400）。件数上限・入力不備の類は本リポジトリの圧倒的多数が 400 であり
+            //（「上限超過」系 154 件中 400 が 113 件・409 は 21 件）、既定 400 で揃うため
+            // ここには登録していない。件数上限を 409 に倒すと、enum 定数名まで同一の兄弟コード
+            //（例: RESERVATION_015 と SCHEDULE_008 の MAX_REMINDERS_EXCEEDED）と割れる。
+            //
+            // 下記 1 件のみ、既定 400 では表現できない契約があるため明示登録する。
+            //
+            // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
+            // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
+            // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED)    // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
     );
 
     /**
@@ -1643,6 +1675,26 @@ public class GlobalExceptionHandler {
      * ErrorCode から HttpStatus を解決する。
      * 個別マッピング（ERROR_CODE_STATUS_MAP）が存在すればそちらを優先し、
      * なければ Severity に基づくデフォルトマッピングを返す。
+     *
+     * <p><strong>{@link ErrorCode.Severity} の唯一の消費者はこのメソッドである。</strong>
+     * ログレベルの決定には使われていない（{@link #handleBusinessException} は severity に
+     * 関わらず常に {@code log.warn}）。したがって {@code Severity.ERROR} を付けることは
+     * 実質的に「既定で HTTP 500 を返す」宣言と同義であり、クライアント起因のエラーに
+     * 付けてはならない。500 になると {@code status.is5xxServerError()} 経由で
+     * error_reports への記録と Slack エスカレーションまで走るため、入力不備のたびに
+     * 障害アラートが鳴る。</p>
+     *
+     * <p>是正の手順（対処療法の禁止）:</p>
+     * <ol>
+     *   <li>クライアント起因なら、まず ErrorCode 定義側の {@code Severity} を WARN に正す
+     *       （宣言箇所で意図が読めるようになる）。既定の 400 で妥当ならこれで足りる。</li>
+     *   <li>既定の 400 では表現できない契約がある場合に限り {@link #ERROR_CODE_STATUS_MAP}
+     *       へ明示登録する（不在の秘匿は 404・重複や状態遷移違反・楽観ロック競合は 409・
+     *       支払いが必要なら 402 など）。なお「件数上限の超過」は本リポジトリでは 400 が
+     *       圧倒的多数派であり、409 に倒すと同一概念の兄弟コードと割れるので注意する。</li>
+     * </ol>
+     * <p>「Severity.ERROR のまま STATUS_MAP に 4xx を足す」だけの直し方は、定義側に誤分類を
+     * 残したまま症状だけを隠すため禁止する。</p>
      *
      * @param errorCode エラーコード
      * @return 対応する HttpStatus

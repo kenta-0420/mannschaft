@@ -49,6 +49,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 組織管理サービス（ファサード）。
@@ -152,6 +153,31 @@ public class OrganizationService {
      */
     public Long resolveOrgId(String slug) {
         return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * F06.4 公開活動記録: 他ドメインが「この組織は匿名公開してよいか」を判定するための横断 SPI。
+     *
+     * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも
+     * <b>親スコープが非公開・凍結・停止なら 404 にしなければならない</b>
+     * （親を見ないと「非公開組織の中身が PUBLIC 設定のまま漏れる」）。
+     * 判定条件は {@link OrganizationRepository#findPublicOrganizationById(Long)} と同一の正準
+     * （{@code visibility=PUBLIC} かつ {@code archivedAt IS NULL}、
+     * {@code @SQLRestriction} により {@code deletedAt IS NULL}）。</p>
+     *
+     * <p>クロスドメイン Entity 参照を持ち込まないため（CLAUDE.md ドメイン境界の原則・番人 D-1）、
+     * {@link OrganizationEntity} ではなく<b>組織名のみ</b>を返す。呼び出し側はこれを
+     * {@code PublicScopeRef}（公開用スコープ参照 DTO）に詰め替えて使う。</p>
+     *
+     * @param orgId 対象組織 ID
+     * @return 公開してよい組織の表示名。非公開 / 凍結 / 削除済み / 不在なら空
+     */
+    public Optional<String> findPublicOrganizationNameById(Long orgId) {
+        if (orgId == null) {
+            return Optional.empty();
+        }
+        return organizationRepository.findPublicOrganizationById(orgId)
+                .map(OrganizationEntity::getName);
     }
 
     /**

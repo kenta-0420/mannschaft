@@ -4,6 +4,8 @@ import type {
   ActivityComment,
   ActivityStats,
   CreateActivityRequestBody,
+  PublicActivityResponse,
+  PublicActivitySummaryResponse,
 } from '~/types/activity'
 
 /**
@@ -168,24 +170,31 @@ export function useActivityApi() {
   }
 
   // === Public Activities ===
+  //
+  // 公開（認証不要）経路は認証済み API とは **別の DTO** を返す。
+  // BE: PublicActivitySummary（一覧）/ PublicActivityDetail（詳細）＝御裁可済み 8 項目のみ。
+  // `location` / `fieldValues` / `attachments` / `createdBy` / `visibility` 等は
+  // 禁則フィールドとして返らないため、ActivityRecordResponse を当ててはならない。
   async function listOrgPublicActivities(orgId: string) {
-    return api<{ data: ActivityRecordResponse[] }>(
+    return api<{ data: PublicActivitySummaryResponse[] }>(
       `/api/v1/public/organizations/${orgId}/activities`,
     )
   }
 
   async function getOrgPublicActivity(orgId: string, id: number) {
-    return api<{ data: ActivityRecordResponse }>(
+    return api<{ data: PublicActivityResponse }>(
       `/api/v1/public/organizations/${orgId}/activities/${id}`,
     )
   }
 
   async function listTeamPublicActivities(teamId: string) {
-    return api<{ data: ActivityRecordResponse[] }>(`/api/v1/public/teams/${teamId}/activities`)
+    return api<{ data: PublicActivitySummaryResponse[] }>(
+      `/api/v1/public/teams/${teamId}/activities`,
+    )
   }
 
   async function getTeamPublicActivity(teamId: string, id: number) {
-    return api<{ data: ActivityRecordResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
+    return api<{ data: PublicActivityResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
   }
 
   async function getStats(scopeType: string, scopeId: string) {

@@ -26,10 +26,10 @@ public enum RecruitmentErrorCode implements ErrorCode {
     VISIBILITY_DENIED("RECRUITMENT_003", "公開範囲によりこの募集を閲覧できません", Severity.WARN),
 
     /** カテゴリ未指定 */
-    CATEGORY_NOT_SPECIFIED("RECRUITMENT_012", "カテゴリが指定されていません", Severity.ERROR),
+    CATEGORY_NOT_SPECIFIED("RECRUITMENT_012", "カテゴリが指定されていません", Severity.WARN),
 
     /** 決済有効化時に料金未指定 */
-    PRICE_REQUIRED("RECRUITMENT_015", "決済を有効化する場合は料金の指定が必要です", Severity.ERROR),
+    PRICE_REQUIRED("RECRUITMENT_015", "決済を有効化する場合は料金の指定が必要です", Severity.WARN),
 
     /** DRAFT 募集の閲覧権限なし */
     DRAFT_VIEW_DENIED("RECRUITMENT_020", "下書き募集の閲覧権限がありません", Severity.WARN),
@@ -70,7 +70,7 @@ public enum RecruitmentErrorCode implements ErrorCode {
     PARTICIPATION_TYPE_MISMATCH("RECRUITMENT_007", "参加形式が一致しません", Severity.WARN),
 
     /** min_capacity > capacity */
-    INVALID_CAPACITY("RECRUITMENT_008", "最小定員が定員を超えています", Severity.ERROR),
+    INVALID_CAPACITY("RECRUITMENT_008", "最小定員が定員を超えています", Severity.WARN),
 
     /** 予約ライン/募集との時間衝突 */
     LINE_TIME_CONFLICT("RECRUITMENT_009", "予約ラインまたは募集と時間が衝突します", Severity.WARN),
@@ -79,10 +79,10 @@ public enum RecruitmentErrorCode implements ErrorCode {
     EMPTY_DISTRIBUTION_TARGETS("RECRUITMENT_204", "配信対象が0件のため公開できません", Severity.ERROR),
 
     /** 画像URLがホワイトリスト外 */
-    IMAGE_URL_NOT_WHITELISTED("RECRUITMENT_205", "画像URLが許可リストに含まれていません", Severity.ERROR),
+    IMAGE_URL_NOT_WHITELISTED("RECRUITMENT_205", "画像URLが許可リストに含まれていません", Severity.WARN),
 
     /** capacity < confirmed_count への変更不可 */
-    CAPACITY_BELOW_CONFIRMED("RECRUITMENT_206", "定員を確定参加者数より少なく変更できません", Severity.ERROR),
+    CAPACITY_BELOW_CONFIRMED("RECRUITMENT_206", "定員を確定参加者数より少なく変更できません", Severity.WARN),
 
     /** visibility と distribution_targets の整合性違反 */
     VISIBILITY_TARGETS_INCONSISTENT("RECRUITMENT_207", "公開範囲と配信対象の組合せが不正です", Severity.ERROR),
@@ -95,19 +95,19 @@ public enum RecruitmentErrorCode implements ErrorCode {
     // ========================================
 
     /** キャンセル料の決済失敗 */
-    CANCELLATION_PAYMENT_FAILED("RECRUITMENT_301", "キャンセル料の決済に失敗しました", Severity.ERROR),
+    CANCELLATION_PAYMENT_FAILED("RECRUITMENT_301", "キャンセル料の決済に失敗しました", Severity.WARN),
 
     /** キャンセルポリシー設定が不正 */
-    INVALID_CANCELLATION_POLICY("RECRUITMENT_302", "キャンセルポリシーの設定が不正です", Severity.ERROR),
+    INVALID_CANCELLATION_POLICY("RECRUITMENT_302", "キャンセルポリシーの設定が不正です", Severity.WARN),
 
     /** キャンセルポリシーの段階が4を超える */
-    TIER_LIMIT_EXCEEDED("RECRUITMENT_303", "キャンセルポリシーの段階が4を超えています", Severity.ERROR),
+    TIER_LIMIT_EXCEEDED("RECRUITMENT_303", "キャンセルポリシーの段階が4を超えています", Severity.WARN),
 
     /** キャンセル料の確認モーダル未経由 */
     FEE_NOT_ACKNOWLEDGED("RECRUITMENT_304", "キャンセル料の確認が必要です", Severity.WARN),
 
     /** キャンセルポリシー段階の時間範囲が重複 */
-    TIER_RANGE_OVERLAP("RECRUITMENT_307", "キャンセルポリシー段階の時間範囲が重複しています", Severity.ERROR),
+    TIER_RANGE_OVERLAP("RECRUITMENT_307", "キャンセルポリシー段階の時間範囲が重複しています", Severity.WARN),
 
     /** 表示されたキャンセル料と実際の料金が乖離 (§9.10 409 用、新設) */
     CANCELLATION_FEE_MISMATCH("RECRUITMENT_308", "表示されたキャンセル料と実際の料金が異なります。再試算してください", Severity.WARN),

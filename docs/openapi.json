@@ -359,6 +359,10 @@
       "description": "Phase 1: 井戸端会議チャネル + 日次スレッド"
     },
     {
+      "name": "公開活動記録",
+      "description": "F06.4 公開活動記録（認証不要・SSR / SNS シェア用）"
+    },
+    {
       "name": "ファイル共有 - 公開リンク",
       "description": "F05.5 PR-D 公開ファイルリンク（未認証可）"
     },
@@ -793,10 +797,6 @@
     {
       "name": "チームダイレクトメール",
       "description": "F09.6 チームDM配信"
-    },
-    {
-      "name": "公開活動記録",
-      "description": "F06.4 公開活動記録（認証不要・SSR用）"
     },
     {
       "name": "壁紙管理（SYSTEM_ADMIN）",
@@ -121340,7 +121340,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 非公開（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
                 }
               }
             }
@@ -121381,7 +121391,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "非公開 / 不在 / スコープ不一致（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
                 }
               }
             }
@@ -122104,7 +122124,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 非公開（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
                 }
               }
             }
@@ -122145,7 +122175,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "非公開 / 不在 / スコープ不一致（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
                 }
               }
             }
@@ -122551,17 +122591,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
                 }
               }
             }
           },
           "404": {
-            "description": "存在しないまたは非公開",
+            "description": "存在しない / 非公開 / 下書き / 削除済み / 親スコープが非公開（区別しない）",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
                 }
               }
             }
@@ -217943,14 +217983,90 @@
           }
         }
       },
-      "ApiResponseListActivityRecordResponse": {
+      "ApiResponseListPublicActivitySummary": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ActivityRecordResponse"
+              "$ref": "#/components/schemas/PublicActivitySummary"
             }
+          }
+        }
+      },
+      "PublicActivitySummary": {
+        "type": "object",
+        "properties": {
+          "activityDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "activityTimeEnd": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "activityTimeStart": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeRef": {
+            "$ref": "#/components/schemas/PublicScopeRef"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePublicActivityDetail": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicActivityDetail"
+          }
+        }
+      },
+      "PublicActivityDetail": {
+        "type": "object",
+        "properties": {
+          "activityDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "activityTimeEnd": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "activityTimeStart": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeRef": {
+            "$ref": "#/components/schemas/PublicScopeRef"
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -228888,6 +229004,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ActivityTemplateResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListActivityRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRecordResponse"
             }
           }
         }

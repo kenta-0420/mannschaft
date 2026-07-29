@@ -38,11 +38,14 @@ export function useShiftBoard(scheduleId: Ref<number>) {
         addUserIds: [userId],
         slotVersion: toSlotVersion,
       })
-    } catch {
+    } catch (e) {
       // エラー時はロールバック
       localAssignments.value[fromSlotId] = prevFrom
       localAssignments.value[toSlotId] = prevTo
-      throw new Error('シフトの移動に失敗しました')
+      // 元のエラーをそのまま再スローする。素の Error に差し替えると
+      // data.error.code / message（例: SHIFT_017 シフト枠の必要人数を超過しています）が
+      // 失われ、呼び出し元が利用者に理由を伝えられなくなる。
+      throw e
     }
   }
 
@@ -58,9 +61,10 @@ export function useShiftBoard(scheduleId: Ref<number>) {
 
     try {
       await shiftApi.patchSlotAssignments(slotId, { addUserIds: [userId], slotVersion })
-    } catch {
+    } catch (e) {
       localAssignments.value[slotId] = prev
-      throw new Error('メンバーの追加に失敗しました')
+      // 元のエラーをそのまま再スロー（理由を握りつぶさない）
+      throw e
     }
   }
 
@@ -73,9 +77,10 @@ export function useShiftBoard(scheduleId: Ref<number>) {
 
     try {
       await shiftApi.patchSlotAssignments(slotId, { removeUserIds: [userId], slotVersion })
-    } catch {
+    } catch (e) {
       localAssignments.value[slotId] = prev
-      throw new Error('メンバーの削除に失敗しました')
+      // 元のエラーをそのまま再スロー（理由を握りつぶさない）
+      throw e
     }
   }
 

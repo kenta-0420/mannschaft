@@ -1053,6 +1053,178 @@ class GlobalExceptionHandlerTest {
         }
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // エラーコード HTTP ステータス契約の全数分類 — 500 漏れの回帰固定（関連 #2468）
+    //
+    // ERROR_CODE_STATUS_MAP 未登録 かつ Severity.ERROR のコードは既定で 500 を返す。
+    // 全 *ErrorCode.java を機械的に走査して Severity.ERROR を全数抽出し、
+    // throw 箇所のコードを読んで「サーバ障害 / クライアント起因 / 判断保留」に分類した。
+    // クライアント起因と分類したものは Severity を WARN に正した（既定 400）。
+    // 既定 400 で表現できない契約を持つ RECRUITMENT_301 のみ 402 を明示登録した。
+    //
+    // 本 Nested はその是正結果を機械的に固定する。ここが赤くなったら
+    // 「クライアントの入力誤りで 500 を返す」状態に退行したということ。
+    // ════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("エラーコード HTTP ステータス契約: クライアント起因のコードが 500 を返さない")
+    class ClientErrorMustNotBe500 {
+
+        /** 400 Bad Request に是正したコード（Severity.ERROR → WARN・既定マッピング）。 */
+        private final List<ErrorCode> badRequestCases = List.of(
+                com.mannschaft.app.bulletin.BulletinErrorCode.PARENT_REPLY_MISMATCH,
+                com.mannschaft.app.circulation.CirculationErrorCode.EMPTY_RECIPIENTS,
+                com.mannschaft.app.event.EventErrorCode.MAX_TICKET_TYPES,
+                com.mannschaft.app.event.EventErrorCode.MAX_TIMETABLE_ITEMS,
+                com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
+                com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID,
+                com.mannschaft.app.receipt.ReceiptErrorCode.LINE_ITEMS_AMOUNT_MISMATCH,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CAPACITY,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.CATEGORY_NOT_SPECIFIED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.PRICE_REQUIRED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.IMAGE_URL_NOT_WHITELISTED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.CAPACITY_BELOW_CONFIRMED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CANCELLATION_POLICY,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_LIMIT_EXCEEDED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_RANGE_OVERLAP,
+                com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED,
+                com.mannschaft.app.search.SearchErrorCode.MAX_SAVED_QUERIES_EXCEEDED,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_RESPONSE_STATUS,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_SCOPE_TYPE,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED,
+                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH,
+                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ANNUAL_COPY_SAME_YEAR,
+                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH,
+                com.mannschaft.app.shift.ShiftErrorCode.INVALID_DATE_RANGE,
+                com.mannschaft.app.shift.ShiftErrorCode.SWAP_SELF_REQUEST,
+                com.mannschaft.app.shift.ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED,
+                com.mannschaft.app.survey.SurveyErrorCode.INVALID_TIME_RANGE,
+                com.mannschaft.app.timeline.TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED,
+                com.mannschaft.app.timeline.TimelineErrorCode.EMPTY_POST_CONTENT,
+                com.mannschaft.app.timeline.TimelineErrorCode.ATTACHMENT_NOT_FOUND_IN_STORAGE,
+                com.mannschaft.app.workflow.WorkflowErrorCode.INVALID_FIELD_VALUE);
+
+        @Test
+        @DisplayName("入力不備・状態遷移違反として分類したコードは Severity.WARN かつ resolveHttpStatus で 400 になる")
+        void 入力不備系は400() {
+            for (ErrorCode errorCode : badRequestCases) {
+                assertThat(errorCode.getSeverity())
+                        .as("%s はクライアント起因のため Severity.WARN でなければならない", errorCode.getCode())
+                        .isEqualTo(ErrorCode.Severity.WARN);
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("%s が 500 に戻っている（クライアントの入力誤りをサーバ障害として返している）",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        @Test
+        @DisplayName("入力不備系の BusinessException は 400 で返り、envelope の code も一致する")
+        void 入力不備系のBusinessExceptionは400() {
+            for (ErrorCode errorCode : badRequestCases) {
+                ResponseEntity<ErrorResponse> response =
+                        globalExceptionHandler.handleBusinessException(new BusinessException(errorCode));
+
+                assertThat(response.getStatusCode())
+                        .as("%s の BusinessException が 400 で返らない", errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().getError().getCode()).isEqualTo(errorCode.getCode());
+            }
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『リマインダー件数上限』の RESERVATION_015 と SCHEDULE_008 が"
+                + "同じステータスで返る（片方だけ 409 に倒して割った退行の固定）")
+        void リマインダー件数上限は両ドメインで同一ステータス() {
+            ErrorCode reservation =
+                    com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED;
+            ErrorCode schedule =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.MAX_REMINDERS_EXCEEDED;
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .as("enum 定数名まで同一の『保存済みリマインダー件数上限』が"
+                            + "ドメインごとに別ステータスになってはならない")
+                    .isEqualTo(globalExceptionHandler.resolveHttpStatus(schedule));
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F03.11 §5.2: RECRUITMENT_301（未払いキャンセル料による申込ブロック）は設計書どおり 402 Payment Required")
+        void 未払いキャンセル料は402() {
+            ErrorCode code = com.mannschaft.app.recruitment.RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED;
+
+            assertThat(code.getSeverity())
+                    .as("申込者の未払い残という利用者側の事情であり Severity.ERROR ではない")
+                    .isEqualTo(ErrorCode.Severity.WARN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(code))
+                    .as("設計書 F03.11 §5.2 は 402 + RECRUITMENT_301 を契約として明示している")
+                    .isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleBusinessException(new BusinessException(code));
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RECRUITMENT_301");
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『Webhook 署名検証失敗』の PAYMENT_019 と PAYMENT_C040 が"
+                + "同じ Severity・同じステータスに揃っている")
+        void webhook署名検証失敗は両系統とも400() {
+            // 注: platform 側の /api/v1/webhooks/stripe は StripeWebhookController が
+            // catch (Exception) で 200 を返すため、PAYMENT_019 は実際には
+            // GlobalExceptionHandler に到達しない（HTTP 挙動は本 PR の前後で不変）。
+            // ここで固定しているのは「同一概念の Severity 分類が系統で割れていない」ことである。
+            HttpStatus platform = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+            HttpStatus connect = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.connect.ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+
+            assertThat(platform).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(connect).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(platform)
+                    .as("同一概念（Webhook 署名検証失敗）の分類が系統で割れてはならない")
+                    .isEqualTo(connect);
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『ファイルサイズ上限超過』が全ドメインで 400 に揃っている")
+        void ファイルサイズ上限超過は全ドメイン400() {
+            List<ErrorCode> siblings = List.of(
+                    com.mannschaft.app.chart.ChartErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.equipment.EquipmentErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.gallery.GalleryErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.proxyvote.ProxyVoteErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.service.ServiceRecordErrorCode.FILE_SIZE_EXCEEDED);
+
+            for (ErrorCode errorCode : siblings) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("enum 定数名まで同一の『ファイルサイズ上限超過』が %s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        @Test
+        @DisplayName("真のサーバ障害は 500 のまま（是正の巻き添えで 4xx 化していないこと）")
+        void サーバ障害系は500のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(CommonErrorCode.COMMON_999))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.common.storage.StorageErrorCode.UPLOAD_FAILED))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.PaymentErrorCode.STRIPE_API_ERROR))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_003))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // ========================================
     // F10.6 Phase 10-β-1 — recordBackendException 連携
     // ========================================

@@ -119,8 +119,80 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 個別に根治していた shift / filesharing の 11 エンドポイント（上記 795→784 の内訳と同一）を、
      * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
      * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
+     *
+     * <p>745 → 735（2026-07-29・認可根治戦役 Wave7 survey ドメイン）: survey ドメインの
+     * 10 エンドポイントに認可を敷設したため縮小。内訳は
+     * {@code SurveyController}（createSurvey / updateSurvey / publishSurvey / closeSurvey /
+     * deleteSurvey）5、{@code SurveyQuestionController}（addQuestion / deleteQuestion）2、
+     * {@code SurveyResultController}（addTargets / addResultViewers）2、
+     * {@code SurveyResponseController.getMyResponses} 1。前 9 件は新設の
+     * {@code SurveyAccessGuard}（作成=スコープ会員 / 管理操作=作成者 or ADMIN+・スコープは
+     * アンケート実体由来・不一致は 404 秘匿）を Controller から呼ぶことで番人のシグナル判定に到達する。
+     * 残る 1 件（{@code getMyResponses}）は自己スコープで閉じた EP であり、
+     * {@code @AuthorizedInService} マーカーで監査済であることを明示した。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code SurveyScopeContractIT} を含む）。</p>
+     *
+     * <p>745 → 744（2026-07-29）: F06.4 公開活動記録の匿名公開安全化により
+     * {@code activity.controller.ActivityPublicController.getPublicActivityById} の凍結 1 件が解消。
+     * 同 Controller は {@code SecurityConfig}（GET 5 本 permitAll）配下の意図的公開エンドポイント群であり、
+     * 監査を経てクラスに {@link com.mannschaft.app.common.security.IntentionallyPublic} を付与した
+     * （根拠 permitAll 行と公開してよい理由は同 Controller の Javadoc に明記）。
+     * あわせて実装側でも親スコープ公開性検証・DRAFT 除外・スコープ詐称拒否・403→404 正規化・
+     * 公開専用 DTO 化を行っており、<b>違反隠蔽ではなく認可設計の是正に伴う正当な縮小</b>である。
+     * 契約は {@code ActivityPublicContractIT} が機械的に検証する。</p>
+     *
+     * <p>735 と 744 は共通の 745 から別々に分岐した並行根治の結果であり、{@code main} 統合時点で
+     * 両方を合流させる必要がある。735 → 734（2026-07-29・Wave7 survey ブランチの {@code main} 追随統合）:
+     * survey ドメイン 10 件の根治を、activity 公開安全化 1 件を反映済みの {@code main} 側 744 に適用し、
+     * 重複なく統合した結果の行数（745 − 10 − 1 = 734）。</p>
+     *
+     * <p>734 → 719（2026-07-29・認可根治戦役 Wave7 notification/confirmable ドメイン）:
+     * confirmable notification（F04.9）の 15 エンドポイントを是正・監査し縮小。内訳は
+     * {@code OrgConfirmableNotificationSettingsController}（getSettings=checkMembership /
+     * updateSettings=checkAdminOrAbove）2、{@code TeamConfirmableNotificationSettingsController}
+     * （同様）2、{@code OrgConfirmableNotificationTemplateController}（list=checkMembership /
+     * create=checkAdminOrAbove / update・delete=テンプレート実体由来スコープ突合＋
+     * checkAdminOrAbove、不一致は {@code TEMPLATE_NOT_FOUND} で 404 秘匿）4、
+     * {@code TeamConfirmableNotificationTemplateController}（同様）4 の計 12 件は
+     * {@code AccessControlService} を敷設する実装是正。残る 3 件
+     * （{@code ConfirmableNotificationRecipientController.listPending} /
+     * {@code OrgConfirmableNotificationController.confirm} /
+     * {@code TeamConfirmableNotificationController.confirm}）は、呼び出しユーザー自身の
+     * 受信者行のみを検索条件に固定して扱う構造的な自己スコープ EP であることを監査で確認し、
+     * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller の Javadoc に明記）。
+     * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ConfirmableNotificationScopeContractIT} 拡張を含む）。</p>
+     *
+     * <p>719 → 709（2026-07-29・認可根治戦役 Wave7 service ドメイン・テンプレート）:
+     * {@code ServiceRecordTemplateController} の 9 エンドポイント（{@code listTeamTemplates} /
+     * {@code createTeamTemplate} / {@code getTeamTemplate} / {@code updateTeamTemplate} /
+     * {@code deleteTeamTemplate} / {@code listOrgTemplates} / {@code createOrgTemplate} /
+     * {@code updateOrgTemplate} / {@code deleteOrgTemplate}）に、兄弟 {@code ServiceRecordFieldService}
+     * と同じ {@code AccessControlService} 方式（参照=checkMembership／変更=checkAdminOrAbove、
+     * 単一テンプレート操作はテンプレート実体由来のスコープで認可し不一致は {@code TEMPLATE_NOT_FOUND}
+     * で 404 秘匿）を敷設する実装是正で 9 件解消。残る 1 件（{@code ServiceRecordController.getMyRecords}）は、
+     * リポジトリクエリが呼び出しユーザー自身の {@code memberUserId} に固定される構造的な自己スコープ EP
+     * であることを監査で確認し、{@code @AuthorizedInService} マーカーで明示した（根拠は Controller の
+     * Javadoc に明記）。違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ServiceRecordTemplateScopeContractIT} 新設を含む）。</p>
+     *
+     * <p>709 → 696（2026-07-29・認可根治戦役 Wave7 reservation ドメイン）:
+     * {@code ReservationBusinessHourController}（{@code getBusinessHours} / {@code getSettings} /
+     * {@code listBlockedTimes}）・{@code TeamReservationLineController.listLines}・
+     * {@code TeamReservationSlotController}（{@code getSlot} / {@code listSlots} /
+     * {@code listAvailableSlots}）の 7 エンドポイントに、予約作成・グリッド・メニュー一覧と同一の
+     * {@code ReservationViewAccessGuard#assertCanView}（会員 or 公開。非許可は 403 = RESERVATION_021）を
+     * 敷設する実装是正で 7 件解消。残る 6 件（{@code MyReservationWaitlistController.listMine} /
+     * {@code ReservationCommonController}.{@code listMyReservations}/{@code listUpcomingReservations}/
+     * {@code cancelMyReservation} / {@code ReservationWaitlistController.cancel} /
+     * {@code TeamEmergencyClosureController.confirmClosure}）は、リポジトリクエリ（または確認レコード検索）が
+     * 呼び出しユーザー自身の ID に固定される構造的な自己スコープ EP であることを監査で確認し、
+     * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller/Service の Javadoc に明記）。
+     * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ReservationScopeContractIT} 拡張を含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 745;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 696;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

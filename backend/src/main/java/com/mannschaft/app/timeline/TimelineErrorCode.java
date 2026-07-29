@@ -21,10 +21,10 @@ public enum TimelineErrorCode implements ErrorCode {
     POST_ALREADY_DELETED("TIMELINE_003", "投稿は既に削除されています", Severity.WARN),
 
     /** 添付ファイル数上限超過 */
-    MAX_ATTACHMENTS_EXCEEDED("TIMELINE_004", "添付ファイルは最大10件です", Severity.ERROR),
+    MAX_ATTACHMENTS_EXCEEDED("TIMELINE_004", "添付ファイルは最大10件です", Severity.WARN),
 
     /** 投稿コンテンツが空 */
-    EMPTY_POST_CONTENT("TIMELINE_005", "投稿内容を入力してください", Severity.ERROR),
+    EMPTY_POST_CONTENT("TIMELINE_005", "投稿内容を入力してください", Severity.WARN),
 
     /** リアクション重複 */
     REACTION_ALREADY_EXISTS("TIMELINE_006", "同じリアクションは既に付けています", Severity.WARN),
@@ -57,7 +57,7 @@ public enum TimelineErrorCode implements ErrorCode {
     MUTE_NOT_FOUND("TIMELINE_015", "ミュートが見つかりません", Severity.WARN),
 
     /** R2 に動画ファイルが見つからない（Presigned URL 発行後にアップロードされていない） */
-    ATTACHMENT_NOT_FOUND_IN_STORAGE("TIMELINE_016", "添付ファイルがストレージに存在しません", Severity.ERROR);
+    ATTACHMENT_NOT_FOUND_IN_STORAGE("TIMELINE_016", "添付ファイルがストレージに存在しません", Severity.WARN);
 
     private final String code;
     private final String message;

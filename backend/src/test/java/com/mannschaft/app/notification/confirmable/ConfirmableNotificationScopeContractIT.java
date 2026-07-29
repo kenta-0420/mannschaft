@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTemplateRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -26,9 +28,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -55,6 +59,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p><b>象限</b>: 非メンバー/非 ADMIN メンバー（outsider・member）/ 別 scope ADMIN
  * （scope B の ADMIN が scope A の URL を叩く越境）/ 正当 scope・他 scope の notificationId
  * （BOLA: notificationId が path 上位スコープに属するかの突合）/ 正当 ADMIN・正当 MEMBER。</p>
+ *
+ * <p><b>認可根治戦役 Wave7 追加分</b>: settings（get/update）・template（list/create/update/delete）の
+ * 計 12 エンドポイントに {@code AccessControlService} を敷設した契約を追加する。
+ * settings は閲覧=checkMembership／変更=checkAdminOrAbove。template も
+ * list=checkMembership／create=checkAdminOrAbove、update/delete はテンプレート実体由来の
+ * スコープ突合（不一致は {@code TEMPLATE_NOT_FOUND} で 404 存在秘匿）＋checkAdminOrAbove。
+ * confirm（org/team）と listPending は呼び出しユーザー自身の受信者行のみを検索条件に固定する
+ * 構造的な自己スコープ EP と監査で確認し、{@code @AuthorizedInService} マーカーを付与した
+ * （本ファイルでの契約テスト対象外）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -71,6 +84,9 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     @Autowired
     private ConfirmableNotificationRepository notificationRepository;
 
+    @Autowired
+    private ConfirmableNotificationTemplateRepository templateRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -85,6 +101,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     private Long orgOutsiderId;  // どこにも所属しない非メンバー
     private Long orgNotifAId;    // 組織A の ACTIVE 確認通知
     private Long orgNotifBId;    // 組織B の ACTIVE 確認通知（BOLA 越境検証用）
+    private Long orgTemplateAId; // 組織A のテンプレート
+    private Long orgTemplateBId; // 組織B のテンプレート（BOLA 越境検証用）
 
     // ═════════════════════════════════════════════════════════════════════
     // チームスコープ フィクスチャ
@@ -97,6 +115,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     private Long teamOutsiderId;
     private Long teamNotifAId;
     private Long teamNotifBId;
+    private Long teamTemplateAId; // チームA のテンプレート
+    private Long teamTemplateBId; // チームB のテンプレート（BOLA 越境検証用）
 
     @BeforeEach
     void setUp() {
@@ -140,6 +160,22 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
                         .build())
                 .getId();
 
+        orgTemplateAId = templateRepository.save(ConfirmableNotificationTemplateEntity.builder()
+                        .scopeType(ScopeType.ORGANIZATION)
+                        .scopeId(orgAId)
+                        .name("CNAUTHZ 組織Aテンプレート")
+                        .title("CNAUTHZ 組織Aテンプレートタイトル")
+                        .build())
+                .getId();
+
+        orgTemplateBId = templateRepository.save(ConfirmableNotificationTemplateEntity.builder()
+                        .scopeType(ScopeType.ORGANIZATION)
+                        .scopeId(orgBId)
+                        .name("CNAUTHZ 組織Bテンプレート")
+                        .title("CNAUTHZ 組織Bテンプレートタイトル")
+                        .build())
+                .getId();
+
         // ---- チームスコープ ----
         teamAId = insertTeam("CNAUTHZ チームA");
         teamBId = insertTeam("CNAUTHZ チームB");
@@ -177,6 +213,22 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
                         .title("CNAUTHZ チームB確認通知")
                         .priority(ConfirmableNotificationPriority.NORMAL)
                         .totalRecipientCount(0)
+                        .build())
+                .getId();
+
+        teamTemplateAId = templateRepository.save(ConfirmableNotificationTemplateEntity.builder()
+                        .scopeType(ScopeType.TEAM)
+                        .scopeId(teamAId)
+                        .name("CNAUTHZ チームAテンプレート")
+                        .title("CNAUTHZ チームAテンプレートタイトル")
+                        .build())
+                .getId();
+
+        teamTemplateBId = templateRepository.save(ConfirmableNotificationTemplateEntity.builder()
+                        .scopeType(ScopeType.TEAM)
+                        .scopeId(teamBId)
+                        .name("CNAUTHZ チームBテンプレート")
+                        .title("CNAUTHZ チームBテンプレートタイトル")
                         .build())
                 .getId();
 
@@ -423,6 +475,240 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
     }
 
+    @Nested
+    @DisplayName("組織スコープ 7. GET .../confirmable-notification-settings（設定取得: checkMembership）")
+    class OrgSettingsGet {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(orgOutsiderId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは200")
+        void 非ADMINメンバーは200() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("組織スコープ 8. PUT .../confirmable-notification-settings（設定更新: checkAdminOrAbove）")
+    class OrgSettingsUpdate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-settings", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("組織スコープ 9. GET .../confirmable-notification-templates（一覧: checkMembership）")
+    class OrgTemplateList {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(orgOutsiderId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは200")
+        void 非ADMINメンバーは200() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("組織スコープ 10. POST .../confirmable-notification-templates（作成: checkAdminOrAbove）")
+    class OrgTemplateCreate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは201")
+        void 正当ADMINは201() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notification-templates", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    @Nested
+    @DisplayName("組織スコープ 11. PUT .../confirmable-notification-templates/{id}（更新: checkAdminOrAbove + scope突合）")
+    class OrgTemplateUpdate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINだがtemplateIdが他組織所属は404（BOLA）")
+        void templateId越境は404() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("組織スコープ 12. DELETE .../confirmable-notification-templates/{id}（削除: checkAdminOrAbove + scope突合）")
+    class OrgTemplateDelete {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(orgMemberAId);
+            mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINだがtemplateIdが他組織所属は404（BOLA）")
+        void templateId越境は404() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateBId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは204")
+        void 正当ADMINは204() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
+                            orgAId, orgTemplateAId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // チームスコープ（TeamConfirmableNotificationController）
     // ═════════════════════════════════════════════════════════════════════
@@ -662,9 +948,250 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
     }
 
+    @Nested
+    @DisplayName("チームスコープ 7. GET .../confirmable-notification-settings（設定取得: checkMembership）")
+    class TeamSettingsGet {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(teamOutsiderId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-settings", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-settings", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは200")
+        void 非ADMINメンバーは200() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-settings", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-settings", teamAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("チームスコープ 8. PUT .../confirmable-notification-settings（設定更新: checkAdminOrAbove）")
+    class TeamSettingsUpdate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-settings", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-settings", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-settings", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("チームスコープ 9. GET .../confirmable-notification-templates（一覧: checkMembership）")
+    class TeamTemplateList {
+
+        @Test
+        @DisplayName("非メンバーは403")
+        void 非メンバーは403() throws Exception {
+            setAuth(teamOutsiderId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-templates", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-templates", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは200")
+        void 非ADMINメンバーは200() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-templates", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notification-templates", teamAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("チームスコープ 10. POST .../confirmable-notification-templates（作成: checkAdminOrAbove）")
+    class TeamTemplateCreate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notification-templates", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notification-templates", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは201")
+        void 正当ADMINは201() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notification-templates", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    @Nested
+    @DisplayName("チームスコープ 11. PUT .../confirmable-notification-templates/{id}（更新: checkAdminOrAbove + scope突合）")
+    class TeamTemplateUpdate {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINだがtemplateIdが他チーム所属は404（BOLA）")
+        void templateId越境は404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200")
+        void 正当ADMINは200() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody())))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("チームスコープ 12. DELETE .../confirmable-notification-templates/{id}（削除: checkAdminOrAbove + scope突合）")
+    class TeamTemplateDelete {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(teamMemberAId);
+            mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは403（越境）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(teamAdminBId);
+            mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINだがtemplateIdが他チーム所属は404（BOLA）")
+        void templateId越境は404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateBId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは204")
+        void 正当ADMINは204() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
+                            teamAId, teamTemplateAId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    private Map<String, Object> templateBody() {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "CNAUTHZ テンプレート");
+        body.put("title", "CNAUTHZ テンプレートタイトル");
+        return body;
+    }
 
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(

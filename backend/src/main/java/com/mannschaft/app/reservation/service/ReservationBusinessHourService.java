@@ -62,14 +62,21 @@ public class ReservationBusinessHourService {
     private final ReservationSlotRepository slotRepository;
     private final NameResolverService nameResolverService;
     private final ReservationMapper reservationMapper;
+    /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
     /**
      * チームの営業時間設定を取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @return 営業時間レスポンスリスト
      */
-    public List<BusinessHourResponse> getBusinessHours(Long teamId) {
+    public List<BusinessHourResponse> getBusinessHours(Long teamId, Long userId) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationBusinessHourEntity> hours = businessHourRepository.findByTeamIdOrderByIdAsc(teamId);
         return reservationMapper.toBusinessHourResponseList(hours);
     }
@@ -166,12 +173,17 @@ public class ReservationBusinessHourService {
     /**
      * チームのブロック時間を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return ブロック時間レスポンスリスト
      */
-    public List<BlockedTimeResponse> listBlockedTimes(Long teamId, LocalDate from, LocalDate to) {
+    public List<BlockedTimeResponse> listBlockedTimes(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationBlockedTimeEntity> blockedTimes =
                 blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
         return enrichWithResourceNames(blockedTimes);
