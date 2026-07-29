@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxyvote;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -18,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +69,10 @@ class ProxyVoteAuthzContractIT extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    /** R2 は外部依存（テスト環境にエンドポイント未設定）のため mock（添付ファイルの実アップロードを避ける）。 */
+    @MockitoBean
+    private R2StorageService r2StorageService;
 
     private Long teamAId;
     private Long teamBId;
@@ -397,9 +403,14 @@ class ProxyVoteAuthzContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("会員(memberA)は委任状を提出できる → 201")
         void 会員は委任提出できる() throws Exception {
+            // openSessionId は setUp() で memberA の委任状（submittedDelegationId）を既に持つため、
+            // ALREADY_DELEGATED(400) と衝突しないよう本テスト専用の OPEN セッションを使う。
+            Long freshOpenSessionId = insertSession(teamAId, "委任提出専用総会", "MEETING", "OPEN", adminAId);
+            em.flush();
+
             setAuthentication(memberAId);
             String body = objectMapper.writeValueAsString(java.util.Map.of("isBlank", true));
-            mockMvc.perform(post("/api/v1/proxy-votes/{id}/delegate", openSessionId)
+            mockMvc.perform(post("/api/v1/proxy-votes/{id}/delegate", freshOpenSessionId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isCreated());

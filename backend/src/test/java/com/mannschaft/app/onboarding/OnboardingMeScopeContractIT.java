@@ -159,12 +159,24 @@ class OnboardingMeScopeContractIT extends AbstractMySqlIntegrationTest {
                 .getSingleResult()).longValue();
     }
 
+    /**
+     * {@code onboarding_templates} を1件シードする。
+     *
+     * <p>test profile は {@code ddl-auto: create} で {@code OnboardingTemplateEntity} の
+     * {@code @Column(nullable=false)} からスキーマを生成するため、Flyway のデフォルト値は
+     * 効かない。{@code @Column(nullable=false)} の全列（scope_type/scope_id/name/status/
+     * is_order_enforced/is_admin_notified_on_complete/is_timeline_posted_on_complete/
+     * created_by）と {@code @Version} 列（version）を機械的に列挙して INSERT に含める。</p>
+     */
     private Long insertTemplate(Long teamId, Long createdBy) {
         em.createNativeQuery(
                         "INSERT INTO onboarding_templates ("
-                                + "scope_type, scope_id, name, status, is_order_enforced, created_by, "
-                                + "created_at, updated_at) "
-                                + "VALUES ('TEAM', :scopeId, :name, 'ACTIVE', 0, :createdBy, NOW(), NOW())")
+                                + "scope_type, scope_id, name, status, is_order_enforced, "
+                                + "is_admin_notified_on_complete, is_timeline_posted_on_complete, "
+                                + "created_by, version, created_at, updated_at) "
+                                + "VALUES ('TEAM', :scopeId, :name, 'ACTIVE', 0, "
+                                + "1, 0, "
+                                + ":createdBy, 0, NOW(), NOW())")
                 .setParameter("scopeId", teamId)
                 .setParameter("name", "認可契約テストテンプレート " + System.nanoTime())
                 .setParameter("createdBy", createdBy)
