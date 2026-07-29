@@ -89,6 +89,11 @@ public class BlogPostService {
     /**
      * チーム別記事一覧をページング取得する。
      *
+     * <p>認可根治戦役 Wave7: 本一覧は下書き・非公開ステータスを含む全記事を返す
+     * 内部管理用の入口のため、{@link #createPost} と同一の
+     * {@link AccessControlService#checkMembership} でチームメンバーに限定する
+     * （非メンバーは他チームの下書き記事タイトル等を列挙できてはならない）。</p>
+     *
      * @param teamIdStr チームの公開ID（UUID文字列）または内部Long ID文字列
      */
     public Page<BlogPostResponse> listByTeam(String teamIdStr, Pageable pageable) {
@@ -96,6 +101,7 @@ public class BlogPostService {
             return Page.empty(pageable);
         }
         Long teamId = resolveTeamId(teamIdStr);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         Page<BlogPostEntity> page = postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, pageable);
         // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
         return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
@@ -104,6 +110,9 @@ public class BlogPostService {
     /**
      * 組織別記事一覧をページング取得する。
      *
+     * <p>認可根治戦役 Wave7: {@link #listByTeam} と同一の理由で
+     * {@link AccessControlService#checkMembership} を敷く。</p>
+     *
      * @param organizationIdStr 組織の公開ID（UUID文字列）または内部Long ID文字列。null の場合は空ページを返す。
      */
     public Page<BlogPostResponse> listByOrganization(String organizationIdStr, Pageable pageable) {
@@ -111,6 +120,7 @@ public class BlogPostService {
             return Page.empty(pageable);
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), organizationId, "ORGANIZATION");
         Page<BlogPostEntity> page = postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, pageable);
         // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
         return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
@@ -118,11 +128,29 @@ public class BlogPostService {
 
     /**
      * 個人ブログ記事一覧をページング取得する。
+     *
+     * <p>認可根治戦役 Wave7: 従来は投稿者以外の閲覧でもステータス・可視性を問わず
+     * 全件返していた（下書き・非公開記事のタイトル漏洩）。{@link #getBySlug} と同一の
+     * F00 可視性判定（{@link ContentVisibilityChecker#filterAccessible}）で閲覧可能な
+     * 記事のみへ絞り込む。本人が自分の一覧（{@code listMyPosts}）を見る場合は
+     * Resolver が DRAFT を作成者本人に可視と判定するため、自分の下書きは従来どおり見える。</p>
      */
     public Page<BlogPostResponse> listByUser(Long userId, Pageable pageable) {
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Page<BlogPostEntity> page = postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        List<BlogPostEntity> content = page.getContent();
+        if (content.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.BLOG_POST, ids, viewerUserId);
         // 一覧は body 常時 null（他者閲覧分の有料本文漏洩封鎖。本人編集は ID 指定詳細経路で全文取得）
-        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
+        List<BlogPostResponse> filtered = content.stream()
+                .filter(e -> accessibleIds.contains(e.getId()))
+                .map(e -> stripBody(cmsMapper.toBlogPostResponse(e)))
+                .toList();
+        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, page.getTotalElements());
     }
 
     /**

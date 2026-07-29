@@ -47,12 +47,13 @@ public class SignageSlotController {
 
     /**
      * 画面に紐づくスロット一覧を取得する。
-     * 認可: 認証済みユーザー
+     * 認可: 認証済みユーザー（対象画面スコープのメンバーシップ必須）
      * レスポンス: 200 OK
      */
     @GetMapping
     public ApiResponse<List<SignageSlotResponse>> listSlots(@PathVariable Long screenId) {
-        return ApiResponse.of(slotService.listSlots(screenId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(slotService.listSlotsForActor(screenId, userId));
     }
 
     /**

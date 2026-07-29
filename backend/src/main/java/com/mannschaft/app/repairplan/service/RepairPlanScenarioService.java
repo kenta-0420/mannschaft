@@ -252,10 +252,15 @@ public class RepairPlanScenarioService {
     }
 
     /**
-     * シナリオを 1 件取得する（IDOR 対策: org + scope で突合）。
+     * シナリオを 1 件取得する（IDOR 対策: org + scope で突合、認可根治戦役 Wave7: メンバーシップ必須）。
+     *
+     * <p>従来は org 束縛のみで認可判定が皆無だったため、対象組織の任意の scope の
+     * organizationId さえ知っていれば非会員でも積立金枯渇シミュレーション結果を閲覧できた。
+     * 兄弟の {@link #listScenarios} と同一の {@link AccessControlService#checkMembership} を敷く。</p>
      */
-    public ScenarioDto getScenario(UUID scenarioId, Long organizationId) {
+    public ScenarioDto getScenario(UUID scenarioId, Long organizationId, Long userId) {
         RepairSimulationScenario scenario = findScenarioOrThrow(scenarioId, organizationId);
+        accessControlService.checkMembership(userId, scenario.getScopeId(), scenario.getScopeType());
         return toDtoFromJson(scenario);
     }
 

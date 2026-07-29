@@ -126,9 +126,15 @@ class BlogPostServiceAdditionalTest {
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
 
             // Long文字列で渡す（後方互換）
-            Page<BlogPostResponse> result = service.listByOrganization(ORG_ID_STR, pageable);
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                result = service.listByOrganization(ORG_ID_STR, pageable);
+            }
 
             assertThat(result).hasSize(1);
+            verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 
@@ -141,17 +147,46 @@ class BlogPostServiceAdditionalTest {
     class ListByUser {
 
         @Test
-        @DisplayName("正常系: ユーザー別記事一覧が返却される")
+        @DisplayName("正常系: ユーザー別記事一覧が返却される（可視性フィルタ通過分）")
         void ユーザー別一覧_正常_一覧返却() {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
             given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), USER_ID))
+                    .willReturn(Set.of(POST_ID));
 
-            Page<BlogPostResponse> result = service.listByUser(USER_ID, pageable);
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                result = service.listByUser(USER_ID, pageable);
+            }
 
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("認可: 可視性フィルタで除外された記事は一覧に出ない（下書き漏洩根治）")
+        void ユーザー別一覧_非公開記事は除外() {
+            Pageable pageable = PageRequest.of(0, 10);
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
+            Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), 999L))
+                    .willReturn(Set.of());
+
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(999L);
+                result = service.listByUser(USER_ID, pageable);
+            }
+
+            assertThat(result.getContent()).isEmpty();
         }
     }
 

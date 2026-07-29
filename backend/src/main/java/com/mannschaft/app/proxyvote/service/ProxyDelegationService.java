@@ -47,10 +47,17 @@ public class ProxyDelegationService {
 
     /**
      * 委任状を提出する。
+     *
+     * <p>認可根治戦役 Wave7: 従来はセッションスコープの会員であることを検証していなかったため、
+     * 非会員が委任状を提出でき、{@code isAutoAcceptDelegation} な会で受理されると票の水増しに
+     * つながる余地があった。兄弟の {@link ProxyVoteCastService#castVote} と同一の
+     * {@link AccessControlService#checkMembership} を敷く。</p>
      */
     @Transactional
     public DelegationResponse delegate(Long sessionId, DelegateRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        // 認可: 議決権 = セッションスコープの会員であること（票の水増し防止・castVoteと同一方式）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
@@ -96,10 +103,14 @@ public class ProxyDelegationService {
 
     /**
      * 委任状を取り下げる。
+     *
+     * <p>認可根治戦役 Wave7: {@link #delegate} と同一の理由で
+     * {@link AccessControlService#checkMembership} を敷く。</p>
      */
     @Transactional
     public void cancelDelegation(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }
@@ -163,9 +174,14 @@ public class ProxyDelegationService {
 
     /**
      * 出席・委任状況一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、非会員でも他セッションの出欠集計
+     * （投票済み/委任済み/未応答の人数）を取得できた。{@link ProxyVoteCastService#castVote} と
+     * 同一の {@link AccessControlService#checkMembership} を敷く。</p>
      */
-    public AttendanceResponse getAttendance(Long sessionId) {
+    public AttendanceResponse getAttendance(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
 
         long votedCount = voteRepository.countDistinctVotersBySessionId(sessionId);
         long delegatedCount = delegationRepository.countBySessionIdAndStatus(sessionId, DelegationStatus.ACCEPTED);

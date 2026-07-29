@@ -1139,6 +1139,10 @@ public class GlobalExceptionHandler {
             // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND),           // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave7: onboarding（メンバー本人の進捗詳細取得/ステップ完了）は
+            // progress.userId と本人を突合し、不一致は同一コードで返す存在秘匿のため 404
+            //（Severity.WARN 既定の 400 のままだと「404 で秘匿したつもり」の看板倒れになる）。
+            Map.entry("ONBOARDING_003", HttpStatus.NOT_FOUND),           // PROGRESS_NOT_FOUND（本人以外は IDOR 秘匿 → 404）
             // ─────────────────────────────────────────────────────────────
             // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
             //

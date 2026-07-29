@@ -571,6 +571,103 @@ class CmsBlogPostWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // チーム別記事一覧(listPosts) — 認可根治戦役 Wave7
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("チーム別記事一覧(listPosts)")
+    class ListPosts {
+
+        @Test
+        @DisplayName("非メンバーの一覧取得は403(他チームの下書き列挙禁止)")
+        void 非メンバーの一覧取得は403() throws Exception {
+            createTeamPostAsAdminA();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/blog/posts").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("正当メンバー(非ADMIN)の一覧取得は200")
+        void 正当メンバーの一覧取得は200() throws Exception {
+            createTeamPostAsAdminA();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/blog/posts").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // みたよ！追加(addReaction)・削除(removeReaction) — 認可根治戦役 Wave7
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("みたよ！追加(addReaction)・削除(removeReaction)")
+    class Reactions {
+
+        @Test
+        @DisplayName("非メンバーはDRAFT記事にリアクション不可(assertCanViewで拒否)")
+        void 非メンバーはDRAFT記事にリアクション不可() throws Exception {
+            Long postId = createTeamPostAsAdminA();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(post("/api/v1/blog/posts/{postId}/reactions", postId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("PUBLISHED後はチームメンバーがリアクション追加・削除できる(201/200)")
+        void メンバーはPUBLISHED記事にリアクション可() throws Exception {
+            Long postId = createTeamPostAsAdminA();
+            publishAsAdminA(postId);
+
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/blog/posts/{postId}/reactions", postId))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.mitayo").value(true));
+            mockMvc.perform(delete("/api/v1/blog/posts/{postId}/reactions", postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.mitayo").value(false));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 個人ブログ他者一覧(listUserPosts) — 認可根治戦役 Wave7
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("個人ブログ他者一覧(listUserPosts)")
+    class ListUserPosts {
+
+        @Test
+        @DisplayName("非所有者から見るとDRAFTの個人記事は一覧に出ない(可視性フィルタ)")
+        void 非所有者からはDRAFT記事が見えない() throws Exception {
+            createPersonalPostAs(personalOwnerId);
+
+            setAuthentication(personalOtherId);
+            mockMvc.perform(get("/api/v1/users/{userId}/blog/posts", personalOwnerId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("所有者本人から見ると自分のDRAFT記事が一覧に出る(Resolverの作成者可視ルール)")
+        void 所有者本人からはDRAFT記事が見える() throws Exception {
+            createPersonalPostAs(personalOwnerId);
+
+            setAuthentication(personalOwnerId);
+            mockMvc.perform(get("/api/v1/users/{userId}/blog/posts", personalOwnerId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

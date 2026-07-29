@@ -6,6 +6,8 @@ import com.mannschaft.app.cms.entity.BlogPostReactionEntity;
 import com.mannschaft.app.cms.repository.BlogPostReactionRepository;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,9 +24,14 @@ public class BlogReactionService {
 
     private final BlogPostReactionRepository reactionRepository;
     private final BlogPostRepository postRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 記事に「みたよ！」リアクションを追加する。
+     *
+     * <p>認可根治戦役 Wave7: 従来は記事の実存確認のみで、閲覧不可（DRAFT/MEMBERS_ONLY等）の
+     * 記事にも非メンバーがリアクションを付けられた。{@link #getBySlug}/{@link #getById} と
+     * 同一の {@link ContentVisibilityChecker#assertCanView} を先に適用する。</p>
      *
      * @param blogPostId 記事ID
      * @param userId     ユーザーID
@@ -32,9 +39,10 @@ public class BlogReactionService {
      */
     @Transactional
     public BlogReactionResponse addReaction(Long blogPostId, Long userId) {
-        // 記事の存在確認
+        // 記事の存在確認 + 可視性判定（F00）。閲覧不可なら BusinessException（403/404相当）。
         postRepository.findById(blogPostId)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+        contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, blogPostId, userId);
 
         if (reactionRepository.existsByBlogPostIdAndUserId(blogPostId, userId)) {
             throw new BusinessException(CmsErrorCode.REACTION_ALREADY_EXISTS);
@@ -54,15 +62,19 @@ public class BlogReactionService {
     /**
      * 記事の「みたよ！」リアクションを削除する。
      *
+     * <p>認可根治戦役 Wave7: {@link #addReaction} と同一の理由で
+     * {@link ContentVisibilityChecker#assertCanView} を先に適用する。</p>
+     *
      * @param blogPostId 記事ID
      * @param userId     ユーザーID
      * @return レスポンスDTO（みたよ！状態・件数）
      */
     @Transactional
     public BlogReactionResponse removeReaction(Long blogPostId, Long userId) {
-        // 記事の存在確認
+        // 記事の存在確認 + 可視性判定（F00）
         postRepository.findById(blogPostId)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+        contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, blogPostId, userId);
 
         if (!reactionRepository.existsByBlogPostIdAndUserId(blogPostId, userId)) {
             throw new BusinessException(CmsErrorCode.REACTION_NOT_FOUND);

@@ -110,10 +110,19 @@ public class SignageEmergencyService {
     /**
      * 画面に紐づく緊急メッセージ履歴を直近30件取得する（createdAt降順）。
      *
+     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、非会員でも他チーム/組織の緊急メッセージ
+     * 履歴（本文・色・配信時刻）を閲覧できた。兄弟の {@link #broadcastEmergency} は
+     * ADMIN 限定だが、参照は会員であれば可とする（読取＝会員・変更＝ADMINの通例）。</p>
+     *
      * @param screenId 画面ID
+     * @param actor    閲覧ユーザーID
      * @return 緊急メッセージレスポンス一覧
      */
-    public List<EmergencyMessageResponse> listEmergencyMessages(Long screenId) {
+    public List<EmergencyMessageResponse> listEmergencyMessages(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
+                .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+        accessControlService.checkMembership(actor, screen.getScopeId(), screen.getScopeType());
+
         return emergencyRepository.findByScreenIdOrderByCreatedAtDesc(screenId)
                 .stream()
                 .limit(RECENT_MESSAGE_LIMIT)

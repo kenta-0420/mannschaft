@@ -45,7 +45,8 @@ public class BlogSeriesController {
     public ResponseEntity<ApiResponse<List<BlogSeriesResponse>>> listSeries(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId) {
-        return ResponseEntity.ok(ApiResponse.of(seriesService.listSeries(teamId, organizationId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                seriesService.listSeries(SecurityUtils.getCurrentUserId(), teamId, organizationId)));
     }
 
     /**

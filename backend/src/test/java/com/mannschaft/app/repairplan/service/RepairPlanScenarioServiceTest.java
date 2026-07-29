@@ -307,10 +307,25 @@ class RepairPlanScenarioServiceTest {
                     .willReturn(Optional.empty());
 
             // when / then
-            assertThatThrownBy(() -> service.getScenario(scenarioId, otherOrgId))
+            assertThatThrownBy(() -> service.getScenario(scenarioId, otherOrgId, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RepairPlanErrorCode.ITEM_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("正常系: 会員は取得できる（checkMembership通過）")
+        void getScenario_会員は取得できる() {
+            String summaryJson = "{\"engineVersion\":\"v1.0.0\",\"contentSha256\":\"abc\"," +
+                    "\"yearlyBalances\":[],\"depletionYear\":null," +
+                    "\"generationMeters\":{},\"warnings\":[]}";
+            RepairSimulationScenario s = buildScenario(ORG_ID, SCOPE_TYPE, SCOPE_ID, summaryJson);
+            given(scenarioRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(s.getId(), ORG_ID))
+                    .willReturn(Optional.of(s));
+
+            ScenarioDto dto = service.getScenario(s.getId(), ORG_ID, USER_ID);
+
+            assertThat(dto).isNotNull();
         }
     }
 

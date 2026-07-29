@@ -116,6 +116,11 @@ public class SignageScreenService {
     /**
      * 指定IDの画面を取得する。
      *
+     * <p><b>認可は呼び出し元の責務</b>。サイネージ端末向けの公開表示経路
+     * （{@code SignageDisplayController#getDisplayConfig}）はトークン認証済みで
+     * ユーザーコンテキストを持たないため、本メソッドには認可を敷かない。
+     * 認証ユーザー向けの管理画面入口は {@link #getScreenForActor} を使うこと。</p>
+     *
      * @param id 画面ID
      * @return 画面レスポンス
      */
@@ -125,7 +130,25 @@ public class SignageScreenService {
     }
 
     /**
+     * 認証ユーザー向けに指定IDの画面を取得する（メンバーシップ必須）。
+     *
+     * <p>認可根治戦役 Wave7: 従来は {@code SignageScreenController#getScreen} が
+     * 認可判定なしに {@link #getScreen} を呼んでいたため、非会員でも他チーム/組織の
+     * 画面設定を閲覧できた。兄弟の {@link #createScreen}/{@link #updateScreen} は
+     * ADMIN 限定だが、参照は会員であれば可とする（読取＝会員・変更＝ADMINの通例）。</p>
+     */
+    public SignageScreenResponse getScreenForActor(Long id, Long actor) {
+        SignageScreenEntity entity = findScreenOrThrow(id);
+        accessControlService.checkMembership(actor, entity.getScopeId(), entity.getScopeType());
+        return toResponse(entity);
+    }
+
+    /**
      * スコープに紐づくアクティブな画面一覧を取得する。
+     *
+     * <p><b>認可は呼び出し元の責務</b>。{@link #getScreen} と同じ理由でサイネージ端末向け
+     * 経路からも共有されるため認可を敷かない。認証ユーザー向けは
+     * {@link #listScreensForActor} を使うこと。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -137,6 +160,16 @@ public class SignageScreenService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * 認証ユーザー向けにスコープの画面一覧を取得する（メンバーシップ必須）。
+     *
+     * <p>認可根治戦役 Wave7: {@link #getScreenForActor} と同一の理由。</p>
+     */
+    public List<SignageScreenResponse> listScreensForActor(String scopeType, Long scopeId, Long actor) {
+        accessControlService.checkMembership(actor, scopeId, scopeType);
+        return listScreens(scopeType, scopeId);
     }
 
     /**
