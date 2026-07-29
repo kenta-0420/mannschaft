@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,13 +74,14 @@ public class VillageRepresentativeController {
     }
 
     @GetMapping
-    @Operation(summary = "村代表委任一覧（任意：取消し済みも含む）")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村代表委任一覧（村人のみ・任意で取消し済みも含む）")
     public ResponseEntity<ApiResponse<List<RepresentativeResponse>>> list(
             @PathVariable UUID villageId,
             @RequestParam(name = "includeRevoked", defaultValue = "false") boolean includeRevoked) {
-        // 認証必須（未認証なら SecurityUtils が 401 系を投げる）。
-        SecurityUtils.getCurrentUserId();
-        List<RepresentativeResponse> dtos = representativeService.listRepresentatives(villageId, includeRevoked);
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        List<RepresentativeResponse> dtos =
+                representativeService.listRepresentatives(villageId, includeRevoked, actorUserId);
         return ResponseEntity.ok(ApiResponse.of(dtos));
     }
 }

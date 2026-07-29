@@ -451,12 +451,16 @@ class VillageRepresentativeServiceTest {
     // 12. listRepresentatives — 現役のみ取得
     // ========================================================================
     @Test
-    @DisplayName("12. listRepresentatives — includeRevoked=false で現役のみ取得")
+    @DisplayName("12. listRepresentatives — includeRevoked=false で現役のみ取得（村人なら閲覧可）")
     void list_activeOnly() {
         UUID membershipId = UUID.randomUUID();
         VillageRepresentativeEntity active = representative(membershipId, REPRESENTATIVE_USER_ID);
+        VillageMembershipEntity villager = membership(VillageSubjectType.USER, VILLAGER_USER_ID, VillageRole.VILLAGER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(VILLAGER_USER_ID)))
+                .willReturn(Optional.of(villager));
         given(representativeRepository.findByVillageIdAndRevokedAtIsNull(VILLAGE_ID))
                 .willReturn(List.of(active));
         given(userRepository.findAllById(any(Iterable.class))).willReturn(List.of(
@@ -464,12 +468,29 @@ class VillageRepresentativeServiceTest {
                 user(HEADMAN_USER_ID, "村長 次郎")
         ));
 
-        List<RepresentativeResponse> result = service.listRepresentatives(VILLAGE_ID, false);
+        List<RepresentativeResponse> result = service.listRepresentatives(VILLAGE_ID, false, VILLAGER_USER_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).representativeDisplayName()).isEqualTo("代表 太郎");
         assertThat(result.get(0).grantedByDisplayName()).isEqualTo("村長 次郎");
         assertThat(result.get(0).revokedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("14. listRepresentatives — 非村人は VILLAGE_007（NOT_MEMBER）で拒否")
+    void list_byNonMember_forbidden() {
+        Long nonMemberUserId = 999L;
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(nonMemberUserId)))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listRepresentatives(VILLAGE_ID, false, nonMemberUserId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
+
+        verify(representativeRepository, never()).findByVillageIdAndRevokedAtIsNull(any());
     }
 
     // ========================================================================

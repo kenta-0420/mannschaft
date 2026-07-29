@@ -6543,7 +6543,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村代表委任一覧（任意：取消し済みも含む） */
+        /** 村代表委任一覧（村人のみ・任意で取消し済みも含む） */
         get: operations["list_3"];
         put?: never;
         /** 村代表委任の付与（HEADMAN/ELDER） */
@@ -7152,7 +7152,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定月の歳時記イベント一覧を取得する */
+        /** 指定月の歳時記イベント一覧を取得する（村人のみ） */
         get: operations["listByMonth"];
         put?: never;
         /** 歳時記イベントを作成する（HEADMAN / ELDER のみ） */
@@ -23704,7 +23704,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 歳時記イベントの詳細を取得する */
+        /** 歳時記イベントの詳細を取得する（村人のみ） */
         get: operations["get_22"];
         put?: never;
         post?: never;
@@ -30036,7 +30036,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）
+         * 【廃止予定】ご縁スコアの上位ランキングを取得する（村人のみ・F17.2 §8.2 で相性表示へ置換）
          * @deprecated
          */
         get: operations["getRanking"];
