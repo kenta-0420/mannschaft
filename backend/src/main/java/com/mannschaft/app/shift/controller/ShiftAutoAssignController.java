@@ -25,6 +25,10 @@ import java.util.List;
 
 /**
  * シフト自動割当コントローラー。自動割当の実行・確定・破棄・履歴取得 API を提供する。
+ *
+ * <p><b>認可（認可根治 Wave7）:</b> scope（チーム）はパス変数ではなくスケジュール／実行ログ実体から
+ * 解決するため {@code @PreAuthorize} の SpEL では表現できない。真の強制点は
+ * {@link ShiftAutoAssignService} 内（全 public 入口に per-scope 管理者認可）に置く。</p>
  */
 @RestController
 @RequestMapping("/api/v1/shifts")
@@ -82,7 +86,8 @@ public class ShiftAutoAssignController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<AssignmentRunResponse>>> getAssignmentRuns(
             @PathVariable Long scheduleId) {
-        List<AssignmentRunResponse> responses = autoAssignService.getAssignmentRuns(scheduleId);
+        List<AssignmentRunResponse> responses =
+                autoAssignService.getAssignmentRuns(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -94,7 +99,8 @@ public class ShiftAutoAssignController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<AssignmentRunResponse>> getAssignmentRunDetail(
             @PathVariable Long runId) {
-        AssignmentRunResponse response = autoAssignService.getAssignmentRunDetail(runId);
+        AssignmentRunResponse response =
+                autoAssignService.getAssignmentRunDetail(runId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

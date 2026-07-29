@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
@@ -39,6 +40,10 @@ class SharedFolderServiceTest {
 
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
+
+    /** 認可根治 Wave7: SharedFolderService に per-scope 認可が入ったため注入対象に追加。 */
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SharedFolderService sharedFolderService;
@@ -106,7 +111,7 @@ class SharedFolderServiceTest {
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(entity));
 
             // When
-            sharedFolderService.deleteFolder(FOLDER_ID);
+            sharedFolderService.deleteFolder(FOLDER_ID, USER_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -120,7 +125,7 @@ class SharedFolderServiceTest {
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> sharedFolderService.deleteFolder(FOLDER_ID))
+            assertThatThrownBy(() -> sharedFolderService.deleteFolder(FOLDER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));

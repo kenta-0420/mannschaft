@@ -4,12 +4,16 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ChangeRequestStatus;
+import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +47,9 @@ class ShiftChangeRequestServiceAuthzTest {
     private ShiftChangeRequestRepository changeRequestRepository;
     @Mock
     private ShiftScheduleRepository scheduleRepository;
+    /** 認可根治 Wave7: create の slotId 帰属検証（BOLA 封鎖）で使用。 */
+    @Mock
+    private ShiftSlotRepository slotRepository;
     @Mock
     private AccessControlService accessControlService;
 
@@ -205,6 +212,63 @@ class ShiftChangeRequestServiceAuthzTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND));
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // create — 認可根治 Wave7（非メンバーによる他チームへの依頼投入の封鎖）
+    // ════════════════════════════════════════════════════════════
+
+    private static final Long SLOT_ID = 800L;
+
+    private CreateChangeRequestRequest createReq(Long slotId) {
+        return new CreateChangeRequestRequest(SCHEDULE_ID, slotId, ChangeRequestType.OPEN_CALL, "理由");
+    }
+
+    @Test
+    @DisplayName("create: 非メンバーは COMMON_002（メンバーシップ検証で拒否）")
+    void create_非メンバーはCOMMON_002() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
+
+        assertThatThrownBy(() -> service.create(createReq(null), REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(CommonErrorCode.COMMON_002.getMessage());
+
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: 別スケジュールの slotId を指定すると SHIFT_SLOT_NOT_FOUND（BOLA・存在秘匿）")
+    void create_別スケジュールのslotは404() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(
+                ShiftSlotEntity.builder().scheduleId(999L).build()));
+
+        assertThatThrownBy(() -> service.create(createReq(SLOT_ID), MEMBER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: メンバー＋自スケジュールの slot なら作成できる（機能非回帰）")
+    void create_メンバーは作成できる() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(
+                ShiftSlotEntity.builder().scheduleId(SCHEDULE_ID).build()));
+        given(changeRequestRepository.countByRequestedByAndRequestTypeInCurrentMonth(
+                MEMBER_ID, ChangeRequestType.OPEN_CALL)).willReturn(0L);
+        given(changeRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.create(createReq(SLOT_ID), MEMBER_ID);
+
+        verify(changeRequestRepository).save(any());
     }
 
     /** 指定ユーザーが依頼者である変更依頼を作る */
