@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.reservation.dto.WaitlistCountResponse;
 import com.mannschaft.app.reservation.dto.WaitlistEntryResponse;
 import com.mannschaft.app.reservation.service.ReservationWaitlistService;
@@ -52,10 +53,20 @@ public class ReservationWaitlistController {
      *
      * <p>解決は (slot, 本人) で行うため他人のエントリは掴めない（IDOR 秘匿）。
      * 自分の WAITING が無ければ 404。</p>
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * パス変数 {@code teamId}/{@code slotId} はそれ単体ではスコープ判定に用いない。認可の実体は
+     * {@code ReservationWaitlistService#cancelOwn(Long, Long, Long)} が
+     * {@code ReservationWaitlistEntryRepository#findBySlotIdAndUserIdAndStatus} で
+     * <b>呼び出しユーザー自身の WAITING エントリのみ</b>を特定し、該当しなければ
+     * {@code WAITLIST_ENTRY_NOT_FOUND} を投げる構造にある。他人の WAITING を取消すことは
+     * 構造上できない自己スコープ EP であり、権限昇格は発生しない。データ依存でない構造的な
+     * 自己スコープ認可のため白名簿クラス呼び出しを持たず、本マーカーで監査済であることを明示する。</p>
      */
     @DeleteMapping
     @Operation(operationId = "leaveWaitlist", summary = "キャンセル待ち取消（本人）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    @AuthorizedInService
     public ResponseEntity<Void> cancel(
             @PathVariable Long teamId,
             @PathVariable Long slotId) {

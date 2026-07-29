@@ -176,8 +176,23 @@ class ArchUnitFreezeStoreIntegrityTest {
      * であることを監査で確認し、{@code @AuthorizedInService} マーカーで明示した（根拠は Controller の
      * Javadoc に明記）。違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
      * {@code ServiceRecordTemplateScopeContractIT} 新設を含む）。</p>
+     *
+     * <p>709 → 696（2026-07-29・認可根治戦役 Wave7 reservation ドメイン）:
+     * {@code ReservationBusinessHourController}（{@code getBusinessHours} / {@code getSettings} /
+     * {@code listBlockedTimes}）・{@code TeamReservationLineController.listLines}・
+     * {@code TeamReservationSlotController}（{@code getSlot} / {@code listSlots} /
+     * {@code listAvailableSlots}）の 7 エンドポイントに、予約作成・グリッド・メニュー一覧と同一の
+     * {@code ReservationViewAccessGuard#assertCanView}（会員 or 公開。非許可は 403 = RESERVATION_021）を
+     * 敷設する実装是正で 7 件解消。残る 6 件（{@code MyReservationWaitlistController.listMine} /
+     * {@code ReservationCommonController}.{@code listMyReservations}/{@code listUpcomingReservations}/
+     * {@code cancelMyReservation} / {@code ReservationWaitlistController.cancel} /
+     * {@code TeamEmergencyClosureController.confirmClosure}）は、リポジトリクエリ（または確認レコード検索）が
+     * 呼び出しユーザー自身の ID に固定される構造的な自己スコープ EP であることを監査で確認し、
+     * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller/Service の Javadoc に明記）。
+     * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ReservationScopeContractIT} 拡張を含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 709;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 696;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

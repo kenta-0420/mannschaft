@@ -59,6 +59,10 @@ class ReservationBusinessHourServiceTest {
     @Mock
     private com.mannschaft.app.common.NameResolverService nameResolverService;
 
+    /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+
     @InjectMocks
     private ReservationBusinessHourService service;
 
@@ -67,6 +71,7 @@ class ReservationBusinessHourServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 5L;
     private static final Long BLOCKED_ID = 10L;
     private static final Long CREATED_BY = 100L;
 
@@ -126,7 +131,7 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(entities)).willReturn(responses);
 
             // When
-            List<BusinessHourResponse> result = service.getBusinessHours(TEAM_ID);
+            List<BusinessHourResponse> result = service.getBusinessHours(TEAM_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -344,7 +349,7 @@ class ReservationBusinessHourServiceTest {
                     .willReturn(responses.get(0));
 
             // When
-            List<BlockedTimeResponse> result = service.listBlockedTimes(TEAM_ID, from, to);
+            List<BlockedTimeResponse> result = service.listBlockedTimes(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);

@@ -57,6 +57,8 @@ class ReservationSlotServiceReopenEventTest {
     private ReservationLineRepository lineRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private ReservationViewAccessGuard viewAccessGuard;
 
     private ReservationSlotService service;
 
@@ -65,7 +67,7 @@ class ReservationSlotServiceReopenEventTest {
         service = new ReservationSlotService(
                 slotRepository, reservationRepository, reservationMapper, blockedTimeRepository,
                 recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
-                Clock.systemUTC(), eventPublisher);
+                Clock.systemUTC(), eventPublisher, viewAccessGuard);
     }
 
     /**

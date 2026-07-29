@@ -55,7 +55,8 @@ public class TeamReservationSlotController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<ReservationSlotResponse> slots = slotService.listSlots(teamId, from, to);
+        List<ReservationSlotResponse> slots =
+                slotService.listSlots(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(slots));
     }
 
@@ -69,7 +70,8 @@ public class TeamReservationSlotController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<ReservationSlotResponse> slots = slotService.listAvailableSlots(teamId, from, to);
+        List<ReservationSlotResponse> slots =
+                slotService.listAvailableSlots(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(slots));
     }
 
@@ -116,7 +118,7 @@ public class TeamReservationSlotController {
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> getSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId) {
-        ReservationSlotResponse response = slotService.getSlot(teamId, slotId);
+        ReservationSlotResponse response = slotService.getSlot(teamId, SecurityUtils.getCurrentUserId(), slotId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -7,6 +7,8 @@ import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.ReservationViewAccessGuard;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,8 +19,12 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.support.StaticMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
@@ -48,10 +54,14 @@ class ReservationSettingsValidationTest {
     @Mock
     private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
 
+    @Mock
+    private ReservationViewAccessGuard viewAccessGuard;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final Long TEAM_ID = 10L;
+    private static final Long USER_ID = 1L;
     private static final String PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-settings";
 
     @BeforeEach
@@ -59,17 +69,26 @@ class ReservationSettingsValidationTest {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
-                businessHourService, teamSettingService, policyService, templateService);
+                businessHourService, teamSettingService, policyService, templateService, viewAccessGuard);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
                 .build();
+        // standaloneSetup は Security フィルタチェーンを通さないが、getSettings（PATCH 応答再取得含む）が
+        // 実 SecurityUtils.getCurrentUserId() を呼ぶため、SecurityContextHolder に直接認証情報を積む。
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         // 正常系（getSettings の再取得）が呼ばれても落ちないよう既定 stub を用意（lenient）。
         lenient().when(businessHourService.hasBusinessHours(anyLong())).thenReturn(false);
         lenient().when(teamSettingService.getOrDefault(anyLong())).thenReturn(
                 ReservationTeamSettingEntity.builder().teamId(TEAM_ID).build());
         lenient().when(policyService.getOrDefault(anyLong())).thenReturn(
                 ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
