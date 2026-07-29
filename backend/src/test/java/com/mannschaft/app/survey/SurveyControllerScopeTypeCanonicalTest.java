@@ -6,6 +6,7 @@ import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.survey.controller.SurveyController;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
+import com.mannschaft.app.survey.service.SurveyAccessGuard;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
 import com.mannschaft.app.team.service.TeamService;
@@ -60,6 +61,10 @@ class SurveyControllerScopeTypeCanonicalTest {
 
         @Mock
         private SurveyResultService surveyResultService;
+
+        /** 認可根治 Wave7: Controller が作成前に通す認可ゲート（本テストは正準化の検証が主眼）。 */
+        @Mock
+        private SurveyAccessGuard surveyAccessGuard;
 
         @Mock
         private TeamService teamService;

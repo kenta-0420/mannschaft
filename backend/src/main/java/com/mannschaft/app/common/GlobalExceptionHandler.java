@@ -204,6 +204,13 @@ public class GlobalExceptionHandler {
             Map.entry("TODO_010", HttpStatus.NOT_FOUND),             // TODO_NOT_FOUND (IDOR/BOLA 秘匿)
             // F05.4 アンケート 督促 API（権限なしのみ 403、その他は Severity.WARN 既定の 400）
             Map.entry("SURVEY_014", HttpStatus.FORBIDDEN),           // REMIND_PERMISSION_DENIED
+            // F05.4 アンケート: 不在・スコープ不一致は 404（存在秘匿）、操作権限なしは 403。
+            // 設計書 F05.4 のエラー表は全 EP で「404 アンケート不存在」「403 作成者・ADMIN 以外」と
+            // 宣言しているが、ERROR_CODE_STATUS_MAP に未登録のため Severity.WARN 既定の 400 が
+            // 返っていた（宣言と実挙動の乖離）。認可根治 Wave7 で宣言どおりに揃える。
+            Map.entry("SURVEY_001", HttpStatus.NOT_FOUND),           // SURVEY_NOT_FOUND（BOLA 秘匿を含む）
+            Map.entry("SURVEY_002", HttpStatus.NOT_FOUND),           // QUESTION_NOT_FOUND
+            Map.entry("SURVEY_022", HttpStatus.FORBIDDEN),           // OPERATION_PERMISSION_DENIED
             // F11.1 オフライン同期
             Map.entry("SYNC_002", HttpStatus.PAYLOAD_TOO_LARGE),
             Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),

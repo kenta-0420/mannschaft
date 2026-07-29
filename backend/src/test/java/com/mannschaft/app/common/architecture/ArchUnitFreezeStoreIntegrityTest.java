@@ -119,8 +119,21 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 個別に根治していた shift / filesharing の 11 エンドポイント（上記 795→784 の内訳と同一）を、
      * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
      * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
+     *
+     * <p>745 → 735（2026-07-29・認可根治戦役 Wave7 survey ドメイン）: survey ドメインの
+     * 10 エンドポイントに認可を敷設したため縮小。内訳は
+     * {@code SurveyController}（createSurvey / updateSurvey / publishSurvey / closeSurvey /
+     * deleteSurvey）5、{@code SurveyQuestionController}（addQuestion / deleteQuestion）2、
+     * {@code SurveyResultController}（addTargets / addResultViewers）2、
+     * {@code SurveyResponseController.getMyResponses} 1。前 9 件は新設の
+     * {@code SurveyAccessGuard}（作成=スコープ会員 / 管理操作=作成者 or ADMIN+・スコープは
+     * アンケート実体由来・不一致は 404 秘匿）を Controller から呼ぶことで番人のシグナル判定に到達する。
+     * 残る 1 件（{@code getMyResponses}）は自己スコープで閉じた EP であり、
+     * {@code @AuthorizedInService} マーカーで監査済であることを明示した。
+     * 違反隠蔽ではなく正当な根治に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code SurveyScopeContractIT} を含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 745;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 735;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
