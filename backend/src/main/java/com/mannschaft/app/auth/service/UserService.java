@@ -32,7 +32,9 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -75,6 +77,8 @@ public class UserService {
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
     private final MediaUrlResolver mediaUrlResolver;
+    private final UserTimezoneCache userTimezoneCache;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
@@ -177,6 +181,10 @@ public class UserService {
         // F02.10: postalCode / countryCode の変更前の値を記録
         String oldPostalCode = user.getPostalCode();
         String oldCountryCode = user.getCountryCode();
+        // Issue #2487: timezone / locale はインメモリキャッシュ（TTL 5分）に載るため、変更前の値を控えて
+        // 実際に変わった場合のみ evict する（下の「キャッシュ即時無効化」参照）。
+        String oldTimezone = user.getTimezone();
+        String oldLocale = user.getLocale();
 
         // 直接ミューテートで更新（toBuilder().build() は継承フィールド id を欠落させ INSERT 化→email 一意制約500。PR #1643 と同型の根治）
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
@@ -202,6 +210,19 @@ public class UserService {
                 req.getTimezone() != null ? req.getTimezone() : user.getTimezone(),
                 newDmReceiveFrom);
         userRepository.save(user);
+
+        // キャッシュ即時無効化（Issue #2487 項目 4 の消費箇所監査で判明した積み残し）:
+        // UserTimezoneCache / UserLocaleCache は「値の更新後に evict すること」と定めながら、
+        // リポジトリ全体で evict の呼び出し元が 1 箇所も無かった。そのため timezone / locale を変更しても
+        // 最大 5 分間は旧値が返り続け、日付境界（日次バッチ・ダッシュボードの当日判定）や通知の言語が
+        // 旧設定のまま振る舞っていた。TTL 待ちで「そのうち直る」のは症状の先送りなので、変更を検出したら
+        // その場で捨てる。
+        if (!Objects.equals(oldTimezone, user.getTimezone())) {
+            userTimezoneCache.evict(userId);
+        }
+        if (!Objects.equals(oldLocale, user.getLocale())) {
+            userLocaleCache.evict(userId);
+        }
 
         // F02.10: postalCode または countryCode が変化した場合に WeatherLocationEventListener を起動
         if (!Objects.equals(oldPostalCode, user.getPostalCode())

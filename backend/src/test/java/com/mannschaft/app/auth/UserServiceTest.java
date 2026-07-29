@@ -102,6 +102,13 @@ class UserServiceTest {
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
+    // Issue #2487: プロフィール更新で timezone / locale が変わったときのキャッシュ即時無効化
+    @Mock
+    private com.mannschaft.app.common.timezone.UserTimezoneCache userTimezoneCache;
+
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+
     // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
     @Spy
     private CountryResolver countryResolver = new CountryResolver();

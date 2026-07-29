@@ -1,33 +1,45 @@
 package com.mannschaft.app.common.i18n;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
  * {@link UserLocaleCache} の単体テスト。
- * インメモリキャッシュの動作（初回DB取得・2回目キャッシュ返却・evict後再取得）を検証する。
+ * インメモリキャッシュの動作（初回DB取得・2回目キャッシュ返却・evict後再取得・件数上限）を検証する。
+ *
+ * <p>Issue #2487 項目 1 で件数上限つき LRU（{@code mannschaft.cache.user-locale.max-entries}）へ
+ * 移行したため、コンストラクタで上限を明示して生成する（{@code @InjectMocks} では primitive の
+ * 上限値に 0 が注入され、キャッシュが 1 件も保持できなくなる）。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserLocaleCache 単体テスト")
 class UserLocaleCacheTest {
 
+    /** テスト用のキャッシュ上限（本番既定とは独立に、少数で LRU の追い出しを観測するため小さく取る）。 */
+    private static final int MAX_ENTRIES = 100;
+
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
     private UserLocaleCache cache;
+
+    @BeforeEach
+    void setUp() {
+        cache = new UserLocaleCache(userRepository, MAX_ENTRIES);
+    }
 
     @Test
     @DisplayName("初回アクセス時は DB から取得してキャッシュに保存する")
@@ -83,5 +95,22 @@ class UserLocaleCacheTest {
 
         // Then: evict後に再度DBへアクセスするため計2回
         verify(userRepository, times(2)).findLocaleById(1L);
+    }
+
+    @Test
+    @DisplayName("上限の10倍のユーザーを引いてもエントリ数は上限を超えない（常駐メモリの単調増加を止める）")
+    void 件数上限を超えない() {
+        // Given: どの userId でも DB から引ける
+        given(userRepository.findLocaleById(anyLong())).willReturn(Optional.of("ja"));
+
+        // When: 上限の 10 倍のユーザーを走査する
+        for (long userId = 1; userId <= MAX_ENTRIES * 10L; userId++) {
+            cache.getLocale(userId);
+        }
+
+        // Then: 常駐は上限まで（LRU で古いものから追い出される）
+        assertThat(cache.size())
+                .as("上限 %d を超えて常駐しない", MAX_ENTRIES)
+                .isLessThanOrEqualTo(MAX_ENTRIES);
     }
 }
