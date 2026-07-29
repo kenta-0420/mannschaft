@@ -136,4 +136,28 @@ class TeamFriendListCacheEvictionCoverageTest {
     void deleteTeam_が失効させる() {
         assertEvictsAllEntries(TeamService.class, "deleteTeam", Long.class, Long.class);
     }
+
+    @Test
+    @DisplayName("restoreTeam（論理削除の復元）が teamFriendList を失効させる（friendTeamName=null 残留の防止）")
+    void restoreTeam_が失効させる() {
+        // deleteTeam で全消し → TTL(30分) の間に誰かが一覧を引くと
+        // toView の teamRepository.findById(...).orElse(null)（@SQLRestriction で削除済みは引けない）により
+        // friendTeamName = null がキャッシュされる。restoreTeam が失効させないと、
+        // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
+        assertEvictsAllEntries(TeamService.class, "restoreTeam", Long.class);
+    }
+
+    @Test
+    @DisplayName("アーカイブ/復元(archive/unarchive)は対象外であることの根拠を明示する")
+    void アーカイブは対象外である() {
+        // archiveTeam / unarchiveTeam は archivedAt しか触らず、TeamEntity の @SQLRestriction は
+        // deleted_at IS NULL のみを見る。よって teamRepository.findById(...) の可否は変わらず、
+        // キャッシュ値（teamFriendId / friendTeamId / friendTeamName / isPublic / establishedAt）の
+        // どの項目にも影響しない。＝ teamFriendList の失効は不要。
+        // 一方 restoreTeam は deleted_at を戻すため @SQLRestriction の効き方が反転する（上のテスト）。
+        assertThat(teamFriendListEvictsOf(TeamService.class, "archiveTeam", Long.class))
+                .as("archiveTeam はキャッシュ値のどの項目にも影響しないため evict 不要"
+                        + "（不要な全消しはヒット率を下げるだけ）")
+                .isEmpty();
+    }
 }

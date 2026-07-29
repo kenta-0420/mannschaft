@@ -17,7 +17,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * フレンドチーム一覧取得サービス（F01.5 Phase 1、リファクタリング第4弾 Phase 4-B で分離）。
@@ -167,11 +169,20 @@ public class TeamFriendQueryService {
         List<TeamFriendEntity> rows = teamFriendRepository
                 .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(teamId, teamId, pageable);
 
-        // View へ変換。publicOnly のときは is_public=true のみ残す
+        // View へ変換。publicOnly のときは is_public=true のみ残す。
+        //
+        // 【重要】Stream#toList() ではなく可変の ArrayList に集めること。
+        // RedisConfig は activateDefaultTyping(..., DefaultTyping.EVERYTHING) を有効にしており、
+        // コレクションの「具象クラス名」が型 ID として JSON に埋め込まれる。
+        // toList() が返すのは java.util.ImmutableCollections$ListN であり、
+        // デシリアライズ時に Jackson がこれを構築できず（既定コンストラクタが無い）キャッシュ復元が失敗する。
+        // 失敗は LoggingCacheErrorHandler の fail-open で WARN に握り潰されるため、
+        // 「毎回ミスするだけの効かないキャッシュ」に静かに逆戻りする。
+        // java.util.ArrayList なら型 ID から問題なく復元できる。
         return rows.stream()
                 .filter(e -> !publicOnly || Boolean.TRUE.equals(e.getIsPublic()))
                 .map(e -> toView(e, teamId))
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**

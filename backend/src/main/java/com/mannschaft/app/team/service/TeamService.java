@@ -748,7 +748,13 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 論理削除の復元は @SQLRestriction("deleted_at IS NULL") の効き方が反転するため、
+            // teamFriendList も失効させる必要がある。
+            // deleteTeam で全消し → TTL(30分) の間に誰かが一覧を引くと toView の .orElse(null) により
+            // friendTeamName = null がキャッシュされる → restoreTeam しても失効しなければ
+            // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void restoreTeam(Long teamId) {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {

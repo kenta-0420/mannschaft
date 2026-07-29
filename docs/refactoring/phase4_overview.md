@@ -77,16 +77,29 @@ Spring のキャッシュ AOP（プロキシ方式）が自己呼び出しでは
 | 認可の位置 | `listFriends`（キャッシュの**外**）で `checkMembership` を実行し、通過後にキャッシュ層を呼ぶ |
 | 自己呼び出し | `@Lazy` 自己注入した `self()` 経由で `listFriendViews` を呼ぶ（`WidgetVisibilityResolver` と同型） |
 | キャッシュキー | `teamId:userId:page:size:publicOnly`。返却内容は閲覧者個人に依存しないが、認可がキャッシュ内側へ再混入した場合の多層防御として `userId` を含める |
-| キャッシュ値の型 | `List<TeamFriendView>`。`PageImpl` は `GenericJackson2JsonRedisSerializer` で復元できないため `Page` はキャッシュ外で組み立てる |
+| キャッシュ値の型 | `List<TeamFriendView>` を **可変 `ArrayList`** で返す。`PageImpl` は `GenericJackson2JsonRedisSerializer` で復元できないため `Page` はキャッシュ外で組み立てる。`Stream#toList()` が返す `ImmutableCollections$ListN` も `DefaultTyping.EVERYTHING` の型 ID から復元できないため使わない |
 | 失効 | すべて `allEntries = true`。キーが閲覧者・ページ・`publicOnly` の直積であり個別キー指定では必ず取りこぼす |
-| 失効の網羅 | `follow` / `unfollow` / `setVisibility` / `TeamService.updateTeam`（`friendTeamName` の stale 防止）/ `TeamService.deleteTeam` |
+
+失効の網羅（キャッシュ値を変化させ得る操作の全数）:
+
+| 操作 | 理由 |
+|---|---|
+| `TeamFriendsService#follow` / `#unfollow` | フレンドが増減する |
+| `TeamFriendVisibilityService#setVisibility` | `isPublic` が変わる |
+| `TeamService#updateTeam` | チーム名変更で `friendTeamName` が stale 化する |
+| `TeamService#deleteTeam` | 削除済みチームの残留防止 |
+| `TeamService#restoreTeam` | 論理削除の復元で `@SQLRestriction("deleted_at IS NULL")` の効き方が反転する。削除中に温められた `friendTeamName = null` が復元後も残るのを防ぐ |
+
+`archiveTeam` / `unarchiveTeam` は **対象外**。`archivedAt` しか触らず、`@SQLRestriction` は
+`deleted_at` のみを見るためキャッシュ値のどの項目にも影響しない（不要な全消しはヒット率を下げるだけ）。
 
 番人テスト:
 
-- `CacheableAuthzEnforcementGuardTest` — `@Cacheable` の内側で例外送出型の認可ゲートを呼ぶことを機械的に禁止
+- `CacheableAuthzEnforcementGuardTest` — `@Cacheable` から例外送出型の認可ゲートに到達することを機械的に禁止。認可クラスは兄弟番人 `AuthzGateReturnValueGuardTest` のゲートクラス定義（`*AccessGuard` / `*AccessService` / `*AuthorizationService` / `AccessControlService`）に揃え、ゲート接頭辞は `check`/`require`/`assert`/`validate`/`verify`/`authorize` の 6 種。同一クラス内のヘルパーは推移的に辿る
+- `CacheableAuthzEnforcementGuardConditionTest` — 上記番人の**偽陰性ゼロ証明メタテスト**。`architecture/fixtures/` の意図的違反（直接呼び・helper 経由・多段 helper）を検出できること、照会系のみの正当形を巻き込まないことを固定
 - `TeamFriendListCacheEvictionCoverageTest` — 上表の失効網羅と `allEntries = true` を固定
-- `TeamFriendQueryServiceCacheTest` — 実 AOP プロキシ越しにキャッシュ発火・認可の毎回実行・失効を検証
-- `TeamFriendViewCacheSerializationTest` — JSON 往復で `isPublic` が化けないことを固定
+- `TeamFriendQueryServiceCacheTest` — 実 AOP プロキシ越しにキャッシュ発火・認可の毎回実行・失効を検証。加えてサービスが生成したキャッシュ値を**本番シリアライザ**で往復させる
+- `TeamFriendViewCacheSerializationTest` — `RedisConfig#redisCacheConfiguration()` から取り出した**実物の `SerializationPair`** で往復させ、`isPublic` が化けないこと・コレクション実装が復元可能なことを固定
 
 ---
 

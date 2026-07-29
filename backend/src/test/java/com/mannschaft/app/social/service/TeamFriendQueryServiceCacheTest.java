@@ -3,6 +3,8 @@ package com.mannschaft.app.social.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.config.RedisConfig;
+import com.mannschaft.app.social.dto.TeamFriendView;
 import com.mannschaft.app.social.entity.TeamFriendEntity;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -20,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -281,6 +284,36 @@ class TeamFriendQueryServiceCacheTest {
 
         verify(CacheSliceConfig.FRIEND_REPO, times(2))
                 .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+    }
+
+    // ------------------------------------------------------------------
+    // 3.5 キャッシュ値の形（本番シリアライザで往復できること）
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("キャッシュ対象メソッドの戻り値が本番シリアライザで往復できる（Valkey 経由でも効く証明）")
+    void キャッシュ値が本番シリアライザで往復できる() {
+        // ConcurrentMapCacheManager はオブジェクト参照をそのまま保持するため、
+        // 「プロセス内キャッシュでは動くが Valkey では毎回復元に失敗する」事故を検知できない。
+        // そこで実際にサービスが生成したキャッシュ値を、本番の RedisConfig が組み立てた
+        // シリアライザ（GenericJackson2JsonRedisSerializer + DefaultTyping.EVERYTHING）で往復させる。
+        List<TeamFriendView> cachedValue =
+                service.listFriendViews(TEAM_ID, USER_ID, PageRequest.of(0, 20), false);
+
+        SerializationPair<Object> serializer =
+                new RedisConfig().redisCacheConfiguration().getValueSerializationPair();
+
+        @SuppressWarnings("unchecked")
+        List<TeamFriendView> restored =
+                (List<TeamFriendView>) serializer.read(serializer.write(cachedValue));
+
+        assertThat(restored)
+                .as("戻り値のコレクション実装が復元不能だと（例: Stream#toList() の "
+                        + "ImmutableCollections$ListN）、Valkey ではヒットのたびに復元が失敗し "
+                        + "fail-open で握り潰されて『効かないキャッシュ』に戻る")
+                .hasSize(1);
+        assertThat(restored.get(0).getFriendTeamId()).isEqualTo(FRIEND_TEAM_ID);
+        assertThat(restored.get(0).isPublic()).isTrue();
     }
 
     // ------------------------------------------------------------------
