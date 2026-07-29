@@ -1116,6 +1116,11 @@ public class GlobalExceptionHandler {
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
+            // 認可根治戦役 Wave7: テンプレートの templateId↔pathスコープ突合の BOLA 対策で
+            // TEMPLATE_NOT_FOUND を存在秘匿の404に上書きする（CMS_004 と同様、不存在・スコープ
+            // 不一致のいずれも同一コードで返す）。Severity.WARN 既定の 400 のままだと
+            // 実在有無が漏れる。
+            Map.entry("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND", HttpStatus.NOT_FOUND),
             // 認可根治戦役 Wave5: ticket（F08.5 回数券）の *_NOT_FOUND は、対象エンティティが自チーム外、
             // または顧客面で他人の所有物である場合にも同一コードで返す存在秘匿の要。
             // Severity.WARN 既定の 400 のままだと ID の実在有無が判別でき、購入者の存在が推測可能になる。

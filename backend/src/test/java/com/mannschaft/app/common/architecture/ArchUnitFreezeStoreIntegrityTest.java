@@ -146,8 +146,25 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 両方を合流させる必要がある。735 → 734（2026-07-29・Wave7 survey ブランチの {@code main} 追随統合）:
      * survey ドメイン 10 件の根治を、activity 公開安全化 1 件を反映済みの {@code main} 側 744 に適用し、
      * 重複なく統合した結果の行数（745 − 10 − 1 = 734）。</p>
+     *
+     * <p>734 → 719（2026-07-29・認可根治戦役 Wave7 notification/confirmable ドメイン）:
+     * confirmable notification（F04.9）の 15 エンドポイントを是正・監査し縮小。内訳は
+     * {@code OrgConfirmableNotificationSettingsController}（getSettings=checkMembership /
+     * updateSettings=checkAdminOrAbove）2、{@code TeamConfirmableNotificationSettingsController}
+     * （同様）2、{@code OrgConfirmableNotificationTemplateController}（list=checkMembership /
+     * create=checkAdminOrAbove / update・delete=テンプレート実体由来スコープ突合＋
+     * checkAdminOrAbove、不一致は {@code TEMPLATE_NOT_FOUND} で 404 秘匿）4、
+     * {@code TeamConfirmableNotificationTemplateController}（同様）4 の計 12 件は
+     * {@code AccessControlService} を敷設する実装是正。残る 3 件
+     * （{@code ConfirmableNotificationRecipientController.listPending} /
+     * {@code OrgConfirmableNotificationController.confirm} /
+     * {@code TeamConfirmableNotificationController.confirm}）は、呼び出しユーザー自身の
+     * 受信者行のみを検索条件に固定して扱う構造的な自己スコープ EP であることを監査で確認し、
+     * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller の Javadoc に明記）。
+     * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ConfirmableNotificationScopeContractIT} 拡張を含む）。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 734;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 719;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
