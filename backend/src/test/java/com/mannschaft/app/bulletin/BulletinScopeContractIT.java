@@ -742,17 +742,32 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                     .isEqualTo(before);
         }
 
-        /** AC-B24: 正当メンバーの自スコープ categoryId 指定の作成は 201（非回帰）。 */
+        /**
+         * AC-B24: 正当メンバーの自スコープ categoryId 指定の作成は 201（非回帰）。
+         *
+         * <p>本ケースは作成経路全体の要（かなめ）である。ここが落ちると観点5 の遮断側 2 件も
+         * 巻き添えで落ちるため、<b>失敗時に応答本文を必ず読めるようにしてある</b>
+         * （ステータスだけだと原因が判らず CI を 1 往復無駄にする）。
+         * 期待値は 201 のまま一切甘くしていない。</p>
+         */
         @Test
         @DisplayName("AC-B24 正当メンバーの自スコープ作成は201（非回帰）")
         void ac_b24_正当作成は201() throws Exception {
             setAuth(memberAId);
-            mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/threads", "teams", teamAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(createThreadBody(catAId))))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.data.scopeId").value(teamAId))
-                    .andExpect(jsonPath("$.data.categoryId").value(catAId));
+            var result = mockMvc.perform(
+                            post("/api/v1/{scopeType}/{scopeId}/bulletin/threads", "teams", teamAId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(createThreadBody(catAId))))
+                    .andReturn();
+            String responseBody = result.getResponse().getContentAsString();
+
+            assertThat(result.getResponse().getStatus())
+                    .as("スレッド作成の応答本文: %s", responseBody)
+                    .isEqualTo(201);
+
+            var data = objectMapper.readTree(responseBody).path("data");
+            assertThat(data.path("scopeId").asLong()).isEqualTo(teamAId);
+            assertThat(data.path("categoryId").asLong()).isEqualTo(catAId);
         }
 
         /** AC-B25: 作成時も越境 categoryId と不在 categoryId が同一応答（実在オラクル封じ）。 */
