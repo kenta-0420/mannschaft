@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -97,6 +98,8 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
     private Long notDisputedUserId;
     /** teamB 側の未解決異議の当事者（巻き添え検知用）。 */
     private Long otherScopeUserId;
+    /** 生存中の募集枠（teamB）に紐づく異議未申立の当事者（AC-10 非回帰用）。 */
+    private Long liveNotDisputedUserId;
 
     /** 論理削除の対象となる teamA の募集枠。 */
     private Long listingAId;
@@ -113,6 +116,8 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
     private Long noShowNotDisputedId;
     /** teamB・未解決（他スコープ）。 */
     private Long noShowOtherScopeId;
+    /** teamB（生存中）・異議未申立。AC-10 の非回帰で「生存中なら自動取下げしない」ことを固定する。 */
+    private Long noShowLiveNotDisputedId;
 
     /**
      * NO_SHOW 記録ごとにユニークな participant_id を割り当てるためのカウンタ。
@@ -136,6 +141,7 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
         alreadyRevokedUserId = insertUser("rcrt2497-revoked@example.com");
         notDisputedUserId = insertUser("rcrt2497-notdisputed@example.com");
         otherScopeUserId = insertUser("rcrt2497-otherscope@example.com");
+        liveNotDisputedUserId = insertUser("rcrt2497-livenotdisputed@example.com");
 
         // isScopeAdmin（user_roles）と isMember（memberships）は別系統のため両方張る。
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
@@ -151,6 +157,7 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
         noShowAlreadyRevokedId = insertNoShow(listingAId, alreadyRevokedUserId, true, DisputeResolution.REVOKED);
         noShowNotDisputedId = insertNoShow(listingAId, notDisputedUserId, false, null);
         noShowOtherScopeId = insertNoShow(listingBId, otherScopeUserId, true, null);
+        noShowLiveNotDisputedId = insertNoShow(listingBId, liveNotDisputedUserId, false, null);
 
         em.flush();
         em.clear();
@@ -296,8 +303,159 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 3. archive 済み募集枠へ「後から」申し立てられた異議（#2497 第二の窓）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * archive 時点で `disputed = FALSE` だった記録は一括取下げの対象外（意図した設計）。
+     * だがその後に利用者が異議を申し立てると、申立自体は成功する一方
+     * （{@code dispute} は募集枠を JOIN しない {@code findById} で引くため）、
+     * 裁定側の {@code findByIdAndScopeTypeAndScopeId} は JOIN するため引けず
+     * <b>永久に裁定不能</b>になり、ペナルティに算入され続ける。
+     * 時間軸がずれただけで利用者から見た被害は #2497 と同一である。
+     */
+    @Nested
+    @DisplayName("3. POST /api/v1/recruitment/no-shows/{id}/dispute（archive 後の新規申立）")
+    class DisputeAfterArchive {
+
+        /**
+         * 本 issue の根本原因そのものを実 DB で固定する。
+         *
+         * <p>`@SQLRestriction("deleted_at IS NULL")` により、archive 済み募集枠は
+         * JPA 経由（`findById` / `existsById` / JPQL / 派生クエリ）から到達不能になる。
+         * これが「NO_SHOW 記録のスコープ帰属クエリが JOIN 越しに引けなくなる」＝
+         * 裁定不能の機序である。実装がこの前提の上に立っているため、推定で済ませず実測で固定する。</p>
+         */
+        @Test
+        @DisplayName("AC-6: archive 済み募集枠は existsById / findById から到達不能（@SQLRestriction の実測）")
+        void ac_6_archive済みはJPAから到達不能() throws Exception {
+            assertThat(listingRepository.existsById(listingAId))
+                    .as("前提: archive 前は JPA から見えていること")
+                    .isTrue();
+
+            archiveListing(listingAId, adminAId);
+
+            assertThat(listingRepository.existsById(listingAId))
+                    .as("@SQLRestriction により archive 済み募集枠は existsById からも消える")
+                    .isFalse();
+            assertThat(listingRepository.findById(listingAId))
+                    .as("findById も同様に空になる")
+                    .isEmpty();
+            assertThat(listingRepository.existsById(listingBId))
+                    .as("生存中の募集枠は引き続き見えること（フィルタが全滅していない担保）")
+                    .isTrue();
+        }
+
+        /**
+         * AC-7: 実装が依存するネイティブクエリの挙動を実測で固定する。
+         *
+         * <p>{@code findArchivedScopeById} は {@code @SQLRestriction} を迂回する唯一の経路であり、
+         * 「戻り値が存在すること自体が archive 済みの信号」かつ「監査ログに残すスコープ文脈の
+         * 唯一の入手経路」という二役を担う。射影インタフェースの列マッピングが壊れていれば
+         * ここで red になる。</p>
+         */
+        @Test
+        @DisplayName("AC-7: findArchivedScopeById は archive 済みのみスコープを返す（射影マッピングの実測）")
+        void ac_7_archive済みスコープ取得の実測() throws Exception {
+            assertThat(listingRepository.findArchivedScopeById(listingAId))
+                    .as("前提: archive 前は空でなければならない")
+                    .isEmpty();
+
+            archiveListing(listingAId, adminAId);
+
+            assertThat(listingRepository.findArchivedScopeById(listingAId))
+                    .as("archive 済みならネイティブクエリで引ける（@SQLRestriction を迂回）")
+                    .hasValueSatisfying(scope -> {
+                        assertThat(scope.getScopeType())
+                                .as("監査ログの TEAM/ORGANIZATION 振り分けに使う")
+                                .isEqualTo(RecruitmentScopeType.TEAM.name());
+                        assertThat(scope.getScopeId()).isEqualTo(teamAId);
+                    });
+            assertThat(listingRepository.findArchivedScopeById(listingBId))
+                    .as("生存中の募集枠は空（archive 済みの信号として使える担保）")
+                    .isEmpty();
+        }
+
+        /**
+         * AC-8: archive 済み募集枠の NO_SHOW に異議を申し立てると、その場で `REVOKED` になる。
+         *
+         * <p>本 PR の第一版（archive 時の一括取下げのみ）では
+         * `disputed=true, resolution=null` で止まり永久に裁定不能になるため red。</p>
+         */
+        @Test
+        @DisplayName("AC-8: archive 済み募集枠への異議申立はその場で REVOKED になる")
+        void ac_8_archive後の申立は即時REVOKED() throws Exception {
+            // noShowNotDisputed は archive 時点で disputed=false ＝ 一括取下げの対象外
+            archiveListing(listingAId, adminAId);
+            assertThat(noShowRepository.findById(noShowNotDisputedId).orElseThrow().isDisputed())
+                    .as("前提: 一括取下げでは触られていないこと")
+                    .isFalse();
+
+            disputeNoShow(noShowNotDisputedId, notDisputedUserId);
+
+            RecruitmentNoShowRecordEntity record =
+                    noShowRepository.findById(noShowNotDisputedId).orElseThrow();
+            assertThat(record.isDisputed())
+                    .as("申立自体は受け付ける（拒否は利用者から救済手段を奪う）")
+                    .isTrue();
+            assertThat(record.getDisputeResolution())
+                    .as("裁定経路が塞がっている以上、その場で認容（REVOKED）として取り下げる")
+                    .isEqualTo(DisputeResolution.REVOKED);
+        }
+
+        /** AC-9: 取り下げられた結果、ペナルティ算入からも外れる。 */
+        @Test
+        @DisplayName("AC-9: archive 後の申立で取り下げられた記録はペナルティ算入から外れる")
+        void ac_9_archive後の申立でペナルティ算入から外れる() throws Exception {
+            archiveListing(listingAId, adminAId);
+            assertThat(noShowRepository.countConfirmedNoShows(notDisputedUserId, PENALTY_SINCE))
+                    .as("前提: archive 直後はまだ算入されている（未申立のため一括取下げの対象外）")
+                    .isEqualTo(1L);
+
+            disputeNoShow(noShowNotDisputedId, notDisputedUserId);
+
+            assertThat(noShowRepository.countConfirmedNoShows(notDisputedUserId, PENALTY_SINCE))
+                    .as("REVOKED になった記録はペナルティ判定から除外される")
+                    .isZero();
+        }
+
+        /**
+         * AC-10（非回帰）: 生存中の募集枠では従来どおり「申立中・未解決」で止まること。
+         *
+         * <p>archive 判定を誤って常時 true にすると、通常の異議申立が全部即時認容されて
+         * 管理者の裁定機会が消える。ここが red になればその事故を検知できる。</p>
+         */
+        @Test
+        @DisplayName("AC-10: 生存中の募集枠への異議申立は従来どおり disputed=true / resolution=null")
+        void ac_10_生存中の募集枠では従来どおり() throws Exception {
+            disputeNoShow(noShowLiveNotDisputedId, liveNotDisputedUserId);
+
+            RecruitmentNoShowRecordEntity record =
+                    noShowRepository.findById(noShowLiveNotDisputedId).orElseThrow();
+            assertThat(record.isDisputed()).isTrue();
+            assertThat(record.getDisputeResolution())
+                    .as("生存中なら管理者が裁定できるので、自動取下げしてはならない")
+                    .isNull();
+            assertThat(noShowRepository.countConfirmedNoShows(liveNotDisputedUserId, PENALTY_SINCE))
+                    .as("未解決のままなのでペナルティには算入され続ける（従来どおり）")
+                    .isEqualTo(1L);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** 異議申立 EP を叩く（200 OK）。以降のアサートは DB を読み直して行う。 */
+    private void disputeNoShow(Long noShowId, Long actorUserId) throws Exception {
+        setAuth(actorUserId);
+        mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", noShowId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"RCRT2497 異議申立テスト\"}"))
+                .andExpect(status().isOk());
+        em.flush();
+        em.clear();
+    }
 
     /** 論理削除 EP を叩く（204 No Content）。以降のアサートは DB を読み直して行う。 */
     private void archiveListing(Long listingId, Long actorUserId) throws Exception {

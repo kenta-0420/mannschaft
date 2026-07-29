@@ -10,6 +10,8 @@ import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository.ArchivedListingScope;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * F03.11 Phase 5b: NO_SHOW マーク・異議申立サービス。
@@ -42,9 +45,20 @@ public class RecruitmentNoShowService {
      */
     static final String AUDIT_EVENT_DISPUTE_AUTO_REVOKED = "RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED";
 
+    /** 監査 metadata の {@code trigger}: 募集枠 archive 時の一括取り下げ。 */
+    static final String AUDIT_TRIGGER_LISTING_ARCHIVED = "LISTING_ARCHIVED";
+
+    /** 監査 metadata の {@code trigger}: archive 済み募集枠へ後から申し立てられた異議の即時取り下げ。 */
+    static final String AUDIT_TRIGGER_DISPUTED_AFTER_ARCHIVE = "DISPUTED_AFTER_LISTING_ARCHIVED";
+
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
     private final AccessControlService accessControlService;
+    /**
+     * 募集枠リポジトリ（#2497）。archive 済み募集枠のスコープ取得にのみ使う。
+     * 同一 recruitment ドメイン内の依存であり、ドメイン境界を跨がない。
+     */
+    private final RecruitmentListingRepository listingRepository;
     /** 監査ログサービス（#2497 自動取下げの記録用）。 */
     private final AuditLogService auditLogService;
 
@@ -103,6 +117,22 @@ public class RecruitmentNoShowService {
     /**
      * ユーザーが自分の NO_SHOW に異議申立を行う。
      * ペナルティ設定の dispute_allowed_days 以内のみ可能。
+     *
+     * <p><b>#2497: archive 済み募集枠への申立はその場で取り下げる。</b>
+     * 募集枠を archive した時点で {@code disputed = FALSE} だった記録は
+     * {@link #autoRevokeOpenDisputesOnListingArchived} の対象外である（異議が無いものを
+     * 取り消す理由が無いため、これは意図した設計）。しかしその後に利用者が本メソッドで
+     * 異議を申し立てると、申立自体は成功する（本メソッドは募集枠を JOIN しない
+     * {@code findById} で引くため）一方、裁定側の
+     * {@code findByIdAndScopeTypeAndScopeId} は募集枠を JOIN するため
+     * <b>永久に裁定不能</b>になり、{@code countConfirmedNoShows} には算入され続ける。
+     * これは #2497 と時間軸がずれただけの同一の実害であり、
+     * 「archive 時点で未申立 かつ 申立期限（14 日）内」という決して稀でない窓で成立する。</p>
+     *
+     * <p><b>申立を拒否する</b>のではなく<b>受け付けたうえで即時に取り下げる</b>のは、
+     * 拒否が利用者から救済手段を奪うためである。裁定の根拠（募集枠）を消したのは団体側であり、
+     * 不利益を利用者に負わせるのは不当。よって
+     * {@link DisputeResolution#REVOKED}（異議認容）を当てる。</p>
      */
     @Transactional
     public RecruitmentNoShowRecordEntity dispute(Long recordId, Long userId) {
@@ -124,7 +154,23 @@ public class RecruitmentNoShowService {
         }
 
         record.dispute();
+
+        // #2497: 募集枠が archive 済みなら裁定経路が塞がっているため、その場で取り下げる。
+        // 戻り値が存在すること自体が「archive 済み」の信号（生存中なら空）。
+        Optional<ArchivedListingScope> archivedScope =
+                listingRepository.findArchivedScopeById(record.getListingId());
+        archivedScope.ifPresent(scope -> record.resolveDispute(DisputeResolution.REVOKED));
+
         noShowRepository.save(record);
+
+        archivedScope.ifPresent(scope -> {
+            RecruitmentScopeType scopeType = RecruitmentScopeType.valueOf(scope.getScopeType());
+            recordAutoRevokeAudit(record, scopeType, scope.getScopeId(), userId,
+                    AUDIT_TRIGGER_DISPUTED_AFTER_ARCHIVE);
+            log.info("F03.11 Phase5b archive済み募集枠への異議申立を即時取下げ: "
+                            + "recordId={}, userId={}, listingId={}",
+                    recordId, userId, record.getListingId());
+        });
 
         // TODO: F04.9 実装後に主催者へ RECRUITMENT_NO_SHOW_DISPUTE_RAISED 通知
         log.info("F03.11 Phase5b 異議申立: recordId={}, userId={}", recordId, userId);
@@ -232,27 +278,47 @@ public class RecruitmentNoShowService {
         }
         noShowRepository.saveAll(openDisputes);
 
-        // 監査ログ: 金型は CirculationService#forceCompleteDocument
-        //（スコープ TEAM/ORGANIZATION を teamId/organizationId に振り分け・JSON メタデータ）。
-        // 1 記録 = 1 行で targetUserId を残し、「誰の操作で・誰のどの記録が」
-        // 取り下げられたかを後から追えるようにする。
         for (RecruitmentNoShowRecordEntity record : openDisputes) {
-            auditLogService.record(
-                    AUDIT_EVENT_DISPUTE_AUTO_REVOKED, actorUserId, record.getUserId(),
-                    RecruitmentScopeType.TEAM == scopeType ? scopeId : null,
-                    RecruitmentScopeType.ORGANIZATION == scopeType ? scopeId : null,
-                    null, null, null,
-                    "{\"noShowRecordId\":" + record.getId()
-                            + ",\"listingId\":" + listingId
-                            + ",\"scopeType\":\"" + scopeType.name() + "\""
-                            + ",\"scopeId\":" + scopeId
-                            + ",\"resolution\":\"" + DisputeResolution.REVOKED.name() + "\""
-                            + ",\"trigger\":\"LISTING_ARCHIVED\"}");
+            recordAutoRevokeAudit(record, scopeType, scopeId, actorUserId, AUDIT_TRIGGER_LISTING_ARCHIVED);
         }
 
         log.info("F03.11 Phase5b 募集枠論理削除に伴う異議自動取下げ: listingId={}, actorUserId={}, count={}",
                 listingId, actorUserId, openDisputes.size());
         return openDisputes.size();
+    }
+
+    /**
+     * 異議の自動取り下げ 1 件分を監査ログに記録する（#2497）。
+     *
+     * <p>金型は {@code CirculationService#forceCompleteDocument}
+     * （スコープ TEAM/ORGANIZATION を {@code teamId}/{@code organizationId} に振り分け・JSON メタデータ）。
+     * 1 記録 = 1 行で {@code targetUserId} を残し、「誰の操作で・誰のどの記録が」
+     * 取り下げられたかを後から追えるようにする。</p>
+     *
+     * <p>{@code trigger} で発生経路を区別する:</p>
+     * <ul>
+     *   <li>{@link #AUDIT_TRIGGER_LISTING_ARCHIVED} — 募集枠 archive 時の一括取り下げ。
+     *       {@code actorUserId} は archive を実行した管理者</li>
+     *   <li>{@link #AUDIT_TRIGGER_DISPUTED_AFTER_ARCHIVE} — archive 済み募集枠へ後から
+     *       申し立てられた異議の即時取り下げ。{@code actorUserId} は申立を行った利用者本人
+     *       （archive の実行者は {@code recruitment_listings} に保持されておらず辿れない。
+     *       原因が archive であることは {@code trigger} が示す）</li>
+     * </ul>
+     */
+    private void recordAutoRevokeAudit(
+            RecruitmentNoShowRecordEntity record, RecruitmentScopeType scopeType, Long scopeId,
+            Long actorUserId, String trigger) {
+        auditLogService.record(
+                AUDIT_EVENT_DISPUTE_AUTO_REVOKED, actorUserId, record.getUserId(),
+                RecruitmentScopeType.TEAM == scopeType ? scopeId : null,
+                RecruitmentScopeType.ORGANIZATION == scopeType ? scopeId : null,
+                null, null, null,
+                "{\"noShowRecordId\":" + record.getId()
+                        + ",\"listingId\":" + record.getListingId()
+                        + ",\"scopeType\":\"" + scopeType.name() + "\""
+                        + ",\"scopeId\":" + scopeId
+                        + ",\"resolution\":\"" + DisputeResolution.REVOKED.name() + "\""
+                        + ",\"trigger\":\"" + trigger + "\"}");
     }
 
     // ===========================================

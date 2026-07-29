@@ -10,6 +10,7 @@ import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,9 @@ class RecruitmentNoShowServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private RecruitmentListingRepository listingRepository;
 
     @Mock
     private AuditLogService auditLogService;
@@ -164,6 +168,99 @@ class RecruitmentNoShowServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+    }
+
+    // ========================================
+    // dispute - #2497 archive 済み募集枠への新規申立
+    // ========================================
+
+    /**
+     * archive 済み募集枠に対して後から申し立てられた異議を、その場で取り下げる責務。
+     *
+     * <p>実 DB での実証（`@SQLRestriction` の迂回・射影マッピング・EP 越しの往復）は
+     * {@code com.mannschaft.app.recruitment.RecruitmentListingArchiveDisputeAutoRevokeIT}
+     * の AC-6〜AC-10 が担う。ここは分岐と監査引数のみを固定する。</p>
+     */
+    @Nested
+    @DisplayName("dispute - #2497 archive 済み募集枠への新規申立は即時取下げ")
+    class DisputeAfterListingArchived {
+
+        @Test
+        @DisplayName("archive 済みなら申立を受け付けたうえで即座に REVOKED を当てる")
+        void archive済みなら即時REVOKED() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(listingRepository.findArchivedScopeById(LISTING_ID))
+                    .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
+
+            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+
+            assertThat(record.isDisputed())
+                    .as("申立自体は受け付ける（拒否は利用者から救済手段を奪う）")
+                    .isTrue();
+            assertThat(record.getDisputeResolution())
+                    .as("裁定経路が塞がっている以上、その場で認容（REVOKED）として取り下げる")
+                    .isEqualTo(DisputeResolution.REVOKED);
+        }
+
+        @Test
+        @DisplayName("archive 済みの取下げは trigger=DISPUTED_AFTER_LISTING_ARCHIVED で監査に残る")
+        void archive済みの取下げは監査に残る() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(listingRepository.findArchivedScopeById(LISTING_ID))
+                    .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
+
+            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+
+            ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).record(
+                    eq("RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED"),
+                    eq(PENALIZED_USER_ID),      // 申立を行った利用者本人が操作者
+                    eq(PENALIZED_USER_ID),      // 対象も本人
+                    eq(SCOPE_ID),               // TEAM スコープ → teamId
+                    isNull(),
+                    isNull(), isNull(), isNull(),
+                    metadata.capture());
+            assertThat(metadata.getValue())
+                    .as("archive 時の一括取下げ（LISTING_ARCHIVED）と区別できること")
+                    .contains("\"trigger\":\"DISPUTED_AFTER_LISTING_ARCHIVED\"")
+                    .contains("\"listingId\":" + LISTING_ID);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION スコープでも監査の organizationId 側に振り分けられる")
+        void archive済みORGANIZATIONスコープの振り分け() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(listingRepository.findArchivedScopeById(LISTING_ID))
+                    .willReturn(Optional.of(archivedScope(RecruitmentScopeType.ORGANIZATION, SCOPE_ID)));
+
+            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+
+            verify(auditLogService).record(
+                    eq("RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED"),
+                    eq(PENALIZED_USER_ID), eq(PENALIZED_USER_ID),
+                    isNull(), eq(SCOPE_ID),
+                    isNull(), isNull(), isNull(),
+                    anyString());
+        }
+
+        @Test
+        @DisplayName("生存中の募集枠なら従来どおり disputed=true / resolution=null・監査も打たない（非回帰）")
+        void 生存中なら従来どおり() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(listingRepository.findArchivedScopeById(LISTING_ID)).willReturn(Optional.empty());
+
+            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+
+            assertThat(record.isDisputed()).isTrue();
+            assertThat(record.getDisputeResolution())
+                    .as("生存中なら管理者が裁定できるので自動取下げしてはならない")
+                    .isNull();
+            verifyNoInteractions(auditLogService);
         }
     }
 
@@ -282,6 +379,35 @@ class RecruitmentNoShowServiceTest {
         f.setAccessible(true);
         f.set(record, disputed);
         return record;
+    }
+
+    /** 異議未申立（disputed=false / disputeResolution=null）の NO_SHOW 記録。 */
+    private RecruitmentNoShowRecordEntity buildUndisputedRecord() throws Exception {
+        RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
+                .participantId(PARTICIPANT_ID)
+                .listingId(LISTING_ID)
+                .userId(PENALIZED_USER_ID)
+                .build();
+        Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(record, RECORD_ID);
+        return record;
+    }
+
+    /** {@code findArchivedScopeById} の射影スタブ。 */
+    private RecruitmentListingRepository.ArchivedListingScope archivedScope(
+            RecruitmentScopeType scopeType, Long scopeId) {
+        return new RecruitmentListingRepository.ArchivedListingScope() {
+            @Override
+            public String getScopeType() {
+                return scopeType.name();
+            }
+
+            @Override
+            public Long getScopeId() {
+                return scopeId;
+            }
+        };
     }
 
     /** 未解決の異議申立（disputed=true / disputeResolution=null）を持つ NO_SHOW 記録。 */
