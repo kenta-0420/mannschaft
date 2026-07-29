@@ -209,8 +209,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 判定（{@code AccessControlService} 等の直接/浅い委譲呼び出し）では拾えないだけで実穴ではないと
      * 監査で確認し、凍結のまま残した（違反隠蔽ではなく監査済みの構造的自己スコープ）。同一コミットに
      * ストア差分・実装差分・{@code TimelineScopeContractIT} 新設を含む。</p>
+     *
+     * <p>686 → 680（認可根治 Wave7・schedule ドメイン年間行事）: {@code OrgAnnualScheduleController} /
+     * {@code TeamAnnualScheduleController} の参照系 3 EP × 2 系統（getAnnualView / previewCopy は
+     * {@code checkMembership}、getCopyLogs は {@code checkAdminOrAbove}）計 6 件を是正し解消。
+     * 同一コミットにストア差分・実装差分・{@code ScheduleAnnualScopeContractIT} 新設を含む。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 686;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 680;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
