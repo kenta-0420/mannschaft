@@ -213,6 +213,16 @@ public class AnnouncementFeedService {
     /**
      * スコープ内の全お知らせを既読にする。
      *
+     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例する。</p>
+     *
+     * <p><b>既知の未解消（#2494 の範囲外）</b>: 下流
+     * {@link AnnouncementReadService#markAllAsRead} は新規既読化件数を返すようになったが、
+     * Controller の応答 {@code markedCount} は現状ハードコードの {@code 0} であり、
+     * 設計書 F02.6 §4 の {@code marked_count} 契約と食い違っている。
+     * 本メソッドのシグネチャ（＝Controller の応答）に触れる修正になるため本 PR では手を入れず、
+     * 別課題として切り出す。</p>
+     *
      * @see AnnouncementReadService#markAllAsRead
      */
     @Transactional

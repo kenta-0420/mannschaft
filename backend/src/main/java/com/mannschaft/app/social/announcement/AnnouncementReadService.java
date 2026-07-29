@@ -7,7 +7,6 @@ import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,7 +60,28 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class AnnouncementReadService {
 
+    /**
+     * 一括既読のチャンクサイズ（#2494）。
+     *
+     * <p>1 回のクエリ / {@code INSERT} バッチで扱う最大件数。
+     * これにより SQL のプレースホルダ数・{@code max_allowed_packet} が
+     * スコープの feed 総数に依らず定数上限に収まる。</p>
+     */
+    static final int MARK_ALL_BATCH_SIZE = 500;
+
+    /**
+     * 一括既読 1 リクエストあたりの最大チャンク数（#2494 の防御上限）。
+     *
+     * <p>未読は 1 チャンク処理するごとに必ず減るのでループは自然終了する。
+     * 本定数は「万一減らない事態」で無限ループにならないための防御であり、
+     * 同時に 1 リクエストの最悪実行時間を {@code MARK_ALL_BATCH_SIZE * MAX_BATCHES} 件
+     * （= 10,000 件）に固定する資源上限も兼ねる。上限に達した場合は WARN ログを残す
+     * （握りつぶさない）。残余は次回の一括既読で処理される。</p>
+     */
+    static final int MARK_ALL_MAX_BATCHES = 20;
+
     private final AnnouncementFeedRepository feedRepository;
+    private final AnnouncementFeedQueryRepository feedQueryRepository;
     private final AnnouncementReadStatusRepository readStatusRepository;
     private final ProxyInputContext proxyInputContext;
     private final AnnouncementCreationService creationService;
@@ -143,57 +163,81 @@ public class AnnouncementReadService {
      * </p>
      *
      * <p>
-     * <b>認可</b>: スコープ内のフィードのうち<b>その閲覧者に可視なものだけ</b>を既読化する
-     * （{@link #resolveAllowedVisibilities} / {@link #isReadable}）。非メンバーが他テナントの
+     * <b>認可</b>: スコープ内のフィードのうち<b>その閲覧者に可視なものだけ</b>を既読化する。
+     * 可視性の判定は一覧クエリと<b>同一の WHERE 句</b>
+     * （{@link AnnouncementFeedQueryRepository#findUnreadIdsByScope} が
+     * {@code findByScope} と共有する定数）で DB 側に寄せてある。非メンバーが他テナントの
      * スコープを指定しても、可視なもの（{@code PUBLIC}）以外には既読行が 1 件も作られない。
      * 応援者に対して内輪限定（{@code MEMBERS_AND_ABOVE}）が既読化されることもない。
      * </p>
      *
+     * <p>
+     * <b>件数上限（#2494）</b>: 旧実装はスコープ内の feed を<b>limit 無しで全件</b>取り、
+     * Java 側で可視性を絞ったうえで既読済み ID の引き当てに全件を {@code IN} 句へ渡していた。
+     * 長く運用されたスコープほどプレースホルダ数と {@code INSERT} 件数が伸び、
+     * {@code max_allowed_packet} やプリペアドステートメントのパラメータ上限に触れうるうえ、
+     * 1 リクエストの実行時間が<b>スコープの歴史の長さ</b>に比例していた。
+     * 現行は「未読分だけを DB 側で絞る」クエリを {@link #MARK_ALL_BATCH_SIZE} 件ずつ
+     * 繰り返す方式に変え、
+     * </p>
+     * <ul>
+     *   <li>feed ID の {@code IN} 句が消えた（バインドは可視性集合の最大 3 個のみ）</li>
+     *   <li>1 クエリ / 1 {@code INSERT} バッチの件数が定数上限に収まる</li>
+     *   <li>コストが<b>未読件数</b>にのみ比例する（既読済みが何万件あっても素通し）</li>
+     * </ul>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープ ID
      * @param userId    ユーザー ID
+     * @return 新たに既読化した件数（既読済みだったものは含まない）
      */
     @Transactional
-    public void markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+    public int markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
         // 認可: 閲覧者が当該スコープで見られる visibility 集合（一覧側と同一の正準経路）。
         // fail-closed のスコープ種別では空集合になり、以降で 1 件も既読化されない。
         Set<String> allowedVisibilities = resolveAllowedVisibilities(scopeType, scopeId, userId);
         if (allowedVisibilities.isEmpty()) {
-            return;
+            return 0;
         }
 
-        // スコープ内の有効なフィード一覧を取得
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        List<AnnouncementFeedEntity> feeds = feedRepository
-                .findByScopeTypeAndScopeIdAndSourceDeletedAtIsNull(scopeType, scopeId, sort);
+        int markedCount = 0;
+        for (int batch = 0; batch < MARK_ALL_MAX_BATCHES; batch++) {
+            // 「可視かつ未読」を DB 側で絞る。可視性の WHERE 句は一覧クエリと同一の定数を共有する。
+            List<Long> unreadFeedIds = feedQueryRepository.findUnreadIdsByScope(
+                    scopeType, scopeId, allowedVisibilities, userId, MARK_ALL_BATCH_SIZE);
+            if (unreadFeedIds.isEmpty()) {
+                return logAndReturn(scopeType, scopeId, userId, markedCount);
+            }
 
-        // 可視なものだけに絞る（一覧に出る集合と完全に一致させる）
-        List<Long> feedIds = feeds.stream()
-                .filter(feed -> isReadable(feed, allowedVisibilities))
-                .map(AnnouncementFeedEntity::getId)
-                .toList();
-
-        if (feedIds.isEmpty()) {
-            return;
-        }
-
-        // 既読済みのフィード ID セットを取得
-        Set<Long> alreadyReadFeedIds = fetchReadFeedIds(userId, feedIds);
-
-        // 未読のものだけ既読登録
-        List<AnnouncementReadStatusEntity> newReadStatuses = feedIds.stream()
-                .filter(feedId -> !alreadyReadFeedIds.contains(feedId))
-                .<AnnouncementReadStatusEntity>map(feedId -> AnnouncementReadStatusEntity.builder()
-                        .announcementFeedId(feedId)
-                        .userId(userId)
-                        .build())
-                .toList();
-
-        if (!newReadStatuses.isEmpty()) {
+            List<AnnouncementReadStatusEntity> newReadStatuses = unreadFeedIds.stream()
+                    .<AnnouncementReadStatusEntity>map(feedId -> AnnouncementReadStatusEntity.builder()
+                            .announcementFeedId(feedId)
+                            .userId(userId)
+                            .build())
+                    .toList();
             readStatusRepository.saveAll(newReadStatuses);
-            log.debug("全件既読マーク完了 scopeType={}, scopeId={}, userId={}, count={}",
-                    scopeType, scopeId, userId, newReadStatuses.size());
+            // 次バッチの NOT EXISTS が今回の INSERT を確実に見えるようにフラッシュする
+            // （自動フラッシュ任せにせず、チャンク境界を明示的に確定させる）。
+            readStatusRepository.flush();
+            markedCount += unreadFeedIds.size();
+
+            // 取得件数がチャンク未満なら未読は尽きている（余計な空クエリを 1 回省く）。
+            if (unreadFeedIds.size() < MARK_ALL_BATCH_SIZE) {
+                return logAndReturn(scopeType, scopeId, userId, markedCount);
+            }
         }
+
+        // 防御上限に到達。症状を隠さず WARN で記録する（残余は次回の一括既読で処理される）。
+        log.warn("全件既読マークが1リクエストの上限に到達 scopeType={}, scopeId={}, userId={}, marked={} "
+                        + "（未読が残っている可能性あり・上限={}件）",
+                scopeType, scopeId, userId, markedCount, MARK_ALL_BATCH_SIZE * MARK_ALL_MAX_BATCHES);
+        return markedCount;
+    }
+
+    private int logAndReturn(AnnouncementScopeType scopeType, Long scopeId, Long userId, int markedCount) {
+        log.debug("全件既読マーク完了 scopeType={}, scopeId={}, userId={}, count={}",
+                scopeType, scopeId, userId, markedCount);
+        return markedCount;
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -249,8 +293,11 @@ public class AnnouncementReadService {
     /**
      * 当該フィードが閲覧者に可視かを判定する（＝既読にしてよいか）。
      *
-     * <p>条件は一覧クエリ {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句と
-     * 完全に同一である:</p>
+     * <p><b>単件既読専用</b>（一括既読は #2494 で DB 側の
+     * {@link AnnouncementFeedQueryRepository#findUnreadIdsByScope} に寄せたため、
+     * この Java 述語を通らない）。条件は一覧クエリ
+     * {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句
+     * （両クエリが共有する正準定数）と完全に同一でなければならない:</p>
      * <ul>
      *   <li>{@code sourceDeletedAt IS NULL}（元コンテンツ削除済みは一覧に出ない）</li>
      *   <li>{@code expiresAt IS NULL OR expiresAt > 現在時刻}（期限切れは一覧に出ない）</li>
