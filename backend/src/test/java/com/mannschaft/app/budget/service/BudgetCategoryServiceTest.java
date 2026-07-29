@@ -106,6 +106,31 @@ class BudgetCategoryServiceTest {
     }
 
     @Test
+    @DisplayName("認可根治Wave7: listByFiscalYear は会計年度の真のscopeでcheckMembershipする")
+    void listByFiscalYear_会員チェック実施() {
+        given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
+        given(categoryRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(java.util.List.of());
+
+        service.listByFiscalYear(FISCAL_YEAR_ID);
+
+        verify(accessControlService).checkMembership(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
+    }
+
+    @Test
+    @DisplayName("認可根治Wave7: 非会員のlistByFiscalYearはcheckMembershipの例外がそのまま伝播する")
+    void listByFiscalYear_非会員は例外伝播() {
+        given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
+        org.mockito.BDDMockito.willThrow(
+                        new com.mannschaft.app.common.BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                .given(accessControlService)
+                .checkMembership(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
+
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> service.listByFiscalYear(FISCAL_YEAR_ID)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+        verify(categoryRepository, org.mockito.Mockito.never()).findByFiscalYearId(any());
+    }
+
+    @Test
     @DisplayName("update: findById の同一インスタンスを id 保持のまま save する（INSERT 化しない）")
     void update_mutatesManagedEntityAndPreservesId() {
         BudgetCategoryEntity existing = existingCategory();

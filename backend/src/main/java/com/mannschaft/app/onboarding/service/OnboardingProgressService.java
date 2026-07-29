@@ -100,6 +100,10 @@ public class OnboardingProgressService {
 
     /**
      * 進捗詳細を取得する（ステップ完了状況含む）。
+     *
+     * <p><b>認可は呼び出し元の責務</b>。{@code OnboardingProgressController}（ADMIN用）は
+     * 呼び出し前に {@code verifyProgressAccess} でスコープ ADMIN を検証する。
+     * メンバー本人向けの入口は {@link #getByIdForMember} を使うこと。</p>
      */
     public OnboardingProgressDetailResponse getById(Long progressId) {
         OnboardingProgressEntity progress = findProgressOrThrow(progressId);
@@ -108,6 +112,21 @@ public class OnboardingProgressService {
         List<OnboardingTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderBySortOrder(template.getId());
         List<OnboardingStepCompletionEntity> completions = stepCompletionRepository.findByProgressId(progressId);
         return buildProgressDetail(progress, template, steps, completions);
+    }
+
+    /**
+     * メンバー本人向けに進捗詳細を取得する（本人所有チェック）。
+     *
+     * <p>認可根治戦役 Wave7: {@code progressId} から進捗エンティティを取得し、
+     * 所有者が操作者本人であることを要求する。本人以外は
+     * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
+     */
+    public OnboardingProgressDetailResponse getByIdForMember(Long progressId, Long userId) {
+        OnboardingProgressEntity progress = findProgressOrThrow(progressId);
+        if (!progress.getUserId().equals(userId)) {
+            throw new BusinessException(OnboardingErrorCode.ONBOARDING_003);
+        }
+        return getById(progressId);
     }
 
     /**
@@ -197,9 +216,18 @@ public class OnboardingProgressService {
 
     /**
      * メンバー自身の手動完了（MANUAL/URLステップのみ）。
+     *
+     * <p>認可根治戦役 Wave7: {@link #getByIdForMember} と同一の本人チェックを先に適用し、
+     * 進捗の所有者が操作者本人であることを要求する。他人の進捗は
+     * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
      */
     @Transactional
-    public StepCompletionResponse completeStepByMember(Long progressId, Long stepId) {
+    public StepCompletionResponse completeStepByMember(Long progressId, Long stepId, Long userId) {
+        OnboardingProgressEntity progress = findProgressOrThrow(progressId);
+        if (!progress.getUserId().equals(userId)) {
+            throw new BusinessException(OnboardingErrorCode.ONBOARDING_003);
+        }
+
         OnboardingTemplateStepEntity step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new BusinessException(OnboardingErrorCode.ONBOARDING_002));
 

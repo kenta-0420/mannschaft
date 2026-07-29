@@ -230,8 +230,48 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code VillageCalendarControllerIntegrationTest} /
      * {@code VillageRepresentativeControllerIntegrationTest} 拡張、
      * {@code VillageSerendipityControllerIntegrationTest} 新設）を含む。</p>
+     *
+     * <p>676 → 653（2026-07-30・認可根治戦役 Wave7 最終陣・cms/proxyvote/signage/recruitment/
+     * onboarding/repairplan/budget の小口7ドメイン）: entity 由来のスコープで
+     * {@code AccessControlService#checkMembership}/{@code checkAdminOrAbove}/
+     * {@code checkOwnerOrAdmin}、または F00 {@code ContentVisibilityChecker#assertCanView}/
+     * {@code filterAccessible} を敷設する実装是正で 23 件解消。同一ドメイン内の兄弟 EP
+     * （書込系の {@code checkMembership}/{@code checkAdminOrAbove} 敷設済みメソッド）に
+     * 権限粒度を揃えた。主な是正:</p>
+     * <ul>
+     *   <li>cms: {@code BlogPostController.listPosts}/{@code PersonalBlogController.listUserPosts}
+     *       に {@code checkMembership}/F00可視性フィルタ、{@code BlogReactionController}
+     *       追加/削除・{@code BlogSeriesController}/{@code BlogTagController} 一覧に
+     *       兄弟同型の認可（6件）</li>
+     *   <li>proxyvote: {@code ProxyDelegationController}（委任提出/取下/出欠状況）・
+     *       添付ファイル追加削除・議案コメント一覧投稿に、兄弟 {@code castVote}/
+     *       {@code addMotion} と同一の {@code checkMembership}/{@code checkOwnerOrAdmin}（8件）</li>
+     *   <li>signage: 画面・スロット参照系は端末向けトークン認証経路と共有されるため、
+     *       認証ユーザー向けの別オーバーロードに {@code checkMembership} を敷設（4件）</li>
+     *   <li>repairplan: {@code RepairPlanQuoteKanbanController}（カード追加/カンバン更新）・
+     *       {@code RepairPlanScenarioController.getScenario} に兄弟同型の認可（3件）</li>
+     *   <li>recruitment/budget: サブカテゴリ一覧・予算カテゴリ一覧に兄弟同型の
+     *       {@code checkMembership}（各1件）</li>
+     * </ul>
+     * <p>onboarding（{@code OnboardingMeController.getById}/{@code completeStep}）は
+     * {@code OnboardingProgressService#getByIdForMember}/{@code completeStepByMember} で
+     * 進捗の所有者が操作者本人であることを要求する実装是正を行い、BOLA は塞いだ。ただし
+     * 判定が白名簿クラス（{@code AccessControlService} 等）への呼び出しではなく本人一致の
+     * 直接比較のため、番人の呼び出しグラフ判定では認可シグナルとして拾えない。看板だけの
+     * {@code @PreAuthorize("isAuthenticated()")} を貼って番人を通すのは実体を伴わない偽装のため
+     * 行わず、この 2 件は凍結のまま残す（違反隠蔽ではなく監査済み・認可自体は入っている）。</p>
+     * <p>残り 24 件は自己スコープの構造的安全（{@code getMy*}/{@code listMy*} 等）・
+     * マスタ参照データ（カテゴリ/プリセットカタログ等）・トークン認証（サイネージ端末表示）・
+     * 委譲先で認可済みだが番人の呼び出しグラフ判定では拾えないもの（プレビュートークン発行・
+     * 上記 onboarding 2 件を含む）であることを監査で確認し、凍結のまま残した
+     * （違反隠蔽ではなく監査済み）。同一コミットにストア差分・実装差分・契約テスト新設/拡張
+     * （{@code CmsBlogPostWriteScopeContractIT} / {@code CmsSeriesTagScopeContractIT} 拡張、
+     * {@code ProxyVoteAuthzContractIT} 拡張、{@code SignageScopeContractIT} /
+     * {@code OnboardingMeScopeContractIT} 新設、{@code RepairPlanAuthorizationMatrixTest} 拡張、
+     * {@code BudgetCategoryServiceTest} 拡張、{@code RecruitmentScopeContractIT} 更新）を含む。
+     * 本 PR をもって認可根治戦役 Wave7 の是正シリーズを完結する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 676;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 653;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

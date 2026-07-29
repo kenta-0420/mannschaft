@@ -118,7 +118,8 @@ public class RepairPlanScenarioController {
             @PathVariable Long scopeId,
             @PathVariable UUID scenarioId,
             @RequestHeader("X-Organization-Id") Long organizationId) {
-        ScenarioDto dto = service.getScenario(scenarioId, organizationId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        ScenarioDto dto = service.getScenario(scenarioId, organizationId, userId);
         return ResponseEntity.ok(ApiResponse.of(dto));
     }
 

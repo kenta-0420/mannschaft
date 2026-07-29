@@ -92,7 +92,8 @@ public class ProxyVoteMotionController {
             @PathVariable Long motionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<CommentResponse> result = commentService.listComments(motionId, PageRequest.of(page, size));
+        Page<CommentResponse> result = commentService.listComments(
+                motionId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
