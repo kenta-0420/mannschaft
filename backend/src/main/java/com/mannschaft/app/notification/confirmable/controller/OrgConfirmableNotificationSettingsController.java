@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification.confirmable.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSettingsResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSettingsUpdateRequest;
@@ -31,15 +33,20 @@ public class OrgConfirmableNotificationSettingsController {
 
     private final ConfirmableNotificationSettingsService settingsService;
     private final ConfirmableNotificationMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 組織の確認通知設定を取得する（存在しない場合はデフォルト値で作成）。
+     *
+     * <p>認可根治戦役 Wave7: 閲覧系のため {@code checkMembership}（非メンバーの設定窃視を根治）。</p>
      */
     @GetMapping
     @Operation(summary = "確認通知設定取得（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ConfirmableNotificationSettingsResponse>> getSettings(
             @PathVariable Long orgId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(currentUserId, orgId, ScopeType.ORGANIZATION.name());
         ConfirmableNotificationSettingsEntity entity =
                 settingsService.getOrCreate(ScopeType.ORGANIZATION, orgId);
         return ResponseEntity.ok(ApiResponse.of(mapper.toSettingsResponse(entity)));
@@ -47,6 +54,9 @@ public class OrgConfirmableNotificationSettingsController {
 
     /**
      * 組織の確認通知設定を更新する。
+     *
+     * <p>認可根治戦役 Wave7: デフォルトのリマインド設定・アラート閾値・未確認者公開範囲を変更する
+     * 管理操作のため {@code checkAdminOrAbove}（兄弟の送信・キャンセル操作と同じ粒度）。</p>
      */
     @PutMapping
     @Operation(summary = "確認通知設定更新（組織）")
@@ -54,6 +64,8 @@ public class OrgConfirmableNotificationSettingsController {
     public ResponseEntity<ApiResponse<ConfirmableNotificationSettingsResponse>> updateSettings(
             @PathVariable Long orgId,
             @RequestBody ConfirmableNotificationSettingsUpdateRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
         ConfirmableNotificationSettingsEntity entity = settingsService.update(
                 ScopeType.ORGANIZATION,
                 orgId,
