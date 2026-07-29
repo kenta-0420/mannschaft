@@ -143,6 +143,9 @@ class ReservationServiceTest {
                 unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                // F03.4.5 §6.4: レートリミットは本テストの対象外のため素通しの mock（判定は
+                // ReservationCreateRateLimiterTest / ReservationCreateRateLimitPathTest が担う）。
+                org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationCreateRateLimiter.class),
                 FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.empty());
@@ -183,6 +186,7 @@ class ReservationServiceTest {
                 unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationCreateRateLimiter.class),
                 fixed);
     }
 

@@ -323,8 +323,10 @@ public enum ReservationErrorCode implements ErrorCode {
     // 採番: enum 実物の現最大（RESERVATION_045）の次から連番で確定した（2026-07-08）。
     // 設計書 §10 は 048〜053 を仮置きしていたが、§10 注記「D 群着手時に enum 実物の最大値から再採番」に
     // 従い 046 起点で確定する（W2-4 が ErrorCode を追記する唯一の隊・マージ直前に再確認済み）。
-    // 052（RECURRING_RESERVATION_LIMIT_EXCEEDED）・053（RESERVATION_CREATE_RATE_LIMITED）は
-    // W2-5/W2-6 着手時にそれぞれ実物の最大値から再採番する。
+    // 052 は W2-2（定期予約不可枠の上限）が消費済み。
+    // 053（RESERVATION_CREATE_RATE_LIMITED）は W2-6 が消費した（2026-07-29・実 enum 最大 052 の次を採番）。
+    // W2-5（定期予約 repeatWeeks 上限 = RECURRING_RESERVATION_LIMIT_EXCEEDED）は
+    // 着手時に実物の最大値から再採番すること。本 PR マージ後の実物最大は 053 のため 054 が次になる。
 
     /**
      * キャンセル待ちエントリ不存在（本人取消の対象なし・IDOR 秘匿含む・404）。
@@ -388,7 +390,24 @@ public enum ReservationErrorCode implements ErrorCode {
      * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
      */
     RECURRING_BLOCKED_TIME_LIMIT_EXCEEDED("RESERVATION_052",
-            "定期予約不可枠はチームあたり最大50件までです", Severity.WARN);
+            "定期予約不可枠はチームあたり最大50件までです", Severity.WARN),
+
+    // ===== F03.4.5 §6.4 W2-6: 予約作成のレートリミット =====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_052）の次で確定した（2026-07-29）。
+
+    /**
+     * 予約作成のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>§6.4: 単枠 {@code POST /reservations} とグループ {@code POST /reservation-groups} を
+     * <b>同一 zone {@code reservation-create}</b>（1 ユーザー 1 分 5 回）で数える。別バケットにすると
+     * 単枠 5 回＋グループ 5 回の買い占めが可能になるため。044（generate・チーム軸）とは
+     * 意味論が異なるため共用しない。キャンセル待ち登録は別 zone {@code reservation-waitlist}
+     * （050・1 分 10 回）のまま本バケットを消費しない。
+     * {@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    RESERVATION_CREATE_RATE_LIMITED("RESERVATION_053",
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
 
     private final String code;
     private final String message;

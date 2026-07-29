@@ -65553,6 +65553,17 @@ export interface components {
              */
             cancelDeadlineHours?: number;
             /**
+             * @description 仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先）
+             * @example false
+             */
+            clearPendingExpireHours?: boolean;
+            /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null=据え置き）
+             * @example 24
+             */
+            pendingExpireHours?: number;
+            /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）
              * @example 24,1
              */
@@ -65596,6 +65607,12 @@ export interface components {
              * @example true
              */
             hasBusinessHours?: boolean;
+            /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（null=自動失効しない）
+             * @example 24
+             */
+            pendingExpireHours?: number;
             /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列
              * @example 24,1
