@@ -129,10 +129,15 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
      * 実在する大カテゴリの ID。
      *
      * <p>{@code RecruitmentListingService#create} は {@code categoryRepository.existsById} で
-     * カテゴリの実在を検証し、不在なら {@code CATEGORY_NOT_SPECIFIED}（{@code Severity.ERROR}
-     * → HTTP 500）を投げる。test profile の schema は Entity 由来で生成され Flyway のシードが
-     * 走らないため、{@code recruitment_categories} は空である。よって固定値の categoryId を
-     * 使い回すと from-template の正常系が 500 になる。テスト内で実カテゴリを 1 件作って使う。</p>
+     * カテゴリの実在を検証し、不在なら {@code CATEGORY_NOT_SPECIFIED} を投げる。test profile の
+     * schema は Entity 由来で生成され Flyway のシードが走らないため、
+     * {@code recruitment_categories} は空である。よって固定値の categoryId を使い回すと
+     * from-template の正常系が失敗する。テスト内で実カテゴリを 1 件作って使う。</p>
+     *
+     * <p>なお {@code CATEGORY_NOT_SPECIFIED} はかつて {@code Severity.ERROR} 既定で HTTP 500 を
+     * 返していた（＝存在しない categoryId を送ると 500 になり、実際に CI を落とした）。
+     * 2026-07-29 のエラーコード HTTP ステータス契約の全数分類でクライアント起因と分類し、
+     * {@code Severity.WARN}（400）へ是正済み。</p>
      */
     private Long categoryId;
 

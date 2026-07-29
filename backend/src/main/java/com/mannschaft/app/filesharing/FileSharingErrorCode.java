@@ -51,7 +51,7 @@ public enum FileSharingErrorCode implements ErrorCode {
     FOLDER_NAME_DUPLICATE("FILE_SHARING_013", "同名のフォルダが既に存在します", Severity.WARN),
 
     /** ファイルサイズ超過 */
-    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.ERROR),
+    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.WARN),
 
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN),

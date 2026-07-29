@@ -66,7 +66,7 @@ public enum PaymentErrorCode implements ErrorCode {
     RATE_LIMIT_EXCEEDED("PAYMENT_018", "送信頻度の上限を超えました。しばらく待ってから再試行してください", Severity.WARN),
 
     /** Webhook 署名検証失敗 */
-    WEBHOOK_SIGNATURE_INVALID("PAYMENT_019", "Webhook 署名の検証に失敗しました", Severity.ERROR),
+    WEBHOOK_SIGNATURE_INVALID("PAYMENT_019", "Webhook 署名の検証に失敗しました", Severity.WARN),
 
     /** 手動支払いのみ対象 */
     STRIPE_PAYMENT_ONLY("PAYMENT_020", "この操作は Stripe 決済のみ対象です", Severity.WARN),

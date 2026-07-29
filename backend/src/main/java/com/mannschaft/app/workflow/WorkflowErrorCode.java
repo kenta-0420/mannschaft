@@ -45,7 +45,7 @@ public enum WorkflowErrorCode implements ErrorCode {
     REQUIRED_FIELD_MISSING("WORKFLOW_011", "必須フィールドが未入力です", Severity.ERROR),
 
     /** フィールド値が不正 */
-    INVALID_FIELD_VALUE("WORKFLOW_012", "フィールド値が不正です", Severity.ERROR),
+    INVALID_FIELD_VALUE("WORKFLOW_012", "フィールド値が不正です", Severity.WARN),
 
     /** ステップ定義が不正 */
     INVALID_STEP_DEFINITION("WORKFLOW_013", "ステップ定義が不正です", Severity.ERROR),

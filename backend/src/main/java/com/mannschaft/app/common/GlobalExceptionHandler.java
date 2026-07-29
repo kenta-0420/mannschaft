@@ -1132,7 +1132,23 @@ public class GlobalExceptionHandler {
             // entity 由来スコープで認可する。存在しない／越境の議案・セッションは同一コードで
             // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
-            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND)            // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND),           // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            // ─────────────────────────────────────────────────────────────
+            // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
+            //
+            // Severity.ERROR 既定の 500 を返していたコードのうち「サーバ側の障害ではなく
+            // クライアント起因」と分類したものは、定義側の Severity を ERROR → WARN に正した
+            // （＝既定 400）。件数上限・入力不備の類は本リポジトリの圧倒的多数が 400 であり
+            //（「上限超過」系 154 件中 400 が 113 件・409 は 21 件）、既定 400 で揃うため
+            // ここには登録していない。件数上限を 409 に倒すと、enum 定数名まで同一の兄弟コード
+            //（例: RESERVATION_015 と SCHEDULE_008 の MAX_REMINDERS_EXCEEDED）と割れる。
+            //
+            // 下記 1 件のみ、既定 400 では表現できない契約があるため明示登録する。
+            //
+            // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
+            // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
+            // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED)    // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
     );
 
     /**
@@ -1653,6 +1669,26 @@ public class GlobalExceptionHandler {
      * ErrorCode から HttpStatus を解決する。
      * 個別マッピング（ERROR_CODE_STATUS_MAP）が存在すればそちらを優先し、
      * なければ Severity に基づくデフォルトマッピングを返す。
+     *
+     * <p><strong>{@link ErrorCode.Severity} の唯一の消費者はこのメソッドである。</strong>
+     * ログレベルの決定には使われていない（{@link #handleBusinessException} は severity に
+     * 関わらず常に {@code log.warn}）。したがって {@code Severity.ERROR} を付けることは
+     * 実質的に「既定で HTTP 500 を返す」宣言と同義であり、クライアント起因のエラーに
+     * 付けてはならない。500 になると {@code status.is5xxServerError()} 経由で
+     * error_reports への記録と Slack エスカレーションまで走るため、入力不備のたびに
+     * 障害アラートが鳴る。</p>
+     *
+     * <p>是正の手順（対処療法の禁止）:</p>
+     * <ol>
+     *   <li>クライアント起因なら、まず ErrorCode 定義側の {@code Severity} を WARN に正す
+     *       （宣言箇所で意図が読めるようになる）。既定の 400 で妥当ならこれで足りる。</li>
+     *   <li>既定の 400 では表現できない契約がある場合に限り {@link #ERROR_CODE_STATUS_MAP}
+     *       へ明示登録する（不在の秘匿は 404・重複や状態遷移違反・楽観ロック競合は 409・
+     *       支払いが必要なら 402 など）。なお「件数上限の超過」は本リポジトリでは 400 が
+     *       圧倒的多数派であり、409 に倒すと同一概念の兄弟コードと割れるので注意する。</li>
+     * </ol>
+     * <p>「Severity.ERROR のまま STATUS_MAP に 4xx を足す」だけの直し方は、定義側に誤分類を
+     * 残したまま症状だけを隠すため禁止する。</p>
      *
      * @param errorCode エラーコード
      * @return 対応する HttpStatus
