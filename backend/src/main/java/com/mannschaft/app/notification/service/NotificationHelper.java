@@ -8,11 +8,14 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -30,8 +33,16 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class NotificationHelper {
 
+    /**
+     * fan-out 抜本改修 P1: 一括通知（{@link #notifyAllPreAuthorized}）を「受信者ごと 1 save」ではなく
+     * <b>チャンク単位バルク INSERT ＋ チャンクコミット ＋ 専用プール配信</b>で処理するための書き込みファサード。
+     * 単発 {@link #notify} 系は従来どおり {@link NotificationService} + {@link NotificationDispatchService} を用いる。
+     */
+    private static final int FANOUT_CHUNK_SIZE = 500;
+
     private final NotificationService notificationService;
     private final NotificationDispatchService dispatchService;
+    private final NotificationBulkFanoutService bulkFanoutService;
 
     /**
      * F00 Phase F セキュリティガード (§11.1): 一括通知 ({@link #notifyAll})
@@ -47,6 +58,13 @@ public class NotificationHelper {
 
     /** F09.13 通知クレジットサービス（課金対象通知のカウント用） */
     private final NotificationCreditService notificationCreditService;
+
+    /**
+     * fan-out 抜本改修 P1: 一括通知のチャンク失敗を「静かに消さず数える」ための Micrometer レジストリ。
+     * narrowed な test context にはレジストリが無いことがあるため {@link ObjectProvider} で optional 解決する
+     * （{@code AsyncConfig#notification-fanout-pool} と同じ作法）。
+     */
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     /**
      * 単一ユーザーに通知を作成・配信する。
@@ -237,22 +255,77 @@ public class NotificationHelper {
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId) {
+        notifyAllPreAuthorized(userIds, notificationType, priority, title, body,
+                sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, null);
+    }
+
+    /**
+     * 配信認可済み受信者リストへ一括通知を作成・配信する（{@code organization_id} 充填版・fan-out 抜本改修 P1）。
+     *
+     * <p><b>実装（P1）</b>: 受信者を {@code FANOUT_CHUNK_SIZE} 件ごとに刻み、チャンク単位で
+     * {@link NotificationBulkFanoutService#insertAndDispatchChunk バルク INSERT ＋ チャンクコミット ＋
+     * 専用プール配信} する。従来の「受信者ごと 1 save ＋ 単発 dispatch」の N+1（INSERT・設定/種別/購読クエリ）を
+     * 断ち、発行文数を受信者数でなくチャンク数に比例させる。呼び出し側が 50 万人規模の受信者を
+     * キーセットページングでストリーム供給すれば、メモリ・ロック保持時間ともに有界になる。</p>
+     *
+     * <p><b>best-effort</b>: {@code null} 受信者は INSERT 前に除外する（現行は NOT NULL 違反で 1 件ずつ
+     * スキップされていた挙動と同じ最終結果＝残りは作成される）。チャンク単位トランザクションのため、
+     * データ起因の失敗は当該チャンクに限局する。</p>
+     *
+     * @param organizationId 組織ID（NULL 可・テナント絞り込み布石 4-B）
+     * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
+     *      NotificationScopeType, Long, String, Long)
+     */
+    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+                                       String title, String body,
+                                       String sourceType, Long sourceId,
+                                       NotificationScopeType scopeType, Long scopeId,
+                                       String actionUrl, Long actorId, Long organizationId) {
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
-        int dispatched = 0;
-        for (Long userId : userIds) {
-            try {
-                notifyPreAuthorized(userId, notificationType, priority, title, body,
-                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
-                dispatched++;
-            } catch (Exception e) {
-                log.warn("通知送信失敗（継続）: userId={}, type={}, error={}",
-                        userId, notificationType, e.getMessage());
-            }
+        // best-effort: null 受信者は除外（NOT NULL 違反で 1 件ずつ落ちていた現行挙動と同じ最終結果）。
+        List<Long> recipients = userIds.stream().filter(Objects::nonNull).toList();
+        if (recipients.isEmpty()) {
+            return;
         }
-        log.info("一括通知送信(配信認可済): type={}, userCount={}（visibility絞込なし）",
-                notificationType, dispatched);
+
+        int total = 0;
+        int failedRecipients = 0;
+        for (int from = 0; from < recipients.size(); from += FANOUT_CHUNK_SIZE) {
+            int to = Math.min(from + FANOUT_CHUNK_SIZE, recipients.size());
+            List<Long> chunk = recipients.subList(from, to);
+            try {
+                bulkFanoutService.insertAndDispatchChunk(chunk, notificationType, priority, title, body,
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, organizationId);
+            } catch (Exception e) {
+                // best-effort 契約: チャンク失敗を握って次チャンクへ継続し、呼び出し元の業務トランザクションを
+                // 巻き添えロールバックさせない（同期呼び出し元＝予定リマインド・アンケート督促/締切延長 等が前提）。
+                // 欠落は silent drop にせず、ログ＋メトリクスで可視化する（AC-8 の可視化思想と整合）。
+                failedRecipients += chunk.size();
+                log.error("一括通知チャンク失敗（best-effort継続・欠落を可視化）: type={}, chunkSize={}, error={}",
+                        notificationType, chunk.size(), e.getMessage(), e);
+                incrementChunkFailureMetric(chunk.size());
+            }
+            total += chunk.size();
+        }
+        log.info("一括通知送信(配信認可済・バルク): type={}, userCount={}, chunkSize={}, failedRecipients={}（visibility絞込なし）",
+                notificationType, total, FANOUT_CHUNK_SIZE, failedRecipients);
+    }
+
+    /**
+     * 一括通知のチャンク失敗件数を Micrometer で可視化する（silent drop の対極＝欠落を数える）。
+     * レジストリが無い環境（narrowed test context 等）では何もしない。
+     */
+    private void incrementChunkFailureMetric(int recipientCount) {
+        if (meterRegistryProvider == null) {
+            return;
+        }
+        MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+        if (registry == null) {
+            return;
+        }
+        registry.counter("mannschaft.notification.fanout.chunk_failed").increment(recipientCount);
     }
 
     /**
