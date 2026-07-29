@@ -44,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -51,6 +52,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -78,8 +80,11 @@ import static org.mockito.Mockito.when;
 class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
 
     // 注: 本クラスは @Transactional を付けない（ロールバックしない）。
-    // 行事作成・確定の還流は afterCommit 同期で発火するため、テスト側もコミットさせる必要がある
+    // 行事作成・確定の還流は afterCommit で発火するため、テスト側もコミットさせる必要がある
     // （@Transactional だと本体がロールバックされ afterCommit が発火しない）。
+    // fan-out 抜本改修 P1（AC-7）で還流リスナーが @Async 化されたため、行事作成/確定の直後に
+    // システム投稿は「まだ」無いことがある。サービス経路（createFestival/createMeetup/confirmMeetup）の
+    // 検証は await() で還流完了を待つ（バッチ経路 runBatch/invoke は同期のため await 不要）。
     // 各テストは System.nanoTime() で一意な村を作るためテスト間のデータ汚染は起きない。
 
     /** {@code @SchedulerLock} 経由の shedlock テーブル INSERT を回避する no-op スタブ。 */
@@ -157,9 +162,12 @@ class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
                     new FestivalCreateRequest("夏祭り", null, starts, starts.plusDays(2), null, null),
                     HEADMAN_ID).id();
 
+            // 還流は @Async（AC-7）。システム投稿の生成を await してから内容を検証する。
+            await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200))
+                    .untilAsserted(() -> assertThat(
+                            systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, festivalId)).hasSize(1));
             List<TimelinePostEntity> systemPosts =
                     systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, festivalId);
-            assertThat(systemPosts).hasSize(1);
             assertThat(systemPosts.get(0).getUserId()).isNull();
             assertThat(systemPosts.get(0).getSourceEventUuid()).isEqualTo(festivalId);
         }
@@ -175,8 +183,10 @@ class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
                             List.of(new MeetupCandidateDateInput(LocalDate.now().plusDays(10), null))),
                     ORGANIZER_ID).id();
 
-            assertThat(systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, meetupId))
-                    .hasSize(1);
+            // 還流は @Async（AC-7）。生成を await する。
+            await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200))
+                    .untilAsserted(() -> assertThat(
+                            systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, meetupId)).hasSize(1));
         }
 
         @Test
@@ -190,8 +200,10 @@ class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
                             null, true, null, null),
                     HEADMAN_ID).id();
 
-            assertThat(systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, eventId))
-                    .hasSize(1);
+            // 還流は @Async（AC-7）。生成を await する。
+            await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200))
+                    .untilAsserted(() -> assertThat(
+                            systemPosts(v.getId(), VillageEventNotificationType.EVENT_CREATED, eventId)).hasSize(1));
         }
     }
 
@@ -276,8 +288,10 @@ class VillageEventRefluxIntegrationIT extends AbstractMySqlIntegrationTest {
 
             meetupService.confirmMeetup(v.getId(), meetupId, new MeetupConfirmRequest(candidateDateId), ORGANIZER_ID);
 
-            assertThat(systemPosts(v.getId(), VillageEventNotificationType.MEETUP_CONFIRMED, meetupId))
-                    .hasSize(1);
+            // 還流は @Async（AC-7）。MEETUP_CONFIRMED システム投稿の生成を await する。
+            await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200))
+                    .untilAsserted(() -> assertThat(
+                            systemPosts(v.getId(), VillageEventNotificationType.MEETUP_CONFIRMED, meetupId)).hasSize(1));
         }
     }
 

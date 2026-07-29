@@ -103,6 +103,38 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
     List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
 
     /**
+     * 村内 USER 現役メンバーの subject_id を<strong>キーセットページング</strong>で 1 チャンク取得する
+     * （通知 fan-out 抜本改修 P1・受信者ストリーム配信用）。
+     *
+     * <p>{@link #findActiveUserSubjectIdsByVillageId} が全件を 1 つの {@code List} に載せるのに対し、
+     * 本メソッドは {@code subject_id > :cursor} を昇順 + {@code LIMIT chunk}（{@link Pageable}）で刻むことで、
+     * 50 万人規模の村でも受信者集合をメモリ有界に走査できる。呼び出し側は「返却末尾の subject_id を
+     * 次カーソルにして、結果が chunk 未満になるまで繰り返す」ことで全現役 USER を漏れなく列挙する。</p>
+     *
+     * <p>被覆索引 {@code idx_vm_fanout_keyset (village_id, subject_type, left_at, banned_at, subject_id)}
+     * により index-only 走査となる（V170 migration）。現役判定（{@code left_at IS NULL} かつ
+     * {@code banned_at IS NULL}）は WHERE に閉じ込め、退村/BAN を漏れなく除外する。</p>
+     *
+     * @param villageId 対象村 UUID
+     * @param cursor    直前チャンク末尾の subject_id（初回は最小値未満＝{@code 0L} 等を渡す）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
+     * @return {@code subject_id > cursor} の現役 USER subject_id を昇順に最大 chunk 件
+     */
+    @Query("""
+            SELECT m.subjectId FROM VillageMembershipEntity m
+            WHERE m.villageId = :villageId
+              AND m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+              AND m.subjectId > :cursor
+            ORDER BY m.subjectId ASC
+            """)
+    List<Long> findActiveUserSubjectIdsByVillageIdKeyset(
+            @Param("villageId") UUID villageId,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
      * 複数村の現役 USER メンバーの subject_id を重複なしで一括取得する（F17.2 相性表示の N+1 回避）。
      *
      * <p>相性の「重なり」算出で、閲覧者が現役所属する複数の他村の村人集合をまとめて引くために使う。

@@ -25,6 +25,14 @@ spring:
       connection-timeout: 3000    # 3 秒以内に接続取得できなければ例外（デフォルト 30 秒は長すぎる）
       idle-timeout: 600000        # 10 分アイドルで接続を返却
       max-lifetime: 1800000       # 30 分で接続を強制リフレッシュ（RDS のタイムアウトより短く設定）
+      # MySQL Connector/J のバッチ書き換えを有効化する。addBatch/executeBatch を多値 INSERT/複文へ
+      # まとめ直し、Hibernate バッチ（order_inserts + batch_size）や JDBC バッチ全般の DB round-trip を削減する。
+      # 注: 通知一斉配信（NotificationBulkFanoutService）が発行する「手組みの多値 INSERT」自体はこの設定に
+      # 依存しない（既に 1 文＝複数行のため）。本設定はドライバのバッチ書き換え全般に効く一般的な最適化であり、
+      # fan-out 改修に固有の前提ではない。
+      # URL ではなく data-source-properties に置くことで、URL を環境変数で与える本番/検証を含む全プロファイルに効かせる。
+      data-source-properties:
+        rewriteBatchedStatements: true
 
   # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
   jpa:

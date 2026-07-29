@@ -20,6 +20,7 @@ import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.ReservationViewAccessGuard;
 import com.mannschaft.app.reservation.service.SlotGenerationPartialException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -63,6 +64,13 @@ public class ReservationBusinessHourController {
     private final ReservationSlotTemplateService templateService;
     /** F03.4.5 §7: pending_expire 設定変更の監査ログ記録用（@Async・失敗してもメイン処理を止めない）。 */
     private final AuditLogService auditLogService;
+    /**
+     * 予約閲覧の view ゲート（会員 or 公開）。予約設定 GET（{@code getSettings}）は
+     * {@link ReservationTeamSettingService#getOrDefault} / {@link ReservationPolicyService#getOrDefault}
+     * を横断集約するためここで直接判定する（{@code policyService.getOrDefault} はリマインダーの
+     * バッチ経路にも共有されており、Service 側にゲートを埋めるとバッチが巻き添えになる）。
+     */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
 
     /**
@@ -73,7 +81,8 @@ public class ReservationBusinessHourController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<BusinessHourResponse>>> getBusinessHours(
             @PathVariable Long teamId) {
-        List<BusinessHourResponse> hours = businessHourService.getBusinessHours(teamId);
+        List<BusinessHourResponse> hours =
+                businessHourService.getBusinessHours(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(hours));
     }
 
@@ -134,7 +143,8 @@ public class ReservationBusinessHourController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<BlockedTimeResponse> blockedTimes = businessHourService.listBlockedTimes(teamId, from, to);
+        List<BlockedTimeResponse> blockedTimes =
+                businessHourService.listBlockedTimes(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(blockedTimes));
     }
 
@@ -210,12 +220,18 @@ public class ReservationBusinessHourController {
      * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を、
      * team_setting レコードが存在しないチームは既定値（allowPublicReservation=false /
      * resourceNameType=DEFAULT / resourceNameCustom=null・F03.4.5 §5）を返す。</p>
+     *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。集約元の {@code policyService.getOrDefault} は
+     * リマインダーバッチ（{@code SecurityContext} 無し）とも共有するため、ゲートはここ（public な GET
+     * 入口）に置き共有メソッド側には置かない。</p>
      */
     @GetMapping
     @Operation(summary = "予約設定（チームポリシー）取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ReservationSettingsResponse>> getSettings(
             @PathVariable Long teamId) {
+        viewAccessGuard.assertCanView(teamId, SecurityUtils.getCurrentUserId());
         boolean hasBusinessHours = businessHourService.hasBusinessHours(teamId);
         ReservationTeamSettingEntity teamSetting = teamSettingService.getOrDefault(teamId);
         ReservationPolicyEntity policy = policyService.getOrDefault(teamId);

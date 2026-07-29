@@ -343,4 +343,52 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             GROUP BY rr.cityCode
             """)
     List<Object[]> countMarketListingsByCity();
+
+    /**
+     * <b>論理削除済み（archive 済み）</b>の募集枠のスコープを引く（#2497）。
+     *
+     * <p><b>なぜネイティブクエリなのか</b>: {@link RecruitmentListingEntity} には
+     * {@code @SQLRestriction("deleted_at IS NULL")} が乗っているため、JPQL / 派生クエリ /
+     * {@code findById} / {@code existsById} のいずれからも論理削除済みの行には到達できない。
+     * ネイティブ SQL だけがこのフィルタを迂回できる。</p>
+     *
+     * <p><b>何に使うのか</b>: 募集枠が archive 済みだと、NO_SHOW 記録のスコープ帰属クエリ
+     * （{@code RecruitmentNoShowRecordRepository#findByIdAndScopeTypeAndScopeId}）が
+     * 募集枠を JOIN する都合で引けなくなり、<b>異議の裁定が永久に不能になる</b>。
+     * そこで {@code RecruitmentNoShowService#dispute} は申立を受け付けた直後に本クエリで
+     * 「裁定不能か」を判定し、不能なら即座に取り下げる。
+     * <b>戻り値が存在すること自体が「archive 済み」の信号</b>であり、同時に監査ログへ残す
+     * スコープ文脈（team / organization）の唯一の入手経路でもある（1 クエリで両方を満たす）。</p>
+     *
+     * <p><b>「募集枠の行そのものが存在しない」ケースは扱わない。</b>
+     * {@code recruitment_no_show_records.listing_id} には
+     * {@code fk_rns_listing ... ON DELETE CASCADE}（V3.128）が張られており、
+     * 募集枠の行が物理削除されれば NO_SHOW 記録も道連れに消えるため、
+     * 「記録は在るのに募集枠の行が無い」状態は発生しない。</p>
+     *
+     * <p><b>{@code CAST(scope_id AS SIGNED)} は必須である。</b> 本番 DDL（V3.119）の
+     * {@code scope_id} は {@code BIGINT UNSIGNED} であり、MySQL Connector/J は
+     * 符号なし BIGINT を {@code BigInteger} で返す。射影の {@code Long getScopeId()} に
+     * そのまま渡すと実行時に型が合わない。一方テストプロファイルのスキーマは Entity 由来
+     * （{@code Long} → 符号付き {@code bigint}）なので、CAST が無くてもテストだけは通ってしまい
+     * <b>本番でのみ壊れる</b>。CAST で符号付きに正規化してこの分岐を潰す。</p>
+     *
+     * @param listingId 募集枠 ID
+     * @return archive 済みならスコープ、生存中なら空
+     */
+    @Query(value = """
+            SELECT l.scope_type AS scopeType, CAST(l.scope_id AS SIGNED) AS scopeId
+            FROM recruitment_listings l
+            WHERE l.id = :listingId
+              AND l.deleted_at IS NOT NULL
+            """, nativeQuery = true)
+    Optional<ArchivedListingScope> findArchivedScopeById(@Param("listingId") Long listingId);
+
+    /** {@link #findArchivedScopeById} の射影。 */
+    interface ArchivedListingScope {
+        /** {@code RecruitmentScopeType} の名前（{@code TEAM} / {@code ORGANIZATION}）。 */
+        String getScopeType();
+
+        Long getScopeId();
+    }
 }

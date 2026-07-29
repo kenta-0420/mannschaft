@@ -32,6 +32,11 @@ public class TimelinePollService {
     private final TimelinePollOptionRepository optionRepository;
     private final TimelinePollVoteRepository voteRepository;
     private final TimelineMapper timelineMapper;
+    /**
+     * 認可根治 Wave7: 投稿に付随する投票の可視性を、投稿本体と同一の正準判定
+     * （{@link TimelinePostVisibilityAccessGuard}）で検証する。
+     */
+    private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
 
     /**
      * 投票を作成する。投稿作成時に呼び出される。
@@ -64,6 +69,10 @@ public class TimelinePollService {
     /**
      * 投票する。
      *
+     * <p><b>認可根治 Wave7</b>: 投稿本体と同一の可視性判定（{@link TimelinePostVisibilityAccessGuard}）を
+     * 投票処理の前に必ず行う。不可視・不存在は {@link TimelineErrorCode#POST_NOT_FOUND}（404・存在秘匿）
+     * に倒し、対象 scope の投稿かどうかを判定してから投票を記録する。</p>
+     *
      * @param postId   投稿ID
      * @param optionId 選択肢ID
      * @param userId   ユーザーID
@@ -71,6 +80,8 @@ public class TimelinePollService {
      */
     @Transactional
     public PollResponse vote(Long postId, Long optionId, Long userId) {
+        postVisibilityGuard.requireVisiblePost(postId, userId);
+
         TimelinePollEntity poll = pollRepository.findByTimelinePostId(postId)
                 .orElseThrow(() -> new BusinessException(TimelineErrorCode.POLL_NOT_FOUND));
 
@@ -107,11 +118,19 @@ public class TimelinePollService {
     /**
      * 投稿IDに紐付く投票を取得する。
      *
+     * <p><b>認可根治 Wave7</b>: {@link #vote} と同一の可視性判定を先に行う
+     * （{@link TimelinePostVisibilityAccessGuard}）。{@link TimelinePostService#getPostDetail}
+     * 経由の呼び出しは既に呼び出し元で可視性検証済みだが、本メソッドは
+     * {@code GET /timeline/posts/{postId}/poll} からも直接呼ばれる公開エンドポイントであるため、
+     * 単独で呼ばれても安全なように再検証する。</p>
+     *
      * @param postId 投稿ID
      * @param userId 閲覧ユーザーID
      * @return 投票レスポンス（投票が存在しない場合は null）
      */
     public PollResponse getPollByPostId(Long postId, Long userId) {
+        postVisibilityGuard.requireVisiblePost(postId, userId);
+
         return pollRepository.findByTimelinePostId(postId)
                 .map(poll -> buildPollResponse(poll, userId))
                 .orElse(null);

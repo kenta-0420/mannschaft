@@ -9,6 +9,7 @@ import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,6 +38,13 @@ public class VillageEventFeedRefluxService {
 
     private static final int NOTIFICATION_BODY_LIMIT = 1000;
     private static final String SOURCE_TYPE = "VILLAGE_EVENT";
+
+    /**
+     * fan-out 抜本改修 P1: 受信者をキーセットページングで刻むチャンクサイズ。
+     * 50 万人規模の村でも受信者集合を全件 List 化せず、チャンクごとに取得→バルク INSERT→次チャンク、と
+     * ストリームすることでメモリを有界にする（AC-11）。
+     */
+    private static final int RECIPIENT_CHUNK_SIZE = 500;
 
     private final TimelinePostService timelinePostService;
     private final NotificationHelper notificationHelper;
@@ -83,20 +91,37 @@ public class VillageEventFeedRefluxService {
         }
 
         // 通知も best-effort（投稿と独立に捕捉）。ニュースレター §7 前例に倣い sourceId/scopeId=null・scopeType=SYSTEM。
+        // fan-out 抜本改修 P1: 受信者をキーセットページングでチャンクごとに取得し、そのチャンクをバルク INSERT する
+        // （全件 List 化しないメモリ有界ストリーム＝AC-11）。各チャンクはバルク INSERT＋チャンクコミットで確定する。
         try {
-            List<Long> recipients = membershipRepository.findActiveUserSubjectIdsByVillageId(villageId);
-            if (recipients == null || recipients.isEmpty()) {
-                return;
-            }
             String body = buildContent(type, eventTitle);
-            notificationHelper.notifyAllPreAuthorized(
-                    recipients,
-                    type.name(),
-                    "村の行事案内",
-                    body.length() > NOTIFICATION_BODY_LIMIT ? body.substring(0, NOTIFICATION_BODY_LIMIT) : body,
-                    SOURCE_TYPE, null,
-                    NotificationScopeType.SYSTEM, null,
-                    actionUrl, null);
+            String truncatedBody =
+                    body.length() > NOTIFICATION_BODY_LIMIT ? body.substring(0, NOTIFICATION_BODY_LIMIT) : body;
+
+            long cursor = 0L;
+            int totalRecipients = 0;
+            while (true) {
+                List<Long> chunk = membershipRepository.findActiveUserSubjectIdsByVillageIdKeyset(
+                        villageId, cursor, PageRequest.of(0, RECIPIENT_CHUNK_SIZE));
+                if (chunk.isEmpty()) {
+                    break;
+                }
+                notificationHelper.notifyAllPreAuthorized(
+                        chunk,
+                        type.name(),
+                        "村の行事案内",
+                        truncatedBody,
+                        SOURCE_TYPE, null,
+                        NotificationScopeType.SYSTEM, null,
+                        actionUrl, null);
+                totalRecipients += chunk.size();
+                cursor = chunk.get(chunk.size() - 1);
+                if (chunk.size() < RECIPIENT_CHUNK_SIZE) {
+                    break;
+                }
+            }
+            log.info("村行事の還流通知を配信: villageId={} type={} recipients={}（キーセットチャンク送り）",
+                    villageId, type, totalRecipients);
         } catch (Exception e) {
             log.error("村行事の通知に失敗: villageId={} type={} sourceEventUuid={}",
                     villageId, type, sourceEventUuid, e);

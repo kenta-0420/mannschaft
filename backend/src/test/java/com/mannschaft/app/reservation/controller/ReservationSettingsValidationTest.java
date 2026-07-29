@@ -7,6 +7,8 @@ import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.ReservationViewAccessGuard;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,8 +19,12 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.support.StaticMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -58,52 +64,56 @@ class ReservationSettingsValidationTest {
     @Mock
     private com.mannschaft.app.auth.service.AuditLogService auditLogService;
 
+    @Mock
+    private ReservationViewAccessGuard viewAccessGuard;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final Long TEAM_ID = 10L;
+    private static final Long USER_ID = 1L;
     private static final String PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-settings";
 
-    /** 監査ログの操作者解決（{@code SecurityUtils.getCurrentUserId()}）用。 */
-    private static final Long ACTOR_USER_ID = 777L;
-
     /**
-     * {@code SecurityUtils} の静的モック。
+     * 監査ログの操作者として期待するユーザーID。
      *
-     * <p>本テストは standaloneSetup（Spring Security フィルタ非搭載）のため SecurityContext が空で、
-     * {@code SecurityUtils.getCurrentUserId()} が未認証として例外を投げ 401 になる。本番の
-     * PATCH は {@code @PreAuthorize} 配下で必ず認証済みのため、テスト側で操作者を与えるのが正しい
-     * （{@code ReservationControllerTest} と同じ {@code mockStatic} 作法）。認可そのものの実発火検証は
-     * {@code ReservationAuthorizationEnforcementTest} が実 Security フィルタで担う。</p>
+     * <p>{@code SecurityContextHolder} へ積む認証主体（{@link #USER_ID}）と同一であること。
+     * 静的モックではなく実 {@code SecurityUtils} を通すため、実装が実際に
+     * {@code getCurrentUserId()} で操作者を解決していることまで検査できる。</p>
      */
-    private org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> securityUtilsMock;
+    private static final Long ACTOR_USER_ID = USER_ID;
 
     @org.junit.jupiter.api.AfterEach
-    void tearDownSecurityUtils() {
-        if (securityUtilsMock != null) {
-            securityUtilsMock.close();
-        }
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @BeforeEach
     void setUp() {
-        securityUtilsMock = org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class);
-        securityUtilsMock.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId)
-                .thenReturn(ACTOR_USER_ID);
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
-                businessHourService, teamSettingService, policyService, templateService, auditLogService);
+                businessHourService, teamSettingService, policyService, templateService,
+                auditLogService, viewAccessGuard);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
                 .build();
+        // standaloneSetup は Security フィルタチェーンを通さないが、getSettings（PATCH 応答再取得含む）が
+        // 実 SecurityUtils.getCurrentUserId() を呼ぶため、SecurityContextHolder に直接認証情報を積む。
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         // 正常系（getSettings の再取得）が呼ばれても落ちないよう既定 stub を用意（lenient）。
         lenient().when(businessHourService.hasBusinessHours(anyLong())).thenReturn(false);
         lenient().when(teamSettingService.getOrDefault(anyLong())).thenReturn(
                 ReservationTeamSettingEntity.builder().teamId(TEAM_ID).build());
         lenient().when(policyService.getOrDefault(anyLong())).thenReturn(
                 ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
