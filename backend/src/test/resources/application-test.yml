@@ -5,6 +5,10 @@ spring:
     properties:
       hibernate:
         jdbc:
+          # Issue #2486 で共有 application.yml にも同じ UTC 指定が入ったため、この行は現在は冗長。
+          # ただし本ファイルは「テストの格納基準は UTC である」という前提を明示する場所として意味があり、
+          # 消しても挙動は変わらないが（application.yml は profile 個別ファイルの土台として常に読まれる）、
+          # テスト側の前提を読み取れなくするため意図的に残している。
           time_zone: UTC
 
   flyway:

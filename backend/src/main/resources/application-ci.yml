@@ -11,7 +11,12 @@
 spring:
   # --- データソース（GitHub Actions MySQL サービスコンテナ）---
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo&characterEncoding=UTF-8
+    # serverTimezone=UTC（Issue #2486）:
+    #   この値は「接続先 MySQL サーバがどの TZ か」をドライバへ伝えるもの。GitHub Actions の
+    #   MySQL サービスコンテナは --default-time-zone 未指定＝SYSTEM＝UTC（ランナーが UTC）のため、
+    #   従来の Asia/Tokyo は実サーバの TZ と食い違っており java.sql.Timestamp の変換が静かにずれていた。
+    #   DB 格納基準の UTC 統一（application.yml の hibernate.jdbc.time_zone）と併せて UTC に是正する。
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
     username: mannschaft
     password: mannschaft
     driver-class-name: com.mysql.cj.jdbc.Driver
