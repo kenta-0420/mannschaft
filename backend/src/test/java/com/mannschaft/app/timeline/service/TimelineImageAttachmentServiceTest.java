@@ -44,6 +44,9 @@ class TimelineImageAttachmentServiceTest {
     @Mock
     private StorageQuotaService storageQuotaService;
 
+    @Mock
+    private TimelineAttachmentAccessGuard accessGuard;
+
     @InjectMocks
     private TimelineImageAttachmentService service;
 

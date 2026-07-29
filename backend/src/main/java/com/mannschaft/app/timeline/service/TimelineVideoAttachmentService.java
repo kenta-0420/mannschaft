@@ -36,12 +36,18 @@ public class TimelineVideoAttachmentService {
     private final R2StorageService r2StorageService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** 認可根治 Wave7: アップロード先スコープへの書き込み権限ゲート。 */
+    private final TimelineAttachmentAccessGuard accessGuard;
 
     /**
      * 動画ファイル用 R2 Presigned PUT URL を発行する。
      * R2 オブジェクトキー形式: timeline/{scope_type}/{scope_id}/tmp/{uuid}.{ext}
      *
      * <p><b>F13 Phase 4-γ</b>: URL 発行前にスコープ別クォータを確認する。超過時は 409 を返す。</p>
+     *
+     * <p><b>認可根治 Wave7</b>: {@code scopeType}/{@code scopeId} はリクエストボディ由来のため、
+     * クォータ確認の前に {@link TimelineAttachmentAccessGuard#checkCanUpload} で
+     * 呼び出し元がそのスコープへ書き込む権限（TEAM/ORGANIZATION はメンバーシップ）を検証する。</p>
      *
      * @param request リクエスト（contentType, scopeType, scopeId）
      * @param userId  ログインユーザー ID（PERSONAL スコープのフォールバックおよびログ用）
@@ -51,6 +57,8 @@ public class TimelineVideoAttachmentService {
         String ext = resolveExtension(request.getContentType());
         String scopeTypeStr = request.getScopeType().toUpperCase();
         long scopeId = request.getScopeId() != null ? request.getScopeId() : 0L;
+
+        accessGuard.checkCanUpload(userId, scopeTypeStr, scopeId);
 
         // F13 Phase 4-γ: presign 前のクォータチェック
         ScopeResolution scope = resolveScope(scopeTypeStr, scopeId, userId);

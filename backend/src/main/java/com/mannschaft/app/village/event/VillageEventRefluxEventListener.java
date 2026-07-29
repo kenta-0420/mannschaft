@@ -3,6 +3,7 @@ package com.mannschaft.app.village.event;
 import com.mannschaft.app.village.service.VillageEventFeedRefluxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +24,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * これを回避でき、副作用（自動投稿・通知）を本体と独立したトランザクションで確定できる
  * （本体は既にコミット済みなので巻き戻らない）。</p>
  *
- * <p>本リスナーは同期実行（{@code @Async} を付けない）。還流の結果は行事作成 API の応答が返る前に
- * 確定するため、結合テストで決定論的に検証できる。</p>
+ * <h2>非同期化（fan-out 抜本改修 P1・AC-7）</h2>
+ * <p>本リスナーは {@code @Async} で<b>リクエストスレッド外</b>で実行する。村行事作成 API の応答を
+ * 受信者数（最大 50 万人）ぶんの通知 fan-out から切り離し、API は還流の完了を待たずに即座に返す。
+ * 還流自体は {@code AFTER_COMMIT} で本体コミット後に走り、{@code REQUIRES_NEW} で独立トランザクションを
+ * 張る（本体は既にコミット済みなので巻き戻らない）。fan-out の書き込みはさらにチャンク単位で
+ * 独立コミットされる（{@code NotificationBulkFanoutService}）。</p>
  */
 @Slf4j
 @Component
@@ -33,6 +38,7 @@ public class VillageEventRefluxEventListener {
 
     private final VillageEventFeedRefluxService refluxService;
 
+    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onVillageEventOccurred(VillageEventOccurredEvent event) {

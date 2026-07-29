@@ -64,6 +64,10 @@ class ReservationSlotServiceTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
 
+    /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（listAvailableSlots の除外挙動を実検証）。 */
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
             new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
@@ -75,6 +79,7 @@ class ReservationSlotServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 5L;
     private static final Long SLOT_ID = 10L;
     private static final Long STAFF_USER_ID = 50L;
     private static final Long CREATED_BY = 100L;
@@ -93,7 +98,8 @@ class ReservationSlotServiceTest {
         service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper,
                 blockedTimeRepository, recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
                 FIXED_CLOCK,
-                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+                viewAccessGuard);
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -145,7 +151,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponseList(entities)).willReturn(responses);
 
             // When
-            List<ReservationSlotResponse> result = service.listSlots(TEAM_ID, from, to);
+            List<ReservationSlotResponse> result = service.listSlots(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);
@@ -174,7 +180,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponseList(entities)).willReturn(responses);
 
             // When
-            List<ReservationSlotResponse> result = service.listAvailableSlots(TEAM_ID, from, to);
+            List<ReservationSlotResponse> result = service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);
@@ -214,7 +220,7 @@ class ReservationSlotServiceTest {
             org.mockito.ArgumentCaptor<List<ReservationSlotEntity>> captor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             given(reservationMapper.toSlotResponseList(captor.capture())).willReturn(List.of());
-            service.listAvailableSlots(TEAM_ID, from, to);
+            service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
             return captor.getValue();
         }
 
@@ -298,7 +304,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponse(entity)).willReturn(response);
 
             // When
-            ReservationSlotResponse result = service.getSlot(TEAM_ID, SLOT_ID);
+            ReservationSlotResponse result = service.getSlot(TEAM_ID, USER_ID, SLOT_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -312,7 +318,7 @@ class ReservationSlotServiceTest {
             given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getSlot(TEAM_ID, SLOT_ID))
+            assertThatThrownBy(() -> service.getSlot(TEAM_ID, USER_ID, SLOT_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.SLOT_NOT_FOUND);
