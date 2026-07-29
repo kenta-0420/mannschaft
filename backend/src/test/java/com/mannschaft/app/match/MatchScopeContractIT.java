@@ -76,11 +76,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li>第一段（{@code getMatchOrThrow(matchA2, orgA)}）は<b>通る</b>（matchA2 は orgA の試合）。</li>
  *   <li>権限判定（{@code assertCanRecordTimeline(adminA2, matchA2)}）も<b>通る</b>（teamA2 の ADMIN）。</li>
- *   <li>唯一 <b>第二段（親子 match_id 照合）だけ</b>が遮断している。</li>
+ *   <li>実際に 404 を返しているのは <b>第二段（親子 match_id 照合）</b>である。</li>
  * </ul>
- * <p>したがって第二段の照合を外せば当該ケースは <b>200/204 になって落ちる</b>。
- * 組織まで越える cross-org 版も併記しているが、そちらは第一段でも弾ける可能性があるため
- * 「第二段の番人」としては上記の同一組織版が本命である（各テストの Javadoc に明示した）。</p>
+ * <p>したがって第二段の照合を外せば当該ケースは <b>本テストが必ず赤くなる</b>。
+ * ただし「第二段が唯一の砦」とは限らない（経路によっては後段の整合性検証も同じ入力を弾く）。
+ * この区別は下の「Javadoc の書き方の作法」に従い、各テストの Javadoc で個別に明記している。</p>
+ *
+ * <h3>Javadoc の書き方の作法（維持者への申し送り）</h3>
+ * <p>本クラスの各テストは、原則として<b>不変条件</b>（「子リソース ID は親 match_id と一致しなければならない」）
+ * の形で意図を書く。<b>「この一行を外すと〜が書き換えられる／消える」といった具体的な失敗モードは、
+ * 実コードで最後まで追い切れた場合にのみ書く</b>。</p>
+ * <p>理由: match ドメインは<b>多層防御</b>であり、第二段を外しても後段の別の不変条件検証
+ * （例: {@code MatchEventService#validateSideOwnership} の team_side ↔ recorded_by_team_id 整合）が
+ * 別のコードで拾う経路がある。ここで「第二段が唯一の砦」と断定すると、
+ * <b>それを読んだ維持者が後段の検証を「冗長」と誤認して削りかねない</b>。番人テストとしては
+ * 「応答が変わるので落ちる」まで言えば十分であり、それ以上の断定は害になる。</p>
  *
  * <h3>期待ステータスの根拠（机上で決めず実挙動に合わせた）</h3>
  * <p>{@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に登録済みの {@code MATCH_*} を実読した結果:</p>
@@ -428,9 +438,19 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
          *   <li>第一段 {@code getMatchOrThrow(matchA2, orgA)} → <b>通過</b>（同一テナント）</li>
          *   <li>権限 {@code assertCanRecordTimeline(adminA2, matchA2)} → <b>通過</b>（共同記録・teamA2 ADMIN）</li>
          * </ul>
-         * <p>唯一 {@code getEventInMatchOrThrow(matchA2, eventA1)} の
-         * {@code matchId.equals(event.getMatchId())} だけが遮断している。
-         * この一行を外せば本ケースは 200 になり、teamA1 のイベントが teamA2 の管理者に書き換えられる。</p>
+         * <p>本ケースを 404 {@code MATCH_002} で遮断しているのは
+         * {@code getEventInMatchOrThrow(matchA2, eventA1)} の
+         * {@code matchId.equals(event.getMatchId())} である。この照合を外せば
+         * <b>本テストは必ず赤くなる</b>（ステータス・エラーコードとも変わるため）。</p>
+         *
+         * <p><b>ただし「第二段が唯一の砦」ではない。</b> 更新経路では第二段の直後に
+         * {@code validateSideOwnership(match, command.teamSide, event.recordedByTeamId)} が控えており、
+         * 本ケースの入力（{@code teamSide=HOME} / {@code event.recordedByTeamId=teamA1} /
+         * {@code matchA2.teamId=teamA2}）では整合しないため、仮に第二段を外しても
+         * {@code MATCH_025} → 403 で止まる（二重防御）。
+         * <b>この後段の検証を「冗長」と誤認して削ってはならない。</b>
+         * 本テストが固定しているのはあくまで「子リソース ID は親 match_id と一致しなければならない」
+         * という不変条件であって、特定の失敗モードではない。</p>
          */
         @Test
         @DisplayName("AC-M2-2 【第二段の核心】同一組織の別試合のeventIdを差し込む更新は404")
@@ -445,10 +465,15 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         /**
-         * AC-M2-3: 第二段で遮断されたとき、対象イベントが DB 上で書き換わっていないこと。
+         * AC-M2-3: 遮断されたとき、対象イベントが DB 上で書き換わっていないこと。
          *
          * <p>ステータスだけでは「例外は出たが副作用は残った」を検知できないため、
          * {@code em.flush()/clear()} で永続化コンテキストを捨てて実 DB から読み直す。</p>
+         *
+         * <p>固定する不変条件は「<b>親 match に属さない子リソースは、どの経路からも書き換わらない</b>」。
+         * AC-M2-2 と同様、遮断しているのは第二段だけとは限らず、後段の
+         * {@code validateSideOwnership} も同じ入力を弾く（二重防御）。
+         * 本テストはどちらが先に効いたかを問わず「書き換わっていないこと」を保証する。</p>
          */
         @Test
         @DisplayName("AC-M2-3 【第二段の核心】遮断時に別試合のイベントがDB上で書き換わっていない")
@@ -476,9 +501,12 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
          * AC-M2-4: <b>【第二段の核心】同一組織の別試合の eventId を差し込んだ削除は 404 かつイベントは残る。</b>
          *
          * <p><b>非空虚性</b>: 削除経路は Controller に事前認可が無く、
-         * {@code MatchEventService#delete} が「第一段 → 第二段 → 権限」の順に検証する。
-         * adminA2 は matchA2 の記録権限を持つため、第二段を外せば
-         * {@code assertCanRecordTimeline} も通過して <b>他チームのイベントが実際に消える</b>。</p>
+         * {@code MatchEventService#delete} が「第一段 → 第二段 → 権限」の順に検証したのち
+         * 直ちに {@code matchEventRepository.delete(event)} を呼ぶ。
+         * <b>更新経路と違い、第二段の後に整合性検証（{@code validateSideOwnership} 等）が一切無い</b>ことを
+         * 実コードで最後まで追って確認した。adminA2 は matchA2 の記録権限を持つため、
+         * 第二段を外せば {@code assertCanRecordTimeline} も通過して
+         * <b>他チームのイベントが実際に消える</b>（本クラスの作法で言う「追い切れた失敗モード」に該当する）。</p>
          */
         @Test
         @DisplayName("AC-M2-4 【第二段の核心】同一組織の別試合のeventIdを差し込む削除は404かつイベント残存")
@@ -500,9 +528,11 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
         /**
          * AC-M2-5: 他組織の eventId を自組織・自試合 URL に差し込む更新は 404（第二段・越境版）。
          *
-         * <p><b>非空虚性</b>: 第一段（matchA1 は orgA）も権限（adminA1 は teamA1 ADMIN）も通過し、
-         * 第二段だけが遮断する。ただし本ケースは組織も跨いでいるため、
-         * 「第二段の番人」としての厳密さは AC-M2-2/3/4（同一組織版）が本命である。</p>
+         * <p><b>非空虚性</b>: 第一段（matchA1 は orgA）も権限（adminA1 は teamA1 ADMIN）も通過するため、
+         * 404 {@code MATCH_002} を返しているのは第二段である。ただし AC-M2-2 と同じく更新経路であり、
+         * 第二段の後段に {@code validateSideOwnership} が控えている（二重防御）ので
+         * <b>「第二段が唯一の砦」ではない</b>。本テストが固定するのは
+         * 「子リソース ID は親 match_id と一致しなければならない」という不変条件である。</p>
          */
         @Test
         @DisplayName("AC-M2-5 他組織のeventIdを自試合URLに差し込む更新は404かつイベントは不変")
