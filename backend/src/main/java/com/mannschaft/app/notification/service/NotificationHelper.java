@@ -8,8 +8,10 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -56,6 +58,13 @@ public class NotificationHelper {
 
     /** F09.13 通知クレジットサービス（課金対象通知のカウント用） */
     private final NotificationCreditService notificationCreditService;
+
+    /**
+     * fan-out 抜本改修 P1: 一括通知のチャンク失敗を「静かに消さず数える」ための Micrometer レジストリ。
+     * narrowed な test context にはレジストリが無いことがあるため {@link ObjectProvider} で optional 解決する
+     * （{@code AsyncConfig#notification-fanout-pool} と同じ作法）。
+     */
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     /**
      * 単一ユーザーに通知を作成・配信する。
@@ -282,15 +291,41 @@ public class NotificationHelper {
         }
 
         int total = 0;
+        int failedRecipients = 0;
         for (int from = 0; from < recipients.size(); from += FANOUT_CHUNK_SIZE) {
             int to = Math.min(from + FANOUT_CHUNK_SIZE, recipients.size());
             List<Long> chunk = recipients.subList(from, to);
-            bulkFanoutService.insertAndDispatchChunk(chunk, notificationType, priority, title, body,
-                    sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, organizationId);
+            try {
+                bulkFanoutService.insertAndDispatchChunk(chunk, notificationType, priority, title, body,
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, organizationId);
+            } catch (Exception e) {
+                // best-effort 契約: チャンク失敗を握って次チャンクへ継続し、呼び出し元の業務トランザクションを
+                // 巻き添えロールバックさせない（同期呼び出し元＝予定リマインド・アンケート督促/締切延長 等が前提）。
+                // 欠落は silent drop にせず、ログ＋メトリクスで可視化する（AC-8 の可視化思想と整合）。
+                failedRecipients += chunk.size();
+                log.error("一括通知チャンク失敗（best-effort継続・欠落を可視化）: type={}, chunkSize={}, error={}",
+                        notificationType, chunk.size(), e.getMessage(), e);
+                incrementChunkFailureMetric(chunk.size());
+            }
             total += chunk.size();
         }
-        log.info("一括通知送信(配信認可済・バルク): type={}, userCount={}, chunkSize={}（visibility絞込なし）",
-                notificationType, total, FANOUT_CHUNK_SIZE);
+        log.info("一括通知送信(配信認可済・バルク): type={}, userCount={}, chunkSize={}, failedRecipients={}（visibility絞込なし）",
+                notificationType, total, FANOUT_CHUNK_SIZE, failedRecipients);
+    }
+
+    /**
+     * 一括通知のチャンク失敗件数を Micrometer で可視化する（silent drop の対極＝欠落を数える）。
+     * レジストリが無い環境（narrowed test context 等）では何もしない。
+     */
+    private void incrementChunkFailureMetric(int recipientCount) {
+        if (meterRegistryProvider == null) {
+            return;
+        }
+        MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+        if (registry == null) {
+            return;
+        }
+        registry.counter("mannschaft.notification.fanout.chunk_failed").increment(recipientCount);
     }
 
     /**

@@ -5,14 +5,19 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 通知 fan-out 抜本改修 P1: 受信者チャンクを<b>バルク INSERT ＋ チャンクコミット</b>で作成し、
@@ -22,8 +27,9 @@ import java.util.List;
  * <p>{@code notifications.id} は {@code IDENTITY}（AUTO_INCREMENT）採番であり、Hibernate は IDENTITY 戦略の
  * エンティティに対して JDBC バッチ INSERT を無効化する（挿入直後に生成キーを得るため 1 行ずつ発行せざるを得ない）。
  * その結果 {@code saveAll} でも受信者数ぶんの INSERT 文が発行され、50 万人配信で INSERT 文数が線形に膨らむ。
- * これを断つため、本サービスは JPA を迂回して {@link JdbcTemplate} で <b>1 文＝複数行</b>の多値 INSERT を発行する
- * （生成キーは後続で未使用のため取得しない）。発行文数は受信者数でなく<b>チャンク数</b>に比例する（AC-9）。</p>
+ * これを断つため、本サービスは JPA を迂回して {@link JdbcTemplate} で <b>1 文＝複数行</b>の多値 INSERT を発行する。
+ * 発行文数は受信者数でなく<b>チャンク数</b>に比例する（AC-9）。多値 INSERT でも auto_increment の採番 id を
+ * {@link GeneratedKeyHolder} で取得して配信エンティティへ戻し、リアルタイム配信ペイロードに id を載せる。</p>
  *
  * <h2>チャンクコミット（AC-7 の同期ブロック解消の要）</h2>
  * <p>1 チャンク＝1 トランザクション（{@link TransactionTemplate} の {@code REQUIRES_NEW}）で確定する。
@@ -96,10 +102,10 @@ public class NotificationBulkFanoutService {
         LocalDateTime now = LocalDateTime.now();
         NotificationPriority effectivePriority = priority == null ? NotificationPriority.NORMAL : priority;
 
-        // 配信に渡す通知（id は未採番＝null。P1 では生成キー未使用）。INSERT の値もこの並びから生成する。
-        List<NotificationEntity> entities = new ArrayList<>(recipients.size());
+        // INSERT 値の素材となる通知（id は未採番＝null）。バルク INSERT 後に DB 採番 id を戻す。
+        List<NotificationEntity> seeds = new ArrayList<>(recipients.size());
         for (Long userId : recipients) {
-            entities.add(NotificationEntity.builder()
+            seeds.add(NotificationEntity.builder()
                     .userId(userId)
                     .organizationId(organizationId)
                     .notificationType(notificationType)
@@ -117,24 +123,34 @@ public class NotificationBulkFanoutService {
                     .build());
         }
 
-        // --- チャンク単位バルク INSERT（1 文で複数行・1 トランザクション）---
-        chunkTxTemplate.executeWithoutResult(status -> bulkInsert(entities));
+        // --- チャンク単位バルク INSERT（1 文で複数行・1 トランザクション）＋生成キー取得 ---
+        List<Long> generatedIds = chunkTxTemplate.execute(status -> bulkInsertReturningIds(seeds));
+
+        // --- 採番 id を配信エンティティへ戻す（リアルタイム配信ペイロードに DB 採番 id を載せる）---
+        // WebSocket/Push クライアントは id が数値であることを前提にフレームを取り込むため、
+        // id 欠落のまま配信すると DB 行は正しく作られていてもリアルタイム配信だけが無効化される。
+        List<NotificationEntity> toDispatch = attachGeneratedIds(seeds, generatedIds);
 
         // --- 専用プールで一括配信（@Async・N+1 消滅済みチャンク配信）---
-        dispatchService.dispatchBatch(entities);
+        dispatchService.dispatchBatch(toDispatch);
     }
 
-    /** 多値 INSERT を 1 文で発行する（発行文数はチャンク数に比例＝受信者数に線形でない・AC-9）。 */
-    private void bulkInsert(List<NotificationEntity> entities) {
-        StringBuilder sql = new StringBuilder(
+    /**
+     * 多値 INSERT を 1 文で発行し、auto_increment で採番された id を<b>挿入順</b>で返す（AC-9 のバルク性は不変）。
+     *
+     * <p>MySQL Connector/J は多値 INSERT でも {@code getGeneratedKeys()} で全行ぶんの採番 id を挿入順に返す。
+     * {@link GeneratedKeyHolder#getKeyList()} でそれを受け取り、各行に対応させる。</p>
+     */
+    private List<Long> bulkInsertReturningIds(List<NotificationEntity> entities) {
+        StringBuilder sqlBuilder = new StringBuilder(
                 "INSERT INTO notifications (" + INSERT_COLUMNS + ") VALUES ");
         Object[] args = new Object[entities.size() * COLS_PER_ROW];
         int a = 0;
         for (int i = 0; i < entities.size(); i++) {
             if (i > 0) {
-                sql.append(',');
+                sqlBuilder.append(',');
             }
-            sql.append(ROW_PLACEHOLDERS);
+            sqlBuilder.append(ROW_PLACEHOLDERS);
             NotificationEntity e = entities.get(i);
             args[a++] = e.getUserId();
             args[a++] = e.getOrganizationId();
@@ -151,6 +167,46 @@ public class NotificationBulkFanoutService {
             args[a++] = Boolean.FALSE;          // is_read: per-row 既定（AC-4）
             args[a++] = e.getCreatedAt();        // created_at: @PrePersist を迂回するため明示充填
         }
-        jdbcTemplate.update(sql.toString(), args);
+        final String sql = sqlBuilder.toString();
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            for (int i = 0; i < args.length; i++) {
+                ps.setObject(i + 1, args[i]);
+            }
+            return ps;
+        }, keyHolder);
+
+        List<Map<String, Object>> keyRows = keyHolder.getKeyList();
+        List<Long> ids = new ArrayList<>(keyRows.size());
+        for (Map<String, Object> row : keyRows) {
+            Object value = row.get("GENERATED_KEY");
+            if (value == null && !row.isEmpty()) {
+                // ドライバによりキー列名が異なる場合に備え、単一列の値をそのまま採る。
+                value = row.values().iterator().next();
+            }
+            ids.add(value == null ? null : ((Number) value).longValue());
+        }
+        return ids;
+    }
+
+    /**
+     * 採番 id を配信エンティティへ戻す。id と行が 1:1 対応する場合は {@code toBuilder().id(...)} で id を載せた
+     * 新インスタンスを返す。想定外に採番数が挿入行数と一致しない場合は、配信を止めるより id なしで配信を優先し
+     * （欠落より配信）、その旨を警告として可視化する。
+     */
+    private List<NotificationEntity> attachGeneratedIds(List<NotificationEntity> seeds, List<Long> generatedIds) {
+        if (generatedIds == null || generatedIds.size() != seeds.size()) {
+            log.warn("バルク INSERT の採番 id 数が挿入行数と一致しない: keys={}, rows={}。id なしで配信する",
+                    generatedIds == null ? "null" : generatedIds.size(), seeds.size());
+            return seeds;
+        }
+        List<NotificationEntity> withId = new ArrayList<>(seeds.size());
+        for (int i = 0; i < seeds.size(); i++) {
+            Long id = generatedIds.get(i);
+            withId.add(id == null ? seeds.get(i) : seeds.get(i).toBuilder().id(id).build());
+        }
+        return withId;
     }
 }
