@@ -191,8 +191,26 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller/Service の Javadoc に明記）。
      * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
      * {@code ReservationScopeContractIT} 拡張を含む）。</p>
+     *
+     * <p>696 → 686（2026-07-29・認可根治戦役 Wave7 timeline ドメイン）:
+     * {@code TimelinePostController}（{@code updatePost} / {@code deletePost} / {@code togglePin}）に
+     * 投稿者本人 or TEAM/ORGANIZATION スコープ ADMIN+ を判定する新設 {@code TimelinePostAccessGuard} を、
+     * {@code TimelinePollController}（{@code getPoll} / {@code vote}）・
+     * {@code TimelineReactionController}（{@code addReaction} / {@code removeReaction}）・
+     * {@code TimelineBookmarkController.addBookmark} に投稿本体と同一の可視性判定へ一本化した
+     * 新設 {@code TimelinePostVisibilityAccessGuard} を、{@code TimelineAttachmentController}
+     * （{@code getImageUploadUrl} / {@code getVideoUploadUrl}）にアップロード先スコープの
+     * メンバーシップを検証する新設 {@code TimelineAttachmentAccessGuard} を敷設する実装是正で
+     * 10 件解消。残る 8 件（{@code TimelineFeedController}.{@code getMyFeed}/{@code getUserPosts}/
+     * {@code searchPosts} は所属スコープでリポジトリクエリを絞り込み済み、
+     * {@code TimelineBookmarkController}.{@code getBookmarks}/{@code removeBookmark} と
+     * {@code TimelineMuteController}（{@code addMute}/{@code getMutes}/{@code removeMute}）は
+     * 呼び出しユーザー自身の所有物のみを操作する構造的な自己スコープ EP）は、番人の呼び出しグラフ
+     * 判定（{@code AccessControlService} 等の直接/浅い委譲呼び出し）では拾えないだけで実穴ではないと
+     * 監査で確認し、凍結のまま残した（違反隠蔽ではなく監査済みの構造的自己スコープ）。同一コミットに
+     * ストア差分・実装差分・{@code TimelineScopeContractIT} 新設を含む。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 696;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 686;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
