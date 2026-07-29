@@ -87,8 +87,9 @@ watch(() => form.value.pricingModel, () => {
   }
 })
 
+/** 「本日」のローカル日付（yyyy-MM-dd）。UTC 基準だと JST の午前中に前日扱いとなり誤って弾く。 */
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  return toLocalDateString(new Date())
 }
 
 function buildSchema() {
