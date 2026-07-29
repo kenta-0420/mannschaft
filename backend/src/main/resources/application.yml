@@ -39,6 +39,29 @@ spring:
         # 出欠レコードが数千〜数万件に膨らんでも DB round-trip を抑制する。
         jdbc:
           batch_size: 50
+          # DB へ書き込む時刻の基準タイムゾーン（Issue #2486）。全プロファイル共通で UTC に統一する。
+          #
+          # なぜ必要か:
+          #   JVM 既定 TZ は TimeZoneConfig が Asia/Tokyo に強制しており、Entity の @PrePersist は
+          #   素の LocalDateTime.now()（= JST 壁時計）で時刻を採る。この LocalDateTime が DB に
+          #   「どの壁時計として」書かれるかを決めるのがこの設定である。指定があると Hibernate は
+          #   setTimestamp(i, ts, Calendar.getInstance(UTC)) を使い、格納値は UTC 壁時計になる
+          #   （アプリ側の LocalDateTime は JST 壁時計のままで、Hibernate 経由の往復は無損失）。
+          #   未指定だと接続既定（= JST）で書かれ、格納値が JST 壁時計になる。
+          #
+          # なぜ共有側に置くか:
+          #   是正前はこの指定が test プロファイル（src/test/resources/application-test.yml）にしか
+          #   存在せず、test=UTC / local・ci=JST / prod=UTC（terraform の serverTimezone=UTC ＋
+          #   RDS time_zone=UTC）と基準が三者三様に割れていた。DB を直接読む生 SQL
+          #   （CONVERT_TZ / DATE() / 手動 INSERT のフィクスチャ）は必ずどこかの環境で 9 時間ずれる。
+          #   プロファイル個別に置くと新プロファイル追加時に再び取りこぼすため、共有側で一元宣言する。
+          #
+          # なぜ UTC を選び、なぜ今やるか:
+          #   prod 想定と test が既に UTC であり多数派かつ将来の正。加えて下の
+          #   mannschaft.audit.stored-zone-offset の既定 "+00:00" が UTC 格納を前提に置かれている。
+          #   格納基準の変更は既存全行の意味を変える侵襲的操作だが、本番環境が未構築で
+          #   再解釈すべき既存データがゼロの今なら変換マイグレーションなしで実施できる。
+          time_zone: UTC
         order_inserts: true
         order_updates: true
 
@@ -103,10 +126,12 @@ mannschaft:
       enabled: ${MANNSCHAFT_BETA_AUTO_GRANT_ENABLED:false}
   # F20.3 activeDays 集計（LoginActivityQueryService / AuditLogRepository）専用。
   # audit_logs.created_at が「どの TZ の壁時計として格納されているか」を表す前提値（CONVERT_TZ の変換元）。
-  # 格納基準は spring.jpa.properties.hibernate.jdbc.time_zone と JVM 既定 TZ に依存し、
-  # 現状 test プロファイル（application-test.yml）にのみ hibernate.jdbc.time_zone: UTC の明示指定がある
-  # （main/prod は未指定＝本番の格納基準は未決着）。
-  # 既定 "+00:00"（UTC）は現行挙動と完全同一。格納基準が UTC でない環境ではこの値を実態に合わせて上書きすること。
+  # 格納基準は spring.jpa.properties.hibernate.jdbc.time_zone と JVM 既定 TZ に依存する。
+  # Issue #2486 でこの指定を共有 application.yml へ引き上げ、全プロファイルで UTC に統一済み
+  # （以前は test プロファイルにのみ指定があり、local / ci は JST 格納で基準が割れていた）。
+  # したがって既定 "+00:00"（UTC）が全環境で正しい前提値となる。UTC 統一は番人テスト
+  # TimeZoneStorageBasisGuardTest が機械的に固定しているため、この既定を動かす場合は
+  # 格納基準そのものを変える意思決定とセットで行うこと（片方だけ動かすと activeDays 集計が日単位でずれる）。
   audit:
     stored-zone-offset: ${MANNSCHAFT_AUDIT_STORED_ZONE_OFFSET:+00:00}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
