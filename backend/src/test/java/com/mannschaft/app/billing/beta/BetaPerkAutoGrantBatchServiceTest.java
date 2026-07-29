@@ -1,5 +1,9 @@
 package com.mannschaft.app.billing.beta;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.common.BusinessException;
@@ -9,9 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -22,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -379,5 +386,93 @@ class BetaPerkAutoGrantBatchServiceTest {
                 eq(700L), isNull(), eq(true), isNull());
         verify(betaGrantService, never()).grantBetaPerk(
                 any(), anyInt(), any(), eq(701L), any(), anyBoolean(), any());
+    }
+
+    // ============================================================
+    // Issue #2487 項目 3: 走査上限（MAX_PAGES）到達を無言で握り潰さない
+    // ============================================================
+
+    /**
+     * 走査上限に到達した（＝まだ次ページがあるのに MAX_PAGES で打ち切った）場合、WARN を残すこと。
+     *
+     * <p>旧実装はページ走査を {@code MAX_PAGES}（500 件 × 200 ページ = 10 万人）で打ち切るが、
+     * <b>到達しても何も残さずループを抜けていた</b>。活性ユーザーが 10 万人を超えると
+     * <b>静かに取りこぼす</b>ため、上限に近づいたことに気付ける仕掛けが必要（CLAUDE.md 障害対応の原則）。</p>
+     */
+    @Test
+    @DisplayName("項目3: 走査上限に到達したら WARN を残す（静かな取りこぼしを可視化する）")
+    void maxPagesReached_logsWarning() {
+        stubCriteriaWithIneligibleUser(true);
+
+        List<ILoggingEvent> logs = captureLogs(batch::execute);
+
+        // 上限ページ数だけ走査してから打ち切る
+        verify(userRepository, times(BetaPerkAutoGrantBatchService.MAX_PAGES))
+                .findActiveUserIdsForBeta(any());
+        assertThat(warnMessages(logs))
+                .as("走査上限到達は WARN で可視化する")
+                .anySatisfy(message -> assertThat(message).contains("走査上限に到達"));
+    }
+
+    /**
+     * 上限に到達せず全ページを舐め切った場合は WARN を残さないこと（オオカミ少年化の防止）。
+     */
+    @Test
+    @DisplayName("項目3: 全ページを走査し切った通常時は WARN を残さない")
+    void allPagesScanned_doesNotLogWarning() {
+        stubCriteriaWithIneligibleUser(false);
+
+        List<ILoggingEvent> logs = captureLogs(batch::execute);
+
+        verify(userRepository, times(1)).findActiveUserIdsForBeta(any());
+        assertThat(warnMessages(logs))
+                .as("上限に到達していないのに WARN を出さない")
+                .noneSatisfy(message -> assertThat(message).contains("走査上限に到達"));
+    }
+
+    /**
+     * 「1 ページ 1 人・その 1 人は非対象」という最小構成で走査だけを回すスタブ。
+     *
+     * @param hasNext ページが常に次ページを持つか（true なら MAX_PAGES で打ち切られる）
+     */
+    private void stubCriteriaWithIneligibleUser(boolean hasNext) {
+        when(criteriaRepository.findById(new BetaPerkCriteriaId(PHASE, GrantKind.INDIVIDUAL)))
+                .thenReturn(Optional.of(activeDaysCriteria(14)));
+        // totalElements を大きく取ると hasNext() が true になり、上限まで走査が続く。
+        long totalElements = hasNext ? 1_000_000L : 1L;
+        when(userRepository.findActiveUserIdsForBeta(any()))
+                .thenReturn(new PageImpl<>(List.of(900L), PageRequest.of(0, 1), totalElements));
+        when(betaGrantRepository.findGrantedScopeIds(eq(PHASE), eq(EntitlementScopeKind.USER), any()))
+                .thenReturn(List.of());
+        // activeDays が閾値未満＝付与されない（走査そのものだけを観測する）。
+        when(loginActivityQueryService.countDistinctActiveDaysWithinByUsers(any(), anyInt(), any()))
+                .thenReturn(Map.of(900L, 0L));
+    }
+
+    /** 対象サービスのロガーに ListAppender を挿し、実行中のログイベントを収集する。 */
+    private List<ILoggingEvent> captureLogs(Runnable action) {
+        Logger logger = (Logger) LoggerFactory.getLogger(BetaPerkAutoGrantBatchService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        Level originalLevel = logger.getLevel();
+        // test プロファイルはルートロガーが WARN 固定だが、将来の変更に備え明示的に下げる。
+        logger.setLevel(Level.DEBUG);
+        logger.addAppender(appender);
+        try {
+            action.run();
+            return List.copyOf(appender.list);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(originalLevel);
+            appender.stop();
+        }
+    }
+
+    /** 収集したログから WARN のメッセージ本文（プレースホルダ展開後）だけを抜き出す。 */
+    private static List<String> warnMessages(List<ILoggingEvent> logs) {
+        return logs.stream()
+                .filter(event -> event.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage)
+                .toList();
     }
 }
