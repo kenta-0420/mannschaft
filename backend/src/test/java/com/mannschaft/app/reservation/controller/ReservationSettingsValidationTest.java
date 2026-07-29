@@ -64,8 +64,32 @@ class ReservationSettingsValidationTest {
     private static final Long TEAM_ID = 10L;
     private static final String PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-settings";
 
+    /** 監査ログの操作者解決（{@code SecurityUtils.getCurrentUserId()}）用。 */
+    private static final Long ACTOR_USER_ID = 777L;
+
+    /**
+     * {@code SecurityUtils} の静的モック。
+     *
+     * <p>本テストは standaloneSetup（Spring Security フィルタ非搭載）のため SecurityContext が空で、
+     * {@code SecurityUtils.getCurrentUserId()} が未認証として例外を投げ 401 になる。本番の
+     * PATCH は {@code @PreAuthorize} 配下で必ず認証済みのため、テスト側で操作者を与えるのが正しい
+     * （{@code ReservationControllerTest} と同じ {@code mockStatic} 作法）。認可そのものの実発火検証は
+     * {@code ReservationAuthorizationEnforcementTest} が実 Security フィルタで担う。</p>
+     */
+    private org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> securityUtilsMock;
+
+    @org.junit.jupiter.api.AfterEach
+    void tearDownSecurityUtils() {
+        if (securityUtilsMock != null) {
+            securityUtilsMock.close();
+        }
+    }
+
     @BeforeEach
     void setUp() {
+        securityUtilsMock = org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class);
+        securityUtilsMock.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId)
+                .thenReturn(ACTOR_USER_ID);
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
@@ -195,15 +219,23 @@ class ReservationSettingsValidationTest {
     // 仮押さえ自動失効設定（F03.4.5 §6.3・AC-6-1 / AC-6-16）
     // ========================================
 
-    /** {@code policyService.updatePolicy} が返す想定のエンティティを stub する。 */
+    /**
+     * 更新後のポリシーを stub する。
+     *
+     * <p>PATCH は更新後に {@code getSettings}（＝{@code policyService.getOrDefault}）で
+     * 統合状態を読み直して返すため、{@code updatePolicy} と {@code getOrDefault} の両方を
+     * 同じ結果で揃える必要がある（片方だけ stub すると応答は再取得側の値になる）。</p>
+     */
     private void stubPolicyUpdate(Integer resultingPendingExpireHours) {
+        ReservationPolicyEntity updated = ReservationPolicyEntity.builder()
+                .teamId(TEAM_ID)
+                .pendingExpireHours(resultingPendingExpireHours)
+                .build();
         given(policyService.updatePolicy(anyLong(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .willReturn(ReservationPolicyEntity.builder()
-                        .teamId(TEAM_ID)
-                        .pendingExpireHours(resultingPendingExpireHours)
-                        .build());
+                .willReturn(updated);
+        given(policyService.getOrDefault(anyLong())).willReturn(updated);
     }
 
     @Test
@@ -307,7 +339,7 @@ class ReservationSettingsValidationTest {
 
         verify(auditLogService).record(
                 eq("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED"),
-                any(), isNull(), eq(TEAM_ID), isNull(), isNull(), isNull(), isNull(),
+                eq(ACTOR_USER_ID), isNull(), eq(TEAM_ID), isNull(), isNull(), isNull(), isNull(),
                 org.mockito.ArgumentMatchers.contains("48"));
     }
 

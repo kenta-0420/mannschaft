@@ -14,6 +14,7 @@ import com.mannschaft.app.reservation.service.ReservationPendingExpireBatchServi
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
+import org.awaitility.Awaitility;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -336,10 +338,18 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
 
         assertThat(slotRepository.findById(slot.getId()).orElseThrow().getSlotStatus())
                 .isEqualTo(SlotStatus.AVAILABLE);
-        assertThat(notificationsOf(waiter))
-                .as("decrementAndReopen 経由なので §6.1 のキャンセル待ち通知が連鎖発火する")
-                .extracting(NotificationEntity::getNotificationType)
-                .containsExactly("RESERVATION_WAITLIST_OPENING");
+
+        // キャンセル待ち通知は ReservationWaitlistNotificationEventListener が
+        // @Async("event-pool") + @TransactionalEventListener(AFTER_COMMIT) で送るため、
+        // 失効処理の戻り値時点ではまだ書き込まれていないことがある（負荷時に顕在化する競合）。
+        // 「届くこと」を弱めずに待つ（到達しなければタイムアウトで失敗する）。
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(15))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(notificationsOf(waiter))
+                        .as("decrementAndReopen 経由なので §6.1 のキャンセル待ち通知が連鎖発火する")
+                        .extracting(NotificationEntity::getNotificationType)
+                        .containsExactly("RESERVATION_WAITLIST_OPENING"));
     }
 
     @Test
@@ -358,12 +368,18 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
 
         batchService.expirePendingReservations();
 
-        assertThat(notificationsOf(waiter))
-                .as("遷移が起きていないので通知を撃たない（イベントの空撃ち禁止）")
-                .isEmpty();
+        // 申込者への失効通知は失効 tx 内で同期送出されるため、この時点で確定している。
         assertThat(notificationsOf(applicant))
                 .as("申込者本人への失効通知は届く")
                 .hasSize(1);
+        // 枠が FULL でなかったため reopenSlotIfFull が 0 行更新となり、そもそもイベントが発行されない
+        // （＝非同期処理がキューされない）。待っても増えないことを一定時間保ち続けることで確認する。
+        Awaitility.await()
+                .during(Duration.ofSeconds(2))
+                .atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(notificationsOf(waiter))
+                        .as("遷移が起きていないので通知を撃たない（イベントの空撃ち禁止）")
+                        .isEmpty());
     }
 
     // ────────────────────────────────────────────────────────────

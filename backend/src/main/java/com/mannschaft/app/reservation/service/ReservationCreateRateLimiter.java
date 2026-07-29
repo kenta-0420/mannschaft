@@ -1,6 +1,9 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
+import com.mannschaft.app.reservation.ReservationErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +48,10 @@ public class ReservationCreateRateLimiter {
      *         （{@code RESERVATION_053} → HTTP 429）
      */
     public void assertNotRateLimited(Long userId) {
-        // W2-6 骨格コミット: 判定は未実装（何も消費せず素通しする）。実装は green 化コミットで入れる。
+        RateLimitResult rate = rateLimiter.tryConsume(
+                RATE_ZONE, "user:" + userId, RATE_LIMIT, RATE_WINDOW);
+        if (!rate.allowed()) {
+            throw new BusinessException(ReservationErrorCode.RESERVATION_CREATE_RATE_LIMITED);
+        }
     }
 }

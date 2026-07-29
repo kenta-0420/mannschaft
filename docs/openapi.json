@@ -196560,6 +196560,19 @@
             "maximum": 8760,
             "minimum": 0
           },
+          "clearPendingExpireHours": {
+            "type": "boolean",
+            "description": "仮押さえ自動失効を無効化するか（true\u003d自動失効しない。pendingExpireHours より優先）",
+            "example": false
+          },
+          "pendingExpireHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null\u003d据え置き）",
+            "example": 24,
+            "maximum": 168,
+            "minimum": 1
+          },
           "remindBeforeHours": {
             "type": "string",
             "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null\u003d据え置き）",
@@ -196625,6 +196638,12 @@
             "type": "boolean",
             "description": "営業時間が設定済みか",
             "example": true
+          },
+          "pendingExpireHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（null\u003d自動失効しない）",
+            "example": 24
           },
           "remindBeforeHours": {
             "type": "string",
