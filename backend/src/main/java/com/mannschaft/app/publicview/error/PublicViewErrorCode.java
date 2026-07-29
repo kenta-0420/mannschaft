@@ -95,6 +95,22 @@ public enum PublicViewErrorCode implements ErrorCode {
      */
     PUBLIC_012("PUBLIC_012",
             "公開設定を変更する権限がありません",
+            Severity.WARN),
+
+    /**
+     * F06.4 公開活動記録: 活動記録が存在しないか公開されていません (404 へ正規化)。
+     *
+     * <p>匿名公開経路（{@code /api/v1/public} 配下の activities 系 5 EP）の <b>唯一の失敗コード</b>。
+     * 「存在しない」「visibility が PUBLIC でない」「status が DRAFT」「論理削除済み」
+     * 「親スコープ（チーム / 組織）が非公開・凍結・停止」「パス変数と実スコープの不一致（詐称）」の
+     * <b>すべてを本コード 1 つに倒す</b>ことで、ステータスコードもレスポンスボディも
+     * 区別できないようにし、ID 列挙オラクルを封じる（契約テスト AC-18）。</p>
+     *
+     * <p>個別の理由を返り値やメッセージで分岐させてはならない。分岐した瞬間に
+     * 「どの ID が実在するか」を攻撃者に教えることになる。</p>
+     */
+    PUBLIC_013("PUBLIC_013",
+            "指定された活動記録は存在しないか公開されていません",
             Severity.WARN);
 
     private final String code;

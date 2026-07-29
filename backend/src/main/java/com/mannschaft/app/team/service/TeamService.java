@@ -189,6 +189,30 @@ public class TeamService {
     }
 
     /**
+     * F06.4 公開活動記録: 他ドメインが「このチームは匿名公開してよいか」を判定するための横断 SPI。
+     *
+     * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも
+     * <b>親スコープが非公開・凍結・停止なら 404 にしなければならない</b>
+     * （親を見ないと「非公開チームの中身が PUBLIC 設定のまま漏れる」）。
+     * 判定条件は {@link TeamRepository#findPublicTeamById(Long)} と同一の正準
+     * （{@code visibility=PUBLIC} かつ {@code archivedAt IS NULL}、
+     * {@code @SQLRestriction} により {@code deletedAt IS NULL}）。</p>
+     *
+     * <p>クロスドメイン Entity 参照を持ち込まないため（CLAUDE.md ドメイン境界の原則・番人 D-1）、
+     * {@link TeamEntity} ではなく<b>チーム名のみ</b>を返す。呼び出し側はこれを
+     * {@code PublicScopeRef}（公開用スコープ参照 DTO）に詰め替えて使う。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @return 公開してよいチームの表示名。非公開 / 凍結 / 削除済み / 不在なら空
+     */
+    public Optional<String> findPublicTeamNameById(Long teamId) {
+        if (teamId == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findPublicTeamById(teamId).map(TeamEntity::getName);
+    }
+
+    /**
      * F22.1 市 Phase 2 足場C: チームの構造化地域コード（都道府県・市区町村）を取得する。
      *
      * <p>他ドメイン（recruitment）が札立て地域の既定補完に使う read-only な横断クエリ。

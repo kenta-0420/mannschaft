@@ -119,8 +119,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 個別に根治していた shift / filesharing の 11 エンドポイント（上記 795→784 の内訳と同一）を、
      * 他ドメインの根治を反映済みの {@code main} 側 756（tournament / safetycheck / school / proxy /
      * proxyvote / service 分を含む）に適用し、重複なく統合した結果の行数。</p>
+     *
+     * <p>745 → 744（2026-07-29）: F06.4 公開活動記録の匿名公開安全化により
+     * {@code activity.controller.ActivityPublicController.getPublicActivityById} の凍結 1 件が解消。
+     * 同 Controller は {@code SecurityConfig}（GET 5 本 permitAll）配下の意図的公開エンドポイント群であり、
+     * 監査を経てクラスに {@link com.mannschaft.app.common.security.IntentionallyPublic} を付与した
+     * （根拠 permitAll 行と公開してよい理由は同 Controller の Javadoc に明記）。
+     * あわせて実装側でも親スコープ公開性検証・DRAFT 除外・スコープ詐称拒否・403→404 正規化・
+     * 公開専用 DTO 化を行っており、<b>違反隠蔽ではなく認可設計の是正に伴う正当な縮小</b>である。
+     * 契約は {@code ActivityPublicContractIT} が機械的に検証する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 745;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 744;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
