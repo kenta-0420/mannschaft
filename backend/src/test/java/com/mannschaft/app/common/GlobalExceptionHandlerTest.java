@@ -1059,8 +1059,8 @@ class GlobalExceptionHandlerTest {
     // ERROR_CODE_STATUS_MAP 未登録 かつ Severity.ERROR のコードは既定で 500 を返す。
     // 全 *ErrorCode.java を機械的に走査して Severity.ERROR を全数抽出し、
     // throw 箇所のコードを読んで「サーバ障害 / クライアント起因 / 判断保留」に分類した。
-    // クライアント起因と分類したものは Severity を WARN に正し（既定 400）、
-    // 400 では粗すぎるものだけ ERROR_CODE_STATUS_MAP へ 409 で登録した。
+    // クライアント起因と分類したものは Severity を WARN に正した（既定 400）。
+    // 既定 400 で表現できない契約を持つ RECRUITMENT_301 のみ 402 を明示登録した。
     //
     // 本 Nested はその是正結果を機械的に固定する。ここが赤くなったら
     // 「クライアントの入力誤りで 500 を返す」状態に退行したということ。
@@ -1074,6 +1074,9 @@ class GlobalExceptionHandlerTest {
         private final List<ErrorCode> badRequestCases = List.of(
                 com.mannschaft.app.bulletin.BulletinErrorCode.PARENT_REPLY_MISMATCH,
                 com.mannschaft.app.circulation.CirculationErrorCode.EMPTY_RECIPIENTS,
+                com.mannschaft.app.event.EventErrorCode.MAX_TICKET_TYPES,
+                com.mannschaft.app.event.EventErrorCode.MAX_TIMETABLE_ITEMS,
+                com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
                 com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID,
                 com.mannschaft.app.receipt.ReceiptErrorCode.LINE_ITEMS_AMOUNT_MISMATCH,
                 com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CAPACITY,
@@ -1084,6 +1087,8 @@ class GlobalExceptionHandlerTest {
                 com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CANCELLATION_POLICY,
                 com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_LIMIT_EXCEEDED,
                 com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_RANGE_OVERLAP,
+                com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED,
+                com.mannschaft.app.search.SearchErrorCode.MAX_SAVED_QUERIES_EXCEEDED,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_RESPONSE_STATUS,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_SCOPE_TYPE,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED,
@@ -1092,19 +1097,12 @@ class GlobalExceptionHandlerTest {
                 com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH,
                 com.mannschaft.app.shift.ShiftErrorCode.INVALID_DATE_RANGE,
                 com.mannschaft.app.shift.ShiftErrorCode.SWAP_SELF_REQUEST,
+                com.mannschaft.app.shift.ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED,
                 com.mannschaft.app.survey.SurveyErrorCode.INVALID_TIME_RANGE,
                 com.mannschaft.app.timeline.TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED,
                 com.mannschaft.app.timeline.TimelineErrorCode.EMPTY_POST_CONTENT,
                 com.mannschaft.app.timeline.TimelineErrorCode.ATTACHMENT_NOT_FOUND_IN_STORAGE,
                 com.mannschaft.app.workflow.WorkflowErrorCode.INVALID_FIELD_VALUE);
-
-        /** 409 Conflict に是正したコード（Severity.ERROR → WARN ＋ ERROR_CODE_STATUS_MAP 登録）。 */
-        private final List<ErrorCode> conflictCases = List.of(
-                com.mannschaft.app.event.EventErrorCode.MAX_TICKET_TYPES,
-                com.mannschaft.app.event.EventErrorCode.MAX_TIMETABLE_ITEMS,
-                com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED,
-                com.mannschaft.app.search.SearchErrorCode.MAX_SAVED_QUERIES_EXCEEDED,
-                com.mannschaft.app.shift.ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED);
 
         @Test
         @DisplayName("入力不備・状態遷移違反として分類したコードは Severity.WARN かつ resolveHttpStatus で 400 になる")
@@ -1136,31 +1134,20 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("保存済み資源の件数上限・状態競合として分類したコードは Severity.WARN かつ 409 になる")
-        void 状態競合系は409() {
-            for (ErrorCode errorCode : conflictCases) {
-                assertThat(errorCode.getSeverity())
-                        .as("%s はクライアント起因のため Severity.WARN でなければならない", errorCode.getCode())
-                        .isEqualTo(ErrorCode.Severity.WARN);
-                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
-                        .as("%s が 409 でなくなっている", errorCode.getCode())
-                        .isEqualTo(HttpStatus.CONFLICT);
-            }
-        }
+        @DisplayName("系統の割れ防止: 同一概念『リマインダー件数上限』の RESERVATION_015 と SCHEDULE_008 が"
+                + "同じステータスで返る（片方だけ 409 に倒して割った退行の固定）")
+        void リマインダー件数上限は両ドメインで同一ステータス() {
+            ErrorCode reservation =
+                    com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED;
+            ErrorCode schedule =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.MAX_REMINDERS_EXCEEDED;
 
-        @Test
-        @DisplayName("状態競合系の BusinessException は 409 で返り、envelope の code も一致する")
-        void 状態競合系のBusinessExceptionは409() {
-            for (ErrorCode errorCode : conflictCases) {
-                ResponseEntity<ErrorResponse> response =
-                        globalExceptionHandler.handleBusinessException(new BusinessException(errorCode));
-
-                assertThat(response.getStatusCode())
-                        .as("%s の BusinessException が 409 で返らない", errorCode.getCode())
-                        .isEqualTo(HttpStatus.CONFLICT);
-                assertThat(response.getBody()).isNotNull();
-                assertThat(response.getBody().getError().getCode()).isEqualTo(errorCode.getCode());
-            }
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .as("enum 定数名まで同一の『保存済みリマインダー件数上限』が"
+                            + "ドメインごとに別ステータスになってはならない")
+                    .isEqualTo(globalExceptionHandler.resolveHttpStatus(schedule));
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
         @Test
@@ -1183,9 +1170,13 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("非対称の解消: platform Webhook の PAYMENT_019 と Connect Webhook の PAYMENT_C040 が"
-                + "同じ 400 になる（同一概念で 500 と 400 に割れていた退行の固定）")
+        @DisplayName("系統の割れ防止: 同一概念『Webhook 署名検証失敗』の PAYMENT_019 と PAYMENT_C040 が"
+                + "同じ Severity・同じステータスに揃っている")
         void webhook署名検証失敗は両系統とも400() {
+            // 注: platform 側の /api/v1/webhooks/stripe は StripeWebhookController が
+            // catch (Exception) で 200 を返すため、PAYMENT_019 は実際には
+            // GlobalExceptionHandler に到達しない（HTTP 挙動は本 PR の前後で不変）。
+            // ここで固定しているのは「同一概念の Severity 分類が系統で割れていない」ことである。
             HttpStatus platform = globalExceptionHandler.resolveHttpStatus(
                     com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
             HttpStatus connect = globalExceptionHandler.resolveHttpStatus(
@@ -1194,8 +1185,27 @@ class GlobalExceptionHandlerTest {
             assertThat(platform).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(connect).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(platform)
-                    .as("同一概念（Webhook 署名検証失敗）の HTTP 契約が系統で割れてはならない")
+                    .as("同一概念（Webhook 署名検証失敗）の分類が系統で割れてはならない")
                     .isEqualTo(connect);
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『ファイルサイズ上限超過』が全ドメインで 400 に揃っている")
+        void ファイルサイズ上限超過は全ドメイン400() {
+            List<ErrorCode> siblings = List.of(
+                    com.mannschaft.app.chart.ChartErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.equipment.EquipmentErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.gallery.GalleryErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.proxyvote.ProxyVoteErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.service.ServiceRecordErrorCode.FILE_SIZE_EXCEEDED);
+
+            for (ErrorCode errorCode : siblings) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("enum 定数名まで同一の『ファイルサイズ上限超過』が %s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+            }
         }
 
         @Test

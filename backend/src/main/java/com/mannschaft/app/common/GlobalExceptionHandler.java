@@ -1123,17 +1123,15 @@ public class GlobalExceptionHandler {
             // ─────────────────────────────────────────────────────────────
             // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
             //
-            // 下記は「サーバ側の障害ではなくクライアント起因」と分類したため Severity を
-            // ERROR → WARN に正した（＝既定 400）うえで、既定の 400 では粗すぎるものだけを
-            // ここで上書きする。判定規準は本ファイル既存の慣例に合わせた:
-            //   - リクエストのペイロード自体が不正/過大 → 400（既定のまま。ここには載せない）
-            //   - サーバ側に既に積まれた資源の件数上限・保存済み状態との競合 → 409 Conflict
-            //     （先例: PERSONAL_TIMETABLE_010 / SOCIAL_111 / SHIFT_BUDGET_011 …）
-            Map.entry("EVENT_008", HttpStatus.CONFLICT),                 // MAX_TICKET_TYPES（登録済みチケット種別数が上限）
-            Map.entry("EVENT_009", HttpStatus.CONFLICT),                 // MAX_TIMETABLE_ITEMS（登録済みタイムテーブル項目数が上限）
-            Map.entry("RESERVATION_015", HttpStatus.CONFLICT),           // MAX_REMINDERS_EXCEEDED（予約に紐づく既存リマインダー数が上限）
-            Map.entry("SEARCH_005", HttpStatus.CONFLICT),                // MAX_SAVED_QUERIES_EXCEEDED（保存済みクエリ数が上限）
-            Map.entry("SHIFT_017", HttpStatus.CONFLICT),                 // SLOT_ASSIGNMENT_EXCEEDED（現在の割当状況と必要人数の競合）
+            // Severity.ERROR 既定の 500 を返していたコードのうち「サーバ側の障害ではなく
+            // クライアント起因」と分類したものは、定義側の Severity を ERROR → WARN に正した
+            // （＝既定 400）。件数上限・入力不備の類は本リポジトリの圧倒的多数が 400 であり
+            //（「上限超過」系 154 件中 400 が 113 件・409 は 21 件）、既定 400 で揃うため
+            // ここには登録していない。件数上限を 409 に倒すと、enum 定数名まで同一の兄弟コード
+            //（例: RESERVATION_015 と SCHEDULE_008 の MAX_REMINDERS_EXCEEDED）と割れる。
+            //
+            // 下記 1 件のみ、既定 400 では表現できない契約があるため明示登録する。
+            //
             // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
             // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
             // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
@@ -1671,8 +1669,10 @@ public class GlobalExceptionHandler {
      * <ol>
      *   <li>クライアント起因なら、まず ErrorCode 定義側の {@code Severity} を WARN に正す
      *       （宣言箇所で意図が読めるようになる）。既定の 400 で妥当ならこれで足りる。</li>
-     *   <li>既定の 400 では粗すぎる場合（不在は 404・重複や状態競合は 409 など）に限り
-     *       {@link #ERROR_CODE_STATUS_MAP} へ明示登録する。</li>
+     *   <li>既定の 400 では表現できない契約がある場合に限り {@link #ERROR_CODE_STATUS_MAP}
+     *       へ明示登録する（不在の秘匿は 404・重複や状態遷移違反・楽観ロック競合は 409・
+     *       支払いが必要なら 402 など）。なお「件数上限の超過」は本リポジトリでは 400 が
+     *       圧倒的多数派であり、409 に倒すと同一概念の兄弟コードと割れるので注意する。</li>
      * </ol>
      * <p>「Severity.ERROR のまま STATUS_MAP に 4xx を足す」だけの直し方は、定義側に誤分類を
      * 残したまま症状だけを隠すため禁止する。</p>
