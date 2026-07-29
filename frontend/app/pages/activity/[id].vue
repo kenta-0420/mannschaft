@@ -40,9 +40,8 @@ useHead(() => {
       { property: 'og:title', content: activity.value.title },
       { property: 'og:description', content: activity.value.description ?? activity.value.title },
       { property: 'og:url', content: url },
-      ...(activity.value.imageUrl
-        ? [{ property: 'og:image', content: activity.value.imageUrl }]
-        : []),
+      // NOTE: og:image は設定しない。公開活動記録 API（PublicActivityDetail）は
+      // 御裁可済み 8 項目のみを返し、画像 URL を含まないため。
     ],
   }
 })
@@ -69,9 +68,9 @@ onMounted(() => load())
     <!-- 活動記録詳細 -->
     <template v-else-if="activity">
       <div class="rounded-lg border border-surface-200 bg-white p-6 dark:border-surface-700 dark:bg-surface-800">
-        <!-- スコープ名（チーム or 組織：将来対応） -->
-        <p v-if="activity.teamName || activity.organizationName" class="mb-2 text-sm text-surface-400">
-          {{ activity.teamName ?? activity.organizationName ?? '' }}
+        <!-- スコープ名（チーム or 組織）: BE の PublicScopeRef から取得する -->
+        <p v-if="activity.scopeRef?.scopeName" class="mb-2 text-sm text-surface-400">
+          {{ activity.scopeRef.scopeName }}
         </p>
 
         <!-- タイトル -->
@@ -79,28 +78,17 @@ onMounted(() => load())
           {{ activity.title }}
         </h1>
 
-        <!-- 日付・場所 -->
+        <!--
+          日付
+          NOTE: 開催場所（location）・参加人数・画像・カスタムフィールドは表示しない。
+          公開活動記録 API は御裁可済み 8 項目のみを返し、これらは禁則フィールドとして
+          意図的に含まれていない（BE: PublicActivityDetail の Javadoc 参照）。
+        -->
         <div class="mb-4 flex flex-wrap gap-3 text-sm text-surface-500">
           <span>
             <i class="pi pi-calendar mr-1" />{{ activity.activityDate }}
           </span>
-          <span v-if="activity.location">
-            <i class="pi pi-map-marker mr-1" />{{ activity.location }}
-          </span>
-          <span v-if="activity.participantCount !== undefined && activity.participantCount !== null">
-            <i class="pi pi-users mr-1" />
-            {{ $t('activity.participantCount', { count: activity.participantCount }) }}
-          </span>
         </div>
-
-        <!-- 画像 -->
-        <img
-          v-if="activity.imageUrl"
-          :src="activity.imageUrl"
-          :alt="activity.title"
-          class="mb-4 w-full rounded-lg object-cover"
-          style="max-height: 360px"
-        >
 
         <!-- 本文 -->
         <p
@@ -109,19 +97,6 @@ onMounted(() => load())
         >
           {{ activity.description }}
         </p>
-
-        <!-- カスタムフィールド（将来対応：現在はバックエンドから返らない） -->
-        <dl
-          v-if="activity.customFields && activity.customFields.length > 0"
-          class="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-surface-50 p-4 dark:bg-surface-700 sm:grid-cols-2"
-        >
-          <template v-for="field in activity.customFields" :key="field.fieldId">
-            <div v-if="field.value">
-              <dt class="text-xs text-surface-400">{{ field.fieldName }}</dt>
-              <dd class="text-sm font-medium">{{ field.value }}</dd>
-            </div>
-          </template>
-        </dl>
       </div>
 
       <!-- シェアパネル -->

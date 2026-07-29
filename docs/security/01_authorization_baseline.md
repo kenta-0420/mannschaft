@@ -64,6 +64,30 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 > - FE の市一覧ページは `/public/market/categories` を使用するよう修正済み
 > POST/DELETE（コメント投稿・削除など）は **認証必須**（許可リストに入れず `.authenticated()` が制御）。
 
+#### F06.4 公開活動記録（2026-07-29 追加）
+
+チーム / 組織が対外的に活動実績を見せる機能であり、未ログインの閲覧（保護者候補・スポンサー・検索エンジン）が要件そのもの。SSR / SNS シェア用に以下 5 EP を permitAll する（`SecurityConfig.java` の `/api/v1/public/activities/*` 以下 5 行）。
+
+| パターン | メソッド | コントローラ | 公開理由・ガード |
+|---|---|---|---|
+| `/api/v1/public/activities/*` | GET | `activity/ActivityPublicController#getPublicActivityById` | SNS シェア URL `/activity/{id}` から ID 直引き（スコープ不問） |
+| `/api/v1/public/teams/*/activities` | GET | 〃 `#listTeamPublicActivities` | チーム公開活動記録一覧 |
+| `/api/v1/public/teams/*/activities/*` | GET | 〃 `#getTeamPublicActivity` | チーム公開活動記録詳細 |
+| `/api/v1/public/organizations/*/activities` | GET | 〃 `#listOrgPublicActivities` | 組織公開活動記録一覧 |
+| `/api/v1/public/organizations/*/activities/*` | GET | 〃 `#getOrgPublicActivity` | 組織公開活動記録詳細 |
+
+安全性は `PublicActivityQueryService`（匿名公開経路の唯一の入口）が以下 5 点で担保する:
+
+1. **親スコープが PUBLIC** かつ未凍結・未削除であること（非公開チーム / 組織配下は一律 404）
+2. **記録自身が `visibility=PUBLIC` かつ `status=PUBLISHED`** であること（下書き・会員限定・論理削除済みは 404）
+3. **F00 正準の可視性判定**（`ContentVisibilityChecker#canView`・未認証 `userId=null`）を通ること。独自述語は作らない
+4. **パス変数と実スコープの一致**（スコープ詐称 IDOR の拒否）
+5. **返却は公開専用 DTO の 8 項目のみ** — `PublicActivityDetail` / `PublicActivitySummary`（`id` / `title` / `activityDate` / `activityTimeStart` / `activityTimeEnd` / `description` / `scopeRef` / `createdAt`）。`location` / `fieldValues` / `attachments` / `createdBy` / `visibility` / `status` / `templateId` / `venueId` / `scheduleId` / `updatedAt` は**禁則フィールド**として一切含めない
+
+失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
+
+> **DTO に項目を足すときは permitAll の妥当性が崩れうる**。契約テスト `ActivityPublicContractIT`（ホワイトリスト方式）と `SecurityConfigAuthorizationTest` が機械的に守っているため、追加時は必ず両テストと本節を更新すること。設計書: `docs/features/F06.4_activity_records.md`
+
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
 `POST /api/v1/ads/*/click`、`GET/POST /api/v1/ads/unsubscribe`、`GET /api/v1/ads/pixels/open`。
 

@@ -294,6 +294,20 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
                 // F19.1 Phase 7: 組織タイムライン投稿公開 API（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/timeline-posts").permitAll()
+                // F06.4 公開活動記録 API（認証不要・レート制限あり）。
+                // 未ログインの閲覧（保護者候補・スポンサー・検索エンジン）が機能要件そのもの。
+                // 安全性は ActivityPublicController / PublicActivityQueryService が担保する:
+                //   親スコープが PUBLIC かつ 記録が visibility=PUBLIC && status=PUBLISHED のみ 200。
+                //   それ以外（不在 / 非公開 / 下書き / 削除済み / 親非公開 / スコープ詐称）は一律 404 で存在秘匿。
+                //   返却は公開専用 DTO の 8 項目のみ（作成者 ID・入力値・添付・開催場所は含めない）。
+                // レート制限は PublicApiRateLimitFilter の PUBLIC_API バケット（60/min/IP・200/min/user）。
+                // 設計書 §7.4 の IDOR 規約どおり `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
+                // 書込（POST/PUT/PATCH/DELETE）は permitAll しない（deny-by-default の authenticated() に落とす）。
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/activities/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/activities").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/activities/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/activities").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/activities/*").permitAll()
                 // F08.7 項目① 公開大会参照 API（認証不要）。
                 // PublicTournamentController（visibility=PUBLIC のみ verifyPublicAccess で 404 ガード）と
                 // EmbedController（埋め込みウィジェット・未ログイン前提）の全 GET パスを permitAll する。

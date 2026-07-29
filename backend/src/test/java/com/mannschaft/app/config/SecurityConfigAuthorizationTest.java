@@ -815,4 +815,83 @@ class SecurityConfigAuthorizationTest {
         expectAuthRejected(mockMvc.perform(get("/api/v1/admin/notifications")),
                 "GET /api/v1/admin/notifications");
     }
+
+    // ============================================================================
+    // 試練（公開活動記録 permitAll 到達性）: 公開活動記録 API 5 本が SecurityConfig の
+    // permitAll 一覧に未登録で未認証 401 になっている（PublicStatsController の登録漏れと
+    // 同型の事故。408-419行のコメント参照）。実装（permitAll 追加）はこれから行うため、
+    // 本節のテストは実装前は red で正常。対象 5 エンドポイント:
+    //   GET /api/v1/public/activities/{id}
+    //   GET /api/v1/public/teams/{teamId}/activities
+    //   GET /api/v1/public/teams/{teamId}/activities/{id}
+    //   GET /api/v1/public/organizations/{orgId}/activities
+    //   GET /api/v1/public/organizations/{orgId}/activities/{id}
+    // 書込（POST）は permitAll 対象外（AC-6）、`*` 1 階層厳格の担保（AC-7）も併せて検証する。
+    // ============================================================================
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-1) 未認証 GET /api/v1/public/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/activities/1")),
+                "GET /api/v1/public/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-2) 未認証 GET /api/v1/public/teams/{teamId}/activities は認証で弾かれない")
+    void anonymous_public_activity_team_list_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/teams/1/activities")),
+                "GET /api/v1/public/teams/{teamId}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-3) 未認証 GET /api/v1/public/teams/{teamId}/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_team_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/teams/1/activities/100")),
+                "GET /api/v1/public/teams/{teamId}/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-4) 未認証 GET /api/v1/public/organizations/{orgId}/activities は認証で弾かれない")
+    void anonymous_public_activity_org_list_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/activities")),
+                "GET /api/v1/public/organizations/{orgId}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-5) 未認証 GET /api/v1/public/organizations/{orgId}/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_org_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/activities/100")),
+                "GET /api/v1/public/organizations/{orgId}/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-6) 未認証 POST /api/v1/public/teams/{id}/activities は認証必須（書込は permitAll しない）")
+    void anonymous_public_activity_post_is_auth_rejected() throws Exception {
+        // 公開 GET と同じ前置詞でも POST は permitAll の HttpMethod.GET に含まれないため
+        // deny-by-default で 401/403 になること（書込面を開いていない証左）。
+        expectAuthRejected(
+                mockMvc.perform(post("/api/v1/public/teams/1/activities")),
+                "POST /api/v1/public/teams/{id}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-7) 未認証 GET /api/v1/public/activities/{id}/foo（余分階層）は permitAll されず 401/403")
+    void anonymous_public_activity_extra_segment_is_auth_rejected() throws Exception {
+        // `*` は 1 階層厳格のため、想定外の深いパスは permitAll にマッチせず deny-by-default。
+        expectAuthRejected(
+                mockMvc.perform(get("/api/v1/public/activities/1/foo")),
+                "GET /api/v1/public/activities/{id}/foo");
+    }
 }

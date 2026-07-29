@@ -133,6 +133,9 @@ public class GlobalExceptionHandler {
             // F19.1 Phase 7: ブログ投稿 public_visible / 公開設定変更
             Map.entry("PUBLIC_011", HttpStatus.FORBIDDEN),         // 投稿 public_visible 変更権限なし（投稿者本人以外）
             Map.entry("PUBLIC_012", HttpStatus.FORBIDDEN),         // チーム/組織 公開設定変更権限なし
+            // F06.4 公開活動記録: 不在 / 非公開 / DRAFT / 削除済み / 親スコープ非公開 / スコープ詐称を
+            // すべて 404 に倒して存在秘匿する（403 を返すと存在オラクルになる）
+            Map.entry("PUBLIC_013", HttpStatus.NOT_FOUND),
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
