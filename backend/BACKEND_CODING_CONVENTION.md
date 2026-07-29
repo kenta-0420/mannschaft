@@ -158,15 +158,27 @@ public CreateFooRequest(@JsonProperty("title") String title,
 ```
 
 理由: Jackson はコンストラクタが複数あるとデシリアライズ用を一意に決められず、
-「全フィールド `final`（setter 無し）＋引数無しコンストラクタ無し」だと no suitable creator で
-デシリアライザ構築に失敗する。Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
+「引数無しコンストラクタ無し」だと no suitable creator でデシリアライザ構築に失敗する。
+Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
 `HttpMessageNotReadableException` とは**別系統**）で投げるため、`GlobalExceptionHandler` に届かず
 **body の内容によらず 500** になる。Mock ベースの Service UT では原理的に検出できず、
 `SendMessageRequest`（PR #2033）/ `CreateThreadRequest`（PR #2503）で 2 度再発した。
 
 - コンストラクタが **1 本だけ**なら `@JsonCreator` は不要（`-parameters` ＋ `ParameterNamesModule` で暗黙 creator になる）
 - Lombok の `@Data + @NoArgsConstructor + @AllArgsConstructor` 様式も可（引数無しコンストラクタ＋setter で成立する）
+- `record` は Jackson が正準コンストラクタをネイティブ解決するため、コンストラクタが複数でも `@JsonCreator` は不要
 - 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）
+
+#### `@ModelAttribute`（フォームバインド）DTO は `@JsonCreator` では救えない
+
+`@ModelAttribute` で受ける DTO（および Controller メソッドの**無注釈複合型引数**）は、
+`BeanUtils.getResolvableConstructor` が「Kotlin primary → **宣言コンストラクタがちょうど 1 本** →
+引数無しコンストラクタ」の順にしか解決しない。**Jackson の注釈は一切見ない**ため、
+`@JsonCreator` を付けても「2 本以上＋引数無し無し」なら `IllegalStateException` で同じく 500 になる。
+
+フォーム DTO は **引数無しコンストラクタ ＋ setter**（`@Getter @Setter` ＋暗黙 no-arg。
+main の実在例は `recruitment/dto/RecruitmentListingSearchRequest`）にするか、
+**コンストラクタを 1 本に保つ**こと。こちらも同じ番人 D-7 が検出する。
 
 * **Null安全**: 戻り値が空になる可能性がある場合は `Optional` を検討し、原則として `null` を直接返さないでください。
 * **トランザクション管理**:
