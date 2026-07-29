@@ -183,8 +183,18 @@ public class AnnouncementReadService {
      * <ul>
      *   <li>feed ID の {@code IN} 句が消えた（バインドは可視性集合の最大 3 個のみ）</li>
      *   <li>1 クエリ / 1 {@code INSERT} バッチの件数が定数上限に収まる</li>
-     *   <li>コストが<b>未読件数</b>にのみ比例する（既読済みが何万件あっても素通し）</li>
+     *   <li><b>クエリ回数・{@code INSERT} 件数がスコープの feed 総数に依らず、未読件数だけで決まる</b>
+     *       （{@code ceil(未読件数 / MARK_ALL_BATCH_SIZE)} 回。既読済みが何万件あっても
+     *       クエリ 1 回・{@code INSERT} 0 件で終わる）</li>
      * </ul>
+     *
+     * <p><b>正確を期すための注記（残課題・#2494 検分）</b>: 各周回は
+     * {@code ORDER BY a.id ASC} を毎回<b>先頭から</b>引き直すため、k 周目は直前までに
+     * 既読化した {@code k × MARK_ALL_BATCH_SIZE} 行を {@code NOT EXISTS} で潰しながら進む。
+     * よって<b>総インデックスプローブ数は未読件数に対して二次的</b>である
+     * （最悪の 20 周では約 10 万回）。「未読件数にのみ比例する」のは<b>クエリ回数</b>であって
+     * 総プローブ数ではない。{@code AND a.id > :lastSeenId} のカーソルを足せば線形にできるが、
+     * 現実の未読件数（数百〜数千）では 1〜数周で終わるため #2494 では見送った。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープ ID

@@ -142,8 +142,11 @@ public class AnnouncementFeedQueryRepository {
      * プレースホルダ数・{@code INSERT} 件数が伸び、{@code max_allowed_packet} や
      * プリペアドステートメントのパラメータ上限に触れうるうえ、
      * <b>1 リクエストの実行時間がスコープの歴史の長さに比例</b>していた。
-     * 「未読だけを DB 側で絞る」ことで、コストが<b>未読件数</b>にのみ比例するようになり、
-     * feed ID の {@code IN} 句そのものが消える（残るパラメータは可視性集合の最大 3 個のみ）。</p>
+     * 「未読だけを DB 側で絞る」ことで、<b>クエリ回数と {@code INSERT} 件数がスコープの
+     * feed 総数に依らず未読件数だけで決まる</b>ようになり、feed ID の {@code IN} 句そのものが消える
+     * （残るパラメータは可視性集合の最大 3 個のみ）。
+     * なお呼び出し元は毎回<b>先頭から</b>引き直すため総インデックスプローブ数は未読件数に対して
+     * 二次的である（{@link AnnouncementReadService#markAllAsRead} の注記を参照）。</p>
      *
      * <p><b>可視性の 1 対 1</b>: WHERE 句は一覧クエリ {@link #findByScope} と<b>同一の定数</b>
      * {@code VISIBLE_IN_SCOPE_WHERE} を連結して組み立てる。差分は

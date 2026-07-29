@@ -195,6 +195,39 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             assertThat(after).doesNotContain(readTarget);
             assertThat(after).containsExactlyElementsOf(before.subList(1, before.size()));
         }
+
+        /**
+         * {@code NOT EXISTS} の相関条件が {@code r.userId = :userId} に束縛されていることを固定する。
+         *
+         * <p>束縛が落ちる（あるいは誤ったユーザーに束縛される）と、<b>他人が既読にしたお知らせが
+         * 自分の未読集合から消える</b> — 一括既読で既読化されず、未読バッジにも出ないまま
+         * 見落とされる。コード読解では正しいが、実 DB で他ユーザーの既読行を実際に置いて
+         * 縮まないことを確認しておく。</p>
+         */
+        @Test
+        @DisplayName("他ユーザーの既読行は自分の未読集合を1件も縮めない（NOT EXISTS の userId 束縛）")
+        void 他ユーザーの既読は自分の未読集合に影響しない() {
+            seedBoundaryFixture();
+            Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
+
+            List<Long> before = feedQueryRepository.findUnreadIdsByScope(
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+            assertThat(before).isNotEmpty();
+
+            // 別ユーザーが同じお知らせを全件既読にする
+            for (Long feedId : before) {
+                insertReadStatus(feedId, supporterId);
+            }
+            em.flush();
+
+            List<Long> after = feedQueryRepository.findUnreadIdsByScope(
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+
+            assertThat(after)
+                    .as("他ユーザー(id=%d)の既読行が自分(id=%d)の未読集合を縮めてはならない",
+                            supporterId, memberId)
+                    .containsExactlyElementsOf(before);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
