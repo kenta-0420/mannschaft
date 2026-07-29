@@ -599,24 +599,30 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 6. GET /teams/{teamId}/recruitment-subcategories（現挙動の明文化・仕様確認待ち）
+    // 6. GET /teams/{teamId}/recruitment-subcategories — 認可根治戦役 Wave7
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("6. GET /teams/{teamId}/recruitment-subcategories（現挙動の明文化）")
+    @DisplayName("6. GET /teams/{teamId}/recruitment-subcategories（認可根治 Wave7）")
     class ListSubcategories {
 
         /**
-         * <b>観察事項（挙動は変更しない）</b>: 本 EP は {@code RecruitmentSubcategoryService#listByScope}
-         * に {@code userId} すら渡しておらず、認可判定が存在しない。認証済みであれば誰でも任意チームの
-         * サブカテゴリを列挙できる。機微度は低いものの「設計上パブリックでよい」という意図の有無が
-         * 確認できていないため、本 PR では<b>現挙動をそのまま明文化</b>するに留める。
-         * 仕様確認のうえ認可が必要と判断された場合、本テストは期待値ごと差し替えること。
+         * 認可根治戦役 Wave7: 兄弟の {@code RecruitmentSubcategoryService#create}/{@code archive}
+         * と同一スコープの {@code checkMembership} を敷いた（読取＝会員・変更＝ADMINの通例）。
          */
         @Test
-        @DisplayName("観察: 部外者でもサブカテゴリ一覧は200（認可判定なし・仕様確認待ち）")
-        void 観察_部外者でも200_認可なし() throws Exception {
+        @DisplayName("非会員のサブカテゴリ一覧取得は403")
+        void 非会員のサブカテゴリ一覧取得は403() throws Exception {
             setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/recruitment-subcategories", teamAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("一般メンバー(非ADMIN)のサブカテゴリ一覧取得は200")
+        void 一般メンバーのサブカテゴリ一覧取得は200() throws Exception {
+            setAuth(memberAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/recruitment-subcategories", teamAId))
                     .andExpect(status().isOk());
         }

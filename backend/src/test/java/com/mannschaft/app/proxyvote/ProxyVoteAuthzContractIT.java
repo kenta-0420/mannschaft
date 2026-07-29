@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxyvote;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -15,8 +16,10 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +27,11 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -64,6 +69,10 @@ class ProxyVoteAuthzContractIT extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    /** R2 は外部依存（テスト環境にエンドポイント未設定）のため mock（添付ファイルの実アップロードを避ける）。 */
+    @MockitoBean
+    private R2StorageService r2StorageService;
 
     private Long teamAId;
     private Long teamBId;
@@ -357,6 +366,201 @@ class ProxyVoteAuthzContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(memberAId);
             mockMvc.perform(get("/api/v1/proxy-votes/{id}/results/csv", closedSessionId))
                     .andExpect(status().isOk());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 委任状提出(delegate)・取り下げ(cancelDelegation) — 認可根治戦役 Wave7
+    // 会員のみ（票の水増し防止・castVoteと同一方式）
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("delegate/cancelDelegation 認可（Wave7）")
+    class DelegateAuthz {
+
+        @Test
+        @DisplayName("非会員（outsider）の委任状提出は403（票の水増し防止）")
+        void 非会員の委任提出は403() throws Exception {
+            setAuthentication(outsiderId);
+            String body = objectMapper.writeValueAsString(java.util.Map.of("isBlank", true));
+            mockMvc.perform(post("/api/v1/proxy-votes/{id}/delegate", openSessionId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMINの委任状提出は403（BOLA・越境）")
+        void 別チームADMINの委任提出は403() throws Exception {
+            setAuthentication(adminBId);
+            String body = objectMapper.writeValueAsString(java.util.Map.of("isBlank", true));
+            mockMvc.perform(post("/api/v1/proxy-votes/{id}/delegate", openSessionId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("会員(memberA)は委任状を提出できる → 201")
+        void 会員は委任提出できる() throws Exception {
+            // openSessionId は setUp() で memberA の委任状（submittedDelegationId）を既に持つため、
+            // ALREADY_DELEGATED(400) と衝突しないよう本テスト専用の OPEN セッションを使う。
+            Long freshOpenSessionId = insertSession(teamAId, "委任提出専用総会", "MEETING", "OPEN", adminAId);
+            em.flush();
+
+            setAuthentication(memberAId);
+            String body = objectMapper.writeValueAsString(java.util.Map.of("isBlank", true));
+            mockMvc.perform(post("/api/v1/proxy-votes/{id}/delegate", freshOpenSessionId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("非会員（outsider）の委任状取り下げは403")
+        void 非会員の委任取り下げは403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(delete("/api/v1/proxy-votes/{id}/delegate", openSessionId))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 出席・委任状況(getAttendance) — 認可根治戦役 Wave7・会員のみ
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("getAttendance 認可（Wave7）")
+    class AttendanceAuthz {
+
+        @Test
+        @DisplayName("非会員の出席状況取得は403")
+        void 非会員の出席状況は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/proxy-votes/{id}/attendance", openSessionId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMINの出席状況取得は403（BOLA）")
+        void 別チームADMINの出席状況は403() throws Exception {
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/proxy-votes/{id}/attendance", openSessionId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("会員は出席状況を取得できる → 200")
+        void 会員は出席状況を取得できる() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/proxy-votes/{id}/attendance", openSessionId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 添付ファイル追加(addSessionAttachment/addMotionAttachment)・削除(deleteAttachment)
+    // — 認可根治戦役 Wave7・作成者またはスコープ管理者のみ（checkOwnerOrAdmin）
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("添付ファイル 認可（Wave7）")
+    class AttachmentAuthz {
+
+        @Test
+        @DisplayName("非管理者会員のセッション添付追加は403")
+        void 非管理者のセッション添付追加は403() throws Exception {
+            setAuthentication(memberAId);
+            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "dummy".getBytes());
+            mockMvc.perform(multipart("/api/v1/proxy-votes/{id}/attachments", draftSessionId)
+                            .file(file)
+                            .param("attachment_type", "DOCUMENT"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("作成者(adminA)のセッション添付追加は201")
+        void 作成者のセッション添付追加は201() throws Exception {
+            setAuthentication(adminAId);
+            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "dummy".getBytes());
+            mockMvc.perform(multipart("/api/v1/proxy-votes/{id}/attachments", draftSessionId)
+                            .file(file)
+                            .param("attachment_type", "DOCUMENT"))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("非管理者会員の議案添付追加は403")
+        void 非管理者の議案添付追加は403() throws Exception {
+            setAuthentication(memberAId);
+            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "dummy".getBytes());
+            mockMvc.perform(multipart("/api/v1/proxy-votes/motions/{motionId}/attachments", draftMotionId)
+                            .file(file))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("作成者(adminA)の添付削除は204、非管理者会員の添付削除は403")
+        void 添付削除の認可() throws Exception {
+            setAuthentication(adminAId);
+            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "dummy".getBytes());
+            String resp = mockMvc.perform(multipart("/api/v1/proxy-votes/{id}/attachments", draftSessionId)
+                            .file(file)
+                            .param("attachment_type", "DOCUMENT"))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+            Long attachmentId = objectMapper.readTree(resp).path("data").path("id").asLong();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(delete("/api/v1/proxy-votes/attachments/{attachmentId}", attachmentId))
+                    .andExpect(status().isForbidden());
+
+            setAuthentication(adminAId);
+            mockMvc.perform(delete("/api/v1/proxy-votes/attachments/{attachmentId}", attachmentId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 議案コメント一覧(listComments)・投稿(createComment) — 認可根治戦役 Wave7・会員のみ
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("議案コメント 認可（Wave7）")
+    class CommentAuthz {
+
+        @Test
+        @DisplayName("非会員のコメント一覧取得は403")
+        void 非会員のコメント一覧は403() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/proxy-votes/motions/{motionId}/comments", openMotionId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非会員のコメント投稿は403")
+        void 非会員のコメント投稿は403() throws Exception {
+            setAuthentication(outsiderId);
+            String body = objectMapper.writeValueAsString(java.util.Map.of("body", "越境コメント"));
+            mockMvc.perform(post("/api/v1/proxy-votes/motions/{motionId}/comments", openMotionId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("会員はコメント一覧取得・投稿ができる → 200/201")
+        void 会員はコメント一覧取得投稿ができる() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/proxy-votes/motions/{motionId}/comments", openMotionId))
+                    .andExpect(status().isOk());
+
+            String body = objectMapper.writeValueAsString(java.util.Map.of("body", "正当コメント"));
+            mockMvc.perform(post("/api/v1/proxy-votes/motions/{motionId}/comments", openMotionId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.body").value("正当コメント"));
         }
     }
 

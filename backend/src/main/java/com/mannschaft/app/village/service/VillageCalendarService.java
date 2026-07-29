@@ -206,7 +206,7 @@ public class VillageCalendarService {
     // ========================================================================
 
     /**
-     * 指定月の歳時記イベント一覧を取得する。
+     * 指定月の歳時記イベント一覧を取得する。村人（現役メンバー）のみ閲覧可（クラス javadoc §村人は閲覧のみ）。
      *
      * <p>該当条件:</p>
      * <ul>
@@ -215,8 +215,9 @@ public class VillageCalendarService {
      * </ul>
      */
     @Transactional(readOnly = true)
-    public CalendarEventListResponse listEventsByMonth(UUID villageId, int year, int month) {
+    public CalendarEventListResponse listEventsByMonth(UUID villageId, int year, int month, Long actorUserId) {
         loadActiveVillage(villageId);
+        requireVillager(villageId, actorUserId);
 
         if (month < 1 || month > 12) {
             throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
@@ -227,10 +228,14 @@ public class VillageCalendarService {
         return new CalendarEventListResponse(items, year, month);
     }
 
-    /** 歳時記イベント詳細を取得する。論理削除済みは {@link VillageErrorCode#CALENDAR_EVENT_NOT_FOUND}。 */
+    /**
+     * 歳時記イベント詳細を取得する。村人（現役メンバー）のみ閲覧可（クラス javadoc §村人は閲覧のみ）。
+     * 論理削除済みは {@link VillageErrorCode#CALENDAR_EVENT_NOT_FOUND}。
+     */
     @Transactional(readOnly = true)
-    public CalendarEventResponse getEvent(UUID villageId, UUID eventId) {
+    public CalendarEventResponse getEvent(UUID villageId, UUID eventId, Long actorUserId) {
         loadActiveVillage(villageId);
+        requireVillager(villageId, actorUserId);
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
         return CalendarEventResponse.from(entity);
     }

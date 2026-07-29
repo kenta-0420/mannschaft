@@ -75,28 +75,32 @@ public class VillageCalendarController {
      * デフォルトは現在の年月。{@code year} / {@code month} が未指定なら現時点を使う。
      */
     @GetMapping
-    @Operation(summary = "指定月の歳時記イベント一覧を取得する")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "指定月の歳時記イベント一覧を取得する（村人のみ）")
     public ApiResponse<CalendarEventListResponse> listByMonth(
             @PathVariable("villageId") UUID villageId,
             @RequestParam(name = "year", required = false) Integer year,
             @RequestParam(name = "month", required = false) Integer month) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
         LocalDate today = LocalDate.now();
         int resolvedYear = (year != null) ? year : today.getYear();
         int resolvedMonth = (month != null) ? month : today.getMonthValue();
         CalendarEventListResponse response =
-                calendarService.listEventsByMonth(villageId, resolvedYear, resolvedMonth);
+                calendarService.listEventsByMonth(villageId, resolvedYear, resolvedMonth, actorUserId);
         return ApiResponse.of(response);
     }
 
     /**
-     * 歳時記イベントの詳細を取得する。
+     * 歳時記イベントの詳細を取得する（村人のみ）。
      */
     @GetMapping("/{eventId}")
-    @Operation(summary = "歳時記イベントの詳細を取得する")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "歳時記イベントの詳細を取得する（村人のみ）")
     public ApiResponse<CalendarEventResponse> get(
             @PathVariable("villageId") UUID villageId,
             @PathVariable("eventId") UUID eventId) {
-        return ApiResponse.of(calendarService.getEvent(villageId, eventId));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(calendarService.getEvent(villageId, eventId, actorUserId));
     }
 
     /**

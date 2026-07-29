@@ -32,13 +32,21 @@ public class BlogTagService {
 
     /**
      * タグ一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@link #createTag} と同じ
+     * {@link AccessControlService#checkMembership} をスコープに敷き、非メンバーが
+     * 他チーム/組織のタグ構成を閲覧できないようにする。</p>
      */
-    public List<BlogTagResponse> listTags(Long teamId, Long organizationId) {
+    public List<BlogTagResponse> listTags(Long userId, Long teamId, Long organizationId) {
         List<BlogTagEntity> tags;
         if (teamId != null) {
+            accessControlService.checkMembership(userId, teamId, "TEAM");
             tags = tagRepository.findByTeamIdOrderBySortOrderAsc(teamId);
-        } else {
+        } else if (organizationId != null) {
+            accessControlService.checkMembership(userId, organizationId, "ORGANIZATION");
             tags = tagRepository.findByOrganizationIdOrderBySortOrderAsc(organizationId);
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return cmsMapper.toBlogTagResponseList(tags);
     }
