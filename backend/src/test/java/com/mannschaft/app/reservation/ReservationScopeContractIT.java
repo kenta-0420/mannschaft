@@ -3,14 +3,20 @@ package com.mannschaft.app.reservation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
+import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationReminderEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
+import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
+import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -35,9 +41,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -82,6 +90,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>金型: {@code MemberScopeContractIT} / {@code ChatChannelAccessScopeContractIT}
  * （{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL Testcontainers + 手動 SecurityContext）。</p>
+ *
+ * <p><b>Wave7 追補（営業時間/設定/ブロック時間一覧/ライン一覧/スロット一覧・詳細）:</b>
+ * 認可番人 Wave7 で「認可シグナルが一切見つからない」EP として摘出された 7 件
+ * （{@code ReservationBusinessHourController#getBusinessHours/getSettings/listBlockedTimes}・
+ * {@code TeamReservationLineController#listLines}・
+ * {@code TeamReservationSlotController#getSlot/listSlots/listAvailableSlots}）に
+ * {@code ReservationViewAccessGuard#assertCanView}（予約作成・グリッド・メニュー一覧と同一述語＝
+ * 会員 or 公開）を敷設した（§7〜9）。同一チーム内でも view ゲートは ADMIN/非 ADMIN を区別しない
+ * （会員なら誰でも閲覧可）ため、象限は「非会員→403」「別チーム ADMIN（BOLA）→403」
+ * 「非 ADMIN メンバー→200」「正当 ADMIN→200（非回帰）」の 4 点。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -106,6 +124,15 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ReservationReminderRepository reminderRepository;
+
+    @Autowired
+    private ReservationWaitlistEntryRepository waitlistEntryRepository;
+
+    @Autowired
+    private EmergencyClosureRepository emergencyClosureRepository;
+
+    @Autowired
+    private EmergencyClosureConfirmationRepository emergencyClosureConfirmationRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -485,6 +512,411 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("remindAt", LocalDateTime.now().plusDays(20).toString());
             return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. 予約設定閲覧（GET business-hours / GET (settings) / GET blocked-times）
+    //    — Service 層 ReservationViewAccessGuard（会員 or 公開）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. 予約設定閲覧（営業時間・設定・ブロック時間一覧）")
+    class BusinessHourSettingsView {
+
+        private final LocalDate from = LocalDate.now();
+        private final LocalDate to = LocalDate.now().plusDays(60);
+
+        @Test
+        @DisplayName("部外者は営業時間取得に403")
+        void 部外者は営業時間403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/business-hours", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）は営業時間取得に403")
+        void 別チームADMINは営業時間403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/business-hours", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは営業時間取得を200で取得")
+        void 非ADMINメンバーは営業時間200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/business-hours", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは営業時間取得を200で取得（非回帰）")
+        void 正当ADMINは営業時間200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/business-hours", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("部外者は予約設定取得に403")
+        void 部外者は予約設定403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）は予約設定取得に403")
+        void 別チームADMINは予約設定403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは予約設定取得を200で取得")
+        void 非ADMINメンバーは予約設定200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは予約設定取得を200で取得（非回帰）")
+        void 正当ADMINは予約設定200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("部外者はブロック時間一覧に403")
+        void 部外者はブロック時間403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/blocked-times", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）はブロック時間一覧に403")
+        void 別チームADMINはブロック時間403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/blocked-times", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーはブロック時間一覧を200で取得")
+        void 非ADMINメンバーはブロック時間200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/blocked-times", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINはブロック時間一覧を200で取得（非回帰）")
+        void 正当ADMINはブロック時間200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-settings/blocked-times", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. 予約ライン一覧閲覧（GET /reservation-lines）
+    //    — Service 層 ReservationViewAccessGuard（会員 or 公開）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. 予約ライン一覧閲覧")
+    class ReservationLineView {
+
+        @Test
+        @DisplayName("部外者はライン一覧に403")
+        void 部外者は403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-lines", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）はライン一覧に403")
+        void 別チームADMINは403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-lines", teamAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーはライン一覧を200で取得")
+        void 非ADMINメンバーは200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-lines", teamAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINはライン一覧を200で取得（非回帰）")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-lines", teamAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 9. 予約スロット閲覧（GET 一覧 / GET available / GET 詳細）
+    //    — Service 層 ReservationViewAccessGuard（会員 or 公開）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. 予約スロット閲覧（一覧・空き一覧・詳細）")
+    class ReservationSlotView {
+
+        private final LocalDate from = LocalDate.now();
+        private final LocalDate to = LocalDate.now().plusDays(60);
+
+        @Test
+        @DisplayName("部外者はスロット一覧に403")
+        void 部外者はスロット一覧403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）はスロット一覧に403")
+        void 別チームADMINはスロット一覧403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーはスロット一覧を200で取得")
+        void 非ADMINメンバーはスロット一覧200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINはスロット一覧を200で取得（非回帰）")
+        void 正当ADMINはスロット一覧200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("部外者は空きスロット一覧に403")
+        void 部外者は空きスロット一覧403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/available", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）は空きスロット一覧に403")
+        void 別チームADMINは空きスロット一覧403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/available", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは空きスロット一覧を200で取得")
+        void 非ADMINメンバーは空きスロット一覧200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/available", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは空きスロット一覧を200で取得（非回帰）")
+        void 正当ADMINは空きスロット一覧200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/available", teamAId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("部外者はスロット詳細に403")
+        void 部外者はスロット詳細403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/{slotId}", teamAId, slotAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別チームADMIN（越境）はスロット詳細に403")
+        void 別チームADMINはスロット詳細403() throws Exception {
+            setAuth(adminBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/{slotId}", teamAId, slotAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーはスロット詳細を200で取得")
+        void 非ADMINメンバーはスロット詳細200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/{slotId}", teamAId, slotAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINはスロット詳細を200で取得（非回帰）")
+        void 正当ADMINはスロット詳細200() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/{slotId}", teamAId, slotAId))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 10. 自己スコープ EP（AuthorizedInService 監査済・非回帰確認）
+    //     — リポジトリクエリが呼び出しユーザー自身の ID に固定される構造的な自己スコープ EP
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("10. 自己スコープEP（AuthorizedInService監査済）")
+    class SelfScopedEndpoints {
+
+        @Test
+        @DisplayName("GET /users/me/reservation-waitlist は呼び出しユーザー自身のWAITINGのみ返す")
+        void マイキャンセル待ち一覧は自己スコープ() throws Exception {
+            waitlistEntryRepository.save(ReservationWaitlistEntryEntity.builder()
+                    .teamId(teamAId).slotId(slotAId).userId(ownerAId).status(WaitlistStatus.WAITING).build());
+            waitlistEntryRepository.save(ReservationWaitlistEntryEntity.builder()
+                    .teamId(teamAId).slotId(slotAId).userId(memberAId).status(WaitlistStatus.WAITING).build());
+            em.flush();
+            em.clear();
+
+            setAuth(ownerAId);
+            mockMvc.perform(get("/api/v1/users/me/reservation-waitlist"))
+                    .andExpect(status().isOk())
+                    // 件数1件（memberAId分が漏れていない）で自己スコープを固定する。
+                    .andExpect(jsonPath("$.data.length()").value(1));
+        }
+
+        @Test
+        @DisplayName("GET /reservations/my は呼び出しユーザー自身の予約のみ返す（同一チームの他人の予約は見えない）")
+        void マイ予約一覧は自己スコープ() throws Exception {
+            setAuth(ownerAId);
+            mockMvc.perform(get("/api/v1/reservations/my"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(reservationAId));
+
+            // 同一チームの別会員（予約なし）は自分の予約が無いため空配列（他人の予約は漏れない）。
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/reservations/my"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("GET /reservations/upcoming は呼び出しユーザー自身の直近予約のみ返す")
+        void マイ直近予約一覧は自己スコープ() throws Exception {
+            // findUpcomingByUserId は CONFIRMED のみ対象のため、専用の CONFIRMED 予約を用意する
+            // （reservationAId は他セクション同様 PENDING のため対象外）。
+            ReservationSlotEntity slot = slotRepository.save(ReservationSlotEntity.builder()
+                    .teamId(teamAId).slotDate(LocalDate.now().plusDays(35))
+                    .startTime(LocalTime.of(14, 0)).endTime(LocalTime.of(15, 0))
+                    .build());
+            reservationRepository.save(ReservationEntity.builder()
+                    .teamId(teamAId).userId(ownerAId)
+                    .reservationSlotId(slot.getId()).lineId(lineAId)
+                    .status(ReservationStatus.CONFIRMED)
+                    .build());
+            em.flush();
+            em.clear();
+
+            setAuth(ownerAId);
+            mockMvc.perform(get("/api/v1/reservations/upcoming"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1));
+
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/reservations/upcoming"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("DELETE .../waitlist は他人のWAITINGを取消できず404（本人のみ204）")
+        void キャンセル待ち取消は自己スコープ() throws Exception {
+            waitlistEntryRepository.save(ReservationWaitlistEntryEntity.builder()
+                    .teamId(teamAId).slotId(slotAId).userId(ownerAId).status(WaitlistStatus.WAITING).build());
+            em.flush();
+            em.clear();
+
+            // 同一チームの別会員は自分のWAITINGが無いため404（他人のWAITINGを取消せない）。
+            setAuth(memberAId);
+            mockMvc.perform(delete(
+                            "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist", teamAId, slotAId))
+                    .andExpect(status().isNotFound());
+
+            // 本人は自分のWAITINGを取消できる（非回帰）。
+            setAuth(ownerAId);
+            mockMvc.perform(delete(
+                            "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist", teamAId, slotAId))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("POST .../emergency-closures/{id}/confirm は他人の確認レコードを操作できず400（本人のみ200）")
+        void 臨時休業確認は自己スコープ() throws Exception {
+            Long closureId = emergencyClosureRepository.save(EmergencyClosureEntity.builder()
+                    .teamId(teamAId)
+                    .startDate(LocalDate.now().plusDays(30)).endDate(LocalDate.now().plusDays(30))
+                    .reason("研修").subject("休業のお知らせ").messageBody("休業します")
+                    .createdBy(adminAId)
+                    .build()).getId();
+            emergencyClosureConfirmationRepository.save(EmergencyClosureConfirmationEntity.builder()
+                    .emergencyClosureId(closureId).userId(ownerAId).reservationId(reservationAId)
+                    .appointmentAt(LocalDateTime.now().plusDays(30))
+                    .build());
+            em.flush();
+            em.clear();
+
+            // 同一チームの別会員は自分の確認レコードが無いため400（他人の確認レコードを操作できない）。
+            setAuth(memberAId);
+            mockMvc.perform(post(
+                            "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirm", teamAId, closureId))
+                    .andExpect(status().isBadRequest());
+
+            // 本人は自分の確認レコードを確認済みにできる（非回帰）。
+            setAuth(ownerAId);
+            mockMvc.perform(post(
+                            "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirm", teamAId, closureId))
+                    .andExpect(status().isOk());
         }
     }
 
