@@ -169,7 +169,7 @@ class BlogPostServiceAdditionalTest {
         }
 
         @Test
-        @DisplayName("認可: 可視性フィルタで除外された記事は一覧に出ない（下書き漏洩根治）")
+        @DisplayName("認可: 可視性フィルタで除外された記事は一覧に出ない")
         void ユーザー別一覧_非公開記事は除外() {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);

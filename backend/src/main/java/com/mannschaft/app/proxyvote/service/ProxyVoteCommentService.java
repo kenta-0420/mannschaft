@@ -35,9 +35,9 @@ public class ProxyVoteCommentService {
     /**
      * 議案コメント一覧を取得する。
      *
-     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、非会員でも他セッションの議案コメントを
-     * 閲覧できた。兄弟の {@code ProxyVoteCastService#castVote} と同一の
-     * {@link AccessControlService#checkMembership} を敷く。</p>
+     * <p>認可根治戦役 Wave7: 兄弟の {@code ProxyVoteCastService#castVote} と同一の
+     * {@link AccessControlService#checkMembership} を敷き、セッションスコープの会員に
+     * 限定する。</p>
      */
     public Page<CommentResponse> listComments(Long motionId, Long currentUserId, Pageable pageable) {
         ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(motionId);

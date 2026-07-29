@@ -27,9 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code OnboardingMeController}（本人用）API 契約テスト（試練）。
  *
  * <p>正本: {@code OnboardingProgressService#getByIdForMember}/{@code completeStepByMember}。
- * 従来はいずれも本人所有チェックなしに {@code progressId} だけで進捗詳細取得・ステップ完了を
- * 実行できたため、任意のユーザーが他人の {@code progressId} を指定して進捗詳細を閲覧したり
- * 完了扱いにできた（BOLA）。本人以外は {@code ONBOARDING_003}（404・存在秘匿）で拒否する。</p>
+ * {@code progressId} から進捗エンティティを取得し、所有者が操作者本人であることを要求する
+ * （BOLA 対策）。本人以外は {@code ONBOARDING_003}（404・存在秘匿）で拒否する。</p>
  *
  * <p>金型: {@code ProxyVoteAuthzContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext + ネイティブ SQL フィクスチャ）。onboarding は
@@ -96,7 +95,7 @@ class OnboardingMeScopeContractIT extends AbstractMySqlIntegrationTest {
     class CompleteStep {
 
         @Test
-        @DisplayName("他人の進捗へのステップ完了は404(BOLA存在秘匿・不正な完了扱い防止)")
+        @DisplayName("他人の進捗へのステップ完了は404(BOLA存在秘匿)")
         void 他人の進捗のステップ完了は404() throws Exception {
             setAuthentication(otherId);
             mockMvc.perform(post("/api/v1/onboarding/progresses/me/{progressId}/steps/{stepId}/complete",

@@ -33,17 +33,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 認可根治戦役 Wave7: signage（デジタルサイネージ）ドメインの参照系 API 契約テスト（試練）。
  *
  * <p>正本: {@code SignageScreenService}/{@code SignageSlotService}/{@code SignageEmergencyService}。
- * 従来 {@code SignageScreenController#getScreen}/{@code listScreens}・
- * {@code SignageSlotController#listSlots}・{@code SignageScreenController#listEmergencyMessages} は
- * 認可判定なしに共有 Service メソッドを呼んでいたため、非会員でも他チーム/組織の画面設定・
- * スロット構成・緊急メッセージ履歴を閲覧できた。</p>
- *
- * <p>是正: {@code getScreen}/{@code listScreens}/{@code listSlots} は
- * サイネージ端末向けトークン認証経路（{@code SignageDisplayController}）と共有されるため
- * 元のメソッドは温存し、認証ユーザー向けの {@code *ForActor} オーバーロードで
- * {@code AccessControlService#checkMembership} を敷いた。{@code listEmergencyMessages} は
- * 端末経路と共有されないため直接敷いた。書込系（create/update/delete/addSlot/broadcastEmergency）は
- * 既に {@code checkAdminOrAbove} で保護済み（今回のスコープ外）。</p>
+ * {@code getScreen}/{@code listScreens}/{@code listSlots} はサイネージ端末向けトークン認証経路
+ * （{@code SignageDisplayController}）と共有されるため元のメソッドは温存し、認証ユーザー向けの
+ * {@code *ForActor} オーバーロードで {@code AccessControlService#checkMembership} を敷いた。
+ * {@code listEmergencyMessages} は端末経路と共有されないため直接敷いた。書込系
+ * （create/update/delete/addSlot/broadcastEmergency）は既に {@code checkAdminOrAbove} で
+ * 保護済み（今回のスコープ外）。</p>
  *
  * <p>金型: {@code CmsSeriesTagScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext）。</p>

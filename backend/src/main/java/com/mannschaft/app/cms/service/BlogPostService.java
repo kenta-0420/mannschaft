@@ -91,8 +91,7 @@ public class BlogPostService {
      *
      * <p>認可根治戦役 Wave7: 本一覧は下書き・非公開ステータスを含む全記事を返す
      * 内部管理用の入口のため、{@link #createPost} と同一の
-     * {@link AccessControlService#checkMembership} でチームメンバーに限定する
-     * （非メンバーは他チームの下書き記事タイトル等を列挙できてはならない）。</p>
+     * {@link AccessControlService#checkMembership} でチームメンバーに限定する。</p>
      *
      * @param teamIdStr チームの公開ID（UUID文字列）または内部Long ID文字列
      */
@@ -129,11 +128,10 @@ public class BlogPostService {
     /**
      * 個人ブログ記事一覧をページング取得する。
      *
-     * <p>認可根治戦役 Wave7: 従来は投稿者以外の閲覧でもステータス・可視性を問わず
-     * 全件返していた（下書き・非公開記事のタイトル漏洩）。{@link #getBySlug} と同一の
-     * F00 可視性判定（{@link ContentVisibilityChecker#filterAccessible}）で閲覧可能な
-     * 記事のみへ絞り込む。本人が自分の一覧（{@code listMyPosts}）を見る場合は
-     * Resolver が DRAFT を作成者本人に可視と判定するため、自分の下書きは従来どおり見える。</p>
+     * <p>認可根治戦役 Wave7: {@link #getBySlug} と同一の F00 可視性判定
+     * （{@link ContentVisibilityChecker#filterAccessible}）で閲覧可能な記事のみへ絞り込む。
+     * 本人が自分の一覧（{@code listMyPosts}）を見る場合は、Resolver が DRAFT を
+     * 作成者本人に可視と判定するため、自分の下書きも見える。</p>
      */
     public Page<BlogPostResponse> listByUser(Long userId, Pageable pageable) {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();

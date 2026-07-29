@@ -117,9 +117,8 @@ public class OnboardingProgressService {
     /**
      * メンバー本人向けに進捗詳細を取得する（本人所有チェック）。
      *
-     * <p>認可根治戦役 Wave7: 従来 {@code OnboardingMeController#getById} は認可判定なしに
-     * {@link #getById} を呼んでいたため、任意のユーザーが他人の {@code progressId} を指定して
-     * オンボーディング進捗詳細（ステップ完了状況含む）を閲覧できた。本人以外は
+     * <p>認可根治戦役 Wave7: {@code progressId} から進捗エンティティを取得し、
+     * 所有者が操作者本人であることを要求する。本人以外は
      * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
      */
     public OnboardingProgressDetailResponse getByIdForMember(Long progressId, Long userId) {
@@ -218,9 +217,8 @@ public class OnboardingProgressService {
     /**
      * メンバー自身の手動完了（MANUAL/URLステップのみ）。
      *
-     * <p>認可根治戦役 Wave7: 従来は本人所有チェックが皆無で、任意のユーザーが他人の
-     * {@code progressId} を指定してオンボーディングステップを完了扱いにできた（BOLA）。
-     * {@link #getByIdForMember} と同一の本人チェックを先に適用し、他人の進捗は
+     * <p>認可根治戦役 Wave7: {@link #getByIdForMember} と同一の本人チェックを先に適用し、
+     * 進捗の所有者が操作者本人であることを要求する。他人の進捗は
      * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
      */
     @Transactional

@@ -29,9 +29,9 @@ public class BlogReactionService {
     /**
      * 記事に「みたよ！」リアクションを追加する。
      *
-     * <p>認可根治戦役 Wave7: 従来は記事の実存確認のみで、閲覧不可（DRAFT/MEMBERS_ONLY等）の
-     * 記事にも非メンバーがリアクションを付けられた。{@link #getBySlug}/{@link #getById} と
-     * 同一の {@link ContentVisibilityChecker#assertCanView} を先に適用する。</p>
+     * <p>認可根治戦役 Wave7: {@link #getBySlug}/{@link #getById} と同一の
+     * {@link ContentVisibilityChecker#assertCanView} を先に適用し、閲覧可能な記事にのみ
+     * リアクションを許可する。</p>
      *
      * @param blogPostId 記事ID
      * @param userId     ユーザーID

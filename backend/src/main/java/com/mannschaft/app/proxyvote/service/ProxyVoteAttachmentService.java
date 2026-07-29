@@ -54,8 +54,7 @@ public class ProxyVoteAttachmentService {
     /**
      * セッションに添付ファイルを追加する。
      *
-     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無だったため、非会員でも任意のセッションに
-     * 添付ファイルを追加できた。兄弟の {@code ProxyVoteSessionService#addMotion} と同一の
+     * <p>認可根治戦役 Wave7: 兄弟の {@code ProxyVoteSessionService#addMotion} と同一の
      * {@link AccessControlService#checkOwnerOrAdmin}（セッション作成者またはスコープ
      * ADMIN/DEPUTY_ADMIN）を敷く。</p>
      */
@@ -115,10 +114,9 @@ public class ProxyVoteAttachmentService {
     /**
      * 添付ファイルを削除する。
      *
-     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、{@code currentUserId} すら受け取らず
-     * 添付先スコープを問わず任意の attachmentId を削除できた。添付先種別（SESSION/MOTION）に
-     * 応じてセッションまで辿り、{@link #addSessionAttachment} と同一の
-     * {@link AccessControlService#checkOwnerOrAdmin} を敷く。</p>
+     * <p>認可根治戦役 Wave7: 添付先種別（SESSION/MOTION）に応じてセッションまで辿り、
+     * {@link #addSessionAttachment} と同一の {@link AccessControlService#checkOwnerOrAdmin}
+     * を敷く。</p>
      */
     @Transactional
     public void deleteAttachment(Long attachmentId, Long currentUserId) {

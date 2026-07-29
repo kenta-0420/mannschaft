@@ -126,10 +126,10 @@ public class SignageSlotService {
     /**
      * 認証ユーザー向けに画面に紐づくスロット一覧を取得する（メンバーシップ必須）。
      *
-     * <p>認可根治戦役 Wave7: 従来は {@code SignageSlotController#listSlots} が
-     * 認可判定なしに {@link #listSlots} を呼んでいたため、非会員でも他チーム/組織の
-     * スロット構成を閲覧できた。書込系（{@link #addSlot} 等）は ADMIN 限定の
-     * {@link #checkScreenAdmin} を使うが、参照は会員であれば可とする。</p>
+     * <p>認可根治戦役 Wave7: 認証ユーザー向けの管理画面入口として
+     * {@link AccessControlService#checkMembership} でスコープの会員に限定する。
+     * 書込系（{@link #addSlot} 等）は ADMIN 限定の {@link #checkScreenAdmin} を使うが、
+     * 参照は会員であれば可とする。</p>
      */
     public List<SignageSlotResponse> listSlotsForActor(Long screenId, Long actor) {
         SignageScreenEntity screen = screenService.findScreenOrThrow(screenId);

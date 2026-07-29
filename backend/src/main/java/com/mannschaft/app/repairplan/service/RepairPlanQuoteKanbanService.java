@@ -171,8 +171,7 @@ public class RepairPlanQuoteKanbanService {
     /**
      * カンバンを更新する（ADMIN/DEPUTY_ADMIN 以上）。楽観ロック適用。
      *
-     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、非管理者会員でも任意のカンバンを更新できた。
-     * 兄弟の {@link #createKanban}/{@link #moveCard} と同一の
+     * <p>認可根治戦役 Wave7: 兄弟の {@link #createKanban}/{@link #moveCard} と同一の
      * {@link AccessControlService#checkAdminOrAbove} を敷く。</p>
      */
     @Transactional
@@ -220,8 +219,7 @@ public class RepairPlanQuoteKanbanService {
     /**
      * カードをカンバンに追加する（ADMIN/DEPUTY_ADMIN 以上）。
      *
-     * <p>認可根治戦役 Wave7: 従来は認可判定が皆無で、非管理者会員でも任意のカンバンに
-     * 見積カードを追加できた。{@link #updateKanban} と同一の
+     * <p>認可根治戦役 Wave7: {@link #updateKanban} と同一の
      * {@link AccessControlService#checkAdminOrAbove} を敷く。</p>
      *
      * <h3>反社チェック検証</h3>

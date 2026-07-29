@@ -132,10 +132,10 @@ public class SignageScreenService {
     /**
      * 認証ユーザー向けに指定IDの画面を取得する（メンバーシップ必須）。
      *
-     * <p>認可根治戦役 Wave7: 従来は {@code SignageScreenController#getScreen} が
-     * 認可判定なしに {@link #getScreen} を呼んでいたため、非会員でも他チーム/組織の
-     * 画面設定を閲覧できた。兄弟の {@link #createScreen}/{@link #updateScreen} は
-     * ADMIN 限定だが、参照は会員であれば可とする（読取＝会員・変更＝ADMINの通例）。</p>
+     * <p>認可根治戦役 Wave7: 認証ユーザー向けの管理画面入口として
+     * {@link AccessControlService#checkMembership} でスコープの会員に限定する。
+     * 兄弟の {@link #createScreen}/{@link #updateScreen} は ADMIN 限定だが、参照は会員であれば
+     * 可とする（読取＝会員・変更＝ADMINの通例）。</p>
      */
     public SignageScreenResponse getScreenForActor(Long id, Long actor) {
         SignageScreenEntity entity = findScreenOrThrow(id);
