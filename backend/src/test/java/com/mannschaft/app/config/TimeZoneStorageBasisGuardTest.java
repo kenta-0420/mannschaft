@@ -142,18 +142,29 @@ class TimeZoneStorageBasisGuardTest {
     // AC-2
     // ============================================================
 
+    /**
+     * 検査対象は YAML を解析して得た<b>実際のプロパティ値</b>のうち JDBC URL であるものに限る。
+     * ファイルの生テキストを走査すると、この設定を解説するコメント文中の {@code serverTimezone=...}
+     * まで拾ってしまい、検査が壊れる（実際に本テスト作成時に踏んだ）。
+     */
     @Test
     @DisplayName("AC-2: main/resources の全 application*.yml で serverTimezone は UTC のみ")
     void 全プロファイルのJDBC_URLのserverTimezoneがUTCである() throws IOException {
         List<String> violations = new ArrayList<>();
 
         for (Path yml : listProfileConfigFiles()) {
-            String content = Files.readString(yml, StandardCharsets.UTF_8);
-            Matcher m = SERVER_TIMEZONE.matcher(content);
-            while (m.find()) {
-                String tz = m.group(1);
-                if (!"UTC".equals(tz)) {
-                    violations.add(yml + " → serverTimezone=" + tz);
+            Properties props = loadYaml(yml);
+            for (String key : props.stringPropertyNames()) {
+                String value = props.getProperty(key);
+                if (value == null || !value.contains("jdbc:")) {
+                    continue; // JDBC URL でない値は対象外
+                }
+                Matcher m = SERVER_TIMEZONE.matcher(value);
+                while (m.find()) {
+                    String tz = m.group(1);
+                    if (!"UTC".equals(tz)) {
+                        violations.add(yml + " [" + key + "] → serverTimezone=" + tz);
+                    }
                 }
             }
         }
