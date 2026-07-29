@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.recruitment.DisputeResolution;
@@ -31,9 +32,21 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class RecruitmentNoShowService {
 
+    /**
+     * #2497: 募集枠の論理削除に伴い、未解決の異議申立を自動で取り下げたことを示す監査イベント種別。
+     *
+     * <p>{@code AuditEventType} enum には登録しない。recruitment 用の
+     * {@code AuditEventCategory} が存在せず、カテゴリを新設すると
+     * {@code docs/openapi.json} / 生成型のドリフトを招くため、
+     * 既存の生文字列イベント（{@code CIRCULATION_FORCE_COMPLETED} 等）と同じ流儀に揃える。</p>
+     */
+    static final String AUDIT_EVENT_DISPUTE_AUTO_REVOKED = "RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED";
+
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
     private final AccessControlService accessControlService;
+    /** 監査ログサービス（#2497 自動取下げの記録用）。 */
+    private final AuditLogService auditLogService;
 
     // ===========================================
     // 管理者による NO_SHOW マーク
@@ -159,6 +172,87 @@ public class RecruitmentNoShowService {
         log.info("F03.11 Phase5b 異議申立解決: recordId={}, resolution={}", recordId, resolution);
 
         return saved;
+    }
+
+    /**
+     * 募集枠の論理削除に伴い、その配下に残る<b>未解決の異議申立</b>を一括で取り下げる（#2497）。
+     *
+     * <p><b>なぜ必要か</b>: 異議解決 EP が使う
+     * {@link RecruitmentNoShowRecordRepository#findByIdAndScopeTypeAndScopeId} は
+     * スコープ境界を得るために {@code RecruitmentListingEntity} を JOIN しており、募集枠側の
+     * {@code @SQLRestriction("deleted_at IS NULL")} が効く。よって団体が募集枠を論理削除すると、
+     * 配下の NO_SHOW 記録は<b>二度と裁定できなくなる</b>。一方
+     * {@link RecruitmentNoShowRecordRepository#countConfirmedNoShows} は
+     * 「{@code REVOKED} 以外はすべて算入」という条件のため、未解決（{@code dispute_resolution IS NULL}）
+     * の記録はペナルティに算入され続ける。放置すると利用者は
+     * 「異議を申し立てたのに永久に裁かれず、ペナルティだけ負う」状態に置かれる。</p>
+     *
+     * <p><b>なぜ {@code REVOKED} か</b>: 団体が募集枠を消して裁定の根拠を失わせた以上、
+     * 裁かれないまま利用者にペナルティを負わせるのは不当である。よって利用者に有利な
+     * {@link DisputeResolution#REVOKED}（異議認容＝NO_SHOW 取消）を当てる。
+     * {@code disputeResolution} の消費者は
+     * ①{@code countConfirmedNoShows}（{@code REVOKED} を算入から除外＝本修正の目的）、
+     * ②{@code RecruitmentNoShowController} の応答 DTO（表示のみ）の 2 つだけで、
+     * 「{@code REVOKED} 件数を団体の不正指標として数える」統計は存在しない。
+     * 副次的に {@code RecruitmentPenaltyRecomputeBatch} が翌日の再計算で閾値割れを検知し、
+     * 既存ペナルティを {@code DISPUTE_REVOKED} として自動解除する（望ましい方向の連動）。</p>
+     *
+     * <p><b>非対象</b>: 既に解決済み（{@code REVOKED} / {@code UPHELD}）の記録と、
+     * そもそも異議が申し立てられていない（{@code disputed = FALSE}）記録には触れない。
+     * 前者は管理者の裁定を上書きしないため、後者は異議なき NO_SHOW を取り消す理由がないため。</p>
+     *
+     * <p><b>認可</b>: 本メソッドは認可を行わない。呼出元
+     * {@code RecruitmentListingService#archive} が募集枠のスコープに対する
+     * {@code checkAdminOrAbove} を済ませたうえで呼ぶ「内部専用」の入口であり、
+     * Controller から直接到達する経路は無い（{@code feedback_authz_gate_on_public_entry_not_shared_method}
+     * の裏返しで、公開入口側にゲートが立っている）。</p>
+     *
+     * <p><b>ドメイン境界</b>: 参照する Repository は recruitment ドメイン内のみ。
+     * {@code AuditLogService} は auth ドメインだが Repository ではなく Service 呼び出しであり、
+     * かつ {@code @Async} でトランザクション外に出るため、越境トランザクションにはならない
+     * （CLAUDE.md「DB 設計の原則 #5」/ 番人 D-3 の対象外）。</p>
+     *
+     * @param listingId   論理削除された募集枠 ID
+     * @param scopeType   募集枠のスコープ種別（監査ログのコンテキスト用）
+     * @param scopeId     募集枠のスコープ ID（監査ログのコンテキスト用）
+     * @param actorUserId 論理削除を実行した管理者ユーザー ID（監査ログの操作者）
+     * @return 取り下げた件数
+     */
+    @Transactional
+    public int autoRevokeOpenDisputesOnListingArchived(
+            Long listingId, RecruitmentScopeType scopeType, Long scopeId, Long actorUserId) {
+        List<RecruitmentNoShowRecordEntity> openDisputes =
+                noShowRepository.findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(listingId);
+        if (openDisputes.isEmpty()) {
+            return 0;
+        }
+
+        for (RecruitmentNoShowRecordEntity record : openDisputes) {
+            record.resolveDispute(DisputeResolution.REVOKED);
+        }
+        noShowRepository.saveAll(openDisputes);
+
+        // 監査ログ: 金型は CirculationService#forceCompleteDocument
+        //（スコープ TEAM/ORGANIZATION を teamId/organizationId に振り分け・JSON メタデータ）。
+        // 1 記録 = 1 行で targetUserId を残し、「誰の操作で・誰のどの記録が」
+        // 取り下げられたかを後から追えるようにする。
+        for (RecruitmentNoShowRecordEntity record : openDisputes) {
+            auditLogService.record(
+                    AUDIT_EVENT_DISPUTE_AUTO_REVOKED, actorUserId, record.getUserId(),
+                    RecruitmentScopeType.TEAM == scopeType ? scopeId : null,
+                    RecruitmentScopeType.ORGANIZATION == scopeType ? scopeId : null,
+                    null, null, null,
+                    "{\"noShowRecordId\":" + record.getId()
+                            + ",\"listingId\":" + listingId
+                            + ",\"scopeType\":\"" + scopeType.name() + "\""
+                            + ",\"scopeId\":" + scopeId
+                            + ",\"resolution\":\"" + DisputeResolution.REVOKED.name() + "\""
+                            + ",\"trigger\":\"LISTING_ARCHIVED\"}");
+        }
+
+        log.info("F03.11 Phase5b 募集枠論理削除に伴う異議自動取下げ: listingId={}, actorUserId={}, count={}",
+                listingId, actorUserId, openDisputes.size());
+        return openDisputes.size();
     }
 
     // ===========================================

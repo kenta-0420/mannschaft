@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -15,17 +16,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link RecruitmentNoShowService} の単体テスト。
@@ -44,6 +54,9 @@ class RecruitmentNoShowServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private RecruitmentNoShowService service;
 
@@ -51,6 +64,8 @@ class RecruitmentNoShowServiceTest {
     private static final Long SCOPE_ID = 10L;
     private static final Long PARTICIPANT_ID = 100L;
     private static final Long RECORD_ID = 200L;
+    private static final Long LISTING_ID = 500L;
+    private static final Long PENALIZED_USER_ID = 999L;
     private static final RecruitmentScopeType SCOPE_TYPE = RecruitmentScopeType.TEAM;
 
     // ========================================
@@ -105,9 +120,20 @@ class RecruitmentNoShowServiceTest {
         /**
          * 裏目付C 根治の要: 対象記録が別スコープに属する場合、スコープ済みクエリが空を返し
          * 不在と同一の {@code NO_SHOW_RECORD_NOT_FOUND} に畳み込まれること（ID 実在の秘匿）。
+         *
+         * <p><b>【重要・読み違え防止 #2497】このケースは「越境フィルタそのもの」を検証していない。</b>
+         * ここでは {@code noShowRepository} がモックであり、「越境時に空を返す」という前提を
+         * テスト側が {@code given(...).willReturn(Optional.empty())} で<b>与えている</b>。
+         * 従って本ケースが固定しているのは
+         * 「スコープ済みクエリが空を返したとき、Service が不在と同一のエラーコードに畳み込むこと」
+         * （＝実在オラクル封じの Service 側責務）だけである。
+         * {@code findByIdAndScopeTypeAndScopeId} の JOIN 条件が本当に他スコープの記録を
+         * 弾くかどうかは、実 MySQL を使う契約 IT
+         * {@code com.mannschaft.app.recruitment.RecruitmentNoShowScopeContractIT}（AC-R1/AC-R2/AC-R6）
+         * が唯一の実証である。本 UT だけを見て「越境は検証済み」と判断してはならない。</p>
          */
         @Test
-        @DisplayName("別スコープの記録IDは不在と同一の NO_SHOW_RECORD_NOT_FOUND（越境封鎖）")
+        @DisplayName("別スコープの記録IDは不在と同一の NO_SHOW_RECORD_NOT_FOUND（畳み込みのみ検証・越境実証はIT）")
         void resolveDispute_crossScopeRecord_throwsSameAsAbsent() {
             // 自スコープ権限は通るが、スコープ済みクエリが越境IDを空に畳み込む
             given(noShowRepository.findByIdAndScopeTypeAndScopeId(RECORD_ID, SCOPE_TYPE, SCOPE_ID))
@@ -142,6 +168,106 @@ class RecruitmentNoShowServiceTest {
     }
 
     // ========================================
+    // autoRevokeOpenDisputesOnListingArchived - #2497 募集枠論理削除に伴う自動取下げ
+    // ========================================
+
+    /**
+     * #2497 の Service 側責務のうち、<b>実 DB を要しない部分</b>を固定する。
+     *
+     * <p>本 Nested が検証するのは
+     * ①取得された未解決異議に当てる値が {@code REVOKED} であること、
+     * ②監査ログのイベント種別・操作者・対象ユーザー・スコープ振り分けが正しいこと、
+     * ③0 件のとき副作用が一切起きないこと の 3 点である。</p>
+     *
+     * <p><b>フィルタ条件（{@code disputed = TRUE AND dispute_resolution IS NULL}）そのものは
+     * ここでは検証できない。</b> 派生クエリの絞り込みが実際に効くか（解決済み・非異議の記録が
+     * 巻き込まれないか）は実 MySQL の
+     * {@code com.mannschaft.app.recruitment.RecruitmentListingArchiveDisputeAutoRevokeIT} が実証する。</p>
+     */
+    @Nested
+    @DisplayName("autoRevokeOpenDisputesOnListingArchived - #2497 募集枠論理削除に伴う異議の自動取下げ")
+    class AutoRevokeOpenDisputesOnListingArchived {
+
+        @Test
+        @DisplayName("未解決の異議に REVOKED を当てて保存する")
+        void 未解決異議にREVOKEDを当てて保存する() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildOpenDisputeRecord();
+            given(noShowRepository.findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(LISTING_ID))
+                    .willReturn(List.of(record));
+
+            int revoked = service.autoRevokeOpenDisputesOnListingArchived(
+                    LISTING_ID, SCOPE_TYPE, SCOPE_ID, ADMIN_ID);
+
+            assertThat(revoked).isEqualTo(1);
+            assertThat(record.getDisputeResolution())
+                    .as("募集枠が消えて裁定不能になる以上、利用者に有利な REVOKED を当てる")
+                    .isEqualTo(DisputeResolution.REVOKED);
+            assertThat(record.isDisputed())
+                    .as("異議を申し立てた事実自体は履歴として残す")
+                    .isTrue();
+            verify(noShowRepository).saveAll(List.of(record));
+        }
+
+        @Test
+        @DisplayName("TEAM スコープ: 監査ログに操作者・対象ユーザー・teamId が残る")
+        void 監査ログにTEAMスコープの文脈が残る() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildOpenDisputeRecord();
+            given(noShowRepository.findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(LISTING_ID))
+                    .willReturn(List.of(record));
+
+            service.autoRevokeOpenDisputesOnListingArchived(LISTING_ID, RecruitmentScopeType.TEAM, SCOPE_ID, ADMIN_ID);
+
+            ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).record(
+                    eq("RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED"),
+                    eq(ADMIN_ID),               // 誰の操作に起因する取り下げか
+                    eq(PENALIZED_USER_ID),      // 誰の NO_SHOW 記録が取り下げられたか
+                    eq(SCOPE_ID),               // TEAM スコープ → teamId
+                    isNull(),                   // organizationId は null
+                    isNull(), isNull(), isNull(),
+                    metadata.capture());
+            assertThat(metadata.getValue())
+                    .as("後から「募集枠の論理削除に伴う自動取下げ」と判別できること")
+                    .contains("\"trigger\":\"LISTING_ARCHIVED\"")
+                    .contains("\"listingId\":" + LISTING_ID)
+                    .contains("\"resolution\":\"REVOKED\"");
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION スコープ: 監査ログの organizationId 側に振り分けられる")
+        void 監査ログにORGANIZATIONスコープの文脈が残る() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildOpenDisputeRecord();
+            given(noShowRepository.findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(LISTING_ID))
+                    .willReturn(List.of(record));
+
+            service.autoRevokeOpenDisputesOnListingArchived(
+                    LISTING_ID, RecruitmentScopeType.ORGANIZATION, SCOPE_ID, ADMIN_ID);
+
+            verify(auditLogService).record(
+                    eq("RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED"),
+                    eq(ADMIN_ID), eq(PENALIZED_USER_ID),
+                    isNull(),                   // teamId は null
+                    eq(SCOPE_ID),               // ORGANIZATION スコープ → organizationId
+                    isNull(), isNull(), isNull(),
+                    anyString());
+        }
+
+        @Test
+        @DisplayName("未解決の異議が 0 件なら保存も監査も行わない")
+        void 対象0件なら副作用なし() {
+            given(noShowRepository.findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(LISTING_ID))
+                    .willReturn(List.of());
+
+            int revoked = service.autoRevokeOpenDisputesOnListingArchived(
+                    LISTING_ID, SCOPE_TYPE, SCOPE_ID, ADMIN_ID);
+
+            assertThat(revoked).isZero();
+            verify(noShowRepository, never()).saveAll(any());
+            verifyNoInteractions(auditLogService);
+        }
+    }
+
+    // ========================================
     // ヘルパー
     // ========================================
 
@@ -155,6 +281,21 @@ class RecruitmentNoShowServiceTest {
         Field f = RecruitmentNoShowRecordEntity.class.getDeclaredField("disputed");
         f.setAccessible(true);
         f.set(record, disputed);
+        return record;
+    }
+
+    /** 未解決の異議申立（disputed=true / disputeResolution=null）を持つ NO_SHOW 記録。 */
+    private RecruitmentNoShowRecordEntity buildOpenDisputeRecord() throws Exception {
+        RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
+                .participantId(PARTICIPANT_ID)
+                .listingId(LISTING_ID)
+                .userId(PENALIZED_USER_ID)
+                .build();
+        record.dispute();
+        // 監査ログの metadata 検証用に id を差し込む（IDENTITY 採番の代替）
+        Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(record, RECORD_ID);
         return record;
     }
 }
