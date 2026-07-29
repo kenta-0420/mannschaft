@@ -2,6 +2,7 @@ package com.mannschaft.app.service.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.service.dto.BulkCreateResponse;
 import com.mannschaft.app.service.dto.BulkCreateServiceRecordRequest;
 import com.mannschaft.app.service.dto.ConfirmResponse;
@@ -257,10 +258,23 @@ public class ServiceRecordController {
 
     /**
      * 自分のサービス履歴を全チーム横断で取得する。
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * 本 EP はリクエストボディを持たず、対象ユーザーはリクエストから受け取らない。
+     * サーバ側で確定した {@link com.mannschaft.app.common.SecurityUtils#getCurrentUserId()} を
+     * {@code ServiceRecordService#getMyRecords} 経由で
+     * {@code ServiceRecordRepository#findMyRecords} の検索条件（{@code r.memberUserId = :userId}）に
+     * 固定して渡すため、他人のサービス記録は構造上取得できない自己スコープ EP である。
+     * クエリパラメータ {@code teamId} は「ダッシュボード共有が有効なチームに絞る」ための任意フィルタに
+     * すぎず、{@code memberUserId} の固定条件を回避する経路にはならない。未ログインは
+     * {@code SecurityUtils.getCurrentUserId()} が 401 を投げる。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @GetMapping("/service-records/me")
     @Operation(summary = "自分のサービス履歴")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService
     public ResponseEntity<PagedResponse<ServiceRecordResponse>> getMyRecords(
             @RequestParam(required = false) Long teamId,
             @RequestParam(defaultValue = "0") int page,
