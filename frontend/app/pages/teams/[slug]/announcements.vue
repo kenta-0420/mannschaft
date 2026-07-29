@@ -29,7 +29,7 @@ const {
   fetchFeed,
   togglePin,
   deleteAnnouncement,
-  markAsRead,
+  markAsReadBeforeOpen,
   markAllAsRead,
 } = useAnnouncementFeed('TEAM', teamSlug)
 
@@ -150,9 +150,11 @@ async function onItemClick(item: (typeof feed.value)[number]) {
   }
 
   // アクセス可能: 既読マーク → 遷移
-  if (!item.isRead) {
-    await markAsRead(item.id)
-  }
+  // #2495: 一覧を開いたまま放置した間に元コンテンツが期限切れ・削除になっていると
+  // 既読 API が ANNOUNCE_001 を返す。従来はここで例外が抜けて navigateTo に到達せず
+  // 「クリックしても何も起きない」状態だった。判定は composable 側に一元化してある。
+  const canOpen = await markAsReadBeforeOpen(item)
+  if (!canOpen) return
   navigateTo(item.sourceUrl)
 }
 
