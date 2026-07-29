@@ -142,6 +142,8 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long outsiderId;
     /** orgC の ADMIN。 */
     private Long adminCId;
+    /** 個人スコープ（PERSONAL）の所有者。{@code scope_id = このユーザーの userId}。 */
+    private Long personalOwnerId;
 
     // --- カテゴリ ---
     private Long catAId;
@@ -164,6 +166,8 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long archivedAId;
     /** teamB のアーカイブ済みスレッド（保管庫 folderB 所属。越境 ID の主役）。 */
     private Long archivedBId;
+    /** 個人スコープのスレッド（{@code scope_id = personalOwnerId}）。本人以外に見えてはならない。 */
+    private Long personalThreadId;
 
     // --- 返信 ---
     /** threadA の返信（投稿者 = memberA）。 */
@@ -180,6 +184,24 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** orgD の、他テナントに漏れてはならない秘匿本文（ORGANIZATION スコープ版の混入検査に使う）。 */
     private static final String SECRET_BODY_D = "BULAUTHZ orgD 秘匿本文";
+
+    /** 個人スコープの、本人以外に漏れてはならない秘匿本文。 */
+    private static final String SECRET_BODY_PERSONAL = "BULAUTHZ 個人 秘匿本文";
+
+    /**
+     * 実在しない村 ID。
+     *
+     * <p>村の正当系（グローバル経路）が入口ゲートに阻まれず村ドメインの認可判定まで到達することを
+     * 確認するために使う。村を 1 件も作らずに「村ドメインのエラーコードが返ること」で到達を判定するため、
+     * 村テーブル群のフィクスチャを組まずに済む。</p>
+     */
+    private static final UUID ABSENT_VILLAGE_ID = UUID.fromString("00000000-0000-7000-8000-0000000000ff");
+
+    /** 村ドメインの「村が見つかりません」エラーコード（到達判定に使う）。 */
+    private static final String VILLAGE_NOT_FOUND_CODE = "VILLAGE_001";
+
+    /** 認可拒否の共通エラーコード（入口ゲート・本人性ゲートの判定に使う）。 */
+    private static final String FORBIDDEN_CODE = "COMMON_002";
 
     @BeforeEach
     void setUp() {
@@ -199,6 +221,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
         adminBId = insertUser("bulauthz-admin-b@example.com");
         outsiderId = insertUser("bulauthz-outsider@example.com");
         adminCId = insertUser("bulauthz-admin-c@example.com");
+        personalOwnerId = insertUser("bulauthz-personal-owner@example.com");
 
         // isAdmin（user_roles）と isMember（memberships）は別系統のため、ADMIN 役にも memberships を張る。
         MembershipTestHelper.insertMembership(em, adminAId, membershipScope("TEAM"), teamAId, RoleKind.MEMBER);
@@ -234,6 +257,10 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
 
         archivedAId = saveArchivedThread(ScopeType.TEAM, teamAId, adminAId, "BULAUTHZ teamA 保管済", folderAId);
         archivedBId = saveArchivedThread(ScopeType.TEAM, teamBId, adminBId, "BULAUTHZ teamB 保管済", folderBId);
+
+        // 個人スコープ（scope_id = 所有者の userId）。カテゴリは付けない（未分類）。
+        personalThreadId = saveThread(ScopeType.PERSONAL, personalOwnerId, null, personalOwnerId,
+                "BULAUTHZ 個人スレッド", SECRET_BODY_PERSONAL, false);
 
         replyAId = saveReply(threadAId, memberAId, "teamA 返信");
         replyBId = saveReply(threadBId, crossAuthorId, "teamB 返信");
@@ -623,7 +650,11 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}/lock",
                             "teams", teamAId, threadBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    // エラーコードまで照合する。ステータスだけだとパス誤記による
+                    // ハンドラ不在 404 でも緑になり、テストが空虚化する。
+                    .andExpect(jsonPath("$.error.code")
+                            .value(BulletinErrorCode.THREAD_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();
@@ -640,7 +671,10 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}/archive",
                             "teams", teamAId, threadBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    // エラーコードまで照合する（ハンドラ不在 404 との取り違え防止）。
+                    .andExpect(jsonPath("$.error.code")
+                            .value(BulletinErrorCode.THREAD_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();
@@ -1265,6 +1299,349 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 10. スコープ種別の入口ゲート（村スコープは正規の入口へ一本化）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * スコープ付きパス経路（{@code /api/v1/{scopeType}/{scopeId}/bulletin/...}）は
+     * 認可判定手段を持つスコープ種別のみを受理する。
+     *
+     * <p>村掲示板は村 ID（{@code scope_village_id}）を伴うグローバル経路が正規の入口であり、
+     * 村 ID を伴わないこのパス形式では村側の認可判定を行えない。判定手段を持たない経路は
+     * 素通しではなく拒否とし、入口を一本化する。</p>
+     *
+     * <p><b>非空虚性</b>: 遮断は {@code BulletinScopeIdResolver} の入口ゲート<b>のみ</b>が担う。
+     * ゲートを外すと、村スコープでは所属ゲートも管理権限ゲートも実効判定を行わない
+     * （ロール基盤の外にあるため）ので、いずれの EP も 200 側へ抜ける。
+     * したがって「別の理由で先に弾かれているだけ」ではない。</p>
+     *
+     * <p>本テストは村を 1 件も作らない。ゲートは DB アクセス前に発火するため、
+     * 村テーブル群のフィクスチャ無しで遮断を検査できる。</p>
+     */
+    @Nested
+    @DisplayName("10. スコープ付きパス経路のスコープ種別ゲート（村は正規の入口へ一本化）")
+    class PathScopeGate {
+
+        /** AC-B49: スレッド一覧。5 コントローラそれぞれで遮断されることを個別に固定する。 */
+        @Test
+        @DisplayName("AC-B49 村スコープのスレッド一覧はスコープ付きパスでは403")
+        void ac_b49_村スコープのスレッド一覧は403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads", "villages", 0))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+        }
+
+        /** AC-B50: スレッド詳細も同様に遮断される。 */
+        @Test
+        @DisplayName("AC-B50 村スコープのスレッド詳細はスコープ付きパスでは403")
+        void ac_b50_村スコープのスレッド詳細は403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}",
+                            "villages", 0, threadAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+        }
+
+        /** AC-B51: カテゴリ一覧（BulletinCategoryController）も同様に遮断される。 */
+        @Test
+        @DisplayName("AC-B51 村スコープのカテゴリ一覧はスコープ付きパスでは403")
+        void ac_b51_村スコープのカテゴリ一覧は403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/categories", "villages", 0))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+        }
+
+        /** AC-B52: 返信一覧（BulletinReplyController）も同様に遮断される。 */
+        @Test
+        @DisplayName("AC-B52 村スコープの返信一覧はスコープ付きパスでは403")
+        void ac_b52_村スコープの返信一覧は403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}/replies",
+                            "villages", 0, threadAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+        }
+
+        /** AC-B53: 既読マーク（BulletinReadStatusController・書込系）は遮断され既読行も作られない。 */
+        @Test
+        @DisplayName("AC-B53 村スコープの既読マークはスコープ付きパスでは403かつ既読行が作られない")
+        void ac_b53_村スコープの既読マークは403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}/read-status",
+                            "villages", 0, threadAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+
+            em.flush();
+            em.clear();
+
+            assertThat(countReadStatus(threadAId, memberAId))
+                    .as("遮断されたのに既読行が作られてはならない")
+                    .isZero();
+        }
+
+        /** AC-B54: 保管庫フォルダ一覧（BulletinArchiveFolderController）も同様に遮断される。 */
+        @Test
+        @DisplayName("AC-B54 村スコープの保管庫フォルダ一覧はスコープ付きパスでは403")
+        void ac_b54_村スコープの保管庫一覧は403() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/archive/folders", "villages", 0))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE));
+        }
+
+        /**
+         * AC-B55: 村の正当系（グローバル経路の一覧）は入口ゲートに阻まれず、
+         * 村ドメインの認可判定へ到達すること。
+         *
+         * <p>村ドメイン固有のエラーコードが返ることをもって「到達した」と判定する。
+         * 入口ゲートが誤ってグローバル経路まで塞いでいれば、代わりに認可拒否コードが返る。</p>
+         */
+        @Test
+        @DisplayName("AC-B55 村の一覧はグローバル経路では村ドメインの認可判定へ到達する（非回帰）")
+        void ac_b55_村一覧のグローバル経路は村認可へ到達() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/bulletin/threads")
+                            .param("scope_type", "VILLAGE")
+                            .param("scope_id", "0")
+                            .param("scope_village_id", ABSENT_VILLAGE_ID.toString()))
+                    .andExpect(jsonPath("$.error.code").value(VILLAGE_NOT_FOUND_CODE));
+        }
+
+        /**
+         * AC-B56: 村の正当系（グローバル経路の作成）は村ドメインの主体検証へ到達すること。
+         *
+         * <p><b>非空虚性</b>: スレッド作成は共通ガードを呼ぶ経路上にあるため、村分岐を入れ忘れると
+         * 村スレッド作成が認可拒否で全滅する。本ケースはその退行を検出する回帰ガードであり、
+         * 村ドメイン固有のエラーコードが返ることで「共通ガードで止まらず村検証まで進んだ」ことを示す。</p>
+         */
+        @Test
+        @DisplayName("AC-B56 村スレッド作成はグローバル経路で村ドメインの主体検証へ到達する（非回帰）")
+        void ac_b56_村作成のグローバル経路は村検証へ到達() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(post("/api/v1/bulletin/threads")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(globalVillageCreateBody())))
+                    .andExpect(jsonPath("$.error.code").value(VILLAGE_NOT_FOUND_CODE));
+        }
+
+        private Map<String, Object> globalVillageCreateBody() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("scopeType", "VILLAGE");
+            payload.put("scopeId", 0);
+            payload.put("scopeVillageId", ABSENT_VILLAGE_ID.toString());
+            payload.put("title", "BULAUTHZ 村スレッド");
+            payload.put("body", "BULAUTHZ 村本文");
+            return payload;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 11. 個人スコープ（PERSONAL）の本人性検証
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 個人スコープは {@code scope_id} がそのまま所有者の user_id である。
+     * 共通ガードが本人であることを検証し、本人以外は拒否する。
+     *
+     * <p><b>非空虚性</b>: 個人スコープにはメンバーシップもロールも存在しないため、
+     * 本人性の判定を外すと「認証済みでありさえすれば通る」状態になり、
+     * 遮断側のケースはすべて 200 側へ抜ける。他に先行して弾くゲートは無い。</p>
+     */
+    @Nested
+    @DisplayName("11. PERSONAL スコープの本人性検証")
+    class PersonalScopeOwnership {
+
+        /** AC-B57: 他人の個人スコープのスレッド一覧は遮断される。 */
+        @Test
+        @DisplayName("AC-B57 他人の個人スコープのスレッド一覧は403で本文が漏れない")
+        void ac_b57_他人の個人一覧は403() throws Exception {
+            setAuth(outsiderId);
+            String body = mockMvc.perform(
+                            get("/api/v1/{scopeType}/{scopeId}/bulletin/threads",
+                                    "personal", personalOwnerId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE))
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body).doesNotContain(SECRET_BODY_PERSONAL);
+        }
+
+        /** AC-B58: 本人の個人スコープのスレッド一覧は 200（非回帰・過剰遮断していないことの裏取り）。 */
+        @Test
+        @DisplayName("AC-B58 本人の個人スコープのスレッド一覧は200（非回帰）")
+        void ac_b58_本人の個人一覧は200() throws Exception {
+            setAuth(personalOwnerId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads",
+                            "personal", personalOwnerId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(personalThreadId));
+        }
+
+        /** AC-B59: 他人の個人スコープのスレッド詳細は遮断され、本文が漏れない。 */
+        @Test
+        @DisplayName("AC-B59 他人の個人スコープのスレッド詳細は403で本文が漏れない")
+        void ac_b59_他人の個人詳細は403() throws Exception {
+            setAuth(outsiderId);
+            String body = mockMvc.perform(
+                            get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}",
+                                    "personal", personalOwnerId, personalThreadId))
+                    .andExpect(status().isForbidden())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body).doesNotContain(SECRET_BODY_PERSONAL);
+        }
+
+        /** AC-B60: 本人の個人スコープのスレッド詳細は 200（非回帰）。 */
+        @Test
+        @DisplayName("AC-B60 本人の個人スコープのスレッド詳細は200（非回帰）")
+        void ac_b60_本人の個人詳細は200() throws Exception {
+            setAuth(personalOwnerId);
+            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}",
+                            "personal", personalOwnerId, personalThreadId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(personalThreadId));
+        }
+
+        /** AC-B61: 他人の個人スコープへの既読マークは遮断され、既読行も作られない。 */
+        @Test
+        @DisplayName("AC-B61 他人の個人スコープの既読マークは403かつ既読行が作られない")
+        void ac_b61_他人の個人既読は403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}/read-status",
+                            "personal", personalOwnerId, personalThreadId))
+                    .andExpect(status().isForbidden());
+
+            em.flush();
+            em.clear();
+
+            assertThat(countReadStatus(personalThreadId, outsiderId)).isZero();
+        }
+
+        /**
+         * AC-B62: 逆引き経路（グローバル詳細）でも他人の個人スレッドは遮断される。
+         *
+         * <p>グローバル経路は threadId だけで叩かれ、スレッドから逆引きしたスコープで認可する。
+         * 本人性の判定を共通ガードに置くことで、スコープ付きパスと逆引き経路の双方が同時に守られる。</p>
+         */
+        @Test
+        @DisplayName("AC-B62 グローバル経路でも他人の個人スレッド詳細は403で本文が漏れない")
+        void ac_b62_グローバル経路の他人個人詳細は403() throws Exception {
+            setAuth(outsiderId);
+            String body = mockMvc.perform(get("/api/v1/bulletin/threads/{threadId}", personalThreadId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(FORBIDDEN_CODE))
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body).doesNotContain(SECRET_BODY_PERSONAL);
+        }
+
+        /** AC-B63: グローバル経路でも本人の個人スレッド詳細は 200（非回帰）。 */
+        @Test
+        @DisplayName("AC-B63 グローバル経路で本人の個人スレッド詳細は200（非回帰）")
+        void ac_b63_グローバル経路の本人個人詳細は200() throws Exception {
+            setAuth(personalOwnerId);
+            mockMvc.perform(get("/api/v1/bulletin/threads/{threadId}", personalThreadId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(personalThreadId));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 12. 追加被覆（グローバル経路の共有・保管庫フォルダ作成）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("12. 追加被覆")
+    class AdditionalCoverage {
+
+        /**
+         * AC-B64: グローバル経路のカテゴリ絞り込みでも越境 categoryId は遮断される。
+         *
+         * <p>現状はスコープ付き経路とサービス層を共有しているため同じ実装で守られるが、
+         * 将来グローバル側が別メソッドへ分岐したときに気づけるよう、契約として固定する。</p>
+         */
+        @Test
+        @DisplayName("AC-B64 グローバル経路の越境categoryIdも404で他テナントのスレッドが漏れない")
+        void ac_b64_グローバル経路の越境categoryIdは404() throws Exception {
+            setAuth(memberAId);
+            String body = mockMvc.perform(get("/api/v1/bulletin/threads")
+                            .param("scope_type", "TEAM")
+                            .param("scope_id", String.valueOf(teamAId))
+                            .param("category_id", String.valueOf(catBId)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(BulletinErrorCode.CATEGORY_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body).doesNotContain(SECRET_BODY_B);
+        }
+
+        /** AC-B65: グローバル経路の正当な categoryId 指定は 200（非回帰）。 */
+        @Test
+        @DisplayName("AC-B65 グローバル経路の正当categoryId指定は200（非回帰）")
+        void ac_b65_グローバル経路の正当categoryIdは200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/bulletin/threads")
+                            .param("scope_type", "TEAM")
+                            .param("scope_id", String.valueOf(teamAId))
+                            .param("category_id", String.valueOf(catAId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(2));
+        }
+
+        /**
+         * AC-B66: 保管庫フォルダ作成のボディ由来 {@code parentFolderId} も帰属検証される。
+         *
+         * <p><b>非空虚性</b>: adminA は権限ゲートを通過する。親フォルダのスコープ一致検証だけが、
+         * 他テナントのフォルダを親に持つフォルダの生成（テナント間参照の混線）を防いでいる。</p>
+         */
+        @Test
+        @DisplayName("AC-B66 保管庫フォルダ作成の越境parentFolderIdは409かつフォルダが作られない")
+        void ac_b66_越境parentFolderIdの作成は409() throws Exception {
+            long before = countFoldersInScope(ScopeType.TEAM, teamAId);
+
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/archive/folders", "teams", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    createFolderBody("越境フォルダ", folderBId))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
+
+            em.flush();
+            em.clear();
+
+            assertThat(countFoldersInScope(ScopeType.TEAM, teamAId))
+                    .as("遮断されたのにフォルダが作成されてはならない")
+                    .isEqualTo(before);
+        }
+
+        /** AC-B67: 自スコープの親フォルダを指定した作成は 201（非回帰）。 */
+        @Test
+        @DisplayName("AC-B67 自スコープのparentFolderId指定の作成は201（非回帰）")
+        void ac_b67_正当parentFolderIdの作成は201() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/{scopeType}/{scopeId}/bulletin/archive/folders", "teams", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    createFolderBody("子フォルダ", folderAId))))
+                    .andExpect(status().isCreated());
+        }
+
+        private Map<String, Object> createFolderBody(String name, UUID parentFolderId) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("name", name);
+            payload.put("parentFolderId", parentFolderId.toString());
+            return payload;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -1328,6 +1705,15 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
     private long countThreadsInScope(ScopeType scopeType, Long scopeId) {
         return ((Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM bulletin_threads "
+                                + "WHERE scope_type = :st AND scope_id = :sid AND deleted_at IS NULL")
+                .setParameter("st", scopeType.name())
+                .setParameter("sid", scopeId)
+                .getSingleResult()).longValue();
+    }
+
+    private long countFoldersInScope(ScopeType scopeType, Long scopeId) {
+        return ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM bulletin_archive_folders "
                                 + "WHERE scope_type = :st AND scope_id = :sid AND deleted_at IS NULL")
                 .setParameter("st", scopeType.name())
                 .setParameter("sid", scopeId)
