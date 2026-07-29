@@ -353,4 +353,80 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("to") LocalDate to,
             @Param("lineId") Long lineId,
             @Param("statuses") List<ReservationStatus> statuses);
+
+    // ===== F03.4.5 §6.3（W2-6）: 仮押さえ(PENDING)の自動失効 =====
+
+    /**
+     * 自動失効の対象となる PENDING 予約を<b>代表行のみ・1 クエリ</b>で抽出する（§6.3・AC-6-17）。
+     *
+     * <p>slot と policy を join して抽出するため、対象件数に比例したクエリ（N+1）は発生しない。
+     * 抽出は {@code is_group_primary = TRUE} に絞る（<b>グループは代表行基準で判定</b>し、
+     * 兄弟行の一括失効は Service 側が {@link #findByGroupIdInAndStatus} で行う。単枠予約は
+     * 常に TRUE のため従来どおり全件が候補になる）。</p>
+     *
+     * <h2>失効条件（殿の裁定・2026-07-29）</h2>
+     * <p>チームの {@code pending_expire_hours} が有効（NULL でない）であることを前提に、以下の
+     * <b>いずれか</b>を満たす PENDING を対象とする:</p>
+     * <ol>
+     *   <li>(a) {@code booked_at} からチーム設定の時間数が経過している</li>
+     *   <li>(b) <b>枠の終了時刻を経過している</b>（＝予約日を過ぎても承認されなかった仮押さえ）</li>
+     * </ol>
+     * <p>設計書 §6.3 初版は (b) を「既存の自動 NO_SHOW バッチの管轄」として対象外にしていたが、
+     * 予約ドメインに NO_SHOW 自動バッチは実在しない（管理者手動の
+     * {@code POST /{reservationId}/no-show} のみ）。初版のままでは「承認されないまま予約日を過ぎた
+     * 仮押さえ」が永久に PENDING で残り、枠を塞ぎ続ける。よって (b) を対象に含める。</p>
+     *
+     * <h2>(a) の時刻演算について</h2>
+     * <p>{@code TIMESTAMPDIFF(HOUR, booked_at, now)} は時間単位で 0 方向へ切り捨てるため、
+     * 整数 H に対して {@code floor(経過時間) >= H} ⟺ {@code booked_at + H時間 <= now} と厳密に等価である
+     * （境界: 24h+1分 → 24 >= 24 で対象 / 23h59分 → 23 >= 24 で非対象。AC-6-3）。
+     * JPQL の {@code FUNCTION('TIMESTAMPDIFF', ...)} は
+     * {@code PersonalScheduleReminderRepository} に同形の先例がある。</p>
+     *
+     * <h2>ポリシー行が存在しないチームの扱い</h2>
+     * <p>{@code reservation_policies} は初回の設定変更で初めて行が作られるため、大半のチームは行を持たない。
+     * 行が無いチームは {@code LEFT JOIN} + {@code COALESCE(:defaultHours)} により
+     * <b>既定 24 時間として扱う</b>（設計書 §6.3「新規・既存とも既定 24 時間」／
+     * {@code ReservationPolicyService.getOrDefault} が GET で 24 と答えることとの一貫性）。
+     * 一方、行が存在して {@code pending_expire_hours IS NULL} のチーム（管理者が
+     * {@code clearPendingExpireHours} で明示的に無効化した状態）は (a)(b) とも対象外にする（AC-6-4）。</p>
+     *
+     * @param pendingStatus PENDING ステータス
+     * @param now           判定基準時刻（注入 {@code Clock} 由来）
+     * @param today         判定基準時刻の日付
+     * @param nowTime       判定基準時刻の時刻
+     * @param defaultHours  ポリシー行が無いチームに適用する既定時間数（24）
+     * @return 失効対象の代表行（単枠予約＋グループ代表行）
+     */
+    @Query("SELECT r FROM ReservationEntity r "
+            + "JOIN ReservationSlotEntity s ON s.id = r.reservationSlotId "
+            + "LEFT JOIN ReservationPolicyEntity p ON p.teamId = r.teamId "
+            + "WHERE r.status = :pendingStatus "
+            + "AND r.isGroupPrimary = TRUE "
+            // 明示的に無効化（行あり かつ NULL）されたチームは失効させない
+            + "AND (p.id IS NULL OR p.pendingExpireHours IS NOT NULL) "
+            + "AND (FUNCTION('TIMESTAMPDIFF', HOUR, r.bookedAt, :now) "
+            + "        >= COALESCE(p.pendingExpireHours, :defaultHours) "
+            + "     OR s.slotDate < :today "
+            + "     OR (s.slotDate = :today AND s.endTime <= :nowTime)) "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findExpirablePendingPrimaryRows(
+            @Param("pendingStatus") ReservationStatus pendingStatus,
+            @Param("now") LocalDateTime now,
+            @Param("today") LocalDate today,
+            @Param("nowTime") LocalTime nowTime,
+            @Param("defaultHours") Integer defaultHours);
+
+    /**
+     * 複数グループの兄弟行を指定ステータスで一括取得する（§6.3・N+1 回避）。
+     *
+     * <p>グループ予約の失効はグループ単位の原子操作であり、代表行だけを CANCELLED にすると
+     * 部分失効（同一グループに PENDING と CANCELLED が混在）が生じる。対象グループの兄弟行を
+     * 1 クエリでまとめて引き、全行を同時に失効させるために用いる（AC-6-6）。</p>
+     *
+     * @param groupIds 対象グループ ID 群
+     * @param status   絞り込みステータス（PENDING）
+     * @return 兄弟行（代表行を含む全行）
+     */
+    List<ReservationEntity> findByGroupIdInAndStatus(Collection<UUID> groupIds, ReservationStatus status);
 }

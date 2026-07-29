@@ -560,6 +560,10 @@ class ReservationControllerTest {
         @Mock
         private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
 
+        /** F03.4.5 §6.3: pending_expire 設定変更の監査ログ記録用（@InjectMocks の供給漏れ防止）。 */
+        @Mock
+        private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+
         @InjectMocks
         private ReservationBusinessHourController controller;
 
@@ -761,7 +765,7 @@ class ReservationControllerTest {
         void 予約公開設定更新_正常_200返却() {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
                     new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            true, null, null, null, null, null);
+                            true, null, null, null, null, null, null, null);
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
             given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
                     com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
@@ -778,7 +782,7 @@ class ReservationControllerTest {
             verify(teamSettingService).updateAllowPublic(TEAM_ID, true);
             // policy フィールドが全て null なので updatePolicy は呼ばれない（据え置き）。
             org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
-                    .updatePolicy(any(), any(), any(), any());
+                    .updatePolicy(any(), any(), any(), any(), any(), any());
             // 呼称フィールドが全て null なので updateResourceName は呼ばれない（据え置き）。
             org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
                     .updateResourceName(any(), any(), any());
@@ -789,7 +793,8 @@ class ReservationControllerTest {
         void 予約設定更新_ポリシー更新_委譲() {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
                     new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1", null, null);
+                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1",
+                            null, null, null, null);
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
             given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
             given(policyService.getOrDefault(TEAM_ID)).willReturn(
@@ -809,7 +814,7 @@ class ReservationControllerTest {
             assertThat(data.getCancelDeadlineHours()).isEqualTo(48);
             assertThat(data.getRemindBeforeHours()).isEqualTo("72,24,1");
             verify(policyService).updatePolicy(
-                    TEAM_ID, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1");
+                    TEAM_ID, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1", null, null);
             // 公開フラグ null なので allow_public は触らない。
             org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
                     .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
@@ -825,7 +830,7 @@ class ReservationControllerTest {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
                     new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
                             null, null, null, null,
-                            com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
+                            com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null, null, null);
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
             given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
             given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
@@ -848,7 +853,7 @@ class ReservationControllerTest {
                     .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
                             org.mockito.ArgumentMatchers.anyBoolean());
             org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
-                    .updatePolicy(any(), any(), any(), any());
+                    .updatePolicy(any(), any(), any(), any(), any(), any());
         }
 
         @Test

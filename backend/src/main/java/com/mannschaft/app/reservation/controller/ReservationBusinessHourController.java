@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.controller;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.reservation.ReservationBlockedResourceType;
 import com.mannschaft.app.reservation.dto.BlockedTimeImpactResponse;
@@ -60,6 +61,8 @@ public class ReservationBusinessHourController {
     private final ReservationPolicyService policyService;
     /** 営業時間変更差分の同期自動生成用（保存 tx 外側で呼ぶ・F03.4.5 §3.2）。 */
     private final ReservationSlotTemplateService templateService;
+    /** F03.4.5 §7: pending_expire 設定変更の監査ログ記録用（@Async・失敗してもメイン処理を止めない）。 */
+    private final AuditLogService auditLogService;
 
 
     /**
@@ -225,6 +228,7 @@ public class ReservationBusinessHourController {
                 .remindBeforeHours(policy.getRemindBeforeHours())
                 .resourceNameType(teamSetting.getResourceNameType())
                 .resourceNameCustom(teamSetting.getResourceNameCustom())
+                .pendingExpireHours(policy.getPendingExpireHours())
                 .build();
         return ResponseEntity.ok(ApiResponse.of(settings));
     }
@@ -256,14 +260,28 @@ public class ReservationBusinessHourController {
             teamSettingService.updateAllowPublic(teamId, request.getAllowPublicReservation());
         }
         // reservation_policies（別テーブル）の upsert。全て null なら据え置き（既存レコードに影響なし）。
+        // F03.4.5 §6.3: pendingExpireHours / clearPendingExpireHours も同テーブルのため同じ分岐で扱う。
+        boolean pendingExpireTouched = request.getPendingExpireHours() != null
+                || request.getClearPendingExpireHours() != null;
         if (request.getApprovalMode() != null
                 || request.getCancelDeadlineHours() != null
-                || request.getRemindBeforeHours() != null) {
-            policyService.updatePolicy(
+                || request.getRemindBeforeHours() != null
+                || pendingExpireTouched) {
+            ReservationPolicyEntity saved = policyService.updatePolicy(
                     teamId,
                     request.getApprovalMode(),
                     request.getCancelDeadlineHours(),
-                    request.getRemindBeforeHours());
+                    request.getRemindBeforeHours(),
+                    request.getPendingExpireHours(),
+                    request.getClearPendingExpireHours());
+            // F03.4.5 §7「pending_expire 設定変更を audit_logs に記録」。
+            // 仮押さえ失効は「利用者の予約が管理者の設定で自動的に消える」挙動のため、
+            // 設定変更そのものを追跡可能にする（定期ルール CRUD と同じ recordAudit 作法）。
+            if (pendingExpireTouched) {
+                auditLogService.record("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED",
+                        SecurityUtils.getCurrentUserId(), null, teamId, null, null, null, null,
+                        "{\"pendingExpireHours\":" + saved.getPendingExpireHours() + "}");
+            }
         }
         // 予約対象の呼称（reservation_team_settings）の upsert。両方 null なら据え置き（F03.4.5 §5）。
         if (request.getResourceNameType() != null || request.getResourceNameCustom() != null) {

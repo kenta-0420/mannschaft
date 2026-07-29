@@ -98,6 +98,8 @@ public class ReservationGroupService {
     private final AuditLogService auditLogService;
     /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
     private final ReservationWaitlistService waitlistService;
+    /** F03.4.5 §6.4: 予約作成のレートリミット（単枠作成と同一バケットを共有・§6.4）。 */
+    private final ReservationCreateRateLimiter createRateLimiter;
     /**
      * 作成トランザクションの明示境界（§5.2）。コミット時を含む
      * {@code PessimisticLockingFailureException}（InnoDB デッドロック等）を
@@ -128,6 +130,9 @@ public class ReservationGroupService {
      */
     public ReservationGroupResponse createGroup(
             Long teamId, Long userId, CreateReservationGroupRequest request) {
+        // F03.4.5 §6.4: 予約作成のレートリミット（単枠 createReservation と同一 zone・1 ユーザー 1 分 5 回）。
+        // トランザクションを無駄に開かないよう transactionTemplate.execute の外側（tx 外）で消費する。
+        createRateLimiter.assertNotRateLimited(userId);
         try {
             return transactionTemplate.execute(status -> doCreateGroup(teamId, userId, request));
         } catch (PessimisticLockingFailureException e) {

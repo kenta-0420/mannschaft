@@ -147,7 +147,7 @@ class ReservationPolicyServiceTest {
             given(policyRepository.save(any(ReservationPolicyEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, 48, "72,24");
+            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, 48, "72,24", null, null);
 
             ArgumentCaptor<ReservationPolicyEntity> captor =
                     ArgumentCaptor.forClass(ReservationPolicyEntity.class);
@@ -166,7 +166,7 @@ class ReservationPolicyServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             // approvalMode だけ指定。cancel/remind は null → 既定（24 / "24,1"）になる。
-            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, null, null);
+            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, null, null, null, null);
 
             ArgumentCaptor<ReservationPolicyEntity> captor =
                     ArgumentCaptor.forClass(ReservationPolicyEntity.class);
@@ -189,7 +189,7 @@ class ReservationPolicyServiceTest {
             given(policyRepository.save(any(ReservationPolicyEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, 48, null);
+            service.updatePolicy(TEAM_ID, ApprovalMode.MANUAL, 48, null, null, null);
 
             // null を渡した remindBeforeHours は据え置き、他は更新される。
             assertThat(existing.getApprovalMode()).isEqualTo(ApprovalMode.MANUAL);

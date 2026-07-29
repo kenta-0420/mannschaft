@@ -81,6 +81,8 @@ public class ReservationService {
     private final ReservationGroupSummaryResolver groupSummaryResolver;
     /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
     private final ReservationWaitlistService waitlistService;
+    /** F03.4.5 §6.4: 予約作成のレートリミット（グループ作成と同一バケットを共有・§6.4）。 */
+    private final ReservationCreateRateLimiter createRateLimiter;
     private final Clock clock;
 
     /**
@@ -143,6 +145,11 @@ public class ReservationService {
         // 既定（allow_public_reservation=false）→ チーム所属（SUPPORTER 以上＝memberships 存在）必須。
         // 裏設定 ON → 所属チェックをスキップ（匿名は呼出元の認証層で 401 担保）。
         viewAccessGuard.assertCanView(teamId, userId);
+
+        // F03.4.5 §6.4: 予約作成のレートリミット（1 ユーザー 1 分 5 回）。グループ作成
+        // （ReservationGroupService.createGroup）と同一 zone を共有し、単枠 5 回＋グループ 5 回の
+        // 買い占めを防ぐ。認可（view ゲート）通過後に消費する順序はキャンセル待ち登録と揃えている。
+        createRateLimiter.assertNotRateLimited(userId);
 
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 

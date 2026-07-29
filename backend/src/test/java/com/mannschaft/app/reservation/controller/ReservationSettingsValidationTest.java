@@ -47,6 +47,9 @@ class ReservationSettingsValidationTest {
     private ReservationPolicyService policyService;
     @Mock
     private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
+    /** F03.4.5 §6.3: pending_expire 設定変更の監査ログ記録用。 */
+    @Mock
+    private com.mannschaft.app.auth.service.AuditLogService auditLogService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -59,7 +62,7 @@ class ReservationSettingsValidationTest {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
-                businessHourService, teamSettingService, policyService, templateService);
+                businessHourService, teamSettingService, policyService, templateService, auditLogService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -123,6 +126,7 @@ class ReservationSettingsValidationTest {
     @DisplayName("正常な部分更新_200")
     void 正常な部分更新_200() throws Exception {
         given(policyService.updatePolicy(anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
         mockMvc.perform(patch(PATH)
