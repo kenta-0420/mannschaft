@@ -202,7 +202,7 @@ test.describe('RSV-V2 W2-2: 定期予約不可枠（実機一気通貫・8シナ
 
   // 曜日が重複しないよう offset を1日ずつずらす（+2〜+7の6日間・互いに異なる曜日）
   const dayCreate = dateInfo(2) // シナリオ1: 作成＋dayOfWeek 3文字コード裏取り
-  const dayNoPii = dateInfo(2) // シナリオ2/3: 同一ダイアログ内のUI確認（DB書込なし・dayCreateと共用可）
+  // シナリオ2/3 は同一ダイアログ内のUI確認のみで DB 書込を伴わないため、専用の曜日を持たない
   const dayPublic = dateInfo(3) // シナリオ4: 会員側 公開事由ラベル表示
   const dayNonPublic = dateInfo(4) // シナリオ5: 会員側 非公開PII非漏洩
   const dayConflict = dateInfo(5) // シナリオ7: 409ガード
