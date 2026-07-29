@@ -135,6 +135,39 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 - Controller で形式が正しいことを保証し、Service は形式チェック済みの値だけを扱う
 - **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
 - **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
+
+### Request DTO にコンストラクタを 2 本目以降足すときは `@JsonCreator` 必須（番人 D-7）
+
+`@RequestBody` / `@RequestPart` で受ける DTO（およびその入れ子 DTO）に**コンストラクタを 2 本以上**
+持たせる場合、**完全コンストラクタに `@JsonCreator` を付け、各引数に `@JsonProperty("...")` を付ける**こと。
+
+```java
+// NG: 後方互換用の短いコンストラクタを足した瞬間、この DTO を受ける POST は「常時 500」になる
+@Getter
+public class CreateFooRequest {
+    private final String title;
+    private final String body;
+    public CreateFooRequest(String title) { this(title, null); }
+    public CreateFooRequest(String title, String body) { ... }
+}
+
+// OK: 金型は chat/dto/SendMessageRequest
+@JsonCreator
+public CreateFooRequest(@JsonProperty("title") String title,
+                        @JsonProperty("body") String body) { ... }
+```
+
+理由: Jackson はコンストラクタが複数あるとデシリアライズ用を一意に決められず、
+「全フィールド `final`（setter 無し）＋引数無しコンストラクタ無し」だと no suitable creator で
+デシリアライザ構築に失敗する。Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
+`HttpMessageNotReadableException` とは**別系統**）で投げるため、`GlobalExceptionHandler` に届かず
+**body の内容によらず 500** になる。Mock ベースの Service UT では原理的に検出できず、
+`SendMessageRequest`（PR #2033）/ `CreateThreadRequest`（PR #2503）で 2 度再発した。
+
+- コンストラクタが **1 本だけ**なら `@JsonCreator` は不要（`-parameters` ＋ `ParameterNamesModule` で暗黙 creator になる）
+- Lombok の `@Data + @NoArgsConstructor + @AllArgsConstructor` 様式も可（引数無しコンストラクタ＋setter で成立する）
+- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）
+
 * **Null安全**: 戻り値が空になる可能性がある場合は `Optional` を検討し、原則として `null` を直接返さないでください。
 * **トランザクション管理**:
     - Service クラスのクラスレベルに `@Transactional(readOnly = true)` を付与する（デフォルトを読み取り専用にする）。
