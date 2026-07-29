@@ -704,6 +704,156 @@ class PublicApiRateLimitFilterTest {
     }
 
     // ────────────────────────────────────────────────────────────
+    // 試練(公開活動記録): AC-19/20/21/27 — activities 系公開API のレート制限
+    // 実装前の red テスト。PUBLIC_API_PATH の正規表現には activities が未登録のため
+    // (backend/.../PublicApiRateLimitFilter.java:110-111)、
+    // 以下のうち AC 番号付きテストは shouldNotFilter に弾かれて全て失敗する。
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("(AC-19) 公開活動記録 単票 GET /public/activities/{id} はレート対象（PUBLIC_API zone）")
+    void ac19_activityDetail_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/activities/900", "GET");
+        request.setRemoteAddr("198.51.100.160");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        // Valkey 消費が行われた = shouldNotFilter で弾かれず、Filter が動作した
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("(AC-20) チーム活動記録一覧 GET /public/teams/{teamId}/activities はレート対象（PUBLIC_API zone）")
+    void ac20_teamActivitiesList_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/activities", "GET");
+        request.setRemoteAddr("198.51.100.161");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("(AC-20) チーム活動記録詳細 GET /public/teams/{teamId}/activities/{id} はレート対象（PUBLIC_API zone）")
+    void ac20_teamActivityDetail_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/activities/900", "GET");
+        request.setRemoteAddr("198.51.100.162");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("(AC-20) 組織活動記録一覧 GET /public/organizations/{orgId}/activities はレート対象（PUBLIC_API zone）")
+    void ac20_orgActivitiesList_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/organizations/77/activities", "GET");
+        request.setRemoteAddr("198.51.100.163");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("(AC-20) 組織活動記録詳細 GET /public/organizations/{orgId}/activities/{id} はレート対象（PUBLIC_API zone）")
+    void ac20_orgActivityDetail_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/organizations/77/activities/900", "GET");
+        request.setRemoteAddr("198.51.100.164");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("(AC-27/AC-21) 公開活動記録 単票 未ログイン: 60 回まで成功、61 回目で 429"
+            + "（Retry-After / X-RateLimit-* ヘッダ検証込み）")
+    void ac27_activityDetail_anonymous_60PerMinute_then429() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        String path = "/api/v1/public/activities/901";
+        String ip = "198.51.100.165";
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest(path, "GET");
+            request.setRemoteAddr(ip);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus())
+                    .as("公開活動記録 未ログイン %d 回目は 200 を期待", i + 1)
+                    .isEqualTo(HttpServletResponse.SC_OK);
+        }
+        verify(chain, times(60)).doFilter(any(), any());
+
+        // 61 回目: 429（AC-21: Retry-After / X-RateLimit-* ヘッダ検証）
+        MockHttpServletRequest request = buildRequest(path, "GET");
+        request.setRemoteAddr(ip);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(429);
+        assertThat(response.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+        assertThat(response.getHeader("X-RateLimit-Limit")).isEqualTo("60");
+        assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
+        assertThat(response.getHeader("X-RateLimit-Reset")).isEqualTo(String.valueOf(RESET_EPOCH));
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString()).contains("Too many requests");
+        // chain は 60 回目までしか呼ばれていない
+        verify(chain, times(60)).doFilter(any(), any());
+
+        // zone / limit が宣言どおり（PUBLIC_API zone・未認証は IP キー・60/min）
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:PUBLIC_API"), eq("ip:" + ip), eq(60), eq(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    @DisplayName("(反面テスト) 公開活動記録 ルートパス GET /api/v1/public/activities（末尾IDなし）はレート対象外・透過する")
+    void activitiesRootPath_isTransparent() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletRequest request = buildRequest("/api/v1/public/activities", "GET");
+        request.setRemoteAddr("198.51.100.166");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, never()).tryConsume(anyString(), anyString(), anyInt(), any());
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // ヘルパー
     // ────────────────────────────────────────────────────────────
 
