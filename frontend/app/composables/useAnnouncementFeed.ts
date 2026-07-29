@@ -48,9 +48,31 @@ export function isAnnouncementGoneError(error: unknown): boolean {
  */
 export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: string) {
   const api = useApi()
-  const { t } = useI18n()
-  const notification = useNotification()
-  const { handleApiError } = useErrorHandler()
+  const errorReport = useErrorReport()
+
+  // ⚠️ この composable は setup 直下だけでなく、**async イベントハンドラの await の後**からも
+  // 構築される（`createAnnouncement` 経路: `components/timeline/TimelinePostForm.vue` の
+  // `await createPost()` 後、`pages/blog/posts/[id]/edit.vue` の `await publishMyPost()` 後）。
+  // そのため構築時に `useI18n()` / `useToast()` を呼んではならない。
+  // （`useNotification()` は `useToast()` を、`useErrorHandler()` は両方を内部で呼ぶため同罪。
+  //   呼ぶと「投稿は成功しているのに『投稿に失敗しました』」という silent な事故になる。）
+  //
+  // 既存の正解パターン（`useApi.ts:254-256` / `useDashboardWidgets.ts:729-733` /
+  // `plugins/toast-provider.client.ts`）どおり、構築時に掴んだ nuxtApp 経由で参照する。
+  const nuxtApp = useNuxtApp()
+  // 戻り値の string 明示は `middleware/admin-console.ts:32` に揃えている（showToast が string を要求するため）。
+  const t = (key: string): string => nuxtApp.$i18n.t(key)
+
+  /**
+   * setup コンテキスト外でも安全に呼べるトースト表示（`$toast` 経由）。
+   *
+   * <p>`useNotification()` は使わない（内部の `useToast()` が setup を要求するため）。
+   * `life` は `useNotification` の warn / error と同じ 5000ms に揃えている。</p>
+   */
+  function showToast(severity: 'warn' | 'error', summary: string, detail?: string): void {
+    const toast = nuxtApp.$toast as { add: (opts: Record<string, unknown>) => void } | undefined
+    toast?.add({ severity, summary, detail, life: 5000 })
+  }
 
   const feed = ref<AnnouncementFeedItem[]>([])
   const meta = ref<AnnouncementFeedMeta | null>(null)
@@ -185,8 +207,8 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
    *   <li>{@code ANNOUNCE_001}（不可視・不在）: もう開けない。一覧から取り除いてトーストで
    *       知らせ、{@code false} を返す（利用者に再読み込み等の再操作を求めない）。</li>
    *   <li>それ以外（ネットワーク断・5xx・認証失敗など）: 一覧からは<b>取り除かない</b>
-   *       （消すと利用者のデータが消えたように見える）。既存の流儀どおり
-   *       {@link useErrorHandler} でエラーを表示したうえで {@code true} を返し、遷移は続行する。
+   *       （消すと利用者のデータが消えたように見える）。エラー報告を送ったうえで
+   *       {@link showToast} で提示し、{@code true} を返して遷移は続行する。
    *       既読マークはあくまで副作用であり、その失敗で「開く」という意図まで
    *       巻き添えにしないため。</li>
    * </ul>
@@ -205,10 +227,16 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
     catch (e) {
       if (isAnnouncementGoneError(e)) {
         removeFromFeedLocally(item.id)
-        notification.warn(t('announcement.no_longer_available'))
+        showToast('warn', t('announcement.no_longer_available'))
         return false
       }
-      handleApiError(e, 'announcementMarkAsRead')
+      // 通信に失敗した: 項目は消さず、必ず利用者に提示する（握りつぶさない・#2460）。
+      // 提示内容は useErrorHandler#handleApiError と同じ方針（BE の理由を優先し、
+      // 無ければ汎用文言に落とす）。handleApiError 自体は内部で useI18n / useToast を
+      // 呼ぶため、setup 外から構築され得る本 composable では使えない。
+      errorReport.captureQuiet(e, { context: 'announcementMarkAsRead' })
+      const apiError = e as { data?: { error?: { message?: string } } }
+      showToast('error', t('dialog.error'), apiError?.data?.error?.message ?? t('error.unknown'))
       return true
     }
   }

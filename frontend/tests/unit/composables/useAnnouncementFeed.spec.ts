@@ -20,37 +20,37 @@ import type { AnnouncementFeedItem, AnnouncementFeedResponse } from '~/types/ann
  *  ANN-2495-005: 通信失敗（エラーコード無し）では項目を消さず、true を返して遷移は続行する
  *  ANN-2495-006: 通信失敗ではエラーを握りつぶさず handleApiError に渡す（#2460）
  *  ANN-2495-007: isAnnouncementGoneError — ANNOUNCE_001 のみ true（他コード・素の Error は false）
+ *  ANN-2495-008: 構築時に setup 必須の composable を呼ばない（setup 外からの構築が壊れない）
  */
 
 // ============================================================
 // Nuxt auto-import / composable のモック
+//
+// この composable は setup 外（async イベントハンドラの await 後）からも構築されるため、
+// useI18n / useNotification / useErrorHandler ではなく nuxtApp の $i18n / $toast を掴む。
+// テストもそれに合わせて useNuxtApp をモックする。
 // ============================================================
 const mockFetch = vi.fn()
 vi.mock('~/composables/useApi', () => ({
   useApi: () => mockFetch,
 }))
 
-const tMock = vi.fn((key: string): string => key)
-mockNuxtImport('useI18n', () => () => ({ t: tMock, te: () => true }))
-
-const mockNotifyWarn = vi.fn()
-vi.mock('~/composables/useNotification', () => ({
-  useNotification: () => ({
-    success: vi.fn(),
-    info: vi.fn(),
-    warn: mockNotifyWarn,
-    error: vi.fn(),
+const mockCaptureQuiet = vi.fn()
+vi.mock('~/composables/useErrorReport', () => ({
+  useErrorReport: () => ({
+    capture: vi.fn(),
+    captureQuiet: mockCaptureQuiet,
+    submitComment: vi.fn(),
+    close: vi.fn(),
+    state: { value: {} },
   }),
 }))
 
-const mockHandleApiError = vi.fn()
-vi.mock('~/composables/useErrorHandler', () => ({
-  useErrorHandler: () => ({
-    handleApiError: mockHandleApiError,
-    handleError: mockHandleApiError,
-    resolveMessage: vi.fn(),
-    getFieldErrors: vi.fn(() => ({})),
-  }),
+const tMock = vi.fn((key: string): string => key)
+const toastAddMock = vi.fn()
+mockNuxtImport('useNuxtApp', () => () => ({
+  $i18n: { t: tMock },
+  $toast: { add: toastAddMock },
 }))
 
 // テスト対象（モック設定後に動的 import。@nuxt/test-utils の hoisting に依存するため
@@ -117,10 +117,17 @@ async function setupFeed(items: AnnouncementFeedItem[], unreadCount: number) {
   return feedApi
 }
 
+/** 指定 severity のトースト呼び出しを抽出する */
+function toastCalls(severity: 'warn' | 'error') {
+  return toastAddMock.mock.calls.filter(
+    (c) => (c[0] as { severity?: string }).severity === severity,
+  )
+}
+
 beforeEach(() => {
   mockFetch.mockReset()
-  mockNotifyWarn.mockReset()
-  mockHandleApiError.mockReset()
+  toastAddMock.mockReset()
+  mockCaptureQuiet.mockReset()
   tMock.mockClear()
 })
 
@@ -142,7 +149,7 @@ describe('useAnnouncementFeed — markAsReadBeforeOpen（#2495）', () => {
     })
     expect(feedApi.feed.value).toHaveLength(1)
     expect(feedApi.feed.value[0]!.isRead).toBe(true)
-    expect(mockNotifyWarn).not.toHaveBeenCalled()
+    expect(toastAddMock).not.toHaveBeenCalled()
   })
 
   it('ANN-2495-002: 既読済みなら API を叩かずに true', async () => {
@@ -173,10 +180,11 @@ describe('useAnnouncementFeed — markAsReadBeforeOpen（#2495）', () => {
     // 一覧から消える（利用者に再読み込み等の再操作を求めない）
     expect(feedApi.feed.value.map(i => i.id)).toEqual([11])
     // 黙って消さず、必ず知らせる
-    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    expect(toastCalls('warn')).toHaveLength(1)
     expect(tMock).toHaveBeenCalledWith('announcement.no_longer_available')
     // 「もう見えない」は汎用エラートーストに落とさない（二重表示させない）
-    expect(mockHandleApiError).not.toHaveBeenCalled()
+    expect(toastCalls('error')).toHaveLength(0)
+    expect(mockCaptureQuiet).not.toHaveBeenCalled()
   })
 
   it('ANN-2495-004: ANNOUNCE_001 で取り除いた際、未読カウントも 1 減る', async () => {
@@ -207,10 +215,11 @@ describe('useAnnouncementFeed — markAsReadBeforeOpen（#2495）', () => {
     // 消すと利用者にはデータが消えたように見えるため、必ず残す
     expect(feedApi.feed.value.map(i => i.id)).toEqual([12])
     expect(feedApi.meta.value?.unreadCount).toBe(1)
-    expect(mockNotifyWarn).not.toHaveBeenCalled()
+    // 「もう見えない」側のトーストは出さない
+    expect(toastCalls('warn')).toHaveLength(0)
   })
 
-  it('ANN-2495-006: 通信失敗ではエラーを握りつぶさず handleApiError に渡す', async () => {
+  it('ANN-2495-006: 通信失敗ではエラーを握りつぶさず、報告と提示の両方を行う', async () => {
     const item = buildItem({ id: 13, isRead: false })
     const feedApi = await setupFeed([item], 1)
     const networkError = new Error('Failed to fetch')
@@ -218,9 +227,24 @@ describe('useAnnouncementFeed — markAsReadBeforeOpen（#2495）', () => {
 
     await feedApi.markAsReadBeforeOpen(item)
 
-    expect(mockHandleApiError).toHaveBeenCalledTimes(1)
+    // 利用者への提示（無言で終わらせない）
+    expect(toastCalls('error')).toHaveLength(1)
+    // エラー報告にも流す
+    expect(mockCaptureQuiet).toHaveBeenCalledTimes(1)
     // 元のエラーを差し替えず、そのまま渡す（PR #2501 と同型の欠陥を作らない）
-    expect(mockHandleApiError.mock.calls[0]![0]).toBe(networkError)
+    expect(mockCaptureQuiet.mock.calls[0]![0]).toBe(networkError)
+  })
+
+  // ──────────────────────────────────────────────
+  // ANN-2495-008: setup 外からの構築を壊さない
+  // ──────────────────────────────────────────────
+
+  it('ANN-2495-008: 構築時に setup 必須の composable を呼ばない', () => {
+    // createAnnouncement 経路（TimelinePostForm / blog edit）は async イベントハンドラの
+    // await 後に構築する。useI18n() / useToast() を構築時に呼ぶとそこで throw し、
+    // 「投稿は成功しているのに『投稿に失敗しました』」という silent な事故になる。
+    // useNuxtApp のみをモックした状態で構築が完走すること自体が回帰ガードになる。
+    expect(() => useAnnouncementFeed('TEAM', 'my-team')).not.toThrow()
   })
 })
 
