@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  * matcher 式は行挿入で腐らず、{@code SecurityConfig} を Ctrl+F すれば人間もすぐ辿れる。
  * さらに文字列であるため番人が機械的に突き合わせられる。</p>
  *
- * <p><b>注意</b>: 本注釈は<b>認可が存在しないこと</b>を宣言するものであり、他の 2 マーカーとは
+ * <p><b>注意</b>: 本注釈は<b>認可が存在しないこと</b>を宣言するものであり、他の 3 マーカーとは
  * 意味が根本的に異なる。個人データ・テナント固有データを返す可能性が少しでもあるなら付与してはならない。
  * レスポンスに含まれる項目が将来増えた場合は公開の妥当性が崩れうるため、当該 DTO の変更時は
  * 必ず本注釈の妥当性を再評価すること。</p>
@@ -47,6 +47,7 @@ import java.lang.annotation.Target;
  *
  * @see AuthorizedInService
  * @see AuthorizedByPathConfig
+ * @see SelfScopedEndpoint
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
