@@ -26,6 +26,7 @@ import {
   type RowSlot,
 } from '~/utils/reservationMatrix'
 import type { GroupBookingContext, LineOption } from '~/components/reservation/GroupBookingDialog.vue'
+import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
 
 type GridColumnDto = components['schemas']['GridColumnDto']
 type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
@@ -42,11 +43,15 @@ const emit = defineEmits<{
   manageLines: []
   /** グループ/単枠 予約確定成功。親（TeamReservationsPanel）が一覧等を再読込する。 */
   reserved: []
+  /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
+  waitlistChanged: []
 }>()
 
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 行ヘッダに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
@@ -73,6 +78,12 @@ const errorMsg = ref('')
 
 const todayStr = ref('')
 const nowMinutes = ref(0)
+
+// === キャンセル待ち（waitlist・W2-4-FE）===
+/** このチームで自分が WAITING 登録済みの slotId 集合（満席セルのラベル/ダイアログ初期状態に使う）。 */
+const myWaitlistSlotIds = ref<Set<number>>(new Set())
+const waitlistDialogVisible = ref(false)
+const waitlistContext = ref<WaitlistDialogContext | null>(null)
 
 const dialogVisible = ref(false)
 const dialogContext = ref<GroupBookingContext | null>(null)
@@ -102,6 +113,20 @@ const allCells = computed<MatrixCellInput[]>(() => {
     }
   }
   return cells
+})
+
+/**
+ * 🔴teamId は slug（`WaitlistEntryResponse.teamId` は BE の数値 DB id）のため文字列比較できない
+ * （検分で発覚した実バグの是正・2026-07-30）。`SlotMatrixPicker` は既にこのチームの枠一覧
+ * （`allCells`）を読み込み済みのため、team id 解決を経由せず
+ * 「slotId が読み込み済みの枠 id 集合に含まれるか」で絞り込む（team id 不要・厳密・最も安い）。
+ */
+const loadedSlotIds = computed<Set<number>>(() => {
+  const ids = new Set<number>()
+  for (const c of allCells.value) {
+    if (c.slotId != null) ids.add(c.slotId)
+  }
+  return ids
 })
 
 const header = computed(() => buildTimeHeader(allCells.value))
@@ -206,9 +231,19 @@ function resolveLine(column: GridColumnDto): LineOption {
   return { id: fallback?.id ?? 0, name: fallback?.name ?? '' }
 }
 
+/**
+ * BOOKED（満席）セルは、過去枠でない限りキャンセル待ち導線として常にクリック可能にする（W2-4-FE）。
+ * メニューフィルターの起点判定（startable）は「連続確保の起点になれるか」の判定であり、
+ * キャンセル待ちには無関係のため対象外にする。
+ */
 function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return true
+  if (slot.cell.state === 'BOOKED') {
+    // slotId 不明の BOOKED セルは押しても無反応（early return）になるため disabled にする（検分是正）。
+    if (slot.cell.slotId == null) return true
+    return isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
+  }
   if (slot.cell.state !== 'AVAILABLE') return true
   if (isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
   if (slot.span === 1 && row.startable && !row.startable.has(headerIndex)) return true
@@ -219,14 +254,19 @@ function cellStateClass(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   const disabled = isCellDisabled(row, headerIndex)
   const state = slot?.kind === 'cell' ? slot.cell.state : undefined
+
+  // BOOKED はクリック可否に関わらず同じ配色（満席）のまま、クリック可能な場合のみポインタ+ホバーを付ける。
+  if (state === 'BOOKED') {
+    return disabled
+      ? 'cursor-not-allowed border-surface-100 bg-surface-100 text-surface-500 dark:border-surface-600 dark:bg-surface-700'
+      : 'cursor-pointer border-surface-100 bg-surface-100 text-surface-500 hover:border-primary dark:border-surface-600 dark:bg-surface-700'
+  }
   if (disabled) {
     if (state === 'AVAILABLE') {
       // メニューフィルターで起点不可 or 過去セル: 空きはあるが選べない
       return 'cursor-not-allowed border-surface-100 bg-surface-50 text-surface-300 opacity-60 dark:border-surface-600 dark:bg-surface-800'
     }
     switch (state) {
-      case 'BOOKED':
-        return 'cursor-not-allowed border-surface-100 bg-surface-100 text-surface-500 dark:border-surface-600 dark:bg-surface-700'
       case 'CLOSED':
         return 'cursor-not-allowed border-surface-100 bg-surface-50 text-surface-400 dark:border-surface-600 dark:bg-surface-800'
       case 'UNAVAILABLE':
@@ -249,7 +289,11 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   if (slot.kind === 'covered') return ''
   switch (slot.cell.state) {
     case 'AVAILABLE': return t('reservation.grid.state.available')
-    case 'BOOKED': return t('reservation.grid.state.booked')
+    // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
+    case 'BOOKED':
+      return slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+        ? t('reservation.waitlist.registered_badge')
+        : t('reservation.grid.state.booked')
     case 'CLOSED': return t('reservation.grid.state.closed')
     case 'UNAVAILABLE': {
       const reason = unavailableReasonOf(row, headerIndex)
@@ -259,16 +303,46 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   }
 }
 
+/**
+ * BOOKED セルの aria-label に「押すと何が起きるか」を追記する（検分是正・W2-4-FE）。
+ * 押せない（slotId 不明）セルにはヒントを付けない。
+ */
+function waitlistAriaHint(row: MatrixRowVM, headerIndex: number): string {
+  const slot = row.aligned[headerIndex]
+  if (!slot || slot.kind !== 'cell' || slot.cell.state !== 'BOOKED' || slot.cell.slotId == null) return ''
+  return myWaitlistSlotIds.value.has(slot.cell.slotId)
+    ? t('reservation.waitlist.aria_hint_cancel')
+    : t('reservation.waitlist.aria_hint_register')
+}
+
 function cellAriaLabel(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return ''
-  return `${row.dateLabel} ${header.value[headerIndex]?.label ?? ''} ${row.columnLabel} ${cellLabel(row, headerIndex)}`
+  const hint = waitlistAriaHint(row, headerIndex)
+  const base = `${row.dateLabel} ${header.value[headerIndex]?.label ?? ''} ${row.columnLabel} ${cellLabel(row, headerIndex)}`
+  return hint ? `${base}: ${hint}` : base
 }
 
 function onCellClick(row: MatrixRowVM, headerIndex: number) {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return
   if (isCellDisabled(row, headerIndex)) return
+
+  if (slot.cell.state === 'BOOKED') {
+    // 満席セル: キャンセル待ちダイアログを開く（W2-4-FE）。span（長尺枠の跨ぎ）に関わらず
+    // 対象は常に単一 slotId のため、長尺/30分どちらでも扱いは同じ。
+    if (slot.cell.slotId == null) return
+    const line = resolveLine(row.column)
+    waitlistContext.value = {
+      slotId: slot.cell.slotId,
+      date: row.date,
+      startTime: slot.cell.startTime ?? '',
+      endTime: slot.cell.endTime ?? '',
+      lineName: line.name,
+    }
+    waitlistDialogVisible.value = true
+    return
+  }
 
   if (slot.span > 1) {
     // 長尺手動枠: 既存の単枠予約フローへ（親の ReservationForm）
@@ -299,8 +373,45 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
 }
 
 function onDialogReserved() {
-  loadGrid()
+  void loadGridAndWaitlist()
   emit('reserved')
+}
+
+/** 登録/取消成功時: グリッド＋自分の登録集合を再取得し、親に「自分のキャンセル待ち」再読込を促す。 */
+async function onWaitlistChanged() {
+  await loadGridAndWaitlist({ silent: true })
+  emit('waitlistChanged')
+}
+
+async function loadMyWaitlist() {
+  try {
+    const res = await reservationApi.listMyWaitlist()
+    const loaded = loadedSlotIds.value
+    myWaitlistSlotIds.value = new Set(
+      (res.data ?? [])
+        .filter(e => e.slotId != null && loaded.has(e.slotId))
+        .map(e => e.slotId!),
+    )
+  }
+  catch (error) {
+    // 取得失敗は「未登録」扱いにフォールバック（満席セルのラベルが「待機中」にならないだけで、
+    // ダイアログを開けば実際の登録状態は API 側で正しく判定される。致命的でないため通知はしない）。
+    // ただし完全に握りつぶすと恒常的な失敗が誰にも見えなくなるため、静かに記録する（captureQuiet）。
+    captureQuiet(error, { context: 'SlotMatrixPicker: 自分のキャンセル待ち取得に失敗' })
+    myWaitlistSlotIds.value = new Set()
+  }
+}
+
+/**
+ * グリッド→自分のキャンセル待ち集合の順で再取得する（`loadedSlotIds` はグリッド依存のため必ずこの
+ * 順序で呼ぶ）。**検分是正（2026-07-30）**: 以前は `loadGrid` 単体を呼ぶ経路が複数箇所（週/メニュー
+ * フィルタ切替の watch・KeepAlive 再活性化）に分散しており、`loadMyWaitlist` の呼び忘れにより
+ * 「週を移動すると登録済みの満席セルから『待機中』表示が消え、登録ボタンを押すと409になる」
+ * 実バグを誘発した。以後グリッド再取得は必ずこの関数経由にし、呼び分け（＝再発）を構造的に禁止する。
+ */
+async function loadGridAndWaitlist(opts?: { silent?: boolean }) {
+  await loadGrid(opts)
+  await loadMyWaitlist()
 }
 
 function gridStyle(headerLength: number): string {
@@ -308,12 +419,12 @@ function gridStyle(headerLength: number): string {
 }
 
 // loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
-watch([weekStart, filterMenuId], () => loadGrid())
+watch([weekStart, filterMenuId], () => loadGridAndWaitlist())
 
 onMounted(async () => {
   thisWeek()
   await Promise.all([loadLines(), loadMenus(), loadResourceName()])
-  await loadGrid()
+  await loadGridAndWaitlist()
 })
 
 // KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
@@ -325,7 +436,7 @@ onActivated(() => {
     initialActivationDone = true
     return
   }
-  void loadGrid({ silent: true })
+  void loadGridAndWaitlist({ silent: true })
 })
 
 // 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）。
@@ -333,7 +444,7 @@ onActivated(() => {
 defineExpose({
   refresh: async () => {
     await loadResourceName()
-    await loadGrid()
+    await loadGridAndWaitlist()
   },
 })
 </script>
@@ -446,6 +557,16 @@ defineExpose({
       :menus="menus"
       :context="dialogContext"
       @reserved="onDialogReserved"
+    />
+
+    <ReservationWaitlistDialog
+      v-model:visible="waitlistDialogVisible"
+      :team-id="props.teamId"
+      :is-admin="props.isAdmin"
+      :resource-name="resourceName"
+      :context="waitlistContext"
+      :registered-slot-ids="myWaitlistSlotIds"
+      @changed="onWaitlistChanged"
     />
   </div>
 </template>

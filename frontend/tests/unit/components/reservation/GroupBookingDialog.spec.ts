@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import GroupBookingDialog from '~/components/reservation/GroupBookingDialog.vue'
 import type { GroupBookingContext } from '~/components/reservation/GroupBookingDialog.vue'
@@ -14,16 +14,21 @@ import { buildTimeHeader, alignRowToHeader, type MatrixCellInput } from '~/utils
  *   AC-4: N>=2 の確定は createGroup を slotIds 昇順（時間昇順）で呼ぶ
  *   AC-5: エラーコード別の表示分岐（039=conflict_retry+reserved emit / 043=line_not_available で留まる /
  *         013=own_overlap専用文言でプレビューに留まる。第二弾実機E2E発見バグの根治）
+ *   AC-6（検分是正・W2-6-FE）: 仮押さえ自動失効の会員向け注意書き（MANUAL×非NULLで表示・
+ *         NULL/AUTOで非表示。ReservationForm.vue と同一方針をグループ経路でも検証）
+ *   AC-7（検分是正・W2-6-FE）: 429=RESERVATION_053（グループ経路）は専用文言のトーストを表示する
  *
  * 注: テスト環境の既定ロケールは en。Dialog は Teleport で document.body にレンダリングされる。
  */
 const mockCreateReservation = vi.fn()
 const mockCreateGroup = vi.fn()
+const mockGetReservationSettings = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
     createReservation: mockCreateReservation,
     createGroup: mockCreateGroup,
+    getReservationSettings: mockGetReservationSettings,
   }),
 }))
 
@@ -73,6 +78,8 @@ async function flush() {
 beforeEach(() => {
   mockCreateReservation.mockReset()
   mockCreateGroup.mockReset()
+  mockGetReservationSettings.mockReset()
+  mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'AUTO', pendingExpireHours: 24 } })
   mockNotifySuccess.mockReset()
   mockNotifyError.mockReset()
 })
@@ -80,6 +87,25 @@ beforeEach(() => {
 afterEach(() => {
   document.body.querySelectorAll('.p-dialog').forEach(el => el.remove())
   document.body.querySelectorAll('[role="dialog"]').forEach(el => el.remove())
+})
+
+/**
+ * ウォームアップマウント（殿の実測・家老の実走で確定した対処・2026-07-30是正）。
+ * `mountSuspended` の初回呼び出しの transform コストを beforeAll 側に前払いし、各 it は
+ * 既定の testTimeout のまま安定させる（`ReservationMyWaitlistList.spec.ts` と同一の対処）。
+ */
+beforeAll(async () => {
+  mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'AUTO', pendingExpireHours: 24 } })
+  const warmup = await mountSuspended(GroupBookingDialog, {
+    props: {
+      visible: true,
+      teamId: 'warmup-slug',
+      lines: [{ id: 1, name: '席1' }],
+      menus: [cutMenu],
+      context: buildContext(),
+    },
+  })
+  warmup.unmount()
 })
 
 describe('GroupBookingDialog.vue', () => {
@@ -261,5 +287,86 @@ describe('GroupBookingDialog.vue', () => {
     // プレビューに留まる（確定ボタンがまだ存在する＝閉じていない）。039/038/009 と異なり選択し直しを促す。
     expect(findByTestId('group-confirm')).not.toBeNull()
     expect(wrapper.emitted('reserved')).toBeFalsy()
+  })
+
+  it('AC-6a: MANUAL かつ pendingExpireHours 非NULL のときプレビュー画面に注意書きを表示する', async () => {
+    mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'MANUAL', pendingExpireHours: 24 } })
+    await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: '席1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+
+    // N=1・メニューなしでプレビューへ進む（最短経路）
+    findByTestId<HTMLButtonElement>('group-no-menu')!.click()
+    await flush()
+
+    const notice = findByTestId('pending-expire-notice')
+    expect(notice).not.toBeNull()
+    expect(notice!.textContent).toContain('24')
+  })
+
+  it('AC-6b: pendingExpireHours が NULL（自動失効なし設定）のときは注意書きを表示しない', async () => {
+    mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'MANUAL', pendingExpireHours: null } })
+    await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: '席1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+
+    findByTestId<HTMLButtonElement>('group-no-menu')!.click()
+    await flush()
+
+    expect(findByTestId('pending-expire-notice')).toBeNull()
+  })
+
+  it('AC-6c: 承認モード=AUTO のチームは注意書きを表示しない', async () => {
+    mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'AUTO', pendingExpireHours: 24 } })
+    await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: '席1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+
+    findByTestId<HTMLButtonElement>('group-no-menu')!.click()
+    await flush()
+
+    expect(findByTestId('pending-expire-notice')).toBeNull()
+  })
+
+  it('AC-7: 429=RESERVATION_053（グループ経路）は専用文言のトーストを表示する', async () => {
+    mockCreateGroup.mockRejectedValue({ data: { error: { code: 'RESERVATION_053' } } })
+    await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: '席1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+
+    findByTestId<HTMLButtonElement>('group-menu-option-menu-cut')!.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('group-confirm')!.click()
+    await flush()
+
+    expect(mockNotifyError).toHaveBeenCalledWith("You're creating reservations too quickly. Please wait a moment and try again")
   })
 })

@@ -33,20 +33,22 @@ public class SitemapXmlGenerator {
      * 超過なら {@code sitemapindex} 形式（{@code /sitemap-1.xml}, {@code /sitemap-2.xml} …）
      * を返す。</p>
      *
-     * @param baseUrl   フロントエンドのベース URL（例: {@code https://mannschaft.example}）
-     * @param teams     PUBLIC チームエントリ
-     * @param orgs      PUBLIC 組織エントリ
-     * @param teamPosts PUBLIC チーム投稿エントリ
-     * @param orgPosts  PUBLIC 組織投稿エントリ
+     * @param baseUrl    フロントエンドのベース URL（例: {@code https://mannschaft.example}）
+     * @param teams      PUBLIC チームエントリ
+     * @param orgs       PUBLIC 組織エントリ
+     * @param teamPosts  PUBLIC チーム投稿エントリ
+     * @param orgPosts   PUBLIC 組織投稿エントリ
+     * @param activities PUBLIC 活動記録エントリ（F06.4）
      * @return sitemap XML 文字列
      */
     public String generate(String baseUrl,
                            List<SitemapEntry> teams,
                            List<SitemapEntry> orgs,
                            List<SitemapPostEntry> teamPosts,
-                           List<SitemapPostEntry> orgPosts) {
+                           List<SitemapPostEntry> orgPosts,
+                           List<SitemapEntry> activities) {
 
-        List<String[]> urlEntries = buildUrlEntries(baseUrl, teams, orgs, teamPosts, orgPosts);
+        List<String[]> urlEntries = buildUrlEntries(baseUrl, teams, orgs, teamPosts, orgPosts, activities);
 
         if (urlEntries.size() <= MAX_URLS_PER_SITEMAP) {
             return buildUrlsetXml(urlEntries);
@@ -59,12 +61,13 @@ public class SitemapXmlGenerator {
     /**
      * 分割された個別 sitemap ページ（例: /sitemap-1.xml）の XML 文字列を生成する。
      *
-     * @param baseUrl   フロントエンドのベース URL
-     * @param teams     PUBLIC チームエントリ
-     * @param orgs      PUBLIC 組織エントリ
-     * @param teamPosts PUBLIC チーム投稿エントリ
-     * @param orgPosts  PUBLIC 組織投稿エントリ
-     * @param page      ページ番号（1始まり）
+     * @param baseUrl    フロントエンドのベース URL
+     * @param teams      PUBLIC チームエントリ
+     * @param orgs       PUBLIC 組織エントリ
+     * @param teamPosts  PUBLIC チーム投稿エントリ
+     * @param orgPosts   PUBLIC 組織投稿エントリ
+     * @param activities PUBLIC 活動記録エントリ（F06.4）
+     * @param page       ページ番号（1始まり）
      * @return 指定ページの urlset XML 文字列。ページ番号が範囲外の場合は空の urlset。
      */
     public String generatePage(String baseUrl,
@@ -72,8 +75,9 @@ public class SitemapXmlGenerator {
                                List<SitemapEntry> orgs,
                                List<SitemapPostEntry> teamPosts,
                                List<SitemapPostEntry> orgPosts,
+                               List<SitemapEntry> activities,
                                int page) {
-        List<String[]> urlEntries = buildUrlEntries(baseUrl, teams, orgs, teamPosts, orgPosts);
+        List<String[]> urlEntries = buildUrlEntries(baseUrl, teams, orgs, teamPosts, orgPosts, activities);
         int fromIndex = (page - 1) * MAX_URLS_PER_SITEMAP;
         if (fromIndex >= urlEntries.size()) {
             return buildUrlsetXml(List.of());
@@ -94,7 +98,8 @@ public class SitemapXmlGenerator {
                                    List<SitemapEntry> teams,
                                    List<SitemapEntry> orgs,
                                    List<SitemapPostEntry> teamPosts,
-                                   List<SitemapPostEntry> orgPosts) {
+                                   List<SitemapPostEntry> orgPosts,
+                                   List<SitemapEntry> activities) {
         List<String[]> entries = new ArrayList<>();
 
         for (SitemapEntry t : teams) {
@@ -119,6 +124,14 @@ public class SitemapXmlGenerator {
             entries.add(new String[]{
                     baseUrl + "/public/organizations/" + op.scopeId() + "/posts/" + op.postId(),
                     formatDate(op)
+            });
+        }
+        // F06.4 公開活動記録。他の公開ページと違い URL にスコープを含まない
+        // （SNS シェア用の ID 直引き経路 /activity/{id} が正準。ActivitySharePanel が配る URL と同一）。
+        for (SitemapEntry a : activities) {
+            entries.add(new String[]{
+                    baseUrl + "/activity/" + a.id(),
+                    formatDate(a)
             });
         }
         return entries;
