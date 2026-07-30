@@ -18,6 +18,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 予約確認の予約対象ラベルに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
@@ -38,9 +40,11 @@ async function loadPendingExpireNotice() {
     pendingExpireApprovalMode.value = res.data.approvalMode
     pendingExpireHours.value = res.data.pendingExpireHours ?? null
   }
-  catch {
+  catch (error) {
     // 取得失敗は注意書きを出さない方向にフォールバック（予約確定の可否自体は BE が最終判定するため、
-    // 注意書きが出ないだけで機能不全にはならない。初回ロード時の一時的な失敗は想定内）。
+    // 注意書きが出ないだけで機能不全にはならない）。ただし完全に握りつぶすと恒常的な失敗が誰にも
+    // 見えなくなるため、ユーザーには出さずバックエンドへ静かに記録する（captureQuiet・症状を隠さない）。
+    captureQuiet(error, { context: 'ReservationForm: 仮押さえ失効設定の取得に失敗' })
     pendingExpireApprovalMode.value = undefined
     pendingExpireHours.value = null
   }

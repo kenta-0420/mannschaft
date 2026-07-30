@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import ReservationMyWaitlistList from '~/components/reservation/ReservationMyWaitlistList.vue'
 
@@ -58,6 +58,26 @@ beforeEach(() => {
   mockNotifySuccess.mockReset()
   mockNotifyError.mockReset()
   mockHandleApiError.mockReset()
+})
+
+/**
+ * ウォームアップマウント（殿の実測で確定した対処・2026-07-30）。
+ *
+ * `mountSuspended` の**初回**呼び出しは、当該コンポーネント（および依存ツリー）の
+ * transform（esbuild/vite変換）コストをそのテストの `testTimeout`（既定5秒）内で負担する。
+ * 環境が重いとき（実測: transform 130〜380秒/ファイル）、この初回コストだけで
+ * 1件目のテスト（AC-1）が確定的に5秒を超えて timeout する
+ * （2件目以降はコンパイル済みモジュールを再利用するため速い・ロジックの欠陥ではない）。
+ *
+ * `setupNuxt` 用に既に大きい hookTimeout を持つ `beforeAll` で使い捨てマウントし、
+ * transform コストを beforeAll 側に前払いすることで、各 it は既定の testTimeout のまま
+ * 安定させる。testTimeout を config 全体で引き上げると他テストの本物の hang を隠すため禁止
+ * （殿の指示）。
+ */
+beforeAll(async () => {
+  mockListMyWaitlist.mockResolvedValue({ data: [] })
+  const warmup = await mountSuspended(ReservationMyWaitlistList, { props: { teamId: 'warmup' } })
+  warmup.unmount()
 })
 
 describe('ReservationMyWaitlistList.vue', () => {
