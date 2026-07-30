@@ -113,7 +113,7 @@ class VillageCalendarControllerContractTest {
     @Test
     @DisplayName("GET ?year=2025&month=3 — エンベロープは {items, year, month}（items 配列 + 問い合わせた年月のエコー）")
     void listByMonth_envelopeShape() throws Exception {
-        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3))
+        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3, USER_ID))
                 .willReturn(new CalendarEventListResponse(List.of(annualRecurringEvent()), 2025, 3));
 
         mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -139,7 +139,7 @@ class VillageCalendarControllerContractTest {
     @Test
     @DisplayName("GET — from / to は無視される（範囲クエリではなく year/month 指定の月別 API）")
     void listByMonth_ignoresFromAndTo() throws Exception {
-        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3))
+        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3, USER_ID))
                 .willReturn(new CalendarEventListResponse(List.of(annualRecurringEvent()), 2025, 3));
 
         mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -153,14 +153,14 @@ class VillageCalendarControllerContractTest {
                 .andExpect(jsonPath("$.data.month").value(3));
 
         // from / to が渡っても Service に届くのは year / month のみ
-        verify(calendarService).listEventsByMonth(VILLAGE_ID, 2025, 3);
+        verify(calendarService).listEventsByMonth(VILLAGE_ID, 2025, 3, USER_ID);
     }
 
     @Test
     @DisplayName("GET — from / to だけを送っても year/month は現在日時にフォールバックする（範囲は効かない）")
     void listByMonth_fromToOnly_fallsBackToCurrentMonth() throws Exception {
         LocalDate today = LocalDate.now();
-        given(calendarService.listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue()))
+        given(calendarService.listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue(), USER_ID))
                 .willReturn(new CalendarEventListResponse(List.of(), today.getYear(), today.getMonthValue()));
 
         mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -170,16 +170,16 @@ class VillageCalendarControllerContractTest {
                 .andExpect(jsonPath("$.data.year").value(today.getYear()))
                 .andExpect(jsonPath("$.data.month").value(today.getMonthValue()));
 
-        verify(calendarService).listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue());
+        verify(calendarService).listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue(), USER_ID);
         // 2025/3 は問い合わせられない（from/to は範囲として解釈されない）
-        verify(calendarService, never()).listEventsByMonth(VILLAGE_ID, 2025, 3);
+        verify(calendarService, never()).listEventsByMonth(VILLAGE_ID, 2025, 3, USER_ID);
     }
 
     @Test
     @DisplayName("GET — year/month 未指定なら現在の年月にフォールバックする")
     void listByMonth_defaultsToCurrentYearMonth() throws Exception {
         LocalDate today = LocalDate.now();
-        given(calendarService.listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue()))
+        given(calendarService.listEventsByMonth(VILLAGE_ID, today.getYear(), today.getMonthValue(), USER_ID))
                 .willReturn(new CalendarEventListResponse(List.of(), today.getYear(), today.getMonthValue()));
 
         mockMvc.perform(get(BASE, VILLAGE_ID))
@@ -194,7 +194,7 @@ class VillageCalendarControllerContractTest {
         // 2020 年登録の桃の節句が、2025/3 の問い合わせで返る。
         // VillageCalendarService は MONTH(event_date)=:month で年を無視するため、
         // この意味論は範囲クエリ（from/to）では表現できない。
-        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3))
+        given(calendarService.listEventsByMonth(VILLAGE_ID, 2025, 3, USER_ID))
                 .willReturn(new CalendarEventListResponse(List.of(annualRecurringEvent()), 2025, 3));
 
         mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -217,7 +217,7 @@ class VillageCalendarControllerContractTest {
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
 
         verify(calendarService, never()).listEventsByMonth(eq(VILLAGE_ID), org.mockito.ArgumentMatchers.anyInt(),
-                org.mockito.ArgumentMatchers.anyInt());
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     // ==================================================================
@@ -227,7 +227,7 @@ class VillageCalendarControllerContractTest {
     @Test
     @DisplayName("GET /{eventId} — CalendarEventResponse の項目名を固定する")
     void getEvent_shape() throws Exception {
-        given(calendarService.getEvent(VILLAGE_ID, EVENT_ID)).willReturn(annualRecurringEvent());
+        given(calendarService.getEvent(VILLAGE_ID, EVENT_ID, USER_ID)).willReturn(annualRecurringEvent());
 
         mockMvc.perform(get(BASE + "/{eventId}", VILLAGE_ID, EVENT_ID))
                 .andExpect(status().isOk())

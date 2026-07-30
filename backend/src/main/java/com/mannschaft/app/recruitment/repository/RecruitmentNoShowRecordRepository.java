@@ -36,6 +36,24 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
             """)
     List<RecruitmentNoShowRecordEntity> findUnconfirmedBefore(@Param("before") LocalDateTime before);
 
+    /**
+     * 指定募集枠に紐づく<b>未解決の異議申立</b>（{@code disputed = TRUE} かつ
+     * {@code dispute_resolution IS NULL}）を取得する（#2497 募集枠論理削除時の自動取下げ用）。
+     *
+     * <p><b>意図的に {@code RecruitmentListingEntity} を JOIN しない。</b>
+     * 兄弟の {@link #findByScopeTypeAndScopeId} / {@link #findByIdAndScopeTypeAndScopeId} は
+     * スコープ境界を得るために募集枠を JOIN しており、募集枠側の
+     * {@code @SQLRestriction("deleted_at IS NULL")} が効く。そのため<b>募集枠を論理削除した後は
+     * 配下の NO_SHOW 記録を一切引けなくなる</b>（これが #2497 の根本原因＝異議が永久に未解決のまま
+     * ペナルティに算入され続ける）。本クエリは論理削除の直後に呼ばれるため、募集枠に依存しない
+     * {@code listing_id} 直引きにする必要がある。呼出元（{@code RecruitmentListingService#archive}）が
+     * 募集枠エンティティの取得時に既にスコープ権限を検証済みであり、帰属は {@code listingId} が担保する。</p>
+     *
+     * @param listingId 募集枠 ID
+     * @return 未解決の異議申立を持つ NO_SHOW 記録（0 件なら空リスト）
+     */
+    List<RecruitmentNoShowRecordEntity> findByListingIdAndDisputedTrueAndDisputeResolutionIsNull(Long listingId);
+
     /** スコープ内の NO_SHOW 記録一覧（管理者用）。 */
     @Query("""
             SELECT r FROM RecruitmentNoShowRecordEntity r

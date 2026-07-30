@@ -55,4 +55,14 @@ public class ReservationSettingsResponse {
     @Schema(description = "自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null）",
             example = "施術台", nullable = true)
     private final String resourceNameCustom;
+
+    /**
+     * 仮押さえ(PENDING)の自動失効までの時間数（F03.4.5 §6.3・W2-6）。
+     *
+     * <p>{@code null} = 自動失効しない。ポリシー行が無いチームは既定値 24 を返す
+     * （{@code ReservationPolicyService#getOrDefault}）。</p>
+     */
+    @Schema(description = "仮押さえ(PENDING)を自動キャンセルするまでの時間数（null=自動失効しない）",
+            example = "24", nullable = true)
+    private final Integer pendingExpireHours;
 }

@@ -66,17 +66,19 @@ public class SignageScreenController {
     public ApiResponse<List<SignageScreenResponse>> listScreens(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        return ApiResponse.of(screenService.listScreens(scopeType, scopeId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(screenService.listScreensForActor(scopeType, scopeId, userId));
     }
 
     /**
      * 指定IDの画面を取得する。
-     * 認可: 認証済みユーザー
+     * 認可: 認証済みユーザー（対象画面スコープのメンバーシップ必須）
      * レスポンス: 200 OK
      */
     @GetMapping("/{id}")
     public ApiResponse<SignageScreenResponse> getScreen(@PathVariable Long id) {
-        return ApiResponse.of(screenService.getScreen(id));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(screenService.getScreenForActor(id, userId));
     }
 
     /**
@@ -169,6 +171,7 @@ public class SignageScreenController {
      */
     @GetMapping("/{id}/emergency")
     public ApiResponse<List<EmergencyMessageResponse>> listEmergencyMessages(@PathVariable Long id) {
-        return ApiResponse.of(emergencyService.listEmergencyMessages(id));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(emergencyService.listEmergencyMessages(id, userId));
     }
 }

@@ -108,6 +108,11 @@ public class SignageSlotService {
     /**
      * 画面に紐づくスロット一覧を表示順昇順で取得する。
      *
+     * <p><b>認可は呼び出し元の責務</b>。サイネージ端末向けの公開表示経路
+     * （{@code SignageDisplayController#getDisplayConfig}）はトークン認証済みで
+     * ユーザーコンテキストを持たないため、本メソッドには認可を敷かない。
+     * 認証ユーザー向けの管理画面入口は {@link #listSlotsForActor} を使うこと。</p>
+     *
      * @param screenId 画面ID
      * @return スロットレスポンス一覧
      */
@@ -116,6 +121,20 @@ public class SignageSlotService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * 認証ユーザー向けに画面に紐づくスロット一覧を取得する（メンバーシップ必須）。
+     *
+     * <p>認可根治戦役 Wave7: 認証ユーザー向けの管理画面入口として
+     * {@link AccessControlService#checkMembership} でスコープの会員に限定する。
+     * 書込系（{@link #addSlot} 等）は ADMIN 限定の {@link #checkScreenAdmin} を使うが、
+     * 参照は会員であれば可とする。</p>
+     */
+    public List<SignageSlotResponse> listSlotsForActor(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenService.findScreenOrThrow(screenId);
+        accessControlService.checkMembership(actor, screen.getScopeId(), screen.getScopeType());
+        return listSlots(screenId);
     }
 
     /**

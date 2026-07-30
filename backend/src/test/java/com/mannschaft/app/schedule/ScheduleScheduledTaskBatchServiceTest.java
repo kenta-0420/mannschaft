@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.entity.ScheduleScheduledTaskEntity;
 import com.mannschaft.app.schedule.repository.ScheduleScheduledTaskRepository;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,6 +50,9 @@ class ScheduleScheduledTaskBatchServiceTest {
 
     @Mock
     private ScheduleAttendanceService scheduleAttendanceService;
+
+    @Captor
+    private ArgumentCaptor<AttendanceSolicitationSettings> settingsCaptor;
 
     // 本番（Spring Boot 管理）と同等に ParameterNamesModule + JSR310 を登録する。
     // CreateSurveyRequest は @RequiredArgsConstructor のため -parameters + ParameterNamesModule で復元できる。
@@ -90,13 +96,17 @@ class ScheduleScheduledTaskBatchServiceTest {
     }
 
     private ScheduleScheduledTaskEntity pendingAttendanceTask() {
+        return pendingAttendanceTask("{}");
+    }
+
+    private ScheduleScheduledTaskEntity pendingAttendanceTask(String payloadJson) {
         return ScheduleScheduledTaskEntity.builder()
                 .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                 .scopeType(CalendarSyncScopeType.ORGANIZATION).scopeId(SCOPE_ID)
                 .taskType(ScheduledTaskType.ATTENDANCE)
                 .scheduledAt(LocalDateTime.now().minusMinutes(1))
                 .status(ScheduledTaskStatus.PENDING)
-                .payloadJson("{}")
+                .payloadJson(payloadJson)
                 .createdBy(CREATED_BY)
                 .build();
     }
@@ -137,10 +147,62 @@ class ScheduleScheduledTaskBatchServiceTest {
             // when
             batchService.materializeOne(task);
 
-            // then
-            verify(scheduleAttendanceService).openAttendanceSolicitation(SCHEDULE_ID);
+            // then: 設定なし payload では NONE（＝予定の既存設定を保つ）で呼ばれる
+            verify(scheduleAttendanceService)
+                    .openAttendanceSolicitation(eq(SCHEDULE_ID), settingsCaptor.capture());
+            assertThat(settingsCaptor.getValue().isEmpty())
+                    .as("payload に設定が無ければ予定の既存設定を保つ（NONE）")
+                    .isTrue();
             assertThat(task.getStatus()).isEqualTo(ScheduledTaskStatus.CREATED);
             assertThat(task.getMaterializedEntityId()).isEqualTo(SCHEDULE_ID);
+        }
+
+        /**
+         * <b>回帰防止（Issue #2508 欠陥B）</b>: 以前は payload_json が一度も読まれず、
+         * ユーザー指定の締切・コメント設定・最低応答ロールが黙って捨てられていた。
+         */
+        @Test
+        @DisplayName("ATTENDANCE_payloadの出欠設定が読み出されて引き渡される")
+        void ATTENDANCE_payloadの出欠設定が引き渡される() throws Exception {
+            // given: FE が送るのと同じ TZ 付き締切を含む payload
+            String payload = "{\"attendanceDeadline\":\"2026-08-02T18:00:00+09:00\","
+                    + "\"commentOption\":\"REQUIRED\",\"minResponseRole\":\"ADMIN_ONLY\"}";
+            ScheduleScheduledTaskEntity task = pendingAttendanceTask(payload);
+            given(scheduledTaskRepository.findById(task.getId())).willReturn(Optional.of(task));
+
+            // when
+            batchService.materializeOne(task);
+
+            // then
+            verify(scheduleAttendanceService)
+                    .openAttendanceSolicitation(eq(SCHEDULE_ID), settingsCaptor.capture());
+            AttendanceSolicitationSettings settings = settingsCaptor.getValue();
+            assertThat(settings.attendanceDeadline())
+                    .as("TZ 付き締切が JST の LocalDateTime に変換されて渡ること")
+                    .isEqualTo(LocalDateTime.of(2026, 8, 2, 18, 0));
+            assertThat(settings.commentOption()).isEqualTo(CommentOption.REQUIRED);
+            assertThat(settings.minResponseRole()).isEqualTo(MinResponseRole.ADMIN_ONLY);
+        }
+
+        @Test
+        @DisplayName("ATTENDANCE_オフセット無しの旧payloadもJSTとして読める（後方互換）")
+        void ATTENDANCE_オフセット無し旧payloadもJSTとして読める() throws Exception {
+            // given: LocalDateTime 時代に書かれた（オフセットを持たない）payload
+            String legacyPayload = "{\"attendanceDeadline\":\"2026-08-02T18:00:00\","
+                    + "\"commentOption\":null,\"minResponseRole\":null}";
+            ScheduleScheduledTaskEntity task = pendingAttendanceTask(legacyPayload);
+            given(scheduledTaskRepository.findById(task.getId())).willReturn(Optional.of(task));
+
+            // when
+            batchService.materializeOne(task);
+
+            // then
+            verify(scheduleAttendanceService)
+                    .openAttendanceSolicitation(eq(SCHEDULE_ID), settingsCaptor.capture());
+            assertThat(settingsCaptor.getValue().attendanceDeadline())
+                    .as("オフセット無しは JST として解釈されること")
+                    .isEqualTo(LocalDateTime.of(2026, 8, 2, 18, 0));
+            assertThat(task.getStatus()).isEqualTo(ScheduledTaskStatus.CREATED);
         }
 
         @Test
@@ -155,7 +217,7 @@ class ScheduleScheduledTaskBatchServiceTest {
             batchService.materializeOne(task);
 
             // then
-            verify(scheduleAttendanceService, never()).openAttendanceSolicitation(anyLong());
+            verify(scheduleAttendanceService, never()).openAttendanceSolicitation(anyLong(), any());
         }
     }
 
@@ -216,7 +278,7 @@ class ScheduleScheduledTaskBatchServiceTest {
 
             // then
             verify(surveyService, never()).createSurvey(any(), anyLong(), anyLong(), any());
-            verify(scheduleAttendanceService, never()).openAttendanceSolicitation(anyLong());
+            verify(scheduleAttendanceService, never()).openAttendanceSolicitation(anyLong(), any());
         }
     }
 }

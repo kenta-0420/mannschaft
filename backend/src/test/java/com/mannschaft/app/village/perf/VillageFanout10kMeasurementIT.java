@@ -175,8 +175,8 @@ class VillageFanout10kMeasurementIT extends com.mannschaft.app.village.controlle
     // AC-2 / AC-6: 村行事作成の同期 fan-out（1万 INSERT）— 生成件数と壁時計
     // =====================================================================
     @Test
-    @DisplayName("AC-2/AC-6 村行事1件作成で通知1万件生成・同期fan-out(1万INSERT)の壁時計を実測")
-    void ac2_ac6_synchronousFanoutBlockingInsert() {
+    @DisplayName("AC-2/AC-6 村行事1件作成で通知1万件生成・境界除外（fan-out 抜本改修 P1 後は @Async・API 応答は fan-out と非結合）")
+    void ac2_ac6_fanoutGeneratesExactlyActiveMembers() {
         long activeFrom = Fanout10kSeeder.ACTIVE_SUBJECT_BASE;
         long activeTo = activeFrom + ACTIVE_MEMBERS - 1;
         long boundaryFrom = Fanout10kSeeder.LEFT_SUBJECT_BASE;
@@ -184,39 +184,44 @@ class VillageFanout10kMeasurementIT extends com.mannschaft.app.village.controlle
 
         long notifBefore = countNotifications(activeFrom, activeTo);
 
-        // event-pool（dispatch 用）の end-to-end 稼働も参考記録する（drop は投入ペース依存＝ここでは非アサート）。
+        // event-pool（還流リスナー @Async の実行プール）の end-to-end 稼働も参考記録する。
         ThreadPoolExecutor tpe = applicationContext
                 .getBean("event-pool", ThreadPoolTaskExecutor.class).getThreadPoolExecutor();
         long completedBefore = tpe.getCompletedTaskCount();
 
-        // AC-6: 村行事作成 API 相当（AFTER_COMMIT の同期還流＝1万 INSERT を含む）の壁時計を実測。
-        // 還流リスナーは @Async 無し＝リクエストスレッドで同期実行されるため、この壁時計がユーザー体感のブロック時間。
+        // AC-7（fan-out 抜本改修 P1）: 還流リスナーは @Async 化され、createMeetup の応答は fan-out の完了を
+        // 待たずに即座に返る。この壁時計は「API 応答レイテンシ」であり、受信者数からは切り離されている
+        // （before は同期還流でこの時間に 1万 INSERT が乗っていた）。
         MeetupCreateRequest req = new MeetupCreateRequest(
                 "β4 fan-out 実測行事", null, null,
                 List.of(new MeetupCandidateDateInput(LocalDate.now().plusDays(7), null)));
         long t0 = System.nanoTime();
         MeetupResponse created = meetupService.createMeetup(villageId, req, actorUserId);
-        long fanoutMs = (System.nanoTime() - t0) / 1_000_000;
+        long apiReturnMs = (System.nanoTime() - t0) / 1_000_000;
 
         assertThat(created).isNotNull();
 
-        // AC-2: 対象村人（現役1万）の notifications 行がちょうど1万件生成される（決定的カウント）。
+        // AC-2: fan-out は非同期で進むため、現役1万件の生成完了を await してから件数を確定する
+        //（取りこぼしゼロ＝ちょうど1万件という正しさ不変条件は @Async 化後も保たれる）。
+        await().atMost(Duration.ofSeconds(180)).pollInterval(Duration.ofMillis(500))
+                .until(() -> countNotifications(activeFrom, activeTo) - notifBefore >= ACTIVE_MEMBERS);
         long generated = countNotifications(activeFrom, activeTo) - notifBefore;
         // AC-3 境界: 退村/BAN の user_id には 1 件も通知されない。
         long boundaryNotifs = countNotifications(boundaryFrom, boundaryTo);
 
-        // dispatch の end-to-end 完了数（参考）。棄却は投入ペース依存のため await 後に記録のみ。
+        // event-pool（還流タスク）の end-to-end 完了数（参考）。実際の配信タスクは
+        // notification-fanout-pool へ分離されたため、ここには還流タスク＋監査分が計上される。
         await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
                 .until(() -> tpe.getActiveCount() == 0 && tpe.getQueue().isEmpty());
-        long dispatchCompleted = tpe.getCompletedTaskCount() - completedBefore;
+        long eventPoolCompleted = tpe.getCompletedTaskCount() - completedBefore;
 
-        log.info("[AC-6] 村行事作成 同期fan-out 壁時計 = {} ms（1万 INSERT を含むリクエストスレッド同期実行）", fanoutMs);
+        log.info("[AC-7] 村行事作成 API 応答レイテンシ = {} ms（@Async 化で fan-out と非結合・受信者数に非依存）", apiReturnMs);
         log.info("[AC-2] notifications 生成数 = {} 件（現役1万に一致）／境界(退村+BAN)への通知 = {} 件", generated, boundaryNotifs);
-        log.info("[AC-7参考] event-pool end-to-end 完了タスク数 = {}（dispatch1万+監査数件のうち受理・完了分。"
-                + "投入ペース依存のため drop の決定的実証は ac7_dispatchDrop で行う）", dispatchCompleted);
-        perf("AC6_fanout_wall_ms=" + fanoutMs + " AC2_generated=" + generated
+        log.info("[参考] event-pool end-to-end 完了タスク数 = {}（還流タスク＋監査分。配信は notification-fanout-pool へ分離）",
+                eventPoolCompleted);
+        perf("AC7_api_return_ms=" + apiReturnMs + " AC2_generated=" + generated
                 + " AC3_boundary_notifs=" + boundaryNotifs
-                + " AC7_e2e_dispatch_completed=" + dispatchCompleted);
+                + " event_pool_completed=" + eventPoolCompleted);
 
         assertThat(generated).as("現役1万人ぶんの通知がちょうど1万件生成される").isEqualTo(ACTIVE_MEMBERS);
         assertThat(boundaryNotifs).as("退村/BAN には通知されない（対象境界）").isZero();

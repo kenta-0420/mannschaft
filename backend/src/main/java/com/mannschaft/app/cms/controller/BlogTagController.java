@@ -44,7 +44,8 @@ public class BlogTagController {
     public ResponseEntity<ApiResponse<List<BlogTagResponse>>> listTags(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId) {
-        return ResponseEntity.ok(ApiResponse.of(tagService.listTags(teamId, organizationId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                tagService.listTags(SecurityUtils.getCurrentUserId(), teamId, organizationId)));
     }
 
     /**

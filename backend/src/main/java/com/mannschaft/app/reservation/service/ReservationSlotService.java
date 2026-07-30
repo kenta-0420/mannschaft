@@ -52,6 +52,8 @@ public class ReservationSlotService {
     private final Clock clock;
     /** F03.4.5 §6.1: 満席→空き復帰時にキャンセル待ち一斉通知を起動するためのイベント発行者。 */
     private final ApplicationEventPublisher eventPublisher;
+    /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -64,12 +66,17 @@ public class ReservationSlotService {
     /**
      * チームのスロット一覧を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return スロットレスポンスリスト
      */
-    public List<ReservationSlotResponse> listSlots(Long teamId, LocalDate from, LocalDate to) {
+    public List<ReservationSlotResponse> listSlots(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, from, to);
         return enrichLineNames(reservationMapper.toSlotResponseList(slots));
@@ -78,12 +85,17 @@ public class ReservationSlotService {
     /**
      * チームの利用可能なスロット一覧を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return 利用可能なスロットレスポンスリスト
      */
-    public List<ReservationSlotResponse> listAvailableSlots(Long teamId, LocalDate from, LocalDate to) {
+    public List<ReservationSlotResponse> listAvailableSlots(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                         teamId, SlotStatus.AVAILABLE, from, to);
@@ -106,11 +118,17 @@ public class ReservationSlotService {
     /**
      * スロット詳細を取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。teamId と slotId の不一致は
+     * {@code findSlotOrThrow} が存在秘匿する。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param slotId スロットID
      * @return スロットレスポンス
      */
-    public ReservationSlotResponse getSlot(Long teamId, Long slotId) {
+    public ReservationSlotResponse getSlot(Long teamId, Long userId, Long slotId) {
+        viewAccessGuard.assertCanView(teamId, userId);
         ReservationSlotEntity entity = findSlotOrThrow(teamId, slotId);
         return enrichLineNames(List.of(reservationMapper.toSlotResponse(entity))).get(0);
     }

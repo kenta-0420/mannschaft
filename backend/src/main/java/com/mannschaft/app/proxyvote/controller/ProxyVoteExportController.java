@@ -90,7 +90,7 @@ public class ProxyVoteExportController {
     @DeleteMapping("/attachments/{attachmentId}")
     @Operation(summary = "添付ファイル削除")
     public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
-        attachmentService.deleteAttachment(attachmentId);
+        attachmentService.deleteAttachment(attachmentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

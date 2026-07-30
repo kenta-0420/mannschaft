@@ -8,6 +8,7 @@ import com.mannschaft.app.village.service.VillageSerendipityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,11 +66,13 @@ public class VillageSerendipityController {
      */
     @Deprecated(since = "F17.2", forRemoval = true)
     @GetMapping("/ranking")
-    @Operation(summary = "【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）",
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "【廃止予定】ご縁スコアの上位ランキングを取得する（村人のみ・F17.2 §8.2 で相性表示へ置換）",
                deprecated = true)
     public ApiResponse<VillageSerendipityRankingResponse> getRanking(
             @PathVariable("villageId") UUID villageId,
             @RequestParam(name = "limit", required = false) Integer limit) {
-        return ApiResponse.of(serendipityService.getRanking(villageId, limit));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(serendipityService.getRanking(villageId, limit, actorUserId));
     }
 }

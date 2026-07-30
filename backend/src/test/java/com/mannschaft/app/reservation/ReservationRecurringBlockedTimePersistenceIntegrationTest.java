@@ -127,7 +127,7 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
 
         // 実DB: listAvailableSlots から該当slotが除外され、境界slotは残る（半開区間・実TIME型比較）。
         List<ReservationSlotResponse> available =
-                slotService.listAvailableSlots(teamId, NEXT_MONDAY, NEXT_MONDAY);
+                slotService.listAvailableSlots(teamId, USER_ID, NEXT_MONDAY, NEXT_MONDAY);
         assertThat(available).extracting(ReservationSlotResponse::getId)
                 .as("19-20のslotのみ除外され、隣接する18:30-19:00/20:00-20:30は実DBでも残ること")
                 .containsExactlyInAnyOrder(beforeSlotId, afterSlotId);

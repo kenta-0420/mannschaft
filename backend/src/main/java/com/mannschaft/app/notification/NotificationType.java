@@ -46,6 +46,11 @@ public enum NotificationType {
     RESERVATION_CANCELLED_BY_MEMBER(NotificationPriority.NORMAL, "RESERVATION"),
     /** F03.4.5 §6.1: 満席枠のキャンセルで空きが出たときのキャンセル待ち一斉通知（HIGH）。 */
     RESERVATION_WAITLIST_OPENING(NotificationPriority.HIGH, "RESERVATION"),
+    /**
+     * F03.4.5 §6.3: 仮押さえ(PENDING)が承認されないまま期限切れになり自動キャンセルされた旨の
+     * 申込者向け通知（NORMAL）。管理者の不作為による失効であり緊急性は無いため HIGH にしない。
+     */
+    RESERVATION_PENDING_EXPIRED(NotificationPriority.NORMAL, "RESERVATION"),
     INQUIRY_RECEIVED(NotificationPriority.HIGH, "CHAT_MESSAGE"),
     /** 日次ダイジェスト。opt-in 方式のため既定 OFF。 */
     DAILY_DIGEST(NotificationPriority.LOW, "SYSTEM", false),

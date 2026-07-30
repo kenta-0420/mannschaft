@@ -1,9 +1,13 @@
 package com.mannschaft.app.schedule.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.schedule.CommentOption;
+import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduledTaskStatus;
 import com.mannschaft.app.schedule.ScheduledTaskType;
+import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.entity.ScheduleScheduledTaskEntity;
 import com.mannschaft.app.schedule.repository.ScheduleScheduledTaskRepository;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -42,6 +47,12 @@ public class ScheduleScheduledTaskBatchService {
 
     /** materialize の最大試行回数。これを超えたら FAILED 確定（無限リトライ防止）。 */
     public static final int MAX_ATTEMPTS = 5;
+
+    /**
+     * 予定本体（{@code schedules}）が日時を保持するタイムゾーン。
+     * payload の TZ 付き締切をここへ変換して適用する（{@code ScheduleScheduledTaskService} と対）。
+     */
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleScheduledTaskRepository scheduledTaskRepository;
     private final ObjectMapper objectMapper;
@@ -111,7 +122,9 @@ public class ScheduleScheduledTaskBatchService {
      *
      * <p>SURVEY: payload を {@link CreateSurveyRequest} にデシリアライズし、
      * {@code SurveyService.createSurvey/publishSurvey} で集計可能な survey を生成・公開する。<br>
-     * ATTENDANCE: {@code ScheduleAttendanceService.openAttendanceSolicitation} を呼ぶ。</p>
+     * ATTENDANCE: payload を {@link ScheduleScheduledTaskService.AttendancePayload} にデシリアライズし、
+     * 予約時に指定された出欠設定（締切・コメント要否・最低応答ロール）を添えて
+     * {@code ScheduleAttendanceService.openAttendanceSolicitation} を呼ぶ。</p>
      *
      * @param task 対象タスク（PENDING）
      * @throws Exception materialize に失敗した場合（呼び出し元で markFailed する）
@@ -136,12 +149,50 @@ public class ScheduleScheduledTaskBatchService {
             scheduledTaskRepository.save(current);
             log.info("予約アンケートmaterialize: taskId={}, surveyId={}", current.getId(), surveyId);
         } else if (current.getTaskType() == ScheduledTaskType.ATTENDANCE) {
-            scheduleAttendanceService.openAttendanceSolicitation(current.getScheduleId());
+            AttendanceSolicitationSettings settings = toAttendanceSettings(current.getPayloadJson());
+            scheduleAttendanceService.openAttendanceSolicitation(current.getScheduleId(), settings);
             current.markCreated(current.getScheduleId());
             scheduledTaskRepository.save(current);
-            log.info("予約出欠募集materialize: taskId={}, scheduleId={}",
-                    current.getId(), current.getScheduleId());
+            log.info("予約出欠募集materialize: taskId={}, scheduleId={}, deadline={}, commentOption={}, minResponseRole={}",
+                    current.getId(), current.getScheduleId(), settings.attendanceDeadline(),
+                    settings.commentOption(), settings.minResponseRole());
         }
+    }
+
+    /**
+     * 予約出欠募集の {@code payload_json} を、予定へ適用する出欠設定に復元する
+     * （機能55 / Issue #2508 欠陥B）。
+     *
+     * <p><b>回帰防止</b>: 以前はこの復元処理そのものが無く、ユーザーが指定した回答締切・
+     * コメント要否・最低応答ロールは payload に書かれるだけで一切適用されなかった。</p>
+     *
+     * <p>payload が空（旧データや設定なしの予約）の場合は {@link AttendanceSolicitationSettings#NONE}
+     * を返し、予定の既存設定をそのまま使う。JSON が壊れている・enum 名が不正といった
+     * 「本当に異常な」ケースは例外を伝播させ、{@code attempt_count} / {@code last_error} に
+     * 記録されるようにする（対処療法で握り潰さない）。</p>
+     *
+     * @param payloadJson 予約タスクの payload（null / 空可）
+     * @return 適用する出欠設定（null は返さない）
+     * @throws JsonProcessingException payload が JSON として壊れている場合
+     */
+    private AttendanceSolicitationSettings toAttendanceSettings(String payloadJson)
+            throws JsonProcessingException {
+        if (payloadJson == null || payloadJson.isBlank()) {
+            return AttendanceSolicitationSettings.NONE;
+        }
+
+        ScheduleScheduledTaskService.AttendancePayload payload =
+                objectMapper.readValue(payloadJson, ScheduleScheduledTaskService.AttendancePayload.class);
+
+        // 締切は TZ 付きで保持されている。予定本体は JST の LocalDateTime で持つため変換する。
+        LocalDateTime deadlineJst = payload.attendanceDeadline() == null ? null
+                : payload.attendanceDeadline().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
+
+        return new AttendanceSolicitationSettings(
+                deadlineJst,
+                payload.commentOption() == null ? null : CommentOption.valueOf(payload.commentOption()),
+                payload.minResponseRole() == null ? null
+                        : MinResponseRole.valueOf(payload.minResponseRole()));
     }
 
     /**
