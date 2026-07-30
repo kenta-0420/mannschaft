@@ -17,7 +17,7 @@
  *   - 日時の型: startAt / endAt は OffsetDateTime（Z 付き ISO）。closesAt / expiresAt は LocalDateTime（オフセットなし）。
  *   - 認可: 非会員は 403（COMMON_002）。非 ADMIN が priority≠NORMAL を指定すると 400（BROADCAST_001）。
  *   - お知らせフィード: GET /announcements（data+meta）, POST /{id}/read, POST /read-all,
- *     PATCH /{id}/pin（ADMIN/DEPUTY のみ・MEMBER は 400 ANNOUNCE_002）, DELETE /{id}（204・お知らせ解除）。
+ *     PATCH /{id}/pin（ADMIN/DEPUTY のみ・MEMBER は 403 ANNOUNCE_002）, DELETE /{id}（204・お知らせ解除）。
  *
  * ── レートリミット（重要）─────────────────────────────────────────────
  *   broadcast エンドポイントは BroadcastRateLimitFilter により「ユーザー別 5 件 / 5 分」に制限される。
@@ -604,15 +604,16 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     expect((await p2.json()).data.isPinned).toBe(false)
   })
 
-  test('ANNC-FEED-002: MEMBER がピン留め → 403 相当（400 ANNOUNCE_002）で拒否される', async ({ request }) => {
+  test('ANNC-FEED-002: MEMBER がピン留め → 403 ANNOUNCE_002 で拒否される', async ({ request }) => {
     ensureApiReady()
     const feedId = await ensureFeedItem(request)
     const res = await request.patch(`${BACKEND_URL}/api/v1/teams/${TEAM_ID}/announcements/${feedId}/pin`, {
       headers: authHeaders(userToken!), data: {},
     })
     const body = await res.json().catch(() => ({}))
-    // 実装は権限エラーを 400 ANNOUNCE_002 で返す（「この操作を行う権限がありません」）
-    expect(res.status(), 'MEMBER がピン留めできてしまった').toBe(400)
+    // 権限エラーは 403 ANNOUNCE_002（「この操作を行う権限がありません」）。
+    // #2468 で ERROR_CODE_STATUS_MAP に登録するまでは未登録により 400 が返っていた。
+    expect(res.status(), 'MEMBER がピン留めできてしまった').toBe(403)
     expect(body?.error?.code).toBe('ANNOUNCE_002')
   })
 
