@@ -320,16 +320,35 @@ class AnnouncementFeedControllerTest {
     class MarkAllAsRead {
 
         @Test
-        @DisplayName("正常系: 200 OK + markedCount が返ること")
+        @DisplayName("正常系: 200 OK + 実際に既読化した件数が markedCount に載ること（#2530 ①）")
         void markAllAsRead_正常系_200() throws Exception {
-            // Given
-            willDoNothing().given(announcementFeedService)
-                    .markAllAsRead(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID));
+            // Given: 下流が 8 件を既読化し、未読は残っていない
+            given(announcementFeedService.markAllAsRead(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
+                    .willReturn(new AnnouncementReadService.MarkAllReadOutcome(8, false));
+
+            // When / Then: ハードコードの 0 ではなく実件数が返る
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", TEAM_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.markedCount").value(8))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(false));
+        }
+
+        @Test
+        @DisplayName("打ち切り時: hasMoreUnread=true と実件数が返り、嘘の 0 件にならない（#2530 ①）")
+        void markAllAsRead_打ち切り時は残余を伝える() throws Exception {
+            // Given: 防御上限（500 × 20）に到達して未読が残っている
+            int limit = AnnouncementReadService.MARK_ALL_BATCH_SIZE
+                    * AnnouncementReadService.MARK_ALL_MAX_BATCHES;
+            given(announcementFeedService.markAllAsRead(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
+                    .willReturn(new AnnouncementReadService.MarkAllReadOutcome(limit, true));
 
             // When / Then
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", TEAM_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.markedCount").value(0));
+                    .andExpect(jsonPath("$.data.markedCount").value(limit))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(true));
         }
     }
 
