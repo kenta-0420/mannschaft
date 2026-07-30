@@ -36,6 +36,7 @@ const { createPost: createTimelinePost } = useTimelineApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
 const { confirmAction } = useConfirmDialog()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 // 権限は親シェルから inject
 const { perms, currentUserId } = useVillageContext()
@@ -165,14 +166,24 @@ function openEditDialog(f: VillageFestivalResponse) {
   showEditDialog.value = true
 }
 
+/**
+ * datetime-local 入力値（"YYYY-MM-DDTHH:mm"）を、ユーザーTZのオフセット付き ISO 文字列へ変換する。
+ *
+ * <p>Issue #2508: BE の startsAt/endsAt は LocalDateTime で受信時オフセットを無視するため、
+ * 以前はオフセット無しの壁時計文字列をそのまま送っていた。useDatetime の共通道具
+ * buildOffsetDateTimeStr を使い、明示的にオフセットを付与する。</p>
+ */
+function datetimeLocalToOffsetIso(value: string): string {
+  return buildOffsetDateTimeStr(new Date(value)) ?? `${value}:00`
+}
+
 async function submitCreate() {
   if (!createForm.value.startsAt || !createForm.value.endsAt) return
   const body: VillageFestivalCreateRequest = {
     title: createForm.value.title,
     description: createForm.value.description || null,
-    // datetime-local の値（YYYY-MM-DDTHH:mm）に :00 を足して ISO 化
-    startsAt: `${createForm.value.startsAt}:00`,
-    endsAt: `${createForm.value.endsAt}:00`,
+    startsAt: datetimeLocalToOffsetIso(createForm.value.startsAt),
+    endsAt: datetimeLocalToOffsetIso(createForm.value.endsAt),
     bannerR2Key: createForm.value.bannerR2Key || null,
     themeColorHex: createForm.value.themeColorHex || null,
   }
@@ -193,8 +204,8 @@ async function submitEdit() {
   const body: VillageFestivalUpdateRequest = {
     title: editForm.value.title || null,
     description: editForm.value.description || null,
-    startsAt: editForm.value.startsAt ? `${editForm.value.startsAt}:00` : null,
-    endsAt: editForm.value.endsAt ? `${editForm.value.endsAt}:00` : null,
+    startsAt: editForm.value.startsAt ? datetimeLocalToOffsetIso(editForm.value.startsAt) : null,
+    endsAt: editForm.value.endsAt ? datetimeLocalToOffsetIso(editForm.value.endsAt) : null,
     bannerR2Key: editForm.value.bannerR2Key || null,
     themeColorHex: editForm.value.themeColorHex || null,
   }

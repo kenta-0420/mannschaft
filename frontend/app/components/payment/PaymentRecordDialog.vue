@@ -33,6 +33,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 /** 決済手段の選択肢（STRIPE は除外）。 */
 const methodOptions = computed<Array<{ label: string; value: ManualPaymentMethod }>>(() => [
@@ -77,27 +78,18 @@ const canSubmit = computed(
   () => userId.value != null && amountPaid.value != null && amountPaid.value >= 0.01,
 )
 
-/**
- * Date を LocalDateTime 形式 `YYYY-MM-DDT00:00:00` に変換する。
- * タイムゾーンオフセットは付けない（BE は LocalDateTime を期待）。
- */
-function toLocalDateTime(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}T00:00:00`
-}
-
 function close() {
   emit('update:visible', false)
 }
 
 function onSubmit() {
   if (!canSubmit.value || userId.value == null) return
+  // Issue #2508: BE の paidAt は LocalDateTime で受信時オフセットを無視するため、
+  // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
   const body: Record<string, unknown> = {
     userId: userId.value,
     amountPaid: amountPaid.value,
-    paidAt: toLocalDateTime(paidAt.value),
+    paidAt: buildOffsetDateTimeStr(paidAt.value),
     paymentMethod: paymentMethod.value,
   }
   if (note.value.trim().length > 0) body.note = note.value.trim()

@@ -32,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 /**
  * 未払い（UNPAID または PENDING）メンバーのみを一括記録の候補にする。
@@ -77,20 +78,15 @@ function isSelected(userId: number): boolean {
   return selectedUserIds.value.includes(userId)
 }
 
-function toLocalDateTime(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}T00:00:00`
-}
-
 function close() {
   emit('update:visible', false)
 }
 
 function onSubmit() {
   if (!canSubmit.value) return
-  const at = toLocalDateTime(paidAt.value)
+  // Issue #2508: BE の paidAt は LocalDateTime で受信時オフセットを無視するため、
+  // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
+  const at = buildOffsetDateTimeStr(paidAt.value)
   const bodies = selectedUserIds.value.map<Record<string, unknown>>((userId) => ({
     userId,
     amountPaid: props.defaultAmount,
