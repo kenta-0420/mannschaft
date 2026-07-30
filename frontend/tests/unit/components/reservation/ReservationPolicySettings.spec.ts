@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import ReservationPolicySettings from '~/components/reservation/ReservationPolicySettings.vue'
 
@@ -56,6 +56,24 @@ beforeEach(() => {
   mockNotifyError.mockReset()
   mockHandleApiError.mockReset()
   mockUpdateReservationSettings.mockResolvedValue({ data: {} })
+})
+
+/**
+ * ウォームアップマウント（殿の実測・家老の実走で確定した対処・2026-07-30是正）。
+ *
+ * `mountSuspended` の**初回**呼び出しは、当該コンポーネントの transform（esbuild/vite変換）コストを
+ * そのテストの `testTimeout`（既定5秒）内で負担する。環境が重いと、この初回コストだけで1件目の
+ * テストが確定的に5秒を超えて timeout する（2件目以降はコンパイル済みモジュールを再利用するため
+ * 速い・ロジックの欠陥ではない。`ReservationMyWaitlistList.spec.ts` と同一の対処）。
+ * `setupNuxt` 用に既に大きい hookTimeout を持つ `beforeAll` で使い捨てマウントし、transform コストを
+ * 前払いすることで各 it は既定の testTimeout のまま安定させる。
+ */
+beforeAll(async () => {
+  mockGetReservationSettings.mockResolvedValue({
+    data: { approvalMode: 'AUTO', cancelDeadlineHours: 12, remindBeforeHours: '24', pendingExpireHours: 24 },
+  })
+  const warmup = await mountSuspended(ReservationPolicySettings, { props: { teamId: 'warmup-slug' } })
+  warmup.unmount()
 })
 
 // 注: 本ファイル全体で cancelDeadlineHours は pendingExpireHours（24）とは異なる値（12）に固定する。

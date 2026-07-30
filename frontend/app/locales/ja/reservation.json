@@ -704,7 +704,9 @@
       "rate_limited": "操作が早すぎます。1分ほど待ってからやり直してください",
       "slot_not_full": "空きが出ました。そのまま予約できます",
       "my_list_title": "自分のキャンセル待ち",
-      "no_entries": "キャンセル待ち中の予約はありません"
+      "no_entries": "キャンセル待ち中の予約はありません",
+      "aria_hint_register": "押すとキャンセル待ちに登録できます",
+      "aria_hint_cancel": "押すとキャンセル待ちを取消せます"
     },
     "pending_expire_notice": {
       "form_note": "{n}時間以内に承認されない場合は自動的にキャンセルされます"

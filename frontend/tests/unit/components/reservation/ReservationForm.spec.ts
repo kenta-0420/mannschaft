@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import ReservationForm from '~/components/reservation/ReservationForm.vue'
 
@@ -16,6 +16,11 @@ import ReservationForm from '~/components/reservation/ReservationForm.vue'
  * 注: テスト環境の既定ロケールは en。Dialog は Teleport で document.body にレンダリングされる。
  * GET /reservation-settings は ADMIN 限定ではなく view ゲート（会員/公開）のため、会員側の
  * ReservationForm からも取得できる（`ReservationBusinessHourController` の viewAccessGuard Javadoc）。
+ *
+ * `findByTestId` は `document.body.querySelector` を使う（PrimeVue Dialog は Teleport 先が
+ * `body` 直下のため。GroupBookingDialog.spec.ts と同じ確立された方式）。teleport 残骸対策は
+ * `beforeAll` ウォームアップ（transform timeout の根絶）＋ `afterEach` での明示的
+ * `wrapper.unmount()` の二重防御で行う。
  */
 const mockCreateReservation = vi.fn()
 const mockGetReservationSettings = vi.fn()
@@ -56,6 +61,15 @@ const baseProps = {
   visible: true,
 }
 
+/**
+ * 直近でマウントした wrapper（afterEach で明示的に unmount するための追跡用）。
+ * `mountSuspended` はジェネリック関数のため `ReturnType<typeof mountSuspended>` は
+ * 具体型を失い `.findAllComponents().find()` のコールバック引数が implicit any になる
+ * （typecheck で実際に検出・2026-07-30）。ダックタイピングの最小インターフェースに留め、
+ * 各テストでは `mountSuspended` 呼び出しの戻り値をそのままローカル変数で受けて具体型を保つ。
+ */
+let currentWrapper: { unmount: () => void } | null = null
+
 beforeEach(() => {
   mockCreateReservation.mockReset()
   mockGetReservationSettings.mockReset()
@@ -64,7 +78,27 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  // teleport 残骸対策の二重防御: Vue 側のライフサイクルを確実に畳んだうえで（unmount）、
+  // 万一 DOM に残っても除去する（querySelector 除去）。
+  currentWrapper?.unmount()
+  currentWrapper = null
   document.body.querySelectorAll('.p-dialog').forEach(el => el.remove())
+})
+
+/**
+ * ウォームアップマウント（殿の実測・家老の実走で確定した対処・2026-07-30是正）。
+ *
+ * `mountSuspended` の**初回**呼び出しは、当該コンポーネントの transform（esbuild/vite変換）コストを
+ * そのテストの `testTimeout`（既定5秒）内で負担する。環境が重いと、この初回コストだけで1件目の
+ * テストが確定的に5秒を超えて timeout する（2件目以降はコンパイル済みモジュールを再利用するため
+ * 速い・ロジックの欠陥ではない。`ReservationMyWaitlistList.spec.ts` と同一の対処）。
+ * `setupNuxt` 用に既に大きい hookTimeout を持つ `beforeAll` で使い捨てマウントし、transform コストを
+ * 前払いすることで各 it は既定の testTimeout のまま安定させる。
+ */
+beforeAll(async () => {
+  mockGetReservationSettings.mockResolvedValue({ data: { approvalMode: 'AUTO', pendingExpireHours: 24 } })
+  const warmup = await mountSuspended(ReservationForm, { props: baseProps })
+  warmup.unmount()
 })
 
 describe('ReservationForm.vue（仮押さえ自動失効の会員向け注意書き・W2-6-FE）', () => {
@@ -73,7 +107,8 @@ describe('ReservationForm.vue（仮押さえ自動失効の会員向け注意書
       data: { approvalMode: 'MANUAL', pendingExpireHours: 24 },
     })
 
-    await mountSuspended(ReservationForm, { props: baseProps })
+    const wrapper = await mountSuspended(ReservationForm, { props: baseProps })
+    currentWrapper = wrapper
     await flush()
 
     const notice = findByTestId('pending-expire-notice')
@@ -86,7 +121,8 @@ describe('ReservationForm.vue（仮押さえ自動失効の会員向け注意書
       data: { approvalMode: 'MANUAL', pendingExpireHours: null },
     })
 
-    await mountSuspended(ReservationForm, { props: baseProps })
+    const wrapper = await mountSuspended(ReservationForm, { props: baseProps })
+    currentWrapper = wrapper
     await flush()
 
     expect(findByTestId('pending-expire-notice')).toBeNull()
@@ -97,7 +133,8 @@ describe('ReservationForm.vue（仮押さえ自動失効の会員向け注意書
       data: { approvalMode: 'AUTO', pendingExpireHours: 24 },
     })
 
-    await mountSuspended(ReservationForm, { props: baseProps })
+    const wrapper = await mountSuspended(ReservationForm, { props: baseProps })
+    currentWrapper = wrapper
     await flush()
 
     expect(findByTestId('pending-expire-notice')).toBeNull()
@@ -108,6 +145,7 @@ describe('ReservationForm.vue（仮押さえ自動失効の会員向け注意書
     mockCreateReservation.mockRejectedValue({ data: { error: { code: 'RESERVATION_053' } } })
 
     const wrapper = await mountSuspended(ReservationForm, { props: baseProps })
+    currentWrapper = wrapper
     await flush()
 
     const reserveBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('label') === 'Reserve')

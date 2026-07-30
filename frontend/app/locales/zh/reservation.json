@@ -704,7 +704,9 @@
       "rate_limited": "操作过于频繁，请等待约1分钟后重试",
       "slot_not_full": "已出现空位，您可以直接预约",
       "my_list_title": "我的候补预约",
-      "no_entries": "当前没有候补中的预约"
+      "no_entries": "当前没有候补中的预约",
+      "aria_hint_register": "按此加入候补",
+      "aria_hint_cancel": "按此取消候补"
     },
     "pending_expire_notice": {
       "form_note": "如果在{n}小时内未获批准，此预约将自动取消"

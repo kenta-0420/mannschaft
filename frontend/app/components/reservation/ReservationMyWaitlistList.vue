@@ -5,6 +5,11 @@
  * BE GET /api/v1/users/me/reservation-waitlist は全チーム横断・WAITING のみを返すため、
  * このチーム（props.teamId）分のみへ FE 側で絞り込む。既存の予約一覧タブ（ReservationList）の
  * 構造に倣い、新規ページは作らずタブ内セクションとして埋め込む想定。
+ *
+ * 🔴teamId は slug（`pages/teams/[slug]/reservations.vue` が `String(route.params.slug)` を渡す）。
+ * 一方 `WaitlistEntryResponse.teamId` は BE の数値 DB id（`Long`）。両者は絶対に文字列一致しないため、
+ * `useActivityScopeId().resolveScopeId('TEAM', slug)` で数値 id に解決してから比較する
+ * （`EmergencyClosureForm.vue` の `resolveTeamId` と同型の既存作法・`feedback_copy_working_pattern_first`）。
  */
 import type { components } from '~/types/generated'
 
@@ -16,10 +21,13 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { resolveScopeId } = useActivityScopeId()
 
 const entries = ref<WaitlistEntryResponse[]>([])
 const loading = ref(true)
 const cancellingId = ref<string | null>(null)
+/** 解決済みの数値 teamId（1回解決すればチーム切替が無い限り不変のためキャッシュする）。 */
+const numericTeamId = ref<number | null>(null)
 
 function fmt(time?: string): string {
   if (!time) return ''
@@ -29,8 +37,13 @@ function fmt(time?: string): string {
 async function load() {
   loading.value = true
   try {
+    if (numericTeamId.value == null) {
+      numericTeamId.value = await resolveScopeId('TEAM', props.teamId)
+    }
     const res = await reservationApi.listMyWaitlist()
-    entries.value = (res.data ?? []).filter(e => String(e.teamId) === props.teamId)
+    entries.value = numericTeamId.value == null
+      ? []
+      : (res.data ?? []).filter(e => e.teamId === numericTeamId.value)
   }
   catch (error) {
     entries.value = []

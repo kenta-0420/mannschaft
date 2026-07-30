@@ -29,6 +29,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 絞り込みラベルに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
@@ -208,6 +210,26 @@ function cellReason(cell: GridCellDto | undefined): string | null {
 }
 
 /**
+ * BOOKED セルの aria-label に「押すと何が起きるか」を追記する（検分是正・W2-4-FE）。
+ * 押せない（slotId 不明）セルにはヒントを付けない。
+ */
+function waitlistAriaHint(cell: GridCellDto | undefined): string {
+  if (cell?.state !== 'BOOKED' || cell.slotId == null) return ''
+  return myWaitlistSlotIds.value.has(cell.slotId)
+    ? t('reservation.waitlist.aria_hint_cancel')
+    : t('reservation.waitlist.aria_hint_register')
+}
+
+/** セルの aria-label 全体を組み立てる（事由・待機ヒントを状態ラベルに付記する）。 */
+function cellAriaLabel(cell: GridCellDto | undefined): string {
+  const base = stateLabel(cell)
+  const reason = cellReason(cell)
+  if (reason) return `${base}: ${reason}`
+  const hint = waitlistAriaHint(cell)
+  return hint ? `${base}: ${hint}` : base
+}
+
+/**
  * 予約に使うライン（予約対象）を解決する。
  * 列の lineIds[0] を既定にし、無ければチームの有効ライン先頭にフォールバックする
  * （lineIds は「そのスタッフの推奨ライン」プリセットに過ぎず予約可能ラインを制限しない・§4.C C-8）。
@@ -255,25 +277,49 @@ function openWaitlistDialog(rc: RenderCell) {
   waitlistDialogVisible.value = true
 }
 
-/** 登録/取消成功時: 自分の登録集合とグリッドを再取得し、親に「自分のキャンセル待ち」再読込を促す。 */
+/**
+ * 登録/取消成功時: グリッド→自分の登録集合の順で再取得し（`loadedSlotIds` はグリッド依存のため）、
+ * 親に「自分のキャンセル待ち」再読込を促す。
+ */
 async function onWaitlistChanged() {
-  await loadMyWaitlist()
   await loadGrid({ silent: true })
+  await loadMyWaitlist()
   emit('waitlistChanged')
 }
+
+/**
+ * 🔴teamId は slug（`WaitlistEntryResponse.teamId` は BE の数値 DB id）のため文字列比較できない
+ * （検分で発覚した実バグの是正・2026-07-30）。`SlotGridPicker` は既にこのチームの枠一覧
+ * （`days` 内の全セル）を読み込み済みのため、team id 解決を経由せず
+ * 「slotId が読み込み済みの枠 id 集合に含まれるか」で絞り込む（team id 不要・厳密・最も安い）。
+ */
+const loadedSlotIds = computed<Set<number>>(() => {
+  const ids = new Set<number>()
+  for (const day of days.value) {
+    for (const col of day.columns) {
+      for (const cell of col.cells ?? []) {
+        if (cell.slotId != null) ids.add(cell.slotId)
+      }
+    }
+  }
+  return ids
+})
 
 async function loadMyWaitlist() {
   try {
     const res = await reservationApi.listMyWaitlist()
+    const loaded = loadedSlotIds.value
     myWaitlistSlotIds.value = new Set(
       (res.data ?? [])
-        .filter(e => String(e.teamId) === props.teamId && e.slotId != null)
+        .filter(e => e.slotId != null && loaded.has(e.slotId))
         .map(e => e.slotId!),
     )
   }
-  catch {
+  catch (error) {
     // 取得失敗は「未登録」扱いにフォールバック（満席セルのラベルが「待機中」にならないだけで、
     // ダイアログを開けば実際の登録状態は API 側で正しく判定される。致命的でないため通知はしない）。
+    // ただし完全に握りつぶすと恒常的な失敗が誰にも見えなくなるため、静かに記録する（captureQuiet）。
+    captureQuiet(error, { context: 'SlotGridPicker: 自分のキャンセル待ち取得に失敗' })
     myWaitlistSlotIds.value = new Set()
   }
 }
@@ -323,8 +369,10 @@ function dayLabel(date: string): string {
 // loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
 watch([selectedDate, viewMode], () => loadGrid())
 onMounted(async () => {
-  await Promise.all([loadLines(), loadResourceName(), loadMyWaitlist()])
+  // loadMyWaitlist は loadedSlotIds（グリッド由来）に依存するため loadGrid の後に呼ぶ。
+  await Promise.all([loadLines(), loadResourceName()])
   await loadGrid()
+  await loadMyWaitlist()
 })
 
 // KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
@@ -345,8 +393,8 @@ onActivated(() => {
 defineExpose({
   refresh: async () => {
     await loadResourceName()
-    await loadMyWaitlist()
     await loadGrid()
+    await loadMyWaitlist()
   },
 })
 </script>
@@ -484,8 +532,8 @@ defineExpose({
                 type="button"
                 class="rounded-md border p-2 text-center text-[11px] transition-all"
                 :class="cellStateClass(rc.cell?.state)"
-                :disabled="rc.cell?.state !== 'AVAILABLE' && rc.cell?.state !== 'BOOKED'"
-                :aria-label="cellReason(rc.cell) ? `${stateLabel(rc.cell)}: ${cellReason(rc.cell)}` : stateLabel(rc.cell)"
+                :disabled="rc.cell?.state !== 'AVAILABLE' && (rc.cell?.state !== 'BOOKED' || rc.cell?.slotId == null)"
+                :aria-label="cellAriaLabel(rc.cell)"
                 :title="cellReason(rc.cell) ?? undefined"
                 @click="onCellClick(rc)"
               >

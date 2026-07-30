@@ -704,7 +704,9 @@
       "rate_limited": "Demasiado rápido. Espera aproximadamente un minuto y vuelve a intentarlo",
       "slot_not_full": "Se liberó un lugar. Ya puedes reservarlo directamente",
       "my_list_title": "Mi lista de espera",
-      "no_entries": "No estás en ninguna lista de espera"
+      "no_entries": "No estás en ninguna lista de espera",
+      "aria_hint_register": "Pulsa para unirte a la lista de espera",
+      "aria_hint_cancel": "Pulsa para salir de la lista de espera"
     },
     "pending_expire_notice": {
       "form_note": "Si no se aprueba en un plazo de {n} horas, esta reserva se cancelará automáticamente"

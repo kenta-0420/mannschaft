@@ -91,7 +91,7 @@ const showPendingExpireNotice = computed(
   () => pendingExpireApprovalMode.value === 'MANUAL' && pendingExpireHours.value != null,
 )
 
-onMounted(() => { void loadResourceName(); void loadPendingExpireNotice() })
+onMounted(() => { void loadResourceName() })
 
 type Step = 'menu' | 'preview'
 const step = ref<Step>('menu')
@@ -143,16 +143,20 @@ function close() {
   emit('update:visible', false)
 }
 
+// ダイアログを開くたびに仮押さえ失効設定を再取得する（検分是正・W2-6-FE §MUST⑥）。本ダイアログは
+// picker 配下に常設 mount＋KeepAlive のため、onMounted 一回 fetch だと管理者が設定を変えても
+// 画面遷移まで古い値を表示し続ける。ReservationForm.vue と同じ「開くたび再取得」に揃える。
 watch(() => props.visible, (v) => {
   if (v) {
     resetState()
+    void loadPendingExpireNotice()
     // メニューフィルター事前絞り込み済みなら menu ステップをスキップして即プレビューへ
     if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
       const menu = menuOptions.value.find(m => m.id === props.context?.preselectedMenuId)
       if (menu) applyMenuSelection(menu, props.context.preselectedRequiredCellCount)
     }
   }
-})
+}, { immediate: true })
 
 /** メニュー選択（null=メニューなし30分）を適用し、連続枠が取れればプレビューへ進む。 */
 function applyMenuSelection(menu: ReservationMenuResponse | null, count: number) {

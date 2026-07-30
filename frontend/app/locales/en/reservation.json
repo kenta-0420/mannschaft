@@ -704,7 +704,9 @@
       "rate_limited": "That was too fast. Please wait about a minute and try again",
       "slot_not_full": "A spot opened up — you can book it directly",
       "my_list_title": "My waitlist",
-      "no_entries": "You're not on any waitlists"
+      "no_entries": "You're not on any waitlists",
+      "aria_hint_register": "Press to join the waitlist",
+      "aria_hint_cancel": "Press to leave the waitlist"
     },
     "pending_expire_notice": {
       "form_note": "If not approved within {n} hours, this booking will be cancelled automatically"

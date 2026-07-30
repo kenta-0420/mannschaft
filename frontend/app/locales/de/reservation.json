@@ -704,7 +704,9 @@
       "rate_limited": "Das ging zu schnell. Bitte warten Sie etwa eine Minute und versuchen Sie es erneut",
       "slot_not_full": "Ein Platz ist frei geworden. Sie können jetzt direkt buchen",
       "my_list_title": "Meine Warteliste",
-      "no_entries": "Sie stehen auf keiner Warteliste"
+      "no_entries": "Sie stehen auf keiner Warteliste",
+      "aria_hint_register": "Drücken, um sich auf die Warteliste zu setzen",
+      "aria_hint_cancel": "Drücken, um sich von der Warteliste zu entfernen"
     },
     "pending_expire_notice": {
       "form_note": "Wenn diese Reservierung nicht innerhalb von {n} Stunden bestätigt wird, wird sie automatisch storniert"

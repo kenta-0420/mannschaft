@@ -6,7 +6,13 @@ import ReservationMyWaitlistList from '~/components/reservation/ReservationMyWai
  * ReservationMyWaitlistList.vue（自分のキャンセル待ち一覧・F03.4.5 §6.1 W2-4-FE）ユニットテスト — 番人
  *
  * 観点（AC 対応）:
- *   AC-1: listMyWaitlist の応答をこのチーム（teamId）分のみに絞り込んで表示する
+ *   AC-1: listMyWaitlist の応答をこのチーム（teamId=slug）分のみに絞り込んで表示する
+ *         🔴teamId は slug（`pages/teams/[slug]/reservations.vue` が渡す）であり、
+ *         `WaitlistEntryResponse.teamId` は BE の数値 DB id。両者は文字列一致しないため、
+ *         `useActivityScopeId().resolveScopeId('TEAM', slug)` で数値解決してから絞り込む
+ *         （検分で発覚した実バグ「slugと数値idの直接比較で常にfalse」の回帰防止・2026-07-30是正）。
+ *         本テストは props.teamId に**実際の slug 値**（'team-slug'）を渡し、数値idではないことを
+ *         明示したうえで絞り込みが成立することを検証する（数値文字列だと同じ穴を再び見逃すため）。
  *   AC-2: 0件のときは空状態を表示する
  *   AC-3: 取消ボタンで leaveWaitlist を呼び、成功後に一覧を再読込する
  *   AC-4: 取消失敗=RESERVATION_046（対象なし）は専用文言で通知し、一覧を再読込する
@@ -20,6 +26,13 @@ vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
     listMyWaitlist: mockListMyWaitlist,
     leaveWaitlist: mockLeaveWaitlist,
+  }),
+}))
+
+const mockResolveScopeId = vi.fn()
+vi.mock('~/composables/useActivityScopeId', () => ({
+  useActivityScopeId: () => ({
+    resolveScopeId: mockResolveScopeId,
   }),
 }))
 
@@ -45,6 +58,8 @@ async function flush() {
   await new Promise(r => setTimeout(r, 0))
 }
 
+/** このチーム（slug='team-slug'）の数値DB idは10とする。resolveScopeId('TEAM', 'team-slug') → 10。 */
+const SLUG = 'team-slug'
 const entryTeam10 = {
   id: 'w-1', teamId: 10, slotId: 501, slotDate: '2026-08-01', startTime: '10:00:00', endTime: '10:30:00', slotTitle: 'Cut', status: 'WAITING',
 }
@@ -55,6 +70,8 @@ const entryTeam99 = {
 beforeEach(() => {
   mockListMyWaitlist.mockReset()
   mockLeaveWaitlist.mockReset()
+  mockResolveScopeId.mockReset()
+  mockResolveScopeId.mockResolvedValue(10)
   mockNotifySuccess.mockReset()
   mockNotifyError.mockReset()
   mockHandleApiError.mockReset()
@@ -76,29 +93,45 @@ beforeEach(() => {
  */
 beforeAll(async () => {
   mockListMyWaitlist.mockResolvedValue({ data: [] })
-  const warmup = await mountSuspended(ReservationMyWaitlistList, { props: { teamId: 'warmup' } })
+  mockResolveScopeId.mockResolvedValue(10)
+  const warmup = await mountSuspended(ReservationMyWaitlistList, { props: { teamId: 'warmup-slug' } })
   warmup.unmount()
 })
 
 describe('ReservationMyWaitlistList.vue', () => {
-  it('AC-1: 全チーム横断の応答から自チーム分のみを表示する', async () => {
+  it('AC-1: slug の teamId を渡しても数値解決を経て自チーム分のみを表示する（他チーム分は除外）', async () => {
     mockListMyWaitlist.mockResolvedValue({ data: [entryTeam10, entryTeam99] })
 
     const wrapper = await mountSuspended(ReservationMyWaitlistList, {
-      props: { teamId: '10' },
+      props: { teamId: SLUG },
     })
     await flush()
 
+    // slug が数値 teamId と直接比較されていない（=resolveScopeId が実際に呼ばれ、その結果で絞り込んでいる）ことを保証する。
+    expect(mockResolveScopeId).toHaveBeenCalledWith('TEAM', SLUG)
     expect(wrapper.text()).toContain('Cut')
     expect(wrapper.text()).toContain('2026-08-01')
     expect(wrapper.text()).not.toContain('2026-08-02')
+  })
+
+  it('AC-1b: slug の数値解決に失敗した場合は0件表示にフォールバックする（誤って全件/他チーム分を出さない）', async () => {
+    mockListMyWaitlist.mockResolvedValue({ data: [entryTeam10, entryTeam99] })
+    mockResolveScopeId.mockResolvedValue(null)
+
+    const wrapper = await mountSuspended(ReservationMyWaitlistList, {
+      props: { teamId: SLUG },
+    })
+    await flush()
+
+    expect(wrapper.text()).toContain("You're not on any waitlists")
+    expect(wrapper.text()).not.toContain('Cut')
   })
 
   it('AC-2: 0件のときは空状態を表示する', async () => {
     mockListMyWaitlist.mockResolvedValue({ data: [] })
 
     const wrapper = await mountSuspended(ReservationMyWaitlistList, {
-      props: { teamId: '10' },
+      props: { teamId: SLUG },
     })
     await flush()
 
@@ -111,7 +144,7 @@ describe('ReservationMyWaitlistList.vue', () => {
     mockLeaveWaitlist.mockResolvedValue({})
 
     const wrapper = await mountSuspended(ReservationMyWaitlistList, {
-      props: { teamId: '10' },
+      props: { teamId: SLUG },
     })
     await flush()
 
@@ -120,7 +153,8 @@ describe('ReservationMyWaitlistList.vue', () => {
     await cancelBtn.trigger('click')
     await flush()
 
-    expect(mockLeaveWaitlist).toHaveBeenCalledWith('10', 501)
+    // leaveWaitlist 自体は BE の slug-or-id パスコンバータに委ねるため slug をそのまま渡す（数値解決不要）。
+    expect(mockLeaveWaitlist).toHaveBeenCalledWith(SLUG, 501)
     expect(mockNotifySuccess).toHaveBeenCalled()
     expect(mockListMyWaitlist).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain("You're not on any waitlists")
@@ -131,7 +165,7 @@ describe('ReservationMyWaitlistList.vue', () => {
     mockLeaveWaitlist.mockRejectedValue({ data: { error: { code: 'RESERVATION_046' } } })
 
     const wrapper = await mountSuspended(ReservationMyWaitlistList, {
-      props: { teamId: '10' },
+      props: { teamId: SLUG },
     })
     await flush()
 
