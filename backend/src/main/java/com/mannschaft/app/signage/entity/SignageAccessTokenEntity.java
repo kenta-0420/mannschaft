@@ -41,6 +41,9 @@ public class SignageAccessTokenEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private String allowedIps;
 
+    /** トークン有効期限。NULL は無期限。 */
+    private LocalDateTime expiredAt;
+
     private LocalDateTime lastAccessedAt;
 
     @Column(length = 45)
@@ -54,6 +57,19 @@ public class SignageAccessTokenEntity extends BaseEntity {
      */
     public void deactivate() {
         this.isActive = false;
+    }
+
+    /**
+     * 指定時刻において有効期限が満了しているかを判定する。
+     *
+     * <p>{@code expiredAt} が NULL のトークンは無期限であり、常に {@code false} を返す。
+     * 期限に到達した瞬間（{@code now == expiredAt}）は満了として扱う。</p>
+     *
+     * @param now 判定基準時刻
+     * @return 有効期限が満了していれば true
+     */
+    public boolean isExpired(LocalDateTime now) {
+        return expiredAt != null && !now.isBefore(expiredAt);
     }
 
     /**
