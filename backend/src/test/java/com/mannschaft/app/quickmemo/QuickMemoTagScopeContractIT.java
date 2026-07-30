@@ -35,10 +35,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 認可根治戦役 Wave6: quickmemo ドメイン {@code TagController} の
  * TEAM / ORGANIZATION スコープ 8 エンドポイントの API 契約テスト（試練）。
  *
- * <p><b>是正前の状態</b>: TEAM / ORG 系 8 EP は認可判定が一切なく、パス変数の
- * {@code teamId} / {@code orgId} をそのまま {@code TagService} の scopeId に渡していた。
- * Javadoc / {@code @Operation} summary は「ADMIN / MANAGE_TAG 権限必要」
- * 「ORGANIZATION_ADMIN 必要」と宣言していたが、実装が存在しない死文だった。</p>
+ * <p><b>保証する内容</b>: TEAM / ORG 系 8 EP は、パス変数の {@code teamId} / {@code orgId}
+ * を {@code TagService} の scopeId として用いる前に、当該スコープへの所属（一覧）または
+ * ADMIN / DEPUTY_ADMIN 権限（作成・更新・削除）を要求する。
+ * Javadoc / {@code @Operation} summary が宣言する権限要件と実装を一致させ、
+ * 宣言が実体を伴うことを本テストで固定する。</p>
  *
  * <p><b>正本</b>: 設計書 {@code docs/features/F02.5_quick_memo.md} §8.1 認可マトリクス
  * （「チームタグ CRUD: チーム所属。作成・更新・削除は ADMIN / DEPUTY_ADMIN」
@@ -60,6 +61,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>PUT    {@code /api/v1/organizations/{orgId}/tags/{tagId}}   → ADMIN / DEPUTY_ADMIN</li>
  *   <li>DELETE {@code /api/v1/organizations/{orgId}/tags/{tagId}}   → ADMIN / DEPUTY_ADMIN</li>
  * </ul>
+ *
+ * <p><b>認可根治戦役 第1波（個人領域）での追補</b>: PERSONAL スコープ 4 EP
+ * （{@code GET/POST /api/v1/me/tags}・{@code PUT/DELETE /api/v1/me/tags/{tagId}}）を
+ * {@link PersonalTags} 節で追加検証する。PERSONAL 系は scopeId をクライアントから受け取らず
+ * 常に認証主体を用いるため {@code @PreAuthorize} を持たないが、その構造的安全は
+ * 実測で固定しておく必要がある（{@code TagController} の EP には監査済マーカー
+ * {@code @AuthorizedInService} を付与しており、本節がその証跡となる）。
+ * 併せて、他ユーザーのタグを指した越境が {@code QM_010} → <b>404</b> になることを固定する
+ * （{@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} への {@code QM_010} 登録により成立。
+ * 未登録時は Severity.WARN 既定の 400 が返り、Javadoc の宣言と実挙動が乖離していた）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -136,7 +147,7 @@ class QuickMemoTagScopeContractIT extends AbstractMySqlIntegrationTest {
     class ListTeamTags {
 
         @Test
-        @DisplayName("非メンバーの一覧取得は403（是正前は誰でも閲覧できた）")
+        @DisplayName("非メンバーの一覧取得は403（一覧は所属メンバーに限定する）")
         void 非メンバーの一覧取得は403() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/tags", teamAId))
@@ -490,8 +501,121 @@ class QuickMemoTagScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // EP9-12: PERSONAL スコープ /api/v1/me/tags（認可根治 第1波で追補）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("EP9-12 個人タグ(listPersonalTags/createPersonalTag/updatePersonalTag/deletePersonalTag)")
+    class PersonalTags {
+
+        @Test
+        @DisplayName("個人タグ一覧には他ユーザーのタグが混入しない")
+        void 個人タグ一覧は自己スコープに閉じる() throws Exception {
+            Long tagId = createPersonalTagAs(memberAId);
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/me/tags"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/me/tags"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(tagId));
+        }
+
+        @Test
+        @DisplayName("作成した個人タグは作成者に帰属する（PERSONAL / scopeId = 認証主体）")
+        void 作成した個人タグは作成者に帰属する() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/me/tags")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createTagBody())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.scopeType").value("PERSONAL"))
+                    .andExpect(jsonPath("$.data.scopeId").value(memberAId));
+        }
+
+        @Test
+        @DisplayName("他ユーザーの個人タグの更新は404で秘匿される")
+        void 他ユーザーの個人タグ更新は404() throws Exception {
+            Long tagId = createPersonalTagAs(memberAId);
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(put("/api/v1/me/tags/{tagId}", tagId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateTagBody("乗っ取り"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("QM_010"));
+        }
+
+        @Test
+        @DisplayName("他ユーザーの個人タグの削除は404で秘匿される")
+        void 他ユーザーの個人タグ削除は404() throws Exception {
+            Long tagId = createPersonalTagAs(memberAId);
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(delete("/api/v1/me/tags/{tagId}", tagId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("QM_010"));
+
+            // 削除要求で実データが失われていないことも確認する。
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/me/tags"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1));
+        }
+
+        @Test
+        @DisplayName("TEAM スコープのタグIDを /me/tags 経由で操作できない（スコープ越境防止）")
+        void チームタグは個人タグ経路から操作できない() throws Exception {
+            Long teamTagId = createTeamTagAsAdminA();
+
+            // teamA の ADMIN 本人であっても、PERSONAL 経路では自分のタグとして引き当てられない。
+            setAuthentication(adminAId);
+            mockMvc.perform(put("/api/v1/me/tags/{tagId}", teamTagId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateTagBody("横取り"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("QM_010"));
+
+            mockMvc.perform(delete("/api/v1/me/tags/{tagId}", teamTagId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("QM_010"));
+        }
+
+        @Test
+        @DisplayName("所有者の個人タグ更新は200・削除は204（正常系）")
+        void 所有者の個人タグ更新と削除は成功する() throws Exception {
+            Long tagId = createPersonalTagAs(memberAId);
+
+            setAuthentication(memberAId);
+            mockMvc.perform(put("/api/v1/me/tags/{tagId}", tagId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateTagBody("改名済"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.name").value("改名済"));
+
+            mockMvc.perform(delete("/api/v1/me/tags/{tagId}", tagId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** 指定ユーザーの認証コンテキストで PERSONAL タグを1件作成し、その ID を返す。 */
+    private Long createPersonalTagAs(Long userId) throws Exception {
+        setAuthentication(userId);
+        String resp = mockMvc.perform(post("/api/v1/me/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTagBody())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(resp).path("data").path("id").asLong();
+    }
 
     private void setAuthentication(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(

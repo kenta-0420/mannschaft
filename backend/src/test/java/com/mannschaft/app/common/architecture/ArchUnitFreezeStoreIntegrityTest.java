@@ -302,8 +302,41 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TodoPersonalScopeContractIT} 新設）で「無関係な他ユーザーが他人のデータへ到達できないこと」を
      * 固定した。同一コミットにストア差分・実装差分・契約テスト新設を含む。</p>
      *
-     * <p>636 → 609（2026-07-30 / 第1波・個人領域 ロットC = reflection / inbox / favorite / corkboard の
-     * 48 EP 全数監査）: 凍結 48 EP を実コードで全数監査し、27 件を解消した。内訳:</p>
+     * <p>636 → 600（2026-07-30 / 第1波・個人領域 ロットB = actionmemo 23 EP + quickmemo 13 EP の
+     * 全数監査）: 上記ロットA（todo・17 件解消で 653 → 636）に続く同一波の後続ロット。
+     * ロットA が削除した行は todo ドメイン、本ロットが削除した 36 行は actionmemo / quickmemo で
+     * <b>互いに素</b>であり重複はない。したがって現在値は 636 − 36 = 600 となる。</p>
+     * <p>両ドメインの凍結 36 EP を実コードで全数監査した結果、<b>認可の抜けは検出されず</b>、
+     * 全件が「Service 層で実効的に認可済みだが番人の呼び出しグラフ判定では拾えない」
+     * ケースであることを確認した。内訳は自己スコープ 21 件
+     * （scopeId が {@code SecurityUtils#getCurrentUserId()} に固定されリクエストで指定不能）と、
+     * ID を伴うが Service が {@code findByIdAndUserId} 等の複合条件で所有者一致を強制するもの
+     * 15 件。ロットA と同じ方針で看板だけの {@code @PreAuthorize("isAuthenticated()")} は貼らず、
+     * 認可の所在を各 EP の Javadoc に {@code ファイル:行} で明記したうえで監査済マーカー
+     * {@link com.mannschaft.app.common.security.AuthorizedInService} を
+     * <b>メソッド単位</b>で付与して解消した（クラス単位にすると将来追加される未監査の
+     * メソッドまで無条件に承認してしまうため、意図的にメソッド単位とした）。</p>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code ActionMemoAdminService#revertTodoCompletion}: 認可判定を業務状態
+     *       （{@code completesTodo}）の検証より<b>前</b>へ移動し、スコープ外の利用者には
+     *       業務状態に依存せず一律 403 を返すことを保証した（メモの状態を開示しない）</li>
+     *   <li>{@code GlobalExceptionHandler}: {@code QM_010}（TAG_NOT_FOUND）を 404 に登録。
+     *       {@code TagController} の Javadoc は「他スコープの tagId を指した越境は 404」と
+     *       宣言していたが未登録のため 400 が返っており、宣言と実挙動が乖離していた</li>
+     *   <li>契約テスト: {@code ActionMemoScopeContractIT}（新設・23 EP）／
+     *       {@code QuickMemoSelfScopeContractIT}（新設・9 EP）／
+     *       {@code QuickMemoTagScopeContractIT} の PERSONAL スコープ節（追補・4 EP）。
+     *       全 36 EP について「無関係な他ユーザー → 404 / 403」または
+     *       「他ユーザーのデータが混入しないこと」を実測で固定し、正常系も併せて張った</li>
+     * </ul>
+     *
+     * <p>600 → 573（2026-07-30 / 第1波・個人領域 ロットC = reflection / inbox / favorite / corkboard の
+     * 48 EP 全数監査）: 凍結 48 EP を実コードで全数監査し、27 件を解消した。本ロットは上記ロットA
+     * （todo・17 件解消）から分岐しており、起点は 636 だった。ロットB（actionmemo / quickmemo・36 件解消）が
+     * 先に着地して 600 になったため、{@code main} 追随マージで両者を合成した結果が 573 である
+     * （636 − 36 − 27 = 573）。ロットB が削除した 36 行は actionmemo / quickmemo、本ロットの 27 行は
+     * reflection / inbox / favorite / corkboard で<b>互いに素</b>であり重複はない。内訳:</p>
      * <ul>
      *   <li><b>実装是正（1件・波及2EP）</b>: {@code TeamFavoriteResolver} /
      *       {@code OrganizationFavoriteResolver} の表示メタ解決を F00 共通可視性ラダー
@@ -336,7 +369,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>契約テスト: {@code ReflectionPersonalScopeContractIT} / {@code InboxScopeContractIT} /
      * {@code FavoriteScopeContractIT} 新設、{@code CorkboardBoardScopeContractIT} 拡張。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 609;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 573;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
