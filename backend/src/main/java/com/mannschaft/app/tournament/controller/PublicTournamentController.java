@@ -36,7 +36,7 @@ import java.util.List;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:290-299 — requestMatchers(GET, "/api/v1/public/organizations/&#42;/tournaments"
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/organizations/&#42;/tournaments"
  * 他 standings / matrix / rankings / bracket).permitAll()
  * </p>
  *
@@ -49,7 +49,14 @@ import java.util.List;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/public/organizations/*/tournaments",
+        "/api/v1/public/organizations/*/tournaments/*",
+        "/api/v1/public/organizations/*/tournaments/*/divisions/*/standings",
+        "/api/v1/public/organizations/*/tournaments/*/divisions/*/matrix",
+        "/api/v1/public/organizations/*/tournaments/*/rankings/*",
+        "/api/v1/public/organizations/*/tournaments/*/bracket"
+})
 @RestController
 @RequestMapping("/api/v1/public/organizations/{orgId}/tournaments")
 @Tag(name = "公開大会API", description = "F08.7 公開大会参照（認証不要）")

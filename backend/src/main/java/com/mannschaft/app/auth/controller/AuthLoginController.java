@@ -68,7 +68,7 @@ public class AuthLoginController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * SecurityConfig — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
      * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
      * </p>
      *
@@ -82,7 +82,12 @@ public class AuthLoginController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/password-reset/**"
+    })
     @PostMapping("/register")
     @Operation(summary = "ユーザー登録")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
@@ -128,7 +133,7 @@ public class AuthLoginController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * SecurityConfig — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
      * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
      * </p>
      *
@@ -142,7 +147,12 @@ public class AuthLoginController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/password-reset/**"
+    })
     @PostMapping("/login")
     @Operation(summary = "ログイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功")
@@ -357,7 +367,7 @@ public class AuthLoginController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * SecurityConfig — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
      * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
      * </p>
      *
@@ -371,7 +381,12 @@ public class AuthLoginController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/password-reset/**"
+    })
     @PostMapping("/refresh")
     @Operation(summary = "アクセストークンリフレッシュ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リフレッシュ成功")
@@ -401,7 +416,7 @@ public class AuthLoginController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * SecurityConfig — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
      * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
      * </p>
      *
@@ -415,7 +430,12 @@ public class AuthLoginController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/password-reset/**"
+    })
     @PostMapping("/password-reset/request")
     @Operation(summary = "パスワードリセット要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リセットメール送信完了")
@@ -434,7 +454,7 @@ public class AuthLoginController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:209-212 — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
+     * SecurityConfig — requestMatchers("/api/v1/auth/login", "/api/v1/auth/register",
      * "/api/v1/auth/refresh", "/api/v1/auth/password-reset/**").permitAll()
      * </p>
      *
@@ -448,7 +468,12 @@ public class AuthLoginController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/password-reset/**"
+    })
     @PostMapping("/password-reset/confirm")
     @Operation(summary = "パスワードリセット確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "パスワードリセット完了")
