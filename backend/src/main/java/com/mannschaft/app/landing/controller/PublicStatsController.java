@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:333 — requestMatchers(GET, "/api/v1/public/stats").permitAll()
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/stats").permitAll()
  * </p>
  *
  * <p><b>公開してよいと判断した理由</b>:
@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic("/api/v1/public/stats")
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公開統計", description = "ランディングページ用公開統計API")

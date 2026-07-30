@@ -101,9 +101,9 @@ public class ProjectService {
      * で 1 クエリ取得する。各プロジェクトに {@link TeamService#getNamesByIds} / {@link TeamService#getSlugsByIds}
      * のバッチ結果から teamName / teamSlug を付与して {@link TeamProjectSummaryResponse} のページを返す。</p>
      *
-     * <p>TODO(出陣): 試練フェーズの<b>空実装</b>。所属チーム解決・集約クエリ・チーム名/slug の
-     * バッチ付与はまだ実装していないため、常に空ページを返す。これにより AC-2〜AC-8 が red になる。
-     * /出陣 で本実装を行い green 化すること。</p>
+     * <p><b>認可</b>: 集約対象のチームは引数の {@code userId}（認証主体）の所属から解決するため、
+     * 呼び出し元が他ユーザーのチームを指定する余地がない（自己スコープ）。所属チームが無い場合は
+     * 集約クエリを呼ばず空ページを返す。</p>
      *
      * @param userId ログインユーザー ID
      * @param status ステータスフィルタ

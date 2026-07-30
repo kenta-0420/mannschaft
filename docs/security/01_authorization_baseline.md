@@ -41,6 +41,36 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 `.authenticated()` 反転後も**認証不要**で到達できる必要があるエンドポイント。これ以外は全て認証必須。
 
+### 3.0 公開根拠の引用規約 — `@IntentionallyPublic` は **matcher 式**を引用する（2026-07-30 改訂）
+
+`permitAll` の EP には監査済マーカー `@IntentionallyPublic` を付与し、**根拠となる matcher 式（パス文字列）を注釈の属性に列挙する**。
+
+```java
+@IntentionallyPublic("/api/v1/public/stats")            // 単一
+@IntentionallyPublic({                                   // 複数
+        "/api/v1/public/teams/*/faqs",
+        "/api/v1/public/organizations/*/faqs"
+})
+```
+
+**なぜ行番号引用をやめたか（実測に基づく規約変更）:**
+
+旧規約は `SecurityConfig.java:88 — requestMatchers(...)` のように **行番号**で permitAll 登録箇所を引用していた。しかし `SecurityConfig` に 1 行挿入されるだけで以降の引用がすべてずれる。2026-07-30 に全件突き合わせを実測した結果、**`@IntentionallyPublic` の行番号引用 35 件のうち 34 件が既に別の行を指していた**（唯一正しかったのは直前の PR で追加された 1 件のみ）。「なぜこの EP が公開されているのか」を追う唯一の手掛かりが、誰にも気づかれないまま嘘になっていた。
+
+matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人間もすぐ辿れる。さらに文字列であるため**番人が機械的に突き合わせられる**。
+
+**番人:** `IntentionallyPublicMatcherGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が以下を機械検証する。
+
+- 各 `@IntentionallyPublic` が matcher 式を宣言していること（空宣言は違反）
+- 列挙された各パターンが `SecurityConfig` に**実在し、かつ permitAll されている**こと
+- `@IntentionallyPublic` を持つファイルに行番号引用（`SecurityConfig.java:NNN`）が残っていないこと
+
+引用が腐れば静かに嘘になるのではなく **ビルドが赤くなる**。CORS プリフライト（`OPTIONS "/**"`）は「公開の根拠」にならないため番人の permitAll 集合から除外している（`/**` を引用するだけで番人を通す抜け道を塞ぐため）。
+
+> **注**: 公開してよいと判断した**理由の記述（Javadoc）は本体であり、引用形式の変更後も必ず残すこと。** 理由なき付与は「認可漏れの永久凍結」と区別がつかない。
+>
+> **残務**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で、実測 **40 件中 38 件がずれている**（残り 2 件はパス引用が無く測定不能）。同じ移行が必要だが、対象 Controller が 30 以上に及び並行 PR との衝突面が大きいため別チケットとする。
+
 ### 3.1 インフラ・ドキュメント
 | パターン | メソッド | 公開理由 |
 |---|---|---|
@@ -80,9 +110,41 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 1. **親スコープが PUBLIC** かつ未凍結・未削除であること（非公開チーム / 組織配下は一律 404）
 2. **記録自身が `visibility=PUBLIC` かつ `status=PUBLISHED`** であること（下書き・会員限定・論理削除済みは 404）
-3. **F00 正準の可視性判定**（`ContentVisibilityChecker#canView`・未認証 `userId=null`）を通ること。独自述語は作らない
+3. **F00 正準の可視性判定**（`ContentVisibilityChecker`・未認証 `userId=null`）を通ること。独自ラダーは作らない
 4. **パス変数と実スコープの一致**（スコープ詐称 IDOR の拒否）
 5. **返却は公開専用 DTO の 8 項目のみ** — `PublicActivityDetail` / `PublicActivitySummary`（`id` / `title` / `activityDate` / `activityTimeStart` / `activityTimeEnd` / `description` / `scopeRef` / `createdAt`）。`location` / `fieldValues` / `attachments` / `createdBy` / `visibility` / `status` / `templateId` / `venueId` / `scheduleId` / `updatedAt` は**禁則フィールド**として一切含めない
+
+##### 一覧経路における門2 と 門3 の適用形（2026-07-30 改訂）
+
+**一覧（`listTeamPublicActivities` / `listOrgPublicActivities`）でも門2 は必ず適用される。** ただし詳細経路と適用**層**が異なる:
+
+| 門 | 詳細（単件） | 一覧 |
+|---|---|---|
+| 門2（`visibility=PUBLIC` かつ `status=PUBLISHED`） | `ActivityResultRepository#findByIdAndVisibilityAndStatus`（SQL） | **`ActivityResultRepository#findPublicByScopeTypeAndScopeId`（SQL 述語）** |
+| 門3（F00 `ContentVisibilityChecker`） | 判定の主体（唯一の門） | **第二の門（乖離検知）**。SQL が通した行を再確認し、落ちた行は返さない（fail-closed）うえで `log.warn` で乖離を記録する |
+
+- **なぜ一覧だけ SQL 述語なのか**: 一覧は 1 ページ分を取得してからメモリでフィルタすると、落ちた分が補充されず **ページング歯抜け**（`limit=20` でも 20 件返らない）と **総件数の破綻** が起きる。絞り込みは SQL 段に降ろさなければ構造的に直らない。
+- **これは「二つ目の判定器」ではない**: 匿名（`userId=null`）では `MembershipBatchQueryService#snapshotForUser` が `UserScopeRoleSnapshot.empty()` を返してラダーが縮退し、`StandardVisibility.PUBLIC` の Javadoc が「未認証時は PUBLIC かつ PUBLISHED のときのみ true、それ以外はすべて fail-closed」と明文で宣言している。SQL 述語はこの宣言の**機械的な転写**である。
+- **先例**: F19.1 `BlogPostRepository#findPublicPostsByTeamId`（`PublicActivityQueryService` 自身が「金型」と明記する `PublicPostQueryService` の実体）、`TournamentService#listPublicTournaments`、`AnnouncementFeedVisibilityResolver`（「一覧は SQL 述語・単件は F00 Resolver」の併存を公式に容認）。設計書 `docs/features/F02.6_announcement_widget.md` は「検証は Repository 層の `@Query` レベルで WHERE 句に入れる（Service 層の if 文に依存しない）」と規定している。
+- **等価性の担保**: 「SQL 述語の集合 S」と「F00 の `filterAccessible(..., null)` の集合 F」が **`S == F`** であることを、契約テスト `ActivityPublicContractIT` の **AC-32（等価性番人）** が `visibility × status × deleted` の全 8 組合せで機械的に固定する。片方だけを変更すると必ず落ちる。`ActivityVisibility` に第 3 の値を追加する際も最初にここが落ちる。
+
+> **認証済み一覧（`GET /api/v1/activities`）の既知の残務**: 認証済み経路は依然「1 ページ取得 → F00 でメモリフィルタ」であり **歯抜けが残っている**（総件数のページ内件数への化けのみ 2026-07-30 に是正済み）。認証済みでは F00 のラダーが縮退しないため SQL 化すると本物の独自述語になってしまう。厳密化には F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」を新設し、それを SQL 述語へ翻訳する必要がある（後続戦役）。
+
+##### 明文化した 3 つの契約（2026-07-30 追加・従来は未検査だった）
+
+いずれも「実装はそう動いていたが受け入れ条件も契約テストも無かった」ものであり、`ActivityPublicContractIT` で機械的に固定した。
+
+| # | 契約 | 現在の挙動 | 番人 |
+|---|---|---|---|
+| 1 | **COMMITTEE スコープは公開 EP から一律 404**（fail-closed） | `PublicActivityQueryService#resolvePublicScopeRefOrThrow` の `case COMMITTEE -> Optional.empty()` により、`visibility=PUBLIC` かつ `status=PUBLISHED` でも 404（ボディも「存在しない ID」と同一） | **AC-37** |
+| 2 | **非数値パス変数は 400 のまま**（404 に倒さない） | `/api/v1/public/activities/abc` は Spring の型変換段で失敗し `400 + COMMON_001`。ボディは定数で、入力値・例外クラス名・スタックを一切含まない | **AC-38** |
+| 3 | **公開 EP の応答は閲覧者に依存しない** | `PublicActivityQueryService` が `canView(..., null)` / `filterAccessible(..., null)` と **userId を null 固定**で呼ぶため、ログイン済み（かつ当該チームの ACTIVE メンバー）でも `MEMBERS_ONLY` / `DRAFT` は公開 EP から見えず、ボディは匿名時と 1 バイトも変わらない | **AC-39 / AC-39b** |
+
+> **#2 が AC-18（存在秘匿）の穴でない理由**: AC-18 が封じるのは「**ID として妥当な値**を投げたとき、その記録が実在するかを学べてしまう」こと。`abc` はそもそも ID ではなく、型変換がコントローラ到達**前**に失敗するため activity_results への問い合わせが一度も起きない。よって 400 と 404 の差は**入力領域の違い（ID か否か）**であり、**リソースの存在有無の違いではない**。挙動を 404 に倒しても得るものは無く、型エラーの診断可能性だけを失う。
+
+> **#3 が重要な理由**: 公開 EP は SSR / CDN / リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は**キャッシュ汚染**（あるユーザー向けの応答が他人へ配られる）と意図しない露出の温床になる。AC-39b は「認証済みと匿名でボディが完全一致」を固定し、誰かが `null` 固定を `SecurityUtils.getCurrentUserIdOrNull()` に差し替えた瞬間に落ちる。
+
+> **未対応（本 PR の対象外・別途要判断）**: `/api/v1/public/teams/{slug}/activities` に **存在しない slug** を渡すと `ScopeSlugIdConverter` が 404 `COMMON_005` を返し、**存在するが非公開なチームの slug** を渡すと 404 `PUBLIC_013` を返す。ステータスは同じ 404 だがボディが異なるため、**slug の実在を判別できる**。これは activity 固有ではなく `ScopeSlugIdConverter`（`config/ScopeSlugIdConverter.java`）を通す全 `/public/teams/{slug}/**` 系に共通する挙動であり、横断的な判断が要る。team slug は公開 URL 識別子として設計されている（`docs` の URL 識別子 slug 一本化方針）ため直ちに致命的とは言えないが、存在秘匿の観点ではグレーである。
 
 失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
 

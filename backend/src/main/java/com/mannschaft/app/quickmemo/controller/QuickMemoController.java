@@ -3,6 +3,7 @@ package com.mannschaft.app.quickmemo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.quickmemo.dto.ConvertToTodoRequest;
 import com.mannschaft.app.quickmemo.dto.ConvertToTodoResponse;
 import com.mannschaft.app.quickmemo.dto.CreateQuickMemoRequest;
@@ -33,6 +34,19 @@ import java.util.List;
 
 /**
  * ポイっとメモ コントローラー。
+ *
+ * <p><b>認可の所在</b>: メモ ID を受け取る EP は
+ * {@code @PreAuthorize("@quickMemoAccessGuard.canAccess(#id, authentication)")} で
+ * 所有者一致を宣言的に強制する（{@code QuickMemoAccessGuard#canAccess}
+ * が {@code findByIdAndUserId} で引き当てる）。</p>
+ *
+ * <p>一方、<b>メモ ID を受け取らない一覧・検索・作成の 4 EP は自己スコープ</b>であり、
+ * 絞り込みキーが {@link SecurityUtils#getCurrentUserId()} に固定されていて
+ * リクエストで指定できない。これらはガード呼び出しを持たないため認可番人
+ * （{@code AuthzControllerGuardArchTest}）の呼び出しグラフ判定では認可シグナルとして
+ * 検出されない。構造的に越境不能であることを監査のうえ
+ * {@link AuthorizedInService} で明示承認し、回帰は
+ * {@code QuickMemoSelfScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/quick-memos")
@@ -43,8 +57,18 @@ public class QuickMemoController {
     private final QuickMemoService quickMemoService;
     private final QuickMemoConvertToTodoService convertService;
 
+    /**
+     * 自分のメモ一覧を取得する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 自己スコープ。
+     * {@code QuickMemoService#listMemos}（QuickMemoService.java:49）の
+     * 取得クエリは {@code findByUserIdAndStatusAndDeletedAtIsNull}
+     * （QuickMemoService.java:51-52）で userId を必須条件に含む。
+     * リクエストパラメータは status/page/size のみで対象ユーザーを指定できない。</p>
+     */
     @GetMapping
     @Operation(summary = "メモ一覧取得")
+    @AuthorizedInService
     public ResponseEntity<PagedResponse<QuickMemoResponse>> listMemos(
             @RequestParam(defaultValue = "UNSORTED") String status,
             @RequestParam(defaultValue = "1") int page,
@@ -53,8 +77,20 @@ public class QuickMemoController {
         return ResponseEntity.ok(quickMemoService.listMemos(userId, status, page, size));
     }
 
+    /**
+     * メモを作成する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 自己スコープ。作成されるメモの
+     * {@code userId} は {@link SecurityUtils#getCurrentUserId()} に固定される
+     * （QuickMemoService.java:84-85）。リクエストで指定できる {@code tagIds} は
+     * {@code attachTags}（QuickMemoService.java:218）が
+     * {@code findByIdAndScopeTypeAndScopeId(tagId, "PERSONAL", userId)}
+     * （QuickMemoService.java:221）で本人所有の PERSONAL タグに限定するため、
+     * 他ユーザーのタグや TEAM/ORGANIZATION タグを紐付けることはできない。</p>
+     */
     @PostMapping
     @Operation(summary = "メモ作成")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<QuickMemoResponse>> createMemo(
             @Valid @RequestBody CreateQuickMemoRequest request,
             @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
@@ -125,8 +161,17 @@ public class QuickMemoController {
         return ResponseEntity.ok(ApiResponse.of(quickMemoService.undeleteMemo(id, userId)));
     }
 
+    /**
+     * 自分のゴミ箱（論理削除済みメモ）一覧を取得する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 自己スコープ。
+     * {@code QuickMemoService#listTrash}（QuickMemoService.java:149）の
+     * 取得クエリは {@code findByUserIdAndDeletedAtIsNotNull}
+     * （QuickMemoService.java:150-151）で userId を必須条件に含む。</p>
+     */
     @GetMapping("/trash")
     @Operation(summary = "ゴミ箱一覧")
+    @AuthorizedInService
     public ResponseEntity<PagedResponse<QuickMemoResponse>> listTrash(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -134,8 +179,19 @@ public class QuickMemoController {
         return ResponseEntity.ok(quickMemoService.listTrash(userId, page, size));
     }
 
+    /**
+     * 自分のメモを全文検索する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 自己スコープ。
+     * {@code QuickMemoService#searchMemos}（QuickMemoService.java:66）の
+     * {@code searchByKeyword}（QuickMemoService.java:69）は userId を必須条件に含むため、
+     * 検索語で他ユーザーのメモ本文を掘り出すことはできない。
+     * 検索語は {@code LikeEscapeUtils.contains} で LIKE メタ文字をエスケープする
+     * （QuickMemoService.java:68）。</p>
+     */
     @GetMapping("/search")
     @Operation(summary = "メモ検索")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<List<QuickMemoResponse>>> searchMemos(
             @RequestParam String q) {
         Long userId = SecurityUtils.getCurrentUserId();

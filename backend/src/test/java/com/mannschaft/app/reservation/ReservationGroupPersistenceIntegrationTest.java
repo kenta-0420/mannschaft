@@ -165,7 +165,7 @@ class ReservationGroupPersistenceIntegrationTest extends AbstractMySqlIntegratio
         // 2 枠目を他ユーザーの単枠予約で満席化しておく
         Long otherUser = 998103L;
         reservationService.createReservation(fx.teamId(), otherUser,
-                new CreateReservationRequest(fx.slotIds()[1], fx.lineId(), null));
+                new CreateReservationRequest(fx.slotIds()[1], fx.lineId(), null, null));
         assertThat(reloadSlot(fx.slotIds()[1]).getSlotStatus()).isEqualTo(SlotStatus.FULL);
         long rowsBefore = reservationRepository.count();
 
@@ -241,7 +241,7 @@ class ReservationGroupPersistenceIntegrationTest extends AbstractMySqlIntegratio
         Long userId = 998106L;
 
         reservationService.createReservation(fx.teamId(), userId,
-                new CreateReservationRequest(fx.slotIds()[0], fx.lineId(), "単枠"));
+                new CreateReservationRequest(fx.slotIds()[0], fx.lineId(), "単枠", null));
 
         List<ReservationResponse> my = reservationService.listMyReservations(userId);
         assertThat(my).hasSize(1);
