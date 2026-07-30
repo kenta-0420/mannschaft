@@ -2,7 +2,9 @@ package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
+import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduledTaskStatus;
 import com.mannschaft.app.schedule.ScheduledTaskType;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -34,6 +36,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -344,6 +349,42 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
         return scheduleRepository.findById(scheduleId).orElseThrow();
     }
 
+    /**
+     * schedules テーブルに「出欠設定つき」の行を確実にコミットして返す（Issue #2508 欠陥B 検証用）。
+     *
+     * <p>materialize 前の初期値を明示的に与え、payload_json の設定が実際に適用されたか
+     * （あるいは未指定時に初期値が保たれるか）を判別できるようにする。</p>
+     */
+    private ScheduleEntity persistScheduleWithAttendanceSettings(
+            Long teamId, LocalDateTime startAt,
+            LocalDateTime attendanceDeadline,
+            CommentOption commentOption,
+            MinResponseRole minResponseRole) {
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long scheduleId = tx.execute(status -> {
+            ScheduleEntity schedule = ScheduleEntity.builder()
+                    .teamId(teamId)
+                    .title("統合テスト用予定（出欠設定つき）")
+                    .startAt(startAt)
+                    .allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ANYONE)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(true)
+                    .attendanceDeadline(attendanceDeadline)
+                    .commentOption(commentOption)
+                    .minResponseRole(minResponseRole)
+                    .createdBy(CREATED_BY)
+                    .build();
+            em.persist(schedule);
+            em.flush();
+            return schedule.getId();
+        });
+        createdScheduleIds.add(scheduleId);
+        return scheduleRepository.findById(scheduleId).orElseThrow();
+    }
+
     /** 通知発火テスト用のユーザー・ロール・user_roles seed（確実にコミット） */
     private void seedUsersAndRoles() {
         TransactionTemplate tx = new TransactionTemplate(txManager);
@@ -517,6 +558,193 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             long attendanceCount = attendanceRepository.countByScheduleId(schedule.getId());
             assertThat(attendanceCount)
                     .as("チームメンバー2名分の出欠レコードが生成されること")
+                    .isEqualTo(2L);
+        }
+    }
+
+    // ========================================================================
+    // テスト 2-B: 予約出欠の設定適用（Issue #2508 欠陥B）
+    // ========================================================================
+
+    /**
+     * <b>回帰防止（欠陥B）</b>: materialize 時に {@code payload_json} が一度も読まれず
+     * {@code openAttendanceSolicitation(scheduleId)} を呼ぶだけだったため、ユーザーが指定した
+     * 回答締切・コメント設定・最低応答ロールが「書かれるだけで一切適用されない」状態だった。
+     * 本テスト群が payload → 予定本体への実適用を DB の実値で恒久的に保証する。
+     */
+    @Nested
+    @DisplayName("テスト2-B: 予約出欠の設定適用（payload_json → 予定本体）")
+    class AttendanceSettingsApplied {
+
+        /** payload_json を「その時代に書かれた生の JSON」として組み立てる（DTO 型に依存しない）。 */
+        private String rawAttendancePayload(String deadlineJson, String commentOption, String minResponseRole) {
+            return """
+                    {"attendanceDeadline":%s,"commentOption":%s,"minResponseRole":%s}"""
+                    .formatted(deadlineJson,
+                            commentOption == null ? "null" : "\"" + commentOption + "\"",
+                            minResponseRole == null ? "null" : "\"" + minResponseRole + "\"");
+        }
+
+        @Test
+        @DisplayName("AC-2/AC-3: payload の締切・コメント設定・最低応答ロールが materialize で予定へ適用される")
+        void payloadの出欠設定がmaterializeで適用される() throws Exception {
+            // Arrange
+            seedUsersAndRoles();
+            ScheduleEntity schedule = persistScheduleWithAttendanceSettings(
+                    TEAM_ID, LocalDateTime.now().plusDays(5),
+                    null, CommentOption.OPTIONAL, MinResponseRole.MEMBER_PLUS);
+
+            // ユーザーが指定した締切（JST オフセット付き＝FE が実際に送る形）
+            OffsetDateTime deadline = OffsetDateTime.now(ZoneOffset.ofHours(9))
+                    .plusDays(3).withNano(0);
+            LocalDateTime expectedDeadlineJst =
+                    deadline.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+
+            String payload = rawAttendancePayload(
+                    "\"" + deadline + "\"", "REQUIRED", "ADMIN_ONLY");
+            ScheduleScheduledTaskEntity task = persistTask(
+                    schedule.getId(), ScheduledTaskType.ATTENDANCE,
+                    LocalDateTime.now().minusMinutes(3), payload);
+
+            // Act
+            scheduledTaskBatchService.materializeOne(task);
+
+            // Assert: タスクが CREATED（materialize 成功）
+            ScheduleScheduledTaskEntity afterTask =
+                    scheduledTaskRepository.findById(task.getId()).orElseThrow();
+            assertThat(afterTask.getStatus())
+                    .as("materialize 成功（attempt=%d, lastError=%s）"
+                            .formatted(afterTask.getAttemptCount(), afterTask.getLastError()))
+                    .isEqualTo(ScheduledTaskStatus.CREATED);
+
+            // Assert: 予定本体に出欠設定が実適用されていること（DB 実値）
+            ScheduleEntity after = scheduleRepository.findById(schedule.getId()).orElseThrow();
+            assertThat(after.getAttendanceDeadline())
+                    .as("AC-2: ユーザー指定の回答締切が予定へ適用されること")
+                    .isEqualTo(expectedDeadlineJst);
+            assertThat(after.getCommentOption())
+                    .as("AC-3: コメント設定が予定へ適用されること")
+                    .isEqualTo(CommentOption.REQUIRED);
+            assertThat(after.getMinResponseRole())
+                    .as("AC-3: 最低応答ロールが予定へ適用されること")
+                    .isEqualTo(MinResponseRole.ADMIN_ONLY);
+
+            // Assert: 従来どおり出欠レコードも生成されること
+            assertThat(attendanceRepository.countByScheduleId(schedule.getId()))
+                    .as("出欠募集そのものは従来どおり動作すること")
+                    .isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("AC-5: 非JSTオフセットで書かれた既存 payload_json も materialize できる（後方互換）")
+        void 旧オフセット付きpayloadでもmaterializeできる() throws Exception {
+            // Arrange: 旧 LocalDateTimeTimezoneSerializer はリクエストユーザーの TZ で書き出すため、
+            // 既存行には -04:00（New York）などの非 JST オフセットが混在しうる。
+            seedUsersAndRoles();
+            ScheduleEntity schedule = persistScheduleWithAttendanceSettings(
+                    TEAM_ID, LocalDateTime.now().plusDays(6),
+                    null, CommentOption.OPTIONAL, MinResponseRole.MEMBER_PLUS);
+
+            OffsetDateTime deadlineJst = OffsetDateTime.now(ZoneOffset.ofHours(9))
+                    .plusDays(4).withNano(0);
+            OffsetDateTime legacyNewYork = deadlineJst.withOffsetSameInstant(ZoneOffset.ofHours(-4));
+            LocalDateTime expectedDeadlineJst =
+                    deadlineJst.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+
+            String payload = rawAttendancePayload(
+                    "\"" + legacyNewYork + "\"", "REQUIRED", null);
+            ScheduleScheduledTaskEntity task = persistTask(
+                    schedule.getId(), ScheduledTaskType.ATTENDANCE,
+                    LocalDateTime.now().minusMinutes(2), payload);
+
+            // Act
+            scheduledTaskBatchService.materializeOne(task);
+
+            // Assert
+            ScheduleScheduledTaskEntity afterTask =
+                    scheduledTaskRepository.findById(task.getId()).orElseThrow();
+            assertThat(afterTask.getStatus())
+                    .as("AC-5: 旧オフセット付き payload でも失敗しないこと（attempt=%d, lastError=%s）"
+                            .formatted(afterTask.getAttemptCount(), afterTask.getLastError()))
+                    .isEqualTo(ScheduledTaskStatus.CREATED);
+
+            ScheduleEntity after = scheduleRepository.findById(schedule.getId()).orElseThrow();
+            assertThat(after.getAttendanceDeadline())
+                    .as("AC-5: 非 JST オフセットでも同一の瞬間として JST へ正規化されること")
+                    .isEqualTo(expectedDeadlineJst);
+            assertThat(after.getMinResponseRole())
+                    .as("payload で未指定の項目は既存値を保つこと")
+                    .isEqualTo(MinResponseRole.MEMBER_PLUS);
+        }
+
+        @Test
+        @DisplayName("AC-5: オフセット無しで書かれた既存 payload_json も JST として materialize できる")
+        void 旧オフセット無しpayloadでもmaterializeできる() throws Exception {
+            // Arrange
+            seedUsersAndRoles();
+            ScheduleEntity schedule = persistScheduleWithAttendanceSettings(
+                    TEAM_ID, LocalDateTime.now().plusDays(7),
+                    null, CommentOption.OPTIONAL, MinResponseRole.MEMBER_PLUS);
+
+            LocalDateTime deadlineLocal = LocalDateTime.now().plusDays(5).withNano(0).withSecond(0);
+            String payload = rawAttendancePayload(
+                    "\"" + deadlineLocal + "\"", null, null);
+            ScheduleScheduledTaskEntity task = persistTask(
+                    schedule.getId(), ScheduledTaskType.ATTENDANCE,
+                    LocalDateTime.now().minusMinutes(2), payload);
+
+            // Act
+            scheduledTaskBatchService.materializeOne(task);
+
+            // Assert
+            ScheduleScheduledTaskEntity afterTask =
+                    scheduledTaskRepository.findById(task.getId()).orElseThrow();
+            assertThat(afterTask.getStatus())
+                    .as("AC-5: オフセット無し payload でも失敗しないこと（attempt=%d, lastError=%s）"
+                            .formatted(afterTask.getAttemptCount(), afterTask.getLastError()))
+                    .isEqualTo(ScheduledTaskStatus.CREATED);
+
+            ScheduleEntity after = scheduleRepository.findById(schedule.getId()).orElseThrow();
+            assertThat(after.getAttendanceDeadline())
+                    .as("AC-5: オフセット無しは JST（サーバー既定 TZ）として解釈されること")
+                    .isEqualTo(deadlineLocal);
+        }
+
+        @Test
+        @DisplayName("AC-4: 締切等を省略した payload では予定の既存設定を上書きしない（非退行）")
+        void 設定未指定のpayloadは既存設定を壊さない() throws Exception {
+            // Arrange: 予定側に既存の締切・設定がある
+            seedUsersAndRoles();
+            LocalDateTime existingDeadline = LocalDateTime.now().plusDays(9).withNano(0).withSecond(0);
+            ScheduleEntity schedule = persistScheduleWithAttendanceSettings(
+                    TEAM_ID, LocalDateTime.now().plusDays(10),
+                    existingDeadline, CommentOption.HIDDEN, MinResponseRole.SUPPORTER_PLUS);
+
+            String payload = rawAttendancePayload("null", null, null);
+            ScheduleScheduledTaskEntity task = persistTask(
+                    schedule.getId(), ScheduledTaskType.ATTENDANCE,
+                    LocalDateTime.now().minusMinutes(1), payload);
+
+            // Act
+            scheduledTaskBatchService.materializeOne(task);
+
+            // Assert
+            ScheduleScheduledTaskEntity afterTask =
+                    scheduledTaskRepository.findById(task.getId()).orElseThrow();
+            assertThat(afterTask.getStatus()).isEqualTo(ScheduledTaskStatus.CREATED);
+
+            ScheduleEntity after = scheduleRepository.findById(schedule.getId()).orElseThrow();
+            assertThat(after.getAttendanceDeadline())
+                    .as("AC-4: 未指定なら既存の締切を維持すること")
+                    .isEqualTo(existingDeadline);
+            assertThat(after.getCommentOption())
+                    .as("AC-4: 未指定なら既存のコメント設定を維持すること")
+                    .isEqualTo(CommentOption.HIDDEN);
+            assertThat(after.getMinResponseRole())
+                    .as("AC-4: 未指定なら既存の最低応答ロールを維持すること")
+                    .isEqualTo(MinResponseRole.SUPPORTER_PLUS);
+            assertThat(attendanceRepository.countByScheduleId(schedule.getId()))
+                    .as("AC-4: 出欠募集そのものは従来どおり動作すること")
                     .isEqualTo(2L);
         }
     }

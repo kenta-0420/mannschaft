@@ -142,6 +142,20 @@ mannschaft:
   # 格納基準そのものを変える意思決定とセットで行うこと（片方だけ動かすと activeDays 集計が日単位でずれる）。
   audit:
     stored-zone-offset: ${MANNSCHAFT_AUDIT_STORED_ZONE_OFFSET:+00:00}
+  # インメモリキャッシュ（UserTimezoneCache / UserLocaleCache）の常駐エントリ数の上限。
+  # Issue #2487 項目 1: 旧実装は素の ConcurrentHashMap で件数上限も期限切れ回収も無く、
+  # 「これまでに一度でも見た全ユーザー数」に常駐メモリが単調増加していた。現在は
+  # BoundedTtlCache（件数上限つき LRU ＋ 参照時の期限切れ回収）で頭打ちにしている。
+  # 既定 50,000 の根拠: 1 エントリ約 200B（Long キー＋短い文字列＋失効時刻＋LinkedHashMap ノード）で
+  # 約 10MB。ベータ第 4 段階の想定規模（1 万人）とリクエスト駆動の hot set を丸ごと収容できる。
+  # ベータ特典 自動付与バッチ（500 件 × 最大 200 ページ = 10 万人）は同一ユーザーを再訪しない
+  # ストリーミング走査のため、上限超過分が押し出されても再クエリは発生しない。
+  # 2 つのキャッシュは同一方式・同一既定値で揃える（片方だけ別挙動にしない）。
+  cache:
+    user-timezone:
+      max-entries: ${MANNSCHAFT_CACHE_USER_TIMEZONE_MAX_ENTRIES:50000}
+    user-locale:
+      max-entries: ${MANNSCHAFT_CACHE_USER_LOCALE_MAX_ENTRIES:50000}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
   # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
   # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。

@@ -9,6 +9,8 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -297,8 +300,114 @@ class LoginActivityTimezoneIT extends AbstractMySqlIntegrationTest {
     }
 
     // ============================================================
+    // AC-TZ6（Issue #2487 項目 5）: 30分/45分刻み・+13:00/+14:00 の特殊オフセット
+    // ============================================================
+
+    /**
+     * AC-TZ6: <b>時間単位ではないオフセット（30 分 / 45 分刻み）</b>と、<b>+12:00 を超えるオフセット</b>でも
+     * 現地の日境界が正しく切られる。
+     *
+     * <p>#2482 のテストが確認していたのは {@code +09:00} と {@code -07:00} の 2 値のみで、いずれも<b>時間単位</b>
+     * かつ {@code ±12:00} の内側だった。オフセット文字列を組み立てる処理（{@code LoginActivityQueryService
+     * #formatOffset}）は分まで扱う実装になっているが、それを課すテストが無く、<b>分を落として時間へ丸める
+     * 退行を検出できない</b>状態だった。</p>
+     *
+     * <p>検証は 2 段構え:</p>
+     * <ol>
+     *   <li>現地 23:50 と翌現地 00:10 のログインが <b>2 日</b>と数えられること（サービス層）</li>
+     *   <li>同じデータを {@code naiveOffset}（分を落として時間へ丸めた / {@code +12:00} へ丸めたオフセット）で
+     *       切ると <b>1 日</b>に潰れること（Repository 層）。丸めが起きれば必ず落ちる＝分まで効いていることの裏取り</li>
+     * </ol>
+     *
+     * <p>選んだ 4 ゾーンはいずれも現行 tzdb で夏時間を持たない（固定オフセット）。日境界の直近に seed するため、
+     * 評価ウィンドウ内で切り替わる TZ を選ぶとフレークの原因になる。seed は<b>実装と同じく「now 時点の実オフセット」</b>
+     * から現地時刻を組み立てるため、仮に将来 DST が導入されても seed と集計が同一オフセットで揃う。</p>
+     */
+    @ParameterizedTest(name = "AC-TZ6: {0} の現地日境界で activeDays=2（{1} へ丸めると 1 に潰れる）")
+    @CsvSource({
+            "Asia/Kolkata,       +05:00",
+            "Asia/Kathmandu,     +05:00",
+            "Pacific/Apia,       +12:00",
+            "Pacific/Kiritimati, +13:00"
+    })
+    @DisplayName("AC-TZ6: 30分/45分刻み・+13:00/+14:00 のユーザーでも現地の日境界で数える")
+    void acTz6_specialOffsets_countLocalDays(String zoneName, String naiveOffset) {
+        ZoneId zone = ZoneId.of(zoneName);
+        LocalDateTime nowUtc = nowUtc();
+        Long user = persistActiveUser(zoneName);
+        seedLocalMidnightCrossing(user, zone, nowUtc);
+
+        long activeDays = loginActivityQueryService
+                .countDistinctActiveDaysWithin(user, WINDOW_DAYS, nowUtc);
+
+        assertThat(activeDays)
+                .as("%s の現地 23:50 と翌 00:10 は別日（実オフセット %s）", zoneName, offsetAt(zone, nowUtc))
+                .isEqualTo(2L);
+
+        // 分を落として丸めたオフセットでは同日に潰れる＝オフセットが分単位まで効いていることの裏取り。
+        assertThat(auditLogRepository.countDistinctLoginDaysSince(
+                user, nowUtc.minusDays(WINDOW_DAYS), "+00:00", naiveOffset.trim()))
+                .as("%s へ丸めると日境界がずれて 1 日に潰れる（この差が出なければ丸め退行を検出できない）", naiveOffset)
+                .isEqualTo(1L);
+    }
+
+    /**
+     * AC-TZ6 補強（bulk）: 特殊オフセットのユーザーを混在させて bulk を 1 回呼んでも、
+     * <b>各自のオフセットで別々に</b>日が切られる（オフセット群の分け方が分単位で正しいこと）。
+     *
+     * <p>群分けは {@code formatOffset} の文字列をキーにしている。分を落とすと {@code Asia/Kolkata}（+05:30）と
+     * {@code Asia/Kathmandu}（+05:45）が同一群に畳まれ、片方の日境界が壊れる。</p>
+     */
+    @Test
+    @DisplayName("AC-TZ6 補強: +05:30 / +05:45 / +13:00 / +14:00 を混在させた bulk でも全員 2 日になる")
+    void acTz6_bulk_mixedSpecialOffsets_areNotCollapsed() {
+        LocalDateTime nowUtc = nowUtc();
+        Map<String, Long> userByZone = new LinkedHashMap<>();
+        for (String zoneName : List.of("Asia/Kolkata", "Asia/Kathmandu", "Pacific/Apia", "Pacific/Kiritimati")) {
+            Long user = persistActiveUser(zoneName);
+            seedLocalMidnightCrossing(user, ZoneId.of(zoneName), nowUtc);
+            userByZone.put(zoneName, user);
+        }
+
+        Map<Long, Long> byUser = loginActivityQueryService.countDistinctActiveDaysWithinByUsers(
+                List.copyOf(userByZone.values()), WINDOW_DAYS, nowUtc);
+
+        assertThat(userByZone).allSatisfy((zoneName, userId) ->
+                assertThat(byUser.get(userId))
+                        .as("%s のユーザーは自分のオフセットで 2 日と数えられる", zoneName)
+                        .isEqualTo(2L));
+    }
+
+    // ============================================================
     // ヘルパ
     // ============================================================
+
+    /** {@code nowUtc} 時点における当該ゾーンの実オフセット（実装の TZ 解決と同一規則）。 */
+    private static ZoneOffset offsetAt(ZoneId zone, LocalDateTime nowUtc) {
+        return zone.getRules().getOffset(nowUtc.toInstant(ZoneOffset.UTC));
+    }
+
+    /**
+     * 当該ゾーンの<b>現地 23:50</b> と<b>翌現地 00:10</b> にログイン 2 件を仕込む（現地では別日・UTC では同日）。
+     *
+     * <p>現地時刻 → UTC の換算には実装と同じ「{@code nowUtc} 時点の実オフセット」を用いる。
+     * こうすることで、集計側が {@code CONVERT_TZ} に渡すオフセットと seed のオフセットが必ず一致し、
+     * 評価ウィンドウ内の DST 切替に左右されない。</p>
+     */
+    private void seedLocalMidnightCrossing(Long userId, ZoneId zone, LocalDateTime nowUtc) {
+        ZoneOffset offset = offsetAt(zone, nowUtc);
+        LocalDate localAnchor = nowUtc.atOffset(ZoneOffset.UTC)
+                .withOffsetSameInstant(offset)
+                .toLocalDate()
+                .minusDays(ANCHOR_DAYS_AGO);
+        insertLoginAtRawUtc(userId, toUtcWallClock(localAnchor.atTime(23, 50), offset));
+        insertLoginAtRawUtc(userId, toUtcWallClock(localAnchor.plusDays(1).atTime(0, 10), offset));
+    }
+
+    /** 現地の壁時計 + オフセット → UTC の壁時計。 */
+    private static LocalDateTime toUtcWallClock(LocalDateTime localWallClock, ZoneOffset offset) {
+        return localWallClock.atOffset(offset).withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+    }
 
     /** 評価基準時刻（UTC 壁時計）。注入 Clock のみから導き、システム既定 TZ に一切依存しない。 */
     private LocalDateTime nowUtc() {

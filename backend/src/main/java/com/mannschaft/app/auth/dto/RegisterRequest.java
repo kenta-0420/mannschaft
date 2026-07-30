@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mannschaft.app.common.validation.ValidTimezone;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -44,6 +45,15 @@ public class RegisterRequest {
 
     private final String postalCode;
     private final String locale;
+
+    /**
+     * IANA タイムゾーン名（例: {@code Asia/Tokyo}）。null なら既定 {@code Asia/Tokyo} で登録する。
+     *
+     * <p>Issue #2487 項目 4: 更新系（{@link UpdateProfileRequest}）と同様、登録系にも形式検証が無く、
+     * 任意文字列がそのまま {@code users.timezone} に入る経路だった。入口を片方だけ塞いでも
+     * 不正値は登録経路から入り込むため、両方に同じ制約を課す。</p>
+     */
+    @ValidTimezone
     private final String timezone;
 
     /** ベータ招待トークン（nullable）。ベータ制限ON時に必須となる。 */
