@@ -4,7 +4,7 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
-import com.mannschaft.app.notification.fanout.VillageFanoutRecipientSource;
+import com.mannschaft.app.village.fanout.VillageFanoutRecipientSource;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import lombok.RequiredArgsConstructor;
