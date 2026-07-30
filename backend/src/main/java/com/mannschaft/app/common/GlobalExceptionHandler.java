@@ -183,6 +183,10 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
+            // F02.5 汎用タグ: スコープ不一致・不在は存在秘匿で 404。TagController の Javadoc は
+            // 「他スコープの tagId を指した越境は 404」と宣言しているが未登録のため
+            // Severity.WARN 既定の 400 が返っていた（宣言と実挙動の乖離）。宣言どおりに揃える。
+            Map.entry("QM_010", HttpStatus.NOT_FOUND),             // TAG_NOT_FOUND（BOLA 秘匿）
             // F16 school 出席要件規程: bare id EP（update/delete）の権限不足は存在秘匿で 404（Severity.WARN 既定 400 を上書き）
             Map.entry("S030", HttpStatus.NOT_FOUND),
             // F16 school 出席要件評価: bare id EP（resolve）の権限不足・不在は存在秘匿で 404
