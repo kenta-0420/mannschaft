@@ -15,6 +15,7 @@ import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import java.lang.annotation.Annotation;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -53,7 +54,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       ホワイトリストは「命名規約に基づく suffix 判定」とし、個別クラスの
  *       ハードコード列挙にしない（新規 AccessGuard/AccessService が追加された瞬間に
  *       自動で認可シグナルとして認識されるようにするため）。</li>
- *   <li>(C) メソッド または宣言クラスに<b>監査済マーカー 3 種のいずれか</b>。認可の所在ごとに
+ *   <li>(C) メソッド または宣言クラスに<b>監査済マーカー 4 種のいずれか</b>。認可の所在ごとに
  *       分離されており、実態と異なるマーカーを貼ることは誤った証跡として禁じられる:
  *       <ul>
  *         <li>{@link com.mannschaft.app.common.security.AuthorizedInService} —
@@ -63,6 +64,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *             {@code SecurityConfig} のパス単位 {@code hasRole()} 等で宣言的に強制済み</li>
  *         <li>{@link com.mannschaft.app.common.security.IntentionallyPublic} —
  *             {@code permitAll()} 配下で意図的に無認可公開（理由の併記が必須）</li>
+ *         <li>{@link com.mannschaft.app.common.security.SelfScopedEndpoint} —
+ *             検索対象が認証主体に束縛され<b>他人のデータへ構造的に到達できない</b>
+ *             （根拠の記述が必須。<b>メソッド専用</b>で、付与には対応する契約テストの存在が
+ *             {@link SelfScopedEndpointMarkerGuardTest} により機械的に要求される）</li>
  *       </ul></li>
  * </ol>
  *
@@ -155,11 +160,11 @@ class AuthzControllerGuardArchTest {
     }
 
     /**
-     * シグナル(C): メソッドまたは宣言クラスに<b>監査済マーカー 3 種のいずれか</b>が付いているか。
+     * シグナル(C): メソッドまたは宣言クラスに<b>監査済マーカー 4 種のいずれか</b>が付いているか。
      *
      * <p>番人の呼び出しグラフ判定（{@code @PreAuthorize} / 白名簿クラス呼び出し）では拾えないが、
      * 監査を経て正当と確認されたエンドポイントを明示承認するためのマーカー群。
-     * <b>認可の所在ごとに 3 種へ分離</b>している（「Service 内で認可済み」の意の注釈を
+     * <b>主張の内容ごとに 4 種へ分離</b>している（「Service 内で認可済み」の意の注釈を
      * SecurityConfig のパス認可 EP や意図的公開 EP に貼ると誤った証跡になるため）:</p>
      * <ul>
      *   <li>{@link AuthorizedInService} — webhook 署名検証・capability トークン等、
@@ -167,15 +172,32 @@ class AuthzControllerGuardArchTest {
      *   <li>{@link AuthorizedByPathConfig} — {@code SecurityConfig} のパス単位
      *       {@code hasRole()} 等で宣言的に強制済み</li>
      *   <li>{@link IntentionallyPublic} — {@code permitAll()} 配下で意図的に無認可公開</li>
+     *   <li>{@link SelfScopedEndpoint} — 検索対象が認証主体に束縛され他人のデータへ
+     *       構造的に到達できない（＝「認可済み」ではなく「到達不能」の主張）</li>
      * </ul>
      *
      * <p>{@code @PreAuthorize} 判定（{@link #hasPreAuthorizeSignal(JavaMethod)}）と完全対称に
-     * メソッド／宣言クラスの双方を検査する。</p>
+     * メソッド／宣言クラスの双方を検査する。ただし {@link SelfScopedEndpoint} だけは
+     * <b>メソッド専用</b>（{@code @Target(METHOD)}）であり、クラス単位の付与で
+     * 同一クラスの全 EP をまとめて承認扱いにできないよう、メソッドのみを検査する。</p>
      */
     private static boolean hasMarkerSignal(JavaMethod method) {
         return hasMarker(method, AuthorizedInService.class)
             || hasMarker(method, AuthorizedByPathConfig.class)
-            || hasMarker(method, IntentionallyPublic.class);
+            || hasMarker(method, IntentionallyPublic.class)
+            || hasMethodOnlyMarker(method, SelfScopedEndpoint.class);
+    }
+
+    /**
+     * メソッド<b>のみ</b>に指定の監査済マーカーが付いているか（宣言クラスは見ない）。
+     *
+     * <p>到達不能性は「そのエンドポイントが何を検索条件に使うか」に依存するエンドポイント単位の
+     * 性質であり、自己スコープ EP とリソース ID を受け取る EP は同一 Controller に併存する。
+     * よって {@link SelfScopedEndpoint} はクラス単位の付与を許さない
+     * （注釈側の {@code @Target(METHOD)} と本判定の二重で担保する）。</p>
+     */
+    private static boolean hasMethodOnlyMarker(JavaMethod method, Class<? extends Annotation> marker) {
+        return method.isAnnotatedWith(marker);
     }
 
     /** メソッド または宣言クラスに指定の監査済マーカーが付いているか（メソッド／クラス対称判定）。 */
