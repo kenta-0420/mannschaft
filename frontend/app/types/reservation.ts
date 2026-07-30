@@ -6,6 +6,17 @@ import type { components } from '~/types/generated'
 /** F03.4.3 §5.6#10: 一覧応答へ additive 追加されたグループ要約（単枠予約は null）。生成型を単一ソースにする。 */
 export type GroupSummaryDto = components['schemas']['GroupSummaryDto']
 
+/**
+ * F03.4.5 §6.2 W2-5-FE: 定期予約（毎週繰り返し）関連の型。真実のソースは生成型（再エクスポートのみ・手書きしない）。
+ * `RecurringWeekOutcomeDto.reason` は9値enum（`RecurringWeekSkipReason`）。丸めると会員に嘘の理由を
+ * 伝えることになるため、FE は9値すべてに i18n 文言を用意すること（症状を隠さない原則）。
+ */
+export type RecurringWeekOutcomeDto = components['schemas']['RecurringWeekOutcomeDto']
+export type RecurringWeekSkipReason = NonNullable<RecurringWeekOutcomeDto['reason']>
+export type RecurringSeriesDto = components['schemas']['RecurringSeriesDto']
+export type RecurringCancelDto = components['schemas']['RecurringCancelDto']
+export type RecurringConfirmDto = components['schemas']['RecurringConfirmDto']
+
 export type ReservationStatus =
   | 'PENDING'
   | 'CONFIRMED'
@@ -70,6 +81,18 @@ export interface ReservationResponse {
   audit?: ReservationAuditDto
   /** グループ予約（F03.4.3）の要約。単枠予約は null（additive・既存契約不変）。 */
   group?: GroupSummaryDto
+  /**
+   * 定期予約(series)所属のID（UUID・nullable・トップレベル・F03.4.5 §6.2 W2-5）。
+   * 一覧・詳細GETでも常に返る唯一の判定材料——「この予約が定期予約の一部か」はこのフィールドで判定する
+   * （`recurring`/`recurringCancel`/`recurringConfirm` は各操作の結果明細でありGETでは常にnull）。
+   */
+  recurringSeriesId?: string
+  /** 定期予約 作成の結果明細（createReservation の repeatWeeks>=2 応答でのみ非null）。 */
+  recurring?: RecurringSeriesDto
+  /** 定期予約 キャンセルの結果明細（scope=THIS_AND_FOLLOWING キャンセル応答でのみ非null）。 */
+  recurringCancel?: RecurringCancelDto
+  /** 定期予約 承認の結果明細（scope=SERIES 承認応答でのみ非null）。 */
+  recurringConfirm?: RecurringConfirmDto
 }
 
 // === ReservationSlotResponse（予約枠。ReservationResponse とは別物）===

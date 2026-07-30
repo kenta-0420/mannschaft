@@ -462,6 +462,43 @@
         "all_day": "All day"
       }
     },
+    "recurring": {
+      "toggle_label": "Repeat this reservation weekly",
+      "weeks_option": "{n} weeks",
+      "weeks_more": "More options (5-12 weeks)",
+      "weeks_label": "Number of weeks",
+      "horizon_hint": "Slots are only auto-created up to 28 days ahead, so weeks beyond that may need to be booked manually once the slot is created",
+      "close_button": "Close",
+      "badge": "Recurring",
+      "result": {
+        "summary": "{created} reservation(s) made ({skipped} skipped)",
+        "skipped_list_title": "Skipped occurrences",
+        "all_skipped_notice": "None of the selected weeks could be reserved. Please check the reasons below and book the needed weeks individually"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "The slot for that week has not been created yet",
+        "FULL": "The slot was full",
+        "CLOSED": "Booking was closed for that slot",
+        "BLOCKED": "That time was unavailable for booking",
+        "ALREADY_RESERVED": "You already had a reservation for that slot",
+        "UNAVAILABLE": "The slot was unavailable",
+        "NOT_CANCELLABLE": "That reservation could not be cancelled",
+        "CANCEL_DEADLINE_PASSED": "The cancellation deadline had passed",
+        "NOT_PENDING": "That reservation was not awaiting approval"
+      },
+      "cancel_scope": {
+        "dialog_title": "Choose cancellation scope",
+        "this_only": "This occurrence only",
+        "this_and_following": "This and all following occurrences",
+        "result_summary": "{cancelled} cancelled ({skipped} not eligible)",
+        "all_skipped_notice": "None of the occurrences could be cancelled. Please check the reasons below"
+      },
+      "confirm_series": {
+        "button": "Approve all (recurring series)",
+        "confirm_message": "Approve all pending reservations in this recurring series?",
+        "success": "{confirmed} approved ({skipped} skipped)"
+      }
+    },
     "notify_recipients": {
       "section_label": "Reservation notification emails",
       "help": "Register email addresses that are notified whenever a reservation is made. You can add addresses that are not app users, such as your shop's main address. The free plan allows up to 3 addresses; a paid plan is required from the 4th (up to 10).",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "Could not pause/resume — there are overlapping reservations in this time slot"
+      },
+      "force_cancel": {
+        "button": "Cancel conflicting reservations and register",
+        "confirm_title": "Confirm forced registration",
+        "confirm_message": "{n} reservation(s) will be cancelled and the members notified. Continue?",
+        "confirm_ok": "Cancel and register",
+        "result_notice": "{n} reservation(s) were cancelled and the block was registered"
       }
     },
     "business_hours": {

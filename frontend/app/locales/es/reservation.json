@@ -462,6 +462,43 @@
         "all_day": "Todo el día"
       }
     },
+    "recurring": {
+      "toggle_label": "Repetir esta reserva cada semana",
+      "weeks_option": "{n} semanas",
+      "weeks_more": "Más opciones (5-12 semanas)",
+      "weeks_label": "Número de semanas",
+      "horizon_hint": "Los horarios solo se crean automáticamente hasta 28 días antes, por lo que las semanas posteriores pueden requerir una reserva manual una vez creado el horario",
+      "close_button": "Cerrar",
+      "badge": "Recurrente",
+      "result": {
+        "summary": "Se reservaron {created} (se omitieron {skipped})",
+        "skipped_list_title": "Ocurrencias omitidas",
+        "all_skipped_notice": "No se pudo reservar ninguna de las semanas seleccionadas. Revise los motivos a continuación y reserve manualmente las semanas necesarias"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "El horario de esa semana aún no se ha creado",
+        "FULL": "El horario estaba completo",
+        "CLOSED": "Las reservas estaban cerradas para ese horario",
+        "BLOCKED": "Ese horario no estaba disponible para reservar",
+        "ALREADY_RESERVED": "Ya tenía una reserva para ese horario",
+        "UNAVAILABLE": "El horario no estaba disponible",
+        "NOT_CANCELLABLE": "Esa reserva no se pudo cancelar",
+        "CANCEL_DEADLINE_PASSED": "Se superó el plazo de cancelación",
+        "NOT_PENDING": "Esa reserva no estaba pendiente de aprobación"
+      },
+      "cancel_scope": {
+        "dialog_title": "Elegir el alcance de la cancelación",
+        "this_only": "Solo esta vez",
+        "this_and_following": "Esta vez y todas las siguientes",
+        "result_summary": "Se cancelaron {cancelled} ({skipped} no elegibles)",
+        "all_skipped_notice": "No se pudo cancelar ninguna de las ocurrencias. Revise los motivos a continuación"
+      },
+      "confirm_series": {
+        "button": "Aprobar todo (serie recurrente)",
+        "confirm_message": "¿Aprobar todas las reservas pendientes de esta serie recurrente?",
+        "success": "{confirmed} aprobadas ({skipped} omitidas)"
+      }
+    },
     "notify_recipients": {
       "section_label": "Correos de notificación de reservas",
       "help": "Registra las direcciones de correo que se notifican cada vez que se realiza una reserva. Puedes añadir direcciones que no sean de usuarios de la app, como la dirección principal del negocio. El plan gratuito permite hasta 3 direcciones; a partir de la 4ª se requiere un plan de pago (hasta 10).",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "No se pudo pausar/reanudar: hay reservas superpuestas en este horario"
+      },
+      "force_cancel": {
+        "button": "Cancelar reservas en conflicto y registrar",
+        "confirm_title": "Confirmar registro forzado",
+        "confirm_message": "Se cancelarán {n} reserva(s) y se notificará a los miembros. ¿Continuar?",
+        "confirm_ok": "Cancelar y registrar",
+        "result_notice": "Se cancelaron {n} reserva(s) y se registró el bloqueo"
       }
     },
     "business_hours": {

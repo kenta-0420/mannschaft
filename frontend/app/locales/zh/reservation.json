@@ -462,6 +462,43 @@
         "all_day": "全天"
       }
     },
+    "recurring": {
+      "toggle_label": "每周重复此预约",
+      "weeks_option": "{n}周",
+      "weeks_more": "更多选项（5〜12周）",
+      "weeks_label": "周数",
+      "horizon_hint": "预约时段仅自动生成至28天后，超出该范围的周次在时段生成后可能需要手动预约",
+      "close_button": "关闭",
+      "badge": "定期",
+      "result": {
+        "summary": "已预约{created}次（跳过{skipped}次）",
+        "skipped_list_title": "被跳过的场次",
+        "all_skipped_notice": "所选周次均无法预约，未创建任何预约。请查看以下原因，并对需要的周次单独预约"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "该周的时段尚未生成",
+        "FULL": "该时段已满",
+        "CLOSED": "该时段已停止接受预约",
+        "BLOCKED": "该时间段不可预约",
+        "ALREADY_RESERVED": "您已预约过该时段",
+        "UNAVAILABLE": "该时段当前不可用",
+        "NOT_CANCELLABLE": "该预约无法取消",
+        "CANCEL_DEADLINE_PASSED": "已超过取消截止时间",
+        "NOT_PENDING": "该预约不处于待审核状态"
+      },
+      "cancel_scope": {
+        "dialog_title": "选择取消范围",
+        "this_only": "仅此一次",
+        "this_and_following": "此次及以后所有场次",
+        "result_summary": "已取消{cancelled}次（{skipped}次不符合条件）",
+        "all_skipped_notice": "所有场次均无法取消，请查看以下原因"
+      },
+      "confirm_series": {
+        "button": "批量审批（定期预约）",
+        "confirm_message": "是否审批该定期预约系列中所有待处理的预约？",
+        "success": "已审批{confirmed}次（跳过{skipped}次）"
+      }
+    },
     "notify_recipients": {
       "section_label": "预约通知邮件收件人",
       "help": "登记每次预约成立时通过邮件通知的收件人。可添加非应用用户的邮箱，如店铺代表邮箱。免费方案最多3个，第4个及以后需要付费方案（最多10个）。",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "暂停/恢复失败。该时间段存在重叠的预约，无法操作"
+      },
+      "force_cancel": {
+        "button": "取消冲突的预约并登记",
+        "confirm_title": "确认强制登记",
+        "confirm_message": "将取消{n}条预约，并通知相关预约人。是否继续？",
+        "confirm_ok": "取消并登记",
+        "result_notice": "已取消{n}条预约并完成登记"
       }
     },
     "business_hours": {

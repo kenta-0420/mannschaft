@@ -462,6 +462,43 @@
         "all_day": "종일"
       }
     },
+    "recurring": {
+      "toggle_label": "이 예약을 매주 반복",
+      "weeks_option": "{n}주",
+      "weeks_more": "더 보기（5〜12주）",
+      "weeks_label": "주 수",
+      "horizon_hint": "예약 시간대는 28일 후까지만 자동으로 생성되므로, 그 이후 주는 시간대가 생성된 후 직접 예약해야 할 수 있습니다",
+      "close_button": "닫기",
+      "badge": "정기",
+      "result": {
+        "summary": "{created}건 예약했습니다（{skipped}건은 건너뜀）",
+        "skipped_list_title": "건너뛴 회차",
+        "all_skipped_notice": "선택한 주의 시간대를 모두 확보하지 못해 예약이 생성되지 않았습니다. 아래 이유를 확인하고 필요한 주는 개별적으로 예약해 주세요"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "해당 주의 시간대가 아직 생성되지 않았습니다",
+        "FULL": "만석이었습니다",
+        "CLOSED": "접수가 마감되었습니다",
+        "BLOCKED": "예약할 수 없는 시간대였습니다",
+        "ALREADY_RESERVED": "이미 해당 시간대를 예약하셨습니다",
+        "UNAVAILABLE": "예약할 수 없는 상태였습니다",
+        "NOT_CANCELLABLE": "취소할 수 없는 상태였습니다",
+        "CANCEL_DEADLINE_PASSED": "취소 기한이 지났습니다",
+        "NOT_PENDING": "승인 대기 상태가 아니었습니다"
+      },
+      "cancel_scope": {
+        "dialog_title": "취소 범위 선택",
+        "this_only": "이 회차만",
+        "this_and_following": "이 회차 이후 전체",
+        "result_summary": "{cancelled}건을 취소했습니다（{skipped}건은 대상이 아니었습니다）",
+        "all_skipped_notice": "대상 회차를 모두 취소할 수 없었습니다. 아래 이유를 확인해 주세요"
+      },
+      "confirm_series": {
+        "button": "일괄 승인（정기 예약）",
+        "confirm_message": "이 정기 예약 시리즈의 대기 중인 예약을 모두 승인하시겠습니까?",
+        "success": "{confirmed}건을 승인했습니다（{skipped}건은 건너뜀）"
+      }
+    },
     "notify_recipients": {
       "section_label": "예약 알림 메일 수신처",
       "help": "예약이 성립될 때마다 메일로 알릴 수신처를 등록합니다. 매장 대표 주소 등 앱 사용자가 아닌 메일도 등록할 수 있습니다. 무료 플랜은 3건까지이며, 4건째부터는 유료 플랜이 필요합니다(최대 10건).",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "일시 중지/재개에 실패했습니다. 이 시간대에 중복되는 예약이 있어 조작할 수 없습니다"
+      },
+      "force_cancel": {
+        "button": "충돌하는 예약을 취소하고 등록",
+        "confirm_title": "강제 등록 확인",
+        "confirm_message": "{n}건의 예약이 취소되고 신청자에게 알림이 전송됩니다. 계속하시겠습니까?",
+        "confirm_ok": "취소하고 등록",
+        "result_notice": "{n}건의 예약을 취소하고 등록했습니다"
       }
     },
     "business_hours": {

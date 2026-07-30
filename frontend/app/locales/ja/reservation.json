@@ -462,6 +462,43 @@
         "all_day": "終日"
       }
     },
+    "recurring": {
+      "toggle_label": "この予約を毎週繰り返す",
+      "weeks_option": "{n}週",
+      "weeks_more": "もっと長く（5〜12週）",
+      "weeks_label": "週数",
+      "horizon_hint": "枠は28日先までしか自動作成されないため、それより先の週は枠ができ次第の手動予約が必要になる場合があります",
+      "close_button": "閉じる",
+      "badge": "定期",
+      "result": {
+        "summary": "{created}件を予約しました（{skipped}件はスキップ）",
+        "skipped_list_title": "スキップした回",
+        "all_skipped_notice": "指定した週の枠がすべて確保できず、予約は作成されませんでした。下記の理由をご確認のうえ、必要な週は個別に予約してください"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "その週の枠がまだ作成されていません",
+        "FULL": "満席でした",
+        "CLOSED": "受付が停止されていました",
+        "BLOCKED": "予約不可の時間帯でした",
+        "ALREADY_RESERVED": "その枠にすでに予約済みでした",
+        "UNAVAILABLE": "予約できない状態でした",
+        "NOT_CANCELLABLE": "キャンセルできない状態でした",
+        "CANCEL_DEADLINE_PASSED": "キャンセル期限を過ぎていました",
+        "NOT_PENDING": "承認待ちの状態ではありませんでした"
+      },
+      "cancel_scope": {
+        "dialog_title": "キャンセル範囲の選択",
+        "this_only": "この回だけ",
+        "this_and_following": "この回以降すべて",
+        "result_summary": "{cancelled}件をキャンセルしました（{skipped}件は対象外でした）",
+        "all_skipped_notice": "対象の回はすべてキャンセルできませんでした。下記の理由をご確認ください"
+      },
+      "confirm_series": {
+        "button": "まとめて承認する（定期予約）",
+        "confirm_message": "この定期予約シリーズの保留中の予約をすべて承認しますか？",
+        "success": "{confirmed}件を承認しました（{skipped}件はスキップ）"
+      }
+    },
     "notify_recipients": {
       "section_label": "予約通知メール宛先",
       "help": "予約が成立するたびにメールでお知らせする宛先を登録します。店舗の代表アドレスなど、アプリ利用者でないメールも登録できます。無料プランは3件まで、4件目以降は有料プランが必要です（最大10件）。",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "一時停止/再開に失敗しました。この時間帯に重複する予約があるため操作できません"
+      },
+      "force_cancel": {
+        "button": "衝突する予約をキャンセルして登録する",
+        "confirm_title": "強行登録の確認",
+        "confirm_message": "{n}件の予約がキャンセルされ、申込者に通知が送られます。よろしいですか？",
+        "confirm_ok": "キャンセルして登録する",
+        "result_notice": "{n}件の予約をキャンセルして登録しました"
       }
     },
     "business_hours": {
