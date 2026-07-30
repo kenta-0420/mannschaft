@@ -79,7 +79,7 @@ public class AuthWebAuthnController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:220-221 — requestMatchers("/api/v1/auth/webauthn/login/begin",
+     * SecurityConfig — requestMatchers("/api/v1/auth/webauthn/login/begin",
      * "/api/v1/auth/webauthn/login/complete").permitAll()
      * </p>
      *
@@ -91,7 +91,10 @@ public class AuthWebAuthnController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/webauthn/login/begin",
+            "/api/v1/auth/webauthn/login/complete"
+    })
     @PostMapping("/login/begin")
     @Operation(summary = "WebAuthnログイン開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チャレンジ生成成功")
@@ -108,7 +111,7 @@ public class AuthWebAuthnController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:220-221 — requestMatchers("/api/v1/auth/webauthn/login/begin",
+     * SecurityConfig — requestMatchers("/api/v1/auth/webauthn/login/begin",
      * "/api/v1/auth/webauthn/login/complete").permitAll()
      * </p>
      *
@@ -120,7 +123,10 @@ public class AuthWebAuthnController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/webauthn/login/begin",
+            "/api/v1/auth/webauthn/login/complete"
+    })
     @PostMapping("/login/complete")
     @Operation(summary = "WebAuthnログイン完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功")

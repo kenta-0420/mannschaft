@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:344 — requestMatchers(POST, "/api/v1/ads/&#42;/click").permitAll()
+ * SecurityConfig — requestMatchers(POST, "/api/v1/ads/&#42;/click").permitAll()
  * </p>
  *
  * <p><b>公開してよいと判断した理由</b>:
@@ -41,7 +41,7 @@ import java.time.LocalDateTime;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic("/api/v1/ads/*/click")
 @RestController
 @RequestMapping("/api/v1/ads/{adId}/click")
 @RequiredArgsConstructor

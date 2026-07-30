@@ -28,7 +28,7 @@ import java.util.List;
  * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:306-310 —
+ * SecurityConfig —
  * requestMatchers(GET, "/api/v1/public/activities/&#42;"
  * / "/api/v1/public/teams/&#42;/activities" / "/api/v1/public/teams/&#42;/activities/&#42;"
  * / "/api/v1/public/organizations/&#42;/activities"
@@ -54,7 +54,13 @@ import java.util.List;
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること
  * （契約テスト {@code ActivityPublicContractIT} がホワイトリスト方式で機械的に守っている）。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/public/activities/*",
+        "/api/v1/public/teams/*/activities",
+        "/api/v1/public/teams/*/activities/*",
+        "/api/v1/public/organizations/*/activities",
+        "/api/v1/public/organizations/*/activities/*"
+})
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公開活動記録", description = "F06.4 公開活動記録（認証不要・SSR / SNS シェア用）")

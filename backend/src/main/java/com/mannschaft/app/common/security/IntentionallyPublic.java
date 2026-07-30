@@ -18,13 +18,24 @@ import java.lang.annotation.Target;
  *
  * <p><b>付与時の必須条件</b>（両方を満たすこと）:</p>
  * <ol>
- *   <li>根拠となる {@code SecurityConfig} の {@code permitAll()} 行を明記すること
- *       （例: {@code SecurityConfig.java:88 — requestMatchers("/api/v1/public/**").permitAll()}）</li>
- *   <li><b>公開してよいと判断した理由を必ず併記すること</b>
+ *   <li>根拠となる {@code SecurityConfig} の {@code permitAll()} <b>matcher 式（パス文字列）</b>を
+ *       {@link #value()} に列挙すること
+ *       （例: {@code @IntentionallyPublic("/api/v1/public/stats")}）。
+ *       番人 {@code IntentionallyPublicMatcherGuardTest} が、列挙された各パターンが実際に
+ *       {@code SecurityConfig} に存在し permitAll されていることを機械的に検証する。</li>
+ *   <li><b>公開してよいと判断した理由を必ず併記すること</b>（Javadoc に記述）
  *       （例: 「返却するのは全ユーザー共通のマスタ情報のみで、個人データ・テナント固有データを
  *       一切含まないため」）。理由なき付与は「認可漏れの永久凍結」と区別がつかず、
  *       番人を骨抜きにするバックドアになるため厳禁。</li>
  * </ol>
+ *
+ * <p><b>なぜ行番号ではなく matcher 式を引用するのか</b>（2026-07-30 規約変更）:
+ * 旧規約は {@code SecurityConfig.java:88 — ...} のように<b>行番号</b>を引用していたが、
+ * {@code SecurityConfig} に 1 行挿入されるだけで以降の引用がすべてずれる。
+ * 実測の結果、本注釈の行番号引用 35 件のうち <b>34 件が既に別の行を指していた</b>
+ * （「なぜ公開してよいのか」を追う唯一の手掛かりが静かに嘘になっていた）。
+ * matcher 式は行挿入で腐らず、{@code SecurityConfig} を Ctrl+F すれば人間もすぐ辿れる。
+ * さらに文字列であるため番人が機械的に突き合わせられる。</p>
  *
  * <p><b>注意</b>: 本注釈は<b>認可が存在しないこと</b>を宣言するものであり、他の 2 マーカーとは
  * 意味が根本的に異なる。個人データ・テナント固有データを返す可能性が少しでもあるなら付与してはならない。
@@ -40,4 +51,19 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IntentionallyPublic {
+
+    /**
+     * 公開の根拠となる {@code SecurityConfig} の {@code permitAll()} matcher 式（パス文字列）。
+     *
+     * <p>{@code SecurityConfig} に書かれている matcher のパス文字列を<b>一字一句そのまま</b>
+     * 列挙する（例: {@code "/api/v1/public/teams/*"}）。複数の matcher に支えられている
+     * Controller / メソッドは、該当するものをすべて列挙すること。</p>
+     *
+     * <p>番人 {@code IntentionallyPublicMatcherGuardTest} が、ここに列挙された各パターンが
+     * {@code SecurityConfig} に実在し permitAll されていることを検証する。
+     * 存在しない・permitAll でないパターンを書くとビルドが落ちる。</p>
+     *
+     * @return permitAll されている matcher パターンの配列（production コードでは空にしないこと）
+     */
+    String[] value() default {};
 }

@@ -60,6 +60,19 @@ public class ReservationEntity extends BaseEntity {
     private java.util.UUID menuId;
 
     /**
+     * 定期予約の series ID（F03.4.5 §6.2 W2-5・案(b) 兄弟行方式）。
+     *
+     * <p><b>NULL = 単発予約 = 既存互換</b>。「毎週繰り返す」で作られた各週の予約行を束ねる
+     * アプリ層採番の UUIDv7（専用親テーブルは持たない）。{@code group_id}（同日連続枠の横軸）とは
+     * <b>独立直交</b>し併存可能。</p>
+     *
+     * <p>成立が 1 件だけになった場合（2 週目以降が全てスキップ）は NULL に戻す
+     * （1 行だけの series は単発予約と区別する意味がない・AC-5-13）。</p>
+     */
+    @Column(name = "recurring_series_id")
+    private java.util.UUID recurringSeriesId;
+
+    /**
      * グループ代表行フラグ（F03.4.3 §3.2）。
      *
      * <p>単枠予約（group_id NULL）は常に TRUE。グループでは先頭枠（最小 slot_date + start_time）の
@@ -173,6 +186,17 @@ public class ReservationEntity extends BaseEntity {
     public boolean isCancellable() {
         return this.status == ReservationStatus.PENDING
                 || this.status == ReservationStatus.CONFIRMED;
+    }
+
+    /**
+     * 定期予約の series を解除する（F03.4.5 §6.2・AC-5-13）。
+     *
+     * <p>「毎週繰り返す」で 2 週目以降が全てスキップされ、成立が起点週の 1 件だけになった場合に呼ぶ。
+     * 1 行だけの series は単発予約と区別する意味がないため NULL に戻し、
+     * 従来どおりの単発予約として扱えるようにする。</p>
+     */
+    public void clearRecurringSeries() {
+        this.recurringSeriesId = null;
     }
 
     /**

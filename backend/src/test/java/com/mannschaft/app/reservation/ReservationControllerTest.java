@@ -145,6 +145,13 @@ class ReservationControllerTest {
         @Mock
         private ReservationReminderService reminderService;
 
+        /**
+         * F03.4.5 §6.2 W2-5: 定期予約のオーケストレーター（@InjectMocks の供給漏れ防止）。
+         * 本クラスの既存テストは {@code repeatWeeks} 省略の従来経路のみを踏むため呼ばれない。
+         */
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationRecurringService recurringService;
+
         @InjectMocks
         private TeamReservationController controller;
 
@@ -198,7 +205,7 @@ class ReservationControllerTest {
         void 予約作成_正常_201返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+                CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
                 given(reservationService.createReservation(TEAM_ID, USER_ID, request))
                         .willReturn(createReservationResponse());
 
@@ -212,11 +219,12 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約確定_正常_200返却")
         void 予約確定_正常_200返却() {
-            given(reservationService.confirmReservation(TEAM_ID, RESERVATION_ID))
+            // F03.4.5 §6.2 W2-5: scope（SERIES 一括承認）を additive 追加。省略（null）は従来の単票承認。
+            given(reservationService.confirmReservation(TEAM_ID, RESERVATION_ID, null))
                     .willReturn(createReservationResponse());
 
             ResponseEntity<ApiResponse<ReservationResponse>> result =
-                    controller.confirmReservation(TEAM_ID, RESERVATION_ID);
+                    controller.confirmReservation(TEAM_ID, RESERVATION_ID, null);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
@@ -224,7 +232,7 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約キャンセル_管理者_正常_200返却")
         void 予約キャンセル_管理者_正常_200返却() {
-            CancelReservationRequest request = new CancelReservationRequest("都合により");
+            CancelReservationRequest request = new CancelReservationRequest("都合により", null);
             given(reservationService.cancelByAdmin(TEAM_ID, RESERVATION_ID, request))
                     .willReturn(createReservationResponse());
 
@@ -963,7 +971,7 @@ class ReservationControllerTest {
         void マイ予約キャンセル_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                CancelReservationRequest request = new CancelReservationRequest("都合により");
+                CancelReservationRequest request = new CancelReservationRequest("都合により", null);
                 given(reservationService.cancelByUser(USER_ID, RESERVATION_ID, request))
                         .willReturn(createReservationResponse());
 

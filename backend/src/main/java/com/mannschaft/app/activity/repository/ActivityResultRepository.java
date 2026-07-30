@@ -106,6 +106,11 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
      * <p>sitemap は 1 時間キャッシュ前提のため全件取得してよい
      * （{@code SitemapQueryService} クラス Javadoc）。</p>
      *
+     * <p><b>「status 条件なしの finder を追加しない」規約（#2548）との関係</b>:
+     * 本メソッドは ID 直引き finder ではないが、同じ趣旨に従い
+     * {@code status = PUBLISHED} を述語に含めている。status を落とすと
+     * <b>下書きの URL を検索エンジンに配ってしまう</b>ため、決して外さないこと。</p>
+     *
      * @param publicTeamIds         公開チームの ID 集合（<b>空にしないこと</b>。空集合は JPQL の
      *                              {@code IN ()} を生成して SQL 構文エラーになるため、
      *                              呼び出し元が実在しない番兵値を入れる）
@@ -125,24 +130,14 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
             @Param("publicOrganizationIds") Collection<Long> publicOrganizationIds);
 
     /**
-     * ID と visibility で活動記録を取得する（スコープ不問）。
-     *
-     * <p>SNS シェア用の公開ページが ID 直引きで PUBLIC な記録を取得するために使用する。
-     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済は自動除外される。</p>
-     *
-     * @param id 活動記録 ID
-     * @param visibility 公開範囲
-     * @return 条件を満たす活動記録（存在しない場合は空）
-     */
-    Optional<ActivityResultEntity> findByIdAndVisibility(Long id, ActivityVisibility visibility);
-
-    /**
      * ID + visibility + status で活動記録を取得する（スコープ不問・匿名公開経路の正準）。
      *
-     * <p>{@link #findByIdAndVisibility(Long, ActivityVisibility)} は status 条件を持たないため、
-     * {@code visibility=PUBLIC} のまま公開されていない下書き（{@code status=DRAFT}）が
-     * 匿名で閲覧できてしまう欠陥があった。匿名公開経路は必ず本メソッド
-     * （{@code PUBLIC} かつ {@code PUBLISHED}）を使うこと。</p>
+     * <p><b>本メソッドが匿名公開経路の唯一の入口である。</b>
+     * かつて存在した {@code findByIdAndVisibility(Long, ActivityVisibility)} は status 条件を
+     * 持たなかったため、{@code visibility=PUBLIC} のまま公開されていない下書き
+     * （{@code status=DRAFT}）が匿名で閲覧できてしまう欠陥があった。
+     * 同じ穴を再び開けないよう当該メソッドは<b>削除済み</b>であり、
+     * status 条件を伴わない ID 直引き finder を本リポジトリに追加してはならない。</p>
      *
      * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済は自動除外される。</p>
      *
