@@ -1,8 +1,10 @@
 package com.mannschaft.app.notification.fanout;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +29,11 @@ public class NotificationFanoutStuckRecoveryBatch {
 
     private static final int STUCK_THRESHOLD_MINUTES = 5;
 
+    /** 残骸回収カウンタ（可観測性・AC-10・P1 命名に整合）。 */
+    static final String METRIC_STUCK_RECOVERED = "mannschaft.notification.fanout.job.stuck_recovered";
+
     private final NotificationFanoutJobRepository repository;
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     /** 毎時 0 分に RUNNING 残骸を PENDING に戻す。 */
     @Scheduled(cron = "0 0 * * * *")
@@ -38,6 +44,10 @@ public class NotificationFanoutStuckRecoveryBatch {
         int recovered = repository.recoverStuckRunning(threshold);
         if (recovered > 0) {
             log.warn("通知 fan-out の RUNNING 残骸 {} 件を PENDING に回収（threshold={}）", recovered, threshold);
+            MeterRegistry registry = meterRegistryProvider == null ? null : meterRegistryProvider.getIfAvailable();
+            if (registry != null) {
+                registry.counter(METRIC_STUCK_RECOVERED).increment(recovered);
+            }
         }
     }
 }

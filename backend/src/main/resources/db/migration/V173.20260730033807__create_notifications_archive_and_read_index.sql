@@ -18,7 +18,7 @@ CREATE TABLE notifications_archive (
     priority          VARCHAR(10)      NOT NULL DEFAULT 'NORMAL',
     title             VARCHAR(200)     NOT NULL,
     body              VARCHAR(1000)    NULL,
-    source_type       VARCHAR(50)      NOT NULL,
+    source_type       VARCHAR(50)      NULL              COMMENT 'notifications.source_type と一致（nullable）。moverが null 行を弾かないよう NOT NULL にしない（m-1 是正）',
     source_id         BIGINT           NULL,
     scope_type        VARCHAR(20)      NOT NULL,
     scope_id          BIGINT           NULL,

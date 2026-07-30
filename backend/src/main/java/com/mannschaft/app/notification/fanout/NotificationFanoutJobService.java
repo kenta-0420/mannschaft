@@ -1,7 +1,9 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.notification.NotificationPriority;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -39,15 +41,24 @@ public class NotificationFanoutJobService {
     private static final long BACKOFF_BASE_SECONDS = 30L;
     private static final long BACKOFF_MAX_SECONDS = 3_600L;
 
+    /** DEAD_LETTER 遷移カウンタ（silent drop 根絶の可観測性・P1 命名に整合・AC-10）。 */
+    static final String METRIC_DEAD_LETTER = "mannschaft.notification.fanout.job.dead_letter";
+    /** リトライ加算カウンタ（AC-10）。 */
+    static final String METRIC_RETRY = "mannschaft.notification.fanout.job.retry";
+
     private final NotificationFanoutJobRepository jobRepository;
     /** enqueue の INSERT を「呼び出し側 TX と隔離した独立 TX」で確定させるための REQUIRES_NEW テンプレート。 */
     private final TransactionTemplate enqueueTxTemplate;
+    /** MeterRegistry（optional。narrowed test context 等では不在・P1 と同じ ObjectProvider 方式）。 */
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
-                                        PlatformTransactionManager transactionManager) {
+                                        PlatformTransactionManager transactionManager,
+                                        ObjectProvider<MeterRegistry> meterRegistryProvider) {
         this.jobRepository = jobRepository;
         this.enqueueTxTemplate = new TransactionTemplate(transactionManager);
         this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.meterRegistryProvider = meterRegistryProvider;
     }
 
     /**
@@ -106,7 +117,18 @@ public class NotificationFanoutJobService {
             // 例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
             enqueueTxTemplate.execute(status -> jobRepository.saveAndFlush(job));
         } catch (DataIntegrityViolationException e) {
-            // 冪等: 同一 fan-out は既に登録済み（uk_fanout_idempotency 衝突）。二重登録のみを握って skip する。
+            // 握るのは「同一 fan-out の二重登録（uk_fanout_idempotency 衝突）」だけ。
+            // catch を DataIntegrityViolationException で広く受けると、NOT NULL 違反や別制約違反まで
+            // 「冪等 skip」として無言で握り潰し、通知が痕跡なく消える（握り潰し禁止に抵触）。
+            // そこで当該冪等キーのジョブが実在する時のみ skip とし、実在しない＝別原因なら rethrow する。
+            boolean idempotentDuplicate = jobRepository
+                    .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
+                            scopeType, scopeRef, notificationType, sourceEventUuid)
+                    .isPresent();
+            if (!idempotentDuplicate) {
+                // 冪等衝突ではない整合性違反。握らず露見させる（呼び出し側の best-effort catch で可視化される）。
+                throw e;
+            }
             log.debug("fan-out ジョブは既に登録済み（冪等 skip）: scopeType={} scopeRef={} type={} sourceEvent={}",
                     scopeType, scopeRef, notificationType, sourceEventUuid);
         }
@@ -175,13 +197,34 @@ public class NotificationFanoutJobService {
         job.setRetryCount(rc);
         job.setLastError(truncate(error));
         job.setUpdatedAt(now);
+        boolean deadLettered;
         if (rc >= maxRetry) {
             job.setStatus(NotificationFanoutJobStatus.DEAD_LETTER);
+            deadLettered = true;
         } else {
             job.setStatus(NotificationFanoutJobStatus.FAILED);
             job.setNextAttemptAt(now.plusSeconds(backoffSeconds(rc)));
+            deadLettered = false;
         }
         jobRepository.save(job);
+
+        // 可観測性（AC-10・silent drop 根絶）: リトライ加算は毎回、DEAD_LETTER 転落は遷移時のみ計上。
+        incrementCounter(METRIC_RETRY);
+        if (deadLettered) {
+            incrementCounter(METRIC_DEAD_LETTER);
+        }
+    }
+
+    /** カウンタを null 安全に +1（レジストリ不在の narrowed test context では何もしない・P1 と同方式）。 */
+    private void incrementCounter(String name) {
+        if (meterRegistryProvider == null) {
+            return;
+        }
+        MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+        if (registry == null) {
+            return;
+        }
+        registry.counter(name).increment();
     }
 
     private static long backoffSeconds(int retryCount) {

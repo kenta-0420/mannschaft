@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationFanoutRetentionDdlTest {
 
     private static final String JOBS_DDL =
-            "db/migration/V172.20260730001133__create_notification_fanout_jobs.sql";
+            "db/migration/V173.20260730033806__create_notification_fanout_jobs.sql";
     private static final String ARCHIVE_DDL =
-            "db/migration/V172.20260730001136__create_notifications_archive_and_read_index.sql";
+            "db/migration/V173.20260730033807__create_notifications_archive_and_read_index.sql";
 
     private static String readClasspath(String path) {
         try (InputStream in = NotificationFanoutRetentionDdlTest.class.getClassLoader().getResourceAsStream(path)) {

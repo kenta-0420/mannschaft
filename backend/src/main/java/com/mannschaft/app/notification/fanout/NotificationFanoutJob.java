@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * <p>村行事作成などの「入口」は受信者を展開せず本ジョブ 1 行だけを {@code enqueue} し（O(1)・AC-7）、
  * 裏ワーカー {@link NotificationFanoutWorker} が {@code cursor_subject_id} を進めながら受信者をチャンク配信する。
  * プロセスがクラッシュしても {@code status=PENDING} と {@code cursor_subject_id} から再開でき、欠落も重複も出さない
- * （AC-2）。DDL は {@code V172.__create_notification_fanout_jobs.sql}。</p>
+ * （AC-2）。DDL は {@code V173.__create_notification_fanout_jobs.sql}。</p>
  *
  * <h2>ユニーク制約（冪等・AC-1）</h2>
  * <p>{@code (scope_type, scope_ref, notification_type, source_event_uuid)} を複合ユニークにし、同一 fan-out の
