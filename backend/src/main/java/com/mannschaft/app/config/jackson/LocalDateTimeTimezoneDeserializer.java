@@ -75,12 +75,20 @@ import java.time.format.DateTimeParseException;
 public class LocalDateTimeTimezoneDeserializer extends JsonDeserializer<LocalDateTime> {
 
     /**
-     * サーバーが {@link LocalDateTime} を保持する基準 TZ。
-     * {@link com.mannschaft.app.config.TimeZoneConfig} が JVM デフォルトに設定しているものと同じ値を
-     * 明示的に固定する（{@link LocalDateTimeTimezoneSerializer} が {@code ZoneId.systemDefault()} で
-     * 見ている値と一致させるための定数）。
+     * サーバーが {@link LocalDateTime} を保持する<b>アプリ層の基準 TZ</b>（＝ JST 壁時計）。
+     *
+     * <p>{@code .claudecode.md} §20「格納基準 UTC の二層モデル」のうち<b>アプリ層</b>側の壁時計であり、
+     * DB 格納値の壁時計（UTC・{@code hibernate.jdbc.time_zone}）とは別物である。混同しないこと。</p>
+     *
+     * <p><b>対になる {@link LocalDateTimeTimezoneSerializer} は {@code ZoneId.systemDefault()} を見ている。</b>
+     * 現在は {@link com.mannschaft.app.config.TimeZoneConfig} が JVM 既定を {@code Asia/Tokyo} に固定するため
+     * 両者は一致するが、そこが動くと<b>シリアライザだけが追従して往復の対称性が静かに壊れる</b>。
+     * この一致は番人テスト {@code JacksonTimeTypeSymmetryGuardTest} が機械的に固定している。</p>
+     *
+     * <p>番人テストが「同じリテラルを再宣言して比べる」同語反復に陥らないよう、
+     * <b>実物の定数</b>を参照できるように公開している（テスト専用の公開である）。</p>
      */
-    private static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");
+    public static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");
 
     @Override
     public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
