@@ -104,23 +104,30 @@ public class SitemapQueryService {
      * 能動的に送る</b>ため、親が非公開のまま載せると「非公開チームが存在すること」と
      * 「その配下の記録 ID」を外部に開示してしまう。したがってここで必ず親を絞る。</p>
      *
-     * <p>公開チーム / 組織の ID 集合はこのクラスが既に持っている
-     * {@code findAllPublicTeams} / {@code findAllPublicOrganizations}（いずれも
-     * {@code visibility = PUBLIC} かつ未アーカイブ・未論理削除）から作る。
+     * <p>公開チーム / 組織の ID 集合は、<b>本クラスの既存メソッド</b>
+     * {@link #findPublicTeamEntries()} / {@link #findPublicOrganizationEntries()} の結果から作る
+     * （いずれも {@code visibility = PUBLIC} かつ未アーカイブ・未論理削除を返す）。
      * スコープごとに SQL を撃つのではなく<b>ID 集合を 1 回渡して 1 本の SQL で引く</b>ため、
      * 公開スコープ数に比例した N+1 にはならない。</p>
+     *
+     * <p><b>なぜ {@code teamRepository.findAllPublicTeams()} を直接呼ばないのか</b>:
+     * そちらを呼ぶと {@code TeamEntity} / {@code OrganizationEntity} と各 Repository への
+     * <b>依存回数が増える</b>。番人 D-1 / D-5 の凍結ストアは違反を<b>出現回数まで含めて</b>
+     * 記録しているため、既存の凍結数（entity 各 2 / repository 各 3）を超えた瞬間に
+     * 「新規違反」として fail する。既存メソッド経由なら呼び出しは {@code this} に閉じ、
+     * 越境依存を 1 つも増やさずに同じ ID 集合が得られる。</p>
      *
      * <p>{@code COMMITTEE} スコープの記録は公開ページを持たないため、
      * TEAM / ORGANIZATION の ID 集合のどちらにも入らず自動的に除外される（fail-closed）。</p>
      */
     public List<SitemapEntry> findPublicActivityEntries() {
-        Set<Long> publicTeamIds = teamRepository.findAllPublicTeams()
+        Set<Long> publicTeamIds = findPublicTeamEntries()
                 .stream()
-                .map(t -> t.getId())
+                .map(SitemapEntry::id)
                 .collect(Collectors.toSet());
-        Set<Long> publicOrganizationIds = organizationRepository.findAllPublicOrganizations()
+        Set<Long> publicOrganizationIds = findPublicOrganizationEntries()
                 .stream()
-                .map(o -> o.getId())
+                .map(SitemapEntry::id)
                 .collect(Collectors.toSet());
 
         return activityResultService
