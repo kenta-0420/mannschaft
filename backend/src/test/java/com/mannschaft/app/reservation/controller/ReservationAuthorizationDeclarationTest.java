@@ -161,8 +161,11 @@ class ReservationAuthorizationDeclarationTest {
         void 管理系はゲート済み() {
             assertGated(TeamReservationController.class, "listReservations",
                     Long.class, String.class, int.class, int.class);
+            // F03.4.5 §6.2 W2-5: scope（SERIES 一括承認）を additive 追加したためシグネチャが 3 引数になった。
+            // 一括承認は「その teamId の管理者」だけが行える必要があるため、ゲートは従来どおり必須。
             assertGated(TeamReservationController.class, "confirmReservation",
-                    Long.class, Long.class);
+                    Long.class, Long.class,
+                    com.mannschaft.app.reservation.ReservationConfirmScope.class);
             assertGated(TeamReservationController.class, "cancelReservation",
                     Long.class, Long.class, CancelReservationRequest.class);
             assertGated(TeamReservationController.class, "completeReservation",
