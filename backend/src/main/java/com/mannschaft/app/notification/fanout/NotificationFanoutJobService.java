@@ -1,12 +1,14 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.notification.NotificationPriority;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,7 +31,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class NotificationFanoutJobService {
 
     private static final int LAST_ERROR_MAX = 500;
@@ -39,6 +40,15 @@ public class NotificationFanoutJobService {
     private static final long BACKOFF_MAX_SECONDS = 3_600L;
 
     private final NotificationFanoutJobRepository jobRepository;
+    /** enqueue の INSERT を「呼び出し側 TX と隔離した独立 TX」で確定させるための REQUIRES_NEW テンプレート。 */
+    private final TransactionTemplate enqueueTxTemplate;
+
+    public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
+                                        PlatformTransactionManager transactionManager) {
+        this.jobRepository = jobRepository;
+        this.enqueueTxTemplate = new TransactionTemplate(transactionManager);
+        this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     /**
      * fan-out ジョブを 1 件 enqueue する（冪等・O(1)）。
@@ -60,8 +70,12 @@ public class NotificationFanoutJobService {
      * @param sourceId         ソースID（NULL 可）
      * @param actionUrl        アクション URL（NULL 可）
      * @param actorId          実行者ID（NULL 可・システム発火は NULL）
+     *
+     * @implNote 本メソッド自体は非トランザクション。INSERT は {@code enqueueTxTemplate}（REQUIRES_NEW）で
+     *           独立コミットし、ユニーク衝突は<b>トランザクション境界の外</b>で捕捉する。REQUIRES_NEW の内側で
+     *           {@code catch} しても当該 TX は rollback-only のままコミット時に {@code UnexpectedRollbackException}
+     *           を投げるため、隔離した TX を丸ごと外側で握るのが正しい（呼び出し側＝還流の system 投稿 TX を巻き込まない）。
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enqueue(String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid,
                         Long organizationId, String title, String body, NotificationPriority priority,
                         String sourceType, Long sourceId, String actionUrl, Long actorId) {
@@ -88,10 +102,11 @@ public class NotificationFanoutJobService {
                 .updatedAt(now)
                 .build();
         try {
-            // saveAndFlush でユニーク違反を本メソッド内で確定させる（TX 境界まで遅延させない）。
-            jobRepository.saveAndFlush(job);
+            // 独立 TX（REQUIRES_NEW）で INSERT を確定。ユニーク違反時はこの TX のみロールバックし、
+            // 例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
+            enqueueTxTemplate.execute(status -> jobRepository.saveAndFlush(job));
         } catch (DataIntegrityViolationException e) {
-            // 冪等: 同一 fan-out は既に登録済み。REQUIRES_NEW の当該 TX のみロールバックし呼び出し側は無傷。
+            // 冪等: 同一 fan-out は既に登録済み（uk_fanout_idempotency 衝突）。二重登録のみを握って skip する。
             log.debug("fan-out ジョブは既に登録済み（冪等 skip）: scopeType={} scopeRef={} type={} sourceEvent={}",
                     scopeType, scopeRef, notificationType, sourceEventUuid);
         }
