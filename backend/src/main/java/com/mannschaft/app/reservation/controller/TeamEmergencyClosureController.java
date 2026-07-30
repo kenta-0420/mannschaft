@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.EmergencyClosureConfirmationResponse;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
@@ -89,10 +90,21 @@ public class TeamEmergencyClosureController {
     }
 
     /**
-     * 臨時休業通知を確認済みとしてマークする（患者側）。
+     * 臨時休業通知を確認済みとしてマークする（予約者側）。
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * パス変数 {@code teamId} はそれ単体ではスコープ判定に用いない。認可の実体は
+     * {@code EmergencyClosureService#confirmClosure(Long, Long)} が
+     * {@code EmergencyClosureConfirmationRepository#findByEmergencyClosureIdAndUserId} で
+     * <b>呼び出しユーザー自身の確認レコードのみ</b>を特定し、該当しなければ
+     * {@code CLOSURE_CONFIRMATION_NOT_FOUND} を投げる構造にある。確認レコードは
+     * {@code sendClosure} が対象予約者にのみ作成するため、他人の確認を横取りすることは構造上できない
+     * 自己スコープ EP であり、権限昇格は発生しない。データ依存でない構造的な自己スコープ認可のため
+     * 白名簿クラス呼び出しを持たず、本マーカーで監査済であることを明示する。</p>
      */
     @PostMapping("/{closureId}/confirm")
     @Operation(summary = "臨時休業確認")
+    @AuthorizedInService
     public ResponseEntity<Void> confirmClosure(
             @PathVariable Long teamId,
             @PathVariable Long closureId) {

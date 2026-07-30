@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -314,6 +315,64 @@ class CmsSeriesTagScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(adminAId);
             mockMvc.perform(delete("/api/v1/blog/tags/{id}", tagId))
                     .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // シリーズ一覧(listSeries)・タグ一覧(listTags) — 認可根治戦役 Wave7
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("シリーズ一覧(listSeries)")
+    class ListSeries {
+
+        @Test
+        @DisplayName("非メンバーの一覧取得は403(他チームのシリーズ構成閲覧禁止)")
+        void 非メンバーの一覧取得は403() throws Exception {
+            createSeriesAsAdminA();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/blog/series").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("一般メンバー(非ADMIN)の一覧取得は200")
+        void 一般メンバーの一覧取得は200() throws Exception {
+            createSeriesAsAdminA();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/blog/series").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray());
+        }
+    }
+
+    @Nested
+    @DisplayName("タグ一覧(listTags)")
+    class ListTags {
+
+        @Test
+        @DisplayName("非メンバーの一覧取得は403(他チームのタグ構成閲覧禁止)")
+        void 非メンバーの一覧取得は403() throws Exception {
+            createTagAsAdminA();
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/blog/tags").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("一般メンバー(非ADMIN)の一覧取得は200")
+        void 一般メンバーの一覧取得は200() throws Exception {
+            createTagAsAdminA();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/blog/tags").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray());
         }
     }
 

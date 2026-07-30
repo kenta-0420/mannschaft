@@ -75,4 +75,28 @@ public class UpdateReservationSettingRequest {
     @Schema(description = "自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null=据え置き）",
             example = "施術台", nullable = true)
     private final String resourceNameCustom;
+
+    /**
+     * 仮押さえ(PENDING)の自動失効までの時間数（F03.4.5 §6.3・W2-6）。
+     *
+     * <p>1〜168（1 時間〜7 日）。範囲外は 400。{@code null} / 未指定は据え置き。
+     * 自動失効そのものを止めたい場合は {@link #clearPendingExpireHours} を {@code true} にする
+     * （部分更新セマンティクスでは null が「据え置き」を意味するため値としての NULL を送れない）。</p>
+     */
+    @Min(1)
+    @Max(168)
+    @Schema(description = "仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null=据え置き）",
+            example = "24", nullable = true)
+    private final Integer pendingExpireHours;
+
+    /**
+     * 仮押さえ自動失効を無効化する（任意・{@code UpdateSlotRequest.clearApprovalMode} と同形）。
+     *
+     * <p>{@code true} の場合 {@code pending_expire_hours} を {@code NULL}（自動失効しない）へ戻す。
+     * <b>{@link #pendingExpireHours} と同時に指定された場合は clear を優先</b>する
+     * （「無効化したい」という意図の方が強いため）。{@code null} / {@code false} / 未指定は据え置き。</p>
+     */
+    @Schema(description = "仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先）",
+            example = "false", nullable = true)
+    private final Boolean clearPendingExpireHours;
 }

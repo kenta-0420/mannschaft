@@ -23,8 +23,8 @@ const showForm = ref(true)
 const today = new Date()
 const fromDate = new Date(today)
 fromDate.setDate(fromDate.getDate() - 30)
-const fromStr = fromDate.toISOString().slice(0, 10)
-const toStr = today.toISOString().slice(0, 10)
+const fromStr = toLocalDateString(fromDate)
+const toStr = toLocalDateString(today)
 
 async function onSubmit(payload: FamilyAttendanceNoticeRequest): Promise<void> {
   const ok = await submitNotice(payload)

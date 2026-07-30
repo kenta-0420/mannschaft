@@ -163,8 +163,115 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller の Javadoc に明記）。
      * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
      * {@code ConfirmableNotificationScopeContractIT} 拡張を含む）。</p>
+     *
+     * <p>719 → 709（2026-07-29・認可根治戦役 Wave7 service ドメイン・テンプレート）:
+     * {@code ServiceRecordTemplateController} の 9 エンドポイント（{@code listTeamTemplates} /
+     * {@code createTeamTemplate} / {@code getTeamTemplate} / {@code updateTeamTemplate} /
+     * {@code deleteTeamTemplate} / {@code listOrgTemplates} / {@code createOrgTemplate} /
+     * {@code updateOrgTemplate} / {@code deleteOrgTemplate}）に、兄弟 {@code ServiceRecordFieldService}
+     * と同じ {@code AccessControlService} 方式（参照=checkMembership／変更=checkAdminOrAbove、
+     * 単一テンプレート操作はテンプレート実体由来のスコープで認可し不一致は {@code TEMPLATE_NOT_FOUND}
+     * で 404 秘匿）を敷設する実装是正で 9 件解消。残る 1 件（{@code ServiceRecordController.getMyRecords}）は、
+     * リポジトリクエリが呼び出しユーザー自身の {@code memberUserId} に固定される構造的な自己スコープ EP
+     * であることを監査で確認し、{@code @AuthorizedInService} マーカーで明示した（根拠は Controller の
+     * Javadoc に明記）。違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ServiceRecordTemplateScopeContractIT} 新設を含む）。</p>
+     *
+     * <p>709 → 696（2026-07-29・認可根治戦役 Wave7 reservation ドメイン）:
+     * {@code ReservationBusinessHourController}（{@code getBusinessHours} / {@code getSettings} /
+     * {@code listBlockedTimes}）・{@code TeamReservationLineController.listLines}・
+     * {@code TeamReservationSlotController}（{@code getSlot} / {@code listSlots} /
+     * {@code listAvailableSlots}）の 7 エンドポイントに、予約作成・グリッド・メニュー一覧と同一の
+     * {@code ReservationViewAccessGuard#assertCanView}（会員 or 公開。非許可は 403 = RESERVATION_021）を
+     * 敷設する実装是正で 7 件解消。残る 6 件（{@code MyReservationWaitlistController.listMine} /
+     * {@code ReservationCommonController}.{@code listMyReservations}/{@code listUpcomingReservations}/
+     * {@code cancelMyReservation} / {@code ReservationWaitlistController.cancel} /
+     * {@code TeamEmergencyClosureController.confirmClosure}）は、リポジトリクエリ（または確認レコード検索）が
+     * 呼び出しユーザー自身の ID に固定される構造的な自己スコープ EP であることを監査で確認し、
+     * {@code @AuthorizedInService} マーカーで明示した（根拠は各 Controller/Service の Javadoc に明記）。
+     * 違反隠蔽ではなく正当な根治・監査に伴う縮小（同一コミットにストア差分・実装差分・
+     * {@code ReservationScopeContractIT} 拡張を含む）。</p>
+     *
+     * <p>696 → 686（2026-07-29・認可根治戦役 Wave7 timeline ドメイン）:
+     * {@code TimelinePostController}（{@code updatePost} / {@code deletePost} / {@code togglePin}）に
+     * 投稿者本人 or TEAM/ORGANIZATION スコープ ADMIN+ を判定する新設 {@code TimelinePostAccessGuard} を、
+     * {@code TimelinePollController}（{@code getPoll} / {@code vote}）・
+     * {@code TimelineReactionController}（{@code addReaction} / {@code removeReaction}）・
+     * {@code TimelineBookmarkController.addBookmark} に投稿本体と同一の可視性判定へ一本化した
+     * 新設 {@code TimelinePostVisibilityAccessGuard} を、{@code TimelineAttachmentController}
+     * （{@code getImageUploadUrl} / {@code getVideoUploadUrl}）にアップロード先スコープの
+     * メンバーシップを検証する新設 {@code TimelineAttachmentAccessGuard} を敷設する実装是正で
+     * 10 件解消。残る 8 件（{@code TimelineFeedController}.{@code getMyFeed}/{@code getUserPosts}/
+     * {@code searchPosts} は所属スコープでリポジトリクエリを絞り込み済み、
+     * {@code TimelineBookmarkController}.{@code getBookmarks}/{@code removeBookmark} と
+     * {@code TimelineMuteController}（{@code addMute}/{@code getMutes}/{@code removeMute}）は
+     * 呼び出しユーザー自身の所有物のみを操作する構造的な自己スコープ EP）は、番人の呼び出しグラフ
+     * 判定（{@code AccessControlService} 等の直接/浅い委譲呼び出し）では拾えないだけで実穴ではないと
+     * 監査で確認し、凍結のまま残した（違反隠蔽ではなく監査済みの構造的自己スコープ）。同一コミットに
+     * ストア差分・実装差分・{@code TimelineScopeContractIT} 新設を含む。</p>
+     *
+     * <p>686 → 680（認可根治 Wave7・schedule ドメイン年間行事）: {@code OrgAnnualScheduleController} /
+     * {@code TeamAnnualScheduleController} の参照系 3 EP × 2 系統（getAnnualView / previewCopy は
+     * {@code checkMembership}、getCopyLogs は {@code checkAdminOrAbove}）計 6 件を是正し解消。
+     * 同一コミットにストア差分・実装差分・{@code ScheduleAnnualScopeContractIT} 新設を含む。</p>
+     *
+     * <p>680 → 676（2026-07-29・認可根治戦役 Wave7 village ドメイン）: {@code VillageCalendarController}
+     * （{@code listByMonth} / {@code get}）・{@code VillageRepresentativeController.list}・
+     * {@code VillageSerendipityController.getRanking} の 4 EP に、村メンバーシップ検証
+     * （{@code VillageMembershipRepository#findActiveByVillageIdAndSubject} を用いた
+     * {@code requireVillager}。同クラス内の年輪サブ機能 {@code listLogs}/{@code addLog}/
+     * {@code deleteLog} と同型）を敷設する実装是正で解消。番人の呼び出しグラフ判定では
+     * {@code VillageMembershipRepository} 直呼びは認可シグナルとして拾えないため、
+     * 兄弟読取 EP と同じ {@code @PreAuthorize("isAuthenticated()")} マーカーを追加して
+     * シグナルを可視化した。残り 70 件（村ドメイン全体 74 件中）は Service 層で
+     * {@code VillageMembershipRepository} を直接参照して認可済み・または呼び出しユーザー自身の
+     * ID に固定される構造的自己スコープであることを監査で確認し、凍結のまま残した
+     * （違反隠蔽ではなく監査済み）。同一コミットにストア差分・実装差分・契約テスト拡張
+     * （{@code VillageCalendarControllerIntegrationTest} /
+     * {@code VillageRepresentativeControllerIntegrationTest} 拡張、
+     * {@code VillageSerendipityControllerIntegrationTest} 新設）を含む。</p>
+     *
+     * <p>676 → 653（2026-07-30・認可根治戦役 Wave7 最終陣・cms/proxyvote/signage/recruitment/
+     * onboarding/repairplan/budget の小口7ドメイン）: entity 由来のスコープで
+     * {@code AccessControlService#checkMembership}/{@code checkAdminOrAbove}/
+     * {@code checkOwnerOrAdmin}、または F00 {@code ContentVisibilityChecker#assertCanView}/
+     * {@code filterAccessible} を敷設する実装是正で 23 件解消。同一ドメイン内の兄弟 EP
+     * （書込系の {@code checkMembership}/{@code checkAdminOrAbove} 敷設済みメソッド）に
+     * 権限粒度を揃えた。主な是正:</p>
+     * <ul>
+     *   <li>cms: {@code BlogPostController.listPosts}/{@code PersonalBlogController.listUserPosts}
+     *       に {@code checkMembership}/F00可視性フィルタ、{@code BlogReactionController}
+     *       追加/削除・{@code BlogSeriesController}/{@code BlogTagController} 一覧に
+     *       兄弟同型の認可（6件）</li>
+     *   <li>proxyvote: {@code ProxyDelegationController}（委任提出/取下/出欠状況）・
+     *       添付ファイル追加削除・議案コメント一覧投稿に、兄弟 {@code castVote}/
+     *       {@code addMotion} と同一の {@code checkMembership}/{@code checkOwnerOrAdmin}（8件）</li>
+     *   <li>signage: 画面・スロット参照系は端末向けトークン認証経路と共有されるため、
+     *       認証ユーザー向けの別オーバーロードに {@code checkMembership} を敷設（4件）</li>
+     *   <li>repairplan: {@code RepairPlanQuoteKanbanController}（カード追加/カンバン更新）・
+     *       {@code RepairPlanScenarioController.getScenario} に兄弟同型の認可（3件）</li>
+     *   <li>recruitment/budget: サブカテゴリ一覧・予算カテゴリ一覧に兄弟同型の
+     *       {@code checkMembership}（各1件）</li>
+     * </ul>
+     * <p>onboarding（{@code OnboardingMeController.getById}/{@code completeStep}）は
+     * {@code OnboardingProgressService#getByIdForMember}/{@code completeStepByMember} で
+     * 進捗の所有者が操作者本人であることを要求する実装是正を行い、BOLA は塞いだ。ただし
+     * 判定が白名簿クラス（{@code AccessControlService} 等）への呼び出しではなく本人一致の
+     * 直接比較のため、番人の呼び出しグラフ判定では認可シグナルとして拾えない。看板だけの
+     * {@code @PreAuthorize("isAuthenticated()")} を貼って番人を通すのは実体を伴わない偽装のため
+     * 行わず、この 2 件は凍結のまま残す（違反隠蔽ではなく監査済み・認可自体は入っている）。</p>
+     * <p>残り 24 件は自己スコープの構造的安全（{@code getMy*}/{@code listMy*} 等）・
+     * マスタ参照データ（カテゴリ/プリセットカタログ等）・トークン認証（サイネージ端末表示）・
+     * 委譲先で認可済みだが番人の呼び出しグラフ判定では拾えないもの（プレビュートークン発行・
+     * 上記 onboarding 2 件を含む）であることを監査で確認し、凍結のまま残した
+     * （違反隠蔽ではなく監査済み）。同一コミットにストア差分・実装差分・契約テスト新設/拡張
+     * （{@code CmsBlogPostWriteScopeContractIT} / {@code CmsSeriesTagScopeContractIT} 拡張、
+     * {@code ProxyVoteAuthzContractIT} 拡張、{@code SignageScopeContractIT} /
+     * {@code OnboardingMeScopeContractIT} 新設、{@code RepairPlanAuthorizationMatrixTest} 拡張、
+     * {@code BudgetCategoryServiceTest} 拡張、{@code RecruitmentScopeContractIT} 更新）を含む。
+     * 本 PR をもって認可根治戦役 Wave7 の是正シリーズを完結する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 719;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 653;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

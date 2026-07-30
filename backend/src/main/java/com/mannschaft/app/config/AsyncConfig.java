@@ -161,6 +161,60 @@ public class AsyncConfig {
     }
 
     /**
+     * 通知 fan-out 配信専用スレッドプール（fan-out 抜本改修 P1）。
+     *
+     * <p>村行事・アンケート・予定リマインド等の一斉配信（{@code notifyAllPreAuthorized}）は、
+     * 受信者チャンク単位の配信タスクを本プールへ投入する。監査ログ（{@code AuditLogEventListener}）や
+     * 退会処理と共用する {@code event-pool}（AbortPolicy 既定）から<b>物理分離</b>し、
+     * 50 万人規模のバースト配信が他機能を巻き添えにするのを防ぐ（設計: 台帳 2026-07-29-fanout-redesign-500k）。</p>
+     *
+     * <p><b>棄却は「静かに捨てない」</b>: 通知は欠損許容ではない（page-view のような計測ビーコンと異なる）ため、
+     * 飽和時は既定 AbortPolicy（例外を握り潰す silent drop）を採らず、<b>CallerRuns 相当で取りこぼさず</b>
+     * 実行しつつ、飽和回数を Micrometer カウンタ {@code mannschaft.notification.fanout.pool.saturated} で
+     * <b>可視化</b>する（{@code page-view-pool} の可視化パターンを踏襲。ただし Discard ではなく CallerRuns）。
+     * 呼び出しスレッドで実行することで自然な背圧がかかり、キューが空くまで投入側がペーシングされる。</p>
+     *
+     * <p>サイジング: corePoolSize=4 / maxPoolSize=8 / queueCapacity=500
+     * （{@code purge-pool} / {@code page-view-pool} 前例の queue500 に揃える）。1 タスク=1 チャンク配信
+     * （数百件の WebSocket/Push）。キュー溢れは CallerRuns で吸収し欠損させない。</p>
+     *
+     * <p><b>MeterRegistry は {@link ObjectProvider} で optional 解決する</b>: narrowed な
+     * {@code @SpringBootTest} context には {@code MeterRegistry} が無いことがあり、直接注入すると
+     * pool 生成が {@code UnsatisfiedDependencyException} で失敗して無関係なテストを巻き添えにするため
+     * （{@code page-view-pool} と同じ作法）。</p>
+     *
+     * @param meterRegistryProvider 飽和回数カウンタ登録用 Micrometer レジストリの optional プロバイダ
+     * @return notification-fanout-pool エグゼキュータ
+     */
+    @Bean("notification-fanout-pool")
+    public Executor notificationFanoutPool(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+        Counter saturatedCounter = meterRegistry == null ? null
+                : Counter.builder("mannschaft.notification.fanout.pool.saturated")
+                        .description("notification-fanout-pool 飽和時に CallerRuns で実行されたチャンク配信タスク数（欠損させず可視化）")
+                        .register(meterRegistry);
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(500); // purge-pool / page-view-pool 前例に揃える
+        executor.setThreadNamePrefix("notification-fanout-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        // 通知は欠損許容でない。飽和時は AbortPolicy（silent drop）ではなく CallerRuns で取りこぼさず実行し、
+        // 飽和回数だけをカウンタで可視化する（レジストリ欠落環境では実行のみ・可視化はスキップ）。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            if (saturatedCounter != null) {
+                saturatedCounter.increment();
+            }
+            if (!poolExecutor.isShutdown()) {
+                runnable.run();
+            }
+        });
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * バッチジョブ用スレッドプール。
      * 定期実行タスクや重い処理に使用する。
      */

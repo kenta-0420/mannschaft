@@ -49,6 +49,11 @@ class UserServiceProfilePostalCodeTest {
     private UserRoleRepository userRoleRepository;
     @Mock
     private MediaUrlResolver mediaUrlResolver;
+    // Issue #2487: プロフィール更新で timezone / locale が変わったときのキャッシュ即時無効化
+    @Mock
+    private com.mannschaft.app.common.timezone.UserTimezoneCache userTimezoneCache;
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
 
     @InjectMocks
     private UserService userService;

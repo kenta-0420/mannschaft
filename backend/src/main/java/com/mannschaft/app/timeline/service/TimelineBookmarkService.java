@@ -6,7 +6,6 @@ import com.mannschaft.app.timeline.TimelineMapper;
 import com.mannschaft.app.timeline.dto.BookmarkResponse;
 import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
 import com.mannschaft.app.timeline.repository.TimelineBookmarkRepository;
-import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -27,11 +26,19 @@ public class TimelineBookmarkService {
     private static final int DEFAULT_BOOKMARK_SIZE = 20;
 
     private final TimelineBookmarkRepository bookmarkRepository;
-    private final TimelinePostRepository postRepository;
     private final TimelineMapper timelineMapper;
+    /**
+     * 認可根治 Wave7: 対象投稿が呼び出し元から可視であることを検証する（投稿本体と同一の正準判定）。
+     * ブックマーク自体は呼び出し元本人のデータのみを操作する自己スコープ操作だが、
+     * 対象投稿が呼び出し元から可視な scope に属することを確認してから登録する。
+     */
+    private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
 
     /**
      * 投稿をブックマークする。
+     *
+     * <p><b>認可根治 Wave7</b>: {@link TimelinePostVisibilityAccessGuard} で対象投稿の可視性を
+     * 検証してから処理する（不可視・不存在は {@link TimelineErrorCode#POST_NOT_FOUND}）。</p>
      *
      * @param postId 投稿ID
      * @param userId ユーザーID
@@ -39,8 +46,7 @@ public class TimelineBookmarkService {
      */
     @Transactional
     public BookmarkResponse addBookmark(Long postId, Long userId) {
-        postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
+        postVisibilityGuard.requireVisiblePost(postId, userId);
 
         if (bookmarkRepository.existsByUserIdAndTimelinePostId(userId, postId)) {
             throw new BusinessException(TimelineErrorCode.BOOKMARK_ALREADY_EXISTS);

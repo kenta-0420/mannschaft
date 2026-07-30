@@ -1,11 +1,14 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageSerendipityRankingResponse;
 import com.mannschaft.app.village.dto.VillageSerendipityScoreResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageSerendipityScoreEntity;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageSerendipityScoreRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ public class VillageSerendipityService {
 
     private final VillageSerendipityScoreRepository serendipityRepository;
     private final VillageRepository villageRepository;
+    private final VillageMembershipRepository membershipRepository;
 
     // ====================================================================
     // 読み取り API
@@ -70,15 +74,18 @@ public class VillageSerendipityService {
     }
 
     /**
-     * ご縁スコアランキング（上位 N 件）を返す。
+     * ご縁スコアランキング（上位 N 件）を返す。村人（現役メンバー）のみ閲覧可
+     * （他ユーザーの userId・スコアを含むため、非村人への開放は情報漏えいとなる）。
      *
-     * @param villageId 村 ID
-     * @param limit     上位件数（1〜100、超過時はクリップ）
+     * @param villageId   村 ID
+     * @param limit       上位件数（1〜100、超過時はクリップ）
+     * @param actorUserId 閲覧しようとするログイン済ユーザー ID
      * @deprecated F17.2 §8.2 により表示廃止（相性表示へ置換）。撤去は次リリース。集計自体は推薦の内部信号として存置。
      */
     @Deprecated(since = "F17.2", forRemoval = true)
-    public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit) {
+    public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit, Long actorUserId) {
         loadActiveVillage(villageId);
+        requireVillager(villageId, actorUserId);
         int size = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
         Pageable pageable = PageRequest.of(0, size);
         Page<VillageSerendipityScoreEntity> page =
@@ -150,6 +157,20 @@ public class VillageSerendipityService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
         return v;
+    }
+
+    /**
+     * 操作者が当該村の<strong>現役</strong>村人（役職不問）であることを検証する。
+     * 不足時は {@link VillageErrorCode#NOT_MEMBER}（IDOR 対策で 404 統一・
+     * {@code VillageRecruitCategoryService#requireVillager} と同じ粒度・エラーコード）。
+     */
+    private void requireVillager(UUID villageId, Long actorUserId) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
     }
 
     /**

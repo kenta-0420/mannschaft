@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reservation.dto.CreateReservationLineRequest;
 import com.mannschaft.app.reservation.dto.ReservationLineResponse;
 import com.mannschaft.app.reservation.dto.UpdateReservationLineRequest;
@@ -42,7 +43,8 @@ public class TeamReservationLineController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ReservationLineResponse>>> listLines(
             @PathVariable Long teamId) {
-        List<ReservationLineResponse> lines = lineService.listLines(teamId);
+        List<ReservationLineResponse> lines =
+                lineService.listLines(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(lines));
     }
 

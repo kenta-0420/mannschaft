@@ -6543,7 +6543,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村代表委任一覧（任意：取消し済みも含む） */
+        /** 村代表委任一覧（村人のみ・任意で取消し済みも含む） */
         get: operations["list_3"];
         put?: never;
         /** 村代表委任の付与（HEADMAN/ELDER） */
@@ -7152,7 +7152,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定月の歳時記イベント一覧を取得する */
+        /** 指定月の歳時記イベント一覧を取得する（村人のみ） */
         get: operations["listByMonth"];
         put?: never;
         /** 歳時記イベントを作成する（HEADMAN / ELDER のみ） */
@@ -23704,7 +23704,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 歳時記イベントの詳細を取得する */
+        /** 歳時記イベントの詳細を取得する（村人のみ） */
         get: operations["get_22"];
         put?: never;
         post?: never;
@@ -30036,7 +30036,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 【廃止予定】ご縁スコアの上位ランキングを取得する（F17.2 §8.2 で相性表示へ置換）
+         * 【廃止予定】ご縁スコアの上位ランキングを取得する（村人のみ・F17.2 §8.2 で相性表示へ置換）
          * @deprecated
          */
         get: operations["getRanking"];
@@ -65553,6 +65553,17 @@ export interface components {
              */
             cancelDeadlineHours?: number;
             /**
+             * @description 仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先）
+             * @example false
+             */
+            clearPendingExpireHours?: boolean;
+            /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null=据え置き）
+             * @example 24
+             */
+            pendingExpireHours?: number;
+            /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）
              * @example 24,1
              */
@@ -65596,6 +65607,12 @@ export interface components {
              * @example true
              */
             hasBusinessHours?: boolean;
+            /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（null=自動失効しない）
+             * @example 24
+             */
+            pendingExpireHours?: number;
             /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列
              * @example 24,1

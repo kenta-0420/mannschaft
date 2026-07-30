@@ -136,8 +136,16 @@ public class BudgetCategoryService {
 
     /**
      * 会計年度のカテゴリ一覧をツリー構造で取得する。
+     *
+     * <p>認可根治戦役 Wave7: {@link #create}/{@link #update}/{@link #delete} と同一の
+     * 親子鎖（fiscalYearId → 会計年度 → 真の scope）を辿り、
+     * {@link AccessControlService#checkMembership} で会員に限定する
+     * （読取＝会員・変更＝ADMINの通例。書込系は checkAdminOrAbove）。</p>
      */
     public List<CategoryTreeResponse> listByFiscalYear(Long fiscalYearId) {
+        BudgetFiscalYearEntity fiscalYear = findFiscalYearOrThrow(fiscalYearId);
+        accessControlService.checkMembership(
+                SecurityUtils.getCurrentUserId(), fiscalYear.getScopeId(), fiscalYear.getScopeType());
         List<BudgetCategoryEntity> allCategories = categoryRepository.findByFiscalYearId(fiscalYearId);
         return buildTree(allCategories);
     }

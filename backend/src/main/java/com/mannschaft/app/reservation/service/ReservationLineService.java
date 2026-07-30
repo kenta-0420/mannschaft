@@ -36,6 +36,8 @@ public class ReservationLineService {
     private final com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
     /** F03.4.2 §5.5: 「今日以降」判定の基準時刻。テストは固定 Clock を注入する。 */
     private final java.time.Clock clock;
+    /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
     /**
      * 1 チームあたりの予約ライン上限（F03.4.2 §3.4 で 5→20 へ拡張）。
@@ -60,10 +62,15 @@ public class ReservationLineService {
     /**
      * チームの予約ライン一覧を取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @return 予約ラインレスポンスリスト
      */
-    public List<ReservationLineResponse> listLines(Long teamId) {
+    public List<ReservationLineResponse> listLines(Long teamId, Long userId) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationLineEntity> lines = lineRepository.findByTeamIdOrderByDisplayOrderAsc(teamId);
         return reservationMapper.toLineResponseList(lines);
     }

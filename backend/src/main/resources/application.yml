@@ -25,6 +25,14 @@ spring:
       connection-timeout: 3000    # 3 秒以内に接続取得できなければ例外（デフォルト 30 秒は長すぎる）
       idle-timeout: 600000        # 10 分アイドルで接続を返却
       max-lifetime: 1800000       # 30 分で接続を強制リフレッシュ（RDS のタイムアウトより短く設定）
+      # MySQL Connector/J のバッチ書き換えを有効化する。addBatch/executeBatch を多値 INSERT/複文へ
+      # まとめ直し、Hibernate バッチ（order_inserts + batch_size）や JDBC バッチ全般の DB round-trip を削減する。
+      # 注: 通知一斉配信（NotificationBulkFanoutService）が発行する「手組みの多値 INSERT」自体はこの設定に
+      # 依存しない（既に 1 文＝複数行のため）。本設定はドライバのバッチ書き換え全般に効く一般的な最適化であり、
+      # fan-out 改修に固有の前提ではない。
+      # URL ではなく data-source-properties に置くことで、URL を環境変数で与える本番/検証を含む全プロファイルに効かせる。
+      data-source-properties:
+        rewriteBatchedStatements: true
 
   # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
   jpa:
@@ -134,6 +142,20 @@ mannschaft:
   # 格納基準そのものを変える意思決定とセットで行うこと（片方だけ動かすと activeDays 集計が日単位でずれる）。
   audit:
     stored-zone-offset: ${MANNSCHAFT_AUDIT_STORED_ZONE_OFFSET:+00:00}
+  # インメモリキャッシュ（UserTimezoneCache / UserLocaleCache）の常駐エントリ数の上限。
+  # Issue #2487 項目 1: 旧実装は素の ConcurrentHashMap で件数上限も期限切れ回収も無く、
+  # 「これまでに一度でも見た全ユーザー数」に常駐メモリが単調増加していた。現在は
+  # BoundedTtlCache（件数上限つき LRU ＋ 参照時の期限切れ回収）で頭打ちにしている。
+  # 既定 50,000 の根拠: 1 エントリ約 200B（Long キー＋短い文字列＋失効時刻＋LinkedHashMap ノード）で
+  # 約 10MB。ベータ第 4 段階の想定規模（1 万人）とリクエスト駆動の hot set を丸ごと収容できる。
+  # ベータ特典 自動付与バッチ（500 件 × 最大 200 ページ = 10 万人）は同一ユーザーを再訪しない
+  # ストリーミング走査のため、上限超過分が押し出されても再クエリは発生しない。
+  # 2 つのキャッシュは同一方式・同一既定値で揃える（片方だけ別挙動にしない）。
+  cache:
+    user-timezone:
+      max-entries: ${MANNSCHAFT_CACHE_USER_TIMEZONE_MAX_ENTRIES:50000}
+    user-locale:
+      max-entries: ${MANNSCHAFT_CACHE_USER_LOCALE_MAX_ENTRIES:50000}
   # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
   # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
   # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。

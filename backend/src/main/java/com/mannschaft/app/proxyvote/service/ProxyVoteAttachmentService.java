@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
@@ -48,14 +49,21 @@ public class ProxyVoteAttachmentService {
     private final ProxyVoteMapper mapper;
     private final StorageService storageService;
     private final DomainEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * セッションに添付ファイルを追加する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@code ProxyVoteSessionService#addMotion} と同一の
+     * {@link AccessControlService#checkOwnerOrAdmin}（セッション作成者またはスコープ
+     * ADMIN/DEPUTY_ADMIN）を敷く。</p>
      */
     @Transactional
     public AttachmentResponse addSessionAttachment(Long sessionId, MultipartFile file,
                                                     String attachmentTypeStr, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         AttachmentType attachmentType = attachmentTypeStr != null
                 ? AttachmentType.valueOf(attachmentTypeStr) : AttachmentType.DOCUMENT;
 
@@ -74,12 +82,18 @@ public class ProxyVoteAttachmentService {
 
     /**
      * 議案に添付ファイルを追加する。
+     *
+     * <p>認可根治戦役 Wave7: {@link #addSessionAttachment} と同一の理由で
+     * {@link AccessControlService#checkOwnerOrAdmin} を敷く（motionId → session の
+     * entity 由来スコープで判定。BOLA 厳禁）。</p>
      */
     @Transactional
     public AttachmentResponse addMotionAttachment(Long motionId, MultipartFile file,
                                                    String attachmentTypeStr, Long currentUserId) {
         ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(motionId);
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(motion.getSessionId());
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() != SessionStatus.DRAFT && session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.UPLOAD_NOT_ALLOWED);
@@ -99,16 +113,35 @@ public class ProxyVoteAttachmentService {
 
     /**
      * 添付ファイルを削除する。
+     *
+     * <p>認可根治戦役 Wave7: 添付先種別（SESSION/MOTION）に応じてセッションまで辿り、
+     * {@link #addSessionAttachment} と同一の {@link AccessControlService#checkOwnerOrAdmin}
+     * を敷く。</p>
      */
     @Transactional
-    public void deleteAttachment(Long attachmentId) {
+    public void deleteAttachment(Long attachmentId, Long currentUserId) {
         ProxyVoteAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.ATTACHMENT_NOT_FOUND));
+
+        ProxyVoteSessionEntity session = resolveOwningSession(attachment);
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
 
         String fileKeyToDelete = attachment.getFileKey();
         attachmentRepository.delete(attachment);
         log.info("添付ファイル削除: attachmentId={}", attachmentId);
         eventPublisher.publish(new S3ObjectDeleteEvent(fileKeyToDelete));
+    }
+
+    /**
+     * 添付ファイルの添付先（SESSION/MOTION）を辿り、認可判定に使う所属セッションを解決する。
+     */
+    private ProxyVoteSessionEntity resolveOwningSession(ProxyVoteAttachmentEntity attachment) {
+        if (attachment.getTargetType() == AttachmentTargetType.SESSION) {
+            return sessionService.findSessionOrThrow(attachment.getTargetId());
+        }
+        ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(attachment.getTargetId());
+        return sessionService.findSessionOrThrow(motion.getSessionId());
     }
 
     private void validateFile(MultipartFile file, AttachmentTargetType targetType) {

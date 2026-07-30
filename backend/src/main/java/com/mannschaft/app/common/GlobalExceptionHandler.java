@@ -893,6 +893,8 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_050", HttpStatus.TOO_MANY_REQUESTS),      // WAITLIST_RATE_LIMITED
             // F03.4.5 §4 W2-2 定期予約不可枠（052=上限50行は既定400・051→404・027 は既存409を再利用）
             Map.entry("RESERVATION_051", HttpStatus.NOT_FOUND),              // RECURRING_BLOCKED_TIME_NOT_FOUND（IDOR秘匿）
+            // F03.4.5 §6.4 W2-6 予約作成レートリミット（単枠・グループ共通バケット）
+            Map.entry("RESERVATION_053", HttpStatus.TOO_MANY_REQUESTS),      // RESERVATION_CREATE_RATE_LIMITED
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
@@ -1128,16 +1130,21 @@ public class GlobalExceptionHandler {
             Map.entry("TICKET_002", HttpStatus.NOT_FOUND),               // BOOK_NOT_FOUND（teamId 束縛＋所有者不一致 → 404）
             Map.entry("TICKET_003", HttpStatus.NOT_FOUND),               // CONSUMPTION_NOT_FOUND（親book不一致BOLA → 404）
             Map.entry("TICKET_004", HttpStatus.NOT_FOUND),               // PAYMENT_NOT_FOUND（book 経由束縛・IDOR 秘匿 → 404）
-            // 認可根治戦役 Wave7: service（F07.1 カスタムフィールド定義・設定）は teamId 束縛で
-            // fetch した entity 由来スコープで認可する。他チームのフィールド ID を自チームの
-            // teamId で叩いた場合（BOLA）も同一コードで返す存在秘匿の要のため 404
+            // 認可根治戦役 Wave7: service（F07.1 カスタムフィールド定義・設定、テンプレート）は
+            // teamId/organizationId 束縛で fetch した entity 由来スコープで認可する。他スコープの
+            // ID を自スコープの scopeId で叩いた場合（BOLA）も同一コードで返す存在秘匿の要のため 404
             //（Severity.WARN 既定の 400 のままだと「404 で秘匿したつもり」の看板倒れになる）。
             Map.entry("SERVICE_RECORD_002", HttpStatus.NOT_FOUND),       // FIELD_NOT_FOUND（teamId 束縛・IDOR 秘匿 → 404）
+            Map.entry("SERVICE_RECORD_003", HttpStatus.NOT_FOUND),       // TEMPLATE_NOT_FOUND（teamId/organizationId 束縛・IDOR 秘匿 → 404）
             // 認可根治戦役 Wave7: proxyvote（F08.3 議案の投票開始/終了）は motionId → session の
             // entity 由来スコープで認可する。存在しない／越境の議案・セッションは同一コードで
             // 秘匿するため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("PROXY_VOTE_001", HttpStatus.NOT_FOUND),           // SESSION_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PROXY_VOTE_002", HttpStatus.NOT_FOUND),           // MOTION_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 Wave7: onboarding（メンバー本人の進捗詳細取得/ステップ完了）は
+            // progress.userId と本人を突合し、不一致は同一コードで返す存在秘匿のため 404
+            //（Severity.WARN 既定の 400 のままだと「404 で秘匿したつもり」の看板倒れになる）。
+            Map.entry("ONBOARDING_003", HttpStatus.NOT_FOUND),           // PROGRESS_NOT_FOUND（本人以外は IDOR 秘匿 → 404）
             // ─────────────────────────────────────────────────────────────
             // エラーコード HTTP ステータス契約の全数分類（2026-07-29・関連 #2468）
             //

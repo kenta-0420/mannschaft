@@ -32,7 +32,7 @@ const dateFrom = ref<Date>(thirtyDaysAgo)
 const dateTo = ref<Date>(now)
 
 function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  return toLocalDateString(d)
 }
 
 const statusSeverityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'> = {

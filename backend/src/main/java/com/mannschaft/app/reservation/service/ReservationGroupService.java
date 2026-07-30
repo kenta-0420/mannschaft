@@ -98,6 +98,8 @@ public class ReservationGroupService {
     private final AuditLogService auditLogService;
     /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
     private final ReservationWaitlistService waitlistService;
+    /** F03.4.5 §6.4: 予約作成のレートリミット（単枠作成と同一バケットを共有・§6.4）。 */
+    private final ReservationCreateRateLimiter createRateLimiter;
     /**
      * 作成トランザクションの明示境界（§5.2）。コミット時を含む
      * {@code PessimisticLockingFailureException}（InnoDB デッドロック等）を
@@ -128,6 +130,15 @@ public class ReservationGroupService {
      */
     public ReservationGroupResponse createGroup(
             Long teamId, Long userId, CreateReservationGroupRequest request) {
+        // 1. 予約認可ゲート（単枠・グリッドと同一述語・§5.2 の 1）。
+        //    単枠 createReservation と<b>順序を対称化</b>するため tx の外で先に判定する
+        //    （殿の裁定・2026-07-29）。同一 zone を共有しているのに片方だけ「認可前に消費」だと、
+        //    403 のはずが 429 で返る状況が生まれ調査コストになる。assertCanView は読み取り専用
+        //    なので tx 外で呼んでよく、「tx を無駄に開かない」という当初の意図も維持される。
+        viewAccessGuard.assertCanView(teamId, userId);
+
+        // 2. F03.4.5 §6.4: 予約作成のレートリミット（単枠 createReservation と同一 zone・1 ユーザー 1 分 5 回）。
+        createRateLimiter.assertNotRateLimited(userId);
         try {
             return transactionTemplate.execute(status -> doCreateGroup(teamId, userId, request));
         } catch (PessimisticLockingFailureException e) {
@@ -139,8 +150,7 @@ public class ReservationGroupService {
 
     private ReservationGroupResponse doCreateGroup(
             Long teamId, Long userId, CreateReservationGroupRequest request) {
-        // 1. 予約認可ゲート（単枠・グリッドと同一述語・§5.2 の 1）
-        viewAccessGuard.assertCanView(teamId, userId);
+        // 認可ゲート（§5.2 の 1）は tx を開く前の createGroup 側へ移設済み（レートリミットとの順序対称化）。
 
         // 2-e. 枠数上限（1〜16。0 件は DTO @NotEmpty が 400 で防ぐ）
         List<Long> slotIds = request.getSlotIds();

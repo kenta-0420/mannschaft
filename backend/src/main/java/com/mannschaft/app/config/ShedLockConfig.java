@@ -32,6 +32,10 @@ import javax.sql.DataSource;
  *   <li>{@code emailOutboxWorker} — F09.18 メール配信ワーカー (lockAtMostFor=PT2M)</li>
  *   <li>{@code emailOutboxStuckRecovery} — F09.18 SENDING 残骸リカバリ (lockAtMostFor=PT5M)</li>
  *   <li>{@code todoDueReminderHourly} — F04.3 TODO期限リマインダー（毎時・TZ別送信）(lockAtLeastFor=PT50M)</li>
+ *   <li>{@code reservationSlotGeneration} — F03.4.2 予約枠の horizon 差分を日次生成（毎日 0:15）</li>
+ *   <li>{@code reservationReminderDispatchBatch} — F03.4 予約リマインド送出（1分間隔）</li>
+ *   <li>{@code reservationWaitlistCleanupBatch} — F03.4.5 §6.1 キャンセル待ち失効クリーンアップ（毎日 0:45）</li>
+ *   <li>{@code reservationPendingExpireBatch} — F03.4.5 §6.3 仮押さえ(PENDING)自動失効（5分間隔）</li>
  * </ul>
  *
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。

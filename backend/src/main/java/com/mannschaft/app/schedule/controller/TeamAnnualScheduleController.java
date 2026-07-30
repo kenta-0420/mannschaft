@@ -52,6 +52,10 @@ public class TeamAnnualScheduleController {
 
     /**
      * チーム年間行事ビューを取得する。
+     *
+     * <p><b>認可（認可根治 Wave7）</b>: 年間行事ビューはチームの運用データのため、当該チームのメンバーのみ
+     * 閲覧可（{@code checkMembership} 水準）。チームスコープの一覧系 EP（{@code TeamScheduleController
+     * #listSchedules}）と同水準。</p>
      */
     @GetMapping
     @Operation(summary = "チーム年間行事ビュー")
@@ -65,6 +69,8 @@ public class TeamAnnualScheduleController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate termStartDate,
             @RequestParam(name = "term_end_date", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate termEndDate) {
+
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
 
         ScheduleAnnualViewService.AnnualViewData viewData = annualViewService.getAnnualView(
                 teamId, true, academicYear, categoryIds, eventType, termStartDate, termEndDate);
@@ -82,6 +88,10 @@ public class TeamAnnualScheduleController {
 
     /**
      * チーム年間行事コピープレビューを取得する。
+     *
+     * <p><b>認可（認可根治 Wave7）</b>: プレビューは {@code getAnnualView} と同じ既存スケジュールの
+     * タイトル・日時のみを扱う（新規に露出する情報はない）ため、当該チームのメンバーのみ閲覧可
+     * （{@code checkMembership} 水準。実行系の {@code executeCopy} は別途 ADMIN 限定）。</p>
      */
     @GetMapping("/preview-copy")
     @Operation(summary = "チーム年間行事コピープレビュー")
@@ -92,6 +102,8 @@ public class TeamAnnualScheduleController {
             @RequestParam(name = "target_year") Integer targetYear,
             @RequestParam(name = "date_shift_mode", defaultValue = "SAME_WEEKDAY") String dateShiftMode,
             @RequestParam(name = "category_id", required = false) List<Long> categoryIds) {
+
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
 
         DateShiftMode mode = DateShiftMode.valueOf(dateShiftMode);
         ScheduleAnnualCopyService.PreviewResult previewResult =
@@ -139,12 +151,17 @@ public class TeamAnnualScheduleController {
 
     /**
      * チーム年間行事コピーログ一覧を取得する。
+     *
+     * <p><b>認可（認可根治 Wave7）</b>: コピーログは「誰がいつコピーを実行したか」という運用管理情報で
+     * 一般メンバー閲覧には存在しないデータのため、{@code executeCopy} と同じ ADMIN/DEPUTY_ADMIN 限定
+     * （{@code checkAdminOrAbove} 水準）。</p>
      */
     @GetMapping("/copy-logs")
     @Operation(summary = "チーム年間行事コピーログ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CopyLogResponse>>> getCopyLogs(
             @PathVariable Long teamId) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         List<ScheduleAnnualCopyLogEntity> logs = annualCopyService.getCopyLogs(teamId, true);
         List<CopyLogResponse> responses = logs.stream()
                 .map(this::toCopyLogResponse)
