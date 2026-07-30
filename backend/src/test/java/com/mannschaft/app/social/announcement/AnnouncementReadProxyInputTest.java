@@ -37,6 +37,13 @@ class AnnouncementReadProxyInputTest {
     @Mock
     private AnnouncementFeedRepository feedRepository;
 
+    /**
+     * 一括既読の「可視かつ未読」抽出クエリ（#2494）。
+     * 単件既読の経路では使われないが、コンストラクタ注入の依存として明示しておく。
+     */
+    @Mock
+    private AnnouncementFeedQueryRepository feedQueryRepository;
+
     @Mock
     private AnnouncementReadStatusRepository readStatusRepository;
 
