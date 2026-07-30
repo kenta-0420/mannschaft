@@ -129,14 +129,16 @@ const schema = toTypedSchema(
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
   initialValues: {
-    email: '',
-    password: '',
-    lastName: '',
-    firstName: '',
-    displayName: '',
-    postalCode: '',
-    birthDate: '',
+    email: readPrefilledInputValue('email'),
+    password: readPrefilledInputValue('password'),
+    lastName: readPrefilledInputValue('lastName'),
+    firstName: readPrefilledInputValue('firstName'),
+    displayName: readPrefilledInputValue('displayName'),
+    postalCode: readPrefilledInputValue('postalCode'),
+    birthDate: readPrefilledInputValue('birthDate'),
     privacyPolicyAccepted: false as unknown as true,
     termsAccepted: false as unknown as true,
   },

@@ -14,7 +14,9 @@ const schema = toTypedSchema(z.object({
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
-  initialValues: { email: '' },
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
+  initialValues: { email: readPrefilledInputValue('email') },
 })
 const [email, emailProps] = defineField('email')
 

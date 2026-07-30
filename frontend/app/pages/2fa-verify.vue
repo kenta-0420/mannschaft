@@ -11,7 +11,10 @@ const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
 const { applyUserLocale } = useLocale()
 
-const totpCode = ref('')
+// ハイドレーション前に入力された値（パスワードマネージャによる TOTP 自動入力を含む）を取り込む。
+// InputOtp は桁ごとに id を持たない input を並べて描画するため、セレクタで連結して読む。
+// ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
+const totpCode = ref(readPrefilledInputGroupValue('.p-inputotp-input'))
 const loading = ref(false)
 
 // SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、

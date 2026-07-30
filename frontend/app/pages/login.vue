@@ -4,8 +4,10 @@ definePageMeta({
   middleware: 'guest',
 })
 
-const email = ref('')
-const password = ref('')
+// ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+// ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
+const email = ref(readPrefilledInputValue('email'))
+const password = ref(readPrefilledInputValue('password'))
 const loading = ref(false)
 const googleLoading = ref(false)
 

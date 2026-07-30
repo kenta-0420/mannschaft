@@ -42,6 +42,12 @@ const schema = computed(() =>
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 未指定のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
+  initialValues: {
+    newPassword: readPrefilledInputValue('newPassword'),
+    confirmPassword: readPrefilledInputValue('confirmPassword'),
+  },
 })
 const [newPassword, newPasswordProps] = defineField('newPassword')
 const [confirmPassword, confirmPasswordProps] = defineField('confirmPassword')
