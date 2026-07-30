@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import type { ReservationLineResponse } from '~/types/reservation'
 import type { components } from '~/types/generated'
 import { cellUnavailableReason } from '~/utils/reservationMatrix'
+import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
 
 // === 生成型（真実のソース = openapi-typescript）===
 type GridColumnDto = components['schemas']['GridColumnDto']
@@ -21,6 +22,8 @@ const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
   /** 「予約対象の管理」タブへの誘導。親が activeTab を切り替える。 */
   manageLines: []
+  /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
+  waitlistChanged: []
 }>()
 
 const { t } = useI18n()
@@ -49,6 +52,12 @@ const viewMode = ref<ViewMode>('single')
 const axisTimeRows = ref(true)
 const loading = ref(false)
 const errorMsg = ref('')
+
+// === キャンセル待ち（waitlist・W2-4-FE）===
+/** このチームで自分が WAITING 登録済みの slotId 集合（満席セルのラベル/ダイアログ初期状態に使う）。 */
+const myWaitlistSlotIds = ref<Set<number>>(new Set())
+const waitlistDialogVisible = ref(false)
+const waitlistContext = ref<WaitlistDialogContext | null>(null)
 
 const viewOptions = computed(() => [
   { label: t('reservation.grid.view.single'), value: 'single' as ViewMode },
@@ -155,12 +164,17 @@ const renderDays = computed<RenderDay[]>(() =>
   }),
 )
 
+/**
+ * BOOKED（満席）セルはキャンセル待ちダイアログを開けるようクリック可能にする（W2-4-FE）。
+ * cursor-not-allowed を外し、クリック可能であることが分かるホバーを付ける
+ * （CLOSED/UNAVAILABLE は従来どおり操作不可のまま）。
+ */
 function cellStateClass(state: CellState | undefined): string {
   switch (state) {
     case 'AVAILABLE':
       return 'cursor-pointer border-surface-200 text-green-700 hover:border-primary hover:bg-primary/5 dark:border-surface-600 dark:text-green-400'
     case 'BOOKED':
-      return 'cursor-not-allowed border-surface-100 bg-surface-100 text-surface-500 dark:border-surface-600 dark:bg-surface-700'
+      return 'cursor-pointer border-surface-100 bg-surface-100 text-surface-500 hover:border-primary dark:border-surface-600 dark:bg-surface-700'
     case 'CLOSED':
       return 'cursor-not-allowed border-surface-100 bg-surface-50 text-surface-400 dark:border-surface-600 dark:bg-surface-800'
     case 'UNAVAILABLE':
@@ -170,12 +184,15 @@ function cellStateClass(state: CellState | undefined): string {
   }
 }
 
-function stateLabel(state: CellState | undefined): string {
-  switch (state) {
+/** BOOKED セルは自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。 */
+function stateLabel(cell: GridCellDto | undefined): string {
+  switch (cell?.state) {
     case 'AVAILABLE':
       return t('reservation.grid.state.available')
     case 'BOOKED':
-      return t('reservation.grid.state.booked')
+      return cell.slotId != null && myWaitlistSlotIds.value.has(cell.slotId)
+        ? t('reservation.waitlist.registered_badge')
+        : t('reservation.grid.state.booked')
     case 'CLOSED':
       return t('reservation.grid.state.closed')
     case 'UNAVAILABLE':
@@ -206,17 +223,59 @@ function resolveLine(column: GridColumnDto): LineOption {
 }
 
 function onCellClick(rc: RenderCell) {
-  if (rc.cell?.state !== 'AVAILABLE') return
+  if (rc.cell?.state === 'AVAILABLE') {
+    const line = resolveLine(rc.column)
+    emit(
+      'slotSelected',
+      rc.cell.slotId ?? 0,
+      line.id,
+      line.name,
+      rc.date,
+      rc.cell.startTime ?? '',
+      rc.cell.endTime ?? '',
+    )
+    return
+  }
+  if (rc.cell?.state === 'BOOKED') {
+    openWaitlistDialog(rc)
+  }
+}
+
+/** 満席（BOOKED）セルからキャンセル待ちダイアログを開く（W2-4-FE）。 */
+function openWaitlistDialog(rc: RenderCell) {
+  if (rc.cell?.slotId == null) return
   const line = resolveLine(rc.column)
-  emit(
-    'slotSelected',
-    rc.cell.slotId ?? 0,
-    line.id,
-    line.name,
-    rc.date,
-    rc.cell.startTime ?? '',
-    rc.cell.endTime ?? '',
-  )
+  waitlistContext.value = {
+    slotId: rc.cell.slotId,
+    date: rc.date,
+    startTime: rc.cell.startTime ?? '',
+    endTime: rc.cell.endTime ?? '',
+    lineName: line.name,
+  }
+  waitlistDialogVisible.value = true
+}
+
+/** 登録/取消成功時: 自分の登録集合とグリッドを再取得し、親に「自分のキャンセル待ち」再読込を促す。 */
+async function onWaitlistChanged() {
+  await loadMyWaitlist()
+  await loadGrid({ silent: true })
+  emit('waitlistChanged')
+}
+
+async function loadMyWaitlist() {
+  try {
+    const res = await reservationApi.listMyWaitlist()
+    myWaitlistSlotIds.value = new Set(
+      (res.data ?? [])
+        .filter(e => String(e.teamId) === props.teamId && e.slotId != null)
+        .map(e => e.slotId!),
+    )
+  }
+  catch {
+    // 取得失敗は「未登録」扱いにフォールバック（満席セルのラベルが「待機中」にならないだけで、
+    // ダイアログを開けば実際の登録状態は API 側で正しく判定される。致命的でないため通知はしない）。
+    myWaitlistSlotIds.value = new Set()
+  }
 }
 
 async function loadLines() {
@@ -264,7 +323,7 @@ function dayLabel(date: string): string {
 // loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
 watch([selectedDate, viewMode], () => loadGrid())
 onMounted(async () => {
-  await Promise.all([loadLines(), loadResourceName()])
+  await Promise.all([loadLines(), loadResourceName(), loadMyWaitlist()])
   await loadGrid()
 })
 
@@ -286,6 +345,7 @@ onActivated(() => {
 defineExpose({
   refresh: async () => {
     await loadResourceName()
+    await loadMyWaitlist()
     await loadGrid()
   },
 })
@@ -424,8 +484,8 @@ defineExpose({
                 type="button"
                 class="rounded-md border p-2 text-center text-[11px] transition-all"
                 :class="cellStateClass(rc.cell?.state)"
-                :disabled="rc.cell?.state !== 'AVAILABLE'"
-                :aria-label="cellReason(rc.cell) ? `${stateLabel(rc.cell?.state)}: ${cellReason(rc.cell)}` : stateLabel(rc.cell?.state)"
+                :disabled="rc.cell?.state !== 'AVAILABLE' && rc.cell?.state !== 'BOOKED'"
+                :aria-label="cellReason(rc.cell) ? `${stateLabel(rc.cell)}: ${cellReason(rc.cell)}` : stateLabel(rc.cell)"
                 :title="cellReason(rc.cell) ?? undefined"
                 @click="onCellClick(rc)"
               >
@@ -433,7 +493,7 @@ defineExpose({
                   <span class="block">×</span>
                   <span class="block truncate text-[10px]">{{ cellReason(rc.cell) }}</span>
                 </span>
-                <span v-else-if="rc.cell">{{ stateLabel(rc.cell.state) }}</span>
+                <span v-else-if="rc.cell">{{ stateLabel(rc.cell) }}</span>
                 <span v-else class="text-surface-300 dark:text-surface-600">—</span>
               </button>
             </template>
@@ -441,5 +501,15 @@ defineExpose({
         </div>
       </div>
     </div>
+
+    <ReservationWaitlistDialog
+      v-model:visible="waitlistDialogVisible"
+      :team-id="props.teamId"
+      :is-admin="props.isAdmin"
+      :resource-name="resourceName"
+      :context="waitlistContext"
+      :registered-slot-ids="myWaitlistSlotIds"
+      @changed="onWaitlistChanged"
+    />
   </div>
 </template>

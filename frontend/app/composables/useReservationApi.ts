@@ -46,6 +46,9 @@ type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeR
 type CreateRecurringBlockedTimeRequest = components['schemas']['CreateRecurringBlockedTimeRequest']
 type UpdateRecurringBlockedTimeRequest = components['schemas']['UpdateRecurringBlockedTimeRequest']
 type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
+// F03.4.5 §6.1 W2-4（BE #2206 で着地済み）: キャンセル待ち（waitlist）登録・取消・件数・自分の一覧。
+type WaitlistEntryResponse = components['schemas']['WaitlistEntryResponse']
+type WaitlistCountResponse = components['schemas']['WaitlistCountResponse']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -572,6 +575,42 @@ export function useReservationApi() {
     })
   }
 
+  // === キャンセル待ち（waitlist・F03.4.5 §6.1 W2-4）===
+  // 登録・取消は会員/公開の view ゲート（BE Service 層）で認可。件数のみ ADMIN 専用（403 になるため
+  // isAdmin=false のときは呼ばないこと）。
+
+  /**
+   * 満席枠へキャンセル待ちを登録する。
+   * エラー: 409=RESERVATION_047（二重登録）/ 400=RESERVATION_048（空きあり）/
+   * 400=RESERVATION_049（上限超過）/ 429=RESERVATION_050（レートリミット）。
+   */
+  async function joinWaitlist(teamId: string, slotId: number) {
+    return api<{ data: WaitlistEntryResponse }>(
+      `${base(teamId)}/reservation-slots/${slotId}/waitlist`,
+      { method: 'POST' },
+    )
+  }
+
+  /**
+   * 自分の WAITING を取消する（本人。(slot, 本人) で解決するため他人のエントリは掴めない）。
+   * エラー: 404=RESERVATION_046（対象なし・IDOR秘匿）。
+   */
+  async function leaveWaitlist(teamId: string, slotId: number) {
+    return api(`${base(teamId)}/reservation-slots/${slotId}/waitlist`, { method: 'DELETE' })
+  }
+
+  /** 枠別のキャンセル待ち件数（ADMIN 専用）。非 ADMIN が呼ぶと 403。 */
+  async function getWaitlistCount(teamId: string, slotId: number) {
+    return api<{ data: WaitlistCountResponse }>(
+      `${base(teamId)}/reservation-slots/${slotId}/waitlist/count`,
+    )
+  }
+
+  /** 自分のキャンセル待ち一覧（全チーム横断・WAITING のみ・新しい順）。 */
+  async function listMyWaitlist() {
+    return api<{ data: WaitlistEntryResponse[] }>(`/api/v1/users/me/reservation-waitlist`)
+  }
+
   return {
     getLines,
     createLine,
@@ -633,5 +672,9 @@ export function useReservationApi() {
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,
+    joinWaitlist,
+    leaveWaitlist,
+    getWaitlistCount,
+    listMyWaitlist,
   }
 }

@@ -262,7 +262,8 @@
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
       "template_load_failed": "Error al cargar las plantillas",
-      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo"
+      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo",
+      "rate_limited": "Estás creando reservas demasiado rápido. Espera un momento y vuelve a intentarlo"
     },
     "empty": {
       "no_reservations": "No hay reservas",
@@ -332,6 +333,14 @@
           "placeholder": "ej: 24,1",
           "error_empty": "Ingrese al menos un valor",
           "error_invalid": "Ingrese enteros entre 0 y 8760 separados por comas"
+        },
+        "pending_expire": {
+          "label": "Caducidad automática de reservas provisionales (PENDING)",
+          "hint": "Cancela automáticamente una reserva provisional pendiente de aprobación tras el tiempo indicado (1-168 horas, hasta 7 días)",
+          "unit": " horas para cancelar automáticamente",
+          "no_expire_toggle": "No cancelar automáticamente",
+          "no_expire_warning": "Actualmente está desactivada la cancelación automática. En equipos con aprobación manual (MANUAL), las reservas provisionales no se cancelarán automáticamente. Los administradores deben gestionarlas individualmente",
+          "error_range": "Ingrese un valor entre 1 y 168"
         }
       }
     },
@@ -679,6 +688,23 @@
       "row_locked": "Esta es una reserva en grupo. Gestiónala como grupo",
       "deadline_passed": "Se pasó el plazo de cancelación, no se puede cancelar",
       "own_overlap": "Ya tienes otra reserva en la franja horaria seleccionada. Revisa el horario"
+    },
+    "waitlist": {
+      "register_button": "Unirse a la lista de espera",
+      "cancel_button": "Salir de la lista de espera",
+      "registered_badge": "En espera",
+      "dialog_title": "Lista de espera",
+      "notice": "Te avisaremos cuando quede un lugar disponible. No se garantiza el orden; se asigna por orden de llegada",
+      "register_success": "Añadido a la lista de espera",
+      "cancel_success": "Eliminado de la lista de espera",
+      "admin_count": "{n} en lista de espera",
+      "already_registered": "Ya estás en la lista de espera de este horario",
+      "not_found": "No se encontró la entrada de la lista de espera (puede que ya se haya cancelado o convertido en reserva)",
+      "limit_exceeded": "Has alcanzado el límite de inscripciones en lista de espera",
+      "rate_limited": "Demasiado rápido. Espera aproximadamente un minuto y vuelve a intentarlo",
+      "slot_not_full": "Se liberó un lugar. Ya puedes reservarlo directamente",
+      "my_list_title": "Mi lista de espera",
+      "no_entries": "No estás en ninguna lista de espera"
     },
     "team_guide": {
       "title": "Cómo funcionan las reservas",

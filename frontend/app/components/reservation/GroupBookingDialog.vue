@@ -248,6 +248,10 @@ async function confirm() {
         emit('reserved')
         close()
         break
+      case 'RESERVATION_053':
+        // 429=予約作成レートリミット（W2-6 §6.4）。汎用文言でなく専用文言で案内する。
+        notification.error(t('reservation.message.rate_limited'))
+        break
       default:
         notification.error(t('reservation.message.reserve_failed'))
     }

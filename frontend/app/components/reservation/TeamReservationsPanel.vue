@@ -49,6 +49,8 @@ const slotPickerRef = ref<Refreshable | null>(null)
 const slotGridPickerRef = ref<Refreshable | null>(null)
 const slotMatrixPickerRef = ref<Refreshable | null>(null)
 const reservationListRef = ref<Refreshable | null>(null)
+/** 自分のキャンセル待ち一覧（W2-4-FE）。予約成立時に WAITING→CONVERTED で消え得るため onReserved から再読込する。 */
+const myWaitlistListRef = ref<Refreshable | null>(null)
 
 /** 詳細設定アコーディオンの開閉状態（初期 collapsed） */
 const advancedSettingsValue = ref<string | null>(null)
@@ -145,6 +147,8 @@ function onReserved() {
   slotGridPickerRef.value?.refresh()
   slotMatrixPickerRef.value?.refresh()
   reservationListRef.value?.refresh()
+  // 予約成立で自分の WAITING が CONVERTED に消し込まれている可能性があるため再読込する（W2-4-FE）。
+  myWaitlistListRef.value?.refresh()
 }
 
 /**
@@ -157,6 +161,14 @@ function onSlotsChanged() {
   slotPickerRef.value?.refresh()
   slotGridPickerRef.value?.refresh()
   slotMatrixPickerRef.value?.refresh()
+}
+
+/**
+ * SlotMatrixPicker/SlotGridPicker のキャンセル待ちダイアログで登録/取消が成功した（W2-4-FE）。
+ * 「自分のキャンセル待ち」一覧（予約一覧タブ）を再読込する。
+ */
+function onWaitlistChanged() {
+  myWaitlistListRef.value?.refresh()
 }
 
 function onSlotSelected(
@@ -277,6 +289,7 @@ onMounted(async () => {
                 @slot-selected="onSlotSelected"
                 @manage-lines="activeTab = 2"
                 @reserved="onReserved"
+                @waitlist-changed="onWaitlistChanged"
               />
               <SlotGridPicker
                 v-else-if="bookDisplayMode === 'grid'"
@@ -285,6 +298,7 @@ onMounted(async () => {
                 :is-admin="isAdmin"
                 @slot-selected="onSlotSelected"
                 @manage-lines="activeTab = 2"
+                @waitlist-changed="onWaitlistChanged"
               />
               <SlotPicker
                 v-else
@@ -309,6 +323,10 @@ onMounted(async () => {
 
         <!-- 予約一覧タブ: 管理者はチーム全件、非管理者は自分の予約のみ（他人の氏名・予約は非表示）-->
         <TabPanel :value="1">
+          <!-- 自分のキャンセル待ち（F03.4.5 §6.1 W2-4-FE）。既存タブ内に埋め込み・新規ページは作らない -->
+          <div class="mb-6">
+            <ReservationMyWaitlistList ref="myWaitlistListRef" :team-id="props.teamId" />
+          </div>
           <ReservationList
             v-if="isAdminOrDeputy"
             ref="reservationListRef"

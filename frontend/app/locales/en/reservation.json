@@ -262,7 +262,8 @@
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
       "template_load_failed": "Failed to load templates",
-      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator"
+      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator",
+      "rate_limited": "You're creating reservations too quickly. Please wait a moment and try again"
     },
     "empty": {
       "no_reservations": "No reservations",
@@ -332,6 +333,14 @@
           "placeholder": "e.g. 24,1",
           "error_empty": "Please enter at least one value",
           "error_invalid": "Enter integers between 0 and 8760 separated by commas"
+        },
+        "pending_expire": {
+          "label": "Auto-expiration of pending holds",
+          "hint": "Automatically cancels a pending reservation after the specified time has passed (1-168 hours, up to 7 days)",
+          "unit": " hours to auto-cancel",
+          "no_expire_toggle": "Do not auto-cancel",
+          "no_expire_warning": "Auto-cancel is currently disabled. For teams with manual approval (MANUAL), pending holds will not be cancelled automatically. Administrators must handle them individually",
+          "error_range": "Please enter a value between 1 and 168"
         }
       }
     },
@@ -679,6 +688,23 @@
       "row_locked": "This is a group booking. Please manage it as a group",
       "deadline_passed": "The cancellation deadline has passed, so this can't be cancelled",
       "own_overlap": "You already have another booking in the selected time slot. Please check the time"
+    },
+    "waitlist": {
+      "register_button": "Join waitlist",
+      "cancel_button": "Leave waitlist",
+      "registered_badge": "Waiting",
+      "dialog_title": "Waitlist",
+      "notice": "We'll notify you when a spot opens up. Spots aren't reserved for anyone — it's first-come, first-served",
+      "register_success": "Added to the waitlist",
+      "cancel_success": "Removed from the waitlist",
+      "admin_count": "{n} on the waitlist",
+      "already_registered": "You're already on the waitlist for this slot",
+      "not_found": "Waitlist entry not found (it may have already been cancelled or converted)",
+      "limit_exceeded": "You've reached the waitlist registration limit",
+      "rate_limited": "That was too fast. Please wait about a minute and try again",
+      "slot_not_full": "A spot opened up — you can book it directly",
+      "my_list_title": "My waitlist",
+      "no_entries": "You're not on any waitlists"
     },
     "team_guide": {
       "title": "How reservations work",

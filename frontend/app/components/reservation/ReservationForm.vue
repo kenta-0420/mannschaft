@@ -27,6 +27,12 @@ watch(() => props.visible, (v) => { if (v) void loadResourceName() }, { immediat
 const submitting = ref(false)
 const serviceNotes = ref('')
 
+/** BE エラー応答から RESERVATION_xxx コードを取り出す（GroupBookingDialog と同じ抽出パターン）。 */
+function extractErrorCode(error: unknown): string | undefined {
+  const apiError = error as { data?: { error?: { code?: string } } }
+  return apiError?.data?.error?.code
+}
+
 async function submit() {
   if (!props.slotId || !props.lineId) return
   submitting.value = true
@@ -40,7 +46,15 @@ async function submit() {
     emit('reserved')
     close()
   }
-  catch { notification.error(t('reservation.message.reserve_failed')) }
+  catch (error) {
+    // 429=RESERVATION_053（予約作成レートリミット・W2-6 §6.4）は汎用文言でなく専用文言で案内する。
+    if (extractErrorCode(error) === 'RESERVATION_053') {
+      notification.error(t('reservation.message.rate_limited'))
+    }
+    else {
+      notification.error(t('reservation.message.reserve_failed'))
+    }
+  }
   finally { submitting.value = false }
 }
 

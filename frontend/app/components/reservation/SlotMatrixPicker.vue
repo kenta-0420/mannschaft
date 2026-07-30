@@ -26,6 +26,7 @@ import {
   type RowSlot,
 } from '~/utils/reservationMatrix'
 import type { GroupBookingContext, LineOption } from '~/components/reservation/GroupBookingDialog.vue'
+import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
 
 type GridColumnDto = components['schemas']['GridColumnDto']
 type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
@@ -42,6 +43,8 @@ const emit = defineEmits<{
   manageLines: []
   /** グループ/単枠 予約確定成功。親（TeamReservationsPanel）が一覧等を再読込する。 */
   reserved: []
+  /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
+  waitlistChanged: []
 }>()
 
 const { t } = useI18n()
@@ -73,6 +76,12 @@ const errorMsg = ref('')
 
 const todayStr = ref('')
 const nowMinutes = ref(0)
+
+// === キャンセル待ち（waitlist・W2-4-FE）===
+/** このチームで自分が WAITING 登録済みの slotId 集合（満席セルのラベル/ダイアログ初期状態に使う）。 */
+const myWaitlistSlotIds = ref<Set<number>>(new Set())
+const waitlistDialogVisible = ref(false)
+const waitlistContext = ref<WaitlistDialogContext | null>(null)
 
 const dialogVisible = ref(false)
 const dialogContext = ref<GroupBookingContext | null>(null)
@@ -206,9 +215,17 @@ function resolveLine(column: GridColumnDto): LineOption {
   return { id: fallback?.id ?? 0, name: fallback?.name ?? '' }
 }
 
+/**
+ * BOOKED（満席）セルは、過去枠でない限りキャンセル待ち導線として常にクリック可能にする（W2-4-FE）。
+ * メニューフィルターの起点判定（startable）は「連続確保の起点になれるか」の判定であり、
+ * キャンセル待ちには無関係のため対象外にする。
+ */
 function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return true
+  if (slot.cell.state === 'BOOKED') {
+    return isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
+  }
   if (slot.cell.state !== 'AVAILABLE') return true
   if (isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
   if (slot.span === 1 && row.startable && !row.startable.has(headerIndex)) return true
@@ -219,14 +236,19 @@ function cellStateClass(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   const disabled = isCellDisabled(row, headerIndex)
   const state = slot?.kind === 'cell' ? slot.cell.state : undefined
+
+  // BOOKED はクリック可否に関わらず同じ配色（満席）のまま、クリック可能な場合のみポインタ+ホバーを付ける。
+  if (state === 'BOOKED') {
+    return disabled
+      ? 'cursor-not-allowed border-surface-100 bg-surface-100 text-surface-500 dark:border-surface-600 dark:bg-surface-700'
+      : 'cursor-pointer border-surface-100 bg-surface-100 text-surface-500 hover:border-primary dark:border-surface-600 dark:bg-surface-700'
+  }
   if (disabled) {
     if (state === 'AVAILABLE') {
       // メニューフィルターで起点不可 or 過去セル: 空きはあるが選べない
       return 'cursor-not-allowed border-surface-100 bg-surface-50 text-surface-300 opacity-60 dark:border-surface-600 dark:bg-surface-800'
     }
     switch (state) {
-      case 'BOOKED':
-        return 'cursor-not-allowed border-surface-100 bg-surface-100 text-surface-500 dark:border-surface-600 dark:bg-surface-700'
       case 'CLOSED':
         return 'cursor-not-allowed border-surface-100 bg-surface-50 text-surface-400 dark:border-surface-600 dark:bg-surface-800'
       case 'UNAVAILABLE':
@@ -249,7 +271,11 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   if (slot.kind === 'covered') return ''
   switch (slot.cell.state) {
     case 'AVAILABLE': return t('reservation.grid.state.available')
-    case 'BOOKED': return t('reservation.grid.state.booked')
+    // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
+    case 'BOOKED':
+      return slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+        ? t('reservation.waitlist.registered_badge')
+        : t('reservation.grid.state.booked')
     case 'CLOSED': return t('reservation.grid.state.closed')
     case 'UNAVAILABLE': {
       const reason = unavailableReasonOf(row, headerIndex)
@@ -269,6 +295,22 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return
   if (isCellDisabled(row, headerIndex)) return
+
+  if (slot.cell.state === 'BOOKED') {
+    // 満席セル: キャンセル待ちダイアログを開く（W2-4-FE）。span（長尺枠の跨ぎ）に関わらず
+    // 対象は常に単一 slotId のため、長尺/30分どちらでも扱いは同じ。
+    if (slot.cell.slotId == null) return
+    const line = resolveLine(row.column)
+    waitlistContext.value = {
+      slotId: slot.cell.slotId,
+      date: row.date,
+      startTime: slot.cell.startTime ?? '',
+      endTime: slot.cell.endTime ?? '',
+      lineName: line.name,
+    }
+    waitlistDialogVisible.value = true
+    return
+  }
 
   if (slot.span > 1) {
     // 長尺手動枠: 既存の単枠予約フローへ（親の ReservationForm）
@@ -303,6 +345,29 @@ function onDialogReserved() {
   emit('reserved')
 }
 
+/** 登録/取消成功時: 自分の登録集合とグリッドを再取得し、親に「自分のキャンセル待ち」再読込を促す。 */
+async function onWaitlistChanged() {
+  await loadMyWaitlist()
+  await loadGrid({ silent: true })
+  emit('waitlistChanged')
+}
+
+async function loadMyWaitlist() {
+  try {
+    const res = await reservationApi.listMyWaitlist()
+    myWaitlistSlotIds.value = new Set(
+      (res.data ?? [])
+        .filter(e => String(e.teamId) === props.teamId && e.slotId != null)
+        .map(e => e.slotId!),
+    )
+  }
+  catch {
+    // 取得失敗は「未登録」扱いにフォールバック（満席セルのラベルが「待機中」にならないだけで、
+    // ダイアログを開けば実際の登録状態は API 側で正しく判定される。致命的でないため通知はしない）。
+    myWaitlistSlotIds.value = new Set()
+  }
+}
+
 function gridStyle(headerLength: number): string {
   return `grid-template-columns: minmax(7rem, auto) repeat(${headerLength}, minmax(3.5rem, 1fr));`
 }
@@ -312,7 +377,7 @@ watch([weekStart, filterMenuId], () => loadGrid())
 
 onMounted(async () => {
   thisWeek()
-  await Promise.all([loadLines(), loadMenus(), loadResourceName()])
+  await Promise.all([loadLines(), loadMenus(), loadResourceName(), loadMyWaitlist()])
   await loadGrid()
 })
 
@@ -333,6 +398,7 @@ onActivated(() => {
 defineExpose({
   refresh: async () => {
     await loadResourceName()
+    await loadMyWaitlist()
     await loadGrid()
   },
 })
@@ -446,6 +512,16 @@ defineExpose({
       :menus="menus"
       :context="dialogContext"
       @reserved="onDialogReserved"
+    />
+
+    <ReservationWaitlistDialog
+      v-model:visible="waitlistDialogVisible"
+      :team-id="props.teamId"
+      :is-admin="props.isAdmin"
+      :resource-name="resourceName"
+      :context="waitlistContext"
+      :registered-slot-ids="myWaitlistSlotIds"
+      @changed="onWaitlistChanged"
     />
   </div>
 </template>
