@@ -198,10 +198,15 @@ public class InboxLabelService {
      *
      * <p>処理（設計書 02_api_design.md §3.5a / 03_business_logic.md §10）:</p>
      * <ol>
+     *   <li>対象通知（{@code sourceType}/{@code sourceId}）が本人に可視であることを検証する
+     *       （{@link InboxAccessGuard#requireVisibleSource}）。<b>この検証を find-or-create より
+     *       先に行うことで、未認可の書き込み（ラベル作成）が一切発生しないことを保証する</b>
+     *       （認可は副作用より前に置く）。</li>
      *   <li>同名の現役ラベルを探す（find）。無ければ {@link #createLabel} で作成する
      *       （上限 20 超は {@code INBOX_LABEL_LIMIT_EXCEEDED}・色形式不正は {@code COMMON_001}）。</li>
      *   <li>そのラベルを {@link #assignLabel} で当該通知に付与する
-     *       （可視性検証・1 通知 10 ラベル上限・<b>重複は冪等</b>に正常終了）。</li>
+     *       （可視性は 1. と同一判定で {@link #assignLabel} 内でも再検証・1 通知 10 ラベル上限・
+     *       <b>重複は冪等</b>に正常終了）。</li>
      * </ol>
      *
      * <p><b>冪等</b>: 同名ラベルが既にあり既に付与済みなら、作成も再付与もせず付与後の {@link LabelDto} を返す。
@@ -212,6 +217,9 @@ public class InboxLabelService {
     @Transactional
     public LabelDto suggestApply(Long userId, String name, String color,
                                  InboxSourceType sourceType, Long sourceId) {
+        // 0. 可視性検証を副作用（find-or-create・付与）より前に置く（他人宛て通知は INBOX_SOURCE_NOT_FOUND）
+        inboxAccessGuard.requireVisibleSource(userId, sourceType, sourceId);
+
         String trimmedName = normalizeName(name);
 
         // 1. find-or-create（現役同名があれば再利用＝重複作成しない）
@@ -219,7 +227,7 @@ public class InboxLabelService {
                 .map(this::toDto)
                 .orElseGet(() -> createLabel(userId, trimmedName, color, null));
 
-        // 2. 付与（重複は冪等・可視性/上限は assignLabel が検証）
+        // 2. 付与（重複は冪等・可視性は 0. と同一判定で再検証・上限は assignLabel が検証）
         assignLabel(userId, label.id(), sourceType, sourceId);
 
         return label;

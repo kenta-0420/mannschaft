@@ -499,6 +499,8 @@ class InboxLabelServiceTest {
         @Test
         @DisplayName("上限: 新規作成時に 20 件到達 → 既存 INBOX_LABEL_LIMIT_EXCEEDED（付与しない）")
         void limitExceededOnCreate() {
+            // suggestApply 先頭の可視性ゲート（find-or-create より前）を通過させる
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
             given(labelRepository.findByUserIdAndName(USER_ID, "要返信")).willReturn(Optional.empty());
             given(labelRepository.countByUserId(USER_ID)).willReturn(20L);
 
