@@ -10,6 +10,7 @@ import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
 import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
+import com.mannschaft.app.activity.dto.PublicActivitySitemapRow;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityParticipantEntity;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +47,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ActivityResultService {
+
+    /**
+     * 実在しないスコープ ID（番兵）。{@code scope_id} は正の値のみを取るため決して一致しない。
+     * sitemap クエリで JPQL の {@code IN ()} 生成を避けるためだけに使う。
+     */
+    private static final long SITEMAP_NO_MATCH_SCOPE_ID = -1L;
 
     private final ActivityResultRepository resultRepository;
     private final ActivityParticipantRepository participantRepository;
@@ -259,6 +267,51 @@ public class ActivityResultService {
     public Optional<ActivityResultEntity> findPublicActivityById(Long id) {
         return resultRepository.findByIdAndVisibilityAndStatus(
                 id, ActivityVisibility.PUBLIC, ActivityStatus.PUBLISHED);
+    }
+
+    /**
+     * F06.4 sitemap.xml 用 — 親スコープが公開である公開活動記録を全件取得する。
+     *
+     * <p>publicview ドメイン（{@code SitemapQueryService}）から呼ばれる<b>唯一の入口</b>。
+     * 越境する型を増やさないため、戻り値は JDK 標準型だけの
+     * {@link PublicActivitySitemapRow} に詰め替えて返す（Entity は外へ出さない）。</p>
+     *
+     * <p><b>親スコープの公開判定は呼び出し元が行う</b>: 「どのチーム / 組織が公開か」は
+     * team / organization ドメインしか知り得ない知識であり、activity ドメインから
+     * それらの Repository を引くのは番人 D-5 違反になる。よって本メソッドは
+     * <b>公開スコープ ID 集合を引数で受け取る</b>形にし、判定の責務を
+     * 既に両ドメインを束ねている {@code SitemapQueryService} 側へ置いている。</p>
+     *
+     * <p><b>空集合の扱い</b>: JPQL の {@code IN :ids} に空コレクションを渡すと
+     * {@code IN ()} という不正な SQL になる DB がある。公開チームだけ存在して公開組織が
+     * 0 件、という状況は普通に起きるため、空集合は<b>実在しない番兵 ID</b>
+     * （{@value #SITEMAP_NO_MATCH_SCOPE_ID}。ID は正の AUTO_INCREMENT なので決して一致しない）
+     * に差し替えてから渡す。両方とも空なら SQL を撃たずに空リストを返す。</p>
+     *
+     * @param publicTeamIds         公開チームの ID 集合（空可）
+     * @param publicOrganizationIds 公開組織の ID 集合（空可）
+     * @return sitemap に載せてよい活動記録の行（該当なしは空リスト）
+     */
+    public List<PublicActivitySitemapRow> findPublicActivitiesForSitemap(
+            Collection<Long> publicTeamIds, Collection<Long> publicOrganizationIds) {
+        boolean noTeams = publicTeamIds == null || publicTeamIds.isEmpty();
+        boolean noOrgs = publicOrganizationIds == null || publicOrganizationIds.isEmpty();
+        if (noTeams && noOrgs) {
+            // 公開スコープが 1 つも無い＝載せてよい記録も存在しない。SQL を撃つ必要すらない。
+            return List.of();
+        }
+        return resultRepository.findPublicForSitemap(
+                        orSentinel(publicTeamIds), orSentinel(publicOrganizationIds)).stream()
+                .map(e -> new PublicActivitySitemapRow(e.getId(), e.getUpdatedAt()))
+                .toList();
+    }
+
+    /** 空コレクションを「決して一致しない番兵 1 件」に差し替える（{@code IN ()} 回避）。 */
+    private static Collection<Long> orSentinel(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of(SITEMAP_NO_MATCH_SCOPE_ID);
+        }
+        return ids;
     }
 
     /**

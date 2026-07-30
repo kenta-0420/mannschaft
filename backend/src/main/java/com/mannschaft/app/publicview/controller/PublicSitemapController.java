@@ -81,8 +81,9 @@ public class PublicSitemapController {
         List<SitemapEntry> orgs = sitemapQueryService.findPublicOrganizationEntries();
         List<SitemapPostEntry> teamPosts = sitemapQueryService.findPublicTeamPostEntries();
         List<SitemapPostEntry> orgPosts = sitemapQueryService.findPublicOrganizationPostEntries();
+        List<SitemapEntry> activities = sitemapQueryService.findPublicActivityEntries();
 
-        String xml = sitemapXmlGenerator.generate(baseUrl, teams, orgs, teamPosts, orgPosts);
+        String xml = sitemapXmlGenerator.generate(baseUrl, teams, orgs, teamPosts, orgPosts, activities);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
@@ -108,8 +109,10 @@ public class PublicSitemapController {
         List<SitemapEntry> orgs = sitemapQueryService.findPublicOrganizationEntries();
         List<SitemapPostEntry> teamPosts = sitemapQueryService.findPublicTeamPostEntries();
         List<SitemapPostEntry> orgPosts = sitemapQueryService.findPublicOrganizationPostEntries();
+        List<SitemapEntry> activities = sitemapQueryService.findPublicActivityEntries();
 
-        String xml = sitemapXmlGenerator.generatePage(baseUrl, teams, orgs, teamPosts, orgPosts, page);
+        String xml = sitemapXmlGenerator.generatePage(
+                baseUrl, teams, orgs, teamPosts, orgPosts, activities, page);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
