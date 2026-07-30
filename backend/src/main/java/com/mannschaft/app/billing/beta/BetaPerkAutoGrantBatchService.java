@@ -156,6 +156,9 @@ public class BetaPerkAutoGrantBatchService {
         int granted = 0;
         int skipped = 0;
         int failed = 0;
+        // 上限ページ到達で「まだ次ページがあるのに打ち切った」ことを記録する（Issue #2487 項目 3）。
+        // 無言で抜けると 10 万人超のときに静かに取りこぼす。
+        boolean truncatedByMaxPages = false;
 
         for (int page = 0; page < MAX_PAGES; page++) {
             Page<Long> userPage = userRepository.findActiveUserIdsForBeta(
@@ -200,9 +203,21 @@ public class BetaPerkAutoGrantBatchService {
             if (!userPage.hasNext()) {
                 break;
             }
+            if (page == MAX_PAGES - 1) {
+                // 次ページが存在するのに MAX_PAGES で打ち切る＝取りこぼしが確定した状態。
+                truncatedByMaxPages = true;
+            }
         }
 
         long elapsedMs = System.currentTimeMillis() - startedAt;
+        if (truncatedByMaxPages) {
+            // 症状を握り潰さず可視化する（CLAUDE.md 障害対応の原則）。ここが出たら MAX_PAGES の引き上げか
+            // 走査の分割（前回位置からの再開）を検討すること。
+            log.warn("ベータ特典 自動付与バッチ: 走査上限に到達したため未走査の活性ユーザーが残っている"
+                            + "（phase={}, 上限={}ページ × {}件/ページ = {}人）。"
+                            + "活性ユーザーがこの上限を超えているため、超過分は今回の付与対象から取りこぼされた。",
+                    phase, MAX_PAGES, PAGE_SIZE, MAX_PAGES * PAGE_SIZE);
+        }
         log.info("ベータ特典 自動付与バッチ完了: phase={}, 付与={}件, スキップ={}件, 失敗={}件, 所要={}ms",
                 phase, granted, skipped, failed, elapsedMs);
     }

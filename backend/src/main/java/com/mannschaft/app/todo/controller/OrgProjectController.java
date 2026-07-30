@@ -43,11 +43,10 @@ import java.util.List;
  * {@code organizationService.resolveOrgId(slug)} で組織内部 ID を解決し、
  * {@link ProjectService} に {@link TodoScopeType#ORGANIZATION} と orgId を渡す。</p>
  *
- * <p><b>試練フェーズの骨格</b>: 一覧／作成の scopeId 配線（ORGANIZATION + orgId）は入れてあるが、
- * 認可ゲート（{@link ProjectAccessGuard#validateOrgMembership(Long, Long)} /
- * {@link ProjectAccessGuard#validateOrgProjectAccess(Long, Long, Long)}）は <b>まだ呼んでいない</b>。
- * そのため非メンバー（AC-1）・別組織 IDOR（AC-3）・マイルストーン系（AC-5）のテストは red になる。
- * 出陣フェーズで各 EP に guard 呼び出しを配線し green 化すること。</p>
+ * <p><b>認可</b>: 各 EP の先頭で認可ゲートを呼ぶ。一覧／作成は
+ * {@link ProjectAccessGuard#validateOrgMembership(Long, Long)} で<b>当該組織のメンバーに限定</b>し、
+ * {@code /{id}} 系は {@link ProjectAccessGuard#validateOrgProjectAccess(Long, Long, Long)} で
+ * さらに「プロジェクトが当該組織に属すること」を照合する（別組織のプロジェクト ID は 404 で存在を秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{slug}/projects")
@@ -58,7 +57,7 @@ public class OrgProjectController {
     private final ProjectService projectService;
     private final TodoService todoService;
     private final OrganizationService organizationService;
-    // 試練フェーズで注入。出陣で各 EP の認可ゲートとして配線する（現状未呼び出し → IDOR/非メンバーテストが red）。
+    // 各 EP 入口の認可ゲート（組織メンバーシップ + プロジェクトのスコープ束縛）。
     private final ProjectAccessGuard projectAccessGuard;
 
     /**

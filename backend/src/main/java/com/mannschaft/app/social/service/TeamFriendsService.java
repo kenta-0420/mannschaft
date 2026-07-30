@@ -26,7 +26,6 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -122,10 +121,12 @@ public class TeamFriendsService {
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendEstablishedEventで分離予定
-    @Caching(evict = {
-            @CacheEvict(value = "teamFriendList", key = "#teamId"),
-            @CacheEvict(value = "teamFriendList", key = "#targetTeamId")
-    })
+    // issue #2496: 旧実装は key = "#teamId" / "#targetTeamId" だったが、@Cacheable 側のキーは
+    // "teamId:userId:page:size:publicOnly" 形式であり、単独の teamId とは一致しないため
+    // 一件も失効していなかった（キャッシュ自体が自己呼び出しで死んでいたため表面化していなかった）。
+    // 閲覧者・ページ・publicOnly の全組み合わせを列挙して個別 evict することは不可能なので、
+    // TeamFriendVisibilityService#setVisibility と同じく allEntries で一括失効させる。
+    @CacheEvict(value = "teamFriendList", allEntries = true)
     public FollowTeamResponse follow(Long teamId, Long targetTeamId, Long userId) {
         // 1. 基本バリデーション
         if (teamId == null || targetTeamId == null) {
@@ -289,10 +290,9 @@ public class TeamFriendsService {
      */
     @Transactional
     // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendDissolvedEventで分離予定
-    @Caching(evict = {
-            @CacheEvict(value = "teamFriendList", key = "#teamId"),
-            @CacheEvict(value = "teamFriendList", key = "#targetTeamId")
-    })
+    // issue #2496: follow と同じ理由で allEntries に統一（旧 key = "#teamId" は @Cacheable 側の
+    // "teamId:userId:page:size:publicOnly" キーと噛み合わず、一件も失効していなかった）。
+    @CacheEvict(value = "teamFriendList", allEntries = true)
     public void unfollow(Long teamId, Long targetTeamId, PastForwardHandling mode, Long userId) {
         // 1. 基本バリデーション
         if (teamId == null || targetTeamId == null) {

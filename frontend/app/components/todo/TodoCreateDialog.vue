@@ -122,10 +122,10 @@ async function submitCreate() {
       description: createForm.value.description.trim() || undefined,
       priority: createForm.value.priority,
       startDate: createForm.value.startDate
-        ? createForm.value.startDate.toISOString().slice(0, 10)
+        ? toLocalDateString(createForm.value.startDate)
         : undefined,
       dueDate: createForm.value.dueDate
-        ? createForm.value.dueDate.toISOString().slice(0, 10)
+        ? toLocalDateString(createForm.value.dueDate)
         : undefined,
     }
     if (createForm.value.scopeType === 'PERSONAL') {

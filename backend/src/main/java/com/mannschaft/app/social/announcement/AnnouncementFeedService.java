@@ -213,6 +213,22 @@ public class AnnouncementFeedService {
     /**
      * スコープ内の全お知らせを既読にする。
      *
+     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例する。</p>
+     *
+     * <p><b>既知の未解消（#2494 の範囲外・#2530 で追跡）</b>: 下流
+     * {@link AnnouncementReadService#markAllAsRead} は新規既読化件数を返すようになったが、
+     * Controller の応答は<b>値もキー名も</b>設計書 F02.6 §4 と食い違っている。</p>
+     * <ul>
+     *   <li><b>値</b> — Controller は {@code markedCount} にハードコードの {@code 0} を返す
+     *       （実件数を伝搬していない）</li>
+     *   <li><b>キー名</b> — 設計書は {@code marked_count}（snake_case）、実装は {@code markedCount}</li>
+     * </ul>
+     * <p>応答は {@code Map<String, Object>} のため OpenAPI スキーマに現れず、
+     * キー名の食い違いを機械的に検出する仕組みが無い。是正時は値だけでなくキー名も決着させること。
+     * 本メソッドのシグネチャ（＝Controller の応答）に触れる修正になるため #2494 では手を入れていない。
+     * 詳細は設計書 F02.6 §4 の {@code read-all} 節の ⚠️ ブロックを参照。</p>
+     *
      * @see AnnouncementReadService#markAllAsRead
      */
     @Transactional

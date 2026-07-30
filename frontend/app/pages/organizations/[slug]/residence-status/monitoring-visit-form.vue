@@ -48,8 +48,9 @@ async function handleSubmit() {
       visitedAt: visitedAt.value ? visitedAt.value.toISOString() : new Date().toISOString(),
       contactResult: contactResult.value,
       considerationMemo: considerationMemo.value || null,
+      // BE の nextVisitRecommendedAt は LocalDate。UTC 基準の toISOString() では日付が 1 日ずれる
       nextVisitRecommendedAt: nextVisitRecommendedAt.value
-        ? nextVisitRecommendedAt.value.toISOString()
+        ? toLocalDateString(nextVisitRecommendedAt.value)
         : null,
     }
 

@@ -226,6 +226,9 @@
   "error": {
     "server": "서버 오류가 발생했습니다",
     "server_retry": "잠시 후 다시 시도해 주세요.",
+    "rate_limited": "요청이 너무 많습니다",
+    "rate_limited_detail": "짧은 시간에 요청이 너무 많았습니다. 잠시 기다린 후 다시 시도해 주세요.",
+    "rate_limited_retry_after": "짧은 시간에 요청이 너무 많았습니다. 약 {seconds}초 후에 다시 시도해 주세요.",
     "network": "네트워크 오류가 발생했습니다",
     "unauthorized": "로그인이 필요합니다",
     "section_load_failed": "이 항목을 불러오지 못했습니다. 새로고침해 주세요.",
