@@ -8,7 +8,7 @@ import java.util.UUID;
 /**
  * F22.1 謝礼決済: Webhook 冪等性キーリポジトリ。
  *
- * <p>このフェーズでは Repo 骨格のみ（Service は次陣）。</p>
+ * <p>受信イベントの冪等記録は webhook 処理系から利用される。</p>
  */
 public interface StripeWebhookEventRepository
         extends JpaRepository<StripeWebhookEventEntity, UUID> {

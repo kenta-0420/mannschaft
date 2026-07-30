@@ -11,7 +11,7 @@ import java.util.UUID;
  *
  * <p>{@code organization_id} を保持するテナントスコープのため
  * {@link AbstractTenantAwareRepository} を継承する（CLAUDE.md 原則7）。
- * このフェーズでは Entity/Repo 骨格のみ（Service は次陣）。</p>
+ * 受領口座の解決は {@code ConnectChargeService} 等から利用される。</p>
  */
 public interface ConnectAccountRepository
         extends AbstractTenantAwareRepository<ConnectAccountEntity, UUID> {

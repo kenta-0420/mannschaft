@@ -2,6 +2,7 @@ package com.mannschaft.app.pointcard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.pointcard.dto.CreateUserPointCardRequest;
 import com.mannschaft.app.pointcard.dto.ShareTokenResponse;
 import com.mannschaft.app.pointcard.dto.UpdateUserPointCardRequest;
@@ -82,6 +83,16 @@ public class PointCardController {
     // 詳細
     // ─────────────────────────────────────────────
 
+    /**
+     * 保有カード 1 枚の詳細を返す。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardService.getCard}
+     * （{@code pointcard/service/PointCardService.java:99}）が
+     * {@code cardRepository.findByIdAndUserId(cardId, userId)} で
+     * 「当該カード ID かつ保有者本人」の複合条件で引き当てる。
+     * 保有者以外の cardId は不存在と区別せず {@code CARD_NOT_FOUND}（404）で秘匿する。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/{id}")
     @Operation(summary = "カード詳細取得",
             description = "提示モードで使う復号値（barcodeValue / nickname / memo）を含めて返す")
@@ -95,6 +106,15 @@ public class PointCardController {
     // 更新
     // ─────────────────────────────────────────────
 
+    /**
+     * 保有カード 1 枚の表示情報を差分更新する。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardService.updateCard}
+     * （{@code pointcard/service/PointCardService.java:181}）が
+     * {@code findByIdAndUserId} で保有者本人のカードのみを引き当て、
+     * 不一致は {@code CARD_NOT_FOUND}（404）で秘匿する。更新は引き当てた Entity にのみ適用される。</p>
+     */
+    @AuthorizedInService
     @PatchMapping("/{id}")
     @Operation(summary = "カード部分更新（PATCH）",
             description = "displayName / nickname / memo / favorite / displayOrder を差分適用する。"
@@ -111,6 +131,16 @@ public class PointCardController {
     // 削除
     // ─────────────────────────────────────────────
 
+    /**
+     * 保有カード 1 枚を削除する。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardService.deleteCard}
+     * （{@code pointcard/service/PointCardService.java:228}）が
+     * {@code findByIdAndUserId} で保有者本人のカードを引き当ててから削除する。
+     * 引き当てに失敗した cardId は {@code CARD_NOT_FOUND}（404）で秘匿し、削除は 1 件も行わない
+     * （削除は認可の後にのみ実行される）。</p>
+     */
+    @AuthorizedInService
     @DeleteMapping("/{id}")
     @Operation(summary = "カード削除", description = "本人のカードを物理削除する。監査ログ POINT_CARD_DELETED を記録")
     public ResponseEntity<Void> deleteCard(@PathVariable UUID id) {
@@ -123,6 +153,16 @@ public class PointCardController {
     // 利用記録
     // ─────────────────────────────────────────────
 
+    /**
+     * 保有カード 1 枚の最終利用時刻を更新する。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardService.recordUsed}
+     * （{@code pointcard/service/PointCardService.java:251}）が
+     * {@code findByIdAndUserId} で保有者本人のカードを引き当ててから
+     * {@code last_used_at} を更新する。不一致は {@code CARD_NOT_FOUND}（404）で秘匿し、
+     * 他者のカードの利用時刻は書き換わらない。</p>
+     */
+    @AuthorizedInService
     @PostMapping("/{id}/used")
     @Operation(summary = "カード利用記録",
             description = "提示モードを閉じた直後に呼び出して last_used_at を更新する。監査ログは記録しない")
@@ -136,6 +176,16 @@ public class PointCardController {
     // 一時トークン発行（QR 自動特定 / Phase 3 第二陣 2A）
     // ─────────────────────────────────────────────
 
+    /**
+     * 保有カード 1 枚について、店主側端末が読み取る一時トークンを発行する。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardShareTokenService.generate}
+     * （{@code pointcard/service/PointCardShareTokenService.java:95}）が
+     * {@code findByIdAndUserId} で保有者本人のカードを引き当ててからトークンを発行する。
+     * 引き当て失敗時は {@code CARD_NOT_FOUND}（404）で秘匿し、トークンは 1 件も発行されない
+     * （発行＝副作用は認可の後にのみ実行される）。</p>
+     */
+    @AuthorizedInService
     @PostMapping("/{cardId}/share-tokens")
     @Operation(summary = "QR 自動特定用 一時トークン発行",
             description = "本人のカードに対して 5 分 TTL の UUID トークンを Valkey に発行する。"
