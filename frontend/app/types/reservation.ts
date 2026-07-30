@@ -217,6 +217,11 @@ export interface ReservationSettingsResponse {
   resourceNameType?: ReservationResourceNameTypeCode
   /** 自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null） */
   resourceNameCustom?: string
+  /**
+   * 仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168・W2-6 で追加）。
+   * null/undefined = 自動失効しない（BE Javadoc: clearPendingExpireHours=true で明示的に無効化された状態）。
+   */
+  pendingExpireHours?: number
 }
 
 // === リクエスト DTO ===
@@ -232,6 +237,10 @@ export interface UpdateReservationSettingRequest {
   resourceNameType?: ReservationResourceNameTypeCode
   /** 自由入力の呼称変更時に指定（CUSTOM 選択時のみ有効・30文字以内・null=据え置き） */
   resourceNameCustom?: string
+  /** 仮押さえ(PENDING)を自動キャンセルするまでの時間数変更時に指定（1〜168・null=据え置き・W2-6） */
+  pendingExpireHours?: number
+  /** 仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先・W2-6） */
+  clearPendingExpireHours?: boolean
 }
 
 export interface CreateReservationRequest {

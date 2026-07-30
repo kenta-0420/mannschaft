@@ -18,14 +18,58 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 予約確認の予約対象ラベルに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
-// ダイアログを開くたびに最新の呼称を取得する（設定変更が即時反映されるように）。
-watch(() => props.visible, (v) => { if (v) void loadResourceName() }, { immediate: true })
+
+/**
+ * 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE）。
+ * GET /reservation-settings は ADMIN 限定ではなく view ゲート（会員/公開）のため会員側からも読める
+ * （`ReservationBusinessHourController` の `viewAccessGuard` Javadoc に明記）。
+ * approvalMode=MANUAL かつ pendingExpireHours が非 NULL のときのみ表示する
+ * （AUTO は仮押さえが発生せず無意味・自動失効なし設定のチームは誤情報になるため出さない）。
+ */
+const pendingExpireApprovalMode = ref<'AUTO' | 'MANUAL' | undefined>(undefined)
+const pendingExpireHours = ref<number | null>(null)
+
+async function loadPendingExpireNotice() {
+  try {
+    const res = await reservationApi.getReservationSettings(props.teamId)
+    pendingExpireApprovalMode.value = res.data.approvalMode
+    pendingExpireHours.value = res.data.pendingExpireHours ?? null
+  }
+  catch (error) {
+    // 取得失敗は注意書きを出さない方向にフォールバック（予約確定の可否自体は BE が最終判定するため、
+    // 注意書きが出ないだけで機能不全にはならない）。ただし完全に握りつぶすと恒常的な失敗が誰にも
+    // 見えなくなるため、ユーザーには出さずバックエンドへ静かに記録する（captureQuiet・症状を隠さない）。
+    captureQuiet(error, { context: 'ReservationForm: 仮押さえ失効設定の取得に失敗' })
+    pendingExpireApprovalMode.value = undefined
+    pendingExpireHours.value = null
+  }
+}
+
+const showPendingExpireNotice = computed(
+  () => pendingExpireApprovalMode.value === 'MANUAL' && pendingExpireHours.value != null,
+)
+
+// ダイアログを開くたびに最新の呼称・仮押さえ失効設定を取得する（設定変更が即時反映されるように）。
+watch(() => props.visible, (v) => {
+  if (v) {
+    void loadResourceName()
+    void loadPendingExpireNotice()
+  }
+}, { immediate: true })
 
 const submitting = ref(false)
 const serviceNotes = ref('')
+
+/** BE エラー応答から RESERVATION_xxx コードを取り出す（GroupBookingDialog と同じ抽出パターン）。 */
+function extractErrorCode(error: unknown): string | undefined {
+  const apiError = error as { data?: { error?: { code?: string } } }
+  return apiError?.data?.error?.code
+}
 
 async function submit() {
   if (!props.slotId || !props.lineId) return
@@ -40,7 +84,15 @@ async function submit() {
     emit('reserved')
     close()
   }
-  catch { notification.error(t('reservation.message.reserve_failed')) }
+  catch (error) {
+    // 429=RESERVATION_053（予約作成レートリミット・W2-6 §6.4）は汎用文言でなく専用文言で案内する。
+    if (extractErrorCode(error) === 'RESERVATION_053') {
+      notification.error(t('reservation.message.rate_limited'))
+    }
+    else {
+      notification.error(t('reservation.message.reserve_failed'))
+    }
+  }
   finally { submitting.value = false }
 }
 
@@ -64,6 +116,16 @@ function close() {
         <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>
         <Textarea v-model="serviceNotes" rows="2" class="w-full" :placeholder="t('reservation.placeholder.note')" />
       </div>
+      <!-- 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE）。
+           承認制(MANUAL)かつ自動失効が有効(pendingExpireHours非NULL)のときのみ表示する。 -->
+      <Message
+        v-if="showPendingExpireNotice"
+        severity="info"
+        :closable="false"
+        data-testid="pending-expire-notice"
+      >
+        {{ t('reservation.pending_expire_notice.form_note', { n: pendingExpireHours }) }}
+      </Message>
     </div>
     <template #footer>
       <Button :label="t('reservation.button.cancel')" text @click="close" />
