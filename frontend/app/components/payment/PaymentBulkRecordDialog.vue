@@ -86,7 +86,11 @@ function onSubmit() {
   if (!canSubmit.value) return
   // Issue #2508: BE の paidAt は LocalDateTime で受信時オフセットを無視するため、
   // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
-  const at = buildOffsetDateTimeStr(paidAt.value)
+  // paidAt は「日付のみ」ピッカー（show-time なし）のため、time に '' を明示して
+  // 00:00:00 として解釈させる（省略すると Date 自身の時刻＝実行時の現在時刻が入ってしまう）。
+  const at = buildOffsetDateTimeStr(paidAt.value, '')
+  // 解決できない場合は不正な状態として送信をブロックする（旧形式へのフォールバックはしない）。
+  if (!at) return
   const bodies = selectedUserIds.value.map<Record<string, unknown>>((userId) => ({
     userId,
     amountPaid: props.defaultAmount,

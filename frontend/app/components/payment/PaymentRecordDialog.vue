@@ -86,10 +86,15 @@ function onSubmit() {
   if (!canSubmit.value || userId.value == null) return
   // Issue #2508: BE の paidAt は LocalDateTime で受信時オフセットを無視するため、
   // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
+  // paidAt は「日付のみ」ピッカー（show-time なし）のため、time に '' を明示して
+  // 00:00:00 として解釈させる（省略すると Date 自身の時刻＝実行時の現在時刻が入ってしまう）。
+  const paidAtIso = buildOffsetDateTimeStr(paidAt.value, '')
+  // 解決できない場合は不正な状態として送信をブロックする（旧形式へのフォールバックはしない）。
+  if (!paidAtIso) return
   const body: Record<string, unknown> = {
     userId: userId.value,
     amountPaid: amountPaid.value,
-    paidAt: buildOffsetDateTimeStr(paidAt.value),
+    paidAt: paidAtIso,
     paymentMethod: paymentMethod.value,
   }
   if (note.value.trim().length > 0) body.note = note.value.trim()

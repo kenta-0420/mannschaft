@@ -95,13 +95,6 @@ describe('BroadcastStep3Content.vue', () => {
 
   it('BC3-003: 非JST（America/Los_Angeles）ユーザーでも expiresAt にそのTZのオフセットが付く', async () => {
     await withSystemTz('America/Los_Angeles', async () => {
-      useAuthStore().user = {
-        id: 1,
-        email: 'la-user@example.com',
-        fullName: 'LA User',
-        profileImageUrl: null,
-        timezone: 'America/Los_Angeles',
-      }
       const wrapper = await mountSuspended(BroadcastStep3Content, {
         props: {
           modelValue: baseModelValue(),
@@ -110,6 +103,16 @@ describe('BroadcastStep3Content.vue', () => {
           broadcasting: false,
         },
       })
+      // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して
+      // setActivePinia() し直すため、mountSuspended より前に useAuthStore().user を
+      // セットしても、マウント後に上書きされて反映されない。必ずマウント後にセットする。
+      useAuthStore().user = {
+        id: 1,
+        email: 'la-user@example.com',
+        fullName: 'LA User',
+        profileImageUrl: null,
+        timezone: 'America/Los_Angeles',
+      }
       const vm = wrapper.vm as unknown as { expiresAt: Date | null }
       vm.expiresAt = new Date(2026, 5, 10, 18, 0, 0) // 2026-06-10 18:00 PDT
       await wrapper.vm.$nextTick()

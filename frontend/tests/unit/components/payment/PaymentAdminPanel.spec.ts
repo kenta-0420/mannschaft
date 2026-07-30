@@ -258,6 +258,15 @@ describe('PaymentBulkRecordDialog.vue (AC-20)', () => {
   })
 
   it('Issue #2508: 非JST（America/Los_Angeles）ユーザーでも paidAt にそのTZのオフセットが付く', async () => {
+    const payments = [
+      buildPayment({ id: 2, userId: 200, userName: 'A', statusInfo: { status: 'UNPAID', validFrom: null, validUntil: null, paidAt: null } }),
+    ]
+    const wrapper = await mountSuspended(PaymentBulkRecordDialog, {
+      props: { visible: true, defaultAmount: 3000, payments },
+    })
+    // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して
+    // setActivePinia() し直すため、mountSuspended より前に useAuthStore().user を
+    // セットしても、マウント後に上書きされて反映されない。必ずマウント後にセットする。
     useAuthStore().user = {
       id: 1,
       email: 'la-user@example.com',
@@ -265,12 +274,6 @@ describe('PaymentBulkRecordDialog.vue (AC-20)', () => {
       profileImageUrl: null,
       timezone: 'America/Los_Angeles',
     }
-    const payments = [
-      buildPayment({ id: 2, userId: 200, userName: 'A', statusInfo: { status: 'UNPAID', validFrom: null, validUntil: null, paidAt: null } }),
-    ]
-    const wrapper = await mountSuspended(PaymentBulkRecordDialog, {
-      props: { visible: true, defaultAmount: 3000, payments },
-    })
     const vm = wrapper.vm as unknown as {
       toggle: (id: number) => void
       onSubmit: () => void

@@ -444,6 +444,7 @@
       "saveSuccess": "Festival saved",
       "cancelSuccess": "Festival cancelled",
       "loadFailed": "Failed to load festival list",
+      "invalidDateTime": "The start/end date-time is invalid. Please re-enter it.",
       "filterAll": "All",
       "status": {
         "SCHEDULED": "Scheduled",

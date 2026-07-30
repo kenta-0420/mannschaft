@@ -34,7 +34,7 @@ const { t } = useI18n()
 const villageApi = useVillageApi()
 const { createPost: createTimelinePost } = useTimelineApi()
 const { handleApiError } = useErrorHandler()
-const { success } = useNotification()
+const { success, error: notifyError } = useNotification()
 const { confirmAction } = useConfirmDialog()
 const { buildOffsetDateTimeStr } = useDatetime()
 
@@ -172,18 +172,27 @@ function openEditDialog(f: VillageFestivalResponse) {
  * <p>Issue #2508: BE の startsAt/endsAt は LocalDateTime で受信時オフセットを無視するため、
  * 以前はオフセット無しの壁時計文字列をそのまま送っていた。useDatetime の共通道具
  * buildOffsetDateTimeStr を使い、明示的にオフセットを付与する。</p>
+ *
+ * <p>解決できない場合（不正な日時文字列等）は null を返す。オフセット無しの旧形式への
+ * フォールバックはしない（対処療法禁止・根治治療の原則。呼び出し側で送信をブロックする）。</p>
  */
-function datetimeLocalToOffsetIso(value: string): string {
-  return buildOffsetDateTimeStr(new Date(value)) ?? `${value}:00`
+function datetimeLocalToOffsetIso(value: string): string | null {
+  return buildOffsetDateTimeStr(new Date(value))
 }
 
 async function submitCreate() {
   if (!createForm.value.startsAt || !createForm.value.endsAt) return
+  const startsAt = datetimeLocalToOffsetIso(createForm.value.startsAt)
+  const endsAt = datetimeLocalToOffsetIso(createForm.value.endsAt)
+  if (!startsAt || !endsAt) {
+    notifyError(t('village.festival.invalidDateTime'))
+    return
+  }
   const body: VillageFestivalCreateRequest = {
     title: createForm.value.title,
     description: createForm.value.description || null,
-    startsAt: datetimeLocalToOffsetIso(createForm.value.startsAt),
-    endsAt: datetimeLocalToOffsetIso(createForm.value.endsAt),
+    startsAt,
+    endsAt,
     bannerR2Key: createForm.value.bannerR2Key || null,
     themeColorHex: createForm.value.themeColorHex || null,
   }
@@ -201,11 +210,18 @@ async function submitCreate() {
 
 async function submitEdit() {
   if (!editTargetId.value) return
+  const startsAt = editForm.value.startsAt ? datetimeLocalToOffsetIso(editForm.value.startsAt) : null
+  const endsAt = editForm.value.endsAt ? datetimeLocalToOffsetIso(editForm.value.endsAt) : null
+  // 入力があったのに解決できなかった場合のみ不正扱い（未入力＝null は「変更しない」の意味を保つ）。
+  if ((editForm.value.startsAt && !startsAt) || (editForm.value.endsAt && !endsAt)) {
+    notifyError(t('village.festival.invalidDateTime'))
+    return
+  }
   const body: VillageFestivalUpdateRequest = {
     title: editForm.value.title || null,
     description: editForm.value.description || null,
-    startsAt: editForm.value.startsAt ? datetimeLocalToOffsetIso(editForm.value.startsAt) : null,
-    endsAt: editForm.value.endsAt ? datetimeLocalToOffsetIso(editForm.value.endsAt) : null,
+    startsAt,
+    endsAt,
     bannerR2Key: editForm.value.bannerR2Key || null,
     themeColorHex: editForm.value.themeColorHex || null,
   }

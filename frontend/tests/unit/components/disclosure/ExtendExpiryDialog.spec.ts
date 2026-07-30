@@ -179,13 +179,6 @@ describe('ExtendExpiryDialog.vue', () => {
   it('Issue #2508: 非JST（America/Los_Angeles）ユーザーでも newExpiresAt にそのTZのオフセットが付く', async () => {
     const updated = buildExport({ expiresAt: '2027-08-01T00:00:00' })
     mockExtendExpiry.mockResolvedValueOnce(updated)
-    useAuthStore().user = {
-      id: 1,
-      email: 'la-user@example.com',
-      fullName: 'LA User',
-      profileImageUrl: null,
-      timezone: 'America/Los_Angeles',
-    }
 
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
@@ -194,6 +187,16 @@ describe('ExtendExpiryDialog.vue', () => {
         open: true,
       },
     })
+    // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して
+    // setActivePinia() し直すため、mountSuspended より前に useAuthStore().user を
+    // セットしても、マウント後に上書きされて反映されない。必ずマウント後にセットする。
+    useAuthStore().user = {
+      id: 1,
+      email: 'la-user@example.com',
+      fullName: 'LA User',
+      profileImageUrl: null,
+      timezone: 'America/Los_Angeles',
+    }
     const vm = wrapper.vm as unknown as {
       newExpiresAt: Date | null
       handleSubmit: () => Promise<void>

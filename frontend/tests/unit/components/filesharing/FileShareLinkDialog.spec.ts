@@ -98,6 +98,13 @@ describe('FileShareLinkDialog.vue', () => {
 
   it('FSL-002: 非JST（America/Los_Angeles）ユーザーでも expiresAt にそのTZのオフセットが付く', async () => {
     await withSystemTz('America/Los_Angeles', async () => {
+      mockCreateFileLink.mockResolvedValueOnce({ data: {} })
+      const wrapper = await mountSuspended(FileShareLinkDialog, {
+        props: { file: buildFile(), visible: true },
+      })
+      // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して
+      // setActivePinia() し直すため、mountSuspended より前に useAuthStore().user を
+      // セットしても、マウント後に上書きされて反映されない。必ずマウント後にセットする。
       useAuthStore().user = {
         id: 1,
         email: 'la-user@example.com',
@@ -105,10 +112,6 @@ describe('FileShareLinkDialog.vue', () => {
         profileImageUrl: null,
         timezone: 'America/Los_Angeles',
       }
-      mockCreateFileLink.mockResolvedValueOnce({ data: {} })
-      const wrapper = await mountSuspended(FileShareLinkDialog, {
-        props: { file: buildFile(), visible: true },
-      })
       const vm = wrapper.vm as unknown as {
         expiresAt: Date | null
         onCreate: () => Promise<void>
