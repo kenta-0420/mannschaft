@@ -14,6 +14,7 @@ import com.mannschaft.app.todo.dto.MilestoneResponse;
 import com.mannschaft.app.todo.dto.ReorderTodosRequest;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.repository.ProjectRepository;
+import com.mannschaft.app.todo.security.ProjectAccessGuard;
 import com.mannschaft.app.todo.service.MilestoneGateService;
 import com.mannschaft.app.todo.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,8 +42,18 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  * 個人スコープは {@code /api/v1/users/me/projects/{projectId}/...} の対応パスでも利用可能。</p>
  *
- * <p>IDOR 対策: teamId / projectId / milestoneId の三重検証を行う（プロジェクトのスコープ整合性
- * チェックおよび ProjectService 側でのマイルストーン所属チェックを併用）。</p>
+ * <p><b>認可</b>（IDOR/BOLA 対策）: いずれの EP も、まず対象プロジェクトを取得して
+ * <b>entity 由来のスコープ</b>が path のスコープと一致することを照合し、不一致は 404
+ * （{@link TodoErrorCode#PROJECT_NOT_FOUND}）で存在を秘匿する。リクエストのスコープ ID を
+ * そのまま信頼しない。</p>
+ * <ul>
+ *   <li><b>チームスコープ</b>: {@code validateTeamProjectAccess} が scope 束縛 + メンバーシップを検証し、
+ *       完了モード切替・ゲート初期化・並び替えは ADMIN/DEPUTY_ADMIN、強制アンロックは ADMIN のみに限定する。</li>
+ *   <li><b>個人スコープ</b>: {@link ProjectAccessGuard#validatePersonalProjectAccess} に一元化し、
+ *       プロジェクト所有者本人のみに限定する（他ユーザーのプロジェクト ID は 404）。</li>
+ * </ul>
+ * <p>マイルストーンがプロジェクトに属することは {@code ProjectService} 側で併せて検証する。
+ * 契約は {@code TodoPersonalScopeContractIT} で固定する。</p>
  */
 @Slf4j
 @RestController
@@ -54,6 +65,7 @@ public class MilestoneGateController {
     private final MilestoneGateService milestoneGateService;
     private final ProjectRepository projectRepository;
     private final AccessControlService accessControlService;
+    private final ProjectAccessGuard projectAccessGuard;
 
     // ============================================================
     // チームスコープ
@@ -148,7 +160,7 @@ public class MilestoneGateController {
     public ResponseEntity<ApiResponse<GatesSummaryResponse>> getPersonalGatesSummary(
             @PathVariable Long projectId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        validatePersonalProjectAccess(userId, projectId);
+        projectAccessGuard.validatePersonalProjectAccess(userId, projectId);
         return ResponseEntity.ok(projectService.getGatesSummary(projectId));
     }
 
@@ -162,7 +174,7 @@ public class MilestoneGateController {
             @PathVariable Long milestoneId,
             @Valid @RequestBody CompletionModeRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        validatePersonalProjectAccess(userId, projectId);
+        projectAccessGuard.validatePersonalProjectAccess(userId, projectId);
         return ResponseEntity.ok(projectService.changeMilestoneCompletionMode(
                 projectId, milestoneId, request.completionMode()));
     }
@@ -177,7 +189,7 @@ public class MilestoneGateController {
             @PathVariable Long milestoneId,
             @Valid @RequestBody ForceUnlockRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        validatePersonalProjectAccess(userId, projectId);
+        projectAccessGuard.validatePersonalProjectAccess(userId, projectId);
         milestoneGateService.forceUnlock(milestoneId, userId, request.reason());
         return ResponseEntity.ok().build();
     }
@@ -191,7 +203,7 @@ public class MilestoneGateController {
             @PathVariable Long projectId,
             @PathVariable Long milestoneId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        validatePersonalProjectAccess(userId, projectId);
+        projectAccessGuard.validatePersonalProjectAccess(userId, projectId);
         milestoneGateService.initializeGate(milestoneId);
         return ResponseEntity.ok().build();
     }
@@ -206,7 +218,7 @@ public class MilestoneGateController {
             @PathVariable Long milestoneId,
             @Valid @RequestBody ReorderTodosRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        validatePersonalProjectAccess(userId, projectId);
+        projectAccessGuard.validatePersonalProjectAccess(userId, projectId);
         projectService.reorderTodosInMilestone(projectId, milestoneId, request.todoIds());
         return ResponseEntity.ok().build();
     }
@@ -246,21 +258,6 @@ public class MilestoneGateController {
         }
     }
 
-    /**
-     * 個人プロジェクトへのアクセスを検証する。
-     *
-     * <p>個人プロジェクトは作成者本人のみが操作可能。ADMIN 概念は適用しないが、
-     * 強制アンロックも作成者本人なら可（設計書 §4 準拠）。</p>
-     *
-     * @param userId    現在ユーザー ID
-     * @param projectId パス上のプロジェクト ID
-     */
-    private void validatePersonalProjectAccess(Long userId, Long projectId) {
-        ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
-                .orElseThrow(() -> new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND));
-        if (project.getScopeType() != TodoScopeType.PERSONAL
-                || !project.getScopeId().equals(userId)) {
-            throw new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND);
-        }
-    }
+    // 個人プロジェクトの所有権検証は {@link ProjectAccessGuard#validatePersonalProjectAccess} に一元化した
+    // （同一ロジックの重複実装を廃し、todo ドメインの認可ガードへ寄せた）。
 }

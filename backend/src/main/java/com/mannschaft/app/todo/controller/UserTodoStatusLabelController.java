@@ -26,6 +26,12 @@ import java.util.List;
 
 /**
  * 個人スコープ TODO ステータスラベル管理 API（F02.3.1 Phase 1a）。
+ *
+ * <p><b>認可</b>: スコープ ID は常に {@code SecurityUtils.getCurrentUserId()} で確定した
+ * 認証主体の ID を渡し、リクエストからは指定できない（自己スコープ）。加えて
+ * {@code TodoStatusLabelService} が「ラベル本体のスコープ == 操作ユーザー」を照合し、
+ * 他ユーザーのラベル ID を指定した更新・削除は 404 で存在を秘匿する（BOLA/IDOR 対策）。
+ * 契約は {@code TodoStatusLabelScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users/me/todo-status-labels")
