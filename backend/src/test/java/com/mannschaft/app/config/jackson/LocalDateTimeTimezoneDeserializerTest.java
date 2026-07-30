@@ -276,6 +276,22 @@ class LocalDateTimeTimezoneDeserializerTest {
         void 前後空白_トリムされる() throws Exception {
             assertThat(read("  2026-05-22T09:15:20  ")).isEqualTo(EXPECTED_JST);
         }
+
+        @Test
+        @DisplayName("配列形式は無音で null にせず例外にする（日時フィールドが黙って消えるのを防ぐ）")
+        void 配列形式_例外() {
+            // getValueAsString() は非文字列トークンで null を返すため、
+            // ガードが無いと「日時が無音で消える」握り潰しになる
+            assertThatThrownBy(() -> objectMapper.readValue("[2026,5,22,9,15,20]", LocalDateTime.class))
+                    .isInstanceOf(InvalidFormatException.class);
+        }
+
+        @Test
+        @DisplayName("数値タイムスタンプも無音で null にせず例外にする")
+        void 数値タイムスタンプ_例外() {
+            assertThatThrownBy(() -> objectMapper.readValue("1779999320", LocalDateTime.class))
+                    .isInstanceOf(InvalidFormatException.class);
+        }
     }
 
     // ------------------------------------------------------------------

@@ -1,6 +1,7 @@
 package com.mannschaft.app.config.jackson;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
@@ -83,6 +84,15 @@ public class LocalDateTimeTimezoneDeserializer extends JsonDeserializer<LocalDat
 
     @Override
     public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+        // 文字列トークン以外（配列形式 [2026,5,22,...] や数値タイムスタンプ）は本デシリアライザの契約外。
+        // getValueAsString() は非文字列トークンで null を返すため、そのまま返すと
+        // 「日時フィールドが無音で消える」握り潰しになる。400 として明示的に失敗させる。
+        if (!p.hasToken(JsonToken.VALUE_STRING)) {
+            throw InvalidFormatException.from(p,
+                    "日時は ISO-8601 文字列で指定してください（配列形式・数値は非対応）",
+                    p.getText(), LocalDateTime.class);
+        }
+
         String raw = p.getValueAsString();
         if (raw == null) {
             return null;
