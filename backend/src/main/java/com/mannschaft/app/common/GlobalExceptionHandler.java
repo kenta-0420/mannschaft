@@ -1043,7 +1043,17 @@ public class GlobalExceptionHandler {
             Map.entry("FAMILY_016", HttpStatus.NOT_FOUND),               // DUTY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FAMILY_018", HttpStatus.NOT_FOUND),               // ANNIVERSARY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FAMILY_025", HttpStatus.NOT_FOUND),               // CARE_LINK_NOT_FOUND（存在秘匿 → 404）
+            Map.entry("FAMILY_029", HttpStatus.NOT_FOUND),               // 招待トークン不一致（存在秘匿 → 404）
             Map.entry("FAMILY_030", HttpStatus.FORBIDDEN),               // ケアリンク操作権限なし（当事者以外 → 403）
+            // 認可根治戦役 第2波 ロットA: F04.8 contact の *_NOT_FOUND は、対象が自分のスコープ外
+            // （他ユーザーの連絡先・招待トークン・事前拒否・申請）の場合にも同一コードを返す存在秘匿の要。
+            // Severity.WARN 既定の 400 では存在秘匿の契約にならないため 404 へ上書きする。
+            // CONTACT_007（スコープ参照権限なし）は明確な認可拒否のため 403 へ上書きする。
+            Map.entry("CONTACT_006", HttpStatus.NOT_FOUND),              // 申請が見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_007", HttpStatus.FORBIDDEN),              // スコープ参照権限なし → 403
+            Map.entry("CONTACT_010", HttpStatus.NOT_FOUND),              // 事前拒否設定が見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_014", HttpStatus.NOT_FOUND),              // 招待トークンが見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_015", HttpStatus.NOT_FOUND),              // 連絡先が見つからない（存在秘匿 → 404）
             // 認可根治戦役 Wave 2 トランシェ2C: F05.6 workflow（稟議/申請ワークフロー）は
             // entity 由来の scopeType/scopeId で認可判定するため、path/リクエストの scope 不一致・
             // 非所属者アクセスは同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと

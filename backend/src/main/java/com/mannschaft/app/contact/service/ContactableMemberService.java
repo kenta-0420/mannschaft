@@ -25,6 +25,16 @@ import java.util.stream.Collectors;
 
 /**
  * チーム/組織メンバーからの連絡先申請可能メンバー一覧サービス。
+ *
+ * <p><b>保証する可視性（設計書 {@code docs/features/F04.8_contact.md §4.7}）</b>:
+ * メンバー一覧の参照可否は<b>entity（チーム・組織）から取得した {@code visibility}</b> で判定し、
+ * リクエスト値は信頼しない。{@code PUBLIC} のスコープは認証ユーザーに開示し、
+ * それ以外のスコープは<b>当該スコープのメンバーに限定</b>する（非メンバーは
+ * {@link ContactErrorCode#CONTACT_007} = 403、不存在スコープは
+ * {@link ContactErrorCode#CONTACT_015} = 404）。</p>
+ *
+ * <p>開示するのは氏名・ハンドル・アバターと申請状態のみに絞り、ブロック関係にある相手は
+ * 一覧から除外する（{@code buildContactableResponses}）。</p>
  */
 @Service
 @Transactional(readOnly = true)
