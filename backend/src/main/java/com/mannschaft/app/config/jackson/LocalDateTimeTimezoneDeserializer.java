@@ -92,33 +92,44 @@ public class LocalDateTimeTimezoneDeserializer extends JsonDeserializer<LocalDat
             return null;
         }
 
-        // 1. オフセット付き: 瞬間が確定しているのでサーバー基準 TZ の壁時計へ変換する
         try {
+            // 1. オフセット付き: 瞬間が確定しているのでサーバー基準 TZ の壁時計へ変換する
             return OffsetDateTime.parse(text)
                     .atZoneSameInstant(SERVER_ZONE)
                     .toLocalDateTime();
         } catch (DateTimeParseException withOffsetFailed) {
-            // オフセット無しの可能性があるので次の解釈へ進む
-        }
-
-        // 2. オフセット無し: ユーザー TZ が解決済みならその壁時計、未解決ならサーバー基準 TZ の壁時計
-        try {
-            LocalDateTime wallClock = LocalDateTime.parse(text);
-            ZoneId inputZone = TimezoneContextHolder.isResolved()
-                    ? TimezoneContextHolder.get()
-                    : SERVER_ZONE;
-            if (SERVER_ZONE.equals(inputZone)) {
-                // 恒等変換（国内ユーザー・バッチ・未認証）。無駄な TZ 往復を避ける
-                return wallClock;
+            try {
+                // 2. オフセット無し: 解決済みならユーザー TZ の壁時計、未解決ならサーバー基準 TZ の壁時計
+                return toServerWallClock(LocalDateTime.parse(text));
+            } catch (DateTimeParseException withoutOffsetFailed) {
+                // 3. どちらとしても解釈できない: 握り潰さず 400 として失敗させる
+                throw InvalidFormatException.from(p,
+                        "日時として解釈できません（ISO-8601 形式で指定してください）: " + text,
+                        text, LocalDateTime.class);
             }
-            return wallClock.atZone(inputZone)
-                    .withZoneSameInstant(SERVER_ZONE)
-                    .toLocalDateTime();
-        } catch (DateTimeParseException withoutOffsetFailed) {
-            // 3. どちらとしても解釈できない: 握り潰さず 400 として失敗させる
-            throw InvalidFormatException.from(p,
-                    "日時として解釈できません（ISO-8601 形式で指定してください）: " + text,
-                    text, LocalDateTime.class);
         }
+    }
+
+    /**
+     * オフセット無しで受け取った壁時計を、サーバー保持形式（{@link #SERVER_ZONE} の壁時計）へ変換する。
+     *
+     * <p>入力の壁時計をどの TZ のものと見なすかは {@link TimezoneContextHolder#isResolved()} で決める。
+     * <b>{@link TimezoneContextHolder#get()} を無条件に信じてはならない</b>
+     * （未認証・バッチの既定 UTC と、ユーザー由来の TZ を区別できないため）。</p>
+     *
+     * @param wallClock 入力の壁時計
+     * @return サーバー保持形式の {@link LocalDateTime}
+     */
+    private static LocalDateTime toServerWallClock(LocalDateTime wallClock) {
+        ZoneId inputZone = TimezoneContextHolder.isResolved()
+                ? TimezoneContextHolder.get()
+                : SERVER_ZONE;
+        if (SERVER_ZONE.equals(inputZone)) {
+            // 恒等変換（国内ユーザー・バッチ・未認証）。無駄な TZ 往復を避ける
+            return wallClock;
+        }
+        return wallClock.atZone(inputZone)
+                .withZoneSameInstant(SERVER_ZONE)
+                .toLocalDateTime();
     }
 }
