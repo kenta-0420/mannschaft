@@ -467,11 +467,11 @@ class CorkboardBoardScopeContractIT extends AbstractMySqlIntegrationTest {
     private boolean cardIsPinned(Long cardId) {
         em.flush();
         em.clear();
-        Number pinned = (Number) em.createNativeQuery(
+        Object pinned = em.createNativeQuery(
                         "SELECT is_pinned FROM corkboard_cards WHERE id = :id")
                 .setParameter("id", cardId)
                 .getSingleResult();
-        return pinned != null && pinned.intValue() == 1;
+        return Boolean.TRUE.equals(pinned);
     }
 
     private void setAuthentication(Long userId) {

@@ -28319,7 +28319,7 @@ export interface paths {
         head?: never;
         /**
          * お気に入り並び替え
-         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。
+         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。
          */
         patch: operations["reorderFavorites"];
         trace?: never;
@@ -137271,8 +137271,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 他ユーザーのお気に入りが含まれている */
-            403: {
+            /** @description 自分のお気に入りに存在しないIDが含まれている */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
