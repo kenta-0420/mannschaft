@@ -284,20 +284,65 @@ export default defineNuxtConfig({
         // 限定し、それ以外は必ず NetworkOnly（キャッシュ禁止）とする。
         //
         // workbox は先勝ちマッチのため、以下の順序が重要:
-        //   1. /api/v1/public/** と /api/v1/recruitment-categories → SWR
-        //   2. その他 /api/v1/** → NetworkOnly（セーフガード）
+        //   1. /api/v1/public/** → NetworkFirst（公開コンテンツ・鮮度優先）
+        //   2. /api/v1/recruitment-categories → SWR（静的マスタ・鮮度不要）
+        //   3. その他 /api/v1/** → NetworkOnly（セーフガード）
         // ─────────────────────────────────────────────────────────────────
 
-        // 公開 API（認証不要）のみ StaleWhileRevalidate でキャッシュ:
-        //   /api/v1/public/** — 未ログイン公開閲覧用エンドポイント（F19.1 等）
-        //   /api/v1/recruitment-categories — 未ログイン参照可能なカテゴリ一覧
+        // 公開コンテンツ API（認証不要）は NetworkFirst — 「鮮度」を最優先する。
+        //
+        // 【なぜ SWR をやめたか】
+        // 旧設定は StaleWhileRevalidate + maxAgeSeconds 86400（24時間）だった。
+        // SWR は「キャッシュを即返し、裏で更新する」戦略のため、投稿者が記録を
+        // 非公開に戻す / 削除しても、一度でも閲覧した端末では最大 24 時間
+        // 古い本文が表示され続けた。「間違って公開したので急いで消した」場合に
+        // 投稿者の意思がまったく届かない、という質の悪い不具合になっていた。
+        //
+        // 【NetworkFirst のコストはゼロ】
+        // SWR は workbox-strategies/StaleWhileRevalidate の実装上、キャッシュ
+        // ヒットの有無にかかわらず毎回 fetchAndCachePut() を発火する。つまり
+        // ネットワーク往復の回数は SWR と NetworkFirst で同一であり、
+        // PublicApiRateLimitFilter（未認証 60 req/min/IP）の消費量は変わらない。
+        // 変わるのは「レスポンスを画面に渡すのがネットワーク応答後になる」点だけ。
+        //
+        // 【オフライン体験は維持する】
+        // networkTimeoutSeconds: 3 で、圏外・低速回線では 3 秒でキャッシュに
+        // フォールバックする。非公開化後に BE が 404 を返す場合、NetworkFirst は
+        // その 404 をそのまま画面へ返す（キャッシュ参照はネットワーク「失敗」時のみ）。
+        //
+        // 【maxAgeSeconds を 24時間 → 1時間 に短縮した理由】
+        // NetworkFirst ではこの値は「オフライン時のフォールバック可能期間」だけを
+        // 意味する。公開ページのオフライン利用は電車のトンネル・エレベーター等の
+        // 一時的な断線が実態なので 1 時間で十分であり、かつ「消したものが見える」
+        // 最悪ケースを 24時間 → 1時間 に圧縮できる。
+        //
+        // 【cacheName は 'api-cache' のまま維持】
+        // 既に端末に配布済みの古い api-cache を孤児化させないため。名前を変えると
+        // 旧キャッシュは誰も参照・失効させない残骸になる。同名を維持することで
+        // 旧エントリは NetworkFirst の成功レスポンスで上書きされ、
+        // ExpirationPlugin の新しい 1 時間ルールで掃除される。
         {
-          urlPattern: /\/api\/v1\/(public\/.*|recruitment-categories(?=[?#]|$))/,
-          handler: 'StaleWhileRevalidate' as const,
+          urlPattern: /\/api\/v1\/public\//,
+          handler: 'NetworkFirst' as const,
           method: 'GET',
           options: {
             cacheName: 'api-cache',
-            expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
+            networkTimeoutSeconds: 3,
+            expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        // 静的マスタ（募集カテゴリ一覧）は StaleWhileRevalidate 24時間を維持。
+        // 運用バッチでしか変わらない参照データで鮮度要件が無く、絞り込み UI の
+        // 即時描画が効く。公開コンテンツと maxAgeSeconds が異なるため、
+        // ExpirationPlugin の設定衝突を避けて別 cacheName に分離する。
+        {
+          urlPattern: /\/api\/v1\/recruitment-categories(?=[?#]|$)/,
+          handler: 'StaleWhileRevalidate' as const,
+          method: 'GET',
+          options: {
+            cacheName: 'api-static-cache',
+            expiration: { maxEntries: 20, maxAgeSeconds: 86400 },
             cacheableResponse: { statuses: [0, 200] },
           },
         },
