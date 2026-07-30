@@ -77,14 +77,21 @@ class ReservationRecurringBlockedTimeServiceTest {
 
     @BeforeEach
     void setUp() {
+        // F03.4.5 §6.2 W2-5（強行登録）で slotRepository / slotService / eventPublisher が追加された。
+        // 本テストは force を使わない従来経路のみを見るため mock のままで十分（呼ばれない）。
         service = new ReservationRecurringBlockedTimeService(
                 ruleRepository, lineRepository, reservationRepository, unavailabilityChecker,
-                nameResolverService, auditLogService, clock);
+                nameResolverService, auditLogService,
+                org.mockito.Mockito.mock(
+                        com.mannschaft.app.reservation.repository.ReservationSlotRepository.class),
+                org.mockito.Mockito.mock(ReservationSlotService.class),
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+                clock);
     }
 
     private CreateRecurringBlockedTimeRequest createRequest(
             Long lineId, ReservationDayOfWeek dow, LocalTime start, LocalTime end, String reason, Boolean isPublic) {
-        return new CreateRecurringBlockedTimeRequest(lineId, dow, start, end, reason, isPublic);
+        return new CreateRecurringBlockedTimeRequest(lineId, dow, start, end, reason, isPublic, null);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -270,7 +277,7 @@ class ReservationRecurringBlockedTimeServiceTest {
         given(ruleRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         UpdateRecurringBlockedTimeRequest request =
-                new UpdateRecurringBlockedTimeRequest(null, null, null, null, null, null, null, false);
+                new UpdateRecurringBlockedTimeRequest(null, null, null, null, null, null, null, false, null);
         RecurringBlockedTimeResponse response = service.updateRule(TEAM_ID, ruleId, request, CREATED_BY);
 
         assertThat(response.getIsActive()).isFalse();
@@ -288,7 +295,7 @@ class ReservationRecurringBlockedTimeServiceTest {
         given(ruleRepository.findByIdAndTeamId(ruleId, TEAM_ID)).willReturn(Optional.empty());
 
         UpdateRecurringBlockedTimeRequest request =
-                new UpdateRecurringBlockedTimeRequest(null, null, null, null, null, "変更後", null, null);
+                new UpdateRecurringBlockedTimeRequest(null, null, null, null, null, "変更後", null, null, null);
 
         assertThatThrownBy(() -> service.updateRule(TEAM_ID, ruleId, request, CREATED_BY))
                 .isInstanceOf(BusinessException.class)

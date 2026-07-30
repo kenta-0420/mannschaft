@@ -44,6 +44,12 @@ public interface ReservationMapper {
     @Mapping(target = "slot", ignore = true)
     // F03.4.3: group（予約グループ要約）は代表行の兄弟行集約が必要なため Service 層が一括解決して後付けする（ここでは null）。
     @Mapping(target = "group", ignore = true)
+    // F03.4.5 §6.2 W2-5: 定期予約の series 要約・結果明細は「操作の結果」であってエンティティ 1 行から
+    // 導出できるものではない（複数週の成立/スキップ集計・キャンセル/承認の明細）。Service 層が
+    // 操作直後に組み立てて後付けするため、ここでは常に null にする（一覧・詳細 GET では null のまま）。
+    @Mapping(target = "recurring", ignore = true)
+    @Mapping(target = "recurringCancel", ignore = true)
+    @Mapping(target = "recurringConfirm", ignore = true)
     @Mapping(target = "identifier", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationIdentifierDto(entity.getReservationSlotId(), entity.getLineId(), entity.getTeamId(), entity.getUserId(), null))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getBookedAt(), entity.getConfirmedAt(), entity.getCompletedAt()))")
     @Mapping(target = "cancellation", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.CancellationDto(entity.getCancelledAt(), entity.getCancelReason(), entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null))")

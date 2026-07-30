@@ -16,8 +16,10 @@ import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringOverlapRow;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +68,15 @@ public class ReservationRecurringBlockedTimeService {
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     private final NameResolverService nameResolverService;
     private final AuditLogService auditLogService;
+    /** F03.4.5 §6.2 W2-5（強行登録）: 枠の取得（一括）。 */
+    private final ReservationSlotRepository slotRepository;
+    /**
+     * F03.4.5 §6.2 W2-5（強行登録）: 枠復帰の唯一の統合点。
+     * DB が実際に FULL→AVAILABLE 遷移を起こしたときのみ §6.1 のキャンセル待ち通知が連鎖する。
+     */
+    private final ReservationSlotService slotService;
+    /** F03.4.5 §6.2 W2-5（強行登録）: 申込者への通知を AFTER_COMMIT で送るためのイベント発行者。 */
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     // ────────────────────────────────────────────────────────────

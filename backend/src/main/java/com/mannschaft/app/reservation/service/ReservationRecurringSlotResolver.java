@@ -1,7 +1,13 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
+import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -32,7 +38,20 @@ import java.util.List;
  * 同一状況で返る理由が実行ごとに変わり、FE の文言が非決定的になる。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class ReservationRecurringSlotResolver {
+
+    private static final List<ReservationStatus> ACTIVE_STATUSES =
+            List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
+
+    private final ReservationSlotRepository slotRepository;
+    /** 機能B: 単発の予約不可枠（対象期間ぶんを 1 クエリで先読み）。 */
+    private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** F03.4.5 §4: 定期予約不可枠の active ルール（チーム単位 1 クエリ・最大 50 行）。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+    /** 単発＋定期を 1 本で判定する共有ユーティリティ（別実装厳禁・§4.2）。 */
+    private final ReservationUnavailabilityChecker unavailabilityChecker;
+    private final ReservationRepository reservationRepository;
 
     /**
      * 週次の枠解決を行う。

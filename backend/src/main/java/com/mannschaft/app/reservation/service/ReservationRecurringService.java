@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+
 /**
  * 定期予約（毎週繰り返し）の<b>オーケストレーター</b>（F03.4.5 §6.2 W2-5）。
  *
@@ -36,6 +38,19 @@ public class ReservationRecurringService {
 
     /** 繰り返し週数の上限（設計書 §6.2・13 以上は {@code RESERVATION_054}）。 */
     static final int MAX_REPEAT_WEEKS = 12;
+
+    /** 予約閲覧の view ゲート（会員 or 公開）。series 単位で 1 回だけ適用する。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
+    /** 予約作成レートリミット（zone {@code reservation-create}）。1 series = 1 消費（AC-5-11）。 */
+    private final ReservationCreateRateLimiter createRateLimiter;
+    /** 週ごとの作成を「独立トランザクション」で実行させるための別 Bean。 */
+    private final ReservationService reservationService;
+    /** 起点枠の取得（日付・時間帯・ラインの基準）。 */
+    private final ReservationSlotService slotService;
+    /** 週次枠解決（固定本数クエリ・N+1 なし）。 */
+    private final ReservationRecurringSlotResolver slotResolver;
+    /** series ID（UUIDv7）採番の基準時刻。テストは固定 Clock を注入する。 */
+    private final Clock clock;
 
     /**
      * 定期予約を作成する（起点週を含む最大 12 週）。
