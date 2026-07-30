@@ -27,6 +27,13 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * プレゼンスコントローラー。帰ったよ通知・お出かけ連絡APIを提供する。
+ *
+ * <p><b>認可</b>: チーム指定の送信・状況参照・履歴・統計は
+ * {@code PresenceService} が {@code AccessControlService#checkMembership} で
+ * 当該チームのメンバーに限定する（在宅状況は行動パターンにあたるため非メンバーは 403）。
+ * {@code /users/me/presence/*} の一括送信は送信元が認証主体に固定され、リクエストから
+ * 他ユーザーや対象チームを指定する余地がない（自己スコープ）。契約は
+ * {@code CareLinkInvitationScopeContractIT} で固定する。</p>
  */
 @RestController
 @Tag(name = "プレゼンス", description = "F01.4 帰ったよ通知・お出かけ連絡")

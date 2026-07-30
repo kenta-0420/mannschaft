@@ -330,8 +330,36 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       全 36 EP について「無関係な他ユーザー → 404 / 403」または
      *       「他ユーザーのデータが混入しないこと」を実測で固定し、正常系も併せて張った</li>
      * </ul>
+     *
+     * <p><b>600 → 583</b>（2026-07-30 / 第2波・PII 領域 ロットA = contact 24 EP + family 15 EP の
+     * 全数監査で 17 件解消）: 本ロットが削除した 17 行は contact / family、直前のロットB が
+     * 削除した 36 行は actionmemo / quickmemo で<b>互いに素</b>であり重複はない。
+     * 起点にした main は 636 行だったが、ロットB（36 件解消）の着地を取り込んだ結果
+     * 600 − 17 = 583 となる。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（3件）</b>: 招待トークン経由のケアリンク参照・承認・拒否
+     *       （{@code PublicCareLinkController}）に<b>当事者本人の照合</b>を敷設した。
+     *       ケアリンクは双方の同意でのみ成立させる方針に合わせ、参照は当事者、承認・拒否は
+     *       招待を受けた側に限定する（{@code CareLinkService#requireParty} /
+     *       {@code #requireInvitee}）。</li>
+     *   <li><b>存在秘匿の契約整備（7件）</b>: contact ドメインの当事者照合は元から entity 由来の
+     *       ID で行っていたが、{@code ERROR_CODE_STATUS_MAP} 未登録のため 400 にフォールバックし
+     *       存在秘匿の契約が成立していなかった。{@code CONTACT_006/010/014/015} を 404、
+     *       {@code CONTACT_007} を 403 として登録し、申請の当事者外アクセスは
+     *       {@code CONTACT_006}（404）に統一した。</li>
+     *   <li><b>認可済み・番人から不可視（7件）</b>: チーム／組織のメンバー一覧（設計書
+     *       {@code F04.8_contact.md §4.7} の公開範囲判定）、ケアリンクの通知設定変更・解除、
+     *       チームケア通知上書き 3 EP。いずれも entity 由来スコープでの判定を監査のうえ
+     *       {@code @AuthorizedInService} で明示承認した。</li>
+     * </ul>
+     * <p>自己スコープ EP（連絡先一覧・申請一覧・招待トークン一覧／発行・事前拒否一覧／追加・
+     * プライバシー設定・自分のハンドル・ケアリンク一覧／招待発行・プレゼンス一括送信）と、
+     * 対象ユーザー自身の公開設定に従うハンドル検索・capability トークンのみで成立する
+     * 連絡先招待受諾は<b>凍結を継続</b>する（違反隠蔽ではなく監査済み。看板だけの
+     * {@code @PreAuthorize("isAuthenticated()")} は貼らない）。契約は
+     * {@code ContactScopeContractIT} / {@code CareLinkInvitationScopeContractIT} で固定した。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 600;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 583;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
