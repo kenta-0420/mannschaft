@@ -121,8 +121,17 @@ class ReservationRecurringSeriesScopeTest {
     @BeforeEach
     void setUp() {
         service = buildService(FIXED_CLOCK);
+        // enrich() は identifier を再構築する（withUserName）ため、mapper のスタブは
+        // identifier を持つレスポンスを返さなければならない（null だと NPE で本題に到達できない）。
         given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
-                .willReturn(ReservationResponse.builder().id(1L).build());
+                .willAnswer(inv -> {
+                    ReservationEntity e = inv.getArgument(0);
+                    return ReservationResponse.builder()
+                            .id(e.getId())
+                            .identifier(new ReservationResponse.ReservationIdentifierDto(
+                                    e.getReservationSlotId(), e.getLineId(), e.getTeamId(), e.getUserId(), null))
+                            .build();
+                });
         given(nameResolverService.resolveUserFullName(anyLong())).willReturn("山田 太郎");
         given(nameResolverService.resolveUserFullNames(anyCollection())).willReturn(java.util.Map.of());
         given(groupSummaryResolver.resolve(anyList())).willReturn(java.util.Map.of());

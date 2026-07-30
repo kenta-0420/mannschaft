@@ -402,12 +402,15 @@ public class ReservationRecurringBlockedTimeService {
                                 .map(ReservationEntity::getReservationSlotId).distinct().toList()).stream()
                 .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
 
-        for (ReservationEntity row : targets.values()) {
+        // Iterable ではなく List を渡す（JpaRepository.saveAll の戻り値は List であり、
+        // Collection ビューをそのまま渡すと戻り値の扱いが実装依存になる）。
+        List<ReservationEntity> toCancel = List.copyOf(targets.values());
+        for (ReservationEntity row : toCancel) {
             row.cancel(FORCE_CANCEL_REASON, CancelledBy.ADMIN);
         }
-        reservationRepository.saveAll(targets.values());
+        reservationRepository.saveAll(toCancel);
 
-        for (ReservationEntity row : targets.values()) {
+        for (ReservationEntity row : toCancel) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
             if (slot == null) {
                 // 枠が解決できないと booked_count を戻せない。握り潰さず記録する。
