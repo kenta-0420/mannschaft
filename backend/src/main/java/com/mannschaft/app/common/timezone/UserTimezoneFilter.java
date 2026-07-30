@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 /**
@@ -57,11 +58,13 @@ import java.util.Optional;
  *         <b>シリアライザの出力が +09:00 から Z へ変わってしまう</b>ため、既存挙動を保つ側に寄せる</td>
  *   </tr>
  *   <tr>
- *     <td>未ログイン / 匿名 / principal が userId でない</td><td>UTC</td><td>付けない</td>
+ *     <td>未ログイン / 匿名 / principal が userId でない</td>
+ *     <td>{@link ZoneOffset#UTC}</td><td>付けない</td>
  *     <td>ユーザーが特定できず TZ は不明。出力は従来どおり UTC</td>
  *   </tr>
  *   <tr>
- *     <td>{@code userTimezoneCache} が null（@WebMvcTest スライス等）</td><td>UTC</td><td>付けない</td>
+ *     <td>{@code userTimezoneCache} が null（@WebMvcTest スライス等）</td>
+ *     <td>{@link ZoneOffset#UTC}</td><td>付けない</td>
  *     <td>参照先が無く TZ を解決できない。javadoc どおり UTC に落とす
  *         （従来は null ガードが無く NPE になり得たのを塞いだ）</td>
  *   </tr>
@@ -77,18 +80,22 @@ public class UserTimezoneFilter extends OncePerRequestFilter {
     /**
      * ユーザー TZ を解決できなかった場合に印なしで積む ZoneId。
      *
-     * <p>改修前の実装（{@code return ZoneId.of("UTC");}）と<b>同一の値</b>を維持しており、
-     * 未認証リクエストの出力挙動は一切変わらない。</p>
+     * <p>{@link TimezoneContextHolder#get()} が<b>未セット時に返す値そのもの</b>（{@link ZoneOffset#UTC}）を
+     * 使う。これにより「フィルターが未解決として積んだ状態」と「ホルダーが未セットの状態」が
+     * <b>equals でも一致</b>し、二つの経路が同じ既定値であることが型の上で保証される。</p>
      *
-     * <p><b>注意</b>: {@code ZoneId.of("UTC")}（id = {@code "UTC"}）は {@link java.time.ZoneOffset#UTC}
-     * （id = {@code "Z"}）と<b>オフセットは同じだが equals では一致しない</b>。
-     * {@link TimezoneContextHolder#get()} の未セット時の戻り値は後者なので、
-     * 「フィルター通過中」と「クリア後」で ZoneId の実体は異なる。
-     * オフセットが同一のため {@link com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer} の
-     * 出力（ゼロオフセットは {@code "Z"} 表記）も {@code LocalDate.now(zone)} も差は出ないが、
-     * 等価比較に依存したコードを書かないこと。</p>
+     * <p><b>なぜ {@code ZoneId.of("UTC")} ではないのか</b>: 改修前の実装は {@code ZoneId.of("UTC")}
+     * （{@code ZoneRegion}・id = {@code "UTC"}）を返していたが、これは {@link ZoneOffset#UTC}
+     * （id = {@code "Z"}）と<b>オフセットは同じでも equals では一致しない</b>。
+     * 「未セット既定と同じ」という不変条件を名前だけで謳って実体が違う状態は、
+     * 将来「ホルダー既定と同じはずだから」と等価比較を書いた者を欺く。
+     * 依存箇所（約30箇所）はいずれも {@code LocalDate.now(zone)} /
+     * {@code withZoneSameInstant(zone)} のようにゾーンを計算に使うだけで、
+     * {@code getId()} の文字列比較も同一性比較も存在しないため、
+     * この統一によって観測可能な挙動は変わらない
+     * （{@code UserTimezoneFilterTest} が瞬間・日付の同値性を固定している）。</p>
      */
-    private static final ZoneId UNRESOLVED_ZONE = ZoneId.of("UTC");
+    private static final ZoneId UNRESOLVED_ZONE = ZoneOffset.UTC;
 
     /** @WebMvcTest スライスではキャッシュ Bean が存在しないため required = false で注入する */
     @Autowired(required = false)

@@ -16,6 +16,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -42,18 +45,6 @@ import static org.mockito.Mockito.when;
 class UserTimezoneFilterTest {
 
     private static final Long USER_ID = 90209L;
-
-    /**
-     * 未解決時にフィルターが積む ZoneId。
-     *
-     * <p><b>注意</b>: {@code ZoneId.of("UTC")}（id = {@code "UTC"}）と {@link ZoneOffset#UTC}（id = {@code "Z"}）は
-     * <b>オフセットは同じだが equals では一致しない</b>。フィルターが積むのは改修前の実装
-     * （{@code return ZoneId.of("UTC");}）と同じ {@code ZoneId.of("UTC")} であり、
-     * 既存の出力挙動を変えないためこの値を維持している。
-     * 一方 {@link TimezoneContextHolder#get()} の<b>未セット時</b>の戻り値は {@link ZoneOffset#UTC} なので、
-     * 「フィルター通過中」と「クリア後」で観測される ZoneId の実体が異なる点をここで明示的に固定する。</p>
-     */
-    private static final ZoneId UNRESOLVED_UTC = ZoneId.of("UTC");
 
     @Mock
     private UserTimezoneCache userTimezoneCache;
@@ -187,7 +178,7 @@ class UserTimezoneFilterTest {
         invokeFilter();
 
         // Then
-        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
+        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
         assertThat(observedResolved).isFalse();
         verify(userTimezoneCache, never()).getTimezone(anyLong());
     }
@@ -204,7 +195,7 @@ class UserTimezoneFilterTest {
         invokeFilter();
 
         // Then: Long.parseLong に失敗するため未解決
-        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
+        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
         assertThat(observedResolved).isFalse();
         verify(userTimezoneCache, never()).getTimezone(anyLong());
     }
@@ -218,7 +209,7 @@ class UserTimezoneFilterTest {
 
         // When / Then: 例外を投げずに未解決へ落ちる
         assertThatCode(this::invokeFilter).doesNotThrowAnyException();
-        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
+        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
         assertThat(observedResolved).isFalse();
     }
 
@@ -260,5 +251,51 @@ class UserTimezoneFilterTest {
         // Then
         assertThat(TimezoneContextHolder.isResolved()).isFalse();
         assertThat(TimezoneContextHolder.get()).isEqualTo(ZoneOffset.UTC);
+    }
+
+    // ------------------------------------------------------------------
+    // 未解決 ZoneId の実体（ZoneOffset.UTC）を固定する
+    //
+    // 改修前は ZoneId.of("UTC")（ZoneRegion・id="UTC"）を積んでいたが、これは
+    // ZoneOffset.UTC（id="Z"）と equals では一致しない。「ホルダー未セット時の既定と同じ」という
+    // 不変条件を謳いながら実体が違う状態は、その不変条件を信じて等価比較を書いた者を欺くため、
+    // ZoneOffset.UTC に統一した。以下はその統一を固定し、かつ挙動が変わらないことを示すテスト。
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("未解決時に積む ZoneId は、ホルダー未セット時の既定値と equals でも一致する")
+    void 未解決ゾーンはホルダー未セット既定とequals一致() throws Exception {
+        // Given: 未認証（未解決経路）
+        // When: フィルター通過中の値を捕捉する
+        invokeFilter();
+
+        // Then: クリア後（＝未セット）にホルダーが返す既定値と equals で一致する。
+        // ここが崩れると「未解決 ≡ 未セット」という前提に基づくコードが静かに壊れる
+        TimezoneContextHolder.clear();
+        assertThat(observedZone)
+                .as("フィルターの未解決値とホルダー未セット既定は同一であること")
+                .isEqualTo(TimezoneContextHolder.get());
+        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
+    }
+
+    @Test
+    @DisplayName("ZoneOffset.UTC と ZoneId.of(\"UTC\") は瞬間・日付計算が完全に一致する（統一が挙動を変えない証明）")
+    void UTC二表現は計算結果が同一() {
+        // Given: equals では一致しない二つの UTC 表現
+        ZoneId zoneRegionUtc = ZoneId.of("UTC");
+        assertThat(zoneRegionUtc)
+                .as("equals では一致しない（だからこそ実体の統一が必要だった）")
+                .isNotEqualTo(ZoneOffset.UTC);
+
+        // When / Then: ゾーンを計算に使う限り結果は完全に一致する。
+        // 依存箇所（LocalDate.now(zone) / withZoneSameInstant(zone) 等）は全てこの用途なので、
+        // ZoneOffset.UTC への統一によって観測可能な挙動は変わらない
+        LocalDateTime jstWallClock = LocalDateTime.of(2026, 5, 22, 9, 15, 20);
+        assertThat(jstWallClock.atZone(ZoneId.of("Asia/Tokyo")).withZoneSameInstant(zoneRegionUtc).toLocalDateTime())
+                .isEqualTo(jstWallClock.atZone(ZoneId.of("Asia/Tokyo")).withZoneSameInstant(ZoneOffset.UTC)
+                        .toLocalDateTime());
+        assertThat(zoneRegionUtc.getRules().getOffset(Instant.EPOCH))
+                .isEqualTo(ZoneOffset.UTC.getRules().getOffset(Instant.EPOCH));
+        assertThat(LocalDate.now(zoneRegionUtc)).isEqualTo(LocalDate.now(ZoneOffset.UTC));
     }
 }
