@@ -48,7 +48,7 @@ public class TeamProjectController {
     private final ProjectService projectService;
     private final TodoService todoService;
     private final TeamService teamService;
-    // 試練フェーズで追加。出陣で /{id} 系 EP の認可ゲートとして配線する（現状未呼び出し → IDOR/非メンバーテストが red）。
+    // 各 EP 入口の認可ゲート（チームメンバーシップ + プロジェクトのスコープ束縛）。
     private final ProjectAccessGuard projectAccessGuard;
 
 

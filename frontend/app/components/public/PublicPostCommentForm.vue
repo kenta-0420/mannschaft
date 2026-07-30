@@ -23,6 +23,10 @@ const content = ref('')
 const submitting = ref(false)
 const MAX_LENGTH = 1000
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+
 async function handleSubmit() {
   const trimmed = content.value.trim()
   if (!trimmed || submitting.value) return
@@ -57,7 +61,7 @@ async function handleSubmit() {
         type="submit"
         :label="t('public.comments.submit')"
         :loading="submitting"
-        :disabled="!content.trim() || submitting"
+        :disabled="!hydrated || !content.trim() || submitting"
         data-testid="comment-submit"
       />
     </div>

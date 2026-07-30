@@ -21,6 +21,10 @@ const googleLoading = ref(false)
 const termsModalVisible = ref(false)
 const privacyModalVisible = ref(false)
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+
 async function registerWithGoogle() {
   googleLoading.value = true
   try {
@@ -125,14 +129,16 @@ const schema = toTypedSchema(
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
   initialValues: {
-    email: '',
-    password: '',
-    lastName: '',
-    firstName: '',
-    displayName: '',
-    postalCode: '',
-    birthDate: '',
+    email: readPrefilledInputValue('email'),
+    password: readPrefilledInputValue('password'),
+    lastName: readPrefilledInputValue('lastName'),
+    firstName: readPrefilledInputValue('firstName'),
+    displayName: readPrefilledInputValue('displayName'),
+    postalCode: readPrefilledInputValue('postalCode'),
+    birthDate: readPrefilledInputValue('birthDate'),
     privacyPolicyAccepted: false as unknown as true,
     termsAccepted: false as unknown as true,
   },
@@ -391,6 +397,7 @@ const onSubmit = handleSubmit(async (values) => {
         label="アカウント作成"
         icon="pi pi-user-plus"
         :loading="loading"
+        :disabled="!hydrated"
         class="mt-2"
       />
 

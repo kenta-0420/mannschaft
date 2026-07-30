@@ -11,8 +11,15 @@ const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
 const { applyUserLocale } = useLocale()
 
-const totpCode = ref('')
+// ハイドレーション前に入力された値（パスワードマネージャによる TOTP 自動入力を含む）を取り込む。
+// InputOtp は桁ごとに id を持たない input を並べて描画するため、セレクタで連結して読む。
+// ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
+const totpCode = ref(readPrefilledInputGroupValue('.p-inputotp-input'))
 const loading = ref(false)
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
 
 const mfaSessionToken = computed(() => route.query.session as string | undefined)
 
@@ -114,7 +121,7 @@ async function handleVerify() {
         label="認証する"
         icon="pi pi-shield"
         :loading="loading"
-        :disabled="totpCode.length !== 6"
+        :disabled="!hydrated || totpCode.length !== 6"
         class="w-full"
       />
 

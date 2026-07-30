@@ -19,6 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>{@code GET /api/v1/me/team-projects} を提供する。ログインユーザーが所属する全チームの
  * プロジェクトを、チーム名 / slug 付きで 1 リクエストで返す（{@link TeamProjectSummaryResponse}）。</p>
+ *
+ * <p><b>認可</b>: 集約対象のチームは {@code SecurityUtils.getCurrentUserId()} で確定した認証主体の
+ * 所属から解決する。リクエストでチームを指定する余地がないため構造的に自己スコープで閉じており、
+ * 他ユーザーの所属チームのプロジェクトは混入しない。契約は
+ * {@code TodoPersonalScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/me")
