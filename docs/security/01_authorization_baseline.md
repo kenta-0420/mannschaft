@@ -80,9 +80,25 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 1. **親スコープが PUBLIC** かつ未凍結・未削除であること（非公開チーム / 組織配下は一律 404）
 2. **記録自身が `visibility=PUBLIC` かつ `status=PUBLISHED`** であること（下書き・会員限定・論理削除済みは 404）
-3. **F00 正準の可視性判定**（`ContentVisibilityChecker#canView`・未認証 `userId=null`）を通ること。独自述語は作らない
+3. **F00 正準の可視性判定**（`ContentVisibilityChecker`・未認証 `userId=null`）を通ること。独自ラダーは作らない
 4. **パス変数と実スコープの一致**（スコープ詐称 IDOR の拒否）
 5. **返却は公開専用 DTO の 8 項目のみ** — `PublicActivityDetail` / `PublicActivitySummary`（`id` / `title` / `activityDate` / `activityTimeStart` / `activityTimeEnd` / `description` / `scopeRef` / `createdAt`）。`location` / `fieldValues` / `attachments` / `createdBy` / `visibility` / `status` / `templateId` / `venueId` / `scheduleId` / `updatedAt` は**禁則フィールド**として一切含めない
+
+##### 一覧経路における門2 と 門3 の適用形（2026-07-30 改訂）
+
+**一覧（`listTeamPublicActivities` / `listOrgPublicActivities`）でも門2 は必ず適用される。** ただし詳細経路と適用**層**が異なる:
+
+| 門 | 詳細（単件） | 一覧 |
+|---|---|---|
+| 門2（`visibility=PUBLIC` かつ `status=PUBLISHED`） | `ActivityResultRepository#findByIdAndVisibilityAndStatus`（SQL） | **`ActivityResultRepository#findPublicByScopeTypeAndScopeId`（SQL 述語）** |
+| 門3（F00 `ContentVisibilityChecker`） | 判定の主体（唯一の門） | **第二の門（乖離検知）**。SQL が通した行を再確認し、落ちた行は返さない（fail-closed）うえで `log.warn` で乖離を記録する |
+
+- **なぜ一覧だけ SQL 述語なのか**: 一覧は 1 ページ分を取得してからメモリでフィルタすると、落ちた分が補充されず **ページング歯抜け**（`limit=20` でも 20 件返らない）と **総件数の破綻** が起きる。絞り込みは SQL 段に降ろさなければ構造的に直らない。
+- **これは「二つ目の判定器」ではない**: 匿名（`userId=null`）では `MembershipBatchQueryService#snapshotForUser` が `UserScopeRoleSnapshot.empty()` を返してラダーが縮退し、`StandardVisibility.PUBLIC` の Javadoc が「未認証時は PUBLIC かつ PUBLISHED のときのみ true、それ以外はすべて fail-closed」と明文で宣言している。SQL 述語はこの宣言の**機械的な転写**である。
+- **先例**: F19.1 `BlogPostRepository#findPublicPostsByTeamId`（`PublicActivityQueryService` 自身が「金型」と明記する `PublicPostQueryService` の実体）、`TournamentService#listPublicTournaments`、`AnnouncementFeedVisibilityResolver`（「一覧は SQL 述語・単件は F00 Resolver」の併存を公式に容認）。設計書 `docs/features/F02.6_announcement_widget.md` は「検証は Repository 層の `@Query` レベルで WHERE 句に入れる（Service 層の if 文に依存しない）」と規定している。
+- **等価性の担保**: 「SQL 述語の集合 S」と「F00 の `filterAccessible(..., null)` の集合 F」が **`S == F`** であることを、契約テスト `ActivityPublicContractIT` の **AC-32（等価性番人）** が `visibility × status × deleted` の全 8 組合せで機械的に固定する。片方だけを変更すると必ず落ちる。`ActivityVisibility` に第 3 の値を追加する際も最初にここが落ちる。
+
+> **認証済み一覧（`GET /api/v1/activities`）の既知の残務**: 認証済み経路は依然「1 ページ取得 → F00 でメモリフィルタ」であり **歯抜けが残っている**（総件数のページ内件数への化けのみ 2026-07-30 に是正済み）。認証済みでは F00 のラダーが縮退しないため SQL 化すると本物の独自述語になってしまう。厳密化には F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」を新設し、それを SQL 述語へ翻訳する必要がある（後続戦役）。
 
 失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
 
