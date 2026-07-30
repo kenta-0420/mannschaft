@@ -706,6 +706,9 @@
       "my_list_title": "Mi lista de espera",
       "no_entries": "No estás en ninguna lista de espera"
     },
+    "pending_expire_notice": {
+      "form_note": "Si no se aprueba en un plazo de {n} horas, esta reserva se cancelará automáticamente"
+    },
     "team_guide": {
       "title": "Cómo funcionan las reservas",
       "help_button": "Cómo usar",

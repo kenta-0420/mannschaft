@@ -706,6 +706,9 @@
       "my_list_title": "Meine Warteliste",
       "no_entries": "Sie stehen auf keiner Warteliste"
     },
+    "pending_expire_notice": {
+      "form_note": "Wenn diese Reservierung nicht innerhalb von {n} Stunden bestätigt wird, wird sie automatisch storniert"
+    },
     "team_guide": {
       "title": "So funktionieren Reservierungen",
       "help_button": "Anleitung",

@@ -706,6 +706,9 @@
       "my_list_title": "나의 대기 목록",
       "no_entries": "대기 중인 예약이 없습니다"
     },
+    "pending_expire_notice": {
+      "form_note": "{n}시간 이내에 승인되지 않으면 자동으로 취소됩니다"
+    },
     "team_guide": {
       "title": "예약 사용법",
       "help_button": "사용법",

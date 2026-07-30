@@ -60,7 +60,33 @@ const notification = useNotification()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 使い方ガイド本文の呼称箇所に使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
-onMounted(() => { void loadResourceName() })
+
+/**
+ * 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE）。
+ * GET /reservation-settings は ADMIN 限定ではなく view ゲート（会員/公開）のため会員側からも読める。
+ * approvalMode=MANUAL かつ pendingExpireHours が非 NULL のときのみ表示する（ReservationForm.vue と同一方針）。
+ */
+const pendingExpireApprovalMode = ref<'AUTO' | 'MANUAL' | undefined>(undefined)
+const pendingExpireHours = ref<number | null>(null)
+
+async function loadPendingExpireNotice() {
+  try {
+    const res = await reservationApi.getReservationSettings(props.teamId)
+    pendingExpireApprovalMode.value = res.data.approvalMode
+    pendingExpireHours.value = res.data.pendingExpireHours ?? null
+  }
+  catch {
+    // 取得失敗は注意書きを出さない方向にフォールバック（予約確定の可否自体は BE が最終判定するため機能不全にはならない）。
+    pendingExpireApprovalMode.value = undefined
+    pendingExpireHours.value = null
+  }
+}
+
+const showPendingExpireNotice = computed(
+  () => pendingExpireApprovalMode.value === 'MANUAL' && pendingExpireHours.value != null,
+)
+
+onMounted(() => { void loadResourceName(); void loadPendingExpireNotice() })
 
 type Step = 'menu' | 'preview'
 const step = ref<Step>('menu')
@@ -365,6 +391,16 @@ async function confirm() {
           <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>
           <Textarea v-model="userNote" rows="2" class="w-full" :placeholder="t('reservation.placeholder.note')" />
         </div>
+
+        <!-- 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE・ReservationForm.vue と同一方針） -->
+        <Message
+          v-if="showPendingExpireNotice"
+          severity="info"
+          :closable="false"
+          data-testid="pending-expire-notice"
+        >
+          {{ t('reservation.pending_expire_notice.form_note', { n: pendingExpireHours }) }}
+        </Message>
       </div>
     </div>
 

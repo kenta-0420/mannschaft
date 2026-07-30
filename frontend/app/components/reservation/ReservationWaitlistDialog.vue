@@ -73,7 +73,7 @@ watch(() => props.visible, (v) => {
     adminCount.value = null
     void loadAdminCount()
   }
-})
+}, { immediate: true })
 
 /** BE エラー応答から RESERVATION_xxx コードを取り出す（GroupBookingDialog と同じ抽出パターン）。 */
 function extractErrorCode(error: unknown): string | undefined {

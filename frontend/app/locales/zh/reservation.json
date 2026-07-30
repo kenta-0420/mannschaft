@@ -706,6 +706,9 @@
       "my_list_title": "我的候补预约",
       "no_entries": "当前没有候补中的预约"
     },
+    "pending_expire_notice": {
+      "form_note": "如果在{n}小时内未获批准，此预约将自动取消"
+    },
     "team_guide": {
       "title": "预约使用说明",
       "help_button": "使用说明",

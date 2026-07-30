@@ -706,6 +706,9 @@
       "my_list_title": "My waitlist",
       "no_entries": "You're not on any waitlists"
     },
+    "pending_expire_notice": {
+      "form_note": "If not approved within {n} hours, this booking will be cancelled automatically"
+    },
     "team_guide": {
       "title": "How reservations work",
       "help_button": "How to use",
