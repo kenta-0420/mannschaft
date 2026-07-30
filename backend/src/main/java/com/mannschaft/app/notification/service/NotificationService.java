@@ -119,19 +119,36 @@ public class NotificationService {
      * が余分にあるが、マイスコープフォルダはチーム／組織しか分類しない（F15.3 §4.3）ため
      * それらがフォルダフィルタの引数に来ることはない。</p>
      *
-     * <p><b>将来 {@code ScopeType} に定数が増えた場合</b>: 本メソッドは {@code default} 句を持たない
-     * 網羅 switch であるため、新定数が追加された瞬間に<b>コンパイルエラー</b>になる。
-     * 握りつぶして黙って空ページを返すようなことはせず、追加時点で写像先の判断を強制する。
-     * 実行時フォールバックではなくコンパイル時に落とすのが最も安全なため、この形を採る。</p>
+     * <p><b>なぜ switch を使わないのか（重要・戻さないこと）</b>:
+     * enum に対する {@code switch} を書くと、javac が {@code $SwitchMap$...} を保持する
+     * <b>合成クラス {@code NotificationService$1} を自動生成する</b>。この合成クラスは外側クラスの
+     * {@code ScopeType} 依存をそのまま写して持つため、クロスドメイン Entity 参照の番人
+     * （{@code CrossDomainEntityImportArchTest} / D-1）が<b>新しいクラス名の新規違反</b>として検出し
+     * CI が落ちる（{@code NotificationService} 本体の依存は凍結ストア済みだが、合成クラスは別名のため
+     * 凍結に当たらない）。D-1 は合成クラスを除外していないため、ここでは
+     * <b>{@code ==} による enum 参照比較</b>で書く。こうすれば {@code $SwitchMap} は生成されない。
+     * 「switch のほうが安全だ」と善意で書き戻すと CI が再び赤になるので注意すること。</p>
+     *
+     * <p><b>将来 {@code ScopeType} に定数が増えた場合</b>: switch を捨てたためコンパイル時の網羅性保証は
+     * 失われる。代わりに未知値では {@link IllegalStateException} を投げて<b>必ず落とす</b>
+     * （黙って null や空ページを返して握りつぶすことはしない）。さらに番人テスト
+     * {@code NotificationScopeTypeMappingTest} が {@code ScopeType.values()} を全件ループして
+     * 写像可能性を検査しているため、<b>定数が増えた瞬間にそのテストが落ちて</b>写像先の判断を強制できる。</p>
      *
      * @param scopeType scopefolder ドメインのスコープ種別
      * @return 通知ドメインのスコープ種別
+     * @throws IllegalStateException 写像先が定義されていないスコープ種別が渡された場合
      */
     static NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
-        return switch (scopeType) {
-            case TEAM -> NotificationScopeType.TEAM;
-            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
-        };
+        if (scopeType == ScopeType.TEAM) {
+            return NotificationScopeType.TEAM;
+        }
+        if (scopeType == ScopeType.ORGANIZATION) {
+            return NotificationScopeType.ORGANIZATION;
+        }
+        throw new IllegalStateException(
+                "ScopeType から NotificationScopeType への写像が未定義です: " + scopeType
+                        + "（NotificationService#toNotificationScopeType に写像先を追加すること）");
     }
 
     /**

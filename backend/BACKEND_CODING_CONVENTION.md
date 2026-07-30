@@ -208,7 +208,9 @@ Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
 
 1. 派生クエリの引数型は **Entity の属性型をそのまま書く**。`@Enumerated` 属性なら enum、`String` 属性なら `String`。
 2. 呼び出し側で `.name()` / `valueOf()` を書きたくなったら、**それは引数型が間違っているサイン**。変換ではなく宣言を直すこと。
-3. **ドメインをまたいで enum を渡す場合**（例: `scopefolder.ScopeType` → `notification.NotificationScopeType`）は、`default` 句を持たない**網羅 switch** で明示的に写像する。`default` を書くと将来の定数追加を握りつぶすため禁止（網羅 switch なら定数追加時にコンパイルエラーで気付ける）。
+3. **ドメインをまたいで enum を渡す場合**（例: `scopefolder.ScopeType` → `notification.NotificationScopeType`）は、写像専用メソッドを 1 つ設けて明示的に写像する。**このとき `switch` を使ってはならない**（下記「⚠️ 罠」参照）。`==` による enum 参照比較で分岐し、未知値は `IllegalStateException` を投げること。黙って `null` や空リストを返して握りつぶすのは禁止。
+    * ⚠️ **罠: 別ドメインの enum に対する `switch` は ArchUnit D-1 を落とす。** javac は enum switch のために `$SwitchMap$...` を保持する**合成クラス（`OuterClass$1`）を自動生成**する。この合成クラスは外側クラスの依存をそのまま写して持つため、`CrossDomainEntityImportArchTest`（D-1）が**新しいクラス名の新規違反**として検出し CI が落ちる（外側クラス本体の依存が凍結ストア済みでも、合成クラスは別名なので凍結に当たらない）。D-1 は合成クラスを除外していない。
+    * `switch` を捨てるとコンパイル時の網羅性保証が失われるため、**必ずテストで肩代わりすること**。写像元 enum の `values()` を**全件ループ**して 1 つずつ写像が成功することを検査する番人テストを置く（定数を個別に書き並べる形にすると、新定数が増えても何も落ちない）。実例: `NotificationScopeTypeMappingTest`。
 4. **enum 属性を条件に含む派生クエリは、実 DB（Testcontainers）を通すテストを必ず 1 本置く**。モック単体テストだけで済ませてはならない。
 5. ネイティブクエリ（`nativeQuery = true`）は SQL 文字列として評価されるため `String` で正しい。JPQL / 派生クエリのみが本ルールの対象。
 
