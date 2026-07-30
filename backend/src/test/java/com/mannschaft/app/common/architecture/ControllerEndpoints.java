@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>{@link AuthzControllerGuardArchTest} — 公開EPの認可シグナル有無（Wave4）</li>
  *   <li>{@link ControllerEntityResponseArchTest} — 公開EPが JPA Entity を返さないこと（D-6）</li>
+ *   <li>{@link JsonRequestBodyCreatorArchTest} — 公開EPの {@code @RequestBody} 型が Jackson で
+ *       デシリアライズ可能なこと（D-7）</li>
  * </ul>
  */
 final class ControllerEndpoints {

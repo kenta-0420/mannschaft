@@ -29,8 +29,14 @@ import java.util.Optional;
  * TODO カスタムステータスラベルサービス（F02.3.1 Phase 1a）。
  *
  * <p>SYSTEM 既定ラベル + 個人/チーム/組織スコープのラベルを管理する。
- * SYSTEM ラベルは不変、個人スコープは本人のみ、チーム・組織スコープは ADMIN/DEPUTY_ADMIN のみ
+ * SYSTEM ラベルは不変、個人スコープは本人のみ、チーム・組織スコープは ADMIN のみ
  * 編集可能。1スコープあたり最大 20 件。</p>
+ *
+ * <p><b>認可の所在</b>: 参照・作成・更新・削除の全経路が {@code validateScopeAccess} を通る。
+ * チーム・組織スコープの<b>参照はメンバーに限定</b>し、<b>CRUD は ADMIN に限定</b>する。
+ * 更新・削除ではさらに、path から渡されたスコープと<b>ラベル本体（entity）のスコープが一致すること</b>を
+ * 先に照合し、不一致は 404（{@link TodoErrorCode#STATUS_LABEL_NOT_FOUND}）で存在を秘匿する。
+ * 認可判定は必ず entity 由来のスコープで行い、リクエスト値をそのまま信頼しない（BOLA/IDOR 対策）。</p>
  */
 @Slf4j
 @Service
@@ -306,14 +312,23 @@ public class TodoStatusLabelService {
     /**
      * スコープへのアクセス権を検証する。
      *
-     * <p>F02.3.1 設計書 §2 の権限マトリクスでは、チーム・組織スコープのラベル CRUD は
-     * <strong>ADMIN のみ</strong>（DEPUTY_ADMIN は不可）と定義されているため、設計書を正として
-     * {@link AccessControlService#isAdmin} で厳格判定する。違反時は 403。</p>
+     * <p>保証する内容（F02.3.1 設計書 §2 の権限マトリクス）:</p>
+     * <ul>
+     *   <li><b>個人スコープ</b>: 参照・CRUD とも本人のみ（{@code actorId == scopeId}）。違反時は 403。</li>
+     *   <li><b>チーム・組織スコープの参照</b>: 当該スコープの<b>メンバーに限定</b>する
+     *       （{@link AccessControlService#checkMembership}）。非メンバーは 403。</li>
+     *   <li><b>チーム・組織スコープの CRUD</b>: <b>ADMIN のみ</b>（DEPUTY_ADMIN は不可）。
+     *       設計書を正として {@link AccessControlService#isAdmin} で厳格判定する。違反時は 403。</li>
+     * </ul>
+     *
+     * <p>参照とCRUDのいずれの経路でも認可判定を必ず通す（無条件に素通しする分岐を持たない）。
+     * ラベルは所属スコープの運用語彙であり、スコープ外の利用者には参照させない方針である。</p>
      *
      * @param scopeType   スコープ種別
      * @param scopeId     スコープ ID
      * @param actorId     操作ユーザー ID
-     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN のみ）
+     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN のみ）、
+     *                    false の場合は参照権限（個人=本人 / チーム・組織=メンバー）
      */
     private void validateScopeAccess(TodoStatusLabelScope scopeType, Long scopeId, Long actorId, boolean adminOnly) {
         if (actorId == null) {
@@ -331,11 +346,17 @@ public class TodoStatusLabelService {
             case TEAM:
                 if (adminOnly) {
                     requireAdminStrict(actorId, scopeId, "TEAM");
+                } else {
+                    // 参照は当該チームのメンバーに限定する（非メンバーは 403）。
+                    accessControlService.checkMembership(actorId, scopeId, "TEAM");
                 }
                 return;
             case ORGANIZATION:
                 if (adminOnly) {
                     requireAdminStrict(actorId, scopeId, "ORGANIZATION");
+                } else {
+                    // 参照は当該組織のメンバーに限定する（非メンバーは 403）。
+                    accessControlService.checkMembership(actorId, scopeId, "ORGANIZATION");
                 }
                 return;
             default:
