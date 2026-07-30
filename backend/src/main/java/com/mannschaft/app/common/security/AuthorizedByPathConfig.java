@@ -33,6 +33,7 @@ import java.lang.annotation.Target;
  *
  * @see AuthorizedInService
  * @see IntentionallyPublic
+ * @see SelfScopedEndpoint
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

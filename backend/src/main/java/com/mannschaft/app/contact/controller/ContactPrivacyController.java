@@ -18,6 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 連絡先プライバシー設定コントローラー。
+ *
+ * <p><b>認可</b>: 取得・更新の対象ユーザーは常に {@code SecurityUtils.getCurrentUserId()} で
+ * 確定した認証主体であり（{@code ContactPrivacyService.java:29} / {@code :39}）、
+ * リクエストから他ユーザーの設定を指定する余地がない（自己スコープ）。
+ * 契約は {@code ContactScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users/me/contact-privacy")

@@ -145,6 +145,10 @@ public class ContactRequestService {
 
     /**
      * 申請を承認する。
+     *
+     * <p><b>認可</b>: 申請の<b>宛先本人</b>（entity の {@code targetId}）に限定する。
+     * 宛先でない申請 ID は不存在と同じ {@link ContactErrorCode#CONTACT_006}（404）を返し、
+     * 申請の存在有無を秘匿する。認可判定は業務検証（PENDING 判定）より前に置く。</p>
      */
     @Transactional
     // TODO: ContactドメインとAuthドメイン・Notificationドメインをまたいでいる。将来はContactRequestAcceptedEventで分離予定
@@ -152,9 +156,9 @@ public class ContactRequestService {
         ContactRequestEntity request = contactRequestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_006));
 
-        // 自分が申請先であることを確認
+        // 自分が申請先であることを確認（宛先以外には存在を明かさない）
         if (!userId.equals(request.getTargetId())) {
-            throw new BusinessException(ContactErrorCode.CONTACT_007);
+            throw new BusinessException(ContactErrorCode.CONTACT_006);
         }
         if (!request.isPending()) {
             throw new BusinessException(ContactErrorCode.CONTACT_006);
@@ -172,6 +176,9 @@ public class ContactRequestService {
     /**
      * 申請を拒否する。
      * 申請者への通知は行わない（拒否されたことを知らせない）。
+     *
+     * <p><b>認可</b>: 申請の<b>宛先本人</b>（entity の {@code targetId}）に限定する。
+     * 宛先でない申請 ID は不存在と同じ {@link ContactErrorCode#CONTACT_006}（404）を返す。</p>
      */
     @Transactional
     public void rejectRequest(Long userId, Long requestId) {
@@ -179,7 +186,7 @@ public class ContactRequestService {
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_006));
 
         if (!userId.equals(request.getTargetId())) {
-            throw new BusinessException(ContactErrorCode.CONTACT_007);
+            throw new BusinessException(ContactErrorCode.CONTACT_006);
         }
         if (!request.isPending()) {
             throw new BusinessException(ContactErrorCode.CONTACT_006);
@@ -191,6 +198,9 @@ public class ContactRequestService {
 
     /**
      * 自分が送った申請をキャンセルする。
+     *
+     * <p><b>認可</b>: 申請の<b>送信者本人</b>（entity の {@code requesterId}）に限定する。
+     * 送信者でない申請 ID は不存在と同じ {@link ContactErrorCode#CONTACT_006}（404）を返す。</p>
      */
     @Transactional
     public void cancelRequest(Long userId, Long requestId) {
@@ -198,7 +208,7 @@ public class ContactRequestService {
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_006));
 
         if (!userId.equals(request.getRequesterId())) {
-            throw new BusinessException(ContactErrorCode.CONTACT_007);
+            throw new BusinessException(ContactErrorCode.CONTACT_006);
         }
         if (!request.isPending()) {
             throw new BusinessException(ContactErrorCode.CONTACT_006);

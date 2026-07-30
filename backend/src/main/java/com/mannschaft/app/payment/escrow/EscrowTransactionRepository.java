@@ -19,7 +19,7 @@ import java.util.UUID;
  * {@code deletedAt} 前提）は継承できず、テナント絞り込みは {@code organization_id} ベースの
  * derived finder で個別実装する。将来のシャーディングでは organization_id をルーティングキーとする。</p>
  *
- * <p>このフェーズでは Repo 骨格のみ（Service は次陣）。</p>
+ * <p>エスクロー取引の引き当ては {@code ConnectChargeService} から利用される。</p>
  */
 public interface EscrowTransactionRepository
         extends JpaRepository<EscrowTransactionEntity, UUID> {
