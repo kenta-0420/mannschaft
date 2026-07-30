@@ -216,7 +216,7 @@ public class AnnouncementFeedService {
      * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
      * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例する。</p>
      *
-     * <p><b>既知の未解消（#2494 の範囲外・別 issue で追跡）</b>: 下流
+     * <p><b>既知の未解消（#2494 の範囲外・#2530 で追跡）</b>: 下流
      * {@link AnnouncementReadService#markAllAsRead} は新規既読化件数を返すようになったが、
      * Controller の応答は<b>値もキー名も</b>設計書 F02.6 §4 と食い違っている。</p>
      * <ul>
