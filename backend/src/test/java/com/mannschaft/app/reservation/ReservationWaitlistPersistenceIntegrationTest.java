@@ -188,7 +188,7 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
         Long waiterA = 970702L;
 
         var created = reservationService.createReservation(teamId, booker,
-                new CreateReservationRequest(slotId, lineId, null));
+                new CreateReservationRequest(slotId, lineId, null, null));
         assertThat(slotRepository.findById(slotId).orElseThrow().getSlotStatus()).isEqualTo(SlotStatus.FULL);
 
         waitlistService.register(teamId, slotId, waiterA);
@@ -196,10 +196,10 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
 
         // booker がキャンセル → 枠が AVAILABLE、次に A が予約すると A の WAITING が CONVERTED になる。
         reservationService.cancelByAdmin(teamId, created.getId(),
-                new com.mannschaft.app.reservation.dto.CancelReservationRequest("空いた"));
+                new com.mannschaft.app.reservation.dto.CancelReservationRequest("空いた", null));
         assertThat(slotRepository.findById(slotId).orElseThrow().getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
 
-        reservationService.createReservation(teamId, waiterA, new CreateReservationRequest(slotId, lineId, null));
+        reservationService.createReservation(teamId, waiterA, new CreateReservationRequest(slotId, lineId, null, null));
         assertThat(waitlistRepository.existsBySlotIdAndUserIdAndStatus(slotId, waiterA, WaitlistStatus.WAITING)).isFalse();
         assertThat(waitlistRepository.findByUserIdAndStatusOrderByCreatedAtDesc(waiterA, WaitlistStatus.CONVERTED))
                 .hasSize(1);

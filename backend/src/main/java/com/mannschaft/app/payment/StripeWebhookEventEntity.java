@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * <p>同一 {@code event_id} の二重処理を UNIQUE 制約で物理拒否する（冪等性ゲート）。
  * Connect/Platform 両 Webhook の再送（at-least-once）を冪等化する共通テーブル。</p>
  *
- * <p>このフェーズでは Entity/Repo 骨格のみ（Service は次陣）。</p>
+ * <p>受信イベントの冪等記録は webhook 処理系が担う。</p>
  *
  * <p>設計書: docs/features/F22.1_market/payment/01_data_model.md §3.5</p>
  */

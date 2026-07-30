@@ -1,5 +1,5 @@
 import type { ReservationResponse, ReservationSettingsResponse, UpdateReservationSettingRequest, CreateSlotRequest, UpdateSlotRequest } from '~/types/reservation'
-import type { components } from '~/types/generated'
+import type { components, operations } from '~/types/generated'
 
 // === 生成型（真実のソース = openapi-typescript）===
 // 機能B（予約不可枠）は BE #2109 で resourceType/resourceId/impact を追加済み。
@@ -46,6 +46,20 @@ type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeR
 type CreateRecurringBlockedTimeRequest = components['schemas']['CreateRecurringBlockedTimeRequest']
 type UpdateRecurringBlockedTimeRequest = components['schemas']['UpdateRecurringBlockedTimeRequest']
 type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
+// F03.4.5 §6.1 W2-4（BE #2206 で着地済み）: キャンセル待ち（waitlist）登録・取消・件数・自分の一覧。
+type WaitlistEntryResponse = components['schemas']['WaitlistEntryResponse']
+type WaitlistCountResponse = components['schemas']['WaitlistCountResponse']
+// F03.4.5 §6.2 W2-5（BE PR #2536・main 着地済み）: 定期予約（毎週繰り返し）・定期不可枠の強行登録。
+type CancelReservationRequestBody = components['schemas']['CancelReservationRequest']
+/** 会員キャンセルの範囲（THIS_ONLY=当該回のみ・既定 / THIS_AND_FOLLOWING=当該日以降すべて）。管理者キャンセル（cancelByAdmin）は参照しない。 */
+export type ReservationCancelScope = NonNullable<CancelReservationRequestBody['scope']>
+/**
+ * 承認の範囲（THIS_ONLY=当該回のみ・既定 / SERIES=series内のPENDINGを一括承認）。
+ * 生成型 `operations['confirmReservation']` のクエリパラメータ由来（専用スキーマ名を持たないインライン enum）。
+ */
+export type ReservationConfirmScope = NonNullable<
+  NonNullable<operations['confirmReservation']['parameters']['query']>['scope']
+>
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -191,25 +205,36 @@ export function useReservationApi() {
 
   async function createReservation(
     teamId: string,
-    // BE: CreateReservationRequest は reservationSlotId/lineId(@NotNull) + userNote(任意)
-    body: { reservationSlotId: number; lineId: number; userNote?: string },
+    // BE: CreateReservationRequest は reservationSlotId/lineId(@NotNull) + userNote(任意) +
+    // repeatWeeks(任意・@Min(1)・省略/1=従来同一・2〜12で定期予約・F03.4.5 §6.2 W2-5)。
+    // 上限12超のフロント側ガードは呼び出し元（ReservationForm 等）のUIで行う（12を超える値を作れないUIにする）。
+    body: { reservationSlotId: number; lineId: number; userNote?: string; repeatWeeks?: number },
   ) {
-    return api<{ data: unknown }>(`${base(teamId)}/reservations`, { method: 'POST', body })
+    return api<{ data: ReservationResponse }>(`${base(teamId)}/reservations`, { method: 'POST', body })
   }
 
   async function getReservation(teamId: string, reservationId: number) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations/${reservationId}`)
   }
 
+  /** 管理者キャンセル（`cancelByAdmin`）。scope は参照されない（会員キャンセル専用・§6.2 API契約表）。 */
   async function cancelReservation(teamId: string, reservationId: number, reason?: string) {
-    return api(`${base(teamId)}/reservations/${reservationId}/cancel`, {
+    return api<{ data: ReservationResponse }>(`${base(teamId)}/reservations/${reservationId}/cancel`, {
       method: 'POST',
       body: { reason: reason ?? null },
     })
   }
 
-  async function confirmReservation(teamId: string, reservationId: number) {
-    return api(`${base(teamId)}/reservations/${reservationId}/confirm`, { method: 'POST' })
+  /**
+   * 承認（PENDING→CONFIRMED）。scope=SERIES で series 内の PENDING を一括承認する（既定 THIS_ONLY・
+   * F03.4.5 §6.2 W2-5・管理者専用画面から呼ぶ）。scope はクエリパラメータ（生成型 operations['confirmReservation']）。
+   */
+  async function confirmReservation(teamId: string, reservationId: number, scope?: ReservationConfirmScope) {
+    const query = scope ? `?scope=${scope}` : ''
+    return api<{ data: ReservationResponse }>(
+      `${base(teamId)}/reservations/${reservationId}/confirm${query}`,
+      { method: 'POST' },
+    )
   }
 
   async function completeReservation(teamId: string, reservationId: number) {
@@ -564,12 +589,56 @@ export function useReservationApi() {
     return api<{ data: unknown[] }>(`/api/v1/reservations/upcoming?${query}`)
   }
 
-  async function cancelMyReservation(reservationId: number, reason?: string) {
+  /**
+   * 自分の予約をキャンセルする（`cancelByUser`）。
+   * `scope`（既定 THIS_ONLY・THIS_AND_FOLLOWING で series の当該日以降をまとめてキャンセル）を
+   * 参照するのはこの経路のみ（会員キャンセル専用・F03.4.5 §6.2 W2-5）。
+   */
+  async function cancelMyReservation(
+    reservationId: number,
+    opts?: { reason?: string; scope?: ReservationCancelScope },
+  ) {
     // BE: ReservationCommonController#cancelMyReservation は CancelReservationRequest を必須とするため body を渡す
-    return api(`/api/v1/reservations/${reservationId}/cancel`, {
+    return api<{ data: ReservationResponse }>(`/api/v1/reservations/${reservationId}/cancel`, {
       method: 'POST',
-      body: { reason: reason ?? null },
+      body: { reason: opts?.reason ?? null, scope: opts?.scope },
     })
+  }
+
+  // === キャンセル待ち（waitlist・F03.4.5 §6.1 W2-4）===
+  // 登録・取消は会員/公開の view ゲート（BE Service 層）で認可。件数のみ ADMIN 専用（403 になるため
+  // isAdmin=false のときは呼ばないこと）。
+
+  /**
+   * 満席枠へキャンセル待ちを登録する。
+   * エラー: 409=RESERVATION_047（二重登録）/ 400=RESERVATION_048（空きあり）/
+   * 400=RESERVATION_049（上限超過）/ 429=RESERVATION_050（レートリミット）。
+   */
+  async function joinWaitlist(teamId: string, slotId: number) {
+    return api<{ data: WaitlistEntryResponse }>(
+      `${base(teamId)}/reservation-slots/${slotId}/waitlist`,
+      { method: 'POST' },
+    )
+  }
+
+  /**
+   * 自分の WAITING を取消する（本人。(slot, 本人) で解決するため他人のエントリは掴めない）。
+   * エラー: 404=RESERVATION_046（対象なし・IDOR秘匿）。
+   */
+  async function leaveWaitlist(teamId: string, slotId: number) {
+    return api(`${base(teamId)}/reservation-slots/${slotId}/waitlist`, { method: 'DELETE' })
+  }
+
+  /** 枠別のキャンセル待ち件数（ADMIN 専用）。非 ADMIN が呼ぶと 403。 */
+  async function getWaitlistCount(teamId: string, slotId: number) {
+    return api<{ data: WaitlistCountResponse }>(
+      `${base(teamId)}/reservation-slots/${slotId}/waitlist/count`,
+    )
+  }
+
+  /** 自分のキャンセル待ち一覧（全チーム横断・WAITING のみ・新しい順）。 */
+  async function listMyWaitlist() {
+    return api<{ data: WaitlistEntryResponse[] }>(`/api/v1/users/me/reservation-waitlist`)
   }
 
   return {
@@ -633,5 +702,9 @@ export function useReservationApi() {
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,
+    joinWaitlist,
+    leaveWaitlist,
+    getWaitlistCount,
+    listMyWaitlist,
   }
 }

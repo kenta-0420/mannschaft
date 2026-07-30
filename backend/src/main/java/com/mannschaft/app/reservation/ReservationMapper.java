@@ -44,6 +44,17 @@ public interface ReservationMapper {
     @Mapping(target = "slot", ignore = true)
     // F03.4.3: group（予約グループ要約）は代表行の兄弟行集約が必要なため Service 層が一括解決して後付けする（ここでは null）。
     @Mapping(target = "group", ignore = true)
+    // F03.4.5 §6.2 W2-5: series 要約・結果明細（recurring / recurringCancel / recurringConfirm）は
+    // 「操作の結果」であってエンティティ 1 行から導出できるものではない（複数週の成立/スキップ集計・
+    // キャンセル/承認の明細）。Service 層が操作直後に組み立てて後付けするため、ここでは null にする。
+    @Mapping(target = "recurring", ignore = true)
+    @Mapping(target = "recurringCancel", ignore = true)
+    @Mapping(target = "recurringConfirm", ignore = true)
+    // 一方 recurringSeriesId は<b>エンティティが持つ属性</b>なので必ず写す（ignore にしない）。
+    // これが無いと一覧・詳細 GET から「この予約が定期予約の一部か」を判定できず、
+    // FE のキャンセルスコープ 2 択 UI・series 一括承認ボタンが実装不能になる（検分 MUST①）。
+    // MapStruct は同名フィールドを自動写像するが、意図を明示して将来の ignore 追加を防ぐ。
+    @Mapping(target = "recurringSeriesId", source = "recurringSeriesId")
     @Mapping(target = "identifier", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationIdentifierDto(entity.getReservationSlotId(), entity.getLineId(), entity.getTeamId(), entity.getUserId(), null))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getBookedAt(), entity.getConfirmedAt(), entity.getCompletedAt()))")
     @Mapping(target = "cancellation", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.CancellationDto(entity.getCancelledAt(), entity.getCancelReason(), entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null))")

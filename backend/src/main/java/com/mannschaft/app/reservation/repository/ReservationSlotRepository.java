@@ -130,6 +130,46 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("createdBy") Long createdBy);
 
     /**
+     * 定期予約（F03.4.5 §6.2 W2-5）の週次枠解決に使う<b>唯一の範囲検索</b>。
+     *
+     * <p>起点枠の {@code (start_time, end_time)} に完全一致する枠を、{@code slot_date} の
+     * <b>範囲 1 回</b>で引く（{@code from} = 起点日+7日 / {@code to} = 起点日+7×(repeatWeeks-1)日）。</p>
+     *
+     * <p><b>なぜ週ごとに投げないか（AC-5-10）</b>: 「起点日 + 7k」を 1 日ずつ
+     * {@code findBy...SlotDateAndStartTime...} で解決すると 12 週で 12 クエリになり、
+     * 会員の予約作成というホットパスに N+1 を作る。範囲 1 回で取得し、
+     * 「7 の倍数日か」「同一ラインか」の絞り込みは呼び出し側がメモリで行う
+     * （単発 blocked_times の日付ロードと同じ作法）。</p>
+     *
+     * <p><b>ライン軸を SQL 条件に入れない理由</b>: 共通枠（{@code line_id IS NULL}）とライン軸枠を
+     * 「起点枠と同じ帰属か」で突合する必要があり、{@code null} 同値比較を JPQL の
+     * {@code :param IS NULL} イディオムで書くと Hibernate の型推論が方言依存になる。
+     * 判定を呼び出し側の {@code Objects.equals} に寄せて曖昧さを消す。</p>
+     *
+     * <p>並び順は {@code slot_date} 昇順・同日内は {@code id} 昇順。これは
+     * <b>ロック順序（AC-5-6）</b>をそのまま与えるためで、呼び出し側は取得順に確保していけばよい。</p>
+     *
+     * @param teamId    チームID
+     * @param from      検索開始日（含む）
+     * @param to        検索終了日（含む）
+     * @param startTime 起点枠の開始時刻（完全一致）
+     * @param endTime   起点枠の終了時刻（完全一致）
+     * @return 該当枠（日付昇順・同日は id 昇順）
+     */
+    @Query("SELECT s FROM ReservationSlotEntity s "
+            + "WHERE s.teamId = :teamId "
+            + "  AND s.slotDate BETWEEN :from AND :to "
+            + "  AND s.startTime = :startTime "
+            + "  AND s.endTime = :endTime "
+            + "ORDER BY s.slotDate ASC, s.id ASC")
+    List<ReservationSlotEntity> findRecurringCandidateSlots(
+            @Param("teamId") Long teamId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime);
+
+    /**
      * 予約数を +1 し、定員に達したら FULL 化する<b>条件付きアトミック UPDATE</b>（オーバーブッキング防止の並行制御）。
      *
      * <p>設計書 F03.4 §3 の「booked_count の並行更新」に従い、単一行のアトミック更新で満席超過を防ぐ

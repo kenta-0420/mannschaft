@@ -75,6 +75,15 @@ mockNuxtImport('useNotification', () => () => ({
   showWarn: mockNotifyWarn,
 }))
 
+// 強行登録の確認ダイアログ（F03.4.5 §6.2 W2-5-FE）を検証可能にするため useConfirm をモックする
+// （ReservationList.spec.ts と同一パターン。実 PrimeVue ConfirmationService はグローバル
+// <ConfirmDialog/> が無いと accept/reject を DOM から操作できないため）。
+let confirmAcceptCallback: (() => void | Promise<void>) | null = null
+mockNuxtImport('useConfirm', () => () => ({
+  require: (opts: { accept: () => void | Promise<void> }) => { confirmAcceptCallback = opts.accept },
+  close: vi.fn(),
+}))
+
 const mockHandleApiError = vi.fn()
 mockNuxtImport('useErrorHandler', () => () => ({
   resolveMessage: (code: string) => code,
@@ -142,6 +151,7 @@ beforeEach(() => {
   // 既定は「0件」で安定させる（onMounted の loadRecurringRules が必ず呼ぶため）。
   mockListRecurringBlockedTimes.mockResolvedValue({ data: [] })
   mockGetRecurringBlockedTimeImpact.mockResolvedValue({ data: { affectedCount: 0, reservations: [] } })
+  confirmAcceptCallback = null
 })
 
 afterEach(() => {
@@ -742,5 +752,111 @@ describe('WeeklyScheduleManager.vue — 定期予約不可枠（§4 B・W2-2-FE�
     expect(message.toLowerCase()).toContain('pause')
     // handleApiError（汎用フォールバック）は呼ばれない（コード判定で分岐している証跡）
     expect(mockHandleApiError).not.toHaveBeenCalled()
+  })
+
+  /**
+   * 定期予約不可枠の強行登録（forceCancelConflicting・F03.4.5 §6.2「殿の裁定」W2-5-FE）。
+   *
+   * 観点:
+   *   FORCE-1: impact で衝突あり（affectedCount>0）のとき「衝突する予約をキャンセルして登録する」
+   *            ボタンが出て、確認ダイアログ（confirmDialog.require）を経由してから
+   *            createRecurringBlockedTime に forceCancelConflicting:true が additive で渡る
+   *            （既定 false・うっかり押せない形＝確認ダイアログ必須）
+   *   FORCE-2: 実際にキャンセルされた件数（forceCancelledCount）を正直に通知する
+   *   FORCE-3: 衝突なし（affectedCount=0）のときは強行登録ボタン自体が出ない
+   */
+  it('FORCE-1: 衝突ありのとき強行登録ボタンが出て、確認後に forceCancelConflicting:true で送信する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockGetRecurringBlockedTimeImpact.mockResolvedValue({
+      data: { affectedCount: 2, reservations: [{ reservationId: 1, userName: 'Reserver Y', startTime: '19:00:00', endTime: '20:00:00' }] },
+    })
+    mockCreateRecurringBlockedTime.mockResolvedValue({ data: { id: 'rule-force-1', forceCancelledCount: 2 } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reasonInput.value = 'Training'
+    reasonInput.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    // 衝突ありのため通常の保存ボタンは disabled のまま（回帰なし）
+    const saveBtn = document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')
+    expect(saveBtn!.disabled).toBe(true)
+
+    const forceBtn = document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-force-cancel-button"]')
+    expect(forceBtn, '衝突ありのとき強行登録ボタンが出る').not.toBeNull()
+    forceBtn!.click()
+    await flush()
+
+    // 確認ダイアログを経由するまでは実際の作成APIは呼ばれない（うっかり押せない形）
+    expect(mockCreateRecurringBlockedTime).not.toHaveBeenCalled()
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+    await flush()
+
+    expect(mockCreateRecurringBlockedTime).toHaveBeenCalledTimes(1)
+    const [teamId, body] = mockCreateRecurringBlockedTime.mock.calls[0] as [string, Record<string, unknown>]
+    expect(teamId).toBe('team-slug')
+    expect(body.forceCancelConflicting).toBe(true)
+  })
+
+  it('FORCE-2: 強行登録で実際にキャンセルされた件数(forceCancelledCount)を通知する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockGetRecurringBlockedTimeImpact.mockResolvedValue({
+      data: { affectedCount: 3, reservations: [] },
+    })
+    mockCreateRecurringBlockedTime.mockResolvedValue({ data: { id: 'rule-force-2', forceCancelledCount: 3 } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const reasonInput = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reasonInput.value = 'Training'
+    reasonInput.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+    await flush()
+
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-force-cancel-button"]')!.click()
+    await flush()
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+    await flush()
+
+    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyWarn.mock.calls[0] as [string, string]
+    expect(message).toContain('3')
+    // 通常の成功トーストも別途出る（登録自体は成立している）
+    expect(mockNotifySuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('FORCE-3: 衝突なし（affectedCount=0）のときは強行登録ボタンが出ない', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockGetRecurringBlockedTimeImpact.mockResolvedValue({ data: { affectedCount: 0, reservations: [] } })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+
+    expect(document.body.querySelector('[data-testid="recurring-force-cancel-button"]')).toBeNull()
   })
 })

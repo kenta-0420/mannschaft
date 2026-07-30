@@ -91,6 +91,24 @@
 | **一次防御** | `*ScopeContractIT`（非メンバー403/越境404/正当成功を実 MySQL Testcontainers で検証する契約テスト群。38 個・全ドメイン網羅）＋ ArchUnit 認可番人 | 全 PR で**必須**チェック「Compile & Test」内 | ✅ required（main ruleset 必須チェック） |
 | **実機裏取り** | `e2e-real-smoke` ワークフローの認可スモーク（`backend/scripts/smoke-check.sh`）— 非メンバー・未認証で実際に起動した Spring Boot に対し保護 EP を叩き 401/403/404 を確認。200 が返れば即 fail | seed/schedule 関連ファイル変更時の PR・週次 cron・手動実行 | ❌ 非 required |
 
+### 4.2 認可番人の「監査済マーカー」4 種（`com.mannschaft.app.common.security`）
+
+ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンドポイントが認可シグナル（`@PreAuthorize` / 白名簿クラスへの認可呼び出し）を持つことを要求する。番人の呼び出しグラフ判定では拾えないが監査を経て正当と確認された EP は、**主張の内容ごとに分離された 4 種のマーカー**で明示承認する。実態と異なるマーカーを貼ることは誤った証跡となるため禁止する。
+
+| マーカー | 主張 | 付与できる対象 | 付与時の必須条件 |
+|---|---|---|---|
+| `@SelfScopedEndpoint` | **他人のデータへ構造的に到達できない**（検索・更新の対象が認証主体に束縛され、リクエストで他人の識別子を指定する余地が無い） | **メソッドのみ** | `value()` に根拠を記述（必須属性）＋**対応する契約テストの実在**（番人 `SelfScopedEndpointMarkerGuardTest` が機械的に要求） |
+| `@AuthorizedInService` | 白名簿クラスを介さず **Service 内の別方式で認可済み**（webhook 署名検証・capability トークン等） | メソッド / クラス | 認可の実施箇所と方式を Javadoc に明記 |
+| `@AuthorizedByPathConfig` | `SecurityConfig` のパス単位 `hasRole()` 等で**宣言的に強制済み** | メソッド / クラス | 根拠となる `requestMatcher` を Javadoc に明記 |
+| `@IntentionallyPublic` | `permitAll()` 配下で**意図的に無認可公開** | メソッド / クラス | `permitAll()` 行＋公開してよい理由を Javadoc に明記 |
+
+**`@SelfScopedEndpoint` の運用ルール**（2026-07-30 新設・マスター御裁可）:
+
+1. **`@AuthorizedInService` からの分離** — 「到達不能」と「どこかで認可済み」は別の主張である。過去の波では自己スコープ EP に `@AuthorizedInService` を流用した例があるが、**今後その転用は禁止**する。
+2. **契約テストが必須** — 本マーカーの価値は「宣言に見合う検証が実在するか」に依存する。番人 `SelfScopedEndpointMarkerGuardTest` が、付与された全 EP について「その EP を名指しした JUnit テストソースの実在」を CI で機械的に要求する。契約テスト側の Javadoc または `@DisplayName` に `<Controller 単純名>#<メソッド名>` を明記してリンクを成立させる。**免除リストは設けない**。
+3. **メソッド専用** — 到達不能性はエンドポイント単位の性質であり、自己スコープ EP とリソース ID を受け取る EP は同一 Controller に併存する。クラス単位の付与は許可しない（`@Target(METHOD)`）。
+4. **濫用の禁止** — 自己スコープでない EP への付与は監査の証跡を偽る行為であり禁止する。「操作者 == 所有者」を直接比較して拒否している EP は到達可能性自体は存在するため対象外（実効的な認可を白名簿クラスへ寄せる）。対象の検索条件・DTO が変更された際は束縛が崩れていないか再評価すること。
+
 **なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
 
 ---
@@ -164,6 +182,7 @@
 
 | 日付 | 変更 |
 |---|---|
+| 2026-07-30 | **認可番人の監査済マーカー整備**: §4.2「認可番人の『監査済マーカー』4 種」を新設。自己スコープ EP 専用マーカー `@SelfScopedEndpoint`（メソッド専用・根拠必須・**契約テストの実在を番人 `SelfScopedEndpointMarkerGuardTest` が機械的に要求**・免除リストなし）を追加し、`@AuthorizedInService` からの転用を禁止。4 マーカーの主張・付与対象・必須条件を表で明示。 |
 | 2026-07-17 | **認可根治戦役 Wave4**: §4.1「認可回帰テストの層構造」を新設。一次防御（`*ScopeContractIT` 38個＋ArchUnit・required）と実機裏取り（`e2e-real-smoke` 認可スモーク・非required）の二層構造と、実機裏取りをrequired化しない理由を明記。`backend/scripts/smoke-check.sh` に非メンバー403/未認証401の実機スモーク追加、`seed-e2e-data.js` に非メンバー専用 `e2e-outsider` アカウントを追加。 |
 | 2026-06-12 | **ステータス追従**: 認可基盤根治 Phase 1〜3 完了（#1266・2026-06-02 点火）・レートリミット Valkey 化 全 18 フィルタ完了（#1470/1471/1472・2026-06-12）を反映。OWASP A01/A04 の未着手警告を根治済みに更新。文書一覧の 03 ステータス更新。§8 実装待機テーブルに「状態」列を追加し C-1 を根治済みに更新。実機コード裏取りにより ShiftPdf 負論理(#1263)・統合テスト 11 シナリオ(#1266)・CSP レポート受信 EP(#1274 `CspReportController`)も完了済みと確認し、C-1 の残課題が Phase 6（性能最適化）のみであること・C-3 実装済みを反映。 |
 | 2026-06-02 | セキュリティ精査ギャップ反映。文書一覧に 06〜09 を追加。OWASP A01 に未着手警告・A04 にビジネスロジック設計書参照を追加。§8「実装待機」セクションを新設（C-1/C-2/C-3 の 3 件を明示）。 |

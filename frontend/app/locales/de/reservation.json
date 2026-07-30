@@ -262,7 +262,8 @@
       "template_delete_success": "Vorlage gelöscht",
       "template_save_failed": "Speichern fehlgeschlagen",
       "template_load_failed": "Vorlagen konnten nicht geladen werden",
-      "cancel_deadline_passed": "Die Stornofrist ist abgelaufen, daher konnte diese Reservierung nicht storniert werden. Wenden Sie sich bei Änderungsbedarf an einen Team-Administrator"
+      "cancel_deadline_passed": "Die Stornofrist ist abgelaufen, daher konnte diese Reservierung nicht storniert werden. Wenden Sie sich bei Änderungsbedarf an einen Team-Administrator",
+      "rate_limited": "Sie erstellen Reservierungen zu schnell hintereinander. Bitte warten Sie einen Moment und versuchen Sie es erneut"
     },
     "empty": {
       "no_reservations": "Keine Reservierungen",
@@ -332,6 +333,14 @@
           "placeholder": "z.B. 24,1",
           "error_empty": "Bitte mindestens einen Wert eingeben",
           "error_invalid": "Bitte ganze Zahlen zwischen 0 und 8760, kommagetrennt eingeben"
+        },
+        "pending_expire": {
+          "label": "Automatisches Verfallen vorläufiger Reservierungen (PENDING)",
+          "hint": "Storniert eine vorläufige, noch unbestätigte Reservierung automatisch nach Ablauf der angegebenen Zeit (1-168 Stunden, bis zu 7 Tage)",
+          "unit": " Stunden bis zur automatischen Stornierung",
+          "no_expire_toggle": "Nicht automatisch stornieren",
+          "no_expire_warning": "Derzeit ist \"Nicht automatisch stornieren\" aktiviert. Bei Teams mit manueller Genehmigung (MANUAL) werden vorläufige Reservierungen nicht automatisch storniert. Administratoren müssen diese einzeln bearbeiten",
+          "error_range": "Bitte einen Wert zwischen 1 und 168 eingeben"
         }
       }
     },
@@ -451,6 +460,43 @@
         "title": "Gespeicherte Sperrzeiten",
         "empty": "Keine Sperrzeiten gespeichert",
         "all_day": "Ganztägig"
+      }
+    },
+    "recurring": {
+      "toggle_label": "Diese Reservierung wöchentlich wiederholen",
+      "weeks_option": "{n} Wochen",
+      "weeks_more": "Weitere Optionen (5-12 Wochen)",
+      "weeks_label": "Anzahl der Wochen",
+      "horizon_hint": "Zeitfenster werden nur bis zu 28 Tage im Voraus automatisch erstellt. Wochen danach müssen möglicherweise manuell gebucht werden, sobald das Zeitfenster erstellt wurde",
+      "close_button": "Schließen",
+      "badge": "Wiederkehrend",
+      "result": {
+        "summary": "{created} Reservierung(en) erstellt ({skipped} übersprungen)",
+        "skipped_list_title": "Übersprungene Termine",
+        "all_skipped_notice": "Keine der ausgewählten Wochen konnte reserviert werden. Bitte prüfen Sie die untenstehenden Gründe und buchen Sie die benötigten Wochen einzeln"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "Das Zeitfenster für diese Woche wurde noch nicht erstellt",
+        "FULL": "Das Zeitfenster war ausgebucht",
+        "CLOSED": "Die Buchung war für dieses Zeitfenster geschlossen",
+        "BLOCKED": "Dieser Zeitraum war nicht buchbar",
+        "ALREADY_RESERVED": "Sie hatten bereits eine Reservierung für dieses Zeitfenster",
+        "UNAVAILABLE": "Das Zeitfenster war nicht verfügbar",
+        "NOT_CANCELLABLE": "Diese Reservierung konnte nicht storniert werden",
+        "CANCEL_DEADLINE_PASSED": "Die Stornierungsfrist war abgelaufen",
+        "NOT_PENDING": "Diese Reservierung wartete nicht auf Genehmigung"
+      },
+      "cancel_scope": {
+        "dialog_title": "Stornierungsumfang wählen",
+        "this_only": "Nur dieser Termin",
+        "this_and_following": "Dieser und alle folgenden Termine",
+        "result_summary": "{cancelled} storniert ({skipped} nicht berechtigt)",
+        "all_skipped_notice": "Keiner der Termine konnte storniert werden. Bitte prüfen Sie die untenstehenden Gründe"
+      },
+      "confirm_series": {
+        "button": "Alle genehmigen (wiederkehrende Serie)",
+        "confirm_message": "Alle ausstehenden Reservierungen dieser wiederkehrenden Serie genehmigen?",
+        "success": "{confirmed} genehmigt ({skipped} übersprungen)"
       }
     },
     "notify_recipients": {
@@ -580,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "Pausieren/Fortsetzen fehlgeschlagen. In diesem Zeitraum gibt es überschneidende Reservierungen"
+      },
+      "force_cancel": {
+        "button": "Widersprüchliche Reservierungen stornieren und registrieren",
+        "confirm_title": "Erzwungene Registrierung bestätigen",
+        "confirm_message": "{n} Reservierung(en) werden storniert und die Mitglieder benachrichtigt. Fortfahren?",
+        "confirm_ok": "Stornieren und registrieren",
+        "result_notice": "{n} Reservierung(en) wurden storniert und die Sperre wurde registriert"
       }
     },
     "business_hours": {
@@ -679,6 +732,28 @@
       "row_locked": "Dies ist eine Sammelbuchung. Bitte als Gruppe verwalten",
       "deadline_passed": "Die Stornofrist ist abgelaufen, eine Stornierung ist nicht mehr möglich",
       "own_overlap": "Sie haben bereits eine andere Buchung im ausgewählten Zeitfenster. Bitte prüfen Sie die Uhrzeit"
+    },
+    "waitlist": {
+      "register_button": "Auf die Warteliste setzen",
+      "cancel_button": "Von der Warteliste entfernen",
+      "registered_badge": "Wartend",
+      "dialog_title": "Warteliste",
+      "notice": "Wir benachrichtigen Sie, sobald ein Platz frei wird. Die Reihenfolge ist nicht garantiert – es gilt \"first come, first served\"",
+      "register_success": "Zur Warteliste hinzugefügt",
+      "cancel_success": "Von der Warteliste entfernt",
+      "admin_count": "{n} auf der Warteliste",
+      "already_registered": "Sie stehen bereits auf der Warteliste für diesen Termin",
+      "not_found": "Wartelisteneintrag nicht gefunden (möglicherweise bereits storniert oder in eine Reservierung umgewandelt)",
+      "limit_exceeded": "Sie haben das Limit für Wartelisteneinträge erreicht",
+      "rate_limited": "Das ging zu schnell. Bitte warten Sie etwa eine Minute und versuchen Sie es erneut",
+      "slot_not_full": "Ein Platz ist frei geworden. Sie können jetzt direkt buchen",
+      "my_list_title": "Meine Warteliste",
+      "no_entries": "Sie stehen auf keiner Warteliste",
+      "aria_hint_register": "Drücken, um sich auf die Warteliste zu setzen",
+      "aria_hint_cancel": "Drücken, um sich von der Warteliste zu entfernen"
+    },
+    "pending_expire_notice": {
+      "form_note": "Wenn diese Reservierung nicht innerhalb von {n} Stunden bestätigt wird, wird sie automatisch storniert"
     },
     "team_guide": {
       "title": "So funktionieren Reservierungen",

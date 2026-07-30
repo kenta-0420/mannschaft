@@ -6,6 +6,9 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
+import com.mannschaft.app.reservation.RecurringWeekSkipReason;
+import com.mannschaft.app.reservation.ReservationCancelScope;
+import com.mannschaft.app.reservation.ReservationConfirmScope;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -40,6 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,6 +156,41 @@ public class ReservationService {
         // 買い占めを防ぐ。認可（view ゲート）通過後に消費する順序はキャンセル待ち登録と揃えている。
         createRateLimiter.assertNotRateLimited(userId);
 
+        return doCreateReservation(teamId, userId, request, null);
+    }
+
+    /**
+     * 定期予約（F03.4.5 §6.2 W2-5）の 1 週分を作成する。
+     *
+     * <p><b>⚠ 認可ゲートとレートリミットを持たない。</b>{@link ReservationRecurringService} が
+     * series 単位で 1 回だけ適用したうえで本メソッドを週ごとに呼ぶ設計であり（AC-5-11:
+     * 1 series = 1 消費）、<b>Controller や他ドメインから直接呼んではならない</b>。
+     * 誤用を検知するため、{@code ReservationRecurringServiceTest} が
+     * 「{@code createRecurring} が assertCanView とレートリミッタをそれぞれ 1 回だけ呼ぶ」ことを固定している。</p>
+     *
+     * <p>public なのは Spring AOP プロキシ経由で<b>週ごとに独立したトランザクション</b>を開くためである
+     * （{@link ReservationRecurringService} は非トランザクションのオーケストレーターなので、
+     * ここが REQUIRED で入っても新規トランザクションになる）。1 週の失敗が他の週を巻き込まない。</p>
+     *
+     * @param teamId   チームID
+     * @param userId   予約者ユーザーID
+     * @param request  作成リクエスト（当該週の {@code reservationSlotId} を指す）
+     * @param seriesId 付与する series ID（単発として作る場合は null）
+     * @return 作成された予約レスポンス
+     */
+    @Transactional
+    public ReservationResponse createReservationForSeries(
+            Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
+        return doCreateReservation(teamId, userId, request, seriesId);
+    }
+
+    /**
+     * 予約作成の本体（認可ゲート・レートリミットを<b>含まない</b>）。
+     *
+     * @param seriesId 定期予約の series ID（単発は null）
+     */
+    private ReservationResponse doCreateReservation(
+            Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
@@ -198,6 +238,8 @@ public class ReservationService {
                 .teamId(teamId)
                 .userId(userId)
                 .userNote(request.getUserNote())
+                // F03.4.5 §6.2 W2-5: 定期予約の series ID（単発は null = 従来と完全同一・AC-5-2）
+                .recurringSeriesId(seriesId)
                 .build();
 
         ReservationEntity saved = reservationRepository.save(entity);
@@ -235,7 +277,7 @@ public class ReservationService {
     }
 
     /**
-     * 予約を確定する。
+     * 予約を確定する（単票・従来契約）。
      *
      * @param teamId        チームID
      * @param reservationId 予約ID
@@ -243,6 +285,27 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse confirmReservation(Long teamId, Long reservationId) {
+        return confirmReservation(teamId, reservationId, ReservationConfirmScope.THIS_ONLY);
+    }
+
+    /**
+     * 予約を確定する（F03.4.5 §6.2 W2-5: {@code scope=SERIES} で series 一括承認）。
+     *
+     * <p>{@link ReservationConfirmScope#SERIES} のときは、当該予約を確定したうえで同一 series の
+     * 残りの PENDING も確定する。対象行は<b>当該チームに属する行のみ</b>
+     * （{@code findByRecurringSeriesIdAndTeamIdOrderById}）で、PENDING でない行はスキップして
+     * 明細（{@code recurringConfirm}）を返す（AC-5-9）。</p>
+     *
+     * <p>MANUAL 承認チームで 12 週分の PENDING が並ぶ問題への対処であり、単票承認は従来どおり可能。</p>
+     *
+     * @param teamId        チームID
+     * @param reservationId 予約ID（series の起点として扱う行）
+     * @param scope         承認範囲（null は {@code THIS_ONLY} と同義）
+     * @return 更新された予約レスポンス
+     */
+    @Transactional
+    public ReservationResponse confirmReservation(
+            Long teamId, Long reservationId, ReservationConfirmScope scope) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
@@ -258,8 +321,15 @@ public class ReservationService {
         ReservationSlotEntity slot = slotService.getSlotEntity(saved.getReservationSlotId());
         publishConfirmedEvent(saved, slot, saved.getUserId());
 
-        log.info("予約確定: teamId={}, reservationId={}", teamId, reservationId);
-        return enrich(saved);
+        log.info("予約確定: teamId={}, reservationId={}, scope={}", teamId, reservationId, scope);
+
+        ReservationResponse response = enrich(saved);
+        if (scope == ReservationConfirmScope.SERIES && saved.getRecurringSeriesId() != null) {
+            response = response.toBuilder()
+                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot))
+                    .build();
+        }
+        return response;
     }
 
     /**
@@ -309,13 +379,23 @@ public class ReservationService {
 
         ReservationSlotEntity slot = slotService.getSlotEntity(entity.getReservationSlotId());
 
+        // F03.4.5 §6.2 W2-5: 「以降すべて」を選んだ定期予約は、起点回も含めて<b>全回を同じ規則</b>で
+        // 処理する（AC-5-7・検分 MUST④）。起点回だけ締切超過で例外にすると
+        // 「今日の回は締切だが来週以降はまとめて消したい」という当然の操作ができない。
+        // 単発予約（series NULL）に THIS_AND_FOLLOWING を指定した場合は従来経路（無害）。
+        if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                && entity.getRecurringSeriesId() != null) {
+            return cancelSeriesFromBase(entity, slot, request.getReason());
+        }
+
+        if (!entity.isCancellable()) {
+            throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
         // F03.4 ⑤: 会員（USER）キャンセルは締切（cancel_deadline_hours・既定 24）を実適用する。
         // 枠開始時刻の deadline 時間前を過ぎていればキャンセルを拒否する（管理者キャンセルは対象外）。
         // 判定基準は注入 Clock（LocalDateTime.now() 直書きは CI 破壊地雷のため禁止）。
-        int cancelDeadlineHours = reservationPolicyService.getOrDefault(entity.getTeamId()).getCancelDeadlineHours();
-        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        LocalDateTime deadline = slotStart.minusHours(cancelDeadlineHours);
-        if (LocalDateTime.now(clock).isAfter(deadline)) {
+        if (isCancelDeadlinePassed(entity.getTeamId(), slot, new HashMap<>())) {
             throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
         }
 
@@ -324,15 +404,264 @@ public class ReservationService {
 
         slotService.decrementAndReopen(slot);
 
-        eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
-                saved.getTeamId(),
-                saved.getId(),
-                userId,
-                slot.getTitle()
-        ));
+        publishMemberCancelledEvent(saved, slot, userId);
 
-        log.info("予約キャンセル(ユーザー): userId={}, reservationId={}", userId, reservationId);
+        log.info("予約キャンセル(ユーザー): userId={}, reservationId={}, scope={}",
+                userId, reservationId, request.getScope());
+
         return enrich(saved);
+    }
+
+    /**
+     * キャンセル締切（{@code cancel_deadline_hours}）を過ぎているかを判定する（単票・series 共通）。
+     *
+     * <p>ポリシーは<b>行のチーム</b>で引く。同一チームの行が並んでもクエリを増やさないよう
+     * 呼び出し側が持つ {@code deadlineHoursByTeam} にメモ化する。</p>
+     */
+    private boolean isCancelDeadlinePassed(
+            Long teamId, ReservationSlotEntity slot, Map<Long, Integer> deadlineHoursByTeam) {
+        int deadlineHours = deadlineHoursByTeam.computeIfAbsent(teamId,
+                t -> reservationPolicyService.getOrDefault(t).getCancelDeadlineHours());
+        LocalDateTime deadline =
+                LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
+        return LocalDateTime.now(clock).isAfter(deadline);
+    }
+
+    /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
+    private void publishMemberCancelledEvent(
+            ReservationEntity saved, ReservationSlotEntity slot, Long actorUserId) {
+        eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
+                saved.getTeamId(), saved.getId(), actorUserId, slot.getTitle()));
+    }
+
+    /**
+     * series 内の「当該日より後」の自分の予約を続けてキャンセルする（F03.4.5 §6.2・AC-5-7 / AC-5-8）。
+     *
+     * <p><b>IDOR（AC-5-8）</b>: 対象行は {@code findByRecurringSeriesIdAndUserIdOrderById} で
+     * <b>本人所有の行だけ</b>を引く。series ID を知っていても他人の予約はキャンセルできない。</p>
+     *
+     * <p><b>過去回は不変</b>: 起点の枠日付より後の回のみを対象にする。既に来店済み・キャンセル済みの回を
+     * 遡って書き換えない。</p>
+     *
+     * <p><b>ロック順序（AC-5-6）</b>: {@code slot_date} 昇順に処理する。同一 series を複数セッションが
+     * 同時に触ったときのデッドロックを避けるため、順序を実装依存（id 順や取得順）にしない。</p>
+     *
+     * <p><b>締切超過はスキップ</b>: 各行に既存のキャンセル検証（{@code isCancellable} と
+     * {@code cancel_deadline_hours}）を<b>行ごとに</b>適用し、通らない回は例外にせず明細に記録する。
+     * 「以降すべて」は複数回に対する 1 操作であり、直近 1 回が締切超過だからといって
+     * 2 ヶ月先の回まで残す挙動は利用者の意図に反する。</p>
+     *
+     * <p><b>起点回も同じ規則で扱う（検分 MUST④）</b>: 起点回が締切超過・状態不整合であっても
+     * 例外にせずスキップ明細に載せ、以降の回の処理を続ける。起点回だけ例外にすると
+     * 「今日の回は締切だが来週以降はまとめて消したい」という当然の操作ができない。
+     * 全回がスキップされて 0 件になってもエラーにせず明細を返す（AC-5-13 と同じ思想）。</p>
+     *
+     * @param base       起点予約（当該回・まだキャンセルしていない）
+     * @param baseSlot   起点予約の枠
+     * @param reason     キャンセル理由（全行に同一文言を記録）
+     * @return 起点予約のレスポンス（{@code recurringCancel} に結果明細を含む）
+     */
+    private ReservationResponse cancelSeriesFromBase(
+            ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
+        java.util.UUID seriesId = base.getRecurringSeriesId();
+
+        // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
+        // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndUserIdOrderById(seriesId, base.getUserId()).stream()
+                .filter(r -> !r.getId().equals(base.getId()))
+                .toList();
+
+        Map<Long, ReservationSlotEntity> slotById = siblings.isEmpty()
+                ? Map.of()
+                : slotRepository.findAllById(siblings.stream()
+                                .map(ReservationEntity::getReservationSlotId).toList()).stream()
+                        .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        List<ReservationResponse.RecurringWeekOutcomeDto> cancelled = new java.util.ArrayList<>();
+        List<ReservationResponse.RecurringWeekOutcomeDto> skipped = new java.util.ArrayList<>();
+
+        // 起点回を先頭に、以降は「当該日より後」だけを対象にする（過去回は不変）。
+        // 並びは slot_date 昇順に固定する（AC-5-6 のロック順序）。
+        List<SeriesRow> targets = new java.util.ArrayList<>();
+        targets.add(new SeriesRow(base, baseSlot));
+        for (ReservationEntity row : siblings) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            if (slot == null) {
+                // 枠が解決できないと締切判定も枠復帰もできない。握り潰さず明細に載せる。
+                log.warn("定期予約の以降キャンセル: 枠が解決できずスキップ reservationId={}, slotId={}",
+                        row.getId(), row.getReservationSlotId());
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        null, RecurringWeekSkipReason.NOT_CANCELLABLE, row.getId()));
+                continue;
+            }
+            if (!slot.getSlotDate().isAfter(baseSlot.getSlotDate())) {
+                continue;
+            }
+            targets.add(new SeriesRow(row, slot));
+        }
+        targets.sort(Comparator.comparing((SeriesRow t) -> t.slot().getSlotDate())
+                .thenComparing(t -> t.slot().getStartTime()));
+
+        // 締切は<b>行ごとに</b>（その行のチームのポリシーで）判定する。1 回だけ判定して全行に流用すると
+        // AC-5-7 の「各行に既存のキャンセル検証を適用」を満たさない。チーム単位でメモ化して
+        // 同一チームの行が並んでもクエリを増やさない。
+        Map<Long, Integer> deadlineHoursByTeam = new HashMap<>();
+        List<ReservationEntity> toSave = new java.util.ArrayList<>();
+        List<ReservationSlotEntity> slotsToReopen = new java.util.ArrayList<>();
+        boolean baseCancelled = false;
+
+        for (SeriesRow target : targets) {
+            ReservationEntity row = target.row();
+            ReservationSlotEntity slot = target.slot();
+            if (!row.isCancellable()) {
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        slot.getSlotDate(), RecurringWeekSkipReason.NOT_CANCELLABLE, row.getId()));
+                continue;
+            }
+            if (isCancelDeadlinePassed(row.getTeamId(), slot, deadlineHoursByTeam)) {
+                // 締切超過は例外にしない。「以降すべて」は複数回に対する 1 操作であり、直近 1 回が
+                // 締切超過だからといって 2 ヶ月先の回まで残す挙動は利用者の意図に反する。
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        slot.getSlotDate(), RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED, row.getId()));
+                continue;
+            }
+            row.cancel(reason, CancelledBy.USER);
+            toSave.add(row);
+            slotsToReopen.add(slot);
+            cancelled.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                    slot.getSlotDate(), null, row.getId()));
+            if (row.getId().equals(base.getId())) {
+                baseCancelled = true;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            reservationRepository.saveAll(toSave);
+            // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
+            slotsToReopen.forEach(slotService::decrementAndReopen);
+        }
+
+        // 会員キャンセル通知は「起点回が実際にキャンセルされたとき」だけ従来どおり 1 回発行する
+        // （スキップされた回について「キャンセルされました」と通知しない）。
+        if (baseCancelled) {
+            publishMemberCancelledEvent(base, baseSlot, base.getUserId());
+        }
+
+        log.info("定期予約 以降すべてキャンセル: userId={}, seriesId={}, キャンセル={}件, スキップ={}件",
+                base.getUserId(), seriesId, cancelled.size(), skipped.size());
+
+        return enrich(base).toBuilder()
+                .recurringCancel(new ReservationResponse.RecurringCancelDto(
+                        seriesId, cancelled.size(), List.copyOf(cancelled), List.copyOf(skipped)))
+                .build();
+    }
+
+    /** series 内の 1 行と対応する枠のペア（並び替え・判定のための内部レコード）。 */
+    private record SeriesRow(ReservationEntity row, ReservationSlotEntity slot) {
+    }
+
+    /**
+     * series 内の残りの PENDING を一括承認する（F03.4.5 §6.2・AC-5-9）。
+     *
+     * <p><b>認可</b>: 対象行は {@code findByRecurringSeriesIdAndTeamIdOrderById} で
+     * <b>URL の {@code teamId} に属する行だけ</b>を引く。呼び出し元 EP の
+     * {@code @PreAuthorize isScopeAdmin(#teamId)} は {@code teamId} の管理者性しか見ないため、
+     * 「その teamId の管理者が触れる行の集合」をクエリ側で閉じることで各行に認可を効かせる。</p>
+     *
+     * <p>PENDING 以外（既に確定・キャンセル済み）はスキップして明細に記録する。
+     * グループ所属行（{@code group_id} 非 NULL）は単票遷移が禁止されているためスキップ対象とする。</p>
+     *
+     * @param teamId   チームID（認可スコープ）
+     * @param base     起点となる確定済み予約（当該回）
+     * @param baseSlot 起点予約の枠
+     * @return 承認結果の明細
+     */
+    private ReservationResponse.RecurringConfirmDto confirmFollowingInSeries(
+            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot) {
+        java.util.UUID seriesId = base.getRecurringSeriesId();
+
+        // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndTeamIdOrderById(seriesId, teamId).stream()
+                .filter(r -> !r.getId().equals(base.getId()))
+                .toList();
+
+        Map<Long, ReservationSlotEntity> slotById = siblings.isEmpty()
+                ? Map.of()
+                : slotRepository.findAllById(siblings.stream()
+                                .map(ReservationEntity::getReservationSlotId).toList()).stream()
+                        .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        List<ReservationResponse.RecurringWeekOutcomeDto> confirmed = new java.util.ArrayList<>();
+        List<ReservationResponse.RecurringWeekOutcomeDto> skipped = new java.util.ArrayList<>();
+        confirmed.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                baseSlot.getSlotDate(), null, base.getId()));
+
+        List<SeriesRow> ordered = new java.util.ArrayList<>();
+        for (ReservationEntity row : siblings) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            if (slot == null) {
+                log.warn("定期予約の一括承認: 枠が解決できずスキップ reservationId={}, slotId={}",
+                        row.getId(), row.getReservationSlotId());
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        null, RecurringWeekSkipReason.NOT_PENDING, row.getId()));
+                continue;
+            }
+            ordered.add(new SeriesRow(row, slot));
+        }
+        ordered.sort(Comparator.comparing((SeriesRow t) -> t.slot().getSlotDate())
+                .thenComparing(t -> t.slot().getStartTime()));
+
+        List<ReservationEntity> toSave = new java.util.ArrayList<>();
+        List<SeriesRow> newlyConfirmed = new java.util.ArrayList<>();
+        for (SeriesRow target : ordered) {
+            ReservationEntity row = target.row();
+            // グループ所属行は単票遷移が禁止（F03.4.3 §4）。series 一括承認でも例外にせずスキップし、
+            // グループはグループ API で承認させる（部分遷移によるグループ状態の分裂を作らない）。
+            if (row.getGroupId() != null || row.getStatus() != ReservationStatus.PENDING) {
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        target.slot().getSlotDate(), RecurringWeekSkipReason.NOT_PENDING, row.getId()));
+                continue;
+            }
+            row.confirm();
+            toSave.add(row);
+            newlyConfirmed.add(target);
+            confirmed.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                    target.slot().getSlotDate(), null, row.getId()));
+        }
+
+        if (!toSave.isEmpty()) {
+            reservationRepository.saveAll(toSave);
+            // 確定リマインドは行ごとに 1 セット必要（来店は週ごとに別々に発生する）。
+            newlyConfirmed.forEach(t -> publishConfirmedEvent(t.row(), t.slot(), t.row().getUserId()));
+        }
+
+        log.info("定期予約 series 一括承認: teamId={}, seriesId={}, 承認={}件, スキップ={}件",
+                teamId, seriesId, confirmed.size(), skipped.size());
+
+        return new ReservationResponse.RecurringConfirmDto(
+                seriesId, confirmed.size(), List.copyOf(confirmed), List.copyOf(skipped));
+    }
+
+    /**
+     * 予約の series 所属を解除する（F03.4.5 §6.2・AC-5-13）。
+     *
+     * <p>「毎週繰り返す」で 2 週目以降が全てスキップされ、成立が起点週 1 件だけになったときに
+     * {@link ReservationRecurringService} が呼ぶ。1 行だけの series は単発予約と区別する意味がないため
+     * NULL に戻す。</p>
+     *
+     * <p>独立した {@code @Transactional} メソッドにしているのは、呼び出し元が
+     * 非トランザクションのオーケストレーターであるため（週ごとの作成 tx はすでにコミット済み）。</p>
+     *
+     * @param reservationId 対象予約ID
+     */
+    @Transactional
+    public void clearRecurringSeries(Long reservationId) {
+        reservationRepository.findById(reservationId).ifPresent(entity -> {
+            entity.clearRecurringSeries();
+            reservationRepository.save(entity);
+        });
     }
 
     /**
