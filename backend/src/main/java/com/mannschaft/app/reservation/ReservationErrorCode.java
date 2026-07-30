@@ -325,8 +325,8 @@ public enum ReservationErrorCode implements ErrorCode {
     // 従い 046 起点で確定する（W2-4 が ErrorCode を追記する唯一の隊・マージ直前に再確認済み）。
     // 052 は W2-2（定期予約不可枠の上限）が消費済み。
     // 053（RESERVATION_CREATE_RATE_LIMITED）は W2-6 が消費した（2026-07-29・実 enum 最大 052 の次を採番）。
-    // W2-5（定期予約 repeatWeeks 上限 = RECURRING_RESERVATION_LIMIT_EXCEEDED）は
-    // 着手時に実物の最大値から再採番すること。本 PR マージ後の実物最大は 053 のため 054 が次になる。
+    // 054（RECURRING_RESERVATION_LIMIT_EXCEEDED）は W2-5 が消費した（2026-07-30・実 enum 最大 053 の次を採番）。
+    // 次に ErrorCode を採番する隊は 055 から。着手時に必ず enum 実物の最大値を再確認すること。
 
     /**
      * キャンセル待ちエントリ不存在（本人取消の対象なし・IDOR 秘匿含む・404）。
@@ -407,7 +407,22 @@ public enum ReservationErrorCode implements ErrorCode {
      * {@code GlobalExceptionHandler} の個別マッピングで 429。</p>
      */
     RESERVATION_CREATE_RATE_LIMITED("RESERVATION_053",
-            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN),
+
+    // ===== F03.4.5 §6.2 W2-5: 定期予約（毎週繰り返し）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_053）の次で確定した（2026-07-30）。
+
+    /**
+     * 定期予約の繰り返し週数が上限（12 週）を超えている（入力上限超過なので 400）。
+     *
+     * <p>§6.2: {@code repeatWeeks} は省略/1 = 従来どおり・2〜<b>12</b> が有効範囲で、13 以上は本コードで拒否する
+     * （買い占め防止の資源保護・§7）。上限は枠の生成 horizon（28 日 rolling）との兼ね合いで
+     * 「12 週指定の後半は構造的にスキップされる」ことを FE が段階開示で正直に伝える前提の値
+     * （設計書 §6.2）。Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    RECURRING_RESERVATION_LIMIT_EXCEEDED("RESERVATION_054",
+            "毎週の繰り返しは最大12週までです", Severity.WARN);
 
     private final String code;
     private final String message;

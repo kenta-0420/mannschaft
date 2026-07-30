@@ -105,8 +105,11 @@ public class ReservationRecurringBlockedTimeService {
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         boolean isPublic = Boolean.TRUE.equals(request.getIsPublic());
 
-        guardNoActiveOverlap(teamId, request.getLineId(), request.getDayOfWeek(),
-                request.getStartTime(), request.getEndTime());
+        // F03.4.5 §6.2 W2-5（殿の裁定）: force なら 409 の代わりに衝突予約を一括キャンセルして通知する。
+        Integer forceCancelledCount = resolveConflicts(
+                teamId, request.getLineId(), request.getDayOfWeek(),
+                request.getStartTime(), request.getEndTime(), request.getReason(),
+                Boolean.TRUE.equals(request.getForceCancelConflicting()), createdBy);
 
         ReservationRecurringBlockedTimeEntity entity = ReservationRecurringBlockedTimeEntity.builder()
                 .teamId(teamId)
@@ -119,10 +122,12 @@ public class ReservationRecurringBlockedTimeService {
                 .createdBy(createdBy)
                 .build();
         ReservationRecurringBlockedTimeEntity saved = ruleRepository.save(entity);
-        log.info("定期予約不可枠作成: teamId={}, ruleId={}, dayOfWeek={}, lineId={}",
-                teamId, saved.getId(), saved.getDayOfWeek(), saved.getLineId());
+        log.info("定期予約不可枠作成: teamId={}, ruleId={}, dayOfWeek={}, lineId={}, forceCancelled={}",
+                teamId, saved.getId(), saved.getDayOfWeek(), saved.getLineId(), forceCancelledCount);
         recordAudit("RESERVATION_RECURRING_BLOCKED_TIME_CREATED", createdBy, teamId, saved.getId());
-        return toResponse(saved, line != null ? line.getName() : null);
+        return toResponse(saved, line != null ? line.getName() : null).toBuilder()
+                .forceCancelledCount(forceCancelledCount)
+                .build();
     }
 
     // ────────────────────────────────────────────────────────────
@@ -168,13 +173,19 @@ public class ReservationRecurringBlockedTimeService {
         }
 
         // 曜日・時間帯・ラインのいずれかが変わった可能性があるため、最終形で 409 ガードを再検証する。
-        guardNoActiveOverlap(teamId, entity.getLineId(), entity.getDayOfWeek(),
-                entity.getStartTime(), entity.getEndTime());
+        // F03.4.5 §6.2 W2-5（殿の裁定）: force なら 409 の代わりに衝突予約を一括キャンセルして通知する。
+        Integer forceCancelledCount = resolveConflicts(
+                teamId, entity.getLineId(), entity.getDayOfWeek(),
+                entity.getStartTime(), entity.getEndTime(), entity.getReason(),
+                Boolean.TRUE.equals(request.getForceCancelConflicting()), updatedBy);
 
         ReservationRecurringBlockedTimeEntity saved = ruleRepository.save(entity);
-        log.info("定期予約不可枠更新: teamId={}, ruleId={}", teamId, ruleId);
+        log.info("定期予約不可枠更新: teamId={}, ruleId={}, forceCancelled={}",
+                teamId, ruleId, forceCancelledCount);
         recordAudit("RESERVATION_RECURRING_BLOCKED_TIME_UPDATED", updatedBy, teamId, ruleId);
-        return toResponse(saved, resolveLineName(saved.getLineId()));
+        return toResponse(saved, resolveLineName(saved.getLineId())).toBuilder()
+                .forceCancelledCount(forceCancelledCount)
+                .build();
     }
 
     // ────────────────────────────────────────────────────────────
@@ -266,6 +277,34 @@ public class ReservationRecurringBlockedTimeService {
     }
 
     /**
+     * 衝突する active 予約をどう扱うかを決める単一の分岐点（F03.4.5 §6.2 W2-5・殿の裁定 2026-07-30）。
+     *
+     * <p>{@code force=false}（既定・従来経路）は 409 ガードをそのまま適用し {@code null} を返す。
+     * {@code force=true} は衝突予約を一括キャンセルし、キャンセル件数を返す（0 件でも 0 を返す）。</p>
+     *
+     * <h2>なぜ強行登録が必要か（機能の構造的破綻の根治）</h2>
+     * <p>§4.3 の 409 ガードは「今日から 90 日先までに active 予約があれば拒否」する。一方 §6.2 の
+     * 定期予約は最大 12 週 = 約 84 日分の予約を並べる。したがって<b>会員 1 人が定期予約を入れるだけで、
+     * 管理者は「毎週火曜19時は研修」を恒久的に登録できなくなる</b>。設計書 §4.3 と §6.2 は互いに
+     * 言及しておらず、この衝突は W2-5 で初めて現実化した。
+     * 「409 のまま運用で回避」は不可という裁定であり、管理者が impact で影響を確認したうえで
+     * 既存予約を整理して登録できる正式な導線を用意することが根治である。</p>
+     *
+     * @param force TRUE = 衝突予約を一括キャンセルして登録を通す
+     * @return force のときキャンセルした件数 / force でないとき null（レスポンスで区別するため）
+     */
+    private Integer resolveConflicts(
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, String blockReason, boolean force, Long actorUserId) {
+        if (!force) {
+            guardNoActiveOverlap(teamId, lineId, dayOfWeek, startTime, endTime);
+            return null;
+        }
+        return forceCancelOverlapping(
+                teamId, lineId, dayOfWeek, startTime, endTime, blockReason, actorUserId);
+    }
+
+    /**
      * 提案されたルール（曜日・時間帯・ライン）と overlap する active 予約が 1 件以上あれば
      * {@code RESERVATION_027}（409）で拒否する（§4.3）。
      */
@@ -274,6 +313,26 @@ public class ReservationRecurringBlockedTimeService {
         if (!findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime).isEmpty()) {
             throw new BusinessException(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
         }
+    }
+
+    /**
+     * overlap する active 予約を一括で管理者キャンセルし、各申込者へ通知する
+     * （F03.4.5 §6.2 W2-5・強行登録の本体・AC-5-17）。
+     *
+     * <p><b>グループ予約の原子性</b>: 衝突した行がグループ予約の一部だった場合、その行だけを消すと
+     * F03.4.3 が禁じる<b>部分キャンセル</b>（booked_count 不整合・グループ状態の分裂）になる。
+     * 兄弟行まで展開して一括キャンセルする。</p>
+     *
+     * <p><b>枠復帰は {@link ReservationSlotService#decrementAndReopen} を必ず経由する</b>。
+     * DB が実際に FULL→AVAILABLE 遷移を起こしたときのみ {@code ReservationSlotReopenedEvent} が
+     * 発行され §6.1 のキャンセル待ち通知が AFTER_COMMIT で連鎖する（独自にイベントを撃たない統合点）。</p>
+     *
+     * @return キャンセルした予約行数
+     */
+    private int forceCancelOverlapping(
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, String blockReason, Long actorUserId) {
+        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
     }
 
     /**

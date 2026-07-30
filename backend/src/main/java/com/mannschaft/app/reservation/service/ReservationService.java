@@ -6,6 +6,9 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
+import com.mannschaft.app.reservation.RecurringWeekSkipReason;
+import com.mannschaft.app.reservation.ReservationCancelScope;
+import com.mannschaft.app.reservation.ReservationConfirmScope;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -151,6 +154,41 @@ public class ReservationService {
         // 買い占めを防ぐ。認可（view ゲート）通過後に消費する順序はキャンセル待ち登録と揃えている。
         createRateLimiter.assertNotRateLimited(userId);
 
+        return doCreateReservation(teamId, userId, request, null);
+    }
+
+    /**
+     * 定期予約（F03.4.5 §6.2 W2-5）の 1 週分を作成する。
+     *
+     * <p><b>⚠ 認可ゲートとレートリミットを持たない。</b>{@link ReservationRecurringService} が
+     * series 単位で 1 回だけ適用したうえで本メソッドを週ごとに呼ぶ設計であり（AC-5-11:
+     * 1 series = 1 消費）、<b>Controller や他ドメインから直接呼んではならない</b>。
+     * 誤用を検知するため、{@code ReservationRecurringServiceTest} が
+     * 「{@code createRecurring} が assertCanView とレートリミッタをそれぞれ 1 回だけ呼ぶ」ことを固定している。</p>
+     *
+     * <p>public なのは Spring AOP プロキシ経由で<b>週ごとに独立したトランザクション</b>を開くためである
+     * （{@link ReservationRecurringService} は非トランザクションのオーケストレーターなので、
+     * ここが REQUIRED で入っても新規トランザクションになる）。1 週の失敗が他の週を巻き込まない。</p>
+     *
+     * @param teamId   チームID
+     * @param userId   予約者ユーザーID
+     * @param request  作成リクエスト（当該週の {@code reservationSlotId} を指す）
+     * @param seriesId 付与する series ID（単発として作る場合は null）
+     * @return 作成された予約レスポンス
+     */
+    @Transactional
+    public ReservationResponse createReservationForSeries(
+            Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
+        return doCreateReservation(teamId, userId, request, seriesId);
+    }
+
+    /**
+     * 予約作成の本体（認可ゲート・レートリミットを<b>含まない</b>）。
+     *
+     * @param seriesId 定期予約の series ID（単発は null）
+     */
+    private ReservationResponse doCreateReservation(
+            Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
@@ -198,6 +236,8 @@ public class ReservationService {
                 .teamId(teamId)
                 .userId(userId)
                 .userNote(request.getUserNote())
+                // F03.4.5 §6.2 W2-5: 定期予約の series ID（単発は null = 従来と完全同一・AC-5-2）
+                .recurringSeriesId(seriesId)
                 .build();
 
         ReservationEntity saved = reservationRepository.save(entity);
@@ -235,7 +275,7 @@ public class ReservationService {
     }
 
     /**
-     * 予約を確定する。
+     * 予約を確定する（単票・従来契約）。
      *
      * @param teamId        チームID
      * @param reservationId 予約ID
@@ -243,6 +283,27 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse confirmReservation(Long teamId, Long reservationId) {
+        return confirmReservation(teamId, reservationId, ReservationConfirmScope.THIS_ONLY);
+    }
+
+    /**
+     * 予約を確定する（F03.4.5 §6.2 W2-5: {@code scope=SERIES} で series 一括承認）。
+     *
+     * <p>{@link ReservationConfirmScope#SERIES} のときは、当該予約を確定したうえで同一 series の
+     * 残りの PENDING も確定する。対象行は<b>当該チームに属する行のみ</b>
+     * （{@code findByRecurringSeriesIdAndTeamIdOrderById}）で、PENDING でない行はスキップして
+     * 明細（{@code recurringConfirm}）を返す（AC-5-9）。</p>
+     *
+     * <p>MANUAL 承認チームで 12 週分の PENDING が並ぶ問題への対処であり、単票承認は従来どおり可能。</p>
+     *
+     * @param teamId        チームID
+     * @param reservationId 予約ID（series の起点として扱う行）
+     * @param scope         承認範囲（null は {@code THIS_ONLY} と同義）
+     * @return 更新された予約レスポンス
+     */
+    @Transactional
+    public ReservationResponse confirmReservation(
+            Long teamId, Long reservationId, ReservationConfirmScope scope) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
@@ -258,8 +319,15 @@ public class ReservationService {
         ReservationSlotEntity slot = slotService.getSlotEntity(saved.getReservationSlotId());
         publishConfirmedEvent(saved, slot, saved.getUserId());
 
-        log.info("予約確定: teamId={}, reservationId={}", teamId, reservationId);
-        return enrich(saved);
+        log.info("予約確定: teamId={}, reservationId={}, scope={}", teamId, reservationId, scope);
+
+        ReservationResponse response = enrich(saved);
+        if (scope == ReservationConfirmScope.SERIES && saved.getRecurringSeriesId() != null) {
+            response = response.toBuilder()
+                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot))
+                    .build();
+        }
+        return response;
     }
 
     /**
@@ -331,8 +399,87 @@ public class ReservationService {
                 slot.getTitle()
         ));
 
-        log.info("予約キャンセル(ユーザー): userId={}, reservationId={}", userId, reservationId);
-        return enrich(saved);
+        log.info("予約キャンセル(ユーザー): userId={}, reservationId={}, scope={}",
+                userId, reservationId, request.getScope());
+
+        ReservationResponse response = enrich(saved);
+        // F03.4.5 §6.2 W2-5: 「以降すべて」を選んだ定期予約は、同一 series の当該日以降も続けてキャンセルする。
+        // 単発予約（series NULL）に指定されても 1 件だけのキャンセルで終わる（無害・AC-5-7）。
+        if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                && saved.getRecurringSeriesId() != null) {
+            response = response.toBuilder()
+                    .recurringCancel(cancelFollowingInSeries(saved, slot, request.getReason()))
+                    .build();
+        }
+        return response;
+    }
+
+    /**
+     * series 内の「当該日より後」の自分の予約を続けてキャンセルする（F03.4.5 §6.2・AC-5-7 / AC-5-8）。
+     *
+     * <p><b>IDOR（AC-5-8）</b>: 対象行は {@code findByRecurringSeriesIdAndUserIdOrderById} で
+     * <b>本人所有の行だけ</b>を引く。series ID を知っていても他人の予約はキャンセルできない。</p>
+     *
+     * <p><b>過去回は不変</b>: 起点の枠日付より後の回のみを対象にする。既に来店済み・キャンセル済みの回を
+     * 遡って書き換えない。</p>
+     *
+     * <p><b>ロック順序（AC-5-6）</b>: {@code slot_date} 昇順に処理する。同一 series を複数セッションが
+     * 同時に触ったときのデッドロックを避けるため、順序を実装依存（id 順や取得順）にしない。</p>
+     *
+     * <p><b>締切超過はスキップ</b>: 各行に既存のキャンセル検証（{@code isCancellable} と
+     * {@code cancel_deadline_hours}）を<b>行ごとに</b>適用し、通らない回は例外にせず明細に記録する。
+     * 「以降すべて」は複数回に対する 1 操作であり、直近 1 回が締切超過だからといって
+     * 2 ヶ月先の回まで残す挙動は利用者の意図に反する。</p>
+     *
+     * @param base       起点となるキャンセル済み予約（当該回）
+     * @param baseSlot   起点予約の枠
+     * @param reason     キャンセル理由（全行に同一文言を記録）
+     * @return キャンセル結果の明細
+     */
+    private ReservationResponse.RecurringCancelDto cancelFollowingInSeries(
+            ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
+        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
+    }
+
+    /**
+     * series 内の残りの PENDING を一括承認する（F03.4.5 §6.2・AC-5-9）。
+     *
+     * <p><b>認可</b>: 対象行は {@code findByRecurringSeriesIdAndTeamIdOrderById} で
+     * <b>URL の {@code teamId} に属する行だけ</b>を引く。呼び出し元 EP の
+     * {@code @PreAuthorize isScopeAdmin(#teamId)} は {@code teamId} の管理者性しか見ないため、
+     * 「その teamId の管理者が触れる行の集合」をクエリ側で閉じることで各行に認可を効かせる。</p>
+     *
+     * <p>PENDING 以外（既に確定・キャンセル済み）はスキップして明細に記録する。
+     * グループ所属行（{@code group_id} 非 NULL）は単票遷移が禁止されているためスキップ対象とする。</p>
+     *
+     * @param teamId   チームID（認可スコープ）
+     * @param base     起点となる確定済み予約（当該回）
+     * @param baseSlot 起点予約の枠
+     * @return 承認結果の明細
+     */
+    private ReservationResponse.RecurringConfirmDto confirmFollowingInSeries(
+            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot) {
+        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
+    }
+
+    /**
+     * 予約の series 所属を解除する（F03.4.5 §6.2・AC-5-13）。
+     *
+     * <p>「毎週繰り返す」で 2 週目以降が全てスキップされ、成立が起点週 1 件だけになったときに
+     * {@link ReservationRecurringService} が呼ぶ。1 行だけの series は単発予約と区別する意味がないため
+     * NULL に戻す。</p>
+     *
+     * <p>独立した {@code @Transactional} メソッドにしているのは、呼び出し元が
+     * 非トランザクションのオーケストレーターであるため（週ごとの作成 tx はすでにコミット済み）。</p>
+     *
+     * @param reservationId 対象予約ID
+     */
+    @Transactional
+    public void clearRecurringSeries(Long reservationId) {
+        reservationRepository.findById(reservationId).ifPresent(entity -> {
+            entity.clearRecurringSeries();
+            reservationRepository.save(entity);
+        });
     }
 
     /**

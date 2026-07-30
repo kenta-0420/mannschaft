@@ -6,6 +6,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,24 @@ public class ReservationResponse {
      */
     GroupSummaryDto group;
 
+    /**
+     * 定期予約（series）の要約と<b>作成時の結果明細</b>（F03.4.5 §6.2 W2-5・additive）。
+     * <b>単発予約では null</b> — 既存契約不変。
+     */
+    RecurringSeriesDto recurring;
+
+    /**
+     * 「以降すべてキャンセル」（{@code THIS_AND_FOLLOWING}）の結果明細（F03.4.5 §6.2 W2-5・additive）。
+     * <b>{@code THIS_ONLY}（既定）では null</b> — 既存契約不変。
+     */
+    RecurringCancelDto recurringCancel;
+
+    /**
+     * series 一括承認（{@code scope=SERIES}）の結果明細（F03.4.5 §6.2 W2-5・additive）。
+     * <b>単票承認（既定）では null</b> — 既存契約不変。
+     */
+    RecurringConfirmDto recurringConfirm;
+
     public record ReservationIdentifierDto(Long reservationSlotId, Long lineId, Long teamId, Long userId, String userName) {}
 
     public record SlotSummaryDto(String lineName, String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
@@ -51,4 +70,62 @@ public class ReservationResponse {
      * @param menuName     メニュー名（削除済みメニューも履歴解決・G-14。メニューなしは null）
      */
     public record GroupSummaryDto(UUID groupId, Integer groupSize, LocalTime groupEndTime, String menuName) {}
+
+    /**
+     * 定期予約 1 回分の処理結果（F03.4.5 §6.2）。
+     *
+     * <p>スキップの明細（{@code skippedWeeks[]}）は設計書 §6.2 の {@code {date, reason}} をそのまま表す。
+     * {@code reservationId} は成立した回のみ非 null（スキップ回は null）。</p>
+     *
+     * @param date          対象日（起点日 + 7×k）
+     * @param reason        スキップ理由（成立した回は null）
+     * @param reservationId 成立した予約ID（スキップ回は null）
+     */
+    public record RecurringWeekOutcomeDto(LocalDate date, String reason, Long reservationId) {}
+
+    /**
+     * 定期予約作成の結果（F03.4.5 §6.2・AC-5-1 / AC-5-13）。
+     *
+     * @param seriesId     series ID。<b>成立が 1 件だけのときは null</b>（1 行だけの series は発行しない）
+     * @param repeatWeeks  リクエストされた繰り返し週数（起点週を含む）
+     * @param createdCount 成立した件数（起点週を含む。常に 1 以上）
+     * @param skippedCount スキップした件数
+     * @param createdWeeks 成立した回の明細（起点週を先頭に日付昇順）
+     * @param skippedWeeks スキップした回の明細（日付昇順）
+     */
+    public record RecurringSeriesDto(
+            UUID seriesId,
+            Integer repeatWeeks,
+            Integer createdCount,
+            Integer skippedCount,
+            List<RecurringWeekOutcomeDto> createdWeeks,
+            List<RecurringWeekOutcomeDto> skippedWeeks) {}
+
+    /**
+     * 「以降すべてキャンセル」の結果（F03.4.5 §6.2・AC-5-7）。
+     *
+     * @param seriesId       対象 series ID
+     * @param cancelledCount キャンセルした件数（起点の当該回を含む）
+     * @param cancelledWeeks キャンセルした回の明細（日付昇順）
+     * @param skippedWeeks   締切超過・状態不整合でスキップした回の明細（日付昇順）
+     */
+    public record RecurringCancelDto(
+            UUID seriesId,
+            Integer cancelledCount,
+            List<RecurringWeekOutcomeDto> cancelledWeeks,
+            List<RecurringWeekOutcomeDto> skippedWeeks) {}
+
+    /**
+     * series 一括承認の結果（F03.4.5 §6.2・AC-5-9）。
+     *
+     * @param seriesId       対象 series ID
+     * @param confirmedCount 承認した件数（起点の当該回を含む）
+     * @param confirmedWeeks 承認した回の明細（日付昇順）
+     * @param skippedWeeks   PENDING でなくスキップした回の明細（日付昇順）
+     */
+    public record RecurringConfirmDto(
+            UUID seriesId,
+            Integer confirmedCount,
+            List<RecurringWeekOutcomeDto> confirmedWeeks,
+            List<RecurringWeekOutcomeDto> skippedWeeks) {}
 }
