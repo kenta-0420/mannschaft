@@ -2,8 +2,11 @@ package com.mannschaft.app.favorite.resolver.impl;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
+import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +47,9 @@ class TeamFavoriteResolverTest {
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private TeamFavoriteResolver resolver;
 
@@ -56,6 +63,8 @@ class TeamFavoriteResolverTest {
         ReflectionTestUtils.setField(team, "id", 1L);
 
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
+                .willReturn(Set.of(1L));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve("team/1/icon/raw.png"))
@@ -77,6 +86,8 @@ class TeamFavoriteResolverTest {
         ReflectionTestUtils.setField(team, "id", 2L);
 
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
+                .willReturn(Set.of(2L));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve(eq(null))).willReturn(null);
@@ -84,5 +95,27 @@ class TeamFavoriteResolverTest {
         Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("2"), 700L);
 
         assertThat(result.get("2").iconUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("可視性: F00 ラダーで閲覧できないチームは UNAVAILABLE（名称・アイコンを返さない）")
+    void resolveAll_notVisible_unavailable() {
+        TeamEntity team = TeamEntity.builder()
+                .name("非公開チーム")
+                .iconUrl("team/3/icon/raw.png")
+                .build();
+        ReflectionTestUtils.setField(team, "id", 3L);
+
+        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
+                .willReturn(Set.of());
+
+        Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("3"), 700L);
+
+        FavoriteEntityMetaDto meta = result.get("3");
+        assertThat(meta).isNotNull();
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
+        assertThat(meta.displayName()).isNull();
+        assertThat(meta.iconUrl()).isNull();
     }
 }

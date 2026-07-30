@@ -301,8 +301,42 @@ class ArchUnitFreezeStoreIntegrityTest {
      * いずれも契約テスト（{@code TodoStatusLabelScopeContractIT} /
      * {@code TodoPersonalScopeContractIT} 新設）で「無関係な他ユーザーが他人のデータへ到達できないこと」を
      * 固定した。同一コミットにストア差分・実装差分・契約テスト新設を含む。</p>
+     *
+     * <p>636 → 609（2026-07-30 / 第1波・個人領域 ロットC = reflection / inbox / favorite / corkboard の
+     * 48 EP 全数監査）: 凍結 48 EP を実コードで全数監査し、27 件を解消した。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（1件・波及2EP）</b>: {@code TeamFavoriteResolver} /
+     *       {@code OrganizationFavoriteResolver} の表示メタ解決を F00 共通可視性ラダー
+     *       （{@code ContentVisibilityChecker#filterAccessible}）に一本化した。判定基準は
+     *       {@code GET /api/v1/teams/{slug}} と同一で、<b>閲覧できる対象のみ</b>名称・アイコンを返し、
+     *       閲覧できない対象は UNAVAILABLE とすることを保証する。あわせて
+     *       {@code FavoriteService#addFavorite} の入口に
+     *       {@code FavoriteAccessGuard#requireViewableTarget}（閲覧不可は {@code FAV_003} / 404 秘匿）を
+     *       <b>業務検証（件数上限・重複）より前</b>に敷設した。</li>
+     *   <li><b>認可の一元化（26件）</b>: 4 ドメインに散っていた同型の所有者・可視性判定を
+     *       新設ガード（{@code ReflectionAccessGuard} / {@code InboxAccessGuard} /
+     *       {@code FavoriteAccessGuard} / {@code CorkboardAccessGuard}）へ集約した。判定内容は
+     *       従前と同一（挙動不変）で、認可の所在が番人の委譲探索（D=2）から可視になったため解消。
+     *       内訳は reflection 12（テーマ詳細/更新/削除/アーカイブ/復元/作成の親参照・エントリ一覧/
+     *       upsert/詳細/削除・想起記録/履歴）、inbox 8（ラベル更新/削除/付与/付与解除/提案付与・
+     *       スヌーズ/アーカイブ・一括操作）、favorite 2（詳細/削除）、corkboard 4（個人ボード詳細/
+     *       更新/削除・カードのピン止め）。</li>
+     * </ul>
+     * <p>{@code InboxBulkService#bulk} は {@code LABEL_ADD} のラベル所有検証を item ループ前へ移し、
+     * 他者所有ラベル ID は全体を 404 で止める（ラベル ID の妥当性がスキップ件数の差として
+     * 観測されるのを防ぐ）。</p>
+     * <p>残り 21 件は凍結を継続する（違反隠蔽ではなく監査済み）。いずれも<b>リソース ID を
+     * 認可スコープとして受け取らず、スコープを認証主体から解決する自己スコープ EP</b> であり、
+     * 実体を伴わない {@code @PreAuthorize("isAuthenticated()")} は貼らない方針
+     * （ロットA todo・onboarding と同じ判断基準）。内訳は reflection 10（テーマ一覧・
+     * アーカイブフォルダ/検索/一括アーカイブ・科目紐づけ候補・通知設定 取得/更新・学期提案・
+     * 今日ビュー・単語帳ビュー）、inbox 6（一覧・サマリ・ラベル一覧/作成・スヌーズ解除・
+     * アーカイブ解除）、favorite 3（一覧・登録状態チェック・並び替え）、corkboard 2（個人ボード
+     * 一覧・作成）。到達不能性は本 PR の契約テストで固定した。</p>
+     * <p>契約テスト: {@code ReflectionPersonalScopeContractIT} / {@code InboxScopeContractIT} /
+     * {@code FavoriteScopeContractIT} 新設、{@code CorkboardBoardScopeContractIT} 拡張。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 636;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 609;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

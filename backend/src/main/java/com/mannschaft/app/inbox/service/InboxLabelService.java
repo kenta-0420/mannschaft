@@ -27,11 +27,13 @@ import java.util.regex.Pattern;
  * 設計書: 02_api_design.md §3.4 / 04_security_operations.md §1・§2。</p>
  *
  * <ul>
- *   <li>所有者一致検証: ラベルは {@code findByIdAndUserId}（{@code @SQLRestriction} で論理削除済みも除外）。
- *       不一致/不存在/論理削除済みは一律 {@code INBOX_LABEL_NOT_FOUND}（存在秘匿・IDOR 対策）</li>
+ *   <li>所有者一致検証: {@link InboxAccessGuard#requireOwnedLabel} に一元化（{@code findByIdAndUserId} で
+ *       id と所有者を同時に条件化）。不一致/不存在/論理削除済みは一律 {@code INBOX_LABEL_NOT_FOUND}
+ *       （存在秘匿・IDOR 対策）</li>
  *   <li>上限: 1 ユーザー 20 ラベル / 1 通知 10 ラベル</li>
  *   <li>同名重複: 現役（{@code deleted_at IS NULL}）の同名のみ禁止</li>
- *   <li>付与時は対象通知の可視性も検証（{@link InboxItemVisibilityChecker}・他人通知へのリンク作成を防止）</li>
+ *   <li>付与時は対象通知の可視性も検証（{@link InboxAccessGuard#requireVisibleSource}・
+ *       他人宛て通知へのリンク作成を防止）</li>
  * </ul>
  */
 @Slf4j
@@ -54,7 +56,7 @@ public class InboxLabelService {
 
     private final NotificationLabelRepository labelRepository;
     private final InboxLabelLinkRepository labelLinkRepository;
-    private final InboxItemVisibilityChecker visibilityChecker;
+    private final InboxAccessGuard inboxAccessGuard;
 
     /**
      * ユーザーの現役ラベル一覧を表示順で取得する。
@@ -149,10 +151,8 @@ public class InboxLabelService {
         // ラベル所有検証（不存在/他人/論理削除済みは一律 404）
         findOwnLabelOrThrow(labelId, userId);
 
-        // 対象通知が本人に可視か（他人通知へのリンク作成によるテーブル肥大化攻撃を防止・§1.2）
-        if (!visibilityChecker.isVisibleTo(userId, sourceType, sourceId)) {
-            throw new BusinessException(InboxErrorCode.INBOX_SOURCE_NOT_FOUND);
-        }
+        // 対象通知が本人に可視か（他人宛て通知へのリンク作成を防止・§1.2）
+        inboxAccessGuard.requireVisibleSource(userId, sourceType, sourceId);
 
         // 冪等: 既に同じ付与があれば何もしない
         if (labelLinkRepository.existsByLabelIdAndSourceTypeAndSourceId(labelId, sourceType, sourceId)) {
@@ -234,8 +234,7 @@ public class InboxLabelService {
      * （存在秘匿・IDOR 対策。{@code @SQLRestriction} により論理削除済みは findByIdAndUserId で除外される）。
      */
     private NotificationLabelEntity findOwnLabelOrThrow(UUID labelId, Long userId) {
-        return labelRepository.findByIdAndUserId(labelId, userId)
-                .orElseThrow(() -> new BusinessException(InboxErrorCode.INBOX_LABEL_NOT_FOUND));
+        return inboxAccessGuard.requireOwnedLabel(userId, labelId);
     }
 
     private String normalizeName(String name) {
