@@ -45,6 +45,24 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人TODOコントローラー。全スコープ横断の自分のTODO一覧を提供する。
+ *
+ * <p><b>認可の所在</b>（認可根治戦役 第1波・個人領域）:</p>
+ * <ul>
+ *   <li><b>TODO ID を受け取る EP</b>（詳細・更新・PATCH・削除・復元・子一覧・ステータス・トグル・
+ *       進捗率・進捗モード）: {@link TodoAccessGuard} を<b>入口で</b>呼び、対象 TODO の担当者本人
+ *       （もしくは自分の個人スコープに属すること）を照合する。担当外・不存在・他スコープはいずれも
+ *       404（{@code TODO_010}）にまとめ、TODO ID の存在有無を漏らさない。ガードを共有 Service ではなく
+ *       Controller に置くのは、同 Service を使うバッチ・他ドメイン連携を巻き添えにしないため。</li>
+ *   <li><b>スコープ級 EP</b>（作成・自分のTODO一覧・ガント）: スコープは常に
+ *       {@code SecurityUtils.getCurrentUserId()} で確定した認証主体の ID を用い、リクエストからは
+ *       指定できない（自己スコープ）。作成時に指定されたプロジェクト・親TODO・マイルストーンは
+ *       {@code TodoService#createTodo} が「自分の個人スコープに属すること」を照合し、
+ *       他人のプロジェクト配下への作成を拒む。</li>
+ * </ul>
+ *
+ * <p>スコープ級 3 EP は認可番人の呼び出しグラフ判定では拾えないが、構造的に自己スコープで閉じている。
+ * 実体を伴わない {@code @PreAuthorize("isAuthenticated()")} を看板として貼ることはせず、
+ * 契約テスト {@code TodoPersonalScopeContractIT} で「他ユーザーのデータに到達できないこと」を固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/todos")
@@ -160,11 +178,11 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePersonalTodo(@PathVariable Long id) {
+        // 認可: 詳細・更新・PATCH と同一の担当者照合を入口で行う（担当外・不存在はいずれも404秘匿）。
+        // deletePersonalTodo は Service 側でも同一の担当者照合を行うが、認可の所在を
+        // public 入口に明示するためガードを入口に置く（共有Serviceに置くとバッチ等が巻き添えになる）。
         Long userId = SecurityUtils.getCurrentUserId();
-        // 個人TODOのscopeIdはuserId（非null）で保存されるため、assertTodoScope(id, PERSONAL, null)は
-        // Objects.equals(userId, null)=false で常に TODO_NOT_FOUND を投げる誤りがある。
-        // 認可は deletePersonalTodo 内の existsByTodoIdAndUserId で担保しているため、
-        // コントローラー側の assertTodoScope 呼び出しは不要（かつ誤り）。
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         todoService.deletePersonalTodo(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -176,10 +194,10 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO復元")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
     public ResponseEntity<ApiResponse<TodoResponse>> restorePersonalTodo(@PathVariable Long id) {
+        // 認可: 削除EPと同一の担当者照合を入口で行う（担当外・不存在はいずれも404秘匿）。
+        // 担当者行は論理削除では消えないため、削除済みTODOに対しても同じ照合が成立する。
         Long userId = SecurityUtils.getCurrentUserId();
-        // 個人TODOのscopeIdはuserId（非null）で保存されるため、assertDeletedTodoScope(id, PERSONAL, null)は
-        // Objects.equals(userId, null)=false で常に TODO_NOT_FOUND を投げる誤りがある。
-        // 認可は restorePersonalTodo 内の existsByTodoIdAndUserId で担保しているため削除する。
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         todoService.restorePersonalTodo(id, userId);
         return ResponseEntity.ok(todoService.getTodo(id));
     }
@@ -193,7 +211,9 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> patchTodo(
             @PathVariable Long id,
             @Valid @RequestBody PatchTodoRequest request) {
+        // 認可: 更新（PUT）EP と同一の担当者照合を入口で行う（担当外・不存在はいずれも404秘匿）。
         Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyPersonalAssignee(id, userId);
         return ResponseEntity.ok(todoService.patchTodo(id, userId, request));
     }
 
@@ -214,7 +234,10 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO子一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getChildTodos(@PathVariable Long id) {
+        // 認可: 親TODOが自分の個人スコープに属することを入口で束縛する（他スコープ・他ユーザーの
+        // TODO ID は 404 秘匿）。進捗率・進捗モード EP と同一のガードに揃える。
         Long userId = SecurityUtils.getCurrentUserId();
+        todoAccessGuard.verifyScopeAndMembership(id, TodoScopeType.PERSONAL, userId, userId);
         return ResponseEntity.ok(todoService.getChildTodos(TodoScopeType.PERSONAL, userId, id));
     }
 

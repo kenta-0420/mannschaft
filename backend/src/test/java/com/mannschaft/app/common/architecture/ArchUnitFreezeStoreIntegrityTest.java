@@ -270,8 +270,39 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code OnboardingMeScopeContractIT} 新設、{@code RepairPlanAuthorizationMatrixTest} 拡張、
      * {@code BudgetCategoryServiceTest} 拡張、{@code RecruitmentScopeContractIT} 更新）を含む。
      * 本 PR をもって認可根治戦役 Wave7 の是正シリーズを完結する。</p>
+     *
+     * <p>653 → 636（2026-07-30 / 第1波・個人領域 ロットA = todo ドメイン 28 EP の全数監査）:
+     * todo ドメインの凍結 28 EP を実コードで全数監査し、17 件を解消した。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（参照経路の認可敷設・2件）</b>: {@code TodoStatusLabelService#validateScopeAccess} の
+     *       チーム・組織スコープ<b>参照</b>経路に認可判定が無かったため
+     *       {@code AccessControlService#checkMembership} を敷設し、参照を当該スコープの
+     *       <b>メンバーに限定</b>した（{@code OrgTodoStatusLabelController.list} /
+     *       {@code TeamTodoStatusLabelController.list}）。CRUD 側の ADMIN 限定は従前どおり。</li>
+     *   <li><b>認可の一元化（5件）</b>: {@code MilestoneGateController} の個人スコープ 5 EP が
+     *       {@code ProjectAccessGuard#validatePersonalProjectAccess} と同一ロジックを private メソッドで
+     *       重複実装していたため、既存ガードへ委譲して重複を廃した（挙動不変のリファクタ）。</li>
+     *   <li><b>兄弟 EP との認可粒度統一（4件）</b>: {@code PersonalTodoController} の
+     *       削除・復元・PATCH・子一覧は Service 内で担当者照合していたが、兄弟 EP
+     *       （詳細・更新・ステータス）が採用済みの {@code TodoAccessGuard} 呼び出しを入口に揃えた
+     *       （認可境界は既存 Service の判定と同一・挙動不変）。</li>
+     *   <li><b>CRUD の認可可視化（6件）</b>: 組織・チームラベルの作成/更新/削除は元から
+     *       ADMIN 限定＋entity 由来スコープ照合が入っていたが、判定が
+     *       {@code validateScopeAccess} の 3 ホップ先にあり番人の委譲探索（D=2）から見えていなかった。
+     *       上記の参照経路是正により同メソッドが認可呼び出し点となり、実体を伴う形で解消した。</li>
+     * </ul>
+     * <p>残り 11 件は凍結のまま残す（違反隠蔽ではなく監査済み）。うち 7 件は
+     * リソース ID を受け取らない自己スコープ EP（{@code getMyTodos}/{@code getGanttTodos}/
+     * {@code createPersonalTodo}/{@code UserProjectController} 一覧・作成/
+     * {@code listMyTeamProjects}/{@code listMyOrgProjects}）で、スコープを認証主体から解決するため
+     * 構造的に他ユーザーへ到達できない。残る 4 件は {@code UserTodoStatusLabelController} の
+     * 個人ラベル CRUD で、認可の実体が「操作者 == スコープ所有者」の直接比較であり、
+     * 上記 onboarding 2 件と同じ理由で看板だけの {@code @PreAuthorize("isAuthenticated()")} は貼らない。
+     * いずれも契約テスト（{@code TodoStatusLabelScopeContractIT} /
+     * {@code TodoPersonalScopeContractIT} 新設）で「無関係な他ユーザーが他人のデータへ到達できないこと」を
+     * 固定した。同一コミットにストア差分・実装差分・契約テスト新設を含む。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 653;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 636;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
