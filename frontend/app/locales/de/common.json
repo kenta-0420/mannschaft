@@ -226,6 +226,9 @@
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
     "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "rate_limited": "Zu viele Anfragen",
+    "rate_limited_detail": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "rate_limited_retry_after": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte versuchen Sie es in etwa {seconds} Sekunden erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
     "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
