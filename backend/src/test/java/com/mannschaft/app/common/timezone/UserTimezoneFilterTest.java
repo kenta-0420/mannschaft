@@ -43,6 +43,18 @@ class UserTimezoneFilterTest {
 
     private static final Long USER_ID = 90209L;
 
+    /**
+     * 未解決時にフィルターが積む ZoneId。
+     *
+     * <p><b>注意</b>: {@code ZoneId.of("UTC")}（id = {@code "UTC"}）と {@link ZoneOffset#UTC}（id = {@code "Z"}）は
+     * <b>オフセットは同じだが equals では一致しない</b>。フィルターが積むのは改修前の実装
+     * （{@code return ZoneId.of("UTC");}）と同じ {@code ZoneId.of("UTC")} であり、
+     * 既存の出力挙動を変えないためこの値を維持している。
+     * 一方 {@link TimezoneContextHolder#get()} の<b>未セット時</b>の戻り値は {@link ZoneOffset#UTC} なので、
+     * 「フィルター通過中」と「クリア後」で観測される ZoneId の実体が異なる点をここで明示的に固定する。</p>
+     */
+    private static final ZoneId UNRESOLVED_UTC = ZoneId.of("UTC");
+
     @Mock
     private UserTimezoneCache userTimezoneCache;
 
@@ -175,7 +187,7 @@ class UserTimezoneFilterTest {
         invokeFilter();
 
         // Then
-        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
+        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
         assertThat(observedResolved).isFalse();
         verify(userTimezoneCache, never()).getTimezone(anyLong());
     }
@@ -192,7 +204,7 @@ class UserTimezoneFilterTest {
         invokeFilter();
 
         // Then: Long.parseLong に失敗するため未解決
-        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
+        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
         assertThat(observedResolved).isFalse();
         verify(userTimezoneCache, never()).getTimezone(anyLong());
     }
@@ -206,7 +218,7 @@ class UserTimezoneFilterTest {
 
         // When / Then: 例外を投げずに未解決へ落ちる
         assertThatCode(this::invokeFilter).doesNotThrowAnyException();
-        assertThat(observedZone).isEqualTo(ZoneOffset.UTC);
+        assertThat(observedZone).isEqualTo(UNRESOLVED_UTC);
         assertThat(observedResolved).isFalse();
     }
 

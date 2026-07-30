@@ -76,7 +76,17 @@ public class UserTimezoneFilter extends OncePerRequestFilter {
 
     /**
      * ユーザー TZ を解決できなかった場合に印なしで積む ZoneId。
-     * {@link TimezoneContextHolder#get()} の未セット時の戻り値と同じ UTC で、既存の出力挙動を変えない。
+     *
+     * <p>改修前の実装（{@code return ZoneId.of("UTC");}）と<b>同一の値</b>を維持しており、
+     * 未認証リクエストの出力挙動は一切変わらない。</p>
+     *
+     * <p><b>注意</b>: {@code ZoneId.of("UTC")}（id = {@code "UTC"}）は {@link java.time.ZoneOffset#UTC}
+     * （id = {@code "Z"}）と<b>オフセットは同じだが equals では一致しない</b>。
+     * {@link TimezoneContextHolder#get()} の未セット時の戻り値は後者なので、
+     * 「フィルター通過中」と「クリア後」で ZoneId の実体は異なる。
+     * オフセットが同一のため {@link com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer} の
+     * 出力（ゼロオフセットは {@code "Z"} 表記）も {@code LocalDate.now(zone)} も差は出ないが、
+     * 等価比較に依存したコードを書かないこと。</p>
      */
     private static final ZoneId UNRESOLVED_ZONE = ZoneId.of("UTC");
 
