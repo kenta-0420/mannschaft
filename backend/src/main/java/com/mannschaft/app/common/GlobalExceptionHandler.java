@@ -1074,6 +1074,15 @@ public class GlobalExceptionHandler {
             // 認可根治戦役 Wave3-B1: payment の *_NOT_FOUND は itemId 越境等の BOLA 存在秘匿のため 404。
             Map.entry("PAYMENT_001", HttpStatus.NOT_FOUND),              // PAYMENT_ITEM_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PAYMENT_002", HttpStatus.NOT_FOUND),              // PAYMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 第2波（金銭）: 会費領収書 EP の宣言と実挙動を揃える。
+            // ReceiptController / ReceiptService は「払い手または受益者本人のみ取得可・第三者は拒否」と
+            // 宣言しているが、両コードが未登録のため Severity.WARN 既定の 400 が返っていた。
+            Map.entry("PAYMENT_029", HttpStatus.NOT_FOUND),              // MEMBER_PAYMENT_NOT_FOUND（存在秘匿 → 404）
+            Map.entry("PAYMENT_030", HttpStatus.FORBIDDEN),              // PAYMENT_ACCESS_DENIED（払い手/受益者以外 → 403）
+            // 認可根治戦役 第2波（金銭）: 領収書マイページは自分宛の領収書のみ取得可。
+            // ReceiptMyService は findByIdAndRecipientUserId で宛先本人に絞って引き当てるため、
+            // 他人の receiptId は「不在」と区別せず 404 で秘匿するのが宣言どおりの挙動。
+            Map.entry("RECEIPT_002", HttpStatus.NOT_FOUND),              // RECEIPT_NOT_FOUND（宛先不一致も含め 404 秘匿）
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。

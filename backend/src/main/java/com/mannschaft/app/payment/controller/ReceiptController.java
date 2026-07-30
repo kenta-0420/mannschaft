@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
 import com.mannschaft.app.payment.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -31,9 +32,17 @@ public class ReceiptController {
     /**
      * 会費領収書を取得する。
      *
+     * <p><b>認可の所在</b>: {@code ReceiptService.getReceipt}
+     * （{@code payment/service/ReceiptService.java:50}）が対象の支払い記録を取得したうえで
+     * 「払い手本人（{@code payer_user_id}）または受益者本人（{@code user_id}）」であることを照合し、
+     * どちらでもなければ {@code PAYMENT_ACCESS_DENIED}（403）で拒否する。
+     * 記録が存在しない場合は {@code MEMBER_PAYMENT_NOT_FOUND}（404）。
+     * 金額・領収 URL は照合を通過した場合にのみ組み立てられる。</p>
+     *
      * @param memberPaymentId 会費支払い記録ID
      * @return 領収書レスポンス
      */
+    @AuthorizedInService
     @GetMapping("/{memberPaymentId}/receipt")
     public ResponseEntity<ApiResponse<ReceiptResponse>> getReceipt(
             @PathVariable Long memberPaymentId) {
