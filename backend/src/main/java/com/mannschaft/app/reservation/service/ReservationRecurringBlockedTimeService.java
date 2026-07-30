@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -10,8 +11,11 @@ import com.mannschaft.app.reservation.dto.CreateRecurringBlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.RecurringBlockedTimeImpactResponse;
 import com.mannschaft.app.reservation.dto.RecurringBlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.UpdateRecurringBlockedTimeRequest;
+import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.event.ReservationForceCancelledByBlockEvent;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringOverlapRow;
@@ -25,9 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,6 +65,14 @@ public class ReservationRecurringBlockedTimeService {
 
     /** F03.4.5 §4.3: 409 ガード / impact の判定 horizon（今日から何日先まで）。 */
     static final int GUARD_HORIZON_DAYS = 90;
+
+    /**
+     * 強行登録（F03.4.5 §6.2 W2-5）で {@code cancel_reason} に入れる定型文。
+     *
+     * <p>DB 保存用であり FE の翻訳対象ではないため i18n しない（{@code ReservationPendingExpireService}
+     * の {@code CANCEL_REASON} と同じ扱い）。</p>
+     */
+    static final String FORCE_CANCEL_REASON = "この時間帯が毎週の予約不可時間に設定されたためキャンセルされました";
 
     private static final List<ReservationStatus> ACTIVE_STATUSES =
             List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
@@ -343,7 +358,87 @@ public class ReservationRecurringBlockedTimeService {
     private int forceCancelOverlapping(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, String blockReason, Long actorUserId) {
-        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
+        List<ReservationRecurringOverlapRow> matched =
+                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
+        if (matched.isEmpty()) {
+            return 0;
+        }
+
+        List<Long> matchedIds = matched.stream()
+                .map(ReservationRecurringOverlapRow::reservationId)
+                .distinct()
+                .toList();
+
+        // キャンセル対象（重複排除）と通知対象（グループは代表 1 通）を分けて集める。
+        Map<Long, ReservationEntity> targets = new LinkedHashMap<>();
+        List<ReservationEntity> notifyTargets = new ArrayList<>();
+        for (ReservationEntity row : reservationRepository.findAllById(matchedIds)) {
+            if (!ACTIVE_STATUSES.contains(row.getStatus())) {
+                // 抽出後に他経路で状態が変わった行。二重キャンセル（booked_count の二重減算）を避ける。
+                log.info("強行キャンセル: 既に終端状態のためスキップ reservationId={}, status={}",
+                        row.getId(), row.getStatus());
+                continue;
+            }
+            notifyTargets.add(row);
+            if (row.getGroupId() == null) {
+                targets.putIfAbsent(row.getId(), row);
+                continue;
+            }
+            // グループ予約は兄弟行まで展開する。1 行だけ消すと F03.4.3 が禁じる部分キャンセル
+            // （booked_count 不整合・グループ状態の分裂）になる。
+            for (ReservationEntity sibling
+                    : reservationRepository.findByGroupIdAndTeamIdOrderById(row.getGroupId(), teamId)) {
+                if (ACTIVE_STATUSES.contains(sibling.getStatus())) {
+                    targets.putIfAbsent(sibling.getId(), sibling);
+                }
+            }
+        }
+        if (targets.isEmpty()) {
+            return 0;
+        }
+
+        Map<Long, ReservationSlotEntity> slotById = slotRepository.findAllById(
+                        targets.values().stream()
+                                .map(ReservationEntity::getReservationSlotId).distinct().toList()).stream()
+                .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        for (ReservationEntity row : targets.values()) {
+            row.cancel(FORCE_CANCEL_REASON, CancelledBy.ADMIN);
+        }
+        reservationRepository.saveAll(targets.values());
+
+        for (ReservationEntity row : targets.values()) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            if (slot == null) {
+                // 枠が解決できないと booked_count を戻せない。握り潰さず記録する。
+                log.warn("強行キャンセル: 枠が解決できず枠復帰をスキップ reservationId={}, slotId={}",
+                        row.getId(), row.getReservationSlotId());
+                continue;
+            }
+            // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
+            slotService.decrementAndReopen(slot);
+        }
+
+        // 予約を消して黙っているのは許されない。AFTER_COMMIT で申込者へ通知する
+        // （ロールバックされた登録では通知が飛ばない）。
+        for (ReservationEntity row : notifyTargets) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            eventPublisher.publishEvent(new ReservationForceCancelledByBlockEvent(
+                    teamId,
+                    row.getId(),
+                    row.getUserId(),
+                    slot != null ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()) : null,
+                    slot != null ? slot.getTitle() : null,
+                    blockReason));
+        }
+
+        int cancelledCount = targets.size();
+        log.info("定期予約不可枠の強行登録: teamId={}, dayOfWeek={}, {}-{}, lineId={}, 強行キャンセル={}件",
+                teamId, dayOfWeek, startTime, endTime, lineId, cancelledCount);
+        auditLogService.record("RESERVATION_RECURRING_BLOCKED_TIME_FORCE_CANCELLED",
+                actorUserId, null, teamId, null, null, null, null,
+                "{\"cancelledCount\":" + cancelledCount + ",\"dayOfWeek\":\"" + dayOfWeek + "\"}");
+        return cancelledCount;
     }
 
     /**

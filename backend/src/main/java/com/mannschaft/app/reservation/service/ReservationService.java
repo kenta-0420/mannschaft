@@ -43,6 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -438,7 +440,96 @@ public class ReservationService {
      */
     private ReservationResponse.RecurringCancelDto cancelFollowingInSeries(
             ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
-        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
+        java.util.UUID seriesId = base.getRecurringSeriesId();
+
+        // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
+        // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndUserIdOrderById(seriesId, base.getUserId()).stream()
+                .filter(r -> !r.getId().equals(base.getId()))
+                .toList();
+
+        Map<Long, ReservationSlotEntity> slotById = siblings.isEmpty()
+                ? Map.of()
+                : slotRepository.findAllById(siblings.stream()
+                                .map(ReservationEntity::getReservationSlotId).toList()).stream()
+                        .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        List<ReservationResponse.RecurringWeekOutcomeDto> cancelled = new java.util.ArrayList<>();
+        List<ReservationResponse.RecurringWeekOutcomeDto> skipped = new java.util.ArrayList<>();
+        cancelled.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                baseSlot.getSlotDate(), null, base.getId()));
+
+        // 「当該日より後」だけを対象にする（過去回・当該回は対象外）。
+        // 並びは slot_date 昇順に固定する（AC-5-6 のロック順序）。
+        List<SeriesRow> targets = new java.util.ArrayList<>();
+        for (ReservationEntity row : siblings) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            if (slot == null) {
+                // 枠が解決できないと締切判定も枠復帰もできない。握り潰さず明細に載せる。
+                log.warn("定期予約の以降キャンセル: 枠が解決できずスキップ reservationId={}, slotId={}",
+                        row.getId(), row.getReservationSlotId());
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        null, RecurringWeekSkipReason.NOT_CANCELLABLE.name(), row.getId()));
+                continue;
+            }
+            if (!slot.getSlotDate().isAfter(baseSlot.getSlotDate())) {
+                continue;
+            }
+            targets.add(new SeriesRow(row, slot));
+        }
+        targets.sort(Comparator.comparing((SeriesRow t) -> t.slot().getSlotDate())
+                .thenComparing(t -> t.slot().getStartTime()));
+
+        // 締切は<b>行ごとに</b>（その行のチームのポリシーで）判定する。1 回だけ判定して全行に流用すると
+        // AC-5-7 の「各行に既存のキャンセル検証を適用」を満たさない。チーム単位でメモ化して
+        // 同一チームの行が並んでもクエリを増やさない。
+        Map<Long, Integer> deadlineHoursByTeam = new HashMap<>();
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<ReservationEntity> toSave = new java.util.ArrayList<>();
+        List<ReservationSlotEntity> slotsToReopen = new java.util.ArrayList<>();
+
+        for (SeriesRow target : targets) {
+            ReservationEntity row = target.row();
+            ReservationSlotEntity slot = target.slot();
+            if (!row.isCancellable()) {
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        slot.getSlotDate(), RecurringWeekSkipReason.NOT_CANCELLABLE.name(), row.getId()));
+                continue;
+            }
+            int deadlineHours = deadlineHoursByTeam.computeIfAbsent(row.getTeamId(),
+                    teamId -> reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours());
+            LocalDateTime deadline =
+                    LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
+            if (now.isAfter(deadline)) {
+                // 締切超過は例外にしない。「以降すべて」は複数回に対する 1 操作であり、直近 1 回が
+                // 締切超過だからといって 2 ヶ月先の回まで残す挙動は利用者の意図に反する。
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        slot.getSlotDate(), RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED.name(), row.getId()));
+                continue;
+            }
+            row.cancel(reason, CancelledBy.USER);
+            toSave.add(row);
+            slotsToReopen.add(slot);
+            cancelled.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                    slot.getSlotDate(), null, row.getId()));
+        }
+
+        if (!toSave.isEmpty()) {
+            reservationRepository.saveAll(toSave);
+            // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
+            slotsToReopen.forEach(slotService::decrementAndReopen);
+        }
+
+        log.info("定期予約 以降すべてキャンセル: userId={}, seriesId={}, キャンセル={}件, スキップ={}件",
+                base.getUserId(), seriesId, cancelled.size(), skipped.size());
+
+        return new ReservationResponse.RecurringCancelDto(
+                seriesId, cancelled.size(), List.copyOf(cancelled), List.copyOf(skipped));
+    }
+
+    /** series 内の 1 行と対応する枠のペア（並び替え・判定のための内部レコード）。 */
+    private record SeriesRow(ReservationEntity row, ReservationSlotEntity slot) {
     }
 
     /**
@@ -459,7 +550,69 @@ public class ReservationService {
      */
     private ReservationResponse.RecurringConfirmDto confirmFollowingInSeries(
             Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot) {
-        throw new UnsupportedOperationException("F03.4.5 §6.2 W2-5: 未実装（実装コミットで green 化する）");
+        java.util.UUID seriesId = base.getRecurringSeriesId();
+
+        // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndTeamIdOrderById(seriesId, teamId).stream()
+                .filter(r -> !r.getId().equals(base.getId()))
+                .toList();
+
+        Map<Long, ReservationSlotEntity> slotById = siblings.isEmpty()
+                ? Map.of()
+                : slotRepository.findAllById(siblings.stream()
+                                .map(ReservationEntity::getReservationSlotId).toList()).stream()
+                        .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        List<ReservationResponse.RecurringWeekOutcomeDto> confirmed = new java.util.ArrayList<>();
+        List<ReservationResponse.RecurringWeekOutcomeDto> skipped = new java.util.ArrayList<>();
+        confirmed.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                baseSlot.getSlotDate(), null, base.getId()));
+
+        List<SeriesRow> ordered = new java.util.ArrayList<>();
+        for (ReservationEntity row : siblings) {
+            ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            if (slot == null) {
+                log.warn("定期予約の一括承認: 枠が解決できずスキップ reservationId={}, slotId={}",
+                        row.getId(), row.getReservationSlotId());
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        null, RecurringWeekSkipReason.NOT_PENDING.name(), row.getId()));
+                continue;
+            }
+            ordered.add(new SeriesRow(row, slot));
+        }
+        ordered.sort(Comparator.comparing((SeriesRow t) -> t.slot().getSlotDate())
+                .thenComparing(t -> t.slot().getStartTime()));
+
+        List<ReservationEntity> toSave = new java.util.ArrayList<>();
+        List<SeriesRow> newlyConfirmed = new java.util.ArrayList<>();
+        for (SeriesRow target : ordered) {
+            ReservationEntity row = target.row();
+            // グループ所属行は単票遷移が禁止（F03.4.3 §4）。series 一括承認でも例外にせずスキップし、
+            // グループはグループ API で承認させる（部分遷移によるグループ状態の分裂を作らない）。
+            if (row.getGroupId() != null || row.getStatus() != ReservationStatus.PENDING) {
+                skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                        target.slot().getSlotDate(), RecurringWeekSkipReason.NOT_PENDING.name(), row.getId()));
+                continue;
+            }
+            row.confirm();
+            toSave.add(row);
+            newlyConfirmed.add(target);
+            confirmed.add(new ReservationResponse.RecurringWeekOutcomeDto(
+                    target.slot().getSlotDate(), null, row.getId()));
+        }
+
+        if (!toSave.isEmpty()) {
+            reservationRepository.saveAll(toSave);
+            // 確定リマインドは行ごとに 1 セット必要（来店は週ごとに別々に発生する）。
+            newlyConfirmed.forEach(t -> publishConfirmedEvent(t.row(), t.slot(), t.row().getUserId()));
+        }
+
+        log.info("定期予約 series 一括承認: teamId={}, seriesId={}, 承認={}件, スキップ={}件",
+                teamId, seriesId, confirmed.size(), skipped.size());
+
+        return new ReservationResponse.RecurringConfirmDto(
+                seriesId, confirmed.size(), List.copyOf(confirmed), List.copyOf(skipped));
     }
 
     /**
