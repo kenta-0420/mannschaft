@@ -182,6 +182,45 @@ class ReservationRecurringReservationPersistenceIntegrationTest extends Abstract
     }
 
     @Test
+    @DisplayName("MUST①: 一覧・詳細 GET でもトップレベル recurringSeriesId が返る（FE の出し分けが可能）")
+    void 一覧と詳細GETでseriesIdが返る() {
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPublicTeam(teamId);
+        ReservationLineEntity line = seedLine(teamId);
+        seedWeeklySlots(teamId, line.getId(), 3);
+        ReservationSlotEntity base = slotOf(teamId, BASE_DATE);
+
+        ReservationResponse created = recurringService.createRecurring(
+                teamId, userId, request(base.getId(), line.getId(), 3));
+        UUID seriesId = created.getRecurring().seriesId();
+        assertThat(seriesId).isNotNull();
+
+        // 一覧（マイ予約）: recurring は null だが recurringSeriesId は載る
+        List<ReservationResponse> myList = reservationService.listMyReservations(userId);
+        assertThat(myList)
+                .as("series の3件が一覧に出ること")
+                .hasSizeGreaterThanOrEqualTo(3);
+        assertThat(myList)
+                .filteredOn(r -> seriesId.equals(r.getRecurringSeriesId()))
+                .as("一覧の各行が series 所属を示すこと（これが無いと FE はキャンセルスコープ2択UIを出せない）")
+                .hasSize(3);
+        assertThat(myList)
+                .filteredOn(r -> seriesId.equals(r.getRecurringSeriesId()))
+                .allSatisfy(r -> assertThat(r.getRecurring())
+                        .as("結果明細は作成応答限定（GET では null）")
+                        .isNull());
+
+        // 直近予約一覧（別の enrich 経路）でも同様に載る。
+        // 詳細 GET（getReservation）は SecurityContext を要する認可ゲート付きのため、
+        // ここでは userId を明示的に受ける 2 経路で Mapper の写像を検証する。
+        assertThat(reservationService.listUpcomingReservations(userId))
+                .filteredOn(r -> seriesId.equals(r.getRecurringSeriesId()))
+                .as("直近予約一覧でも series 所属が分かること")
+                .isNotEmpty();
+    }
+
+    @Test
     @DisplayName("AC-5-2: repeatWeeks 省略の単発予約は recurring_series_id が NULL のまま（既存契約不変）")
     void 単発予約はseriesがNULL() {
         Long teamId = nextId();
@@ -223,8 +262,8 @@ class ReservationRecurringReservationPersistenceIntegrationTest extends Abstract
         assertThat(response.getRecurring().skippedWeeks())
                 .extracting(ReservationResponse.RecurringWeekOutcomeDto::reason)
                 .containsExactly(
-                        RecurringWeekSkipReason.FULL.name(),
-                        RecurringWeekSkipReason.NOT_GENERATED.name());
+                        RecurringWeekSkipReason.FULL,
+                        RecurringWeekSkipReason.NOT_GENERATED);
         // 成立分は実 DB にコミットされている（1 週の失敗で巻き戻っていない = AC-5-5）
         assertThat(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(
                 response.getRecurring().seriesId(), userId)).hasSize(2);

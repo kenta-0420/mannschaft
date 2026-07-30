@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.mannschaft.app.reservation.RecurringWeekSkipReason;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -32,8 +33,26 @@ public class ReservationResponse {
     GroupSummaryDto group;
 
     /**
+     * 定期予約の series ID（F03.4.5 §6.2 W2-5・additive・<b>一覧/詳細 GET でも常に返る</b>）。
+     *
+     * <p><b>単発予約では null</b> — 既存契約不変。</p>
+     *
+     * <p><b>なぜトップレベルに置くか（検分 MUST①）</b>: {@link #recurring} /
+     * {@link #recurringCancel} / {@link #recurringConfirm} は「操作の結果明細」であり
+     * <b>作成・キャンセル・承認の応答でしか埋まらない</b>（一覧/詳細 GET では常に null）。
+     * series 所属を示す情報が結果明細の内側にしか無いと、FE は一覧・詳細から
+     * 「この予約は定期予約の一部か」を判定できず、キャンセルスコープ 2 択 UI や
+     * series 一括承認ボタンの出し分けが実装不能になる。API 境界は BE 弾で閉じる
+     * （{@code feedback_fe_be_parallel_api_boundary_after_generated_types}）。</p>
+     */
+    UUID recurringSeriesId;
+
+    /**
      * 定期予約（series）の要約と<b>作成時の結果明細</b>（F03.4.5 §6.2 W2-5・additive）。
      * <b>単発予約では null</b> — 既存契約不変。
+     *
+     * <p>本フィールドは<b>作成応答でのみ</b>埋まる。一覧/詳細 GET から series 所属を知るには
+     * トップレベルの {@link #recurringSeriesId} を使う。</p>
      */
     RecurringSeriesDto recurring;
 
@@ -77,11 +96,19 @@ public class ReservationResponse {
      * <p>スキップの明細（{@code skippedWeeks[]}）は設計書 §6.2 の {@code {date, reason}} をそのまま表す。
      * {@code reservationId} は成立した回のみ非 null（スキップ回は null）。</p>
      *
+     * <p><b>{@code reason} は enum で露出する（検分 MUST②）</b>: {@code String} で出すと OpenAPI が
+     * ただの {@code {"type":"string"}} になり、FE は文字列比較になって網羅性チェック（union 型の
+     * exhaustiveness）が効かない。理由が増えたときに FE が気付けるよう
+     * {@link RecurringWeekSkipReason} をそのまま型として出す（confirm の {@code scope} が
+     * {@code ["THIS_ONLY","SERIES"]} の enum で出ているのと同じ形）。</p>
+     *
      * @param date          対象日（起点日 + 7×k）
      * @param reason        スキップ理由（成立した回は null）
-     * @param reservationId 成立した予約ID（スキップ回は null）
+     * @param reservationId 対象の予約ID（成立/キャンセル/承認した回、およびスキップ理由が
+     *                      既存行に起因する回では非 null。枠が無くて作れなかった回は null）
      */
-    public record RecurringWeekOutcomeDto(LocalDate date, String reason, Long reservationId) {}
+    public record RecurringWeekOutcomeDto(
+            LocalDate date, RecurringWeekSkipReason reason, Long reservationId) {}
 
     /**
      * 定期予約作成の結果（F03.4.5 §6.2・AC-5-1 / AC-5-13）。

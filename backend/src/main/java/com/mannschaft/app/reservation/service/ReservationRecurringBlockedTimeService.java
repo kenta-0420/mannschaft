@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -237,37 +238,48 @@ public class ReservationRecurringBlockedTimeService {
     /**
      * 登録前の影響プレビューを取得する（§4.3 GET .../impact）。
      * 90日horizon内で overlap する active 予約（PENDING/CONFIRMED）の件数＋一覧を返す。
+     *
+     * <p><b>グループ兄弟行を含める（検分 MUST③）</b>: 強行登録（{@code forceCancelConflicting=true}）は
+     * グループ予約の兄弟行まで展開して一括キャンセルする（部分キャンセル禁止）。impact が兄弟行を
+     * 含めないと「impact で 3 件と確認して force を押したら 5 件消える」という<b>管理者に嘘の数を
+     * 見せる</b>状態になる。impact は強行登録の唯一の事前確認導線なので、
+     * 対象集合の解決を {@link #resolveAffectedReservations} に一元化して両者で共有する。</p>
      */
     public RecurringBlockedTimeImpactResponse getImpact(
             Long teamId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, Long lineId) {
-        List<ReservationRecurringOverlapRow> matched =
-                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
-        if (matched.isEmpty()) {
+        AffectedReservations affected =
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+        if (affected.rows().isEmpty()) {
             return RecurringBlockedTimeImpactResponse.builder().affectedCount(0).reservations(List.of()).build();
         }
 
-        Set<Long> userIds = matched.stream().map(ReservationRecurringOverlapRow::userId).collect(Collectors.toSet());
-        Set<Long> staffIds = matched.stream()
-                .map(ReservationRecurringOverlapRow::staffUserId)
+        Set<Long> userIds = affected.rows().stream()
+                .map(ReservationEntity::getUserId).collect(Collectors.toSet());
+        Set<Long> staffIds = affected.rows().stream()
+                .map(r -> affected.slotsById().get(r.getReservationSlotId()))
+                .filter(Objects::nonNull)
+                .map(ReservationSlotEntity::getStaffUserId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
         Map<Long, String> staffNames = staffIds.isEmpty()
                 ? Map.of() : nameResolverService.resolveUserFullNames(staffIds);
 
-        List<RecurringBlockedTimeImpactResponse.ImpactedReservationDto> reservations = matched.stream()
-                .sorted(Comparator.comparing(ReservationRecurringOverlapRow::slotDate)
-                        .thenComparing(ReservationRecurringOverlapRow::startTime))
-                .map(row -> new RecurringBlockedTimeImpactResponse.ImpactedReservationDto(
-                        row.reservationId(),
-                        row.userId(),
-                        userNames.get(row.userId()),
-                        row.slotId(),
-                        row.slotDate(),
-                        row.staffUserId() != null ? staffNames.get(row.staffUserId()) : null,
-                        row.startTime(),
-                        row.endTime(),
-                        row.status().name()))
+        List<RecurringBlockedTimeImpactResponse.ImpactedReservationDto> reservations = affected.rows().stream()
+                .map(row -> {
+                    ReservationSlotEntity slot = affected.slotsById().get(row.getReservationSlotId());
+                    Long staffUserId = slot != null ? slot.getStaffUserId() : null;
+                    return new RecurringBlockedTimeImpactResponse.ImpactedReservationDto(
+                            row.getId(),
+                            row.getUserId(),
+                            userNames.get(row.getUserId()),
+                            row.getReservationSlotId(),
+                            slot != null ? slot.getSlotDate() : null,
+                            staffUserId != null ? staffNames.get(staffUserId) : null,
+                            slot != null ? slot.getStartTime() : null,
+                            slot != null ? slot.getEndTime() : null,
+                            row.getStatus().name());
+                })
                 .toList();
 
         return RecurringBlockedTimeImpactResponse.builder()
@@ -358,53 +370,21 @@ public class ReservationRecurringBlockedTimeService {
     private int forceCancelOverlapping(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, String blockReason, Long actorUserId) {
-        List<ReservationRecurringOverlapRow> matched =
-                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
-        if (matched.isEmpty()) {
+        // impact（事前確認）と<b>完全に同じ集合</b>を解決する（検分 MUST③）。
+        AffectedReservations affected =
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+        if (affected.rows().isEmpty()) {
             return 0;
         }
-
-        List<Long> matchedIds = matched.stream()
-                .map(ReservationRecurringOverlapRow::reservationId)
-                .distinct()
-                .toList();
-
-        // キャンセル対象（重複排除）と通知対象（グループは代表 1 通）を分けて集める。
-        Map<Long, ReservationEntity> targets = new LinkedHashMap<>();
-        List<ReservationEntity> notifyTargets = new ArrayList<>();
-        for (ReservationEntity row : reservationRepository.findAllById(matchedIds)) {
-            if (!ACTIVE_STATUSES.contains(row.getStatus())) {
-                // 抽出後に他経路で状態が変わった行。二重キャンセル（booked_count の二重減算）を避ける。
-                log.info("強行キャンセル: 既に終端状態のためスキップ reservationId={}, status={}",
-                        row.getId(), row.getStatus());
-                continue;
-            }
-            notifyTargets.add(row);
-            if (row.getGroupId() == null) {
-                targets.putIfAbsent(row.getId(), row);
-                continue;
-            }
-            // グループ予約は兄弟行まで展開する。1 行だけ消すと F03.4.3 が禁じる部分キャンセル
-            // （booked_count 不整合・グループ状態の分裂）になる。
-            for (ReservationEntity sibling
-                    : reservationRepository.findByGroupIdAndTeamIdOrderById(row.getGroupId(), teamId)) {
-                if (ACTIVE_STATUSES.contains(sibling.getStatus())) {
-                    targets.putIfAbsent(sibling.getId(), sibling);
-                }
-            }
-        }
-        if (targets.isEmpty()) {
-            return 0;
-        }
-
-        Map<Long, ReservationSlotEntity> slotById = slotRepository.findAllById(
-                        targets.values().stream()
-                                .map(ReservationEntity::getReservationSlotId).distinct().toList()).stream()
-                .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ReservationSlotEntity> slotById = affected.slotsById();
 
         // Iterable ではなく List を渡す（JpaRepository.saveAll の戻り値は List であり、
         // Collection ビューをそのまま渡すと戻り値の扱いが実装依存になる）。
-        List<ReservationEntity> toCancel = List.copyOf(targets.values());
+        // 並びは id 昇順に明示ソートする（findAllById は JPA が順序を保証しないため、
+        // ロック取得順が実行ごとに変わってデッドロックしうる）。
+        List<ReservationEntity> toCancel = affected.rows().stream()
+                .sorted(Comparator.comparing(ReservationEntity::getId))
+                .toList();
         for (ReservationEntity row : toCancel) {
             row.cancel(FORCE_CANCEL_REASON, CancelledBy.ADMIN);
         }
@@ -424,7 +404,9 @@ public class ReservationRecurringBlockedTimeService {
 
         // 予約を消して黙っているのは許されない。AFTER_COMMIT で申込者へ通知する
         // （ロールバックされた登録では通知が飛ばない）。
-        for (ReservationEntity row : notifyTargets) {
+        // 通知は「overlap 判定に直接ヒットした行」につき 1 通。グループ予約が兄弟スロット 2 枠で
+        // ルール時間帯に跨る場合は同一ユーザーへ 2 通飛ぶ（通知の集約は別チケット）。
+        for (ReservationEntity row : affected.directlyOverlapping()) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
             eventPublisher.publishEvent(new ReservationForceCancelledByBlockEvent(
                     teamId,
@@ -435,13 +417,106 @@ public class ReservationRecurringBlockedTimeService {
                     blockReason));
         }
 
-        int cancelledCount = targets.size();
+        int cancelledCount = toCancel.size();
         log.info("定期予約不可枠の強行登録: teamId={}, dayOfWeek={}, {}-{}, lineId={}, 強行キャンセル={}件",
                 teamId, dayOfWeek, startTime, endTime, lineId, cancelledCount);
         auditLogService.record("RESERVATION_RECURRING_BLOCKED_TIME_FORCE_CANCELLED",
                 actorUserId, null, teamId, null, null, null, null,
                 "{\"cancelledCount\":" + cancelledCount + ",\"dayOfWeek\":\"" + dayOfWeek + "\"}");
         return cancelledCount;
+    }
+
+    /**
+     * 提案ルールによって<b>実際に影響を受ける予約の集合</b>を解決する
+     * （impact の事前確認と強行キャンセルの実行で共有する単一の観測点・検分 MUST③）。
+     *
+     * <p><b>なぜ共有が必須か</b>: 強行キャンセルはグループ予約の兄弟行まで展開する（部分キャンセル禁止・
+     * F03.4.3）。impact 側が展開しないと「impact で 3 件と確認して force を押したら 5 件消える」という
+     * <b>管理者に嘘の数を見せる</b>状態になる。impact は強行登録の唯一の事前確認導線なので、
+     * 集合の解決をここに一元化し、片方だけ直せない構造にする。</p>
+     *
+     * <p>クエリ本数: overlap 候補 1 本 ＋ 行の取得 1 本 ＋ グループがある場合のみ兄弟行 1 本
+     * ＋ 枠の一括取得 1 本（件数に比例したクエリを出さない）。</p>
+     *
+     * @return 影響を受ける行（グループ兄弟展開・重複排除・枠の日時昇順）と、
+     *         overlap に直接ヒットした行（通知の起点）と、枠の一括取得結果
+     */
+    private AffectedReservations resolveAffectedReservations(
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+        List<ReservationRecurringOverlapRow> matched =
+                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
+        if (matched.isEmpty()) {
+            return new AffectedReservations(List.of(), List.of(), Map.of());
+        }
+
+        List<Long> matchedIds = matched.stream()
+                .map(ReservationRecurringOverlapRow::reservationId)
+                .distinct()
+                .toList();
+
+        Map<Long, ReservationEntity> targets = new LinkedHashMap<>();
+        List<ReservationEntity> directlyOverlapping = new ArrayList<>();
+        Set<UUID> expandedGroupIds = new LinkedHashSet<>();
+        for (ReservationEntity row : reservationRepository.findAllById(matchedIds)) {
+            if (!ACTIVE_STATUSES.contains(row.getStatus())) {
+                // 抽出後に他経路で状態が変わった行。二重キャンセル（booked_count の二重減算）を避ける。
+                log.info("定期不可枠の影響解決: 既に終端状態のためスキップ reservationId={}, status={}",
+                        row.getId(), row.getStatus());
+                continue;
+            }
+            directlyOverlapping.add(row);
+            targets.putIfAbsent(row.getId(), row);
+            if (row.getGroupId() != null) {
+                expandedGroupIds.add(row.getGroupId());
+            }
+        }
+        // グループ予約は兄弟行まで展開する。1 行だけ消すと F03.4.3 が禁じる部分キャンセル
+        // （booked_count 不整合・グループ状態の分裂）になる。
+        for (UUID groupId : expandedGroupIds) {
+            for (ReservationEntity sibling
+                    : reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, teamId)) {
+                if (ACTIVE_STATUSES.contains(sibling.getStatus())) {
+                    targets.putIfAbsent(sibling.getId(), sibling);
+                }
+            }
+        }
+        if (targets.isEmpty()) {
+            return new AffectedReservations(List.of(), List.of(), Map.of());
+        }
+
+        Map<Long, ReservationSlotEntity> slotById = slotRepository.findAllById(
+                        targets.values().stream()
+                                .map(ReservationEntity::getReservationSlotId).distinct().toList()).stream()
+                .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+
+        // 管理者が読む順序（枠の日時昇順）で返す。impact の一覧表示がそのまま使える。
+        List<ReservationEntity> ordered = targets.values().stream()
+                .sorted(Comparator
+                        .comparing((ReservationEntity r) -> {
+                            ReservationSlotEntity s = slotById.get(r.getReservationSlotId());
+                            return s != null ? s.getSlotDate() : LocalDate.MAX;
+                        })
+                        .thenComparing(r -> {
+                            ReservationSlotEntity s = slotById.get(r.getReservationSlotId());
+                            return s != null ? s.getStartTime() : LocalTime.MAX;
+                        })
+                        .thenComparing(ReservationEntity::getId))
+                .toList();
+
+        return new AffectedReservations(ordered, List.copyOf(directlyOverlapping), slotById);
+    }
+
+    /**
+     * 提案ルールが影響する予約の集合（impact と強行キャンセルで共有する）。
+     *
+     * @param rows                影響を受ける全行（グループ兄弟展開済み・重複排除・枠の日時昇順）
+     * @param directlyOverlapping overlap 判定に直接ヒットした行（通知の起点。兄弟行は含まない）
+     * @param slotsById           枠の一括取得結果
+     */
+    private record AffectedReservations(
+            List<ReservationEntity> rows,
+            List<ReservationEntity> directlyOverlapping,
+            Map<Long, ReservationSlotEntity> slotsById) {
     }
 
     /**

@@ -114,7 +114,7 @@ public class ReservationRecurringService {
         for (ReservationRecurringSlotResolver.WeekCandidate candidate : candidates) {
             if (!candidate.bookable()) {
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        candidate.date(), candidate.skipReason().name(), null));
+                        candidate.date(), candidate.skipReason(), null));
                 continue;
             }
             try {
@@ -130,7 +130,7 @@ public class ReservationRecurringService {
                         candidate.date(), teamId, userId, candidate.slotId(),
                         e.getErrorCode().getCode(), reason, e);
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        candidate.date(), reason.name(), null));
+                        candidate.date(), reason, null));
             }
         }
 

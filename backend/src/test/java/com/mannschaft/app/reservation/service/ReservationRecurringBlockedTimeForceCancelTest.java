@@ -372,6 +372,82 @@ class ReservationRecurringBlockedTimeForceCancelTest {
     }
 
     // ────────────────────────────────────────────────────────────
+    // 検分 MUST③: impact と強行キャンセルの件数が一致する
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("MUST③: impact の件数と force のキャンセル件数が一致する（グループ兄弟行を含む）")
+    void impactとforceの件数が一致する() {
+        // 管理者が impact で「N 件」を見て force を押したら「M 件（M>N）」消えるという
+        // 嘘の事前確認を構造的に防ぐ。impact は強行登録の唯一の事前確認導線である。
+        UUID groupId = UUID.fromString("018f0000-0000-7000-8000-0000000000ee");
+        seedSlot(9200L, TUESDAY);
+        seedSlot(9201L, TUESDAY);
+        seedSlot(9202L, TUESDAY.plusWeeks(1));
+        ReservationEntity primary = seedReservation(901L, APPLICANT_A, 9200L, groupId, true, ReservationStatus.CONFIRMED);
+        ReservationEntity sibling = seedReservation(902L, APPLICANT_A, 9201L, groupId, false, ReservationStatus.CONFIRMED);
+        ReservationEntity single = seedReservation(903L, APPLICANT_B, 9202L, null, true, ReservationStatus.CONFIRMED);
+        // overlap にヒットするのは代表行と単枠の 2 件（兄弟行 902 はヒットしない状況）
+        givenOverlapping(
+                row(901L, APPLICANT_A, 9200L, TUESDAY),
+                row(903L, APPLICANT_B, 9202L, TUESDAY.plusWeeks(1)));
+        given(reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, TEAM_ID))
+                .willReturn(List.of(primary, sibling));
+
+        int impactCount = service.getImpact(TEAM_ID, ReservationDayOfWeek.TUE, START, END, null)
+                .getAffectedCount();
+
+        RecurringBlockedTimeResponse response = service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        assertThat(impactCount)
+                .as("impact は兄弟行 902 も含めて 3 件を見せること（2 件と嘘をつかない）")
+                .isEqualTo(3);
+        assertThat(response.getForceCancelledCount())
+                .as("impact の件数と force の実キャンセル件数が一致すること")
+                .isEqualTo(impactCount);
+        assertThat(List.of(primary, sibling, single))
+                .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED));
+    }
+
+    @Test
+    @DisplayName("MUST③: impact の一覧にもグループ兄弟行が現れる（件数だけでなく明細も一致）")
+    void impactの明細に兄弟行が現れる() {
+        UUID groupId = UUID.fromString("018f0000-0000-7000-8000-0000000000ff");
+        seedSlot(9210L, TUESDAY);
+        seedSlot(9211L, TUESDAY);
+        ReservationEntity primary = seedReservation(911L, APPLICANT_A, 9210L, groupId, true, ReservationStatus.CONFIRMED);
+        ReservationEntity sibling = seedReservation(912L, APPLICANT_A, 9211L, groupId, false, ReservationStatus.CONFIRMED);
+        givenOverlapping(row(911L, APPLICANT_A, 9210L, TUESDAY));
+        given(reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, TEAM_ID))
+                .willReturn(List.of(primary, sibling));
+
+        var impact = service.getImpact(TEAM_ID, ReservationDayOfWeek.TUE, START, END, null);
+
+        assertThat(impact.getReservations())
+                .extracting(r -> r.reservationId())
+                .as("管理者が「どの予約が消えるか」を漏れなく確認できること")
+                .containsExactlyInAnyOrder(911L, 912L);
+        assertThat(impact.getReservations())
+                .allSatisfy(r -> {
+                    assertThat(r.slotDate()).as("枠の日付が解決されていること").isNotNull();
+                    assertThat(r.startTime()).as("枠の開始時刻が解決されていること").isNotNull();
+                });
+    }
+
+    @Test
+    @DisplayName("MUST③: 衝突ゼロなら impact も force も 0 件で一致する")
+    void 衝突ゼロでも一致する() {
+        givenOverlapping();
+
+        int impactCount = service.getImpact(TEAM_ID, ReservationDayOfWeek.TUE, START, END, null)
+                .getAffectedCount();
+        RecurringBlockedTimeResponse response = service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        assertThat(impactCount).isZero();
+        assertThat(response.getForceCancelledCount()).isEqualTo(impactCount);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // PATCH（更新）でも同じ挙動
     // ────────────────────────────────────────────────────────────
 

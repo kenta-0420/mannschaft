@@ -379,13 +379,23 @@ public class ReservationService {
 
         ReservationSlotEntity slot = slotService.getSlotEntity(entity.getReservationSlotId());
 
+        // F03.4.5 §6.2 W2-5: 「以降すべて」を選んだ定期予約は、起点回も含めて<b>全回を同じ規則</b>で
+        // 処理する（AC-5-7・検分 MUST④）。起点回だけ締切超過で例外にすると
+        // 「今日の回は締切だが来週以降はまとめて消したい」という当然の操作ができない。
+        // 単発予約（series NULL）に THIS_AND_FOLLOWING を指定した場合は従来経路（無害）。
+        if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                && entity.getRecurringSeriesId() != null) {
+            return cancelSeriesFromBase(entity, slot, request.getReason());
+        }
+
+        if (!entity.isCancellable()) {
+            throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
         // F03.4 ⑤: 会員（USER）キャンセルは締切（cancel_deadline_hours・既定 24）を実適用する。
         // 枠開始時刻の deadline 時間前を過ぎていればキャンセルを拒否する（管理者キャンセルは対象外）。
         // 判定基準は注入 Clock（LocalDateTime.now() 直書きは CI 破壊地雷のため禁止）。
-        int cancelDeadlineHours = reservationPolicyService.getOrDefault(entity.getTeamId()).getCancelDeadlineHours();
-        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        LocalDateTime deadline = slotStart.minusHours(cancelDeadlineHours);
-        if (LocalDateTime.now(clock).isAfter(deadline)) {
+        if (isCancelDeadlinePassed(entity.getTeamId(), slot, new HashMap<>())) {
             throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
         }
 
@@ -394,26 +404,34 @@ public class ReservationService {
 
         slotService.decrementAndReopen(slot);
 
-        eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
-                saved.getTeamId(),
-                saved.getId(),
-                userId,
-                slot.getTitle()
-        ));
+        publishMemberCancelledEvent(saved, slot, userId);
 
         log.info("予約キャンセル(ユーザー): userId={}, reservationId={}, scope={}",
                 userId, reservationId, request.getScope());
 
-        ReservationResponse response = enrich(saved);
-        // F03.4.5 §6.2 W2-5: 「以降すべて」を選んだ定期予約は、同一 series の当該日以降も続けてキャンセルする。
-        // 単発予約（series NULL）に指定されても 1 件だけのキャンセルで終わる（無害・AC-5-7）。
-        if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
-                && saved.getRecurringSeriesId() != null) {
-            response = response.toBuilder()
-                    .recurringCancel(cancelFollowingInSeries(saved, slot, request.getReason()))
-                    .build();
-        }
-        return response;
+        return enrich(saved);
+    }
+
+    /**
+     * キャンセル締切（{@code cancel_deadline_hours}）を過ぎているかを判定する（単票・series 共通）。
+     *
+     * <p>ポリシーは<b>行のチーム</b>で引く。同一チームの行が並んでもクエリを増やさないよう
+     * 呼び出し側が持つ {@code deadlineHoursByTeam} にメモ化する。</p>
+     */
+    private boolean isCancelDeadlinePassed(
+            Long teamId, ReservationSlotEntity slot, Map<Long, Integer> deadlineHoursByTeam) {
+        int deadlineHours = deadlineHoursByTeam.computeIfAbsent(teamId,
+                t -> reservationPolicyService.getOrDefault(t).getCancelDeadlineHours());
+        LocalDateTime deadline =
+                LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
+        return LocalDateTime.now(clock).isAfter(deadline);
+    }
+
+    /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
+    private void publishMemberCancelledEvent(
+            ReservationEntity saved, ReservationSlotEntity slot, Long actorUserId) {
+        eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
+                saved.getTeamId(), saved.getId(), actorUserId, slot.getTitle()));
     }
 
     /**
@@ -433,12 +451,17 @@ public class ReservationService {
      * 「以降すべて」は複数回に対する 1 操作であり、直近 1 回が締切超過だからといって
      * 2 ヶ月先の回まで残す挙動は利用者の意図に反する。</p>
      *
-     * @param base       起点となるキャンセル済み予約（当該回）
+     * <p><b>起点回も同じ規則で扱う（検分 MUST④）</b>: 起点回が締切超過・状態不整合であっても
+     * 例外にせずスキップ明細に載せ、以降の回の処理を続ける。起点回だけ例外にすると
+     * 「今日の回は締切だが来週以降はまとめて消したい」という当然の操作ができない。
+     * 全回がスキップされて 0 件になってもエラーにせず明細を返す（AC-5-13 と同じ思想）。</p>
+     *
+     * @param base       起点予約（当該回・まだキャンセルしていない）
      * @param baseSlot   起点予約の枠
      * @param reason     キャンセル理由（全行に同一文言を記録）
-     * @return キャンセル結果の明細
+     * @return 起点予約のレスポンス（{@code recurringCancel} に結果明細を含む）
      */
-    private ReservationResponse.RecurringCancelDto cancelFollowingInSeries(
+    private ReservationResponse cancelSeriesFromBase(
             ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
@@ -457,12 +480,11 @@ public class ReservationService {
 
         List<ReservationResponse.RecurringWeekOutcomeDto> cancelled = new java.util.ArrayList<>();
         List<ReservationResponse.RecurringWeekOutcomeDto> skipped = new java.util.ArrayList<>();
-        cancelled.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                baseSlot.getSlotDate(), null, base.getId()));
 
-        // 「当該日より後」だけを対象にする（過去回・当該回は対象外）。
+        // 起点回を先頭に、以降は「当該日より後」だけを対象にする（過去回は不変）。
         // 並びは slot_date 昇順に固定する（AC-5-6 のロック順序）。
         List<SeriesRow> targets = new java.util.ArrayList<>();
+        targets.add(new SeriesRow(base, baseSlot));
         for (ReservationEntity row : siblings) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
             if (slot == null) {
@@ -470,7 +492,7 @@ public class ReservationService {
                 log.warn("定期予約の以降キャンセル: 枠が解決できずスキップ reservationId={}, slotId={}",
                         row.getId(), row.getReservationSlotId());
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        null, RecurringWeekSkipReason.NOT_CANCELLABLE.name(), row.getId()));
+                        null, RecurringWeekSkipReason.NOT_CANCELLABLE, row.getId()));
                 continue;
             }
             if (!slot.getSlotDate().isAfter(baseSlot.getSlotDate())) {
@@ -485,27 +507,23 @@ public class ReservationService {
         // AC-5-7 の「各行に既存のキャンセル検証を適用」を満たさない。チーム単位でメモ化して
         // 同一チームの行が並んでもクエリを増やさない。
         Map<Long, Integer> deadlineHoursByTeam = new HashMap<>();
-        LocalDateTime now = LocalDateTime.now(clock);
         List<ReservationEntity> toSave = new java.util.ArrayList<>();
         List<ReservationSlotEntity> slotsToReopen = new java.util.ArrayList<>();
+        boolean baseCancelled = false;
 
         for (SeriesRow target : targets) {
             ReservationEntity row = target.row();
             ReservationSlotEntity slot = target.slot();
             if (!row.isCancellable()) {
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        slot.getSlotDate(), RecurringWeekSkipReason.NOT_CANCELLABLE.name(), row.getId()));
+                        slot.getSlotDate(), RecurringWeekSkipReason.NOT_CANCELLABLE, row.getId()));
                 continue;
             }
-            int deadlineHours = deadlineHoursByTeam.computeIfAbsent(row.getTeamId(),
-                    teamId -> reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours());
-            LocalDateTime deadline =
-                    LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
-            if (now.isAfter(deadline)) {
+            if (isCancelDeadlinePassed(row.getTeamId(), slot, deadlineHoursByTeam)) {
                 // 締切超過は例外にしない。「以降すべて」は複数回に対する 1 操作であり、直近 1 回が
                 // 締切超過だからといって 2 ヶ月先の回まで残す挙動は利用者の意図に反する。
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        slot.getSlotDate(), RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED.name(), row.getId()));
+                        slot.getSlotDate(), RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED, row.getId()));
                 continue;
             }
             row.cancel(reason, CancelledBy.USER);
@@ -513,6 +531,9 @@ public class ReservationService {
             slotsToReopen.add(slot);
             cancelled.add(new ReservationResponse.RecurringWeekOutcomeDto(
                     slot.getSlotDate(), null, row.getId()));
+            if (row.getId().equals(base.getId())) {
+                baseCancelled = true;
+            }
         }
 
         if (!toSave.isEmpty()) {
@@ -521,11 +542,19 @@ public class ReservationService {
             slotsToReopen.forEach(slotService::decrementAndReopen);
         }
 
+        // 会員キャンセル通知は「起点回が実際にキャンセルされたとき」だけ従来どおり 1 回発行する
+        // （スキップされた回について「キャンセルされました」と通知しない）。
+        if (baseCancelled) {
+            publishMemberCancelledEvent(base, baseSlot, base.getUserId());
+        }
+
         log.info("定期予約 以降すべてキャンセル: userId={}, seriesId={}, キャンセル={}件, スキップ={}件",
                 base.getUserId(), seriesId, cancelled.size(), skipped.size());
 
-        return new ReservationResponse.RecurringCancelDto(
-                seriesId, cancelled.size(), List.copyOf(cancelled), List.copyOf(skipped));
+        return enrich(base).toBuilder()
+                .recurringCancel(new ReservationResponse.RecurringCancelDto(
+                        seriesId, cancelled.size(), List.copyOf(cancelled), List.copyOf(skipped)))
+                .build();
     }
 
     /** series 内の 1 行と対応する枠のペア（並び替え・判定のための内部レコード）。 */
@@ -576,7 +605,7 @@ public class ReservationService {
                 log.warn("定期予約の一括承認: 枠が解決できずスキップ reservationId={}, slotId={}",
                         row.getId(), row.getReservationSlotId());
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        null, RecurringWeekSkipReason.NOT_PENDING.name(), row.getId()));
+                        null, RecurringWeekSkipReason.NOT_PENDING, row.getId()));
                 continue;
             }
             ordered.add(new SeriesRow(row, slot));
@@ -592,7 +621,7 @@ public class ReservationService {
             // グループはグループ API で承認させる（部分遷移によるグループ状態の分裂を作らない）。
             if (row.getGroupId() != null || row.getStatus() != ReservationStatus.PENDING) {
                 skipped.add(new ReservationResponse.RecurringWeekOutcomeDto(
-                        target.slot().getSlotDate(), RecurringWeekSkipReason.NOT_PENDING.name(), row.getId()));
+                        target.slot().getSlotDate(), RecurringWeekSkipReason.NOT_PENDING, row.getId()));
                 continue;
             }
             row.confirm();

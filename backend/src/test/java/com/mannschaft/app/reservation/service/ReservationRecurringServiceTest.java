@@ -266,7 +266,7 @@ class ReservationRecurringServiceTest {
                 .singleElement()
                 .satisfies(w -> {
                     assertThat(w.date()).isEqualTo(BASE_DATE.plusWeeks(2));
-                    assertThat(w.reason()).isEqualTo(RecurringWeekSkipReason.FULL.name());
+                    assertThat(w.reason()).isEqualTo(RecurringWeekSkipReason.FULL);
                 });
         assertThat(createdSlotIdsInOrder)
                 .as("4週目の作成が試行されていること（3週目の失敗で打ち切っていない）")
@@ -290,8 +290,8 @@ class ReservationRecurringServiceTest {
         assertThat(response.getRecurring().skippedWeeks())
                 .extracting(ReservationResponse.RecurringWeekOutcomeDto::reason)
                 .containsExactly(
-                        RecurringWeekSkipReason.NOT_GENERATED.name(),
-                        RecurringWeekSkipReason.BLOCKED.name());
+                        RecurringWeekSkipReason.NOT_GENERATED,
+                        RecurringWeekSkipReason.BLOCKED);
         // スキップ週の予約作成は試行しない（無駄な確保 UPDATE を打たない）
         assertThat(createdSlotIdsInOrder)
                 .containsExactly(BASE_SLOT_ID, BASE_SLOT_ID + 3);

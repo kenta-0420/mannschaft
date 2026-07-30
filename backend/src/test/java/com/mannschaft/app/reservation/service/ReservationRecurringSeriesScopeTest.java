@@ -1,7 +1,10 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.reservation.ReservationErrorCode;
+import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
 import com.mannschaft.app.reservation.ReservationCancelScope;
@@ -40,6 +43,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyIterable;
@@ -332,7 +336,7 @@ class ReservationRecurringSeriesScopeTest {
                 .singleElement()
                 .satisfies(w -> {
                     assertThat(w.date()).isEqualTo(BASE_DATE.plusWeeks(1));
-                    assertThat(w.reason()).isEqualTo(RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED.name());
+                    assertThat(w.reason()).isEqualTo(RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED);
                 });
     }
 
@@ -354,8 +358,102 @@ class ReservationRecurringSeriesScopeTest {
         assertThat(response.getRecurringCancel().skippedWeeks())
                 .singleElement()
                 .satisfies(w -> assertThat(w.reason())
-                        .isEqualTo(RecurringWeekSkipReason.NOT_CANCELLABLE.name()));
+                        .isEqualTo(RecurringWeekSkipReason.NOT_CANCELLABLE));
         verify(slotService, never()).decrementAndReopen(slots.get(8031L));
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 検分 MUST④: 起点回の締切超過も例外にせずスキップする
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("MUST④: 起点回が締切超過でも 400 にせず、以降の回はキャンセルされる")
+    void 起点回が締切超過でも以降はキャンセルされる() {
+        // 「今日の回は締切だが来週以降はまとめて消したい」は会員の当然の操作。
+        // 起点回だけ例外にすると THIS_AND_FOLLOWING 全体が 400 で失敗し、その操作ができない。
+        service = buildService(Clock.fixed(
+                LocalDateTime.of(2026, 6, 16, 12, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC")));
+        given(reservationPolicyService.getOrDefault(TEAM_ID))
+                .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).cancelDeadlineHours(24).build());
+
+        seedSlot(8100L, BASE_DATE);                 // 今日 19:00 → 24h 締切を過ぎている
+        seedSlot(8101L, BASE_DATE.plusWeeks(1));    // 来週 → 締切内
+        seedSlot(8102L, BASE_DATE.plusWeeks(2));    // 再来週 → 締切内
+        ReservationEntity target = seedReservation(1101L, TEAM_ID, USER_ID, 8100L, SERIES_ID, ReservationStatus.CONFIRMED);
+        ReservationEntity next1 = seedReservation(1102L, TEAM_ID, USER_ID, 8101L, SERIES_ID, ReservationStatus.CONFIRMED);
+        ReservationEntity next2 = seedReservation(1103L, TEAM_ID, USER_ID, 8102L, SERIES_ID, ReservationStatus.CONFIRMED);
+        given(reservationRepository.findByIdAndUserId(1101L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+                .willReturn(List.of(target, next1, next2));
+
+        ReservationResponse response = service.cancelByUser(USER_ID, 1101L,
+                new CancelReservationRequest("以降すべて", ReservationCancelScope.THIS_AND_FOLLOWING));
+
+        assertThat(target.getStatus())
+                .as("起点回は締切超過なのでキャンセルされない（据え置き）")
+                .isEqualTo(ReservationStatus.CONFIRMED);
+        assertThat(next1.getStatus()).as("来週以降はキャンセルされる").isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(next2.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(response.getRecurringCancel()).isNotNull();
+        assertThat(response.getRecurringCancel().cancelledCount()).isEqualTo(2);
+        assertThat(response.getRecurringCancel().skippedWeeks())
+                .singleElement()
+                .satisfies(w -> {
+                    assertThat(w.date()).isEqualTo(BASE_DATE);
+                    assertThat(w.reason()).isEqualTo(RecurringWeekSkipReason.CANCEL_DEADLINE_PASSED);
+                    assertThat(w.reservationId()).isEqualTo(1101L);
+                });
+        // 起点回がキャンセルされていないので会員キャンセル通知も飛ばさない（嘘の通知を出さない）
+        verify(eventPublisher, never()).publishEvent(any(ReservationCancelledByMemberEvent.class));
+    }
+
+    @Test
+    @DisplayName("MUST④: 全回が締切超過でもエラーにせず 0 件の明細を返す（AC-5-13 と同じ思想）")
+    void 全回締切超過でもエラーにしない() {
+        service = buildService(Clock.fixed(
+                LocalDateTime.of(2026, 7, 20, 12, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC")));
+        given(reservationPolicyService.getOrDefault(TEAM_ID))
+                .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).cancelDeadlineHours(24).build());
+
+        seedSlot(8110L, BASE_DATE);
+        seedSlot(8111L, BASE_DATE.plusWeeks(1));
+        ReservationEntity target = seedReservation(1201L, TEAM_ID, USER_ID, 8110L, SERIES_ID, ReservationStatus.CONFIRMED);
+        ReservationEntity next1 = seedReservation(1202L, TEAM_ID, USER_ID, 8111L, SERIES_ID, ReservationStatus.CONFIRMED);
+        given(reservationRepository.findByIdAndUserId(1201L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+                .willReturn(List.of(target, next1));
+
+        ReservationResponse response = service.cancelByUser(USER_ID, 1201L,
+                new CancelReservationRequest("以降すべて", ReservationCancelScope.THIS_AND_FOLLOWING));
+
+        assertThat(response.getRecurringCancel().cancelledCount())
+                .as("0 件でも例外にせず明細を返す")
+                .isZero();
+        assertThat(response.getRecurringCancel().skippedWeeks()).hasSize(2);
+        assertThat(target.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        assertThat(next1.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        verify(slotService, never()).decrementAndReopen(any());
+    }
+
+    @Test
+    @DisplayName("MUST④: THIS_ONLY（従来経路）では締切超過は従来どおり 400 のまま（挙動不変）")
+    void 従来経路の締切超過は400のまま() {
+        service = buildService(Clock.fixed(
+                LocalDateTime.of(2026, 6, 16, 12, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC")));
+        given(reservationPolicyService.getOrDefault(TEAM_ID))
+                .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).cancelDeadlineHours(24).build());
+
+        seedSlot(8120L, BASE_DATE);
+        ReservationEntity target = seedReservation(1301L, TEAM_ID, USER_ID, 8120L, SERIES_ID, ReservationStatus.CONFIRMED);
+        given(reservationRepository.findByIdAndUserId(1301L, USER_ID)).willReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.cancelByUser(USER_ID, 1301L,
+                new CancelReservationRequest("この回のみ", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .as("単票キャンセルの締切超過は従来どおり 400（挙動を変えない）")
+                .isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
+        assertThat(target.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -432,7 +530,7 @@ class ReservationRecurringSeriesScopeTest {
         assertThat(response.getRecurringConfirm().skippedWeeks())
                 .singleElement()
                 .satisfies(w -> assertThat(w.reason())
-                        .isEqualTo(RecurringWeekSkipReason.NOT_PENDING.name()));
+                        .isEqualTo(RecurringWeekSkipReason.NOT_PENDING));
     }
 
     @Test
