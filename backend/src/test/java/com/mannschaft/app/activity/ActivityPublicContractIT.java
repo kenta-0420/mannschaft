@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -196,8 +198,31 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     /** PUBLIC 組織配下の PUBLIC 記録（組織側の正常系）。 */
     private Long orgPublicActivityId;
 
+    /**
+     * COMMITTEE スコープの PUBLIC + PUBLISHED 記録（AC-37）。
+     *
+     * <p>{@code scopeId} は<b>あえて公開チームと同じ値</b>にする。こうすることで
+     * 「親スコープが存在しないから 404」ではなく「{@code scopeType=COMMITTEE} だから 404」
+     * であることが検証できる（fail-closed の理由を取り違えない）。</p>
+     */
+    private Long committeeActivityId;
+
     /** 存在しない ID（AC-18）。 */
     private static final long NON_EXISTENT_ACTIVITY_ID = 999_999_999L;
+
+    /**
+     * AC-39: 公開 EP を叩くログイン済みユーザー。{@code publicTeamId} の <b>ACTIVE メンバー</b>として
+     * seed する（＝認証済み経路でなら {@code MEMBERS_ONLY} を閲覧できる立場の人物）。
+     *
+     * <p>{@code SecurityUtils#getCurrentUserId} は {@code authentication.getName()} を
+     * {@code Long.valueOf} するため、{@code @WithMockUser(username = ...)} の値がそのまま
+     * user_id になる。</p>
+     */
+    private static final String AUTH_USER = "88888";
+    private static final long AUTH_USER_ID = 88_888L;
+
+    /** 認証必須 EP（AC-39b で「post-processor が本当に認証を成立させたか」の裏取りに使う）。 */
+    private static final String AUTHENTICATED_ACTIVITY_LIST = "/api/v1/activities";
 
     // ═══════════════════════════════════════════════════════════════════════
     // フィクスチャ
@@ -269,6 +294,14 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         activityUnderSuspendedOrgId = insertActivity(
                 "ORGANIZATION", suspendedOrgId, "停止組織配下" + nonce, "PUBLIC", "PUBLISHED",
                 false, "10:00:00", "11:00:00", "親が停止");
+
+        // AC-37: COMMITTEE スコープ。scopeId は公開チームと同値にして「scopeType だけが理由」にする。
+        committeeActivityId = insertActivity(
+                "COMMITTEE", publicTeamId, "委員会スコープの記録" + nonce, "PUBLIC", "PUBLISHED",
+                false, "10:00:00", "11:00:00", "委員会");
+
+        // AC-39: 公開チームの ACTIVE メンバーとしてログインユーザーを seed する。
+        insertMembership(AUTH_USER_ID, "TEAM", publicTeamId);
 
         em.flush();
         em.clear();
@@ -996,8 +1029,277 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ［COMMITTEE スコープ］AC-37
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-37) {@link ActivityScopeType#COMMITTEE} スコープの記録は、
+     * {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} であっても公開 EP から一律 404。
+     *
+     * <p><b>なぜ必要か</b>: 実装（{@code PublicActivityQueryService#resolvePublicScopeRefOrThrow}）は
+     * {@code case COMMITTEE -> Optional.empty()} で fail-closed になっており、Javadoc にも
+     * 「COMMITTEE は公開ページを持たないため常に 404（将来公開対象になったらここに分岐を追加する）」と
+     * 書かれている。<b>しかし受け入れ条件も契約テストも存在しなかった</b>。
+     * 「たまたま今そう動いている」だけでは、誰かが将来この分岐に
+     * {@code case COMMITTEE -> committeeService.findPublicName(...)} を足した瞬間に
+     * 委員会の活動記録が黙って匿名公開される。本 AC はその一線を機械的に固定する。</p>
+     *
+     * <p><b>フィクスチャの要点</b>: {@code scopeId} を公開チームと<b>同じ値</b>にしている。
+     * 「親スコープが実在しないから 404」ではなく「{@code scopeType} が COMMITTEE だから 404」
+     * であることを分離して検証するため。</p>
+     *
+     * <p>ボディまで存在しない ID と一致することも確認する（AC-18 の存在秘匿を COMMITTEE にも及ぼす）。</p>
+     */
+    @Test
+    @DisplayName("(AC-37) COMMITTEEスコープの記録は公開EPから一律404（fail-closed）・ボディも区別不能")
+    void ac37_COMMITTEEスコープは公開EPから404() throws Exception {
+        // 前提の裏取り: この記録は PUBLIC + PUBLISHED + 未削除（＝ scopeType 以外に落ちる理由が無い）
+        ActivityResultEntity committee = resultRepository.findById(committeeActivityId).orElseThrow();
+        assertThat(committee.getScopeType()).as("フィクスチャ要件: COMMITTEE スコープ")
+                .isEqualTo(ActivityScopeType.COMMITTEE);
+        assertThat(committee.getVisibility()).as("フィクスチャ要件: visibility=PUBLIC")
+                .isEqualTo(ActivityVisibility.PUBLIC);
+        assertThat(committee.getStatus()).as("フィクスチャ要件: status=PUBLISHED")
+                .isEqualTo(ActivityStatus.PUBLISHED);
+        assertThat(committee.getScopeId())
+                .as("フィクスチャ要件: scopeId は公開チームと同値（落ちる理由を scopeType に限定する）")
+                .isEqualTo(publicTeamId);
+
+        // ID 直引き: 記録自身は公開でも、親スコープ解決が COMMITTEE で fail-closed になり 404
+        MvcResult committeeResult = perform(PUBLIC_ACTIVITY_BY_ID, committeeActivityId);
+        assertThat(committeeResult.getResponse().getStatus())
+                .as("COMMITTEE スコープの PUBLIC+PUBLISHED 記録も ID 直引きで 404").isEqualTo(404);
+
+        // チーム / 組織パスからの取得もスコープ不一致で 404（scopeId が一致していても scopeType で落ちる）
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, committeeActivityId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, publicOrgId, committeeActivityId);
+
+        // 一覧にも現れない（TEAM 一覧は scopeType=TEAM で絞るため）
+        assertThat(idsOf(getData(TEAM_ACTIVITY_LIST, publicTeamId)))
+                .as("COMMITTEE の記録が同 scopeId のチーム一覧に混入しないこと")
+                .doesNotContain(committeeActivityId);
+
+        // 存在秘匿: ボディまで「存在しない ID」と同一であること
+        MvcResult missing = perform(PUBLIC_ACTIVITY_BY_ID, NON_EXISTENT_ACTIVITY_ID);
+        assertThat(committeeResult.getResponse().getContentAsString())
+                .as("COMMITTEE のボディが存在しない ID と一致すること（列挙オラクル封じ）")
+                .isEqualTo(missing.getResponse().getContentAsString());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［非数値パス変数］AC-38
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-38) 非数値のパス変数（{@code /api/v1/public/activities/abc}）は <b>400</b> のまま固定する。
+     *
+     * <h3>なぜこれは AC-18（存在秘匿）の穴ではないのか</h3>
+     * <p>AC-18 が封じているのは「<b>ID として妥当な値</b>を投げたとき、その記録が実在するかどうかを
+     * 攻撃者が学べてしまう」ことである。{@code abc} は<b>そもそも ID ではない</b>。
+     * Spring MVC の型変換（{@code String → Long}）がコントローラに入る<b>前</b>に失敗するため、
+     * activity_results への問い合わせは<b>一度も発生しない</b>。
+     * したがって攻撃者は「どの記録が存在するか」について何も学べず、
+     * 400 と 404 の差は<b>入力領域の違い（ID か否か）</b>であって
+     * <b>リソースの存在有無の違いではない</b>。</p>
+     *
+     * <p>実装の裏取り（{@code GlobalExceptionHandler#handleTypeMismatch}）:</p>
+     * <ul>
+     *   <li>パス変数名 {@code id} は {@code SCOPE_ID_PATH_VARS}（{@code organizationId} /
+     *       {@code orgId} / {@code teamId}）に含まれないため slug 解決の 404 補完に乗らず、
+     *       {@code 400 + CommonErrorCode.COMMON_001} を返す</li>
+     *   <li>ボディは {@code ErrorResponse.of(CommonErrorCode.COMMON_001)} の<b>定数</b>であり、
+     *       入力値・例外メッセージ・パラメータ名・要求型・スタックトレースを<b>一切含まない</b>
+     *       （{@code fieldErrors} は空配列）</li>
+     * </ul>
+     *
+     * <p>本 AC はその 2 点を機械的に固定する。<b>挙動を 404 に変えることはしない</b>
+     * （変えると「ID として妥当だが存在しない」ケースと区別がつかなくなる利点は無く、
+     * 型エラーの診断可能性だけを失う）。将来 400 のボディに例外詳細を載せる変更が入れば
+     * 本 AC が落ちる。</p>
+     */
+    @Test
+    @DisplayName("(AC-38) 非数値パス変数は400（COMMON_001）で固定・入力値をエコーせず内部情報も載せない")
+    void ac38_非数値パス変数は400で内部情報を漏らさない() throws Exception {
+        MvcResult abc = perform(PUBLIC_ACTIVITY_BY_ID, "abc");
+        String abcBody = abc.getResponse().getContentAsString();
+
+        assertThat(abc.getResponse().getStatus())
+                .as("非数値パス変数は 400（型変換エラー）").isEqualTo(400);
+        JsonNode error = objectMapper.readTree(abcBody).get("error");
+        assertThat(error).as("error オブジェクトが存在すること").isNotNull();
+        assertThat(error.get("code").asText()).as("エラーコードは COMMON_001").isEqualTo("COMMON_001");
+        assertThat(error.get("fieldErrors").size()).as("fieldErrors は空").isZero();
+
+        // 入力値のエコーバックが無いこと（反射型の情報露出・XSS 素地を作らない）
+        assertThat(abcBody).as("入力値 'abc' がボディにエコーされていないこと").doesNotContain("abc");
+        // 内部情報（例外クラス名・パッケージ名・スタックトレース）が載らないこと
+        assertThat(abcBody)
+                .as("内部情報（例外クラス・パッケージ・型名）がボディに載っていないこと")
+                .doesNotContain("NumberFormatException")
+                .doesNotContain("MethodArgumentTypeMismatch")
+                .doesNotContain("java.lang")
+                .doesNotContain("com.mannschaft")
+                .doesNotContain("Long");
+
+        // 別の非数値でもボディが完全一致 = 入力によって応答が変化しない（何も学べない）
+        MvcResult zzz = perform(PUBLIC_ACTIVITY_BY_ID, "zzz");
+        assertThat(zzz.getResponse().getStatus()).as("別の非数値も 400").isEqualTo(400);
+        assertThat(zzz.getResponse().getContentAsString())
+                .as("非数値どうしでボディが完全一致すること（入力から何も学べない）")
+                .isEqualTo(abcBody);
+
+        // Long の範囲を超える数値も同じく型変換エラー（ID 領域外）であり、挙動が一致すること
+        MvcResult overflow = perform(PUBLIC_ACTIVITY_BY_ID, "99999999999999999999");
+        assertThat(overflow.getResponse().getStatus())
+                .as("Long 範囲外の数値も 400（ID として成立しない入力領域）").isEqualTo(400);
+        assertThat(overflow.getResponse().getContentAsString())
+                .as("Long 範囲外でもボディが完全一致すること").isEqualTo(abcBody);
+
+        // 対比の明示: 「ID として妥当な値」どうし（存在しない / 非公開 / 削除済み）は
+        // AC-18 のとおり 404 かつボディまで同一である。400 はその集合の外側にいる。
+        assertThat(perform(PUBLIC_ACTIVITY_BY_ID, NON_EXISTENT_ACTIVITY_ID).getResponse().getStatus())
+                .as("ID として妥当な値は（存在しなくても）404 側に居ること").isEqualTo(404);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［認証済みユーザーによる公開EP利用］AC-39 / AC-39b
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-39) <b>ログイン済みユーザー</b>が公開 EP を叩いても、匿名と同じものしか返らないこと。
+     *
+     * <p>公開ページをログイン状態で閲覧する / SNS のシェアリンクをログイン中に踏む、という経路は
+     * 必ず発生するのに未検査だった。検査すべきは 3 点:</p>
+     * <ol>
+     *   <li>401 / 403 にならず <b>200</b> が返ること（permitAll が認証済みリクエストを弾かない）</li>
+     *   <li>返る項目が匿名時と<b>まったく同じ 8 項目</b>であること
+     *       （認証済みだからといって余分な項目が漏れない）</li>
+     *   <li><b>認証済みでも {@code MEMBERS_ONLY} / {@code DRAFT} が公開 EP 経由では見えないこと</b>。
+     *       ここが最重要。閲覧者は {@code publicTeamId} の ACTIVE メンバーであり、
+     *       <b>認証済み経路でなら {@code MEMBERS_ONLY} を閲覧できる立場</b>だが、
+     *       公開 EP は公開分しか返してはならない</li>
+     * </ol>
+     *
+     * <p><b>なぜ「見る人によって内容が変わらない」ことが重要か</b>: 公開 EP は SSR / CDN /
+     * リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は
+     * キャッシュ汚染（あるユーザー向けの応答が他人に配られる）と意図しない露出の温床になる。
+     * 実装は {@code PublicActivityQueryService} が {@code canView(..., null)} /
+     * {@code filterAccessible(..., null)} と <b>userId を null 固定</b>で呼ぶことでこれを担保しており、
+     * 本 AC は「誰かがそこを {@code SecurityUtils.getCurrentUserIdOrNull()} に差し替えた」瞬間に落ちる。</p>
+     */
+    @Test
+    @WithMockUser(username = AUTH_USER)
+    @DisplayName("(AC-39) 認証済みでも公開EPは200・8項目のみ・メンバーでもMEMBERS_ONLY/DRAFTは見えない")
+    void ac39_認証済みでも公開EPの見え方が変わらない() throws Exception {
+        // 前提の裏取り: 閲覧者は当該チームの ACTIVE メンバーである
+        Number activeMemberships = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM memberships WHERE user_id = :uid "
+                                + "AND scope_type = 'TEAM' AND scope_id = :sid AND left_at IS NULL")
+                .setParameter("uid", AUTH_USER_ID)
+                .setParameter("sid", publicTeamId)
+                .getSingleResult();
+        assertThat(activeMemberships.longValue())
+                .as("フィクスチャ要件: 閲覧者は publicTeamId の ACTIVE メンバー"
+                        + "（＝認証済み経路でなら MEMBERS_ONLY を見られる立場）")
+                .isEqualTo(1L);
+
+        // (1)(2) 200 が返り、キー集合が匿名時と同じ 8 項目であること
+        JsonNode detail = getData(TEAM_ACTIVITY_DETAIL, publicTeamId, publishedPublicActivityId);
+        assertWhitelistedKeys(detail, "認証済みのチーム詳細");
+        JsonNode byId = getData(PUBLIC_ACTIVITY_BY_ID, publishedPublicActivityId);
+        assertWhitelistedKeys(byId, "認証済みの ID 直引き詳細");
+
+        MvcResult listResult = performOk(TEAM_ACTIVITY_LIST, publicTeamId);
+        String listBody = listResult.getResponse().getContentAsString();
+        JsonNode list = objectMapper.readTree(listBody).get("data");
+        assertThat(list.isArray()).as("認証済みでも一覧は配列").isTrue();
+        for (JsonNode item : list) {
+            assertWhitelistedKeys(item, "認証済みの一覧要素");
+        }
+        assertForbiddenKeysAbsent(detail, "認証済みのチーム詳細");
+        assertSecretValuesAbsent(listBody, "認証済みの一覧");
+
+        // (3)【最重要】メンバーであっても公開 EP 経由では MEMBERS_ONLY / DRAFT は見えない
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, membersOnlyActivityId);
+        expectNotFound(PUBLIC_ACTIVITY_BY_ID, membersOnlyActivityId);
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, draftPublicActivityId);
+        expectNotFound(PUBLIC_ACTIVITY_BY_ID, draftPublicActivityId);
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, deletedActivityId);
+
+        assertThat(idsOf(list))
+                .as("認証済み（かつメンバー）でも公開一覧に MEMBERS_ONLY / DRAFT / 削除済みが現れないこと")
+                .doesNotContain(membersOnlyActivityId, draftPublicActivityId, deletedActivityId);
+    }
+
+    /**
+     * (AC-39b) 認証済みと匿名で<b>レスポンスボディが 1 バイトも違わない</b>こと。
+     *
+     * <p>AC-39 が「余分な項目が出ない」を見るのに対し、本 AC は「<b>公開 URL の応答が
+     * 閲覧者に依存しない</b>」という、より強い不変条件を丸ごと固定する
+     * （キャッシュ汚染耐性の本体）。詳細・ID 直引き・一覧の 3 経路すべてで比較する。</p>
+     *
+     * <p><b>前提の裏取り込み</b>: 「認証済みのつもりが実は匿名だった」ならボディは当然一致してしまい、
+     * この AC は<b>偽の緑</b>になる。それを防ぐため、同じ post-processor を認証必須 EP
+     * （{@code GET /api/v1/activities}）に当て、<b>匿名なら 401・認証済みなら 200</b> になることを
+     * 先に確認してから本題の比較へ進む。</p>
+     */
+    @Test
+    @DisplayName("(AC-39b) 認証済みと匿名でレスポンスボディが完全一致（閲覧者で内容が変わらない）")
+    void ac39b_認証済みと匿名でボディが完全一致() throws Exception {
+        // ── 前提の裏取り: post-processor が本当に認証を成立させていること ──
+        // これを省くと「認証済みのつもりが実は匿名」でもボディは当然一致し、本 AC が偽の緑になる。
+        int anonymousStatus = mockMvc.perform(get(AUTHENTICATED_ACTIVITY_LIST)
+                        .param("scope_type", "TEAM")
+                        .param("scope_id", String.valueOf(publicTeamId)))
+                .andReturn().getResponse().getStatus();
+        int authenticatedStatus = mockMvc.perform(get(AUTHENTICATED_ACTIVITY_LIST)
+                        .param("scope_type", "TEAM")
+                        .param("scope_id", String.valueOf(publicTeamId))
+                        .with(user(AUTH_USER)))
+                .andReturn().getResponse().getStatus();
+        assertThat(anonymousStatus)
+                .as("認証必須 EP（%s）は匿名だと 401 で弾かれること", AUTHENTICATED_ACTIVITY_LIST)
+                .isEqualTo(401);
+        assertThat(authenticatedStatus)
+                .as("同じ post-processor を当てると 401 でなくなること"
+                        + "（＝以降の比較で使う認証が本当に成立している証拠）")
+                .isNotEqualTo(401);
+
+        // ── 本題: 公開 EP は匿名と認証済みで完全に同じ応答を返す ──
+        assertSameBodyAnonymousAndAuthenticated(
+                "チーム詳細", TEAM_ACTIVITY_DETAIL, publicTeamId, publishedPublicActivityId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "ID 直引き詳細", PUBLIC_ACTIVITY_BY_ID, publishedPublicActivityId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "チーム一覧", TEAM_ACTIVITY_LIST, publicTeamId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "組織詳細", ORG_ACTIVITY_DETAIL, publicOrgId, orgPublicActivityId);
+        // 非公開のもの（404）も、匿名と認証済みでステータス・ボディともに一致すること
+        assertSameBodyAnonymousAndAuthenticated(
+                "MEMBERS_ONLY の 404", TEAM_ACTIVITY_DETAIL, publicTeamId, membersOnlyActivityId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // アサーションヘルパ
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * AC-39b: 同一 URL を「匿名」と「認証済み（{@value #AUTH_USER}）」で叩き、
+     * ステータスとボディが完全一致することを検証する。
+     */
+    private void assertSameBodyAnonymousAndAuthenticated(String where, String path, Object... uriVars)
+            throws Exception {
+        MvcResult anonymous = mockMvc.perform(get(path, uriVars)).andReturn();
+        MvcResult authenticated = mockMvc.perform(get(path, uriVars).with(user(AUTH_USER))).andReturn();
+
+        assertThat(authenticated.getResponse().getStatus())
+                .as("%s: 認証済みでもステータスが匿名と一致すること", where)
+                .isEqualTo(anonymous.getResponse().getStatus());
+        assertThat(authenticated.getResponse().getContentAsString())
+                .as("%s: 認証済みでもボディが匿名と 1 バイトも違わないこと"
+                        + "（公開 URL の応答が閲覧者に依存しない＝キャッシュ汚染耐性）", where)
+                .isEqualTo(anonymous.getResponse().getContentAsString());
+    }
 
     /**
      * AC-35: 指定 {@code limit} で一覧を叩き、件数が期待どおりで<b>返却全件が公開(a)</b>であることを検証する。

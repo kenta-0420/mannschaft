@@ -100,6 +100,22 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 > **認証済み一覧（`GET /api/v1/activities`）の既知の残務**: 認証済み経路は依然「1 ページ取得 → F00 でメモリフィルタ」であり **歯抜けが残っている**（総件数のページ内件数への化けのみ 2026-07-30 に是正済み）。認証済みでは F00 のラダーが縮退しないため SQL 化すると本物の独自述語になってしまう。厳密化には F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」を新設し、それを SQL 述語へ翻訳する必要がある（後続戦役）。
 
+##### 明文化した 3 つの契約（2026-07-30 追加・従来は未検査だった）
+
+いずれも「実装はそう動いていたが受け入れ条件も契約テストも無かった」ものであり、`ActivityPublicContractIT` で機械的に固定した。
+
+| # | 契約 | 現在の挙動 | 番人 |
+|---|---|---|---|
+| 1 | **COMMITTEE スコープは公開 EP から一律 404**（fail-closed） | `PublicActivityQueryService#resolvePublicScopeRefOrThrow` の `case COMMITTEE -> Optional.empty()` により、`visibility=PUBLIC` かつ `status=PUBLISHED` でも 404（ボディも「存在しない ID」と同一） | **AC-37** |
+| 2 | **非数値パス変数は 400 のまま**（404 に倒さない） | `/api/v1/public/activities/abc` は Spring の型変換段で失敗し `400 + COMMON_001`。ボディは定数で、入力値・例外クラス名・スタックを一切含まない | **AC-38** |
+| 3 | **公開 EP の応答は閲覧者に依存しない** | `PublicActivityQueryService` が `canView(..., null)` / `filterAccessible(..., null)` と **userId を null 固定**で呼ぶため、ログイン済み（かつ当該チームの ACTIVE メンバー）でも `MEMBERS_ONLY` / `DRAFT` は公開 EP から見えず、ボディは匿名時と 1 バイトも変わらない | **AC-39 / AC-39b** |
+
+> **#2 が AC-18（存在秘匿）の穴でない理由**: AC-18 が封じるのは「**ID として妥当な値**を投げたとき、その記録が実在するかを学べてしまう」こと。`abc` はそもそも ID ではなく、型変換がコントローラ到達**前**に失敗するため activity_results への問い合わせが一度も起きない。よって 400 と 404 の差は**入力領域の違い（ID か否か）**であり、**リソースの存在有無の違いではない**。挙動を 404 に倒しても得るものは無く、型エラーの診断可能性だけを失う。
+
+> **#3 が重要な理由**: 公開 EP は SSR / CDN / リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は**キャッシュ汚染**（あるユーザー向けの応答が他人へ配られる）と意図しない露出の温床になる。AC-39b は「認証済みと匿名でボディが完全一致」を固定し、誰かが `null` 固定を `SecurityUtils.getCurrentUserIdOrNull()` に差し替えた瞬間に落ちる。
+
+> **未対応（本 PR の対象外・別途要判断）**: `/api/v1/public/teams/{slug}/activities` に **存在しない slug** を渡すと `ScopeSlugIdConverter` が 404 `COMMON_005` を返し、**存在するが非公開なチームの slug** を渡すと 404 `PUBLIC_013` を返す。ステータスは同じ 404 だがボディが異なるため、**slug の実在を判別できる**。これは activity 固有ではなく `ScopeSlugIdConverter`（`config/ScopeSlugIdConverter.java`）を通す全 `/public/teams/{slug}/**` 系に共通する挙動であり、横断的な判断が要る。team slug は公開 URL 識別子として設計されている（`docs` の URL 識別子 slug 一本化方針）ため直ちに致命的とは言えないが、存在秘匿の観点ではグレーである。
+
 失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
 
 > **DTO に項目を足すときは permitAll の妥当性が崩れうる**。契約テスト `ActivityPublicContractIT`（ホワイトリスト方式）と `SecurityConfigAuthorizationTest` が機械的に守っているため、追加時は必ず両テストと本節を更新すること。設計書: `docs/features/F06.4_activity_records.md`
