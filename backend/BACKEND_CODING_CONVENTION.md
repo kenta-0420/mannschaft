@@ -161,6 +161,57 @@ dependencies {
 ```
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
 
+### 派生クエリの引数型は Entity 属性の型と一致させる — `@Enumerated` 属性に `String` を渡さない（2026-07-30〜）
+
+#### 問題：`@Enumerated(EnumType.STRING)` の属性を `String` で受けると実行時に必ず 500 になる
+
+Spring Data JPA の派生クエリ（`findByXxx`）の**バインド型はエンティティ属性側で決まる**。
+DB のカラムが `VARCHAR` であっても、Entity 側が enum なら `String` を渡した時点で Hibernate のパラメータ束縛が失敗する。
+
+```java
+// Entity: enum 属性（列は VARCHAR だが JPA 上の型は enum）
+@Enumerated(EnumType.STRING)
+@Column(nullable = false, length = 20)
+private NotificationScopeType scopeType;
+
+// NG: String で受ける派生クエリ
+Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+        String scopeType, Long scopeId, Pageable pageable);
+// 呼び出し側は自然と .name() を書いてしまう
+repo.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(NotificationScopeType.FRIEND_TEAM.name(), teamId, pageable);
+```
+
+実行時にこうなる（**コンパイルは通り、アプリ起動も成功する。実際にそのクエリが呼ばれた瞬間に初めて落ちる**）:
+
+```
+org.springframework.dao.InvalidDataAccessApiUsageException:
+  Argument [FRIEND_TEAM] of type [java.lang.String] did not match parameter type
+  [com.mannschaft.app.notification.NotificationScopeType (n/a)]
+```
+
+`GlobalExceptionHandler` に `DataAccessException` 系の個別ハンドラは無いため、汎用 `@ExceptionHandler(Exception.class)` に落ちて **HTTP 500** になる。
+
+```java
+// OK: Entity 属性と同じ enum 型で受ける
+Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+        NotificationScopeType scopeType, Long scopeId, Pageable pageable);
+```
+
+#### なぜ従来のテストで検出できなかったか
+
+**リポジトリをモックした Service 単体テストでは原理的に検出できない。** モックは「`.name()` の文字列で呼ばれたこと」しか検証せず、Hibernate のパラメータ束縛が発生しないため、壊れたクエリが恒久的に偽グリーンになる。
+
+- 実際に 2026-07-30 に `NotificationRepository` で 4 本（うち本番稼働経路 3 本）が同時に発覚した
+- 該当経路は `@SpringBootTest` + Testcontainers で一度も実行されておらず、実機で初めて 500 として表面化した
+
+#### ルール
+
+1. 派生クエリの引数型は **Entity の属性型をそのまま書く**。`@Enumerated` 属性なら enum、`String` 属性なら `String`。
+2. 呼び出し側で `.name()` / `valueOf()` を書きたくなったら、**それは引数型が間違っているサイン**。変換ではなく宣言を直すこと。
+3. **ドメインをまたいで enum を渡す場合**（例: `scopefolder.ScopeType` → `notification.NotificationScopeType`）は、`default` 句を持たない**網羅 switch** で明示的に写像する。`default` を書くと将来の定数追加を握りつぶすため禁止（網羅 switch なら定数追加時にコンパイルエラーで気付ける）。
+4. **enum 属性を条件に含む派生クエリは、実 DB（Testcontainers）を通すテストを必ず 1 本置く**。モック単体テストだけで済ませてはならない。
+5. ネイティブクエリ（`nativeQuery = true`）は SQL 文字列として評価されるため `String` で正しい。JPQL / 派生クエリのみが本ルールの対象。
+
 ### Entity 更新パターン規約 — managed entity の直接ミューテートで行う（`toBuilder().build() → save` 禁止）（2026-06-19〜）
 
 #### 問題：`toBuilder().build()` で再構築して `save()` すると INSERT 化する

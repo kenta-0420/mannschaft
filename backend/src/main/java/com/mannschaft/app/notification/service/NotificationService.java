@@ -100,11 +100,38 @@ public class NotificationService {
         }
 
         // 2) scope_type + scope_id IN (...) で絞り込み
-        // NotificationEntity.scopeType は String 型、scope_id は Long
+        // NotificationEntity.scopeType は @Enumerated(EnumType.STRING) の enum 属性であり、
+        // scopeType.name() の String を渡すと Hibernate のパラメータ束縛で型不一致になる（実行時 500）。
+        // 必ず NotificationScopeType へ写像してから渡すこと。
         Page<NotificationEntity> page = notificationRepository
                 .findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
-                        userId, scopeType.name(), scopeIds, pageable);
+                        userId, toNotificationScopeType(scopeType), scopeIds, pageable);
         return page.map(notificationMapper::toNotificationResponse);
+    }
+
+    /**
+     * scopefolder ドメインの {@link ScopeType} を通知ドメインの {@link NotificationScopeType} へ写像する。
+     *
+     * <p><b>値集合の関係</b>: {@code ScopeType} は {@code TEAM} / {@code ORGANIZATION} の 2 値のみで、
+     * いずれも {@code NotificationScopeType} に同名の定数が存在する。したがって本写像は全域（total）であり、
+     * 「写像できない値」は存在しない。逆に {@code NotificationScopeType} 側には
+     * {@code PERSONAL} / {@code SYSTEM} / {@code FRIEND_TEAM} / {@code FRIEND_FOLDER} / {@code COMMITTEE}
+     * が余分にあるが、マイスコープフォルダはチーム／組織しか分類しない（F15.3 §4.3）ため
+     * それらがフォルダフィルタの引数に来ることはない。</p>
+     *
+     * <p><b>将来 {@code ScopeType} に定数が増えた場合</b>: 本メソッドは {@code default} 句を持たない
+     * 網羅 switch であるため、新定数が追加された瞬間に<b>コンパイルエラー</b>になる。
+     * 握りつぶして黙って空ページを返すようなことはせず、追加時点で写像先の判断を強制する。
+     * 実行時フォールバックではなくコンパイル時に落とすのが最も安全なため、この形を採る。</p>
+     *
+     * @param scopeType scopefolder ドメインのスコープ種別
+     * @return 通知ドメインのスコープ種別
+     */
+    static NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
+        return switch (scopeType) {
+            case TEAM -> NotificationScopeType.TEAM;
+            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+        };
     }
 
     /**
