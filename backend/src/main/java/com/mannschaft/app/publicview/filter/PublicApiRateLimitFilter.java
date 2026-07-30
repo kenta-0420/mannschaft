@@ -265,7 +265,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         }
         Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(request.getServletPath());
         Matcher publicMatcher = PUBLIC_API_PATH.matcher(request.getServletPath());
-        recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher);
+        Matcher activityMatcher = PUBLIC_ACTIVITY_BY_ID_PATH.matcher(request.getServletPath());
+        recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher, activityMatcher);
 
         // F19.1 Phase 5: レート超過カウンター記録
         recordRateLimitExceededMetric(request.getServletPath(), request.getRemoteAddr());
@@ -385,9 +386,18 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
      *   <li>organizationId / metadata: 検索 API は orgId / 詳細 API は teamId or orgId を metadata に格納
      *       （生 IP は保存せず SHA-256 ハッシュ化）</li>
      * </ul>
+     *
+     * <p><b>F06.4 ID 直引き経路の取りこぼし是正</b>: 本メソッドは当初
+     * {@link #PUBLIC_API_PATH} にしかマッチしなかったため、スコープ非依存の
+     * {@code GET /api/v1/public/activities/{id}} が最後の else に落ち、
+     * {@code {"ipHash":"..."}} だけが残って<b>どの ID を総当りされたのかが記録されなかった</b>。
+     * 活動記録 ID は {@code BIGINT AUTO_INCREMENT} の連番で最も列挙されやすい経路のため、
+     * {@link #PUBLIC_ACTIVITY_BY_ID_PATH} も他の公開 EP と同形式（{@code activityId} キー）で
+     * metadata に載せる。</p>
      */
     private void recordRateLimitAudit(HttpServletRequest request, Target target, Long userId,
-                                      Matcher orgMatcher, Matcher publicMatcher) {
+                                      Matcher orgMatcher, Matcher publicMatcher,
+                                      Matcher activityMatcher) {
         String ipHash = SessionHashUtil.hash(request.getRemoteAddr());
         String metadata;
         Long organizationId = null;
@@ -420,6 +430,12 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
                 String keyName = "teams".equals(scopeType) ? "teamId" : "organizationId";
                 metadata = buildMetadataJson(keyName, scopeIdStr, ipHash);
             }
+        } else if (target == Target.PUBLIC_API && activityMatcher.matches()) {
+            // F06.4: スコープ非依存の ID 直引き（GET /api/v1/public/activities/{id}）。
+            // 連番 ID の総当りを事後追跡できるよう、叩かれた activityId を必ず残す。
+            String activityIdStr = activityMatcher.group(1);
+            metadata = buildMetadataJson("activityId", activityIdStr, ipHash);
+            eventType = AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED;
         } else {
             metadata = buildMetadataJson(null, null, ipHash);
             eventType = AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED;

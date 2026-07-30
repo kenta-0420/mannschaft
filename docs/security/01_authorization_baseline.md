@@ -41,6 +41,36 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 `.authenticated()` 反転後も**認証不要**で到達できる必要があるエンドポイント。これ以外は全て認証必須。
 
+### 3.0 公開根拠の引用規約 — `@IntentionallyPublic` は **matcher 式**を引用する（2026-07-30 改訂）
+
+`permitAll` の EP には監査済マーカー `@IntentionallyPublic` を付与し、**根拠となる matcher 式（パス文字列）を注釈の属性に列挙する**。
+
+```java
+@IntentionallyPublic("/api/v1/public/stats")            // 単一
+@IntentionallyPublic({                                   // 複数
+        "/api/v1/public/teams/*/faqs",
+        "/api/v1/public/organizations/*/faqs"
+})
+```
+
+**なぜ行番号引用をやめたか（実測に基づく規約変更）:**
+
+旧規約は `SecurityConfig.java:88 — requestMatchers(...)` のように **行番号**で permitAll 登録箇所を引用していた。しかし `SecurityConfig` に 1 行挿入されるだけで以降の引用がすべてずれる。2026-07-30 に全件突き合わせを実測した結果、**`@IntentionallyPublic` の行番号引用 35 件のうち 34 件が既に別の行を指していた**（唯一正しかったのは直前の PR で追加された 1 件のみ）。「なぜこの EP が公開されているのか」を追う唯一の手掛かりが、誰にも気づかれないまま嘘になっていた。
+
+matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人間もすぐ辿れる。さらに文字列であるため**番人が機械的に突き合わせられる**。
+
+**番人:** `IntentionallyPublicMatcherGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が以下を機械検証する。
+
+- 各 `@IntentionallyPublic` が matcher 式を宣言していること（空宣言は違反）
+- 列挙された各パターンが `SecurityConfig` に**実在し、かつ permitAll されている**こと
+- `@IntentionallyPublic` を持つファイルに行番号引用（`SecurityConfig.java:NNN`）が残っていないこと
+
+引用が腐れば静かに嘘になるのではなく **ビルドが赤くなる**。CORS プリフライト（`OPTIONS "/**"`）は「公開の根拠」にならないため番人の permitAll 集合から除外している（`/**` を引用するだけで番人を通す抜け道を塞ぐため）。
+
+> **注**: 公開してよいと判断した**理由の記述（Javadoc）は本体であり、引用形式の変更後も必ず残すこと。** 理由なき付与は「認可漏れの永久凍結」と区別がつかない。
+>
+> **残務**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で、実測 **40 件中 38 件がずれている**（残り 2 件はパス引用が無く測定不能）。同じ移行が必要だが、対象 Controller が 30 以上に及び並行 PR との衝突面が大きいため別チケットとする。
+
 ### 3.1 インフラ・ドキュメント
 | パターン | メソッド | 公開理由 |
 |---|---|---|

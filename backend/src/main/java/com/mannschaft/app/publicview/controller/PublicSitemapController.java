@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:247-248 — requestMatchers(GET, "/sitemap.xml", "/robots.txt")
+ * SecurityConfig — requestMatchers(GET, "/sitemap.xml", "/robots.txt")
  * / "/sitemap-*.xml" .permitAll()
  * </p>
  *
@@ -52,7 +52,11 @@ import java.util.concurrent.TimeUnit;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/sitemap.xml",
+        "/robots.txt",
+        "/sitemap-*.xml"
+})
 @RestController
 @Tag(name = "SEO (F19.1 Phase 3)", description = "sitemap.xml / robots.txt エンドポイント")
 @RequiredArgsConstructor

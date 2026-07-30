@@ -69,7 +69,7 @@ public class Auth2faController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * SecurityConfig — requestMatchers("/api/v1/auth/2fa/validate",
      * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
      * </p>
      *
@@ -82,7 +82,11 @@ public class Auth2faController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/2fa/validate",
+            "/api/v1/auth/2fa/recovery/request",
+            "/api/v1/auth/2fa/recovery/confirm"
+    })
     @PostMapping("/validate")
     @Operation(summary = "TOTPログイン検証")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "TOTP検証成功")
@@ -113,7 +117,7 @@ public class Auth2faController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * SecurityConfig — requestMatchers("/api/v1/auth/2fa/validate",
      * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
      * </p>
      *
@@ -126,7 +130,11 @@ public class Auth2faController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/2fa/validate",
+            "/api/v1/auth/2fa/recovery/request",
+            "/api/v1/auth/2fa/recovery/confirm"
+    })
     @PostMapping("/recovery/request")
     @Operation(summary = "MFAリカバリー要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリーメール送信完了")
@@ -143,7 +151,7 @@ public class Auth2faController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:216-218 — requestMatchers("/api/v1/auth/2fa/validate",
+     * SecurityConfig — requestMatchers("/api/v1/auth/2fa/validate",
      * "/api/v1/auth/2fa/recovery/request", "/api/v1/auth/2fa/recovery/confirm").permitAll()
      * </p>
      *
@@ -156,7 +164,11 @@ public class Auth2faController {
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
-    @IntentionallyPublic
+    @IntentionallyPublic({
+            "/api/v1/auth/2fa/validate",
+            "/api/v1/auth/2fa/recovery/request",
+            "/api/v1/auth/2fa/recovery/confirm"
+    })
     @PostMapping("/recovery/confirm")
     @Operation(summary = "MFAリカバリー確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリー完了")

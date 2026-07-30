@@ -41,7 +41,7 @@ import java.util.List;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:324-328 — requestMatchers(GET, "/api/v1/public/market/listings"
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/market/listings"
  * / "listings/*" / "regions" / "summary" / "categories").permitAll()
  * </p>
  *
@@ -53,7 +53,13 @@ import java.util.List;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/public/market/listings",
+        "/api/v1/public/market/listings/*",
+        "/api/v1/public/market/regions",
+        "/api/v1/public/market/summary",
+        "/api/v1/public/market/categories"
+})
 @RestController
 @RequestMapping("/api/v1/public/market")
 @Tag(name = "F22.1 市（Market）公開閲覧", description = "地域×ジャンルで束ねた募集の公開ビュー（未ログイン可・PII抑制）")
