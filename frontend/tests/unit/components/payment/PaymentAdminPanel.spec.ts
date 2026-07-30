@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
+import { useAuthStore } from '~/stores/useAuthStore'
 import PaymentAdminPanel from '~/components/payment/PaymentAdminPanel.vue'
 import PaymentRecordDialog from '~/components/payment/PaymentRecordDialog.vue'
 import PaymentBulkRecordDialog from '~/components/payment/PaymentBulkRecordDialog.vue'
@@ -169,7 +170,7 @@ describe('PaymentRecordDialog.vue (AC-16/AC-17)', () => {
     expect(values).not.toContain('STRIPE')
   })
 
-  it('AC-17(body): submit で camelCase body と LocalDateTime 形式の paidAt を emit する', async () => {
+  it('AC-17(body) / Issue #2508: submit で camelCase body とユーザーTZオフセット付きの paidAt を emit する', async () => {
     const wrapper = await mountSuspended(PaymentRecordDialog, {
       props: { visible: true, defaultAmount: 5000, payments: PAYMENTS },
     })
@@ -191,7 +192,9 @@ describe('PaymentRecordDialog.vue (AC-16/AC-17)', () => {
     expect(body.userId).toBe(200)
     expect(body.amountPaid).toBe(5000)
     expect(body.paymentMethod).toBe('BANK_TRANSFER')
-    expect(body.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00$/)
+    // Issue #2508: BE の paidAt(LocalDateTime) は受信時オフセットを無視するため、
+    // ユーザーTZ（未設定時は既定 Asia/Tokyo = +09:00）のオフセットを明示的に付与する。
+    expect(body.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\+09:00$/)
     expect(body.paymentMethod).not.toBe('STRIPE')
   })
 
@@ -250,7 +253,35 @@ describe('PaymentBulkRecordDialog.vue (AC-20)', () => {
     expect(bodies).toHaveLength(2)
     expect(bodies.map((b) => b.userId).sort()).toEqual([200, 400])
     expect(bodies[0]?.amountPaid).toBe(3000)
-    expect(bodies[0]?.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00$/)
+    // Issue #2508: 既定 TZ（Asia/Tokyo = +09:00）のオフセットを明示的に付与する。
+    expect(bodies[0]?.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\+09:00$/)
+  })
+
+  it('Issue #2508: 非JST（America/Los_Angeles）ユーザーでも paidAt にそのTZのオフセットが付く', async () => {
+    useAuthStore().user = {
+      id: 1,
+      email: 'la-user@example.com',
+      fullName: 'LA User',
+      profileImageUrl: null,
+      timezone: 'America/Los_Angeles',
+    }
+    const payments = [
+      buildPayment({ id: 2, userId: 200, userName: 'A', statusInfo: { status: 'UNPAID', validFrom: null, validUntil: null, paidAt: null } }),
+    ]
+    const wrapper = await mountSuspended(PaymentBulkRecordDialog, {
+      props: { visible: true, defaultAmount: 3000, payments },
+    })
+    const vm = wrapper.vm as unknown as {
+      toggle: (id: number) => void
+      onSubmit: () => void
+    }
+    vm.toggle(200)
+    await wrapper.vm.$nextTick()
+    vm.onSubmit()
+
+    const bodies = wrapper.emitted('submit')?.[0]?.[0] as Array<Record<string, unknown>>
+    // JST(+09:00) 固定ではなく、America/Los_Angeles のオフセット（PDT -07:00 / PST -08:00）が付くこと
+    expect(bodies[0]?.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00-0[78]:00$/)
   })
 })
 
