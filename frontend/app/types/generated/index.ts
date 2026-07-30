@@ -55742,7 +55742,8 @@ export interface components {
         RecurringWeekOutcomeDto: {
             /** Format: date */
             date?: string;
-            reason?: string;
+            /** @enum {string} */
+            reason?: "NOT_GENERATED" | "FULL" | "CLOSED" | "BLOCKED" | "ALREADY_RESERVED" | "UNAVAILABLE" | "NOT_CANCELLABLE" | "CANCEL_DEADLINE_PASSED" | "NOT_PENDING";
             /** Format: int64 */
             reservationId?: number;
         };
@@ -55774,6 +55775,8 @@ export interface components {
             recurring?: components["schemas"]["RecurringSeriesDto"];
             recurringCancel?: components["schemas"]["RecurringCancelDto"];
             recurringConfirm?: components["schemas"]["RecurringConfirmDto"];
+            /** Format: uuid */
+            recurringSeriesId?: string;
             slot?: components["schemas"]["SlotSummaryDto"];
             status?: components["schemas"]["ReservationStatusDto"];
         };

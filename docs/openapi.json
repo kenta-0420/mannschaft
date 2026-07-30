@@ -169350,7 +169350,18 @@
             "format": "date"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "NOT_GENERATED",
+              "FULL",
+              "CLOSED",
+              "BLOCKED",
+              "ALREADY_RESERVED",
+              "UNAVAILABLE",
+              "NOT_CANCELLABLE",
+              "CANCEL_DEADLINE_PASSED",
+              "NOT_PENDING"
+            ]
           },
           "reservationId": {
             "type": "integer",
@@ -169425,6 +169436,10 @@
           },
           "recurringConfirm": {
             "$ref": "#/components/schemas/RecurringConfirmDto"
+          },
+          "recurringSeriesId": {
+            "type": "string",
+            "format": "uuid"
           },
           "slot": {
             "$ref": "#/components/schemas/SlotSummaryDto"
