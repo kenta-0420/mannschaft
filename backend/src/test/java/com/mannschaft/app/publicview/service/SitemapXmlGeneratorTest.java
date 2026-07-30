@@ -44,7 +44,7 @@ class SitemapXmlGeneratorTest {
         @DisplayName("URL が 0 件の場合、空の urlset を返す")
         void generate_emptyEntries_returnsEmptyUrlset() {
             String xml = generator.generate(BASE_URL,
-                    List.of(), List.of(), List.of(), List.of());
+                    List.of(), List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             assertThat(xml).contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
@@ -60,7 +60,7 @@ class SitemapXmlGeneratorTest {
                     new SitemapEntry(2L, NOW)
             );
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(BASE_URL + "/public/teams/1");
@@ -75,7 +75,7 @@ class SitemapXmlGeneratorTest {
                     new SitemapEntry(10L, NOW)
             );
 
-            String xml = generator.generate(BASE_URL, List.of(), orgs, List.of(), List.of());
+            String xml = generator.generate(BASE_URL, List.of(), orgs, List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(BASE_URL + "/public/organizations/10");
@@ -88,7 +88,7 @@ class SitemapXmlGeneratorTest {
                     new SitemapPostEntry(1L, 100L, NOW)
             );
 
-            String xml = generator.generate(BASE_URL, List.of(), List.of(), teamPosts, List.of());
+            String xml = generator.generate(BASE_URL, List.of(), List.of(), teamPosts, List.of(), List.of());
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(BASE_URL + "/public/teams/1/posts/100");
@@ -101,10 +101,64 @@ class SitemapXmlGeneratorTest {
                     new SitemapPostEntry(10L, 200L, NOW)
             );
 
-            String xml = generator.generate(BASE_URL, List.of(), List.of(), List.of(), orgPosts);
+            String xml = generator.generate(BASE_URL, List.of(), List.of(), List.of(), orgPosts, List.of());
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(BASE_URL + "/public/organizations/10/posts/200");
+        }
+
+        @Test
+        @DisplayName("F06.4 活動記録エントリが /activity/{id} として urlset に含まれる")
+        void generate_activityEntries_containsActivityUrls() {
+            List<SitemapEntry> activities = List.of(
+                    new SitemapEntry(42L, NOW),
+                    new SitemapEntry(43L, NOW)
+            );
+
+            String xml = generator.generate(
+                    BASE_URL, List.of(), List.of(), List.of(), List.of(), activities);
+
+            assertThat(xml).contains("<urlset");
+            // 公開活動記録は URL にスコープを含まない（SNS シェア用の ID 直引きが正準）。
+            assertThat(xml).contains("<loc>" + BASE_URL + "/activity/42</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/activity/43</loc>");
+            assertThat(xml).contains("<lastmod>2026-05-19</lastmod>");
+        }
+
+        @Test
+        @DisplayName("活動記録は他の 4 種と併存し、URL 形式が混ざらない")
+        void generate_activitiesAlongsideOtherEntries_keepsUrlShapes() {
+            String xml = generator.generate(
+                    BASE_URL,
+                    List.of(new SitemapEntry(1L, NOW)),
+                    List.of(new SitemapEntry(10L, NOW)),
+                    List.of(new SitemapPostEntry(1L, 100L, NOW)),
+                    List.of(new SitemapPostEntry(10L, 200L, NOW)),
+                    List.of(new SitemapEntry(42L, NOW)));
+
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/teams/1</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/10</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/teams/1/posts/100</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/10/posts/200</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/activity/42</loc>");
+            // 活動記録がスコープ配下 URL として出ていないこと（URL 形式の取り違え防止）
+            assertThat(xml).doesNotContain("/public/teams/42");
+            assertThat(xml).doesNotContain("/activity/1</loc>");
+        }
+
+        @Test
+        @DisplayName("活動記録も 50,000 URL 上限の計算対象に入る（分割から漏れない）")
+        void generate_activitiesCountTowardSplitThreshold() {
+            List<SitemapEntry> teams = new ArrayList<>();
+            for (int i = 1; i <= SitemapXmlGenerator.MAX_URLS_PER_SITEMAP; i++) {
+                teams.add(new SitemapEntry((long) i, NOW));
+            }
+            // 上限ちょうどのチーム + 活動記録 1 件 = 50,001 → sitemapindex に切り替わるはず。
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(),
+                    List.of(new SitemapEntry(42L, NOW)));
+
+            assertThat(xml).contains("<sitemapindex");
+            assertThat(xml).doesNotContain("<urlset");
         }
 
         @Test
@@ -112,7 +166,7 @@ class SitemapXmlGeneratorTest {
         void generate_nullLastmod_omitsLastmodTag() {
             List<SitemapEntry> teams = List.of(new SitemapEntry(1L, null));
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains(BASE_URL + "/public/teams/1");
             assertThat(xml).doesNotContain("<lastmod>");
@@ -126,7 +180,7 @@ class SitemapXmlGeneratorTest {
                 teams.add(new SitemapEntry((long) i, NOW));
             }
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).doesNotContain("<sitemapindex");
@@ -149,7 +203,7 @@ class SitemapXmlGeneratorTest {
                 teams.add(new SitemapEntry((long) i, NOW));
             }
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<sitemapindex");
             assertThat(xml).doesNotContain("<urlset");
@@ -165,7 +219,7 @@ class SitemapXmlGeneratorTest {
                 teams.add(new SitemapEntry((long) i, NOW));
             }
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<sitemapindex");
             assertThat(xml).contains(BASE_URL + "/sitemap-1.xml");
@@ -190,7 +244,7 @@ class SitemapXmlGeneratorTest {
                 teams.add(new SitemapEntry((long) i, NOW));
             }
 
-            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), 1);
+            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), List.of(), 1);
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(BASE_URL + "/public/teams/1");
@@ -206,7 +260,7 @@ class SitemapXmlGeneratorTest {
                 teams.add(new SitemapEntry((long) i, NOW));
             }
 
-            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), 2);
+            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), List.of(), 2);
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).contains(
@@ -218,7 +272,7 @@ class SitemapXmlGeneratorTest {
         void generatePage_outOfRange_returnsEmptyUrlset() {
             List<SitemapEntry> teams = List.of(new SitemapEntry(1L, NOW));
 
-            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), 99);
+            String xml = generator.generatePage(BASE_URL, teams, List.of(), List.of(), List.of(), List.of(), 99);
 
             assertThat(xml).contains("<urlset");
             assertThat(xml).doesNotContain("<url>");
@@ -274,7 +328,7 @@ class SitemapXmlGeneratorTest {
         void generate_normalUrl_notEscaped() {
             List<SitemapEntry> teams = List.of(new SitemapEntry(1L, NOW));
 
-            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of());
+            String xml = generator.generate(BASE_URL, teams, List.of(), List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<loc>" + BASE_URL + "/public/teams/1</loc>");
         }

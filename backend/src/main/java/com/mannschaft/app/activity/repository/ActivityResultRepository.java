@@ -80,6 +80,56 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
             Pageable pageable);
 
     /**
+     * F06.4 sitemap.xml 用 — <b>親スコープが公開であるものに限った</b>公開活動記録を全件取得する。
+     *
+     * <h3>なぜ {@link #findPublicByScopeTypeAndScopeId} を使い回さないのか</h3>
+     * <p>あちらは「単一スコープ配下をページング取得する」形であり、sitemap が必要とする
+     * 「全公開スコープを横断して全件」とは形が違う。公開スコープの数だけ呼べば
+     * スコープ数に比例した SQL が出る。金型の {@code BlogPostRepository} も
+     * {@code findPublicPostsByTeamId}（ページング）と
+     * {@code findAllPublicPostsByTeam}（sitemap 用・全件）を<b>両方持っている</b>のと同じ理由で、
+     * sitemap 専用の全件クエリを別に置く。可視性述語
+     * （{@code visibility = PUBLIC AND status = PUBLISHED}）は
+     * {@link #findPublicByScopeTypeAndScopeId} と<b>字面まで同一</b>に保つこと。</p>
+     *
+     * <h3>親スコープの公開性まで見る理由（sitemap 固有の要件）</h3>
+     * <p>{@link #findPublicByScopeTypeAndScopeId} は記録自身の可視性しか見ない。
+     * 単票 / 一覧 API では {@code PublicActivityQueryService} が親スコープの公開性を
+     * 別途前置するのでそれで足りるが、<b>sitemap は URL をそのまま検索エンジンに教える</b>ため、
+     * 親が非公開のまま載せると「非公開チームの存在とその配下の記録 ID」を外部に開示してしまう。
+     * よって本メソッドは公開スコープ ID 集合を受け取り、SQL の段で親スコープを絞り込む。</p>
+     *
+     * <p>{@link com.mannschaft.app.activity.ActivityScopeType#COMMITTEE} は公開ページを
+     * 持たないため、述語が TEAM / ORGANIZATION のみを列挙することで自動的に除外される
+     * （fail-closed）。論理削除済みは {@code @SQLRestriction("deleted_at IS NULL")} が自動除外する。</p>
+     *
+     * <p>sitemap は 1 時間キャッシュ前提のため全件取得してよい
+     * （{@code SitemapQueryService} クラス Javadoc）。</p>
+     *
+     * <p><b>「status 条件なしの finder を追加しない」規約（#2548）との関係</b>:
+     * 本メソッドは ID 直引き finder ではないが、同じ趣旨に従い
+     * {@code status = PUBLISHED} を述語に含めている。status を落とすと
+     * <b>下書きの URL を検索エンジンに配ってしまう</b>ため、決して外さないこと。</p>
+     *
+     * @param publicTeamIds         公開チームの ID 集合（<b>空にしないこと</b>。空集合は JPQL の
+     *                              {@code IN ()} を生成して SQL 構文エラーになるため、
+     *                              呼び出し元が実在しない番兵値を入れる）
+     * @param publicOrganizationIds 公開組織の ID 集合（同上）
+     * @return 親スコープが公開である PUBLIC + PUBLISHED の活動記録（全件）
+     */
+    @Query("SELECT ar FROM ActivityResultEntity ar "
+            + "WHERE ar.visibility = com.mannschaft.app.activity.ActivityVisibility.PUBLIC "
+            + "AND ar.status = com.mannschaft.app.activity.ActivityStatus.PUBLISHED "
+            + "AND ((ar.scopeType = com.mannschaft.app.activity.ActivityScopeType.TEAM "
+            + "        AND ar.scopeId IN :publicTeamIds) "
+            + "  OR (ar.scopeType = com.mannschaft.app.activity.ActivityScopeType.ORGANIZATION "
+            + "        AND ar.scopeId IN :publicOrganizationIds)) "
+            + "ORDER BY ar.id ASC")
+    List<ActivityResultEntity> findPublicForSitemap(
+            @Param("publicTeamIds") Collection<Long> publicTeamIds,
+            @Param("publicOrganizationIds") Collection<Long> publicOrganizationIds);
+
+    /**
      * ID + visibility + status で活動記録を取得する（スコープ不問・匿名公開経路の正準）。
      *
      * <p><b>本メソッドが匿名公開経路の唯一の入口である。</b>
