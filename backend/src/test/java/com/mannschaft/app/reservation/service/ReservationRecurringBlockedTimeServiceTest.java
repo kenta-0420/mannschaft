@@ -10,7 +10,9 @@ import com.mannschaft.app.reservation.dto.CreateRecurringBlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.RecurringBlockedTimeImpactResponse;
 import com.mannschaft.app.reservation.dto.RecurringBlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.UpdateRecurringBlockedTimeRequest;
+import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
@@ -73,17 +75,21 @@ class ReservationRecurringBlockedTimeServiceTest {
     private final Clock clock = Clock.fixed(
             TODAY.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC);
 
+    /**
+     * F03.4.5 §6.2 W2-5（強行登録）で追加された依存。
+     * impact もグループ兄弟行の展開のため枠を解決するようになったので、スタブ可能なフィールドで持つ。
+     */
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationSlotRepository slotRepository;
+
     private ReservationRecurringBlockedTimeService service;
 
     @BeforeEach
     void setUp() {
-        // F03.4.5 §6.2 W2-5（強行登録）で slotRepository / slotService / eventPublisher が追加された。
-        // 本テストは force を使わない従来経路のみを見るため mock のままで十分（呼ばれない）。
+        // 本テストは force を使わない従来経路のみを見るため、slotService / eventPublisher は呼ばれない。
         service = new ReservationRecurringBlockedTimeService(
                 ruleRepository, lineRepository, reservationRepository, unavailabilityChecker,
-                nameResolverService, auditLogService,
-                org.mockito.Mockito.mock(
-                        com.mannschaft.app.reservation.repository.ReservationSlotRepository.class),
+                nameResolverService, auditLogService, slotRepository,
                 org.mockito.Mockito.mock(ReservationSlotService.class),
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
                 clock);
@@ -185,6 +191,50 @@ class ReservationRecurringBlockedTimeServiceTest {
     private ReservationRecurringOverlapRow overlapRow(LocalDate slotDate, LocalTime start, LocalTime end) {
         return new ReservationRecurringOverlapRow(
                 1L, 500L, 2000L, slotDate, null, null, start, end, ReservationStatus.CONFIRMED);
+    }
+
+    /**
+     * {@code overlapRow} と対応する実エンティティを stub する（W2-5 検分 MUST③ の追随）。
+     *
+     * <p>impact はグループ兄弟行まで展開するため、projection 行だけでなく<b>実エンティティと枠</b>を
+     * 解決するようになった（強行キャンセルと同一の集合解決を共有し「impact の件数と force の件数が
+     * ずれる」事故を構造的に防ぐため）。アサーション（件数・氏名・枠日付）は一切変えていない。</p>
+     */
+    private void givenOverlapEntities(LocalDate slotDate, LocalTime start, LocalTime end) {
+        ReservationEntity reservation = ReservationEntity.builder()
+                .teamId(TEAM_ID).userId(500L).lineId(1L)
+                .reservationSlotId(2000L).status(ReservationStatus.CONFIRMED)
+                .build();
+        setTestId(reservation, 1L);
+        ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                .teamId(TEAM_ID).title("枠")
+                .slotDate(slotDate).startTime(start).endTime(end)
+                .capacity(1).build();
+        setTestId(slot, 2000L);
+        given(reservationRepository.findAllById(any())).willReturn(List.of(reservation));
+        given(slotRepository.findAllById(any())).willReturn(List.of(slot));
+    }
+
+    /** ID は永続化で採番されるため、テストでは reflection で埋める（Entity に setter を生やさない）。 */
+    private static void setTestId(Object entity, Long id) {
+        try {
+            Class<?> c = entity.getClass();
+            java.lang.reflect.Field f = null;
+            while (c != null && f == null) {
+                try {
+                    f = c.getDeclaredField("id");
+                } catch (NoSuchFieldException e) {
+                    c = c.getSuperclass();
+                }
+            }
+            if (f == null) {
+                throw new NoSuchFieldException("id");
+            }
+            f.setAccessible(true);
+            f.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
@@ -342,6 +392,7 @@ class ReservationRecurringBlockedTimeServiceTest {
         given(reservationRepository.findActiveReservationsInRangeForRecurringGuard(
                 eq(TEAM_ID), any(), any(), any(), any()))
                 .willReturn(List.of(overlapRow(matchDay, LocalTime.of(10, 0), LocalTime.of(11, 0))));
+        givenOverlapEntities(matchDay, LocalTime.of(10, 0), LocalTime.of(11, 0));
         given(nameResolverService.resolveUserFullNames(any()))
                 .willReturn(java.util.Map.of(500L, "山田 太郎"));
 
