@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
  * （AC-2）。DDL は {@code V172.__create_notification_fanout_jobs.sql}。</p>
  *
  * <h2>ユニーク制約（冪等・AC-1）</h2>
- * <p>{@code (scope_type, scope_id, notification_type, source_event_uuid)} を複合ユニークにし、同一 fan-out の
+ * <p>{@code (scope_type, scope_ref, notification_type, source_event_uuid)} を複合ユニークにし、同一 fan-out の
  * 二重 enqueue を DB レベルで拒否する。{@code @Table} にも宣言し、test プロファイル（{@code ddl-auto=create}・
  * Flyway 無効）の Entity 由来スキーマでも同じ制約が効くようにする。</p>
  *
@@ -36,7 +36,7 @@ import java.time.LocalDateTime;
         name = "notification_fanout_jobs",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_fanout_idempotency",
-                columnNames = {"scope_type", "scope_id", "notification_type", "source_event_uuid"}),
+                columnNames = {"scope_type", "scope_ref", "notification_type", "source_event_uuid"}),
         indexes = @Index(name = "idx_fanout_status_next", columnList = "status, next_attempt_at"))
 @Getter
 @Setter
@@ -51,9 +51,12 @@ public class NotificationFanoutJob extends UuidV7Entity {
     @Column(name = "scope_type", nullable = false, length = 20)
     private String scopeType;
 
-    /** 受信者解決に渡すスコープID（論理参照・FK なし）。 */
-    @Column(name = "scope_id", nullable = false)
-    private Long scopeId;
+    /**
+     * 受信者解決に渡す多型スコープ参照（論理参照・FK なし）。
+     * 村＝UUID 文字列 / チーム・組織＝ID 文字列。{@link FanoutRecipientSource#nextPage} 実装が型を復元する。
+     */
+    @Column(name = "scope_ref", nullable = false, length = 36)
+    private String scopeRef;
 
     @Column(name = "notification_type", nullable = false, length = 50)
     private String notificationType;

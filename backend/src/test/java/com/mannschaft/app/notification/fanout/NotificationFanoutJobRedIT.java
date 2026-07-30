@@ -100,13 +100,14 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_IT_AC1";
         UUID sourceEvent = UUID.randomUUID();
 
-        jobService.enqueue(TEST_SCOPE, scopeId, type, sourceEvent, null,
+        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,
                 "AC-1 冪等", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
-        jobService.enqueue(TEST_SCOPE, scopeId, type, sourceEvent, null,
+        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,
                 "AC-1 冪等", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
 
         Optional<NotificationFanoutJob> found = jobRepository
-                .findByScopeTypeAndScopeIdAndNotificationTypeAndSourceEventUuid(TEST_SCOPE, scopeId, type, sourceEvent);
+                .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
+                        TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent);
 
         log.info("[AC-1] enqueue×2 後のジョブ存在={}（present=1件・DBユニーク）", found.isPresent());
         assertThat(found)
@@ -260,7 +261,7 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         statementCounter.register(JOB_INSERT, s -> s.contains("insert into notification_fanout_jobs"));
         statementCounter.reset();
 
-        jobService.enqueue(TEST_SCOPE, 9_007L, "FANOUT_IT_AC7", UUID.randomUUID(), null,
+        jobService.enqueue(TEST_SCOPE, String.valueOf(9_007L), "FANOUT_IT_AC7", UUID.randomUUID(), null,
                 "AC-7 O(1)", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
 
         long inserts = statementCounter.count(JOB_INSERT);
@@ -281,7 +282,7 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         return NotificationFanoutJob.builder()
                 .sourceEventUuid(sourceEvent)
                 .scopeType(scopeType)
-                .scopeId(scopeId)
+                .scopeRef(String.valueOf(scopeId))
                 .notificationType(type)
                 .title(title)
                 .priority(NotificationPriority.NORMAL)
@@ -301,7 +302,7 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         return NotificationFanoutJob.builder()
                 .sourceEventUuid(UUID.randomUUID())
                 .scopeType(TEST_SCOPE)
-                .scopeId(9_004L)
+                .scopeRef(String.valueOf(9_004L))
                 .notificationType(type)
                 .title("AC-4")
                 .priority(NotificationPriority.NORMAL)
@@ -351,9 +352,10 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
                 }
 
                 @Override
-                public List<Long> nextPage(long scopeId, long cursorSubjectId, int limit) {
+                public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+                    long scopeId = Long.parseLong(scopeRef);
                     if (scopeId == FAILING_SCOPE_ID) {
-                        throw new IllegalStateException("AC-3 配信失敗シミュレーション（scopeId=" + scopeId + "）");
+                        throw new IllegalStateException("AC-3 配信失敗シミュレーション（scopeRef=" + scopeRef + "）");
                     }
                     long base = recipientBase(scopeId);
                     java.util.List<Long> page = new java.util.ArrayList<>();

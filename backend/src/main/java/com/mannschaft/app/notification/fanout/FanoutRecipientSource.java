@@ -24,10 +24,11 @@ public interface FanoutRecipientSource {
      * <p>呼び出し側は「返却末尾の subject_id を次カーソルにして、結果が {@code limit} 未満になるまで繰り返す」
      * ことで全受信者を漏れなく列挙する。全件を一度に {@code List} 化しない（50 万人規模のメモリ有界走査）。</p>
      *
-     * @param scopeId         受信者を絞り込むスコープID（ジョブの {@code scope_id}）
+     * @param scopeRef        受信者を絞り込む多型スコープ参照（ジョブの {@code scope_ref}・村=UUID 文字列 等）。
+     *                        各実装が自ドメインの型（UUID / long 等）へ復元する。
      * @param cursorSubjectId 直前チャンク末尾の subject_id（初回は最小値未満＝{@code 0L} 等）
      * @param limit           1 チャンクの最大件数
      * @return {@code subject_id > cursorSubjectId} の受信者 subject_id を昇順に最大 limit 件
      */
-    List<Long> nextPage(long scopeId, long cursorSubjectId, int limit);
+    List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit);
 }

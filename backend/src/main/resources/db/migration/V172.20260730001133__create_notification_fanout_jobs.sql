@@ -3,12 +3,15 @@
 --
 -- 採用方針（CLAUDE.md アーキテクチャ思想／email_outbox 前例に倣う）:
 --   - 主キーは UUIDv7（原則6）。id は BINARY(16)。
---   - クロスドメイン FK は張らない（原則1）。scope_id / organization_id / actor_id / source_id は
+--   - クロスドメイン FK は張らない（原則1）。scope_ref / organization_id / actor_id / source_id は
 --     いずれも論理参照（インデックスのみ）で、他ドメインテーブルへの FK は持たない。
 --   - status は VARCHAR(16) で保持し Java 側で enum 検証（Flyway ALTER 容易性・email_outbox と同方針）。
 --   - ワーカーの取り合いは (status, next_attempt_at) 索引 + `FOR UPDATE SKIP LOCKED` で行う
 --     （email_outbox の findReadyForSending と同一パターン。AC-4）。
---   - 冪等キーは (scope_type, scope_id, notification_type, source_event_uuid) の複合ユニーク（AC-1）。
+--   - 冪等キーは (scope_type, scope_ref, notification_type, source_event_uuid) の複合ユニーク（AC-1）。
+--   - scope_ref は多型スコープ参照を 1 本の VARCHAR(36) で持つ（村=UUID 文字列 / チーム・組織=ID 文字列）。
+--     村の主キーが UUID・チーム等が BIGINT と異種のため、BIGINT 列 + UUID 列の二本立てにすると
+--     冪等ユニーク中の NULL 混在で村の冪等が壊れる。VARCHAR(36) 一本化でこれを避ける（殿裁定）。
 --
 -- テナント例外の判断: organization_id は NULL 許容（SYSTEM スコープの村行事通知等は org 非依存）のため、
 -- 本表は AbstractTenantAwareRepository の適用対象外（email_outbox と同じ判断）。
@@ -19,7 +22,7 @@ CREATE TABLE notification_fanout_jobs (
     -- fan-out の同定・冪等キー
     source_event_uuid   BINARY(16)    NOT NULL          COMMENT '発生元イベント UUID（村行事 UUID 等・冪等キーの一部）',
     scope_type          VARCHAR(20)   NOT NULL          COMMENT '受信者解決の戦略キー（VILLAGE / TEAM / ... FanoutRecipientSource.scopeType）',
-    scope_id            BIGINT        NOT NULL          COMMENT '受信者解決に渡すスコープID（論理参照・FK なし）',
+    scope_ref           VARCHAR(36)   NOT NULL          COMMENT '受信者解決に渡す多型スコープ参照（村=UUID 文字列 / チーム・組織=ID 文字列・論理参照・FK なし）',
     notification_type   VARCHAR(50)   NOT NULL          COMMENT '通知種別',
     organization_id     BIGINT        NULL              COMMENT 'テナント（論理参照・FK なし。SYSTEM 通知は NULL）',
 
@@ -50,7 +53,7 @@ CREATE TABLE notification_fanout_jobs (
                                        ON UPDATE CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (id),
-    UNIQUE KEY uk_fanout_idempotency (scope_type, scope_id, notification_type, source_event_uuid)
+    UNIQUE KEY uk_fanout_idempotency (scope_type, scope_ref, notification_type, source_event_uuid)
         COMMENT '同一 fan-out の二重 enqueue を DB レベルで拒否（AC-1）',
     KEY idx_fanout_status_next (status, next_attempt_at)
         COMMENT 'ワーカーの findReady メインクエリ用（FOR UPDATE SKIP LOCKED・AC-4）'

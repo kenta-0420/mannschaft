@@ -2,17 +2,15 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
+import com.mannschaft.app.notification.fanout.VillageFanoutRecipientSource;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
-import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,7 +27,13 @@ import java.util.UUID;
  *
  * <h2>冪等（設計書 §3.7）</h2>
  * <p>{@code (scope_village_id, system_post_type, source_event_uuid)} の存在チェックで、
- * 繰り返しバッチ（EVENT_UPCOMING）でも同一行事へ二重投稿・二重通知しない。</p>
+ * 繰り返しバッチ（EVENT_UPCOMING）でも同一行事へ二重投稿しない。通知側は fan-out 耐久ジョブの
+ * ユニークキー {@code uk_fanout_idempotency} でも冪等が効く（二重の安全網）。</p>
+ *
+ * <h2>fan-out 抜本改修 P2: 受信者展開はワーカーへ移譲</h2>
+ * <p>通知の受信者ページングは本サービスでは行わず、{@link NotificationFanoutJobService#enqueue} で耐久ジョブを
+ * <b>1 件 enqueue</b> するだけ（O(1)）。50 万人規模の受信者展開は裏ワーカー
+ * {@code NotificationFanoutWorker} がチャンク単位・クラッシュ再開可能に配信する。</p>
  */
 @Slf4j
 @Service
@@ -39,16 +43,8 @@ public class VillageEventFeedRefluxService {
     private static final int NOTIFICATION_BODY_LIMIT = 1000;
     private static final String SOURCE_TYPE = "VILLAGE_EVENT";
 
-    /**
-     * fan-out 抜本改修 P1: 受信者をキーセットページングで刻むチャンクサイズ。
-     * 50 万人規模の村でも受信者集合を全件 List 化せず、チャンクごとに取得→バルク INSERT→次チャンク、と
-     * ストリームすることでメモリを有界にする（AC-11）。
-     */
-    private static final int RECIPIENT_CHUNK_SIZE = 500;
-
     private final TimelinePostService timelinePostService;
-    private final NotificationHelper notificationHelper;
-    private final VillageMembershipRepository membershipRepository;
+    private final NotificationFanoutJobService fanoutJobService;
     private final AuditLogService auditLogService;
 
     /**
@@ -90,40 +86,29 @@ public class VillageEventFeedRefluxService {
             return;
         }
 
-        // 通知も best-effort（投稿と独立に捕捉）。ニュースレター §7 前例に倣い sourceId/scopeId=null・scopeType=SYSTEM。
-        // fan-out 抜本改修 P1: 受信者をキーセットページングでチャンクごとに取得し、そのチャンクをバルク INSERT する
-        // （全件 List 化しないメモリ有界ストリーム＝AC-11）。各チャンクはバルク INSERT＋チャンクコミットで確定する。
+        // 通知も best-effort（投稿と独立に捕捉）。ニュースレター §7 前例に倣い sourceId=null・通知スコープは SYSTEM。
+        // fan-out 抜本改修 P2: 受信者を展開せず耐久ジョブを 1 件 enqueue するだけ（O(1)）。
+        // 重い受信者ページング＋バルク INSERT はワーカーへ移譲し、クラッシュ再開可能に配信する。
         try {
             String body = buildContent(type, eventTitle);
             String truncatedBody =
                     body.length() > NOTIFICATION_BODY_LIMIT ? body.substring(0, NOTIFICATION_BODY_LIMIT) : body;
 
-            long cursor = 0L;
-            int totalRecipients = 0;
-            while (true) {
-                List<Long> chunk = membershipRepository.findActiveUserSubjectIdsByVillageIdKeyset(
-                        villageId, cursor, PageRequest.of(0, RECIPIENT_CHUNK_SIZE));
-                if (chunk.isEmpty()) {
-                    break;
-                }
-                notificationHelper.notifyAllPreAuthorized(
-                        chunk,
-                        type.name(),
-                        "村の行事案内",
-                        truncatedBody,
-                        SOURCE_TYPE, null,
-                        NotificationScopeType.SYSTEM, null,
-                        actionUrl, null);
-                totalRecipients += chunk.size();
-                cursor = chunk.get(chunk.size() - 1);
-                if (chunk.size() < RECIPIENT_CHUNK_SIZE) {
-                    break;
-                }
-            }
-            log.info("村行事の還流通知を配信: villageId={} type={} recipients={}（キーセットチャンク送り）",
-                    villageId, type, totalRecipients);
+            fanoutJobService.enqueue(
+                    VillageFanoutRecipientSource.SCOPE_TYPE,   // 戦略キー: VILLAGE
+                    villageId.toString(),                       // scope_ref: 村 UUID 文字列
+                    type.name(),
+                    sourceEventUuid,
+                    null,                                        // organizationId: 村行事は org 非依存
+                    "村の行事案内",
+                    truncatedBody,
+                    NotificationPriority.NORMAL,
+                    SOURCE_TYPE, null,
+                    actionUrl, null);
+            log.info("村行事の還流通知を enqueue: villageId={} type={} sourceEventUuid={}（受信者展開はワーカーへ移譲）",
+                    villageId, type, sourceEventUuid);
         } catch (Exception e) {
-            log.error("村行事の通知に失敗: villageId={} type={} sourceEventUuid={}",
+            log.error("村行事の通知 enqueue に失敗: villageId={} type={} sourceEventUuid={}",
                     villageId, type, sourceEventUuid, e);
         }
     }

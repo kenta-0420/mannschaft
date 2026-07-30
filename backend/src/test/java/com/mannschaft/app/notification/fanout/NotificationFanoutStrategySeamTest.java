@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +33,7 @@ import static org.mockito.Mockito.mock;
 class NotificationFanoutStrategySeamTest {
 
     private static final String TEST_SCOPE = "TEST_SCOPE";
-    private static final long SCOPE_ID = 4242L;
+    private static final String SCOPE_REF = "4242";
 
     /** 村実装に依存しない擬似受信者ソース（横展開の証明用）。 */
     private static final class FakeRecipientSource implements FanoutRecipientSource {
@@ -49,7 +50,7 @@ class NotificationFanoutStrategySeamTest {
         }
 
         @Override
-        public List<Long> nextPage(long scopeId, long cursorSubjectId, int limit) {
+        public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
             calls.incrementAndGet();
             return all.stream().filter(id -> id > cursorSubjectId).limit(limit).toList();
         }
@@ -64,7 +65,7 @@ class NotificationFanoutStrategySeamTest {
         Optional<FanoutRecipientSource> resolved = registry.resolve(TEST_SCOPE);
 
         assertThat(resolved).as("擬似 scope_type がレジストリで解決できる（seam 存在の証明）").containsSame(fake);
-        assertThat(resolved.get().nextPage(SCOPE_ID, 0L, 10))
+        assertThat(resolved.get().nextPage(SCOPE_REF, 0L, 10))
                 .as("擬似ソースはキーセットで受信者を返す").containsExactly(1L, 2L, 3L);
     }
 
@@ -74,14 +75,14 @@ class NotificationFanoutStrategySeamTest {
         FakeRecipientSource fake = new FakeRecipientSource(List.of(10L, 20L, 30L));
         FanoutRecipientSourceRegistry registry = new FanoutRecipientSourceRegistry(List.of(fake));
 
-        NotificationFanoutJobRepository jobRepository = mock(NotificationFanoutJobRepository.class);
         NotificationFanoutJobService jobService = mock(NotificationFanoutJobService.class);
-        NotificationFanoutWorker worker = new NotificationFanoutWorker(jobRepository, registry, jobService);
+        NotificationBulkFanoutService bulkFanoutService = mock(NotificationBulkFanoutService.class);
+        NotificationFanoutWorker worker = new NotificationFanoutWorker(registry, jobService, bulkFanoutService);
 
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(UUID.randomUUID())
                 .scopeType(TEST_SCOPE)
-                .scopeId(SCOPE_ID)
+                .scopeRef(SCOPE_REF)
                 .notificationType("TEST_TYPE")
                 .title("擬似 scope 配信")
                 .priority(NotificationPriority.NORMAL)
