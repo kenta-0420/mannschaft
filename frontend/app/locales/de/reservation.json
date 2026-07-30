@@ -462,6 +462,43 @@
         "all_day": "Ganztägig"
       }
     },
+    "recurring": {
+      "toggle_label": "Diese Reservierung wöchentlich wiederholen",
+      "weeks_option": "{n} Wochen",
+      "weeks_more": "Weitere Optionen (5-12 Wochen)",
+      "weeks_label": "Anzahl der Wochen",
+      "horizon_hint": "Zeitfenster werden nur bis zu 28 Tage im Voraus automatisch erstellt. Wochen danach müssen möglicherweise manuell gebucht werden, sobald das Zeitfenster erstellt wurde",
+      "close_button": "Schließen",
+      "badge": "Wiederkehrend",
+      "result": {
+        "summary": "{created} Reservierung(en) erstellt ({skipped} übersprungen)",
+        "skipped_list_title": "Übersprungene Termine",
+        "all_skipped_notice": "Keine der ausgewählten Wochen konnte reserviert werden. Bitte prüfen Sie die untenstehenden Gründe und buchen Sie die benötigten Wochen einzeln"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "Das Zeitfenster für diese Woche wurde noch nicht erstellt",
+        "FULL": "Das Zeitfenster war ausgebucht",
+        "CLOSED": "Die Buchung war für dieses Zeitfenster geschlossen",
+        "BLOCKED": "Dieser Zeitraum war nicht buchbar",
+        "ALREADY_RESERVED": "Sie hatten bereits eine Reservierung für dieses Zeitfenster",
+        "UNAVAILABLE": "Das Zeitfenster war nicht verfügbar",
+        "NOT_CANCELLABLE": "Diese Reservierung konnte nicht storniert werden",
+        "CANCEL_DEADLINE_PASSED": "Die Stornierungsfrist war abgelaufen",
+        "NOT_PENDING": "Diese Reservierung wartete nicht auf Genehmigung"
+      },
+      "cancel_scope": {
+        "dialog_title": "Stornierungsumfang wählen",
+        "this_only": "Nur dieser Termin",
+        "this_and_following": "Dieser und alle folgenden Termine",
+        "result_summary": "{cancelled} storniert ({skipped} nicht berechtigt)",
+        "all_skipped_notice": "Keiner der Termine konnte storniert werden. Bitte prüfen Sie die untenstehenden Gründe"
+      },
+      "confirm_series": {
+        "button": "Alle genehmigen (wiederkehrende Serie)",
+        "confirm_message": "Alle ausstehenden Reservierungen dieser wiederkehrenden Serie genehmigen?",
+        "success": "{confirmed} genehmigt ({skipped} übersprungen)"
+      }
+    },
     "notify_recipients": {
       "section_label": "Benachrichtigungs-E-Mails für Reservierungen",
       "help": "Legen Sie E-Mail-Adressen fest, die bei jeder Reservierung benachrichtigt werden. Sie können auch Adressen von Nicht-App-Nutzern hinzufügen, z. B. die Hauptadresse Ihres Geschäfts. Der kostenlose Tarif erlaubt bis zu 3 Adressen; ab der 4. ist ein kostenpflichtiger Tarif erforderlich (bis zu 10).",
@@ -589,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "Pausieren/Fortsetzen fehlgeschlagen. In diesem Zeitraum gibt es überschneidende Reservierungen"
+      },
+      "force_cancel": {
+        "button": "Widersprüchliche Reservierungen stornieren und registrieren",
+        "confirm_title": "Erzwungene Registrierung bestätigen",
+        "confirm_message": "{n} Reservierung(en) werden storniert und die Mitglieder benachrichtigt. Fortfahren?",
+        "confirm_ok": "Stornieren und registrieren",
+        "result_notice": "{n} Reservierung(en) wurden storniert und die Sperre wurde registriert"
       }
     },
     "business_hours": {

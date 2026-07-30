@@ -322,3 +322,121 @@ describe('ReservationList.vue（mine モード・本人自己キャンセル）'
     expect(mockHandleApiError).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * 定期予約(series)所属行の UI — バッジ・series一括承認・キャンセル2択（F03.4.5 §6.2 W2-5-FE）。
+ *
+ * 観点:
+ *   SERIES-BADGE: `recurringSeriesId` が非nullの行に「定期」バッジを表示する
+ *                 （group/recurring どちらも判定材料は recurringSeriesId のみ）
+ *   SERIES-APPROVE: series所属のPENDING行にのみ一括承認ボタンが出て、scope=SERIESで確定する
+ *   SERIES-CANCEL-SCOPE-1: 本人キャンセルでseries行は通常確認ではなく2択ダイアログを出す。
+ *                 「この回だけ」= scope THIS_ONLY
+ *   SERIES-CANCEL-SCOPE-2: 「この回以降すべて」は結果明細を表示する。成立0件でも黙殺しない
+ */
+const seriesConfirmed = {
+  id: 30,
+  slot: { slotDate: '2026-07-20', startTime: '09:00', endTime: '09:30', lineName: 'Seat1' },
+  status: { status: 'CONFIRMED' },
+  group: null,
+  recurringSeriesId: 'series-uuid-a',
+}
+
+const seriesPending = {
+  id: 31,
+  slot: { slotDate: '2026-07-21', startTime: '09:00', endTime: '09:30', lineName: 'Seat1' },
+  status: { status: 'PENDING' },
+  identifier: { userName: 'Reserver X' },
+  group: null,
+  recurringSeriesId: 'series-uuid-b',
+}
+
+describe('ReservationList.vue（定期予約 series・W2-5-FE）', () => {
+  it('SERIES-BADGE: recurringSeriesId が非nullの行に「定期」バッジを表示する', async () => {
+    mockListReservations.mockResolvedValue({ data: [seriesConfirmed], meta: { totalElements: 1 } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(wrapper.find('[data-testid="recurring-series-badge"]').exists()).toBe(true)
+  })
+
+  it('SERIES-APPROVE: series所属のPENDING行に一括承認ボタンが出て、scope=SERIESで確定する', async () => {
+    mockListReservations.mockResolvedValue({ data: [seriesPending], meta: { totalElements: 1 } })
+    mockConfirmReservation.mockResolvedValue({ data: { recurringConfirm: { confirmedCount: 3, skippedWeeks: [] } } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const approveSeriesBtn = wrapper.find('[data-testid="approve-series"]')
+    expect(approveSeriesBtn.exists()).toBe(true)
+    await approveSeriesBtn.trigger('click')
+
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+
+    expect(mockConfirmReservation).toHaveBeenCalledWith('team-slug', 31, 'SERIES')
+  })
+
+  it('SERIES-CANCEL-SCOPE-1: 本人キャンセルでseries行は2択ダイアログを出す（この回だけ＝THIS_ONLY）', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [seriesConfirmed] })
+    mockCancelMyReservation.mockResolvedValue({ data: {} })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelBtn = wrapper.find('[data-testid="my-reservation-cancel"]')
+    expect(cancelBtn.exists()).toBe(true)
+    await cancelBtn.trigger('click')
+    await new Promise(r => setTimeout(r, 0))
+
+    // series 行は通常の confirm.require 単一確認ではなく、2択ダイアログを経由する
+    expect(confirmAcceptCallback).toBeNull()
+    const thisOnlyBtn = document.body.querySelector<HTMLElement>('[data-testid="cancel-scope-this-only"]')
+    expect(thisOnlyBtn).not.toBeNull()
+
+    thisOnlyBtn!.click()
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(mockCancelMyReservation).toHaveBeenCalledWith(30, { scope: 'THIS_ONLY' })
+  })
+
+  it('SERIES-CANCEL-SCOPE-2: 「この回以降すべて」は結果明細を表示する（成立0件でも黙殺しない）', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [seriesConfirmed] })
+    mockCancelMyReservation.mockResolvedValue({
+      data: {
+        recurringCancel: {
+          cancelledCount: 0,
+          skippedWeeks: [{ date: '2026-07-27', reason: 'CANCEL_DEADLINE_PASSED' }],
+        },
+      },
+    })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelBtn = wrapper.find('[data-testid="my-reservation-cancel"]')
+    await cancelBtn.trigger('click')
+    await new Promise(r => setTimeout(r, 0))
+
+    const thisAndFollowingBtn = document.body.querySelector<HTMLElement>('[data-testid="cancel-scope-this-and-following"]')
+    expect(thisAndFollowingBtn).not.toBeNull()
+    thisAndFollowingBtn!.click()
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(mockCancelMyReservation).toHaveBeenCalledWith(30, { scope: 'THIS_AND_FOLLOWING' })
+
+    const summary = document.body.querySelector<HTMLElement>('[data-testid="cancel-scope-result-summary"]')
+    expect(summary).not.toBeNull()
+    expect(summary!.textContent).toContain('0')
+    expect(document.body.textContent).toContain('None of the occurrences could be cancelled')
+  })
+})
