@@ -21,6 +21,10 @@ const googleLoading = ref(false)
 const termsModalVisible = ref(false)
 const privacyModalVisible = ref(false)
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+
 async function registerWithGoogle() {
   googleLoading.value = true
   try {
@@ -391,6 +395,7 @@ const onSubmit = handleSubmit(async (values) => {
         label="アカウント作成"
         icon="pi pi-user-plus"
         :loading="loading"
+        :disabled="!hydrated"
         class="mt-2"
       />
 

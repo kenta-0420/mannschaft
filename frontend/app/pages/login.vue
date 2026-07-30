@@ -20,6 +20,10 @@ const route = useRoute()
 const { applyUserLocale } = useLocale()
 const { t } = useI18n()
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+
 // OAuth競合メッセージ（/auth/oauth/callback → ?oauthConflict=true で遷移してきた場合）
 const oauthConflictMessage = computed<string | null>(() => {
   return route.query.oauthConflict === 'true' ? t('auth.oauth.conflict_message') : null
@@ -260,7 +264,14 @@ async function handleLogin() {
           required
         />
       </div>
-      <Button type="submit" :label="t('auth.login.submit')" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
+      <Button
+        type="submit"
+        :label="t('auth.login.submit')"
+        icon="pi pi-sign-in"
+        :loading="loading"
+        :disabled="!hydrated"
+        class="mt-2"
+      />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
           {{ t('auth.login.forgot_password') }}
