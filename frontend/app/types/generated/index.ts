@@ -55683,6 +55683,8 @@ export interface components {
         CreateReservationRequest: {
             /** Format: int64 */
             lineId: number;
+            /** Format: int32 */
+            repeatWeeks?: number;
             /** Format: int64 */
             reservationSlotId: number;
             userNote?: string;
@@ -55709,6 +55711,41 @@ export interface components {
             adminNote?: string;
             userNote?: string;
         };
+        RecurringCancelDto: {
+            /** Format: int32 */
+            cancelledCount?: number;
+            cancelledWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringConfirmDto: {
+            /** Format: int32 */
+            confirmedCount?: number;
+            confirmedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringSeriesDto: {
+            /** Format: int32 */
+            createdCount?: number;
+            createdWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: int32 */
+            repeatWeeks?: number;
+            /** Format: uuid */
+            seriesId?: string;
+            /** Format: int32 */
+            skippedCount?: number;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringWeekOutcomeDto: {
+            /** Format: date */
+            date?: string;
+            reason?: string;
+            /** Format: int64 */
+            reservationId?: number;
+        };
         ReservationAuditDto: {
             /** Format: date-time */
             createdAt?: string;
@@ -55734,6 +55771,9 @@ export interface components {
             id?: number;
             identifier?: components["schemas"]["ReservationIdentifierDto"];
             notes?: components["schemas"]["NotesDto"];
+            recurring?: components["schemas"]["RecurringSeriesDto"];
+            recurringCancel?: components["schemas"]["RecurringCancelDto"];
+            recurringConfirm?: components["schemas"]["RecurringConfirmDto"];
             slot?: components["schemas"]["SlotSummaryDto"];
             status?: components["schemas"]["ReservationStatusDto"];
         };
@@ -55765,6 +55805,8 @@ export interface components {
         };
         CancelReservationRequest: {
             reason?: string;
+            /** @enum {string} */
+            scope?: "THIS_ONLY" | "THIS_AND_FOLLOWING";
         };
         CreateSlotRequest: {
             /** @enum {string} */
@@ -56003,6 +56045,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            forceCancelConflicting?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
             lineId?: number;
@@ -56019,6 +56062,8 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** Format: int32 */
+            forceCancelledCount?: number;
             /** Format: uuid */
             id?: string;
             isActive?: boolean;
@@ -65642,6 +65687,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            forceCancelConflicting?: boolean;
             isActive?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
@@ -100171,7 +100217,9 @@ export interface operations {
     };
     confirmReservation: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "THIS_ONLY" | "SERIES";
+            };
             header?: never;
             path: {
                 teamId: number;
