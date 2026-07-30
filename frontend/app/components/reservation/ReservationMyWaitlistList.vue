@@ -26,8 +26,16 @@ const { resolveScopeId } = useActivityScopeId()
 const entries = ref<WaitlistEntryResponse[]>([])
 const loading = ref(true)
 const cancellingId = ref<string | null>(null)
-/** 解決済みの数値 teamId（1回解決すればチーム切替が無い限り不変のためキャッシュする）。 */
+/** 解決済みの数値 teamId（キャッシュ）。 */
 const numericTeamId = ref<number | null>(null)
+/**
+ * 直近に数値解決した slug。`props.teamId` とずれたら再解決する。
+ * 🟡検分是正（2026-07-30）: このコンポーネントは永続シェル構成（`/teams/[slug]/reservations`）の下で
+ * mount されたまま `props.teamId` だけが別チームの slug へ切り替わり得る。単に
+ * `numericTeamId.value == null` だけをキャッシュ判定に使うと、切替後も古いチームの数値 id で
+ * 絞り込み続け、別チームのキャンセル待ちを表示してしまう（自分のデータなので漏洩ではないが誤表示）。
+ */
+const resolvedSlug = ref<string | null>(null)
 
 function fmt(time?: string): string {
   if (!time) return ''
@@ -37,8 +45,9 @@ function fmt(time?: string): string {
 async function load() {
   loading.value = true
   try {
-    if (numericTeamId.value == null) {
+    if (resolvedSlug.value !== props.teamId) {
       numericTeamId.value = await resolveScopeId('TEAM', props.teamId)
+      resolvedSlug.value = props.teamId
     }
     const res = await reservationApi.listMyWaitlist()
     entries.value = numericTeamId.value == null
@@ -84,6 +93,10 @@ async function cancelEntry(entry: WaitlistEntryResponse) {
 }
 
 onMounted(load)
+
+// props.teamId が変わったら自動で再読込する（永続シェルで同一コンポーネントが別チームへ再利用される
+// ケースの保険。親が明示的に refresh() を呼ばなくても正しいチームの一覧に追従する）。
+watch(() => props.teamId, () => { void load() })
 
 // 親（TeamReservationsPanel）から再読込させるための公開メソッド（既存 MatchRequestList 等と同一パターン）。
 defineExpose({ refresh: load })

@@ -373,17 +373,13 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
 }
 
 function onDialogReserved() {
-  loadGrid()
+  void loadGridAndWaitlist()
   emit('reserved')
 }
 
-/**
- * 登録/取消成功時: グリッド→自分の登録集合の順で再取得し（`loadedSlotIds` はグリッド依存のため）、
- * 親に「自分のキャンセル待ち」再読込を促す。
- */
+/** 登録/取消成功時: グリッド＋自分の登録集合を再取得し、親に「自分のキャンセル待ち」再読込を促す。 */
 async function onWaitlistChanged() {
-  await loadGrid({ silent: true })
-  await loadMyWaitlist()
+  await loadGridAndWaitlist({ silent: true })
   emit('waitlistChanged')
 }
 
@@ -406,19 +402,29 @@ async function loadMyWaitlist() {
   }
 }
 
+/**
+ * グリッド→自分のキャンセル待ち集合の順で再取得する（`loadedSlotIds` はグリッド依存のため必ずこの
+ * 順序で呼ぶ）。**検分是正（2026-07-30）**: 以前は `loadGrid` 単体を呼ぶ経路が複数箇所（週/メニュー
+ * フィルタ切替の watch・KeepAlive 再活性化）に分散しており、`loadMyWaitlist` の呼び忘れにより
+ * 「週を移動すると登録済みの満席セルから『待機中』表示が消え、登録ボタンを押すと409になる」
+ * 実バグを誘発した。以後グリッド再取得は必ずこの関数経由にし、呼び分け（＝再発）を構造的に禁止する。
+ */
+async function loadGridAndWaitlist(opts?: { silent?: boolean }) {
+  await loadGrid(opts)
+  await loadMyWaitlist()
+}
+
 function gridStyle(headerLength: number): string {
   return `grid-template-columns: minmax(7rem, auto) repeat(${headerLength}, minmax(3.5rem, 1fr));`
 }
 
 // loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
-watch([weekStart, filterMenuId], () => loadGrid())
+watch([weekStart, filterMenuId], () => loadGridAndWaitlist())
 
 onMounted(async () => {
   thisWeek()
-  // loadMyWaitlist は loadedSlotIds（グリッド由来）に依存するため loadGrid の後に呼ぶ。
   await Promise.all([loadLines(), loadMenus(), loadResourceName()])
-  await loadGrid()
-  await loadMyWaitlist()
+  await loadGridAndWaitlist()
 })
 
 // KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
@@ -430,7 +436,7 @@ onActivated(() => {
     initialActivationDone = true
     return
   }
-  void loadGrid({ silent: true })
+  void loadGridAndWaitlist({ silent: true })
 })
 
 // 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）。
@@ -438,8 +444,7 @@ onActivated(() => {
 defineExpose({
   refresh: async () => {
     await loadResourceName()
-    await loadGrid()
-    await loadMyWaitlist()
+    await loadGridAndWaitlist()
   },
 })
 </script>

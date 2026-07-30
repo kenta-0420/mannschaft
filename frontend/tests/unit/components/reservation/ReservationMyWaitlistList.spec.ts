@@ -16,6 +16,9 @@ import ReservationMyWaitlistList from '~/components/reservation/ReservationMyWai
  *   AC-2: 0件のときは空状態を表示する
  *   AC-3: 取消ボタンで leaveWaitlist を呼び、成功後に一覧を再読込する
  *   AC-4: 取消失敗=RESERVATION_046（対象なし）は専用文言で通知し、一覧を再読込する
+ *   AC-5（検分是正・2026-07-30）: props.teamId が別チームの slug に変わると数値解決をキャッシュせず
+ *        再解決し、新チームの一覧に切り替わる（永続シェルで同一コンポーネントが別チームへ再利用される
+ *        際、古いチームの数値idで絞り込み続けたまま誤表示する実バグの回帰防止）
  *
  * 注: テスト環境の既定ロケールは en。
  */
@@ -177,5 +180,35 @@ describe('ReservationMyWaitlistList.vue', () => {
     expect(mockListMyWaitlist).toHaveBeenCalledTimes(2)
     // ハンドラの共通経路（handleApiError）は呼ばない（専用分岐で処理済み）
     expect(mockHandleApiError).not.toHaveBeenCalled()
+  })
+
+  it('AC-5（検分是正）: props.teamId が別チームへ変わると再解決して新チームの一覧に切り替わる', async () => {
+    const OTHER_SLUG = 'other-team-slug'
+    const entryTeam20 = {
+      id: 'w-3', teamId: 20, slotId: 601, slotDate: '2026-09-01', startTime: '09:00:00', endTime: '09:30:00', slotTitle: 'Color', status: 'WAITING',
+    }
+    mockResolveScopeId.mockImplementation(async (_type: string, slug: string) => {
+      if (slug === SLUG) return 10
+      if (slug === OTHER_SLUG) return 20
+      return null
+    })
+    mockListMyWaitlist.mockResolvedValue({ data: [entryTeam10, entryTeam20] })
+
+    const wrapper = await mountSuspended(ReservationMyWaitlistList, {
+      props: { teamId: SLUG },
+    })
+    await flush()
+
+    expect(wrapper.text()).toContain('Cut')
+    expect(wrapper.text()).not.toContain('Color')
+
+    // 永続シェルでの再利用を模して props.teamId のみを別チームへ差し替える（コンポーネントは再mountしない）。
+    await wrapper.setProps({ teamId: OTHER_SLUG })
+    await flush()
+
+    expect(mockResolveScopeId).toHaveBeenCalledWith('TEAM', OTHER_SLUG)
+    // 古いチーム（数値id=10）のキャッシュのままにならず、新チーム（数値id=20）で絞り込み直されている。
+    expect(wrapper.text()).toContain('Color')
+    expect(wrapper.text()).not.toContain('Cut')
   })
 })

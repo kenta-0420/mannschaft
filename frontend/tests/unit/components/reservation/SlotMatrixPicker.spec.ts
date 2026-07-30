@@ -14,6 +14,9 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
  *   AC-4: 長尺手動枠（span>1・colspan跨ぎ描画）クリックは slotSelected を emit する（グループダイアログを開かない）
  *   AC-5: モバイル規約: 縦横スクロールコンテナに overscroll-contain が付与される（UX改善5点の4で縦横統合）
  *   AC-6: 時間ヘッダ行 sticky top・左上交差セル両軸 sticky（UX改善5点の4・マトリックス時間ヘッダsticky化）
+ *   AC-8（検分是正・2026-07-30）: 週を移動してグリッドを再取得したあとも、その週の
+ *        登録済み枠が「待機中」として認識される（`loadMyWaitlist` の呼び忘れで週移動後に
+ *        「待機中」表示が消え、登録ボタンを押すと409になる実バグの回帰防止）
  *
  * 注: テスト環境の既定ロケールは en。日付依存の flaky を避けるため、返す日は常に「明日」にする
  *     （isPastCell の過去判定に一切かからない・実行時刻に依存しない）。
@@ -21,12 +24,14 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
 const mockGetSlotGrid = vi.fn()
+const mockListMyWaitlist = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
     getLines: mockGetLines,
     getMenus: mockGetMenus,
     getSlotGrid: mockGetSlotGrid,
+    listMyWaitlist: mockListMyWaitlist,
   }),
 }))
 
@@ -61,6 +66,32 @@ function gridResponseWithCells() {
   }
 }
 
+/** 満席（BOOKED）セル1枠のみを持つグリッド応答を作る（週移動テスト用）。 */
+function bookedGridResponse(slotId: number, date: string) {
+  return {
+    data: {
+      axis: 'LINE',
+      meta: null,
+      days: [
+        {
+          date,
+          columns: [
+            {
+              lineId: 1,
+              lineName: 'Seat1',
+              lineIds: [],
+              cells: [
+                { slotId, startTime: '10:00', endTime: '10:30', state: 'BOOKED' },
+              ],
+            },
+            { lineId: null, lineName: null, lineIds: [], cells: [] },
+          ],
+        },
+      ],
+    },
+  }
+}
+
 async function flush() {
   await new Promise(r => setTimeout(r, 0))
   await new Promise(r => setTimeout(r, 0))
@@ -74,7 +105,9 @@ beforeEach(() => {
   mockGetLines.mockReset()
   mockGetMenus.mockReset()
   mockGetSlotGrid.mockReset()
+  mockListMyWaitlist.mockReset()
   mockGetMenus.mockResolvedValue({ data: [] })
+  mockListMyWaitlist.mockResolvedValue({ data: [] })
 })
 
 afterEach(() => {
@@ -229,5 +262,41 @@ describe('SlotMatrixPicker.vue', () => {
     expect(plainCell, '事由なしセルが従来どおり Unavailable 表示のままであること').toBeTruthy()
     expect(plainCell!.text()).toBe('Unavailable')
     expect(plainCell!.text()).not.toContain('×')
+  })
+
+  it('AC-8（検分是正）: 週を移動すると新しい週の登録済み枠が「待機中」として認識される', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    // 自分の WAITING は slotId=902（初期表示の週にはまだ現れない・翌週に現れる）のみ。
+    mockListMyWaitlist.mockResolvedValue({ data: [{ id: 'w-1', teamId: 999, slotId: 902, status: 'WAITING' }] })
+
+    // 初期表示（今週）: slotId=901（BOOKED・未登録）のみを含む。
+    // 注: mockResolvedValueOnce は使わない——初期 mount 中に watch(weekStart) と onMounted の両方から
+    // loadGrid が呼ばれうる（weekStart の初期セットが watch を誘発するため呼び出し回数は環境依存）。
+    // persistent な mockResolvedValue にして「何回呼ばれても同じ週の応答を返す」形にし、回数に依存しない。
+    mockGetSlotGrid.mockResolvedValue(bookedGridResponse(901, tomorrow))
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    // 今週の応答には登録先(902)が含まれないため「待機中」は出ない（901はBOOKEDのまま=Full表示）
+    expect(wrapper.text()).not.toContain('Waiting')
+    expect(wrapper.text()).toContain('Full')
+
+    // 翌週へ移動: 以後の全呼び出しを slotId=902（BOOKED・登録済み）を含む応答に切り替える
+    const nextWeekDate = dayjs(tomorrow).add(7, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue(bookedGridResponse(902, nextWeekDate))
+
+    const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
+    expect(nextWeekBtn, '翌週ボタンが見つかること').toBeTruthy()
+    await nextWeekBtn!.trigger('click')
+    await flush()
+
+    // loadMyWaitlist がグリッド再取得後に呼ばれ、902 が loadedSlotIds に含まれるようになったことで
+    // セルの表示が「待機中」に切り替わる（呼び忘れがあれば表示されない＝このアサーションが落ちる）。
+    // 凡例に常時「Full」ラベルが出るため、ページ全体に「Full」が無いことではなく
+    // 「Waiting」セルが実際に出現したことで判定する。
+    expect(wrapper.text()).toContain('Waiting')
   })
 })
