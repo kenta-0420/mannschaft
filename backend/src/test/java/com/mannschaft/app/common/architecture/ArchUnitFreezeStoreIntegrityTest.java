@@ -270,8 +270,34 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code OnboardingMeScopeContractIT} 新設、{@code RepairPlanAuthorizationMatrixTest} 拡張、
      * {@code BudgetCategoryServiceTest} 拡張、{@code RecruitmentScopeContractIT} 更新）を含む。
      * 本 PR をもって認可根治戦役 Wave7 の是正シリーズを完結する。</p>
+     *
+     * <p>653 → 617（2026-07-30・認可根治戦役 第1波 個人領域ロットB・actionmemo / quickmemo）:
+     * 両ドメインの凍結 36 EP を全数監査した結果、<b>認可の抜けは検出されず</b>、
+     * 全件が「Service 層で実効的に認可済みだが番人の呼び出しグラフ判定では拾えない」
+     * ケースであることを確認した。内訳は自己スコープ 21 件
+     * （scopeId が {@code SecurityUtils#getCurrentUserId()} に固定されリクエストで指定不能）と、
+     * ID を伴うが Service が {@code findByIdAndUserId} 等の複合条件で所有者一致を強制するもの
+     * 15 件。看板だけの {@code @PreAuthorize("isAuthenticated()")} を貼る偽装は行わず、
+     * 認可の所在を各 EP の Javadoc に {@code ファイル:行} で明記したうえで監査済マーカー
+     * {@link com.mannschaft.app.common.security.AuthorizedInService} を
+     * <b>メソッド単位</b>で付与して解消した（クラス単位にすると将来追加される未監査の
+     * メソッドまで無条件に承認してしまうため、意図的にメソッド単位とした）。</p>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code ActionMemoAdminService#revertTodoCompletion}: 認可判定を業務状態
+     *       （{@code completesTodo}）の検証より<b>前</b>へ移動し、スコープ外の利用者には
+     *       業務状態に依存せず一律 403 を返すことを保証した（メモの状態を開示しない）</li>
+     *   <li>{@code GlobalExceptionHandler}: {@code QM_010}（TAG_NOT_FOUND）を 404 に登録。
+     *       {@code TagController} の Javadoc は「他スコープの tagId を指した越境は 404」と
+     *       宣言していたが未登録のため 400 が返っており、宣言と実挙動が乖離していた</li>
+     *   <li>契約テスト: {@code ActionMemoScopeContractIT}（新設・23 EP）／
+     *       {@code QuickMemoSelfScopeContractIT}（新設・9 EP）／
+     *       {@code QuickMemoTagScopeContractIT} の PERSONAL スコープ節（追補・4 EP）。
+     *       全 36 EP について「無関係な他ユーザー → 404 / 403」または
+     *       「他ユーザーのデータが混入しないこと」を実測で固定し、正常系も併せて張った</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 653;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 617;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
