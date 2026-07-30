@@ -259,7 +259,7 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
         // is_active=FALSE 化。
         ruleService.updateRule(teamId, rule.getId(),
                 new com.mannschaft.app.reservation.dto.UpdateRecurringBlockedTimeRequest(
-                        null, null, null, null, null, null, null, false),
+                        null, null, null, null, null, null, null, false, null),
                 CREATED_BY);
 
         // 無効化後は実DBでも即予約可。
