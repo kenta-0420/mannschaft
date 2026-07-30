@@ -196,6 +196,12 @@ auth 系の既存 Valkey fail-open（`AuthService` / `AuthTokenService`）と同
 | 第二陣A (#1471) | `SyncRateLimitFilter` / `AuditLogRateLimitFilter` / `FavoriteRateLimitFilter` / `PointCardRateLimitFilter` / `QuickMemoRateLimitFilter` / `AuthWebAuthnReauthRateLimitFilter` / `VisibilityTemplateRateLimitFilter` / `MemberInfoRateLimitFilter` |
 | 第二陣B (#1472) | `DashboardScopeTabRateLimitFilter` / `ErrorReportRateLimitFilter` / `BroadcastRateLimitFilter` / `AdPublicEndpointRateLimitFilter` / `RepairPlanCsvImportRateLimitFilter` / `RepairPlanSimulateRateLimitFilter` / `ScheduleDelegationRateLimitFilter` / `EventDelegationRateLimitFilter` |
 
+以降に新設したフィルタ（いずれも `AbstractRateLimitFilter` 継承・Valkey カウント・§4.3 標準応答）:
+
+| 追加 | フィルタ | 対象 EP と閾値 | 根拠 |
+|---|---|---|---|
+| #2494 | `AnnouncementReadRateLimitFilter` | 単件既読 `POST /api/v1/(teams\|organizations)/{id}/announcements/{id}/read` — **60 req/分・ユーザー**<br>一括既読 `POST .../announcements/read-all` — **5 req/分・ユーザー** | 単件は §4.2「認証済み WRITE 系」の標準値（設計書 F02.6 §6.4 の想定 100 req/分は標準の上限目安を超えるため 60 に丸めた）。一括は設計書 F02.6 §6.4 の想定値そのまま — 1 リクエストで最大 10,000 行の `INSERT` を伴う重い操作なので標準（送信系 10 req/分）より厳しい側を採る。zone を分けているのは単件の連打が一括の枠を食い潰さないため |
+
 注: Bucket4j 依存自体は `ResumeExportService` / 天気 API クライアント等のフィルタ外用途で
 正当に使用が残るため build.gradle からは除去しない。
 

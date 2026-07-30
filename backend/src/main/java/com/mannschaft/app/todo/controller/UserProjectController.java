@@ -41,11 +41,14 @@ import java.util.List;
  * <p>{@code /api/v1/users/me/projects} 配下の個人スコーププロジェクト・マイルストーン API を提供する。
  * フロントエンド（{@code /my/projects} ページ・{@code useProjectApi}）が呼び出す全 EP をマッピングする。</p>
  *
- * <p>本クラスは <b>試練フェーズの骨格</b>。一覧／作成は scopeId=現在ユーザー ID で配線済みだが、
- * {@code /{id}} 系（詳細・更新・削除・完了・再開・マイルストーン CRUD・todos）では
- * 所有権検証（{@link ProjectAccessGuard#validatePersonalProjectAccess(Long, Long)}）を
- * <b>まだ呼び出していない</b>。これにより IDOR テスト（AC-5〜7）が red になる。
- * 出陣フェーズで各 EP の先頭に guard 呼び出しを追加して green 化すること。</p>
+ * <p><b>認可</b>: {@code /{id}} 系（詳細・更新・削除・完了・再開・マイルストーン CRUD・todos）は
+ * 各 EP の先頭で {@link ProjectAccessGuard#validatePersonalProjectAccess(Long, Long)} を呼び、
+ * <b>プロジェクト所有者本人に限定</b>する（他ユーザーのプロジェクト ID は 404 で存在を秘匿）。</p>
+ *
+ * <p>一覧／作成はスコープ ID を常に {@code SecurityUtils.getCurrentUserId()} で確定した認証主体の ID に
+ * 固定しており、リクエストからは指定できない（自己スコープ）。対象リソースが未特定のため
+ * ガード呼び出しは持たず、契約テスト {@code TodoPersonalScopeContractIT} で
+ * 「他ユーザーのプロジェクトが混入しないこと」を固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users/me/projects")

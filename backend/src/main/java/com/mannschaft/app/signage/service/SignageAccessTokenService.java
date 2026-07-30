@@ -93,11 +93,12 @@ public class SignageAccessTokenService {
                 .name(req.name())
                 .createdBy(createdBy)
                 .allowedIps(allowedIpsJson)
+                .expiredAt(req.expiredAt())
                 .build();
 
         SignageAccessTokenEntity saved = tokenRepository.save(entity);
         log.info("サイネージトークン発行: id={}, screenId={}, name={}", saved.getId(), screenId, req.name());
-        return toResponse(saved, req.expiredAt());
+        return toResponse(saved);
     }
 
     /**
@@ -113,7 +114,7 @@ public class SignageAccessTokenService {
 
         return tokenRepository.findByScreenId(screenId)
                 .stream()
-                .map(e -> toResponse(e, null))
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -137,7 +138,10 @@ public class SignageAccessTokenService {
 
     /**
      * トークン文字列を検証し、有効なトークンエンティティを返す。
-     * 存在しない・無効・期限切れの場合は SIGNAGE_002 例外をスローする。
+     *
+     * <p>受け付けるのは「存在し」「無効化されておらず（{@code isActive=true}）」
+     * 「有効期限を過ぎていない」トークンのみである。いずれの条件を満たさない場合も
+     * 同一の SIGNAGE_002 を返し、失敗理由を呼び出し側に区別させない。</p>
      *
      * @param token トークン文字列
      * @return 有効なトークンエンティティ
@@ -146,6 +150,11 @@ public class SignageAccessTokenService {
         // isActive=true のトークンを取得
         SignageAccessTokenEntity entity = tokenRepository.findByTokenAndIsActiveTrue(token)
                 .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_002));
+
+        // 有効期限が満了したトークンは受け付けない（発行時に指定された期限を entity から判定する）
+        if (entity.isExpired(LocalDateTime.now())) {
+            throw new BusinessException(SignageErrorCode.SIGNAGE_002);
+        }
 
         log.debug("サイネージトークン検証成功: id={}", entity.getId());
         return entity;
@@ -196,9 +205,9 @@ public class SignageAccessTokenService {
 
     /**
      * エンティティをレスポンス DTO に変換する。
-     * expiredAt は Entity に格納されていないため、引数から補完する。
+     * expiredAt は永続化された Entity の値をそのまま返す（NULL は無期限）。
      */
-    private SignageAccessTokenResponse toResponse(SignageAccessTokenEntity e, LocalDateTime expiredAt) {
+    private SignageAccessTokenResponse toResponse(SignageAccessTokenEntity e) {
         // allowedIps JSON文字列をリストに変換（簡易実装）
         List<String> ips = parseAllowedIps(e.getAllowedIps());
         return new SignageAccessTokenResponse(
@@ -208,7 +217,7 @@ public class SignageAccessTokenService {
                 e.getName(),
                 e.getIsActive(),
                 ips,
-                expiredAt,
+                e.getExpiredAt(),
                 e.getCreatedAt()
         );
     }

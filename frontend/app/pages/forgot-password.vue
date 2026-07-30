@@ -14,12 +14,18 @@ const schema = toTypedSchema(z.object({
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
-  initialValues: { email: '' },
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
+  initialValues: { email: readPrefilledInputValue('email') },
 })
 const [email, emailProps] = defineField('email')
 
 const loading = ref(false)
 const sent = ref(false)
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
 
 const api = useApi()
 
@@ -65,6 +71,7 @@ const onSubmit = handleSubmit(async (values) => {
           label="リセットメールを送信"
           icon="pi pi-envelope"
           :loading="loading"
+          :disabled="!hydrated"
           class="mt-2"
         />
         <div class="text-center">

@@ -237,6 +237,34 @@ export function armProactiveRefresh(
   }
 }
 
+/**
+ * `Retry-After` ヘッダを「あと何秒待てばよいか」に正規化する（RFC 9110 §10.2.3）。
+ *
+ * BE の `AbstractRateLimitFilter` は delay-seconds 形式（例: `"20"`）で返すが、
+ * 将来 CDN / WAF が前段に入って HTTP-date 形式で返す可能性もあるため両方を受ける。
+ * 解釈できない値は `null` を返し、呼び出し元は秒数なしの文言にフォールバックする
+ * （壊れたヘッダで NaN 秒と表示するより、秒数を出さないほうが正直）。
+ *
+ * @param headerValue `Retry-After` ヘッダの生値（未設定なら null）
+ * @returns 待ち秒数（0 以上）。解釈できない場合は null
+ */
+export function parseRetryAfterSeconds(headerValue: string | null): number | null {
+  if (headerValue === null) return null
+  const trimmed = headerValue.trim()
+  if (trimmed === '') return null
+
+  // delay-seconds 形式（BE の標準応答）
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed)
+    return Number.isFinite(seconds) ? seconds : null
+  }
+
+  // HTTP-date 形式
+  const dateMs = Date.parse(trimmed)
+  if (Number.isNaN(dateMs)) return null
+  return Math.max(0, Math.ceil((dateMs - Date.now()) / 1000))
+}
+
 // 短時間に複数の 5xx が発生した場合のトースト集約
 let _errorBatchTimer: ReturnType<typeof setTimeout> | null = null
 let _errorBatchCount = 0
@@ -254,6 +282,9 @@ export function useApi() {
   // useI18n() は setup コンテキスト外（イベントハンドラや Pinia アクション）では
   // 呼べないため、useNuxtApp().$i18n 経由でアクセスする。
   const t = (key: string) => nuxtApp.$i18n.t(key)
+  // 名前付き補間つきの翻訳。$i18n は useI18n() と同じ Composer なので
+  // t(key, named) 形（テンプレートで既に使われている形）がそのまま使える。
+  const tn = (key: string, named: Record<string, unknown>) => nuxtApp.$i18n.t(key, named)
 
   const api = ofetch.create({
     baseURL: resolveApiBaseUrl(config),
@@ -358,6 +389,38 @@ export function useApi() {
         } | undefined
         if (body?.error?.code === 'ENTITLEMENT_003') {
           usePaywallStore().open({ message: body.error.message, details: body.error.details })
+        }
+      }
+
+      // 429: レートリミット超過の共通ハンドリング（docs/security/06 §4.3 の標準応答）。
+      //
+      // BE の各 *RateLimitFilter は AbstractRateLimitFilter を通じて
+      // 429 + Retry-After + X-RateLimit-* + {"error":"Too many requests"} を返す。
+      // ここに共通ハンドリングが無かったため、呼び出し元が try/catch を持たない経路
+      //（例: お知らせウィジェットの「すべて既読にする」）で 429 を踏むと
+      // unhandledrejection になり、error-handler.client.ts が errorReport に載せるだけで
+      // 画面には何も出ない = 「押しても何も起きない」沈黙する失敗になっていた。
+      //
+      // 402 のペイウォールと同じく「副作用として利用者に提示するだけ」に留め、
+      // エラー自体は握りつぶさず呼び出し元へ伝播させる（握りつぶし catch 禁止・#2460）。
+      // 提示の型は同じ関数内の 5xx 分岐（$toast + summary/detail/life）に揃えている。
+      // 集約はしない — レート制限は「連打した本人が今この操作で弾かれた」ことを
+      // 即座に知る必要があり、500ms の集約待ちを挟むと因果が伝わりにくくなるため。
+      if (response.status === 429) {
+        const toast = nuxtApp.$toast as
+          | { add: (opts: Record<string, unknown>) => void }
+          | undefined
+        if (toast) {
+          const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'))
+          toast.add({
+            severity: 'warn',
+            summary: t('error.rate_limited'),
+            detail:
+              retryAfterSeconds === null
+                ? t('error.rate_limited_detail')
+                : tn('error.rate_limited_retry_after', { seconds: retryAfterSeconds }),
+            life: 5000,
+          })
         }
       }
 

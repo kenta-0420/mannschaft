@@ -228,6 +228,25 @@ public class ScheduleEntity extends BaseEntity {
     }
 
     /**
+     * 予約出欠募集の materialize 時に、予約時点で指定された出欠設定を予定へ適用する
+     * （機能55 / Issue #2508 欠陥B）。
+     *
+     * <p>各引数は <b>null = 未指定</b> を意味し、その項目は既存値のまま保つ（PATCH セマンティクス）。
+     * toBuilder() は使わず直接フィールドを更新する（toBuilder 経由の更新破壊を避けるため）。</p>
+     *
+     * @param attendanceDeadline 出欠回答期限（JST。null なら据え置き）
+     * @param commentOption      コメント要否（null なら据え置き）
+     * @param minResponseRole    出欠回答の最低ロール（null なら据え置き）
+     */
+    public void applyAttendanceSolicitationSettings(LocalDateTime attendanceDeadline,
+                                                    CommentOption commentOption,
+                                                    MinResponseRole minResponseRole) {
+        if (attendanceDeadline != null) this.attendanceDeadline = attendanceDeadline;
+        if (commentOption != null) this.commentOption = commentOption;
+        if (minResponseRole != null) this.minResponseRole = minResponseRole;
+    }
+
+    /**
      * 繰り返しスケジュールの例外フラグを立てる（THIS_ONLY更新時に使用）。
      * toBuilder() は id を引き継ぐため UPDATE になるが、このメソッドは直接フィールド変更で簡潔かつ安全に例外フラグを立てる。
      */
