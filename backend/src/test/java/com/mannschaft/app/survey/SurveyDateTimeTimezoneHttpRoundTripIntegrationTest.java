@@ -252,8 +252,11 @@ class SurveyDateTimeTimezoneHttpRoundTripIntegrationTest extends AbstractMySqlIn
         assertThat(getResponse.getStatusCode().value())
                 .as("AC-10: アンケート詳細取得が200で成功すること（本文=%s）".formatted(getResponse.getBody()))
                 .isEqualTo(200);
+        // レスポンス構造: ApiResponse{data: SurveyDetailResponse{survey: SurveyResponse{schedule: SurveyScheduleDto}}}
+        // SurveyDetailResponse#getSurvey() → SurveyResponse#getSchedule() の実物どおりのパスを辿る
+        // （SurveyDetailResponse.java / SurveyResponse.java で確認済み）。
         JsonNode getJson = plainMapper.readTree(getResponse.getBody());
-        return getJson.get("data").get("schedule");
+        return getJson.get("data").get("survey").get("schedule");
     }
 
     @Test
