@@ -2,6 +2,7 @@ package com.mannschaft.app.family.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.family.dto.CareLinkNotifySettingsRequest;
 import com.mannschaft.app.family.dto.CareLinkResponse;
 import com.mannschaft.app.family.dto.InviteRecipientRequest;
@@ -27,6 +28,20 @@ import java.util.List;
 /**
  * ケアリンクコントローラー（認証済みユーザー操作）。
  * 自分に紐付くケアリンクの管理 API を提供する。F03.12。
+ *
+ * <p><b>認可</b>:</p>
+ * <ul>
+ *   <li><b>一覧・招待の発行</b> — 自分側の当事者 ID は常に
+ *       {@code SecurityUtils.getCurrentUserId()} で確定した認証主体であり、リクエストから
+ *       他ユーザーを当事者に据えることはできない（自己スコープ）。招待は
+ *       {@code status=PENDING} で作成されるだけで、相手側の承認がない限り成立しない
+ *       （成立させられるのは招待を受けた側のみ）。</li>
+ *   <li><b>リンク ID を受け取る通知設定変更・解除</b> — {@code CareLinkService} が
+ *       <b>entity 由来の当事者 ID</b>と認証主体を照合する。不存在の linkId は
+ *       {@code FAMILY_025}（404）で存在を秘匿し、当事者以外は {@code FAMILY_030}（403）。</li>
+ * </ul>
+ *
+ * <p>契約は {@code CareLinkInvitationScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/me/care-links")
@@ -95,7 +110,13 @@ public class CareLinkController {
 
     /**
      * ケアリンクの通知設定を更新する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code CareLinkService#updateNotifySettings}
+     * が linkId で取得した entity の当事者 ID（ケア対象者・見守り者）と認証主体を照合する
+     * （{@code CareLinkService#requireParty}）。当事者以外は {@code FAMILY_030}（403）、
+     * 不存在の linkId は {@code FAMILY_025}（404）。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/{linkId}")
     @Operation(summary = "ケアリンク通知設定更新")
     public ResponseEntity<ApiResponse<CareLinkResponse>> updateNotifySettings(
@@ -108,7 +129,13 @@ public class CareLinkController {
 
     /**
      * ケアリンクを解除する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code CareLinkService#revokeLink}
+     * が linkId で取得した entity の当事者 ID と認証主体を照合する
+     * （{@code CareLinkService#requireParty}）。当事者以外は {@code FAMILY_030}（403）、
+     * 不存在の linkId は {@code FAMILY_025}（404）。解除は当事者のどちらからでも行える。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/{linkId}")
     @Operation(summary = "ケアリンク解除")
     public ResponseEntity<Void> revokeLink(@PathVariable Long linkId) {

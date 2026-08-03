@@ -496,7 +496,11 @@ public class TeamService {
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: フレンド一覧キャッシュ（teamFriendList）は相手チーム名
+            // （TeamFriendView#friendTeamName）を内包するため、チーム名の変更で stale になる。
+            // teamFriendList が実際に発火するようになった今、ここでの失効が必須。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
@@ -540,7 +544,9 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 削除されたチームがフレンド一覧のキャッシュに残り続けないよう失効させる。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
@@ -742,7 +748,13 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 論理削除の復元は @SQLRestriction("deleted_at IS NULL") の効き方が反転するため、
+            // teamFriendList も失効させる必要がある。
+            // deleteTeam で全消し → TTL(30分) の間に誰かが一覧を引くと toView の .orElse(null) により
+            // friendTeamName = null がキャッシュされる → restoreTeam しても失効しなければ
+            // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void restoreTeam(Long teamId) {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {

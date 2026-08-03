@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:319-320 — requestMatchers(GET, "/api/v1/public/teams/slug-resolve"
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/slug-resolve"
  * / "/api/v1/public/organizations/slug-resolve").permitAll()
  * </p>
  *
@@ -45,7 +45,10 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/public/teams/slug-resolve",
+        "/api/v1/public/organizations/slug-resolve"
+})
 @RestController
 @Tag(name = "slug 解決 公開 API (F01.2 §5.9.5)")
 @RequiredArgsConstructor

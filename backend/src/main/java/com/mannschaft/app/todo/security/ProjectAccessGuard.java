@@ -10,23 +10,26 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * プロジェクトアクセス認可ガード（F02.3 個人プロジェクト API / IDOR 対策）。
+ * プロジェクトアクセス認可ガード（F02.3 プロジェクト API / IDOR・BOLA 対策）。
  *
- * <p>個人スコープ・チームスコープのプロジェクトに対する所有権／メンバーシップ検証を
- * 一元化するためのコンポーネント。{@link com.mannschaft.app.todo.controller.UserProjectController}
- * および {@link com.mannschaft.app.todo.controller.TeamProjectController} から呼び出される想定。</p>
+ * <p>個人・チーム・組織スコープのプロジェクトに対する所有権／メンバーシップ検証を一元化する
+ * コンポーネント。{@link com.mannschaft.app.todo.controller.UserProjectController} /
+ * {@link com.mannschaft.app.todo.controller.TeamProjectController} /
+ * {@link com.mannschaft.app.todo.controller.OrgProjectController} /
+ * {@link com.mannschaft.app.todo.controller.MilestoneGateController} の各 EP 入口から呼び出す。</p>
  *
- * <p>本クラスは <b>試練フェーズの骨格</b> であり、検証ロジックは未実装（空実装）。
- * 出陣フェーズで以下を実装し、対応する red テストを green 化すること:</p>
+ * <p><b>共通の保証</b>: 対象プロジェクトを必ず取得し、<b>entity 由来のスコープ</b>が path のスコープと
+ * 一致することを照合する（リクエストのスコープ ID をそのまま信頼しない）。不一致・不存在はいずれも
+ * {@link TodoErrorCode#PROJECT_NOT_FOUND}（404）にまとめ、他スコープでのプロジェクト ID の存在有無を
+ * 漏らさない。スコープのメンバーシップ違反は 403（{@code COMMON_002}）。</p>
+ *
  * <ul>
- *   <li>{@link #validatePersonalProjectAccess(Long, Long)}:
- *       {@code projectRepository.findByIdAndDeletedAtIsNull(projectId)} で取得し、
- *       スコープ種別 PERSONAL かつ scopeId == userId でなければ TODO_001（404）。</li>
- *   <li>{@link #validateTeamProjectAccess(Long, Long, Long)}:
- *       スコープ種別 TEAM かつ scopeId == teamId でなければ TODO_001（404）。
- *       さらに {@code accessControlService.checkMembership(userId, teamId, "TEAM")} で
- *       非メンバーを 403（COMMON_002）に。</li>
+ *   <li>個人スコープ: プロジェクト所有者本人に限定（{@code scopeId == userId}）。</li>
+ *   <li>チーム・組織スコープ: 当該スコープのメンバーに限定（ADMIN は要求せず一般メンバーの CRUD を許可）。</li>
  * </ul>
+ *
+ * <p>ガードは共有 Service ではなく <b>public な入口（Controller）</b>から呼ぶこと。共有 Service 内部に
+ *置くと、同メソッドを使うバッチ・他ドメイン連携が巻き添えで 404/403 になる。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -38,9 +41,9 @@ public class ProjectAccessGuard {
     /**
      * 個人プロジェクトへのアクセスを検証する。
      *
-     * <p>TODO（出陣）: プロジェクトを取得し、PERSONAL スコープ かつ scopeId == userId を検証。
-     * 不一致なら {@code BusinessException(TodoErrorCode.PROJECT_NOT_FOUND)}（IDOR を 404 にまとめる）。
-     * 現状は <b>空実装</b>（何もしない）のため IDOR テストが red になる。</p>
+     * <p>プロジェクト所有者本人（PERSONAL スコープ かつ {@code scopeId == userId}）に限定する。
+     * 他ユーザーのプロジェクト ID・他スコープのプロジェクト ID・不存在はいずれも
+     * {@link TodoErrorCode#PROJECT_NOT_FOUND}（404）にまとめて存在を秘匿する。</p>
      *
      * @param userId    現在ユーザー ID
      * @param projectId パス上のプロジェクト ID
@@ -58,10 +61,9 @@ public class ProjectAccessGuard {
     /**
      * チームプロジェクトへのアクセスを検証する。
      *
-     * <p>TODO（出陣）: プロジェクトを取得し、TEAM スコープ かつ scopeId == teamId を検証。
-     * 不一致なら {@code BusinessException(TodoErrorCode.PROJECT_NOT_FOUND)}（404）。
-     * さらに非メンバーを 403（COMMON_002）にする membership 検証を行う。
-     * 現状は <b>空実装</b>（何もしない）のため IDOR / 非メンバーテストが red になる。</p>
+     * <p>TEAM スコープ かつ {@code scopeId == teamId} を照合し、不一致・不存在は
+     * {@link TodoErrorCode#PROJECT_NOT_FOUND}（404 秘匿）。さらに当該チームのメンバーに限定する
+     * （非メンバーは 403 / {@code COMMON_002}）。</p>
      *
      * @param userId    現在ユーザー ID
      * @param teamId    パス上のチーム内部 ID（resolveTeamId 済み）
@@ -83,10 +85,9 @@ public class ProjectAccessGuard {
     /**
      * チームスコープのメンバーシップのみを検証する（一覧／作成 EP 用）。
      *
-     * <p>TODO（出陣）: {@code accessControlService.checkMembership(userId, teamId, "TEAM")} を呼び、
-     * 非メンバーを 403（COMMON_002）にする。一覧・作成 EP には projectId が無いため
-     * {@link #validateTeamProjectAccess(Long, Long, Long)} とは分けて提供する。
-     * 現状は <b>空実装</b>（何もしない）のため非メンバーテストが red になる。</p>
+     * <p>当該チームのメンバーに限定する（非メンバーは 403 / {@code COMMON_002}）。
+     * 一覧・作成 EP には projectId が無いため
+     * {@link #validateTeamProjectAccess(Long, Long, Long)} とは分けて提供する。</p>
      *
      * @param userId 現在ユーザー ID
      * @param teamId パス上のチーム内部 ID（resolveTeamId 済み）
@@ -99,12 +100,9 @@ public class ProjectAccessGuard {
     /**
      * 組織プロジェクトへのアクセスを検証する（IDOR / 認可ゲート）。
      *
-     * <p>TODO（出陣）: {@link #validateTeamProjectAccess(Long, Long, Long)} の写経。
-     * プロジェクトを取得し、ORGANIZATION スコープ かつ scopeId == orgId を検証。
-     * 不一致なら {@code BusinessException(TodoErrorCode.PROJECT_NOT_FOUND)}（404 IDOR）。
-     * さらに {@code accessControlService.checkMembership(userId, orgId, "ORGANIZATION")} で
-     * 非メンバーを 403（COMMON_002）にする。
-     * 現状は <b>空実装</b>（何もしない）のため AC-3 / AC-5 の IDOR・非メンバーテストが red になる。</p>
+     * <p>ORGANIZATION スコープ かつ {@code scopeId == orgId} を照合し、不一致・不存在は
+     * {@link TodoErrorCode#PROJECT_NOT_FOUND}（404 秘匿）。さらに当該組織のメンバーに限定する
+     * （非メンバーは 403 / {@code COMMON_002}）。</p>
      *
      * @param userId    現在ユーザー ID
      * @param orgId     パス上の組織内部 ID（resolveOrgId 済み）
@@ -126,10 +124,9 @@ public class ProjectAccessGuard {
     /**
      * 組織スコープのメンバーシップのみを検証する（一覧／作成 EP 用）。
      *
-     * <p>TODO（出陣）: {@link #validateTeamMembership(Long, Long)} の写経。
-     * {@code accessControlService.checkMembership(userId, orgId, "ORGANIZATION")} を呼び、
-     * 非メンバーを 403（COMMON_002）にする。
-     * 現状は <b>空実装</b>（何もしない）のため AC-1 の非メンバーテストが red になる。</p>
+     * <p>当該組織のメンバーに限定する（非メンバーは 403 / {@code COMMON_002}）。
+     * 一覧・作成 EP には projectId が無いため
+     * {@link #validateOrgProjectAccess(Long, Long, Long)} とは分けて提供する。</p>
      *
      * @param userId 現在ユーザー ID
      * @param orgId  パス上の組織内部 ID（resolveOrgId 済み）

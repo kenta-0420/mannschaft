@@ -838,6 +838,84 @@ class PublicApiRateLimitFilterTest {
     }
 
     @Test
+    @DisplayName("(監査) ID 直引き GET /public/activities/{id} の 429 は metadata に activityId を残す"
+            + "（他の公開EPと同形式・生 IP は含めない）")
+    void activityDetail_rateLimited_recordsActivityIdInAuditMetadata() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        String path = "/api/v1/public/activities/4321";
+        String ip = "198.51.100.167";
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest(path, "GET");
+            request.setRemoteAddr(ip);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // 61 回目: 429 で記録される
+        MockHttpServletRequest request = buildRequest(path, "GET");
+        request.setRemoteAddr(ip);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED.name()),
+                isNull(), // userId（未ログイン）
+                isNull(), // targetUserId
+                isNull(), // teamId
+                isNull(), // organizationId（スコープ非依存パスでは取れない）
+                isNull(), // ipAddress（生 IP は渡さない）
+                isNull(), // userAgent
+                isNull(), // sessionHash
+                metadataCaptor.capture()
+        );
+
+        String metadata = metadataCaptor.getValue();
+        // 是正前は PUBLIC_API_PATH にマッチせず else に落ち、{"ipHash":"..."} のみで
+        // 「どの ID を総当りされたか」が失われていた。
+        assertThat(metadata).contains("\"activityId\":\"4321\"");
+        assertThat(metadata).contains("\"ipHash\":\"");
+        // 生 IP がメタデータに含まれていないこと（PII 保護）
+        assertThat(metadata).doesNotContain(ip);
+    }
+
+    @Test
+    @DisplayName("(監査) ログイン状態の ID 直引き 429 でも userId と activityId が両方記録される")
+    void activityDetail_authenticated_rateLimited_recordsUserIdAndActivityId() throws Exception {
+        setAuthenticated("8888");
+        FilterChain chain = mock(FilterChain.class);
+        String path = "/api/v1/public/activities/5555";
+
+        for (int i = 0; i < 200; i++) {
+            MockHttpServletRequest request = buildRequest(path, "GET");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // 201 回目: 429
+        MockHttpServletRequest request = buildRequest(path, "GET");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED.name()),
+                eq(8888L),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                metadataCaptor.capture()
+        );
+        assertThat(metadataCaptor.getValue()).contains("\"activityId\":\"5555\"");
+    }
+
+    @Test
     @DisplayName("(反面テスト) 公開活動記録 ルートパス GET /api/v1/public/activities（末尾IDなし）はレート対象外・透過する")
     void activitiesRootPath_isTransparent() throws Exception {
         SecurityContextHolder.clearContext();

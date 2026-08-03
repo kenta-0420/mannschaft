@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.UUID;
 
@@ -58,6 +59,16 @@ public class PaymentCheckoutController {
      * <p>払い手（{@code payerUserId}）は {@code SecurityUtils.getCurrentUserId()} で確定する。
      * 後見切替セッション中（{@code X-Proxy-For-User-Id} 付き）でも払い手はログインユーザーのまま。</p>
      *
+     * <p><b>認可の所在</b>: ボディの {@code beneficiaryUserId} に対する払い手の権原は
+     * {@code MemberPaymentService.createConnectCheckout}
+     * （{@code payment/service/MemberPaymentService.java:392}）が
+     * {@code PaymentAuthorizationService.authorizePayment}
+     * （{@code payment/service/PaymentAuthorizationService.java:97}）で毎回実行時評価する。
+     * SELF / 承認済み保護者 / 有効な代理払い grant のいずれも成立しなければ
+     * {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）。<b>検証は重複判定・Connect 口座解決・
+     * PaymentIntent 作成・member_payments 起票のすべてより前</b>にあり、権原なき要求では
+     * 課金も起票も発生しない。</p>
+     *
      * <p>冪等性：{@code Idempotency-Key} ヘッダが付いていればそれを優先し、
      * 省略時はリクエストボディの {@code idempotencyKey} を使い、どちらも無ければ UUID を生成する。</p>
      *
@@ -66,6 +77,7 @@ public class PaymentCheckoutController {
      * @param request            受益者 ID・冪等キー
      * @return 201 Created + {@link ConnectCheckoutResponse}（clientSecret / memberPaymentId / escrowTransactionId）
      */
+    @AuthorizedInService
     @PostMapping("/checkout")
     @Operation(summary = "会費 Connect 即時チェックアウト（F08.9 P1）")
     public ResponseEntity<ApiResponse<ConnectCheckoutResponse>> createConnectCheckout(

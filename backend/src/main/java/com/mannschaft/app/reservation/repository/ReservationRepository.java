@@ -77,6 +77,57 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     Optional<ReservationEntity> findByIdAndUserId(Long id, Long userId);
 
+    // ===== F03.4.5 §6.2 W2-5: 定期予約（series 兄弟行方式）=====
+
+    /**
+     * series の兄弟行を<b>ユーザースコープ</b>で取得する（「以降すべてキャンセル」の唯一の経路・AC-5-8）。
+     *
+     * <p><b>なぜ {@code userId} を条件に含めるのが必須か（IDOR 根治）</b>: {@code recurring_series_id} は
+     * UUID の推測困難性しか持たない<b>ケイパビリティではない</b>。他人の series ID を何らかの経路で
+     * 知った利用者が「以降すべてキャンセル」を投げたときに他人の予約まで消えてしまう事故を、
+     * <b>クエリの形で</b>構造的に防ぐ（Service 層のフィルタに頼らない）。
+     * 「認可条件をリポジトリメソッドから外に出すと、いつか誰かが素の finder を使う」という
+     * 当リポジトリの典型事故（{@code feedback_centralized_helper_not_proof_all_paths_use_it}）を避けるため、
+     * <b>series を userId 無しで引く finder は意図的に用意しない</b>。</p>
+     *
+     * @param recurringSeriesId series ID
+     * @param userId            所有者ユーザーID（本人のみ）
+     * @return 本人が所有する series の行（id 昇順）
+     */
+    List<ReservationEntity> findByRecurringSeriesIdAndUserIdOrderById(UUID recurringSeriesId, Long userId);
+
+    /**
+     * series の兄弟行を<b>チームスコープ</b>で取得する（{@code scope=SERIES} の一括承認の唯一の経路・AC-5-9）。
+     *
+     * <p>管理者ゲート（{@code @PreAuthorize isScopeAdmin(#teamId)}）は URL の {@code teamId} の
+     * 管理者性だけを見る。series が（データ異常や将来の仕様変更で）複数チームに跨った場合でも
+     * <b>当該チームの行しか掴めない</b>ことをクエリで保証し、テナント境界越えの一括操作を構造的に封じる。</p>
+     *
+     * @param recurringSeriesId series ID
+     * @param teamId            チームID（認可スコープ）
+     * @return 当該チームに属する series の行（id 昇順）
+     */
+    List<ReservationEntity> findByRecurringSeriesIdAndTeamIdOrderById(UUID recurringSeriesId, Long teamId);
+
+    /**
+     * 指定スロット群のうち<b>当該ユーザーが既に active 予約を持つ</b>スロット ID を列挙する
+     * （定期予約の週次解決で二重予約週を事前に弾く・N+1 回避の一括クエリ）。
+     *
+     * <p>週ごとに {@link #existsByReservationSlotIdAndUserIdAndStatusIn} を呼ぶと 12 週で 12 クエリになる。
+     * 候補枠が確定した時点で 1 クエリにまとめる（AC-5-10 の趣旨）。</p>
+     *
+     * @param userId   予約者ユーザーID
+     * @param slotIds  候補枠 ID 群
+     * @param statuses active と見なすステータス（PENDING / CONFIRMED）
+     * @return 既に予約済みの枠 ID
+     */
+    @Query("SELECT DISTINCT r.reservationSlotId FROM ReservationEntity r "
+            + "WHERE r.userId = :userId AND r.reservationSlotId IN :slotIds AND r.status IN :statuses")
+    List<Long> findSlotIdsAlreadyReservedByUser(
+            @Param("userId") Long userId,
+            @Param("slotIds") Collection<Long> slotIds,
+            @Param("statuses") List<ReservationStatus> statuses);
+
     /**
      * スロットIDとユーザーIDで有効な予約が存在するか確認する。
      */

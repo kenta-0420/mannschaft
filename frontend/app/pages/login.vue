@@ -4,8 +4,10 @@ definePageMeta({
   middleware: 'guest',
 })
 
-const email = ref('')
-const password = ref('')
+// ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+// ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
+const email = ref(readPrefilledInputValue('email'))
+const password = ref(readPrefilledInputValue('password'))
 const loading = ref(false)
 const googleLoading = ref(false)
 
@@ -19,6 +21,10 @@ const notification = useNotification()
 const route = useRoute()
 const { applyUserLocale } = useLocale()
 const { t } = useI18n()
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
 
 // OAuth競合メッセージ（/auth/oauth/callback → ?oauthConflict=true で遷移してきた場合）
 const oauthConflictMessage = computed<string | null>(() => {
@@ -260,7 +266,14 @@ async function handleLogin() {
           required
         />
       </div>
-      <Button type="submit" :label="t('auth.login.submit')" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
+      <Button
+        type="submit"
+        :label="t('auth.login.submit')"
+        icon="pi pi-sign-in"
+        :loading="loading"
+        :disabled="!hydrated"
+        class="mt-2"
+      />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
           {{ t('auth.login.forgot_password') }}

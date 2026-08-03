@@ -21,7 +21,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * @ハンドル管理コントローラー。
+ * ハンドル（{@literal @}ハンドル）管理コントローラー。
+ *
+ * <p><b>認可</b>:</p>
+ * <ul>
+ *   <li>自分のハンドル取得・変更・重複確認 — スコープは常に
+ *       {@code SecurityUtils.getCurrentUserId()} で確定した認証主体であり、リクエストから
+ *       他ユーザーを指定する余地がない（自己スコープ）。重複確認は「自分以外に同じハンドルが
+ *       存在するか」の真偽のみを返し、保持者の情報は返さない
+ *       （{@code ContactHandleService.java:96}）。</li>
+ *   <li>ハンドル検索 — 開示は<b>対象ユーザー自身の公開設定</b>に従う。
+ *       {@code handleSearchable = false} のユーザーとブロック関係にある相手は
+ *       {@code found=false} を返し、氏名・アバターを一切開示しない
+ *       （{@code ContactHandleService.java:114-122}・設計書
+ *       {@code docs/features/F04.8_contact.md §2.3}のサイレント方式）。</li>
+ * </ul>
+ *
+ * <p>契約は {@code ContactScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users")

@@ -2,6 +2,7 @@ package com.mannschaft.app.family.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.family.dto.TeamCareOverrideRequest;
 import com.mannschaft.app.family.dto.TeamCareOverrideResponse;
 import com.mannschaft.app.family.service.CareLinkService;
@@ -20,7 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * チームケア通知上書き設定コントローラー。
  * チームごとのケア通知フラグ上書き設定を管理する。F03.12。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 3 EP すべてが
+ * {@code CareLinkService#requireCareLinkParty} を通る。careLinkId で取得した
+ * <b>entity 由来の当事者 ID</b>（ケア対象者本人・見守り者）と認証主体を照合し、
+ * 当事者以外は<b>チーム ADMIN であっても</b> {@code FAMILY_030}（403）で拒否する
+ * （続柄・ケア区分を含む後見系の機微情報のため）。不存在の careLinkId は
+ * {@code FAMILY_025}（404）で存在を秘匿する。パスの {@code teamId} は認可判定に使わず、
+ * 上書き設定の絞り込みキーとしてのみ用いる。契約は
+ * {@code CareLinkInvitationScopeContractIT} で固定する。</p>
  */
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/care-overrides")
 @Tag(name = "チームケア通知上書き", description = "F03.12 チーム別ケア通知上書き設定")

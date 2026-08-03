@@ -24,7 +24,7 @@ import java.net.URI;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:214 — requestMatchers("/api/v1/auth/oauth/**").permitAll()
+ * SecurityConfig — requestMatchers("/api/v1/auth/oauth/**").permitAll()
  * </p>
  *
  * <p><b>公開してよいと判断した理由</b>:
@@ -35,7 +35,7 @@ import java.net.URI;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic("/api/v1/auth/oauth/**")
 @RestController
 @RequestMapping("/api/v1/auth/oauth/link")
 @RequiredArgsConstructor

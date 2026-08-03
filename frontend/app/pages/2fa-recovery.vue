@@ -14,6 +14,10 @@ const step = ref<'request' | 'done'>('request')
 const loading = ref(false)
 const recoveryToken = ref('')
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+
 const mfaSessionToken = computed(() => route.query.session as string | undefined)
 
 onMounted(() => {
@@ -89,7 +93,7 @@ async function handleConfirmRecovery() {
           label="リカバリーを確認"
           icon="pi pi-shield"
           :loading="loading"
-          :disabled="!recoveryToken"
+          :disabled="!hydrated || !recoveryToken"
           class="w-full"
         />
       </form>

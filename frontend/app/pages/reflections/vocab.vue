@@ -23,8 +23,8 @@ const today = new Date()
 const thirtyDaysAgo = new Date(today)
 thirtyDaysAgo.setDate(today.getDate() - 30)
 
-const fromDate = ref(thirtyDaysAgo.toISOString().slice(0, 10))
-const toDate = ref(today.toISOString().slice(0, 10))
+const fromDate = ref(toLocalDateString(thirtyDaysAgo))
+const toDate = ref(toLocalDateString(today))
 
 const loading = ref(false)
 const cards = ref<ReflectionVocabCardItem[]>([])

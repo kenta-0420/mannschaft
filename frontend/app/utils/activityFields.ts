@@ -1,4 +1,5 @@
 import type { ActivityTemplateField } from '~/types/activity'
+import { toLocalDateString } from '~/utils/localDate'
 
 /** 活動カスタムフィールドの入力値（DatePicker は Date を持つ）。 */
 export type ActivityFieldValue = string | number | boolean | Date | null | undefined
@@ -23,12 +24,12 @@ export function parseSelectOptions(
 
 /**
  * Date をローカル日付の YYYY-MM-DD 文字列に整形する（UTC ズレを避ける）。
+ *
+ * 実体は共通ヘルパ {@link toLocalDateString}（`~/utils/localDate`）。
+ * 実装が二重化して片方だけ直る事故を防ぐため、ここでは委譲のみ行う。
  */
 export function toYmd(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return toLocalDateString(d)
 }
 
 /**

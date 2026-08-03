@@ -27,7 +27,11 @@ import java.util.List;
 /**
  * 組織スコープ TODO ステータスラベル管理 API（F02.3.1 Phase 1a）。
  *
- * <p>一覧は組織メンバー全員が参照可、CRUD は組織 ADMIN/DEPUTY_ADMIN のみ。</p>
+ * <p><b>認可</b>: 一覧は当該組織の<b>メンバーに限定</b>、CRUD は当該組織の <b>ADMIN に限定</b>する
+ * （設計書 §2 の権限マトリクス。DEPUTY_ADMIN は CRUD 不可）。判定の実体は
+ * {@code TodoStatusLabelService#validateScopeAccess} が担い、非メンバー／非 ADMIN は 403。
+ * 更新・削除では path の組織 ID とラベル本体のスコープの一致を先に照合し、
+ * 不一致は 404 で存在を秘匿する（BOLA/IDOR 対策）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/todo-status-labels")

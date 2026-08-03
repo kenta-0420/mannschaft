@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionResponse;
 import com.mannschaft.app.payment.dto.SubscribeRequest;
@@ -53,11 +54,22 @@ public class MembershipSubscriptionController {
      *
      * <p>冪等性：{@code Idempotency-Key} ヘッダ > ボディ {@code idempotencyKey} > 自動生成（UUID）。</p>
      *
+     * <p><b>認可の所在</b>: 払い手は {@code SecurityUtils.getCurrentUserId()} 固定。ボディの
+     * {@code beneficiaryUserId} に対する権原は {@code MembershipSubscriptionService.subscribe}
+     * （{@code payment/service/MembershipSubscriptionService.java:231}）が
+     * {@code PaymentAuthorizationService.authorizePayment}
+     * （{@code payment/service/PaymentAuthorizationService.java:97}）で毎回実行時評価する。
+     * SELF / 承認済み保護者 / 有効な代理払い grant のいずれも成立しなければ
+     * {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）で拒否する。<b>この権原検証は初回 charge
+     * （同 {@code :272}）・Stripe Subscription 作成・DB 起票のすべてより前に位置する</b>ため、
+     * 権原なき要求では課金も起票も一切発生しない。</p>
+     *
      * @param itemId               継続課金項目 ID（{@code is_recurring=true}）
      * @param idempotencyKeyHeader {@code Idempotency-Key} ヘッダ（省略可）
      * @param request              受益者 ID・決済日・冪等キー
      * @return 201 Created + {@link MembershipSubscriptionResponse}（PENDING）
      */
+    @AuthorizedInService
     @PostMapping("/api/v1/payment-items/{itemId}/subscribe")
     @Operation(summary = "継続課金 加入（F08.9 P5・案b）")
     public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> subscribe(
@@ -80,12 +92,18 @@ public class MembershipSubscriptionController {
     /**
      * 継続課金を期末解約予約する（{@code cancel_at_period_end=true}・設計書 02 §4.1）。
      *
-     * <p>認可は払い手本人 or 後見保護者（サービス層・03 §1）。応答に期末日（{@code currentPeriodEnd}）を含め
-     * UI に「○月○日まで利用可」を明示する。</p>
+     * <p><b>認可の所在</b>: {@code MembershipSubscriptionService.cancel}
+     * （{@code payment/service/MembershipSubscriptionService.java:433}）が
+     * {@code isOwnerOrGuardian}（同 {@code :693}）で「払い手本人 または 受益者の後見保護者」を検証し、
+     * 無権原は {@code SUBSCRIPTION_NOT_AUTHORIZED}（403）、不存在は {@code SUBSCRIPTION_NOT_FOUND}（404）。
+     * 検証は Stripe への解約予約・DB 更新（同 {@code :450} 以降）より<b>前</b>に位置する。</p>
+     *
+     * <p>応答に期末日（{@code currentPeriodEnd}）を含め UI に「○月○日まで利用可」を明示する。</p>
      *
      * @param id 継続課金 ID
      * @return 200 OK + {@link MembershipSubscriptionResponse}（cancelAtPeriodEnd=true・currentPeriodEnd に期末日）
      */
+    @AuthorizedInService
     @DeleteMapping("/api/v1/membership-subscriptions/{id}")
     @Operation(summary = "継続課金 期末解約（F08.9 P5）")
     public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> cancel(@PathVariable UUID id) {
@@ -97,12 +115,18 @@ public class MembershipSubscriptionController {
     /**
      * 継続課金を今月スキップする（{@code pause_collection・behavior=void}・設計書 02 §4.3）。
      *
-     * <p>認可は払い手本人 or 後見保護者（サービス層・03 §1）。
-     * スキップ月は invoice が void になり {@code valid_until} は延びない（ペイウォール無改修で整合）。</p>
+     * <p><b>認可の所在</b>: {@code MembershipSubscriptionService.skip}
+     * （{@code payment/service/MembershipSubscriptionService.java:497}）が
+     * {@code isOwnerOrGuardian}（同 {@code :693}）で払い手本人／後見保護者を検証し、
+     * 無権原は 403・不存在は 404。検証は Stripe の集金停止・DB 更新（同 {@code :531} 以降）より
+     * <b>前</b>に位置する。</p>
+     *
+     * <p>スキップ月は invoice が void になり {@code valid_until} は延びない（ペイウォール無改修で整合）。</p>
      *
      * @param id 継続課金 ID
      * @return 200 OK + {@link MembershipSubscriptionResponse}（skipUntil に再開予定日）
      */
+    @AuthorizedInService
     @PostMapping("/api/v1/membership-subscriptions/{id}/skip")
     @Operation(summary = "継続課金 今月スキップ（F08.9 P5 第四波）")
     public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> skip(@PathVariable UUID id) {
@@ -114,12 +138,18 @@ public class MembershipSubscriptionController {
     /**
      * 継続課金のスキップを解除して再開する（設計書 02 §4.3）。
      *
-     * <p>認可は払い手本人 or 後見保護者（サービス層・03 §1）。
-     * スキップ未適用の場合は 409（MEMBERSHIP_BILLING_022）。</p>
+     * <p><b>認可の所在</b>: {@code MembershipSubscriptionService.resume}
+     * （{@code payment/service/MembershipSubscriptionService.java:565}）が
+     * {@code isOwnerOrGuardian}（同 {@code :693}）で払い手本人／後見保護者を検証し、
+     * 無権原は 403・不存在は 404。検証は Stripe の集金再開・DB 更新（同 {@code :583} 以降）より
+     * <b>前</b>に位置する。</p>
+     *
+     * <p>スキップ未適用の場合は 409（MEMBERSHIP_BILLING_022）。</p>
      *
      * @param id 継続課金 ID
      * @return 200 OK + {@link MembershipSubscriptionResponse}（skipUntil=null）
      */
+    @AuthorizedInService
     @PostMapping("/api/v1/membership-subscriptions/{id}/resume")
     @Operation(summary = "継続課金 スキップ解除・再開（F08.9 P5 第四波）")
     public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> resume(@PathVariable UUID id) {

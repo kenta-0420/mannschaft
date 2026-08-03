@@ -3,7 +3,10 @@ package com.mannschaft.app.activity;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
+import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.activity.service.ActivityResultService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -17,16 +20,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -57,8 +64,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>詳細 2 本がパス変数 {@code teamId} / {@code orgId} と Entity の
  *       {@code scopeType} / {@code scopeId} を照合しておらず、スコープ詐称が通る（AC-16 / AC-17）</li>
  *   <li>非公開記録に {@code VISIBILITY_001} → <b>403</b> を返しており存在オラクルになっている（AC-12 / AC-18）</li>
- *   <li>一覧の limit が無上限（AC-25 / AC-26）・{@code PageImpl} 総件数がページ内件数に化ける（AC-29a〜c）</li>
+ *   <li>一覧の limit が無上限（AC-35）・{@code PageImpl} 総件数がページ内件数に化ける（AC-29a / AC-31 / AC-33）</li>
+ *   <li>公開一覧が SQL で 1 ページ分を取ってからメモリ上で可視性フィルタしており、
+ *       落ちた分が補充されない<b>ページング歯抜け</b>（AC-30 / AC-30b / AC-31b / AC-35）</li>
  * </ul>
+ *
+ * <p><b>ページング系 AC のフィクスチャ要件（必読）</b>: ページングを検査する AC は必ず
+ * {@link #seedInterleaved} で (a) 公開 / (b) MEMBERS_ONLY / (c) PUBLIC+DRAFT /
+ * (d) 論理削除 の 4 種を<b>交互に</b>投入し、{@link #assertHiddenRowsOnFirstPage} で
+ * 「非公開行が先頭ページに食い込んでいること」を自己検査すること。
+ * 旧 AC-25 は 101 件すべてを PUBLIC + PUBLISHED で投入していたため落ちる行が 1 件も無く、
+ * ページング歯抜けを構造的に再現できないまま素通りしていた。</p>
  *
  * <p><b>御裁可済みの公開項目（AC-8 の正解）</b>: {@code id} / {@code title} / {@code activityDate} /
  * {@code activityTimeStart} / {@code activityTimeEnd} / {@code description} / {@code scopeRef} /
@@ -126,9 +142,17 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** AC-29a〜c は HTTP 契約に総件数が現れないため、Service の {@link Page} を実物のまま検証する。 */
+    /** AC-29a / AC-31 / AC-31b / AC-33 は HTTP 契約に総件数が現れないため、Service の {@link Page} を実物のまま検証する。 */
     @Autowired
     private ActivityResultService activityResultService;
+
+    /** AC-32（等価性番人）で SQL 述語側の集合 S を得る。フィクスチャ自己検査でも生の並び順を得るのに使う。 */
+    @Autowired
+    private ActivityResultRepository resultRepository;
+
+    /** AC-32（等価性番人）で F00 側の集合 F を得る。 */
+    @Autowired
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @PersistenceContext
     private EntityManager em;
@@ -174,8 +198,31 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     /** PUBLIC 組織配下の PUBLIC 記録（組織側の正常系）。 */
     private Long orgPublicActivityId;
 
+    /**
+     * COMMITTEE スコープの PUBLIC + PUBLISHED 記録（AC-37）。
+     *
+     * <p>{@code scopeId} は<b>あえて公開チームと同じ値</b>にする。こうすることで
+     * 「親スコープが存在しないから 404」ではなく「{@code scopeType=COMMITTEE} だから 404」
+     * であることが検証できる（fail-closed の理由を取り違えない）。</p>
+     */
+    private Long committeeActivityId;
+
     /** 存在しない ID（AC-18）。 */
     private static final long NON_EXISTENT_ACTIVITY_ID = 999_999_999L;
+
+    /**
+     * AC-39: 公開 EP を叩くログイン済みユーザー。{@code publicTeamId} の <b>ACTIVE メンバー</b>として
+     * seed する（＝認証済み経路でなら {@code MEMBERS_ONLY} を閲覧できる立場の人物）。
+     *
+     * <p>{@code SecurityUtils#getCurrentUserId} は {@code authentication.getName()} を
+     * {@code Long.valueOf} するため、{@code @WithMockUser(username = ...)} の値がそのまま
+     * user_id になる。</p>
+     */
+    private static final String AUTH_USER = "88888";
+    private static final long AUTH_USER_ID = 88_888L;
+
+    /** 認証必須 EP（AC-39b で「post-processor が本当に認証を成立させたか」の裏取りに使う）。 */
+    private static final String AUTHENTICATED_ACTIVITY_LIST = "/api/v1/activities";
 
     // ═══════════════════════════════════════════════════════════════════════
     // フィクスチャ
@@ -247,6 +294,14 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         activityUnderSuspendedOrgId = insertActivity(
                 "ORGANIZATION", suspendedOrgId, "停止組織配下" + nonce, "PUBLIC", "PUBLISHED",
                 false, "10:00:00", "11:00:00", "親が停止");
+
+        // AC-37: COMMITTEE スコープ。scopeId は公開チームと同値にして「scopeType だけが理由」にする。
+        committeeActivityId = insertActivity(
+                "COMMITTEE", publicTeamId, "委員会スコープの記録" + nonce, "PUBLIC", "PUBLISHED",
+                false, "10:00:00", "11:00:00", "委員会");
+
+        // AC-39: 公開チームの ACTIVE メンバーとしてログインユーザーを seed する。
+        insertMembership(AUTH_USER_ID, "TEAM", publicTeamId);
 
         em.flush();
         em.clear();
@@ -357,6 +412,11 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
 
     // ═══════════════════════════════════════════════════════════════════════
     // ［可視性・状態］AC-11 〜 AC-15
+    //
+    // 【AC-36 回帰群】以下の AC-11（DRAFT 匿名）/ AC-12（MEMBERS_ONLY）/ AC-13（論理削除）/
+    // AC-14・AC-15（親スコープ）/ AC-16・AC-17（スコープ詐称）は、公開一覧を SQL 述語へ
+    // 載せ替えても<b>すべて 404 のまま</b>でなければならない。門2（SQL 述語）の導入で
+    // 門1（親スコープ公開性）や門4（スコープ詐称拒否）が緩んでいないことを固定する回帰群である。
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
@@ -594,84 +654,350 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ［境界値］AC-25 / AC-26
+    // ［ページング歯抜け］AC-30 / AC-30b / AC-30c
+    //
+    // 【撤回した AC とその理由】
+    //  ・AC-25 / AC-26（旧・境界値）→ AC-35 へ置換。101 件・30 件すべてを
+    //    PUBLIC + PUBLISHED で投入していたため、メモリ側フィルタが 1 件も落とさず
+    //    「歯抜け」が構造的に発生しないフィクスチャだった。limit 丸めしか検査できて
+    //    おらず、欠陥1 を素通りさせた張本人。混在フィクスチャ版の AC-35 で置き換える。
+    //  ・AC-28（旧・N+1）→ AC-34 へ置換。同じく全件公開フィクスチャだったため、
+    //    可視性で落ちる行がある状態での SQL 数不変性を検査できていなかった。
+    //  ・AC-29b（上界近似の許容）→ AC-31 へ置換。「総件数は上界近似でよい」という
+    //    前提そのものが本 PR で失効する（SQL で絞るので実総数が出る）。
+    //  ・AC-29c（1 ページ目に非公開 5 件 → hasSize(15)）→ 撤回。これは
+    //    <b>旧バグ（歯抜け）の挙動を期待値として固定していた</b> AC である。
+    //    根治後は「20 件要求したら公開 20 件が返る」が正しく、15 は誤り。
+    //    テストを甘くしたのではなく、誤った期待値を正した。AC-30 が後継。
+    //  ・AC-29a（全件公開で総件数=実総数）→ 維持。
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * (AC-25) {@code limit=100}（上限ちょうど）は成功し、{@code limit=101} は 100 件に丸められる。
+     * (AC-30) 公開 40 件・非公開 20 件が<b>交互に</b>並ぶスコープで {@code limit=20} を要求したとき、
+     * <b>ちょうど 20 件</b>返り、全件が公開（(a)）であること。
      *
-     * <p>現状 {@code PageRequest.of(0, limit)} をそのまま渡しており上限が無い
-     * （{@code limit=100000} で全件取得＝DoS 経路）。</p>
+     * <p>旧実装は SQL で 1 ページ分（20 行）を取ってからメモリ上で可視性フィルタしていたため、
+     * 落ちた分が補充されず 20 件要求しても 13 件程度しか返らない「ページング歯抜け」が起きていた。</p>
      */
     @Test
-    @DisplayName("(AC-25) limit=100 は成功・limit=101 は100件に丸められる")
-    void ac25_limit上限100に丸められる() throws Exception {
-        Long bulkTeamId = insertTeam("大量記録チーム", "act-bulk-team-" + System.nanoTime(),
+    @DisplayName("(AC-30) 公開40件・非公開20件の交互配置で limit=20 はちょうど20件返る（歯抜け禁止）")
+    void ac30_混在でもlimit20はちょうど20件返る() throws Exception {
+        Long teamId = insertTeam("歯抜け検査チーム", "act-gap30-" + System.nanoTime(),
                 "PUBLIC", false, false);
-        seedBulkActivities("TEAM", bulkTeamId, 101, "BULK25");
+        List<Long> publicIds = seedInterleaved(teamId, "GAP30", 40, 10, 5, 5);
+        assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
 
-        assertThat(listSize(bulkTeamId, "100"))
-                .as("limit=100（上限ちょうど）は成功して 100 件").isEqualTo(100);
-        assertThat(listSize(bulkTeamId, "101"))
-                .as("limit=101 は 100 件に丸められる").isEqualTo(100);
-        assertThat(listSize(bulkTeamId, "100000"))
-                .as("極端な limit も 100 件に丸められる（DoS 防止）").isEqualTo(100);
+        List<Long> ids = listIds(teamId, "20");
+
+        assertThat(ids).as("limit=20 でちょうど 20 件返ること（歯抜けを許さない）").hasSize(20);
+        assertThat(ids).as("返却された全件が公開(a)であること").isSubsetOf(publicIds);
+        assertThat(ids).as("id の重複が無いこと").doesNotHaveDuplicates();
     }
 
     /**
-     * (AC-26) {@code limit=0} / 負値は既定値 20 に丸められる。
-     *
-     * <p>現状 {@code PageRequest.of(0, 0)} は {@code IllegalArgumentException} → 500 になる。</p>
+     * (AC-30b) 公開が要求件数に満たないときは、非公開を混ぜて<b>詰めない</b>こと。
+     * 公開 7 件・非公開 30 件で {@code limit=20} なら 7 件ちょうど。
      */
     @Test
-    @DisplayName("(AC-26) limit=0 / 負値は既定値20に丸められる（500 にしない）")
-    void ac26_limit0と負値は既定20に丸められる() throws Exception {
-        Long bulkTeamId = insertTeam("大量記録チーム2", "act-bulk2-team-" + System.nanoTime(),
+    @DisplayName("(AC-30b) 公開7件・非公開30件で limit=20 は7件ちょうど（詰めすぎない）")
+    void ac30b_公開が足りないときは詰めない() throws Exception {
+        Long teamId = insertTeam("公開僅少チーム", "act-gap30b-" + System.nanoTime(),
                 "PUBLIC", false, false);
-        seedBulkActivities("TEAM", bulkTeamId, 30, "BULK26");
+        List<Long> publicIds = seedInterleaved(teamId, "GAP30B", 7, 15, 10, 5);
+        assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
 
-        assertThat(listSize(bulkTeamId, "0")).as("limit=0 は既定値 20").isEqualTo(20);
-        assertThat(listSize(bulkTeamId, "-1")).as("limit=-1 は既定値 20").isEqualTo(20);
-        assertThat(listSize(bulkTeamId, "-100")).as("limit=-100 は既定値 20").isEqualTo(20);
+        List<Long> ids = listIds(teamId, "20");
+
+        assertThat(ids).as("公開 7 件しか無いので 7 件ちょうど").hasSize(7);
+        assertThat(ids).as("返却された全件が公開(a)であること").containsExactlyInAnyOrderElementsOf(publicIds);
+    }
+
+    /**
+     * (AC-30c) 公開 0 件・非公開 30 件でも 200 と空配列（404 / 500 にしない）。
+     */
+    @Test
+    @DisplayName("(AC-30c) 公開0件・非公開30件でも200と空配列（404/500 にしない）")
+    void ac30c_公開0件でも200と空配列() throws Exception {
+        Long teamId = insertTeam("公開ゼロチーム", "act-gap30c-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        List<Long> publicIds = seedInterleaved(teamId, "GAP30C", 0, 15, 10, 5);
+        assertThat(publicIds).as("フィクスチャ要件: 公開行は 0 件").isEmpty();
+
+        JsonNode list = getData(TEAM_ACTIVITY_LIST, teamId);
+        assertThat(list.isArray()).as("配列であること").isTrue();
+        assertThat(list.size()).as("空配列であること").isZero();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ［性能］AC-28 / AC-29a〜c
+    // ［総件数・ページ通し］AC-31 / AC-31b
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * (AC-28) 一覧取得で親スコープ公開性チェックが N+1 にならないこと。
+     * (AC-31) 混在フィクスチャでも総件数が<b>実公開件数と厳密に一致</b>すること。
+     *
+     * <p>旧実装の総件数は「DB の全行数 − このページで落ちた件数」という<b>上界近似</b>だった
+     * （旧 AC-29b が {@code isBetween(50, 55)} でその幅を許容していた）。SQL 述語で絞る本実装では
+     * 近似ではなく実数が出るため、厳密一致で固定する。</p>
+     */
+    @Test
+    @DisplayName("(AC-31) 混在フィクスチャで総件数が実公開件数40と厳密一致・ページ内件数20に化けない")
+    void ac31_総件数が実公開件数と厳密一致する() {
+        Long teamId = insertTeam("総件数厳密チーム", "act-total31-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        List<Long> publicIds = seedInterleaved(teamId, "TOTAL31", 40, 10, 5, 5);
+        assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
+
+        Page<ActivityResultEntity> page = activityResultService.listPublicActivities(
+                ActivityScopeType.TEAM, teamId, PageRequest.of(0, 20));
+
+        assertThat(page.getTotalElements())
+                .as("旧バグ禁止: 総件数がページ内件数(20)に化けていないこと")
+                .isNotEqualTo(20L);
+        assertThat(page.getTotalElements())
+                .as("総件数は実公開件数 40 と厳密一致（上界近似 55 でも過小 20 でもない）")
+                .isEqualTo(40L);
+        assertThat(page.getTotalPages()).as("総ページ数は 2（40 / 20）").isEqualTo(2);
+        assertThat(page.getContent()).as("1 ページ目は 20 件").hasSize(20);
+    }
+
+    /**
+     * (AC-31b) page 0 / 1 / 2 を通しで取得したとき、
+     * <b>重複なし</b>（ページ間で id 集合が交わらない）かつ<b>取りこぼしなし</b>
+     * （page0 ∪ page1 が公開 40 件と完全一致）であること。
+     *
+     * <p>歯抜けは「1 ページ内の件数不足」だけでなく「ページ境界で行が消える／二重に出る」形でも
+     * 現れる。件数だけでなく id 集合そのものを突き合わせて固定する。</p>
+     */
+    @Test
+    @DisplayName("(AC-31b) page0/1/2 通しで重複なし・取りこぼしなし（id集合が公開40件と完全一致）")
+    void ac31b_ページ通しで重複も取りこぼしも無い() {
+        Long teamId = insertTeam("ページ通しチーム", "act-total31b-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        List<Long> publicIds = seedInterleaved(teamId, "TOTAL31B", 40, 10, 5, 5);
+        assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
+
+        List<Long> page0 = pageIds(teamId, 0, 20);
+        List<Long> page1 = pageIds(teamId, 1, 20);
+        List<Long> page2 = pageIds(teamId, 2, 20);
+
+        assertThat(page0).as("page0 は 20 件").hasSize(20);
+        assertThat(page1).as("page1 は 20 件").hasSize(20);
+        assertThat(page2).as("page2 は 0 件").isEmpty();
+
+        assertThat(page0).as("page0 と page1 の id 集合が交わらないこと（重複なし）")
+                .doesNotContainAnyElementsOf(page1);
+
+        List<Long> union = new ArrayList<>(page0);
+        union.addAll(page1);
+        assertThat(union)
+                .as("page0 ∪ page1 が公開 40 件の id 集合と完全一致すること（取りこぼしなし）")
+                .containsExactlyInAnyOrderElementsOf(publicIds);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［等価性番人］AC-32
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-32) <b>本 PR の安全性の全体を担う番人</b>。
+     * 公開一覧の SQL 述語（門2）と F00 可視性 Resolver（門3）が、匿名（{@code userId=null}）に対して
+     * <b>厳密に同じ集合</b>を返すことを機械的に固定する。
+     *
+     * <h3>なぜこのテストが本案の安全性そのものなのか</h3>
+     * <p>本 PR は「公開一覧を SQL 述語（{@code visibility=PUBLIC AND status=PUBLISHED}）で絞り、
+     * F00 では二重確認するだけ」という形に変える。これは
+     * <b>可視性判定器を 2 つ作ることではない</b> — 匿名のとき F00 のラダーは
+     * {@code MembershipBatchQueryService#snapshotForUser}(userId=null) が
+     * {@code UserScopeRoleSnapshot.empty()} を返すことで縮退し、
+     * {@code StandardVisibility.PUBLIC} の Javadoc が
+     * 「未認証時は PUBLIC かつ PUBLISHED のときのみ true、それ以外はすべて fail-closed」と
+     * 明文で宣言している。つまり SQL 述語は<b>F00 自身の宣言の機械的な転写</b>である。</p>
+     *
+     * <p>したがって守るべき不変条件はただ一つ、<b>「S == F」</b>である。
+     * 片方だけが変更されたら（SQL に条件を足す／F00 のマッピングを変える／
+     * {@code ActivityVisibilityMapper} を書き換える）このテストが必ず落ちる。
+     * 将来 {@link ActivityVisibility} に第 3 の値が追加された場合も、
+     * 網羅組合せの追加とともに最初にここが落ち、設計者に「その値は匿名に見せるのか」の
+     * 判断を強制する。<b>このテストを削除・緩和することは、本 PR の安全性の根拠を捨てることに等しい。</b></p>
+     *
+     * <p>組合せ: {@code visibility}(PUBLIC / MEMBERS_ONLY) × {@code status}(PUBLISHED / DRAFT)
+     * × {@code deleted}(false / true) の 8 通りを各 3 件・計 24 行。
+     * 通過すべきは {@code PUBLIC × PUBLISHED × 未削除} の 3 件のみ。</p>
+     */
+    @Test
+    @DisplayName("(AC-32) SQL述語の集合SとF00のfilterAccessibleの集合Fが厳密一致（等価性番人）")
+    void ac32_SQL述語とF00の判定集合が厳密一致する() {
+        Long teamId = insertTeam("等価性番人チーム", "act-equiv32-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        long nonce = System.nanoTime();
+
+        List<Long> allIds = new ArrayList<>();
+        List<Long> expectedVisibleIds = new ArrayList<>();
+        for (String visibility : List.of("PUBLIC", "MEMBERS_ONLY")) {
+            for (String status : List.of("PUBLISHED", "DRAFT")) {
+                for (boolean deleted : List.of(false, true)) {
+                    for (int i = 0; i < 3; i++) {
+                        Long id = insertActivity("TEAM", teamId,
+                                "EQ32-" + visibility + "-" + status + "-" + deleted
+                                        + "-" + nonce + "-" + i,
+                                visibility, status, deleted, "10:00:00", "11:00:00", "等価性番人");
+                        allIds.add(id);
+                        if ("PUBLIC".equals(visibility) && "PUBLISHED".equals(status) && !deleted) {
+                            expectedVisibleIds.add(id);
+                        }
+                    }
+                }
+            }
+        }
+        em.flush();
+        em.clear();
+
+        assertThat(allIds).as("フィクスチャ要件: 8 組合せ × 3 件 = 24 行").hasSize(24);
+        assertThat(expectedVisibleIds).as("フィクスチャ要件: 通過すべきは (a) の 3 件のみ").hasSize(3);
+
+        // S: SQL 述語（門2）が返す集合
+        List<Long> sqlIds = resultRepository
+                .findPublicByScopeTypeAndScopeId(
+                        ActivityScopeType.TEAM, teamId, PageRequest.of(0, 100))
+                .getContent().stream().map(ActivityResultEntity::getId).toList();
+
+        // F: F00 ContentVisibilityChecker（門3）が匿名に対して返す集合
+        Set<Long> f00Ids = contentVisibilityChecker.filterAccessible(
+                ReferenceType.ACTIVITY_RESULT, Set.copyOf(allIds), null);
+
+        assertThat(sqlIds)
+                .as("S（SQL 述語）は PUBLIC × PUBLISHED × 未削除 の 3 件のみであること")
+                .containsExactlyInAnyOrderElementsOf(expectedVisibleIds);
+        assertThat(sqlIds)
+                .as("S == F: SQL 述語（門2）と F00 可視性（門3）の判定が匿名に対して厳密一致すること。"
+                        + "片方だけが変わったらここが落ちる（本 PR の安全性の全体）")
+                .containsExactlyInAnyOrderElementsOf(f00Ids);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［欠陥2: 認証済み経路の総件数］AC-33
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-33) 認証済み一覧 {@code listActivities} の総件数がページ内件数に化けないこと。
+     *
+     * <p>旧実装は {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、
+     * 55 件あってもページャが「20 件・1 ページ」に見え 2 ページ目へ辿り着けなかった。
+     * 是正後は {@code TournamentService} と同じ流儀
+     * （DB 総件数 − このページで落ちた件数）で算出する。</p>
+     *
+     * <p><b>認証済み経路の歯抜けは本 PR の対象外</b>（後続戦役）。認証済みでは F00 のラダーが
+     * 縮退しないため SQL 化すると本物の独自述語になってしまう。よって総件数は
+     * 「実公開件数 ≦ 総件数 ≦ 全行数」の上界近似のままであり、本 AC もその幅
+     * （50 以上 55 以下）で固定する。旧バグ（20 への化け）だけは明示的に禁止する。</p>
+     */
+    @Test
+    @DisplayName("(AC-33) 認証済み一覧の総件数がページ内件数20に化けない（50以上55以下・他人のDRAFTは非表示）")
+    void ac33_認証済み一覧の総件数がページ内件数に化けない() {
+        Long teamId = insertTeam("認証済み総件数チーム", "act-total33-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        Long viewerUserId = 555_001L;
+        insertMembership(viewerUserId, "TEAM", teamId);
+
+        long nonce = System.nanoTime();
+        List<Long> othersDraftIds = new ArrayList<>();
+        // 公開 50 件 + 他人（created_by = SECRET_CREATED_BY）が作成した DRAFT 5 件を交互に投入
+        for (int i = 0; i < 50; i++) {
+            insertActivity("TEAM", teamId, "AC33-public-" + nonce + "-" + i,
+                    "PUBLIC", "PUBLISHED", false, "10:00:00", "11:00:00", "公開");
+            if (i % 10 == 0) {
+                othersDraftIds.add(insertActivity("TEAM", teamId, "AC33-others-draft-" + nonce + "-" + i,
+                        "PUBLIC", "DRAFT", false, "10:00:00", "11:00:00", "他人の下書き"));
+            }
+        }
+        em.flush();
+        em.clear();
+
+        assertThat(othersDraftIds).as("フィクスチャ要件: 他人の DRAFT が 5 件").hasSize(5);
+        assertThat(viewerUserId).as("フィクスチャ要件: 閲覧者は DRAFT の作成者ではないこと")
+                .isNotEqualTo(SECRET_CREATED_BY);
+
+        Page<ActivityResultEntity> page = activityResultService.listActivities(
+                viewerUserId, ActivityScopeType.TEAM, teamId, null, PageRequest.of(0, 20));
+
+        assertThat(page.getTotalElements())
+                .as("旧バグ禁止: 総件数がページ内件数(20)に化けていないこと")
+                .isNotEqualTo(20L);
+        assertThat(page.getTotalElements())
+                .as("総件数は実公開件数(50) 以上・全行数(55) 以下であること（認証済み経路は上界近似のまま）")
+                .isBetween(50L, 55L);
+        assertThat(page.getContent().stream().map(ActivityResultEntity::getId).toList())
+                .as("他人が作成した DRAFT が 1 件も含まれないこと")
+                .doesNotContainAnyElementsOf(othersDraftIds);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［性能］AC-34 / AC-29a
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-34) 一覧取得が N+1 にならないこと（<b>混在フィクスチャ版</b>。旧 AC-28 の後継）。
      *
      * <p>Hibernate {@link Statistics#getPrepareStatementCount()} で JDBC ステートメント数を計測し、
      * <b>件数を変えてもクエリ数が一定</b>であることを検証する（絶対数ではなく不変性で見るため、
-     * 実装が増える将来の SQL 追加に強い）。親スコープ（team/org）の公開性を記録ごとに
-     * 引くような実装を入れると即座に破綻する。</p>
+     * 実装が増える将来の SQL 追加に強い）。親スコープ（team/org）の公開性や F00 の可視性判定を
+     * 記録ごとに引くような実装を入れると即座に破綻する。</p>
+     *
+     * <p>旧 AC-28 は全件公開のフィクスチャだったため「可視性で落ちる行がある状態」の
+     * SQL 数を検査できていなかった。公開 3 + 非公開 3 / 公開 30 + 非公開 30 の混在で計測する。</p>
      */
     @Test
-    @DisplayName("(AC-28) 一覧の親スコープ公開性チェックがN+1にならない（件数を変えてもクエリ数一定）")
-    void ac28_一覧の親スコープ公開性チェックがN1にならない() throws Exception {
+    @DisplayName("(AC-34) 混在フィクスチャでも一覧がN+1にならない（件数を変えてもクエリ数一定）")
+    void ac34_混在でも一覧がN1にならない() throws Exception {
         Long smallTeamId = insertTeam("N1小チーム", "act-n1s-team-" + System.nanoTime(),
                 "PUBLIC", false, false);
         Long largeTeamId = insertTeam("N1大チーム", "act-n1l-team-" + System.nanoTime(),
                 "PUBLIC", false, false);
-        seedBulkActivities("TEAM", smallTeamId, 3, "N1SMALL");
-        seedBulkActivities("TEAM", largeTeamId, 30, "N1LARGE");
+        List<Long> smallPublicIds = seedInterleaved(smallTeamId, "N1SMALL", 3, 1, 1, 1);
+        List<Long> largePublicIds = seedInterleaved(largeTeamId, "N1LARGE", 30, 10, 10, 10);
+        assertHiddenRowsOnFirstPage(smallTeamId, 50, Set.copyOf(smallPublicIds));
+        assertHiddenRowsOnFirstPage(largeTeamId, 50, Set.copyOf(largePublicIds));
         em.flush();
         em.clear();
 
         Statistics stats = statisticsCleared();
-        assertThat(listSize(smallTeamId, "50")).as("小チームは 3 件返る").isEqualTo(3);
+        assertThat(listSize(smallTeamId, "50")).as("小チームは公開 3 件返る").isEqualTo(3);
         long smallStatements = stats.getPrepareStatementCount();
 
         em.clear();
         stats.clear();
-        assertThat(listSize(largeTeamId, "50")).as("大チームは 30 件返る").isEqualTo(30);
+        assertThat(listSize(largeTeamId, "50")).as("大チームは公開 30 件返る").isEqualTo(30);
         long largeStatements = stats.getPrepareStatementCount();
 
         assertThat(largeStatements)
-                .as("公開記録 3 件（%d 本）と 30 件（%d 本）で発行 SQL 数が一定であること（N+1 禁止）",
-                        smallStatements, largeStatements)
+                .as("公開 3 + 非公開 3（%d 本）と 公開 30 + 非公開 30（%d 本）で発行 SQL 数が"
+                        + "一定であること（N+1 禁止）", smallStatements, largeStatements)
                 .isEqualTo(smallStatements);
+    }
+
+    /**
+     * (AC-35) {@code limit} の丸めが混在フィクスチャでも正しく、<b>返却全件が公開(a)</b>であること
+     * （旧 AC-25 / AC-26 の後継）。
+     *
+     * <p>旧 AC-25 / AC-26 は投入した行がすべて PUBLIC + PUBLISHED だったため、
+     * メモリ側フィルタが 1 件も落とさず「歯抜け」が構造的に起きないフィクスチャだった。
+     * これが欠陥1（ページング歯抜け）を素通りさせた直接の原因である。
+     * 公開 120 件・非公開 40 件の交互配置で再検査する。</p>
+     */
+    @Test
+    @DisplayName("(AC-35) 混在フィクスチャで limit 丸め（100/101/0/-1）が正しく全件が公開")
+    void ac35_混在でのlimit境界値() throws Exception {
+        Long teamId = insertTeam("境界値混在チーム", "act-bound35-" + System.nanoTime(),
+                "PUBLIC", false, false);
+        List<Long> publicIds = seedInterleaved(teamId, "BOUND35", 120, 20, 10, 10);
+        assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
+
+        assertLimitReturnsOnlyPublic(teamId, "100", 100, publicIds);
+        assertLimitReturnsOnlyPublic(teamId, "101", 100, publicIds);
+        assertLimitReturnsOnlyPublic(teamId, "100000", 100, publicIds);
+        assertLimitReturnsOnlyPublic(teamId, "0", 20, publicIds);
+        assertLimitReturnsOnlyPublic(teamId, "-1", 20, publicIds);
+        assertLimitReturnsOnlyPublic(teamId, "-100", 20, publicIds);
     }
 
     /**
@@ -702,102 +1028,316 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         assertThat(page.getTotalPages()).as("総ページ数は 3").isEqualTo(3);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［COMMITTEE スコープ］AC-37
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * (AC-29b) 非公開が<b>後続ページ</b>に混ざるとき、総件数は<b>上界近似</b>になること。
+     * (AC-37) {@link ActivityScopeType#COMMITTEE} スコープの記録は、
+     * {@code visibility=PUBLIC} かつ {@code status=PUBLISHED} であっても公開 EP から一律 404。
      *
-     * <p>実装は「DB が算出した総件数 − <b>このページで</b> F00 が落とした件数」を返す。
-     * 1 ページ目が全件公開なら差し引きは 0 となり、後続ページに潜む非公開の分だけ
-     * 総件数は実際の公開件数より多く出る（{@code ActivityResultService#listPublicActivities}
-     * の Javadoc「既知の近似」）。</p>
+     * <p><b>なぜ必要か</b>: 実装（{@code PublicActivityQueryService#resolvePublicScopeRefOrThrow}）は
+     * {@code case COMMITTEE -> Optional.empty()} で fail-closed になっており、Javadoc にも
+     * 「COMMITTEE は公開ページを持たないため常に 404（将来公開対象になったらここに分岐を追加する）」と
+     * 書かれている。<b>しかし受け入れ条件も契約テストも存在しなかった</b>。
+     * 「たまたま今そう動いている」だけでは、誰かが将来この分岐に
+     * {@code case COMMITTEE -> committeeService.findPublicName(...)} を足した瞬間に
+     * 委員会の活動記録が黙って匿名公開される。本 AC はその一線を機械的に固定する。</p>
      *
-     * <p><b>この近似は殿の裁可により許容する</b>（総件数は HTTP 契約に露出しないため）。
-     * ただし「許容すること」と「検査しないこと」は別である。近似の<b>幅</b>
-     * （実公開件数 ≦ 総件数 ≦ 全行数）を固定し、旧バグ（総件数がページ内件数 20 に化ける）や
-     * 逆方向の破綻（公開件数を下回る）が再発したら必ず落ちるようにする。</p>
+     * <p><b>フィクスチャの要点</b>: {@code scopeId} を公開チームと<b>同じ値</b>にしている。
+     * 「親スコープが実在しないから 404」ではなく「{@code scopeType} が COMMITTEE だから 404」
+     * であることを分離して検証するため。</p>
      *
-     * <p>データ配置: {@code id DESC} 並びのため<b>先に入れた行ほど後ろのページ</b>に来る。
-     * 非公開 5 件を先に入れ、公開 50 件を後から入れることで「1 ページ目は全件公開・
-     * 非公開は最終ページ」という配置を作る。</p>
+     * <p>ボディまで存在しない ID と一致することも確認する（AC-18 の存在秘匿を COMMITTEE にも及ぼす）。</p>
      */
     @Test
-    @DisplayName("(AC-29b) 非公開が後続ページに混ざると総件数は上界近似（実公開件数以上・全行数以下）になる")
-    void ac29b_非公開が後続ページなら総件数は上界近似になる() {
-        Long mixedTeamId = insertTeam("総件数混在チーム", "act-total-mix-" + System.nanoTime(),
-                "PUBLIC", false, false);
-        long nonce = System.nanoTime();
-        // 後続ページに来る非公開 5 件（MEMBERS_ONLY 3 + DRAFT 2）
-        for (int i = 0; i < 3; i++) {
-            insertActivity("TEAM", mixedTeamId, "MIX29B-hidden-mo-" + nonce + "-" + i,
-                    "MEMBERS_ONLY", "PUBLISHED", false, "10:00:00", "11:00:00", "非公開");
-        }
-        for (int i = 0; i < 2; i++) {
-            insertActivity("TEAM", mixedTeamId, "MIX29B-hidden-draft-" + nonce + "-" + i,
-                    "PUBLIC", "DRAFT", false, "10:00:00", "11:00:00", "下書き");
-        }
-        // 1 ページ目以降を埋める公開 50 件
-        seedBulkActivities("TEAM", mixedTeamId, 50, "MIX29B-public");
-        em.flush();
-        em.clear();
+    @DisplayName("(AC-37) COMMITTEEスコープの記録は公開EPから一律404（fail-closed）・ボディも区別不能")
+    void ac37_COMMITTEEスコープは公開EPから404() throws Exception {
+        // 前提の裏取り: この記録は PUBLIC + PUBLISHED + 未削除（＝ scopeType 以外に落ちる理由が無い）
+        ActivityResultEntity committee = resultRepository.findById(committeeActivityId).orElseThrow();
+        assertThat(committee.getScopeType()).as("フィクスチャ要件: COMMITTEE スコープ")
+                .isEqualTo(ActivityScopeType.COMMITTEE);
+        assertThat(committee.getVisibility()).as("フィクスチャ要件: visibility=PUBLIC")
+                .isEqualTo(ActivityVisibility.PUBLIC);
+        assertThat(committee.getStatus()).as("フィクスチャ要件: status=PUBLISHED")
+                .isEqualTo(ActivityStatus.PUBLISHED);
+        assertThat(committee.getScopeId())
+                .as("フィクスチャ要件: scopeId は公開チームと同値（落ちる理由を scopeType に限定する）")
+                .isEqualTo(publicTeamId);
 
-        Page<ActivityResultEntity> page = activityResultService.listPublicActivities(
-                ActivityScopeType.TEAM, mixedTeamId, PageRequest.of(0, 20));
+        // ID 直引き: 記録自身は公開でも、親スコープ解決が COMMITTEE で fail-closed になり 404
+        MvcResult committeeResult = perform(PUBLIC_ACTIVITY_BY_ID, committeeActivityId);
+        assertThat(committeeResult.getResponse().getStatus())
+                .as("COMMITTEE スコープの PUBLIC+PUBLISHED 記録も ID 直引きで 404").isEqualTo(404);
 
-        assertThat(page.getContent()).as("1 ページ目は 20 件").hasSize(20);
-        assertThat(page.getContent())
-                .as("1 ページ目に非公開（MEMBERS_ONLY / DRAFT）が混じらないこと")
-                .allSatisfy(e -> assertThat(e.getTitle()).startsWith("MIX29B-public"));
-        assertThat(page.getTotalElements())
-                .as("総件数は上界近似: 実公開件数(50) 以上・全行数(55) 以下であること"
-                        + "（旧バグのページ内件数 20 への化けを禁止する）")
-                .isBetween(50L, 55L);
+        // チーム / 組織パスからの取得もスコープ不一致で 404（scopeId が一致していても scopeType で落ちる）
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, committeeActivityId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, publicOrgId, committeeActivityId);
+
+        // 一覧にも現れない（TEAM 一覧は scopeType=TEAM で絞るため）
+        assertThat(idsOf(getData(TEAM_ACTIVITY_LIST, publicTeamId)))
+                .as("COMMITTEE の記録が同 scopeId のチーム一覧に混入しないこと")
+                .doesNotContain(committeeActivityId);
+
+        // 存在秘匿: ボディまで「存在しない ID」と同一であること
+        MvcResult missing = perform(PUBLIC_ACTIVITY_BY_ID, NON_EXISTENT_ACTIVITY_ID);
+        assertThat(committeeResult.getResponse().getContentAsString())
+                .as("COMMITTEE のボディが存在しない ID と一致すること（列挙オラクル封じ）")
+                .isEqualTo(missing.getResponse().getContentAsString());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［非数値パス変数］AC-38
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-38) 非数値のパス変数（{@code /api/v1/public/activities/abc}）は <b>400</b> のまま固定する。
+     *
+     * <h3>なぜこれは AC-18（存在秘匿）の穴ではないのか</h3>
+     * <p>AC-18 が封じているのは「<b>ID として妥当な値</b>を投げたとき、その記録が実在するかどうかを
+     * 攻撃者が学べてしまう」ことである。{@code abc} は<b>そもそも ID ではない</b>。
+     * Spring MVC の型変換（{@code String → Long}）がコントローラに入る<b>前</b>に失敗するため、
+     * activity_results への問い合わせは<b>一度も発生しない</b>。
+     * したがって攻撃者は「どの記録が存在するか」について何も学べず、
+     * 400 と 404 の差は<b>入力領域の違い（ID か否か）</b>であって
+     * <b>リソースの存在有無の違いではない</b>。</p>
+     *
+     * <p>実装の裏取り（{@code GlobalExceptionHandler#handleTypeMismatch}）:</p>
+     * <ul>
+     *   <li>パス変数名 {@code id} は {@code SCOPE_ID_PATH_VARS}（{@code organizationId} /
+     *       {@code orgId} / {@code teamId}）に含まれないため slug 解決の 404 補完に乗らず、
+     *       {@code 400 + CommonErrorCode.COMMON_001} を返す</li>
+     *   <li>ボディは {@code ErrorResponse.of(CommonErrorCode.COMMON_001)} の<b>定数</b>であり、
+     *       入力値・例外メッセージ・パラメータ名・要求型・スタックトレースを<b>一切含まない</b>
+     *       （{@code fieldErrors} は空配列）</li>
+     * </ul>
+     *
+     * <p>本 AC はその 2 点を機械的に固定する。<b>挙動を 404 に変えることはしない</b>
+     * （変えると「ID として妥当だが存在しない」ケースと区別がつかなくなる利点は無く、
+     * 型エラーの診断可能性だけを失う）。将来 400 のボディに例外詳細を載せる変更が入れば
+     * 本 AC が落ちる。</p>
+     */
+    @Test
+    @DisplayName("(AC-38) 非数値パス変数は400（COMMON_001）で固定・入力値をエコーせず内部情報も載せない")
+    void ac38_非数値パス変数は400で内部情報を漏らさない() throws Exception {
+        MvcResult abc = perform(PUBLIC_ACTIVITY_BY_ID, "abc");
+        String abcBody = abc.getResponse().getContentAsString();
+
+        assertThat(abc.getResponse().getStatus())
+                .as("非数値パス変数は 400（型変換エラー）").isEqualTo(400);
+        JsonNode error = objectMapper.readTree(abcBody).get("error");
+        assertThat(error).as("error オブジェクトが存在すること").isNotNull();
+        assertThat(error.get("code").asText()).as("エラーコードは COMMON_001").isEqualTo("COMMON_001");
+        assertThat(error.get("fieldErrors").size()).as("fieldErrors は空").isZero();
+
+        // 入力値のエコーバックが無いこと（反射型の情報露出・XSS 素地を作らない）
+        assertThat(abcBody).as("入力値 'abc' がボディにエコーされていないこと").doesNotContain("abc");
+        // 内部情報（例外クラス名・パッケージ名・スタックトレース）が載らないこと
+        assertThat(abcBody)
+                .as("内部情報（例外クラス・パッケージ・型名）がボディに載っていないこと")
+                .doesNotContain("NumberFormatException")
+                .doesNotContain("MethodArgumentTypeMismatch")
+                .doesNotContain("java.lang")
+                .doesNotContain("com.mannschaft")
+                .doesNotContain("Long");
+
+        // 別の非数値でもボディが完全一致 = 入力によって応答が変化しない（何も学べない）
+        MvcResult zzz = perform(PUBLIC_ACTIVITY_BY_ID, "zzz");
+        assertThat(zzz.getResponse().getStatus()).as("別の非数値も 400").isEqualTo(400);
+        assertThat(zzz.getResponse().getContentAsString())
+                .as("非数値どうしでボディが完全一致すること（入力から何も学べない）")
+                .isEqualTo(abcBody);
+
+        // Long の範囲を超える数値も同じく型変換エラー（ID 領域外）であり、挙動が一致すること
+        MvcResult overflow = perform(PUBLIC_ACTIVITY_BY_ID, "99999999999999999999");
+        assertThat(overflow.getResponse().getStatus())
+                .as("Long 範囲外の数値も 400（ID として成立しない入力領域）").isEqualTo(400);
+        assertThat(overflow.getResponse().getContentAsString())
+                .as("Long 範囲外でもボディが完全一致すること").isEqualTo(abcBody);
+
+        // 対比の明示: 「ID として妥当な値」どうし（存在しない / 非公開 / 削除済み）は
+        // AC-18 のとおり 404 かつボディまで同一である。400 はその集合の外側にいる。
+        assertThat(perform(PUBLIC_ACTIVITY_BY_ID, NON_EXISTENT_ACTIVITY_ID).getResponse().getStatus())
+                .as("ID として妥当な値は（存在しなくても）404 側に居ること").isEqualTo(404);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ［認証済みユーザーによる公開EP利用］AC-39 / AC-39b
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * (AC-39) <b>ログイン済みユーザー</b>が公開 EP を叩いても、匿名と同じものしか返らないこと。
+     *
+     * <p>公開ページをログイン状態で閲覧する / SNS のシェアリンクをログイン中に踏む、という経路は
+     * 必ず発生するのに未検査だった。検査すべきは 3 点:</p>
+     * <ol>
+     *   <li>401 / 403 にならず <b>200</b> が返ること（permitAll が認証済みリクエストを弾かない）</li>
+     *   <li>返る項目が匿名時と<b>まったく同じ 8 項目</b>であること
+     *       （認証済みだからといって余分な項目が漏れない）</li>
+     *   <li><b>認証済みでも {@code MEMBERS_ONLY} / {@code DRAFT} が公開 EP 経由では見えないこと</b>。
+     *       ここが最重要。閲覧者は {@code publicTeamId} の ACTIVE メンバーであり、
+     *       <b>認証済み経路でなら {@code MEMBERS_ONLY} を閲覧できる立場</b>だが、
+     *       公開 EP は公開分しか返してはならない</li>
+     * </ol>
+     *
+     * <p><b>なぜ「見る人によって内容が変わらない」ことが重要か</b>: 公開 EP は SSR / CDN /
+     * リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は
+     * キャッシュ汚染（あるユーザー向けの応答が他人に配られる）と意図しない露出の温床になる。
+     * 実装は {@code PublicActivityQueryService} が {@code canView(..., null)} /
+     * {@code filterAccessible(..., null)} と <b>userId を null 固定</b>で呼ぶことでこれを担保しており、
+     * 本 AC は「誰かがそこを {@code SecurityUtils.getCurrentUserIdOrNull()} に差し替えた」瞬間に落ちる。</p>
+     */
+    @Test
+    @WithMockUser(username = AUTH_USER)
+    @DisplayName("(AC-39) 認証済みでも公開EPは200・8項目のみ・メンバーでもMEMBERS_ONLY/DRAFTは見えない")
+    void ac39_認証済みでも公開EPの見え方が変わらない() throws Exception {
+        // 前提の裏取り: 閲覧者は当該チームの ACTIVE メンバーである
+        Number activeMemberships = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM memberships WHERE user_id = :uid "
+                                + "AND scope_type = 'TEAM' AND scope_id = :sid AND left_at IS NULL")
+                .setParameter("uid", AUTH_USER_ID)
+                .setParameter("sid", publicTeamId)
+                .getSingleResult();
+        assertThat(activeMemberships.longValue())
+                .as("フィクスチャ要件: 閲覧者は publicTeamId の ACTIVE メンバー"
+                        + "（＝認証済み経路でなら MEMBERS_ONLY を見られる立場）")
+                .isEqualTo(1L);
+
+        // (1)(2) 200 が返り、キー集合が匿名時と同じ 8 項目であること
+        JsonNode detail = getData(TEAM_ACTIVITY_DETAIL, publicTeamId, publishedPublicActivityId);
+        assertWhitelistedKeys(detail, "認証済みのチーム詳細");
+        JsonNode byId = getData(PUBLIC_ACTIVITY_BY_ID, publishedPublicActivityId);
+        assertWhitelistedKeys(byId, "認証済みの ID 直引き詳細");
+
+        MvcResult listResult = performOk(TEAM_ACTIVITY_LIST, publicTeamId);
+        String listBody = listResult.getResponse().getContentAsString();
+        JsonNode list = objectMapper.readTree(listBody).get("data");
+        assertThat(list.isArray()).as("認証済みでも一覧は配列").isTrue();
+        for (JsonNode item : list) {
+            assertWhitelistedKeys(item, "認証済みの一覧要素");
+        }
+        assertForbiddenKeysAbsent(detail, "認証済みのチーム詳細");
+        assertSecretValuesAbsent(listBody, "認証済みの一覧");
+
+        // (3)【最重要】メンバーであっても公開 EP 経由では MEMBERS_ONLY / DRAFT は見えない
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, membersOnlyActivityId);
+        expectNotFound(PUBLIC_ACTIVITY_BY_ID, membersOnlyActivityId);
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, draftPublicActivityId);
+        expectNotFound(PUBLIC_ACTIVITY_BY_ID, draftPublicActivityId);
+        expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, deletedActivityId);
+
+        assertThat(idsOf(list))
+                .as("認証済み（かつメンバー）でも公開一覧に MEMBERS_ONLY / DRAFT / 削除済みが現れないこと")
+                .doesNotContain(membersOnlyActivityId, draftPublicActivityId, deletedActivityId);
     }
 
     /**
-     * (AC-29c) 非公開が<b>1 ページ目</b>に混ざるとき、その分は総件数から差し引かれること。
+     * (AC-39b) 認証済みと匿名で<b>レスポンスボディが 1 バイトも違わない</b>こと。
      *
-     * <p>AC-29b と対になる検査。実装の {@code allPage.getTotalElements() - removedInThisPage}
-     * という減算が実際に効いていることを固定する（減算を落とすと総件数が 55 のままになり本テストが落ちる）。</p>
+     * <p>AC-39 が「余分な項目が出ない」を見るのに対し、本 AC は「<b>公開 URL の応答が
+     * 閲覧者に依存しない</b>」という、より強い不変条件を丸ごと固定する
+     * （キャッシュ汚染耐性の本体）。詳細・ID 直引き・一覧の 3 経路すべてで比較する。</p>
      *
-     * <p>データ配置: {@code id DESC} 並びなので<b>後から入れた行ほど 1 ページ目</b>に来る。
-     * 公開 50 件を先に入れ、非公開 5 件を後から入れることで「1 ページ目に非公開 5 件が乗る」配置を作る。</p>
+     * <p><b>前提の裏取り込み</b>: 「認証済みのつもりが実は匿名だった」ならボディは当然一致してしまい、
+     * この AC は<b>偽の緑</b>になる。それを防ぐため、同じ post-processor を認証必須 EP
+     * （{@code GET /api/v1/activities}）に当て、<b>匿名なら 401・認証済みなら 200</b> になることを
+     * 先に確認してから本題の比較へ進む。</p>
      */
     @Test
-    @DisplayName("(AC-29c) 非公開が1ページ目に混ざるとその件数分が総件数から差し引かれる")
-    void ac29c_非公開が1ページ目なら総件数から差し引かれる() {
-        Long mixedTeamId = insertTeam("総件数先頭混在チーム", "act-total-mix2-" + System.nanoTime(),
-                "PUBLIC", false, false);
-        // 先に公開 50 件（＝後ろのページに来る）
-        seedBulkActivities("TEAM", mixedTeamId, 50, "MIX29C-public");
-        // 後から非公開 5 件（＝1 ページ目に来る）
-        long nonce = System.nanoTime();
-        for (int i = 0; i < 3; i++) {
-            insertActivity("TEAM", mixedTeamId, "MIX29C-hidden-mo-" + nonce + "-" + i,
-                    "MEMBERS_ONLY", "PUBLISHED", false, "10:00:00", "11:00:00", "非公開");
-        }
-        for (int i = 0; i < 2; i++) {
-            insertActivity("TEAM", mixedTeamId, "MIX29C-hidden-draft-" + nonce + "-" + i,
-                    "PUBLIC", "DRAFT", false, "10:00:00", "11:00:00", "下書き");
-        }
-        em.flush();
-        em.clear();
+    @DisplayName("(AC-39b) 認証済みと匿名でレスポンスボディが完全一致（閲覧者で内容が変わらない）")
+    void ac39b_認証済みと匿名でボディが完全一致() throws Exception {
+        // ── 前提の裏取り: post-processor が本当に認証を成立させていること ──
+        // これを省くと「認証済みのつもりが実は匿名」でもボディは当然一致し、本 AC が偽の緑になる。
+        int anonymousStatus = mockMvc.perform(get(AUTHENTICATED_ACTIVITY_LIST)
+                        .param("scope_type", "TEAM")
+                        .param("scope_id", String.valueOf(publicTeamId)))
+                .andReturn().getResponse().getStatus();
+        int authenticatedStatus = mockMvc.perform(get(AUTHENTICATED_ACTIVITY_LIST)
+                        .param("scope_type", "TEAM")
+                        .param("scope_id", String.valueOf(publicTeamId))
+                        .with(user(AUTH_USER)))
+                .andReturn().getResponse().getStatus();
+        assertThat(anonymousStatus)
+                .as("認証必須 EP（%s）は匿名だと 401 で弾かれること", AUTHENTICATED_ACTIVITY_LIST)
+                .isEqualTo(401);
+        assertThat(authenticatedStatus)
+                .as("同じ post-processor を当てると 401 でなくなること"
+                        + "（＝以降の比較で使う認証が本当に成立している証拠）")
+                .isNotEqualTo(401);
 
-        Page<ActivityResultEntity> page = activityResultService.listPublicActivities(
-                ActivityScopeType.TEAM, mixedTeamId, PageRequest.of(0, 20));
-
-        assertThat(page.getContent())
-                .as("1 ページ目 20 行のうち非公開 5 件が除かれ 15 件になること").hasSize(15);
-        assertThat(page.getContent())
-                .as("除去後は公開記録のみであること")
-                .allSatisfy(e -> assertThat(e.getTitle()).startsWith("MIX29C-public"));
-        assertThat(page.getTotalElements())
-                .as("総件数は全行数(55) から このページで落とした 5 件を引いた 50 であること"
-                        + "（このケースは実公開件数と一致する）")
-                .isEqualTo(50L);
+        // ── 本題: 公開 EP は匿名と認証済みで完全に同じ応答を返す ──
+        assertSameBodyAnonymousAndAuthenticated(
+                "チーム詳細", TEAM_ACTIVITY_DETAIL, publicTeamId, publishedPublicActivityId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "ID 直引き詳細", PUBLIC_ACTIVITY_BY_ID, publishedPublicActivityId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "チーム一覧", TEAM_ACTIVITY_LIST, publicTeamId);
+        assertSameBodyAnonymousAndAuthenticated(
+                "組織詳細", ORG_ACTIVITY_DETAIL, publicOrgId, orgPublicActivityId);
+        // 非公開のもの（404）も、匿名と認証済みでステータス・ボディともに一致すること
+        assertSameBodyAnonymousAndAuthenticated(
+                "MEMBERS_ONLY の 404", TEAM_ACTIVITY_DETAIL, publicTeamId, membersOnlyActivityId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // アサーションヘルパ
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * AC-39b: 同一 URL を「匿名」と「認証済み（{@value #AUTH_USER}）」で叩き、
+     * ステータスとボディが完全一致することを検証する。
+     */
+    private void assertSameBodyAnonymousAndAuthenticated(String where, String path, Object... uriVars)
+            throws Exception {
+        MvcResult anonymous = mockMvc.perform(get(path, uriVars)).andReturn();
+        MvcResult authenticated = mockMvc.perform(get(path, uriVars).with(user(AUTH_USER))).andReturn();
+
+        assertThat(authenticated.getResponse().getStatus())
+                .as("%s: 認証済みでもステータスが匿名と一致すること", where)
+                .isEqualTo(anonymous.getResponse().getStatus());
+        assertThat(authenticated.getResponse().getContentAsString())
+                .as("%s: 認証済みでもボディが匿名と 1 バイトも違わないこと"
+                        + "（公開 URL の応答が閲覧者に依存しない＝キャッシュ汚染耐性）", where)
+                .isEqualTo(anonymous.getResponse().getContentAsString());
+    }
+
+    /**
+     * AC-35: 指定 {@code limit} で一覧を叩き、件数が期待どおりで<b>返却全件が公開(a)</b>であることを検証する。
+     */
+    private void assertLimitReturnsOnlyPublic(Long teamId, String limit, int expectedSize,
+                                              List<Long> publicIds) throws Exception {
+        List<Long> ids = listIds(teamId, limit);
+        assertThat(ids).as("limit=%s の返却件数", limit).hasSize(expectedSize);
+        assertThat(ids).as("limit=%s: 返却された全件が公開(a)であること", limit).isSubsetOf(publicIds);
+        assertThat(ids).as("limit=%s: id の重複が無いこと", limit).doesNotHaveDuplicates();
+    }
+
+    /**
+     * <b>フィクスチャ自己検査</b>: 可視性で絞る<b>前</b>の生の並び順
+     * （{@code activityDate DESC, id DESC}）の先頭 {@code pageSize} 行に、
+     * 非公開行が必ず食い込んでいることを検証する。
+     *
+     * <p>旧 AC-25 は 101 件すべてを PUBLIC + PUBLISHED で投入していたため、
+     * 取得後のメモリフィルタが 1 件も落とさず「歯抜け」が構造的に発生しなかった。
+     * その結果、欠陥1 を素通りさせた。<b>ページング系 AC は必ず本メソッドで
+     * フィクスチャの妥当性を先に固定する</b>こと。</p>
+     *
+     * <p>なお論理削除(d) は {@code @SQLRestriction("deleted_at IS NULL")} により
+     * 生の並び順にも現れないため、ここで食い込みを担うのは (b) MEMBERS_ONLY と
+     * (c) PUBLIC+DRAFT である。</p>
+     */
+    private void assertHiddenRowsOnFirstPage(Long teamId, int pageSize, Set<Long> publicIds) {
+        em.flush();
+        em.clear();
+        List<Long> rawFirstPage = resultRepository
+                .findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                        ActivityScopeType.TEAM, teamId, PageRequest.of(0, pageSize))
+                .getContent().stream().map(ActivityResultEntity::getId).toList();
+        assertThat(rawFirstPage)
+                .as("フィクスチャ要件: 絞り込み前の先頭 %d 行に非公開行が食い込んでいること"
+                        + "（全件公開だと歯抜けが再現せず AC が無効になる）", pageSize)
+                .anyMatch(id -> !publicIds.contains(id));
+    }
 
     /** AC-8: JSON ノードのキー集合が許可 8 項目と完全一致することを検証する（ホワイトリスト）。 */
     private void assertWhitelistedKeys(JsonNode node, String where) {
@@ -872,12 +1412,29 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
 
     /** 一覧を limit 指定で叩き、返却件数を返す（200 必須）。 */
     private int listSize(Long teamId, String limit) throws Exception {
+        return listIds(teamId, limit).size();
+    }
+
+    /** 一覧を limit 指定で叩き、返却 id を並び順のまま返す（200 必須）。 */
+    private List<Long> listIds(Long teamId, String limit) throws Exception {
         MvcResult result = mockMvc.perform(get(TEAM_ACTIVITY_LIST, teamId).param("limit", limit))
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
         assertThat(data.isArray()).as("data は配列であること（limit=%s）", limit).isTrue();
-        return data.size();
+        return idsOf(data);
+    }
+
+    /**
+     * AC-31b: 公開一覧の指定ページを Service 経由で取得し id を返す。
+     *
+     * <p>HTTP 契約は 1 ページ目しか露出しない（{@code limit} のみでページ番号を取らない）ため、
+     * ページ通しの重複・取りこぼしは Service の {@link Page} で検証する。</p>
+     */
+    private List<Long> pageIds(Long teamId, int pageNumber, int pageSize) {
+        return activityResultService.listPublicActivities(
+                        ActivityScopeType.TEAM, teamId, PageRequest.of(pageNumber, pageSize))
+                .getContent().stream().map(ActivityResultEntity::getId).toList();
     }
 
     private Statistics statisticsCleared() {
@@ -1011,6 +1568,85 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         }
         em.flush();
         em.clear();
+    }
+
+    /**
+     * <b>ページング系 AC 共通の混在フィクスチャ</b>。4 種の行を<b>交互に</b>投入する。
+     *
+     * <table>
+     *   <caption>投入する 4 種</caption>
+     *   <tr><th>種別</th><th>visibility</th><th>status</th><th>deleted_at</th><th>匿名から見えるか</th></tr>
+     *   <tr><td>(a)</td><td>PUBLIC</td><td>PUBLISHED</td><td>NULL</td><td>見える（唯一の正解）</td></tr>
+     *   <tr><td>(b)</td><td>MEMBERS_ONLY</td><td>PUBLISHED</td><td>NULL</td><td>見えない</td></tr>
+     *   <tr><td>(c)</td><td>PUBLIC</td><td>DRAFT</td><td>NULL</td><td>見えない</td></tr>
+     *   <tr><td>(d)</td><td>PUBLIC</td><td>PUBLISHED</td><td>NOT NULL</td><td>見えない</td></tr>
+     * </table>
+     *
+     * <p>並び順は {@code activityDate DESC, id DESC}（全行が同一日付のため実質 id DESC）なので、
+     * <b>後から入れた行ほど先頭ページに来る</b>。4 種を件数比に応じたラウンドロビンで
+     * 均等に混ぜることで、非公開行が必ず先頭ページに食い込む配置になる。
+     * この配置は {@link #assertHiddenRowsOnFirstPage} で各 AC が明示的に自己検査する。</p>
+     *
+     * @return 公開(a) 行の id を<b>一覧の並び順（id DESC）</b>で並べたリスト
+     */
+    private List<Long> seedInterleaved(Long teamId, String tag, int publicCount,
+                                       int membersOnlyCount, int draftCount, int deletedCount) {
+        int[] planned = { publicCount, membersOnlyCount, draftCount, deletedCount };
+        String[][] spec = {
+                { "PUBLIC", "PUBLISHED", "false" },      // (a) 公開
+                { "MEMBERS_ONLY", "PUBLISHED", "false" }, // (b) 会員限定
+                { "PUBLIC", "DRAFT", "false" },           // (c) 下書き
+                { "PUBLIC", "PUBLISHED", "true" },        // (d) 論理削除
+        };
+        int total = publicCount + membersOnlyCount + draftCount + deletedCount;
+        int[] issued = new int[4];
+        long nonce = System.nanoTime();
+        List<Long> publicIds = new ArrayList<>();
+
+        for (int n = 0; n < total; n++) {
+            // 「予定件数に対する消化率」が最小の種別を選ぶ = 件数比に応じた決定的なラウンドロビン
+            int kind = -1;
+            double bestRatio = Double.MAX_VALUE;
+            for (int k = 0; k < 4; k++) {
+                if (issued[k] >= planned[k]) {
+                    continue;
+                }
+                double ratio = (double) issued[k] / planned[k];
+                if (ratio < bestRatio) {
+                    bestRatio = ratio;
+                    kind = k;
+                }
+            }
+            issued[kind]++;
+            Long id = insertActivity("TEAM", teamId,
+                    tag + "-k" + kind + "-" + nonce + "-" + n,
+                    spec[kind][0], spec[kind][1], Boolean.parseBoolean(spec[kind][2]),
+                    "10:00:00", "11:00:00", "混在フィクスチャ");
+            if (kind == 0) {
+                publicIds.add(id);
+            }
+        }
+        em.flush();
+        em.clear();
+
+        // 一覧の並び順（activityDate DESC, id DESC）に合わせて id 降順で返す
+        return publicIds.stream().sorted(Comparator.reverseOrder()).toList();
+    }
+
+    /**
+     * AC-33: memberships に ACTIVE な行を 1 件挿入する
+     * （{@code AccessControlService#isMember} は memberships を参照する。F00.5 Phase 3）。
+     */
+    private void insertMembership(Long userId, String scopeType, Long scopeId) {
+        em.createNativeQuery(
+                        "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, "
+                                + "joined_at, created_at, updated_at) "
+                                + "VALUES (:userId, '" + scopeType + "', :scopeId, 'MEMBER', "
+                                + "NOW(), NOW(), NOW())")
+                .setParameter("userId", userId)
+                .setParameter("scopeId", scopeId)
+                .executeUpdate();
+        em.flush();
     }
 
 }

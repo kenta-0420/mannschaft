@@ -18,6 +18,7 @@ import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
+import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
 import com.mannschaft.app.schedule.dto.AttendanceSummaryResponse;
@@ -524,13 +525,36 @@ public class ScheduleAttendanceService {
      *
      * @param scheduleId 対象予定 schedules.id
      */
+    @Transactional
+    public void openAttendanceSolicitation(Long scheduleId) {
+        openAttendanceSolicitation(scheduleId, AttendanceSolicitationSettings.NONE);
+    }
+
+    /**
+     * 出欠設定を適用しつつ出欠募集を開始する（機能55 / Issue #2508 欠陥B）。
+     *
+     * <p>予約出欠募集（{@code payload_json}）でユーザーが指定した回答締切・コメント要否・
+     * 最低応答ロールを、募集開始のタイミングで予定本体へ適用してから募集を行う。
+     * {@code settings} の各項目は <b>null = 未指定</b> で、その場合は予定の既存値を保つ。</p>
+     *
+     * <p><b>回帰防止</b>: 以前は materialize バッチが {@code payload_json} を一度も読まず、
+     * ユーザーが指定した設定が保存されるだけで一切適用されなかった。設定を引数で受け取ることで
+     * 「経路の途中で黙って捨てられる」ことを構造的に防ぐ。</p>
+     *
+     * <p>設定の適用は冪等性ガード（既に出欠レコードがある場合のスキップ）よりも <b>前</b> に行う。
+     * 募集が既に開始済みでも、予約された時刻に指定どおりの締切へ更新されるべきだからである。</p>
+     *
+     * @param scheduleId 対象予定 schedules.id
+     * @param settings   募集開始時に適用する出欠設定（null 不可。設定なしは
+     *                   {@link AttendanceSolicitationSettings#NONE}）
+     */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。機能55: 2026-06-01
     // NOTE: (B) 組織→参加チーム配信 案C フェーズAで、ORGANIZATION スコープの宛先解決のみ
     //       organization ドメインの窓口 OrganizationMembershipService.resolveOrgDistributionUserIds
     //       経由に部分是正済み（team_org_memberships / memberships 直参照を排除）。
     //       TEAM スコープは従来どおり UserRoleRepository.findUserIdsByScope を使う。
     @Transactional
-    public void openAttendanceSolicitation(Long scheduleId) {
+    public void openAttendanceSolicitation(Long scheduleId, AttendanceSolicitationSettings settings) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
 
         String scopeType;
@@ -545,6 +569,17 @@ public class ScheduleAttendanceService {
             // PERSONAL スコープには出欠募集の概念が無い
             log.debug("出欠募集スキップ（PERSONALスコープ）: scheduleId={}", scheduleId);
             return;
+        }
+
+        // 予約時に指定された出欠設定を予定へ適用する（未指定項目は既存値を保つ）。
+        // 冪等性ガードより前に行い、募集済みでも予約された設定が確実に反映されるようにする。
+        if (settings != null && !settings.isEmpty()) {
+            schedule.applyAttendanceSolicitationSettings(
+                    settings.attendanceDeadline(), settings.commentOption(), settings.minResponseRole());
+            scheduleRepository.save(schedule);
+            log.info("出欠募集設定を適用: scheduleId={}, deadline={}, commentOption={}, minResponseRole={}",
+                    scheduleId, settings.attendanceDeadline(),
+                    settings.commentOption(), settings.minResponseRole());
         }
 
         // 冪等性ガード: 既に出欠レコードが生成済みなら何もしない（二重募集防止）

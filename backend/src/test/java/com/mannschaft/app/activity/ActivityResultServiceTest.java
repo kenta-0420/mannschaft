@@ -34,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -149,25 +150,64 @@ class ActivityResultServiceTest {
         }
     }
 
+    /**
+     * 公開活動記録一覧（匿名）の単体テスト。
+     *
+     * <p><b>書き換えの理由</b>: 旧テストは
+     * {@code findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc}（スコープ配下の全行）を
+     * モックし、「取得後にメモリで F00 フィルタする」旧実装をそのまま写していた。
+     * この構造こそが<b>ページング歯抜け</b>（1 ページ分を取ってから落とすので補充されない）の
+     * 原因だったため、SQL 述語（{@code findPublicByScopeTypeAndScopeId}）に載せ替えた
+     * 新実装に合わせて書き換える。F00 は<b>第二の門</b>として残り、通常は 1 件も落とさない。</p>
+     */
     @Nested
     @DisplayName("listPublicActivities")
     class ListPublicActivities {
 
-        @Test
-        @DisplayName("未認証: ContentVisibilityChecker が公開と判定した活動のみ返す")
-        void 未認証_公開判定済みのみ返す() {
-            ActivityResultEntity pub = ActivityResultEntity.builder()
-                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("公開活動").build();
-            ActivityResultEntity priv = ActivityResultEntity.builder()
-                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("非公開活動").build();
-            ReflectionTestUtils.setField(pub, "id", 1L);
-            ReflectionTestUtils.setField(priv, "id", 2L);
+        private ActivityResultEntity entityWithId(long id, String title) {
+            ActivityResultEntity e = ActivityResultEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title(title).build();
+            ReflectionTestUtils.setField(e, "id", id);
+            return e;
+        }
 
-            Page<ActivityResultEntity> allPage = new PageImpl<>(List.of(pub, priv));
-            given(resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+        @Test
+        @DisplayName("SQL述語で絞った行はF00（第二の門）も全件通し、総件数はSQLの実総数がそのまま出る")
+        void SQL述語で絞った行はF00も全件通す() {
+            ActivityResultEntity a = entityWithId(1L, "公開活動A");
+            ActivityResultEntity b = entityWithId(2L, "公開活動B");
+
+            // SQL 述語（visibility=PUBLIC AND status=PUBLISHED）で既に絞られた 2 件。
+            // 総件数 55 = 公開記録の実総数（歯抜けもページ内件数への化けも無い）。
+            given(resultRepository.findPublicByScopeTypeAndScopeId(
                     ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
-                    .willReturn(allPage);
-            // userId=null（未認証）で PUBLIC(1L) のみ通過、MEMBERS_ONLY(2L) は拒否
+                    .willReturn(new PageImpl<>(List.of(a, b), PageRequest.of(0, 10), 55L));
+            // 第二の門（userId=null = 未認証）。SQL と一致するので 1 件も落とさないのが正常。
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.ACTIVITY_RESULT, Set.of(1L, 2L), null))
+                    .willReturn(Set.of(1L, 2L));
+
+            Page<ActivityResultEntity> result = service.listPublicActivities(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10));
+
+            assertThat(result.getContent())
+                    .extracting(ActivityResultEntity::getId)
+                    .containsExactly(1L, 2L);
+            assertThat(result.getTotalElements())
+                    .as("総件数は SQL が算出した実総数（ページ内件数 2 に化けない）")
+                    .isEqualTo(55L);
+        }
+
+        @Test
+        @DisplayName("F00がSQL述語と乖離した場合はfail-closed（落とした行は返さず総件数からも引く）")
+        void F00と乖離したらfail_closedで落とす() {
+            ActivityResultEntity a = entityWithId(1L, "公開活動A");
+            ActivityResultEntity b = entityWithId(2L, "乖離した活動B");
+
+            given(resultRepository.findPublicByScopeTypeAndScopeId(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
+                    .willReturn(new PageImpl<>(List.of(a, b), PageRequest.of(0, 10), 55L));
+            // 本来ありえない乖離（SQL は通したが F00 が拒否）。fail-closed で返さない。
             given(contentVisibilityChecker.filterAccessible(
                     ReferenceType.ACTIVITY_RESULT, Set.of(1L, 2L), null))
                     .willReturn(Set.of(1L));
@@ -176,15 +216,18 @@ class ActivityResultServiceTest {
                     ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10));
 
             assertThat(result.getContent())
-                    .hasSize(1)
+                    .as("F00 が落とした行は返さない（fail-closed を維持）")
                     .extracting(ActivityResultEntity::getId)
                     .containsExactly(1L);
+            assertThat(result.getTotalElements())
+                    .as("乖離して落とした 1 件は総件数からも差し引く")
+                    .isEqualTo(54L);
         }
 
         @Test
         @DisplayName("空ページ: リポジトリが空なら Checker を呼ばず空ページを返す")
         void 空ページ_Checker不呼び出し_空返却() {
-            given(resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+            given(resultRepository.findPublicByScopeTypeAndScopeId(
                     ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
                     .willReturn(Page.empty());
 
@@ -192,6 +235,8 @@ class ActivityResultServiceTest {
                     ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10));
 
             assertThat(result.getContent()).isEmpty();
+            verify(contentVisibilityChecker, never())
+                    .filterAccessible(any(), any(), any());
         }
     }
 

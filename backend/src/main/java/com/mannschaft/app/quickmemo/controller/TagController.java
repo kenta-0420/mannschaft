@@ -3,6 +3,7 @@ package com.mannschaft.app.quickmemo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.quickmemo.dto.CreateTagRequest;
 import com.mannschaft.app.quickmemo.dto.TagResponse;
 import com.mannschaft.app.quickmemo.dto.UpdateTagRequest;
@@ -39,7 +40,22 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>URL パスのスコープと DB 上の {@code tag.scope_type} / {@code tag.scope_id} の一致は
  * {@code TagService} の {@code findByIdAndScopeTypeAndScopeId} により担保されており、
- * 他スコープの {@code tagId} を指した越境は 404（TAG_NOT_FOUND）となる。</p>
+ * 他スコープの {@code tagId} を指した越境は 404（TAG_NOT_FOUND）となる。
+ * この 404 は {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} への
+ * {@code QM_010} 登録によって成立する（未登録だと Severity.WARN 既定の 400 になり、
+ * 宣言と実挙動が乖離する）。</p>
+ *
+ * <p><b>認可根拠（PERSONAL 系 4 EP の {@link AuthorizedInService}）</b>:
+ * PERSONAL 系は scopeId をクライアントから受け取らず常に
+ * {@link SecurityUtils#getCurrentUserId()} を渡すため構造的に越境不能であり、
+ * ID を伴う更新・削除も {@code TagService} が
+ * {@code findByIdAndScopeTypeAndScopeId(tagId, "PERSONAL", userId)}
+ * （updateTag: TagService.java:93 / deleteTag: TagService.java:121）で
+ * 引き当てるため他ユーザーのタグには到達できない。
+ * TEAM / ORGANIZATION 系と異なり {@code @PreAuthorize} を持たないため
+ * 認可番人の呼び出しグラフ判定では認可シグナルとして検出されない。よって
+ * 監査済マーカーで明示承認し、回帰は {@code QuickMemoTagScopeContractIT} の
+ * PERSONAL スコープ節で固定する。</p>
  *
  * <p><b>注記</b>: {@code @Operation} summary が言及する {@code MANAGE_TAG} permission は
  * {@code permissions} テーブルにも Java 定数にも存在しないため、DEPUTY_ADMIN の許可判定は
@@ -57,6 +73,7 @@ public class TagController {
 
     @GetMapping("/api/v1/me/tags")
     @Operation(summary = "個人タグ一覧")
+    @AuthorizedInService
     public ResponseEntity<PagedResponse<TagResponse>> listPersonalTags(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
@@ -66,6 +83,7 @@ public class TagController {
 
     @PostMapping("/api/v1/me/tags")
     @Operation(summary = "個人タグ作成")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<TagResponse>> createPersonalTag(
             @Valid @RequestBody CreateTagRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -75,6 +93,7 @@ public class TagController {
 
     @PutMapping("/api/v1/me/tags/{tagId}")
     @Operation(summary = "個人タグ更新")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<TagResponse>> updatePersonalTag(
             @PathVariable Long tagId,
             @Valid @RequestBody UpdateTagRequest request) {
@@ -84,6 +103,7 @@ public class TagController {
 
     @DeleteMapping("/api/v1/me/tags/{tagId}")
     @Operation(summary = "個人タグ削除（使用中は不可）")
+    @AuthorizedInService
     public ResponseEntity<Void> deletePersonalTag(@PathVariable Long tagId) {
         Long userId = SecurityUtils.getCurrentUserId();
         tagService.deleteTag("PERSONAL", userId, tagId);
