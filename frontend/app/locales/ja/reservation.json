@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "予約対象がまだありません",
         "admin_no_lines_hint": "「予約対象の管理」で予約対象と枠を作成すると、ここに予約枠が表示されます",
-        "admin_no_slots": "この日は空き枠がありません",
-        "admin_no_slots_hint": "「予約対象の管理」から枠を追加できます",
+        "admin_no_slots": "この週は空き枠がありません",
+        "admin_no_slots_hint": "「週間スケジュール」で枠を作成すると、ここに予約枠が表示されます",
         "member_no_lines": "予約の受付準備中です",
         "member_no_lines_hint": "管理者が予約枠を用意するまでお待ちください",
-        "member_no_slots": "この日は空き枠がありません",
-        "member_no_slots_hint": "別の日を選んでお試しください"
+        "member_no_slots": "この週は空き枠がありません",
+        "member_no_slots_hint": "別の週を選んでお試しください"
       }
     },
     "line_manage_title": "{resourceName}の管理",
@@ -601,7 +601,16 @@
       "auto_generated": "保存し、{days}日先までの枠を{generated}件作成しました",
       "auto_generated_partial": "{total}曜日中{failed}曜日で枠の作成に失敗しました（保存済みの曜日は有効です）",
       "need_business_hours_hint": "先に営業時間を設定してください",
-      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください"
+      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
     },
     "recurring_block": {
       "title": "毎週の予約不可",

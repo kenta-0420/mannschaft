@@ -26,16 +26,13 @@ public class ReservationSlotResponse {
     java.util.UUID templateId;
     SlotBasicDto basic;
     SlotStatusDto status;
-    RecurrenceDto recurrence;
     SlotPricingDto pricing;
     SlotPolicyDto policy;
     SlotAuditDto audit;
 
     public record SlotBasicDto(String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
 
-    public record SlotStatusDto(String slotStatus, Integer bookedCount, Integer capacity, Boolean isException, String closedReason, String note) {}
-
-    public record RecurrenceDto(String recurrenceRule, Long parentSlotId) {}
+    public record SlotStatusDto(String slotStatus, Integer bookedCount, Integer capacity, String closedReason, String note) {}
 
     public record SlotPricingDto(BigDecimal price) {}
 

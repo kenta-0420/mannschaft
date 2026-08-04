@@ -111,14 +111,8 @@ export interface SlotStatusDto {
   bookedCount?: number
   /** 予約枠の定員（同時にこの枠を予約できる人数の上限。既定 1） */
   capacity?: number
-  isException?: boolean
   closedReason?: string
   note?: string
-}
-
-export interface SlotRecurrenceDto {
-  recurrenceRule?: string
-  parentSlotId?: number
 }
 
 export interface SlotPricingDto {
@@ -143,7 +137,6 @@ export interface ReservationSlotResponse {
   staffUserId?: number
   basic?: SlotBasicDto
   status?: SlotStatusDto
-  recurrence?: SlotRecurrenceDto
   pricing?: SlotPricingDto
   policy?: SlotPolicyDto
   audit?: SlotAuditDto

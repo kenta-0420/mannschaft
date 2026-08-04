@@ -38,6 +38,15 @@ export interface GroupBookingContext {
   /** メニューフィルターが有効な場合の事前絞り込みメニュー（menu選択ステップをスキップ）。 */
   preselectedMenuId?: string | null
   preselectedRequiredCellCount?: number | null
+  /**
+   * ドラッグ複数選択で確定した枠数（機能H）。指定時は `startIndex` を起点に この枠数ぶんを
+   * メニューなしで選択済みにし、menu ステップをスキップして即プレビューへ進む。
+   *
+   * メニューフィルター（`preselectedMenuId`）より優先する: 利用者が自分の指で選んだ範囲を
+   * メニュー既定長で上書きすると「ドラッグした範囲と違う予約が入る」ため。
+   * プレビューでは従来どおり「＋30分延長」で伸ばせる。
+   */
+  dragCellCount?: number | null
 }
 
 const props = defineProps<{
@@ -150,8 +159,13 @@ watch(() => props.visible, (v) => {
   if (v) {
     resetState()
     void loadPendingExpireNotice()
+    // ドラッグ複数選択で入ってきた場合は、その枠数をメニューなしで確定して即プレビューへ
+    // （メニューフィルターより優先。利用者が指で選んだ範囲を既定長で上書きしない）。
+    if (props.context?.dragCellCount && props.context.dragCellCount > 0) {
+      applyMenuSelection(null, props.context.dragCellCount)
+    }
     // メニューフィルター事前絞り込み済みなら menu ステップをスキップして即プレビューへ
-    if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
+    else if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
       const menu = menuOptions.value.find(m => m.id === props.context?.preselectedMenuId)
       if (menu) applyMenuSelection(menu, props.context.preselectedRequiredCellCount)
     }
