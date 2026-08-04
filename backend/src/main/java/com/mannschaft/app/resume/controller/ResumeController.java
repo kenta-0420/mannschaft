@@ -2,6 +2,8 @@ package com.mannschaft.app.resume.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.resume.dto.ResumeDetailResponse;
 import com.mannschaft.app.resume.dto.ResumeExportResponse;
 import com.mannschaft.app.resume.dto.ResumeFullSaveRequest;
@@ -49,6 +51,13 @@ import java.util.UUID;
  * <p>全エンドポイントで認証必須（{@code SecurityConfig} にて設定済み）。
  * 他人の履歴書 ID を指定しても 404 を返す（IDOR 対策）。
  *
+ * <p><b>認可の所在（ID を受け取る全 EP 共通）</b>: 対象履歴書は必ず
+ * {@code ResumeRepository#findByIdAndUserId(id, 認証主体の userId)} の複合条件で引き当てる
+ * （{@code ResumeService#findResumeOwnedBy}・{@code ResumeExportService#loadResume}・
+ * {@code ResumePhotoService} の各メソッド冒頭）。所有者不一致は存在しない場合と同じ
+ * {@code RESUME_001} を送出し、{@code GlobalExceptionHandler} が 404 へ写像することで
+ * 履歴書の存在そのものを秘匿する。引き当ては更新・削除・ファイル入出力より<b>前</b>に位置する。
+ *
  * <p>Phase 3 で追加予定のエンドポイント:
  * <ul>
  *   <li>POST /api/v1/resumes/{id}/photo — 証明写真アップロード</li>
@@ -70,7 +79,13 @@ public class ResumeController {
     /**
      * 1. 履歴書バージョン一覧取得。
      * GET /api/v1/resumes
+     *
+     * <p><b>自己スコープ</b>: 検索条件は
+     * {@code ResumeRepository#findByUserIdOrderByCreatedAtDesc(認証主体の userId)} のみで、
+     * エンドポイントは引数を一切取らない。</p>
      */
+    @SelfScopedEndpoint("検索条件が findByUserIdOrderByCreatedAtDesc(認証主体の userId) のみ"
+            + "（ResumeService#listResumes・エンドポイントは引数を取らない）")
     @GetMapping
     @Operation(summary = "履歴書バージョン一覧取得")
     public ResponseEntity<ApiResponse<List<ResumeSummaryResponse>>> listResumes() {
@@ -85,7 +100,13 @@ public class ResumeController {
      *
      * <p>リクエストボディの {@code title} は任意。省略・空文字の場合は
      * Service 層でタイトルを自動採番する（「下書き YYYY-MM-DD」形式）。
+     *
+     * <p><b>自己スコープ</b>: 作成される {@code resumes.user_id} は
+     * {@code SecurityUtils.getCurrentUserId()} で固定され、リクエストボディは {@code title} のみを
+     * 受け取る（ユーザー識別子を受け取らない）。上限判定も同 userId で行う。</p>
      */
+    @SelfScopedEndpoint("作成される resumes.user_id が SecurityUtils.getCurrentUserId() で固定され、"
+            + "リクエストボディは title のみでユーザー識別子を受け取らない（ResumeService#createResume）")
     @PostMapping
     @Operation(summary = "履歴書バージョン新規作成")
     public ResponseEntity<ApiResponse<ResumeDetailResponse>> createResume(
@@ -102,6 +123,7 @@ public class ResumeController {
      *
      * <p>他人の ID を指定した場合は 404 を返す（IDOR 対策）。
      */
+    @AuthorizedInService
     @GetMapping("/{id}")
     @Operation(summary = "履歴書フル取得（学歴・職歴・資格・スキル含む）")
     public ResponseEntity<ApiResponse<ResumeDetailResponse>> getResume(
@@ -119,6 +141,7 @@ public class ResumeController {
      * 宣言的置換・冪等操作。
      * 楽観ロック競合時は 409 を返す（RESUME_010）。
      */
+    @AuthorizedInService
     @PutMapping("/{id}")
     @Operation(summary = "履歴書フル一括保存（ヘッダー + 子要素）")
     public ResponseEntity<ApiResponse<ResumeDetailResponse>> saveResume(
@@ -135,6 +158,7 @@ public class ResumeController {
      *
      * <p>送信された非 null フィールドのみ更新する。子要素は対象外。
      */
+    @AuthorizedInService
     @PatchMapping("/{id}")
     @Operation(summary = "履歴書ヘッダー部分更新")
     public ResponseEntity<ApiResponse<ResumeDetailResponse>> patchResume(
@@ -149,6 +173,7 @@ public class ResumeController {
      * 6. 履歴書バージョン削除（論理削除）。
      * DELETE /api/v1/resumes/{id}
      */
+    @AuthorizedInService
     @DeleteMapping("/{id}")
     @Operation(summary = "履歴書バージョン削除（論理削除）")
     public ResponseEntity<Void> deleteResume(@PathVariable UUID id) {
@@ -165,6 +190,7 @@ public class ResumeController {
      * タイトルは「{元のタイトル} (コピー)」になる。
      * 証明写真の複製は Phase 3 で対応するため、現時点では photo = null で作成する。
      */
+    @AuthorizedInService
     @PostMapping("/{id}/duplicate")
     @Operation(summary = "履歴書バージョン複製")
     public ResponseEntity<ApiResponse<ResumeDetailResponse>> duplicateResume(
@@ -189,6 +215,7 @@ public class ResumeController {
      * @param file アップロードファイル（フィールド名 {@code file}）
      * @return presigned URL（TTL 5 分）
      */
+    @AuthorizedInService
     @PostMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "証明写真アップロード")
     public ResponseEntity<ApiResponse<String>> uploadPhoto(
@@ -207,6 +234,7 @@ public class ResumeController {
      *
      * @param id 対象の履歴書 ID
      */
+    @AuthorizedInService
     @DeleteMapping("/{id}/photo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "証明写真削除")
@@ -227,6 +255,7 @@ public class ResumeController {
      * @param format 出力形式（{@code pdf} / {@code excel}）
      * @return バイナリ本体
      */
+    @AuthorizedInService
     @GetMapping("/{id}/preview")
     @Operation(summary = "プレビュー（インライン・R2 非経由）")
     public ResponseEntity<byte[]> previewResume(
@@ -262,6 +291,7 @@ public class ResumeController {
      * @param format 出力形式（{@code pdf} / {@code excel}）
      * @return presigned URL・ファイル名・有効期限
      */
+    @AuthorizedInService
     @GetMapping("/{id}/export")
     @Operation(summary = "正式出力（R2 永続保存・presigned URL 返却）")
     public ResponseEntity<ApiResponse<ResumeExportResponse>> exportResume(
