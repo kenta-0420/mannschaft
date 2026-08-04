@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.PinListResponse;
 import com.mannschaft.app.village.dto.PinOrderUpdateRequest;
 import com.mannschaft.app.village.dto.PinResponse;
@@ -40,6 +41,8 @@ public class VillagePinController {
     /**
      * 自分のピン一覧を取得する（sort_order 昇順）。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみ"
+            + "（VillagePinService#listMyPins の findByUserIdOrderBySortOrderAsc が認証主体に束縛される）")
     @GetMapping
     @Operation(summary = "自分のピン一覧取得")
     public ResponseEntity<ApiResponse<PinListResponse>> listMyPins() {
@@ -56,6 +59,9 @@ public class VillagePinController {
      *   <li>422 VILLAGE_PIN_LIMIT_EXCEEDED: 30 件超過</li>
      * </ul>
      */
+    @SelfScopedEndpoint("作成されるピン行の所有者は常に SecurityUtils.getCurrentUserId() で、"
+            + "他ユーザーのピンには到達しない（VillagePinService#pin が userId を認証主体で固定する）。"
+            + "villageId は公開の村識別子であり、ピン留め自体は村外からも行える仕様")
     @PostMapping("/{villageId}")
     @Operation(summary = "村をピン留め")
     public ResponseEntity<ApiResponse<PinResponse>> pin(@PathVariable UUID villageId) {
@@ -70,6 +76,9 @@ public class VillagePinController {
      *   <li>404 VILLAGE_PIN_NOT_FOUND: ピンが存在しない</li>
      * </ul>
      */
+    @SelfScopedEndpoint("削除対象は (SecurityUtils.getCurrentUserId(), villageId) で一意に解決され、"
+            + "他ユーザーのピン行には到達しない"
+            + "（VillagePinService#unpin の findByUserIdAndVillageId が認証主体に束縛される）")
     @DeleteMapping("/{villageId}")
     @Operation(summary = "村のピン解除")
     public ResponseEntity<Void> unpin(@PathVariable UUID villageId) {
@@ -84,6 +93,9 @@ public class VillagePinController {
      *   <li>422 VILLAGE_PIN_ORDER_MISMATCH: 並び替え対象が現在のピン集合と一致しない</li>
      * </ul>
      */
+    @SelfScopedEndpoint("並び替え対象は認証主体のピン集合に限定され、リクエストの villageId 列は"
+            + "現在の自分のピン集合と完全一致でなければ 422 で拒否される"
+            + "（VillagePinService#reorder が findByUserIdOrderBySortOrderAsc の結果とのみ突き合わせる）")
     @PatchMapping("/order")
     @Operation(summary = "ピン並び替え")
     public ResponseEntity<ApiResponse<PinListResponse>> reorder(

@@ -3965,7 +3965,7 @@
         "tags": [
           "村ニュースレター (F17.1 Phase 3-β-E)"
         ],
-        "summary": "村のニュースレター設定を取得する",
+        "summary": "村のニュースレター設定を取得する（掲示板と同一の閲覧認可）",
         "operationId": "getSettings",
         "parameters": [
           {
@@ -33500,7 +33500,7 @@
         "tags": [
           "F17.1 村機能 - 村作成申請"
         ],
-        "summary": "村作成申請を行う",
+        "summary": "村作成申請を行う（OFFICIAL は SYSTEM_ADMIN のみ）",
         "operationId": "create_9",
         "requestBody": {
           "content": {
@@ -105271,7 +105271,7 @@
         "tags": [
           "村内検索 (F17.1)"
         ],
-        "summary": "村内横断検索（投稿・メッセージ・メンバー）",
+        "summary": "村内横断検索（投稿・メッセージ・メンバー／村人のみ）",
         "operationId": "search",
         "parameters": [
           {
@@ -105339,7 +105339,7 @@
         "tags": [
           "村ニュースレター (F17.1 Phase 3-β-E)"
         ],
-        "summary": "指定頻度のニュースレター配信履歴を取得する",
+        "summary": "指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ）",
         "operationId": "listSendLogs",
         "parameters": [
           {
@@ -129841,7 +129841,7 @@
         "tags": [
           "ダッシュボード村フィード (F17.1)"
         ],
-        "summary": "ピン留め村の最新動きをダッシュボード向けに集約取得",
+        "summary": "ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ）",
         "operationId": "feed",
         "parameters": [
           {

@@ -415,14 +415,19 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     })
     lineId = ((await lineRes.json()).data as { id: number }).id
 
-    const tplRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, {
-      headers: authHeaders(tokens.admin),
-      // 【旧表示撤去 2026-08-04 追従】定期予約UI（repeatWeeks トグルを持つ ReservationForm）へは
-      // マトリックスの「長尺手動枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
-      // 旧リスト表示（SlotPicker）が撤去されたため、テンプレを60分枠にして span=2 のセルを作る。
-      data: { lineId, dayOfWeek: day.dayCode, startTime: '11:00:00', endTime: '12:00:00', capacity: 3 },
-    })
-    if (!tplRes.ok()) throw new Error(`テンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`)
+    // 【是正 2026-08-04】定期予約UI（repeatWeeks トグルを持つ ReservationForm）へは
+    // マトリックスの「長尺枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
+    // 枠テンプレートは 60 分で登録しても BE が 30 分単位に分割して枠を生成する（cellCount=2）ため、
+    // テンプレでは長尺セルを作れず本シナリオは到達不能だった（実測で確認）。
+    // 長尺セルは手動枠（POST /reservation-slots）でのみ作れるので、4週分をそれで用意する。
+    for (const offset of [0, 7, 14, 21]) {
+      const slotDate = addDaysIso(day.iso, offset)
+      const slotRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-slots`, {
+        headers: authHeaders(tokens.admin),
+        data: { lineId, slotDate, startTime: '11:00:00', endTime: '12:00:00', capacity: 3 },
+      })
+      if (!slotRes.ok()) throw new Error(`手動枠作成失敗(${slotDate}): ${slotRes.status()} ${await slotRes.text()}`)
+    }
 
     console.log(`[SETUP-B] teamSlug=${teamSlug} lineId=${lineId} day=${day.iso}(${day.dayCode})`)
     await ctx.dispose()
@@ -489,17 +494,11 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     await page.screenshot({ path: 'test-results/d-b-04-series-badge.png', fullPage: true })
   })
 
-  test('シナリオB-2: series所属予約のキャンセル2択（この回以降すべて）', async ({ page }) => {
-    // 是正(殿指摘への追加調査): コード実測の結果、キャンセル2択（cancel-scope-this-only /
-    // cancel-scope-this-and-following）は ReservationList.vue の cancelMine()（mode="mine"）
-    // 経由でのみ発火する設計で、canManage=true の admin/deputy 用 cancel()（mode="team"）は
-    // series 判定なしの単純キャンセルしか呼ばない（371行目、testidも無し）。
-    // TeamReservationsPanel.vue は isAdminOrDeputy(実ロールベース・切替不可)で mode を固定するため、
-    // 本specのE2E固定ユーザー(自チーム作成者=常にADMIN)ではmode="mine"に到達する経路が存在しない。
-    // 静かに素通りさせず、理由を明記して明示スキップする（MEMBERロールの別ユーザーが必要）。
-    test.skip(true, 'キャンセル2択はcancelMine()(mode="mine")経由のみで到達可能。E2E固定ユーザーは全チームでADMINのため到達不能（コード実測済み。MEMBERロールの別ユーザーが必要）。踏めなかった。')
-    void page
-  })
+  // 旧シナリオB-2（series所属予約のキャンセル2択）はここから撤去した。
+  // キャンセル2択は cancelMine()（mode="mine"）経由でしか発火せず、本 spec の固定ユーザーは
+  // 自作チームで常に ADMIN のため到達不能で、空の skip が残り続けていた。
+  // MEMBER ロールの別ユーザーを招待フローで用意する tests/e2e/real/reservation-member-role.spec.ts
+  // の M1-2 / M1-3 が実機で踏破済みのため、そちらへ担当を移した。
 })
 
 // ============================================================================

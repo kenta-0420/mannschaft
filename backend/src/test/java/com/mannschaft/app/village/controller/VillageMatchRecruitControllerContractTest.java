@@ -145,7 +145,7 @@ class VillageMatchRecruitControllerContractTest {
     @Test
     @DisplayName("GET 一覧 — エンベロープは {items, page, size, total}（Page 形状ではない）")
     void list_envelopeShape() throws Exception {
-        given(matchRecruitService.listRecruits(eq(VILLAGE_ID), any(), any(), any(), any(), anyInt(), anyInt()))
+        given(matchRecruitService.listRecruits(eq(VILLAGE_ID), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .willReturn(MatchRecruitListResponse.of(List.of(recruit()), 0, 20, 1L));
 
         mockMvc.perform(get(BASE, VILLAGE_ID))
@@ -165,7 +165,7 @@ class VillageMatchRecruitControllerContractTest {
     @Test
     @DisplayName("GET 一覧 — MatchRecruitResponse の項目名（venue / matchDate 等）を固定する")
     void list_itemShape() throws Exception {
-        given(matchRecruitService.listRecruits(eq(VILLAGE_ID), any(), any(), any(), any(), anyInt(), anyInt()))
+        given(matchRecruitService.listRecruits(eq(VILLAGE_ID), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .willReturn(MatchRecruitListResponse.of(List.of(recruit()), 0, 20, 1L));
 
         mockMvc.perform(get(BASE, VILLAGE_ID))
@@ -293,7 +293,7 @@ class VillageMatchRecruitControllerContractTest {
         void list_validEnums_returns200() throws Exception {
             given(matchRecruitService.listRecruits(eq(VILLAGE_ID),
                     eq(VillageMatchRecruitCategory.PRACTICE_MATCH),
-                    eq(VillageMatchRecruitStatus.OPEN), any(), any(), anyInt(), anyInt()))
+                    eq(VillageMatchRecruitStatus.OPEN), any(), any(), anyInt(), anyInt(), any()))
                     .willReturn(MatchRecruitListResponse.of(List.of(recruit()), 0, 20, 1L));
 
             mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -310,7 +310,7 @@ class VillageMatchRecruitControllerContractTest {
                     .andExpect(jsonPath("$.error.code").value("VILLAGE_029"));
 
             verify(matchRecruitService, never())
-                    .listRecruits(any(), any(), any(), any(), any(), anyInt(), anyInt());
+                    .listRecruits(any(), any(), any(), any(), any(), anyInt(), anyInt(), any());
         }
 
         @Test
@@ -326,7 +326,7 @@ class VillageMatchRecruitControllerContractTest {
         void list_lowercaseEnums_areAccepted() throws Exception {
             given(matchRecruitService.listRecruits(eq(VILLAGE_ID),
                     eq(VillageMatchRecruitCategory.REFEREE),
-                    eq(VillageMatchRecruitStatus.CLOSED), any(), any(), anyInt(), anyInt()))
+                    eq(VillageMatchRecruitStatus.CLOSED), any(), any(), anyInt(), anyInt(), any()))
                     .willReturn(MatchRecruitListResponse.of(List.of(), 0, 20, 0L));
 
             mockMvc.perform(get(BASE, VILLAGE_ID)
@@ -336,7 +336,7 @@ class VillageMatchRecruitControllerContractTest {
 
             verify(matchRecruitService).listRecruits(eq(VILLAGE_ID),
                     eq(VillageMatchRecruitCategory.REFEREE),
-                    eq(VillageMatchRecruitStatus.CLOSED), any(), any(), anyInt(), anyInt());
+                    eq(VillageMatchRecruitStatus.CLOSED), any(), any(), anyInt(), anyInt(), any());
         }
     }
 
