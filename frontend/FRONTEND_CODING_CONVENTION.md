@@ -168,6 +168,7 @@ const created = await api<ApiResponse<TeamDetailResponse>>(
 - **送信方法**: APIリクエストごとに `Authorization: Bearer <token>` ヘッダーをプログラムで付与する。
 - **Cookie 使用禁止**: 認証トークンを Cookie に格納しないこと。Cookie を利用しないことで CSRF 攻撃を構造的に排除する。
 - **XSS対策との併用**: トークン漏洩（XSS）リスクに対しては、Access Token の有効期限を短く（15分）設定し、Refresh Token Rotation を併用することで軽減する。
+- **⚠️ 開発環境の罠（Refresh 用 Cookie は `SameSite=Strict`）**: `Authorization: Bearer` の他に、Refresh Token ローテーション用の `access_token` / `refresh_token` は BE から `SameSite=Strict` の Cookie としても発行される。SameSite の同一サイト判定はホスト名の文字列一致で行われるため、開発時にアプリを `http://127.0.0.1:3000` で開くと `http://localhost:8080` からの `Set-Cookie` が保存されない。ログイン直後は body のトークンが in-memory に載るため正常に見えるが、15分後の先回りリフレッシュ（`armProactiveRefresh`）が Cookie 送信できず 401 となり強制ログアウトされる。**dev サーバーの URL は必ず `http://localhost:3000` を使うこと（`127.0.0.1` は使わない）**。HMR WebSocket は専用ポート `24678`（`nuxt.config.ts` の `vite.server.hmr.port`）に分離済みのため、`localhost:3000` は正常に利用できる。再発防止テスト: `frontend/tests/e2e/real/auth-cookie-origin.spec.ts`。
 
 ### フロント・バック間のバリデーション同期
 - **方針**: バックエンドが提供する OpenAPI (Swagger) 仕様書を正（Single Source of Truth）とする。
