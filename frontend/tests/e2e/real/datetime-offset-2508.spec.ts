@@ -399,21 +399,35 @@ async function pickDateInPanel(
   const panel = page.locator('.p-datepicker-panel').last()
   await expect(panel, 'カレンダーパネルが開くこと').toBeVisible({ timeout: 10_000 })
 
-  // 目的の年月まで「翌月」で送る（本 spec の target は常に未来なので前月送りは不要）。
+  // 目的の年月まで前月/翌月ボタンで送る。
+  // ⚠ 必ず**双方向**に送ること。パネルの初期表示月は「現在のモデル値の月」であり、
+  //    たとえば保管期限延長ダイアログは既存の期限（＝未来。過去の実行で更に延長されていることもある）
+  //    を初期値に持つため、翌月送りだけだと目的月へ到達できず、遠い未来の日付を掴んでしまう
+  //    （実測: 2026/12/02 を狙って 2030/01/02 が選ばれた）。
   const targetYear = target.getFullYear()
   const targetMonth = target.getMonth() + 1
-  for (let i = 0; i < 36; i++) {
+  const targetIndex = targetYear * 12 + targetMonth
+  let reached = false
+  for (let i = 0; i < 200; i++) {
     const yearText = await panel.locator('.p-datepicker-select-year').first().innerText()
     const monthText = await panel.locator('.p-datepicker-select-month').first().innerText()
     const year = Number(yearText.replace(/\D/g, ''))
     const month = Number(monthText.replace(/\D/g, ''))
-    if (year === targetYear && month === targetMonth) break
-    await panel.locator('.p-datepicker-next-button').first().click()
+    const currentIndex = year * 12 + month
+    if (currentIndex === targetIndex) {
+      reached = true
+      break
+    }
+    const button = currentIndex < targetIndex ? '.p-datepicker-next-button' : '.p-datepicker-prev-button'
+    await panel.locator(button).first().click()
   }
+  expect(reached, `カレンダーを ${targetYear}年${targetMonth}月 まで送れること`).toBe(true)
 
-  // 当月のセルだけを `data-p-other-month="false"` で絞る（前後月のセルは同じ日番号を持つため）。
+  // 当月のセルだけに絞る（前後月のセルは同じ日番号を持つため）。
+  // 前後月セルは td に `p-datepicker-other-month` クラスが付く（PrimeVue Select.vue 相当の day-view 実装）。
   const dayCell = panel
-    .locator(`td[data-p-other-month="false"][aria-label="${target.getDate()}"]`)
+    .locator('td.p-datepicker-day-cell:not(.p-datepicker-other-month)')
+    .filter({ hasText: new RegExp(`^${target.getDate()}$`) })
     .first()
   await expect(dayCell, `${targetYear}/${targetMonth}/${target.getDate()} のセルが選択できること`).toBeVisible({
     timeout: 10_000,
@@ -491,11 +505,13 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
         `/api/v1/organizations/${org.id}/disclosure-exports?page=0&size=1`,
       )
       if (!listRes.ok()) continue
-      const body = (await listRes.json()).data as { content?: Array<{ id: string }> } | Array<{ id: string }>
+      // ⚠ BE の DisclosureExportResponse は ID を **`exportId`** で返す（`id` ではない）。
+      type ExportRow = { exportId: number }
+      const body = (await listRes.json()).data as { content?: ExportRow[] } | ExportRow[]
       const items = Array.isArray(body) ? body : (body?.content ?? [])
       if (items.length > 0) {
         orgId = org.id
-        exportId = items[0]!.id
+        exportId = String(items[0]!.exportId)
         return
       }
     }
@@ -543,7 +559,7 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
         continue
       }
       orgId = org.id
-      exportId = (await expRes.json()).data.id as string
+      exportId = String((await expRes.json()).data.exportId as number)
       blockedReason = null
       return
     }
@@ -1127,7 +1143,17 @@ test.describe('DT2508-05/06 支払い記録の入金日（paidAt）', () => {
     // 未払いメンバーが 0 件だとリスト自体が描画されない。存在確認の失敗は
     // 「0 件」という正当な状態であり、直後に理由付きで test.skip する。
     const hasUnpaid = await memberList.isVisible().catch(() => false)
-    test.skip(!hasUnpaid, '未払い（UNPAID/PENDING）のメンバーが 0 件で一括記録の対象が無いためスキップ')
+    test.skip(
+      !hasUnpaid,
+      '一括記録の対象（member_payments の UNPAID/PENDING 行）を API で用意できないためスキップ。'
+      + '実測: 新規 payment-item を作成しても GET /teams/{id}/payment-items/{itemId}/payments は 0 件を返す'
+      + '（画面の「未払い N」は payment-summary の算出値で、実行は行ではない）。'
+      + 'POST /payments は必ず PAID を作り、PATCH /payments/{id}（UpdatePaymentRequest）は '
+      + 'amountPaid/validFrom/validUntil/note のみで status を変更できない。'
+      + 'UNPAID/PENDING 行を生むのは Stripe チェックアウト経路とシード SQL だけであるため、'
+      + '本 spec の前提としては作成不能。'
+      + '（この経路を CI で恒常検証するには seed-e2e-data.js に UNPAID 行の投入を追加する必要がある）',
+    )
 
     const firstMember = memberList.locator('[data-testid^="payment-bulk-member-"]').first()
     await expect(firstMember).toBeVisible({ timeout: 10_000 })
