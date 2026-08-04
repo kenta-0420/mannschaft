@@ -4,6 +4,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -34,7 +35,6 @@ public class TeamFanoutRecipientSource implements FanoutRecipientSource {
     /** レジストリ解決キー。{@link ScopeType#TEAM} に対応する戦略キー。 */
     public static final String SCOPE_TYPE = "TEAM";
 
-    @SuppressWarnings("unused") // 受信者解決の本体（nextPage）を出陣で実装する際に用いる。
     private final MembershipRepository membershipRepository;
 
     @Override
@@ -44,7 +44,11 @@ public class TeamFanoutRecipientSource implements FanoutRecipientSource {
 
     @Override
     public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
-        // 受信者供給の本体は出陣で実装する（keyset 法でチーム現役メンバーを 1 チャンクずつ返す）。
-        throw new UnsupportedOperationException("TeamFanoutRecipientSource.nextPage は出陣で実装する");
+        // scope_ref にはチーム ID を文字列で格納しているため long へ復元する（多型スコープ参照）。
+        long scopeId = Long.parseLong(scopeRef);
+        // 現役判定（left_at IS NULL）と scope_id 等値絞り込みはリポジトリのクエリに閉じ込め、
+        // 被覆索引 idx_membership_fanout_keyset で 1 チャンクぶんの user_id を昇順に返す。
+        return membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, scopeId, cursorSubjectId, PageRequest.of(0, limit));
     }
 }
