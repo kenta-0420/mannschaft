@@ -645,7 +645,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("19. 一覧 — 非村人は VILLAGE_007（村人限定閲覧の欠落を修正）")
     void list_notMember() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findActiveByVillageIdAndSubject(
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.empty());
 
@@ -665,7 +665,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("20. 一覧 — 村人なら一覧を取得できる")
     void list_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findActiveByVillageIdAndSubject(
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any()))
