@@ -192,9 +192,21 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
      *
-     * @param publicTeamIds 公開チームの ID 集合（<b>空にしないこと</b>。空集合は JPQL の
-     *                      {@code IN ()} を生成して SQL 構文エラーになるため、
-     *                      呼び出し元が実在しない番兵値を入れる）
+     * <h3>空集合を渡してはならない（回避方式が金型と異なる）</h3>
+     * <p>空集合は JPQL が {@code IN ()} を生成して SQL 構文エラーになるため渡せない。
+     * 本メソッド群では、<b>呼び出し元が空集合のとき SQL を撃たずに早期 return する</b>
+     * という約束で回避している（{@code SitemapQueryService#findPublicTeamPostEntries}）。
+     * <b>番兵値は使わない。</b></p>
+     *
+     * <p>金型の活動記録側 {@code ActivityResultRepository#findPublicForSitemap} は
+     * <b>番兵方式</b>（実在しない ID を入れる）だが、あちらは<b>チームと組織の 2 集合を
+     * 1 本の SQL に渡す</b>ため、片方だけが空という状況が普通に起きて早期 return できない。
+     * 本メソッドは集合を 1 つしか取らないので早期 return で足りる。
+     * <b>流儀の違いは意図的であり、番兵方式へ書き戻さないこと</b>
+     * （番兵を渡すと早期 return が死に、SQL は必ず 0 件を返すのに
+     * 「動いているように見える」状態になる）。</p>
+     *
+     * @param publicTeamIds 公開チームの ID 集合（<b>空にしないこと</b>。理由と回避方式は上記参照）
      * @return 親チームが公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "
@@ -208,12 +220,12 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
     /**
      * F19.1 Phase 3 sitemap.xml 用: <b>公開組織</b>配下の PUBLIC + PUBLISHED 投稿を全件取得する。
      *
-     * <p>親スコープを絞る理由・空集合の扱いは
+     * <p>親スコープを絞る理由・空集合の扱い（<b>番兵値は使わず呼び出し元が早期 return する</b>）は
      * {@link #findAllPublicPostsByTeam(Collection)} と同一（チームを組織に読み替えること）。</p>
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
      *
-     * @param publicOrganizationIds 公開組織の ID 集合（<b>空にしないこと</b>。理由は上記参照）
+     * @param publicOrganizationIds 公開組織の ID 集合（<b>空にしないこと</b>。理由と回避方式は上記参照）
      * @return 親組織が公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "

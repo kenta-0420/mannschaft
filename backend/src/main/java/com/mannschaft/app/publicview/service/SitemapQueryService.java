@@ -79,7 +79,10 @@ public class SitemapQueryService {
      * 単票 API は親が非公開なら 404 に倒すので実害は無いが、<b>sitemap は URL そのものを
      * 検索エンジンへ能動的に送る</b>ため、親が非公開のまま載せると
      * 「非公開チームが実在すること」と「その配下の投稿 ID」を同時に開示してしまう。
-     * したがってここで必ず親を絞る（活動記録側 {@link #findPublicActivityEntries()} と同じ流儀）。</p>
+     * したがってここで必ず親を絞る（<b>親を絞るという方針</b>は活動記録側
+     * {@link #findPublicActivityEntries()} と同じ。ただし<b>空集合の回避方式だけは異なり</b>、
+     * あちらは番兵値・こちらは早期 return である。理由は
+     * {@code BlogPostRepository#findAllPublicPostsByTeam} の Javadoc 参照）。</p>
      *
      * <p>公開チームの ID 集合は<b>本クラスの既存メソッド</b> {@link #findPublicTeamEntries()}
      * の結果から作る。理由は {@link #findPublicActivityEntries()} の Javadoc に詳しい
