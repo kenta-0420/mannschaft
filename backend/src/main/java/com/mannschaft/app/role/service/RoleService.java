@@ -354,8 +354,17 @@ public class RoleService {
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *
-     * <p>Phase 4-E: Valkey にて 5 分キャッシュ。同一クラス内からの this. 呼び出し（hasPermission 等）は
-     * Spring AOP を迂回するためキャッシュが効かない点に注意（hasPermission 自体はキャッシュ対象外）。</p>
+     * <p>Phase 4-E: Valkey にて 5 分キャッシュ。同一クラス内から呼ぶ場合は必ず自己プロキシ
+     * {@code self} を経由すること（{@code this.} だと Spring AOP を迂回してキャッシュが効かない。
+     * issue #2544 で {@link #hasPermission} を自己プロキシ経由へ是正済み）。</p>     *
+     * <p><b>戻り値を呼び出し側で変異させないこと（issue #2544）。</b>
+     * 復元可能性のため不変コレクションをやめて可変の実装を返しているが、
+     * これは「変更してよい」という意味ではない。test プロファイルの
+     * {@code ConcurrentMapCacheManager} はキャッシュ済みの<b>同一インスタンス</b>を返すため、
+     * 呼び出し側が {@code add}/{@code remove}/{@code put} するとキャッシュ本体が汚染され、
+     * 以降の全呼び出し元が汚染後の値を受け取る（本番の Valkey は毎回デシリアライズするので
+     * 症状が出ず、<b>テストと本番で挙動が食い違う</b>厄介な形になる）。
+     * 加工が要る場合は必ずコピーしてから行うこと。</p>
      */
     @Cacheable(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public List<String> resolveEffectivePermissions(Long userId, Long scopeId, String scopeType) {

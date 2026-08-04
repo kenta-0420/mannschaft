@@ -292,6 +292,15 @@ public class TodoStatusLabelService {
      * {@code map.get(bucket)}（enum キー）が常に null を返して既定ラベル参照が静かに壊れる。
      * キーを最初から {@code String} にすることで JSON ラウンドトリップで形が崩れない。</p>
      *
+     * <p><b>戻り値を呼び出し側で変異させないこと（issue #2544）。</b>
+     * 復元可能性のため不変コレクションをやめて可変の実装を返しているが、
+     * これは「変更してよい」という意味ではない。test プロファイルの
+     * {@code ConcurrentMapCacheManager} はキャッシュ済みの<b>同一インスタンス</b>を返すため、
+     * 呼び出し側が {@code add}/{@code remove}/{@code put} するとキャッシュ本体が汚染され、
+     * 以降の全呼び出し元が汚染後の値を受け取る（本番の Valkey は毎回デシリアライズするので
+     * 症状が出ず、<b>テストと本番で挙動が食い違う</b>厄介な形になる）。
+     * 加工が要る場合は必ずコピーしてから行うこと。</p>
+     *
      * @return bucket名（{@link TodoStatusBucket#name()}）をキーとした SYSTEM 既定ラベルのマップ
      *         （空はあり得ないが、欠落時は空の Map を返す）
      */
