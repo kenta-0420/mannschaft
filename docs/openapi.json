@@ -49044,7 +49044,7 @@
           "チームお知らせウィジェット"
         ],
         "summary": "全件既読",
-        "description": "チームスコープの全未読お知らせを一括既読にする。",
+        "description": "チームスコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread\u003dtrue を返す。",
         "operationId": "markAllAsRead",
         "parameters": [
           {
@@ -49063,7 +49063,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementMarkAllReadResultDto"
                 }
               }
             }
@@ -70664,7 +70664,7 @@
           "組織お知らせウィジェット"
         ],
         "summary": "全件既読（組織）",
-        "description": "組織スコープの全未読お知らせを一括既読にする。",
+        "description": "組織スコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread\u003dtrue を返す。",
         "operationId": "markAllAsRead_1",
         "parameters": [
           {
@@ -70683,7 +70683,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementMarkAllReadResultDto"
                 }
               }
             }
@@ -176700,6 +176700,31 @@
             "additionalProperties": {
               "type": "object"
             }
+          }
+        }
+      },
+      "AnnouncementMarkAllReadResultDto": {
+        "type": "object",
+        "description": "一括既読の結果",
+        "properties": {
+          "hasMoreUnread": {
+            "type": "boolean",
+            "description": "打ち切りにより未読が残っているか（true ならもう一度実行すると続きが処理される）",
+            "example": false
+          },
+          "markedCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "このリクエストで新たに既読化した件数",
+            "example": 8
+          }
+        }
+      },
+      "ApiResponseAnnouncementMarkAllReadResultDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnnouncementMarkAllReadResultDto"
           }
         }
       },

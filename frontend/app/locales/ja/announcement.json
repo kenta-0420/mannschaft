@@ -26,6 +26,7 @@
     "pin_limit_reached": "ピン留めは最大5件までです",
     "already_registered": "このコンテンツは既にお知らせに登録されています",
     "no_longer_available": "このお知らせは公開が終了したため、一覧から取り除きました",
+    "mark_all_read_partial": "{count} 件を既読にしました。まだ未読が残っています。もう一度押すと続きを処理します",
     "broadcast_button_team": "チーム内告知",
     "broadcast_button_org": "組織内告知",
     "wizard_title": "告知を送る",

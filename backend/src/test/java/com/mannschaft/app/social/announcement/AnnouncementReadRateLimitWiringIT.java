@@ -61,6 +61,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * これによりフィルタ → {@code ValkeyRateLimiter} → 429 書き出しまでの実経路が
  * 決定論的に通る（Valkey コンテナを増やさずに済む）。</p>
  *
+ * <p><b>{@code servletPath} を明示する理由（重要）</b>:
+ * {@link AnnouncementReadRateLimitFilter#resolveRule} は
+ * {@code HttpServletRequest#getServletPath()} で対象パスを判定する。組み込み Tomcat では
+ * {@code DispatcherServlet} が {@code "/"} にマップされるため、これはアプリ内のフルパス
+ * （{@code /api/v1/teams/1/announcements/read-all}）を返す。
+ * ところが {@code MockMvcRequestBuilders} は {@code servletPath} を既定で <b>空文字</b>のままにし、
+ * パスを {@code pathInfo} 側に入れる。何もしないと本番と違ってフィルタが一件も一致せず、
+ * <b>「429 が出ないので緑」という偽の合格</b>になる。そこで各リクエストで
+ * {@code .servletPath(...)} を本番と同じフルパスに設定する
+ * （{@code AnnouncementReadRateLimitFilterTest} が {@code req.setServletPath(path)} を
+ * 明示しているのと同じ理由）。フィルタが実際に発火した証跡は
+ * {@code X-RateLimit-*} ヘッダーの有無で毎ケース確認する。</p>
+ *
  * <p>構成は既存のフィルタ有効 IT（{@code ActivityPublicContractIT} 等）に揃え、
  * {@code @SpringBootTest} / {@code @Testcontainers} / {@code @ActiveProfiles} は
  * <b>再宣言しない</b>（TestContext Cache 分裂＝OOM を避ける）。
@@ -98,6 +111,11 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         }).given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
 
         teamId = insertTeam("RATELIMIT チーム");
+        // @WithMockUser の username は注釈の制約でコンパイル時定数しか使えないため、
+        // ユーザー行の方を固定 ID で作る。実在しない ID のままだと閲覧者ロール解決
+        // （RoleResolver → AccessControlService）が何を返すかに本テストの成否が依存してしまい、
+        // 「レートリミットの結線を見る」という主旨と無関係な理由で落ちうる。
+        insertUserWithFixedId(Long.parseLong(USER_ID), "ratelimit-wiring@example.com");
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -113,18 +131,17 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         @DisplayName("read-all: 上限まで 200、超過で 429 + Retry-After + X-RateLimit-*")
         void readAllは上限超過で429() throws Exception {
             for (int i = 0; i < AnnouncementReadRateLimitFilter.READ_ALL_LIMIT; i++) {
-                MvcResult ok = mockMvc.perform(
-                        post("/api/v1/teams/{teamId}/announcements/read-all", teamId)).andReturn();
+                MvcResult ok = performReadAll();
                 assertThat(ok.getResponse().getStatus())
                         .as("read-all #%d は閾値内なので通ること（非回帰）", i + 1)
                         .isEqualTo(HttpStatus.OK.value());
             }
 
-            MvcResult overLimit = mockMvc.perform(
-                    post("/api/v1/teams/{teamId}/announcements/read-all", teamId)).andReturn();
+            MvcResult overLimit = performReadAll();
 
             assertThat(overLimit.getResponse().getStatus())
-                    .as("フィルタが実 HTTP 経路に載っていれば 6 回目は 429 になる")
+                    .as("フィルタが実 HTTP 経路に載っていれば %d 回目は 429 になる",
+                            AnnouncementReadRateLimitFilter.READ_ALL_LIMIT + 1)
                     .isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
             // フィルタ単体テストではなく実 HTTP 応答として Retry-After が載ること
             assertThat(overLimit.getResponse().getHeader("Retry-After"))
@@ -142,8 +159,7 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         @WithMockUser(username = USER_ID)
         @DisplayName("通常応答（200）にも X-RateLimit-* が載る（フィルタ登録の裏取り）")
         void 成功応答にもレートリミットヘッダが載る() throws Exception {
-            MvcResult result = mockMvc.perform(
-                    post("/api/v1/teams/{teamId}/announcements/read-all", teamId)).andReturn();
+            MvcResult result = performReadAll();
 
             assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
             assertThat(result.getResponse().getHeader("X-RateLimit-Limit"))
@@ -159,20 +175,18 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         void 単件既読も対象で別zone() throws Exception {
             // read-all の枠を使い切る
             for (int i = 0; i < AnnouncementReadRateLimitFilter.READ_ALL_LIMIT; i++) {
-                mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId));
+                performReadAll();
             }
-            assertThat(mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId))
-                    .andReturn().getResponse().getStatus())
+            assertThat(performReadAll().getResponse().getStatus())
                     .isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
 
             // 単件既読は別 zone。レート的には通る（存在しないお知らせなので業務上は 4xx でよい）
-            MvcResult single = mockMvc.perform(
-                    post("/api/v1/teams/{teamId}/announcements/{id}/read", teamId, 999_999L)).andReturn();
+            MvcResult single = performSingleRead(999_999L);
             assertThat(single.getResponse().getStatus())
                     .as("単件既読が read-all の枠で 429 になってはならない（zone 分離）")
                     .isNotEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
             assertThat(single.getResponse().getHeader("X-RateLimit-Limit"))
-                    .as("単件既読側の上限値でヘッダーが載る")
+                    .as("単件既読側の上限値でヘッダーが載る（＝単件パターンにも一致している）")
                     .isEqualTo(String.valueOf(AnnouncementReadRateLimitFilter.SINGLE_READ_LIMIT));
         }
     }
@@ -189,8 +203,7 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         @WithMockUser(username = USER_ID)
         @DisplayName("お知らせ一覧（GET）には X-RateLimit-* が 1 つも載らない")
         void 一覧取得は対象外() throws Exception {
-            MvcResult result = mockMvc.perform(
-                    get("/api/v1/teams/{teamId}/announcements", teamId)).andReturn();
+            MvcResult result = performListFeed();
 
             assertThat(result.getResponse().getHeader("X-RateLimit-Limit"))
                     .as("一覧取得まで既読 EP の枠を消費してはならない")
@@ -204,18 +217,62 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
         @DisplayName("一覧 GET を上限超の回数叩いても既読 EP の枠は減らない")
         void 一覧取得は既読の枠を消費しない() throws Exception {
             for (int i = 0; i < AnnouncementReadRateLimitFilter.READ_ALL_LIMIT + 3; i++) {
-                mockMvc.perform(get("/api/v1/teams/{teamId}/announcements", teamId));
+                performListFeed();
             }
 
-            MvcResult readAll = mockMvc.perform(
-                    post("/api/v1/teams/{teamId}/announcements/read-all", teamId)).andReturn();
+            MvcResult readAll = performReadAll();
             assertThat(readAll.getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
+            assertThat(readAll.getResponse().getHeader("X-RateLimit-Remaining"))
+                    .as("既読 zone のカウンタは一覧 GET で 1 も消費されていない")
+                    .isEqualTo(String.valueOf(AnnouncementReadRateLimitFilter.READ_ALL_LIMIT - 1));
         }
     }
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 一括既読を実行する。{@code servletPath} を組み込み Tomcat と同じフルパスに揃える
+     * （クラス Javadoc の「{@code servletPath} を明示する理由」参照）。
+     */
+    private MvcResult performReadAll() throws Exception {
+        String path = "/api/v1/teams/" + teamId + "/announcements/read-all";
+        return mockMvc.perform(post(path).servletPath(path)).andReturn();
+    }
+
+    /** 単件既読を実行する（{@code servletPath} は本番と同じフルパス）。 */
+    private MvcResult performSingleRead(long announcementId) throws Exception {
+        String path = "/api/v1/teams/" + teamId + "/announcements/" + announcementId + "/read";
+        return mockMvc.perform(post(path).servletPath(path)).andReturn();
+    }
+
+    /** お知らせ一覧（フィルタ非対象）を実行する（{@code servletPath} は本番と同じフルパス）。 */
+    private MvcResult performListFeed() throws Exception {
+        String path = "/api/v1/teams/" + teamId + "/announcements";
+        return mockMvc.perform(get(path).servletPath(path)).andReturn();
+    }
+
+    /** {@code @WithMockUser} の username と一致する固定 ID のユーザー行を作る。 */
+    private void insertUserWithFixedId(Long userId, String email) {
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "id, email, last_name, first_name, display_name, status, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:id, :email, 'RATELIMIT', 'テスト', 'RATELIMIT テスト', 'ACTIVE', "
+                                + "1, 1, 1, "
+                                + "'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                                + "1, 0, "
+                                + "NOW(), NOW())")
+                .setParameter("id", userId)
+                .setParameter("email", email)
+                .executeUpdate();
+    }
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
