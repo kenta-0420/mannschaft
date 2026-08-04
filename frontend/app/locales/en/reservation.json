@@ -601,7 +601,16 @@
       "auto_generated": "Saved. {generated} slots were created for the next {days} days",
       "auto_generated_partial": "Slot creation failed for {failed} of {total} days (the saved days are still active)",
       "need_business_hours_hint": "Please set business hours first",
-      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours"
+      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours",
+      "grid": {
+        "title": "Create slots by dragging",
+        "hint": "Drag across the grid to create slots for that range (drag sideways to cover several days at once). On phones or with a keyboard, tap or press Enter on the start cell and then the end cell. Press Esc to cancel",
+        "legend_existing": "Registered",
+        "legend_selected": "Selected",
+        "blocked": "The selected range overlaps existing slots. Please choose an empty range",
+        "confirm_title": "Create slots",
+        "create": "Create"
+      }
     },
     "recurring_block": {
       "title": "Weekly unavailability",
