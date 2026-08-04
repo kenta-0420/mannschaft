@@ -294,32 +294,6 @@ class ReservationEntityTest {
         }
 
         @Test
-        @DisplayName("isRecurring_繰り返しルールなし_false返却")
-        void isRecurring_繰り返しルールなし_false返却() {
-            // Given
-            ReservationSlotEntity slot = createSlot();
-
-            // When & Then
-            assertThat(slot.isRecurring()).isFalse();
-        }
-
-        @Test
-        @DisplayName("isRecurring_繰り返しルールあり_true返却")
-        void isRecurring_繰り返しルールあり_true返却() {
-            // Given
-            ReservationSlotEntity slot = ReservationSlotEntity.builder()
-                    .teamId(30L)
-                    .slotDate(LocalDate.now().plusDays(1))
-                    .startTime(LocalTime.of(10, 0))
-                    .endTime(LocalTime.of(11, 0))
-                    .recurrenceRule("{\"freq\":\"WEEKLY\"}")
-                    .build();
-
-            // When & Then
-            assertThat(slot.isRecurring()).isTrue();
-        }
-
-        @Test
         @DisplayName("isAvailable_AVAILABLE状態_true返却")
         void isAvailable_AVAILABLE状態_true返却() {
             // Given
