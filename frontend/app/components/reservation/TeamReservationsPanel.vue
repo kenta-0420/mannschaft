@@ -80,6 +80,24 @@ function openBusinessHoursSection() {
   }
 }
 
+/**
+ * 「枠ゼロ」空状態の管理者CTA（SlotMatrixPicker @manage-slots）から呼ばれる。
+ * 予約対象タブへ切り替えたうえで④週間スケジュールセクションを開いてスクロールする
+ * （予約対象ゼロの manageLines がタブ切替のみなのに対し、こちらは次の一手＝枠作成まで届ける）。
+ */
+function openWeeklyScheduleSection() {
+  activeTab.value = 2
+  if (!managementAccordionValue.value.includes('weekly_schedule')) {
+    managementAccordionValue.value = [...managementAccordionValue.value, 'weekly_schedule']
+  }
+  if (import.meta.client) {
+    nextTick(() => {
+      document.getElementById('reservation-weekly-schedule-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+}
+
 /** 営業時間の保存成功時に予約設定キャッシュ（hasBusinessHours）を最新化する。 */
 function onBusinessHoursSaved() {
   void loadReservationSettings()
@@ -251,6 +269,7 @@ onMounted(async () => {
               :is-admin="isAdmin"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
+              @manage-slots="openWeeklyScheduleSection"
               @reserved="onReserved"
               @waitlist-changed="onWaitlistChanged"
             />
@@ -352,7 +371,7 @@ onMounted(async () => {
             <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2）。
                  ラベルは「枠テンプレ」限定表現ではなく、枠テンプレ＋定期予約不可を包含する
                  「週間スケジュール」（検分指摘・軽4）。 -->
-            <AccordionPanel value="weekly_schedule">
+            <AccordionPanel id="reservation-weekly-schedule-section" value="weekly_schedule">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
                   {{ t('reservation.management.section_count', { label: t('reservation.weekly_schedule.section_title'), n: weeklyScheduleCount }) }}

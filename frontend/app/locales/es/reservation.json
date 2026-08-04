@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "Aún no hay objetivos de reserva",
         "admin_no_lines_hint": "Crea objetivos de reserva y franjas en \"Gestionar objetivos de reserva\" para mostrar las franjas aquí",
-        "admin_no_slots": "No hay franjas libres este día",
-        "admin_no_slots_hint": "Puedes añadir franjas desde \"Gestionar objetivos de reserva\"",
+        "admin_no_slots": "No hay franjas libres esta semana",
+        "admin_no_slots_hint": "Crea franjas en \"Horario semanal\" y aparecerán aquí",
         "member_no_lines": "Las reservas se están preparando",
         "member_no_lines_hint": "Espera a que el administrador prepare las franjas de reserva",
-        "member_no_slots": "No hay franjas libres este día",
-        "member_no_slots_hint": "Prueba con otro día"
+        "member_no_slots": "No hay franjas libres esta semana",
+        "member_no_slots_hint": "Prueba con otra semana"
       }
     },
     "line_manage_title": "Gestión de {resourceName}",

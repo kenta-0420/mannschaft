@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "예약 대상이 아직 없습니다",
         "admin_no_lines_hint": "「예약 대상 관리」에서 예약 대상과 시간대를 만들면 여기에 예약 시간대가 표시됩니다",
-        "admin_no_slots": "이 날에는 예약 가능한 시간대가 없습니다",
-        "admin_no_slots_hint": "「예약 대상 관리」에서 시간대를 추가할 수 있습니다",
+        "admin_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "admin_no_slots_hint": "「주간 일정」에서 시간대를 만들면 여기에 표시됩니다",
         "member_no_lines": "예약 준비 중입니다",
         "member_no_lines_hint": "관리자가 예약 시간대를 준비할 때까지 기다려 주세요",
-        "member_no_slots": "이 날에는 예약 가능한 시간대가 없습니다",
-        "member_no_slots_hint": "다른 날짜를 선택해 다시 시도해 주세요"
+        "member_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "member_no_slots_hint": "다른 주를 선택해 다시 시도해 주세요"
       }
     },
     "line_manage_title": "{resourceName} 관리",
