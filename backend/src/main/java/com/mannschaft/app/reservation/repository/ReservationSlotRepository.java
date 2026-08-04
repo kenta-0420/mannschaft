@@ -101,8 +101,8 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
      * <p>Hibernate のネイティブクエリとして実行することで、TIME/DATE/BINARY(16) のパラメータバインドが
      * エンティティ永続化と<b>同一の変換規則</b>になる（素の JdbcTemplate 直挿入は MySQL Connector/J の
      * タイムゾーン変換が Hibernate 読取と非対称になり、JVM≠DB タイムゾーン環境で時刻が +9h ずれる
-     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status}/{@code is_exception} は
-     * DDL 既定値（0 / 'AVAILABLE' / FALSE）に委ねる。</p>
+     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status} は
+     * DDL 既定値（0 / 'AVAILABLE'）に委ねる。</p>
      *
      * @param templateId 生成元テンプレート ID（UUIDv7 の BINARY(16) 表現・{@code UuidV7Entity} と同じ
      *                   ビッグエンディアン MSB→LSB）

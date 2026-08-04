@@ -122,7 +122,7 @@ class ReservationSlotServiceTest {
                 .teamId(TEAM_ID)
                 .staffUserId(STAFF_USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("テストスロット", SLOT_DATE, START_TIME, END_TIME))
-                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, false, null, "テストメモ"))
+                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, null, "テストメモ"))
                 .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(new BigDecimal("1000")))
                 .policy(new ReservationSlotResponse.SlotPolicyDto(null))
