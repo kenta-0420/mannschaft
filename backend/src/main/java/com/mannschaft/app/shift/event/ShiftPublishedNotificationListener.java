@@ -11,6 +11,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
@@ -47,7 +49,7 @@ public class ShiftPublishedNotificationListener {
                     TeamFanoutRecipientSource.SCOPE_TYPE,        // 戦略キー: TEAM
                     String.valueOf(event.getTeamId()),           // scope_ref: チーム ID 文字列
                     NOTIFICATION_TYPE,
-                    sourceEventUuid(event.getScheduleId()),      // 冪等キー: スケジュール公開イベント UUID
+                    sourceEventUuid(event.getScheduleId(), event.getPublishedAt()), // 冪等キー: 公開イベント（scheduleId×publishedAt）
                     null,                                        // organizationId: シフト公開は org 非依存
                     "シフトが公開されました",
                     "シフトスケジュールが確定・公開されました。内容を確認してください。",
@@ -65,10 +67,18 @@ public class ShiftPublishedNotificationListener {
     }
 
     /**
-     * スケジュール公開という論理イベントから冪等キー UUID を決定的に導出する。
-     * 同一スケジュールの公開通知を二重発火しても同一 UUID となり {@code uk_fanout_idempotency} で 1 ジョブに収束する。
+     * 「スケジュール公開」という論理イベントから冪等キー UUID を決定的に導出する。
+     *
+     * <p>冪等キーは {@code scheduleId × publishedAt}（公開時刻）で構成する。同一 AFTER_COMMIT の二重発火は
+     * 同一 publishedAt ゆえ同一 UUID となり {@code uk_fanout_idempotency} で 1 ジョブに収束する（正当な抑止）。
+     * 一方 PUBLISHED→ADJUSTING→再 PUBLISHED の<b>再公開</b>は publishedAt が更新されるため別 UUID となり、新ジョブが
+     * 立って再通知される（scheduleId だけだと再公開通知が恒久抑止される回帰を防ぐ）。</p>
+     *
+     * <p>publishedAt が万一 null の場合（想定外だが防御）は scheduleId のみで導出する。</p>
      */
-    private static UUID sourceEventUuid(Long scheduleId) {
-        return UUID.nameUUIDFromBytes(("SHIFT_PUBLISHED_SCHEDULE:" + scheduleId).getBytes(StandardCharsets.UTF_8));
+    private static UUID sourceEventUuid(Long scheduleId, LocalDateTime publishedAt) {
+        String seed = "SHIFT_PUBLISHED_SCHEDULE:" + scheduleId + ":"
+                + (publishedAt == null ? "-" : String.valueOf(publishedAt.toInstant(ZoneOffset.UTC).toEpochMilli()));
+        return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
     }
 }

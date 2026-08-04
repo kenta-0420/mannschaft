@@ -102,6 +102,33 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
+    // Major① 回帰防止: membership は開存でも status!='ACTIVE' / 論理削除済ユーザーは受信しない
+    //  （旧 UserRoleRepository.findUserIdsByScope の JOIN users ... u.status='ACTIVE' AND u.deleted_at IS NULL と一致）
+    // =====================================================================
+    @Test
+    @DisplayName("Major① membership 開存でも status!='ACTIVE'／deleted_at 済ユーザーは供給しない（旧経路の母集団一致）")
+    void keysetExcludesInactiveAndDeletedUsers() {
+        long teamId = 8_150L;
+        long active1 = base(teamId) + 1;
+        long frozen = base(teamId) + 2;   // membership 開存だが status=FROZEN
+        long deleted = base(teamId) + 3;  // membership 開存だが deleted_at 済
+        long active2 = base(teamId) + 4;
+        seedActiveMembershipWithUserState(teamId, active1, "ACTIVE", false);
+        seedActiveMembershipWithUserState(teamId, frozen, "FROZEN", false);
+        seedActiveMembershipWithUserState(teamId, deleted, "ACTIVE", true);
+        seedActiveMembershipWithUserState(teamId, active2, "ACTIVE", false);
+
+        List<Long> page = membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, LARGE_LIMIT));
+
+        log.info("[Major①] 供給={}（期待=ACTIVE未削除のみ [{}, {}]）", page, active1, active2);
+        assertThat(page)
+                .as("Major①: 停止(FROZEN)・論理削除済ユーザーは membership 開存でも通知対象から除外される")
+                .containsExactly(active1, active2)
+                .doesNotContain(frozen, deleted);
+    }
+
+    // =====================================================================
     // AC-2 nextPage: scope_ref(TEAM id 文字列)→keyset で TEAM メンバー供給（nextPage 未実装=red）
     // =====================================================================
     @Test
@@ -336,6 +363,9 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     private void seedActiveMember(ScopeType scopeType, long scopeId, long userId) {
+        // 受信者供給は users を JOIN し ACTIVE・未削除ユーザーのみを返す（旧 UserRoleRepository 経路との母集団一致）。
+        // membership 行だけでなく、対応する ACTIVE ユーザー本体も seed しないと JOIN で除外される。
+        insertUser(userId, "ACTIVE", null);
         membershipRepository.save(MembershipEntity.builder()
                 .userId(userId)
                 .scopeType(scopeType)
@@ -344,6 +374,7 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     private void seedLeftTeamMember(long teamId, long userId) {
+        insertUser(userId, "ACTIVE", null);
         membershipRepository.save(MembershipEntity.builder()
                 .userId(userId)
                 .scopeType(ScopeType.TEAM)
@@ -351,6 +382,29 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
                 .leftAt(LocalDateTime.now().minusDays(1))
                 .leaveReason(LeaveReason.SELF)
                 .build());
+    }
+
+    /**
+     * membership 行は現役（left_at IS NULL）だが、対応するユーザー本体が非 ACTIVE（例: FROZEN）または論理削除済み
+     * （deleted_at 設定）である受信者を seed する。旧同期経路は {@code u.status='ACTIVE' AND u.deleted_at IS NULL} で
+     * これらを除外していたため、新 keyset 供給でも除外されねばならない（回帰防止・Major①）。
+     */
+    private void seedActiveMembershipWithUserState(long teamId, long userId, String status, boolean deleted) {
+        insertUser(userId, status, deleted ? LocalDateTime.now().minusHours(1) : null);
+        membershipRepository.save(MembershipEntity.builder()
+                .userId(userId)
+                .scopeType(ScopeType.TEAM)
+                .scopeId(teamId)
+                .build());
+    }
+
+    /** users 行を最小カラムで挿入する（追加カラムは全て DEFAULT 付き NOT NULL / NULL 可）。 */
+    private void insertUser(long userId, String status, LocalDateTime deletedAt) {
+        LocalDateTime now = LocalDateTime.now();
+        jdbc.update("INSERT INTO users "
+                        + "(id, email, last_name, first_name, display_name, status, deleted_at, created_at, updated_at) "
+                        + "VALUES (?, ?, 'L', 'F', ?, ?, ?, ?, ?)",
+                userId, "fanout-it-" + userId + "@example.test", "U" + userId, status, deletedAt, now, now);
     }
 
     private NotificationFanoutJob newTeamJob(long teamId, String type, long cursor) {

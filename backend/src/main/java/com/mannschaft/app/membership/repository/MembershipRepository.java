@@ -294,16 +294,29 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * により index-only 走査となる（V174 migration）。現役判定（{@code left_at IS NULL}）は WHERE に
      * 閉じ込め、退会者を漏れなく除外する。{@code scope_id} で等値絞り込みするためテナント分離も満たす。</p>
      *
+     * <h2>受信者母集団の一致（旧 {@code UserRoleRepository.findUserIdsByScope} との回帰防止）</h2>
+     * <p>載せ替え前の同期経路は {@code JOIN users u ... AND u.deleted_at IS NULL AND u.status = 'ACTIVE'} で
+     * 停止・削除済みユーザーを除外していた。membership 行（{@code left_at IS NULL}）だけを見ると、行は開存だが
+     * ユーザー本体が停止（{@code status != 'ACTIVE'}）・論理削除（{@code deleted_at IS NOT NULL}）済みの
+     * 相手にまで通知が漏れる回帰となる。そこで {@code users} を JOIN し旧経路と同じユーザー状態フィルタを補う。
+     * JPQL では membership↔user のクロスドメイン association を張れない（原則1・FK 禁止）ため native query とする。
+     * {@code UserEntity} の {@code @SQLRestriction} は native には効かないので {@code deleted_at IS NULL} を明示する。
+     * JOIN 先は PK 参照ゆえ被覆索引の index-only 性は保たれる。</p>
+     *
      * @param scopeType 対象スコープ種別（fan-out では TEAM）
      * @param scopeId   対象スコープ ID（対象チーム ID 等）
      * @param cursor    直前チャンク末尾の user_id（初回は最小値未満＝{@code 0L} 等を渡す）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の現役メンバー user_id を昇順に最大 chunk 件
+     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの user_id を昇順に最大 chunk 件
      */
-    @Query("SELECT m.userId FROM MembershipEntity m " +
-            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
-            "AND m.leftAt IS NULL AND m.userId > :cursor " +
-            "ORDER BY m.userId ASC")
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+            + "JOIN users u ON u.id = m.user_id "
+            + "WHERE m.scope_type = :#{#scopeType.name()} AND m.scope_id = :scopeId "
+            + "AND m.left_at IS NULL "
+            + "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' "
+            + "AND m.user_id > :cursor "
+            + "ORDER BY m.user_id ASC",
+            nativeQuery = true)
     List<Long> findActiveUserIdsByScopeKeyset(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,

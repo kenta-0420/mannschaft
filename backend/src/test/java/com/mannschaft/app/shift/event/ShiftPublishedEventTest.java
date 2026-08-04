@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -46,6 +47,8 @@ class ShiftPublishedEventTest {
     private static final Long SCHEDULE_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long TRIGGERED_BY = 100L;
+    private static final LocalDateTime PUBLISHED_AT = LocalDateTime.of(2026, 8, 4, 12, 0, 0);
+    private static final LocalDateTime PUBLISHED_AT_2 = LocalDateTime.of(2026, 8, 4, 15, 30, 0);
 
     // =========================================================
     // ShiftPublishedEvent フィールド検証
@@ -58,11 +61,12 @@ class ShiftPublishedEventTest {
         @Test
         @DisplayName("コンストラクタで渡した値をすべて保持する")
         void フィールド保持() {
-            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY);
+            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
 
             org.assertj.core.api.Assertions.assertThat(event.getScheduleId()).isEqualTo(SCHEDULE_ID);
             org.assertj.core.api.Assertions.assertThat(event.getTeamId()).isEqualTo(TEAM_ID);
             org.assertj.core.api.Assertions.assertThat(event.getTriggeredByUserId()).isEqualTo(TRIGGERED_BY);
+            org.assertj.core.api.Assertions.assertThat(event.getPublishedAt()).isEqualTo(PUBLISHED_AT);
             org.assertj.core.api.Assertions.assertThat(event.getOccurredAt()).isNotNull();
         }
     }
@@ -78,7 +82,7 @@ class ShiftPublishedEventTest {
         @Test
         @DisplayName("AC-5: 受信者を展開せず TEAM スコープの耐久ジョブを 1 件だけ enqueue する")
         void 耐久ジョブを1件enqueue() {
-            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY);
+            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
 
             listener.onShiftPublished(event);
 
@@ -99,7 +103,7 @@ class ShiftPublishedEventTest {
         @Test
         @DisplayName("AC-6: enqueue 失敗でも業務処理へ例外を伝播しない（best-effort）")
         void enqueue失敗はbestEffortで握る() {
-            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY);
+            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
             willThrow(new RuntimeException("fan-out 一時障害"))
                     .given(fanoutJobService).enqueue(
                             any(), any(), any(), any(), any(),
@@ -110,9 +114,10 @@ class ShiftPublishedEventTest {
         }
 
         @Test
-        @DisplayName("AC-6: 同一スケジュール公開の二重発火は決定的な冪等キーで同一 UUID を運ぶ（DB uk で 1 ジョブ）")
+        @DisplayName("AC-6: 同一公開の二重発火（同一 publishedAt）は同一 UUID を運ぶ（DB uk で 1 ジョブに収束）")
         void 二重発火は同一冪等キー() {
-            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY);
+            // 同一 publishedAt の二重発火（同一 AFTER_COMMIT の再送等）。
+            ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
 
             listener.onShiftPublished(event);
             listener.onShiftPublished(event);
@@ -126,6 +131,27 @@ class ShiftPublishedEventTest {
             org.assertj.core.api.Assertions.assertThat(uuidCaptor.getAllValues())
                     .hasSize(2)
                     .allMatch(uuidCaptor.getAllValues().get(0)::equals);
+        }
+
+        @Test
+        @DisplayName("AC-6: 再公開（別 publishedAt）は別 UUID を運ぶ（新ジョブで再通知・恒久抑止しない）")
+        void 再公開は別冪等キー() {
+            // PUBLISHED → ADJUSTING → 再 PUBLISHED。同一 scheduleId だが publishedAt が更新される。
+            ShiftPublishedEvent first = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
+            ShiftPublishedEvent republish = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT_2);
+
+            listener.onShiftPublished(first);
+            listener.onShiftPublished(republish);
+
+            ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
+            verify(fanoutJobService, times(2)).enqueue(
+                    any(), any(), any(), uuidCaptor.capture(), any(),
+                    any(), any(), any(), any(), any(), any(), any());
+
+            // 別 publishedAt ゆえ別 UUID → uk_fanout_idempotency に衝突せず新ジョブが立ち再通知される。
+            org.assertj.core.api.Assertions.assertThat(uuidCaptor.getAllValues())
+                    .hasSize(2)
+                    .doesNotHaveDuplicates();
         }
     }
 }
