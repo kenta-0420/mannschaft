@@ -10,7 +10,7 @@ import com.mannschaft.app.scopefolder.dto.FolderNotificationSummaryDto;
 import com.mannschaft.app.scopefolder.dto.ReorderFoldersRequest;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import io.swagger.v3.oas.annotations.Operation;

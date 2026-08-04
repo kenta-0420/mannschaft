@@ -1,7 +1,7 @@
 package com.mannschaft.app.notification.service;
 
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

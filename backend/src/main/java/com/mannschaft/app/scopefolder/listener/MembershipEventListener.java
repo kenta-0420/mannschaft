@@ -2,7 +2,7 @@ package com.mannschaft.app.scopefolder.listener;
 
 import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import lombok.RequiredArgsConstructor;

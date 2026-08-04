@@ -13,7 +13,7 @@ import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderItemRepository;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import lombok.RequiredArgsConstructor;
