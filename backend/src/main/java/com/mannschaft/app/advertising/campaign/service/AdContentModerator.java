@@ -21,9 +21,21 @@ import java.util.List;
  * ({@code String#toLowerCase().contains()})。コードブロックや HTML エスケープによる
  * NG 回避を防ぐため、Markdown 本文は前処理なしでそのまま照合する。</p>
  *
- * <p>辞書取得は Spring Cache {@code @Cacheable(value="adNgWords")} で
- * RedisConfig のデフォルト TTL (30分) でキャッシュされる。
- * SYSTEM_ADMIN が辞書を更新した際は明示的に evict すること (将来の UI 拡張で対応)。</p>
+ * <p>辞書取得は Spring Cache {@code @Cacheable(value="adNgWords")} でキャッシュされる。
+ * TTL は {@code RedisConfig} で明示的に <b>5 分</b>に設定している（既定 30 分ではない）。</p>
+ *
+ * <p><b>evict が存在しない理由（issue #2544）:</b>
+ * {@code ad_ng_words} にはアプリケーション側の書き込み経路が 1 つも無い
+ * （{@code AdNgWordRepository} の呼び出しは {@link #getActiveNgWords} の
+ * {@code findByIsActiveTrue()} 1 箇所のみで、辞書の投入・変更は Flyway
+ * {@code V67.030__seed_ad_ng_words.sql} ＝デプロイ時のマイグレーション、
+ * ないし運用者の DB 直接操作でしか起きない）。
+ * よって {@code @CacheEvict} を貼るべきミューテーションメソッドが存在せず、
+ * 反映の収束手段は TTL のみである。issue #2544 で自己呼び出しを是正して
+ * 本キャッシュが初めて実際に効くようになったため、
+ * 反映遅延を新たに作り込まないよう TTL を 5 分へ短縮してある。
+ * 将来 SYSTEM_ADMIN 向けの辞書編集 UI を作る際は、その更新メソッドに
+ * {@code @CacheEvict(value = CACHE_NAME, allEntries = true)} を貼ること。</p>
  */
 @Service
 @RequiredArgsConstructor
