@@ -11,15 +11,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -125,51 +125,44 @@ class AnnouncementReadProxyInputTest {
     class NormalRead {
 
         @Test
-        @DisplayName("通常既読時_isProxyConfirmedがfalseのまま保存される")
-        void 通常既読時_isProxyConfirmedがfalseのまま保存される() {
+        @DisplayName("通常既読時_冪等UPSERTで1行作られ代理記録は作られない")
+        void 通常既読時_冪等UPSERTで1行作られ代理記録は作られない() {
             // Given
-            AnnouncementReadStatusEntity savedStatus = createSavedStatus();
-
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
-            given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class))).willReturn(savedStatus);
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
             announcementReadService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
-            // Then: save が1回のみ呼ばれ、proxyInputRecordRepository は呼ばれない
-            verify(readStatusRepository, times(1)).save(any(AnnouncementReadStatusEntity.class));
+            // Then: 冪等 UPSERT が 1 回だけ呼ばれ、代理記録は作られない
+            verify(readStatusRepository, times(1))
+                    .insertReadStatusesIgnoringExisting(USER_ID, List.of(ANNOUNCEMENT_ID));
+            verify(readStatusRepository, never()).markProxyConfirmed(anyLong(), anyLong(), anyLong());
             verify(proxyInputRecordRepository, never()).save(any(ProxyInputRecordEntity.class));
         }
 
         @Test
-        @DisplayName("通常既読時_isProxyConfirmedフィールドはデフォルトでfalse")
-        void 通常既読時_isProxyConfirmedフィールドはデフォルトでfalse() {
+        @DisplayName("#2530 ⑤ 同時実行で UNIQUE 違反にならないよう素の save は使わない")
+        void 素のsaveは使わない() {
             // Given
-            AnnouncementReadStatusEntity savedStatus = createSavedStatus();
-
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
-
-            ArgumentCaptor<AnnouncementReadStatusEntity> captor =
-                    ArgumentCaptor.forClass(AnnouncementReadStatusEntity.class);
-            given(readStatusRepository.save(captor.capture())).willReturn(savedStatus);
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
             announcementReadService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
-            // Then: 保存時のエンティティは isProxyConfirmed=false
-            AnnouncementReadStatusEntity captured = captor.getValue();
-            assertThat(captured.getIsProxyConfirmed()).isFalse();
-            assertThat(captured.getProxyInputRecordId()).isNull();
+            // Then: 「存在チェック → 素の INSERT」は同時実行で uq_ars_feed_user 違反（500）を招く。
+            // DB 側で冪等な UPSERT に寄せたので save は 1 度も呼ばれてはならない。
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            verify(readStatusRepository, never()).saveAll(any());
         }
 
         @Test
@@ -187,7 +180,9 @@ class AnnouncementReadProxyInputTest {
             announcementReadService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
-            // Then: save は呼ばれない（冪等）
+            // Then: 書き込みは一切起きない（冪等）
+            verify(readStatusRepository, never())
+                    .insertReadStatusesIgnoringExisting(anyLong(), any());
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
         }
     }
@@ -214,8 +209,6 @@ class AnnouncementReadProxyInputTest {
         @DisplayName("代理確認時_isProxyConfirmedがtrueでproxyInputRecordIdがセットされて保存される")
         void 代理確認時_isProxyConfirmedがtrueでproxyInputRecordIdがセットされて保存される() {
             // Given
-            AnnouncementReadStatusEntity firstSavedStatus = createSavedStatus();
-
             ProxyInputRecordEntity proxyRecord = ProxyInputRecordEntity.builder()
                     .proxyInputConsentId(CONSENT_ID)
                     .subjectUserId(30L)
@@ -233,18 +226,10 @@ class AnnouncementReadProxyInputTest {
             } catch (Exception ignored) {
             }
 
-            AnnouncementReadStatusEntity proxyFlaggedStatus = firstSavedStatus.toBuilder()
-                    .isProxyConfirmed(true)
-                    .proxyInputRecordId(PROXY_RECORD_ID)
-                    .build();
-
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
-            given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
-                    .willReturn(firstSavedStatus)    // 1回目: 初回既読保存
-                    .willReturn(proxyFlaggedStatus); // 2回目: 代理フラグ付き更新
             given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
                     CONSENT_ID, "ANNOUNCEMENT_READ", ANNOUNCEMENT_ID))
                     .willReturn(Optional.empty());
@@ -254,25 +239,19 @@ class AnnouncementReadProxyInputTest {
             announcementReadService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID);
 
-            // Then: readStatusRepository.save が2回呼ばれる（初回保存 + 代理フラグ付き更新）
-            verify(readStatusRepository, times(2)).save(any(AnnouncementReadStatusEntity.class));
+            // Then: 既読行は冪等 UPSERT で作られ、そのうえで代理フラグが UPDATE される
+            verify(readStatusRepository, times(1))
+                    .insertReadStatusesIgnoringExisting(USER_ID, List.of(ANNOUNCEMENT_ID));
+            verify(readStatusRepository, times(1))
+                    .markProxyConfirmed(ANNOUNCEMENT_ID, USER_ID, PROXY_RECORD_ID);
             // Then: proxyInputRecordRepository.save が1回呼ばれる
             verify(proxyInputRecordRepository, times(1)).save(any(ProxyInputRecordEntity.class));
-            // Then: 2回目の save で isProxyConfirmed=true, proxyInputRecordId=PROXY_RECORD_ID
-            ArgumentCaptor<AnnouncementReadStatusEntity> captor =
-                    ArgumentCaptor.forClass(AnnouncementReadStatusEntity.class);
-            verify(readStatusRepository, times(2)).save(captor.capture());
-            AnnouncementReadStatusEntity secondSaved = captor.getAllValues().get(1);
-            assertThat(secondSaved.getIsProxyConfirmed()).isTrue();
-            assertThat(secondSaved.getProxyInputRecordId()).isEqualTo(PROXY_RECORD_ID);
         }
 
         @Test
         @DisplayName("代理確認時_冪等性チェックで既存レコードがあれば新規作成しない")
         void 代理確認時_冪等性チェックで既存レコードがあれば新規作成しない() {
             // Given
-            AnnouncementReadStatusEntity firstSavedStatus = createSavedStatus();
-
             ProxyInputRecordEntity existingProxyRecord = ProxyInputRecordEntity.builder()
                     .proxyInputConsentId(CONSENT_ID)
                     .subjectUserId(30L)
@@ -290,18 +269,10 @@ class AnnouncementReadProxyInputTest {
             } catch (Exception ignored) {
             }
 
-            AnnouncementReadStatusEntity proxyFlaggedStatus = firstSavedStatus.toBuilder()
-                    .isProxyConfirmed(true)
-                    .proxyInputRecordId(PROXY_RECORD_ID)
-                    .build();
-
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
-            given(readStatusRepository.save(any(AnnouncementReadStatusEntity.class)))
-                    .willReturn(firstSavedStatus)
-                    .willReturn(proxyFlaggedStatus);
             // 冪等性チェック: 既存レコードが見つかる
             given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
                     CONSENT_ID, "ANNOUNCEMENT_READ", ANNOUNCEMENT_ID))

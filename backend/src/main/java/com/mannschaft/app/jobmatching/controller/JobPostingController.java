@@ -3,6 +3,7 @@ package com.mannschaft.app.jobmatching.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.jobmatching.controller.dto.CreateJobPostingRequest;
 import com.mannschaft.app.jobmatching.controller.dto.FeePreviewResponse;
 import com.mannschaft.app.jobmatching.controller.dto.JobPostingResponse;
@@ -101,7 +102,14 @@ public class JobPostingController {
      *
      * <p>業務報酬（基本額）から Requester 支払総額・Worker 受取額の内訳を返す。
      * 認証のみで呼び出せる軽量 API（求人作成画面のリアルタイム表示を想定）。</p>
+     *
+     * <p><b>自己スコープ</b>: 入力は金額 1 個（{@code baseRewardJpy}）のみで、リソース識別子を
+     * 一切受け取らない。{@code JobFeeCalculator#calculate} は手数料率テーブルに基づく純計算であり、
+     * 永続データの読み書きを一切行わないため、返却値は誰が呼んでも同一で、
+     * 他人のデータに到達する経路が構造的に存在しない。</p>
      */
+    @SelfScopedEndpoint("入力は金額 1 個のみでリソース識別子を受け取らず、JobFeeCalculator#calculate は"
+            + "永続データを読まない純計算のため、返却値に他ユーザー由来の情報が入る経路が無い")
     @GetMapping("/fee-preview")
     @Operation(summary = "手数料プレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

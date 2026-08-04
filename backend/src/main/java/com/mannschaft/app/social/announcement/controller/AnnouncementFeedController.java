@@ -5,11 +5,13 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
+import com.mannschaft.app.social.announcement.AnnouncementReadService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedItemDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedMetaDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedResponseDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementMarkAllReadResultDto;
 import com.mannschaft.app.social.announcement.dto.CreateAnnouncementRequestDto;
 import com.mannschaft.app.social.announcement.dto.PinAnnouncementRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -251,19 +253,30 @@ public class AnnouncementFeedController {
     /**
      * チームスコープの全未読お知らせを一括既読にする。
      *
+     * <p><b>応答（#2530 ①）</b>: {@code markedCount} は<b>実際に既読化した件数</b>である
+     * （以前はハードコードの {@code 0} を返しており、FE は「未読 0」と表示しつつ
+     * 実際には未読が残ることがあった）。1 リクエストの防御上限
+     * （{@code 500 × 20 = 10,000 件}）で打ち切った場合は {@code hasMoreUnread=true} を返し、
+     * 「まだ残っている・もう一度実行すれば続きが処理される」ことを利用者に伝えられるようにする。</p>
+     *
      * @param teamId チーム ID
-     * @return 200 OK（既読マーク件数）
+     * @return 200 OK（既読マーク件数と残余の有無）
      */
     @PostMapping("/read-all")
     @Operation(
             summary = "全件既読",
-            description = "チームスコープの全未読お知らせを一括既読にする。")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead(
+            description = "チームスコープの全未読お知らせを一括既読にする。"
+                    + "1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。")
+    public ResponseEntity<ApiResponse<AnnouncementMarkAllReadResultDto>> markAllAsRead(
             @PathVariable Long teamId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAllAsRead(AnnouncementScopeType.TEAM, teamId, userId);
+        AnnouncementReadService.MarkAllReadOutcome outcome =
+                announcementFeedService.markAllAsRead(AnnouncementScopeType.TEAM, teamId, userId);
 
-        return ResponseEntity.ok(ApiResponse.of(Map.of("markedCount", 0)));
+        return ResponseEntity.ok(ApiResponse.of(AnnouncementMarkAllReadResultDto.builder()
+                .markedCount(outcome.markedCount())
+                .hasMoreUnread(outcome.hasMoreUnread())
+                .build()));
     }
 }

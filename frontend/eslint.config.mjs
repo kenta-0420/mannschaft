@@ -1,6 +1,14 @@
 import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt({
+  // @nuxt/eslint-config は既定で `**/public` をディレクトリ名一致で無視する
+  // （Nuxtの静的アセット用ルート public/ を想定した設定）。
+  // しかしこのパターンはネスト先の同名ディレクトリにも一致してしまい、
+  // app/components/public/ 等のソースコードが黙って lint 対象外になっていた。
+  // ルート直下の public/（静的アセット）は無視したまま、ソース配下の
+  // 同名ディレクトリだけを対象に戻す。
+  ignores: ['!app/**/public/**', '!tests/**/public/**'],
+}, {
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

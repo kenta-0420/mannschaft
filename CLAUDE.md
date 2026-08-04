@@ -60,6 +60,8 @@
 
 **開発作業は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** 本陣 `C:\Claude\mannschaft` で直接コーディング・コミットする運用は禁止。BE/API はテスト先行、FE/設計が薄い機能は従来順で可。
 
+戦役をまたぐ横断の課題正本は [`docs/task-list.md`](docs/task-list.md)（git追跡・永続、行の粒度は戦役単位）。1戦役内の詳細な進捗地図は `.claude/campaigns/*.md`（`.gitignore` 済・揮発、完了後削除）。
+
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
 `/出陣`・`/検分` は Dynamic Workflows で足軽の並列起動を表現できる（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
