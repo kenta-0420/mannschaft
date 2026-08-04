@@ -13,7 +13,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,7 +49,12 @@ class CorkboardServiceLookupTest {
     @Mock private AccessControlService accessControlService;
     @Mock private CorkboardPermissionService corkboardPermissionService;
 
-    @InjectMocks private CorkboardService service;
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code corkboardRepository.findByIdAndOwnerId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private CorkboardService service;
 
     private static final Long USER_ID = 1L;
     private static final Long OTHER_USER_ID = 2L;
@@ -62,6 +66,9 @@ class CorkboardServiceLookupTest {
 
     @BeforeEach
     void setUp() {
+        service = new CorkboardService(corkboardRepository, cardRepository, groupRepository,
+                corkboardMapper, eventPublisher, accessControlService, corkboardPermissionService,
+                new CorkboardAccessGuard(corkboardRepository));
         stubDetail = CorkboardDetailResponse.builder()
                 .id(BOARD_ID)
                 .scope(new CorkboardDetailResponse.BoardScopeDto("PERSONAL", null))

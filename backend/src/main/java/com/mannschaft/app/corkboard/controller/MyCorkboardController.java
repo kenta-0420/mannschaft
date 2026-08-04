@@ -26,6 +26,11 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人コルクボードコントローラー。
+ *
+ * <p>認可: 一覧・作成は認証ユーザー自身のスコープ（{@code owner_id = 認証主体}）で閉じる。
+ * boardId を受け取る詳細・更新・削除は {@code CorkboardAccessGuard#requireOwnedBoard} で
+ * <b>所有者本人のみ</b>に限定し、他者所有・不存在はいずれも 404（{@code CORKBOARD_001}）で
+ * 存在を秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users/me/corkboards")

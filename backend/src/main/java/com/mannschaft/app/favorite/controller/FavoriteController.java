@@ -46,8 +46,13 @@ import java.util.UUID;
  *   <li>PATCH  /api/v1/me/favorites/reorder ─ 30 req/時</li>
  * </ul>
  *
- * <p>IDOR 対策はサービス層で実施し、他人のお気に入りへのアクセス試行には
- * {@code FAV_004} (403) を返す。
+ * <p>認可は {@code FavoriteAccessGuard} に集約する:
+ * <ul>
+ *   <li>お気に入り行の参照・削除は<b>登録した本人のみ</b>。他人のお気に入り ID には
+ *       {@code FAV_004}（403）を返し、不存在は {@code FAV_003}（404）。</li>
+ *   <li>登録対象（チーム／組織）は F00 共通可視性ラダーで<b>閲覧できる対象のみ</b>登録できる。
+ *       閲覧できない対象は {@code FAV_003}（404）で存在を秘匿する。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/me/favorites")
@@ -185,12 +190,14 @@ public class FavoriteController {
     @PatchMapping("/reorder")
     @Operation(summary = "お気に入り並び替え",
             description = "orderedIds の順序でお気に入りの displayOrder を一括更新する。"
-                    + "リストに含まれていないIDは変更されない。")
+                    + "リストに含まれていないIDは変更されない。"
+                    + "並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "バリデーションエラー"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "他ユーザーのお気に入りが含まれている")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "自分のお気に入りに存在しないIDが含まれている")
     })
     public ResponseEntity<Void> reorderFavorites(
             @Valid @RequestBody ReorderFavoritesRequest request) {

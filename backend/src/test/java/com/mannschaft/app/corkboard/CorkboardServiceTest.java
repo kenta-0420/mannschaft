@@ -8,13 +8,14 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardGroupRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardRepository;
+import com.mannschaft.app.corkboard.service.CorkboardAccessGuard;
 import com.mannschaft.app.corkboard.service.CorkboardPermissionService;
 import com.mannschaft.app.corkboard.service.CorkboardService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,7 +39,20 @@ class CorkboardServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AccessControlService accessControlService;
     @Mock private CorkboardPermissionService corkboardPermissionService;
-    @InjectMocks private CorkboardService service;
+
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code corkboardRepository.findByIdAndOwnerId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private CorkboardService service;
+
+    @BeforeEach
+    void wireService() {
+        service = new CorkboardService(corkboardRepository, cardRepository, groupRepository,
+                corkboardMapper, eventPublisher, accessControlService, corkboardPermissionService,
+                new CorkboardAccessGuard(corkboardRepository));
+    }
 
     private static final Long USER_ID = 1L;
 
