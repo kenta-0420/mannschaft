@@ -188,6 +188,46 @@ class PhotoAlbumServiceTest {
         }
 
         @Test
+        @DisplayName("回帰: 総件数はDBの総件数からF00で落ちた件数を差し引いた値になる（PageImpl総件数バグ是正）")
+        void 一覧_総件数はDB総件数ベース_絞り込み後件数ではない() {
+            try (MockedStatic<SecurityUtils> mock = Mockito.mockStatic(SecurityUtils.class)) {
+                mock.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // ページサイズ2、DB全体では5件（=総件数5）のうち今回のページに2件取得。
+                // うち1件（album2）はF00で非公開と判定され除外される想定。
+                PhotoAlbumEntity album1 = PhotoAlbumEntity.builder()
+                        .teamId(TEAM_ID).title("アルバム1（公開）").build();
+                ReflectionTestUtils.setField(album1, "id", 100L);
+                PhotoAlbumEntity album2 = PhotoAlbumEntity.builder()
+                        .teamId(TEAM_ID).title("アルバム2（非公開・除外対象）").build();
+                ReflectionTestUtils.setField(album2, "id", 200L);
+                Pageable pageable = PageRequest.of(0, 2);
+                // DB側の総件数は5（絞り込み前）。
+                Page<PhotoAlbumEntity> page = new PageImpl<>(List.of(album1, album2), pageable, 5);
+
+                given(albumRepository.findByTeamIdOrderByEventDateDesc(TEAM_ID, pageable))
+                        .willReturn(page);
+                // album1 のみアクセス可能（album2 は除外＝片方だけが残ることを検証）
+                given(contentVisibilityChecker.filterAccessible(
+                        eq(ReferenceType.PHOTO_ALBUM), any(), eq(USER_ID)))
+                        .willReturn(Set.of(100L));
+                AlbumResponse response1 = new AlbumResponse(
+                        100L, TEAM_ID, null, "アルバム1（公開）", null, null, null,
+                        null, null, null, null, null, null, null);
+                given(galleryMapper.toAlbumResponse(album1)).willReturn(response1);
+
+                Page<AlbumResponse> result = service.listAlbums(
+                        TEAM_ID, null, null, null, null, null, pageable);
+
+                // 旧実装のバグでは filtered.size()=1 が総件数になっていた。
+                // 是正後は「DB総件数5 − このページで落ちた件数1」= 4 になるはず。
+                assertThat(result.getTotalElements()).isEqualTo(4L);
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getTitle()).isEqualTo("アルバム1（公開）");
+            }
+        }
+
+        @Test
         @DisplayName("正常系: アルバムが空の場合は ContentVisibilityChecker を呼ばない")
         void 一覧_空ページ_フィルタ不要() {
             try (MockedStatic<SecurityUtils> mock = Mockito.mockStatic(SecurityUtils.class)) {
