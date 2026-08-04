@@ -32,6 +32,32 @@ import {
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 import { selectDropdown, fillInput } from '../helpers/form'
+import net from 'node:net'
+
+/**
+ * Valkey (Redis互換) が生きているか、生の TCP + RESP inline command（PING）で直接確認する。
+ * レートリミットが Valkey に依存する以上（fail-openで429が出ない環境依存の疑陰性を防ぐため）、
+ * 429 を assert する前に前提条件として明示的に検証する（是正1・殿指摘）。
+ * 依存追加を避けるため ioredis 等は使わず net.Socket の生TCPで済ませる。
+ */
+function pingValkey(host: string, port: number, timeoutMs = 3000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    let settled = false
+    const finish = (ok: boolean) => {
+      if (settled) return
+      settled = true
+      socket.destroy()
+      resolve(ok)
+    }
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => socket.write('PING\r\n'))
+    socket.once('data', (data) => finish(data.toString().startsWith('+PONG')))
+    socket.once('timeout', () => finish(false))
+    socket.once('error', () => finish(false))
+    socket.connect(port, host)
+  })
+}
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://127.0.0.1:8081'
 const BE_API = `${API_BASE_URL}/api/v1`
@@ -324,10 +350,13 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
   })
 
   test('シナリオA-2: 満席予約を1つキャンセルするとWAITING者に通知が飛ぶ', async ({ page, tokens }) => {
+    // 是正(殿指摘): 検証環境はE2E固定ユーザー1名しかおらず、WAITING登録者と予約キャンセル実行者が
+    // 常に同一ユーザーになる（別ユーザーでの受信確認ができない）。さらに対象予約特定に使うAPIの
+    // クエリパラメータ(from/to)がBE TeamReservationControllerの実パラメータ(status/page/size)と
+    // 不一致で対象予約が常に見つからず、`if (target)` 配下が実行されない構造的欠陥がある。
+    // 「静かに素通り」させず、明示的にスキップして理由を残す。
+    test.skip(true, '単一ユーザー検証環境の構造的制約によりWAITING者への通知飛来を確定検証できない（別ユーザー環境が必要）。踏めなかった。')
     const ctx = await playwrightRequest.newContext()
-    // 会員(管理者と同一ユーザーしかいない検証環境のため、まず waitlist に再登録してから
-    // 別経路で枠を空ける。単一ユーザー検証の制約下でも「空きが出た」イベント発火の有無は
-    // 通知一覧の増分で確認できる。
     const slotId = await findSlotId(ctx, teamSlug, tokens.admin, day.iso, '09:00', lineId)
     const joinRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-waitlist/${slotId}`, {
       headers: authHeaders(tokens.admin),
@@ -453,35 +482,27 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     await page.screenshot({ path: 'test-results/d-b-03-result-panel.png', fullPage: true })
     await page.getByTestId('recurring-result-close').click()
 
-    // seriesバッジが一覧に出るか（会員側の予約一覧タブへ）
-    await page.getByRole('tab', { name: /予約(一覧|の確認)|マイ予約/ }).click().catch(async () => {
-      // タブ名が不明な場合は「予約する」以外の会員向けタブを推測してクリック
-      const tabs = await page.getByRole('tab').allTextContents()
-      console.log(`[シナリオB] タブ一覧=${JSON.stringify(tabs)}`)
-    })
+    // seriesバッジが一覧に出るか（会員側の予約一覧タブへ）。タブ名は環境で確定しているため
+    // .catch() でのフォールバックはしない（見つからなければテスト自体を失敗させる）。
+    await page.getByRole('tab', { name: /予約(一覧|の確認)|マイ予約/ }).click()
     await page.waitForTimeout(1000)
     const seriesBadge = page.getByTestId('recurring-series-badge').first()
-    const badgeVisible = await seriesBadge.isVisible().catch(() => false)
-    console.log(`[シナリオB] seriesバッジ表示=${badgeVisible}`)
-    if (badgeVisible) {
-      await page.screenshot({ path: 'test-results/d-b-04-series-badge.png', fullPage: true })
+    // 是正3: 直前に repeatWeeks>=2 で作成した series の予約が一覧にあれば seriesバッジは
+    // 必ず出るはずのもの。isVisible()の結果をif分岐で握りつぶさず、確実に断定する。
+    await expect(seriesBadge, 'seriesバッジが一覧に表示されること（直前にrepeatWeeks指定で作成した予約のはず）').toBeVisible({ timeout: 10_000 })
+    await page.screenshot({ path: 'test-results/d-b-04-series-badge.png', fullPage: true })
+  })
 
-      // キャンセル2択（recurringSeriesId非nullの予約のみ）
-      const cancelBtn = page.getByTestId('my-reservation-cancel').first()
-      if (await cancelBtn.isVisible().catch(() => false)) {
-        await cancelBtn.click()
-        const thisOnly = page.getByTestId('cancel-scope-this-only')
-        const thisAndFollowing = page.getByTestId('cancel-scope-this-and-following')
-        const choiceVisible = await thisOnly.isVisible().catch(() => false) && await thisAndFollowing.isVisible().catch(() => false)
-        console.log(`[シナリオB] キャンセル2択表示=${choiceVisible}`)
-        await page.screenshot({ path: 'test-results/d-b-05-cancel-choice.png', fullPage: true })
-        if (choiceVisible) {
-          await thisAndFollowing.click()
-          await expect(page.getByTestId('cancel-scope-result-summary'), 'この回以降すべてキャンセルの結果明細が出ること').toBeVisible({ timeout: 15_000 })
-          await page.screenshot({ path: 'test-results/d-b-06-cancel-scope-result.png', fullPage: true })
-        }
-      }
-    }
+  test('シナリオB-2: series所属予約のキャンセル2択（この回以降すべて）', async ({ page }) => {
+    // 是正(殿指摘への追加調査): コード実測の結果、キャンセル2択（cancel-scope-this-only /
+    // cancel-scope-this-and-following）は ReservationList.vue の cancelMine()（mode="mine"）
+    // 経由でのみ発火する設計で、canManage=true の admin/deputy 用 cancel()（mode="team"）は
+    // series 判定なしの単純キャンセルしか呼ばない（371行目、testidも無し）。
+    // TeamReservationsPanel.vue は isAdminOrDeputy(実ロールベース・切替不可)で mode を固定するため、
+    // 本specのE2E固定ユーザー(自チーム作成者=常にADMIN)ではmode="mine"に到達する経路が存在しない。
+    // 静かに素通りさせず、理由を明記して明示スキップする（MEMBERロールの別ユーザーが必要）。
+    test.skip(true, 'キャンセル2択はcancelMine()(mode="mine")経由のみで到達可能。E2E固定ユーザーは全チームでADMINのため到達不能（コード実測済み。MEMBERロールの別ユーザーが必要）。踏めなかった。')
+    void page
   })
 })
 
@@ -527,30 +548,29 @@ test.describe('D群 優先C: 仮押さえ失効設定＋会員向け告知＋429
     await gotoReservations(page, teamSlug)
     await openManageTab(page)
 
-    // 設定タブ（ReservationPolicySettings）を探す
-    const settingsTabCandidates = ['設定', '予約ポリシー', 'ポリシー設定']
-    let opened = false
-    for (const name of settingsTabCandidates) {
-      const tab = page.getByRole('tab', { name: new RegExp(name) })
-      if (await tab.isVisible().catch(() => false)) { await tab.click(); opened = true; break }
-    }
-    console.log(`[シナリオC-1] 設定タブ発見=${opened}`)
-    await page.waitForTimeout(1000)
+    // ReservationPolicySettings は「予約対象の管理」タブ内の「詳細設定」アコーディオン
+    // （既定collapsed・ADMIN限定）配下にある（TeamReservationsPanel.vue:444-479）。
+    // team側タブ「機能設定」と紛らわしいため、accordion header の正確なテキストで開く。
+    const advancedHeader = page.getByRole('button', { name: '詳細設定' })
+    await expect(advancedHeader, '「詳細設定」アコーディオンヘッダーが表示されること').toBeVisible({ timeout: 15_000 })
+    if ((await advancedHeader.getAttribute('aria-expanded')) !== 'true') await advancedHeader.click()
+    await page.waitForTimeout(500)
     await page.screenshot({ path: 'test-results/d-c-01-settings-tab.png', fullPage: true })
 
     const disableCheckbox = page.locator('#pending-expire-disable-toggle')
-    const checkboxVisible = await disableCheckbox.isVisible().catch(() => false)
-    console.log(`[シナリオC-1] 自動キャンセルしないトグル表示=${checkboxVisible}`)
-    if (checkboxVisible) {
-      // MANUAL チームでは注意書きは初期状態(有効)では出ないはず。トグルONで注意書き確認。
-      await disableCheckbox.click()
-      await page.waitForTimeout(500)
-      const warningVisible = await page.getByText(/自動的にキャンセルされません|自動キャンセルされない/).isVisible().catch(() => false)
-      console.log(`[シナリオC-1] MANUALチームでの注意書き表示=${warningVisible}`)
-      await page.screenshot({ path: 'test-results/d-c-02-no-expire-warning.png', fullPage: true })
-      // 元に戻す
-      await disableCheckbox.click()
-    }
+    await expect(disableCheckbox, '自動キャンセルしないトグルが表示されること').toBeVisible({ timeout: 10_000 })
+
+    // MANUAL チームでは初期状態(自動失効ON)では注意書きは出ないはず。トグルONで注意書き確認。
+    // 文言実測(reservation.json): "現在「自動キャンセルしない」設定です。承認制（MANUAL）のチームでは、
+    // 仮押さえの予約は自動で取り消されません。管理者が個別に対応してください"
+    const warning = page.getByText(/自動で取り消されません/)
+    await expect(warning, 'トグルON前は注意書きが非表示であること').not.toBeVisible()
+    await disableCheckbox.click()
+    await expect(warning, 'MANUALチームでトグルONにすると注意書きが表示されること').toBeVisible({ timeout: 5_000 })
+    await page.screenshot({ path: 'test-results/d-c-02-no-expire-warning.png', fullPage: true })
+    // 元に戻す
+    await disableCheckbox.click()
+    await expect(warning, 'トグルOFFに戻すと注意書きが再び非表示になること').not.toBeVisible({ timeout: 5_000 })
   })
 
   test('シナリオC-2: 会員予約フォームの失効告知文言（MANUAL+非NULLのときのみ）', async ({ page, tokens }) => {
@@ -559,8 +579,9 @@ test.describe('D群 優先C: 仮押さえ失効設定＋会員向け告知＋429
     const putRes = await ctx.patch(`${BE_API}/teams/${teamSlug}/reservation-settings`, {
       headers: authHeaders(tokens.admin),
       data: { pendingExpireHours: 48 },
-    }).catch(() => null)
-    console.log(`[シナリオC-2] pendingExpireHours PATCH status=${putRes?.status()}`)
+    })
+    expect(putRes.ok(), 'pendingExpireHours設定PATCHが成功すること').toBeTruthy()
+    console.log(`[シナリオC-2] pendingExpireHours PATCH status=${putRes.status()}`)
     await ctx.dispose()
 
     await gotoReservations(page, teamSlug)
@@ -569,20 +590,42 @@ test.describe('D群 優先C: 仮押さえ失効設定＋会員向け告知＋429
     const cell = page.getByRole('button', { name: new RegExp(`${day.rowLabel.replace(/[()]/g, '\\$&')} 13:00 相談室`) })
     await expect(cell).toBeVisible({ timeout: 15_000 })
     await cell.click()
-    const notice = page.getByTestId('pending-expire-notice')
-    const noticeVisible = await notice.isVisible({ timeout: 8_000 }).catch(() => false)
-    console.log(`[シナリオC-2] 会員フォームの失効告知表示=${noticeVisible}`)
-    if (noticeVisible) {
-      const text = await notice.textContent()
-      console.log(`[シナリオC-2] 告知文言="${text}"`)
-      expect(text, '「時間以内に承認されない場合は自動的にキャンセルされます」相当の文言が含まれること').toMatch(/時間以内|承認されない場合|自動的にキャンセル/)
+
+    // メニュー未設定チームでは先に「メニューを選ぶ」ダイアログが挟まる（シナリオBと同じ経路。
+    // WeeklyScheduleManager.vue確認済みの導線）。「メニューなしで30分だけ予約」で素通りする。
+    const menuChooseDialog = page.getByRole('dialog', { name: 'メニューを選ぶ' })
+    if (await menuChooseDialog.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await page.getByRole('button', { name: /メニューなしで30分だけ予約/ }).click()
     }
+
+    const notice = page.getByTestId('pending-expire-notice')
+    // MANUAL + pendingExpireHours非NULL の直前設定が効いていれば必ず出るはずの告知。
+    // if分岐で握りつぶさず断定する。
+    await expect(notice, '会員フォームに仮押さえ失効の告知が表示されること（MANUAL+非NULL設定済み）').toBeVisible({ timeout: 10_000 })
+    const text = await notice.textContent()
+    console.log(`[シナリオC-2] 告知文言="${text}"`)
+    expect(text, '「時間以内に承認されない場合は自動的にキャンセルされます」相当の文言が含まれること').toMatch(/時間以内|承認されない場合|自動的にキャンセル/)
     await page.screenshot({ path: 'test-results/d-c-03-pending-expire-notice.png', fullPage: true })
   })
 
-  test('シナリオC-3: 429レートリミット（単枠3回＋グループ3回で6回目が429）', async ({ tokens }) => {
+  test('シナリオC-3: 429レートリミット（ReservationCreateRateLimiter RATE_LIMIT=5/分固定ウィンドウ・6回目が429）', async ({ tokens }) => {
+    test.setTimeout(180_000)
+
+    // 是正1（殿指摘）: Valkeyの生存を前提条件として明示検証する。死んでいれば黙って緑にせず
+    // test.skip() で明示スキップする（fail-openで429が出ない疑陰性を「合格」と誤認させない）。
+    const valkeyAlive = await pingValkey('127.0.0.1', 6379)
+    console.log(`[シナリオC-3] Valkey生存確認=${valkeyAlive}`)
+    test.skip(!valkeyAlive, 'Valkeyが応答しないためレートリミット検証をスキップ（fail-open環境では429が出ない）')
+
     const ctx = await playwrightRequest.newContext()
     const slotId = await findSlotId(ctx, teamSlug, tokens.admin, day.iso, '13:00', lineId)
+
+    // 是正2（殿指摘）: reservation-create バケットは同一ユーザーでチーム横断・全ワーカー共有のため、
+    // A/B/D の先行シナリオが同一ウィンドウを消費している可能性がある。ReservationCreateRateLimiter の
+    // 固定ウィンドウ長(60秒)を超えて待ち、クリーンな状態から計測する。
+    console.log('[シナリオC-3] レートリミットウィンドウのリセットのため61秒待機開始')
+    await new Promise(resolve => setTimeout(resolve, 61_000))
+    console.log('[シナリオC-3] 待機完了。計測開始')
 
     const results: number[] = []
     for (let i = 0; i < 6; i++) {
@@ -597,12 +640,15 @@ test.describe('D群 優先C: 仮押さえ失効設定＋会員向け告知＋429
       }
     }
     console.log(`[シナリオC-3] 6回試行の結果ステータス列=${JSON.stringify(results)}`)
-    const has429 = results.includes(429)
-    console.log(`[シナリオC-3] 429が出たか=${has429}`)
     await ctx.dispose()
-    // ⚠️ Valkeyがfail-openすると429が出ない可能性がある。結果は正直にログへ記録するのみで
-    // 強制的な expect は張らない（環境依存の疑陽性/疑陰性を「テストを通すために緩めた」と
-    // 誤解されないよう、判定はログの実測値を殿へ報告する形にとどめる）。
+
+    // ReservationCreateRateLimiter の実装は RATE_LIMIT=5・1分固定ウィンドウ（殿が実物のJavaを確認済み）。
+    // ウィンドウをリセットした直後の計測であれば、5回目までは429以外・6回目のみ429であるはず。
+    // これを断定する。ウィンドウリセット後もそうならない場合は本物のバグとして検知する。
+    for (let i = 0; i < 5; i++) {
+      expect(results[i], `${i + 1}回目(5回目まで)は429以外であること（ウィンドウリセット後の計測。実測=${JSON.stringify(results)}）`).not.toBe(429)
+    }
+    expect(results[5], `6回目でRATE_LIMIT=5超過による429が出ること（ウィンドウリセット後の計測。実測=${JSON.stringify(results)}）`).toBe(429)
   })
 })
 
@@ -614,7 +660,17 @@ test.describe('D群 優先D: 強行登録（定期予約不可枠・impact件数
   let lineId = 0
   const day = dateInfo(20)
 
-  test.beforeAll(async ({ tokens }) => {
+  test.beforeAll(async ({ tokens }, testInfo) => {
+    // beforeAll内で61秒のレートリミット待機を行うため、既定の60秒hookタイムアウトを引き上げる
+    // （test.describe.configureのtimeoutはhookには効かないため、testInfo.setTimeout()で明示指定）。
+    testInfo.setTimeout(150_000)
+
+    // 優先C(シナリオC-3)がファイル内で直前に実行されると、同一ユーザーの reservation-create
+    // レートリミット(RATE_LIMIT=5/60秒固定ウィンドウ)を使い切った直後になり、本ブロックの
+    // 予約投入(4件)が429で失敗する。全ファイル一括実行時の順序依存を避けるため、
+    // このブロック専用にもウィンドウ経過を待つ（他シナリオの429検証結果には影響しない）。
+    await new Promise(resolve => setTimeout(resolve, 61_000))
+
     const ctx = await playwrightRequest.newContext()
     const team = await createThrowawayTeam(ctx, tokens.admin, 'forcereg')
     teamSlug = team.slug
@@ -684,38 +740,38 @@ test.describe('D群 優先D: 強行登録（定期予約不可枠・impact件数
     const activeBefore = beforeReservations.filter(r => r.status !== 'CANCELLED')
     console.log(`[シナリオD] 強行登録前のactive予約数=${activeBefore.length} 実体=${JSON.stringify(activeBefore.map(r => r.id))}`)
 
-    // 強行登録ボタンをクリック
+    // 是正3（殿指摘）: impact件数>0(=recurringHasConflict)かつADMINならボタンは
+    // WeeklyScheduleManager.vue上 v-if="isAdmin" で必ず出る設計（コード実測済み）。
+    // 「出ないこと自体が異常」なのでif分岐で握りつぶさず断定する。
     const forceBtn = page.getByTestId('recurring-force-cancel-button')
-    const forceBtnVisible = await forceBtn.isVisible().catch(() => false)
-    console.log(`[シナリオD] 強行登録ボタン表示=${forceBtnVisible}`)
-    if (forceBtnVisible) {
-      await forceBtn.click()
-      // 確認ダイアログの承諾
-      const confirmDialog = page.locator('.p-confirmdialog')
-      if (await confirmDialog.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await confirmDialog.getByRole('button', { name: /キャンセルして登録する/ }).click()
-      }
-      await expect(page.getByText(/定期予約不可枠を(登録|更新)しました/)).toBeVisible({ timeout: 20_000 })
-      await page.screenshot({ path: 'test-results/d-d-02-force-registered.png', fullPage: true })
+    await expect(forceBtn, '強行登録ボタンが表示されること（impact件数>0のADMIN表示のはず）').toBeVisible({ timeout: 10_000 })
+    await forceBtn.click()
 
-      // notifyForceCancelledIfAny() が出す「N件の予約をキャンセルして登録しました」トーストで
-      // 実際にキャンセルされた件数を裏取り（BEレスポンス forceCancelledCount がそのまま文言化される）。
-      const forceCancelToast = await page.getByText(/(\d+)件の予約をキャンセルして登録しました/).textContent({ timeout: 10_000 })
-      const forceCancelMatch = forceCancelToast?.match(/(\d+)件の予約をキャンセルして登録しました/)
-      const actualCancelledCount = forceCancelMatch ? Number(forceCancelMatch[1]) : -1
-      console.log(`[シナリオD] 強行登録トースト実体="${forceCancelToast}" 抽出件数=${actualCancelledCount}`)
+    // confirmForceSaveRecurring() は常に confirmDialog.require() を無条件で呼ぶ設計（コード実測済み）。
+    // 確認ダイアログの承諾も同様に断定する。
+    const confirmDialog = page.locator('.p-confirmdialog')
+    await expect(confirmDialog, '強行登録の確認ダイアログが表示されること').toBeVisible({ timeout: 5_000 })
+    await confirmDialog.getByRole('button', { name: /キャンセルして登録する/ }).click()
+    await expect(page.getByText(/定期予約不可枠を(登録|更新)しました/)).toBeVisible({ timeout: 20_000 })
+    await page.screenshot({ path: 'test-results/d-d-02-force-registered.png', fullPage: true })
 
-      // 実DB裏取り（status=CANCELLEDで明示フィルタ。既定は未指定だとCANCELLEDが除外される可能性があるため
-      // status パラメータを明示する。BE TeamReservationController の一覧APIは from/to ではなく status/page/size）
-      const afterListRes = await page.request.get(
-        `${API_BASE_URL}/api/v1/teams/${teamSlug}/reservations?status=CANCELLED&size=50`,
-        { headers: { Authorization: `Bearer ${tokens.admin}` } },
-      )
-      const afterBody = await afterListRes.json().catch(() => ({}))
-      console.log(`[シナリオD] status=CANCELLED裏取りAPI実体=${JSON.stringify(afterBody).slice(0, 800)}`)
+    // notifyForceCancelledIfAny() が出す「N件の予約をキャンセルして登録しました」トーストで
+    // 実際にキャンセルされた件数を裏取り（BEレスポンス forceCancelledCount がそのまま文言化される）。
+    const forceCancelToast = await page.getByText(/(\d+)件の予約をキャンセルして登録しました/).textContent({ timeout: 10_000 })
+    const forceCancelMatch = forceCancelToast?.match(/(\d+)件の予約をキャンセルして登録しました/)
+    const actualCancelledCount = forceCancelMatch ? Number(forceCancelMatch[1]) : -1
+    console.log(`[シナリオD] 強行登録トースト実体="${forceCancelToast}" 抽出件数=${actualCancelledCount}`)
 
-      console.log(`[シナリオD] 【最終比較】impact表示件数=${impactCount} vs トースト実キャンセル件数=${actualCancelledCount}`)
-      expect(actualCancelledCount, '🔴impact件数と実際にキャンセルされる件数(BEレスポンスforceCancelledCount由来のトースト)が一致すること（検分バグ再発防止）').toBe(impactCount)
-    }
+    // 実DB裏取り（status=CANCELLEDで明示フィルタ。既定は未指定だとCANCELLEDが除外される可能性があるため
+    // status パラメータを明示する。BE TeamReservationController の一覧APIは from/to ではなく status/page/size）
+    const afterListRes = await page.request.get(
+      `${API_BASE_URL}/api/v1/teams/${teamSlug}/reservations?status=CANCELLED&size=50`,
+      { headers: { Authorization: `Bearer ${tokens.admin}` } },
+    )
+    const afterBody = await afterListRes.json().catch(() => ({}))
+    console.log(`[シナリオD] status=CANCELLED裏取りAPI実体=${JSON.stringify(afterBody).slice(0, 800)}`)
+
+    console.log(`[シナリオD] 【最終比較】impact表示件数=${impactCount} vs トースト実キャンセル件数=${actualCancelledCount}`)
+    expect(actualCancelledCount, '🔴impact件数と実際にキャンセルされる件数(BEレスポンスforceCancelledCount由来のトースト)が一致すること（検分バグ再発防止）').toBe(impactCount)
   })
 })
