@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "No reservation targets yet",
         "admin_no_lines_hint": "Create reservation targets and slots in \"Manage reservation targets\" to show slots here",
-        "admin_no_slots": "No open slots on this day",
-        "admin_no_slots_hint": "You can add slots from \"Manage reservation targets\"",
+        "admin_no_slots": "No open slots this week",
+        "admin_no_slots_hint": "Create slots in \"Weekly schedule\" and they will appear here",
         "member_no_lines": "Reservations are being set up",
         "member_no_lines_hint": "Please wait until the administrator prepares reservation slots",
-        "member_no_slots": "No open slots on this day",
-        "member_no_slots_hint": "Please try another day"
+        "member_no_slots": "No open slots this week",
+        "member_no_slots_hint": "Please try another week"
       }
     },
     "line_manage_title": "{resourceName} Management",
@@ -601,7 +601,16 @@
       "auto_generated": "Saved. {generated} slots were created for the next {days} days",
       "auto_generated_partial": "Slot creation failed for {failed} of {total} days (the saved days are still active)",
       "need_business_hours_hint": "Please set business hours first",
-      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours"
+      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours",
+      "grid": {
+        "title": "Create slots by dragging",
+        "hint": "Drag across the grid to create slots for that range (drag sideways to cover several days at once). On phones or with a keyboard, tap or press Enter on the start cell and then the end cell. Press Esc to cancel",
+        "legend_existing": "Registered",
+        "legend_selected": "Selected",
+        "blocked": "The selected range overlaps existing slots. Please choose an empty range",
+        "confirm_title": "Create slots",
+        "create": "Create"
+      }
     },
     "recurring_block": {
       "title": "Weekly unavailability",
@@ -661,28 +670,11 @@
       "advanced_label": "Manually manage individual slots (exceptions)"
     },
     "grid": {
-      "title": "Availability grid",
-      "help": "Rows are time slots and columns are {resourceName}. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
-      "display_toggle": {
-        "list": "List view",
-        "grid": "Grid view"
-      },
       "view": {
-        "single": "Day",
         "week": "Week"
       },
-      "axis": {
-        "label": "Axis",
-        "time_rows": "Time as rows",
-        "time_cols": "Time as columns"
-      },
       "column": {
-        "common": "Common",
-        "time": "Time"
-      },
-      "staff_filter": {
-        "label": "Filter by {resourceName}",
-        "placeholder": "All targets"
+        "common": "Common"
       },
       "state": {
         "available": "Open",
@@ -690,7 +682,6 @@
         "closed": "Closed",
         "unavailable": "Unavailable"
       },
-      "empty": "No slots for this day",
       "load_error": "Failed to load the grid"
     },
     "matrix": {
@@ -708,9 +699,6 @@
       "no_menu_single": "Book just 30 minutes without a menu",
       "preview_title": "Confirm this booking",
       "extend_30": "+30 min",
-      "view_matrix": "Matrix view",
-      "view_list": "List view",
-      "view_staff_grid": "Staff grid view",
       "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
       "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",

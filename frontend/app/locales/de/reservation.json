@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "Noch keine Reservierungsziele",
         "admin_no_lines_hint": "Erstelle unter \"Reservierungsziele verwalten\" Ziele und Zeitfenster, damit hier Zeitfenster erscheinen",
-        "admin_no_slots": "An diesem Tag keine freien Zeitfenster",
-        "admin_no_slots_hint": "Du kannst Zeitfenster unter \"Reservierungsziele verwalten\" hinzufügen",
+        "admin_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "admin_no_slots_hint": "Lege Zeitfenster im \"Wochenplan\" an, dann erscheinen sie hier",
         "member_no_lines": "Reservierungen werden vorbereitet",
         "member_no_lines_hint": "Bitte warte, bis der Administrator Reservierungszeitfenster bereitstellt",
-        "member_no_slots": "An diesem Tag keine freien Zeitfenster",
-        "member_no_slots_hint": "Bitte versuche es an einem anderen Tag"
+        "member_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "member_no_slots_hint": "Bitte versuche es in einer anderen Woche"
       }
     },
     "line_manage_title": "{resourceName}-Verwaltung",
@@ -601,7 +601,16 @@
       "auto_generated": "Gespeichert. {generated} Slots wurden für die nächsten {days} Tage erstellt",
       "auto_generated_partial": "Bei {failed} von {total} Wochentagen ist die Slot-Erzeugung fehlgeschlagen (die gespeicherten Tage bleiben gültig)",
       "need_business_hours_hint": "Bitte legen Sie zuerst die Geschäftszeiten fest",
-      "generated_zero_hint": "Es wurden keine Slots erstellt (außerhalb der Geschäftszeiten oder an einem Ruhetag). Bitte prüfen Sie die Geschäftszeiten"
+      "generated_zero_hint": "Es wurden keine Slots erstellt (außerhalb der Geschäftszeiten oder an einem Ruhetag). Bitte prüfen Sie die Geschäftszeiten",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
     },
     "recurring_block": {
       "title": "Wöchentliche Sperrzeit",
@@ -661,28 +670,11 @@
       "advanced_label": "Einzelne Slots manuell verwalten (Ausnahmen)"
     },
     "grid": {
-      "title": "Verfügbarkeitsraster",
-      "help": "Zeilen sind Zeitfenster, Spalten sind {resourceName}. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
-      "display_toggle": {
-        "list": "Listenansicht",
-        "grid": "Rasteransicht"
-      },
       "view": {
-        "single": "Tag",
         "week": "Woche"
       },
-      "axis": {
-        "label": "Achse",
-        "time_rows": "Zeit als Zeilen",
-        "time_cols": "Zeit als Spalten"
-      },
       "column": {
-        "common": "Gemeinsam",
-        "time": "Zeit"
-      },
-      "staff_filter": {
-        "label": "Nach {resourceName} filtern",
-        "placeholder": "Alle Ziele"
+        "common": "Gemeinsam"
       },
       "state": {
         "available": "Frei",
@@ -690,7 +682,6 @@
         "closed": "Geschlossen",
         "unavailable": "Nicht verfügbar"
       },
-      "empty": "Keine Zeitfenster für diesen Tag",
       "load_error": "Raster konnte nicht geladen werden"
     },
     "matrix": {
@@ -708,9 +699,6 @@
       "no_menu_single": "Nur 30 Minuten ohne Menü buchen",
       "preview_title": "Diese Buchung bestätigen",
       "extend_30": "+30 Min.",
-      "view_matrix": "Matrixansicht",
-      "view_list": "Listenansicht",
-      "view_staff_grid": "Rasteransicht nach Mitarbeiter",
       "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
       "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",

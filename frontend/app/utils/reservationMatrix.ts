@@ -174,6 +174,56 @@ export function canExtend(row: RowSlot[], selectedHeaderIndices: number[]): bool
 }
 
 /**
+ * ドラッグ複数選択で「連続確保の構成要素になれる」マスか判定する。
+ *
+ * `isConsecutiveAvailable` と同一条件（span===1 の AVAILABLE セル）。長尺枠（span>1）は
+ * グループ連続確保の構成要素にしない（B4手順4）という既存方針に揃えるため、AVAILABLE でも
+ * 対象外にする。`covered`（長尺枠に覆われた後続列）・`empty` も当然対象外。
+ */
+function isDraggableCell(slot: RowSlot | undefined): boolean {
+  return !!slot && slot.kind === 'cell' && slot.span === 1 && slot.cell.state === 'AVAILABLE'
+}
+
+/**
+ * ドラッグ複数選択の範囲を解決する（機能H・会員のドラッグ複数選択）。
+ *
+ * `anchorIndex`（pointerdown したマス）から `focusIndex`（現在ポインタが乗っているマス）へ
+ * **アンカー側から順に**走査し、連続確保の構成要素になれないマスに当たった時点で打ち切る。
+ * 「打ち切る」であって「弾く」ではないため、BOOKED/CLOSED/UNAVAILABLE や長尺枠を跨いだ
+ * ドラッグをしても、跨ぐ手前までの連続範囲が選ばれる（選択が突然全消えしない）。
+ *
+ * 重要（長尺枠の扱い）: 引数は**ヘッダ列インデックス**であり、長尺枠が跨ぐ列は `covered` として
+ * `row` に実在する。よって素朴な連番走査のままで跨ぎ枠を正しく境界として扱える（呼び出し側は
+ * DOM から必ず「そのマスのヘッダ列インデックス」を渡すこと。可視セルの通し番号ではない）。
+ *
+ * 左方向ドラッグにも対応する（戻り値は常に昇順）。選択数は GROUP_MAX_SIZE で頭打ちにする
+ * （BE の GROUP_SIZE_EXCEEDED=041 を UI 側で先回りして防ぐ）。
+ * アンカー自体が対象外なら空配列（＝選択不成立）。
+ *
+ * `isSelectable` は「セルの形（state/span）以外の理由で選べない」条件を呼び出し側から注入する
+ * ための任意述語。SlotMatrixPicker は過去セル判定（B6）を渡す。左方向ドラッグで当日の
+ * 現在時刻より前のマスへ戻ったとき、そこで打ち切るために要る。
+ */
+export function resolveDragSelection(
+  row: RowSlot[],
+  anchorIndex: number,
+  focusIndex: number,
+  isSelectable?: (index: number) => boolean,
+): number[] {
+  const eligible = (i: number) => isDraggableCell(row[i]) && (isSelectable?.(i) ?? true)
+  if (!eligible(anchorIndex)) return []
+  const indices = [anchorIndex]
+  const step = focusIndex >= anchorIndex ? 1 : -1
+  for (let i = anchorIndex + step; step > 0 ? i <= focusIndex : i >= focusIndex; i += step) {
+    if (i < 0 || i >= row.length) break
+    if (!eligible(i)) break
+    if (indices.length >= GROUP_MAX_SIZE) break
+    indices.push(i)
+  }
+  return indices.sort((a, b) => a - b)
+}
+
+/**
  * 過去セル判定（B6）。当日で現在時刻より前に開始する枠 or 過去日そのものを disabled にする。
  * `todayStr`/`nowMinutes` を明示引数にして Date.now() 直書きを避ける（Clock 注入の規約に準拠）。
  */

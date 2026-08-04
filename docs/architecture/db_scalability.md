@@ -275,23 +275,36 @@ CREATE TABLE chat_messages_archive (
 | 処理内容 | 論理削除から6ヶ月超のメッセージを `chat_messages_archive` に INSERT → 本テーブルから DELETE |
 | バッチサイズ | 1,000件ずつ処理（大量データ時のメモリ圧迫防止） |
 
-#### 3-C. notifications 夜間クリーンアップ（V64.005〜V64.006）
+#### 3-C. notifications 夜間保持バッチ（アーカイブ移送・索引 V173.20260730033807）
+
+> **移送型への是正（P2 Wave1/Wave2-A）**: 従来は物理削除のみで、移送先表・専用索引も存在せず
+> `is_read + created_at` の範囲を掃く走査は実質フルスキャン相当だった。P2 Wave1 で
+> `notifications_archive` 表と移送索引 `idx_notifications_read_created` を
+> `V173.20260730033807__create_notifications_archive_and_read_index.sql` で新設し、
+> Wave2-A で `NotificationCleanupBatchService` を物理削除から**アーカイブ移送型**へ是正した。
 
 ```sql
--- 90日超の既読通知を物理削除（インデックスを使った範囲削除）
+-- 保持期間超過の通知を notifications_archive へ移送してから本体を削除（索引を使った範囲移送）
+-- 既読90日超 OR 未読365日超が対象。id 単位の存在確認付き DELETE で欠落なし・重複なし。
+INSERT IGNORE INTO notifications_archive (...) SELECT ... FROM notifications
+WHERE (is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+   OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY))
+ORDER BY created_at ASC LIMIT ?;
+
 DELETE FROM notifications
-WHERE is_read = TRUE
-  AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+    OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY)))
+  AND id IN (SELECT id FROM notifications_archive) LIMIT ?;
 ```
 
-**クリーンアップバッチ: `NotificationCleanupBatchService`**
+**保持バッチ: `NotificationCleanupBatchService`**
 
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎日 AM 4:00（Spring `@Scheduled`） |
-| 処理内容 | 90日超の既読通知を物理削除 |
-| バッチサイズ | 500件ずつ処理 |
-| インデックス利用 | `idx_notifications_read_created` を利用した効率的な範囲削除 |
+| 処理内容 | 既読90日超・未読365日超を `notifications_archive` へアーカイブ移送し、archive 収録済みの id のみ本体から削除 |
+| バッチサイズ | 10,000件ずつ処理（チャンク単位で独立コミット＝at-least-once） |
+| インデックス利用 | `idx_notifications_read_created`（`is_read, created_at`・V173 新設）を利用した効率的な範囲移送 |
 
 ---
 

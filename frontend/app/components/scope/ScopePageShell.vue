@@ -109,6 +109,7 @@ const lensModel = computed<boolean>({
             rounded
             size="small"
             :aria-label="$t('common.menu')"
+            data-testid="scope-sidebar-toggle"
             @click="showSidebarDrawer = true"
           />
         </div>

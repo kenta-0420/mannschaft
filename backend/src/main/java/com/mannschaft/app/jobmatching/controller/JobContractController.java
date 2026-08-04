@@ -3,6 +3,8 @@ package com.mannschaft.app.jobmatching.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.jobmatching.controller.dto.CancelContractRequest;
 import com.mannschaft.app.jobmatching.controller.dto.JobContractResponse;
 import com.mannschaft.app.jobmatching.controller.dto.RejectCompletionRequest;
@@ -64,7 +66,14 @@ public class JobContractController {
      *
      * <p>MVP では role/status フィルタは Service 側に未実装のため Controller でも受け付けない
      * （追加が必要になった時点で Service 層にフィルタ引数を拡張する方針）。</p>
+     *
+     * <p><b>自己スコープ</b>: 検索条件は
+     * {@code JobContractRepository#findByUserInvolvement(認証主体の userId, pageable)} のみで、
+     * requester / worker のいずれかが自分である契約だけを返す。ページング指定以外に
+     * リクエストで指定できる項目が無い。</p>
      */
+    @SelfScopedEndpoint("検索条件が findByUserInvolvement(認証主体の userId) のみ"
+            + "（JobContractService#listMyContracts・引数は Pageable だけ）")
     @GetMapping("/me/contracts")
     @Operation(summary = "自分の契約一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -79,7 +88,13 @@ public class JobContractController {
 
     /**
      * 契約詳細を取得する。Requester または Worker 本人のみ閲覧可。
+     *
+     * <p><b>認可の所在</b>: {@code JobContractService#findById}
+     * （{@code jobmatching/service/JobContractService.java:284}）が対象契約を実体としてロードし、
+     * {@code isParticipant}（同 {@code :315}）で契約の {@code requester_user_id} /
+     * {@code worker_user_id} と認証主体の一致を検証する。不一致は {@code JOB_PERMISSION_DENIED}（403）。</p>
      */
+    @AuthorizedInService
     @GetMapping("/contracts/{id}")
     @Operation(summary = "契約詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -94,7 +109,14 @@ public class JobContractController {
 
     /**
      * Worker が業務完了を報告する（MATCHED → COMPLETION_REPORTED）。
+     *
+     * <p><b>認可の所在</b>: {@code JobContractService#reportCompletion}
+     * （{@code jobmatching/service/JobContractService.java:186}）が対象契約を実体としてロードし、
+     * {@code JobPolicy#canReportCompletion}（{@code jobmatching/policy/JobPolicy.java:139}）で
+     * 契約の {@code worker_user_id} と認証主体の一致を検証する。不一致は
+     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/contracts/{id}/report-completion")
     @Operation(summary = "業務完了報告（Worker）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "報告成功")
@@ -109,7 +131,14 @@ public class JobContractController {
 
     /**
      * Requester が完了承認する（COMPLETION_REPORTED → COMPLETED）。
+     *
+     * <p><b>認可の所在</b>: {@code JobContractService#approveCompletion}
+     * （{@code jobmatching/service/JobContractService.java:214}）が対象契約を実体としてロードし、
+     * {@code JobPolicy#canApproveCompletion}（{@code jobmatching/policy/JobPolicy.java:153}）で
+     * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
+     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/contracts/{id}/approve-completion")
     @Operation(summary = "完了承認（Requester）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承認成功")
@@ -121,7 +150,14 @@ public class JobContractController {
     /**
      * Requester が完了を差し戻す（COMPLETION_REPORTED → MATCHED、rejection_count + 1）。
      * 差し戻し上限（3 回）超過時は Service が {@code JOB_REJECTION_LIMIT_EXCEEDED} を送出する。
+     *
+     * <p><b>認可の所在</b>: {@code JobContractService#rejectCompletion}
+     * （{@code jobmatching/service/JobContractService.java:233}）が対象契約を実体としてロードし、
+     * {@code JobPolicy#canApproveCompletion}（{@code jobmatching/policy/JobPolicy.java:153}）で
+     * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
+     * {@code JOB_PERMISSION_DENIED}（403）。検証は差し戻し回数の加算より<b>前</b>に位置する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/contracts/{id}/reject-completion")
     @Operation(summary = "完了差し戻し（Requester）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "差し戻し成功")
@@ -138,7 +174,14 @@ public class JobContractController {
 
     /**
      * 契約をキャンセルする。Requester または Worker 本人のみ許可。
+     *
+     * <p><b>認可の所在</b>: {@code JobContractService#cancelContract}
+     * （{@code jobmatching/service/JobContractService.java:265}）が対象契約を実体としてロードし、
+     * {@code isParticipant}（同 {@code :315}）で契約の {@code requester_user_id} /
+     * {@code worker_user_id} と認証主体の一致を検証する。不一致は
+     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/contracts/{id}/cancel")
     @Operation(summary = "契約キャンセル")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")

@@ -18,35 +18,14 @@ const activeTab = ref(0)
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
 
-type BookDisplayMode = 'list' | 'grid' | 'matrix'
-/** 表示選好の localStorage キー（ADHD配慮: 毎回選ばせない・F03.4.4 §5.4）。 */
-const BOOK_DISPLAY_MODE_STORAGE_KEY = 'mannschaft.reservation.bookDisplayMode'
-
-/** 予約タブの表示切替: マトリックス（既定・機能H SlotMatrixPicker）／グリッド（機能C）／リスト（既存 SlotPicker）。 */
-const bookDisplayMode = ref<BookDisplayMode>(loadStoredBookDisplayMode())
-
-function loadStoredBookDisplayMode(): BookDisplayMode {
-  if (!import.meta.client) return 'matrix'
-  const stored = localStorage.getItem(BOOK_DISPLAY_MODE_STORAGE_KEY)
-  return stored === 'list' || stored === 'grid' || stored === 'matrix' ? stored : 'matrix'
-}
-
-watch(bookDisplayMode, (mode) => {
-  if (import.meta.client) localStorage.setItem(BOOK_DISPLAY_MODE_STORAGE_KEY, mode)
-})
-
-const bookDisplayOptions = computed(() => [
-  { label: t('reservation.matrix.view_matrix'), value: 'matrix' as const },
-  { label: t('reservation.matrix.view_staff_grid'), value: 'grid' as const },
-  { label: t('reservation.matrix.view_list'), value: 'list' as const },
-])
+// 予約タブの表示はマトリックス（機能H SlotMatrixPicker）に一本化した。
+// 旧リスト表示（SlotPicker）・旧staff軸グリッド（SlotGridPicker）と表示切替 UI・
+// localStorage の表示選好は撤去済み（マスター裁可 2026-08-04）。
 const showBookDialog = ref(false)
 const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTime: '', endTime: '' })
 
 /** 予約直後の再読込用 ref。既存 MatchRequestList 等と同一パターン（defineExpose({ refresh })）。 */
 type Refreshable = { refresh: () => void | Promise<void> }
-const slotPickerRef = ref<Refreshable | null>(null)
-const slotGridPickerRef = ref<Refreshable | null>(null)
 const slotMatrixPickerRef = ref<Refreshable | null>(null)
 const reservationListRef = ref<Refreshable | null>(null)
 /** 自分のキャンセル待ち一覧（W2-4-FE）。予約成立時に WAITING→CONVERTED で消え得るため onReserved から再読込する。 */
@@ -101,6 +80,24 @@ function openBusinessHoursSection() {
   }
 }
 
+/**
+ * 「枠ゼロ」空状態の管理者CTA（SlotMatrixPicker @manage-slots）から呼ばれる。
+ * 予約対象タブへ切り替えたうえで④週間スケジュールセクションを開いてスクロールする
+ * （予約対象ゼロの manageLines がタブ切替のみなのに対し、こちらは次の一手＝枠作成まで届ける）。
+ */
+function openWeeklyScheduleSection() {
+  activeTab.value = 2
+  if (!managementAccordionValue.value.includes('weekly_schedule')) {
+    managementAccordionValue.value = [...managementAccordionValue.value, 'weekly_schedule']
+  }
+  if (import.meta.client) {
+    nextTick(() => {
+      document.getElementById('reservation-weekly-schedule-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+}
+
 /** 営業時間の保存成功時に予約設定キャッシュ（hasBusinessHours）を最新化する。 */
 function onBusinessHoursSaved() {
   void loadReservationSettings()
@@ -143,8 +140,6 @@ async function loadReservationSettings() {
  * 再読込（タブ切替やページ再訪）まで残ってしまうため、ここで能動的に再読込する（根治治療）。
  */
 function onReserved() {
-  slotPickerRef.value?.refresh()
-  slotGridPickerRef.value?.refresh()
   slotMatrixPickerRef.value?.refresh()
   reservationListRef.value?.refresh()
   // 予約成立で自分の WAITING が CONVERTED に消し込まれている可能性があるため再読込する（W2-4-FE）。
@@ -153,18 +148,16 @@ function onReserved() {
 
 /**
  * 予約一覧タブでの操作（承認/却下/キャンセル、ReservationList の @changed）直後に、
- * 予約するタブ（マトリックス/グリッド/リスト）の空き表示を再読込する（#2179「予約→一覧」の逆方向）。
- * 一覧タブが非アクティブでも各 Picker はマウント済み（TabPanels 非 lazy）のため refresh は常に有効。
+ * 予約するタブ（マトリックス）の空き表示を再読込する（#2179「予約→一覧」の逆方向）。
+ * 一覧タブが非アクティブでも Picker はマウント済み（TabPanels 非 lazy）のため refresh は常に有効。
  * ReservationList 自身は既に loadReservations() 済みのため reservationListRef は対象外。
  */
 function onSlotsChanged() {
-  slotPickerRef.value?.refresh()
-  slotGridPickerRef.value?.refresh()
   slotMatrixPickerRef.value?.refresh()
 }
 
 /**
- * SlotMatrixPicker/SlotGridPicker のキャンセル待ちダイアログで登録/取消が成功した（W2-4-FE）。
+ * SlotMatrixPicker のキャンセル待ちダイアログで登録/取消が成功した（W2-4-FE）。
  * 「自分のキャンセル待ち」一覧（予約一覧タブ）を再読込する。
  */
 function onWaitlistChanged() {
@@ -209,8 +202,8 @@ function onPolicyChanged(
 
 /**
  * 呼称設定（ReservationResourceNameSettings）の保存成功時: 予約設定キャッシュを最新化し、
- * 同一テーブル上で独立フェッチしている他コンポーネント（LineManager・SlotMatrixPicker・
- * SlotGridPicker）の呼称表示も再読込する（各コンポーネントの useResourceName は独立フェッチのため
+ * 同一テーブル上で独立フェッチしている他コンポーネント（LineManager・SlotMatrixPicker）の
+ * 呼称表示も再読込する（各コンポーネントの useResourceName は独立フェッチのため
  * 明示的に refresh を連鎖させないと画面上の呼称表示が古いまま残る）。
  */
 function onResourceNameChanged() {
@@ -218,7 +211,6 @@ function onResourceNameChanged() {
   void loadResourceName()
   void lineManagerRef.value?.refresh()
   void slotMatrixPickerRef.value?.refresh()
-  void slotGridPickerRef.value?.refresh()
 }
 
 onMounted(async () => {
@@ -269,46 +261,18 @@ onMounted(async () => {
                 {{ t('reservation.team_guide.event_link') }}
               </NuxtLink>
             </div>
-            <div class="mb-3 flex justify-end">
-              <SelectButton
-                v-model="bookDisplayMode"
-                :options="bookDisplayOptions"
-                option-label="label"
-                option-value="value"
-                :allow-empty="false"
-              />
-            </div>
-            <!-- 表示切替の再マウント/再取得を防ぐ KeepAlive（状態・スクロール位置・取得済みデータを保持）。
-                 各 Picker の ref/emit 結線（onReserved 等）は KeepAlive 配下でも維持される。 -->
-            <KeepAlive>
-              <SlotMatrixPicker
-                v-if="bookDisplayMode === 'matrix'"
-                ref="slotMatrixPickerRef"
-                :team-id="props.teamId"
-                :is-admin="isAdmin"
-                @slot-selected="onSlotSelected"
-                @manage-lines="activeTab = 2"
-                @reserved="onReserved"
-                @waitlist-changed="onWaitlistChanged"
-              />
-              <SlotGridPicker
-                v-else-if="bookDisplayMode === 'grid'"
-                ref="slotGridPickerRef"
-                :team-id="props.teamId"
-                :is-admin="isAdmin"
-                @slot-selected="onSlotSelected"
-                @manage-lines="activeTab = 2"
-                @waitlist-changed="onWaitlistChanged"
-              />
-              <SlotPicker
-                v-else
-                ref="slotPickerRef"
-                :team-id="props.teamId"
-                :is-admin="isAdmin"
-                @slot-selected="onSlotSelected"
-                @manage-lines="activeTab = 2"
-              />
-            </KeepAlive>
+            <!-- 予約枠の表示はマトリックス一本（旧リスト/旧staff軸グリッドは撤去済み）。
+                 TabPanels は非 lazy のためタブ切替でも破棄されず、KeepAlive は不要。 -->
+            <SlotMatrixPicker
+              ref="slotMatrixPickerRef"
+              :team-id="props.teamId"
+              :is-admin="isAdmin"
+              @slot-selected="onSlotSelected"
+              @manage-lines="activeTab = 2"
+              @manage-slots="openWeeklyScheduleSection"
+              @reserved="onReserved"
+              @waitlist-changed="onWaitlistChanged"
+            />
           </template>
           <div v-else class="rounded-lg border border-surface-200 p-6 text-center dark:border-surface-700">
             <i class="pi pi-lock mb-3 block text-3xl text-surface-400" />
@@ -407,7 +371,7 @@ onMounted(async () => {
             <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2）。
                  ラベルは「枠テンプレ」限定表現ではなく、枠テンプレ＋定期予約不可を包含する
                  「週間スケジュール」（検分指摘・軽4）。 -->
-            <AccordionPanel value="weekly_schedule">
+            <AccordionPanel id="reservation-weekly-schedule-section" value="weekly_schedule">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
                   {{ t('reservation.management.section_count', { label: t('reservation.weekly_schedule.section_title'), n: weeklyScheduleCount }) }}

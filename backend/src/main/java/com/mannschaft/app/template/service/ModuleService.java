@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,11 @@ public class ModuleService {
                 .stream()
                 .filter(ModuleDefinitionEntity::getIsActive)
                 .map(this::toModuleResponse)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -257,7 +262,11 @@ public class ModuleService {
                             tem.getTrialExpiresAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -446,7 +455,11 @@ public class ModuleService {
                             oem.getEnabledAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -561,7 +574,9 @@ public class ModuleService {
                 .findByModuleId(module.getId()).stream()
                 .map(la -> new LevelAvailabilityResponse(
                         la.getLevel().name(), la.getIsAvailable(), la.getNote()))
-                .toList();
+                // issue #2544 B 群: 本ヘルパーの戻り値は moduleCatalog / moduleDetail キャッシュの
+                // 内側に入る。ImmutableCollections$ListN は復元できないため可変 ArrayList にする。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         List<ModuleSummaryResponse> recs = moduleRecommendationRepository
                 .findByModuleId(module.getId()).stream()
@@ -569,7 +584,8 @@ public class ModuleService {
                 .filter(m -> m != null)
                 .map(m -> new ModuleSummaryResponse(
                         m.getId(), m.getName(), m.getSlug(), m.getModuleType().name()))
-                .toList();
+                // issue #2544 B 群: 同上（moduleCatalog は外側と要素内で二重に壊れていた）。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         return new ModuleResponse(
                 module.getId(),

@@ -86,7 +86,7 @@ const test = base.extend<
       const m1Me = await fetchMe(rc, m1)
       const m2 = await login(rc, MEMBER2_EMAIL)
       const m2Me = await fetchMe(rc, m2)
-      // ADMIN が予約対象(ライン) + 本日枠を用意（SlotPicker 既定日 = 本日）
+      // ADMIN が予約対象(ライン) + 本日枠を用意（マトリックスの既定表示週 = 今週に本日が含まれる）
       const auth = { 'Content-Type': 'application/json', Authorization: `Bearer ${admin}` }
       const slotDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }) // YYYY-MM-DD JST
       // 既存のアクティブな予約対象(ライン)を再利用する（チームあたり最大5本制約を回避）
@@ -96,10 +96,13 @@ const test = base.extend<
       const active = linesData.find(l => l.meta?.isActive) ?? linesData[0]
       if (!active) throw new Error('team 92 に予約対象(ライン)が無い')
       const lineId = active.id
-      // 一意な枠時刻（30分単位制約: HH:00-HH:30。実行ごとに hour を変えて衝突を避ける）
+      // 一意な枠時刻（実行ごとに hour を変えて衝突を避ける）。
+      // 【旧表示撤去 2026-08-04 追従】マトリックスの30分セル（span=1）は GroupBookingDialog へ
+      // ルーティングされるため、本テストが検証したい ReservationForm 経路（確認ダイアログの
+      // 「予約する」ボタン）へ到達するには長尺枠（span>1）が必要。よって60分枠で作る。
       const hh = String(8 + (Math.floor(Date.now() / 1000) % 13)).padStart(2, '0') // 08..20
       const startTime = `${hh}:00`
-      const endTime = `${hh}:30`
+      const endTime = `${String(Number(hh) + 1).padStart(2, '0')}:00`
       const slotRes = await rc.post(`${BE}/api/v1/teams/${TEAM_ID}/reservation-slots`, { headers: auth, data: { slotDate, startTime, endTime } })
       if (!slotRes.ok()) throw new Error(`createSlot ${slotRes.status()}: ${await slotRes.text()}`)
       const slotId = (await slotRes.json()).data.id as number
@@ -161,12 +164,16 @@ test.describe.serial('RSV-F034 メンバー予約 + 緊急休業（実機）', (
 
     await enter(page, ctx.m1, ctx.m1Me, `/teams/${TEAM_SLUG}/reservations`)
 
-    // 予約する タブ（既定 value=0）に SlotPicker が出る（canBook=true / 所属メンバー）
+    // 予約する タブ（既定 value=0）にマトリックス（SlotMatrixPicker）が出る（canBook=true / 所属メンバー）
     const bookTab = page.getByRole('tab', { name: '予約する' })
     if (await bookTab.count()) await bookTab.click()
-    // 本日の当該枠ボタン（fixture が作成した一意時刻・空きあり）をクリック
-    const slotBtn = page.getByRole('button', { name: new RegExp(`${ctx.startTime}.*空きあり`) }).first()
-    await expect(slotBtn, `本日の空き枠(${ctx.startTime})ボタンが表示される`).toBeVisible({ timeout: 20_000 })
+    // 本日の当該セル（fixture が作成した一意時刻の60分枠・空き）をクリック。
+    // マトリックスのセル名は「YYYY/MM/DD (曜) HH:MM {予約対象名} 空き」。時刻が一意なので取り違えない。
+    const cellDateLabel = `${ctx.slotDate.replaceAll('-', '/')} (${['日', '月', '火', '水', '木', '金', '土'][new Date(`${ctx.slotDate}T00:00:00Z`).getUTCDay()]})`
+    const slotBtn = page
+      .getByRole('button', { name: new RegExp(`^${cellDateLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ${ctx.startTime} .* 空き$`) })
+      .first()
+    await expect(slotBtn, `本日の空きセル(${ctx.startTime})が表示される`).toBeVisible({ timeout: 20_000 })
     await slotBtn.click()
     // 確認ダイアログ内の「予約する」ボタン押下（タブ名と衝突しないよう dialog にスコープ）
     const dialog = page.getByRole('dialog')

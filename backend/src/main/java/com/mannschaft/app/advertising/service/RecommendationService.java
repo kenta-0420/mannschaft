@@ -45,6 +45,14 @@ public class RecommendationService {
     private static final BigDecimal CREATIVE_DIFF_THRESHOLD = new BigDecimal("20");
 
     /**
+     * 並べ替え用の優先度順（issue #2544 B 群）。
+     * <p>{@code Map.of(...)} は復元不能な {@code ImmutableCollections$MapN} を返すため、
+     * {@code @Cacheable} メソッドの内部で生成しない。定数（{@code <clinit>}）へ退避すれば
+     * キャッシュ値には載らず、番人の走査対象からも外れる。</p>
+     */
+    private static final Map<String, Integer> PRIORITY_ORDER = Map.of("HIGH", 0, "MEDIUM", 1, "LOW", 2);
+
+    /**
      * 広告主のレコメンデーションを生成する（キャッシュあり、TTL 1時間）。
      */
     @Cacheable(value = "adRecommendations", key = "#organizationId")
@@ -52,16 +60,19 @@ public class RecommendationService {
         AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElse(null);
         if (account == null || account.getStatus() != AdvertiserAccountStatus.ACTIVE) {
-            return List.of();
+            // issue #2544 B 群: List.of() は復元不能な ImmutableCollections を返す。
+            return new ArrayList<>();
         }
 
         List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountIdAndStatus(
                 account.getId(), AdCampaignEntity.CampaignStatus.ACTIVE);
         if (campaigns.isEmpty()) {
-            return List.of();
+            // issue #2544 B 群: 同上。
+            return new ArrayList<>();
         }
 
-        List<Long> campaignIds = campaigns.stream().map(AdCampaignEntity::getId).toList();
+        List<Long> campaignIds = campaigns.stream().map(AdCampaignEntity::getId)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
 
@@ -144,7 +155,8 @@ public class RecommendationService {
                 }
 
                 if (adCtrs.size() >= 2) {
-                    List<BigDecimal> sorted = adCtrs.stream().sorted(Comparator.reverseOrder()).toList();
+                    List<BigDecimal> sorted = adCtrs.stream().sorted(Comparator.reverseOrder())
+                            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
                     BigDecimal best = sorted.get(0);
                     BigDecimal second = sorted.get(1);
                     if (second.compareTo(BigDecimal.ZERO) > 0) {
@@ -184,11 +196,12 @@ public class RecommendationService {
         }
 
         // ソート: HIGH → MEDIUM → LOW、最大5件
-        Map<String, Integer> priorityOrder = Map.of("HIGH", 0, "MEDIUM", 1, "LOW", 2);
+        // issue #2544 B 群: 本メソッドの戻り値は adRecommendations キャッシュに載る。
+        // Stream#toList() が返す ImmutableCollections$ListN は復元できないため可変 ArrayList に集める。
         return recommendations.stream()
-                .sorted(Comparator.comparingInt(r -> priorityOrder.getOrDefault(r.priority(), 3)))
+                .sorted(Comparator.comparingInt(r -> PRIORITY_ORDER.getOrDefault(r.priority(), 3)))
                 .limit(MAX_RECOMMENDATIONS)
-                .toList();
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
     /**

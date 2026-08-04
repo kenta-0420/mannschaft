@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "还没有预约对象",
         "admin_no_lines_hint": "在「预约对象管理」中创建预约对象和时段后，这里会显示预约时段",
-        "admin_no_slots": "当天没有空闲时段",
-        "admin_no_slots_hint": "可在「预约对象管理」中添加时段",
+        "admin_no_slots": "本周没有空闲时段",
+        "admin_no_slots_hint": "在「每周日程」中创建时段后，将显示在此处",
         "member_no_lines": "预约正在准备中",
         "member_no_lines_hint": "请等待管理员准备好预约时段",
-        "member_no_slots": "当天没有空闲时段",
-        "member_no_slots_hint": "请选择其他日期再试"
+        "member_no_slots": "本周没有空闲时段",
+        "member_no_slots_hint": "请选择其他周再试"
       }
     },
     "line_manage_title": "{resourceName}管理",
@@ -601,7 +601,16 @@
       "auto_generated": "已保存，未来{days}天内已创建{generated}个时段",
       "auto_generated_partial": "{total}个星期中有{failed}个星期的时段创建失败（已保存的星期仍然有效）",
       "need_business_hours_hint": "请先设置营业时间",
-      "generated_zero_hint": "未创建任何时段（因不在营业时间内或为定休日）。请确认营业时间设置"
+      "generated_zero_hint": "未创建任何时段（因不在营业时间内或为定休日）。请确认营业时间设置",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
     },
     "recurring_block": {
       "title": "每周预约不可时段",
@@ -661,28 +670,11 @@
       "advanced_label": "手动管理个别时段（例外操作）"
     },
     "grid": {
-      "title": "空位表格",
-      "help": "纵向为时间段，横向为{resourceName}。点按绿色“空位”即可预约。灰色或斜线格无法预约。使用“周”标签可一次查看七天。",
-      "display_toggle": {
-        "list": "列表视图",
-        "grid": "表格视图"
-      },
       "view": {
-        "single": "单日",
         "week": "周"
       },
-      "axis": {
-        "label": "轴向",
-        "time_rows": "时间为纵向",
-        "time_cols": "时间为横向"
-      },
       "column": {
-        "common": "通用",
-        "time": "时间"
-      },
-      "staff_filter": {
-        "label": "按{resourceName}筛选",
-        "placeholder": "全部预约对象"
+        "common": "通用"
       },
       "state": {
         "available": "空位",
@@ -690,7 +682,6 @@
         "closed": "已截止",
         "unavailable": "不可预约"
       },
-      "empty": "当天没有可预约的时段",
       "load_error": "加载表格失败"
     },
     "matrix": {
@@ -708,9 +699,6 @@
       "no_menu_single": "不选菜单，仅预约30分钟",
       "preview_title": "确认以下预约内容",
       "extend_30": "+30分钟",
-      "view_matrix": "矩阵视图",
-      "view_list": "列表视图",
-      "view_staff_grid": "按员工分栏视图",
       "date_line_header": "日期・{resourceName}",
       "help_toggle": "查看使用说明",
       "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的{resourceName}。",

@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "예약 대상이 아직 없습니다",
         "admin_no_lines_hint": "「예약 대상 관리」에서 예약 대상과 시간대를 만들면 여기에 예약 시간대가 표시됩니다",
-        "admin_no_slots": "이 날에는 예약 가능한 시간대가 없습니다",
-        "admin_no_slots_hint": "「예약 대상 관리」에서 시간대를 추가할 수 있습니다",
+        "admin_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "admin_no_slots_hint": "「주간 일정」에서 시간대를 만들면 여기에 표시됩니다",
         "member_no_lines": "예약 준비 중입니다",
         "member_no_lines_hint": "관리자가 예약 시간대를 준비할 때까지 기다려 주세요",
-        "member_no_slots": "이 날에는 예약 가능한 시간대가 없습니다",
-        "member_no_slots_hint": "다른 날짜를 선택해 다시 시도해 주세요"
+        "member_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "member_no_slots_hint": "다른 주를 선택해 다시 시도해 주세요"
       }
     },
     "line_manage_title": "{resourceName} 관리",
@@ -601,7 +601,16 @@
       "auto_generated": "저장했습니다. {days}일 뒤까지의 슬롯 {generated}개를 생성했습니다",
       "auto_generated_partial": "{total}개 요일 중 {failed}개 요일에서 슬롯 생성에 실패했습니다(저장된 요일은 그대로 유효합니다)",
       "need_business_hours_hint": "먼저 영업시간을 설정해 주세요",
-      "generated_zero_hint": "슬롯이 생성되지 않았습니다(영업시간 외 또는 정기 휴무일). 영업시간을 확인해 주세요"
+      "generated_zero_hint": "슬롯이 생성되지 않았습니다(영업시간 외 또는 정기 휴무일). 영업시간을 확인해 주세요",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
     },
     "recurring_block": {
       "title": "매주 예약 불가",
@@ -661,28 +670,11 @@
       "advanced_label": "개별 슬롯 수동 관리(예외 조작)"
     },
     "grid": {
-      "title": "예약 가능 그리드",
-      "help": "세로는 시간대, 가로는 {resourceName}입니다. 초록색 \"빈자리\"를 누르면 예약으로 넘어갑니다. 회색·빗금 칸은 예약할 수 없습니다. \"주\" 탭에서 7일치를 한 번에 볼 수 있습니다.",
-      "display_toggle": {
-        "list": "목록 보기",
-        "grid": "그리드 보기"
-      },
       "view": {
-        "single": "단일",
         "week": "주"
       },
-      "axis": {
-        "label": "축",
-        "time_rows": "시간을 세로로",
-        "time_cols": "시간을 가로로"
-      },
       "column": {
-        "common": "공통",
-        "time": "시간"
-      },
-      "staff_filter": {
-        "label": "{resourceName} 필터",
-        "placeholder": "모든 예약 대상"
+        "common": "공통"
       },
       "state": {
         "available": "빈자리",
@@ -690,7 +682,6 @@
         "closed": "접수 마감",
         "unavailable": "예약 불가"
       },
-      "empty": "이 날의 예약 가능한 시간이 없습니다",
       "load_error": "그리드를 불러오지 못했습니다"
     },
     "matrix": {
@@ -708,9 +699,6 @@
       "no_menu_single": "메뉴 없이 30분만 예약",
       "preview_title": "다음 내용으로 예약합니다",
       "extend_30": "+30분 연장",
-      "view_matrix": "매트릭스 보기",
-      "view_list": "목록 보기",
-      "view_staff_grid": "담당자별 그리드 보기",
       "date_line_header": "날짜・{resourceName}",
       "help_toggle": "사용법 보기",
       "help_body": "비어 있는（초록색）시간대를 탭한 후 메뉴를 선택하면 필요한 시간대 수가 자동으로 선택됩니다. 「+30분 연장」으로 더 추가할 수 있습니다. 공통 시간대를 선택한 경우 {resourceName} 항목을 선택해 주세요.",

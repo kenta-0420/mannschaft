@@ -17,9 +17,15 @@
  * playwright.config.ts の chromium-real-admin プロジェクト（real/admin/ 配下）で動く。
  *
  * 検証対象（マスター懸念の核心）:
- *   - SlotPicker/SlotGridPicker: 予約対象1件・枠0件のとき member_no_slots
- *     （「この日は空き枠がありません」+「別の日を選んでお試しください」）が出て、
+ *   - SlotMatrixPicker: 予約対象1件・枠0件のとき member_no_slots
+ *     （「この週は空き枠がありません」+「別の週を選んでお試しください」）が出て、
  *     管理CTA（「枠を管理する」）は isAdmin=false のとき描画されない。
+ *
+ * 【表示一本化に伴う追随（PR #2574 旧表示撤去 → 本PRで枠ゼロ空状態をマトリックスへ実装）】
+ *   枠ゼロ空状態の出し手が SlotPicker/SlotGridPicker からマトリックス（週表示）へ移り、
+ *   文言が日単位「この日は…」から週単位「この週は…」になった。また「リスト/グリッド表示」
+ *   切替が消えたため旧AC-6（両表示での確認）はページ全体走査に置き換えた。
+ *   検証の実質（非管理者に管理CTA・管理タブが一切出ない）は不変。
  *   - TeamReservationsPanel: 「予約対象の管理」タブ自体が v-if="isAdmin" で
  *     非管理者には描画されない。
  *   - 対照として ADMIN で同じ枠ゼロ状態を開くと「枠を管理する」CTA が出ることも撮る。
@@ -361,7 +367,7 @@ test.describe('RSV-NONADMIN-CTA-GUARD: 予約対象あり・枠ゼロ象限で�
     await ctx.dispose()
   })
 
-  test('AC-SUPPORTER: SUPPORTER視点は枠ゼロで管理CTA・管理タブが一切出ない（list/grid両表示）', async ({
+  test('AC-SUPPORTER: SUPPORTER視点は枠ゼロで管理CTA・管理タブが一切出ない', async ({
     page,
     tokens,
   }) => {
@@ -373,11 +379,11 @@ test.describe('RSV-NONADMIN-CTA-GUARD: 予約対象あり・枠ゼロ象限で�
 
     // member_no_slots メッセージ + ヒント
     await expect(
-      page.getByText('この日は空き枠がありません'),
+      page.getByText('この週は空き枠がありません'),
       'member_no_slots（予約対象はあるが枠ゼロの非管理者向けメッセージ）が表示されること',
     ).toBeVisible({ timeout: 20_000 })
     await expect(
-      page.getByText('別の日を選んでお試しください'),
+      page.getByText('別の週を選んでお試しください'),
       'member_no_slots_hint が表示されること',
     ).toBeVisible({ timeout: 10_000 })
 
@@ -401,25 +407,19 @@ test.describe('RSV-NONADMIN-CTA-GUARD: 予約対象あり・枠ゼロ象限で�
       fullPage: true,
     })
 
-    // グリッド表示に切替えても同様（AC-6 非管理側）
-    await page.getByRole('button', { name: 'グリッド表示' }).click()
+    // 【PR #2574 追随】旧「リスト表示/グリッド表示」の切替ボタンは撤去され、予約枠の表示は
+    // マトリックス（SlotMatrixPicker）一本になった。よって「もう一方の表示でも管理CTAが出ない」
+    // という旧AC-6の確認対象そのものが消滅している。検証の実質を落とさないよう、代わりに
+    // 「枠ゼロ空状態が出ている間、ページ全体のどこにも管理CTAが存在しない」ことを
+    // 明示アサートする（切替表示ぶんの網羅をページ全体走査で置き換える）。
     await expect(
-      page.getByText('この日は空き枠がありません'),
-      'グリッド表示でも member_no_slots が表示されること',
+      page.getByTestId('matrix-no-slots-empty'),
+      '枠ゼロ空状態がマトリックス（唯一の表示）で出ていること',
     ).toBeVisible({ timeout: 15_000 })
     await expect(
-      page.getByRole('button', { name: '枠を管理する' }),
-      'グリッド表示でもSUPPORTERには「枠を管理する」ボタンが出ないこと',
+      page.getByRole('button', { name: 'グリッド表示' }),
+      'PR #2574 で表示切替ボタンは撤去済み（残っていれば撤去漏れの回帰）',
     ).toHaveCount(0)
-    await expect(
-      page.getByRole('button', { name: '予約対象の管理へ' }),
-      'グリッド表示でもSUPPORTERには「予約対象の管理へ」ボタンが出ないこと',
-    ).toHaveCount(0)
-
-    await page.screenshot({
-      path: 'test-results/member-no-slots-grid.png',
-      fullPage: true,
-    })
   })
 
   test('AC-MEMBER: MEMBER視点は枠ゼロで管理CTA・管理タブが一切出ない', async ({ page, tokens }) => {
@@ -430,11 +430,11 @@ test.describe('RSV-NONADMIN-CTA-GUARD: 予約対象あり・枠ゼロ象限で�
     await waitForHydration(page)
 
     await expect(
-      page.getByText('この日は空き枠がありません'),
+      page.getByText('この週は空き枠がありません'),
       'member_no_slots（予約対象はあるが枠ゼロの非管理者向けメッセージ）が表示されること',
     ).toBeVisible({ timeout: 20_000 })
     await expect(
-      page.getByText('別の日を選んでお試しください'),
+      page.getByText('別の週を選んでお試しください'),
       'member_no_slots_hint が表示されること',
     ).toBeVisible({ timeout: 10_000 })
 
@@ -468,7 +468,7 @@ test.describe('RSV-NONADMIN-CTA-GUARD: 予約対象あり・枠ゼロ象限で�
     await waitForHydration(page)
 
     await expect(
-      page.getByText('この日は空き枠がありません'),
+      page.getByText('この週は空き枠がありません'),
       'admin_no_slots（管理者向けメッセージ・文言はmemberと同一）が表示されること',
     ).toBeVisible({ timeout: 20_000 })
 

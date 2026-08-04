@@ -11794,7 +11794,7 @@ export interface paths {
         put?: never;
         /**
          * 全件既読
-         * @description チームスコープの全未読お知らせを一括既読にする。
+         * @description チームスコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。
          */
         post: operations["markAllAsRead"];
         delete?: never;
@@ -18493,7 +18493,7 @@ export interface paths {
         put?: never;
         /**
          * 全件既読（組織）
-         * @description 組織スコープの全未読お知らせを一括既読にする。
+         * @description 組織スコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。
          */
         post: operations["markAllAsRead_1"];
         delete?: never;
@@ -55833,11 +55833,6 @@ export interface components {
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
         };
-        RecurrenceDto: {
-            /** Format: int64 */
-            parentSlotId?: number;
-            recurrenceRule?: string;
-        };
         ReservationSlotResponse: {
             audit?: components["schemas"]["SlotAuditDto"];
             basic?: components["schemas"]["SlotBasicDto"];
@@ -55848,7 +55843,6 @@ export interface components {
             lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
-            recurrence?: components["schemas"]["RecurrenceDto"];
             /** Format: int64 */
             staffUserId?: number;
             status?: components["schemas"]["SlotStatusDto"];
@@ -55886,7 +55880,6 @@ export interface components {
             /** Format: int32 */
             capacity?: number;
             closedReason?: string;
-            isException?: boolean;
             note?: string;
             slotStatus?: string;
         };
@@ -58493,6 +58486,23 @@ export interface components {
             data?: {
                 [key: string]: Record<string, never>;
             };
+        };
+        /** @description 一括既読の結果 */
+        AnnouncementMarkAllReadResultDto: {
+            /**
+             * @description 打ち切りにより未読が残っているか（true ならもう一度実行すると続きが処理される）
+             * @example false
+             */
+            hasMoreUnread?: boolean;
+            /**
+             * Format: int32
+             * @description このリクエストで新たに既読化した件数
+             * @example 8
+             */
+            markedCount?: number;
+        };
+        ApiResponseAnnouncementMarkAllReadResultDto: {
+            data?: components["schemas"]["AnnouncementMarkAllReadResultDto"];
         };
         CreateReportScheduleRequest: {
             /** @enum {string} */
@@ -105923,7 +105933,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementMarkAllReadResultDto"];
                 };
             };
         };
@@ -118927,7 +118937,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementMarkAllReadResultDto"];
                 };
             };
         };

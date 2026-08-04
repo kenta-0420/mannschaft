@@ -424,12 +424,11 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
   }) => {
     await gotoReservations(page, tokens)
 
-    // STEP-3: マトリックス既定表示の確認（SelectButton・メニューフィルター・週ナビ・凡例が見える）
+    // STEP-3: マトリックス表示の確認（メニューフィルター・週ナビ・凡例が見える）。
+    // 旧表示切替（SelectButton）は撤去済みのため、その存在確認は STEP-12 の「不在」検証へ移した。
     await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: /^週 /, exact: false })).toBeVisible()
     await expect(page.getByText('空き', { exact: true }).first()).toBeVisible()
-    const matrixOption = page.getByRole('button', { name: 'マトリックス表示' })
-    await expect(matrixOption).toBeVisible()
     await page.screenshot({ path: 'test-results/rsv-v2b-03-matrix-default.png', fullPage: true })
 
     // STEP-4: 明日の10:00セルをクリック
@@ -612,24 +611,27 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     ).toBeVisible({ timeout: 15_000 })
   })
 
-  test('STEP-12: 表示切替（グリッド/リスト）でも従来通り描画される（1枚ずつ）', async ({ page, tokens }) => {
+  test('STEP-12: 旧表示（リスト/スタッフ別グリッド）と表示切替UIは撤去され、予約タブは常にマトリックス表示', async ({ page, tokens }) => {
+    // 旧 STEP-12 は「表示切替（グリッド/リスト）でも従来通り描画される」ことを確認していたが、
+    // マスター裁可 2026-08-04 で SlotPicker / SlotGridPicker と表示切替 SelectButton を撤去した。
+    // 検証を落とさず「撤去されたことの確証（残骸が UI に出ない）」に置き換える。
     await gotoReservations(page, tokens)
 
-    await page.getByRole('button', { name: 'スタッフ別グリッド' }).click()
-    await page.waitForTimeout(500)
-    await page.screenshot({ path: 'test-results/rsv-v2b-12a-grid-view.png', fullPage: true })
-    // グリッド表示は従来コンポーネント(SlotGridPicker)。凡例文言などエラーなく描画されること
-    await expect(page.getByText('予約対象で絞り込む')).toBeVisible({ timeout: 10_000 })
+    // マトリックスは切替なしで即描画される
+    await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
 
-    await page.getByRole('button', { name: 'リスト表示' }).click()
-    await page.waitForTimeout(500)
-    await page.screenshot({ path: 'test-results/rsv-v2b-12b-list-view.png', fullPage: true })
-    // リスト表示は既存 SlotPicker。日付ピッカーが表示されること
-    await expect(page.locator('.p-datepicker-input').first()).toBeVisible({ timeout: 10_000 })
+    for (const label of ['マトリックス表示', 'スタッフ別グリッド', 'リスト表示']) {
+      await expect(
+        page.getByRole('button', { name: label }),
+        `旧表示切替ボタン「${label}」が存在しないこと`,
+      ).toHaveCount(0)
+    }
+    // 旧staff軸グリッド専用の絞り込みラベルが残っていないこと
+    await expect(page.getByText('予約対象で絞り込む')).toHaveCount(0)
+    // 旧リスト表示の DatePicker も「予約する」タブ内に残っていないこと
+    // （管理タブ側の DatePicker と混同しないよう tabpanel にスコープする）
+    await expect(page.getByRole('tabpanel').first().locator('.p-datepicker-input')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'マトリックス表示' }).click()
-    await page.waitForTimeout(500)
-    await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 10_000 })
-    await page.screenshot({ path: 'test-results/rsv-v2b-12c-back-to-matrix.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2b-12-matrix-only.png', fullPage: true })
   })
 })

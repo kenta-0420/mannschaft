@@ -28,6 +28,7 @@ import javax.sql.DataSource;
  *   <li>{@code adBannerReservationExpiry} — F09.19.3 予約 EXPIRED + FreqCap 返却（毎日 02:15）</li>
  *   <li>{@code corkboardAutoArchiveBatch} 他 — F09.8 コルクボード</li>
  *   <li>{@code chatMessageArchiveBatch} — F04.2 チャット archive</li>
+ *   <li>{@code notificationCleanupBatch} — 通知保持バッチ（既読90日/未読365日を notifications_archive へ移送・毎日 04:00・lockAtMostFor=PT2H）</li>
  *   <li>{@code shift_auto_archive} / {@code shift_preference_reminder} — F08.7 シフト</li>
  *   <li>{@code emailOutboxWorker} — F09.18 メール配信ワーカー (lockAtMostFor=PT2M)</li>
  *   <li>{@code emailOutboxStuckRecovery} — F09.18 SENDING 残骸リカバリ (lockAtMostFor=PT5M)</li>

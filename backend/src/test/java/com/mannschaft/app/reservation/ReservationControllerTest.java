@@ -91,8 +91,7 @@ class ReservationControllerTest {
                 .teamId(TEAM_ID)
                 .staffUserId(USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("相談枠", LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0)))
-                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, false, null, null))
-                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(BigDecimal.ZERO))
                 .audit(new ReservationSlotResponse.SlotAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
                 .build();
