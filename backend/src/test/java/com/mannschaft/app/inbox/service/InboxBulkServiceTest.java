@@ -50,6 +50,9 @@ class InboxBulkServiceTest {
     @Mock
     private InboxLabelService labelService;
 
+    @Mock
+    private InboxAccessGuard inboxAccessGuard;
+
     @InjectMocks
     private InboxBulkService service;
 
@@ -174,6 +177,42 @@ class InboxBulkServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CommonErrorCode.COMMON_001);
+        }
+
+        @Test
+        @DisplayName("認可: 他者所有・不存在のラベルIDは item ループ前に 404 で全体を止める（付与も委譲しない）")
+        void foreignLabelIdRejectedBeforeLoop() {
+            UUID foreignLabelId = UUID.randomUUID();
+            doThrow(new BusinessException(InboxErrorCode.INBOX_LABEL_NOT_FOUND))
+                    .when(inboxAccessGuard).requireOwnedLabel(USER_ID, foreignLabelId);
+
+            BulkInboxRequest req = new BulkInboxRequest(
+                    BulkInboxRequest.BulkAction.LABEL_ADD,
+                    List.of(target(InboxSourceType.NOTIFICATION, 1L),
+                            target(InboxSourceType.MENTION, 9L)),
+                    null, foreignLabelId);
+
+            assertThatThrownBy(() -> service.bulk(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(InboxErrorCode.INBOX_LABEL_NOT_FOUND);
+
+            verify(labelService, times(0)).assignLabel(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("認可: 本人所有ラベルの検証は item ループ前に 1 回だけ行う")
+        void ownedLabelVerifiedOnce() {
+            UUID labelId = UUID.randomUUID();
+            BulkInboxRequest req = new BulkInboxRequest(
+                    BulkInboxRequest.BulkAction.LABEL_ADD,
+                    List.of(target(InboxSourceType.NOTIFICATION, 1L),
+                            target(InboxSourceType.MENTION, 9L)),
+                    null, labelId);
+
+            service.bulk(USER_ID, req);
+
+            verify(inboxAccessGuard, times(1)).requireOwnedLabel(USER_ID, labelId);
         }
 
         @Test

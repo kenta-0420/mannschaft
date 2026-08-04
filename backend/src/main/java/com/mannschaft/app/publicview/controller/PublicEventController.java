@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:271 / 277 — requestMatchers(GET, "/api/v1/public/teams/&#42;/events"
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/&#42;/events"
  * / "/api/v1/public/organizations/&#42;/events").permitAll()
  * </p>
  *
@@ -42,7 +42,10 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/public/teams/*/events",
+        "/api/v1/public/organizations/*/events"
+})
 @RestController
 @Tag(name = "公開イベント API (F19.1 Phase 7)")
 @RequiredArgsConstructor

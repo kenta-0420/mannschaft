@@ -41,7 +41,14 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_006: すでに村人（409） */
     ALREADY_MEMBER("VILLAGE_006", "すでに村人です", Severity.WARN),
 
-    /** VILLAGE_007: 村人ではない（409） */
+    /**
+     * VILLAGE_007: 村人ではない（404）。
+     *
+     * <p>設計書 F17.1 は §10 の採番表で 409、§4.10.5 の本文で 404 と自己矛盾していた
+     * （{@code F17.1_village_headman_console_and_recruit_categories.md} §9.1 で指摘済み）。
+     * 非村人に対して村の内部リソースの有無を示さない §4.10.5 の 404 を正とし、
+     * {@code GlobalExceptionHandler} も 404 で登録済みなのでこちらへ統一する。</p>
+     */
     NOT_MEMBER("VILLAGE_007", "この村のメンバーではありません", Severity.WARN),
 
     /** VILLAGE_008: ニックネーム重複（プラットフォーム全体で先着優先・409） */
@@ -72,7 +79,13 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_012: 参加村数ハード上限（429） */
     PARTICIPATION_LIMIT_EXCEEDED("VILLAGE_012", "参加可能な村数の上限（100）を超えました", Severity.WARN),
 
-    /** VILLAGE_014: ガイドライン未同意 / 同意期限切れ（400） */
+    /**
+     * VILLAGE_014: ガイドライン未同意 / 同意期限切れ（422）。
+     *
+     * <p>設計書 F17.1 §10 の表記は 400 だったが、実装・契約テストとも 422 で確定しており、
+     * 村ドメインは「入力自体は妥当だが前提条件を満たさない」系をすべて 422 に揃えている
+     * （VILLAGE_028 / VILLAGE_041 / VILLAGE_085 等）。兄弟と流儀を合わせて 422 を正とする。</p>
+     */
     GUIDELINE_NOT_AGREED("VILLAGE_014", "村ガイドラインへの同意が必要です（直近1時間以内）", Severity.WARN),
 
     /** VILLAGE_015: チーム/組織代表権限なし（403） */

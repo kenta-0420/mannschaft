@@ -58,7 +58,7 @@ public class PublicPostCommentController {
      * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
      * <p><b>根拠</b>:
-     * SecurityConfig.java:341 — requestMatchers(GET, "/api/v1/public/blog-posts/&#42;/comments").permitAll()
+     * SecurityConfig — requestMatchers(GET, "/api/v1/public/blog-posts/&#42;/comments").permitAll()
      * </p>
      *
      * <p><b>公開してよいと判断した理由</b>:
@@ -72,7 +72,7 @@ public class PublicPostCommentController {
      * @param pageable ページネーション（デフォルト 20 件）
      * @return コメントのページ
      */
-    @IntentionallyPublic
+    @IntentionallyPublic("/api/v1/public/blog-posts/*/comments")
     @GetMapping
     @Operation(
             summary = "公開投稿コメント一覧取得（未ログイン公開）",

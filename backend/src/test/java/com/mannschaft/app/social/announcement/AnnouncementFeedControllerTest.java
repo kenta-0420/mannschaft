@@ -218,8 +218,8 @@ class AnnouncementFeedControllerTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限不足（Service が ANNOUNCE_002 を投げる）→ 400 Bad Request")
-        void createAnnouncement_権限不足_400() throws Exception {
+        @DisplayName("異常系: 権限不足（Service が ANNOUNCE_002 を投げる）→ 403 Forbidden")
+        void createAnnouncement_権限不足_403() throws Exception {
             // Given: Service が権限不足例外を投げる
             willThrow(new BusinessException(AnnouncementErrorCode.ANNOUNCE_002))
                     .given(announcementFeedService)
@@ -232,11 +232,13 @@ class AnnouncementFeedControllerTest {
                     }
                     """.formatted(SOURCE_ID);
 
-            // When / Then: Severity.WARN → 400 BAD_REQUEST（GlobalExceptionHandler デフォルト）
+            // When / Then: ANNOUNCE_002 は「操作権限なし」として 403 を返す契約
+            //（#2468。定義側 Javadoc と F02.6 §エラー表の宣言どおり
+            //  ERROR_CODE_STATUS_MAP に登録済み。従来は未登録で Severity.WARN 既定の 400 だった）
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements", TEAM_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestBody))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_002"));
         }
     }

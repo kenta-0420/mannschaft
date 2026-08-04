@@ -10,7 +10,7 @@ const visible = defineModel<boolean>('visible', { default: false })
 
 const { getFileLinks, createFileLink, deleteFileLink } = useFileSharingApi()
 const { showSuccess, showError } = useNotification()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
 
 const links = ref<PublicFileLink[]>([])
@@ -35,12 +35,6 @@ const maxDate = computed(() => {
 function statusOf(err: unknown): number | undefined {
   const e = err as { response?: { status?: number }, status?: number, statusCode?: number }
   return e?.response?.status ?? e?.status ?? e?.statusCode
-}
-
-/** Date を LocalDateTime 文字列（YYYY-MM-DDTHH:mm:ss・TZ なし）へ整形する。 */
-function toLocalDateTime(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
 function publicUrl(token: string): string {
@@ -71,8 +65,15 @@ async function onCreate() {
   }
   creating.value = true
   try {
+    // Issue #2508: BE の expiresAt は LocalDateTime で受信時オフセットを無視するため、
+    // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
+    const isoValue = buildOffsetDateTimeStr(expiresAt.value)
+    if (!isoValue) {
+      showError(t('file_sharing.publicLink.errors.expiryInvalid'))
+      return
+    }
     await createFileLink(props.file.id, {
-      expiresAt: toLocalDateTime(expiresAt.value),
+      expiresAt: isoValue,
       downloadAllowed: downloadAllowed.value,
       password: password.value.trim() || undefined,
     })

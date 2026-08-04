@@ -2,8 +2,11 @@ package com.mannschaft.app.favorite.resolver.impl;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
+import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +19,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -41,6 +46,9 @@ class OrganizationFavoriteResolverTest {
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private OrganizationFavoriteResolver resolver;
 
@@ -54,6 +62,8 @@ class OrganizationFavoriteResolverTest {
         ReflectionTestUtils.setField(org, "id", 9L);
 
         given(organizationRepository.findAllById(any())).willReturn(List.of(org));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.ORGANIZATION), any(), eq(700L)))
+                .willReturn(Set.of(9L));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve("org/9/icon/raw.png"))
@@ -66,5 +76,27 @@ class OrganizationFavoriteResolverTest {
         assertThat(meta.entityType()).isEqualTo(FavoriteEntityType.ORGANIZATION);
         assertThat(meta.iconUrl()).isEqualTo("https://cdn.example/signed/org-9");
         assertThat(meta.iconUrl()).isNotEqualTo("org/9/icon/raw.png");
+    }
+
+    @Test
+    @DisplayName("可視性: F00 ラダーで閲覧できない組織は UNAVAILABLE（名称・アイコンを返さない）")
+    void resolveAll_notVisible_unavailable() {
+        OrganizationEntity org = OrganizationEntity.builder()
+                .name("非公開連盟")
+                .iconUrl("org/8/icon/raw.png")
+                .build();
+        ReflectionTestUtils.setField(org, "id", 8L);
+
+        given(organizationRepository.findAllById(any())).willReturn(List.of(org));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.ORGANIZATION), any(), eq(700L)))
+                .willReturn(Set.of());
+
+        Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("8"), 700L);
+
+        FavoriteEntityMetaDto meta = result.get("8");
+        assertThat(meta).isNotNull();
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
+        assertThat(meta.displayName()).isNull();
+        assertThat(meta.iconUrl()).isNull();
     }
 }

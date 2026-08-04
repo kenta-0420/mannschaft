@@ -41,6 +41,7 @@ public class ReflectionArchiveService {
     private final ReflectionEntryRepository reflectionEntryRepository;
     private final ReflectionSpacedReminderService reflectionSpacedReminderService;
     private final ReflectionThemeService reflectionThemeService;
+    private final ReflectionAccessGuard reflectionAccessGuard;
 
     // ─── EP #19: archive ────────────────────────────────────────────
 
@@ -178,25 +179,21 @@ public class ReflectionArchiveService {
     // ─── 内部ヘルパ ─────────────────────────────────────────────────
 
     /**
-     * 本人所有のアクティブテーマを取得（他人所有・不在は 404）。
-     * @SQLRestriction で deleted_at IS NULL が保証されるが、archived_at の有無は確認しない（archived テーマは含まない）。
+     * 本人所有のテーマを取得（認可は {@link ReflectionAccessGuard} に一元化・他者所有／不在は 404 秘匿）。
+     * archived_at の有無は問わない（アーカイブ状態の業務判定は呼び出し側）。
      */
     private ReflectionThemeEntity requireOwnedTheme(Long userId, UUID themeId) {
-        return reflectionThemeRepository.findByIdAndUserId(themeId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedTheme(userId, themeId);
     }
 
     /**
-     * 本人所有テーマを取得（archived 含む・@SQLRestriction で deleted_at IS NULL は保証）。
+     * 本人所有テーマを取得（archived 含む・{@code @SQLRestriction} で deleted_at IS NULL は保証）。
      *
-     * <p>restore 操作では archived テーマを操作対象とする必要があるが、
-     * {@link ReflectionThemeRepository#findByIdAndUserId} は @SQLRestriction により
-     * deleted_at IS NULL のみを返す（deleted_at とアーカイブは独立）。
-     * archived_at の有無は問わず、本人所有かつ論理削除なしを返す。</p>
+     * <p>restore 操作は archived テーマを操作対象とするため、アーカイブ状態で絞らない
+     * {@link #requireOwnedTheme} と同一の認可ゲートを用いる（deleted_at とアーカイブは独立）。</p>
      */
     private ReflectionThemeEntity requireOwnedThemeAllowArchived(Long userId, UUID themeId) {
-        return reflectionThemeRepository.findByIdAndUserId(themeId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedTheme(userId, themeId);
     }
 
     /**

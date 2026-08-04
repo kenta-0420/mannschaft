@@ -121,7 +121,7 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
         RecurringBlockedTimeResponse rule = ruleService.createRule(
                 teamId,
                 new CreateRecurringBlockedTimeRequest(
-                        null, ReservationDayOfWeek.MON, LocalTime.of(19, 0), LocalTime.of(20, 0), "研修", true),
+                        null, ReservationDayOfWeek.MON, LocalTime.of(19, 0), LocalTime.of(20, 0), "研修", true, null),
                 CREATED_BY);
         assertThat(rule.getId()).isNotNull();
 
@@ -134,14 +134,14 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
 
         // 実DB: createReservation は BLOCKED_TIME_CONFLICT(009) で拒否される。
         assertThatThrownBy(() -> reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(targetSlotId, line.getId(), null)))
+                teamId, USER_ID, new CreateReservationRequest(targetSlotId, line.getId(), null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
 
         // 境界slot（18:30-19:00）は実DBでも予約できる（半開区間の実務ケース・回帰なし）。
         var beforeResponse = reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(beforeSlotId, line.getId(), null));
+                teamId, USER_ID, new CreateReservationRequest(beforeSlotId, line.getId(), null, null));
         assertThat(beforeResponse).isNotNull();
     }
 
@@ -166,7 +166,7 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
         assertThatThrownBy(() -> ruleService.createRule(
                 teamId,
                 new CreateRecurringBlockedTimeRequest(
-                        null, ReservationDayOfWeek.TUE, LocalTime.of(9, 0), LocalTime.of(10, 0), "研修", true),
+                        null, ReservationDayOfWeek.TUE, LocalTime.of(9, 0), LocalTime.of(10, 0), "研修", true, null),
                 CREATED_BY))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -190,7 +190,7 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
         RecurringBlockedTimeResponse rule = ruleService.createRule(
                 teamId,
                 new CreateRecurringBlockedTimeRequest(
-                        null, ReservationDayOfWeek.WED, LocalTime.of(9, 0), LocalTime.of(10, 0), "研修", true),
+                        null, ReservationDayOfWeek.WED, LocalTime.of(9, 0), LocalTime.of(10, 0), "研修", true, null),
                 CREATED_BY);
 
         assertThat(rule.getId()).isNotNull();
@@ -221,14 +221,14 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
 
         // 対象ラインの枠は拒否される。
         assertThatThrownBy(() -> reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(targetSlotId, targetLine.getId(), null)))
+                teamId, USER_ID, new CreateReservationRequest(targetSlotId, targetLine.getId(), null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
 
         // 別ラインの枠は影響を受けない（実DBでも回帰なし）。
         var otherResponse = reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(otherSlotId, otherLine.getId(), null));
+                teamId, USER_ID, new CreateReservationRequest(otherSlotId, otherLine.getId(), null, null));
         assertThat(otherResponse).isNotNull();
     }
 
@@ -248,23 +248,23 @@ class ReservationRecurringBlockedTimePersistenceIntegrationTest extends Abstract
         RecurringBlockedTimeResponse rule = ruleService.createRule(
                 teamId,
                 new CreateRecurringBlockedTimeRequest(
-                        null, ReservationDayOfWeek.MON, LocalTime.of(15, 0), LocalTime.of(16, 0), "研修", true),
+                        null, ReservationDayOfWeek.MON, LocalTime.of(15, 0), LocalTime.of(16, 0), "研修", true, null),
                 CREATED_BY);
 
         // 有効な間は拒否される。
         assertThatThrownBy(() -> reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(slotId, line.getId(), null)))
+                teamId, USER_ID, new CreateReservationRequest(slotId, line.getId(), null, null)))
                 .isInstanceOf(BusinessException.class);
 
         // is_active=FALSE 化。
         ruleService.updateRule(teamId, rule.getId(),
                 new com.mannschaft.app.reservation.dto.UpdateRecurringBlockedTimeRequest(
-                        null, null, null, null, null, null, null, false),
+                        null, null, null, null, null, null, null, false, null),
                 CREATED_BY);
 
         // 無効化後は実DBでも即予約可。
         var response = reservationService.createReservation(
-                teamId, USER_ID, new CreateReservationRequest(slotId, line.getId(), null));
+                teamId, USER_ID, new CreateReservationRequest(slotId, line.getId(), null, null));
         assertThat(response).isNotNull();
     }
 

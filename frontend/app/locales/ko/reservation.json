@@ -262,7 +262,8 @@
       "template_delete_success": "템플릿을 삭제했습니다",
       "template_save_failed": "저장에 실패했습니다",
       "template_load_failed": "템플릿을 가져오는데 실패했습니다",
-      "cancel_deadline_passed": "취소 기한이 지나 이 예약을 취소할 수 없습니다. 변경이 필요하면 팀 관리자에게 문의해 주세요"
+      "cancel_deadline_passed": "취소 기한이 지나 이 예약을 취소할 수 없습니다. 변경이 필요하면 팀 관리자에게 문의해 주세요",
+      "rate_limited": "예약 생성 간격이 너무 짧습니다. 잠시 후 다시 시도해 주세요"
     },
     "empty": {
       "no_reservations": "예약이 없습니다",
@@ -332,6 +333,14 @@
           "placeholder": "예: 24,1",
           "error_empty": "최소 하나의 값을 입력해주세요",
           "error_invalid": "0~8760 사이의 정수를 쉼표로 구분하여 입력해주세요"
+        },
+        "pending_expire": {
+          "label": "임시 확보(PENDING) 자동 실효",
+          "hint": "승인 대기 중인 임시 확보 예약을 지정한 시간이 지나면 자동으로 취소합니다（1~168시간・최대 7일）",
+          "unit": " 시간 후 자동 취소",
+          "no_expire_toggle": "자동 취소하지 않음",
+          "no_expire_warning": "현재 \"자동 취소하지 않음\"으로 설정되어 있습니다. 수동 승인（MANUAL） 팀에서는 임시 확보 예약이 자동으로 취소되지 않습니다. 관리자가 개별적으로 처리해 주세요",
+          "error_range": "1~168 사이의 값을 입력해주세요"
         }
       }
     },
@@ -451,6 +460,43 @@
         "title": "등록된 예약 불가 시간대",
         "empty": "등록된 예약 불가 시간대가 없습니다",
         "all_day": "종일"
+      }
+    },
+    "recurring": {
+      "toggle_label": "이 예약을 매주 반복",
+      "weeks_option": "{n}주",
+      "weeks_more": "더 보기（5〜12주）",
+      "weeks_label": "주 수",
+      "horizon_hint": "예약 시간대는 28일 후까지만 자동으로 생성되므로, 그 이후 주는 시간대가 생성된 후 직접 예약해야 할 수 있습니다",
+      "close_button": "닫기",
+      "badge": "정기",
+      "result": {
+        "summary": "{created}건 예약했습니다（{skipped}건은 건너뜀）",
+        "skipped_list_title": "건너뛴 회차",
+        "all_skipped_notice": "선택한 주의 시간대를 모두 확보하지 못해 예약이 생성되지 않았습니다. 아래 이유를 확인하고 필요한 주는 개별적으로 예약해 주세요"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "해당 주의 시간대가 아직 생성되지 않았습니다",
+        "FULL": "만석이었습니다",
+        "CLOSED": "접수가 마감되었습니다",
+        "BLOCKED": "예약할 수 없는 시간대였습니다",
+        "ALREADY_RESERVED": "이미 해당 시간대를 예약하셨습니다",
+        "UNAVAILABLE": "예약할 수 없는 상태였습니다",
+        "NOT_CANCELLABLE": "취소할 수 없는 상태였습니다",
+        "CANCEL_DEADLINE_PASSED": "취소 기한이 지났습니다",
+        "NOT_PENDING": "승인 대기 상태가 아니었습니다"
+      },
+      "cancel_scope": {
+        "dialog_title": "취소 범위 선택",
+        "this_only": "이 회차만",
+        "this_and_following": "이 회차 이후 전체",
+        "result_summary": "{cancelled}건을 취소했습니다（{skipped}건은 대상이 아니었습니다）",
+        "all_skipped_notice": "대상 회차를 모두 취소할 수 없었습니다. 아래 이유를 확인해 주세요"
+      },
+      "confirm_series": {
+        "button": "일괄 승인（정기 예약）",
+        "confirm_message": "이 정기 예약 시리즈의 대기 중인 예약을 모두 승인하시겠습니까?",
+        "success": "{confirmed}건을 승인했습니다（{skipped}건은 건너뜀）"
       }
     },
     "notify_recipients": {
@@ -580,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "일시 중지/재개에 실패했습니다. 이 시간대에 중복되는 예약이 있어 조작할 수 없습니다"
+      },
+      "force_cancel": {
+        "button": "충돌하는 예약을 취소하고 등록",
+        "confirm_title": "강제 등록 확인",
+        "confirm_message": "{n}건의 예약이 취소되고 신청자에게 알림이 전송됩니다. 계속하시겠습니까?",
+        "confirm_ok": "취소하고 등록",
+        "result_notice": "{n}건의 예약을 취소하고 등록했습니다"
       }
     },
     "business_hours": {
@@ -679,6 +732,28 @@
       "row_locked": "그룹 예약이므로 그룹 단위로 조작해 주세요",
       "deadline_passed": "취소 기한이 지나 취소할 수 없습니다",
       "own_overlap": "선택한 시간대에 회원님의 다른 예약이 있습니다. 시간대를 확인해 주세요"
+    },
+    "waitlist": {
+      "register_button": "대기 등록",
+      "cancel_button": "대기 취소",
+      "registered_badge": "대기 중",
+      "dialog_title": "취소 대기",
+      "notice": "빈자리가 생기면 알림으로 안내해 드립니다. 순서는 보장되지 않으며 선착순으로 예약됩니다",
+      "register_success": "대기 등록을 완료했습니다",
+      "cancel_success": "대기 등록을 취소했습니다",
+      "admin_count": "대기 {n}명",
+      "already_registered": "이미 이 시간대의 대기에 등록되어 있습니다",
+      "not_found": "대기 정보를 찾을 수 없습니다（이미 취소되었거나 예약으로 전환되었을 수 있습니다）",
+      "limit_exceeded": "대기 등록 상한에 도달했습니다",
+      "rate_limited": "조작이 너무 빠릅니다. 약 1분 후 다시 시도해 주세요",
+      "slot_not_full": "빈자리가 생겼습니다. 바로 예약할 수 있습니다",
+      "my_list_title": "나의 대기 목록",
+      "no_entries": "대기 중인 예약이 없습니다",
+      "aria_hint_register": "누르면 대기 등록됩니다",
+      "aria_hint_cancel": "누르면 대기가 취소됩니다"
+    },
+    "pending_expire_notice": {
+      "form_note": "{n}시간 이내에 승인되지 않으면 자동으로 취소됩니다"
     },
     "team_guide": {
       "title": "예약 사용법",

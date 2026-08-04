@@ -444,6 +444,7 @@
       "saveSuccess": "节日已保存",
       "cancelSuccess": "节日已取消",
       "loadFailed": "获取节日列表失败",
+      "invalidDateTime": "开始/结束日期时间格式不正确。请重新输入。",
       "filterAll": "全部",
       "status": {
         "SCHEDULED": "即将举行",

@@ -67,6 +67,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+// 変数名 confirm は既存コードのグローバル window.confirm()（remove/removeRecurring の削除確認）と衝突するため
+// confirmDialog という名前にする（PrimeVue の ConfirmationService インスタンス）。
+const confirmDialog = useConfirm()
 // 多重防御（defense-in-depth）: 親タブの v-if に加え、破壊的操作ボタンを本コンポーネントでも
 // ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
 const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
@@ -515,13 +518,18 @@ function notifyRecurringSaveError(err: unknown, context: 'save' | 'toggle' = 'sa
   handleApiError(err)
 }
 
-async function saveRecurring() {
+/**
+ * 定期予約不可枠の作成/更新。`force=true`（強行登録・§4.3〜§6.2 の構造的衝突の根治・殿の裁定）のときのみ
+ * `forceCancelConflicting: true` を additive に送る。既定 false（=通常の保存経路は従来どおり409で弾かれる）。
+ */
+async function saveRecurring(force = false) {
   const req = recurringEffectiveRequest.value
-  if (!req || recurringSaveDisabled.value) return
+  if (!req) return
+  if (!force && recurringSaveDisabled.value) return
   recurringSaving.value = true
   try {
     if (editingRule.value?.id) {
-      await reservationApi.updateRecurringBlockedTime(props.teamId, editingRule.value.id, {
+      const res = await reservationApi.updateRecurringBlockedTime(props.teamId, editingRule.value.id, {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
@@ -529,18 +537,22 @@ async function saveRecurring() {
         isPublic: recurringForm.value.isPublic,
         isActive: recurringForm.value.isActive,
         ...(recurringForm.value.lineId === COMMON_LINE ? { clearLineId: true } : { lineId: recurringForm.value.lineId }),
+        ...(force ? { forceCancelConflicting: true } : {}),
       })
+      notifyForceCancelledIfAny(res.data.forceCancelledCount)
       notification.success(t('reservation.recurring_block.message.update_success'))
     }
     else {
-      await reservationApi.createRecurringBlockedTime(props.teamId, {
+      const res = await reservationApi.createRecurringBlockedTime(props.teamId, {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
         reason: recurringForm.value.reason.trim(),
         isPublic: recurringForm.value.isPublic,
         ...(recurringForm.value.lineId === COMMON_LINE ? {} : { lineId: recurringForm.value.lineId }),
+        ...(force ? { forceCancelConflicting: true } : {}),
       })
+      notifyForceCancelledIfAny(res.data.forceCancelledCount)
       notification.success(t('reservation.recurring_block.message.create_success'))
     }
     showRecurringDialog.value = false
@@ -552,6 +564,34 @@ async function saveRecurring() {
   finally {
     recurringSaving.value = false
   }
+}
+
+/** 強行登録で実際にキャンセルされた件数を正直に伝える（0件=forceが実行された事実そのものを区別して見せる）。 */
+function notifyForceCancelledIfAny(count?: number) {
+  if (count != null && count > 0) {
+    notification.warn(
+      t('reservation.recurring_block.title'),
+      t('reservation.recurring_block.force_cancel.result_notice', { n: count }),
+    )
+  }
+}
+
+/**
+ * 強行登録の確認ダイアログ（破壊的操作・§6.2「殿の裁定」）。
+ * impact 件数と「予約がキャンセルされ、申込者に通知が送られる」ことを明示してから確定させる
+ * （既定 false・うっかり押せない形にする）。
+ */
+function confirmForceSaveRecurring() {
+  const count = recurringImpact.value?.affectedCount ?? 0
+  confirmDialog.require({
+    message: t('reservation.recurring_block.force_cancel.confirm_message', { n: count }),
+    header: t('reservation.recurring_block.force_cancel.confirm_title'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('reservation.recurring_block.force_cancel.confirm_ok'),
+    rejectLabel: t('reservation.button.cancel'),
+    acceptClass: 'p-button-danger',
+    accept: () => saveRecurring(true),
+  })
 }
 
 /** 一時停止/再開（isActive トグル）。§4.6 の PATCH を再利用。 */
@@ -994,6 +1034,17 @@ defineExpose({
                 <span v-if="r.staffName" class="text-surface-500">/ {{ r.staffName }}</span>
               </li>
             </ul>
+            <!-- 強行登録（既定 false・破壊的操作のため確認ダイアログを必ず経由する・殿の裁定） -->
+            <Button
+              v-if="isAdmin"
+              :label="t('reservation.recurring_block.force_cancel.button')"
+              icon="pi pi-exclamation-triangle"
+              size="small"
+              severity="danger"
+              outlined
+              data-testid="recurring-force-cancel-button"
+              @click="confirmForceSaveRecurring"
+            />
           </div>
         </Message>
         <span v-if="recurringImpactLoading" class="text-xs text-surface-500">
@@ -1009,7 +1060,7 @@ defineExpose({
           :loading="recurringSaving"
           :disabled="recurringSaveDisabled"
           data-testid="recurring-save"
-          @click="saveRecurring"
+          @click="saveRecurring()"
         />
       </template>
     </Dialog>

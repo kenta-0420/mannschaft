@@ -3,6 +3,7 @@ package com.mannschaft.app.actionmemo.controller;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,16 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>チームの ADMIN または DEPUTY_ADMIN のみアクセス可能。
  * 対象メンバーが投稿した WORK カテゴリのメモ一覧を返す。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService}）</b>:
+ * {@code ActionMemoAdminService#listTeamMemberMemos}（ActionMemoAdminService.java:133）が
+ * 冒頭で「呼び出し者がパスの {@code teamId} の ADMIN / DEPUTY_ADMIN であること」を要求する
+ * （ActionMemoAdminService.java:136）。権限がなければ 403。
+ * 取得クエリは {@code postedTeamId = teamId} を必須条件に含むため
+ * （ActionMemoAdminService.java:141）、管理者が閲覧できるのは
+ * <b>自チームへ投稿されたメモに限られ</b>、対象メンバーの個人メモ（未投稿・PRIVATE）は返らない。
+ * この判定は認可番人の白名簿クラス経由ではないため監査済マーカーで明示承認する。
+ * 回帰は {@code ActionMemoScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/members/{memberId}/action-memos")
@@ -40,6 +51,7 @@ public class ActionMemoDashboardController {
      */
     @GetMapping
     @Operation(summary = "チームメンバーの WORK メモ一覧取得（管理職向け）")
+    @AuthorizedInService
     public ResponseEntity<ActionMemoListResponse> listMemberMemos(
             @PathVariable Long teamId,
             @PathVariable Long memberId,

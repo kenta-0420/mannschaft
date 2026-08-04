@@ -113,7 +113,9 @@ class ReceiptControllerTest {
         given(receiptService.getReceipt(eq(PAYMENT_ID), eq(USER_ID)))
                 .willThrow(new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
 
+        // ERROR_CODE_STATUS_MAP に PAYMENT_029 を 404 として登録したため、
+        // 「記録が無い」は存在秘匿の 404 で応答する（曖昧な 4xx ではなく status を固定する）。
         mockMvc.perform(get("/api/v1/member-payments/{id}/receipt", PAYMENT_ID))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isNotFound());
     }
 }

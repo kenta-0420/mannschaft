@@ -1,9 +1,7 @@
 package com.mannschaft.app.reflection.service;
 
-import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.reflection.RecallSelfRating;
-import com.mannschaft.app.reflection.ReflectionErrorCode;
 import com.mannschaft.app.reflection.dto.CreateRecallAttemptRequest;
 import com.mannschaft.app.reflection.dto.RecallAttemptResponse;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
@@ -11,8 +9,6 @@ import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.RecallAttemptRepository;
-import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
-import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,12 +35,11 @@ public class RecallService {
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final RecallAttemptRepository recallAttemptRepository;
-    private final ReflectionEntryRepository reflectionEntryRepository;
-    private final ReflectionThemeRepository reflectionThemeRepository;
     private final ReflectionSpacedReminderService reflectionSpacedReminderService;
     private final ReflectionContentSanitizer contentSanitizer;
     private final ReflectionEntryResponseMapper responseMapper;
     private final UserTimezoneCache userTimezoneCache;
+    private final ReflectionAccessGuard reflectionAccessGuard;
 
     /**
      * 想起テスト保存＝開示（§7 #10・revealed_at 記録＋original 返却＝AC-7・
@@ -54,8 +49,7 @@ public class RecallService {
     public ReflectionEntryResponse recordRecall(Long userId, UUID entryId,
                                                 CreateRecallAttemptRequest request) {
         ReflectionEntryEntity entry = requireOwnedEntry(userId, entryId);
-        ReflectionThemeEntity theme = reflectionThemeRepository.findByIdAndUserId(entry.getThemeId(), userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        ReflectionThemeEntity theme = reflectionAccessGuard.requireOwnedTheme(userId, entry.getThemeId());
 
         LocalDate recallDate = todayOf(userId);
         String sanitized = contentSanitizer.sanitizeRecalledContent(request.recalledContent());
@@ -91,9 +85,9 @@ public class RecallService {
 
     // ─── 内部ヘルパ ───────────────────────────────────────────────
 
+    /** 認可は {@link ReflectionAccessGuard} に一元化（他者所有・不在は 404 秘匿）。 */
     private ReflectionEntryEntity requireOwnedEntry(Long userId, UUID entryId) {
-        return reflectionEntryRepository.findByIdAndUserId(entryId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedEntry(userId, entryId);
     }
 
     private RecallAttemptResponse toResponse(RecallAttemptEntity e) {

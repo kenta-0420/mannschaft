@@ -27,4 +27,13 @@ public class RecurringBlockedTimeResponse {
     Boolean isActive;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+
+    /**
+     * 強行登録（{@code forceCancelConflicting=true}）で一括キャンセルした予約件数
+     * （F03.4.5 §6.2 W2-5・殿の裁定・additive）。
+     *
+     * <p><b>従来経路（force なし）では null</b> — 既存契約不変。force 指定時は 0 件でも 0 を返し、
+     * 「強行モードで実行されたが衝突は無かった」ことを管理者 UI が区別できるようにする。</p>
+     */
+    Integer forceCancelledCount;
 }

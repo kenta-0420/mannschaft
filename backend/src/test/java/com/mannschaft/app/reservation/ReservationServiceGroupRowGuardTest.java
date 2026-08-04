@@ -195,14 +195,14 @@ class ReservationServiceGroupRowGuardTest {
     @DisplayName("①cancelByUser: グループ行は 042")
     void cancelByUser_グループ行は042() {
         stubByUser(groupRow(true, ReservationStatus.CONFIRMED));
-        assert042(() -> service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("x")));
+        assert042(() -> service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("x", null)));
     }
 
     @Test
     @DisplayName("②cancelByAdmin: グループ行は 042")
     void cancelByAdmin_グループ行は042() {
         stubByTeam(groupRow(true, ReservationStatus.CONFIRMED));
-        assert042(() -> service.cancelByAdmin(TEAM_ID, RESERVATION_ID, new CancelReservationRequest("x")));
+        assert042(() -> service.cancelByAdmin(TEAM_ID, RESERVATION_ID, new CancelReservationRequest("x", null)));
     }
 
     @Test
@@ -279,7 +279,7 @@ class ReservationServiceGroupRowGuardTest {
         ReservationEntity single = singleRow(ReservationStatus.CONFIRMED);
         stubByUser(single);
 
-        service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("予定変更"));
+        service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("予定変更", null));
 
         assertThat(single.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
     }

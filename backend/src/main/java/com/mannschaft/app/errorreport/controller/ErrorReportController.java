@@ -33,8 +33,8 @@ import java.util.Map;
  * {@code permitAll()} 済み。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:232 — requestMatchers(POST, "/api/v1/error-reports").permitAll()
- * / SecurityConfig.java:233 — requestMatchers(GET, "/api/v1/active-incidents").permitAll()
+ * SecurityConfig — requestMatchers(POST, "/api/v1/error-reports").permitAll()
+ * / SecurityConfig — requestMatchers(GET, "/api/v1/active-incidents").permitAll()
  * </p>
  *
  * <p><b>公開してよいと判断した理由</b>:
@@ -45,7 +45,10 @@ import java.util.Map;
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
  * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
-@IntentionallyPublic
+@IntentionallyPublic({
+        "/api/v1/error-reports",
+        "/api/v1/active-incidents"
+})
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "エラーレポート", description = "F12.5 フロントエンドエラー追跡API")

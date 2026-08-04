@@ -28319,7 +28319,7 @@ export interface paths {
         head?: never;
         /**
          * お気に入り並び替え
-         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。
+         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。
          */
         patch: operations["reorderFavorites"];
         trace?: never;
@@ -55683,6 +55683,8 @@ export interface components {
         CreateReservationRequest: {
             /** Format: int64 */
             lineId: number;
+            /** Format: int32 */
+            repeatWeeks?: number;
             /** Format: int64 */
             reservationSlotId: number;
             userNote?: string;
@@ -55709,6 +55711,42 @@ export interface components {
             adminNote?: string;
             userNote?: string;
         };
+        RecurringCancelDto: {
+            /** Format: int32 */
+            cancelledCount?: number;
+            cancelledWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringConfirmDto: {
+            /** Format: int32 */
+            confirmedCount?: number;
+            confirmedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringSeriesDto: {
+            /** Format: int32 */
+            createdCount?: number;
+            createdWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: int32 */
+            repeatWeeks?: number;
+            /** Format: uuid */
+            seriesId?: string;
+            /** Format: int32 */
+            skippedCount?: number;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringWeekOutcomeDto: {
+            /** Format: date */
+            date?: string;
+            /** @enum {string} */
+            reason?: "NOT_GENERATED" | "FULL" | "CLOSED" | "BLOCKED" | "ALREADY_RESERVED" | "UNAVAILABLE" | "NOT_CANCELLABLE" | "CANCEL_DEADLINE_PASSED" | "NOT_PENDING";
+            /** Format: int64 */
+            reservationId?: number;
+        };
         ReservationAuditDto: {
             /** Format: date-time */
             createdAt?: string;
@@ -55734,6 +55772,11 @@ export interface components {
             id?: number;
             identifier?: components["schemas"]["ReservationIdentifierDto"];
             notes?: components["schemas"]["NotesDto"];
+            recurring?: components["schemas"]["RecurringSeriesDto"];
+            recurringCancel?: components["schemas"]["RecurringCancelDto"];
+            recurringConfirm?: components["schemas"]["RecurringConfirmDto"];
+            /** Format: uuid */
+            recurringSeriesId?: string;
             slot?: components["schemas"]["SlotSummaryDto"];
             status?: components["schemas"]["ReservationStatusDto"];
         };
@@ -55765,6 +55808,8 @@ export interface components {
         };
         CancelReservationRequest: {
             reason?: string;
+            /** @enum {string} */
+            scope?: "THIS_ONLY" | "THIS_AND_FOLLOWING";
         };
         CreateSlotRequest: {
             /** @enum {string} */
@@ -56003,6 +56048,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            forceCancelConflicting?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
             lineId?: number;
@@ -56019,6 +56065,8 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** Format: int32 */
+            forceCancelledCount?: number;
             /** Format: uuid */
             id?: string;
             isActive?: boolean;
@@ -65659,6 +65707,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            forceCancelConflicting?: boolean;
             isActive?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
@@ -100188,7 +100237,9 @@ export interface operations {
     };
     confirmReservation: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "THIS_ONLY" | "SERIES";
+            };
             header?: never;
             path: {
                 teamId: number;
@@ -137288,8 +137339,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 他ユーザーのお気に入りが含まれている */
-            403: {
+            /** @description 自分のお気に入りに存在しないIDが含まれている */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

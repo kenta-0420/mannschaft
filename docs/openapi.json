@@ -39284,6 +39284,18 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "THIS_ONLY",
+                "SERIES"
+              ]
+            }
           }
         ],
         "responses": {
@@ -100121,7 +100133,7 @@
           "お気に入り"
         ],
         "summary": "お気に入り並び替え",
-        "description": "orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。",
+        "description": "orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。",
         "operationId": "reorderFavorites",
         "requestBody": {
           "content": {
@@ -100143,8 +100155,8 @@
           "401": {
             "description": "未認証"
           },
-          "403": {
-            "description": "他ユーザーのお気に入りが含まれている"
+          "404": {
+            "description": "自分のお気に入りに存在しないIDが含まれている"
           }
         }
       }
@@ -169173,6 +169185,11 @@
             "type": "integer",
             "format": "int64"
           },
+          "repeatWeeks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
           "reservationSlotId": {
             "type": "integer",
             "format": "int64"
@@ -169242,6 +169259,116 @@
           }
         }
       },
+      "RecurringCancelDto": {
+        "type": "object",
+        "properties": {
+          "cancelledCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelledWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          },
+          "seriesId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skippedWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          }
+        }
+      },
+      "RecurringConfirmDto": {
+        "type": "object",
+        "properties": {
+          "confirmedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confirmedWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          },
+          "seriesId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skippedWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          }
+        }
+      },
+      "RecurringSeriesDto": {
+        "type": "object",
+        "properties": {
+          "createdCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          },
+          "repeatWeeks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seriesId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedWeeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringWeekOutcomeDto"
+            }
+          }
+        }
+      },
+      "RecurringWeekOutcomeDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NOT_GENERATED",
+              "FULL",
+              "CLOSED",
+              "BLOCKED",
+              "ALREADY_RESERVED",
+              "UNAVAILABLE",
+              "NOT_CANCELLABLE",
+              "CANCEL_DEADLINE_PASSED",
+              "NOT_PENDING"
+            ]
+          },
+          "reservationId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ReservationAuditDto": {
         "type": "object",
         "properties": {
@@ -169300,6 +169427,19 @@
           },
           "notes": {
             "$ref": "#/components/schemas/NotesDto"
+          },
+          "recurring": {
+            "$ref": "#/components/schemas/RecurringSeriesDto"
+          },
+          "recurringCancel": {
+            "$ref": "#/components/schemas/RecurringCancelDto"
+          },
+          "recurringConfirm": {
+            "$ref": "#/components/schemas/RecurringConfirmDto"
+          },
+          "recurringSeriesId": {
+            "type": "string",
+            "format": "uuid"
           },
           "slot": {
             "$ref": "#/components/schemas/SlotSummaryDto"
@@ -169379,6 +169519,13 @@
             "type": "string",
             "maxLength": 500,
             "minLength": 0
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "THIS_ONLY",
+              "THIS_AND_FOLLOWING"
+            ]
           }
         }
       },
@@ -169998,6 +170145,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "forceCancelConflicting": {
+            "type": "boolean"
+          },
           "isPublic": {
             "type": "boolean"
           },
@@ -170042,6 +170192,10 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "forceCancelledCount": {
+            "type": "integer",
+            "format": "int32"
           },
           "id": {
             "type": "string",
@@ -196723,6 +196877,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "forceCancelConflicting": {
+            "type": "boolean"
           },
           "isActive": {
             "type": "boolean"

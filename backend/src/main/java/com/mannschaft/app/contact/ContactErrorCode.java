@@ -26,11 +26,21 @@ public enum ContactErrorCode implements ErrorCode {
     /** 既に連絡先 */
     CONTACT_005("CONTACT_005", "既に連絡先に登録されています", Severity.WARN),
 
-    /** 申請が見つからない */
+    /**
+     * 申請が見つからない（HTTP 404）。
+     *
+     * <p>不存在の申請 ID と、当事者でない申請 ID の<b>双方に同じコードを返す</b>ことで
+     * 申請の存在有無を秘匿する。</p>
+     */
     CONTACT_006("CONTACT_006", "申請が見つかりません", Severity.WARN),
 
-    /** 申請操作権限なし */
-    CONTACT_007("CONTACT_007", "この申請を操作する権限がありません", Severity.WARN),
+    /**
+     * スコープ参照権限なし（非公開チーム・組織のメンバー一覧を非メンバーが参照した場合）。
+     *
+     * <p>HTTP 403。連絡先申請そのものの当事者チェックには使わない
+     * （申請は {@link #CONTACT_006}=404 で存在を秘匿する）。</p>
+     */
+    CONTACT_007("CONTACT_007", "この操作を行う権限がありません", Severity.WARN),
 
     /** REJECTED後72時間以内の再申請 */
     CONTACT_008("CONTACT_008", "拒否から72時間以内は再申請できません", Severity.WARN),

@@ -28,10 +28,20 @@ import java.lang.annotation.Target;
  * Javadoc またはコメントで<b>根拠を明記すること</b>。根拠なき付与は番人を骨抜きにする
  * バックドアになるため厳禁。付与は監査（本戦役 Wave5）を経た合意のうえで行う。</p>
  *
+ * <p><b>{@link SelfScopedEndpoint} との使い分け（重要）</b>: 本注釈が主張するのは
+ * 「<b>認可判定が実施されている</b>」ことである。一方、検索対象が認証主体に束縛されていて
+ * そもそも他人のデータへ到達する経路が無い EP（自己スコープ EP）が主張するのは
+ * 「<b>到達できない</b>」ことであり、両者は別の主張である。過去には自己スコープ EP へ
+ * 本注釈を流用した例があるが、専用マーカー {@link SelfScopedEndpoint} の新設をもって
+ * <b>その転用は今後禁止</b>とする（証跡の意味が異なり、後年の監査で認可の実在箇所を見失うため）。</p>
+ *
  * <p>メソッドに付与するとその 1 エンドポイントのみ、クラスに付与するとそのクラスの
  * 全 Mapping メソッドが認可済みとして扱われる。</p>
  *
  * @see com.mannschaft.app.common.security.AccessGuard
+ * @see AuthorizedByPathConfig
+ * @see IntentionallyPublic
+ * @see SelfScopedEndpoint
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
