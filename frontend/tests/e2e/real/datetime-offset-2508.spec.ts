@@ -77,6 +77,25 @@ const E2E_ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPas
 const TEAM_SLUG = 'fc-u-18'
 const TEAM_ID = 1
 
+/**
+ * 一斉配信ウィザードを開くための入口ルート。
+ *
+ * 「チーム内告知」ボタンは `TeamPageHeader.vue` にあり、これは永続シェル
+ * `pages/teams/[slug].vue` が SHELL_SEGMENTS のルートで常駐描画する。
+ * したがって `/teams/{slug}`（ダッシュボード）でも `/teams/{slug}/info` でも同じボタンが出る。
+ *
+ * ここで `/info` を選ぶのは、ダッシュボード（`pages/teams/[slug]/index.vue` → `ScopeDashboard.vue`）が
+ * **chart.js を動的 import する**ためである。worktree の `frontend/node_modules` は本陣への
+ * junction なので Vite の依存最適化キャッシュ（`node_modules/.cache/vite`）が
+ * 本陣 FE（:3000）と worktree FE（:3003）で共有され、片方が再最適化すると
+ * もう片方の稼働中サーバーが古いハッシュを掴んだまま `504 Outdated Optimize Dep` を返し続ける
+ * （実測: `deps/chart__js.js?v=4424bf25` が 504 → ダッシュボードが 500 エラー面になり
+ *  「チーム内告知」ボタンが 0 件。リロードでも復旧しない＝FE 再起動が必要）。
+ * 本 spec の検証対象は日時オフセットであってダッシュボードの描画ではないため、
+ * chart.js に依存しない `/info` から同一ウィザードを開く。
+ */
+const TEAM_SHELL_PATH = `/teams/${TEAM_SLUG}/info`
+
 /** e2e-user が HEADMAN を務める seed 村（village-events-wave2.spec.ts L45 と同一）。 */
 const VILLAGE_ID = '6e87b493-512a-11f1-95e3-2ec96fe3ea06'
 
@@ -271,15 +290,163 @@ async function goto(page: Page, path: string): Promise<void> {
   await expect(page).not.toHaveURL(/\/login/)
 }
 
+/** 重要事項説明書テンプレート（formSchema のうち本 spec が使う部分だけを型付けする）。 */
+interface DisclosureTemplate {
+  id: number
+  formSchema?: {
+    sections?: Array<{
+      fields?: Array<{
+        id: string
+        type: string
+        required?: boolean
+        options?: Array<{ value?: string } | string>
+      }>
+    }>
+  }
+}
+
 /**
- * PrimeVue DatePicker に手入力する。
+ * テンプレートの `formSchema` から **required な欄だけ**を拾い、型に応じた値を詰めた formData を作る。
+ *
+ * 必須項目が空のままだと `POST /disclosure-drafts/{id}/export` は
+ * 422 `DISCLOSURE_007`（必須項目が未入力のため出力できません）で必ず落ち、
+ * DT2508-01 の前提（エクスポート 1 件）が永久に作れない。
+ */
+function buildRequiredFormData(tpl: DisclosureTemplate): Record<string, unknown> {
+  const formData: Record<string, unknown> = {}
+  for (const section of tpl.formSchema?.sections ?? []) {
+    for (const field of section.fields ?? []) {
+      if (!field.required) continue
+      switch (field.type) {
+        case 'NUMBER':
+          formData[field.id] = 1
+          break
+        case 'DATE':
+          formData[field.id] = '2020-04-01'
+          break
+        case 'BOOLEAN':
+          formData[field.id] = true
+          break
+        case 'SELECT':
+        case 'RADIO': {
+          const first = field.options?.[0]
+          formData[field.id] = typeof first === 'string' ? first : (first?.value ?? 'A')
+          break
+        }
+        default:
+          formData[field.id] = `#2508E2E-${field.id}`
+      }
+    }
+  }
+  return formData
+}
+
+/**
+ * PrimeVue DatePicker の時刻スピナー（時 or 分）を目標値まで増減ボタンで回す。
+ *
+ * @param picker `.p-datepicker-hour-picker` / `.p-datepicker-minute-picker` の Locator
+ * @param goal   目標値
+ * @param modulo 一周の大きさ（時=24 / 分=60）。増加方向の最短回数を求めるために使う
+ */
+async function spinTo(picker: Locator, goal: number, modulo: number): Promise<void> {
+  const readout = picker.locator('span').filter({ hasText: /^\d{2}$/ }).first()
+  const current = Number((await readout.innerText()).trim())
+  const clicks = ((goal - current) % modulo + modulo) % modulo
+  const increment = picker.locator('.p-datepicker-increment-button').first()
+  for (let i = 0; i < clicks; i++) await increment.click()
+  await expect(readout, `時刻スピナーが ${goal} になること`).toHaveText(String(goal).padStart(2, '0'))
+}
+
+/**
+ * `show-time` 付き PrimeVue DatePicker を、**カレンダーパネルを操作して**日付選択する。
+ *
+ * ## なぜ手入力（typeIntoDatePicker）が使えないのか — PrimeVue 本体のバグ
+ *
+ * DatePicker の手入力は `onInput` → `parseValue` → `parseDateTime` → `populateTime` と流れる。
+ * `populateTime`（node_modules/primevue/datepicker/index.mjs）は
+ *
+ * ```js
+ * if (this.hourFormat == '12' && !ampm) { throw 'Invalid Time' }
+ * this.pm = ampm.toLowerCase() === ... // ← hourFormat='24' で ampm が undefined でも実行される
+ * ```
+ *
+ * となっており、**24時間表記（既定）で am/pm を伴わない文字列を入力すると
+ * `ampm.toLowerCase()` が TypeError を投げる**。この例外は `onInput` の
+ * `try { … } catch { /* NoOp *\/ }` に飲まれるため、v-model は**一切更新されない**。
+ * 実測（本 spec のデバッグ実行）:
+ *   - `fill('2026/09/03 18:00')` → input の表示は入るが、Escape でパネルが閉じると空に戻る
+ *     （＝モデルが更新されていない証拠）
+ *   - 結果、送信本文の `expiresAt` が `null` になる
+ *
+ * `show-time` の無い日付のみピッカー（DT2508-05/06 の入金日）は `populateTime` を通らないため
+ * 手入力が効く。よって手入力ヘルパーはそちらでのみ使う。
+ *
+ * ⚠ これは製品側のユーザー影響を伴う不具合でもある（show-time 付き日時欄はキーボード入力できず、
+ *    カレンダーからしか選べない）。テスト側では実ユーザーと同じくパネル操作で回避する。
+ *
+ * @param target   選択したい日付
+ * @param withTime true なら時・分もスピナーで `target` の時刻に合わせる（既定は現在時刻のまま）
+ */
+async function pickDateInPanel(
+  page: Page,
+  root: Locator,
+  target: Date,
+  withTime = false,
+): Promise<void> {
+  const input = root.locator('input').first()
+  await input.click()
+
+  const panel = page.locator('.p-datepicker-panel').last()
+  await expect(panel, 'カレンダーパネルが開くこと').toBeVisible({ timeout: 10_000 })
+
+  // 目的の年月まで「翌月」で送る（本 spec の target は常に未来なので前月送りは不要）。
+  const targetYear = target.getFullYear()
+  const targetMonth = target.getMonth() + 1
+  for (let i = 0; i < 36; i++) {
+    const yearText = await panel.locator('.p-datepicker-select-year').first().innerText()
+    const monthText = await panel.locator('.p-datepicker-select-month').first().innerText()
+    const year = Number(yearText.replace(/\D/g, ''))
+    const month = Number(monthText.replace(/\D/g, ''))
+    if (year === targetYear && month === targetMonth) break
+    await panel.locator('.p-datepicker-next-button').first().click()
+  }
+
+  // 当月のセルだけを `data-p-other-month="false"` で絞る（前後月のセルは同じ日番号を持つため）。
+  const dayCell = panel
+    .locator(`td[data-p-other-month="false"][aria-label="${target.getDate()}"]`)
+    .first()
+  await expect(dayCell, `${targetYear}/${targetMonth}/${target.getDate()} のセルが選択できること`).toBeVisible({
+    timeout: 10_000,
+  })
+  await dayCell.click()
+
+  if (withTime) {
+    // 時・分は増減ボタン（`.p-datepicker-increment-button` / `.p-datepicker-decrement-button`）でのみ
+    // 操作できる（表示部は span で入力欄ではない）。現在値を読んで必要回数だけ押す。
+    await spinTo(panel.locator('.p-datepicker-hour-picker').first(), target.getHours(), 24)
+    await spinTo(panel.locator('.p-datepicker-minute-picker').first(), target.getMinutes(), 60)
+  }
+
+  // パネルを閉じる。モデルが更新されていれば入力欄の表示は残る（更新されていなければ空に戻る）。
+  await input.press('Escape')
+  await expect(
+    input,
+    '日付選択が v-model に反映されていること（空ならピッカーの選択が取り込まれていない）',
+  ).not.toHaveValue('', { timeout: 10_000 })
+}
+
+/**
+ * **`show-time` の無い**（日付のみ）PrimeVue DatePicker に手入力する。
  *
  * `data-testid` / `id` は DatePicker の**ルート要素**に付き、実体の `<input>` はその子孫にある。
- * また本リポの規約どおり PrimeVue 入力は `fill()` だと v-model へ反映されないことがあるため、
+ * PrimeVue 入力は `fill()` だと v-model へ反映されないことがあるため、
  * クリック → 全選択 → `pressSequentially` → `Escape`（パネルを閉じる）で入れる。
  *
+ * ⚠ `show-time` 付きのピッカーには使えない（PrimeVue の `populateTime` が例外を投げ、
+ *    v-model が更新されない。`pickDateInPanel` の説明を参照）。そちらは `pickDateInPanel` を使うこと。
+ *
  * @param root DatePicker のルート Locator
- * @param text コンポーネントの `date-format` に一致した表示文字列（例 `2027/03/15 10:30`）
+ * @param text コンポーネントの `date-format` に一致した表示文字列（例 `2027-03-15`）
  */
 async function typeIntoDatePicker(root: Locator, text: string): Promise<void> {
   const input = root.locator('input').first()
@@ -304,6 +471,8 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
   /** 期限延長ボタンを出せる組織 ID とエクスポート ID。見つからなければ null（＝スキップ）。 */
   let orgId: number | null = null
   let exportId: string | null = null
+  /** エクスポートを 1 件も用意できなかった理由（skip メッセージに載せる）。 */
+  let blockedReason: string | null = null
 
   test.beforeAll(async ({ playwright }) => {
     ctx = await playwright.request.newContext()
@@ -330,30 +499,52 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
         return
       }
     }
-    // 既存エクスポートが 1 件も無い場合は、テンプレート → ドラフト → エクスポートの連鎖で作る。
+    // 既存エクスポートが 1 件も無い場合は、テンプレート → ドラフト（必須項目を充填）→ エクスポートの連鎖で作る。
     for (const org of orgs) {
       const tplRes = await api(ctx, adminToken, 'GET', `/api/v1/disclosure-templates?organizationId=${org.id}`)
       if (!tplRes.ok()) continue
-      const tpls = ((await tplRes.json()).data ?? []) as Array<{ id: string }>
-      if (tpls.length === 0) continue
+      const tpls = ((await tplRes.json()).data ?? []) as Array<DisclosureTemplate>
+      const tpl = tpls[0]
+      if (!tpl) continue
 
       const draftRes = await api(ctx, adminToken, 'POST', `/api/v1/organizations/${org.id}/disclosure-drafts`, {
-        templateId: tpls[0]!.id,
+        templateId: tpl.id,
         title: `#2508 E2E ドラフト ${Date.now()}`,
       })
       if (!draftRes.ok()) continue
-      const draftId = (await draftRes.json()).data.id as string
+      const draft = (await draftRes.json()).data as { id: number; version: number }
+
+      // 必須項目が空だと export は 422 DISCLOSURE_007（必須項目が未入力）で必ず落ちる。
+      // テンプレートの formSchema から required な欄を拾って型に応じた値を詰める。
+      // 更新は楽観的ロックのため version 必須（省略すると 400 DISCLOSURE_004）。
+      const filled = buildRequiredFormData(tpl)
+      const putRes = await api(
+        ctx,
+        adminToken,
+        'PUT',
+        `/api/v1/organizations/${org.id}/disclosure-drafts/${draft.id}`,
+        { templateId: tpl.id, title: `#2508 E2E ドラフト ${Date.now()}`, formData: filled, version: draft.version },
+      )
+      if (!putRes.ok()) {
+        blockedReason = `ドラフトの必須項目充填が ${putRes.status()} で失敗: ${await putRes.text()}`
+        continue
+      }
 
       const expRes = await api(
         ctx,
         adminToken,
         'POST',
-        `/api/v1/organizations/${org.id}/disclosure-drafts/${draftId}/export?format=pdf`,
+        `/api/v1/organizations/${org.id}/disclosure-drafts/${draft.id}/export?format=pdf`,
         {},
       )
-      if (expRes.status() !== 201) continue
+      if (expRes.status() !== 201) {
+        // 503 DISCLOSURE_010 はファイル生成（オブジェクトストレージ）が使えないことを意味する。
+        blockedReason = `エクスポート生成が ${expRes.status()}: ${(await expRes.text()).slice(0, 300)}`
+        continue
+      }
       orgId = org.id
       exportId = (await expRes.json()).data.id as string
+      blockedReason = null
       return
     }
   })
@@ -369,7 +560,8 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
   test('DT2508-01: 保管期限を延長するとオフセット付きで送られ 400 にならず、一覧の期限表示が更新される', async ({ page }) => {
     test.skip(
       orgId === null || exportId === null,
-      '保管期限延長の対象となる disclosure_exports が 1 件も無く、テンプレート→ドラフト→エクスポートの生成にも失敗したためスキップ',
+      '保管期限延長の対象となる disclosure_exports が 1 件も無く、テンプレート→ドラフト（必須項目充填済）→エクスポートの生成にも失敗したためスキップ。'
+      + `直近の失敗: ${blockedReason ?? '(不明)'}`,
     )
 
     await setupApiBridge(page)
@@ -388,8 +580,9 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
     const y = target.getFullYear()
     const m = String(target.getMonth() + 1).padStart(2, '0')
     const d = String(target.getDate()).padStart(2, '0')
-    const typed = `${y}-${m}-${d} 10:30` // date-format="yy-mm-dd" + show-time(24h)
-    await typeIntoDatePicker(page.getByTestId('extend-expiry-date-input'), typed)
+    // show-time 付きなので手入力は効かない（pickDateInPanel の説明を参照）。パネルで日付＋時刻を選ぶ。
+    target.setHours(10, 30, 0, 0)
+    await pickDateInPanel(page, page.getByTestId('extend-expiry-date-input'), target, true)
 
     const [req, res] = await Promise.all([
       page.waitForRequest(
@@ -476,11 +669,16 @@ test.describe('DT2508-02/03 一斉配信の日時（expiresAt / closesAt）', ()
    * ラベル文字列からその欄の DatePicker ルートを引く。
    * BroadcastStep3Content.vue の各欄は `<div class="flex flex-col gap-1"><label>…</label><DatePicker/></div>` 構造で、
    * label に `for` が無いため `getByLabel` は使えない。
+   *
+   * ⚠ `has:` に渡す内側ロケータは **page 起点**で作ること。
+   *    `dialog.locator('label', …)` のように外側ロケータ起点で作ると
+   *    セレクタが `<dialog…> >> label` に連結され、グループ内の label に一致せず
+   *    **常に 0 件**になる（実測: `expires group count: 0`）。
    */
-  function datePickerByLabel(dialog: Locator, labelText: string): Locator {
+  function datePickerByLabel(page: Page, dialog: Locator, labelText: string): Locator {
     return dialog
       .locator('div.flex.flex-col.gap-1')
-      .filter({ has: dialog.locator('label', { hasText: labelText }) })
+      .filter({ has: page.locator('label', { hasText: labelText }) })
       .first()
   }
 
@@ -491,14 +689,16 @@ test.describe('DT2508-02/03 一斉配信の日時（expiresAt / closesAt）', ()
     page.on('dialog', (d) => d.accept().catch(() => {}))
     await setupApiBridge(page)
     await loginViaApiWithTimezone(page, E2E_USER, JST_TZ)
-    await goto(page, `/teams/${TEAM_SLUG}`)
+    await goto(page, TEAM_SHELL_PATH)
 
     const dialog = await openWizardToStep3(page, TXT.channelTimeline)
     await dialog.locator('textarea').first().fill(`#2508 expiresAt 実機E2E ${Date.now()}`)
 
+    // 「表示期限」は show-time 付き DatePicker のため手入力が効かない（pickDateInPanel の説明を参照）。
     const target = new Date(Date.now() + 30 * 24 * 3600_000)
-    const typed = `${target.getFullYear()}/${String(target.getMonth() + 1).padStart(2, '0')}/${String(target.getDate()).padStart(2, '0')} 18:00`
-    await typeIntoDatePicker(datePickerByLabel(dialog, TXT.expiresAtLabel), typed)
+    const expiresPicker = datePickerByLabel(page, dialog, TXT.expiresAtLabel)
+    await expect(expiresPicker, '「表示期限」欄が Step3 に描画されていること').toBeVisible({ timeout: 10_000 })
+    await pickDateInPanel(page, expiresPicker, target)
 
     const [req, res] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/broadcast') && r.method() === 'POST', { timeout: 25_000 }),
@@ -532,7 +732,7 @@ test.describe('DT2508-02/03 一斉配信の日時（expiresAt / closesAt）', ()
     await setupApiBridge(page)
     // ②とレート制限バケットを分けるため e2e-admin で投げる
     await loginViaApiWithTimezone(page, E2E_ADMIN, JST_TZ)
-    await goto(page, `/teams/${TEAM_SLUG}`)
+    await goto(page, TEAM_SHELL_PATH)
 
     let dialog: Locator
     try {
@@ -545,9 +745,11 @@ test.describe('DT2508-02/03 一斉配信の日時（expiresAt / closesAt）', ()
     // SURVEY は canSubmit にタイトル必須（BroadcastStep3Content.vue L207-220）
     await dialog.locator('input.p-inputtext').first().fill(`#2508 closesAt 実機E2E ${Date.now()}`)
 
+    // 「締切日時」も show-time 付き DatePicker のため手入力が効かない（pickDateInPanel の説明を参照）。
     const target = new Date(Date.now() + 20 * 24 * 3600_000)
-    const typed = `${target.getFullYear()}/${String(target.getMonth() + 1).padStart(2, '0')}/${String(target.getDate()).padStart(2, '0')} 21:15`
-    await typeIntoDatePicker(datePickerByLabel(dialog, TXT.closesAtLabel), typed)
+    const closesPicker = datePickerByLabel(page, dialog, TXT.closesAtLabel)
+    await expect(closesPicker, '「締切日時」欄が Step3 に描画されていること').toBeVisible({ timeout: 10_000 })
+    await pickDateInPanel(page, closesPicker, target)
 
     const [req, res] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/broadcast') && r.method() === 'POST', { timeout: 25_000 }),
@@ -584,37 +786,62 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
 
   let ctx: APIRequestContext
   let adminToken = ''
-  let folderId: string | null = null
-  let fileId: string | null = null
+  let folderId: number | null = null
+  let folderName = ''
+  let fileId: number | null = null
   let fileName = ''
-  /** 前提づくりが失敗した理由（MinIO 未起動など）。null なら成功。 */
+  /** アップロードで新規作成したファイルか（true のときだけ afterAll で削除する）。 */
+  let fileWasUploadedByUs = false
+  /** 前提づくりが失敗した理由。null なら成功。 */
   let blockedReason: string | null = null
 
   test.beforeAll(async ({ playwright }) => {
     ctx = await playwright.request.newContext()
     adminToken = (await loginToken(ctx, E2E_ADMIN.email, E2E_ADMIN.password)).token
 
-    // 1) チームフォルダを確保（無ければ作る）
     const listRes = await api(ctx, adminToken, 'GET', `/api/v1/teams/${TEAM_ID}/folders`)
-    if (listRes.ok()) {
-      const folders = ((await listRes.json()).data ?? []) as Array<{ id: string }>
-      folderId = folders[0]?.id ?? null
+    if (!listRes.ok()) {
+      blockedReason = `チームのファイルフォルダ一覧が ${listRes.status()} のためスキップ`
+      return
     }
+    const folders = ((await listRes.json()).data ?? []) as Array<{ id: number; name: string }>
+
+    // 1) まず「既にファイルが入っているフォルダ」を探す。
+    //    共有リンク作成（POST /files/{id}/links）は DB 操作だけでオブジェクトストレージを使わないため、
+    //    既存ファイルが 1 件でもあればストレージ未設定の環境でも本テストは成立する
+    //    （実測: 既存 file に対する POST /api/v1/files/21/links は 201）。
+    for (const f of folders) {
+      const filesRes = await api(ctx, adminToken, 'GET', `/api/v1/files?folderId=${f.id}`)
+      if (!filesRes.ok()) continue
+      const items = ((await filesRes.json()).data ?? []) as Array<{ id: number; name: string }>
+      if (items.length > 0) {
+        folderId = f.id
+        folderName = f.name
+        fileId = items[0]!.id
+        fileName = items[0]!.name
+        return
+      }
+    }
+
+    // 2) 既存ファイルが 1 件も無い場合のみ、presign → PUT → register でアップロードする
+    //    （file-sharing-security.spec.ts L155-214 の実績手順。オブジェクトストレージが要る）。
+    folderId = folders[0]?.id ?? null
+    folderName = folders[0]?.name ?? ''
     if (!folderId) {
       const createRes = await api(ctx, adminToken, 'POST', '/api/v1/files/folders', {
         scopeType: 'TEAM',
         scopeId: String(TEAM_ID),
         name: `#2508E2E-${Date.now()}`,
       })
-      if (createRes.ok()) folderId = (await createRes.json()).data.id as string
-    }
-    if (!folderId) {
-      blockedReason = 'チームのファイルフォルダを取得・作成できなかったためスキップ'
-      return
+      if (!createRes.ok()) {
+        blockedReason = `チームのファイルフォルダを取得・作成できなかったためスキップ（${createRes.status()}）`
+        return
+      }
+      const created = (await createRes.json()).data as { id: number; name: string }
+      folderId = created.id
+      folderName = created.name
     }
 
-    // 2) presign → PUT → register でファイルを 1 件アップロードする
-    //    （file-sharing-security.spec.ts L155-214 の実績手順）
     fileName = `issue2508-${Date.now()}.txt`
     const content = Buffer.from('Issue #2508 datetime offset E2E fixture\n', 'utf-8')
     const presignRes = await api(ctx, adminToken, 'POST', '/api/v1/files/presign-upload', {
@@ -624,7 +851,9 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
       fileSize: content.byteLength,
     })
     if (!presignRes.ok()) {
-      blockedReason = `presign-upload が ${presignRes.status()}（MinIO 未起動の可能性: docker compose --profile storage up -d）のためスキップ`
+      blockedReason =
+        `既存ファイルが 1 件も無く、presign-upload も ${presignRes.status()} で失敗したためスキップ`
+        + '（BE のオブジェクトストレージ設定 MANNSCHAFT_R2_ENDPOINT 等が未設定の可能性）'
       return
     }
     const { uploadUrl, fileKey } = (await presignRes.json()).data as { uploadUrl: string; fileKey: string }
@@ -634,7 +863,7 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
       body: content,
     })
     if (!putRes.ok) {
-      blockedReason = `オブジェクトストレージへの PUT が ${putRes.status}（MinIO 未起動の可能性）のためスキップ`
+      blockedReason = `オブジェクトストレージへの PUT が ${putRes.status} のためスキップ`
       return
     }
     const registerRes = await api(ctx, adminToken, 'POST', '/api/v1/files', {
@@ -648,16 +877,31 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
       blockedReason = `ファイル登録が ${registerRes.status()} のためスキップ`
       return
     }
-    fileId = (await registerRes.json()).data.id as string
+    fileId = (await registerRes.json()).data.id as number
+    fileWasUploadedByUs = true
   })
 
   test.afterAll(async () => {
-    // 共有リンクはファイル削除に付随して消える。ファイル自体を消して後始末する。
+    // 自分がアップロードしたファイルのときだけファイルごと消す（共有リンクも付随して消える）。
+    // 既存ファイルを借りた場合は、本テストが作った共有リンクだけを個別に削除する。
     // 後始末の失敗はテスト結果を左右しない。
-    // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
-    if (fileId) await api(ctx, adminToken, 'DELETE', `/api/v1/files/${fileId}`).catch(() => {})
+    if (fileId != null) {
+      if (fileWasUploadedByUs) {
+        // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
+        await api(ctx, adminToken, 'DELETE', `/api/v1/files/${fileId}`).catch(() => {})
+      }
+      else {
+        for (const linkId of createdLinkIds) {
+          // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
+          await api(ctx, adminToken, 'DELETE', `/api/v1/files/${fileId}/links/${linkId}`).catch(() => {})
+        }
+      }
+    }
     await ctx.dispose()
   })
+
+  /** 本テストが作成した共有リンク ID（既存ファイルを借りたときの後始末用）。 */
+  const createdLinkIds: number[] = []
 
   test('DT2508-04: 共有リンクの有効期限がオフセット付きで送られ 400 にならず、一覧の期限表示が一致する', async ({ page }) => {
     test.skip(blockedReason !== null, blockedReason ?? '')
@@ -666,6 +910,12 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
     await setupApiBridge(page)
     await loginViaApiWithTimezone(page, E2E_ADMIN, JST_TZ)
     await goto(page, `/teams/${TEAM_SLUG}/files`)
+
+    // FileBrowser.vue はルート直下に**フォルダのみ**を並べ、ファイル行はフォルダを開いてから描画する
+    // （L278-300 がフォルダ、L302 以降がファイル）。まず対象フォルダへ入る。
+    const folderBtn = page.locator('button').filter({ hasText: folderName }).first()
+    await expect(folderBtn, `フォルダ「${folderName}」が一覧に出ること`).toBeVisible({ timeout: 25_000 })
+    await folderBtn.click()
 
     // 対象ファイルの行から共有ダイアログを開く（file-share-open は各行に常時描画される）
     const row = page.locator('div.flex.items-center.gap-3').filter({ hasText: fileName }).first()
@@ -680,8 +930,9 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
     const y = target.getFullYear()
     const m = String(target.getMonth() + 1).padStart(2, '0')
     const d = String(target.getDate()).padStart(2, '0')
-    const typed = `${y}/${m}/${d} 09:45` // date-format="yy/mm/dd" + show-time hour-format="24"
-    await typeIntoDatePicker(page.getByTestId('share-link-expires'), typed)
+    // show-time 付きなので手入力は効かない（pickDateInPanel の説明を参照）。パネルで日付＋時刻を選ぶ。
+    target.setHours(9, 45, 0, 0)
+    await pickDateInPanel(page, page.getByTestId('share-link-expires'), target, true)
 
     const [req, res] = await Promise.all([
       page.waitForRequest((r) => /\/files\/[^/]+\/links$/.test(new URL(r.url()).pathname) && r.method() === 'POST', { timeout: 20_000 }),
@@ -697,6 +948,9 @@ test.describe('DT2508-04 ファイル共有リンクの有効期限（expiresAt�
       res.status(),
       `共有リンク作成が失敗した（400 ならオフセット付き expiresAt を BE が受理していない）: ${await res.text()}`,
     ).toBe(201)
+
+    const createdLinkId = ((await res.json()).data as { id?: number })?.id
+    if (typeof createdLinkId === 'number') createdLinkIds.push(createdLinkId)
 
     // 一覧の「有効期限」表示は useDatetime().formatDateTime（'YYYY/MM/DD HH:mm'・ユーザーTZ）
     await expect(
@@ -784,11 +1038,27 @@ test.describe('DT2508-05/06 支払い記録の入金日（paidAt）', () => {
     const dialog = page.getByTestId('payment-record-dialog')
     await expect(dialog).toBeVisible({ timeout: 10_000 })
 
-    // メンバー選択（PrimeVue Select）
-    await page.getByTestId('payment-record-member').click()
-    const firstOption = page.locator('.p-select-list li, .p-dropdown-item').first()
-    await expect(firstOption, 'メンバー選択肢が出ること').toBeVisible({ timeout: 10_000 })
+    // メンバー選択（PrimeVue Select）。
+    //
+    // ⚠ `.p-select-list li` で引いてはいけない。PrimeVue の Select は選択肢が 0 件のとき
+    //   「結果が見つかりません」を **同じ `<li role="option">`**（class は `p-select-empty-message`）
+    //    で描画する（node_modules/primevue/select/Select.vue L162-167）。
+    //    メンバー一覧は非同期ロードなので、素の `li` の first を掴むとこの空メッセージを
+    //    クリックしてしまい、userId が null のまま＝`canSubmit` false＝記録ボタンが disabled となり、
+    //    送信リクエストが 1 本も飛ばない（本テストが TIMEDOUT していた真因）。
+    //    実選択肢だけが持つ `.p-select-option` で引き、選択が入ったことまで検証する。
+    const memberSelect = page.getByTestId('payment-record-member')
+    await memberSelect.click()
+    const firstOption = page.locator('.p-select-option').first()
+    await expect(firstOption, 'メンバー選択肢（空メッセージではない実選択肢）が出ること').toBeVisible({
+      timeout: 15_000,
+    })
+    const memberName = (await firstOption.innerText()).trim()
     await firstOption.click()
+    await expect(
+      memberSelect,
+      `メンバーが実際に選択されたこと（期待: ${memberName}）`,
+    ).toContainText(memberName, { timeout: 10_000 })
 
     // 金額（InputNumber）
     await page.getByTestId('payment-record-amount').locator('input').first().fill('5000')
@@ -805,10 +1075,16 @@ test.describe('DT2508-05/06 支払い記録の入金日（paidAt）', () => {
       method === 'POST' &&
       /\/payments$/.test(new URL(url).pathname)
 
+    // 送信ボタンが有効化されていること（＝必須項目が実際に埋まったこと）を先に固定する。
+    // ここが disabled のままだとクリックしても onSubmit が呼ばれず、
+    // 「リクエストが飛ばない」という分かりにくい形で落ちる。
+    const submitBtn = page.getByTestId('payment-record-submit')
+    await expect(submitBtn, '必須項目が揃い記録ボタンが有効になること').toBeEnabled({ timeout: 10_000 })
+
     const [req, res] = await Promise.all([
       page.waitForRequest((r) => isSinglePost(r.url(), r.method()), { timeout: 20_000 }),
       page.waitForResponse((r) => isSinglePost(r.url(), r.request().method()), { timeout: 20_000 }),
-      page.getByTestId('payment-record-submit').click(),
+      submitBtn.click(),
     ])
 
     const sent = JSON.parse(req.postData() ?? '{}') as { paidAt?: string }
