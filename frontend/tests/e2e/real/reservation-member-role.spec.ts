@@ -168,6 +168,28 @@ async function createLine(ctx: APIRequestContext, token: string, slug: string, n
   return ((await res.json()).data as { id: number }).id
 }
 
+/**
+ * 手動枠（長尺枠）を1件作成する。
+ *
+ * 【実測 2026-08-04】枠テンプレート（reservation-slot-templates）は 60 分で登録しても
+ * BE が 30 分単位に分割して枠を生成する（cellCount=2 → 11:00-11:30 / 11:30-12:00 の2枠）。
+ * そのためテンプレ経由では span>1 の長尺セルは作れず、定期予約UI（ReservationForm の
+ * recurring-toggle）へは到達できない。長尺セルは手動枠（POST /reservation-slots）でのみ作れる。
+ */
+async function createManualSlot(
+  ctx: APIRequestContext,
+  token: string,
+  slug: string,
+  data: { lineId: number; slotDate: string; startTime: string; endTime: string; capacity: number },
+): Promise<number> {
+  const res = await ctx.post(`${BE_API}/teams/${slug}/reservation-slots`, {
+    headers: authHeaders(token),
+    data,
+  })
+  if (!res.ok()) throw new Error(`手動枠作成失敗: ${res.status()} ${await res.text()}`)
+  return ((await res.json()).data as { id: number }).id
+}
+
 async function createTemplate(
   ctx: APIRequestContext,
   token: string,
@@ -210,28 +232,46 @@ async function findSlotId(
   return found.id
 }
 
-interface MyReservation {
-  id: number
-  recurringSeriesId: number | null
-  status?: { status?: string }
-  basic?: { slotDate?: string; startTime?: string }
-  team?: { slug?: string }
-  teamSlug?: string
+interface SlotTemplate {
+  dayOfWeek: string
+  startTime: string
 }
 
-/** 会員のマイ予約のうち、対象チーム・生存ステータスのものだけを返す。 */
+/** 週間スケジュール（枠テンプレ）一覧。レスポンスは { templates: [...], meta: {...} }。 */
+async function listTemplates(ctx: APIRequestContext, token: string, slug: string): Promise<SlotTemplate[]> {
+  const res = await ctx.get(`${BE_API}/teams/${slug}/reservation-slot-templates`, { headers: authHeaders(token) })
+  if (!res.ok()) throw new Error(`テンプレ一覧取得失敗: ${res.status()} ${await res.text()}`)
+  const body = (await res.json()).data as { templates?: SlotTemplate[] }
+  return body.templates ?? []
+}
+
+interface MyReservation {
+  id: number
+  /** シリーズID（UUID文字列）。定期予約で作られた予約にのみ入る。 */
+  recurringSeriesId: string | null
+  identifier?: { lineId?: number; teamId?: number }
+  status?: { status?: string }
+  slot?: { slotDate?: string; startTime?: string }
+}
+
+/**
+ * 会員のマイ予約のうち、対象の予約対象(lineId)・生存ステータスのものだけを返す。
+ *
+ * GET /reservations/my はチームを跨いで全件返し、レスポンスに teamSlug は含まれない
+ * （identifier.teamId / identifier.lineId のみ）。lineId は使い捨てチームごとに一意なので
+ * これで対象チーム分だけを確実に切り出せる。
+ */
 async function listMyLiveReservations(
   ctx: APIRequestContext,
   token: string,
-  teamSlug: string,
+  lineId: number,
 ): Promise<MyReservation[]> {
   const res = await ctx.get(`${BE_API}/reservations/my`, { headers: authHeaders(token) })
   if (!res.ok()) throw new Error(`マイ予約取得失敗: ${res.status()} ${await res.text()}`)
   const all = (await res.json()).data as MyReservation[]
   return all.filter((r) => {
-    const slug = r.team?.slug ?? r.teamSlug
     const st = r.status?.status
-    return slug === teamSlug && (st === 'CONFIRMED' || st === 'PENDING')
+    return r.identifier?.lineId === lineId && (st === 'CONFIRMED' || st === 'PENDING')
   })
 }
 
@@ -364,10 +404,17 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     await setBusinessHours(ctx, tokens.admin, teamSlug)
     lineId = await createLine(ctx, tokens.admin, teamSlug, '会議室')
     // 定期予約UI（recurring-toggle を持つ ReservationForm）へはマトリックスの
-    // 長尺枠（span>1）セルからのみ到達するため 60 分枠にする。
-    await createTemplate(ctx, tokens.admin, teamSlug, {
-      lineId, dayOfWeek: day.dayCode, startTime: '11:00:00', endTime: '12:00:00', capacity: 3,
-    })
+    // 長尺枠（span>1）セルからのみ到達する。テンプレは 30 分に分割されてしまうため
+    // 手動枠で 60 分枠を作る。さらに 4 週指定に耐えるよう +7/+14/+21 日にも同じ枠を用意する。
+    for (const offset of [0, 7, 14, 21]) {
+      await createManualSlot(ctx, tokens.admin, teamSlug, {
+        lineId,
+        slotDate: addDaysIso(day.iso, offset),
+        startTime: '11:00:00',
+        endTime: '12:00:00',
+        capacity: 3,
+      })
+    }
     await ctx.dispose()
 
     memberRoleName = await joinAsMember(tokens.admin, teamSlug)
@@ -412,7 +459,7 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     await page.getByTestId('recurring-result-close').click()
 
     // 実データで件数を数える（画面表示だけを信じない）
-    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     console.log(`[M1-2] 作成直後のマイ予約件数=${before.length} recurringSeriesId=${JSON.stringify([...new Set(before.map(r => r.recurringSeriesId))])}`)
     expect(before.length, '4週指定なので4件の定期予約が作られていること').toBe(4)
     expect(before.every(r => r.recurringSeriesId != null), '全件が同一シリーズに属すこと').toBe(true)
@@ -434,13 +481,13 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     await page.getByTestId('cancel-scope-this-only').click()
     await expect(scopeDialog, '2択ダイアログが閉じること').toBeHidden({ timeout: 15_000 })
 
-    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     console.log(`[M1-2] THIS_ONLY 後のマイ予約件数=${after.length}`)
     expect(after.length, 'THIS_ONLY なので1件だけ減ること').toBe(before.length - 1)
   })
 
   test('M1-3: 「この回以降すべて」で残り全件が消え、結果明細が出ること', async ({ page }) => {
-    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     expect(before.length, 'M1-2 の続きで3件残っていること').toBe(3)
 
     await gotoReservationsAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, teamSlug)
@@ -457,9 +504,10 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     console.log(`[M1-3] キャンセル結果明細="${text}"`)
     expect(text, '3件キャンセルした旨が出ること').toContain('3件')
 
-    await page.getByRole('button', { name: '閉じる', exact: true }).click()
+    // ダイアログのヘッダ×ボタンも aria-label="閉じる" のため、フッターの実ボタン（最後）を指す。
+    await page.getByRole('button', { name: '閉じる', exact: true }).last().click()
 
-    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     console.log(`[M1-3] THIS_AND_FOLLOWING 後のマイ予約件数=${after.length}`)
     expect(after.length, '残り3件すべてがキャンセルされること').toBe(0)
   })
@@ -599,11 +647,11 @@ test.describe('M3: マトリックスのドラッグ複数選択', () => {
     await expect(dialog, '3枠が選択されていること').toContainText('3')
     await page.screenshot({ path: 'test-results/m3-1-drag-preview.png', fullPage: true })
 
-    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const before = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     await page.getByTestId('group-confirm').click()
     await expect(dialog).toBeHidden({ timeout: 30_000 })
 
-    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, teamSlug))
+    const after = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, t) => listMyLiveReservations(ctx, t, lineId))
     console.log(`[M3-1] マイ予約件数 before=${before.length} after=${after.length}`)
     expect(after.length, 'グループ予約は代表1件としてマイ予約に出ること').toBe(before.length + 1)
   })
@@ -766,11 +814,7 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
 
     // 実データで裏取り
     await expect(async () => {
-      const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, t) => {
-        const res = await ctx.get(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, { headers: authHeaders(t) })
-        if (!res.ok()) throw new Error(`テンプレ一覧取得失敗: ${res.status()} ${await res.text()}`)
-        return (await res.json()).data as { dayOfWeek: string; startTime: string }[]
-      })
+      const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, (ctx, t) => listTemplates(ctx, t, teamSlug))
       const mon = templates.filter(t => t.dayOfWeek === 'MON')
       console.log(`[M4-2] MON テンプレ=${JSON.stringify(mon.map(t => t.startTime))}`)
       expect(mon.length, '月曜に3枠作られること').toBe(3)
@@ -780,8 +824,7 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
 
   test('M4-3: 既存枠を含む範囲のドラッグは弾かれ、枠が増えないこと', async ({ page }) => {
     const beforeCount = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, t) => {
-      const res = await ctx.get(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, { headers: authHeaders(t) })
-      return ((await res.json()).data as unknown[]).length
+      return (await listTemplates(ctx, t, teamSlug)).length
     })
 
     await gotoReservationsAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, teamSlug)
@@ -798,8 +841,7 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
     await page.screenshot({ path: 'test-results/m4-3-drag-blocked.png', fullPage: true })
 
     const afterCount = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, t) => {
-      const res = await ctx.get(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, { headers: authHeaders(t) })
-      return ((await res.json()).data as unknown[]).length
+      return (await listTemplates(ctx, t, teamSlug)).length
     })
     expect(afterCount, '弾かれたので枠数は変わらないこと').toBe(beforeCount)
   })
@@ -817,10 +859,7 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
     await page.getByTestId('drag-create-confirm').click()
 
     await expect(async () => {
-      const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, t) => {
-        const res = await ctx.get(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, { headers: authHeaders(t) })
-        return (await res.json()).data as { dayOfWeek: string; startTime: string }[]
-      })
+      const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, (ctx, t) => listTemplates(ctx, t, teamSlug))
       for (const d of ['TUE', 'WED', 'THU']) {
         const rows = templates.filter(t => t.dayOfWeek === d && t.startTime.startsWith('19:'))
         console.log(`[M4-4] ${d} 19時台テンプレ=${JSON.stringify(rows.map(r => r.startTime))}`)
