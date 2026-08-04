@@ -1,7 +1,6 @@
 package com.mannschaft.app.notification.event;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
-import com.mannschaft.app.notification.repository.NotificationArchiveRepository;
 import com.mannschaft.app.notification.repository.NotificationPreferenceRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
@@ -11,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -48,7 +48,8 @@ public class NotificationAnonymizationEventListener {
     private final NotificationTypePreferenceRepository notificationTypePreferenceRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final NotificationRepository notificationRepository;
-    private final NotificationArchiveRepository notificationArchiveRepository;
+    /** notifications_archive の PII 削除は archive 用 @Entity を持たず JdbcTemplate 直で行う（金型 ChatMessageArchiveBatchService に倣い D-2b UUIDv7 規約の対象化を避ける）。 */
+    private final JdbcTemplate jdbcTemplate;
     /** MeterRegistry（optional。narrowed test context 等では不在・fan-out 系と同じ ObjectProvider 方式）。 */
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
@@ -93,7 +94,8 @@ public class NotificationAnonymizationEventListener {
             // （握り潰し禁止・障害対応の原則2）。ただし例外は再送出し、他の削除同様に
             // 外側 catch へ伝播させて処理全体の失敗として扱う。
             try {
-                int deletedArchive = notificationArchiveRepository.deleteByUserId(userId);
+                int deletedArchive = jdbcTemplate.update(
+                        "DELETE FROM notifications_archive WHERE user_id = ?", userId);
                 log.debug("ユーザー退会: 通知アーカイブ削除完了: userId={}, deleted={}", userId, deletedArchive);
             } catch (Exception archiveEx) {
                 log.error("ユーザー退会: 通知アーカイブPII即時消去に失敗（PII残留の恐れ）: userId={}, error={}",

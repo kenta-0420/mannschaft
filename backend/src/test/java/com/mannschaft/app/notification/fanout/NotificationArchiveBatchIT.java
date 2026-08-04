@@ -3,10 +3,8 @@ package com.mannschaft.app.notification.fanout;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationArchiveEntity;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.event.NotificationAnonymizationEventListener;
-import com.mannschaft.app.notification.repository.NotificationArchiveRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.service.NotificationCleanupBatchService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -47,8 +45,6 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     private NotificationCleanupBatchService cleanupBatchService;
     @Autowired
     private NotificationRepository notificationRepository;
-    @Autowired
-    private NotificationArchiveRepository archiveRepository;
     @Autowired
     private NotificationAnonymizationEventListener anonymizationListener;
     @Autowired
@@ -125,26 +121,33 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
         cleanupBatchService.cleanupOldReadNotifications();
 
-        NotificationArchiveEntity a = archiveRepository.findById(id)
-                .orElseThrow(() -> new AssertionError("archive に移送行が無い（AC-2）"));
-        assertThat(a.getId()).as("id は元 notifications.id を引き継ぐ（採番しない）").isEqualTo(id);
-        assertThat(a.getUserId()).isEqualTo(102L);
-        assertThat(a.getOrganizationId()).isEqualTo(777L);
-        assertThat(a.getNotificationType()).isEqualTo("VILLAGE_EVENT");
-        assertThat(a.getPriority()).isEqualTo("HIGH");
-        assertThat(a.getTitle()).isEqualTo("タイトル-102");
-        assertThat(a.getBody()).isEqualTo("本文-102");
-        assertThat(a.getSourceType()).isEqualTo("VILLAGE_EVENT");
-        assertThat(a.getSourceId()).isEqualTo(4242L);
-        assertThat(a.getScopeType()).isEqualTo(NotificationScopeType.TEAM.name());
-        assertThat(a.getScopeId()).isEqualTo(555L);
-        assertThat(a.getActionUrl()).isEqualTo("/villages/1/events/2");
-        assertThat(a.getActorId()).isEqualTo(999L);
-        assertThat(a.getIsRead()).isTrue();
-        assertThat(a.getReadAt()).isNotNull();
-        assertThat(a.getChannelsSent()).contains("PUSH");
-        assertThat(a.getCreatedAt()).isNotNull();
-        assertThat(a.getArchivedAt()).as("移送日時が刻まれる").isNotNull();
+        // archive 用 @Entity は持たない（D-2b UUIDv7 規約回避のため JdbcTemplate 直運用）。
+        // 移送行の列保持は実 DB の行を Map で取得して検証する。
+        assertThat(archiveCount(id)).as("archive に移送行が1本ある").isEqualTo(1);
+        java.util.Map<String, Object> a =
+                jdbc.queryForMap("SELECT * FROM notifications_archive WHERE id = ?", id);
+        assertThat(((Number) a.get("id")).longValue())
+                .as("id は元 notifications.id を引き継ぐ（採番しない）").isEqualTo(id);
+        assertThat(((Number) a.get("user_id")).longValue()).isEqualTo(102L);
+        assertThat(((Number) a.get("organization_id")).longValue()).isEqualTo(777L);
+        assertThat(a.get("notification_type")).isEqualTo("VILLAGE_EVENT");
+        assertThat(a.get("priority")).isEqualTo("HIGH");
+        assertThat(a.get("title")).isEqualTo("タイトル-102");
+        assertThat(a.get("body")).isEqualTo("本文-102");
+        assertThat(a.get("source_type")).isEqualTo("VILLAGE_EVENT");
+        assertThat(((Number) a.get("source_id")).longValue()).isEqualTo(4242L);
+        assertThat(a.get("scope_type")).isEqualTo(NotificationScopeType.TEAM.name());
+        assertThat(((Number) a.get("scope_id")).longValue()).isEqualTo(555L);
+        assertThat(a.get("action_url")).isEqualTo("/villages/1/events/2");
+        assertThat(((Number) a.get("actor_id")).longValue()).isEqualTo(999L);
+        Object isRead = a.get("is_read");
+        boolean isReadValue = isRead instanceof Number
+                ? ((Number) isRead).intValue() != 0 : Boolean.TRUE.equals(isRead);
+        assertThat(isReadValue).as("既読フラグが保持される").isTrue();
+        assertThat(a.get("read_at")).as("既読日時が保持される").isNotNull();
+        assertThat(a.get("channels_sent").toString()).contains("PUSH");
+        assertThat(a.get("created_at")).as("作成日時が保持される").isNotNull();
+        assertThat(a.get("archived_at")).as("移送日時が刻まれる").isNotNull();
     }
 
     // ============================== AC-3 ==============================
@@ -236,9 +239,9 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
         long victim = 107L;
         long bystander = 108L;
         // archive に victim / bystander の PII を直接 seed（移送済み状態を模す）。
-        archiveRepository.saveAndFlush(archiveRow(9_001L, victim));
-        archiveRepository.saveAndFlush(archiveRow(9_002L, victim));
-        archiveRepository.saveAndFlush(archiveRow(9_003L, bystander));
+        insertArchiveRow(9_001L, victim);
+        insertArchiveRow(9_002L, victim);
+        insertArchiveRow(9_003L, bystander);
         entityManager.clear();
 
         anonymizationListener.handleUserAnonymized(new UserAnonymizedEvent(victim, "old@example.com"));
@@ -259,7 +262,7 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-8 archive 削除は即時消去層（UserAnonymizedEvent リスナー）で起きる（30日 AccountPurge 側でない）")
     void ac8_archiveDeletionHappensInImmediateLayer() {
         long victim = 109L;
-        archiveRepository.saveAndFlush(archiveRow(9_010L, victim));
+        insertArchiveRow(9_010L, victim);
         entityManager.clear();
 
         // 即時消去層 = UserAnonymizedEvent を受ける本リスナー。ここで消えることを検証する
@@ -349,28 +352,19 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
     // ============================== 内部ヘルパ ==============================
 
-    /** archive 行を全 NOT NULL 列充填で組み立てる（退会波及 AC-7/8 の seed 用）。 */
-    private static NotificationArchiveEntity archiveRow(Long id, Long userId) {
-        return NotificationArchiveEntity.builder()
-                .id(id)
-                .userId(userId)
-                .organizationId(777L)
-                .notificationType("VILLAGE_EVENT")
-                .priority("HIGH")
-                .title("archive-" + id)
-                .body("body-" + id)
-                .sourceType("VILLAGE_EVENT")
-                .sourceId(1L)
-                .scopeType(NotificationScopeType.TEAM.name())
-                .scopeId(555L)
-                .actionUrl("/x")
-                .actorId(999L)
-                .isRead(true)
-                .readAt(LocalDateTime.now().minusDays(200))
-                .channelsSent("[\"PUSH\"]")
-                .snoozedUntil(null)
-                .createdAt(LocalDateTime.now().minusDays(400))
-                .archivedAt(LocalDateTime.now())
-                .build();
+    /**
+     * archive 行を全 NOT NULL 列充填で直接 INSERT する（退会波及 AC-7/8 の seed 用）。
+     * archive 用 @Entity は持たない（D-2b UUIDv7 規約回避）ため JdbcTemplate 直で投入する。
+     */
+    private void insertArchiveRow(Long id, Long userId) {
+        jdbc.update("INSERT INTO notifications_archive " +
+                        "(id, user_id, organization_id, notification_type, priority, title, body, " +
+                        " source_type, source_id, scope_type, scope_id, action_url, actor_id, " +
+                        " is_read, read_at, channels_sent, snoozed_until, created_at, archived_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                id, userId, 777L, "VILLAGE_EVENT", "HIGH", "archive-" + id, "body-" + id,
+                "VILLAGE_EVENT", 1L, NotificationScopeType.TEAM.name(), 555L, "/x", 999L,
+                true, LocalDateTime.now().minusDays(200), "[\"PUSH\"]", null,
+                LocalDateTime.now().minusDays(400), LocalDateTime.now());
     }
 }
