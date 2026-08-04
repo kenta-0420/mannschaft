@@ -88,15 +88,6 @@ public class ReservationSlotEntity extends BaseEntity {
     @Builder.Default
     private SlotStatus slotStatus = SlotStatus.AVAILABLE;
 
-    @Column(columnDefinition = "JSON")
-    private String recurrenceRule;
-
-    private Long parentSlotId;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean isException = false;
-
     /**
      * 枠単位の承認モード上書き。
      *
@@ -284,15 +275,6 @@ public class ReservationSlotEntity extends BaseEntity {
      */
     public void clearApprovalMode() {
         this.approvalMode = null;
-    }
-
-    /**
-     * 繰り返しスロットかどうかを判定する。
-     *
-     * @return 繰り返しルールが設定されている場合 true
-     */
-    public boolean isRecurring() {
-        return this.recurrenceRule != null;
     }
 
     /**

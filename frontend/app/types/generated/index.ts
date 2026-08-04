@@ -55833,11 +55833,6 @@ export interface components {
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
         };
-        RecurrenceDto: {
-            /** Format: int64 */
-            parentSlotId?: number;
-            recurrenceRule?: string;
-        };
         ReservationSlotResponse: {
             audit?: components["schemas"]["SlotAuditDto"];
             basic?: components["schemas"]["SlotBasicDto"];
@@ -55848,7 +55843,6 @@ export interface components {
             lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
-            recurrence?: components["schemas"]["RecurrenceDto"];
             /** Format: int64 */
             staffUserId?: number;
             status?: components["schemas"]["SlotStatusDto"];
@@ -55886,7 +55880,6 @@ export interface components {
             /** Format: int32 */
             capacity?: number;
             closedReason?: string;
-            isException?: boolean;
             note?: string;
             slotStatus?: string;
         };

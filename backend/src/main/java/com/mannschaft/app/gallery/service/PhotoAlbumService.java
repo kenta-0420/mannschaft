@@ -91,10 +91,23 @@ public class PhotoAlbumService {
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
 
+        // 総件数バグ是正: 旧実装は filtered.size()（＝このページで可視だった件数）を
+        // そのまま総件数に渡しており、実際は100件あっても「3件・1ページ」に化けて
+        // FEのページャが2ページ目以降へ辿り着けなかった。DBが算出した総件数
+        // （絞り込み前）から「このページでF00が落とした件数」だけを差し引く形に改める
+        // （既存流儀: ActivityResultService#listActivities / TournamentService#listTournaments）。
+        // 【既知の残務】本メソッドは SQL で1ページ分（size=limit）を取得してからF00で
+        // メモリ上フィルタするため、他人の非公開アルバム等が混ざると要求件数より
+        // 少ない件数しか返らない「ページング歯抜け」が残る。総件数もその近似値になる。
+        // 根治には F00 側に「閲覧者の可視レベル解決API」を新設しSQL述語へ翻訳する必要があり、
+        // ActivityResultService の Javadoc と同じ理由でここでは見送る。
+        long excluded = (long) page.getNumberOfElements() - filtered.size();
+        long totalElements = Math.max(0L, page.getTotalElements() - excluded);
+
         return new PageImpl<>(
                 filtered.stream().map(galleryMapper::toAlbumResponse).collect(Collectors.toList()),
                 pageable,
-                filtered.size());
+                totalElements);
     }
 
     /**

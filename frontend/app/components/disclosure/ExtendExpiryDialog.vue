@@ -123,7 +123,7 @@ async function handleSubmit() {
     const isoValue = buildOffsetDateTimeStr(newExpiresAt.value)
     if (!isoValue) return
     const updated = await api.value.extendExpiry(
-      props.export.id,
+      props.export.exportId,
       isoValue,
     )
     success(t('disclosure.extend_expiry_success', { date: formatDate(newExpiresAt.value) }))

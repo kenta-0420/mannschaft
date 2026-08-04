@@ -222,7 +222,7 @@ public class VillageMeetupService {
         // どのフィールドも変更しない空更新は、後方互換のため従来の「幹事・PLANNING」ガードで扱う。
         // capacity/decisions のみの更新は core ガードに巻き込まない（各々専用の認可・状態ガードで扱う）。
         if (touchesCore || (!touchesDecisions && !touchesCapacity)) {
-            requireOrganizer(entity, actorUserId);
+            requireOrganizer(villageId, entity, actorUserId);
             if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
                 throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
             }
@@ -277,7 +277,7 @@ public class VillageMeetupService {
     public MeetupResponse cancelMeetup(UUID villageId, UUID meetupId, Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() == VillageMeetupStatus.CANCELLED) {
             return buildResponseWithCandidates(entity);
@@ -318,7 +318,7 @@ public class VillageMeetupService {
                                         Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() == VillageMeetupStatus.CONFIRMED) {
             throw new BusinessException(VillageErrorCode.MEETUP_ALREADY_CONFIRMED);
@@ -416,7 +416,7 @@ public class VillageMeetupService {
                                                        Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
             throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
@@ -454,7 +454,7 @@ public class VillageMeetupService {
                                     Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
             throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
@@ -899,7 +899,18 @@ public class VillageMeetupService {
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MEETUP_NOT_MEMBER));
     }
 
-    private void requireOrganizer(VillageMeetupEntity entity, Long actorUserId) {
+    /**
+     * 幹事本人であることを検証する。
+     *
+     * <p><strong>現役性の検査を含む（#2284 §12 と同型）</strong>: {@code findActiveByVillageIdAndSubject}
+     * 述語で「その村の現役メンバーであること」を先に確認したうえで幹事本人かを判定する。
+     * 退村済み・BAN 済みの利用者は現役判定の段階で拒否される。述語は {@link #isModerator} 経由の
+     * モデレーター判定と同一で、寄合の更新・中止・確定・候補日追加削除はいずれもこの流儀に従う。</p>
+     */
+    private void requireOrganizer(UUID villageId, VillageMeetupEntity entity, Long actorUserId) {
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (!entity.getOrganizerUserId().equals(actorUserId)) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
