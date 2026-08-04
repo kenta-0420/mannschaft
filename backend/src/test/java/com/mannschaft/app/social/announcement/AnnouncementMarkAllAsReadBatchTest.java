@@ -101,14 +101,14 @@ class AnnouncementMarkAllAsReadBatchTest {
     }
 
     /** 初回チャンク（カーソル無し）の取得をスタブする。 */
-    private org.mockito.stubbing.OngoingStubbing<List<Long>> givenFirstChunk() {
+    private org.mockito.BDDMockito.BDDMyOngoingStubbing<List<Long>> givenFirstChunk() {
         return given(feedQueryRepository.findUnreadIdsByScope(
                 eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(MEMBER_VISIBILITIES), eq(USER_ID),
                 isNull(), eq(AnnouncementReadService.MARK_ALL_BATCH_SIZE)));
     }
 
     /** カーソルを問わない全チャンク取得をスタブする。 */
-    private org.mockito.stubbing.OngoingStubbing<List<Long>> givenAnyChunk() {
+    private org.mockito.BDDMockito.BDDMyOngoingStubbing<List<Long>> givenAnyChunk() {
         return given(feedQueryRepository.findUnreadIdsByScope(
                 any(), anyLong(), anySet(), anyLong(), any(), anyInt()));
     }
@@ -278,7 +278,7 @@ class AnnouncementMarkAllAsReadBatchTest {
             givenMemberViewer();
             int size = AnnouncementReadService.MARK_ALL_BATCH_SIZE;
             int max = AnnouncementReadService.MARK_ALL_MAX_BATCHES;
-            org.mockito.stubbing.OngoingStubbing<List<Long>> stub = givenAnyChunk();
+            org.mockito.BDDMockito.BDDMyOngoingStubbing<List<Long>> stub = givenAnyChunk();
             for (int i = 0; i < max; i++) {
                 stub = stub.willReturn(ids(1L + (long) i * size, size));
             }
