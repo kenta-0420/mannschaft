@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -36,6 +37,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DisplayName("Wave2-A 保持バッチ本体（アーカイブ移送）IT")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+// test プロファイルは ddl-auto=create で schema を JPA Entity 由来に生成し Flyway を適用しない。
+// notifications_archive は archive 用 @Entity を持たない（D-2b UUIDv7 規約回避）ため Entity 由来で生成されない。
+// DDL の二重管理・ドリフトを避けるため、実在の V173 移送 SQL をそのまま @Sql で適用して表＋索引を用意する。
+@Sql(scripts = "classpath:db/migration/V173.20260730033807__create_notifications_archive_and_read_index.sql",
+        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
     private static final int READ_RETENTION_DAYS = 90;
