@@ -504,11 +504,10 @@ public class VillageMatchRecruitService {
     /**
      * 投稿者本人であることを検証する（更新時用）。
      *
-     * <p><strong>BAN 検査込み（#2284 §12 と同型）</strong>: {@link #ensureRecruitReviewer} は
-     * 状態遷移・応募審査で「現役メンバーであること」を本人判定より先に確認しているのに対し、
-     * 本メソッド（更新用）は本人一致のみで現役判定を欠いていた。これにより退村済み・BAN 済みの
-     * 投稿者でも自分の募集を更新し続けられる非対称が存在したため、他メソッドと同じ
-     * {@code findActiveByVillageIdAndSubject} 述語で現役性を確認してから本人判定する。</p>
+     * <p><strong>現役性の検査を含む（#2284 §12 と同型）</strong>: {@code findActiveByVillageIdAndSubject}
+     * 述語で「その村の現役メンバーであること」を確認したうえで投稿者本人かを判定する。
+     * 退村済み・BAN 済みの利用者は現役判定の段階で拒否される。判定の順序と述語は
+     * {@link #ensureRecruitReviewer} と揃えてあり、村内の更新系は一様にこの流儀に従う。</p>
      */
     private void ensureAuthor(UUID villageId, VillageMatchRecruitEntity entity, Long actorUserId) {
         if (actorUserId == null) {

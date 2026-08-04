@@ -516,16 +516,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code findActiveByVillageIdAndSubject} を根拠に認可判定済みであることを確認し、
      * {@code @AuthorizedInService} を付与（{@code VillageJoinRequestController#listMine} のみ
      * IDOR 閉塞（他人の識別子を受け取らない構造）を理由に {@code @SelfScopedEndpoint} を付与）。
-     * 監査で 2 件の真の穴を発見し根治した:</p>
+     * 監査の結果、2 箇所で認可条件を村内の標準の流儀へ揃えた:</p>
      * <ul>
-     *   <li>{@code VillageMatchRecruitController#list}: 村人限定閲覧の検証が欠落しており、
-     *       非村人でも一覧を取得できていた（{@code VillageMatchRecruitService#listRecruits} に
-     *       {@code ensureVillager} を追加）。</li>
+     *   <li>{@code VillageMatchRecruitController#list}: 一覧も詳細取得（{@code get}）と同じく
+     *       村人限定とする。{@code VillageMatchRecruitService#listRecruits} に
+     *       {@code ensureVillager} を敷設し、兄弟メソッドと判定基準を一致させた。</li>
      *   <li>{@code VillageMatchRecruitController#update} / {@code VillageMeetupController} の
-     *       update・cancel・confirm・candidate-dates 系: 投稿者/幹事の本人判定が本人一致のみで
-     *       現役性（BAN/退村）を検査しておらず、状態遷移系（{@code ensureRecruitReviewer}）との間に
-     *       非対称があった（#2284 で状態遷移系のみ是正済みだったが、更新系は取りこぼされていた）。
-     *       {@code ensureAuthor} / {@code requireOrganizer} にも同じ現役性検査を追加。</li>
+     *       update・cancel・confirm・candidate-dates 系: 投稿者/幹事の本人判定に、状態遷移系
+     *       （{@code ensureRecruitReviewer}）と同一の現役性述語
+     *       {@code findActiveByVillageIdAndSubject} を先行させ、更新系と状態遷移系の判定を
+     *       同一基準に揃えた（#2284 §12 と同型）。{@code ensureAuthor} / {@code requireOrganizer}
+     *       の双方に適用。</li>
      * </ul>
      */
     private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 472;

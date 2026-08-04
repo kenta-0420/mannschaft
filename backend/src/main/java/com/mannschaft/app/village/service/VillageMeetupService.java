@@ -902,11 +902,10 @@ public class VillageMeetupService {
     /**
      * 幹事本人であることを検証する。
      *
-     * <p><strong>BAN 検査込み（#2284 §12 と同型）</strong>: {@link #isModerator} 経由の
-     * モデレーター判定は現役性（{@code findActiveByVillageIdAndSubject}）を確認しているのに対し、
-     * 本メソッド（幹事判定）は本人一致のみで現役判定を欠いていた。これにより退村済み・BAN 済みの
-     * 幹事でも寄合の更新・中止・確定・候補日追加削除を続行できる非対称が存在したため、
-     * 他ヘルパーと同じ述語で現役性を先に確認する。</p>
+     * <p><strong>現役性の検査を含む（#2284 §12 と同型）</strong>: {@code findActiveByVillageIdAndSubject}
+     * 述語で「その村の現役メンバーであること」を先に確認したうえで幹事本人かを判定する。
+     * 退村済み・BAN 済みの利用者は現役判定の段階で拒否される。述語は {@link #isModerator} 経由の
+     * モデレーター判定と同一で、寄合の更新・中止・確定・候補日追加削除はいずれもこの流儀に従う。</p>
      */
     private void requireOrganizer(UUID villageId, VillageMeetupEntity entity, Long actorUserId) {
         membershipRepository
