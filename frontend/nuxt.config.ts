@@ -93,7 +93,16 @@ export default defineNuxtConfig({
   },
 
   devServer: {
-    host: '0.0.0.0',
+    // 【根治】'0.0.0.0' は IPv4 のみの bind のため [::]:3000（IPv6 側）が空き、
+    // そこを dev サーバー由来の WebSocket が掴んでしまう。Windows の名前解決は
+    // localhost → ::1 を優先するため、この状態で http://localhost:3000 を開くと
+    // アプリではなく WS サーバーに当たり、恒久的に 426 Upgrade Required が返っていた
+    // （2026-07-28 に実機で確認）。
+    // '::' はデュアルスタック bind となり、Node/Nuxt が IPv4/IPv6 の両方で 3000 を
+    // 直接持つため、localhost / 127.0.0.1 / [::1] のいずれでも 200 になる
+    // （2026-08-04 実測で確認。HMR ポート分離だけでは [::]:3000 に別の WS サーバーが
+    // 残り根治しなかったため、この host 変更が正しい根治策）。
+    host: '::',
   },
 
   modules: [
@@ -947,20 +956,6 @@ export default defineNuxtConfig({
   vite: {
     server: {
       allowedHosts: true,
-      // 【根治】HMR WebSocket サーバーに専用ポートを与える。
-      // devServer.host: '0.0.0.0' により Nuxt の HTTP サーバーは IPv4 のみを bind するため、
-      // 素の設定では空いた [::]:3000（IPv6 側）を Vite の HMR WebSocket サーバーが掴んでしまう。
-      // Windows の名前解決は localhost → ::1 を優先するため、この状態で http://localhost:3000
-      // を開くとアプリではなく HMR の WS サーバーに当たり、恒久的に 426 Upgrade Required が返る
-      // （2026-07-28 に実機で確認）。
-      // これを回避するため一時的に「127.0.0.1 で開く」運用にしていたが、認証 Cookie は
-      // SameSite=Strict で発行されており、127.0.0.1 と localhost は SameSite 判定上「別サイト」
-      // 扱いになるため Cookie が保存されず、15 分でログアウトする副作用を生んでいた
-      // （2026-08-04 判明）。HMR に専用ポートを与えて [::]:3000 の奪い合いを解消し、
-      // localhost:3000 で正常にアプリを開けるようにする。
-      hmr: {
-        port: 24678,
-      },
     },
     optimizeDeps: {
       // date-holidays は pure ESM パッケージのため、Vite が事前バンドルしないと
