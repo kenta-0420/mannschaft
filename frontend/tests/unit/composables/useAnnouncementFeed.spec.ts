@@ -56,7 +56,11 @@ mockNuxtImport('useNuxtApp', () => () => ({
 // テスト対象（モック設定後に動的 import。@nuxt/test-utils の hoisting に依存するため
 // import/first の ESLint ルールを無効化する）
 // eslint-disable-next-line import/first
-import { useAnnouncementFeed, isAnnouncementGoneError } from '~/composables/useAnnouncementFeed'
+import {
+  useAnnouncementFeed,
+  isAnnouncementGoneError,
+  isRateLimitedError,
+} from '~/composables/useAnnouncementFeed'
 
 // ============================================================
 // フィクスチャ
@@ -103,6 +107,15 @@ function apiError(code: string) {
   return Object.assign(new Error(`api error ${code}`), {
     data: { error: { code, message: 'お知らせが見つかりません' } },
     statusCode: 400,
+  })
+}
+
+/** 流量制限（429）の FetchError 形状。BE の AbstractRateLimitFilter は JSON ボディを返す */
+function rateLimitedError() {
+  return Object.assign(new Error('api error 429'), {
+    data: { error: 'Too many requests' },
+    statusCode: 429,
+    response: { status: 429 },
   })
 }
 
@@ -256,5 +269,109 @@ describe('isAnnouncementGoneError', () => {
     expect(isAnnouncementGoneError(new Error('Failed to fetch'))).toBe(false)
     expect(isAnnouncementGoneError(null)).toBe(false)
     expect(isAnnouncementGoneError(undefined)).toBe(false)
+  })
+})
+
+/**
+ * issue #2530 ⑥: 429 のトースト二重表示。
+ *
+ * `useApi.ts` が 429 を横断ハンドリングして「あと N 秒待ってください」を出す一方、
+ * `markAsReadBeforeOpen` は ANNOUNCE_001 以外を汎用エラートーストに落としていたため、
+ * 429 では 2 枚並んでいた。提示は上流に譲り、報告（errorReport）は従来どおり送る。
+ */
+describe('useAnnouncementFeed — 429 のトースト二重表示（#2530 ⑥）', () => {
+  it('ANN-2530-006: 429 では汎用エラートーストを重ねないが、報告は送り遷移は続行する', async () => {
+    const item = buildItem({ id: 20, isRead: false })
+    const feedApi = await setupFeed([item], 1)
+    const err = rateLimitedError()
+    mockFetch.mockRejectedValueOnce(err)
+
+    const canOpen = await feedApi.markAsReadBeforeOpen(item)
+
+    // 遷移は続行する（#2495 の方針を変えない）
+    expect(canOpen).toBe(true)
+    // 項目は消さない
+    expect(feedApi.feed.value.map(i => i.id)).toEqual([20])
+    // useApi が既に 429 を提示済み。ここで重ねると同じ事象で 2 枚並ぶ
+    expect(toastCalls('error')).toHaveLength(0)
+    expect(toastCalls('warn')).toHaveLength(0)
+    // 握りつぶしではない: エラー報告は従来どおり送る
+    expect(mockCaptureQuiet).toHaveBeenCalledTimes(1)
+    expect(mockCaptureQuiet.mock.calls[0]![0]).toBe(err)
+  })
+
+  it('ANN-2530-007: isRateLimitedError — 429 のみ true', () => {
+    expect(isRateLimitedError(rateLimitedError())).toBe(true)
+    expect(isRateLimitedError(apiError('ANNOUNCE_001'))).toBe(false)
+    expect(isRateLimitedError(new Error('Failed to fetch'))).toBe(false)
+    expect(isRateLimitedError(null)).toBe(false)
+    expect(isRateLimitedError(undefined)).toBe(false)
+  })
+})
+
+/**
+ * issue #2530 ①: 一括既読の打ち切りが利用者に伝わらない。
+ *
+ * 従来は `unreadCount` を無条件に 0 へ上書きしていたため、防御上限（500 × 20 = 10,000 件）に
+ * 到達して未読が残っていても画面上は「未読 0」だった。BE が実件数と残余の有無を返すように
+ * なったので、FE はそれを使って表示を実体に合わせ、残りがあることをトーストで伝える。
+ */
+describe('useAnnouncementFeed — markAllAsRead の件数反映（#2530 ①）', () => {
+  it('ANN-2530-001: 残りなしなら全件既読・未読 0・トーストなし', async () => {
+    const a = buildItem({ id: 30, isRead: false })
+    const b = buildItem({ id: 31, isRead: false })
+    const feedApi = await setupFeed([a, b], 2)
+    mockFetch.mockResolvedValueOnce({ data: { markedCount: 2, hasMoreUnread: false } })
+
+    await feedApi.markAllAsRead()
+
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/teams/my-team/announcements/read-all', {
+      method: 'POST',
+    })
+    expect(feedApi.feed.value.every(i => i.isRead)).toBe(true)
+    expect(feedApi.meta.value?.unreadCount).toBe(0)
+    // 正常完了は静かに終わる（トーストで邪魔しない）
+    expect(toastAddMock).not.toHaveBeenCalled()
+  })
+
+  it('ANN-2530-002: 打ち切り時は件数入りトーストで残りを伝える', async () => {
+    const a = buildItem({ id: 40, isRead: false })
+    const feedApi = await setupFeed([a], 12_000)
+    // read-all: 10,000 件処理して未読が残っている
+    mockFetch.mockResolvedValueOnce({ data: { markedCount: 10_000, hasMoreUnread: true } })
+    // 続く再取得（BE の真値を取り直す）
+    mockFetch.mockResolvedValueOnce(buildResponse([{ ...a, isRead: false }], 2_000))
+
+    await feedApi.markAllAsRead()
+
+    // 「まだ残っている」ことを件数付きで伝える
+    expect(toastCalls('warn')).toHaveLength(1)
+    expect(tMock).toHaveBeenCalledWith('announcement.mark_all_read_partial', { count: 10_000 })
+  })
+
+  it('ANN-2530-003: 打ち切り時に未読 0 と嘘をつかず、BE の真値へ揃える', async () => {
+    const a = buildItem({ id: 41, isRead: false })
+    const feedApi = await setupFeed([a], 12_000)
+    mockFetch.mockResolvedValueOnce({ data: { markedCount: 10_000, hasMoreUnread: true } })
+    mockFetch.mockResolvedValueOnce(buildResponse([{ ...a, isRead: false }], 2_000))
+
+    await feedApi.markAllAsRead()
+
+    // 従来欠陥（無条件に 0 上書き）なら 0 になる
+    expect(feedApi.meta.value?.unreadCount).toBe(2_000)
+    // 再取得しているので一覧も BE の状態（未読のまま）を映す
+    expect(feedApi.feed.value[0]!.isRead).toBe(false)
+  })
+
+  it('ANN-2530-004: markedCount が 0 でも打ち切りなら残りを伝える（沈黙しない）', async () => {
+    const a = buildItem({ id: 42, isRead: false })
+    const feedApi = await setupFeed([a], 5)
+    mockFetch.mockResolvedValueOnce({ data: { markedCount: 0, hasMoreUnread: true } })
+    mockFetch.mockResolvedValueOnce(buildResponse([{ ...a, isRead: false }], 5))
+
+    await feedApi.markAllAsRead()
+
+    expect(toastCalls('warn')).toHaveLength(1)
+    expect(tMock).toHaveBeenCalledWith('announcement.mark_all_read_partial', { count: 0 })
   })
 })
