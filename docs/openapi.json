@@ -169592,18 +169592,6 @@
           }
         }
       },
-      "RecurrenceDto": {
-        "type": "object",
-        "properties": {
-          "parentSlotId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "recurrenceRule": {
-            "type": "string"
-          }
-        }
-      },
       "ReservationSlotResponse": {
         "type": "object",
         "properties": {
@@ -169629,9 +169617,6 @@
           },
           "pricing": {
             "$ref": "#/components/schemas/SlotPricingDto"
-          },
-          "recurrence": {
-            "$ref": "#/components/schemas/RecurrenceDto"
           },
           "staffUserId": {
             "type": "integer",
@@ -169716,9 +169701,6 @@
           },
           "closedReason": {
             "type": "string"
-          },
-          "isException": {
-            "type": "boolean"
           },
           "note": {
             "type": "string"
