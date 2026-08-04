@@ -258,6 +258,7 @@ interface MyReservation {
   /** シリーズID（UUID文字列）。定期予約で作られた予約にのみ入る。 */
   recurringSeriesId: string | null
   identifier?: { lineId?: number; teamId?: number }
+  group?: { groupId?: string } | null
   status?: { status?: string }
   slot?: { slotDate?: string; startTime?: string }
 }
@@ -280,6 +281,38 @@ async function listMyLiveReservations(
   return all.filter((r) => {
     const st = r.status?.status
     return r.identifier?.lineId === lineId && (st === 'CONFIRMED' || st === 'PENDING')
+  })
+}
+
+/**
+ * 会員に残っている生存予約をすべてキャンセルして白紙に戻す。
+ *
+ * 「自分の予約」タブ（mode="mine"）はチームを跨いで全予約を出すため、過去の実行や
+ * 他の describe が残した予約があると行の特定が曖昧になる。前提を固定するために使う。
+ */
+async function purgeMyReservations(): Promise<void> {
+  await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, async (ctx, token) => {
+    const res = await ctx.get(`${BE_API}/reservations/my`, { headers: authHeaders(token) })
+    if (!res.ok()) throw new Error(`マイ予約取得失敗: ${res.status()} ${await res.text()}`)
+    const all = (await res.json()).data as MyReservation[]
+    for (const r of all) {
+      const st = r.status?.status
+      if (st !== 'CONFIRMED' && st !== 'PENDING') continue
+      // グループ予約は単票キャンセルが 400(RESERVATION_042) で拒否されるため、グループ単位で畳む
+      const groupId = r.group?.groupId
+      const cancelRes = groupId
+        ? await ctx.post(`${BE_API}/teams/${r.identifier!.teamId}/reservation-groups/${groupId}/cancel`, {
+            headers: authHeaders(token),
+            data: { cancelReason: 'E2E事前クリーン' },
+          })
+        : await ctx.post(`${BE_API}/reservations/${r.id}/cancel`, {
+            headers: authHeaders(token),
+            data: {},
+          })
+      if (!cancelRes.ok()) {
+        throw new Error(`事前クリーンのキャンセル失敗 id=${r.id}: ${cancelRes.status()} ${await cancelRes.text()}`)
+      }
+    }
   })
 }
 
@@ -430,6 +463,8 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     await ctx.dispose()
 
     memberRoleName = await joinAsMember(tokens.admin, teamSlug)
+    // 「自分の予約」はチーム横断のため、行の特定が曖昧にならないよう白紙から始める
+    await purgeMyReservations()
     console.log(`[SETUP-M1] teamSlug=${teamSlug} lineId=${lineId} day=${day.iso}(${day.dayCode}) memberRole=${memberRoleName}`)
   })
 
@@ -503,10 +538,17 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     expect(before.length, 'M1-2 の続きで3件残っていること').toBe(3)
 
     await gotoReservationsAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, teamSlug)
+    // 「この回以降すべて」は起点の回より後だけを畳むため、残っている最も早い回を起点にする
+    // （一覧の並び順に依存して件数が変わるのを避ける。日付はISO文字列でそのまま描画される）。
+    const earliestDate = before.map(r => r.slot?.slotDate ?? '').sort()[0]!
+    console.log(`[M1-3] 起点にする最古の回=${earliestDate}`)
+
     await page.getByRole('tab', { name: '自分の予約' }).click()
     await expect(page.getByTestId('recurring-series-badge').first()).toBeVisible({ timeout: 20_000 })
 
-    await page.getByTestId('my-reservation-cancel').first().click()
+    const targetRow = page.getByRole('row').filter({ hasText: earliestDate })
+    await expect(targetRow, '最古の回の行が一覧にあること').toHaveCount(1)
+    await targetRow.getByTestId('my-reservation-cancel').click()
     await expect(page.getByRole('dialog', { name: 'キャンセル範囲の選択' })).toBeVisible({ timeout: 15_000 })
     await page.getByTestId('cancel-scope-this-and-following').click()
 
@@ -770,7 +812,9 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
 
   async function openWeeklySchedule(page: Page): Promise<void> {
     await page.getByRole('tab', { name: '予約対象の管理' }).click()
-    await page.getByText('週間スケジュール', { exact: false }).first().click()
+    // アコーディオンの見出しボタンを指す（枠ゼロ空状態の案内文にも「週間スケジュール」の
+    // 文字列が含まれるため、getByText では取り違える）。
+    await page.getByRole('button', { name: /週間スケジュール/ }).first().click()
     await expect(page.getByTestId('slot-drag-grid'), '週グリッドが表示されること').toBeVisible({ timeout: 30_000 })
   }
 
