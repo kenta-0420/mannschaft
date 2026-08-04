@@ -37,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -487,7 +488,7 @@ class AnnouncementFeedServiceTest {
     class MarkAsRead {
 
         @Test
-        @DisplayName("正常系: 未読 → 既読に変更（save が呼ばれる）")
+        @DisplayName("正常系: 未読 → 既読に変更（冪等 UPSERT が呼ばれる）")
         void markAsRead_正常_未読から既読() {
             // Given: 当該スコープに帰属し、閲覧者（MEMBER）に可視なお知らせが存在し、未読状態
             given(feedRepository.findById(ANNOUNCEMENT_ID))
@@ -501,8 +502,12 @@ class AnnouncementFeedServiceTest {
             announcementFeedService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
-            // Then: 既読レコードが保存される
-            verify(readStatusRepository).save(any(AnnouncementReadStatusEntity.class));
+            // Then: 既読レコードが作られる。
+            // #2530 ⑤ で「存在確認 → 素の INSERT」をやめ、DB 側で冪等な UPSERT に寄せたため、
+            // 検証先も save ではなく insertReadStatusesIgnoringExisting になる。
+            verify(readStatusRepository)
+                    .insertReadStatusesIgnoringExisting(AUTHOR_USER_ID, List.of(ANNOUNCEMENT_ID));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
         }
 
         @Test
@@ -525,6 +530,8 @@ class AnnouncementFeedServiceTest {
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
         }
 
         @Test
@@ -547,6 +554,8 @@ class AnnouncementFeedServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ANNOUNCE_001"));
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
         }
 
         @Test
@@ -564,6 +573,8 @@ class AnnouncementFeedServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ANNOUNCE_001"));
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
         }
 
         @Test
@@ -581,8 +592,9 @@ class AnnouncementFeedServiceTest {
             announcementFeedService.markAsRead(
                     AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
-            // Then
-            verify(readStatusRepository).save(any(AnnouncementReadStatusEntity.class));
+            // Then（#2530 ⑤: 既読作成は DB 側で冪等な UPSERT 経路）
+            verify(readStatusRepository)
+                    .insertReadStatusesIgnoringExisting(AUTHOR_USER_ID, List.of(ANNOUNCEMENT_ID));
         }
 
         private void givenViewerRole(ViewerRole viewerRole) {

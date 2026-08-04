@@ -63,7 +63,7 @@ public class AnnouncementReadService {
     /**
      * 一括既読のチャンクサイズ（#2494）。
      *
-     * <p>1 回のクエリ / {@code INSERT} バッチで扱う最大件数。
+     * <p>1 回の未読抽出クエリ / 1 本の {@code INSERT} 文で扱う最大件数。
      * これにより SQL のプレースホルダ数・{@code max_allowed_packet} が
      * スコープの feed 総数に依らず定数上限に収まる。</p>
      */
@@ -113,6 +113,14 @@ public class AnnouncementReadService {
      * （{@code teamId} / {@code orgId}）から Controller が渡す。
      * </p>
      *
+     * <p>
+     * <b>同時実行での冪等性（#2530 ⑤）</b>: 事前の存在確認は「代理確認の証跡を二重に作らない」
+     * ためのもので、<b>競合の防止にはならない</b>（確認と挿入の間に窓がある）。同一利用者が
+     * 単件既読を同時に 2 回叩いた場合の {@code uq_ars_feed_user} 違反は
+     * {@link AnnouncementReadStatusRepository#insertReadStatusesIgnoringExisting} が
+     * DB 側で吸収する（例外の握りつぶしではなく、DB 制約に「既読済みなら何もしない」を教えている）。
+     * </p>
+     *
      * @param scopeType      スコープ種別（TEAM / ORGANIZATION）
      * @param scopeId        スコープ ID（teams.id または organizations.id）
      * @param announcementId お知らせフィード ID
@@ -124,7 +132,8 @@ public class AnnouncementReadService {
         // 「属さない」「存在しない」「可視でない」はいずれも ANNOUNCE_001 に畳み込む（存在秘匿）。
         assertReadable(scopeType, scopeId, announcementId, userId);
 
-        // 冪等: 既読済みなら何もしない
+        // 冪等（早期リターン）: 既読済みなら書き込みも代理証跡の作成もしない。
+        // 競合時の最後の砦は下の UPSERT 側（この分岐はレースを塞ぐものではない）。
         boolean alreadyRead = readStatusRepository
                 .findByAnnouncementFeedIdAndUserId(announcementId, userId)
                 .isPresent();
@@ -132,20 +141,14 @@ public class AnnouncementReadService {
             return;
         }
 
-        AnnouncementReadStatusEntity status = AnnouncementReadStatusEntity.builder()
-                .announcementFeedId(announcementId)
-                .userId(userId)
-                .build();
-        status = readStatusRepository.save(status);
+        // 既読行の作成は DB 側で冪等な UPSERT を通す（同時実行で 500 にしない・#2530 ⑤）
+        readStatusRepository.insertReadStatusesIgnoringExisting(userId, List.of(announcementId));
 
         // 代理確認の場合: proxy_input_records を作成し、is_proxy_confirmed フラグをセット
         if (proxyInputContext.isProxy()) {
             ProxyInputRecordEntity proxyRecord = creationService.buildAndSaveAnnouncementProxyRecord(
                     "ANNOUNCEMENT_READ", announcementId);
-            readStatusRepository.save(status.toBuilder()
-                    .isProxyConfirmed(true)
-                    .proxyInputRecordId(proxyRecord.getId())
-                    .build());
+            readStatusRepository.markProxyConfirmed(announcementId, userId, proxyRecord.getId());
         }
 
         log.debug("既読マーク完了 announcementId={}, userId={}", announcementId, userId);
@@ -181,73 +184,112 @@ public class AnnouncementReadService {
      * 繰り返す方式に変え、
      * </p>
      * <ul>
-     *   <li>feed ID の {@code IN} 句が消えた（バインドは可視性集合の最大 3 個のみ）</li>
-     *   <li>1 クエリ / 1 {@code INSERT} バッチの件数が定数上限に収まる</li>
+     *   <li>feed ID の {@code IN} 句が消えた（未読抽出のバインドは可視性集合の最大 3 個 + カーソル）</li>
+     *   <li>1 回の未読抽出クエリ / 1 本の {@code INSERT} 文の件数が定数上限に収まる</li>
      *   <li><b>クエリ回数・{@code INSERT} 件数がスコープの feed 総数に依らず、未読件数だけで決まる</b>
      *       （{@code ceil(未読件数 / MARK_ALL_BATCH_SIZE)} 回。既読済みが何万件あっても
      *       クエリ 1 回・{@code INSERT} 0 件で終わる）</li>
+     *   <li><b>カーソルで総プローブ数も線形（#2530 ②）</b> — 各周回に直前チャンクの最大 ID を
+     *       {@code lastSeenId} として渡し、既に処理した範囲を再スキャンしない。
+     *       これが無い旧実装は毎回先頭から引き直していたため、総インデックスプローブ数が
+     *       未読件数に対して<b>二次的</b>だった（最悪 20 周で約 10 万回）。</li>
      * </ul>
      *
-     * <p><b>正確を期すための注記（残課題・#2494 検分）</b>: 各周回は
-     * {@code ORDER BY a.id ASC} を毎回<b>先頭から</b>引き直すため、k 周目は直前までに
-     * 既読化した {@code k × MARK_ALL_BATCH_SIZE} 行を {@code NOT EXISTS} で潰しながら進む。
-     * よって<b>総インデックスプローブ数は未読件数に対して二次的</b>である
-     * （最悪の 20 周では約 10 万回）。「未読件数にのみ比例する」のは<b>クエリ回数</b>であって
-     * 総プローブ数ではない。{@code AND a.id > :lastSeenId} のカーソルを足せば線形にできるが、
-     * 現実の未読件数（数百〜数千）では 1〜数周で終わるため #2494 では見送った。</p>
+     * <p><b>{@code INSERT} の実態（#2530 ③）</b>: 既読行の作成は
+     * {@link AnnouncementReadStatusRepository#insertReadStatusesIgnoringExisting} による
+     * <b>1 チャンク = 1 本のネイティブ {@code INSERT ... SELECT ... ON DUPLICATE KEY UPDATE}</b> である。
+     * {@code saveAll} + Hibernate バッチではない — {@link AnnouncementReadStatusEntity} は
+     * {@code GenerationType.IDENTITY} で採番するため、Hibernate は
+     * 「{@code INSERT} を実行しないと ID が確定しない」制約から<b>JDBC バッチを無効化</b>し、
+     * {@code application.yml} の {@code hibernate.jdbc.batch_size} が効かない。
+     * つまり旧実装の 500 件チャンクは実際には<b>500 本の個別 {@code INSERT}</b> だった。
+     * 1 文にまとめる副作用として同時実行の {@code uq_ars_feed_user} 違反も塞がる（#2530 ⑤）。</p>
+     *
+     * <p><b>件数の出どころ</b>: {@code markedCount} は未読抽出クエリが返した件数を積む。
+     * ネイティブ {@code INSERT} の戻り値は使わない（MySQL Connector/J の既定では
+     * {@code ON DUPLICATE KEY UPDATE} の重複行も 1 行として数えるため、新規件数と一致しない）。
+     * 同時実行で相手が先に既読化した分がわずかに二重計上されうるが、
+     * 「利用者にいま何件処理したかを伝える」用途としては許容範囲である。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープ ID
      * @param userId    ユーザー ID
-     * @return 新たに既読化した件数（既読済みだったものは含まない）
+     * @return 既読化した件数と、防御上限による打ち切りで未読が残っているか
      */
     @Transactional
-    public int markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+    public MarkAllReadOutcome markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
         // 認可: 閲覧者が当該スコープで見られる visibility 集合（一覧側と同一の正準経路）。
         // fail-closed のスコープ種別では空集合になり、以降で 1 件も既読化されない。
         Set<String> allowedVisibilities = resolveAllowedVisibilities(scopeType, scopeId, userId);
         if (allowedVisibilities.isEmpty()) {
-            return 0;
+            return MarkAllReadOutcome.completed(0);
         }
 
         int markedCount = 0;
+        Long lastSeenId = null;
         for (int batch = 0; batch < MARK_ALL_MAX_BATCHES; batch++) {
             // 「可視かつ未読」を DB 側で絞る。可視性の WHERE 句は一覧クエリと同一の定数を共有する。
+            // lastSeenId で「もう見た範囲」を飛ばす（NOT EXISTS は併用のまま。役割が違う）。
             List<Long> unreadFeedIds = feedQueryRepository.findUnreadIdsByScope(
-                    scopeType, scopeId, allowedVisibilities, userId, MARK_ALL_BATCH_SIZE);
+                    scopeType, scopeId, allowedVisibilities, userId, lastSeenId, MARK_ALL_BATCH_SIZE);
             if (unreadFeedIds.isEmpty()) {
-                return logAndReturn(scopeType, scopeId, userId, markedCount);
+                return logCompleted(scopeType, scopeId, userId, markedCount);
             }
 
-            List<AnnouncementReadStatusEntity> newReadStatuses = unreadFeedIds.stream()
-                    .<AnnouncementReadStatusEntity>map(feedId -> AnnouncementReadStatusEntity.builder()
-                            .announcementFeedId(feedId)
-                            .userId(userId)
-                            .build())
-                    .toList();
-            readStatusRepository.saveAll(newReadStatuses);
-            // 次バッチの NOT EXISTS が今回の INSERT を確実に見えるようにフラッシュする
-            // （自動フラッシュ任せにせず、チャンク境界を明示的に確定させる）。
-            readStatusRepository.flush();
+            // 1 チャンク = 1 本の UPSERT。ネイティブクエリなので永続化コンテキストを経由せず、
+            // 同一トランザクション内の後続クエリ（次チャンクの NOT EXISTS）から即座に見える。
+            readStatusRepository.insertReadStatusesIgnoringExisting(userId, unreadFeedIds);
             markedCount += unreadFeedIds.size();
+            // ID 昇順で返るので末尾が最大 ID。次周回のカーソルにする。
+            lastSeenId = unreadFeedIds.get(unreadFeedIds.size() - 1);
 
             // 取得件数がチャンク未満なら未読は尽きている（余計な空クエリを 1 回省く）。
             if (unreadFeedIds.size() < MARK_ALL_BATCH_SIZE) {
-                return logAndReturn(scopeType, scopeId, userId, markedCount);
+                return logCompleted(scopeType, scopeId, userId, markedCount);
             }
         }
 
-        // 防御上限に到達。症状を隠さず WARN で記録する（残余は次回の一括既読で処理される）。
-        log.warn("全件既読マークが1リクエストの上限に到達 scopeType={}, scopeId={}, userId={}, marked={} "
-                        + "（未読が残っている可能性あり・上限={}件）",
-                scopeType, scopeId, userId, markedCount, MARK_ALL_BATCH_SIZE * MARK_ALL_MAX_BATCHES);
-        return markedCount;
+        // 防御上限に到達。「本当に残っているのか」を 1 件だけ覗いて裏を取る。
+        // 上限ちょうどで尽きていた場合に「まだ残っています」と誤報しないため
+        // （利用者に嘘をつかないのが #2530 ① の主旨であり、逆向きの嘘も作らない）。
+        boolean hasMoreUnread = !feedQueryRepository.findUnreadIdsByScope(
+                scopeType, scopeId, allowedVisibilities, userId, lastSeenId, 1).isEmpty();
+        if (hasMoreUnread) {
+            // 症状を隠さず WARN で記録する（残余は次回の一括既読で処理される）。
+            // 併せて応答でも呼び出し元＝利用者に伝える（従来はログだけで画面は「未読 0」だった）。
+            log.warn("全件既読マークが1リクエストの上限に到達 scopeType={}, scopeId={}, userId={}, marked={} "
+                            + "（未読が残っている・上限={}件）",
+                    scopeType, scopeId, userId, markedCount, MARK_ALL_BATCH_SIZE * MARK_ALL_MAX_BATCHES);
+            return new MarkAllReadOutcome(markedCount, true);
+        }
+        return logCompleted(scopeType, scopeId, userId, markedCount);
     }
 
-    private int logAndReturn(AnnouncementScopeType scopeType, Long scopeId, Long userId, int markedCount) {
+    private MarkAllReadOutcome logCompleted(AnnouncementScopeType scopeType, Long scopeId,
+                                            Long userId, int markedCount) {
         log.debug("全件既読マーク完了 scopeType={}, scopeId={}, userId={}, count={}",
                 scopeType, scopeId, userId, markedCount);
-        return markedCount;
+        return MarkAllReadOutcome.completed(markedCount);
+    }
+
+    /**
+     * 一括既読の結果（#2530 ①）。
+     *
+     * <p>従来 {@code markAllAsRead} は件数だけを返し、Controller はそれを伝搬せず
+     * ハードコードの {@code 0} を応答していた。加えて防御上限で打ち切ったことも
+     * WARN ログにしか出ていなかったため、FE は「未読 0」と表示しつつ実際には未読が
+     * 残るという食い違いが起きていた。<b>件数と残余の有無を対で返す</b>ことで、
+     * 画面が実体と食い違わないようにする。</p>
+     *
+     * @param markedCount   このリクエストで既読化した件数（既読済みだったものは含まない）
+     * @param hasMoreUnread 防御上限で打ち切り、未読が残っているか
+     */
+    public record MarkAllReadOutcome(int markedCount, boolean hasMoreUnread) {
+
+        /** 未読を最後まで処理しきった結果。 */
+        static MarkAllReadOutcome completed(int markedCount) {
+            return new MarkAllReadOutcome(markedCount, false);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════
