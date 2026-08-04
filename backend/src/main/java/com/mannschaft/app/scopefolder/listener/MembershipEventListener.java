@@ -85,7 +85,7 @@ public class MembershipEventListener {
     }
 
     /**
-     * membership.domain.ScopeType を scopefolder.entity.ScopeType に変換する。
+     * membership.domain.ScopeType を scopefolder.entity.enums.ScopeType に変換する。
      */
     private ScopeType toFolderScopeType(com.mannschaft.app.membership.domain.ScopeType membershipScope) {
         return switch (membershipScope) {

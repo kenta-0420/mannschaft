@@ -481,7 +481,7 @@ public class MyScopeFolderService {
     }
 
     /**
-     * scopefolder.entity.ScopeType を membership.domain.ScopeType に変換する。
+     * scopefolder.entity.enums.ScopeType を membership.domain.ScopeType に変換する。
      * F15.3 §6.3 サポータ対応の第一手段である F00.5 メンバーシップ基盤と
      * インターフェースを揃えるために必要なブリッジ。
      */
