@@ -59,7 +59,7 @@ import static org.mockito.Mockito.verify;
  *   <li>募集作成成功（村人による）</li>
  *   <li>募集作成 — 非村人なら VILLAGE_007</li>
  *   <li>募集作成 — 時刻順序不正なら VILLAGE_065</li>
- *   <li>募集作成 — BAN 中なら VILLAGE_031</li>
+ *   <li>募集作成 — BAN 中は非村人と同じ VILLAGE_007 に畳まれる</li>
  *   <li>更新 — 投稿者本人 OK</li>
  *   <li>更新 — 第三者なら COMMON_002</li>
  *   <li>更新 — OPEN 以外なら VILLAGE_064</li>
@@ -192,7 +192,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("01. 募集作成成功 — 村人による作成で OPEN 状態保存")
     void create_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> {
@@ -220,7 +220,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("02. 募集作成 — 非村人なら VILLAGE_007 (NOT_MEMBER)")
     void create_notMember() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.empty());
 
@@ -239,7 +239,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("03. 募集作成 — 試合終了 < 開始 なら VILLAGE_065")
     void create_invalidTime() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
 
@@ -261,20 +261,19 @@ class VillageMatchRecruitServiceTest {
     // 4. 募集作成 — BAN 中
     // ------------------------------------------------------------------------
     @Test
-    @DisplayName("04. 募集作成 — BAN 中ユーザーなら VILLAGE_031")
+    @DisplayName("04. 募集作成 — BAN 中ユーザーは非村人と同じ VILLAGE_007 (NOT_MEMBER) に畳まれる")
     void create_banned() {
-        VillageMembershipEntity m = villagerMembership(ACTOR);
-        m.setBannedAt(LocalDateTime.now());
-
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        // findActiveByVillageIdAndSubject は BAN 済みを現役メンバーとして返さない
+        // （BAN・退村・非村人はいずれも Optional.empty() → NOT_MEMBER に畳んで状態を秘匿する）。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
-                .willReturn(Optional.of(m));
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createRecruit(VILLAGE_ID, validCreate(), ACTOR))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.MEMBER_BANNED);
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
     }
 
     // ------------------------------------------------------------------------
@@ -445,7 +444,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(OTHER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -478,7 +477,7 @@ class VillageMatchRecruitServiceTest {
         entity.setStatus(VillageMatchRecruitStatus.CLOSED);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -501,7 +500,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(OTHER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -527,7 +526,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(ACTOR); // 投稿者 = ACTOR
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -645,7 +644,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("19. 一覧 — 非村人は VILLAGE_007（村人限定閲覧の欠落を修正）")
     void list_notMember() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.empty());
 
@@ -665,7 +664,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("20. 一覧 — 村人なら一覧を取得できる")
     void list_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any()))

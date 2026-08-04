@@ -92,9 +92,9 @@ public class VillageMatchRecruitService {
      * 練習試合・審判募集を作成する。村人なら誰でも投稿可。
      *
      * <ul>
-     *   <li>非村人は {@link VillageErrorCode#NOT_MEMBER}</li>
+     *   <li>非村人・BAN 中・退村済みはいずれも {@link VillageErrorCode#NOT_MEMBER} に畳んで返す
+     *       （状態を秘匿するため区別しない）</li>
      *   <li>match_time_end < match_time_start は {@link VillageErrorCode#MATCH_RECRUIT_TIME_INVALID}</li>
-     *   <li>BAN 中ユーザーは {@link VillageErrorCode#MEMBER_BANNED}</li>
      * </ul>
      */
     @Transactional
@@ -284,7 +284,8 @@ public class VillageMatchRecruitService {
      * 募集に応募する。
      *
      * <ul>
-     *   <li>非村人は {@link VillageErrorCode#NOT_MEMBER}</li>
+     *   <li>非村人・BAN 中・退村済みはいずれも {@link VillageErrorCode#NOT_MEMBER} に畳んで返す
+     *       （状態を秘匿するため区別しない）</li>
      *   <li>OPEN 以外の募集は {@link VillageErrorCode#MATCH_RECRUIT_NOT_OPEN}</li>
      *   <li>同一ユーザーで PENDING の応募がある場合は {@link VillageErrorCode#MATCH_APPLICATION_DUPLICATE}</li>
      *   <li>投稿者本人が自分の募集に応募するのは禁止（{@link CommonErrorCode#COMMON_002}）</li>
@@ -487,18 +488,19 @@ public class VillageMatchRecruitService {
         return a;
     }
 
-    /** 当該ユーザーが村人（USER 主体・BAN なし）であることを検証する。 */
+    /**
+     * 当該ユーザーが村の現役メンバー（USER 主体）であることを検証する。
+     *
+     * <p>BAN・退村・そもそも村人でないの三者はいずれも {@link VillageErrorCode#NOT_MEMBER} に
+     * 畳んで返す。BAN 事実は API 応答からは判別できない（本人への告知は UI 側の別導線で行う）。</p>
+     */
     private VillageMembershipEntity ensureVillager(UUID villageId, Long userId) {
         if (userId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(villageId, VillageSubjectType.USER, userId)
+        return membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, userId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
-        if (m.getBannedAt() != null) {
-            throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-        }
-        return m;
     }
 
     /**
