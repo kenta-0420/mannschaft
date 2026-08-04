@@ -37,7 +37,11 @@ test.describe('PR#2067 チームダッシュボード TeamSidebar Drawer 実機E
     await page.goto(`/teams/${TEAM_SLUG}`)
     await waitForHydration(page)
 
-    const menuBtn = page.locator('button[aria-label="メニュー"]')
+    // PR#2557 で /teams/[slug] は永続シェル ScopePageShell.vue に移行した。同一ページ内の
+    // TeamPageHeader.vue の三点overflowメニューも同じ aria-label="メニュー"（$t('common.menu')）を
+    // 名乗るため aria-label では一意特定できない。layouts/team.vue / organization.vue と同様に
+    // ScopePageShell.vue にも data-testid="scope-sidebar-toggle" を付与し、テストはこれで一意に特定する。
+    const menuBtn = page.locator('[data-testid="scope-sidebar-toggle"]')
     await expect(menuBtn).toBeVisible({ timeout: 15_000 })
   })
 
@@ -48,17 +52,20 @@ test.describe('PR#2067 チームダッシュボード TeamSidebar Drawer 実機E
     await page.goto(`/teams/${TEAM_SLUG}`)
     await waitForHydration(page)
 
-    const menuBtn = page.locator('button[aria-label="メニュー"]')
+    const menuBtn = page.locator('[data-testid="scope-sidebar-toggle"]')
     await menuBtn.waitFor({ state: 'visible', timeout: 15_000 })
     await menuBtn.click()
 
     const drawer = page.locator('[role="dialog"]').first()
     await expect(drawer).toBeVisible({ timeout: 8_000 })
 
-    // TeamSidebar にはスケジュールやダッシュボードなどのナビゲーション項目が含まれる
+    // TeamSidebar にはスケジュールやダッシュボードなどのナビゲーション項目が含まれる。
+    // Drawer ヘッダー自体にも「メニュー」というテキストが存在するため、.or() だけだと
+    // 両方同時に一致して strict mode violation になる。.first() で先頭要素に絞る。
     await expect(
       drawer.getByText('スケジュール', { exact: false })
-        .or(drawer.getByText('メニュー', { exact: false })),
+        .or(drawer.getByText('メニュー', { exact: false }))
+        .first(),
     ).toBeVisible({ timeout: 10_000 })
   })
 
