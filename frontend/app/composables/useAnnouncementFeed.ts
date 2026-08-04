@@ -37,6 +37,21 @@ export function isAnnouncementGoneError(error: unknown): boolean {
 }
 
 /**
+ * 流量制限（429 Too Many Requests）のエラーかどうかを判定する。
+ *
+ * BE の `AbstractRateLimitFilter` は 429 + `Retry-After` + `X-RateLimit-*` を返し、
+ * それを `useApi.ts` が横断ハンドリングして「あと N 秒待ってください」のトーストを出す。
+ * 呼び出し元は**提示を重ねない**ために本判定を使う（#2530 ⑥）。
+ *
+ * ofetch の `FetchError` は `statusCode` を持ち、`response` も参照できる。
+ * 前段の CDN / WAF が返した 429 でボディ形状が違っても拾えるよう両方を見る。
+ */
+export function isRateLimitedError(error: unknown): boolean {
+  const fetchError = error as { statusCode?: number; response?: { status?: number } }
+  return fetchError?.statusCode === 429 || fetchError?.response?.status === 429
+}
+
+/**
  * F02.6 お知らせウィジェット composable。
  *
  * GET /api/v1/teams/{id}/announcements または
@@ -62,6 +77,9 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
   const nuxtApp = useNuxtApp()
   // 戻り値の string 明示は `middleware/admin-console.ts:32` に揃えている（showToast が string を要求するため）。
   const t = (key: string): string => nuxtApp.$i18n.t(key)
+  // 名前付き補間つきの翻訳。$i18n は useI18n() と同じ Composer なので t(key, named) 形が使える
+  // （`useApi.ts` の `tn` と同じ流儀）。
+  const tn = (key: string, named: Record<string, unknown>): string => nuxtApp.$i18n.t(key, named)
 
   /**
    * setup コンテキスト外でも安全に呼べるトースト表示（`$toast` 経由）。
@@ -230,6 +248,14 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
         showToast('warn', t('announcement.no_longer_available'))
         return false
       }
+      // 流量制限（429）: `useApi.ts` の横断ハンドリングが既に「あと N 秒待ってください」を
+      // 提示済みなので、ここで汎用エラートーストを重ねると同じ事象で 2 枚並ぶ（#2530 ⑥）。
+      // 提示だけを上流に譲る形であり、握りつぶしではない — エラー報告は下と同じく送り、
+      // 遷移も従来どおり続行する（既読マークは副作用にすぎない）。
+      if (isRateLimitedError(e)) {
+        errorReport.captureQuiet(e, { context: 'announcementMarkAsRead' })
+        return true
+      }
       // 通信に失敗した: 項目は消さず、必ず利用者に提示する（握りつぶさない・#2460）。
       // 提示内容は useErrorHandler#handleApiError と同じ方針（BE の理由を優先し、
       // 無ければ汎用文言に落とす）。handleApiError 自体は内部で useI18n / useToast を
@@ -243,13 +269,37 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
 
   /**
    * スコープ内の未読お知らせを全件既読にする。
+   *
+   * <p><b>打ち切りを隠さない（#2530 ①）</b>: BE は 1 リクエストあたり最大 10,000 件
+   * （500 件 × 20 チャンク）で打ち切り、残りは次回に回す。従来はここで `unreadCount` を
+   * **無条件に 0 へ上書き**していたため、実際には未読が残っているのに画面上は「未読 0」に
+   * なっていた（再取得すると復活する不気味な挙動）。現在は BE が
+   * `markedCount`（実際に既読化した件数）と `hasMoreUnread`（残っているか）を返すので、
+   * それに従って表示を実体へ合わせる。</p>
+   *
+   * <p>打ち切られた場合、**どのお知らせが既読化されたかは応答から分からない**。
+   * 手元のリストを推測で塗るのではなく BE の真値を取り直す（正直さを優先する）。
+   * そのうえで「N 件処理した・まだ残りがある・もう一度押せば続きを処理する」ことを
+   * トーストで伝える。</p>
    */
   async function markAllAsRead(): Promise<void> {
-    await api<ApiResponse<MarkAllReadResponse>>(`${basePath()}/read-all`, { method: 'POST' })
-    feed.value = feed.value.map(item => ({ ...item, isRead: true }))
-    if (meta.value) {
-      meta.value = { ...meta.value, unreadCount: 0 }
+    const res = await api<ApiResponse<MarkAllReadResponse>>(
+      `${basePath()}/read-all`, { method: 'POST' })
+    const markedCount = res.data?.markedCount ?? 0
+    const hasMoreUnread = res.data?.hasMoreUnread === true
+
+    if (!hasMoreUnread) {
+      // 未読を最後まで処理しきった。手元の一覧と未読カウントを 0 に揃えて良い。
+      feed.value = feed.value.map(item => ({ ...item, isRead: true }))
+      if (meta.value) {
+        meta.value = { ...meta.value, unreadCount: 0 }
+      }
+      return
     }
+
+    // 打ち切られた: BE の真値へ揃え直してから、残りがあることを件数付きで伝える。
+    await fetchFeed()
+    showToast('warn', tn('announcement.mark_all_read_partial', { count: markedCount }))
   }
 
   return {

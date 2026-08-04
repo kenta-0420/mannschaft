@@ -214,26 +214,27 @@ public class AnnouncementFeedService {
      * スコープ内の全お知らせを既読にする。
      *
      * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
-     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例する。</p>
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例し、
+     * カーソル（{@code lastSeenId}）により総インデックスプローブ数も線形である（#2530 ②）。</p>
      *
-     * <p><b>既知の未解消（#2494 の範囲外・#2530 で追跡）</b>: 下流
-     * {@link AnnouncementReadService#markAllAsRead} は新規既読化件数を返すようになったが、
-     * Controller の応答は<b>値もキー名も</b>設計書 F02.6 §4 と食い違っている。</p>
-     * <ul>
-     *   <li><b>値</b> — Controller は {@code markedCount} にハードコードの {@code 0} を返す
-     *       （実件数を伝搬していない）</li>
-     *   <li><b>キー名</b> — 設計書は {@code marked_count}（snake_case）、実装は {@code markedCount}</li>
-     * </ul>
-     * <p>応答は {@code Map<String, Object>} のため OpenAPI スキーマに現れず、
-     * キー名の食い違いを機械的に検出する仕組みが無い。是正時は値だけでなくキー名も決着させること。
-     * 本メソッドのシグネチャ（＝Controller の応答）に触れる修正になるため #2494 では手を入れていない。
-     * 詳細は設計書 F02.6 §4 の {@code read-all} 節の ⚠️ ブロックを参照。</p>
+     * <p><b>応答契約（#2530 ① で決着）</b>: 下流の結果をそのまま返し、Controller は
+     * {@code markedCount}（実際に既読化した件数）と {@code hasMoreUnread}
+     * （防御上限で打ち切り、未読が残っているか）を応答する。キー名は
+     * <b>camelCase</b> を正とし（他 EP の応答および {@code @RequestBody} と揃える）、
+     * 設計書 F02.6 §4 の {@code marked_count} 表記を実装側に合わせて改めた。
+     * 応答型を {@code Map<String, Object>} から DTO に変えたので、以後キー名の食い違いは
+     * OpenAPI スキーマ（{@code docs/openapi.json}）と生成型に現れる。</p>
      *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userId    ユーザー ID
+     * @return 既読化件数と残余の有無
      * @see AnnouncementReadService#markAllAsRead
      */
     @Transactional
-    public void markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
-        readService.markAllAsRead(scopeType, scopeId, userId);
+    public AnnouncementReadService.MarkAllReadOutcome markAllAsRead(
+            AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+        return readService.markAllAsRead(scopeType, scopeId, userId);
     }
 
     // ═════════════════════════════════════════════════════════════

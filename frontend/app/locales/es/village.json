@@ -444,6 +444,7 @@
       "saveSuccess": "Festival guardado",
       "cancelSuccess": "Festival cancelado",
       "loadFailed": "Error al cargar la lista de festivales",
+      "invalidDateTime": "La fecha/hora de inicio o fin no es válida. Vuelva a introducirla.",
       "filterAll": "Todos",
       "status": {
         "SCHEDULED": "Programado",
