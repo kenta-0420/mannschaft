@@ -77,25 +77,30 @@ async function fetchMe(ctx: APIRequestContext, token: string): Promise<MeProfile
 }
 
 /**
- * API 用の使い捨てコンテキストで処理を行う。
+ * API 用セッション（コンテキスト＋アクセストークン）をユーザー単位でキャッシュする。
  *
- * UI ログイン（loginViaApi）とトークン寿命を競合させないため、API 呼び出しが必要になる
- * たびにログインし直して閉じる（単一セッション設計でのトークン回転事故を避ける）。
+ * 【実測 2026-08-04】呼び出しのたびにログインすると BE のログインレートリミット
+ * （AUTH_044「リクエストが集中しています」429）に必ず引っかかる。ブラウザ側の
+ * loginViaApi は Cookie ベースで別勘定のため、API 側は使い回しで足りる。
  */
+const apiSessions = new Map<string, { ctx: APIRequestContext; token: string }>()
+
 async function withApi<T>(
   email: string,
   password: string,
   fn: (ctx: APIRequestContext, token: string) => Promise<T>,
 ): Promise<T> {
-  const ctx = await playwrightRequest.newContext()
-  try {
-    const token = await login(ctx, email, password)
-    return await fn(ctx, token)
+  let session = apiSessions.get(email)
+  if (!session) {
+    const ctx = await playwrightRequest.newContext()
+    session = { ctx, token: await login(ctx, email, password) }
+    apiSessions.set(email, session)
   }
-  finally {
-    await ctx.dispose()
-  }
+  return fn(session.ctx, session.token)
 }
+
+/** 本 spec が作った使い捨てチーム（後始末で削除する）。 */
+const createdTeamSlugs: string[] = []
 
 async function createThrowawayTeam(ctx: APIRequestContext, adminToken: string, label: string): Promise<string> {
   const res = await ctx.post(`${BE_API}/teams`, {
@@ -103,7 +108,9 @@ async function createThrowawayTeam(ctx: APIRequestContext, adminToken: string, l
     data: { name: `RsvMbr_${label}_${Date.now()}` },
   })
   if (!res.ok()) throw new Error(`チーム作成失敗: ${res.status()} ${await res.text()}`)
-  return ((await res.json()).data as { slug: string }).slug
+  const slug = ((await res.json()).data as { slug: string }).slug
+  createdTeamSlugs.push(slug)
+  return slug
 }
 
 async function enableReservationModule(ctx: APIRequestContext, adminToken: string, slug: string): Promise<void> {
@@ -235,6 +242,7 @@ async function findSlotId(
 interface SlotTemplate {
   dayOfWeek: string
   startTime: string
+  endTime: string
 }
 
 /** 週間スケジュール（枠テンプレ）一覧。レスポンスは { templates: [...], meta: {...} }。 */
@@ -370,6 +378,10 @@ async function dragCells(page: Page, fromLabel: string, toLabel: string): Promis
   const to = page.getByRole('button', { name: toLabel, exact: true })
   await expect(from, `ドラッグ開始セルが表示されること: ${fromLabel}`).toBeVisible({ timeout: 20_000 })
   await expect(to, `ドラッグ終了セルが表示されること: ${toLabel}`).toBeVisible({ timeout: 20_000 })
+  // page.mouse はビューポート座標で動くため、対象行を可視領域へ入れてから座標を取り直す
+  // （対象日が下にスクロールした位置にあると、座標がビューポート外になりドラッグが空振りする）。
+  await from.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
   const a = await from.boundingBox()
   const b = await to.boundingBox()
   if (!a || !b) throw new Error(`セルの boundingBox が取得できない: ${fromLabel} / ${toLabel}`)
@@ -816,8 +828,12 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
     await expect(async () => {
       const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, (ctx, t) => listTemplates(ctx, t, teamSlug))
       const mon = templates.filter(t => t.dayOfWeek === 'MON')
-      console.log(`[M4-2] MON テンプレ=${JSON.stringify(mon.map(t => t.startTime))}`)
-      expect(mon.length, '月曜に3枠作られること').toBe(3)
+      console.log(`[M4-2] MON テンプレ=${JSON.stringify(mon.map(t => `${t.startTime}-${t.endTime}`))}`)
+      // ドラッグ範囲は「曜日ごとに1件のテンプレ」として作られる（createFromDragRange →
+      // save() が selectedDays をループする実装）。3セル分＝10:00-11:30 の1件になる。
+      expect(mon.length, '月曜にドラッグ範囲のテンプレが1件作られること').toBe(1)
+      expect(mon[0]!.startTime, '開始は 10:00').toContain('10:00')
+      expect(mon[0]!.endTime, '3セル分なので終了は 11:30').toContain('11:30')
     }).toPass({ timeout: 30_000 })
     void tokens
   })
@@ -862,8 +878,9 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
       const templates = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, (ctx, t) => listTemplates(ctx, t, teamSlug))
       for (const d of ['TUE', 'WED', 'THU']) {
         const rows = templates.filter(t => t.dayOfWeek === d && t.startTime.startsWith('19:'))
-        console.log(`[M4-4] ${d} 19時台テンプレ=${JSON.stringify(rows.map(r => r.startTime))}`)
-        expect(rows.length, `${d} に2枠作られること`).toBe(2)
+        console.log(`[M4-4] ${d} 19時台テンプレ=${JSON.stringify(rows.map(r => `${r.startTime}-${r.endTime}`))}`)
+        expect(rows.length, `${d} にドラッグ範囲のテンプレが1件作られること`).toBe(1)
+        expect(rows[0]!.endTime, `${d} は 2セル分なので 20:00 終了`).toContain('20:00')
       }
     }).toPass({ timeout: 30_000 })
   })
@@ -898,10 +915,63 @@ test.describe('M4: 管理者の週グリッド ドラッグ枠作成 / 旧表示
       const body = (await res.json()).data as { content?: { id: number }[] } | { id: number }[]
       const rows = Array.isArray(body) ? body : (body.content ?? [])
       expect(rows.length, '予約が1件以上あること').toBeGreaterThan(0)
-      const cancelRes = await ctx.delete(`${BE_API}/teams/${teamSlug}/reservations/${rows[0]!.id}`, {
+      const cancelRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservations/${rows[0]!.id}/cancel`, {
         headers: authHeaders(t),
+        data: { cancelReason: 'E2E後始末' },
       })
-      expect(cancelRes.ok(), 'キャンセルAPIが通ること').toBe(true)
+      expect(cancelRes.ok(), `キャンセルAPIが通ること: ${cancelRes.status()} ${await cancelRes.text()}`).toBe(true)
     })
   })
+})
+
+// ============================================================================
+// M5: エラー系（レートリミット）
+// ============================================================================
+test.describe('M5: エラー系 — ログインレートリミット', () => {
+  test('M5-1: 短時間に連続ログインすると 429 (AUTH_044) で弾かれること', async () => {
+    // 実在ユーザーを使うと以降のテストのセッションまで巻き添えで縛られるため、
+    // 存在しないアカウントに対して連打する（レートリミットは認証成否より手前で効く）。
+    const ctx = await playwrightRequest.newContext()
+    try {
+      const bogus = `e2e-ratelimit-${Date.now()}@test.mannschaft.local`
+      let sawTooManyRequests = false
+      let attempts = 0
+      for (let i = 0; i < 40; i++) {
+        attempts++
+        const res = await ctx.post(`${BE_API}/auth/login`, {
+          headers: { 'Content-Type': 'application/json' },
+          data: { email: bogus, password: 'WrongPassw0rd!2026' },
+        })
+        if (res.status() === 429) {
+          const body = await res.text()
+          console.log(`[M5-1] ${attempts}回目で429: ${body}`)
+          expect(body, 'レートリミットの専用エラーコードが返ること').toContain('AUTH_044')
+          sawTooManyRequests = true
+          break
+        }
+        expect(res.status(), 'レートリミット到達前は認証失敗(400番台)であること').toBeGreaterThanOrEqual(400)
+      }
+      expect(sawTooManyRequests, `${attempts}回のログイン連打でレートリミット(429)が作動すること`).toBe(true)
+    }
+    finally {
+      await ctx.dispose()
+    }
+  })
+})
+
+// ============================================================================
+// 後始末: 作った使い捨てチームを削除し、API セッションを閉じる
+// ============================================================================
+test.afterAll(async () => {
+  await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, token) => {
+    for (const slug of createdTeamSlugs) {
+      const res = await ctx.delete(`${BE_API}/teams/${slug}`, { headers: authHeaders(token) })
+      console.log(`[CLEANUP] DELETE /teams/${slug} -> ${res.status()}`)
+    }
+  })
+  createdTeamSlugs.length = 0
+  for (const session of apiSessions.values()) {
+    await session.ctx.dispose()
+  }
+  apiSessions.clear()
 })
