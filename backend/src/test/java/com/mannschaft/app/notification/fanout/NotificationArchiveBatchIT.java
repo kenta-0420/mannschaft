@@ -302,6 +302,36 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
         assertThat(archiveCount(c)).isZero();
     }
 
+    // ============================== AC-9 クラッシュ再開 ==============================
+
+    @Test
+    @DisplayName("AC-9(再開) 前回INSERTだけコミット済の孤児行を、再走で本体からDELETEし二重在庫を解消する")
+    void ac9_crashRestartPurgesOrphanFromMainTable() {
+        // 移送対象行を本体に作り、かつ同一 id を archive にも直接 INSERT して
+        // 「前回チャンクで INSERT だけコミットされ DELETE 前にクラッシュした」状態を再現する。
+        Long orphan = seedNotification(111L, true, READ_RETENTION_DAYS + 7);
+        // archive 側に同一 id の行を先行投入（移送済みだが本体に残っている＝孤児）。
+        jdbc.update("INSERT INTO notifications_archive " +
+                        "(id, user_id, organization_id, notification_type, priority, title, body, " +
+                        " source_type, source_id, scope_type, scope_id, action_url, actor_id, " +
+                        " is_read, read_at, channels_sent, snoozed_until, created_at, archived_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                orphan, 111L, 777L, "VILLAGE_EVENT", "HIGH", "タイトル-111", "本文-111",
+                "VILLAGE_EVENT", 4242L, "TEAM", 555L, "/x", 999L,
+                true, LocalDateTime.now().minusDays(READ_RETENTION_DAYS + 7), "[\"PUSH\"]", null,
+                LocalDateTime.now().minusDays(READ_RETENTION_DAYS + 7), LocalDateTime.now());
+
+        // 走行前は本体・archive の両方に居る（＝二重在庫）。
+        assertThat(notificationCount(orphan)).as("走行前: 本体に孤児が残る").isEqualTo(1);
+        assertThat(archiveCount(orphan)).as("走行前: archive にも既に居る").isEqualTo(1);
+
+        cleanupBatchService.cleanupOldReadNotifications();
+
+        // 再走で INSERT IGNORE され archived=0 でも、存在確認 DELETE が本体から掃き出す。
+        assertThat(notificationCount(orphan)).as("再走後: 本体から消えて二重在庫が解消").isZero();
+        assertThat(archiveCount(orphan)).as("再走後: archive は id あたり1本のまま").isEqualTo(1);
+    }
+
     // ============================== AC-16 ==============================
 
     @Test

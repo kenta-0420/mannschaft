@@ -81,17 +81,21 @@ public class NotificationCleanupBatchService {
 
         try {
             while (true) {
+                // INSERT の後は archived 件数に関わらず必ず DELETE を実行する。
+                // 前回チャンクで INSERT コミット後 DELETE 前にクラッシュした孤児行
+                // （archive に在り・本体にも在る）は再走時に INSERT IGNORE され archived=0 になるが、
+                // 存在確認付き DELETE が本体から消して二重在庫を解消する（クラッシュ再開の欠落なし・重複なし）。
                 int archived = insertIntoArchive(readThreshold, unreadThreshold);
-                if (archived == 0) break;
-
-                int deleted = deleteArchived(readThreshold, unreadThreshold, archived);
+                int deleted = deleteArchived(readThreshold, unreadThreshold);
                 totalArchived += archived;
                 totalDeleted += deleted;
 
                 log.info("[NotificationRetentionBatch] バッチ完了: 移送={}件, 削除={}件（累計: 移送={}, 削除={}）",
                         archived, deleted, totalArchived, totalDeleted);
 
-                if (archived < BATCH_SIZE) break;
+                // 収束判定: このチャンクで移送も削除も起きなくなったら終了（進捗がある限り継続）。
+                // 両方0でのみ抜けることで、孤児行の掃き出し途中で早期 break しない・かつ無限ループも防ぐ。
+                if (archived == 0 && deleted == 0) break;
             }
 
             log.info("[NotificationRetentionBatch] 完了: 総移送={}件, 総削除={}件", totalArchived, totalDeleted);
@@ -127,14 +131,17 @@ public class NotificationCleanupBatchService {
      * archive に入った id のみ本体から削除する（1チャンク・独立コミット）。
      * {@code id IN (SELECT id FROM notifications_archive)} を安全弁とし、
      * archive 未収録の行を本体から消さない（欠落防止）。
+     *
+     * <p>LIMIT は直前の新規挿入数ではなく {@link #BATCH_SIZE} を使う。存在確認 DELETE のため
+     * 過剰指定でも安全弁が守り、かつ孤児行（archive 済みだが本体に残る行）を取りこぼさない。</p>
      */
-    int deleteArchived(LocalDateTime readThreshold, LocalDateTime unreadThreshold, int limit) {
+    int deleteArchived(LocalDateTime readThreshold, LocalDateTime unreadThreshold) {
         Integer deleted = transactionTemplate.execute(status -> jdbcTemplate.update(
                 "DELETE FROM notifications " +
                 "WHERE " + MOVE_PREDICATE + " " +
                 "  AND id IN (SELECT id FROM notifications_archive) " +
                 "LIMIT ?",
-                readThreshold, unreadThreshold, limit));
+                readThreshold, unreadThreshold, BATCH_SIZE));
         return deleted == null ? 0 : deleted;
     }
 }

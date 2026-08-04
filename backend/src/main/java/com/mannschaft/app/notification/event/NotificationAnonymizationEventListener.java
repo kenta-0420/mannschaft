@@ -7,8 +7,10 @@ import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
 import com.mannschaft.app.notification.repository.NotificationTypePreferenceRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -47,6 +49,12 @@ public class NotificationAnonymizationEventListener {
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationArchiveRepository notificationArchiveRepository;
+    /** MeterRegistry（optional。narrowed test context 等では不在・fan-out 系と同じ ObjectProvider 方式）。 */
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+
+    /** archive PII 即時消去の失敗を可観測化するメトリクス名。 */
+    private static final String METRIC_ARCHIVE_DELETE_FAILED =
+            "mannschaft.notification.anonymization.archive_delete_failed";
 
     /**
      * ユーザー退会匿名化イベントを受け取り、notification ドメインの関連データを削除する。
@@ -79,8 +87,24 @@ public class NotificationAnonymizationEventListener {
             // 保持バッチ（Wave2-A）で notifications_archive へ移送済みの行にも title / body（PII）が
             // 残るため、即時消去層（UserAnonymizedEvent）で本体と同時に archive 側の PII も消す。
             // 30日後の AccountPurge 側には足さない（即時層の責務）。
-            int deletedArchive = notificationArchiveRepository.deleteByUserId(userId);
-            log.debug("ユーザー退会: 通知アーカイブ削除完了: userId={}, deleted={}", userId, deletedArchive);
+            //
+            // GDPR 即時消去の要である archive PII 削除は、外側の WARN 握り潰しに沈めない。
+            // 失敗時は ERROR ログ＋メトリクスで可観測化し、PII 残留を検知可能にする
+            // （握り潰し禁止・障害対応の原則2）。ただし例外は再送出し、他の削除同様に
+            // 外側 catch へ伝播させて処理全体の失敗として扱う。
+            try {
+                int deletedArchive = notificationArchiveRepository.deleteByUserId(userId);
+                log.debug("ユーザー退会: 通知アーカイブ削除完了: userId={}, deleted={}", userId, deletedArchive);
+            } catch (Exception archiveEx) {
+                log.error("ユーザー退会: 通知アーカイブPII即時消去に失敗（PII残留の恐れ）: userId={}, error={}",
+                        userId, archiveEx.getMessage(), archiveEx);
+                MeterRegistry registry =
+                        meterRegistryProvider == null ? null : meterRegistryProvider.getIfAvailable();
+                if (registry != null) {
+                    registry.counter(METRIC_ARCHIVE_DELETE_FAILED).increment();
+                }
+                throw archiveEx;
+            }
 
             log.info("ユーザー退会: notificationドメイン匿名化完了: userId={}", userId);
         } catch (Exception e) {

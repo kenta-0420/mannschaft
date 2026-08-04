@@ -292,8 +292,8 @@ WHERE (is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
 ORDER BY created_at ASC LIMIT ?;
 
 DELETE FROM notifications
-WHERE (is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
-   OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY))
+WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+    OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY)))
   AND id IN (SELECT id FROM notifications_archive) LIMIT ?;
 ```
 
