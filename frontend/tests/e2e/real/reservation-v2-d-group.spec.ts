@@ -417,7 +417,10 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
 
     const tplRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, {
       headers: authHeaders(tokens.admin),
-      data: { lineId, dayOfWeek: day.dayCode, startTime: '11:00:00', endTime: '11:30:00', capacity: 3 },
+      // 【旧表示撤去 2026-08-04 追従】定期予約UI（repeatWeeks トグルを持つ ReservationForm）へは
+      // マトリックスの「長尺手動枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
+      // 旧リスト表示（SlotPicker）が撤去されたため、テンプレを60分枠にして span=2 のセルを作る。
+      data: { lineId, dayOfWeek: day.dayCode, startTime: '11:00:00', endTime: '12:00:00', capacity: 3 },
     })
     if (!tplRes.ok()) throw new Error(`テンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`)
 
@@ -429,22 +432,16 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     await gotoReservations(page, teamSlug)
     await openReserveTab(page)
 
-    // 🔴発見: マトリックス表示（既定）の30分単セルは GroupBookingDialog（recurring非対応）に
+    // 🔴既知: マトリックスの30分単セル（span=1）は GroupBookingDialog（recurring非対応）に
     // ルーティングされ、定期予約(repeatWeeks)トグルを持つ ReservationForm には到達しない
     // （SlotMatrixPicker.vue のコード上コメント「30分セル(span=1・AVAILABLE): GroupBookingDialog」
-    // 「長尺手動枠: 既存のReservationForm」がその根拠）。定期予約UIへは「リスト表示」
-    // （SlotPicker.vue → slotSelected → 親TeamReservationsPanelがReservationFormを開く）
-    // 経由でのみ到達できる。本specはリスト表示に切り替えて検証する。
-    await page.getByRole('button', { name: 'リスト表示' }).click()
-    await page.waitForTimeout(500)
-    const dateInput = page.locator('input[data-pc-name="pcinputtext"]').first()
-    await dateInput.click()
-    await dateInput.fill(day.iso.replaceAll('-', '/'))
-    await page.keyboard.press('Escape')
-    await page.waitForTimeout(500)
+    // 「長尺手動枠: 既存のReservationForm」がその根拠）。
+    // 旧リスト表示（SlotPicker）は撤去済みのため、beforeAll で60分テンプレ（span=2 の長尺セル）を
+    // 用意し、そのセルから ReservationForm（定期予約UI）へ到達して検証する。
+    await goToWeekContaining(page, day.iso)
 
-    const slotBtn = page.getByRole('button', { name: /^11:00:00 - 11:30:00/ })
-    await expect(slotBtn, '空き(AVAILABLE)スロットボタンが表示されること').toBeVisible({ timeout: 15_000 })
+    const slotBtn = page.getByRole('button', { name: `${day.rowLabel} 11:00 会議室 空き`, exact: true })
+    await expect(slotBtn, '長尺(60分)空きセルが表示されること').toBeVisible({ timeout: 15_000 })
     await slotBtn.click()
 
     const formDialog = page.getByRole('dialog', { name: '予約確認' })

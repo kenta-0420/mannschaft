@@ -6,8 +6,6 @@ import TeamReservationsPanel from '~/components/reservation/TeamReservationsPane
 import ReservationForm from '~/components/reservation/ReservationForm.vue'
 import ReservationList from '~/components/reservation/ReservationList.vue'
 import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
-import SlotPicker from '~/components/reservation/SlotPicker.vue'
-import SlotGridPicker from '~/components/reservation/SlotGridPicker.vue'
 import ReservationResourceNameSettings from '~/components/reservation/ReservationResourceNameSettings.vue'
 import LineManager from '~/components/reservation/LineManager.vue'
 
@@ -17,22 +15,22 @@ import LineManager from '~/components/reservation/LineManager.vue'
  * 背景:
  *   実機E2E（予約v2第一弾）で、予約確定後に一覧・枠の空き状況が更新されない実バグを発見した。
  *   原因は ReservationForm が emit('reserved') する一方、TeamReservationsPanel が
- *   <ReservationForm @reserved="..."> を結線しておらず、ReservationList（一覧）・SlotPicker（枠）
+ *   <ReservationForm @reserved="..."> を結線しておらず、ReservationList（一覧）・枠表示
  *   の再読込がトリガーされていなかったこと（再読込＝タブ切替や再訪問まで放置される）。
  *
  * 観点（AC 対応）:
- *   AC-1: reserved emit 後、SlotPicker の枠再取得（getSlots）が再実行される
+ *   AC-1: reserved emit 後、枠表示（SlotMatrixPicker）の再取得（getSlotGrid）が再実行される
  *   AC-2: reserved emit 後、ReservationList の一覧再取得（listMyReservations）が再実行される
- *   AC-3（F03.4.4 追加）: 表示選好 localStorage が未設定の場合、既定タブは SlotMatrixPicker（マトリックス）
+ *   AC-3（F03.4.4 追加 → 旧表示撤去で恒久化）: 予約タブの枠表示は SlotMatrixPicker 一本で、
+ *     表示切替 UI（SelectButton）も localStorage の表示選好も存在しない
  *   AC-5（第二弾実機E2E発見バグの根治・#2179逆方向）: ReservationList の changed emit 後、
- *     SlotPicker の枠再取得（getSlots）が再実行される。一覧タブでの承認/却下/キャンセルが
+ *     枠表示（SlotMatrixPicker）の再取得が再実行される。一覧タブでの承認/却下/キャンセルが
  *     予約するタブの空き表示に反映されない実バグ（一覧→枠表示の逆方向が未結線）を根治する。
  *
  * 注: useRoleAccess を isAdmin=false/isAdminOrDeputy=false に固定し、ADMIN限定タブ
  *     （ライン管理・緊急休業）を DOM に出さない（v-if で最初から存在しないため mount 不要）。
- *     AC-1/2 は SlotPicker 固有の再読込結線を検証する観点のため、localStorage に
- *     表示選好 'list' を事前設定して SlotPicker を実マウントさせる（F03.4.4 で既定が
- *     'matrix' へ変わったため。§5.4 の localStorage 記憶方針に基づく明示的な選好切替）。
+ *     旧リスト表示（SlotPicker）・旧staff軸グリッド（SlotGridPicker）はマスター裁可 2026-08-04 で
+ *     撤去済みのため、再読込結線の検証対象は SlotMatrixPicker に一本化している。
  */
 const mockGetReservationSettings = vi.fn()
 const mockGetLines = vi.fn()
@@ -120,20 +118,17 @@ beforeEach(() => {
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
-  it('AC-1/2: ReservationForm の reserved emit で枠(SlotPicker)・一覧(ReservationList)が再読込される', async () => {
-    // F03.4.4 で既定タブが matrix へ変わったため、本 AC は SlotPicker 固有の結線検証を
-    // 継続するために表示選好を明示的に 'list' へ切り替える。
-    localStorage.setItem('mannschaft.reservation.bookDisplayMode', 'list')
+  it('AC-1/2: ReservationForm の reserved emit で枠(SlotMatrixPicker)・一覧(ReservationList)が再読込される', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
     await flushPromises()
 
-    // mount 直後の初回読込回数（SlotPicker は selectedLineId 確定時の watch 発火分を含みうるため
+    // mount 直後の初回読込回数（マトリックスは週レンジ・呼称ロード等で複数回呼びうるため
     // 絶対値ではなく「emit 前後の差分」で判定する）。
-    const slotsCallsBefore = mockGetSlots.mock.calls.length
+    const gridCallsBefore = mockGetSlotGrid.mock.calls.length
     const listCallsBefore = mockListMyReservations.mock.calls.length
-    expect(slotsCallsBefore).toBeGreaterThan(0)
+    expect(gridCallsBefore).toBeGreaterThan(0)
     expect(listCallsBefore).toBeGreaterThan(0)
 
     // ReservationForm は常時 DOM 上に存在する（v-model:visible で開閉するのみ）。
@@ -145,22 +140,26 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await flushPromises()
 
     // emit 後にそれぞれ最低1回追加で呼ばれていること = @reserved が正しく結線され
-    // 枠(SlotPicker)・一覧(ReservationList)の再読込がトリガーされたことの証跡。
-    expect(mockGetSlots.mock.calls.length).toBeGreaterThan(slotsCallsBefore)
+    // 枠(SlotMatrixPicker)・一覧(ReservationList)の再読込がトリガーされたことの証跡。
+    expect(mockGetSlotGrid.mock.calls.length).toBeGreaterThan(gridCallsBefore)
     expect(mockListMyReservations.mock.calls.length).toBeGreaterThan(listCallsBefore)
   })
 
-  it('AC-3（F03.4.4）: 表示選好が未設定なら既定タブは SlotMatrixPicker（マトリックス）で、grid/list はマウントされない', async () => {
+  it('AC-3（旧表示撤去）: 予約タブの枠表示は SlotMatrixPicker 一本で、表示切替 UI も表示選好の localStorage 書き込みも存在しない', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
     await flushPromises()
 
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
-    expect(wrapper.findComponent(SlotPicker).exists()).toBe(false)
-    expect(wrapper.findComponent(SlotGridPicker).exists()).toBe(false)
     // マトリックスは axis=LINE のレンジ呼びでグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
     expect(mockGetSlotGrid).toHaveBeenCalled()
+    // 旧リスト表示（SlotPicker）の単日枠API（getSlots）はもう呼ばれない
+    expect(mockGetSlots).not.toHaveBeenCalled()
+    // 表示切替 SelectButton は撤去済み（選択肢が1つしか残らない切替UIは無意味なため）
+    expect(wrapper.findComponent({ name: 'SelectButton' }).exists()).toBe(false)
+    // 表示選好の localStorage キーも撤去済み（書き込みが発生しないこと）
+    expect(localStorage.getItem('mannschaft.reservation.bookDisplayMode')).toBeNull()
   })
 
   it('AC-4（F03.4.4）: SlotMatrixPicker の reserved emit で一覧(ReservationList)が再読込される', async () => {
@@ -180,16 +179,14 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(mockListMyReservations.mock.calls.length).toBeGreaterThan(listCallsBefore)
   })
 
-  it('AC-5: ReservationList の changed emit で枠(SlotPicker)の再読込が発火する（一覧→枠表示の逆方向結線）', async () => {
-    // AC-1/2 と同じ理由で SlotPicker を実マウントさせる（既定は matrix のため list へ切替）。
-    localStorage.setItem('mannschaft.reservation.bookDisplayMode', 'list')
+  it('AC-5: ReservationList の changed emit で枠(SlotMatrixPicker)の再読込が発火する（一覧→枠表示の逆方向結線）', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
     await flushPromises()
 
-    const slotsCallsBefore = mockGetSlots.mock.calls.length
-    expect(slotsCallsBefore).toBeGreaterThan(0)
+    const gridCallsBefore = mockGetSlotGrid.mock.calls.length
+    expect(gridCallsBefore).toBeGreaterThan(0)
 
     // ReservationList は TabPanels 非 lazy のため一覧タブが非アクティブでも実マウント済み。
     const list = wrapper.findComponent(ReservationList)
@@ -197,7 +194,7 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await list.vm.$emit('changed')
     await flushPromises()
 
-    expect(mockGetSlots.mock.calls.length).toBeGreaterThan(slotsCallsBefore)
+    expect(mockGetSlotGrid.mock.calls.length).toBeGreaterThan(gridCallsBefore)
   })
 
   it('AC-6（UX改善5点の5）: 非管理者（MEMBER）はタブが「予約する」「自分の予約」の2つのみで、ラベルは自分の予約', async () => {
@@ -247,38 +244,30 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(tabs[3]!.text()).toBe('緊急休業')
   })
 
-  it('AC-8（UX改善5点の3）: 表示切替（マトリックス→リスト→マトリックス）で KeepAlive によりコンポーネントが破棄されず、復帰時はサイレント再取得のみ走る', async () => {
+  it('AC-8（旧表示撤去に伴う置換・UX改善5点の3）: タブ往復（予約する→予約一覧→予約する）でマトリックスは破棄されず再mountしない', async () => {
+    // 旧 AC-8 は「表示切替（マトリックス↔リスト）で KeepAlive により破棄されない」ことを検証していたが、
+    // 表示切替 UI ごと撤去したため前提が消滅した。状態保持という観点そのものは、TabPanels 非 lazy による
+    // 「タブ往復でも破棄されない」（＝スクロール位置・取得済みデータが維持される）で引き継ぐ。
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
     await flushPromises()
 
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
-    const matrixGridCallsBefore = mockGetSlotGrid.mock.calls.length
     // getMenus は SlotMatrixPicker の onMounted のみが呼ぶ → 再mountの検出器として使う
     const menusCallsBefore = mockGetMenus.mock.calls.length
-    expect(matrixGridCallsBefore).toBeGreaterThan(0)
     expect(menusCallsBefore).toBeGreaterThan(0)
 
-    // マトリックス → リストへ切替（v-model の SelectButton 経由ではなく直接 ref を操作して検証する）
-    const selectButton = wrapper.findComponent({ name: 'SelectButton' })
-    expect(selectButton.exists()).toBe(true)
-    await selectButton.vm.$emit('update:modelValue', 'list')
+    const tabs = wrapper.findAll('[role="tab"]')
+    await tabs[1]!.trigger('click')
+    await flushPromises()
+    await tabs[0]!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.findComponent(SlotPicker).exists()).toBe(true)
-    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(false)
-
-    // リスト → マトリックスへ戻す。
-    await selectButton.vm.$emit('update:modelValue', 'matrix')
-    await flushPromises()
-
-    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
     // 破棄されていない証跡: 再mountなら onMounted の loadMenus が再実行されるはずだが、増えていない
+    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
     expect(mockGetMenus.mock.calls.length).toBe(menusCallsBefore)
-    // 復帰時のデータ鮮度確保: onActivated のサイレント再取得（loadGrid silent）がちょうど1回走る
-    expect(mockGetSlotGrid.mock.calls.length).toBe(matrixGridCallsBefore + 1)
-    // サイレント＝skeleton へ切り替わらない（loading を立てない）ため、マトリックス本体は表示されたまま
+    // 表示保持＝skeleton へ切り替わらない（loading を立て直さない）
     expect(wrapper.findComponent(SlotMatrixPicker).findAllComponents({ name: 'Skeleton' })).toHaveLength(0)
   })
 
