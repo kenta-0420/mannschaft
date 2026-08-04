@@ -546,8 +546,12 @@ test.describe('M1: MEMBER のキャンセル2択（この回だけ / この回�
     await page.getByRole('tab', { name: '自分の予約' }).click()
     await expect(page.getByTestId('recurring-series-badge').first()).toBeVisible({ timeout: 20_000 })
 
-    const targetRow = page.getByRole('row').filter({ hasText: earliestDate })
-    await expect(targetRow, '最古の回の行が一覧にあること').toHaveCount(1)
+    // 「自分の予約」はキャンセル済みの回も一覧に残す（過去実行の同日付キャンセル済み行が並ぶ）。
+    // キャンセルボタンを持つ行＝まだ生きている回に絞ると、対象は一意に決まる。
+    const targetRow = page.getByRole('row')
+      .filter({ hasText: earliestDate })
+      .filter({ has: page.getByTestId('my-reservation-cancel') })
+    await expect(targetRow, '最古の回で操作可能な行が一意に決まること').toHaveCount(1)
     await targetRow.getByTestId('my-reservation-cancel').click()
     await expect(page.getByRole('dialog', { name: 'キャンセル範囲の選択' })).toBeVisible({ timeout: 15_000 })
     await page.getByTestId('cancel-scope-this-and-following').click()
