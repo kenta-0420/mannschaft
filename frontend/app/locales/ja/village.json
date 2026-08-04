@@ -444,6 +444,7 @@
       "saveSuccess": "お祭りを保存しました",
       "cancelSuccess": "お祭りを中止しました",
       "loadFailed": "お祭り一覧の取得に失敗しました",
+      "invalidDateTime": "開始/終了日時の形式が不正です。入力し直してください。",
       "filterAll": "すべて",
       "status": {
         "SCHEDULED": "開催予定",
