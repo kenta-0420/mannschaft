@@ -86,7 +86,12 @@ test.describe('AUTH-IDLE: 開きっぱなしのタブでセッションが維持
     })
     await page.goto('/my/', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
-    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+    // dev サーバーは HMR の常時接続を張るため networkidle に到達しないことがある。
+    // 到達しなくても後続の Cookie / API ステータス検証で判定できるので致命ではないが、
+    // 握りつぶさずログに残して「待てなかった事実」を表面化させる。
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch((e: unknown) => {
+      console.warn('networkidle に到達せず（検証は続行）:', e)
+    })
     expect(page.url(), '放置後の画面遷移でログイン画面に落ちないこと').not.toContain('/login')
     expect(
       afterIdle.some((r) => r.status === 200),
