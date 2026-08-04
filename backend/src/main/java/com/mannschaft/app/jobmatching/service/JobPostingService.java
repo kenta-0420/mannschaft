@@ -301,17 +301,29 @@ public class JobPostingService {
      * チーム配下の求人一覧を viewer 視点でフィルタしてページング取得する。
      *
      * <p>F00 Phase C 試験的置換: {@link ContentVisibilityChecker#filterAccessible} で
-     * viewer に閲覧可能な ID のみに絞り込む。ページング統計（totalElements/totalPages）は
-     * フィルタ後の数で再計算する（過剰開示を避けるため、生の DB 件数は出さない）。</p>
+     * viewer に閲覧可能な ID のみに絞り込む。</p>
      *
      * <p>F00 設計書 §10.3 の移行パスに準拠。{@code AccessControlService} 直叩きの判定や
      * Service 内部の {@code isVisibleTo()} と機能横断的に等価な可視性判断を共通基盤に集約する。</p>
+     *
+     * <p><b>総件数バグ是正</b>: 旧実装は {@code filtered.size()}（＝このページで可視だった件数）を
+     * そのまま総件数に渡しており、実際は多数あっても「そのページの件数・1ページ」に化けて
+     * FE のページャが2ページ目以降へ辿り着けなかった。DB が算出した総件数（絞り込み前）から
+     * 「このページで F00 が落とした件数」だけを差し引く形に改める（過剰開示は起きない。
+     * 差し引く数のみで、非公開求人の内容そのものは一切出さない）。既存流儀:
+     * {@code ActivityResultService#listActivities} / {@code TournamentService#listTournaments}。</p>
+     *
+     * <p><b>【既知の残務】ページング歯抜け</b>: 本メソッドは SQL で1ページ分（{@code size=limit}）を
+     * 取得してから F00 でメモリ上フィルタするため、他チームの非公開求人等が混ざると
+     * 要求件数より少ない件数しか返らない場合がある。総件数もその近似値になる。
+     * 根治には F00 側に「閲覧者の可視レベル解決API」を新設し SQL 述語へ翻訳する必要があり、
+     * {@code ActivityResultService} の Javadoc と同じ理由でここでは見送る。</p>
      *
      * @param teamId       対象チーム ID
      * @param status       絞り込み status（{@code null} で全ステータス）
      * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
      * @param pageable     ページング指定
-     * @return viewer に閲覧可能な求人のページ（フィルタ後の集計）
+     * @return viewer に閲覧可能な求人のページ（総件数は DB 総件数ベースで補正済み）
      */
     public Page<JobPostingEntity> listByTeamForViewer(
             Long teamId, JobPostingStatus status, Long viewerUserId, Pageable pageable) {
@@ -328,7 +340,9 @@ public class JobPostingService {
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .sorted(Comparator.comparingInt(e -> ids.indexOf(e.getId())))
                 .toList();
-        return new PageImpl<>(filtered, pageable, filtered.size());
+        long excluded = (long) raw.getNumberOfElements() - filtered.size();
+        long totalElements = Math.max(0L, raw.getTotalElements() - excluded);
+        return new PageImpl<>(filtered, pageable, totalElements);
     }
 
     /**
