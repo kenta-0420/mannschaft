@@ -144,7 +144,7 @@ public class VillageMatchRecruitService {
                                               Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMatchRecruitEntity entity = loadRecruitForVillage(villageId, recruitId);
-        ensureAuthor(entity, actorUserId);
+        ensureAuthor(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMatchRecruitStatus.OPEN) {
             throw new BusinessException(VillageErrorCode.MATCH_RECRUIT_NOT_OPEN);
@@ -234,8 +234,10 @@ public class VillageMatchRecruitService {
                                                  LocalDate matchDateFrom,
                                                  LocalDate matchDateTo,
                                                  int page,
-                                                 int size) {
+                                                 int size,
+                                                 Long actorUserId) {
         loadActiveVillage(villageId);
+        ensureVillager(villageId, actorUserId);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<VillageMatchRecruitEntity> p;
@@ -499,11 +501,22 @@ public class VillageMatchRecruitService {
         return m;
     }
 
-    /** 投稿者本人であることを検証する（更新時用）。 */
-    private void ensureAuthor(VillageMatchRecruitEntity entity, Long actorUserId) {
+    /**
+     * 投稿者本人であることを検証する（更新時用）。
+     *
+     * <p><strong>BAN 検査込み（#2284 §12 と同型）</strong>: {@link #ensureRecruitReviewer} は
+     * 状態遷移・応募審査で「現役メンバーであること」を本人判定より先に確認しているのに対し、
+     * 本メソッド（更新用）は本人一致のみで現役判定を欠いていた。これにより退村済み・BAN 済みの
+     * 投稿者でも自分の募集を更新し続けられる非対称が存在したため、他メソッドと同じ
+     * {@code findActiveByVillageIdAndSubject} 述語で現役性を確認してから本人判定する。</p>
+     */
+    private void ensureAuthor(UUID villageId, VillageMatchRecruitEntity entity, Long actorUserId) {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         if (!entity.getPostedByUserId().equals(actorUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }

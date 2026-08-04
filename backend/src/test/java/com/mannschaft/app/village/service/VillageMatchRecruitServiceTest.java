@@ -287,6 +287,9 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
@@ -330,6 +333,9 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
 
         MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
                 null, "x", null, null, null, null, null, null, null, null, null);
@@ -338,6 +344,32 @@ class VillageMatchRecruitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.MATCH_RECRUIT_NOT_OPEN);
+    }
+
+    // ------------------------------------------------------------------------
+    // 7b. 更新 — BAN 済み投稿者は本人でも締め出す（認可 Wave3・村ロットA・真の穴の修正）
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("07b. 更新 — BAN 済みの投稿者本人は更新できない（現役性チェック）")
+    void update_bannedAuthor() {
+        VillageMatchRecruitEntity entity = openRecruit(ACTOR);
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // BAN 済み（退村扱い）のため findActiveByVillageIdAndSubject は現役メンバーを返さない
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.empty());
+
+        MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
+                null, "BAN逃れの改ざん", null, null, null, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.updateRecruit(VILLAGE_ID, entity.getId(), req, ACTOR))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+
+        verify(recruitRepository, never()).save(any());
     }
 
     // ------------------------------------------------------------------------
@@ -604,5 +636,43 @@ class VillageMatchRecruitServiceTest {
         assertThat(res.status()).isEqualTo(VillageMatchApplicationStatus.ACCEPTED);
         assertThat(res.reviewedByUserId()).isEqualTo(ACTOR);
         assertThat(res.reviewComment()).isEqualTo("歓迎");
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. 一覧 — 非村人は VILLAGE_007（認可 Wave3・村ロットA・真の穴の修正）
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("19. 一覧 — 非村人は VILLAGE_007（村人限定閲覧の欠落を修正）")
+    void list_notMember() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listRecruits(
+                VILLAGE_ID, null, null, null, null, 0, 20, ACTOR))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
+
+        verify(recruitRepository, never()).findByVillageIdAndDeletedAtIsNull(any(), any());
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. 一覧 — 村人なら閲覧成功
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("20. 一覧 — 村人なら一覧を取得できる")
+    void list_success() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
+        given(recruitRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any()))
+                .willReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        var res = service.listRecruits(VILLAGE_ID, null, null, null, null, 0, 20, ACTOR);
+
+        assertThat(res.items()).isEmpty();
     }
 }

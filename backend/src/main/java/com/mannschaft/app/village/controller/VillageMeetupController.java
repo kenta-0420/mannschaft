@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.MeetupAttendanceResponse;
 import com.mannschaft.app.village.dto.MeetupAttendanceUpsertRequest;
 import com.mannschaft.app.village.dto.MeetupCandidateDateAddRequest;
@@ -59,6 +60,13 @@ import java.util.UUID;
  *   <li>{@code PUT    /api/v1/villages/{villageId}/meetups/{meetupId}/candidate-dates/{dateId}/vote} — 投票（村人）</li>
  *   <li>{@code GET    /api/v1/villages/{villageId}/meetups/{meetupId}/votes} — 投票集計（村人）</li>
  * </ul>
+ *
+ * <h3>認可 Wave3（村ロットA）監査済マーカー</h3>
+ * <p>作成〜投票集計の 10 EP は {@link VillageMeetupService} 内で現役メンバーシップ（
+ * {@code findActiveByVillageIdAndSubject}）を根拠に認可判定する。監査で幹事判定
+ * {@code requireOrganizer} が本人一致のみで現役性（BAN/退村）を検査していない非対称を発見し、
+ * 他ヘルパーと同じ現役性検査を追加して根治した（update/cancel/confirm/candidate-dates 系）。
+ * 出欠・コメント・宿題系（F17.2 Wave1）は別ロットの担当のため本注釈の対象外。</p>
  */
 @RestController
 @RequestMapping("/api/v1/villages/{villageId}/meetups")
@@ -71,6 +79,7 @@ public class VillageMeetupController {
 
     private final VillageMeetupService meetupService;
 
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "寄合を作成する（村人なら誰でも可、作成者が幹事になる）")
     public ResponseEntity<ApiResponse<MeetupResponse>> create(
@@ -81,6 +90,7 @@ public class VillageMeetupController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @AuthorizedInService
     @GetMapping
     @Operation(summary = "村の寄合一覧を取得する")
     public ApiResponse<List<MeetupResponse>> list(
@@ -97,6 +107,7 @@ public class VillageMeetupController {
         return ApiResponse.of(list);
     }
 
+    @AuthorizedInService
     @GetMapping("/{meetupId}")
     @Operation(summary = "寄合詳細を取得する（候補日込み）")
     public ApiResponse<MeetupResponse> get(
@@ -106,6 +117,7 @@ public class VillageMeetupController {
         return ApiResponse.of(meetupService.getMeetup(villageId, meetupId, actorUserId));
     }
 
+    @AuthorizedInService
     @PatchMapping("/{meetupId}")
     @Operation(summary = "寄合を部分更新する（幹事のみ）")
     public ApiResponse<MeetupResponse> update(
@@ -117,6 +129,7 @@ public class VillageMeetupController {
         return ApiResponse.of(response);
     }
 
+    @AuthorizedInService
     @PostMapping("/{meetupId}/cancel")
     @Operation(summary = "寄合を中止する（幹事のみ）")
     public ApiResponse<MeetupResponse> cancel(
@@ -126,6 +139,7 @@ public class VillageMeetupController {
         return ApiResponse.of(meetupService.cancelMeetup(villageId, meetupId, actorUserId));
     }
 
+    @AuthorizedInService
     @PostMapping("/{meetupId}/confirm")
     @Operation(summary = "寄合の開催日を確定する（幹事のみ）")
     public ApiResponse<MeetupResponse> confirm(
@@ -136,6 +150,7 @@ public class VillageMeetupController {
         return ApiResponse.of(meetupService.confirmMeetup(villageId, meetupId, request, actorUserId));
     }
 
+    @AuthorizedInService
     @PostMapping("/{meetupId}/candidate-dates")
     @Operation(summary = "寄合の候補日を追加する（幹事のみ）")
     public ResponseEntity<ApiResponse<MeetupCandidateDateResponse>> addCandidateDate(
@@ -148,6 +163,7 @@ public class VillageMeetupController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @AuthorizedInService
     @DeleteMapping("/{meetupId}/candidate-dates/{candidateDateId}")
     @Operation(summary = "寄合の候補日を削除する（幹事のみ、投票も連動削除）")
     public ResponseEntity<Void> removeCandidateDate(
@@ -159,6 +175,7 @@ public class VillageMeetupController {
         return ResponseEntity.noContent().build();
     }
 
+    @AuthorizedInService
     @PutMapping("/{meetupId}/candidate-dates/{candidateDateId}/vote")
     @Operation(summary = "候補日に投票する（村人のみ、再投票は UPDATE）")
     public ResponseEntity<Void> castVote(
@@ -171,6 +188,7 @@ public class VillageMeetupController {
         return ResponseEntity.noContent().build();
     }
 
+    @AuthorizedInService
     @GetMapping("/{meetupId}/votes")
     @Operation(summary = "寄合の投票集計を取得する（村人のみ）")
     public ApiResponse<MeetupVoteSummaryResponse> getVoteSummary(

@@ -507,8 +507,28 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （reflection / inbox / favorite / corkboard）と本ロットが削除する 28 行
      * （gdpr / jobmatching / resume / payment）は<b>互いに素</b>であることを集合差分で
      * 機械的に確認済み（重複 0 件）。したがって 537 − 28 = 509 となる。</p>
+     *
+     * <p>認可漏れ(IDOR)全域監査戦役・第3波「村」ロットA（2026-08-04）: 509 → 472（37 行削除）。
+     * 対象は {@code VillageMatchRecruitController}（11 EP）/ {@code VillageMeetupController}
+     * （在庫 10 EP。出欠・コメント・宿題系は別ロット担当のため対象外）/
+     * {@code VillageJoinRequestController}（6 EP）/ {@code VillageRecruitCategoryController}
+     * （5 EP）/ {@code VillageMembershipController}（5 EP）。全 37 EP は Service 層で
+     * {@code findActiveByVillageIdAndSubject} を根拠に認可判定済みであることを確認し、
+     * {@code @AuthorizedInService} を付与（{@code VillageJoinRequestController#listMine} のみ
+     * IDOR 閉塞（他人の識別子を受け取らない構造）を理由に {@code @SelfScopedEndpoint} を付与）。
+     * 監査で 2 件の真の穴を発見し根治した:</p>
+     * <ul>
+     *   <li>{@code VillageMatchRecruitController#list}: 村人限定閲覧の検証が欠落しており、
+     *       非村人でも一覧を取得できていた（{@code VillageMatchRecruitService#listRecruits} に
+     *       {@code ensureVillager} を追加）。</li>
+     *   <li>{@code VillageMatchRecruitController#update} / {@code VillageMeetupController} の
+     *       update・cancel・confirm・candidate-dates 系: 投稿者/幹事の本人判定が本人一致のみで
+     *       現役性（BAN/退村）を検査しておらず、状態遷移系（{@code ensureRecruitReviewer}）との間に
+     *       非対称があった（#2284 で状態遷移系のみ是正済みだったが、更新系は取りこぼされていた）。
+     *       {@code ensureAuthor} / {@code requireOrganizer} にも同じ現役性検査を追加。</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 509;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 472;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
