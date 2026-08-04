@@ -18,7 +18,6 @@
  * 座標→セル特定は `document.elementFromPoint` + `closest('[data-slot-cell]')` で行う。
  * getBoundingClientRect からの算術では、スクロール領域内・sticky ヘッダー配下でずれるため使わない。
  */
-import type { ReservationDayOfWeekCode } from '~/composables/useReservationApi'
 import { RESERVATION_DAY_OPTIONS } from '~/composables/useReservationDayOptions'
 import {
   slotGridRowCount,
