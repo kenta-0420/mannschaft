@@ -419,8 +419,43 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code origin/main} の実測 600 行、ロットAが 17 行・ロットBが 19 行を解消したので
      * 600 − 17 − 19 = 564 となる。束ねた PR 自体は追加の認可是正を行っておらず、
      * 両ロットの成果をそのまま合成した値である。</p>
+     *
+     * <p><b>564 → 536</b>（2026-08-04 / 第2波 残務: gdpr・jobmatching・resume・payment 一部）:
+     * 対象 28 EP を Controller → Service → Repository まで 1 件ずつ追跡し、認可判定が
+     * 情報開示・副作用より<b>前</b>に位置することを確認したうえで、性質に応じてマーカーを付与した。
+     * 分類は次のとおり:</p>
+     * <ul>
+     *   <li><b>実体由来の当事者・所有者照合（18 件）</b>: 履歴書は
+     *       {@code findByIdAndUserId} の複合条件で引き当て（不一致は不存在と同じ 404 で存在を秘匿）、
+     *       求人契約は {@code JobContractService#isParticipant} と
+     *       {@code JobPolicy#canReportCompletion} / {@code canApproveCompletion}、
+     *       QR は {@code JobPolicy#canIssueQrToken}、チェックインは
+     *       {@code JobPolicy#canRecordCheckIn}、応募取り下げは応募行の
+     *       {@code applicant_user_id} 照合が担う。認可の所在を各 EP の Javadoc に明記のうえ
+     *       {@code @AuthorizedInService} をメソッド単位で付与した（第1波と同方針）。</li>
+     *   <li><b>自己スコープ（10 件）</b>: 検索・作成のスコープが
+     *       {@code SecurityUtils#getCurrentUserId()} に束縛され、リクエストで他人の識別子を
+     *       指定する余地が構造的に無い EP 群。{@code @SelfScopedEndpoint} を付与し、
+     *       {@code SelfScopedEndpointMarkerGuardTest} が要求する契約テストを併せて新設した。</li>
+     * </ul>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code ResumePhotoService#uploadPhoto}: 所有者確認を入力検証・画像再エンコードより
+     *       <b>前</b>へ移した。所有者以外に対して「形式は妥当だが履歴書が無い」と
+     *       「形式が不正」の差分を返さないことで、履歴書の存在有無が推測される余地を無くす。</li>
+     *   <li>契約テスト: {@code JobContractLifecycleScopeContractIT}（新設・11 EP）／
+     *       {@code ResumeOwnerScopeContractIT}（新設・11 EP）／
+     *       {@code GdprSelfScopeContractIT}（新設・4 EP）／
+     *       {@code MembershipSubscriptionSelfListScopeContractIT}（新設・1 EP）。
+     *       「当事者・所有者以外 → 403 / 404」「他ユーザーのデータが結果に混入しないこと」を
+     *       実測で固定し、書き込み系では<b>操作が成立していないことを DB の実値</b>
+     *       （契約ステータス・応募ステータス・履歴書のタイトルと photo_key・
+     *       チェックイン行の件数・複製の不発生）で確認した。正常系も併せて張っている。</li>
+     * </ul>
+     * <p>なお {@code SubscriptionController} の 2 EP（Phase 4 未実装のプレースホルダ）は、
+     * 実装するか撤去するかの設計判断が未了のため本ロットでも触らず凍結を維持する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 564;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 536;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
