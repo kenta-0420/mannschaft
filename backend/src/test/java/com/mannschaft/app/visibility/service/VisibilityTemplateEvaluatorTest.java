@@ -55,6 +55,16 @@ class VisibilityTemplateEvaluatorTest {
     @InjectMocks
     private VisibilityTemplateEvaluator evaluator;
 
+    /**
+     * issue #2544: 本番では {@code @Autowired @Lazy} で注入される自己プロキシ {@code self} を、
+     * 純 Mockito UT では自分自身で埋める（キャッシュプロキシは介在しないので挙動は従来どおり）。
+     * 埋めないと自己プロキシ経由の呼び出しが NPE になる。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpSelfProxy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(evaluator, "self", evaluator);
+    }
+
     private static final Long VIEWER_ID = 10L;
     private static final Long OWNER_ID = 20L;
     private static final Long TEMPLATE_ID = 1000L;

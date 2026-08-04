@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * ケアリンクサービス。F03.12 ケア対象者イベント参加見守り通知システム。
@@ -430,10 +432,12 @@ public class CareLinkService {
     public List<Long> getActiveWatchers(Long recipientUserId, String notifyType) {
         List<UserCareLinkEntity> links = careLinkRepository
                 .findByCareRecipientUserIdAndStatus(recipientUserId, CareLinkStatus.ACTIVE);
+        // issue #2544 B 群: toList() が返す ImmutableCollections$ListN は Valkey から復元できないため
+        // 可変の ArrayList に集める（復元失敗は fail-open で WARN に消え、毎回 DB を引く状態に戻る）。
         return links.stream()
                 .filter(link -> matchesNotifyType(link, notifyType))
                 .map(UserCareLinkEntity::getWatcherUserId)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**

@@ -35,6 +35,17 @@ public class AdContentModerator {
     private final AdNgWordRepository adNgWordRepository;
 
     /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用する。
+     * 旧実装は {@link #getActiveNgWords} を {@code public} にすれば自己呼び出しでも効くと
+     * Javadoc で主張していたが、<b>public 化だけではプロキシを通らない</b>ため
+     * {@code adNgWords} キャッシュは一度も発火していなかった（唯一の呼び出し元が同一クラス内）。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private AdContentModerator self;
+
+    /**
      * 本文を NG 辞書と突合し、検出ヒットと推奨アクションを返す。
      *
      * <p>本文が {@code null} または空文字の場合はヒット 0 件で {@code AUTO_PASS} を返す。</p>
@@ -52,7 +63,8 @@ public class AdContentModerator {
             return new ModerationCheckResult(List.of(), SuggestedModerationAction.AUTO_PASS);
         }
 
-        List<AdNgWord> dictionary = getActiveNgWords();
+        // issue #2544: 自己プロキシ経由で呼ぶ（this. だと @Cacheable が発火しない）。
+        List<AdNgWord> dictionary = self.getActiveNgWords();
         String lower = bodyMarkdown.toLowerCase();
 
         List<DetectedNgWord> detected = new ArrayList<>();
@@ -89,9 +101,13 @@ public class AdContentModerator {
     /**
      * 有効な NG 辞書を取得 (Spring Cache でキャッシュ)。
      *
-     * <p>{@code @Cacheable} 自己呼び出しを避けるためメソッドを public とし
-     * Spring AOP プロキシ経由で呼び出される。テストで evict したい場合は
-     * {@code @CacheEvict} を別途用意する。</p>
+     * <p>{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * 同一クラス内の {@link #check} からは自己プロキシ {@code self} を通して呼ぶこと。
+     * <b>public 化だけではプロキシをバイパスしたままで発火しない</b>（issue #2544 で是正）。</p>
+     *
+     * <p>戻り値の {@code List} は Spring Data が返す可変 {@code ArrayList} であり、
+     * {@code AdNgWord} は {@code @Setter} を持つため Valkey から復元できる
+     * （{@code CacheValueSerializationRoundTripTest} が実シリアライザで往復検証する）。</p>
      */
     @Cacheable(value = CACHE_NAME, key = "'active'")
     public List<AdNgWord> getActiveNgWords() {

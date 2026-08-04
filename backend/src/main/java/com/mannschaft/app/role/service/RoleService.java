@@ -29,9 +29,11 @@ import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -62,6 +65,16 @@ public class RoleService {
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MembershipService membershipService;
+
+    /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * {@link #hasPermission} から {@link #resolveEffectivePermissions} を呼ぶ際に
+     * {@code this.} で呼ぶとプロキシをバイパスし、認可判定の主経路でキャッシュが一切効かない。
+     * 循環参照を避けるため {@link Lazy} を付けたフィールド注入とする。
+     */
+    @Autowired
+    @Lazy
+    private RoleService self;
 
     /** 束1 権限昇格根治: 操作者が持つべき権限ロール（user_roles 由来）。 */
     private static final Set<String> ADMIN_ROLE_NAMES = Set.of("ADMIN", "DEPUTY_ADMIN");
@@ -350,18 +363,20 @@ public class RoleService {
         List<String> rolePermissions = findUserRole(userId, scopeId, scopeType)
                 .map(ur -> {
                     List<Long> permissionIds = rolePermissionRepository.findByRoleId(ur.getRoleId())
-                            .stream().map(RolePermissionEntity::getPermissionId).toList();
-                    return permissionIds.isEmpty() ? List.<PermissionEntity>of()
-                            : permissionRepository.findByIdIn(permissionIds);
+                            .stream().map(RolePermissionEntity::getPermissionId)
+                            .collect(Collectors.toCollection(ArrayList::new));
+                    return permissionIds.isEmpty() ? new ArrayList<PermissionEntity>()
+                            : new ArrayList<>(permissionRepository.findByIdIn(permissionIds));
                 })
-                .orElse(List.of())
+                .orElseGet(ArrayList::new)
                 .stream()
                 .map(PermissionEntity::getName)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
 
         // 2. 権限グループ由来の権限（N+1根治: permissionId をバッチ取得）
         List<PermissionGroupEntity> groups = findPermissionGroups(scopeId, scopeType);
-        List<Long> groupIds = groups.stream().map(PermissionGroupEntity::getId).toList();
+        List<Long> groupIds = groups.stream().map(PermissionGroupEntity::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
 
         List<String> groupPermissions = new ArrayList<>();
         if (!groupIds.isEmpty()) {
@@ -369,10 +384,11 @@ public class RoleService {
                     .findByUserId(userId)
                     .stream()
                     .filter(ug -> groupIds.contains(ug.getGroupId()))
-                    .toList();
+                    .collect(Collectors.toCollection(ArrayList::new));
             for (UserPermissionGroupEntity ug : userGroups) {
                 List<Long> pgpPermIds = permissionGroupPermissionRepository.findByGroupId(ug.getGroupId())
-                        .stream().map(PermissionGroupPermissionEntity::getPermissionId).toList();
+                        .stream().map(PermissionGroupPermissionEntity::getPermissionId)
+                        .collect(Collectors.toCollection(ArrayList::new));
                 if (!pgpPermIds.isEmpty()) {
                     permissionRepository.findByIdIn(pgpPermIds)
                             .stream().map(PermissionEntity::getName)
@@ -382,16 +398,30 @@ public class RoleService {
         }
 
         // 3. 統合して重複排除
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
         return Stream.concat(rolePermissions.stream(), groupPermissions.stream())
                 .distinct()
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
      * ユーザーが特定の権限を持っているかチェックする。
+     *
+     * <p>issue #2544: 旧実装は {@code this.resolveEffectivePermissions(...)} と自己呼び出ししており、
+     * Spring AOP プロキシを通らないため {@code role-permissions} キャッシュが
+     * <b>認可判定の主経路で一度も発火していなかった</b>（権限チェックのたびに N クエリ）。
+     * 自己プロキシ {@link #self} 経由に変更してキャッシュを実際に効かせる。</p>
+     *
+     * <p>キャッシュキーは {@code userId} / {@code scopeType} / {@code scopeId} を完全に含むため、
+     * 別ユーザー・別スコープのエントリへヒットすることはない
+     * （キャッシュの内側に認可ゲートを持ち込んでいない＝issue #2496 の「第三の型」に該当しない）。
+     * ロール変更・除名・退会時は {@code @CacheEvict} が同一キー書式で失効させる。</p>
      */
     public boolean hasPermission(Long userId, Long scopeId, String scopeType, String permissionName) {
-        return resolveEffectivePermissions(userId, scopeId, scopeType).contains(permissionName);
+        return self.resolveEffectivePermissions(userId, scopeId, scopeType).contains(permissionName);
     }
 
     /**
