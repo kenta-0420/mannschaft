@@ -507,8 +507,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （reflection / inbox / favorite / corkboard）と本ロットが削除する 28 行
      * （gdpr / jobmatching / resume / payment）は<b>互いに素</b>であることを集合差分で
      * 機械的に確認済み（重複 0 件）。したがって 537 − 28 = 509 となる。</p>
+     *
+     * <p>509 → 504（2026-08-04）: #2531「todo ドメイン認可ガードの一元化」で
+     * {@code PersonalBlogController.listMyPosts} と {@code UserTodoStatusLabelController} の
+     * create/delete/list/update の計5件が Service 層（{@code TodoStatusLabelService#validateScopeAccess}
+     * 等）へ認可判定を集約したことで検出条件（Controller 直下の認可シグナル）から外れ、違反が解消。
+     * ただし #2531 のマージ時に凍結ストア更新が PR に含まれず取り残されていたため、本更新で棚卸しした。
+     * 認可自体は Service 層で実施されており（PERSONAL スコープの actorId 照合、契約テスト
+     * {@code TodoStatusLabelScopeContractIT} で他人アクセスの拒否も確認済み）、違反隠蔽ではなく
+     * 実態にストアを合わせる是正。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 509;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 504;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
