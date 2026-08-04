@@ -280,4 +280,33 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "WHERE m.userId IN :userIds AND m.leftAt IS NULL "
             + "GROUP BY m.userId")
     List<Object[]> findEarliestActiveJoinedAtByUsers(@Param("userIds") Collection<Long> userIds);
+
+    /**
+     * 指定スコープ（TEAM / ORGANIZATION）の現役メンバーの user_id を<strong>キーセットページング</strong>で
+     * 1 チャンク取得する（通知 fan-out 抜本改修 Wave-1・TEAM 受信者ストリーム配信用）。
+     *
+     * <p>{@link #findActiveDistinctUserIdsByScope} が全件を 1 つの {@code List} に載せるのに対し、
+     * 本メソッドは {@code user_id > :cursor} を昇順 + {@code LIMIT chunk}（{@link Pageable}）で刻むことで、
+     * 大規模スコープでも受信者集合をメモリ有界に走査できる。呼び出し側は「返却末尾の user_id を
+     * 次カーソルにして、結果が chunk 未満になるまで繰り返す」ことで全現役メンバーを漏れなく列挙する。</p>
+     *
+     * <p>被覆索引 {@code idx_membership_fanout_keyset (scope_type, scope_id, left_at, user_id)}
+     * により index-only 走査となる（V174 migration）。現役判定（{@code left_at IS NULL}）は WHERE に
+     * 閉じ込め、退会者を漏れなく除外する。{@code scope_id} で等値絞り込みするためテナント分離も満たす。</p>
+     *
+     * @param scopeType 対象スコープ種別（fan-out では TEAM）
+     * @param scopeId   対象スコープ ID（対象チーム ID 等）
+     * @param cursor    直前チャンク末尾の user_id（初回は最小値未満＝{@code 0L} 等を渡す）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
+     * @return {@code user_id > cursor} の現役メンバー user_id を昇順に最大 chunk 件
+     */
+    @Query("SELECT m.userId FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.leftAt IS NULL AND m.userId > :cursor " +
+            "ORDER BY m.userId ASC")
+    List<Long> findActiveUserIdsByScopeKeyset(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
 }
