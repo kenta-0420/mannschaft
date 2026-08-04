@@ -372,6 +372,52 @@ class JobPostingServiceTest {
     }
 
     // ---------------------------------------------------------------------
+    // listByTeamForViewer
+    // ---------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("listByTeamForViewer")
+    class ListByTeamForViewerTest {
+
+        @Test
+        @DisplayName("回帰: 総件数はDBの総件数からF00で落ちた件数を差し引いた値になる（PageImpl総件数バグ是正）")
+        void 一覧_総件数はDB総件数ベース_絞り込み後件数ではない() {
+            JobPostingEntity posting1 = postingWithStatus(JobPostingStatus.OPEN);
+            JobPostingEntity posting2 = postingWithStatus(JobPostingStatus.OPEN);
+            try {
+                Field field = posting2.getClass().getSuperclass().getDeclaredField("id");
+                field.setAccessible(true);
+                field.set(posting2, 2000L);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+
+            org.springframework.data.domain.Pageable pageable =
+                    org.springframework.data.domain.PageRequest.of(0, 2);
+            // DB側の総件数は5（絞り込み前）。今回のページに2件取得、うち1件はF00で除外される想定。
+            org.springframework.data.domain.Page<JobPostingEntity> raw =
+                    new org.springframework.data.domain.PageImpl<>(
+                            java.util.List.of(posting1, posting2), pageable, 5);
+            given(postingRepository.findByTeamIdAndStatus(TEAM_ID, JobPostingStatus.OPEN, pageable))
+                    .willReturn(raw);
+            // posting1（id=POSTING_ID）のみアクセス可能（posting2 は除外＝片方だけが残ることを検証）
+            given(visibilityChecker.filterAccessible(
+                    com.mannschaft.app.common.visibility.ReferenceType.JOB_POSTING,
+                    java.util.List.of(POSTING_ID, 2000L), USER_ID))
+                    .willReturn(java.util.Set.of(POSTING_ID));
+
+            org.springframework.data.domain.Page<JobPostingEntity> result =
+                    service.listByTeamForViewer(TEAM_ID, JobPostingStatus.OPEN, USER_ID, pageable);
+
+            // 旧実装のバグでは filtered.size()=1 が総件数になっていた。
+            // 是正後は「DB総件数5 − このページで落ちた件数1」= 4 になるはず。
+            assertThat(result.getTotalElements()).isEqualTo(4L);
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getId()).isEqualTo(POSTING_ID);
+        }
+    }
+
+    // ---------------------------------------------------------------------
     // delete
     // ---------------------------------------------------------------------
 

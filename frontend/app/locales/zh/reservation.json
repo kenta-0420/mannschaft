@@ -661,28 +661,11 @@
       "advanced_label": "手动管理个别时段（例外操作）"
     },
     "grid": {
-      "title": "空位表格",
-      "help": "纵向为时间段，横向为{resourceName}。点按绿色“空位”即可预约。灰色或斜线格无法预约。使用“周”标签可一次查看七天。",
-      "display_toggle": {
-        "list": "列表视图",
-        "grid": "表格视图"
-      },
       "view": {
-        "single": "单日",
         "week": "周"
       },
-      "axis": {
-        "label": "轴向",
-        "time_rows": "时间为纵向",
-        "time_cols": "时间为横向"
-      },
       "column": {
-        "common": "通用",
-        "time": "时间"
-      },
-      "staff_filter": {
-        "label": "按{resourceName}筛选",
-        "placeholder": "全部预约对象"
+        "common": "通用"
       },
       "state": {
         "available": "空位",
@@ -690,7 +673,6 @@
         "closed": "已截止",
         "unavailable": "不可预约"
       },
-      "empty": "当天没有可预约的时段",
       "load_error": "加载表格失败"
     },
     "matrix": {
@@ -708,9 +690,6 @@
       "no_menu_single": "不选菜单，仅预约30分钟",
       "preview_title": "确认以下预约内容",
       "extend_30": "+30分钟",
-      "view_matrix": "矩阵视图",
-      "view_list": "列表视图",
-      "view_staff_grid": "按员工分栏视图",
       "date_line_header": "日期・{resourceName}",
       "help_toggle": "查看使用说明",
       "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的{resourceName}。",

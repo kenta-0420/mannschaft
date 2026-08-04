@@ -508,7 +508,19 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （gdpr / jobmatching / resume / payment）は<b>互いに素</b>であることを集合差分で
      * 機械的に確認済み（重複 0 件）。したがって 537 − 28 = 509 となる。</p>
      *
-     * <p>認可漏れ(IDOR)全域監査戦役・第3波「村」ロットA（2026-08-04）: 509 → 472（37 行削除）。
+     * <p>509 → 504（2026-08-04）: #2531「todo ドメイン認可ガードの一元化」で
+     * {@code PersonalBlogController.listMyPosts} と {@code UserTodoStatusLabelController} の
+     * create/delete/list/update の計5件が Service 層（{@code TodoStatusLabelService#validateScopeAccess}
+     * 等）へ認可判定を集約したことで検出条件（Controller 直下の認可シグナル）から外れ、違反が解消。
+     * ただし #2531 のマージ時に凍結ストア更新が PR に含まれず取り残されていたため、本更新で棚卸しした。
+     * 認可自体は Service 層で実施されており（PERSONAL スコープの actorId 照合、契約テスト
+     * {@code TodoStatusLabelScopeContractIT} で他人アクセスの拒否も確認済み）、違反隠蔽ではなく
+     * 実態にストアを合わせる是正。</p>
+     *
+     * <p>認可漏れ(IDOR)全域監査戦役・第3波「村」ロットA（2026-08-04）: 504 → 467（37 行削除）。
+     * 本ロットの基点は分岐時点の 509 であり単独では 509 − 37 = 472 だが、上記 #2531 の棚卸し（5 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。両者が削除する行は
+     * <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。したがって 504 − 37 = 467。
      * 対象は {@code VillageMatchRecruitController}（11 EP）/ {@code VillageMeetupController}
      * （在庫 10 EP。出欠・コメント・宿題系は別ロット担当のため対象外）/
      * {@code VillageJoinRequestController}（6 EP）/ {@code VillageRecruitCategoryController}
@@ -529,7 +541,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       の双方に適用。</li>
      * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 472;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 467;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

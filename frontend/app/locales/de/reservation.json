@@ -661,28 +661,11 @@
       "advanced_label": "Einzelne Slots manuell verwalten (Ausnahmen)"
     },
     "grid": {
-      "title": "Verfügbarkeitsraster",
-      "help": "Zeilen sind Zeitfenster, Spalten sind {resourceName}. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
-      "display_toggle": {
-        "list": "Listenansicht",
-        "grid": "Rasteransicht"
-      },
       "view": {
-        "single": "Tag",
         "week": "Woche"
       },
-      "axis": {
-        "label": "Achse",
-        "time_rows": "Zeit als Zeilen",
-        "time_cols": "Zeit als Spalten"
-      },
       "column": {
-        "common": "Gemeinsam",
-        "time": "Zeit"
-      },
-      "staff_filter": {
-        "label": "Nach {resourceName} filtern",
-        "placeholder": "Alle Ziele"
+        "common": "Gemeinsam"
       },
       "state": {
         "available": "Frei",
@@ -690,7 +673,6 @@
         "closed": "Geschlossen",
         "unavailable": "Nicht verfügbar"
       },
-      "empty": "Keine Zeitfenster für diesen Tag",
       "load_error": "Raster konnte nicht geladen werden"
     },
     "matrix": {
@@ -708,9 +690,6 @@
       "no_menu_single": "Nur 30 Minuten ohne Menü buchen",
       "preview_title": "Diese Buchung bestätigen",
       "extend_30": "+30 Min.",
-      "view_matrix": "Matrixansicht",
-      "view_list": "Listenansicht",
-      "view_staff_grid": "Rasteransicht nach Mitarbeiter",
       "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
       "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",
