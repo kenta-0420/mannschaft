@@ -27,10 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 保持バッチ本体（アーカイブ移送）Wave2-A の受け入れ IT。
  *
- * <p><b>本試練は実装（出陣）より前に置くため、全て red になるのが正しい。</b>
- * 現状 {@link NotificationCleanupBatchService} は物理 DELETE のみで
- * {@code notifications_archive} へ移送しないため、移送・退会波及の各 AC は失敗する
- * （AC-16 のみ「0件で例外なし」を検証するため現行実装でも成立しうる回帰固定）。</p>
+ * <p>{@link NotificationCleanupBatchService} が保持期間超過（既読90日/未読365日）の通知を
+ * {@code notifications_archive} へ移送し本体から削除すること、および退会即時消去層が
+ * archive 側の PII も消すことを検証する。</p>
  *
  * <p><b>1次キャッシュ罠回避</b>: 検証は {@code findById} でなく
  * 実 DB 状態（{@link JdbcTemplate} の COUNT / 実クエリ）で行う。
@@ -127,7 +126,7 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
         cleanupBatchService.cleanupOldReadNotifications();
 
         NotificationArchiveEntity a = archiveRepository.findById(id)
-                .orElseThrow(() -> new AssertionError("archive に移送行が無い（AC-2 red）"));
+                .orElseThrow(() -> new AssertionError("archive に移送行が無い（AC-2）"));
         assertThat(a.getId()).as("id は元 notifications.id を引き継ぐ（採番しない）").isEqualTo(id);
         assertThat(a.getUserId()).isEqualTo(102L);
         assertThat(a.getOrganizationId()).isEqualTo(777L);

@@ -16,9 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * （Spring context 不要）。
  *
  * <p>金型は同パッケージの {@code NotificationFanoutRetentionDdlTest}。
- * 移送先表と索引は Wave1（V173）で敷設済みのため AC-13/14 は回帰固定（green 維持）だが、
+ * 移送先表と索引は Wave1（V173）で敷設済みのため AC-13/14 は回帰固定（索引の存在保証）。
  * AC-12（ドキュメントの索引出自・移送型記述）と AC-15（ShedLock へ保持バッチ名を登録）は
- * 出陣で是正する項目のため、本試練時点では <b>red</b> になる。</p>
+ * Wave2-A で是正した項目を固定する。</p>
  */
 @DisplayName("Wave2-A AC-12〜15 保持バッチ DDL/doc/ShedLock ガード")
 class NotificationArchiveRetentionDocGuardTest {

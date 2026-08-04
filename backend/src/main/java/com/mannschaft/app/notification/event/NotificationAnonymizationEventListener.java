@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.event;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.notification.repository.NotificationArchiveRepository;
 import com.mannschaft.app.notification.repository.NotificationPreferenceRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
@@ -45,6 +46,7 @@ public class NotificationAnonymizationEventListener {
     private final NotificationTypePreferenceRepository notificationTypePreferenceRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationArchiveRepository notificationArchiveRepository;
 
     /**
      * ユーザー退会匿名化イベントを受け取り、notification ドメインの関連データを削除する。
@@ -73,6 +75,12 @@ public class NotificationAnonymizationEventListener {
             // V100.001 で撤廃する fk_notifications_user（CASCADE）を冗長化する。
             int deletedNotifications = notificationRepository.deleteByUserId(userId);
             log.debug("ユーザー退会: 通知本体削除完了: userId={}, deleted={}", userId, deletedNotifications);
+
+            // 保持バッチ（Wave2-A）で notifications_archive へ移送済みの行にも title / body（PII）が
+            // 残るため、即時消去層（UserAnonymizedEvent）で本体と同時に archive 側の PII も消す。
+            // 30日後の AccountPurge 側には足さない（即時層の責務）。
+            int deletedArchive = notificationArchiveRepository.deleteByUserId(userId);
+            log.debug("ユーザー退会: 通知アーカイブ削除完了: userId={}, deleted={}", userId, deletedArchive);
 
             log.info("ユーザー退会: notificationドメイン匿名化完了: userId={}", userId);
         } catch (Exception e) {
