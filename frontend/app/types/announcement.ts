@@ -122,7 +122,13 @@ export interface MarkReadResponse {
 }
 
 export interface MarkAllReadResponse {
+  /** このリクエストで新たに既読化した件数（既読済みだったものは含まない） */
   markedCount: number
+  /**
+   * 1 リクエストの防御上限（500 件 × 20 チャンク = 10,000 件）に到達して打ち切り、
+   * 未読が残っているか。true のとき「未読 0」と表示してはならない（#2530 ①）。
+   */
+  hasMoreUnread: boolean
 }
 
 export interface AnnouncementFeedParams {

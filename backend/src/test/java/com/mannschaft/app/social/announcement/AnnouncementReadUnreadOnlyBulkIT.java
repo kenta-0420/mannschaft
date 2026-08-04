@@ -26,10 +26,11 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 一括既読の件数上限・未読限定クエリの統合テスト（#2494）。
+ * 一括既読の件数上限・未読限定クエリの統合テスト（#2494 / #2530）。
  *
  * <p><b>目的</b>: 一括既読を「未読分だけを DB 側で絞るクエリのチャンク処理」に寄せた改修について、
  * <b>実 MySQL 経路で</b>次の 2 点を固定する。</p>
@@ -70,6 +71,9 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private AnnouncementFeedQueryRepository feedQueryRepository;
+
+    @Autowired
+    private AnnouncementReadStatusRepository readStatusRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -134,7 +138,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
                     .collect(Collectors.toSet());
 
             Set<Long> unreadIds = Set.copyOf(feedQueryRepository.findUnreadIdsByScope(
-                    AnnouncementScopeType.TEAM, teamId, allowed, userId, UNLIMITED));
+                    AnnouncementScopeType.TEAM, teamId, allowed, userId, null, UNLIMITED));
 
             assertThat(unreadIds)
                     .as("既読ゼロの閲覧者(%s)では『未読かつ可視』＝『一覧に出る集合』でなければならない",
@@ -160,7 +164,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             // 応援者の集合に MEMBERS_AND_ABOVE が 1 件も混ざっていないことを直接固定する
             Set<Long> unreadIds = Set.copyOf(feedQueryRepository.findUnreadIdsByScope(
                     AnnouncementScopeType.TEAM, teamId,
-                    AnnouncementVisibility.allowedFor("SUPPORTER"), supporterId, UNLIMITED));
+                    AnnouncementVisibility.allowedFor("SUPPORTER"), supporterId, null, UNLIMITED));
             List<AnnouncementFeedEntity> picked = feedRepository.findByIdIn(unreadIds);
             assertThat(picked).isNotEmpty();
             assertThat(picked).allSatisfy(feed ->
@@ -181,7 +185,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
 
             List<Long> before = feedQueryRepository.findUnreadIdsByScope(
-                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, null, UNLIMITED);
             assertThat(before).isNotEmpty();
 
             Long readTarget = before.get(0);
@@ -189,7 +193,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             em.flush();
 
             List<Long> after = feedQueryRepository.findUnreadIdsByScope(
-                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, null, UNLIMITED);
 
             assertThat(after).hasSize(before.size() - 1);
             assertThat(after).doesNotContain(readTarget);
@@ -211,7 +215,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
 
             List<Long> before = feedQueryRepository.findUnreadIdsByScope(
-                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, null, UNLIMITED);
             assertThat(before).isNotEmpty();
 
             // 別ユーザーが同じお知らせを全件既読にする
@@ -221,7 +225,7 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
             em.flush();
 
             List<Long> after = feedQueryRepository.findUnreadIdsByScope(
-                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, UNLIMITED);
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, null, UNLIMITED);
 
             assertThat(after)
                     .as("他ユーザー(id=%d)の既読行が自分(id=%d)の未読集合を縮めてはならない",
@@ -261,7 +265,10 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
 
             setAuth(memberId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    // #2530 ①: 応答が実件数を伝える（ハードコードの 0 ではない）
+                    .andExpect(jsonPath("$.data.markedCount").value(VISIBLE_COUNT))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(false));
             em.flush();
 
             assertThat(countReadStatusByUser(memberId))
@@ -304,6 +311,188 @@ class AnnouncementReadUnreadOnlyBulkIT extends AbstractMySqlIntegrationTest {
 
             assertThat(afterFirst).isEqualTo(VISIBLE_COUNT);
             assertThat(countReadStatusByUser(memberId)).isEqualTo(afterFirst);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 3. カーソル（lastSeenId）で再スキャンを線形化する（#2530 ②）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("3. lastSeenId カーソルが『二度読まない』かつ『取りこぼさない』")
+    class CursorPaging {
+
+        /** 可視なお知らせを {@code count} 件作り、ID 昇順のリストを返す。 */
+        private List<Long> seedVisible(int count) {
+            List<Long> created = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                created.add(saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null));
+            }
+            em.flush();
+            return created.stream().sorted().toList();
+        }
+
+        @Test
+        @DisplayName("カーソルを渡すとその ID 以下は 1 件も返らない（同じ行を二度読まない）")
+        void カーソル以下は返らない() {
+            List<Long> all = seedVisible(12);
+            Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
+
+            List<Long> firstChunk = feedQueryRepository.findUnreadIdsByScope(
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, null, 5);
+            assertThat(firstChunk).containsExactlyElementsOf(all.subList(0, 5));
+
+            Long cursor = firstChunk.get(firstChunk.size() - 1);
+            List<Long> secondChunk = feedQueryRepository.findUnreadIdsByScope(
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, cursor, 5);
+
+            assertThat(secondChunk)
+                    .as("カーソル(%d)以下の ID を再スキャンしてはならない", cursor)
+                    .allSatisfy(id -> assertThat(id).isGreaterThan(cursor));
+            assertThat(secondChunk).containsExactlyElementsOf(all.subList(5, 10));
+        }
+
+        @Test
+        @DisplayName("カーソルで全周回すると全件を 1 度ずつ、重複も取りこぼしもなく列挙できる")
+        void 重複も取りこぼしもない() {
+            List<Long> all = seedVisible(11);
+            Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
+
+            List<Long> collected = new ArrayList<>();
+            Long cursor = null;
+            for (int i = 0; i < 10; i++) {
+                List<Long> chunk = feedQueryRepository.findUnreadIdsByScope(
+                        AnnouncementScopeType.TEAM, teamId, allowed, memberId, cursor, 4);
+                if (chunk.isEmpty()) {
+                    break;
+                }
+                collected.addAll(chunk);
+                cursor = chunk.get(chunk.size() - 1);
+            }
+
+            assertThat(collected).containsExactlyElementsOf(all);
+            assertThat(collected).doesNotHaveDuplicates();
+        }
+
+        @Test
+        @DisplayName("カーソルと NOT EXISTS は併用される（既読済みはカーソル以降でも除外される）")
+        void カーソルと未読条件が併用される() {
+            List<Long> all = seedVisible(8);
+            Set<String> allowed = AnnouncementVisibility.allowedFor("MEMBER");
+
+            // 6 番目（index 5）だけ先に既読にしておく
+            Long alreadyRead = all.get(5);
+            insertReadStatus(alreadyRead, memberId);
+            em.flush();
+
+            Long cursor = all.get(3);
+            List<Long> chunk = feedQueryRepository.findUnreadIdsByScope(
+                    AnnouncementScopeType.TEAM, teamId, allowed, memberId, cursor, 10);
+
+            assertThat(chunk)
+                    .as("カーソル超過かつ未読のものだけが返る")
+                    .containsExactly(all.get(4), all.get(6), all.get(7));
+        }
+
+        @Test
+        @DisplayName("チャンク境界ちょうど・+1 件でも read-all が全件既読にする（実 HTTP 経路）")
+        void 境界ちょうどと1件超えで取りこぼさない() throws Exception {
+            int count = AnnouncementReadService.MARK_ALL_BATCH_SIZE + 1;
+            List<Long> all = seedVisible(count);
+
+            setAuth(memberId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.markedCount").value(count))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(false));
+            em.flush();
+
+            assertThat(countReadStatusByUser(memberId)).isEqualTo(count);
+            // 境界の直前・直後・末尾が確実に既読になっている（件数だけの空虚な緑を防ぐ）
+            for (int idx : new int[]{AnnouncementReadService.MARK_ALL_BATCH_SIZE - 1,
+                    AnnouncementReadService.MARK_ALL_BATCH_SIZE,
+                    count - 1}) {
+                assertThat(countReadStatus(all.get(idx), memberId))
+                        .as("index=%d が既読になっていること", idx)
+                        .isEqualTo(1);
+            }
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 4. 既読 INSERT の冪等性（#2530 ⑤ uq_ars_feed_user 違反 → 500 の根治）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("4. 既読 INSERT が DB 側で冪等（同時実行で UNIQUE 違反にならない）")
+    class Idempotency {
+
+        @Test
+        @DisplayName("同じ (feedId, userId) を二度 UPSERT しても例外にならず 1 行のまま")
+        void 二度のUPSERTでも1行() {
+            Long feedId = saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null);
+            em.flush();
+
+            readStatusRepository.insertReadStatusesIgnoringExisting(memberId, List.of(feedId));
+            // 同時実行の 2 本目が同じ未読 ID を拾った状況そのもの。
+            // 素の INSERT なら uq_ars_feed_user 違反で 500 になる経路。
+            readStatusRepository.insertReadStatusesIgnoringExisting(memberId, List.of(feedId));
+
+            assertThat(countReadStatus(feedId, memberId)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("既読済みと未読が混ざったチャンクでも、未読分だけが増える")
+        void 既読混在チャンクでも未読分だけ増える() {
+            Long alreadyRead = saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null);
+            Long fresh = saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null);
+            em.flush();
+            insertReadStatus(alreadyRead, memberId);
+            em.flush();
+
+            readStatusRepository.insertReadStatusesIgnoringExisting(memberId, List.of(alreadyRead, fresh));
+
+            assertThat(countReadStatus(alreadyRead, memberId)).isEqualTo(1);
+            assertThat(countReadStatus(fresh, memberId)).isEqualTo(1);
+            assertThat(countReadStatusByUser(memberId)).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("read-all を 2 連続で叩いても 200 のまま（500 に落ちない）")
+        void readAll二連打でも200() throws Exception {
+            for (int i = 0; i < 5; i++) {
+                saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null);
+            }
+            em.flush();
+
+            setAuth(memberId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.markedCount").value(5));
+            em.flush();
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", teamId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.markedCount").value(0))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(false));
+            em.flush();
+
+            assertThat(countReadStatusByUser(memberId)).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("単件既読の直後にもう一度同じお知らせを既読にしても 200（冪等・500 に落ちない）")
+        void 単件既読二連打でも200() throws Exception {
+            Long feedId = saveFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE, null, null);
+            em.flush();
+
+            setAuth(memberId);
+            for (int i = 0; i < 2; i++) {
+                mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamId, feedId))
+                        .andExpect(status().isOk());
+                em.flush();
+            }
+
+            assertThat(countReadStatus(feedId, memberId)).isEqualTo(1);
         }
     }
 
