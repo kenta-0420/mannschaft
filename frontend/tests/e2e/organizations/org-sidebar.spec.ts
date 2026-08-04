@@ -1,4 +1,5 @@
 // F16.1 組織サイドバーナビゲーション E2E テスト
+// サイドバー撤去対応: 固定 <aside> → Drawer 方式に変更。aside nav → .p-drawer nav にセレクタ変更。
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import { ORG_ID, mockOrg, mockOrgFeatureApis } from './helpers'
@@ -61,6 +62,20 @@ async function mockPermissions(
   })
 }
 
+/** ハンバーガーボタンをクリックして Drawer サイドバーを開く */
+async function openSidebarDrawer(page: import('@playwright/test').Page) {
+  const toggle = page.locator('[data-testid="scope-sidebar-toggle"]')
+  await expect(toggle).toBeVisible({ timeout: 10_000 })
+  await toggle.click()
+  // Drawer が開くのを待つ（PrimeVue Drawer のアニメーション完了を待機）
+  await expect(page.locator('.p-drawer')).toBeVisible({ timeout: 10_000 })
+}
+
+/** Drawer 内のサイドバー nav 要素を返す */
+function sidebarNav(page: import('@playwright/test').Page) {
+  return page.locator('.p-drawer nav')
+}
+
 test.describe('ORG-SB-001〜010: 組織サイドバーナビゲーション', () => {
   test.beforeEach(async ({ page }) => {
     await mockOrg(page)
@@ -68,33 +83,34 @@ test.describe('ORG-SB-001〜010: 組織サイドバーナビゲーション', ()
     await mockModules(page)
   })
 
-  // ORG-SB-001: ADMINロールでサイドバーが表示される
-  test('ORG-SB-001: ADMINロールでサイドバーが表示される（nav要素が存在する）', async ({ page }) => {
+  // ORG-SB-001: ADMINロールでサイドバーが表示される（Drawer内）
+  test('ORG-SB-001: ADMINロールでサイドバーが表示される（Drawer内nav要素が存在する）', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // ADMINはisMember=trueなのでasideの中のnavが表示される
-    await expect(page.locator('aside nav')).toBeVisible({ timeout: 10_000 })
+    // ハンバーガーボタンをクリックして Drawer を開く
+    await openSidebarDrawer(page)
+    // Drawer 内の nav が表示される
+    await expect(sidebarNav(page)).toBeVisible({ timeout: 10_000 })
   })
 
-  // ORG-SB-002: MEMBERロールでサイドバーが表示される
+  // ORG-SB-002: MEMBERロールでサイドバーが表示される（Drawer内）
   test('ORG-SB-002: MEMBERロールでサイドバーが表示される', async ({ page }) => {
-    // goto前にpermissionsをMEMBERでオーバーライド
     await mockPermissions(page, MOCK_MEMBER_PERMISSIONS)
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // MEMBERはisMember=trueなのでasideの中のnavが表示される
-    await expect(page.locator('aside nav')).toBeVisible({ timeout: 10_000 })
+    await openSidebarDrawer(page)
+    await expect(sidebarNav(page)).toBeVisible({ timeout: 10_000 })
   })
 
   // ORG-SB-003: SUPPORTERロールでサイドバーが表示されない
-  test('ORG-SB-003: SUPPORTERロールでサイドバーが表示されない（nav要素が存在しない）', async ({ page }) => {
-    // goto前にpermissionsをSUPPORTERでオーバーライド
+  test('ORG-SB-003: SUPPORTERロールでサイドバーが表示されない（Drawer内nav要素が存在しない）', async ({ page }) => {
     await mockPermissions(page, MOCK_SUPPORTER_PERMISSIONS)
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // SUPPORTERはisMember=falseなのでasideの中のnavが表示されない
+    await openSidebarDrawer(page)
+    // SUPPORTERはisMember=falseなのでDrawer内のnavが表示されない
     await page.waitForTimeout(2_000)
-    const navCount = await page.locator('aside nav').count()
+    const navCount = await sidebarNav(page).count()
     expect(navCount).toBe(0)
   })
 
@@ -102,60 +118,51 @@ test.describe('ORG-SB-001〜010: 組織サイドバーナビゲーション', ()
   test('ORG-SB-004: ホームカテゴリがデフォルトで展開されている（タイムラインリンクが見える）', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // asideのサイドバーnavを特定（ヘッダーのnavと区別）
-    const sidebarNav = page.locator('aside nav')
-    await expect(sidebarNav).toBeVisible({ timeout: 10_000 })
-    // 'ホーム'カテゴリがデフォルト展開されているので'タイムライン'リンクが見える
-    await expect(sidebarNav.getByRole('link', { name: 'タイムライン' })).toBeVisible({ timeout: 10_000 })
+    await openSidebarDrawer(page)
+    const nav = sidebarNav(page)
+    await expect(nav).toBeVisible({ timeout: 10_000 })
+    await expect(nav.getByRole('link', { name: 'タイムライン' })).toBeVisible({ timeout: 10_000 })
   })
 
   // ORG-SB-005: メンバーカテゴリがデフォルトで展開されている
   test('ORG-SB-005: メンバーカテゴリがデフォルトで展開されている（メンバー一覧ボタンが見える）', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // asideのサイドバーnavを特定
-    const sidebarNav = page.locator('aside nav')
-    await expect(sidebarNav).toBeVisible({ timeout: 10_000 })
-    // 'メンバー'カテゴリがデフォルト展開されているので'メンバー一覧'ボタンが見える
-    await expect(sidebarNav.getByText('メンバー一覧')).toBeVisible({ timeout: 10_000 })
+    await openSidebarDrawer(page)
+    const nav = sidebarNav(page)
+    await expect(nav).toBeVisible({ timeout: 10_000 })
+    await expect(nav.getByText('メンバー一覧')).toBeVisible({ timeout: 10_000 })
   })
 
   // ORG-SB-006: カテゴリクリックで折り畳みができる
   test('ORG-SB-006: カテゴリクリックで折り畳みができる', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // サイドバーのnavを特定（asideの中にあるcomplementaryロール）
-    const sidebarNav = page.locator('aside nav')
-    await expect(sidebarNav).toBeVisible({ timeout: 10_000 })
-    // ホームカテゴリのボタンを特定（'ホーム'テキストを持つbutton）
-    const homeButton = sidebarNav.locator('button').filter({ hasText: 'ホーム' }).first()
+    await openSidebarDrawer(page)
+    const nav = sidebarNav(page)
+    await expect(nav).toBeVisible({ timeout: 10_000 })
+    const homeButton = nav.locator('button').filter({ hasText: 'ホーム' }).first()
     await expect(homeButton).toBeVisible({ timeout: 10_000 })
-    // 展開状態でタイムラインリンクが見えている
-    await expect(sidebarNav.getByRole('link', { name: 'タイムライン' })).toBeVisible({ timeout: 5_000 })
-    // ホームカテゴリをクリックして折り畳む
+    await expect(nav.getByRole('link', { name: 'タイムライン' })).toBeVisible({ timeout: 5_000 })
     await homeButton.click()
-    // タイムラインリンクが非表示になる（v-show）
-    await expect(sidebarNav.getByRole('link', { name: 'タイムライン' })).toBeHidden({ timeout: 5_000 })
+    await expect(nav.getByRole('link', { name: 'タイムライン' })).toBeHidden({ timeout: 5_000 })
   })
 
   // ORG-SB-007: ADMINにしか見えない項目がMEMBERには表示されない
   test('ORG-SB-007: ADMINにしか見えない項目（権限グループ）がMEMBERには表示されない', async ({ page }) => {
-    // goto前にpermissionsをMEMBERでオーバーライド
     await mockPermissions(page, MOCK_MEMBER_PERMISSIONS)
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
+    await openSidebarDrawer(page)
     await page.waitForTimeout(2_000)
-    // MEMBERには「権限グループ」（requiredRole: 'ADMIN'）が表示されない
-    // asideのサイドバーnavでスコープ
-    const sidebarNav = page.locator('aside nav')
-    const permGroupText = sidebarNav.getByText('権限グループ')
+    const nav = sidebarNav(page)
+    const permGroupText = nav.getByText('権限グループ')
     const count = await permGroupText.count()
     expect(count).toBe(0)
   })
 
   // ORG-SB-008: モジュールOFFの場合、該当項目が表示されない
   test('ORG-SB-008: モジュールOFFの場合、該当項目が表示されない（timeline OFFでタイムラインリンク消える）', async ({ page }) => {
-    // timeline無効なモジュールリストでモックし直す（beforeEachのmockModulesをオーバーライド）
     await page.route(`**/api/v1/organizations/${ORG_ID}/modules`, async (route) => {
       await route.fulfill({
         status: 200,
@@ -165,44 +172,33 @@ test.describe('ORG-SB-001〜010: 組織サイドバーナビゲーション', ()
     })
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
+    await openSidebarDrawer(page)
     await page.waitForTimeout(2_000)
-    // asideのサイドバーnavでスコープ（ヘッダーのタイムラインと区別）
-    const sidebarNav = page.locator('aside nav')
-    // timeline moduleが無効なのでサイドバーのタイムラインリンクが表示されない
-    const timelineLink = sidebarNav.getByRole('link', { name: 'タイムライン' })
+    const nav = sidebarNav(page)
+    const timelineLink = nav.getByRole('link', { name: 'タイムライン' })
     const count = await timelineLink.count()
     expect(count).toBe(0)
   })
 
-  // ORG-SB-009: モバイルサイズでハンバーガーボタンが表示される
-  test('ORG-SB-009: モバイルサイズでハンバーガーボタンが表示される（lgブレークポイント未満）', async ({ page }) => {
-    // lgブレークポイント未満（Tailwindのlgは1024px以上）にgoto前に設定
-    await page.setViewportSize({ width: 1023, height: 768 })
+  // ORG-SB-009: 全画面サイズでハンバーガーボタンが表示される
+  test('ORG-SB-009: 全画面サイズでハンバーガーボタンが表示される（固定<aside>撤去・常時表示）', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    // organization.vueの <div class="lg:hidden px-4 pt-3"> 内のボタンが表示されることを確認
-    // mainコンテンツ内のlg:hidden divを特定（asideのサイドバーではなくサイドバー開閉ボタン）
-    // Playwrightではclass名のコロンをエスケープして .lg\:hidden と書く
-    const mobileMenuArea = page.locator('main .lg\\:hidden')
-    await expect(mobileMenuArea).toBeVisible({ timeout: 10_000 })
-    // その中のpi-barsボタンが表示される
-    const barsButton = mobileMenuArea.locator('button').first()
-    await expect(barsButton).toBeVisible({ timeout: 5_000 })
+    // 固定<aside>撤去により、ハンバーガーボタンは全画面サイズで常時表示される
+    const toggle = page.locator('[data-testid="scope-sidebar-toggle"]')
+    await expect(toggle).toBeVisible({ timeout: 10_000 })
   })
 
   // ORG-SB-010: タイムラインリンクをクリックするとタイムラインページへ遷移する
   test('ORG-SB-010: タイムラインリンクをクリックするとタイムラインページへ遷移する', async ({ page }) => {
-    // 最初は別ページに移動しておく
     await page.goto(`/organizations/${ORG_ID}/schedule`)
     await waitForHydration(page)
-    // asideのサイドバーnavのタイムラインリンクを特定（ヘッダーのリンクと区別するためasideでスコープ）
-    const sidebarNav = page.locator('aside nav')
-    await expect(sidebarNav).toBeVisible({ timeout: 10_000 })
-    const timelineLink = sidebarNav.getByRole('link', { name: 'タイムライン' })
+    await openSidebarDrawer(page)
+    const nav = sidebarNav(page)
+    await expect(nav).toBeVisible({ timeout: 10_000 })
+    const timelineLink = nav.getByRole('link', { name: 'タイムライン' })
     await expect(timelineLink).toBeVisible({ timeout: 10_000 })
-    // クリック
     await timelineLink.click()
-    // タイムラインページへ遷移する
     await expect(page).toHaveURL(new RegExp(`/organizations/${ORG_ID}/timeline`), { timeout: 10_000 })
   })
 })

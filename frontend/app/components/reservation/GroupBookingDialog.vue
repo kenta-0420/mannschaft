@@ -57,9 +57,40 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 使い方ガイド本文の呼称箇所に使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
+/**
+ * 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE）。
+ * GET /reservation-settings は ADMIN 限定ではなく view ゲート（会員/公開）のため会員側からも読める。
+ * approvalMode=MANUAL かつ pendingExpireHours が非 NULL のときのみ表示する（ReservationForm.vue と同一方針）。
+ */
+const pendingExpireApprovalMode = ref<'AUTO' | 'MANUAL' | undefined>(undefined)
+const pendingExpireHours = ref<number | null>(null)
+
+async function loadPendingExpireNotice() {
+  try {
+    const res = await reservationApi.getReservationSettings(props.teamId)
+    pendingExpireApprovalMode.value = res.data.approvalMode
+    pendingExpireHours.value = res.data.pendingExpireHours ?? null
+  }
+  catch (error) {
+    // 取得失敗は注意書きを出さない方向にフォールバック（予約確定の可否自体は BE が最終判定するため機能不全にはならない）。
+    // ただし完全に握りつぶすと恒常的な失敗が誰にも見えなくなるため、ユーザーには出さずバックエンドへ静かに記録する
+    // （captureQuiet・症状を隠さない。ReservationForm.vue と同一方針）。
+    captureQuiet(error, { context: 'GroupBookingDialog: 仮押さえ失効設定の取得に失敗' })
+    pendingExpireApprovalMode.value = undefined
+    pendingExpireHours.value = null
+  }
+}
+
+const showPendingExpireNotice = computed(
+  () => pendingExpireApprovalMode.value === 'MANUAL' && pendingExpireHours.value != null,
+)
+
 onMounted(() => { void loadResourceName() })
 
 type Step = 'menu' | 'preview'
@@ -112,16 +143,20 @@ function close() {
   emit('update:visible', false)
 }
 
+// ダイアログを開くたびに仮押さえ失効設定を再取得する（検分是正・W2-6-FE §MUST⑥）。本ダイアログは
+// picker 配下に常設 mount＋KeepAlive のため、onMounted 一回 fetch だと管理者が設定を変えても
+// 画面遷移まで古い値を表示し続ける。ReservationForm.vue と同じ「開くたび再取得」に揃える。
 watch(() => props.visible, (v) => {
   if (v) {
     resetState()
+    void loadPendingExpireNotice()
     // メニューフィルター事前絞り込み済みなら menu ステップをスキップして即プレビューへ
     if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
       const menu = menuOptions.value.find(m => m.id === props.context?.preselectedMenuId)
       if (menu) applyMenuSelection(menu, props.context.preselectedRequiredCellCount)
     }
   }
-})
+}, { immediate: true })
 
 /** メニュー選択（null=メニューなし30分）を適用し、連続枠が取れればプレビューへ進む。 */
 function applyMenuSelection(menu: ReservationMenuResponse | null, count: number) {
@@ -248,6 +283,10 @@ async function confirm() {
         emit('reserved')
         close()
         break
+      case 'RESERVATION_053':
+        // 429=予約作成レートリミット（W2-6 §6.4）。汎用文言でなく専用文言で案内する。
+        notification.error(t('reservation.message.rate_limited'))
+        break
       default:
         notification.error(t('reservation.message.reserve_failed'))
     }
@@ -361,6 +400,16 @@ async function confirm() {
           <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>
           <Textarea v-model="userNote" rows="2" class="w-full" :placeholder="t('reservation.placeholder.note')" />
         </div>
+
+        <!-- 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE・ReservationForm.vue と同一方針） -->
+        <Message
+          v-if="showPendingExpireNotice"
+          severity="info"
+          :closable="false"
+          data-testid="pending-expire-notice"
+        >
+          {{ t('reservation.pending_expire_notice.form_note', { n: pendingExpireHours }) }}
+        </Message>
       </div>
     </div>
 

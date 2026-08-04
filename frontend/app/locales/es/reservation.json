@@ -262,7 +262,8 @@
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
       "template_load_failed": "Error al cargar las plantillas",
-      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo"
+      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo",
+      "rate_limited": "Estás creando reservas demasiado rápido. Espera un momento y vuelve a intentarlo"
     },
     "empty": {
       "no_reservations": "No hay reservas",
@@ -332,6 +333,14 @@
           "placeholder": "ej: 24,1",
           "error_empty": "Ingrese al menos un valor",
           "error_invalid": "Ingrese enteros entre 0 y 8760 separados por comas"
+        },
+        "pending_expire": {
+          "label": "Caducidad automática de reservas provisionales (PENDING)",
+          "hint": "Cancela automáticamente una reserva provisional pendiente de aprobación tras el tiempo indicado (1-168 horas, hasta 7 días)",
+          "unit": " horas para cancelar automáticamente",
+          "no_expire_toggle": "No cancelar automáticamente",
+          "no_expire_warning": "Actualmente está desactivada la cancelación automática. En equipos con aprobación manual (MANUAL), las reservas provisionales no se cancelarán automáticamente. Los administradores deben gestionarlas individualmente",
+          "error_range": "Ingrese un valor entre 1 y 168"
         }
       }
     },
@@ -451,6 +460,43 @@
         "title": "Franjas no reservables registradas",
         "empty": "No hay franjas no reservables registradas",
         "all_day": "Todo el día"
+      }
+    },
+    "recurring": {
+      "toggle_label": "Repetir esta reserva cada semana",
+      "weeks_option": "{n} semanas",
+      "weeks_more": "Más opciones (5-12 semanas)",
+      "weeks_label": "Número de semanas",
+      "horizon_hint": "Los horarios solo se crean automáticamente hasta 28 días antes, por lo que las semanas posteriores pueden requerir una reserva manual una vez creado el horario",
+      "close_button": "Cerrar",
+      "badge": "Recurrente",
+      "result": {
+        "summary": "Se reservaron {created} (se omitieron {skipped})",
+        "skipped_list_title": "Ocurrencias omitidas",
+        "all_skipped_notice": "No se pudo reservar ninguna de las semanas seleccionadas. Revise los motivos a continuación y reserve manualmente las semanas necesarias"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "El horario de esa semana aún no se ha creado",
+        "FULL": "El horario estaba completo",
+        "CLOSED": "Las reservas estaban cerradas para ese horario",
+        "BLOCKED": "Ese horario no estaba disponible para reservar",
+        "ALREADY_RESERVED": "Ya tenía una reserva para ese horario",
+        "UNAVAILABLE": "El horario no estaba disponible",
+        "NOT_CANCELLABLE": "Esa reserva no se pudo cancelar",
+        "CANCEL_DEADLINE_PASSED": "Se superó el plazo de cancelación",
+        "NOT_PENDING": "Esa reserva no estaba pendiente de aprobación"
+      },
+      "cancel_scope": {
+        "dialog_title": "Elegir el alcance de la cancelación",
+        "this_only": "Solo esta vez",
+        "this_and_following": "Esta vez y todas las siguientes",
+        "result_summary": "Se cancelaron {cancelled} ({skipped} no elegibles)",
+        "all_skipped_notice": "No se pudo cancelar ninguna de las ocurrencias. Revise los motivos a continuación"
+      },
+      "confirm_series": {
+        "button": "Aprobar todo (serie recurrente)",
+        "confirm_message": "¿Aprobar todas las reservas pendientes de esta serie recurrente?",
+        "success": "{confirmed} aprobadas ({skipped} omitidas)"
       }
     },
     "notify_recipients": {
@@ -580,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "No se pudo pausar/reanudar: hay reservas superpuestas en este horario"
+      },
+      "force_cancel": {
+        "button": "Cancelar reservas en conflicto y registrar",
+        "confirm_title": "Confirmar registro forzado",
+        "confirm_message": "Se cancelarán {n} reserva(s) y se notificará a los miembros. ¿Continuar?",
+        "confirm_ok": "Cancelar y registrar",
+        "result_notice": "Se cancelaron {n} reserva(s) y se registró el bloqueo"
       }
     },
     "business_hours": {
@@ -679,6 +732,28 @@
       "row_locked": "Esta es una reserva en grupo. Gestiónala como grupo",
       "deadline_passed": "Se pasó el plazo de cancelación, no se puede cancelar",
       "own_overlap": "Ya tienes otra reserva en la franja horaria seleccionada. Revisa el horario"
+    },
+    "waitlist": {
+      "register_button": "Unirse a la lista de espera",
+      "cancel_button": "Salir de la lista de espera",
+      "registered_badge": "En espera",
+      "dialog_title": "Lista de espera",
+      "notice": "Te avisaremos cuando quede un lugar disponible. No se garantiza el orden; se asigna por orden de llegada",
+      "register_success": "Añadido a la lista de espera",
+      "cancel_success": "Eliminado de la lista de espera",
+      "admin_count": "{n} en lista de espera",
+      "already_registered": "Ya estás en la lista de espera de este horario",
+      "not_found": "No se encontró la entrada de la lista de espera (puede que ya se haya cancelado o convertido en reserva)",
+      "limit_exceeded": "Has alcanzado el límite de inscripciones en lista de espera",
+      "rate_limited": "Demasiado rápido. Espera aproximadamente un minuto y vuelve a intentarlo",
+      "slot_not_full": "Se liberó un lugar. Ya puedes reservarlo directamente",
+      "my_list_title": "Mi lista de espera",
+      "no_entries": "No estás en ninguna lista de espera",
+      "aria_hint_register": "Pulsa para unirte a la lista de espera",
+      "aria_hint_cancel": "Pulsa para salir de la lista de espera"
+    },
+    "pending_expire_notice": {
+      "form_note": "Si no se aprueba en un plazo de {n} horas, esta reserva se cancelará automáticamente"
     },
     "team_guide": {
       "title": "Cómo funcionan las reservas",

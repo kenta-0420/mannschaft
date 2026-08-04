@@ -270,8 +270,203 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code OnboardingMeScopeContractIT} 新設、{@code RepairPlanAuthorizationMatrixTest} 拡張、
      * {@code BudgetCategoryServiceTest} 拡張、{@code RecruitmentScopeContractIT} 更新）を含む。
      * 本 PR をもって認可根治戦役 Wave7 の是正シリーズを完結する。</p>
+     *
+     * <p>653 → 636（2026-07-30 / 第1波・個人領域 ロットA = todo ドメイン 28 EP の全数監査）:
+     * todo ドメインの凍結 28 EP を実コードで全数監査し、17 件を解消した。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（参照経路の認可敷設・2件）</b>: {@code TodoStatusLabelService#validateScopeAccess} の
+     *       チーム・組織スコープ<b>参照</b>経路に認可判定が無かったため
+     *       {@code AccessControlService#checkMembership} を敷設し、参照を当該スコープの
+     *       <b>メンバーに限定</b>した（{@code OrgTodoStatusLabelController.list} /
+     *       {@code TeamTodoStatusLabelController.list}）。CRUD 側の ADMIN 限定は従前どおり。</li>
+     *   <li><b>認可の一元化（5件）</b>: {@code MilestoneGateController} の個人スコープ 5 EP が
+     *       {@code ProjectAccessGuard#validatePersonalProjectAccess} と同一ロジックを private メソッドで
+     *       重複実装していたため、既存ガードへ委譲して重複を廃した（挙動不変のリファクタ）。</li>
+     *   <li><b>兄弟 EP との認可粒度統一（4件）</b>: {@code PersonalTodoController} の
+     *       削除・復元・PATCH・子一覧は Service 内で担当者照合していたが、兄弟 EP
+     *       （詳細・更新・ステータス）が採用済みの {@code TodoAccessGuard} 呼び出しを入口に揃えた
+     *       （認可境界は既存 Service の判定と同一・挙動不変）。</li>
+     *   <li><b>CRUD の認可可視化（6件）</b>: 組織・チームラベルの作成/更新/削除は元から
+     *       ADMIN 限定＋entity 由来スコープ照合が入っていたが、判定が
+     *       {@code validateScopeAccess} の 3 ホップ先にあり番人の委譲探索（D=2）から見えていなかった。
+     *       上記の参照経路是正により同メソッドが認可呼び出し点となり、実体を伴う形で解消した。</li>
+     * </ul>
+     * <p>残り 11 件は凍結のまま残す（違反隠蔽ではなく監査済み）。うち 7 件は
+     * リソース ID を受け取らない自己スコープ EP（{@code getMyTodos}/{@code getGanttTodos}/
+     * {@code createPersonalTodo}/{@code UserProjectController} 一覧・作成/
+     * {@code listMyTeamProjects}/{@code listMyOrgProjects}）で、スコープを認証主体から解決するため
+     * 構造的に他ユーザーへ到達できない。残る 4 件は {@code UserTodoStatusLabelController} の
+     * 個人ラベル CRUD で、認可の実体が「操作者 == スコープ所有者」の直接比較であり、
+     * 上記 onboarding 2 件と同じ理由で看板だけの {@code @PreAuthorize("isAuthenticated()")} は貼らない。
+     * いずれも契約テスト（{@code TodoStatusLabelScopeContractIT} /
+     * {@code TodoPersonalScopeContractIT} 新設）で「無関係な他ユーザーが他人のデータへ到達できないこと」を
+     * 固定した。同一コミットにストア差分・実装差分・契約テスト新設を含む。</p>
+     *
+     * <p>636 → 600（2026-07-30 / 第1波・個人領域 ロットB = actionmemo 23 EP + quickmemo 13 EP の
+     * 全数監査）: 上記ロットA（todo・17 件解消で 653 → 636）に続く同一波の後続ロット。
+     * ロットA が削除した行は todo ドメイン、本ロットが削除した 36 行は actionmemo / quickmemo で
+     * <b>互いに素</b>であり重複はない。したがって現在値は 636 − 36 = 600 となる。</p>
+     * <p>両ドメインの凍結 36 EP を実コードで全数監査した結果、<b>認可の抜けは検出されず</b>、
+     * 全件が「Service 層で実効的に認可済みだが番人の呼び出しグラフ判定では拾えない」
+     * ケースであることを確認した。内訳は自己スコープ 21 件
+     * （scopeId が {@code SecurityUtils#getCurrentUserId()} に固定されリクエストで指定不能）と、
+     * ID を伴うが Service が {@code findByIdAndUserId} 等の複合条件で所有者一致を強制するもの
+     * 15 件。ロットA と同じ方針で看板だけの {@code @PreAuthorize("isAuthenticated()")} は貼らず、
+     * 認可の所在を各 EP の Javadoc に {@code ファイル:行} で明記したうえで監査済マーカー
+     * {@link com.mannschaft.app.common.security.AuthorizedInService} を
+     * <b>メソッド単位</b>で付与して解消した（クラス単位にすると将来追加される未監査の
+     * メソッドまで無条件に承認してしまうため、意図的にメソッド単位とした）。</p>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code ActionMemoAdminService#revertTodoCompletion}: 認可判定を業務状態
+     *       （{@code completesTodo}）の検証より<b>前</b>へ移動し、スコープ外の利用者には
+     *       業務状態に依存せず一律 403 を返すことを保証した（メモの状態を開示しない）</li>
+     *   <li>{@code GlobalExceptionHandler}: {@code QM_010}（TAG_NOT_FOUND）を 404 に登録。
+     *       {@code TagController} の Javadoc は「他スコープの tagId を指した越境は 404」と
+     *       宣言していたが未登録のため 400 が返っており、宣言と実挙動が乖離していた</li>
+     *   <li>契約テスト: {@code ActionMemoScopeContractIT}（新設・23 EP）／
+     *       {@code QuickMemoSelfScopeContractIT}（新設・9 EP）／
+     *       {@code QuickMemoTagScopeContractIT} の PERSONAL スコープ節（追補・4 EP）。
+     *       全 36 EP について「無関係な他ユーザー → 404 / 403」または
+     *       「他ユーザーのデータが混入しないこと」を実測で固定し、正常系も併せて張った</li>
+     * </ul>
+     *
+     * <p>600 → 573（2026-07-30 / 第1波・個人領域 ロットC = reflection / inbox / favorite / corkboard の
+     * 48 EP 全数監査）: 凍結 48 EP を実コードで全数監査し、27 件を解消した。本ロットは上記ロットA
+     * （todo・17 件解消）から分岐しており、起点は 636 だった。ロットB（actionmemo / quickmemo・36 件解消）が
+     * 先に着地して 600 になったため、{@code main} 追随マージで両者を合成した結果が 573 である
+     * （636 − 36 − 27 = 573）。ロットB が削除した 36 行は actionmemo / quickmemo、本ロットの 27 行は
+     * reflection / inbox / favorite / corkboard で<b>互いに素</b>であり重複はない。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（1件・波及2EP）</b>: {@code TeamFavoriteResolver} /
+     *       {@code OrganizationFavoriteResolver} の表示メタ解決を F00 共通可視性ラダー
+     *       （{@code ContentVisibilityChecker#filterAccessible}）に一本化した。判定基準は
+     *       {@code GET /api/v1/teams/{slug}} と同一で、<b>閲覧できる対象のみ</b>名称・アイコンを返し、
+     *       閲覧できない対象は UNAVAILABLE とすることを保証する。あわせて
+     *       {@code FavoriteService#addFavorite} の入口に
+     *       {@code FavoriteAccessGuard#requireViewableTarget}（閲覧不可は {@code FAV_003} / 404 秘匿）を
+     *       <b>業務検証（件数上限・重複）より前</b>に敷設した。</li>
+     *   <li><b>認可の一元化（26件）</b>: 4 ドメインに散っていた同型の所有者・可視性判定を
+     *       新設ガード（{@code ReflectionAccessGuard} / {@code InboxAccessGuard} /
+     *       {@code FavoriteAccessGuard} / {@code CorkboardAccessGuard}）へ集約した。判定内容は
+     *       従前と同一（挙動不変）で、認可の所在が番人の委譲探索（D=2）から可視になったため解消。
+     *       内訳は reflection 12（テーマ詳細/更新/削除/アーカイブ/復元/作成の親参照・エントリ一覧/
+     *       upsert/詳細/削除・想起記録/履歴）、inbox 8（ラベル更新/削除/付与/付与解除/提案付与・
+     *       スヌーズ/アーカイブ・一括操作）、favorite 2（詳細/削除）、corkboard 4（個人ボード詳細/
+     *       更新/削除・カードのピン止め）。</li>
+     * </ul>
+     * <p>{@code InboxBulkService#bulk} は {@code LABEL_ADD} のラベル所有検証を item ループ前へ移し、
+     * 他者所有ラベル ID は全体を 404 で止める（ラベル ID の妥当性がスキップ件数の差として
+     * 観測されるのを防ぐ）。</p>
+     * <p>残り 21 件は凍結を継続する（違反隠蔽ではなく監査済み）。いずれも<b>リソース ID を
+     * 認可スコープとして受け取らず、スコープを認証主体から解決する自己スコープ EP</b> であり、
+     * 実体を伴わない {@code @PreAuthorize("isAuthenticated()")} は貼らない方針
+     * （ロットA todo・onboarding と同じ判断基準）。内訳は reflection 10（テーマ一覧・
+     * アーカイブフォルダ/検索/一括アーカイブ・科目紐づけ候補・通知設定 取得/更新・学期提案・
+     * 今日ビュー・単語帳ビュー）、inbox 6（一覧・サマリ・ラベル一覧/作成・スヌーズ解除・
+     * アーカイブ解除）、favorite 3（一覧・登録状態チェック・並び替え）、corkboard 2（個人ボード
+     * 一覧・作成）。到達不能性は本 PR の契約テストで固定した。</p>
+     * <p>契約テスト: {@code ReflectionPersonalScopeContractIT} / {@code InboxScopeContractIT} /
+     * {@code FavoriteScopeContractIT} 新設、{@code CorkboardBoardScopeContractIT} 拡張。</p>
+     *
+     * <p><b>600 → 583</b>（2026-07-30 / 第2波・PII 領域 ロットA = contact 24 EP + family 15 EP の
+     * 全数監査で 17 件解消）: 本ロットが削除した 17 行は contact / family、直前のロットB が
+     * 削除した 36 行は actionmemo / quickmemo で<b>互いに素</b>であり重複はない。
+     * 起点にした main は 636 行だったが、ロットB（36 件解消）の着地を取り込んだ結果
+     * 600 − 17 = 583 となる。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（3件）</b>: 招待トークン経由のケアリンク参照・承認・拒否
+     *       （{@code PublicCareLinkController}）に<b>当事者本人の照合</b>を敷設した。
+     *       ケアリンクは双方の同意でのみ成立させる方針に合わせ、参照は当事者、承認・拒否は
+     *       招待を受けた側に限定する（{@code CareLinkService#requireParty} /
+     *       {@code #requireInvitee}）。</li>
+     *   <li><b>存在秘匿の契約整備（7件）</b>: contact ドメインの当事者照合は元から entity 由来の
+     *       ID で行っていたが、{@code ERROR_CODE_STATUS_MAP} 未登録のため 400 にフォールバックし
+     *       存在秘匿の契約が成立していなかった。{@code CONTACT_006/010/014/015} を 404、
+     *       {@code CONTACT_007} を 403 として登録し、申請の当事者外アクセスは
+     *       {@code CONTACT_006}（404）に統一した。</li>
+     *   <li><b>認可済み・番人から不可視（7件）</b>: チーム／組織のメンバー一覧（設計書
+     *       {@code F04.8_contact.md §4.7} の公開範囲判定）、ケアリンクの通知設定変更・解除、
+     *       チームケア通知上書き 3 EP。いずれも entity 由来スコープでの判定を監査のうえ
+     *       {@code @AuthorizedInService} で明示承認した。</li>
+     * </ul>
+     * <p>自己スコープ EP（連絡先一覧・申請一覧・招待トークン一覧／発行・事前拒否一覧／追加・
+     * プライバシー設定・自分のハンドル・ケアリンク一覧／招待発行・プレゼンス一括送信）と、
+     * 対象ユーザー自身の公開設定に従うハンドル検索・capability トークンのみで成立する
+     * 連絡先招待受諾は<b>凍結を継続</b>する（違反隠蔽ではなく監査済み。看板だけの
+     * {@code @PreAuthorize("isAuthenticated()")} は貼らない）。契約は
+     * {@code ContactScopeContractIT} / {@code CareLinkInvitationScopeContractIT} で固定した。</p>
+     *
+     * <p>600 → 581（2026-07-30 / 第2波・金銭 ロットB = payment 19 EP + pointcard 16 EP +
+     * receipt 3 EP + ticket 2 EP の全数監査）: 起点にした {@code origin/main} の実測行数は 600
+     * （3 手段で突合: {@code awk 'END{print NR}'} / {@code wc -l} /
+     * PowerShell {@code (Get-Content|Measure-Object -Line).Lines}）。本ロットが削除した 19 行は
+     * payment 9 行と pointcard 10 行で、第1波の todo / actionmemo / quickmemo とは
+     * <b>互いに素</b>である。したがって現在値は 600 − 19 = 581 となる。</p>
+     * <p>担当 40 EP を実コードで全数監査した結果、<b>他人の決済情報・ポイントカード・領収書へ
+     * 到達できる認可の抜けは検出されなかった</b>。とくに金銭の副作用（外部課金・残高変更・
+     * トークン発行・レコード削除）について、認可判定がすべて副作用より<b>前</b>に位置することを
+     * 1 件ずつ確認した。分類は次のとおり:</p>
+     * <ul>
+     *   <li><b>ID を伴い Service で所有者一致を強制（19 件・解消済み）</b>: ポイントカード／グループは
+     *       {@code findByIdAndUserId} の複合条件で引き当て、継続課金は
+     *       {@code MembershipSubscriptionService#isOwnerOrGuardian}、会費領収書は
+     *       {@code ReceiptService#getReceipt} の払い手／受益者照合、受益者指定の加入・チェックアウトは
+     *       {@code PaymentAuthorizationService#authorizePayment}、エスクロー照会は
+     *       {@code ConnectChargeService#buildPaymentView} が担う。看板だけの
+     *       {@code @PreAuthorize("isAuthenticated()")} は貼らず、認可の所在を各 EP の Javadoc に
+     *       {@code ファイル:行} で明記したうえで {@code @AuthorizedInService} を<b>メソッド単位</b>で
+     *       付与して解消した（第1波と同方針）。</li>
+     *   <li><b>自己スコープ（17 件・凍結維持）</b>: 絞り込みキーが
+     *       {@code SecurityUtils#getCurrentUserId()} に固定され、リクエストで他会員を指定する余地が
+     *       構造的に無い EP 群。自己スコープ専用マーカーの基盤が未着地のため、契約テストのみ先に張り、
+     *       ストア行は凍結のまま残す（後続の retrofit でマーカーを付与する）。</li>
+     *   <li><b>Phase 4 未実装のプレースホルダ（3 件・凍結維持）</b>:
+     *       {@code MyPaymentController#listMySubscriptions} と
+     *       {@code SubscriptionController} の 2 EP は固定応答を返すだけで情報開示も副作用も無い。
+     *       実装するか撤去するかの設計判断が必要なため本ロットでは触らない。</li>
+     *   <li><b>領収書 PDF ダウンロード（1 件・凍結維持）</b>:
+     *       {@code ReceiptMyController#downloadMyReceiptPdf} は宛先不一致を 404 で秘匿することを
+     *       契約テストで固定したが、正常系（PDF 本体の生成）を統合テストで安全に張れないため
+     *       マーカーは付与せず凍結を維持する。</li>
+     * </ul>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code GlobalExceptionHandler}: {@code PAYMENT_029}（会費支払い記録の不在）を 404、
+     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403、
+     *       {@code RECEIPT_002}（領収書の不在・宛先不一致）を 404 に登録。3 コードとも未登録のため
+     *       {@code Severity.WARN} 既定の 400 が返っており、Javadoc の宣言と実挙動が乖離していた。
+     *       同ファイルへの変更は<b>この 3 エントリとコメントのみ</b>（並行整備中のため最小限）。</li>
+     *   <li>契約テスト: {@code PointCardWalletScopeContractIT}（新設・16 EP）／
+     *       {@code PaymentMoneyScopeContractIT}（新設）／
+     *       {@code EscrowPaymentViewScopeContractIT}（新設・2 EP）／
+     *       {@code ReceiptMyScopeContractIT}（新設・3 EP）／
+     *       {@code MyTicketSelfScopeContractIT}（新設・2 EP）。
+     *       「無関係な他ユーザー → 403 / 404」または「他ユーザーのデータが混入しないこと」を実測で固定し、
+     *       金銭系では<b>操作が成立していないことを DB の実値</b>（member_payments の件数・
+     *       membership_subscriptions の件数と解約予約／スキップ期日・カードの表示名／最終利用時刻・
+     *       一時トークンの未発行）で確認した。正常系も併せて張っている。</li>
+     * </ul>
+     *
+     * <p><b>583 → 564</b>（2026-07-30 / 第2波 ロットA・ロットBの束ね統合）: 上記ロットA
+     * （contact / family、17 行解消）とロットB（payment / pointcard、19 行解消）は、strict
+     * required status checks（main 更新のたびに全 PR が {@code BEHIND} になり CI 再走が必要になる
+     * ruleset）による CI 再走コストを避けるため、個別に main へマージせず 1 本の PR に束ねて
+     * マージした。両ロットは対象ドメインが<b>互いに素</b>（contact/family と payment/pointcard は
+     * 一切重ならない）であるため、削除行数は単純合算でよい。起点は
+     * {@code origin/main} の実測 600 行、ロットAが 17 行・ロットBが 19 行を解消したので
+     * 600 − 17 − 19 = 564 となる。束ねた PR 自体は追加の認可是正を行っておらず、
+     * 両ロットの成果をそのまま合成した値である。</p>
+     *
+     * <p><b>564 → 537</b>（2026-07-30 / 第1波 ロットC の main 追随マージ）: 上記の束ね統合
+     * （第2波 ロットA・ロットB）が先に着地して main が 564 行になったため、第1波 ロットC
+     * （reflection / inbox / favorite / corkboard・27 行解消）の期待値を合成し直した値である。
+     * ロットC が削除する 27 行（reflection 12 / inbox 8 / favorite 3 / corkboard 4）と、
+     * 束ねが削除した 36 行（contact 9 / family 8 / payment 9 / pointcard 10）は
+     * <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。したがって
+     * 564 − 27 = 537 となる。ロットC 自身は追加の認可是正を行っておらず、値の合成のみである。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 653;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 537;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

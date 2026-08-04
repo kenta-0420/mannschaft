@@ -262,7 +262,8 @@
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
       "template_load_failed": "Failed to load templates",
-      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator"
+      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator",
+      "rate_limited": "You're creating reservations too quickly. Please wait a moment and try again"
     },
     "empty": {
       "no_reservations": "No reservations",
@@ -332,6 +333,14 @@
           "placeholder": "e.g. 24,1",
           "error_empty": "Please enter at least one value",
           "error_invalid": "Enter integers between 0 and 8760 separated by commas"
+        },
+        "pending_expire": {
+          "label": "Auto-expiration of pending holds",
+          "hint": "Automatically cancels a pending reservation after the specified time has passed (1-168 hours, up to 7 days)",
+          "unit": " hours to auto-cancel",
+          "no_expire_toggle": "Do not auto-cancel",
+          "no_expire_warning": "Auto-cancel is currently disabled. For teams with manual approval (MANUAL), pending holds will not be cancelled automatically. Administrators must handle them individually",
+          "error_range": "Please enter a value between 1 and 168"
         }
       }
     },
@@ -451,6 +460,43 @@
         "title": "Registered blocked times",
         "empty": "No blocked times registered",
         "all_day": "All day"
+      }
+    },
+    "recurring": {
+      "toggle_label": "Repeat this reservation weekly",
+      "weeks_option": "{n} weeks",
+      "weeks_more": "More options (5-12 weeks)",
+      "weeks_label": "Number of weeks",
+      "horizon_hint": "Slots are only auto-created up to 28 days ahead, so weeks beyond that may need to be booked manually once the slot is created",
+      "close_button": "Close",
+      "badge": "Recurring",
+      "result": {
+        "summary": "{created} reservation(s) made ({skipped} skipped)",
+        "skipped_list_title": "Skipped occurrences",
+        "all_skipped_notice": "None of the selected weeks could be reserved. Please check the reasons below and book the needed weeks individually"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "The slot for that week has not been created yet",
+        "FULL": "The slot was full",
+        "CLOSED": "Booking was closed for that slot",
+        "BLOCKED": "That time was unavailable for booking",
+        "ALREADY_RESERVED": "You already had a reservation for that slot",
+        "UNAVAILABLE": "The slot was unavailable",
+        "NOT_CANCELLABLE": "That reservation could not be cancelled",
+        "CANCEL_DEADLINE_PASSED": "The cancellation deadline had passed",
+        "NOT_PENDING": "That reservation was not awaiting approval"
+      },
+      "cancel_scope": {
+        "dialog_title": "Choose cancellation scope",
+        "this_only": "This occurrence only",
+        "this_and_following": "This and all following occurrences",
+        "result_summary": "{cancelled} cancelled ({skipped} not eligible)",
+        "all_skipped_notice": "None of the occurrences could be cancelled. Please check the reasons below"
+      },
+      "confirm_series": {
+        "button": "Approve all (recurring series)",
+        "confirm_message": "Approve all pending reservations in this recurring series?",
+        "success": "{confirmed} approved ({skipped} skipped)"
       }
     },
     "notify_recipients": {
@@ -580,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "Could not pause/resume — there are overlapping reservations in this time slot"
+      },
+      "force_cancel": {
+        "button": "Cancel conflicting reservations and register",
+        "confirm_title": "Confirm forced registration",
+        "confirm_message": "{n} reservation(s) will be cancelled and the members notified. Continue?",
+        "confirm_ok": "Cancel and register",
+        "result_notice": "{n} reservation(s) were cancelled and the block was registered"
       }
     },
     "business_hours": {
@@ -679,6 +732,28 @@
       "row_locked": "This is a group booking. Please manage it as a group",
       "deadline_passed": "The cancellation deadline has passed, so this can't be cancelled",
       "own_overlap": "You already have another booking in the selected time slot. Please check the time"
+    },
+    "waitlist": {
+      "register_button": "Join waitlist",
+      "cancel_button": "Leave waitlist",
+      "registered_badge": "Waiting",
+      "dialog_title": "Waitlist",
+      "notice": "We'll notify you when a spot opens up. Spots aren't reserved for anyone — it's first-come, first-served",
+      "register_success": "Added to the waitlist",
+      "cancel_success": "Removed from the waitlist",
+      "admin_count": "{n} on the waitlist",
+      "already_registered": "You're already on the waitlist for this slot",
+      "not_found": "Waitlist entry not found (it may have already been cancelled or converted)",
+      "limit_exceeded": "You've reached the waitlist registration limit",
+      "rate_limited": "That was too fast. Please wait about a minute and try again",
+      "slot_not_full": "A spot opened up — you can book it directly",
+      "my_list_title": "My waitlist",
+      "no_entries": "You're not on any waitlists",
+      "aria_hint_register": "Press to join the waitlist",
+      "aria_hint_cancel": "Press to leave the waitlist"
+    },
+    "pending_expire_notice": {
+      "form_note": "If not approved within {n} hours, this booking will be cancelled automatically"
     },
     "team_guide": {
       "title": "How reservations work",

@@ -439,7 +439,7 @@ class ReservationServiceTest {
         @DisplayName("正常系: 予約が作成される")
         void 予約作成_正常() {
             // Given
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考", null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationEntity savedEntity = createReservationEntity();
             ReservationResponse response = createReservationResponse();
@@ -463,7 +463,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: スロットが満席の場合SLOT_FULLエラー")
         void 予約作成_スロット満席() {
             // Given
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createFullSlotEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
 
@@ -478,7 +478,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: スロットがクローズ済みの場合SLOT_CLOSEDエラー")
         void 予約作成_スロットクローズ() {
             // Given
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createClosedSlotEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
 
@@ -493,7 +493,7 @@ class ReservationServiceTest {
         @DisplayName("B-5: 予約不可枠と overlap する枠への予約作成は BLOCKED_TIME_CONFLICT（RESERVATION_009・400）")
         void 予約作成_予約不可枠overlap() {
             // Given: slot は 2026-04-01 10:00-11:00（createAvailableSlotEntity）。同日 TEAM 全日ブロックを設定。
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(
@@ -514,7 +514,7 @@ class ReservationServiceTest {
         @DisplayName("F03.4.2 §5.6: ライン軸枠で request.lineId != slot.lineId は SLOT_LINE_MISMATCH=RESERVATION_038（400）")
         void 予約作成_ライン軸枠の不一致は038() {
             // Given: 枠はライン 30 専用（line_id=30）だがリクエストはライン 99 を指定
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, 99L, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, 99L, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
 
@@ -531,7 +531,7 @@ class ReservationServiceTest {
         @DisplayName("F03.4.2 §3.1: ライン軸枠では予約行の line_id が枠から自動決定される（request.lineId 省略可）")
         void 予約作成_ライン軸枠は枠のラインが自動採用() {
             // Given: 枠はライン 30 専用・リクエストは lineId 省略（null）
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, null, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, null, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
@@ -553,7 +553,7 @@ class ReservationServiceTest {
         @DisplayName("F03.4.2 §5.6: ライン軸枠で request.lineId == slot.lineId は従来どおり作成される")
         void 予約作成_ライン軸枠の一致は成功() {
             // Given
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
@@ -570,7 +570,7 @@ class ReservationServiceTest {
         @DisplayName("F03.4.2 §5.6: 共通枠（slot.lineId NULL）は従来どおり request.lineId をそのまま保存（挙動後退ゼロ）")
         void 予約作成_共通枠は従来どおり() {
             // Given: 共通枠（createAvailableSlotEntity は lineId 未設定 = NULL）
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
@@ -592,7 +592,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: 重複予約の場合DUPLICATE_RESERVATIONエラー")
         void 予約作成_重複() {
             // Given
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
@@ -609,7 +609,7 @@ class ReservationServiceTest {
         @DisplayName("認可: 所属者は非公開チームでも予約できる")
         void 予約作成_所属者は予約可() {
             // Given: 非公開（false）だがユーザーは所属者（setUp の既定スタブ）
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考", null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationEntity savedEntity = createReservationEntity();
 
@@ -630,7 +630,7 @@ class ReservationServiceTest {
         @DisplayName("認可: 非所属者かつ非公開（既定）の場合 RESERVATION_PERMISSION_DENIED で 403 相当")
         void 予約作成_非所属者かつ非公開は拒否() {
             // Given: view ガードが 403（非公開かつ非所属者）を投げる
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             org.mockito.BDDMockito.willThrow(
                             new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED))
                     .given(viewAccessGuard).assertCanView(TEAM_ID, USER_ID);
@@ -648,7 +648,7 @@ class ReservationServiceTest {
         @DisplayName("AUTO: 承認モードAUTOの場合 createReservation で即時CONFIRMED かつ ReservationConfirmedEvent 発行")
         void 予約作成_AUTOで自動確定() {
             // Given: 承認モード AUTO
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考", null);
             ReservationSlotEntity slot = ReservationSlotEntity.builder()
                     .teamId(TEAM_ID)
                     .title("カット")
@@ -701,7 +701,7 @@ class ReservationServiceTest {
         @DisplayName("MANUAL: 承認モードMANUALの場合 createReservation で PENDING維持・ReservationConfirmedEvent 未発行")
         void 予約作成_MANUALはPENDING維持() {
             // Given: 承認モード MANUAL（setUp 既定）
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考", null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationEntity savedEntity = createReservationEntity();
 
@@ -732,7 +732,7 @@ class ReservationServiceTest {
         @DisplayName("結線: 承認モード解決を ReservationPolicyService に委譲する（枠値優先は同サービスの責務）")
         void 予約作成_承認モード解決をポリシーサービスに委譲() {
             // Given: 枠に MANUAL を持つスロット。resolveApprovalMode が枠値優先で MANUAL を返すことを結線で確認する。
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = ReservationSlotEntity.builder()
                     .teamId(TEAM_ID)
                     .slotDate(java.time.LocalDate.of(2026, 4, 1))
@@ -762,7 +762,7 @@ class ReservationServiceTest {
         @DisplayName("認可: view ガードが通過すれば（公開ON/所属者いずれでも）予約成立し、ゲートは共有ガードへ委譲される")
         void 予約作成_ガード通過で予約成立() {
             // Given: view ガードは既定で通過（会員/公開いずれの許可経路も同一述語 ReservationViewAccessGuard に集約済み）
-            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationEntity savedEntity = createReservationEntity();
             given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
@@ -886,7 +886,7 @@ class ReservationServiceTest {
         @DisplayName("正常系: 管理者が予約をキャンセルする")
         void 管理者キャンセル_正常() {
             // Given
-            CancelReservationRequest request = new CancelReservationRequest("管理者都合");
+            CancelReservationRequest request = new CancelReservationRequest("管理者都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();
@@ -909,7 +909,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: COMPLETED予約をキャンセルしようとするとINVALID_RESERVATION_STATUSエラー")
         void 管理者キャンセル_ステータス不正() {
             // Given
-            CancelReservationRequest request = new CancelReservationRequest("理由");
+            CancelReservationRequest request = new CancelReservationRequest("理由", null);
             ReservationEntity entity = createReservationEntity();
             entity.complete();
             given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
@@ -927,7 +927,7 @@ class ReservationServiceTest {
         void 管理者キャンセル_締切超過でも可() {
             // 締切（2026-03-31 10:00）を大きく過ぎた時刻でも、ADMIN キャンセルは締切判定を行わず可。
             reinitServiceWithClockAt(LocalDateTime.of(2026, 4, 1, 9, 0));
-            CancelReservationRequest request = new CancelReservationRequest("管理者都合");
+            CancelReservationRequest request = new CancelReservationRequest("管理者都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();
@@ -961,7 +961,7 @@ class ReservationServiceTest {
         @DisplayName("正常系: ユーザーが予約をキャンセルする")
         void ユーザーキャンセル_正常() {
             // Given
-            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();
@@ -984,7 +984,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: 予約が存在しない場合RESERVATION_NOT_FOUNDエラー")
         void ユーザーキャンセル_予約なし() {
             // Given
-            CancelReservationRequest request = new CancelReservationRequest("理由");
+            CancelReservationRequest request = new CancelReservationRequest("理由", null);
             given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
                     .willReturn(Optional.empty());
 
@@ -999,7 +999,7 @@ class ReservationServiceTest {
         @DisplayName("異常系: キャンセル不可のステータスの場合INVALID_RESERVATION_STATUSエラー")
         void ユーザーキャンセル_ステータス不正() {
             // Given
-            CancelReservationRequest request = new CancelReservationRequest("理由");
+            CancelReservationRequest request = new CancelReservationRequest("理由", null);
             ReservationEntity entity = createReservationEntity();
             entity.complete();
             given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
@@ -1018,7 +1018,7 @@ class ReservationServiceTest {
             // 枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00。
             // その 1 分後（締切超過）を現在時刻に設定する。
             reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 10, 1));
-            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
 
@@ -1040,7 +1040,7 @@ class ReservationServiceTest {
         void ユーザーキャンセル_締切境界丁度はキャンセル可() {
             // 締切ちょうど（2026-03-31 10:00）。now.isAfter(deadline) は false なのでキャンセル可。
             reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 10, 0));
-            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();
@@ -1064,7 +1064,7 @@ class ReservationServiceTest {
         void ユーザーキャンセル_締切内はキャンセル可() {
             // 締切（2026-03-31 10:00）の 1 分前。
             reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 9, 59));
-            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
             ReservationEntity entity = createReservationEntity();
             ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();

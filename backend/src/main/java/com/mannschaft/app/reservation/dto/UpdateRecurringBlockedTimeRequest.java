@@ -43,4 +43,14 @@ public class UpdateRecurringBlockedTimeRequest {
 
     /** 有効/無効を切替える場合に指定（一時停止）。 */
     private final Boolean isActive;
+
+    /**
+     * 衝突する既存予約を強行キャンセルして更新するか（F03.4.5 §6.2 W2-5・殿の裁定 2026-07-30・additive）。
+     *
+     * <p>未指定（null）/ FALSE = 従来どおり 409（{@code RESERVATION_027}）で拒否（挙動不変）。
+     * TRUE = 更新後の最終形（曜日・時間帯・ライン）と overlap する active 予約を一括 CANCELLED にし、
+     * 各申込者へ通知してから更新する。理由の詳細は
+     * {@link CreateRecurringBlockedTimeRequest#getForceCancelConflicting()} を参照。</p>
+     */
+    private final Boolean forceCancelConflicting;
 }

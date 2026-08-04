@@ -226,6 +226,9 @@
   "error": {
     "server": "Se produjo un error del servidor",
     "server_retry": "Por favor, intentelo de nuevo mas tarde.",
+    "rate_limited": "Demasiadas solicitudes",
+    "rate_limited_detail": "Ha realizado demasiadas solicitudes en poco tiempo. Espere un momento e intentelo de nuevo.",
+    "rate_limited_retry_after": "Ha realizado demasiadas solicitudes en poco tiempo. Intentelo de nuevo en unos {seconds} segundos.",
     "network": "Se produjo un error de red",
     "unauthorized": "Por favor, inicie sesion",
     "section_load_failed": "No se pudo cargar esta seccion. Recarga la pagina.",

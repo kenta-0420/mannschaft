@@ -10,6 +10,7 @@ import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
 import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
+import com.mannschaft.app.activity.dto.PublicActivitySitemapRow;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityParticipantEntity;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +48,12 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ActivityResultService {
 
+    /**
+     * 実在しないスコープ ID（番兵）。{@code scope_id} は正の値のみを取るため決して一致しない。
+     * sitemap クエリで JPQL の {@code IN ()} 生成を避けるためだけに使う。
+     */
+    private static final long SITEMAP_NO_MATCH_SCOPE_ID = -1L;
+
     private final ActivityResultRepository resultRepository;
     private final ActivityParticipantRepository participantRepository;
     private final ActivityTemplateService templateService;
@@ -55,7 +63,35 @@ public class ActivityResultService {
     private final ActivityScopeAccessGuard scopeAccessGuard;
 
     /**
-     * 活動記録一覧をページング取得する。
+     * 活動記録一覧をページング取得する（認証済み経路）。
+     *
+     * <p><b>総件数の是正（契約テスト AC-33）</b>: 旧実装は
+     * {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、
+     * <b>総件数がページ内件数へ化けていた</b>。DB が算出した総件数から
+     * 「このページで F00 が落とした件数」だけを差し引く形へ改めた
+     * （既存流儀: {@code TournamentService#listTournaments}）。</p>
+     *
+     * <p><b>【既知の残務】認証済み経路には「ページング歯抜け」が残っている</b>:
+     * 本メソッドは SQL で 1 ページ分（{@code size=limit}）を取得してから
+     * F00 {@link ContentVisibilityChecker} でメモリ上フィルタする。{@code pageable} は
+     * 既に切られているため落ちた分は補充されず、他人の DRAFT 等が混ざると
+     * 要求件数より少ない件数しか返らない。総件数も上界近似
+     * （実閲覧可能件数 ≦ 総件数 ≦ スコープ配下の全行数）になる。</p>
+     *
+     * <p>匿名公開一覧（{@link #listPublicActivities}）は同じ欠陥を SQL 述語で根治したが、
+     * <b>本メソッドには同じ手が使えない</b>。匿名では F00 のラダーが縮退する
+     * （{@code MembershipBatchQueryService#snapshotForUser} が userId=null で
+     * {@code UserScopeRoleSnapshot.empty()} を返し、{@code StandardVisibility.PUBLIC} が
+     * 「未認証は PUBLIC かつ PUBLISHED のみ true」と宣言している）ため SQL 述語は
+     * F00 宣言の機械的転写になるが、認証済みでは閲覧者のロールに応じて
+     * {@code MEMBERS_AND_ABOVE} 等が通るためラダーが縮退せず、SQL に書けば
+     * <b>本物の独自述語（第二の判定器）</b>になってしまい F00 一本化方針に正面から反する。</p>
+     *
+     * <p><b>後続戦役の道筋</b>: F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」
+     * （閲覧可能な {@code StandardVisibility} 集合を返すもの）を新設し、その出力を
+     * SQL の {@code IN} 述語へ翻訳すれば厳密化できる。判定器は F00 のまま 1 つで、
+     * SQL は F00 の出力を機械的に写すだけになる。設計書
+     * {@code docs/features/F06.4_activity_records.md}「認証済み一覧の既知の残務」節を参照。</p>
      */
     public Page<ActivityResultEntity> listActivities(Long userId, ActivityScopeType scopeType, Long scopeId,
                                                       Long templateId, Pageable pageable) {
@@ -81,68 +117,106 @@ public class ActivityResultService {
         List<ActivityResultEntity> filtered = content.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-        return new PageImpl<>(filtered, pageable, filtered.size());
+        // 総件数は「DB が算出した総件数 − このページで F00 が落とした件数」。
+        // 旧実装は filtered.size()（＝ページ内件数）を総件数に渡しており、55 件あっても
+        // ページャが「20 件・1 ページ」に見えて 2 ページ目以降へ辿り着けなかった（AC-33）。
+        // 算出式は既存流儀（TournamentService#listTournaments）と同一。
+        long excluded = (long) page.getNumberOfElements() - filtered.size();
+        return new PageImpl<>(filtered, pageable,
+                Math.max(0L, page.getTotalElements() - excluded));
     }
 
     /**
-     * 公開活動記録一覧をページング取得する。
+     * 公開活動記録一覧をページング取得する（匿名公開経路）。
      *
-     * <p>F00 Phase E-1: 旧 {@code visibility = PUBLIC} 直接フィルタを廃止し、
+     * <h2>ページング歯抜けの根治（契約テスト AC-30 / AC-31 / AC-31b / AC-35）</h2>
+     * <p>旧実装は {@code visibility} / {@code status} 条件を<b>持たない</b> SQL で
+     * スコープ配下から 1 ページ分（{@code size=limit}）を取得し、<b>取得後にメモリ上で</b>
      * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
-     * 経由（未認証 userId=null）に一本化。PUBLIC かつ PUBLISHED のみが Resolver を通過するため、
-     * 下書き（DRAFT）・会員限定・論理削除済みは一覧に現れない。
-     * 判定は ID 集合の <b>1 回のバッチ呼び出し</b>で行うため、件数に比例した SQL は発行されない（N+1 禁止）。</p>
+     * を掛けていた。{@code Pageable} は既に {@code size=limit} で切られているため落ちた分は
+     * 補充されず、非公開（{@code MEMBERS_ONLY} / {@code DRAFT}）が混在すると
+     * <b>{@code limit=20} を要求しても 20 件返らない</b>という歯抜けが起きていた。
+     * 総件数も「全行数 − このページで落ちた件数」という上界近似にしかならなかった。</p>
      *
-     * <p><b>総件数の是正（契約テスト AC-29a）</b>: 旧実装は
-     * {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、
-     * <b>総件数がページ内件数へ化けていた</b>（55 件あってもページャが「20 件・1 ページ」に見え、
-     * 2 ページ目以降へ辿り着けなかった）。DB が算出した総件数
-     * （{@code allPage.getTotalElements()}）を基準にし、F00 が<b>このページで</b>落とした件数だけを
-     * 差し引いて返す。</p>
+     * <p>絞り込みを <b>SQL 段</b>（{@link ActivityResultRepository#findPublicByScopeTypeAndScopeId}）
+     * へ降ろすことで、要求件数ちょうどが返り、総件数も実公開件数と一致する。</p>
      *
-     * <p><b>総件数は「実総数」ではなく上界近似である（許容済み）</b>: 差し引けるのは
-     * 「現在のページで落ちた件数」だけなので、返す総件数は
-     * <b>実際の公開件数 ≦ 総件数 ≦ スコープ配下の全行数</b> の範囲に収まる<b>上界近似</b>になる。
-     * 全件が公開なら実総数と一致し（AC-29a）、非公開が後続ページに潜む場合だけ
-     * わずかに多く出る（AC-29b）。1 ページ目に混ざった非公開はその場で差し引かれる（AC-29c）。</p>
+     * <h2>なぜ SQL に可視性条件を書いてよいのか（F00 一本化方針との関係）</h2>
+     * <p>「可視性判定は F00 に一本化する」という方針の実体は
+     * <b>「二つ目の判定器を作るな／手書きのロール階層を書くな」</b>であって
+     * 「SQL に書くな」ではない。設計書
+     * {@code docs/features/F02.6_announcement_widget.md} はむしろ
+     * 「検証は Repository 層の {@code @Query} レベルで WHERE 句に入れる
+     * （Service 層の if 文に依存しない）」と規定している。</p>
      *
-     * <p>この近似は<b>殿の裁可により許容</b>する（総件数は HTTP 契約に露出しないため実害がない）。
-     * 可視性の絞り込みを SQL 前段に降ろせば厳密化できるが、それは F00 Phase E-1 の
-     * 「可視性判定は F00 に一本化する」方針に反するため採らない。近似の<b>幅</b>は
-     * 契約テスト AC-29a/b/c が機械的に固定しており、振る舞いが変われば必ず落ちる。</p>
+     * <p>金型である {@code PublicPostQueryService}（F19.1・{@code PublicActivityQueryService}
+     * 自身が「金型」と明記）は、一覧を
+     * {@code BlogPostRepository#findPublicPostsByTeamId}（{@code visibility = PUBLIC AND
+     * status = PUBLISHED}）という SQL 述語で解いており、一覧経路で {@code filterAccessible}
+     * を呼んでいない。{@code TournamentService#listPublicTournaments} も同様。
+     * {@code AnnouncementFeedVisibilityResolver} は「一覧は SQL 述語・単件は F00 Resolver」の
+     * 併存を公式に容認している。</p>
+     *
+     * <p><b>匿名では F00 のラダーが縮退するため、SQL 述語は F00 自身の宣言の機械的転写になる</b>:
+     * {@code MembershipBatchQueryService#snapshotForUser} は {@code userId == null} で
+     * {@code UserScopeRoleSnapshot.empty()} を返し、
+     * {@link com.mannschaft.app.common.visibility.StandardVisibility#PUBLIC} の Javadoc が
+     * 「未認証時は本値かつ PUBLISHED のときのみ true、それ以外の値はすべて fail-closed」と
+     * 明文で宣言している。</p>
+     *
+     * <h2>F00 は「第二の門」として残す</h2>
+     * <p>SQL が通した行を F00 で再確認する。通常は 1 件も落ちない。
+     * <b>落ちた場合は乖離であり {@code log.warn} に記録する</b>
+     * （SQL 述語と F00 の判定が食い違ったという本番検知点）。乖離した行は
+     * <b>返さない</b>（fail-closed を維持）うえ、総件数からも差し引く。</p>
+     *
+     * <p>「SQL 述語の集合」と「F00 の判定集合」が厳密一致し続けることは、契約テスト
+     * <b>AC-32（等価性番人）</b>が {@code visibility × status × deleted} の全 8 組合せで
+     * 機械的に固定している。片方だけを変更すると必ず落ちる。</p>
      *
      * <p><b>注意</b>: 本メソッドは親スコープ（チーム / 組織）の公開性を検証<b>しない</b>。
      * 匿名公開経路では {@code PublicActivityQueryService} が親スコープを先に検証すること。</p>
      */
     public Page<ActivityResultEntity> listPublicActivities(ActivityScopeType scopeType, Long scopeId,
                                                             Pageable pageable) {
-        // scopeType + scopeId 配下の全活動記録を取得（ページング上限は呼び出し元が制御）
-        Page<ActivityResultEntity> allPage =
-                resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
-                        scopeType, scopeId, pageable);
-        List<ActivityResultEntity> all = allPage.getContent();
+        // 門2: visibility=PUBLIC かつ status=PUBLISHED を SQL の WHERE 句で絞る
+        // （論理削除は @SQLRestriction("deleted_at IS NULL") が自動除外）。
+        Page<ActivityResultEntity> page =
+                resultRepository.findPublicByScopeTypeAndScopeId(scopeType, scopeId, pageable);
+        List<ActivityResultEntity> content = page.getContent();
 
-        if (all.isEmpty()) {
-            return allPage;
+        if (content.isEmpty()) {
+            return page;
         }
 
-        // F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）
+        // 門3（第二の門）: F00 ContentVisibilityChecker で再確認（userId=null = 未認証）。
+        // ID 集合の 1 回のバッチ呼び出しなので件数に比例した SQL は発行されない（N+1 禁止・AC-34）。
         Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.ACTIVITY_RESULT,
-                all.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
+                content.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
                 null);
 
-        List<ActivityResultEntity> filtered = all.stream()
+        if (accessibleIds.size() == content.size()) {
+            // 正常系: SQL 述語と F00 の判定が一致。DB が算出した総件数・ページ情報をそのまま返す。
+            return page;
+        }
+
+        // 乖離検知: SQL 述語が通したのに F00 が拒否した行がある = 両者の定義がずれている。
+        // fail-closed（返さない）を維持しつつ、本番で気付けるよう警告を残す。
+        List<Long> divergentIds = content.stream()
+                .map(ActivityResultEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("公開活動記録一覧: SQL 述語(visibility=PUBLIC AND status=PUBLISHED)と "
+                        + "F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "scopeType={}, scopeId={}, divergentIds={}",
+                scopeType, scopeId, divergentIds);
+
+        List<ActivityResultEntity> filtered = content.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-
-        if (filtered.size() == all.size()) {
-            // 全件が公開 → DB が算出した総件数・ページ情報をそのまま活かす
-            return allPage;
-        }
-        long removedInThisPage = (long) all.size() - filtered.size();
         return new PageImpl<>(filtered, pageable,
-                Math.max(0L, allPage.getTotalElements() - removedInThisPage));
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**
@@ -193,6 +267,51 @@ public class ActivityResultService {
     public Optional<ActivityResultEntity> findPublicActivityById(Long id) {
         return resultRepository.findByIdAndVisibilityAndStatus(
                 id, ActivityVisibility.PUBLIC, ActivityStatus.PUBLISHED);
+    }
+
+    /**
+     * F06.4 sitemap.xml 用 — 親スコープが公開である公開活動記録を全件取得する。
+     *
+     * <p>publicview ドメイン（{@code SitemapQueryService}）から呼ばれる<b>唯一の入口</b>。
+     * 越境する型を増やさないため、戻り値は JDK 標準型だけの
+     * {@link PublicActivitySitemapRow} に詰め替えて返す（Entity は外へ出さない）。</p>
+     *
+     * <p><b>親スコープの公開判定は呼び出し元が行う</b>: 「どのチーム / 組織が公開か」は
+     * team / organization ドメインしか知り得ない知識であり、activity ドメインから
+     * それらの Repository を引くのは番人 D-5 違反になる。よって本メソッドは
+     * <b>公開スコープ ID 集合を引数で受け取る</b>形にし、判定の責務を
+     * 既に両ドメインを束ねている {@code SitemapQueryService} 側へ置いている。</p>
+     *
+     * <p><b>空集合の扱い</b>: JPQL の {@code IN :ids} に空コレクションを渡すと
+     * {@code IN ()} という不正な SQL になる DB がある。公開チームだけ存在して公開組織が
+     * 0 件、という状況は普通に起きるため、空集合は<b>実在しない番兵 ID</b>
+     * （{@value #SITEMAP_NO_MATCH_SCOPE_ID}。ID は正の AUTO_INCREMENT なので決して一致しない）
+     * に差し替えてから渡す。両方とも空なら SQL を撃たずに空リストを返す。</p>
+     *
+     * @param publicTeamIds         公開チームの ID 集合（空可）
+     * @param publicOrganizationIds 公開組織の ID 集合（空可）
+     * @return sitemap に載せてよい活動記録の行（該当なしは空リスト）
+     */
+    public List<PublicActivitySitemapRow> findPublicActivitiesForSitemap(
+            Collection<Long> publicTeamIds, Collection<Long> publicOrganizationIds) {
+        boolean noTeams = publicTeamIds == null || publicTeamIds.isEmpty();
+        boolean noOrgs = publicOrganizationIds == null || publicOrganizationIds.isEmpty();
+        if (noTeams && noOrgs) {
+            // 公開スコープが 1 つも無い＝載せてよい記録も存在しない。SQL を撃つ必要すらない。
+            return List.of();
+        }
+        return resultRepository.findPublicForSitemap(
+                        orSentinel(publicTeamIds), orSentinel(publicOrganizationIds)).stream()
+                .map(e -> new PublicActivitySitemapRow(e.getId(), e.getUpdatedAt()))
+                .toList();
+    }
+
+    /** 空コレクションを「決して一致しない番兵 1 件」に差し替える（{@code IN ()} 回避）。 */
+    private static Collection<Long> orSentinel(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of(SITEMAP_NO_MATCH_SCOPE_ID);
+        }
+        return ids;
     }
 
     /**

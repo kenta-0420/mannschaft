@@ -183,6 +183,10 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
+            // F02.5 汎用タグ: スコープ不一致・不在は存在秘匿で 404。TagController の Javadoc は
+            // 「他スコープの tagId を指した越境は 404」と宣言しているが未登録のため
+            // Severity.WARN 既定の 400 が返っていた（宣言と実挙動の乖離）。宣言どおりに揃える。
+            Map.entry("QM_010", HttpStatus.NOT_FOUND),             // TAG_NOT_FOUND（BOLA 秘匿）
             // F16 school 出席要件規程: bare id EP（update/delete）の権限不足は存在秘匿で 404（Severity.WARN 既定 400 を上書き）
             Map.entry("S030", HttpStatus.NOT_FOUND),
             // F16 school 出席要件評価: bare id EP（resolve）の権限不足・不在は存在秘匿で 404
@@ -1043,7 +1047,17 @@ public class GlobalExceptionHandler {
             Map.entry("FAMILY_016", HttpStatus.NOT_FOUND),               // DUTY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FAMILY_018", HttpStatus.NOT_FOUND),               // ANNIVERSARY_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FAMILY_025", HttpStatus.NOT_FOUND),               // CARE_LINK_NOT_FOUND（存在秘匿 → 404）
+            Map.entry("FAMILY_029", HttpStatus.NOT_FOUND),               // 招待トークン不一致（存在秘匿 → 404）
             Map.entry("FAMILY_030", HttpStatus.FORBIDDEN),               // ケアリンク操作権限なし（当事者以外 → 403）
+            // 認可根治戦役 第2波 ロットA: F04.8 contact の *_NOT_FOUND は、対象が自分のスコープ外
+            // （他ユーザーの連絡先・招待トークン・事前拒否・申請）の場合にも同一コードを返す存在秘匿の要。
+            // Severity.WARN 既定の 400 では存在秘匿の契約にならないため 404 へ上書きする。
+            // CONTACT_007（スコープ参照権限なし）は明確な認可拒否のため 403 へ上書きする。
+            Map.entry("CONTACT_006", HttpStatus.NOT_FOUND),              // 申請が見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_007", HttpStatus.FORBIDDEN),              // スコープ参照権限なし → 403
+            Map.entry("CONTACT_010", HttpStatus.NOT_FOUND),              // 事前拒否設定が見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_014", HttpStatus.NOT_FOUND),              // 招待トークンが見つからない（存在秘匿 → 404）
+            Map.entry("CONTACT_015", HttpStatus.NOT_FOUND),              // 連絡先が見つからない（存在秘匿 → 404）
             // 認可根治戦役 Wave 2 トランシェ2C: F05.6 workflow（稟議/申請ワークフロー）は
             // entity 由来の scopeType/scopeId で認可判定するため、path/リクエストの scope 不一致・
             // 非所属者アクセスは同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
@@ -1070,6 +1084,15 @@ public class GlobalExceptionHandler {
             // 認可根治戦役 Wave3-B1: payment の *_NOT_FOUND は itemId 越境等の BOLA 存在秘匿のため 404。
             Map.entry("PAYMENT_001", HttpStatus.NOT_FOUND),              // PAYMENT_ITEM_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("PAYMENT_002", HttpStatus.NOT_FOUND),              // PAYMENT_NOT_FOUND（IDOR 秘匿 → 404）
+            // 認可根治戦役 第2波（金銭）: 会費領収書 EP の宣言と実挙動を揃える。
+            // ReceiptController / ReceiptService は「払い手または受益者本人のみ取得可・第三者は拒否」と
+            // 宣言しているが、両コードが未登録のため Severity.WARN 既定の 400 が返っていた。
+            Map.entry("PAYMENT_029", HttpStatus.NOT_FOUND),              // MEMBER_PAYMENT_NOT_FOUND（存在秘匿 → 404）
+            Map.entry("PAYMENT_030", HttpStatus.FORBIDDEN),              // PAYMENT_ACCESS_DENIED（払い手/受益者以外 → 403）
+            // 認可根治戦役 第2波（金銭）: 領収書マイページは自分宛の領収書のみ取得可。
+            // ReceiptMyService は findByIdAndRecipientUserId で宛先本人に絞って引き当てるため、
+            // 他人の receiptId は「不在」と区別せず 404 で秘匿するのが宣言どおりの挙動。
+            Map.entry("RECEIPT_002", HttpStatus.NOT_FOUND),              // RECEIPT_NOT_FOUND（宛先不一致も含め 404 秘匿）
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。

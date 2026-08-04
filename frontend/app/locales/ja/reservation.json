@@ -262,7 +262,8 @@
       "template_delete_success": "テンプレートを削除しました",
       "template_save_failed": "保存に失敗しました",
       "template_load_failed": "テンプレートの取得に失敗しました",
-      "cancel_deadline_passed": "キャンセル期限を過ぎているため、この予約はキャンセルできませんでした。変更が必要な場合はチームの管理者にご相談ください"
+      "cancel_deadline_passed": "キャンセル期限を過ぎているため、この予約はキャンセルできませんでした。変更が必要な場合はチームの管理者にご相談ください",
+      "rate_limited": "予約作成の間隔が短すぎます。しばらく待ってから再度お試しください"
     },
     "empty": {
       "no_reservations": "予約はありません",
@@ -332,6 +333,14 @@
           "placeholder": "例: 24,1",
           "error_empty": "1つ以上の値を入力してください",
           "error_invalid": "0〜8760の整数をカンマ区切りで入力してください"
+        },
+        "pending_expire": {
+          "label": "仮押さえ(PENDING)の自動失効",
+          "hint": "承認待ちの仮押さえ予約を、指定時間の経過後に自動的にキャンセルします（1〜168時間・7日以内）",
+          "unit": " 時間で自動キャンセル",
+          "no_expire_toggle": "自動キャンセルしない",
+          "no_expire_warning": "現在「自動キャンセルしない」設定です。承認制（MANUAL）のチームでは、仮押さえの予約は自動で取り消されません。管理者が個別に対応してください",
+          "error_range": "1〜168の範囲で入力してください"
         }
       }
     },
@@ -451,6 +460,43 @@
         "title": "登録済みの予約不可枠",
         "empty": "登録された予約不可枠はありません",
         "all_day": "終日"
+      }
+    },
+    "recurring": {
+      "toggle_label": "この予約を毎週繰り返す",
+      "weeks_option": "{n}週",
+      "weeks_more": "もっと長く（5〜12週）",
+      "weeks_label": "週数",
+      "horizon_hint": "枠は28日先までしか自動作成されないため、それより先の週は枠ができ次第の手動予約が必要になる場合があります",
+      "close_button": "閉じる",
+      "badge": "定期",
+      "result": {
+        "summary": "{created}件を予約しました（{skipped}件はスキップ）",
+        "skipped_list_title": "スキップした回",
+        "all_skipped_notice": "指定した週の枠がすべて確保できず、予約は作成されませんでした。下記の理由をご確認のうえ、必要な週は個別に予約してください"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "その週の枠がまだ作成されていません",
+        "FULL": "満席でした",
+        "CLOSED": "受付が停止されていました",
+        "BLOCKED": "予約不可の時間帯でした",
+        "ALREADY_RESERVED": "その枠にすでに予約済みでした",
+        "UNAVAILABLE": "予約できない状態でした",
+        "NOT_CANCELLABLE": "キャンセルできない状態でした",
+        "CANCEL_DEADLINE_PASSED": "キャンセル期限を過ぎていました",
+        "NOT_PENDING": "承認待ちの状態ではありませんでした"
+      },
+      "cancel_scope": {
+        "dialog_title": "キャンセル範囲の選択",
+        "this_only": "この回だけ",
+        "this_and_following": "この回以降すべて",
+        "result_summary": "{cancelled}件をキャンセルしました（{skipped}件は対象外でした）",
+        "all_skipped_notice": "対象の回はすべてキャンセルできませんでした。下記の理由をご確認ください"
+      },
+      "confirm_series": {
+        "button": "まとめて承認する（定期予約）",
+        "confirm_message": "この定期予約シリーズの保留中の予約をすべて承認しますか？",
+        "success": "{confirmed}件を承認しました（{skipped}件はスキップ）"
       }
     },
     "notify_recipients": {
@@ -580,6 +626,13 @@
       },
       "error": {
         "toggle_conflict": "一時停止/再開に失敗しました。この時間帯に重複する予約があるため操作できません"
+      },
+      "force_cancel": {
+        "button": "衝突する予約をキャンセルして登録する",
+        "confirm_title": "強行登録の確認",
+        "confirm_message": "{n}件の予約がキャンセルされ、申込者に通知が送られます。よろしいですか？",
+        "confirm_ok": "キャンセルして登録する",
+        "result_notice": "{n}件の予約をキャンセルして登録しました"
       }
     },
     "business_hours": {
@@ -679,6 +732,28 @@
       "row_locked": "グループ予約はグループ単位で操作してください",
       "deadline_passed": "キャンセル締切を過ぎているためキャンセルできません",
       "own_overlap": "選択した時間帯にあなたの別の予約があります。時間帯をご確認ください"
+    },
+    "waitlist": {
+      "register_button": "キャンセル待ちに登録",
+      "cancel_button": "キャンセル待ちを取消",
+      "registered_badge": "待機中",
+      "dialog_title": "キャンセル待ち",
+      "notice": "空きが出たら通知でお知らせします。順番の保証はなく、早い者勝ちで予約できます",
+      "register_success": "キャンセル待ちに登録しました",
+      "cancel_success": "キャンセル待ちを取消しました",
+      "admin_count": "キャンセル待ち {n} 人",
+      "already_registered": "すでにキャンセル待ちに登録されています",
+      "not_found": "キャンセル待ちが見つかりません（既に取消・変換済みの可能性があります）",
+      "limit_exceeded": "キャンセル待ちの登録上限に達しています",
+      "rate_limited": "操作が早すぎます。1分ほど待ってからやり直してください",
+      "slot_not_full": "空きが出ました。そのまま予約できます",
+      "my_list_title": "自分のキャンセル待ち",
+      "no_entries": "キャンセル待ち中の予約はありません",
+      "aria_hint_register": "押すとキャンセル待ちに登録できます",
+      "aria_hint_cancel": "押すとキャンセル待ちを取消せます"
+    },
+    "pending_expire_notice": {
+      "form_note": "{n}時間以内に承認されない場合は自動的にキャンセルされます"
     },
     "team_guide": {
       "title": "予約の使い方",

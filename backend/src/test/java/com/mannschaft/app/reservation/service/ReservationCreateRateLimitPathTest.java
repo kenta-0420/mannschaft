@@ -138,7 +138,7 @@ class ReservationCreateRateLimitPathTest {
     private void tryCreateSingle() {
         try {
             reservationService.createReservation(
-                    TEAM_ID, USER_ID, new CreateReservationRequest(SLOT_ID, LINE_ID, null));
+                    TEAM_ID, USER_ID, new CreateReservationRequest(SLOT_ID, LINE_ID, null, null));
         } catch (BusinessException e) {
             if (e.getErrorCode() == ReservationErrorCode.RESERVATION_CREATE_RATE_LIMITED) {
                 throw e;
@@ -229,7 +229,7 @@ class ReservationCreateRateLimitPathTest {
                 .given(viewAccessGuard).assertCanView(TEAM_ID, USER_ID);
 
         assertThatThrownBy(() -> reservationService.createReservation(
-                TEAM_ID, USER_ID, new CreateReservationRequest(SLOT_ID, LINE_ID, null)))
+                TEAM_ID, USER_ID, new CreateReservationRequest(SLOT_ID, LINE_ID, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);

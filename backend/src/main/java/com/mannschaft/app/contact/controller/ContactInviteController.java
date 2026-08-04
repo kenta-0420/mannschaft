@@ -52,6 +52,14 @@ public class ContactInviteController {
 
     /**
      * 招待URLから連絡先追加（認証必須）。
+     *
+     * <p><b>認可</b>: 追加相手は<b>招待 URL に埋め込まれた capability トークンの発行者</b>に
+     * 限定され、リクエストで任意のユーザーを指定する余地がない。自分側の登録先は
+     * {@code SecurityUtils.getCurrentUserId()} で確定した認証主体のフォルダのみ
+     * （{@code ContactInviteTokenService.java:113-160}）。トークン不在・無効化済み・期限切れ・
+     * 利用回数超過は {@code CONTACT_012}、自分が発行したトークンは {@code CONTACT_013} で拒否し、
+     * ブロック・事前拒否は設計書 §2.3 のサイレント方式（応答差を作らない）で扱う。
+     * 契約は {@code ContactScopeContractIT} で固定する。</p>
      */
     @PostMapping("/{token}/accept")
     @Operation(summary = "招待リンクで連絡先追加（認証必須）")

@@ -133,14 +133,21 @@ public class CareLinkService {
     /**
      * 招待トークンを使って招待を承認する。
      *
-     * @param token         招待トークン
-     * @param currentUserId 承認するユーザーのID（将来的な本人確認用）
+     * <p><b>認可</b>: ケアリンクは「見守る側」と「見守られる側」の<b>双方の同意</b>で成立させる。
+     * 本 EP は<b>招待を受けた側の本人</b>（招待発行者ではない当事者）に限定し、それ以外は
+     * {@link FamilyErrorCode#FAMILY_030}（403）で拒否する（{@link #requireInvitee}）。
+     * 不一致トークンは {@link FamilyErrorCode#FAMILY_029}（404）。</p>
+     *
+     * @param token         招待トークン（capability）
+     * @param currentUserId 承認するユーザーのID（招待先本人であることを照合する）
      * @return 更新されたケアリンク
      */
     @Transactional
     public CareLinkResponse acceptInvitation(String token, Long currentUserId) {
         UserCareLinkEntity link = careLinkRepository.findByInvitationToken(token)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_029));
+        // 認可は業務検証（PENDING 判定）より前に置く。
+        requireInvitee(link, currentUserId);
         if (link.getStatus() != CareLinkStatus.PENDING) {
             throw new BusinessException(FamilyErrorCode.FAMILY_031);
         }
@@ -153,18 +160,26 @@ public class CareLinkService {
     /**
      * 招待トークンを使って招待を拒否する。
      *
-     * @param token         招待トークン
-     * @param currentUserId 拒否するユーザーのID（将来的な本人確認用）
+     * <p><b>認可</b>: 承認と対称に<b>招待を受けた側の本人</b>に限定する（{@link #requireInvitee}）。
+     * 招待を発行した側や第三者が代わりに拒否することはできない。</p>
+     *
+     * @param token         招待トークン（capability）
+     * @param currentUserId 拒否するユーザーのID（招待先本人であることを照合する）
      */
     @Transactional
     public void rejectInvitation(String token, Long currentUserId) {
         UserCareLinkEntity link = careLinkRepository.findByInvitationToken(token)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_029));
+        requireInvitee(link, currentUserId);
         link.reject();
     }
 
     /**
      * ケアリンクを解除する。
+     *
+     * <p><b>認可</b>: 当該リンクの<b>当事者</b>（ケア対象者本人または見守り者）に限定する
+     * （{@link #requireParty}）。不存在の linkId は {@link FamilyErrorCode#FAMILY_025}（404）で
+     * 存在を秘匿し、当事者以外は {@link FamilyErrorCode#FAMILY_030}（403）。</p>
      *
      * @param linkId        解除するケアリンクID
      * @param currentUserId 解除操作を行うユーザーID（当事者チェック）
@@ -174,10 +189,7 @@ public class CareLinkService {
         UserCareLinkEntity link = careLinkRepository.findById(linkId)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_025));
         // 当事者チェック（ケア対象者または見守り者のみ）
-        if (!link.getCareRecipientUserId().equals(currentUserId)
-                && !link.getWatcherUserId().equals(currentUserId)) {
-            throw new BusinessException(FamilyErrorCode.FAMILY_030);
-        }
+        requireParty(link, currentUserId);
         link.revoke(currentUserId);
         evictCareLinkCaches(link.getCareRecipientUserId());
     }
@@ -185,12 +197,19 @@ public class CareLinkService {
     /**
      * 招待トークンからケアリンク情報を取得する（確認画面表示用）。
      *
-     * @param token 招待トークン
+     * <p><b>認可</b>: ケアリンクは続柄・ケア区分を含む後見系の機微情報のため、
+     * 開示は<b>当該リンクの当事者</b>（ケア対象者本人または見守り者）に限定する。
+     * 当事者以外は {@link FamilyErrorCode#FAMILY_030}（403）、不一致トークンは
+     * {@link FamilyErrorCode#FAMILY_029}（404）。</p>
+     *
+     * @param token         招待トークン（capability）
+     * @param currentUserId 参照するユーザーのID（当事者であることを照合する）
      * @return 対応するケアリンク情報
      */
-    public CareLinkResponse getByInvitationToken(String token) {
+    public CareLinkResponse getByInvitationToken(String token, Long currentUserId) {
         UserCareLinkEntity link = careLinkRepository.findByInvitationToken(token)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_029));
+        requireParty(link, currentUserId);
         return toResponse(link);
     }
 
@@ -225,6 +244,10 @@ public class CareLinkService {
     /**
      * ケアリンクの通知設定を更新する。
      *
+     * <p><b>認可</b>: 当該リンクの<b>当事者</b>（ケア対象者本人または見守り者）に限定する
+     * （{@link #requireParty}）。不存在の linkId は {@link FamilyErrorCode#FAMILY_025}（404）で
+     * 存在を秘匿し、当事者以外は {@link FamilyErrorCode#FAMILY_030}（403）。</p>
+     *
      * @param linkId        対象ケアリンクID
      * @param currentUserId 操作するユーザーID（当事者チェック）
      * @param request       更新内容
@@ -235,10 +258,7 @@ public class CareLinkService {
                                                   CareLinkNotifySettingsRequest request) {
         UserCareLinkEntity link = careLinkRepository.findById(linkId)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_025));
-        if (!link.getCareRecipientUserId().equals(currentUserId)
-                && !link.getWatcherUserId().equals(currentUserId)) {
-            throw new BusinessException(FamilyErrorCode.FAMILY_030);
-        }
+        requireParty(link, currentUserId);
         link.updateNotifySettings(
                 request.getNotifyOnRsvp(),
                 request.getNotifyOnCheckin(),
@@ -335,11 +355,49 @@ public class CareLinkService {
     private UserCareLinkEntity requireCareLinkParty(Long careLinkId, Long currentUserId) {
         UserCareLinkEntity link = careLinkRepository.findById(careLinkId)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_025));
-        if (!link.getCareRecipientUserId().equals(currentUserId)
-                && !link.getWatcherUserId().equals(currentUserId)) {
+        requireParty(link, currentUserId);
+        return link;
+    }
+
+    /**
+     * 指定リンクの<b>当事者</b>（ケア対象者本人または見守り者）であることを検証する。
+     *
+     * <p>ケアリンクは続柄・ケア区分を含む後見系の機微情報であり、当事者以外
+     * （チーム ADMIN を含む）には参照も変更も許可しない。判定は必ず<b>entity 由来</b>の
+     * 当事者 ID で行い、リクエスト値は信用しない。未認証（{@code null}）も拒否する。</p>
+     *
+     * @param link          対象ケアリンク（entity）
+     * @param currentUserId 操作するユーザーID
+     */
+    private void requireParty(UserCareLinkEntity link, Long currentUserId) {
+        if (currentUserId == null
+                || (!currentUserId.equals(link.getCareRecipientUserId())
+                        && !currentUserId.equals(link.getWatcherUserId()))) {
             throw new BusinessException(FamilyErrorCode.FAMILY_030);
         }
-        return link;
+    }
+
+    /**
+     * 指定リンクの<b>招待を受けた側</b>本人であることを検証する。
+     *
+     * <p>ケアリンクの成立には双方の同意を必要とする。したがって承認・拒否は
+     * 「招待を発行した側ではない当事者」に限定し、招待を出した側が自ら成立させることは
+     * できない（{@link CareLinkInvitedBy} で発行者側を判別する）。</p>
+     *
+     * @param link          対象ケアリンク（entity）
+     * @param currentUserId 操作するユーザーID
+     */
+    private void requireInvitee(UserCareLinkEntity link, Long currentUserId) {
+        requireParty(link, currentUserId);
+        Long inviterUserId = switch (link.getInvitedBy() == null ? CareLinkInvitedBy.SYSTEM : link.getInvitedBy()) {
+            case CARE_RECIPIENT -> link.getCareRecipientUserId();
+            case WATCHER -> link.getWatcherUserId();
+            // ADMIN / SYSTEM 発行の招待は当事者双方が招待先となる（発行者は当事者ではない）。
+            default -> null;
+        };
+        if (inviterUserId != null && inviterUserId.equals(currentUserId)) {
+            throw new BusinessException(FamilyErrorCode.FAMILY_030);
+        }
     }
 
     // =========================================================

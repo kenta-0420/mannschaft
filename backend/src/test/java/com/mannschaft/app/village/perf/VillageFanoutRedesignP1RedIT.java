@@ -112,6 +112,11 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
     private VillageMembershipRepository membershipRepository;
     @Autowired
     private NotificationHelper notificationHelper;
+    // fan-out 抜本改修 P2: 還流は受信者を展開せず耐久ジョブを enqueue するだけになった。
+    // test プロファイルは @EnableScheduling 無効ゆえ裏ワーカーは自動発火しない。
+    // 通知が生成されるには processReady() を直接回してジョブを排出する必要がある（drainFanout ヘルパ）。
+    @Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutWorker fanoutWorker;
 
     private static volatile boolean seeded = false;
     private static UUID villageId;
@@ -171,14 +176,14 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
         log.info("[AC-7] createMeetup 返却直後の生成数 = {}（N={}）", immediate, ACTIVE_MEMBERS);
 
         // done 条件: 返却は受信者数から切り離される（返却直後はまだ全件生成されていない）。
+        // P2 では還流が耐久ジョブを enqueue するだけなので、返却直後の生成数は 0（<N）。
         assertThat(immediate)
                 .as("AC-7: fan-out は非同期化され、createMeetup 返却直後の生成数は N 未満であるべき"
-                        + "（現行は同期還流ゆえ返却時に既に N＝この assert が FAIL=red）")
+                        + "（P2 は enqueue のみで返るため 0＝N 未満）")
                 .isLessThan(ACTIVE_MEMBERS);
 
-        // 最終的には全件（N）に到達する（非同期でも取りこぼさない）。
-        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
-                .untilAsserted(() -> assertThat(countNotifications(from, to) - before).isEqualTo(ACTIVE_MEMBERS));
+        // 最終的には全件（N）に到達する（裏ワーカーが耐久ジョブを排出して取りこぼさない）。
+        drainFanout(from, to, before, ACTIVE_MEMBERS);
     }
 
     // =====================================================================
@@ -224,9 +229,9 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
         statementCounter.reset();
         meetupService.createMeetup(villageId, newMeetupRequest(), actorUserId);
 
-        // 現行は同期、将来は非同期。いずれでも「行が N 件そろう」まで待ってから発行文数を読む。
-        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
-                .until(() -> countNotifications(from, to) - before >= ACTIVE_MEMBERS);
+        // 還流は耐久ジョブを enqueue するだけ。裏ワーカーを回して「行が N 件そろう」まで排出してから発行文数を読む。
+        // ワーカーは 1 チャンク(=500)ごとに多値バルク INSERT を発行する（受信者数に線形でない）。
+        drainFanout(from, to, before, ACTIVE_MEMBERS);
 
         long inserts = statementCounter.count(NOTIF_INSERT);
         long threshold = ACTIVE_MEMBERS / 10L; // O(チャンク数): チャンク>=200 なら ceil(N/200) 程度に収まる
@@ -323,14 +328,16 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
 
         refluxService.publish(villageId, VillageEventNotificationType.EVENT_CREATED,
                 sourceEventUuid, "冪等確認行事", "/villages/perf");
-        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
-                .until(() -> countNotifications(from, to) - before >= ACTIVE_MEMBERS);
+        // 1 回目: 還流で 1 件 enqueue → 裏ワーカーで N 件排出。
+        drainFanout(from, to, before, ACTIVE_MEMBERS);
         long afterFirst = countNotifications(from, to) - before;
 
         // 同一 source をもう一度発火（EVENT_UPCOMING バッチ再送などに相当）。
+        // システム投稿の存在チェックで短絡され enqueue されない（かつ enqueue しても uk_fanout_idempotency で冪等）。
         refluxService.publish(villageId, VillageEventNotificationType.EVENT_CREATED,
                 sourceEventUuid, "冪等確認行事", "/villages/perf");
         awaitEventPoolIdle(Duration.ofSeconds(60));
+        fanoutWorker.processReady(); // 2 回目のジョブは無い想定（あっても冪等）。念のため排出を試みる。
         long afterSecond = countNotifications(from, to) - before;
 
         log.info("[AC-6] 1 回目後={} / 2 回目後={}（N={}・二重生成なら 2N）", afterFirst, afterSecond, ACTIVE_MEMBERS);
@@ -354,10 +361,11 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
         long to = from + ACTIVE_MEMBERS - 1;
         UUID sourceEventUuid = UUID.randomUUID();
 
+        long before = countNotifications(from, to);
         refluxService.publish(villageId, VillageEventNotificationType.EVENT_CREATED,
                 sourceEventUuid, "per-row 確認行事", "/villages/perf");
-        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
-                .until(() -> countNotifications(from, to) >= ACTIVE_MEMBERS);
+        // 還流は耐久ジョブを enqueue するだけ。裏ワーカーを回して N 件排出する（per-row 既定は P1 バルク INSERT が充填）。
+        drainFanout(from, to, before, ACTIVE_MEMBERS);
 
         // この source(uuid) 由来の行だけを見る（他テストの行と混ざらないよう type + scope + user レンジで絞る）。
         Long rows = jdbc.queryForObject(
@@ -397,6 +405,22 @@ class VillageFanoutRedesignP1RedIT extends com.mannschaft.app.village.controller
     private long countNotifications(long from, long to) {
         return orZero(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notifications WHERE user_id BETWEEN ? AND ?", Long.class, from, to));
+    }
+
+    /**
+     * 還流で enqueue された fan-out 耐久ジョブを裏ワーカーで排出し、通知が {@code before + expected} に達するまで待つ。
+     *
+     * <p>P2 で還流は受信者を展開せず耐久ジョブを 1 件 enqueue するだけになった（O(1)）。test プロファイルは
+     * {@code @EnableScheduling} 無効で {@code NotificationFanoutWorker.poll} が自動発火しないため、
+     * {@code processReady()} を直接回してジョブを排出する（enqueue は {@code @Async} AFTER_COMMIT で行われるので
+     * ジョブ出現までポーリングする）。ワーカーは 1 チャンク(=500)ごとにバルク INSERT する（発行文数は O(チャンク数)）。</p>
+     */
+    private void drainFanout(long from, long to, long before, long expected) {
+        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    fanoutWorker.processReady();
+                    assertThat(countNotifications(from, to) - before).isEqualTo(expected);
+                });
     }
 
     private static long orZero(Long v) {
