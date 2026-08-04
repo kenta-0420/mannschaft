@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "还没有预约对象",
         "admin_no_lines_hint": "在「预约对象管理」中创建预约对象和时段后，这里会显示预约时段",
-        "admin_no_slots": "当天没有空闲时段",
-        "admin_no_slots_hint": "可在「预约对象管理」中添加时段",
+        "admin_no_slots": "本周没有空闲时段",
+        "admin_no_slots_hint": "在「每周日程」中创建时段后，将显示在此处",
         "member_no_lines": "预约正在准备中",
         "member_no_lines_hint": "请等待管理员准备好预约时段",
-        "member_no_slots": "当天没有空闲时段",
-        "member_no_slots_hint": "请选择其他日期再试"
+        "member_no_slots": "本周没有空闲时段",
+        "member_no_slots_hint": "请选择其他周再试"
       }
     },
     "line_manage_title": "{resourceName}管理",

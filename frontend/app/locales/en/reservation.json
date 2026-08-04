@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "No reservation targets yet",
         "admin_no_lines_hint": "Create reservation targets and slots in \"Manage reservation targets\" to show slots here",
-        "admin_no_slots": "No open slots on this day",
-        "admin_no_slots_hint": "You can add slots from \"Manage reservation targets\"",
+        "admin_no_slots": "No open slots this week",
+        "admin_no_slots_hint": "Create slots in \"Weekly schedule\" and they will appear here",
         "member_no_lines": "Reservations are being set up",
         "member_no_lines_hint": "Please wait until the administrator prepares reservation slots",
-        "member_no_slots": "No open slots on this day",
-        "member_no_slots_hint": "Please try another day"
+        "member_no_slots": "No open slots this week",
+        "member_no_slots_hint": "Please try another week"
       }
     },
     "line_manage_title": "{resourceName} Management",

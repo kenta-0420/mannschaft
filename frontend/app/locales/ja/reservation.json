@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "予約対象がまだありません",
         "admin_no_lines_hint": "「予約対象の管理」で予約対象と枠を作成すると、ここに予約枠が表示されます",
-        "admin_no_slots": "この日は空き枠がありません",
-        "admin_no_slots_hint": "「予約対象の管理」から枠を追加できます",
+        "admin_no_slots": "この週は空き枠がありません",
+        "admin_no_slots_hint": "「週間スケジュール」で枠を作成すると、ここに予約枠が表示されます",
         "member_no_lines": "予約の受付準備中です",
         "member_no_lines_hint": "管理者が予約枠を用意するまでお待ちください",
-        "member_no_slots": "この日は空き枠がありません",
-        "member_no_slots_hint": "別の日を選んでお試しください"
+        "member_no_slots": "この週は空き枠がありません",
+        "member_no_slots_hint": "別の週を選んでお試しください"
       }
     },
     "line_manage_title": "{resourceName}の管理",

@@ -41,6 +41,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
   manageLines: []
+  /**
+   * 「予約対象はあるが表示中の週に枠が1件も無い」空状態の管理者CTA。
+   * 予約対象ゼロ（manageLines）と違い、次の一手は**枠の作成**なので週間スケジュール管理へ誘導する。
+   */
+  manageSlots: []
   /** グループ/単枠 予約確定成功。親（TeamReservationsPanel）が一覧等を再読込する。 */
   reserved: []
   /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
@@ -96,6 +101,16 @@ const menuFilterOptions = computed(() => [
 ])
 
 const hasLines = computed(() => lines.value.length > 0)
+
+/**
+ * 表示中の週に枠が1件でもあるか。
+ *
+ * 「予約対象が無い」（`hasLines === false`）とは**別物**で、こちらは「予約対象はあるが、その週に
+ * 枠が1件も無い」の判定に使う。旧表示 SlotPicker には両方の空状態があったが、マトリックスには
+ * 枠ゼロ側が実装されておらず、既定がマトリックスになった時点で到達不能になっていた
+ * （PR #2574 の旧表示撤去で恒久化）。ここで復活させる。
+ */
+const hasSlots = computed(() => allCells.value.length > 0)
 
 function columnLabel(col: GridColumnDto): string {
   return col.lineId == null ? t('reservation.grid.column.common') : (col.lineName ?? '')
@@ -508,6 +523,25 @@ defineExpose({
     <Message v-else-if="errorMsg" severity="error" :closable="false">
       {{ errorMsg }}
     </Message>
+
+    <!-- 予約対象はあるが表示中の週の枠がゼロ: 枠作成導線（管理者のみCTA）。
+         上の「予約対象ゼロ」（*_no_lines）とは別物なので取り違えないこと。 -->
+    <DashboardEmptyState
+      v-else-if="!hasSlots"
+      icon="pi pi-calendar-times"
+      data-testid="matrix-no-slots-empty"
+      :message="isAdmin ? t('reservation.empty.book.admin_no_slots') : t('reservation.empty.book.member_no_slots')"
+      :sub-message="isAdmin ? t('reservation.empty.book.admin_no_slots_hint') : t('reservation.empty.book.member_no_slots_hint')"
+    >
+      <template v-if="isAdmin" #action>
+        <Button
+          :label="t('reservation.button.manage_slots')"
+          icon="pi pi-cog"
+          size="small"
+          @click="emit('manageSlots')"
+        />
+      </template>
+    </DashboardEmptyState>
 
     <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
          縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->

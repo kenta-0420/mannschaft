@@ -274,12 +274,12 @@
       "book": {
         "admin_no_lines": "Noch keine Reservierungsziele",
         "admin_no_lines_hint": "Erstelle unter \"Reservierungsziele verwalten\" Ziele und Zeitfenster, damit hier Zeitfenster erscheinen",
-        "admin_no_slots": "An diesem Tag keine freien Zeitfenster",
-        "admin_no_slots_hint": "Du kannst Zeitfenster unter \"Reservierungsziele verwalten\" hinzufügen",
+        "admin_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "admin_no_slots_hint": "Lege Zeitfenster im \"Wochenplan\" an, dann erscheinen sie hier",
         "member_no_lines": "Reservierungen werden vorbereitet",
         "member_no_lines_hint": "Bitte warte, bis der Administrator Reservierungszeitfenster bereitstellt",
-        "member_no_slots": "An diesem Tag keine freien Zeitfenster",
-        "member_no_slots_hint": "Bitte versuche es an einem anderen Tag"
+        "member_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "member_no_slots_hint": "Bitte versuche es in einer anderen Woche"
       }
     },
     "line_manage_title": "{resourceName}-Verwaltung",
