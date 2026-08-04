@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.test') })
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8081'
 
 export default defineConfig({
+  globalSetup: './tests/e2e/global.setup.ts',
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -46,7 +47,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/user.json',
       },
-      // dependencies: ['setup-user'], // 既存 storageState を使うため一時的にコメントアウト
+      dependencies: ['setup-user'],
     },
     // 管理者権限テスト（admin/ 配下のみ実行）
     {
@@ -55,8 +56,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/admin.json',
       },
-      // setup-admin は .env.test の認証情報が必要。既存 storageState を使うため一時的にコメントアウト
-      // dependencies: ['setup-admin'],
+      dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
     // Setup: 実機テスト用管理者認証状態を保存
