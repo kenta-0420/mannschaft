@@ -75,14 +75,14 @@ import java.util.UUID;
  * <h3>認可 Wave3（村ロットA）監査済マーカー</h3>
  * <p>全 11 EP は {@link VillageMatchRecruitService} 内で現役メンバーシップ（
  * {@code findActiveByVillageIdAndSubject}）を根拠に認可判定する（{@code AuthzControllerGuardArchTest}
- * の白名簿クラスを介さない別方式）。監査で以下 2 件の真の穴を発見し、本戦役で根治した:</p>
+ * の白名簿クラスを介さない別方式）。本戦役で、判定基準を村内の標準の流儀へ揃えた箇所は次の 2 つ:</p>
  * <ul>
- *   <li>{@code list}: 村人限定閲覧の検証（{@code ensureVillager}）が欠落しており、非村人・未認証扱いの
- *       ユーザーでも一覧を取得できていた。{@code listRecruits} に {@code ensureVillager} 呼び出しを追加。</li>
- *   <li>{@code update}: 投稿者本人判定（{@code ensureAuthor}）が本人一致のみで現役性（BAN/退村）を
- *       検査しておらず、{@code close}/{@code fulfill}/{@code cancel}/応募審査が使う
- *       {@code ensureRecruitReviewer}（#2284 で BAN 検査を先に確認する形へ是正済み）と非対称だった。
- *       {@code ensureAuthor} にも同じ現役性検査を追加し、他メソッドと揃えた。</li>
+ *   <li>{@code list}: 一覧も詳細取得（{@code get}）と同じく村人限定とする。
+ *       {@code listRecruits} が {@code ensureVillager} で現役の村人であることを検証する。</li>
+ *   <li>{@code update}: 投稿者本人判定（{@code ensureAuthor}）は、{@code close}/{@code fulfill}/
+ *       {@code cancel}/応募審査が使う {@code ensureRecruitReviewer}（#2284）と同一の現役性述語
+ *       {@code findActiveByVillageIdAndSubject} を本人一致より先に評価する。更新系と状態遷移系は
+ *       同一基準で判定される。</li>
  * </ul>
  */
 @RestController
