@@ -304,8 +304,7 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
     await page.screenshot({ path: 'test-results/d-a-01-booked-cell.png', fullPage: true })
     await bookedCell.click()
 
-    const dialog = page.getByRole('dialog', { name: 'キャンセル待ち' })
-    await expect(dialog).toBeVisible({ timeout: 10_000 }).catch(() => {})
+    // ダイアログの可視待ちは登録ボタンの断定で兼ねる（握りつぶしcatchを置かない）
     const registerBtn = page.getByTestId('waitlist-register')
     await expect(registerBtn, 'キャンセル待ち登録ボタンが表示されること').toBeVisible({ timeout: 10_000 })
     await registerBtn.click()
@@ -468,7 +467,7 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     await page.screenshot({ path: 'test-results/d-b-02-stage-disclosure-expanded.png', fullPage: true })
 
     // 12超は選択肢に存在しないこと(オプション値確認)
-    const options = await page.getByTestId('recurring-weeks-select').locator('option, li').allTextContents().catch(() => [])
+    const options = await page.getByTestId('recurring-weeks-select').locator('option, li').allTextContents()
     console.log(`[シナリオB] 週数セレクト選択肢候補=${JSON.stringify(options)}`)
 
     // 4週で作成
@@ -635,8 +634,9 @@ test.describe('D群 優先C: 仮押さえ失効設定＋会員向け告知＋429
       })
       results.push(res.status())
       if (res.status() === 429) {
-        const body = await res.json().catch(() => ({}))
-        console.log(`[シナリオC-3] ${i + 1}回目で429検出 body=${JSON.stringify(body)}`)
+        // text() はJSON以外でも落ちない。catchで握りつぶさず生ボディをそのまま記録する
+        const body = await res.text()
+        console.log(`[シナリオC-3] ${i + 1}回目で429検出 body=${body}`)
       }
     }
     console.log(`[シナリオC-3] 6回試行の結果ステータス列=${JSON.stringify(results)}`)
@@ -768,8 +768,9 @@ test.describe('D群 優先D: 強行登録（定期予約不可枠・impact件数
       `${API_BASE_URL}/api/v1/teams/${teamSlug}/reservations?status=CANCELLED&size=50`,
       { headers: { Authorization: `Bearer ${tokens.admin}` } },
     )
-    const afterBody = await afterListRes.json().catch(() => ({}))
-    console.log(`[シナリオD] status=CANCELLED裏取りAPI実体=${JSON.stringify(afterBody).slice(0, 800)}`)
+    // text() はJSON以外でも落ちない。catchで握りつぶさず生ボディをそのまま記録する
+    const afterBody = await afterListRes.text()
+    console.log(`[シナリオD] status=CANCELLED裏取りAPI実体=${afterBody.slice(0, 800)}`)
 
     console.log(`[シナリオD] 【最終比較】impact表示件数=${impactCount} vs トースト実キャンセル件数=${actualCancelledCount}`)
     expect(actualCancelledCount, '🔴impact件数と実際にキャンセルされる件数(BEレスポンスforceCancelledCount由来のトースト)が一致すること（検分バグ再発防止）').toBe(impactCount)
