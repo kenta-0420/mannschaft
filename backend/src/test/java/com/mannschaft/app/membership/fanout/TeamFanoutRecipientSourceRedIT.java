@@ -398,12 +398,24 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
                 .build());
     }
 
-    /** users 行を最小カラムで挿入する（追加カラムは全て DEFAULT 付き NOT NULL / NULL 可）。 */
+    /**
+     * users 行を挿入する。test profile は {@code ddl-auto:create} で {@code users} 表を {@link UserEntity} から
+     * 生成するため（{@code UserEntity}）、{@code @Column(nullable = false)} かつ DB default を持たない列（{@code @Builder.Default} は
+     * Java 側の既定でありスキーマ default にはならない）を<b>すべて</b>埋めないと error 1364 で INSERT が落ちる。
+     * publicProfileEnabled のみ columnDefinition に DB default を持つため省略可。
+     */
     private void insertUser(long userId, String status, LocalDateTime deletedAt) {
         LocalDateTime now = LocalDateTime.now();
-        jdbc.update("INSERT INTO users "
-                        + "(id, email, last_name, first_name, display_name, status, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, 'L', 'F', ?, ?, ?, ?, ?)",
+        jdbc.update("INSERT INTO users ("
+                        + "id, email, last_name, first_name, display_name, status, deleted_at, created_at, updated_at, "
+                        + "handle_searchable, contact_approval_required, online_visibility, is_searchable, dm_receive_from, "
+                        + "encryption_key_version, locale, timezone, reporting_restricted, follow_list_visibility, "
+                        + "care_notification_enabled, offline_only"
+                        + ") VALUES ("
+                        + "?, ?, 'L', 'F', ?, ?, ?, ?, ?, "
+                        + "1, 1, 'NOBODY', 1, 'ANYONE', "
+                        + "1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                        + "1, 0)",
                 userId, "fanout-it-" + userId + "@example.test", "U" + userId, status, deletedAt, now, now);
     }
 
