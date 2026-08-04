@@ -1,5 +1,9 @@
 package com.mannschaft.app.gdpr;
 
+import com.mannschaft.app.chart.entity.ChartRecordEntity;
+import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -14,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +47,12 @@ class GdprSelfScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private DataExportRepository dataExportRepository;
+
+    @Autowired
+    private ChartRecordRepository chartRecordRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -123,10 +135,9 @@ class GdprSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         em.flush();
         em.clear();
 
-        String otherStatusBefore = (String) em.createNativeQuery(
-                        "SELECT status FROM data_exports WHERE id = :id")
-                .setParameter("id", otherExportId)
-                .getSingleResult();
+        String otherStatusBefore = dataExportRepository.findById(otherExportId)
+                .orElseThrow()
+                .getStatus();
 
         assertThat(otherStatusBefore)
                 .as("前提: 別ユーザーのエクスポートは COMPLETED")
@@ -147,29 +158,31 @@ class GdprSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
+    /**
+     * データエクスポート行を JPA 経由で作成する。
+     *
+     * <p>列名の解決は Hibernate に委ねる（ネイティブ SQL で列名を直書きしない）。
+     * test profile のスキーマは {@code ddl-auto=create} により Entity から生成されるため、
+     * 本番 DDL の列名を直書きすると両者の差でテストが壊れる。</p>
+     */
     private Long insertDataExport(Long userId, String status, String s3Key) {
-        em.createNativeQuery(
-                        "INSERT INTO data_exports (user_id, status, progress_percent, s3_key, expires_at, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:userId, :status, 0, :s3Key, "
-                                + "DATE_ADD(NOW(), INTERVAL 1 DAY), NOW(), NOW())")
-                .setParameter("userId", userId)
-                .setParameter("status", status)
-                .setParameter("s3Key", s3Key)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery(
-                        "SELECT MAX(id) FROM data_exports WHERE user_id = :userId")
-                .setParameter("userId", userId)
-                .getSingleResult()).longValue();
+        DataExportEntity saved = dataExportRepository.save(DataExportEntity.builder()
+                .userId(userId)
+                .status(status)
+                .progressPercent(0)
+                .s3Key(s3Key)
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .build());
+        return saved.getId();
     }
 
+    /** カルテ行を JPA 経由で作成する（削除プレビューの件数対象）。 */
     private void insertChartRecord(Long customerUserId) {
-        em.createNativeQuery(
-                        "INSERT INTO chart_records (team_id, customer_user_id, visit_date, "
-                                + "is_shared_to_customer, is_pinned, version, created_at, updated_at) "
-                                + "VALUES (1, :customerUserId, CURDATE(), 0, 0, 0, NOW(), NOW())")
-                .setParameter("customerUserId", customerUserId)
-                .executeUpdate();
+        chartRecordRepository.save(ChartRecordEntity.builder()
+                .teamId(1L)
+                .customerUserId(customerUserId)
+                .visitDate(LocalDate.now())
+                .build());
     }
 
     private Long insertUser(String email) {
