@@ -49,8 +49,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @DisplayName("F19.1 sitemap 投稿収録 — 親スコープが非公開なら載らないことの結合テスト")
 class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
 
-    /** slug 衝突回避用の連番（テストクラス内で一意なら十分）。 */
-    private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
+    /** slug 衝突回避用の連番。slug は 30 文字上限なので短く保つ。 */
+    private static final AtomicLong SEQ = new AtomicLong(0);
 
     @Autowired
     private SitemapQueryService sitemapQueryService;
@@ -79,7 +79,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
         hideAllExistingScopes();
 
         publicTeamId = persistTeam(TeamEntity.Visibility.PUBLIC, false, false);
-        privateTeamId = persistTeam(TeamEntity.Visibility.PRIVATE, false, false);
+        privateTeamId = persistTeam(TeamEntity.Visibility.MEMBERS_AND_ABOVE, false, false);
         archivedTeamId = persistTeam(TeamEntity.Visibility.PUBLIC, true, false);
         deletedTeamId = persistTeam(TeamEntity.Visibility.PUBLIC, false, true);
 
@@ -111,7 +111,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC1: 非公開(PRIVATE)チーム配下の PUBLIC+PUBLISHED 投稿は sitemap に載らない")
+    @DisplayName("AC1: 非公開(MEMBERS_AND_ABOVE)チーム配下の PUBLIC+PUBLISHED 投稿は sitemap に載らない")
     void ac1_privateTeamPost_notIncluded() {
         assertThat(sitemapQueryService.findPublicTeamPostEntries())
                 .extracting(SitemapPostEntry::scopeId)
@@ -244,7 +244,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
      */
     private void hideAllExistingScopes() {
         em.createQuery("UPDATE TeamEntity t SET t.visibility = "
-                + "com.mannschaft.app.team.entity.TeamEntity.Visibility.PRIVATE").executeUpdate();
+                + "com.mannschaft.app.team.entity.TeamEntity.Visibility.MEMBERS_AND_ABOVE").executeUpdate();
         em.createQuery("UPDATE OrganizationEntity o SET o.visibility = "
                 + "com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PRIVATE")
                 .executeUpdate();
@@ -253,7 +253,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
 
     private Long persistTeam(TeamEntity.Visibility visibility, boolean archived, boolean softDeleted) {
         TeamEntity team = TeamEntity.builder()
-                .slug("sitemap-parent-team-" + SEQ.incrementAndGet())
+                .slug("smp-t-" + SEQ.incrementAndGet())
                 .name("sitemap 親スコープテスト チーム")
                 .visibility(visibility)
                 .supporterEnabled(false)
@@ -272,7 +272,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
 
     private Long persistOrg(OrganizationEntity.Visibility visibility, boolean archived, boolean softDeleted) {
         OrganizationEntity org = OrganizationEntity.builder()
-                .slug("sitemap-parent-org-" + SEQ.incrementAndGet())
+                .slug("smp-o-" + SEQ.incrementAndGet())
                 .name("sitemap 親スコープテスト 組織")
                 .orgType(OrganizationEntity.OrgType.OTHER)
                 .visibility(visibility)
@@ -305,7 +305,7 @@ class SitemapPostParentScopeQueryTest extends AbstractMySqlIntegrationTest {
                 .teamId(teamId)
                 .organizationId(organizationId)
                 .title("sitemap 親スコープテスト 投稿")
-                .slug("sitemap-parent-post-" + seq)
+                .slug("smp-p-" + seq)
                 .body("本文")
                 .visibility(visibility)
                 .status(status)

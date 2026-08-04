@@ -66,10 +66,39 @@ public class SitemapQueryService {
     /**
      * PUBLIC チームの投稿（blog_posts）の teamId + postId + updatedAt を全件取得する。
      *
-     * <p>{@code visibility = PUBLIC} かつ {@code status = PUBLISHED} の投稿が対象。</p>
+     * <h3>載せてよいものの定義（4 条件すべてを満たすものだけ）</h3>
+     * <ol>
+     *   <li>{@code visibility = PUBLIC}</li>
+     *   <li>{@code status = PUBLISHED}（{@code DRAFT} は載せない）</li>
+     *   <li>論理削除されていない（{@code @SQLRestriction("deleted_at IS NULL")} が自動除外）</li>
+     *   <li><b>親スコープ（チーム）も公開である</b></li>
+     * </ol>
+     *
+     * <p><b>なぜ親を絞るのか</b>: 投稿の公開 URL は
+     * {@code /public/teams/{teamId}/posts/{postId}} という形で<b>親 ID を含む</b>。
+     * 単票 API は親が非公開なら 404 に倒すので実害は無いが、<b>sitemap は URL そのものを
+     * 検索エンジンへ能動的に送る</b>ため、親が非公開のまま載せると
+     * 「非公開チームが実在すること」と「その配下の投稿 ID」を同時に開示してしまう。
+     * したがってここで必ず親を絞る（活動記録側 {@link #findPublicActivityEntries()} と同じ流儀）。</p>
+     *
+     * <p>公開チームの ID 集合は<b>本クラスの既存メソッド</b> {@link #findPublicTeamEntries()}
+     * の結果から作る。理由は {@link #findPublicActivityEntries()} の Javadoc に詳しい
+     * （番人 D-1 / D-5 の凍結ストアは越境依存を<b>出現回数まで</b>記録しており、
+     * {@code teamRepository} を直接呼ぶと新規違反として CI が落ちる）。
+     * ID 集合を 1 回渡して 1 本の SQL で引くため、公開チーム数に比例した N+1 にはならない。</p>
+     *
+     * <p>公開チームが 0 件のときは SQL を撃たずに空リストを返す（JPQL の {@code IN ()} 回避）。</p>
      */
     public List<SitemapPostEntry> findPublicTeamPostEntries() {
-        return blogPostRepository.findAllPublicPostsByTeam()
+        Set<Long> publicTeamIds = findPublicTeamEntries()
+                .stream()
+                .map(SitemapEntry::id)
+                .collect(Collectors.toSet());
+        if (publicTeamIds.isEmpty()) {
+            // 公開チームが 1 つも無い＝載せてよい投稿も存在しない。SQL を撃つ必要すらない。
+            return List.of();
+        }
+        return blogPostRepository.findAllPublicPostsByTeam(publicTeamIds)
                 .stream()
                 .map(bp -> new SitemapPostEntry(bp.getTeamId(), bp.getId(), bp.getUpdatedAt()))
                 .toList();
@@ -78,10 +107,20 @@ public class SitemapQueryService {
     /**
      * PUBLIC 組織の投稿（blog_posts）の organizationId + postId + updatedAt を全件取得する。
      *
-     * <p>{@code visibility = PUBLIC} かつ {@code status = PUBLISHED} の投稿が対象。</p>
+     * <p>載せてよいものの定義・<b>なぜ親を絞るのか</b>・空集合の扱いは
+     * {@link #findPublicTeamPostEntries()} と同一（チームを組織に読み替えること）。
+     * 公開組織の ID 集合は本クラスの {@link #findPublicOrganizationEntries()} から作る。</p>
      */
     public List<SitemapPostEntry> findPublicOrganizationPostEntries() {
-        return blogPostRepository.findAllPublicPostsByOrganization()
+        Set<Long> publicOrganizationIds = findPublicOrganizationEntries()
+                .stream()
+                .map(SitemapEntry::id)
+                .collect(Collectors.toSet());
+        if (publicOrganizationIds.isEmpty()) {
+            // 公開組織が 1 つも無い＝載せてよい投稿も存在しない。
+            return List.of();
+        }
+        return blogPostRepository.findAllPublicPostsByOrganization(publicOrganizationIds)
                 .stream()
                 .map(bp -> new SitemapPostEntry(bp.getOrganizationId(), bp.getId(), bp.getUpdatedAt()))
                 .toList();

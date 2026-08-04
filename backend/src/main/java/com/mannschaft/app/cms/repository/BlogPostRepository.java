@@ -173,34 +173,56 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             @Param("organizationId") Long organizationId, @Param("postId") Long postId);
 
     /**
-     * F19.1 Phase 3 sitemap.xml 用: チーム配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     * F19.1 Phase 3 sitemap.xml 用: <b>公開チーム</b>配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     *
+     * <h3>親スコープの公開性まで見る理由（sitemap 固有の要件）</h3>
+     * <p>投稿自身の可視性しか見ないと、<b>非公開チーム配下の PUBLIC 投稿</b>が sitemap に載る。
+     * 単票 API なら「親が非公開なら 404」で守れるが、<b>sitemap は URL をそのまま検索エンジンに
+     * 教える</b>ため、載せた時点で取り返しがつかない。しかも投稿 URL は
+     * {@code /public/teams/{teamId}/posts/{postId}} という形で親 ID を含むため、
+     * 「非公開チームが実在すること」と「その配下の投稿 ID」を同時に開示してしまう。
+     * よって本メソッドは公開チーム ID 集合を受け取り、SQL の段で親スコープを絞り込む。</p>
+     *
+     * <p>絞り込みを SQL に降ろすのは、スコープごとに 1 本ずつ撃つ N+1 を避けるためでもある
+     * （活動記録側の金型 {@code ActivityResultRepository#findPublicForSitemap} と同じ書き味）。</p>
      *
      * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
-     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。
+     * {@code status = PUBLISHED} は<b>決して外さないこと</b>（下書きの URL を配ってしまう）。</p>
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     *
+     * @param publicTeamIds 公開チームの ID 集合（<b>空にしないこと</b>。空集合は JPQL の
+     *                      {@code IN ()} を生成して SQL 構文エラーになるため、
+     *                      呼び出し元が実在しない番兵値を入れる）
+     * @return 親チームが公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "
-            + "WHERE bp.teamId IS NOT NULL "
+            + "WHERE bp.teamId IN :publicTeamIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
             + "ORDER BY bp.teamId ASC, bp.id ASC")
-    List<BlogPostEntity> findAllPublicPostsByTeam();
+    List<BlogPostEntity> findAllPublicPostsByTeam(
+            @Param("publicTeamIds") Collection<Long> publicTeamIds);
 
     /**
-     * F19.1 Phase 3 sitemap.xml 用: 組織配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     * F19.1 Phase 3 sitemap.xml 用: <b>公開組織</b>配下の PUBLIC + PUBLISHED 投稿を全件取得する。
      *
-     * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
-     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     * <p>親スコープを絞る理由・空集合の扱いは
+     * {@link #findAllPublicPostsByTeam(Collection)} と同一（チームを組織に読み替えること）。</p>
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     *
+     * @param publicOrganizationIds 公開組織の ID 集合（<b>空にしないこと</b>。理由は上記参照）
+     * @return 親組織が公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "
-            + "WHERE bp.organizationId IS NOT NULL "
+            + "WHERE bp.organizationId IN :publicOrganizationIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
             + "ORDER BY bp.organizationId ASC, bp.id ASC")
-    List<BlogPostEntity> findAllPublicPostsByOrganization();
+    List<BlogPostEntity> findAllPublicPostsByOrganization(
+            @Param("publicOrganizationIds") Collection<Long> publicOrganizationIds);
 
     // ========================================================================
     // F19.1 Phase 4: 公開検索用 lastPostDate 一括取得（N+1 防止）
