@@ -11,10 +11,10 @@ import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
 import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderRepository;
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,7 +47,18 @@ class ReflectionThemeServiceTest {
     @Mock private ReflectionSpacedReminderRepository reminderRepository;
     @Mock private ReflectionSpacedReminderService reminderService;
 
-    @InjectMocks private ReflectionThemeService service;
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code themeRepository.findByIdAndUserId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private ReflectionThemeService service;
+
+    @BeforeEach
+    void wireService() {
+        service = new ReflectionThemeService(themeRepository, entryRepository, reminderRepository,
+                reminderService, new ReflectionAccessGuard(themeRepository, entryRepository));
+    }
 
     private static final Long USER_ID = 100L;
     private static final UUID THEME_ID = UUID.randomUUID();
