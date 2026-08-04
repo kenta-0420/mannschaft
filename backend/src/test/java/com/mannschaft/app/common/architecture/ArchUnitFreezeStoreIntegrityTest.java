@@ -516,8 +516,25 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 認可自体は Service 層で実施されており（PERSONAL スコープの actorId 照合、契約テスト
      * {@code TodoStatusLabelScopeContractIT} で他人アクセスの拒否も確認済み）、違反隠蔽ではなく
      * 実態にストアを合わせる是正。</p>
+     *
+     * <p>504 → 471（2026-08-04 / 第3波「村」ロットB）: 村ドメインの 33 エンドポイントを全数監査し、
+     * 主張の内容ごとにマーカーを付与して返済した。内訳は
+     * {@code VillagePin} 4 / {@code VillageNewsletter} 4 / {@code VillageReport} 3 /
+     * {@code VillagePilgrimage} 3 / {@code VillageLobby} 3 / {@code VillageCreationRequest} 3 /
+     * {@code VillageCalendar} 3 / {@code VillageRepresentative} 2 / {@code VillageNickname} 2 /
+     * {@code VillageSerendipity} 1 / {@code VillageSearch} 1 / {@code VillageLobbyPresence} 1 /
+     * {@code VillageFeed} 1 / {@code VillageController} 1 / {@code PostingIdentity} 1。</p>
+     * <ul>
+     *   <li>認可を新設した 3 EP —
+     *       {@code VillageNewsletterController.getSettings}（掲示板と同一の閲覧認可へ委譲）/
+     *       {@code listSendLogs}（現役 HEADMAN・ELDER のみ）/
+     *       {@code VillageFeedController.feed}（村内コンテンツを現役の村人である村に限定）</li>
+     *   <li>残りは Service 層に実効的な認可が実在すること、または検索条件が認証主体に
+     *       束縛され他人のデータへ到達し得ないことを追跡して確認済み。契約テストは
+     *       {@code VillageLotBScopeContractIT} / {@code VillageSelfScopeContractIT} に張っている。</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 504;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 471;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

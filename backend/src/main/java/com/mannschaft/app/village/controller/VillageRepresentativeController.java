@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.RepresentativeGrantRequest;
 import com.mannschaft.app.village.dto.RepresentativeResponse;
 import com.mannschaft.app.village.dto.RepresentativeRevokeRequest;
@@ -51,6 +52,14 @@ public class VillageRepresentativeController {
 
     private final VillageRepresentativeService representativeService;
 
+    /**
+     * 認可は {@link VillageRepresentativeService#grantRepresentative} 内で実施する。
+     * 村の存在確認ののち {@code ensureModerator} が現役の HEADMAN / ELDER であることを
+     * 正準述語 {@code findActiveByVillageIdAndSubject} で検証する。対象メンバーシップは
+     * 実体を取得したうえでその {@code villageId} とパスの村 ID の一致を照合し、
+     * 不一致・退村済みは {@code NOT_MEMBER}（404）で存在を秘匿する。
+     */
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "村代表委任の付与（HEADMAN/ELDER）")
     public ResponseEntity<ApiResponse<RepresentativeResponse>> grant(
@@ -61,6 +70,13 @@ public class VillageRepresentativeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(dto));
     }
 
+    /**
+     * 認可は {@link VillageRepresentativeService#revokeRepresentative} 内で実施する。
+     * 現役の HEADMAN / ELDER であることを検証したうえで、委任レコードの実体を取得し
+     * その {@code villageId} がパスの村 ID と一致し未取消であることを照合する。
+     * 不一致は 404 で存在を秘匿する。
+     */
+    @AuthorizedInService
     @DeleteMapping("/{representativeId}")
     @Operation(summary = "村代表委任の取消し（HEADMAN/ELDER）")
     public ResponseEntity<ApiResponse<RepresentativeResponse>> revoke(

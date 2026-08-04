@@ -27,8 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -73,9 +75,17 @@ public class VillageFeedService {
     private final ChatMessageRepository chatMessageRepository;
     /** 村アイコンの生 R2 キーを表示用の署名付き URL へ解決する共通部品（#2355）。 */
     private final MediaUrlResolver mediaUrlResolver;
+    /** 村内コンテンツの可視範囲を決める「現役の村人であること」の解決窓口（村ドメイン内）。 */
+    private final PostingIdentityService postingIdentityService;
 
     /**
      * 個人ダッシュボードの村フィードを集約して返す。
+     *
+     * <p><b>可視範囲</b>: ピン留めは村外からでも行えるため、ピンの有無は村内コンテンツの
+     * 閲覧資格にならない。本文（井戸端メッセージ・タイムライン投稿・掲示板スレッド）は
+     * 呼び出しユーザーが<b>現役の村人である村に限って</b>集約する
+     * （{@link PostingIdentityService#getActiveVillageIdsByUser} が退村・BAN 済みを除外する）。
+     * ピン一覧そのもの（村名・アイコン）は呼び出しユーザー自身のピン行に束縛される。</p>
      *
      * @param actorUserId 認証ユーザー ID（必須）
      * @param limit       フィード件数の上限（最大 {@value #MAX_LIMIT}、デフォルト {@value #DEFAULT_LIMIT}）
@@ -113,10 +123,15 @@ public class VillageFeedService {
                     .build());
         }
 
-        // 各村の最新動きを集約
+        // 各村の最新動きを集約（本文は現役の村人である村のみ）
+        Set<UUID> memberVillageIds =
+                new HashSet<>(postingIdentityService.getActiveVillageIdsByUser(actorUserId));
         List<VillageFeedItemResponse> aggregate = new ArrayList<>();
         Pageable pageable = PageRequest.of(0, PER_VILLAGE_FETCH_HARD_CAP);
         for (VillageEntity v : villageMap.values()) {
+            if (!memberVillageIds.contains(v.getId())) {
+                continue;
+            }
             collectTimelinePosts(v, pageable, aggregate);
             collectLobbyMessages(v, pageable, aggregate);
         }

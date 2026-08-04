@@ -50,6 +50,7 @@ import static org.mockito.BDDMockito.given;
  *   <li>削除/凍結済み村は除外</li>
  *   <li>limit を超える結果は切り詰められる</li>
  *   <li>ロビーチャネル未払い出し村は LOBBY ゼロでも TIMELINE は返す</li>
+ *   <li>ピン留めしていても村人でない村の本文は集約しない（ピン一覧には出る）</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -66,6 +67,8 @@ class VillageFeedServiceTest {
     @Mock private ChatMessageRepository chatMessageRepository;
     /** 村アイコンの署名 URL 解決（#2355）。未スタブでも resolveAll は空 Map を返す（Mockito 既定）。 */
     @Mock private MediaUrlResolver mediaUrlResolver;
+    /** 村内コンテンツの可視範囲（現役の村人である村）を解決する窓口。 */
+    @Mock private PostingIdentityService postingIdentityService;
 
     @InjectMocks
     private VillageFeedService service;
@@ -184,6 +187,8 @@ class VillageFeedServiceTest {
 
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId1, 0L), pin(vId2, 1L)));
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID))
+                .willReturn(List.of(vId1, vId2));
         given(villageRepository.findById(vId1)).willReturn(Optional.of(v1));
         given(villageRepository.findById(vId2)).willReturn(Optional.of(v2));
 
@@ -227,6 +232,7 @@ class VillageFeedServiceTest {
         VillageEntity v = activeVillage(vId, "包村");
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findById(vId)).willReturn(Optional.of(v));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of(
@@ -253,6 +259,7 @@ class VillageFeedServiceTest {
         UUID vId = UUID.randomUUID();
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "新規村")));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of(timelinePost(1L, vId, "投稿だけ", t(5))));
@@ -273,6 +280,7 @@ class VillageFeedServiceTest {
         UUID vId = UUID.randomUUID();
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "板の村")));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of());
@@ -293,5 +301,21 @@ class VillageFeedServiceTest {
         assertThat(res.feed()).hasSize(1);
         assertThat(res.feed().get(0).type()).isEqualTo("TIMELINE");
         assertThat(res.feed().get(0).snippet()).contains("回覧板タイトル");
+    }
+
+    @Test
+    @DisplayName("村人でない村の本文は集約しない（ピン一覧には出る）")
+    void build_excludesContentOfNonMemberVillage() {
+        UUID vId = UUID.randomUUID();
+        given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
+                .willReturn(List.of(pin(vId, 0L)));
+        given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "余所の村")));
+        // 現役メンバーである村は 0 件 → 本文の集約対象にならない
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of());
+
+        VillageFeedResponse res = service.build(USER_ID, 20);
+
+        assertThat(res.feed()).isEmpty();
+        assertThat(res.pinnedVillages()).hasSize(1);
     }
 }
