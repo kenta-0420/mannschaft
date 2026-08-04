@@ -93,19 +93,37 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
      * <p><b>【issue #2545】JOIN 条件の {@code CAST(n.scope_id AS UNSIGNED)} を撤去した。</b>
      * 本番 DDL では {@code notifications.scope_id} が {@code BIGINT UNSIGNED}（V4.019）、
      * {@code my_scope_folder_items.scope_id} が符号付き {@code BIGINT}（V9.101）である。
-     * つまりこの CAST は<b>既に符号なしの列を符号なしへ変換する no-op</b>であり、
-     * 唯一の効果は {@code idx_notifications_scope}（{@code scope_type, scope_id, created_at}）を
-     * 使えなくすること（インデックス列に関数が乗ると sargable でなくなる）だけだった。
+     * つまりこの CAST は<b>既に符号なしの列を符号なしへ変換する no-op</b>だった。
      * {@code ddl-auto=create} のテスト環境では両側とも符号付きになるため、
      * この歪みは従来のテストでは原理的に観測できなかった。</p>
      *
-     * <p>撤去が挙動を変えないことは Flyway 実スキーマ上で実測済みである
-     * （{@code FlywayFromScratchMigrationTest#符号性の異なるBIGINT同士がCASTなしで一致する}）。
+     * <p>撤去の根拠は Flyway 実スキーマ（＝本番同一の符号性）上での実測である
+     * （{@code NativeQueryUnsignedBigintTypeIT}）。本クエリ<b>そのもの</b>を CAST 有無で走らせて
+     * 同一結果になることを確認しており、テストは SQL をリポジトリの {@code @Query} から反射で取得するため
+     * 本 javadoc とクエリ本文がずれても追随する。
      * ID は AUTO_INCREMENT の非負値であり、MySQL の符号付き↔符号なし比較は非負域で厳密に一致する。</p>
+     *
+     * <p><b>撤去の便益（EXPLAIN の実測値・断定ではなく観測事実）</b>:
+     * 同 IT の {@code EXPLAIN} 比較で {@code notifications}（別名 {@code n}）の {@code key} は
+     * CAST 有りで {@code null}（索引未使用）、撤去後で {@code idx_notifications_scope} だった。
+     * インデックス列に関数が乗ると sargable でなくなるためであり、
+     * 撤去によって当該索引が選ばれるようになったことを測定で確認している
+     * （測定条件: MySQL 8.0 / 通知 501 件 + {@code ANALYZE TABLE} 後。
+     * 行数分布が変われば optimizer の選択は変わりうるので、本記述は当該条件下の観測である）。</p>
      *
      * <p>なお根本原因は「同じ意味の {@code scope_id} が表ごとに符号性が違う」というスキーマの不統一である。
      * {@code my_scope_folder_items.scope_id} を {@code BIGINT UNSIGNED} へ揃える migration が
      * 本来の根治だが、DDL 変更は別途承認が要るため本 PR では扱わない。</p>
+     *
+     * <p><b>⚠️ 未是正の別欠陥（issue #2545 の測定中に発見）</b>:
+     * {@code notifications} は {@code utf8mb4_unicode_ci} を明示宣言（V4.019）する一方
+     * {@code my_scope_folders} はサーバ既定に従う（V9.100）。本番 RDS のサーバ既定は
+     * {@code utf8mb4_0900_ai_ci}（{@code infra/terraform/modules/data/main.tf}）であるため、
+     * {@code n.scope_type = folder.scope_type} が<b>本番でのみ
+     * {@code Illegal mix of collations} で失敗する</b>。
+     * ローカル {@code docker-compose.yml} はサーバ既定が {@code utf8mb4_unicode_ci} で一致するため再現しない。
+     * 事実は {@code NativeQueryUnsignedBigintTypeIT#本番照合順序では実クエリが照合不一致で失敗する}
+     * が測定・記録している。是正は DDL 変更を伴うため別途対応が要る。</p>
      *
      * @param userId    対象ユーザー
      * @param scopeType 対象スコープ種別

@@ -64,7 +64,7 @@ public class AdSegmentService {
                 // schedules.venue_id は本番 DDL で BIGINT UNSIGNED（V9.059）だが、
                 // Hibernate 6 がネイティブクエリのスカラを Long へ正規化するため直キャストで安全。
                 // 実測の根拠は issue #2545 /
-                // FlywayFromScratchMigrationTest#ネイティブクエリの符号なしBIGINT射影の実行時型を固定する（[5] List<Object[]>）。
+                // NativeQueryUnsignedBigintTypeIT#符号なしBIGINTの各経路の実行時型を固定する（[5] List<Object[]>）。
                 Long venueId = (Long) topVenues.get(0)[0];
                 if (venueId != null) {
                     topVenueName = venueRepository.findById(venueId)

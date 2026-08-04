@@ -374,7 +374,9 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      *
      * <p>issue #2545 で Flyway 実スキーマ（＝本番同一の {@code BIGINT UNSIGNED}）上の
      * Testcontainers MySQL に対して実測した結果は次のとおりである
-     * （{@code FlywayFromScratchMigrationTest#ネイティブクエリの符号なしBIGINT射影の実行時型を固定する}）:</p>
+     * （{@code NativeQueryUnsignedBigintTypeIT#符号なしBIGINTの各経路の実行時型を固定する}。
+     * 測定条件: MySQL 8.0 + MySQL Connector/J（Spring Boot 3.5 系の管理バージョン）
+     * + Hibernate ORM 6.6 系 + Spring Data JPA）:</p>
      * <ul>
      *   <li>生 JDBC {@code ResultSet#getObject} … {@code BigInteger}（ドライバの挙動の記述自体は正しい）</li>
      *   <li>Hibernate ネイティブクエリのスカラ … <b>{@code Long}</b></li>
@@ -385,9 +387,12 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      *
      * <p>Hibernate 6（現行スタックは Spring Boot 3.5 系）はネイティブクエリのスカラ型を
      * {@code ResultSetMetaData#getColumnType}（{@code BIGINT}）で解決し {@code Long} に正規化するため、
-     * {@code BigInteger} が ORM 境界を越えて Java コードに現れることはない
+     * <b>本測定条件下では</b> {@code BigInteger} が ORM 境界を越えて Java コードに現れることはない
      * （Hibernate 5 系の {@code getColumnClassName} 経由とは挙動が異なる）。
-     * よって「テストは通るが本番だけ落ちる」分岐は現行スタックには存在しない。</p>
+     * よって「テストは通るが本番だけ落ちる」分岐は現行スタックには存在しない。
+     * これは無条件の一般則ではなく観測事実であり、
+     * ドライバ / Hibernate / Spring Data が入れ替われば上記 IT が赤くなって検知される
+     * （#2514 の無条件断定を否定する記述が、同じ形の無条件断定にならないための注記）。</p>
      *
      * <p>それでも CAST を残しているのは、本クエリが {@code l.id = :listingId} による
      * 主キー1行引きであり CAST がインデックス選択に一切影響しないこと、および
