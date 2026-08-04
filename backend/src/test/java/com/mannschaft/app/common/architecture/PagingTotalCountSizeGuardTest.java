@@ -63,6 +63,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * その場で根治（{@code getTotalElements()} 起点の計算へ是正）すること。既存分のみ、
  * 監査済みの負債として凍結を許す。</p>
  *
+ * <h2>既知の制約（バグではない）</h2>
+ * <p>囲みメソッド名の特定（{@link #enclosingMethodName}）は {@code public/private/protected}
+ * 修飾子付きのメソッド宣言のみを認識する（{@link #METHOD_DECL} 参照）。package-private
+ * （修飾子省略）のメソッド内で違反が見つかった場合、凍結キーのメソッド名部分は
+ * {@code (不明メソッド)} となる。<b>検出そのものは正しく行われる</b>（違反を見逃すことはない）。
+ * production の Service メソッドは通常 public/private/protected のいずれかであり実害は
+ * 想定していないが、後任が「バグだ」と誤認しないよう明記しておく。</p>
+ *
  * @see IntentionallyPublicMatcherGuardTest
  */
 @DisplayName("番人: PageImpl の第3引数(総件数)がフィルタ後件数(.size())にすり替わっていないこと")

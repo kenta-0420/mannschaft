@@ -8,7 +8,11 @@
 # キー形式: <完全修飾クラス名>#<メソッド名>
 #
 # 2026-08-04 初期凍結（大名システム調査で確認済みの既知病巣）:
-com.mannschaft.app.gallery.service.PhotoAlbumService#listAlbums
 com.mannschaft.app.incident.service.IncidentService#listIncidents
-com.mannschaft.app.jobmatching.service.JobPostingService#listByTeamForViewer
 com.mannschaft.app.social.service.TeamFriendQueryService#listFriends
+#
+# 2026-08-04 main 追随（PR #2577 是正の反映）:
+# PhotoAlbumService#listAlbums / JobPostingService#listByTeamForViewer の2件は
+# PR #2577「PageImpl 総件数バグの是正」（main コミット bb549f44e）で
+# page.getTotalElements() - excluded 方式へ是正され、もう本番人の違反条件に該当しないため
+# 凍結リストから削除した（chip-away の第一歩）。番人が意図どおり陳腐化を検知した実例。
