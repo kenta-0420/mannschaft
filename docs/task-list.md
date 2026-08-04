@@ -60,6 +60,8 @@ Mannschaft の「タスクの地図」は二層で構成する。
 | CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30） | `2026-07-10-authz-idor-audit.md` |
 | CMP-018 | F08.7 シフト予算連動機能（Phase 9-β/γ/δ） | 実装中 | Phase 9-α（完了） | Phase 9-β（DDL+CRUD#1-5）／9-γ（TODO紐付#7-8）／9-δ（警告/月次締め+権限）の実装完了 | Phase 9-α 実装完了（2026-05-03）: 逆算API #6単独・feature.shift-budget.enabled既定false | — |
 | CMP-019 | TODO コメント棚卸し（FeatureFlag判定 34箇所ほか） | 未着手 | — | コード中の `// TODO` コメント（旧 `docs/TODO_LIST.txt` 記載分含む）を実チケット化し解消すること | — | — |
+| CMP-020 | 本番のみで顕在化するスキーマ差の是正（照合順序不一致） | 実機検証待ち | — | 全表・全文字列列の照合順序を単一値へ統一し、本番と同じ照合順序で走る検証経路と新規表の番人を常設したうえで、本番で当該APIが復旧していることを確認すること | 全1,089migration走査で明示宣言584表/サーバ既定依存142表を分類、実害JOIN 1件（`aggregateFolderUnreadCounts`）を特定。V175統一migration＋`SchemaCollationConsistencyIT`＋`MigrationCollationDeclarationGuardTest`（#2589） | — |
+| CMP-021 | 裏目付・第二陣の残務 | 未着手 | CMP-017 | #2541 の番人強化、#2544 の次の波、2スキーマ差分ITの導入判断、`my_scope_folder_items.scope_id` の符号性統一をすべて処理すること | 第二陣は 2026-07-30 完結（残=#2530） | — |
 
 台帳列はローカル限定（`.gitignore` 済み）のファイル名を指すため、clone 直後の環境や worktree には存在しない。`—` は「まだ台帳を作っていない」の意。戦役の再開時に台帳ファイルを作成したら、この列にファイル名を書き足すこと。
 

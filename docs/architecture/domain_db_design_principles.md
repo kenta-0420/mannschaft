@@ -148,6 +148,39 @@ public interface MyRepository extends AbstractTenantAwareRepository<MyEntity, Lo
 リポジトリ層で `organization_id` 絞り込みを統一しておくことで、シャーディング導入時にルーティングロジックを
 一箇所（基底クラス）に追加するだけで全テナント対応が完了する設計とした。
 
+### 8. 新規テーブルは照合順序を明示宣言する（2026-08-04〜 / issue #2589）
+
+`CREATE TABLE` の末尾で文字セットと照合順序を必ず明示すること。
+
+```sql
+-- Before（禁止）: 宣言なし ＝ サーバ変数 collation_server を継承する
+) ENGINE=InnoDB COMMENT='...';
+
+-- After: 統一値を明示宣言する
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='...';
+```
+
+統一値は **`utf8mb4` / `utf8mb4_0900_ai_ci`** の一択。列単位の `COLLATE` 上書きも禁止する
+（JOIN 相手との不一致を生むため）。
+
+**なぜこの原則があるか:**
+照合順序を宣言しない表は MySQL のサーバ変数 `collation_server` を継承する。
+本番 RDS（`utf8mb4_0900_ai_ci`）とローカル docker（当時 `utf8mb4_unicode_ci`）でこの値が違ったため、
+**同じ DDL から環境ごとに違う照合順序のスキーマが生まれていた**。
+その結果、照合順序の異なる文字列列同士を比較する JOIN が
+**ローカルでは通るのに本番だけ `Illegal mix of collations` で落ちる**という障害になった
+（`MyScopeFolderItemRepository#aggregateFolderUnreadCounts`）。
+通常のテストは `ddl-auto=create` かつ Flyway 無効で走るため、この差は原理的に検知できない。
+
+**現在の防御（多重）:**
+
+| 層 | 実体 | 役割 |
+|---|---|---|
+| スキーマ統一 | `V175.20260804134628__unify_table_collation.sql` | 既存の全表・全文字列列を統一値へ変換し、`ALTER DATABASE` でデータベース既定も固定（以後 `collation_server` に依存しない） |
+| 環境の一致 | `docker-compose.yml` の `--collation-server` | ローカルのサーバ既定を本番 RDS と同値に揃える |
+| 静的番人 | `MigrationCollationDeclarationGuardTest` | 新規 migration の `CREATE TABLE` が宣言を欠いたら Docker 不要で即 fail |
+| 動的番人 | `SchemaCollationConsistencyIT` | 本番と同じ照合順序で Flyway を実際に流し、適用後の実スキーマ全体を検証 |
+
 ---
 
 ## なぜこの設計か

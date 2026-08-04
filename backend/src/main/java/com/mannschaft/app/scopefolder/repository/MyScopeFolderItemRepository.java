@@ -115,15 +115,17 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
      * {@code my_scope_folder_items.scope_id} を {@code BIGINT UNSIGNED} へ揃える migration が
      * 本来の根治だが、DDL 変更は別途承認が要るため本 PR では扱わない。</p>
      *
-     * <p><b>⚠️ 未是正の別欠陥（issue #2545 の測定中に発見）</b>:
-     * {@code notifications} は {@code utf8mb4_unicode_ci} を明示宣言（V4.019）する一方
-     * {@code my_scope_folders} はサーバ既定に従う（V9.100）。本番 RDS のサーバ既定は
-     * {@code utf8mb4_0900_ai_ci}（{@code infra/terraform/modules/data/main.tf}）であるため、
-     * {@code n.scope_type = folder.scope_type} が<b>本番でのみ
-     * {@code Illegal mix of collations} で失敗する</b>。
-     * ローカル {@code docker-compose.yml} はサーバ既定が {@code utf8mb4_unicode_ci} で一致するため再現しない。
-     * 事実は {@code NativeQueryUnsignedBigintTypeIT#本番照合順序では実クエリが照合不一致で失敗する}
-     * が測定・記録している。是正は DDL 変更を伴うため別途対応が要る。</p>
+     * <p><b>照合順序不一致（issue #2589）は是正済み</b>:
+     * かつて {@code notifications} は {@code utf8mb4_unicode_ci} を明示宣言（V4.019）する一方
+     * {@code my_scope_folders} はサーバ既定に従い（V9.100）、本番 RDS のサーバ既定が
+     * {@code utf8mb4_0900_ai_ci} であったため、{@code n.scope_type = folder.scope_type} が
+     * <b>本番でのみ {@code Illegal mix of collations} で失敗</b>していた。
+     * {@code V175.20260804134628__unify_table_collation.sql} がスキーマ全体を
+     * {@code utf8mb4_0900_ai_ci} へ統一し、あわせて {@code ALTER DATABASE} でデータベース既定を
+     * 固定したため、表の照合順序はサーバ変数 {@code collation_server} に依存しなくなった。
+     * したがって本クエリに {@code COLLATE} を書く必要は無い。
+     * 統一が維持されていることは {@code SchemaCollationConsistencyIT} が
+     * 本番と同じ照合順序で起動したコンテナ上で全表・全文字列列について検証している。</p>
      *
      * @param userId    対象ユーザー
      * @param scopeType 対象スコープ種別
