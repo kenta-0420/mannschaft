@@ -32,7 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("予約スロット 未使用列 3 本 撤去番人テスト")
 class ReservationSlotUnusedColumnRemovalTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    /** LocalDate/LocalTime を含む DTO を実 API と同じ規則でシリアライズするため JSR-310 モジュールを登録する。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @Test
     @DisplayName("ReservationSlotEntity に recurrenceRule/parentSlotId/isException フィールドが存在しない")

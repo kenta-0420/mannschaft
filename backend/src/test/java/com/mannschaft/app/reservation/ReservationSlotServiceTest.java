@@ -123,7 +123,6 @@ class ReservationSlotServiceTest {
                 .staffUserId(STAFF_USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("テストスロット", SLOT_DATE, START_TIME, END_TIME))
                 .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, null, "テストメモ"))
-                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(new BigDecimal("1000")))
                 .policy(new ReservationSlotResponse.SlotPolicyDto(null))
                 .audit(new ReservationSlotResponse.SlotAuditDto(CREATED_BY, null, null))
@@ -455,11 +454,12 @@ class ReservationSlotServiceTest {
             // When
             service.createSlot(TEAM_ID, request, CREATED_BY);
 
-            // Then: lineId=NULL（共通枠・既存互換）・recurrenceRule は常に NULL（新規保存停止・§3.3）
+            // Then: lineId=NULL（共通枠・既存互換）
+            // ※ recurrenceRule は F03.4.2 §3.3 のクリーンアップで列・フィールドごと撤去済み
+            //   （復活検出は ReservationSlotUnusedColumnRemovalTest が担う）
             ArgumentCaptor<ReservationSlotEntity> captor = ArgumentCaptor.forClass(ReservationSlotEntity.class);
             verify(slotRepository).save(captor.capture());
             assertThat(captor.getValue().getLineId()).isNull();
-            assertThat(captor.getValue().getRecurrenceRule()).isNull();
         }
 
         @Test
