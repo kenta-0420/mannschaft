@@ -1,0 +1,14 @@
+# 番人: PagingTotalCountSizeGuardTest の凍結リスト。
+#
+# 【重要】このリストは「確定した病巣リスト」であり、削っていく対象である。
+# 新規に同じ型（PageImpl の第3引数=総件数にフィルタ後件数(.size())を渡す実装）を書いて
+# ここへ追記することは禁止する。既存分のみ、監査済みの負債として凍結している。
+# 根治したら該当行を削除すること（chip-away）。
+#
+# キー形式: <完全修飾クラス名>#<メソッド名>
+#
+# 2026-08-04 初期凍結（大名システム調査で確認済みの既知病巣）:
+com.mannschaft.app.gallery.service.PhotoAlbumService#listAlbums
+com.mannschaft.app.incident.service.IncidentService#listIncidents
+com.mannschaft.app.jobmatching.service.JobPostingService#listByTeamForViewer
+com.mannschaft.app.social.service.TeamFriendQueryService#listFriends
