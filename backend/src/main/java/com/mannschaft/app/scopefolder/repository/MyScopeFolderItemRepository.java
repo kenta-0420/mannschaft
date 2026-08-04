@@ -90,6 +90,23 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
      * <p>クロスドメイン参照だが読み取り専用 (@Transactional(readOnly=true)) で
      * scopefolder ドメインに閉じる（設計書 §6.4 / §12.2）。</p>
      *
+     * <p><b>【issue #2545】JOIN 条件の {@code CAST(n.scope_id AS UNSIGNED)} を撤去した。</b>
+     * 本番 DDL では {@code notifications.scope_id} が {@code BIGINT UNSIGNED}（V4.019）、
+     * {@code my_scope_folder_items.scope_id} が符号付き {@code BIGINT}（V9.101）である。
+     * つまりこの CAST は<b>既に符号なしの列を符号なしへ変換する no-op</b>であり、
+     * 唯一の効果は {@code idx_notifications_scope}（{@code scope_type, scope_id, created_at}）を
+     * 使えなくすること（インデックス列に関数が乗ると sargable でなくなる）だけだった。
+     * {@code ddl-auto=create} のテスト環境では両側とも符号付きになるため、
+     * この歪みは従来のテストでは原理的に観測できなかった。</p>
+     *
+     * <p>撤去が挙動を変えないことは Flyway 実スキーマ上で実測済みである
+     * （{@code FlywayFromScratchMigrationTest#符号性の異なるBIGINT同士がCASTなしで一致する}）。
+     * ID は AUTO_INCREMENT の非負値であり、MySQL の符号付き↔符号なし比較は非負域で厳密に一致する。</p>
+     *
+     * <p>なお根本原因は「同じ意味の {@code scope_id} が表ごとに符号性が違う」というスキーマの不統一である。
+     * {@code my_scope_folder_items.scope_id} を {@code BIGINT UNSIGNED} へ揃える migration が
+     * 本来の根治だが、DDL 変更は別途承認が要るため本 PR では扱わない。</p>
+     *
      * @param userId    対象ユーザー
      * @param scopeType 対象スコープ種別
      * @return [folderId, unreadCount] の配列リスト
@@ -98,7 +115,7 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
             + "FROM my_scope_folders folder "
             + "LEFT JOIN my_scope_folder_items item ON item.folder_id = folder.id "
             + "LEFT JOIN notifications n "
-            + "  ON CAST(n.scope_id AS UNSIGNED) = item.scope_id "
+            + "  ON n.scope_id = item.scope_id "
             + "  AND n.scope_type = folder.scope_type "
             + "  AND n.user_id = :userId "
             + "  AND n.is_read = FALSE "

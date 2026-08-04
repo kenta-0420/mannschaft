@@ -366,12 +366,34 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * 募集枠の行が物理削除されれば NO_SHOW 記録も道連れに消えるため、
      * 「記録は在るのに募集枠の行が無い」状態は発生しない。</p>
      *
-     * <p><b>{@code CAST(scope_id AS SIGNED)} は必須である。</b> 本番 DDL（V3.119）の
-     * {@code scope_id} は {@code BIGINT UNSIGNED} であり、MySQL Connector/J は
-     * 符号なし BIGINT を {@code BigInteger} で返す。射影の {@code Long getScopeId()} に
-     * そのまま渡すと実行時に型が合わない。一方テストプロファイルのスキーマは Entity 由来
-     * （{@code Long} → 符号付き {@code bigint}）なので、CAST が無くてもテストだけは通ってしまい
-     * <b>本番でのみ壊れる</b>。CAST で符号付きに正規化してこの分岐を潰す。</p>
+     * <p><b>【訂正 issue #2545】{@code CAST(scope_id AS SIGNED)} は必須ではない。</b>
+     * 本 javadoc は当初「本番 DDL（V3.119）の {@code scope_id} は {@code BIGINT UNSIGNED} であり、
+     * MySQL Connector/J は符号なし BIGINT を {@code BigInteger} で返すため、射影の
+     * {@code Long getScopeId()} に渡すと本番でのみ壊れる」と断定していたが、
+     * <b>この機構は実測されていなかった</b>。</p>
+     *
+     * <p>issue #2545 で Flyway 実スキーマ（＝本番同一の {@code BIGINT UNSIGNED}）上の
+     * Testcontainers MySQL に対して実測した結果は次のとおりである
+     * （{@code FlywayFromScratchMigrationTest#ネイティブクエリの符号なしBIGINT射影の実行時型を固定する}）:</p>
+     * <ul>
+     *   <li>生 JDBC {@code ResultSet#getObject} … {@code BigInteger}（ドライバの挙動の記述自体は正しい）</li>
+     *   <li>Hibernate ネイティブクエリのスカラ … <b>{@code Long}</b></li>
+     *   <li>Spring Data {@code @Query(nativeQuery=true)} の {@code List<Long>} の要素 … <b>{@code Long}</b></li>
+     *   <li>射影インタフェースの {@code Long} 宣言 … <b>{@code Long}</b></li>
+     *   <li>{@code List<Object[]>} の要素 … <b>{@code Long}</b></li>
+     * </ul>
+     *
+     * <p>Hibernate 6（現行スタックは Spring Boot 3.5 系）はネイティブクエリのスカラ型を
+     * {@code ResultSetMetaData#getColumnType}（{@code BIGINT}）で解決し {@code Long} に正規化するため、
+     * {@code BigInteger} が ORM 境界を越えて Java コードに現れることはない
+     * （Hibernate 5 系の {@code getColumnClassName} 経由とは挙動が異なる）。
+     * よって「テストは通るが本番だけ落ちる」分岐は現行スタックには存在しない。</p>
+     *
+     * <p>それでも CAST を残しているのは、本クエリが {@code l.id = :listingId} による
+     * 主キー1行引きであり CAST がインデックス選択に一切影響しないこと、および
+     * 「射影が符号付き {@code Long} を期待している」という意図の明示になるためである。
+     * 除去も可能だが利得が無いため触らない
+     * （インデックス列に CAST が乗って実害が出ていた {@code MyScopeFolderItemRepository} とは事情が異なる）。</p>
      *
      * @param listingId 募集枠 ID
      * @return archive 済みならスコープ、生存中なら空

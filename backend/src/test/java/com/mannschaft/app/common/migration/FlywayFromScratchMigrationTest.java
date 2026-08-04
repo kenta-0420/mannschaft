@@ -1,9 +1,14 @@
 package com.mannschaft.app.common.migration;
 
+import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeEntity;
+import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeRepository;
 import jakarta.persistence.Converter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.MappedSuperclass;
+import org.assertj.core.api.SoftAssertions;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.hibernate.boot.Metadata;
@@ -27,8 +32,17 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
@@ -36,6 +50,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +58,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
+
+import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -342,6 +360,344 @@ class FlywayFromScratchMigrationTest {
             }
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /**
+     * <b>issue #2545: ネイティブクエリのスカラ型は {@code BIGINT UNSIGNED} 列に対して何を返すのか</b>を
+     * 本番同一の Flyway 実スキーマ上で実測し、恒久的に固定する。
+     *
+     * <h2>背景（訂正された前提）</h2>
+     * <p>PR #2514 は「MySQL Connector/J は符号なし BIGINT を {@link java.math.BigInteger} で返すので、
+     * ネイティブクエリの射影に {@code Long} と書くとテストでは通り本番だけ落ちる」と javadoc に断定した。
+     * しかし<b>この機構は一度も実測されていなかった</b>（出典はその javadoc のみで、
+     * テスト・IT・障害記録に {@code BigInteger} 起因の実測は無い）。
+     * 現スタックは Spring Boot 3.5 系 ＝ Hibernate ORM 6.6 系であり、
+     * ネイティブクエリのスカラ型解決が Hibernate 5 系（{@code getColumnClassName()} 経由で
+     * {@code BigInteger}）とは異なる可能性があった。</p>
+     *
+     * <h2>なぜ通常のテストでは決着しないか</h2>
+     * <p>{@code src/test/resources/application-test.yml} は {@code ddl-auto=create} /
+     * {@code flyway.enabled=false} であり、テスト DB の ID 列は Entity の {@code Long} 由来で
+     * <b>符号付き</b> {@code bigint} になる。符号性が本番と違うのだから、
+     * 符号性に由来する型差は原理的にテストに現れない。
+     * 本テストは Flyway 実スキーマ（{@code users.id} は {@code BIGINT UNSIGNED}）上で走る唯一の
+     * 経路であり、ここでしか実測できない。</p>
+     *
+     * <h2>測る 4 経路</h2>
+     * <ol>
+     *   <li>生 JDBC（{@code ResultSet#getObject}）</li>
+     *   <li>Hibernate のネイティブクエリ（{@code EntityManager#createNativeQuery}）のスカラ</li>
+     *   <li>Spring Data の {@code @Query(nativeQuery = true)} で {@code List<Long>} を宣言したときの<b>要素</b>の実行時型
+     *       （{@code QueryExecutionResultHandler} はコレクション型は変換するが要素型は変換しない、という仮説）</li>
+     *   <li>射影インタフェースに {@code Long} と書いたとき（{@code ProjectingMethodInterceptor} →
+     *       {@code DefaultConversionService} の {@code NumberToNumber} で救われる、という仮説）</li>
+     * </ol>
+     *
+     * <p>実測結果は下の assert がそのまま結論である。ここが赤くなったら
+     * 「ドライバ / Hibernate / Spring Data の型解決が変わった」という重大な事実であり、
+     * issue #2545 の是正方針を丸ごと見直す必要がある。</p>
+     */
+    @Test
+    @Order(3)
+    @DisplayName("BIGINT UNSIGNED 列のネイティブクエリ射影の実行時型を実測する（issue #2545）")
+    void ネイティブクエリの符号なしBIGINT射影の実行時型を固定する() throws Exception {
+        // given: Flyway 実スキーマ（冪等。単独実行にも耐える）
+        migrateFromScratch();
+
+        // given: users.id が本当に BIGINT UNSIGNED であること（前提そのものの検算）
+        String usersIdColumnType = readColumnType("users", "id");
+        assertThat(usersIdColumnType)
+                .as("本実測の前提: Flyway 実スキーマの users.id は符号なし BIGINT であること")
+                .isEqualTo("bigint unsigned");
+
+        // given: 1 行だけ用意する（NOT NULL かつ default 無しの列をダミーで充填）
+        ensureProbeRow("users");
+
+        Object viaJdbc;
+        Object viaHibernateNative;
+        Object viaSpringDataListElement;
+        Object viaProjection;
+        Object viaSpringDataObjectArray;
+        Object viaJdbcTemplateTyped;
+
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id FROM users ORDER BY id LIMIT 1")) {
+            assertThat(rs.next()).as("実測用の users 行が存在すること").isTrue();
+            viaJdbc = rs.getObject(1);
+        }
+
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            ctx.register(ProbeJpaConfig.class);
+            ctx.refresh();
+
+            EntityManagerFactory emf = ctx.getBean(EntityManagerFactory.class);
+            try (EntityManager em = emf.createEntityManager()) {
+                viaHibernateNative = em
+                        .createNativeQuery("SELECT id FROM users ORDER BY id LIMIT 1")
+                        .getSingleResult();
+            }
+
+            UnsignedIdProbeRepository repository = ctx.getBean(UnsignedIdProbeRepository.class);
+
+            List<Long> ids = repository.findIdsAsLongList();
+            assertThat(ids).as("List<Long> 経路が 1 件返すこと").hasSize(1);
+            // 宣言型は List<Long> だが、実行時の要素が本当に Long かは未知。
+            // 型消去のため List<Object> 経由で取り出さないと ClassCastException で
+            // 「何が入っていたか」を報告できずに落ちる。
+            viaSpringDataListElement = ((List<?>) ids).get(0);
+
+            List<UnsignedIdProbeRepository.IdProjection> projections = repository.findIdsAsProjection();
+            assertThat(projections).as("射影インタフェース経路が 1 件返すこと").hasSize(1);
+            viaProjection = invokeProjectionGetter(projections.get(0));
+
+            List<Object[]> rows = repository.findIdAndCountAsObjectArray();
+            assertThat(rows).as("List<Object[]> 経路が 1 件返すこと").hasSize(1);
+            viaSpringDataObjectArray = rows.get(0)[0];
+
+            // 宣言型 List<Long> の get(0) は javac が checkcast を挿入するため、
+            // List<?> 経由で受けないと「何が入っていたか」を報告する前に落ちる。
+            List<?> jdbcTemplateRows = new JdbcTemplate(ctx.getBean(DataSource.class))
+                    .queryForList("SELECT id FROM users ORDER BY id LIMIT 1", Long.class);
+            viaJdbcTemplateTyped = jdbcTemplateRows.get(0);
+        }
+
+        // then: 全経路の実行時型を固定する（1 回の実行で全経路を報告するため soft assert）
+        SoftAssertions softly = new SoftAssertions();
+
+        // [1] だけが BigInteger である。ドライバは確かに符号なし BIGINT を BigInteger で返す。
+        // つまり #2514 の「ドライバの挙動」の記述自体は正しかった。
+        softly.assertThat(viaJdbc)
+                .as("[1] 生 JDBC ResultSet#getObject は BIGINT UNSIGNED を BigInteger で返す "
+                        + "(MySQL Connector/J の仕様。ここが型ズレの発生源)")
+                .isInstanceOf(BigInteger.class);
+
+        // [2]〜[5] は Hibernate 6 が ResultSetMetaData#getColumnType（BIGINT）で
+        // 型を解決し、JdbcType が Long へ正規化するため、BigInteger は ORM 境界を越えてこない。
+        // ＝ #2514 が恐れた「射影に Long と書くと本番だけ落ちる」機構は現行スタックでは成立しない。
+        softly.assertThat(viaHibernateNative)
+                .as("[2] Hibernate ネイティブクエリのスカラは Long に正規化される "
+                        + "(Hibernate 6 は getColumnClassName ではなく getColumnType で解決する)")
+                .isInstanceOf(Long.class);
+        softly.assertThat(viaSpringDataListElement)
+                .as("[3] Spring Data @Query(nativeQuery=true) の List<Long> の『要素』も Long "
+                        + "(QueryExecutionResultHandler が要素型を変換しないのは事実だが、"
+                        + "そもそも Hibernate 層で既に Long になっているため問題化しない)")
+                .isInstanceOf(Long.class);
+        softly.assertThat(viaProjection)
+                .as("[4] 射影インタフェースの Long 宣言も Long")
+                .isInstanceOf(Long.class);
+        softly.assertThat(viaSpringDataObjectArray)
+                .as("[5] List<Object[]> の要素も Long "
+                        + "(AdSegmentService の (Long) row[0] 直キャストは本番でも落ちない)")
+                .isInstanceOf(Long.class);
+        softly.assertThat(viaJdbcTemplateTyped)
+                .as("[6] JdbcTemplate#queryForList(sql, Long.class) は "
+                        + "SingleColumnRowMapper の NumberUtils 変換で Long になる "
+                        + "(型を指定しない queryForList(sql) は変換が効かず BigInteger が漏れる点に注意)")
+                .isInstanceOf(Long.class);
+        softly.assertAll();
+    }
+
+    /**
+     * <b>issue #2545 の鏡像: 符号付き列と符号なし列を素の {@code =} で JOIN できることを実測する。</b>
+     *
+     * <p>{@code MyScopeFolderItemRepository#aggregateFolderUnreadCounts} には
+     * {@code ON CAST(n.scope_id AS UNSIGNED) = item.scope_id} という JOIN 条件があった。
+     * しかし本番 DDL では</p>
+     * <ul>
+     *   <li>{@code notifications.scope_id} … {@code BIGINT UNSIGNED}（V4.019）</li>
+     *   <li>{@code my_scope_folder_items.scope_id} … 符号付き {@code BIGINT}（V9.101）</li>
+     * </ul>
+     * <p>であり、{@code CAST(n.scope_id AS UNSIGNED)} は<b>既に符号なしの列を符号なしへ変換する no-op</b>で、
+     * 効果は「{@code idx_notifications_scope} を使えなくする」ことだけだった
+     * （インデックス列に関数を適用すると sargable でなくなる）。
+     * 一方 {@code ddl-auto=create} のテスト環境では両側とも符号付きになるため、
+     * この CAST の有無は従来のテストでは一切観測できなかった。</p>
+     *
+     * <p>本テストは「符号付き BIGINT と符号なし BIGINT を CAST 無しの {@code =} で
+     * 突き合わせても正しく一致する」ことを Flyway 実スキーマ上で実測し、
+     * CAST 撤去が挙動を変えないことを恒久的に固定する。
+     * ID は AUTO_INCREMENT の非負値であり、MySQL の符号付き→符号なし変換は
+     * 非負域では厳密であるため一致は保たれる。</p>
+     */
+    @Test
+    @Order(4)
+    @DisplayName("符号付き BIGINT と符号なし BIGINT は CAST 無しで JOIN 一致する（issue #2545 の鏡像）")
+    void 符号性の異なるBIGINT同士がCASTなしで一致する() throws Exception {
+        // given: Flyway 実スキーマ（冪等）
+        migrateFromScratch();
+
+        // given: 前提となる符号性の非対称が実在すること
+        assertThat(readColumnType("notifications", "scope_id"))
+                .as("notifications.scope_id は符号なし").isEqualTo("bigint unsigned");
+        assertThat(readColumnType("my_scope_folder_items", "scope_id"))
+                .as("my_scope_folder_items.scope_id は符号付き").isEqualTo("bigint");
+
+        // given: 双方に同じ scope_id を持つ行を 1 件ずつ
+        ensureProbeRow("notifications");
+        ensureProbeRow("my_scope_folder_items");
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.Statement st = conn.createStatement()) {
+            // 検証対象は「符号性の異なる BIGINT 同士の比較」だけであり、
+            // 参照整合性は無関係。ダミー行の folder_id は実在しないため FK 検査を外す
+            // （握りつぶしではなく、フィクスチャの対象外項目の明示的な除外）。
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+            st.executeUpdate("UPDATE notifications SET scope_id = 4242");
+            st.executeUpdate("UPDATE my_scope_folder_items SET scope_id = 4242");
+
+            // when / then: CAST 有り・無しのどちらも同じ 1 件に一致する
+            String joinSql = "SELECT COUNT(*) FROM my_scope_folder_items item "
+                    + "JOIN notifications n ON %s = item.scope_id";
+            try (ResultSet rs = st.executeQuery(String.format(joinSql, "CAST(n.scope_id AS UNSIGNED)"))) {
+                rs.next();
+                assertThat(rs.getInt(1)).as("CAST 有り（撤去前の形）で 1 件一致すること").isEqualTo(1);
+            }
+            try (ResultSet rs = st.executeQuery(String.format(joinSql, "n.scope_id"))) {
+                rs.next();
+                assertThat(rs.getInt(1))
+                        .as("CAST 無し（撤去後の形）でも同じく 1 件一致すること。"
+                                + "ここが 0 なら CAST 撤去は挙動を変えており、撤去してはならない")
+                        .isEqualTo(1);
+            }
+        }
+    }
+
+    /** 射影インタフェースの getter を反射で呼ぶ（戻り値の宣言型 Long でのキャストを避け、実行時型を素で観測するため）。 */
+    private static Object invokeProjectionGetter(Object projection) throws Exception {
+        return UnsignedIdProbeRepository.IdProjection.class.getMethod("getId").invoke(projection);
+    }
+
+    /**
+     * 実測用の最小 JPA コンテキスト。
+     *
+     * <p>{@code @Configuration} を付けていないのは意図的である。付けると
+     * {@code @SpringBootTest} のコンポーネントスキャン（{@code com.mannschaft.app} 配下・
+     * テストクラスも classpath に載る）に拾われ、全 IT に無関係な EntityManagerFactory を
+     * 撒いてしまう。{@code @EnableJpaRepositories} は {@code @Import} メタアノテーションであり、
+     * lite モードの {@code @Bean} でも問題なく機能する。</p>
+     */
+    @EnableJpaRepositories(basePackageClasses = UnsignedIdProbeRepository.class)
+    static class ProbeJpaConfig {
+
+        @Bean
+        DataSource probeDataSource() {
+            DriverManagerDataSource ds = new DriverManagerDataSource(
+                    MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+            ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            return ds;
+        }
+
+        @Bean
+        LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource probeDataSource) {
+            LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+            emf.setDataSource(probeDataSource);
+            emf.setPackagesToScan(UnsignedIdProbeEntity.class.getPackage().getName());
+            emf.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+            Properties props = new Properties();
+            // Flyway が作った実スキーマをそのまま使う。Entity から DDL を生成させない。
+            props.put(AvailableSettings.HBM2DDL_AUTO, "none");
+            props.put(AvailableSettings.DIALECT, MySQLDialect.class.getName());
+            emf.setJpaProperties(props);
+            return emf;
+        }
+
+        @Bean
+        PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+            return new JpaTransactionManager(entityManagerFactory);
+        }
+    }
+
+    /** {@code information_schema} から列の実型（{@code COLUMN_TYPE}）を読む。 */
+    private static String readColumnType(String table, String column) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COLUMN_TYPE FROM information_schema.columns "
+                             + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertThat(rs.next()).as(table + "." + column + " が実スキーマに存在すること").isTrue();
+                return rs.getString(1).toLowerCase(Locale.ROOT);
+            }
+        }
+    }
+
+    /**
+     * 指定テーブルに実測用の 1 行を用意する（既に行があれば何もしない）。
+     *
+     * <p>NOT NULL かつデフォルト無し・非 AUTO_INCREMENT・非生成列を
+     * {@code information_schema} から拾い、型に応じたダミー値で充填する。
+     * 列構成の変化に追随させるため、固定の INSERT 文は書かない。</p>
+     */
+    private static void ensureProbeRow(String table) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.Statement st = conn.createStatement()) {
+
+            try (ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
+                rs.next();
+                if (rs.getInt(1) > 0) {
+                    return;
+                }
+            }
+
+            List<String> columns = new ArrayList<>();
+            List<String> values = new ArrayList<>();
+            try (ResultSet rs = st.executeQuery(
+                    "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, EXTRA FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = '" + table + "' "
+                            + "AND IS_NULLABLE = 'NO' AND COLUMN_DEFAULT IS NULL")) {
+                while (rs.next()) {
+                    String extra = rs.getString("EXTRA") == null
+                            ? "" : rs.getString("EXTRA").toLowerCase(Locale.ROOT);
+                    if (extra.contains("auto_increment") || extra.contains("generated")) {
+                        continue;
+                    }
+                    columns.add("`" + rs.getString("COLUMN_NAME") + "`");
+                    values.add(dummyLiteral(
+                            rs.getString("DATA_TYPE").toLowerCase(Locale.ROOT),
+                            rs.getString("COLUMN_TYPE")));
+                }
+            }
+
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+            if (columns.isEmpty()) {
+                st.executeUpdate("INSERT INTO " + table + " () VALUES ()");
+            } else {
+                st.executeUpdate("INSERT INTO " + table + " (" + String.join(", ", columns)
+                        + ") VALUES (" + String.join(", ", values) + ")");
+            }
+            st.execute("SET FOREIGN_KEY_CHECKS = 1");
+        }
+    }
+
+    /** MySQL の DATA_TYPE に応じた最小のダミーリテラルを返す。 */
+    private static String dummyLiteral(String dataType, String columnType) {
+        switch (dataType) {
+            case "tinyint", "smallint", "mediumint", "int", "integer", "bigint", "bit",
+                 "decimal", "numeric", "float", "double", "year":
+                return "1";
+            case "date":
+                return "'2000-01-01'";
+            case "datetime", "timestamp":
+                return "'2000-01-01 00:00:00'";
+            case "time":
+                return "'00:00:00'";
+            case "json":
+                return "'{}'";
+            case "enum", "set": {
+                // COLUMN_TYPE は enum('A','B') 形式。先頭の候補値を使う。
+                int open = columnType.indexOf('\'');
+                int close = columnType.indexOf('\'', open + 1);
+                return columnType.substring(open, close + 1);
+            }
+            default:
+                return "'p'";
         }
     }
 
