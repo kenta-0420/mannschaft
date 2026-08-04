@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,11 +91,14 @@ public class EquipmentRankingService {
                 .orElse(null);
 
         // フィルタ適用（team_count >= minTeamCount、linkedOnly）
+        // issue #2544 B 群: Stream#toList() の実体は ImmutableCollections$ListN であり、
+        // RedisConfig が埋め込む具象型 ID から復元できない（既定コンストラクタが無い）。
+        // equipment:trending キャッシュに載る要素なので可変の ArrayList に集める。
         List<EquipmentRankingEntity> filtered = rankings.stream()
                 .filter(r -> r.getTeamCount() >= minTeamCount)
                 .filter(r -> !linkedOnly || r.getAmazonAsin() != null)
                 .limit(limit)
-                .toList();
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         // 同テンプレートのチーム数（opt-out 数を引く）
         long totalTemplateTeams = teamRepository.countByTemplate(template)
@@ -227,7 +231,9 @@ public class EquipmentRankingService {
             long totalTemplatesTeams) {
 
         static EquipmentTrendingResult empty() {
-            return new EquipmentTrendingResult(null, null, false, List.of(), null, null, 0L);
+            // issue #2544 B 群: List.of() は ImmutableCollections$List12/ListN を返し復元できない。
+            // 本 record は equipment:trending キャッシュに載るため可変の ArrayList を渡す。
+            return new EquipmentTrendingResult(null, null, false, new ArrayList<>(), null, null, 0L);
         }
     }
 

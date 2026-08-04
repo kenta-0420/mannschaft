@@ -163,6 +163,31 @@ public class RedisConfig {
                 // evict 取りこぼし時の窓を最小化する。
                 .withCacheConfiguration("visibilityTemplate",
                         redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
+                // F09.17 広告 NG 辞書（issue #2544）。
+                //
+                // 【なぜ @CacheEvict ではなく短 TTL なのか】
+                // ad_ng_words には *アプリケーション側の書き込み経路が 1 つも存在しない*。
+                // AdNgWordRepository を注入しているのは AdContentModerator だけで、呼び出しは
+                // findByIsActiveTrue() の 1 箇所のみ。辞書の投入・変更は Flyway
+                // （V67.030__seed_ad_ng_words.sql）＝デプロイ時のマイグレーション、
+                // ないし運用者による DB 直接操作でしか起きない。
+                // したがって @CacheEvict を貼るべきミューテーションメソッドが存在せず、
+                // 「更新経路に evict を敷く」という手当ては物理的に取れない。
+                //
+                // 一方 issue #2544 で AdContentModerator の自己呼び出しを是正した結果、
+                // 本キャッシュは *初めて実際に効くようになった*。既定 30 分のままだと
+                // 「マイグレーションで NG ワードを追加したのに最大 30 分ブロックされない」
+                // という、是正前には存在しなかった反映遅延を新たに作り込むことになる
+                // （デプロイでアプリは再起動しても Valkey は再起動しないため、
+                //   プロセス再起動では解消しない）。
+                //
+                // そこで収束手段を TTL に一本化し、認可系（role-permissions /
+                // visibilityTemplate）と同水準の 5 分まで短縮する。
+                // 広告 submit は低頻度であり、5 分でも DB 負荷削減の目的は十分果たせる。
+                // 将来 SYSTEM_ADMIN 向けの辞書編集 UI を作る際は、その更新メソッドに
+                // @CacheEvict(value = "adNgWords", allEntries = true) を貼ること。
+                .withCacheConfiguration("adNgWords",
+                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
                 .build();
     }
 
