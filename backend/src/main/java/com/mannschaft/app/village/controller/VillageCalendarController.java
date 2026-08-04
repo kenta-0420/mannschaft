@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.CalendarEventCreateRequest;
 import com.mannschaft.app.village.dto.CalendarEventListResponse;
 import com.mannschaft.app.village.dto.CalendarEventLogCreateRequest;
@@ -59,7 +60,12 @@ public class VillageCalendarController {
 
     /**
      * 歳時記イベントを作成する（HEADMAN / ELDER のみ）。
+     *
+     * <p>認可は {@link VillageCalendarService#createEvent} 内の {@code requireModerator} が実施し、
+     * 正準述語 {@code findActiveByVillageIdAndSubject} で現役（退村・BAN 済みでない）の
+     * HEADMAN / ELDER であることを検証する。</p>
      */
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "歳時記イベントを作成する（HEADMAN / ELDER のみ）")
     public ResponseEntity<ApiResponse<CalendarEventResponse>> create(
@@ -105,7 +111,11 @@ public class VillageCalendarController {
 
     /**
      * 歳時記イベントを部分更新する（HEADMAN / ELDER のみ）。
+     *
+     * <p>認可は {@link VillageCalendarService#updateEvent} 内の {@code requireModerator} が実施する。
+     * 対象イベントは実体を取得して村スコープの一致を照合し、不一致は 404 で存在を秘匿する。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/{eventId}")
     @Operation(summary = "歳時記イベントを部分更新する（HEADMAN / ELDER のみ）")
     public ApiResponse<CalendarEventResponse> update(
@@ -119,7 +129,11 @@ public class VillageCalendarController {
 
     /**
      * 歳時記イベントを論理削除する（HEADMAN / ELDER のみ）。
+     *
+     * <p>認可は {@link VillageCalendarService#deleteEvent} 内の {@code requireModerator} が実施する。
+     * 対象イベントは実体を取得して村スコープの一致を照合し、不一致は 404 で存在を秘匿する。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/{eventId}")
     @Operation(summary = "歳時記イベントを論理削除する（HEADMAN / ELDER のみ）")
     public ResponseEntity<Void> delete(

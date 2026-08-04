@@ -66,12 +66,20 @@ public class VillageNewsletterService {
     // ====================================================================
 
     /**
-     * 村のニュースレター設定を取得する。村人/非村人を問わず閲覧可。
+     * 村のニュースレター設定を取得する。
      *
-     * <p>requesterUserId が null の場合は opt-out 状態は常に false として返す。</p>
+     * <p>閲覧認可は村の号一覧・詳細（村史面）と同一の基準に揃える
+     * （設計書 {@code F17.1_village_newsletter_content_model.md} §8.1）。すなわち
+     * {@link VillageBulletinAccessService#checkVillageBulletinViewAccess} に委譲し、
+     * 村の {@code bulletin_visibility} が {@code MEMBERS_ONLY} の場合は現役の村人
+     * または SYSTEM_ADMIN のみが閲覧できる。存在しない／削除済みの村は 404 で秘匿する。</p>
+     *
+     * <p>{@code optedOut} は呼び出しユーザー自身の opt-out 状態のみを返す
+     * （他ユーザーの購読状態は返さない）。</p>
      */
     public NewsletterSettingsResponse getNewsletterSettings(UUID villageId, Long requesterUserId) {
         requireExistingVillage(villageId);
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, requesterUserId);
         List<VillageNewsletterEntity> settings =
                 newsletterRepository.findByVillageIdAndDeletedAtIsNull(villageId);
         boolean optedOut = requesterUserId != null
@@ -162,13 +170,22 @@ public class VillageNewsletterService {
     // ====================================================================
 
     /**
-     * 指定村×頻度のニュースレター配信履歴を取得する。
-     * newsletter が未作成の場合は空リストを返す。
+     * 指定村×頻度のニュースレター配信履歴を取得する（村の運営者のみ）。
+     *
+     * <p>配信履歴は村の運営情報であるため、設計書
+     * （{@code F17.1_village_community_phase2_3_api_addendum.md} §1.14）に従い
+     * 村の運営者に限定する。判定は {@link VillageBulletinAccessService#requireHeadmanOrElder}
+     * に委譲し、現役（退村・BAN 済みでない）の HEADMAN / ELDER のみを通す。
+     * 存在しない／削除済みの村は 404 で秘匿する。</p>
+     *
+     * <p>newsletter が未作成の場合は空リストを返す。</p>
      */
     public List<NewsletterSendLogResponse> listSendLogs(
             UUID villageId,
-            VillageNewsletterFrequency frequency) {
+            VillageNewsletterFrequency frequency,
+            Long actorUserId) {
         requireExistingVillage(villageId);
+        bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
         return newsletterRepository
                 .findByVillageIdAndFrequencyAndDeletedAtIsNull(villageId, frequency)
                 .map(n -> sendLogRepository.findByNewsletterIdOrderBySentAtDesc(n.getId()))

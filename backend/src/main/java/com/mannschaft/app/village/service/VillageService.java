@@ -438,14 +438,20 @@ public class VillageService {
     }
 
     /**
-     * HEADMAN または SYSTEM_ADMIN であることを要求する。違反時は 403。
+     * <b>現役</b>の HEADMAN（退村・BAN 済みでない）または SYSTEM_ADMIN であることを要求する。
+     * 違反時は 403。
+     *
+     * <p>「現役であること」の判定は村ドメインの正準述語
+     * {@link VillageMembershipRepository#findActiveByVillageIdAndSubject} に委譲し、
+     * 兄弟のモデレーション系ガード（{@code VillageReportService.requireModerator} 等）と
+     * 判定基準を揃える（#2284 §12）。</p>
      */
     private void requireHeadmanOrSystemAdmin(VillageEntity village, Long userId) {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
         Optional<VillageMembershipEntity> m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                .findActiveByVillageIdAndSubject(
                         village.getId(), VillageSubjectType.USER, userId);
         if (m.isEmpty() || m.get().getRole() != VillageRole.HEADMAN) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
@@ -468,13 +474,19 @@ public class VillageService {
         return villageSearchRepository.count(spec);
     }
 
+    /**
+     * 呼び出しユーザーが当該村の<b>現役</b>メンバー（退村・BAN 済みでない）かを判定する。
+     *
+     * <p>判定は村ドメインの正準述語
+     * {@link VillageMembershipRepository#findActiveByVillageIdAndSubject} に委譲し、
+     * 兄弟の認可ヘルパ（{@code requireModerator} 系）と判定基準を揃える（#2284 §12）。</p>
+     */
     private boolean isMember(UUID villageId, Long userId) {
         if (userId == null) {
             return false;
         }
         return membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, userId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, userId)
                 .isPresent();
     }
 

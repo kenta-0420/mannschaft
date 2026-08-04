@@ -237,7 +237,7 @@ class VillageNewsletterControllerTest {
     @Test
     @DisplayName("GET send-logs — frequency 指定で配信ログ配列を 200 で返す")
     void sendLogs_success() throws Exception {
-        given(service.listSendLogs(eq(VILLAGE_ID), eq(VillageNewsletterFrequency.WEEKLY)))
+        given(service.listSendLogs(eq(VILLAGE_ID), eq(VillageNewsletterFrequency.WEEKLY), any()))
                 .willReturn(List.of());
 
         mockMvc.perform(get("/api/v1/villages/{villageId}/newsletter/send-logs", VILLAGE_ID)
