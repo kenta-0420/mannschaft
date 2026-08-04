@@ -35,6 +35,7 @@ public class FavoriteService {
     private final FavoriteResolverService favoriteResolverService;
     /** entityType別のResolver（addFavorite時の存在確認に使用） */
     private final List<FavoriteEntityResolver> resolvers;
+    private final FavoriteAccessGuard favoriteAccessGuard;
 
     /**
      * ユーザーのお気に入り一覧を表示順で取得する。
@@ -59,7 +60,10 @@ public class FavoriteService {
     /**
      * お気に入りを追加する。
      *
-     * <p>バリデーション順: entityIdフォーマット → エンティティ存在+アクセス確認 → 件数上限チェック → 保存。</p>
+     * <p>順序: <b>対象の閲覧可否（認可）</b> → entityIdフォーマット → エンティティ存在確認 →
+     * 件数上限チェック → 保存。閲覧できない対象は {@code FAV_003}（404）で存在を秘匿し、
+     * 上限・重複といった業務エラーの応答差から対象の実在が推測されないようにする
+     * （{@link FavoriteAccessGuard#requireViewableTarget}）。</p>
      *
      * @param userId     ユーザーID
      * @param entityType エンティティ種別
@@ -68,6 +72,9 @@ public class FavoriteService {
      */
     @Transactional
     public FavoriteItemDto addFavorite(Long userId, FavoriteEntityType entityType, String entityId) {
+        // 認可: 対象が本人に閲覧可能か（F00 共通可視性ラダー・業務検証より前）
+        favoriteAccessGuard.requireViewableTarget(userId, entityType, entityId);
+
         // entityIdフォーマット検証
         validateEntityIdFormat(entityType, entityId);
 
@@ -112,14 +119,8 @@ public class FavoriteService {
      */
     @Transactional
     public void removeFavorite(Long userId, UUID favoriteId) {
-        UserFavoriteEntity entity = userFavoriteRepository.findById(favoriteId)
-                .orElseThrow(() -> new BusinessException(FavoriteErrorCode.FAV_003));
-
-        // 他ユーザーのお気に入りへのアクセス試行を防ぐ（IDOR対策）
-        if (!entity.getUserId().equals(userId)) {
-            throw new BusinessException(FavoriteErrorCode.FAV_004);
-        }
-
+        // 認可は FavoriteAccessGuard に一元化（不存在=FAV_003/404・他者所有=FAV_004/403）
+        UserFavoriteEntity entity = favoriteAccessGuard.requireOwnedFavorite(userId, favoriteId);
         userFavoriteRepository.delete(entity);
     }
 
@@ -166,13 +167,8 @@ public class FavoriteService {
      */
     @Transactional(readOnly = true)
     public FavoriteItemDto getFavoriteById(Long userId, UUID favoriteId) {
-        UserFavoriteEntity entity = userFavoriteRepository.findById(favoriteId)
-                .orElseThrow(() -> new BusinessException(FavoriteErrorCode.FAV_003));
-
-        // IDOR対策
-        if (!entity.getUserId().equals(userId)) {
-            throw new BusinessException(FavoriteErrorCode.FAV_004);
-        }
+        // 認可は FavoriteAccessGuard に一元化（不存在=FAV_003/404・他者所有=FAV_004/403）
+        UserFavoriteEntity entity = favoriteAccessGuard.requireOwnedFavorite(userId, favoriteId);
 
         Map<String, FavoriteEntityMetaDto> metaMap = favoriteResolverService.resolveAll(List.of(entity), userId);
         return toDto(entity, metaMap.get(entity.getEntityId()));

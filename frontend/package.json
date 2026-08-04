@@ -92,7 +92,7 @@
     "vue-tsc": "3.3.7"
   },
   "overrides": {
-    "brace-expansion": "^5.0.8",
+    "brace-expansion": "^5.0.9",
     "cac": "^6.7.14",
     "commander": "^13.1.0",
     "esbuild": "^0.28.1",
@@ -103,6 +103,8 @@
     "sharp": "^0.35.3",
     "@redocly/openapi-core": {
       "js-yaml": "^4.3.0"
-    }
+    },
+    "fast-uri": "^3.1.5",
+    "tar": "^7.5.21"
   }
 }
