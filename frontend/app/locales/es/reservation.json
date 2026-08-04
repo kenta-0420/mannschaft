@@ -661,28 +661,11 @@
       "advanced_label": "Gestionar franjas individuales manualmente (excepciones)"
     },
     "grid": {
-      "title": "Cuadrícula de disponibilidad",
-      "help": "Las filas son franjas horarias y las columnas son {resourceName}. Toca una celda verde \"Libre\" para reservar. Las celdas grises o rayadas no se pueden reservar. Usa la pestaña \"Semana\" para ver siete días a la vez.",
-      "display_toggle": {
-        "list": "Vista de lista",
-        "grid": "Vista de cuadrícula"
-      },
       "view": {
-        "single": "Día",
         "week": "Semana"
       },
-      "axis": {
-        "label": "Eje",
-        "time_rows": "Tiempo en filas",
-        "time_cols": "Tiempo en columnas"
-      },
       "column": {
-        "common": "Común",
-        "time": "Hora"
-      },
-      "staff_filter": {
-        "label": "Filtrar por {resourceName}",
-        "placeholder": "Todos los objetivos"
+        "common": "Común"
       },
       "state": {
         "available": "Libre",
@@ -690,7 +673,6 @@
         "closed": "Cerrado",
         "unavailable": "No disponible"
       },
-      "empty": "No hay franjas para este día",
       "load_error": "Error al cargar la cuadrícula"
     },
     "matrix": {
@@ -708,9 +690,6 @@
       "no_menu_single": "Reservar solo 30 minutos sin menú",
       "preview_title": "Confirmar esta reserva",
       "extend_30": "+30 min",
-      "view_matrix": "Vista de matriz",
-      "view_list": "Vista de lista",
-      "view_staff_grid": "Vista de cuadrícula por personal",
       "date_line_header": "Fecha / {resourceName}",
       "help_toggle": "Ver cómo usar esto",
       "help_body": "Toca una franja libre (verde) y elige un menú; se seleccionará automáticamente el número de franjas necesario. Usa \"+30 min\" para añadir más. Si eliges una franja compartida, elige a qué {resourceName} reservarla.",

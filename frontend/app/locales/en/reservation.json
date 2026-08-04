@@ -661,28 +661,11 @@
       "advanced_label": "Manually manage individual slots (exceptions)"
     },
     "grid": {
-      "title": "Availability grid",
-      "help": "Rows are time slots and columns are {resourceName}. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
-      "display_toggle": {
-        "list": "List view",
-        "grid": "Grid view"
-      },
       "view": {
-        "single": "Day",
         "week": "Week"
       },
-      "axis": {
-        "label": "Axis",
-        "time_rows": "Time as rows",
-        "time_cols": "Time as columns"
-      },
       "column": {
-        "common": "Common",
-        "time": "Time"
-      },
-      "staff_filter": {
-        "label": "Filter by {resourceName}",
-        "placeholder": "All targets"
+        "common": "Common"
       },
       "state": {
         "available": "Open",
@@ -690,7 +673,6 @@
         "closed": "Closed",
         "unavailable": "Unavailable"
       },
-      "empty": "No slots for this day",
       "load_error": "Failed to load the grid"
     },
     "matrix": {
@@ -708,9 +690,6 @@
       "no_menu_single": "Book just 30 minutes without a menu",
       "preview_title": "Confirm this booking",
       "extend_30": "+30 min",
-      "view_matrix": "Matrix view",
-      "view_list": "List view",
-      "view_staff_grid": "Staff grid view",
       "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
       "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",
