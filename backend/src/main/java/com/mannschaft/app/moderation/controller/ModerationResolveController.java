@@ -38,14 +38,14 @@ import com.mannschaft.app.common.SecurityUtils;
  * SYSTEM_ADMIN ロール保持者のみへ宣言的に予約されている。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:370 — requestMatchers("/api/v1/admin/reports/**").hasRole("SYSTEM_ADMIN")
+ * SecurityConfig の requestMatchers("/api/v1/admin/reports/**").hasRole("SYSTEM_ADMIN")
  * </p>
  *
  * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
  * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
  * 失効するため、必ず併せて見直すこと。</p>
  */
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig("/api/v1/admin/reports/**")
 @RestController
 @RequestMapping("/api/v1/admin/reports")
 @Tag(name = "通報対応管理", description = "F10.1 通報対応・レビュー管理API")

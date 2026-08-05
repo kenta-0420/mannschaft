@@ -64,13 +64,13 @@ public class VillageCategoryController {
     /**
      * <p><b>認可根拠（{@link AuthorizedByPathConfig} メソッド付与）</b>:
      * 本メソッドは {@code /api/v1/system-admin/village-categories} 配下のため
-     * {@code SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")}
+     * {@code SecurityConfig} の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
      * で SYSTEM_ADMIN に予約済み。<b>クラス付与は不可</b>: 同クラスの {@code listCategories}（{@code
      * GET /api/v1/village-categories}）は保護 prefix 外で {@code .anyRequest().authenticated()}
      * にしか掛からないため、クラスへ貼ると誤った証跡になる。
      * 認可根治戦役 Wave5 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("/api/v1/system-admin/**")
     @GetMapping("/api/v1/system-admin/village-categories")
     @Operation(summary = "村カテゴリ一覧（SYSTEM_ADMIN）")
     public ResponseEntity<ApiResponse<List<VillageCategoryResponse>>> adminListCategories() {
@@ -81,13 +81,13 @@ public class VillageCategoryController {
     /**
      * <p><b>認可根拠（{@link AuthorizedByPathConfig} メソッド付与）</b>:
      * 本メソッドは {@code /api/v1/system-admin/village-categories} 配下のため
-     * {@code SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")}
+     * {@code SecurityConfig} の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
      * で SYSTEM_ADMIN に予約済み。<b>クラス付与は不可</b>: 同クラスの {@code listCategories}（{@code
      * GET /api/v1/village-categories}）は保護 prefix 外で {@code .anyRequest().authenticated()}
      * にしか掛からないため、クラスへ貼ると誤った証跡になる。
      * 認可根治戦役 Wave5 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("/api/v1/system-admin/**")
     @PostMapping("/api/v1/system-admin/village-categories")
     @Operation(summary = "村カテゴリ作成（SYSTEM_ADMIN）")
     public ResponseEntity<ApiResponse<VillageCategoryResponse>> createCategory(
@@ -99,13 +99,13 @@ public class VillageCategoryController {
     /**
      * <p><b>認可根拠（{@link AuthorizedByPathConfig} メソッド付与）</b>:
      * 本メソッドは {@code /api/v1/system-admin/village-categories} 配下のため
-     * {@code SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")}
+     * {@code SecurityConfig} の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
      * で SYSTEM_ADMIN に予約済み。<b>クラス付与は不可</b>: 同クラスの {@code listCategories}（{@code
      * GET /api/v1/village-categories}）は保護 prefix 外で {@code .anyRequest().authenticated()}
      * にしか掛からないため、クラスへ貼ると誤った証跡になる。
      * 認可根治戦役 Wave5 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("/api/v1/system-admin/**")
     @PutMapping("/api/v1/system-admin/village-categories/{id}")
     @Operation(summary = "村カテゴリ更新（SYSTEM_ADMIN）")
     public ResponseEntity<ApiResponse<VillageCategoryResponse>> updateCategory(
@@ -118,13 +118,13 @@ public class VillageCategoryController {
     /**
      * <p><b>認可根拠（{@link AuthorizedByPathConfig} メソッド付与）</b>:
      * 本メソッドは {@code /api/v1/system-admin/village-categories} 配下のため
-     * {@code SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")}
+     * {@code SecurityConfig} の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
      * で SYSTEM_ADMIN に予約済み。<b>クラス付与は不可</b>: 同クラスの {@code listCategories}（{@code
      * GET /api/v1/village-categories}）は保護 prefix 外で {@code .anyRequest().authenticated()}
      * にしか掛からないため、クラスへ貼ると誤った証跡になる。
      * 認可根治戦役 Wave5 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("/api/v1/system-admin/**")
     @DeleteMapping("/api/v1/system-admin/village-categories/{id}")
     @Operation(summary = "村カテゴリ論理削除（SYSTEM_ADMIN）")
     public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
