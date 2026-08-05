@@ -342,4 +342,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                         row -> (String) row[1]
                 ));
     }
+
+    /**
+     * {@code birth_year} 埋め戻しバッチ用: {@code birth_year} が未設定かつ {@code birth_date} が
+     * 設定済みの候補ユーザーを {@code id} 昇順のキーセットページングで取得する。
+     *
+     * <p>{@code birth_date} は {@link com.mannschaft.app.common.EncryptedStringConverter} により
+     * 暗号化されているため SQL 側での年変換はできない。本クエリは「復号して埋めるべき対象」を
+     * 絞り込むだけで、実際の年抽出は呼び出し側（エンティティのゲッターが復号済み値を返す）で行う。</p>
+     *
+     * @param cursor   直前ページの最終 {@code id}（初回は 0）
+     * @param pageable ページング設定（サイズのみ使用。ページ番号は常に 0）
+     * @return 対象ユーザーのリスト（id 昇順。論理削除済みは {@code @SQLRestriction} で自動除外）
+     */
+    @Query("SELECT u FROM UserEntity u WHERE u.birthYear IS NULL AND u.birthDate IS NOT NULL "
+            + "AND u.id > :cursor ORDER BY u.id ASC")
+    List<UserEntity> findBirthYearBackfillCandidates(@Param("cursor") Long cursor, Pageable pageable);
 }
