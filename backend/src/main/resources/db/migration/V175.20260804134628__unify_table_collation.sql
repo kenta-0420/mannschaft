@@ -136,6 +136,19 @@ CREATE TEMPORARY TABLE tmp_collation_conflicts_2589 (
 --   * MySQL の UNIQUE は NULL を含む行を重複扱いしないため、いずれかの列が NULL の行は除外する
 --   * プレフィックスインデックス（col(191)）は LEFT(col, 191) で同じ土俵に載せる
 --   * 非文字列列は COLLATE を付けずそのままグループ化キーにする
+--
+-- ⚠️【sql_mode = ONLY_FULL_GROUP_BY を前提にすること】
+--   MySQL 8.0 の既定 sql_mode には ONLY_FULL_GROUP_BY が含まれ、本番 RDS もこの既定で動く。
+--   このモードでは「GROUP BY に無い非集約列」を SELECT できない。
+--   本検査は `col COLLATE utf8mb4_0900_ai_ci` でグループ化するため、
+--   素の `col` は「グループ化列と関数従属でない」と判定され、報告用にそのまま SELECT すると
+--     ERROR 1055: Expression #1 of SELECT list is not in GROUP BY clause ...
+--   で落ちる。**守るはずの事前検査自身が本番で最初に壊れる**という事故になる。
+--   （実際 CI の shard 4 でこれを踏んだ。データの無いテストスキーマでは
+--     衝突 0 件で分岐に入らず露見しないため、発火実証テストを別途置いている）
+--   したがって報告用の値は必ず ANY_VALUE() で集約する。
+--   sql_mode を緩める回避（SET SESSION sql_mode='' 等）は対処療法であり禁止。
+--   本番の既定 sql_mode のまま通る SQL を書くこと。
 -- =============================================================================
 DROP PROCEDURE IF EXISTS precheck_collation_conflicts_2589;
 
@@ -164,7 +177,9 @@ BEGIN
                                     ') COLLATE utf8mb4_0900_ai_ci')
                    END
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ', '),
-               GROUP_CONCAT(CONCAT('COALESCE(CAST(`', s.COLUMN_NAME, '` AS CHAR), ''<NULL>'')')
+               -- 報告用の表示式。ANY_VALUE() で包むのは必須である（下記 sql_mode の注意を参照）。
+               GROUP_CONCAT(CONCAT('ANY_VALUE(COALESCE(CAST(`', s.COLUMN_NAME,
+                                   '` AS CHAR), ''<NULL>''))')
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ', ''|'', '),
                GROUP_CONCAT(CONCAT('`', s.COLUMN_NAME, '` IS NOT NULL')
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ' AND '),

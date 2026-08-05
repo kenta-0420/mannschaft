@@ -339,8 +339,12 @@ class SchemaCollationConsistencyIT {
             assertThat(before).as("変換前は 2 行が共存できること").containsExactly("2");
 
             // V175 STEP 1 と同じ述語で検査する
+            // ANY_VALUE() で包むのは必須。MySQL 8.0 既定の sql_mode=ONLY_FULL_GROUP_BY では
+            // 「COLLATE 付きでグループ化した列」を素のまま SELECT できず ERROR 1055 になる。
+            // V175 STEP 1 の報告用 SQL もまったく同じ形をしているので、
+            // ここで同じ書き方を検証しておくことが本番での構文エラーの再発防止になる。
             List<String> conflicts = query(
-                    "SELECT CONCAT(code, ' x', COUNT(*)) FROM `" + table + "`"
+                    "SELECT CONCAT(ANY_VALUE(code), ' x', COUNT(*)) FROM `" + table + "`"
                             + " WHERE code IS NOT NULL"
                             + " GROUP BY code COLLATE " + SchemaCollationPolicy.UNIFIED_COLLATION
                             + " HAVING COUNT(*) > 1");
