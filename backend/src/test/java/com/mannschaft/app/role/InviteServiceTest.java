@@ -18,7 +18,7 @@ import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.team.entity.TeamEntity;

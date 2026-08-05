@@ -13,7 +13,7 @@ import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderItemRepository;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import lombok.RequiredArgsConstructor;
@@ -481,7 +481,7 @@ public class MyScopeFolderService {
     }
 
     /**
-     * scopefolder.entity.ScopeType を membership.domain.ScopeType に変換する。
+     * scopefolder.entity.enums.ScopeType を membership.domain.ScopeType に変換する。
      * F15.3 §6.3 サポータ対応の第一手段である F00.5 メンバーシップ基盤と
      * インターフェースを揃えるために必要なブリッジ。
      */

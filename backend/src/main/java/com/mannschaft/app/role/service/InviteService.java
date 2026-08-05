@@ -273,9 +273,9 @@ public class InviteService {
      * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
      */
     private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
-        com.mannschaft.app.scopefolder.entity.ScopeType folderScope = "TEAM".equals(scopeType)
-                ? com.mannschaft.app.scopefolder.entity.ScopeType.TEAM
-                : com.mannschaft.app.scopefolder.entity.ScopeType.ORGANIZATION;
+        com.mannschaft.app.scopefolder.entity.enums.ScopeType folderScope = "TEAM".equals(scopeType)
+                ? com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM
+                : com.mannschaft.app.scopefolder.entity.enums.ScopeType.ORGANIZATION;
 
         if (folderId != null) {
             // フォルダの存在と scope_type 整合チェック（IDOR 含む）

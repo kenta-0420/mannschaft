@@ -1,7 +1,7 @@
 package com.mannschaft.app.scopefolder.repository;
 
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
