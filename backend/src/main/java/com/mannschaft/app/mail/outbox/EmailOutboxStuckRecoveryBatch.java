@@ -1,5 +1,6 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -37,6 +38,8 @@ public class EmailOutboxStuckRecoveryBatch {
             lockAtMostFor = "PT5M",
             lockAtLeastFor = "PT10S"
     )
+    @BatchEndpoint(name = "email-outbox-stuck-recovery",
+            description = "5分以上SENDINGのまま滞留したメール送信キューをPENDINGに戻し再送可能にする（毎時0分）")
     @Transactional
     public void recover() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(STUCK_THRESHOLD_MINUTES);

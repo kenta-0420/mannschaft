@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.schedule.entity.GoogleCalendarWebhookChannelEntity;
 import com.mannschaft.app.schedule.repository.GoogleCalendarWebhookChannelRepository;
 import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
@@ -36,6 +37,8 @@ public class GoogleWebhookChannelRenewalBatch {
     // 起動間隔は日次 02:00。1 チャンネルにつき Google API を 2 回（旧 stop・新 watch）
     // 呼ぶため、最悪ケースを 1 件 2 秒 × 数千ユーザーと見積もり 2 時間を上限とする。
     @SchedulerLock(name = "googleWebhookChannelRenewalDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
+    @BatchEndpoint(name = "google-webhook-channel-renewal-daily",
+            description = "有効期限が3日以内に迫ったGoogleカレンダーWebhookチャンネルを毎日02:00に全件再登録する")
     public void renewExpiringChannels() {
         log.info("Webhook チャンネル日次更新バッチ開始");
 

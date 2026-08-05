@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
@@ -52,6 +53,8 @@ public class AdCampaignDeliveryWorker {
      */
     @Scheduled(cron = "${mannschaft.ad.delivery.cron:0 * * * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adCampaignDelivery", lockAtMostFor = "5m", lockAtLeastFor = "30s")
+    @BatchEndpoint(name = "ad-campaign-delivery",
+            description = "配信中(DELIVERING)のメッセージ型広告キャンペーンを毎分スキャンし、対象ユーザーへ配信する")
     public void runDelivery() {
         long startMs = System.currentTimeMillis();
         log.info("AdCampaignDeliveryWorker 開始");
