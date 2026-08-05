@@ -216,6 +216,25 @@ class LocalDateTimeQueryParamBindingTest {
     }
 
     // ================================================================
+    // AC-13: 値域超過（DateTimeException / ArithmeticException）は 400（500 に化けない）
+    // ================================================================
+
+    @Test
+    @DisplayName("AC-13: 値域超過のオフセット付き入力は 400（DateTimeException が 500 に化けない）")
+    void ac13_outOfRangeOffsetInput_returns400NotServerError() throws Exception {
+        TimezoneContextHolder.setResolved(TOKYO);
+
+        for (String path : List.of("/iso", "/plain", "/pattern")) {
+            // OffsetDateTime.parse 自体は成功するが、atZoneSameInstant().toLocalDateTime() で
+            // EpochDay 値域超過の DateTimeException を投げる極端値
+            mockMvc.perform(get(PROBE + path).param("value", "+999999999-12-31T23:59:59-18:00"))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(get(PROBE + path).param("value", "-999999999-01-01T00:00:00+18:00"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    // ================================================================
     // AC-8: 範囲検索の両端 inclusive
     // ================================================================
 
