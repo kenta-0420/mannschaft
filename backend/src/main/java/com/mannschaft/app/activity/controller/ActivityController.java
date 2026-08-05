@@ -16,11 +16,13 @@ import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +43,7 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequestMapping("/api/v1/activities")
 @Tag(name = "活動記録", description = "F06.4 活動記録CRUD・参加者管理")
 @RequiredArgsConstructor
+@Validated
 public class ActivityController {
 
     private final ActivityResultService activityService;
@@ -53,7 +56,11 @@ public class ActivityController {
      * <p><b>ページング方式</b>: {@code page}（0始まり・既定 0）と {@code limit} を受け取り
      * {@code PageRequest.of(page, limit)} に変換する単純なオフセットページングであり、
      * カーソルベースではない（旧 javadoc の「Cursor-based」という記述は誤りだった）。
-     * {@code page} 未指定時は従来どおり 0 ページ目を返す（後方互換）。</p>
+     * {@code page} 未指定時は従来どおり 0 ページ目を返す（後方互換）。
+     * {@code page} に負値、{@code limit} に 0 以下を渡すと {@code PageRequest.of} が
+     * {@link IllegalArgumentException} を投げ、{@link com.mannschaft.app.common.GlobalExceptionHandler}
+     * には専用ハンドラが無いため 500 に化けてしまう（本 PR が新たに `page` を追加したことで
+     * 開けた口）。{@code @Min} 制約で 400（{@code ConstraintViolationException} ハンドラ経由）に倒す。</p>
      *
      * <p><b>総件数は上界近似</b>: レスポンスの {@code data} 件数および将来 {@code meta} を追加する場合の
      * 総件数は、{@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
@@ -71,8 +78,8 @@ public class ActivityController {
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @RequestParam(value = "template_id", required = false) Long templateId,
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(defaultValue = "0") int page) {
+            @RequestParam(defaultValue = "20") @Min(1) int limit,
+            @RequestParam(defaultValue = "0") @Min(0) int page) {
         Page<ActivityResultEntity> result = activityService.listActivities(
                 SecurityUtils.getCurrentUserId(),
                 ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(page, limit));

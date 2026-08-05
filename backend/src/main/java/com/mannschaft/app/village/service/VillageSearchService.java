@@ -67,6 +67,14 @@ import java.util.UUID;
  *   <li>原則1: 他ドメイン（bulletin/timeline/chat）の Repository は <b>読み取り専用</b> で呼ぶ</li>
  *   <li>原則5: {@code @Transactional(readOnly = true)} で読み取り限定。書き込みなし</li>
  * </ul>
+ *
+ * <h2>既知の制約（打ち切り上限、利用者向けドキュメントは
+ * {@code docs/features/F17.1_village_community.md} §4.12 に記載）</h2>
+ * <p>タイプ（POST / MESSAGE / MEMBER）ごとに {@link #PER_TYPE_FETCH_HARD_CAP} 件までしか
+ * 取得しない。あるタイプのヒット件数がこれを超える場合、超過分は検索結果に一切現れない
+ * （ElasticSearch 等への移行を待つ Phase 1 の簡易実装としての意図的な割り切り）。
+ * {@code total} はこの打ち切り後に実際に取得できた件数を上限とするよう補正しており、
+ * ページ送りが空配列で行き詰まることは無いが、打ち切られたヒットそのものへは到達できない。</p>
  */
 @Slf4j
 @Service
