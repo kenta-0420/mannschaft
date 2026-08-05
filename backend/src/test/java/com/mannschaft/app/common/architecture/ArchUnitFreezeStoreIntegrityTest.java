@@ -604,8 +604,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@link CrossDomainRepositoryDependencyArchTest}）の初期凍結。既存負債の台帳であり、
      * 新規の越境 Repository 依存のみを fail させる。返済（chip-away）で行数が減った場合のみ
      * この定数を実測値へ更新する。</p>
+     *
+     * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
+     * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
+     * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2025;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
