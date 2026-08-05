@@ -98,6 +98,16 @@ class ScheduleReminderServiceTest {
     }
 
     private ScheduleEntity createSchedule(LocalDateTime startAt, boolean attendanceRequired) {
+        return createSchedule(startAt, attendanceRequired, SCHEDULE_ID);
+    }
+
+    /**
+     * id を明示的に指定できる版。複数スケジュールを跨いだシナリオ（例: 1件送信失敗テストで
+     * scheduleId=2 のスケジュールを解決する）では、固定 {@link #SCHEDULE_ID} を返す版では
+     * {@code scheduleRepository.findById(2L)} の戻り値が id=1 のスケジュールになってしまい、
+     * 後続の {@code attendanceRepository} 呼び出しが誤った scheduleId で行われてしまうため。
+     */
+    private ScheduleEntity createSchedule(LocalDateTime startAt, boolean attendanceRequired, Long id) {
         ScheduleEntity schedule = ScheduleEntity.builder()
                 .teamId(50L)
                 .title("テスト予定")
@@ -105,7 +115,7 @@ class ScheduleReminderServiceTest {
                 .attendanceRequired(attendanceRequired)
                 .build();
         // id は BaseEntity 由来で @Builder では設定できないためリフレクションで付与
-        org.springframework.test.util.ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+        org.springframework.test.util.ReflectionTestUtils.setField(schedule, "id", id);
         return schedule;
     }
 
@@ -390,7 +400,7 @@ class ScheduleReminderServiceTest {
             // 別スケジュールIDに差し替える。
             ReflectionTestUtils.setField(ok, "scheduleId", 2L);
             given(scheduleRepository.findById(2L))
-                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), false)));
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), false, 2L)));
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(2L)).willReturn(List.of());
 
             // when

@@ -2,7 +2,8 @@ package com.mannschaft.app.membership.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.membership.repository.MembershipRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.dto.UserRoleOnlyDiffRow;
+import com.mannschaft.app.role.service.RoleService;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +30,11 @@ import java.util.List;
  * </ul>
  *
  * <p>差分件数は {@link MembershipRepository#countOnlyInMemberships()} /
- * {@link UserRoleRepository#countOnlyInUserRoles()} で SQL 側（{@code NOT EXISTS} 相関サブクエリ）に
+ * {@link RoleService#countUserRolesOnlyDiff()} で SQL 側（{@code NOT EXISTS} 相関サブクエリ）に
  * 集計させ、アプリはスカラー件数のみを受け取る。両テーブルの全件をヒープへロードして突き合わせる
- * 実装では行数に比例してメモリを消費するため、行数が増えてもヒープが膨らまないこの形へ改めた。</p>
+ * 実装では行数に比例してメモリを消費するため、行数が増えてもヒープが膨らまないこの形へ改めた。
+ * user_roles 側（role ドメイン）へは {@link RoleService} 経由でのみアクセスし、role ドメインの
+ * Repository を membership ドメインから直接参照しない（モジュラーモノリスのドメイン境界原則）。</p>
  *
  * <p>Phase 4 完了後（dualWrite.enabled=false 切替後）に本バッチの差分件数が 0 に
  * 収束することを確認してから、二重書き込みコードを物理削除する。</p>
@@ -47,7 +50,7 @@ public class MembershipConsistencyChecker {
     static final int SAMPLE_LOG_LIMIT = 10;
 
     private final MembershipRepository membershipRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
     private final MeterRegistry meterRegistry;
 
     @BatchEndpoint(name = "membership-consistency-check-daily", description = "memberships と user_roles の整合性を毎日 04:00 に検査する")
@@ -58,7 +61,7 @@ public class MembershipConsistencyChecker {
     public void checkConsistency() {
         // --- 既存メトリクス: 対称差の総件数 ---
         long onlyInMembershipsCount = membershipRepository.countOnlyInMemberships();
-        long onlyInUserRolesCount = userRoleRepository.countOnlyInUserRoles();
+        long onlyInUserRolesCount = roleService.countUserRolesOnlyDiff();
         long diffCount = onlyInMembershipsCount + onlyInUserRolesCount;
         meterRegistry.gauge("f005.consistency.diff.count", diffCount);
 
@@ -79,11 +82,11 @@ public class MembershipConsistencyChecker {
             log.error("[F00.5][ALERT] user_roles にあるが memberships にアクティブ行が無いユーザーを検出。" +
                     "件数={} （write-path 移行漏れの可能性あり。対象ユーザーが 403 で締め出されるリスクがある）",
                     onlyInUserRolesCount);
-            List<UserRoleRepository.OnlyInUserRolesRow> samples =
-                    userRoleRepository.sampleOnlyInUserRoles(PageRequest.of(0, SAMPLE_LOG_LIMIT));
-            for (UserRoleRepository.OnlyInUserRolesRow row : samples) {
+            List<UserRoleOnlyDiffRow> samples =
+                    roleService.sampleUserRolesOnlyDiff(PageRequest.of(0, SAMPLE_LOG_LIMIT));
+            for (UserRoleOnlyDiffRow row : samples) {
                 log.error("[F00.5][ALERT] 欠落サンプル: userId={}, scopeType={}, scopeId={}",
-                        row.getUserId(), row.getScopeType(), row.getScopeId());
+                        row.userId(), row.scopeType(), row.scopeId());
             }
             if (onlyInUserRolesCount > SAMPLE_LOG_LIMIT) {
                 log.error("[F00.5][ALERT] ... 他 {} 件（ログ省略。全件は DB クエリで確認すること）",
