@@ -148,7 +148,12 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
 
     await page.goto(`/villages/${villageId}/bulletin`)
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    // ローディングスピナーは出ないこともある（描画が速い場合）。出ている時だけ消えるまで待つ。
+    // 消えないまま固まるのは本物の不具合なので、待ち切れなければテストを失敗させる（握りつぶさない）。
+    const spinner = page.locator('.pi-spin')
+    if (await spinner.count() > 0) {
+      await spinner.first().waitFor({ state: 'detached', timeout: 30_000 })
+    }
     await expect(page).toHaveURL(new RegExp(`/villages/${villageId}/bulletin`))
 
     // タイムラインタブへクリック遷移 → URL が /timeline に更新
@@ -168,7 +173,12 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
 
     await page.goto(`/villages/${villageId}/bulletin`)
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    // ローディングスピナーは出ないこともある（描画が速い場合）。出ている時だけ消えるまで待つ。
+    // 消えないまま固まるのは本物の不具合なので、待ち切れなければテストを失敗させる（握りつぶさない）。
+    const spinner = page.locator('.pi-spin')
+    if (await spinner.count() > 0) {
+      await spinner.first().waitFor({ state: 'detached', timeout: 30_000 })
+    }
 
     const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
     await expect(headline).toBeVisible({ timeout: 30_000 })
@@ -210,7 +220,12 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
 
     await page.goto(`/villages/${villageId}/bulletin`)
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    // ローディングスピナーは出ないこともある（描画が速い場合）。出ている時だけ消えるまで待つ。
+    // 消えないまま固まるのは本物の不具合なので、待ち切れなければテストを失敗させる（握りつぶさない）。
+    const spinner = page.locator('.pi-spin')
+    if (await spinner.count() > 0) {
+      await spinner.first().waitFor({ state: 'detached', timeout: 30_000 })
+    }
     await expect(page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()).toBeVisible({ timeout: 30_000 })
 
     const afterInitial = getVillageCount
@@ -233,7 +248,12 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
 
     await page.goto(`/villages/${villageId}/bulletin`)
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    // ローディングスピナーは出ないこともある（描画が速い場合）。出ている時だけ消えるまで待つ。
+    // 消えないまま固まるのは本物の不具合なので、待ち切れなければテストを失敗させる（握りつぶさない）。
+    const spinner = page.locator('.pi-spin')
+    if (await spinner.count() > 0) {
+      await spinner.first().waitFor({ state: 'detached', timeout: 30_000 })
+    }
 
     const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
     await expect(headline).toBeVisible({ timeout: 30_000 })
