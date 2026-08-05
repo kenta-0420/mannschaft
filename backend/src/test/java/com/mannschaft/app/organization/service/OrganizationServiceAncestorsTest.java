@@ -445,25 +445,41 @@ class OrganizationServiceAncestorsTest {
                     .isEqualTo("https://cdn.example.com/signed/org-icon.png");
         }
 
+        /**
+         * <b>検分での指摘（PR #2599）を受けた作り替え</b>: 可視性（PRIVATE 子の除外）を
+         * Repository の JPQL（{@code visibility = PUBLIC OR o.id IN :memberOrgIds}）へ
+         * 移した結果、Mockito でリポジトリをモックする本 UT には「非公開の子が実際に
+         * 除外されるか」を検証する術が原理的に無くなった（モックの戻り値をそのまま
+         * 返すだけの主張になってしまうため）。そこで本 UT の役割を
+         * 「サービスが {@code findOrganizationIdsByUserId} の戻り値を
+         * {@code findChildrenPage} の {@code memberOrgIds} 引数へ正しく伝播させるか」
+         * （＝可視性判定の材料を正しく Repository へ渡しているか）の検証に絞り込んだ。
+         * 「渡した先の SQL が実際に非公開の子を除外するか」は
+         * {@code OrganizationChildrenCursorPagingContractIT}（実 DB を使う契約 IT・
+         * AC-1/AC-2）が担う。UT と IT で役割を分担している。
+         */
         @Test
-        @DisplayName("PRIVATE子は非メンバーには除外される（可視性はSQL側で解決済みの前提）")
-        void PRIVATE子_非メンバー除外() {
+        @DisplayName("PRIVATE子除外の材料_findOrganizationIdsByUserIdの戻り値がmemberOrgIdsとしてクエリへ渡る")
+        @SuppressWarnings("unchecked")
+        void PRIVATE子除外の材料_所属組織IDがクエリへ伝播する() {
             OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
                     .visibility(OrganizationEntity.Visibility.PUBLIC).build();
             OrganizationEntity publicChild = orgBuilder(11L, "公開子")
                     .visibility(OrganizationEntity.Visibility.PUBLIC)
                     .parentOrganizationId(TARGET_ORG_ID).build();
-            // 可視性は findChildrenPage の SQL 側で解決される前提のため、
-            // 呼び出し者が非メンバーの非公開子はモックの戻り値に含めない（クエリが返さない想定）。
-            stubChildrenPage(List.of(publicChild));
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            // 呼び出し者は組織 77L・88L に所属している想定
+            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID)).willReturn(List.of(77L, 88L));
+            stubChildrenPage(List.of(publicChild));
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
 
-            ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
+            organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
 
-            assertThat(response.getData()).hasSize(1);
-            assertThat(response.getData().get(0).getId()).isEqualTo(11L);
+            ArgumentCaptor<Collection<Long>> memberOrgIdsCaptor = ArgumentCaptor.forClass(Collection.class);
+            verify(organizationRepository).findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), memberOrgIdsCaptor.capture(), any(Pageable.class));
+            assertThat(memberOrgIdsCaptor.getValue()).containsExactlyInAnyOrder(77L, 88L);
         }
 
         @Test
