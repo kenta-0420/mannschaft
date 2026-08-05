@@ -7,6 +7,8 @@ import com.mannschaft.app.social.dto.FollowListVisibilityResponse;
 import com.mannschaft.app.social.dto.FollowResponse;
 import com.mannschaft.app.social.dto.UpdateFollowListVisibilityRequest;
 import com.mannschaft.app.social.service.FollowService;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,6 +44,7 @@ public class UserFollowController {
     @Operation(summary = "他ユーザーのフォロー中一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "閲覧権限なし（非公開設定）")
+    @AuthorizedInService // FollowService#getUserFollowing が checkFollowListAccess で対象ユーザーの FollowListVisibility を判定する
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getUserFollowing(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "20") int size) {
@@ -58,6 +61,7 @@ public class UserFollowController {
     @Operation(summary = "他ユーザーのフォロワー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "閲覧権限なし（非公開設定）")
+    @AuthorizedInService // FollowService#getUserFollowers が checkFollowListAccess で対象ユーザーの FollowListVisibility を判定する
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getUserFollowers(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "20") int size) {
@@ -72,6 +76,8 @@ public class UserFollowController {
     @GetMapping("/me/followed-teams")
     @Operation(summary = "自分がフォローしているチーム一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @SelfScopedEndpoint("FollowService#getFollowedTeams の検索条件が (FollowerType.USER, "
+            + "SecurityUtils.getCurrentUserId(), FollowerType.TEAM) のみに束縛される")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getFollowedTeams(
             @RequestParam(defaultValue = "20") int size) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -85,6 +91,8 @@ public class UserFollowController {
     @GetMapping("/me/follow-list-visibility")
     @Operation(summary = "フォロー一覧公開設定取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @SelfScopedEndpoint("FollowService#getFollowListVisibility の検索条件が "
+            + "userRepository.findById(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<ApiResponse<FollowListVisibilityResponse>> getFollowListVisibility() {
         Long userId = SecurityUtils.getCurrentUserId();
         FollowListVisibility visibility = followService.getFollowListVisibility(userId);
@@ -97,6 +105,8 @@ public class UserFollowController {
     @PutMapping("/me/follow-list-visibility")
     @Operation(summary = "フォロー一覧公開設定更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功")
+    @SelfScopedEndpoint("FollowService#updateFollowListVisibility の検索・更新条件が "
+            + "userRepository.findById(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<Void> updateFollowListVisibility(
             @Valid @RequestBody UpdateFollowListVisibilityRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
