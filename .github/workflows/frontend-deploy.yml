@@ -34,13 +34,11 @@
 
 name: Frontend — Build & Deploy
 
+# AWS Secrets 未設定・未デプロイのため自動起動を停止（直近5回連続で
+# Configure AWS credentials ステップが失敗し、本物の失敗が埋もれる原因になっていた）。
+# デプロイ着手時は下記の push トリガーを復活させること（branches/paths はそのまま流用可）。
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-deploy.yml"
+  workflow_dispatch:
 
 # Prevent concurrent deploys; cancel in-progress runs on the same branch
 concurrency:
