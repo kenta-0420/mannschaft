@@ -109376,7 +109376,7 @@
         "tags": [
           "予約スロット管理"
         ],
-        "summary": "空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応）",
+        "summary": "空きグリッド（ライン軸・日付レンジ/メニューフィルター対応）",
         "operationId": "getGrid",
         "parameters": [
           {
@@ -109419,38 +109419,13 @@
             }
           },
           {
-            "name": "axis",
-            "in": "query",
-            "description": "列軸（既定 STAFF）",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "STAFF",
-                "LINE"
-              ]
-            }
-          },
-          {
             "name": "menuId",
             "in": "query",
-            "description": "メニューフィルター（axis\u003dLINE のときのみ有効）",
+            "description": "メニューフィルター（提供可能ラインで列を絞る）",
             "required": false,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
-          },
-          {
-            "name": "staffUserIds",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "int64"
-              }
             }
           }
         ],
@@ -206896,22 +206871,8 @@
             "type": "integer",
             "format": "int64"
           },
-          "lineIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
           "lineName": {
             "type": "string"
-          },
-          "staffName": {
-            "type": "string"
-          },
-          "staffUserId": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },
@@ -206953,9 +206914,6 @@
       "ReservationGridResponse": {
         "type": "object",
         "properties": {
-          "axis": {
-            "type": "string"
-          },
           "columns": {
             "type": "array",
             "items": {
