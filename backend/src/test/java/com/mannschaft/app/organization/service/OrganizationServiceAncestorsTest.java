@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,6 +25,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +34,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link OrganizationHierarchyService} の F01.2 階層表示API（祖先・子組織）の単体テスト。
@@ -375,6 +379,17 @@ class OrganizationServiceAncestorsTest {
     @DisplayName("getChildren")
     class GetChildren {
 
+        /**
+         * findChildrenPage は可視性・カーソル・ORDER BY をすべて SQL 側で解決している前提の
+         * クエリのため、モックでは「クエリが返すべき（＝既に可視性フィルタ済みの）行」を
+         * そのまま stub すればよい。旧実装のようにサービス側で個別 exists 判定は行わない。
+         */
+        private void stubChildrenPage(List<OrganizationEntity> rows) {
+            given(organizationRepository.findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), any(), any(Pageable.class)))
+                    .willReturn(rows);
+        }
+
         @Test
         @DisplayName("対象PUBLIC_全PUBLIC子のみ返却")
         void 対象PUBLIC_全PUBLIC子のみ() {
@@ -389,8 +404,7 @@ class OrganizationServiceAncestorsTest {
                     .parentOrganizationId(TARGET_ORG_ID).build();
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
-            given(organizationRepository.findByParentOrganizationIdAndDeletedAtIsNull(eq(TARGET_ORG_ID), any(Pageable.class)))
-                    .willReturn(List.of(child1, child2));
+            stubChildrenPage(List.of(child1, child2));
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(3L);
             given(userRoleRepository.countByOrganizationId(12L)).willReturn(0L);
 
@@ -418,8 +432,7 @@ class OrganizationServiceAncestorsTest {
                     .iconUrl("org/11/icon/raw.png").build();
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
-            given(organizationRepository.findByParentOrganizationIdAndDeletedAtIsNull(eq(TARGET_ORG_ID), any(Pageable.class)))
-                    .willReturn(List.of(child));
+            stubChildrenPage(List.of(child));
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
             // setUp の恒等変換を上書きし、生キーが署名付き表示 URL へ解決されることを検証する
             given(mediaUrlResolver.resolve("org/11/icon/raw.png"))
@@ -433,22 +446,18 @@ class OrganizationServiceAncestorsTest {
         }
 
         @Test
-        @DisplayName("PRIVATE子は非メンバーには除外される")
+        @DisplayName("PRIVATE子は非メンバーには除外される（可視性はSQL側で解決済みの前提）")
         void PRIVATE子_非メンバー除外() {
             OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
                     .visibility(OrganizationEntity.Visibility.PUBLIC).build();
             OrganizationEntity publicChild = orgBuilder(11L, "公開子")
                     .visibility(OrganizationEntity.Visibility.PUBLIC)
                     .parentOrganizationId(TARGET_ORG_ID).build();
-            OrganizationEntity privateChild = orgBuilder(12L, "非公開子")
-                    .visibility(OrganizationEntity.Visibility.PRIVATE)
-                    .parentOrganizationId(TARGET_ORG_ID).build();
+            // 可視性は findChildrenPage の SQL 側で解決される前提のため、
+            // 呼び出し者が非メンバーの非公開子はモックの戻り値に含めない（クエリが返さない想定）。
+            stubChildrenPage(List.of(publicChild));
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
-            given(organizationRepository.findByParentOrganizationIdAndDeletedAtIsNull(eq(TARGET_ORG_ID), any(Pageable.class)))
-                    .willReturn(List.of(publicChild, privateChild));
-            // 呼び出し者は privateChild のメンバーではない
-            given(userRoleRepository.existsByUserIdAndOrganizationId(REQUESTER_ID, 12L)).willReturn(false);
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
 
             ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
@@ -468,8 +477,7 @@ class OrganizationServiceAncestorsTest {
                     .archivedAt(java.time.LocalDateTime.now()).build();
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
-            given(organizationRepository.findByParentOrganizationIdAndDeletedAtIsNull(eq(TARGET_ORG_ID), any(Pageable.class)))
-                    .willReturn(List.of(archivedChild));
+            stubChildrenPage(List.of(archivedChild));
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(2L);
 
             ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
@@ -490,6 +498,134 @@ class OrganizationServiceAncestorsTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("COMMON_002"));
+        }
+
+        // ========================================================================
+        // 試練（先行テスト）: 子組織一覧カーソルページングの根治3欠陥
+        // AC-7-1〜AC-7-5（軍議受け入れ条件）
+        // ========================================================================
+
+        @Test
+        @DisplayName("AC-7-1_cursorを渡すとRepositoryへ渡るクエリ引数にcursorIdが乗る")
+        void AC_7_1_cursorがクエリ引数に乗る() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            given(organizationRepository.findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), any(), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, "42", 50);
+
+            ArgumentCaptor<Long> cursorCaptor = ArgumentCaptor.forClass(Long.class);
+            verify(organizationRepository).findChildrenPage(
+                    eq(TARGET_ORG_ID), cursorCaptor.capture(), any(), any(Pageable.class));
+            assertThat(cursorCaptor.getValue()).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("AC-7-1b_cursorがnullのときはnullがそのままクエリ引数に乗る")
+        void AC_7_1b_cursorがnullのときnullが乗る() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            given(organizationRepository.findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), any(), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
+
+            verify(organizationRepository).findChildrenPage(
+                    eq(TARGET_ORG_ID), isNull(), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("AC-7-2_DBがpageSize+1件返せば可視件数がpageSize未満でもhasNext=true")
+        void AC_7_2_DB取得件数でhasNextを判定する() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            // pageSize=2 に対し、SQL 側の可視性フィルタを通過済みの3件が返る想定
+            // （このうち1件は非公開だが呼び出し者がメンバーなので SQL 側で既に含まれている）
+            OrganizationEntity c1 = orgBuilder(11L, "子1").parentOrganizationId(TARGET_ORG_ID).build();
+            OrganizationEntity c2 = orgBuilder(12L, "子2").parentOrganizationId(TARGET_ORG_ID).build();
+            OrganizationEntity c3 = orgBuilder(13L, "子3").parentOrganizationId(TARGET_ORG_ID).build();
+
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            stubChildrenPage(List.of(c1, c2, c3));
+            given(userRoleRepository.countByOrganizationId(anyLong())).willReturn(0L);
+
+            ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 2);
+
+            assertThat(response.getData()).hasSize(2);
+            assertThat(response.getMeta().isHasNext()).isTrue();
+            assertThat(response.getMeta().getNextCursor()).isEqualTo("12");
+        }
+
+        @Test
+        @DisplayName("AC-7-3_nextCursorが次回取得起点として機能し前回分を再取得しない")
+        void AC_7_3_nextCursorが次回起点として機能する() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            OrganizationEntity c1 = orgBuilder(11L, "子1").parentOrganizationId(TARGET_ORG_ID).build();
+            OrganizationEntity c2 = orgBuilder(12L, "子2").parentOrganizationId(TARGET_ORG_ID).build();
+            OrganizationEntity c3 = orgBuilder(13L, "子3").parentOrganizationId(TARGET_ORG_ID).build();
+
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            given(userRoleRepository.countByOrganizationId(anyLong())).willReturn(0L);
+            // 1回目: cursor=null → DB は c1, c2, c3 を返す（pageSize=2 なので c3 が次ページ判定用）
+            given(organizationRepository.findChildrenPage(eq(TARGET_ORG_ID), isNull(), any(), any(Pageable.class)))
+                    .willReturn(List.of(c1, c2, c3));
+
+            ChildrenResponse first = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 2);
+            assertThat(first.getData()).extracting(ChildOrganizationResponse::getId)
+                    .containsExactly(11L, 12L);
+            String nextCursor = first.getMeta().getNextCursor();
+            assertThat(nextCursor).isEqualTo("12");
+
+            // 2回目: 1回目の nextCursor を渡す → DB は c1・c2 を除外した c3 のみ返す想定
+            given(organizationRepository.findChildrenPage(eq(TARGET_ORG_ID), eq(12L), any(), any(Pageable.class)))
+                    .willReturn(List.of(c3));
+
+            ChildrenResponse second = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, nextCursor, 2);
+
+            assertThat(second.getData()).extracting(ChildOrganizationResponse::getId)
+                    .containsExactly(13L);
+            assertThat(second.getData()).extracting(ChildOrganizationResponse::getId)
+                    .doesNotContain(11L, 12L);
+            assertThat(second.getMeta().isHasNext()).isFalse();
+
+            // クエリ引数として cursorId=12 が実際に渡されたことを確認する（何を渡したか、を検証）
+            verify(organizationRepository).findChildrenPage(eq(TARGET_ORG_ID), eq(12L), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("AC-7-4_所属組織0件でもPUBLIC子は見える_IN空コレクションの罠を踏まない")
+        @SuppressWarnings("unchecked")
+        void AC_7_4_所属0件でもPUBLIC子は見える() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            OrganizationEntity publicChild = orgBuilder(11L, "公開子")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC)
+                    .parentOrganizationId(TARGET_ORG_ID).build();
+
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            // 呼び出し者は所属組織0件（Mockito のデフォルト空リストをそのまま使う）
+            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID)).willReturn(List.of());
+            given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
+            given(organizationRepository.findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), any(), any(Pageable.class)))
+                    .willReturn(List.of(publicChild));
+
+            ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
+
+            assertThat(response.getData()).hasSize(1);
+            assertThat(response.getData().get(0).getId()).isEqualTo(11L);
+
+            // memberOrgIds として空コレクションではなくセンチネル入りの非空リストが渡ったことを確認する
+            ArgumentCaptor<Collection<Long>> memberOrgIdsCaptor = ArgumentCaptor.forClass(Collection.class);
+            verify(organizationRepository).findChildrenPage(
+                    eq(TARGET_ORG_ID), any(), memberOrgIdsCaptor.capture(), any(Pageable.class));
+            assertThat(memberOrgIdsCaptor.getValue()).isNotEmpty();
         }
     }
 
