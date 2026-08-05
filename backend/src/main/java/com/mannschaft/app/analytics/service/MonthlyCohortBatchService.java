@@ -32,6 +32,12 @@ public class MonthlyCohortBatchService {
     private final MemberPaymentRepository memberPaymentRepository;
     private static final int COHORT_LOOKBACK_MONTHS = 24;
 
+    /**
+     * IN 句へ渡すユーザーID件数の上限。max_allowed_packet / プレースホルダ数の超過を避けるため、
+     * コホートユーザー数がこれを超える場合はチャンク分割して問い合わせる。
+     */
+    private static final int USER_ID_IN_CLAUSE_CHUNK_SIZE = 1000;
+
     @BatchEndpoint(name = "analytics-monthly-cohort-aggregation", description = "過去 24 ヶ月のコホート分析を毎月 1 日 03:00 に再計算する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyCohortAggregation", lockAtMostFor = "60m", lockAtLeastFor = "10m")
@@ -77,15 +83,15 @@ public class MonthlyCohortBatchService {
                 BigDecimal revenue = BigDecimal.ZERO;
 
                 if (!cohortUserIds.isEmpty()) {
-                    // m ヶ月後のアクティブ状態を判定
-                    retainedUsers = userRepository.countActiveByUserIds(cohortUserIds);
+                    // m ヶ月後のアクティブ状態を判定（IN 句の上限超過を避けるためチャンク分割して集計）
+                    retainedUsers = countActiveByUserIdsChunked(cohortUserIds);
 
                     // m ヶ月目のコホート収益と課金ユーザー数
                     LocalDate targetMonthStart = cohortMonth.plusMonths(m).withDayOfMonth(1);
                     LocalDate targetMonthEnd = targetMonthStart.with(TemporalAdjusters.lastDayOfMonth());
 
-                    // 指定月に支払いのあったコホートユーザーの収益
-                    revenue = memberPaymentRepository.sumPaidAmountByUserIdsAndMonth(
+                    // 指定月に支払いのあったコホートユーザーの収益（同様にチャンク分割）
+                    revenue = sumPaidAmountByUserIdsAndMonthChunked(
                             cohortUserIds, targetMonthStart, targetMonthEnd);
 
                     // 簡易計算: コホートサイズに対する全体の paying 比率で推定
@@ -111,5 +117,44 @@ public class MonthlyCohortBatchService {
                 cohortRepository.save(entity);
             }
         }
+    }
+
+    /**
+     * {@code userRepository.countActiveByUserIds} を IN 句上限内のチャンクに分割して呼び出し、合算する。
+     */
+    private int countActiveByUserIdsChunked(List<Long> userIds) {
+        int total = 0;
+        for (List<Long> chunk : partition(userIds, USER_ID_IN_CLAUSE_CHUNK_SIZE)) {
+            total += userRepository.countActiveByUserIds(chunk);
+        }
+        return total;
+    }
+
+    /**
+     * {@code memberPaymentRepository.sumPaidAmountByUserIdsAndMonth} を IN 句上限内のチャンクに分割して
+     * 呼び出し、合算する。
+     */
+    private BigDecimal sumPaidAmountByUserIdsAndMonthChunked(
+            List<Long> userIds, LocalDate monthStart, LocalDate monthEnd) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (List<Long> chunk : partition(userIds, USER_ID_IN_CLAUSE_CHUNK_SIZE)) {
+            BigDecimal chunkSum = memberPaymentRepository
+                    .sumPaidAmountByUserIdsAndMonth(chunk, monthStart, monthEnd);
+            if (chunkSum != null) {
+                total = total.add(chunkSum);
+            }
+        }
+        return total;
+    }
+
+    /**
+     * リストを指定サイズ以下のサブリストに分割する（IN 句のバッチ分割用）。
+     */
+    private static List<List<Long>> partition(List<Long> source, int size) {
+        List<List<Long>> result = new java.util.ArrayList<>();
+        for (int i = 0; i < source.size(); i += size) {
+            result.add(source.subList(i, Math.min(i + size, source.size())));
+        }
+        return result;
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising.campaign.repository;
 
 import com.mannschaft.app.advertising.campaign.entity.AdBannerDelivery;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,4 +40,17 @@ public interface AdBannerDeliveryRepository extends JpaRepository<AdBannerDelive
     @Query("SELECT d FROM AdBannerDelivery d "
             + "WHERE d.servedAt IS NULL AND d.createdAt < :cutoff")
     List<AdBannerDelivery> findStaleUnservedReservations(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * {@link #findStaleUnservedReservations} のキーセットページング版。
+     * {@code id} は UUIDv7（時系列順）のため {@code id > :cursorId ORDER BY id ASC} で安定した
+     * チャンク走査ができる（正本: {@code NotificationFanoutWorker}）。
+     */
+    @Query("SELECT d FROM AdBannerDelivery d "
+            + "WHERE d.servedAt IS NULL AND d.createdAt < :cutoff AND d.id > :cursorId "
+            + "ORDER BY d.id ASC")
+    List<AdBannerDelivery> findStaleUnservedReservationsPage(
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable);
 }
