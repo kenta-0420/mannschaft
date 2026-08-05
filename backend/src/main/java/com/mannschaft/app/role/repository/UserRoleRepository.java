@@ -47,6 +47,24 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    /**
+     * F01.2 子組織一覧カーソルページングの可視性 SQL 降下用: 指定ユーザーが
+     * {@code user_roles} 上で直接所属する組織 ID 一覧を重複なく返す。
+     *
+     * <p>{@code OrganizationHierarchyService#getChildren} が「呼び出し者は PRIVATE な
+     * 子組織のうち自分がメンバーのものだけ見える」という可視性条件を、子ごとの
+     * {@code existsByUserIdAndOrganizationId} 個別呼び出し（N+1・メモリ上フィルタ）ではなく
+     * SQL の {@code IN} 句へ一括で降ろすために追加した。既存の
+     * {@code existsByUserIdAndOrganizationId} と同じ {@code user_roles} テーブルを
+     * 参照するため、判定結果は完全に一致する（membership ドメインとの二重管理は生じない）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
+     */
+    @Query("SELECT DISTINCT ur.organizationId FROM UserRoleEntity ur "
+            + "WHERE ur.userId = :userId AND ur.organizationId IS NOT NULL")
+    List<Long> findOrganizationIdsByUserId(@Param("userId") Long userId);
+
     boolean existsByUserIdAndTeamIdAndRoleId(Long userId, Long teamId, Long roleId);
 
     boolean existsByUserIdAndOrganizationIdAndRoleId(Long userId, Long organizationId, Long roleId);
