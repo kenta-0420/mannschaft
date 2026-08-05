@@ -7,6 +7,8 @@ export default defineVitestConfig({
     globals: true,
     hookTimeout: 120000,
     setupFiles: ['./tests/setup.ts'],
+    // 変換コストを hookTimeout / testTimeout の計測枠の外で先払いする（#2609）
+    globalSetup: ['./tests/global-setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
