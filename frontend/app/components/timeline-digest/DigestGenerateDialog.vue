@@ -45,15 +45,6 @@ const isAiStyle = computed(() =>
   ['SUMMARY', 'NARRATIVE', 'HIGHLIGHTS'].includes(form.value.digestStyle),
 )
 
-/**
- * 期間の暦日（ユーザーTZ）を `yyyy-MM-dd` で取り出す。
- * `toISOString()` は UTC 基準のため、JST の深夜は前日にずれてしまう。
- */
-function toUserYmd(date: Date): string {
-  // buildOffsetDateTimeStr はユーザーTZのオフセット付き ISO を返すので先頭 10 文字が暦日。
-  return (buildOffsetDateTimeStr(date, '00:00') ?? '').slice(0, 10)
-}
-
 function validate(): boolean {
   errors.value = {}
   if (!form.value.periodStart) {
@@ -82,10 +73,12 @@ async function submit() {
     const res = await generateDigest({
       scopeId: props.scopeId,
       scopeType: props.scopeType,
-      // BE は LocalDateTime（date-only は 400）。期間の両端は inclusive で比較されるため、
-      // 終端はその日の 23:59:59 まで含める。
-      periodStart: buildDayStartStr(toUserYmd(form.value.periodStart!)),
-      periodEnd: buildDayEndStr(toUserYmd(form.value.periodEnd!)),
+      // 期間の組み立ては buildDigestPeriod に集約（BE は LocalDateTime・両端 inclusive）。
+      ...buildDigestPeriod(form.value.periodStart!, form.value.periodEnd!, {
+        buildOffsetDateTimeStr,
+        buildDayStartStr,
+        buildDayEndStr,
+      }),
       digestStyle: form.value.digestStyle,
       customPromptSuffix: isAiStyle.value ? form.value.customPromptSuffix || undefined : undefined,
     })

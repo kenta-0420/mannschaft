@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { createPinia, setActivePinia } from 'pinia'
 
 /**
  * 送信ボディ ↔ BE スキーマ 整合性テスト（再発防止の番人）。
@@ -33,6 +34,7 @@ const openapiPath = resolve(process.cwd(), '../docs/openapi.json')
 interface SchemaProperty {
   type?: string
   format?: string
+  minLength?: number
   $ref?: string
   items?: SchemaProperty
 }
@@ -61,6 +63,26 @@ function refName(prop: SchemaProperty | undefined): string | null {
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
+ * スキーマ上「必須」とみなすキーの集合。
+ *
+ * `required` 配列だけを見ても**今回の事故は検出できない**。springdoc は Bean Validation を
+ * こう写す:
+ *   - `@NotNull Boolean`  → `required` に載る
+ *   - `@NotBlank String`  → `required` に載らず、`minLength: 1` になるだけ
+ *
+ * 実際 `CreateSurveyRequest.required` は `['allowMultipleSubmissions','isAnonymous']` のみで、
+ * 欠落して 400 を起こした `distributionMode`（`@NotBlank`）も、ブログの `status`（同）も
+ * `required` には載っていない。よって `minLength >= 1` も必須指標として扱う。
+ */
+function requiredKeysOf(schema: Schema): string[] {
+  const fromRequired = schema.required ?? []
+  const fromNotBlank = Object.entries(schema.properties ?? {})
+    .filter(([, p]) => typeof p.minLength === 'number' && p.minLength >= 1)
+    .map(([k]) => k)
+  return [...new Set([...fromRequired, ...fromNotBlank])]
+}
+
+/**
  * body が schema に適合することを検査する。
  * 入れ子（$ref / 配列 items の $ref）も再帰的に辿る。
  */
@@ -80,11 +102,11 @@ function assertConformsToSchema(schemaName: string, body: unknown, path = schema
     ).toBe(true)
   }
 
-  // 2. required なキーが欠けていないか
-  for (const req of schema.required ?? []) {
+  // 2. 必須キーが欠けていないか
+  for (const req of requiredKeysOf(schema)) {
     expect(
       obj[req] !== undefined && obj[req] !== null,
-      `${path}.${req} は BE で必須（required）だが送られていない。400 になる。`,
+      `${path}.${req} は BE で必須だが送られていない。400 になる。`,
     ).toBe(true)
   }
 
@@ -116,13 +138,19 @@ function assertConformsToSchema(schemaName: string, body: unknown, path = schema
   }
 }
 
-// --- 本番コードの読み込み（Nuxt 自動 import に依存しない純関数のみ） ---
-const { toWireCreateBody, toWireUpdateBody } = await import('~/composables/useSurveyApi')
+// --- 本番コードの読み込み（いずれも実物。spec 内に複製は作らない） ---
+// dayjs の utc / timezone プラグインは本番と同じくプラグインモジュールの副作用で適用する。
+await import('~/plugins/dayjs')
+const { toWireCreateBody, toWireUpdateBody, toWireQuestion } = await import(
+  '~/composables/useSurveyApi'
+)
 const { buildBlogPublishBody } = await import('~/composables/useBlogApi')
+const { buildDigestPeriod } = await import('~/composables/useTimelineDigestApi')
+const { useDatetime } = await import('~/composables/useDatetime')
 
-/** ダイジェスト期間で使う useDatetime のヘルパ相当（JST 固定・実装と同じ整形）。 */
-const jstDayStart = (ymd: string) => `${ymd}T00:00:00+09:00`
-const jstDayEnd = (ymd: string) => `${ymd}T23:59:59+09:00`
+// useDatetime は useAuthStore（Pinia）を参照する。未ログイン時は 'Asia/Tokyo' が既定。
+setActivePinia(createPinia())
+const datetime = useDatetime()
 
 describe('送信ボディ ↔ BE スキーマ 整合性', () => {
   describe('CreateSurveyRequest（アンケート作成）', () => {
@@ -235,22 +263,117 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
   })
 
   describe('DigestGenerateRequest（ダイジェスト生成）', () => {
-    it('期間が date-time で送られる（date-only は 400）', () => {
-      const body = {
+    /** 生成ダイアログと同じ手順でボディを組み立てる（期間は本番の buildDigestPeriod が作る）。 */
+    function buildDialogBody(start: Date, end: Date) {
+      return {
         scopeType: 'TEAM',
         scopeId: 1,
-        periodStart: jstDayStart('2026-07-01'),
-        periodEnd: jstDayEnd('2026-07-31'),
+        ...buildDigestPeriod(start, end, datetime),
         digestStyle: 'TEMPLATE',
       }
-      assertConformsToSchema('DigestGenerateRequest', body)
+    }
+
+    it('生成ダイアログが組み立てるボディがスキーマに適合する', () => {
+      assertConformsToSchema(
+        'DigestGenerateRequest',
+        buildDialogBody(new Date('2026-07-01T00:00:00+09:00'), new Date('2026-07-31T00:00:00+09:00')),
+      )
     })
 
-    it('終端は 23:59:59 まで含める（BE の期間比較は両端 inclusive）', () => {
-      expect(jstDayEnd('2026-07-31')).toBe('2026-07-31T23:59:59+09:00')
+    it('期間が date-only ではなく date-time で送られる', () => {
+      const body = buildDialogBody(
+        new Date('2026-07-01T00:00:00+09:00'),
+        new Date('2026-07-31T00:00:00+09:00'),
+      )
+      expect(body.periodStart).toBe('2026-07-01T00:00:00+09:00')
+      expect(body.periodEnd).toBe('2026-07-31T23:59:59+09:00')
     })
 
-    it('date-only を渡すと検査が落ちる（この番人が機能していることの確認）', () => {
+    it('終端はその日の 23:59:59 まで含める（BE の期間比較は両端 inclusive）', () => {
+      const body = buildDialogBody(
+        new Date('2026-07-01T00:00:00+09:00'),
+        new Date('2026-07-31T00:00:00+09:00'),
+      )
+      // 翌日 00:00:00 だと翌日ちょうどの投稿を巻き込む
+      expect(body.periodEnd).not.toBe('2026-08-01T00:00:00+09:00')
+      expect(body.periodEnd.endsWith('T23:59:59+09:00')).toBe(true)
+    })
+
+    it('JST 深夜でも暦日が前日にずれない（toISOString の UTC 基準に戻さない）', () => {
+      // UTC では 2026-06-30T15:00Z = JST 2026-07-01 00:00。toISOString().slice(0,10) だと 06-30 になる。
+      const body = buildDialogBody(
+        new Date('2026-07-01T00:30:00+09:00'),
+        new Date('2026-07-31T23:30:00+09:00'),
+      )
+      expect(body.periodStart.startsWith('2026-07-01')).toBe(true)
+      expect(body.periodEnd.startsWith('2026-07-31')).toBe(true)
+    })
+  })
+
+  describe('CreateQuestionRequest（DRAFT詳細の「設問を保存して公開」= addQuestion）', () => {
+    it('設問追加のボディがスキーマに適合する', () => {
+      assertConformsToSchema(
+        'CreateQuestionRequest',
+        toWireQuestion({
+          questionText: '自由記述',
+          questionType: 'TEXT',
+          isRequired: true,
+          sortOrder: 1,
+        }),
+      )
+    })
+
+    it('作成経路と同じ翻訳を通る（FREE_TEXT / displayOrder）', () => {
+      const wire = toWireQuestion({
+        questionText: 'q',
+        questionType: 'TEXT',
+        isRequired: true,
+        sortOrder: 5,
+      }) as Record<string, unknown>
+      // 'TEXT' をそのまま送ると 400、sortOrder は BE が読まず displayOrder が 0 になる
+      expect(wire.questionType).toBe('FREE_TEXT')
+      expect(wire.displayOrder).toBe(5)
+      expect(wire).not.toHaveProperty('sortOrder')
+    })
+  })
+
+  describe('番人そのものの動作確認（わざと壊した入力で落ちること）', () => {
+    it('スキーマに無いキーを検出する（published_at）', () => {
+      expect(() =>
+        assertConformsToSchema('PublishRequest', { status: 'PUBLISHED', published_at: 'x' }),
+      ).toThrow(/存在しないキー/)
+    })
+
+    it('スキーマに無いキーを検出する（deadline）', () => {
+      expect(() =>
+        assertConformsToSchema('CreateSurveyRequest', {
+          title: 't',
+          isAnonymous: false,
+          allowMultipleSubmissions: false,
+          distributionMode: 'ALL',
+          resultsVisibility: 'AFTER_RESPONSE',
+          deadline: '2026-09-01T12:00:00+09:00',
+        }),
+      ).toThrow(/存在しないキー/)
+    })
+
+    it('@NotBlank 由来の必須（distributionMode）の欠落を検出する', () => {
+      // required 配列には載らず minLength:1 だけが付く。今回 400 を起こした当の欠落。
+      expect(() =>
+        assertConformsToSchema('CreateSurveyRequest', {
+          title: 't',
+          isAnonymous: false,
+          allowMultipleSubmissions: false,
+          resultsVisibility: 'AFTER_RESPONSE',
+        }),
+      ).toThrow(/distributionMode.*必須/)
+    })
+
+    it('@NotBlank 由来の必須（status）の欠落を検出する', () => {
+      expect(() => assertConformsToSchema('PublishRequest', {})).toThrow(/status.*必須/)
+    })
+
+    it('date-time が日付のみになっているのを検出する', () => {
       expect(() =>
         assertConformsToSchema('DigestGenerateRequest', {
           scopeType: 'TEAM',
@@ -258,21 +381,19 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
           periodStart: '2026-07-01',
           periodEnd: '2026-07-31',
         }),
-      ).toThrow()
-    })
-  })
-
-  describe('番人そのものの動作確認', () => {
-    it('スキーマに無いキーを検出する', () => {
-      expect(() =>
-        assertConformsToSchema('PublishRequest', { status: 'PUBLISHED', published_at: 'x' }),
-      ).toThrow(/存在しないキー/)
+      ).toThrow(/日付のみ/)
     })
 
-    it('required 欠落を検出する', () => {
+    it('入れ子（questions[]）の中の不正も検出する', () => {
       expect(() =>
-        assertConformsToSchema('DigestGenerateRequest', { scopeType: 'TEAM' }),
-      ).toThrow(/必須/)
+        assertConformsToSchema('CreateSurveyRequest', {
+          title: 't',
+          isAnonymous: false,
+          allowMultipleSubmissions: false,
+          distributionMode: 'ALL',
+          questions: [{ questionText: 'q', questionType: 'FREE_TEXT', sortOrder: 1 }],
+        }),
+      ).toThrow(/questions\[0\]\.sortOrder.*存在しないキー/)
     })
   })
 })
