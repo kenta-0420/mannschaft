@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,8 @@ public class PerformanceBatchService {
      */
     @BatchEndpoint(name = "performance-monthly-summary-aggregation-daily", description = "前日のパフォーマンス記録を毎日 03:00 に月次サマリーへ集計する")
     @Scheduled(cron = "0 0 3 * * *")
+    // 起動間隔は日次 03:00。前日分の記録を月次サマリーへ集計する。対象は前日 1 日分に限られるが、利用者数に比例するため余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "performanceMonthlySummaryAggregation", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void aggregateDailySummaries() {
         LocalDate yesterday = LocalDate.now().minusDays(1);

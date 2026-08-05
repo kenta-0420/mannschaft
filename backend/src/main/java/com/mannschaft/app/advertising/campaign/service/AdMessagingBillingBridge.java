@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
@@ -123,6 +124,8 @@ public class AdMessagingBillingBridge {
             name = "adMessagingBilling",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT5M")
+    @BatchEndpoint(name = "ad-messaging-billing-monthly",
+            description = "前月分のメッセージ型広告キャンペーン配信実績を集計し、請求明細行を毎月1日03:00に積み上げる")
     public void runMonthlyBilling() {
         YearMonth targetMonth = YearMonth.now().minusMonths(1);
         runMonthlyBilling(targetMonth);

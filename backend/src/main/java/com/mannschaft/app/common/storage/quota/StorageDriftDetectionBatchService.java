@@ -9,6 +9,7 @@ import com.mannschaft.app.common.storage.quota.repository.StorageUsageLogReposit
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,6 +118,9 @@ public class StorageDriftDetectionBatchService {
      */
     @BatchEndpoint(name = "storage-quota-drift-detection-weekly", description = "R2 実使用量と DB の used_bytes 差分を毎週日曜 02:00 に自動修正する")
     @Scheduled(cron = "0 0 2 * * SUN")
+    // 起動間隔は週次（日曜 02:00）。全スコープの R2 実使用量を列挙して DB と突き合わせるため、オブジェクト数に比例して伸びる。
+    // 週次で次回まで 7 日あるので余裕を取り 2 時間を上限とする。
+    @SchedulerLock(name = "storageQuotaDriftDetection", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     public void execute() {
         log.info("F13 ドリフト検出バッチ 開始 (migrationMode={})", migrationModeEnabled);
         int correctedCount = 0;

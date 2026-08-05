@@ -5,6 +5,7 @@ import com.mannschaft.app.weather.config.WeatherLocationProperties;
 import com.mannschaft.app.weather.service.GeonamesImportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,9 @@ public class GeonamesImportScheduler {
      */
     @BatchEndpoint(name = "weather-geonames-import-monthly", description = "GeoNames 郵便番号データを毎月 1 回取り込み（デフォルト 5 日 02:00 UTC）")
     @Scheduled(cron = "${weather.location.geonames.cron}")
+    // 起動間隔は月次。GeoNames の郵便番号 ZIP を外部からダウンロードして全件取り込むため、回線状況次第で数時間かかりうる。
+    // 月次で次回まで 30 日あるので余裕を取り 4 時間を上限とする。
+    @SchedulerLock(name = "weatherGeonamesImportMonthly", lockAtLeastFor = "PT1M", lockAtMostFor = "PT4H")
     public void runMonthlyImport() {
         String url = properties.getGeonames().getDownloadUrl();
         try {

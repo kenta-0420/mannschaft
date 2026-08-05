@@ -364,7 +364,15 @@ public class GoogleCalendarWebhookService {
     /**
      * Google Calendar Watch API で Webhook チャンネルを登録し、DB に UPSERT する。
      *
-     * <p>旧チャンネルが存在する場合は、新チャンネル登録後に旧チャンネルをベストエフォートで停止する。</p>
+     * <p><b>旧チャンネルがある場合は「旧を止めてから新を張る」順序で行う。</b>
+     * 逆順（新を張ってから旧を止める）だと、旧の停止に失敗したときに旧チャンネルが
+     * Google 側に残ったまま DB からは追跡できなくなり、同じ更新が新旧 2 本の
+     * チャンネルから push され続ける（DB に channel_id が 1 本しか残らないため、
+     * その後どの実行も止められない＝自己修復しない）。
+     * 先に止めておけば、停止失敗時は例外で中断して DB を書き換えないため、
+     * 生きているチャンネルは常に DB が指している 1 本だけになり、日次バッチの次回実行で再試行される。
+     * 停止と新規登録の間の数秒だけ push が届かないが、Google Calendar の同期は
+     * 次回 push または定期同期で追いつくため欠落しない。</p>
      *
      * @param userId 対象ユーザーID
      */
@@ -390,6 +398,20 @@ public class GoogleCalendarWebhookService {
         Optional<GoogleCalendarWebhookChannelEntity> existingChannelOpt =
                 webhookChannelRepository.findByUserId(userId);
 
+        // 旧チャンネルを先に停止する（失敗したら新チャンネルを張らずに中断する）。
+        // 新を張ってから旧を止める順序だと、停止失敗時に旧チャンネルが Google 側へ取り残され、
+        // DB からは追跡できないまま push が重複し続ける（Javadoc 参照）。
+        if (existingChannelOpt.isPresent()) {
+            GoogleCalendarWebhookChannelEntity existing = existingChannelOpt.get();
+            try {
+                googleApiClient.stopChannel(accessToken, existing.getChannelId(), existing.getResourceId());
+            } catch (Exception e) {
+                log.error("旧チャンネルの停止に失敗したためチャンネル更新を中断（DB は旧チャンネルのまま・次回バッチで再試行）: "
+                        + "userId={}, channelId={}", userId, existing.getChannelId(), e);
+                throw new BusinessException(GoogleCalendarErrorCode.GOOGLE_API_ERROR, e);
+            }
+        }
+
         // Google Watch API 呼び出し
         GoogleApiClient.WatchChannelResponse watchResponse;
         try {
@@ -401,19 +423,14 @@ public class GoogleCalendarWebhookService {
 
         // DB に UPSERT
         if (existingChannelOpt.isPresent()) {
+            // 旧チャンネルは上で停止済み。ここでは DB を新チャンネルへ差し替えるだけ。
             GoogleCalendarWebhookChannelEntity existing = existingChannelOpt.get();
-            String oldChannelId = existing.getChannelId();
-            String oldResourceId = existing.getResourceId();
-
             existing.updateChannel(
                     watchResponse.channelId(),
                     watchResponse.resourceId(),
                     newToken,
                     watchResponse.expiresAt());
             webhookChannelRepository.save(existing);
-
-            // 旧チャンネルをベストエフォートで停止
-            stopChannelBestEffort(accessToken, oldChannelId, oldResourceId);
         } else {
             GoogleCalendarWebhookChannelEntity newChannel = GoogleCalendarWebhookChannelEntity.builder()
                     .userId(userId)
@@ -430,7 +447,18 @@ public class GoogleCalendarWebhookService {
 
     /**
      * Google Calendar Channels.stop でチャンネルを停止し、DB から削除する。
-     * ベストエフォート（Google API 失敗しても DB からは削除する）。
+     *
+     * <p><b>停止に失敗した場合は DB 行を消さない。</b>
+     * 行を消すと channel_id / resource_id を失い、Google 側で生き続けるチャンネルを
+     * 二度と停止できなくなる（連携解除したはずのユーザーへ push が届き続け、
+     * かつ誰もそれを検知・再試行できない）。行を残しておけば
+     * {@link #renewChannel} 経由の日次バッチが同じユーザーを拾い直して停止を再試行できる。
+     * 呼び出し元（連携解除）を巻き添えに落とさないため例外は投げず、
+     * 失敗は {@code ERROR} で記録して再試行に委ねる。</p>
+     *
+     * <p>接続情報そのものが無い場合は、停止に必要なアクセストークンを二度と得られないため
+     * 再試行しても無意味であり、行を残すと日次バッチが永久に同じ失敗を繰り返す。
+     * この場合のみ行を削除する（チャンネルは Google 側の期限切れで自然消滅する）。</p>
      *
      * @param userId 対象ユーザーID
      */
@@ -444,15 +472,21 @@ public class GoogleCalendarWebhookService {
         }
         GoogleCalendarWebhookChannelEntity channel = channelOpt.get();
 
-        // アクセストークン取得（ベストエフォートのため取得失敗時も続行）
+        UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId).orElse(null);
+        if (connection == null) {
+            log.warn("Google 接続情報が無く停止できないためチャンネル行のみ削除（再試行不能）: userId={}, channelId={}",
+                    userId, channel.getChannelId());
+            webhookChannelRepository.delete(channel);
+            return;
+        }
+
         try {
-            UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId).orElse(null);
-            if (connection != null) {
-                String accessToken = getValidAccessToken(connection);
-                stopChannelBestEffort(accessToken, channel.getChannelId(), channel.getResourceId());
-            }
+            String accessToken = getValidAccessToken(connection);
+            googleApiClient.stopChannel(accessToken, channel.getChannelId(), channel.getResourceId());
         } catch (Exception e) {
-            log.warn("チャンネル停止のアクセストークン取得失敗（DB削除は続行）: userId={}", userId, e);
+            log.error("チャンネル停止に失敗したため DB 行を保持（日次バッチで再試行する）: userId={}, channelId={}",
+                    userId, channel.getChannelId(), e);
+            return;
         }
 
         webhookChannelRepository.delete(channel);
@@ -460,12 +494,25 @@ public class GoogleCalendarWebhookService {
     }
 
     /**
-     * 期限間近のチャンネルを再登録する（日次バッチから呼ばれる）。
+     * 期限間近のチャンネルを更新する（日次バッチから呼ばれる）。
+     *
+     * <p>Google 連携が既に無効・解除済みのユーザーのチャンネルは、再登録するのではなく
+     * <b>停止の再試行</b>を行う。連携解除時の停止が Google API 障害で失敗した行がここに残っており、
+     * 放置すると解除済みのユーザーへ push が届き続けるためである。</p>
      *
      * @param channel 更新対象チャンネルエンティティ
      */
     public void renewChannel(GoogleCalendarWebhookChannelEntity channel) {
-        registerWebhookChannel(channel.getUserId());
+        Long userId = channel.getUserId();
+        boolean active = connectionRepository.findByUserId(userId)
+                .map(UserGoogleCalendarConnectionEntity::getIsActive)
+                .orElse(false);
+        if (!active) {
+            log.info("連携が無効なチャンネルのため再登録せず停止を再試行: userId={}", userId);
+            stopAndDeleteChannel(userId);
+            return;
+        }
+        registerWebhookChannel(userId);
     }
 
     // ========================================
@@ -481,14 +528,6 @@ public class GoogleCalendarWebhookService {
             registerWebhookChannel(userId);
         } catch (Exception e) {
             log.error("チャンネル非同期更新失敗: userId={}", userId, e);
-        }
-    }
-
-    private void stopChannelBestEffort(String accessToken, String channelId, String resourceId) {
-        try {
-            googleApiClient.stopChannel(accessToken, channelId, resourceId);
-        } catch (Exception e) {
-            log.warn("チャンネル停止失敗（ベストエフォート・無視）: channelId={}", channelId, e);
         }
     }
 

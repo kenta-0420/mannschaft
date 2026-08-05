@@ -8,6 +8,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +55,9 @@ public class MembershipConsistencyChecker {
 
     @BatchEndpoint(name = "membership-consistency-check-daily", description = "memberships と user_roles の整合性を毎日 04:00 に検査する")
     @Scheduled(cron = "0 0 4 * * *")
+    // 起動間隔は日次 04:00。memberships と user_roles の全件突き合わせで、行数に比例するが集合演算 1 往復のため最悪でも数分。
+    // 将来のデータ増を見込み 30 分を上限とする。
+    @SchedulerLock(name = "membershipConsistencyCheckDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void checkConsistency() {
         DiffResult result = computeDiffResult();
 

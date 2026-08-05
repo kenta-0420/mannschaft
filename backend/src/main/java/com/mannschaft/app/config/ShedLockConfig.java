@@ -40,6 +40,26 @@ import javax.sql.DataSource;
  * </ul>
  *
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。
+ *
+ * <h2>この一覧はもう「唯一の防波堤」ではない（2026-08-05 / issue #2601）</h2>
+ * <p>上記の一覧は長らく<b>人間の善意だけ</b>で維持されており、{@code @SchedulerLock} を
+ * 付け忘れても CI は緑のまま、本番で二重実行が起きるまで誰も気づけなかった。
+ * 現在は番人 {@code ScheduledBatchGuardTest}（{@code backend/src/test/java/.../common/architecture/}）が
+ * 次の 3 点を CI で機械的に強制している:</p>
+ * <ol>
+ *   <li>{@code @Scheduled} には {@code @SchedulerLock} 必須
+ *       （例外は {@code @PodLocalScheduled} を付けた監査済みのもののみ）</li>
+ *   <li>{@code @SchedulerLock} には {@code lockAtMostFor} の明示必須
+ *       （本クラスの {@code defaultLockAtMostFor = "30m"} への暗黙依存を禁止する。
+ *       既定 30 分は数秒ワーカーには長すぎ、1 時間かかる夜間集計には短すぎるため、
+ *       各バッチの最大実行時間を書き手に必ず考えさせる）</li>
+ *   <li>{@code @Scheduled} には {@code @BatchEndpoint} 必須
+ *       （例外は {@code @BatchEndpointExempt} を付けた監査済みのもののみ）</li>
+ * </ol>
+ * <p>したがって本 Javadoc の一覧は<b>運用者が全体像を俯瞰するための地図</b>であって、
+ * 規約の強制手段ではない。追記を忘れても番人は落ちないが、
+ * 逆に番人を通らないバッチはそもそもマージできない。詳細は
+ * {@code backend/.claudecode.md} §30.1 / {@code TEST_CONVENTION.md} §9.6 を参照。</p>
  */
 @Configuration
 @Profile("!test & !openapi-gen")
