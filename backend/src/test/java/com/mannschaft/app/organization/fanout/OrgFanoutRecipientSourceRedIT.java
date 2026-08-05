@@ -228,10 +228,11 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         String type = "ORG_FANOUT_IT_AC5";
         UUID sourceEvent = UUID.randomUUID();
 
-        // 「SUPPORTER を除外して配信したい」意図の enqueue。第三陣で enqueue に includeSupporters 引数を追加し
-        // ジョブへ false を運搬する。現状の enqueue には引数が無く、ジョブは既定 TRUE のまま保存される＝FAIL(red)。
+        // 「SUPPORTER を除外して配信したい」意図の enqueue。13 引数版で includeSupporters=false を運搬し、
+        // ジョブ列 include_supporters に false が保存される（第三陣で配線）。
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,
-                "AC-5 include_supporters 運搬", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null);
+                "AC-5 include_supporters 運搬", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null,
+                false);
 
         NotificationFanoutJob job = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
