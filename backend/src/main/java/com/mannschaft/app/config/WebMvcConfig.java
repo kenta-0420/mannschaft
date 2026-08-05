@@ -1,5 +1,7 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.config.webmvc.UserZoneLocalDateTimeFormatter;
+import java.time.LocalDateTime;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.format.FormatterRegistry;
@@ -41,5 +43,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addConverter(scopeSlugIdConverter);
         registry.addConverter(orgScopeIdConverter);
         registry.addConverter(teamScopeIdConverter);
+
+        // クエリパラメータ／パス変数の LocalDateTime を、リクエストボディ（Jackson）と同じ規則で
+        // サーバー保持形式（Asia/Tokyo の壁時計）へ解釈する（Issue #2508 Phase 1）。
+        // fieldType 指定の 1 本で @DateTimeFormat(iso=…) / pattern=… / アノテーション無し の
+        // すべてを掌握できるため、コントローラ側のアノテーションは変更していない。
+        registry.addFormatterForFieldType(LocalDateTime.class, new UserZoneLocalDateTimeFormatter());
     }
 }
