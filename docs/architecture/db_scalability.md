@@ -240,9 +240,11 @@ ALTER TABLE audit_logs
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎月1日 AM 2:00（Spring `@Scheduled`） |
-| 処理内容 | 保持期限超過パーティションを R2 に JSONL で一括アップロード後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
+| 処理内容 | 保持期限（2年）を過ぎた月を1ヶ月ずつ走査し、月内をキーセットページング（`id > cursor`・1000件/回）で全件 R2 へアップロードした後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
 | 削除方式 | `DROP PARTITION`（行レベルロックなし・瞬時完了） |
-| R2 保存パス | `audit-logs/{yyyy}/{MM}/audit_log_{yyyyMM}.jsonl.gz` |
+| R2 保存パス | `audit-archive/{yyyy}/{MM}/audit-{yyyy}-{MM}.json`（1ヶ月が複数ページに及ぶ場合は `...-{MM}.part{n}.json` に分割） |
+| 整合性の要件 | **アーカイブ内容と削除範囲を常に一致させる。** ある月の全ページを書き切った場合にのみ当該月のパーティションを DROP し、アップロードが1ページでも失敗したら DROP しない。基準日時を含む月は経過しきっていないため DROP せず翌月へ持ち越す |
+| ページングの要件 | 走査中に行を削除しないため、オフセットページング（先頭ページの取り直し）は**同一行を無限に取り直す**。カーソルを直前ページの最終 `id` まで必ず前進させること |
 
 #### 3-B. chat_messages_archive テーブル（V64.003〜V64.004）
 
