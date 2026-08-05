@@ -72,6 +72,10 @@ interface SurveyDraftShape {
   teamBreakdownEnabled: boolean
   resultsVisibility: ResultsVisibility
   unrespondedVisibility: UnrespondedVisibility
+  /**
+   * 締切。これは localStorage の下書きスナップショット専用のキーであり、
+   * BE へは送らない（送信時は `expiresAt` に載せ替える。BE に `deadline` は存在しない）。
+   */
   deadline: string | null
   questions: QuestionDraft[]
 }
