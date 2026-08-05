@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +32,11 @@ import java.util.stream.Collectors;
  * 子ユーザーへ通知メールを送信する。</p>
  *
  * <p>ページングサイズ: 500件。個別ユーザーの処理失敗は継続する（1ユーザーの失敗で全体停止しない）。</p>
+ *
+ * <p><b>成人判定は取得クエリの WHERE 句で行い、対象が尽きるまでページを繰り返す。</b>
+ * 取得後にアプリ側で未成年を読み飛ばす実装にすると、取得上限を未成年が占有した場合に
+ * 成人到達者が永久に取得されず、保護者同意が解放されないまま残る（未成年保護の
+ * 法的要件に直結する）。事後フィルタへ戻してはならない。</p>
  */
 @Slf4j
 @Service
@@ -55,83 +61,88 @@ public class ParentalConsentReleaseBatchService {
     public void execute() {
         log.info("18歳到達保護者同意自動解放バッチ開始");
 
-        // APPROVED リンクをページングで取得
-        List<ParentalConsentLinkEntity> approvedLinks = parentalConsentLinkRepository
-                .findByStatus(ParentalConsentLinkStatus.APPROVED, PageRequest.of(0, PAGE_SIZE));
-
-        if (approvedLinks.isEmpty()) {
-            log.info("18歳到達保護者同意自動解放バッチ完了: 対象なし");
-            return;
-        }
-
-        // child_user_id で distinct にグループ化
-        Map<Long, List<ParentalConsentLinkEntity>> linksByChildUserId = approvedLinks.stream()
-                .collect(Collectors.groupingBy(ParentalConsentLinkEntity::getChildUserId));
+        LocalDate today = LocalDate.now();
+        // 成人判定の閾値は AgeGroupCalculator が唯一の算出元（年齢判定を二重実装しない）。
+        // birth_date は YYYY-MM-DD 形式の文字列カラムのため、同形式に整形して SQL へ渡す。
+        String adultBirthDateThreshold =
+                AgeGroupCalculator.adultBirthDateThreshold(today).format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         int successCount = 0;
-        int skippedCount = 0;
         int failedCount = 0;
-        LocalDate today = LocalDate.now();
+        int pageCount = 0;
 
-        for (Map.Entry<Long, List<ParentalConsentLinkEntity>> entry : linksByChildUserId.entrySet()) {
-            Long childUserId = entry.getKey();
-            List<ParentalConsentLinkEntity> childLinks = entry.getValue();
+        while (true) {
+            // 成人到達済みのリンクのみを取得する（年齢条件は WHERE 句側）。
+            // 解放したリンクは APPROVED でなくなり次の取得対象から外れるため、
+            // 先頭ページを取り直しても必ず前進する。
+            List<ParentalConsentLinkEntity> adultLinks = parentalConsentLinkRepository
+                    .findAdultApprovedLinks(ParentalConsentLinkStatus.APPROVED,
+                            adultBirthDateThreshold, PageRequest.of(0, PAGE_SIZE));
 
-            try {
-                // ユーザー取得（存在しない / 論理削除済み → skip）
-                Optional<UserEntity> userOpt = userRepository.findById(childUserId);
-                if (userOpt.isEmpty()) {
-                    log.debug("子ユーザーが存在しないためスキップ: childUserId={}", childUserId);
-                    skippedCount++;
-                    continue;
+            if (adultLinks.isEmpty()) {
+                break;
+            }
+            pageCount++;
+
+            // child_user_id で distinct にグループ化（1ユーザーへの通知は1通）
+            Map<Long, List<ParentalConsentLinkEntity>> linksByChildUserId = adultLinks.stream()
+                    .collect(Collectors.groupingBy(ParentalConsentLinkEntity::getChildUserId));
+
+            int releasedInPage = 0;
+
+            for (Map.Entry<Long, List<ParentalConsentLinkEntity>> entry : linksByChildUserId.entrySet()) {
+                Long childUserId = entry.getKey();
+                List<ParentalConsentLinkEntity> childLinks = entry.getValue();
+
+                try {
+                    // 通知に必要なユーザー情報を取得する（成人判定は取得クエリで済んでいる）
+                    Optional<UserEntity> userOpt = userRepository.findById(childUserId);
+                    if (userOpt.isEmpty()) {
+                        log.warn("取得済みリンクの子ユーザーが参照できないためスキップ: childUserId={}", childUserId);
+                        continue;
+                    }
+                    UserEntity user = userOpt.get();
+
+                    // 成人到達済み: 対象の APPROVED リンクを全て REVOKED に更新
+                    childLinks.stream()
+                            .filter(l -> l.getStatus() == ParentalConsentLinkStatus.APPROVED)
+                            .forEach(link -> link.revoke(null)); // revokedBy = null = SYSTEM による自動解放
+                    releasedInPage += childLinks.size();
+
+                    // 子ユーザーへ通知メール送信
+                    String displayName = user.getDisplayName() != null ? user.getDisplayName()
+                            : user.getLastName() + " " + user.getFirstName();
+                    emailOutboxService.enqueue(new EmailOutboxRequest(
+                            "PARENTAL_CONSENT_RELEASED",
+                            user.getLocale() != null ? user.getLocale() : "ja",
+                            user.getEmail(),
+                            Map.of("displayName", displayName),
+                            "auth",
+                            null,
+                            null,
+                            user.getId(),
+                            null
+                    ));
+
+                    log.info("保護者同意自動解放完了: childUserId={}", childUserId);
+                    successCount++;
+
+                } catch (Exception e) {
+                    log.error("保護者同意自動解放失敗: childUserId={}", childUserId, e);
+                    failedCount++;
                 }
-                UserEntity user = userOpt.get();
+            }
 
-                // 生年月日が未設定 → skip
-                if (user.getBirthDate() == null) {
-                    log.debug("生年月日未設定のためスキップ: childUserId={}", childUserId);
-                    skippedCount++;
-                    continue;
-                }
-
-                LocalDate birthDate = LocalDate.parse(user.getBirthDate());
-
-                // 未成年の場合はスキップ（成人到達していない）
-                if (AgeGroupCalculator.isMinor(birthDate, today)) {
-                    skippedCount++;
-                    continue;
-                }
-
-                // 成人到達済み: 対象の APPROVED リンクを全て REVOKED に更新
-                childLinks.stream()
-                        .filter(l -> l.getStatus() == ParentalConsentLinkStatus.APPROVED)
-                        .forEach(link -> link.revoke(null)); // revokedBy = null = SYSTEM による自動解放
-
-                // 子ユーザーへ通知メール送信
-                String displayName = user.getDisplayName() != null ? user.getDisplayName()
-                        : user.getLastName() + " " + user.getFirstName();
-                emailOutboxService.enqueue(new EmailOutboxRequest(
-                        "PARENTAL_CONSENT_RELEASED",
-                        user.getLocale() != null ? user.getLocale() : "ja",
-                        user.getEmail(),
-                        Map.of("displayName", displayName),
-                        "auth",
-                        null,
-                        null,
-                        user.getId(),
-                        null
-                ));
-
-                log.info("保護者同意自動解放完了: childUserId={}, birthDate={}", childUserId, birthDate);
-                successCount++;
-
-            } catch (Exception e) {
-                log.error("保護者同意自動解放失敗: childUserId={}", childUserId, e);
-                failedCount++;
+            if (releasedInPage == 0) {
+                // 取得できたのに1件も解放できなかった＝次の取得でも同じ行が返り無限ループになる。
+                // 症状を隠さず異常として記録し、当日の処理を打ち切る（残りは翌日の実行で再試行）。
+                log.error("18歳到達保護者同意自動解放バッチ中断: 取得{}件に対し解放0件のため前進不能",
+                        adultLinks.size());
+                break;
             }
         }
 
-        log.info("18歳到達保護者同意自動解放バッチ完了: 対象グループ={}件, 解放成功={}件, スキップ={}件, 失敗={}件",
-                linksByChildUserId.size(), successCount, skippedCount, failedCount);
+        log.info("18歳到達保護者同意自動解放バッチ完了: 取得ページ={}, 解放成功={}件, 失敗={}件",
+                pageCount, successCount, failedCount);
     }
 }

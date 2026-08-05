@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -52,13 +53,13 @@ class ParentalConsentReleaseBatchStatusInvariantTest {
         ParentalConsentLinkEntity link = mock(ParentalConsentLinkEntity.class);
         when(link.getChildUserId()).thenReturn(childUserId);
         when(link.getStatus()).thenReturn(ParentalConsentLinkStatus.APPROVED);
-        when(parentalConsentLinkRepository.findByStatus(
-                eq(ParentalConsentLinkStatus.APPROVED), any()))
-                .thenReturn(List.of(link));
+        when(parentalConsentLinkRepository.findAdultApprovedLinks(
+                eq(ParentalConsentLinkStatus.APPROVED), anyString(), any()))
+                .thenReturn(List.of(link))
+                .thenReturn(List.of());
 
         UserEntity child = mock(UserEntity.class);
-        // 成人（2000-01-01 生まれ）→ isMinor=false → 解放処理へ進む
-        when(child.getBirthDate()).thenReturn("2000-01-01");
+        // 成人判定は取得クエリ側で済んでいるため、バッチは生年月日を再判定しない
         when(child.getEmail()).thenReturn("child@example.com");
         when(child.getDisplayName()).thenReturn("子ユーザー");
         when(child.getId()).thenReturn(childUserId);
