@@ -13,6 +13,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,6 +90,8 @@ public class EventEndReminderBatchService {
     // TODO: familyドメインがeventドメイン（EventRepository）とroleドメイン（UserRoleRepository）をまたいでいる。将来はEventQueryServiceとUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-event-end-reminder", description = "未解散イベントの解散リマインドを 5 分毎にエスカレーション送信する")
     @Scheduled(fixedDelay = 300_000) // 5分間隔
+    // 起動間隔は 5 分（fixedDelay）。処理は未解散イベントへのエスカレーション通知で通常は数秒。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "familyEventEndReminder", lockAtLeastFor = "PT30S", lockAtMostFor = "PT15M")
     @Transactional
     public void runEndReminderCheck() {
         log.debug("解散通知リマインドバッチ開始");

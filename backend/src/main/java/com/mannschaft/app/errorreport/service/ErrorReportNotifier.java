@@ -421,6 +421,15 @@ public class ErrorReportNotifier {
      * 「直近 5 分で N 件発生」と 1 通の Slack メッセージにまとめて送信する。
      * 本メソッドはクールダウンチェックをしない（バッチ自身が 5 分間隔のため重複は発生しない）。</p>
      *
+     * <p><b>複数 Pod で同一時間窓に複数通が届くことについて</b>:
+     * 呼び出し元は Pod ローカルのメモリバッファをドレインするため分散排他を掛けられず
+     * （掛けると敗者 Pod のエラーが取りこぼされる）、Pod 数だけ本通知が飛ぶ。
+     * ただし各通の内容は<b>互いに素なスライス</b>であり同じエラーを二重に数えてはいない。
+     * 「重複通知に見える」ことこそが運用上の害であるため、
+     * 送信元インスタンスを本文に明記して<b>スライスであることを読み取れる形</b>にする。
+     * 送信そのものを 1 通へ束ねるには全 Pod のドレインを待ち合わせる共有ストアが必要になり、
+     * 待ち合わせ中に Pod が落ちるとそのスライスを失う（＝取りこぼしの再導入）ため採用しない。</p>
+     *
      * <p>渡された Map が空の場合は何もしない（バッチ側でフィルタ済み想定だが二重防衛）。
      * Slack Webhook URL が空の場合も送信しない。</p>
      *
@@ -436,8 +445,8 @@ public class ErrorReportNotifier {
                     .mapToLong(com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry::occurrenceCount)
                     .sum();
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format(":bar_chart: *直近5分のエラー集約: %d種のエラーが計%d回発生*%n",
-                    errorTypeCount, totalOccurrences));
+            sb.append(String.format(":bar_chart: *直近5分のエラー集約: %d種のエラーが計%d回発生* (instance: %s)%n",
+                    errorTypeCount, totalOccurrences, resolveInstanceLabel()));
             // 詳細は最大 10 件まで（Slack メッセージ過大化防止）
             int shown = 0;
             for (Map.Entry<String, com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry> e : entries.entrySet()) {
@@ -462,6 +471,30 @@ public class ErrorReportNotifier {
                     .retrieve().toBodilessEntity();
         } catch (Exception e) {
             log.warn("集約サマリ通知送信失敗: entryCount={}", entries.size(), e);
+        }
+    }
+
+    /**
+     * 集約サマリの送信元インスタンスを表すラベルを返す。
+     *
+     * <p>複数 Pod から同一時間窓のサマリが届いたとき、それが「同じ内容の重複」ではなく
+     * 「別インスタンスのスライス」であることを受け手が判別できるようにするための識別子。
+     * Kubernetes では Pod 名が {@code HOSTNAME} に入る。取得できない環境では
+     * ホスト名にフォールバックし、それも失敗したら {@code unknown} とする
+     * （ラベル取得の失敗でサマリ送信そのものを落としてはならない）。</p>
+     *
+     * @return インスタンス識別ラベル
+     */
+    private String resolveInstanceLabel() {
+        String podName = System.getenv("HOSTNAME");
+        if (podName != null && !podName.isBlank()) {
+            return podName;
+        }
+        try {
+            return java.net.InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            log.debug("インスタンス識別ラベルの解決に失敗したため unknown を用いる", e);
+            return "unknown";
         }
     }
 

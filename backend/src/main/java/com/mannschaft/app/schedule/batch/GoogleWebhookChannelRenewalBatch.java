@@ -5,6 +5,7 @@ import com.mannschaft.app.schedule.repository.GoogleCalendarWebhookChannelReposi
 import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,9 @@ public class GoogleWebhookChannelRenewalBatch {
      * {@code expires_at <= NOW() + 3日} のチャンネルを全件再登録する。
      */
     @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Tokyo")
+    // 起動間隔は日次 02:00。1 チャンネルにつき Google API を 2 回（旧 stop・新 watch）
+    // 呼ぶため、最悪ケースを 1 件 2 秒 × 数千ユーザーと見積もり 2 時間を上限とする。
+    @SchedulerLock(name = "googleWebhookChannelRenewalDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     public void renewExpiringChannels() {
         log.info("Webhook チャンネル日次更新バッチ開始");
 

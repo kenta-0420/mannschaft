@@ -6,6 +6,7 @@ import com.mannschaft.app.succession.entity.DelinquencyEscalationStage;
 import com.mannschaft.app.succession.repository.DelinquencyEscalationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +56,8 @@ public class DelinquencyEscalationBatchService {
      */
     @BatchEndpoint(name = "succession-delinquency-escalation-daily", description = "滞納エスカレーションを毎日 02:00 に経過日数で 5 段階自動昇格する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 02:00。滞納契約の段階昇格と通知送出で、契約数に比例する。余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "successionDelinquencyEscalationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void advanceEscalations() {
         List<DelinquencyEscalationEntity> actives =
