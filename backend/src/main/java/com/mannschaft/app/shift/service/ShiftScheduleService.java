@@ -232,7 +232,8 @@ public class ShiftScheduleService {
 
         // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
-            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+            eventPublisher.publish(new ShiftPublishedEvent(
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
