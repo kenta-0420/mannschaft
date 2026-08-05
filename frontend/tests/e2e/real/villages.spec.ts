@@ -5,8 +5,9 @@
  * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:3000) が
  * 起動済みの状態で実行してください。
  *
- * 認証: tests/e2e/.auth/real-user.json の storageState を使用。
- * 未生成の場合は loginIfNeeded() でフォールバックログインする。
+ * 認証: tests/e2e/.auth/real-user.json の storageState を使用（単一セッション設計。
+ * テスト内で別途 UI ログインしない。連続ログインは BE のレート制限に当たるため、
+ * API 直叩きが必要な検証は各 describe の beforeAll で 1 回だけ token を取得する）。
  *
  * 前提シード: backend/scripts/seed-e2e-data.js の F17 ブロックを実行済み。
  *   - villages 2 件（"E2Eテスト公式村" OFFICIAL / "E2Eテストコミュニティ村" COMMUNITY）
@@ -24,24 +25,6 @@ const USER_EMAIL = 'e2e-user@test.mannschaft.local'
 const USER_PASSWORD = 'TestPass2026!'
 
 const COMMUNITY_VILLAGE_NAME = 'E2Eテストコミュニティ村'
-
-// ---------------------------------------------------------------------------
-// ヘルパー: storageState が無効な場合のフォールバックログイン
-// ---------------------------------------------------------------------------
-async function loginIfNeeded(page: Page): Promise<void> {
-  await page.goto('/my/dashboard')
-  if (page.url().includes('/login')) {
-    await waitForHydration(page)
-    const emailInput = page.locator('input#email')
-    await emailInput.click()
-    await emailInput.pressSequentially(USER_EMAIL, { delay: 10 })
-    const passwordInput = page.locator('input[type="password"]')
-    await passwordInput.click()
-    await passwordInput.pressSequentially(USER_PASSWORD, { delay: 10 })
-    await page.getByRole('button', { name: 'ログイン' }).click()
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20_000 })
-  }
-}
 
 // ===========================================================================
 // VLG-001〜012: F17 村コミュニティ
@@ -92,7 +75,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-001: /villages 一覧ページが表示される
   // -------------------------------------------------------------------------
   test('VLG-001: /villages 村一覧ページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     await page.goto('/villages')
     await waitForHydration(page)
     await expect(page).not.toHaveURL(/\/login/)
@@ -108,7 +90,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-002: /villages/create-request 申請フォームが表示される
   // -------------------------------------------------------------------------
   test('VLG-002: /villages/create-request 申請フォームが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     await page.goto('/villages/create-request')
     await waitForHydration(page)
     await expect(page).not.toHaveURL(/\/login/)
@@ -161,7 +142,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   //   遷移後の bulletin ページに VillageHeader（h1 で村名）が描画されること。
   // -------------------------------------------------------------------------
   test('VLG-005: /villages/{id} が表示され村名が見える（bulletin にリダイレクト）', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}`)
@@ -180,7 +160,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-006: タイムラインタブ
   // -------------------------------------------------------------------------
   test('VLG-006: /villages/{id}/timeline タイムラインページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/timeline`)
@@ -198,7 +177,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-007: 井戸端会議タブ
   // -------------------------------------------------------------------------
   test('VLG-007: /villages/{id}/lobby 井戸端会議ページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/lobby`)
@@ -215,7 +193,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-008: 掲示板タブ
   // -------------------------------------------------------------------------
   test('VLG-008: /villages/{id}/bulletin 掲示板ページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/bulletin`)
@@ -235,7 +212,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   //   メンバー一覧ページが描画されること（VillageHeader + メンバーテーブル想定）。
   // -------------------------------------------------------------------------
   test('VLG-009: /villages/{id}/members メンバー一覧ページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/members`)
@@ -253,7 +229,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-010: カレンダー（歳時記）タブ
   // -------------------------------------------------------------------------
   test('VLG-010: /villages/{id}/calendar カレンダーページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/calendar`)
@@ -270,7 +245,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-011: お祭りタブ
   // -------------------------------------------------------------------------
   test('VLG-011: /villages/{id}/festivals お祭りページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/festivals`)
@@ -287,7 +261,6 @@ test.describe('VLG-001〜012: F17 村コミュニティ', () => {
   // VLG-012: 練習試合募集タブ
   // -------------------------------------------------------------------------
   test('VLG-012: /villages/{id}/match-recruits 練習試合募集ページが表示される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/match-recruits`)
@@ -393,7 +366,6 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
   // VLG-SPA-001 (AC-1): タブクリックで URL 更新 + 戻る操作で戻れる
   // -------------------------------------------------------------------------
   test('VLG-SPA-001: タブクリックで URL が更新され goBack() で戻れる', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/bulletin`)
@@ -414,7 +386,6 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
   // VLG-SPA-002 (AC-2 + AC-4): 遷移中に全画面ローディングが出ず、村名 h1 が据置
   // -------------------------------------------------------------------------
   test('VLG-SPA-002: タブ遷移で白画面ローディングが出ず村名 h1 が再マウントされない', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/bulletin`)
@@ -448,7 +419,6 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
   // VLG-SPA-003 (AC-5): タブ遷移で getVillage が追加発火しない
   // -------------------------------------------------------------------------
   test('VLG-SPA-003: タブ遷移で GET /villages/{id} が増えない（再フェッチ無し）', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     // getVillage = GET /api/v1/villages/{id}（末尾が id そのもの。サブパス /memberships 等は除外）
@@ -481,7 +451,6 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
   // VLG-SPA-004 (AC-6): 全 9 タブのパネル主要要素が可視
   // -------------------------------------------------------------------------
   test('VLG-SPA-004: 全 9 タブをクリック巡回し各パネルが描画される', async ({ page }) => {
-    await loginIfNeeded(page)
     const villageId = cachedVillageId
 
     await page.goto(`/villages/${villageId}/bulletin`)
