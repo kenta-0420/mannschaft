@@ -2,6 +2,7 @@ package com.mannschaft.app.scopefolder.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.scopefolder.dto.AddFolderItemRequest;
 import com.mannschaft.app.scopefolder.dto.BulkAssignRequest;
 import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
@@ -10,6 +11,7 @@ import com.mannschaft.app.scopefolder.dto.FolderNotificationSummaryDto;
 import com.mannschaft.app.scopefolder.dto.ReorderFoldersRequest;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
+import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
@@ -54,6 +56,10 @@ public class MyScopeFolderController {
     /**
      * フォルダ一覧を取得する（F15.3 §5.1.2: 未読件数込み）。
      */
+    @SelfScopedEndpoint("検索条件が認証主体の userId に束縛される"
+            + "（MyScopeFolderQueryService#getFoldersWithUnread が "
+            + "MyScopeFolderRepository#findByUserIdAndScopeTypeAndDeletedAtIsNullOrderBySortOrder "
+            + "のみでフォルダを引き、リクエストはフォルダ ID を受け取らない）")
     @GetMapping
     @Operation(summary = "フォルダ一覧取得",
             description = "指定スコープタイプ（TEAM/ORGANIZATION）のフォルダ一覧をアイテムID・未読件数込みで取得する")
@@ -67,6 +73,10 @@ public class MyScopeFolderController {
     /**
      * 未分類フォルダ取得（lazy 生成）（F15.3 §5.2.1）。
      */
+    @SelfScopedEndpoint("取得・生成対象が認証主体の userId に束縛される"
+            + "（MyScopeFolderService#findOrCreateDefaultInternal が "
+            + "findByUserIdAndScopeTypeAndIsDefaultTrueAndDeletedAtIsNull で引き、"
+            + "生成時も userId を自身に固定する。リクエストはフォルダ ID を受け取らない）")
     @GetMapping("/default")
     @Operation(summary = "未分類フォルダ取得",
             description = "未分類フォルダを取得する。存在しない場合は lazy 生成して返す")
@@ -80,6 +90,11 @@ public class MyScopeFolderController {
     /**
      * フォルダ別未読通知件数集計（F15.3 §5.2.3）。
      */
+    @SelfScopedEndpoint("集計対象が認証主体の userId に束縛される"
+            + "（MyScopeFolderQueryService#getNotificationSummary が呼ぶ "
+            + "MyScopeFolderItemRepository#aggregateFolderUnreadCounts の WHERE 句は "
+            + "folder.user_id = :userId かつ結合先通知も n.user_id = :userId。"
+            + "リクエストはフォルダ ID を受け取らない）")
     @GetMapping("/notifications/summary")
     @Operation(summary = "フォルダ別未読通知件数",
             description = "フォルダ別の未読通知件数を集計して返す（タブバッジ用）")
@@ -94,6 +109,9 @@ public class MyScopeFolderController {
     /**
      * フォルダを作成する。
      */
+    @SelfScopedEndpoint("生成されるフォルダの user_id が認証主体に固定される"
+            + "（MyScopeFolderService#createFolder が userId を builder に直接設定し、"
+            + "上限・同名チェックも userId 絞り込みで行う。リクエストは所有者もフォルダ ID も受け取らない）")
     @PostMapping
     @Operation(summary = "フォルダ作成",
             description = "新しいスコープフォルダを作成する（1スコープタイプあたり上限20件）")
@@ -123,6 +141,11 @@ public class MyScopeFolderController {
      * フォルダの並び順を変更する。
      * 固定パスのため /{folderId} より先に定義する。
      */
+    @SelfScopedEndpoint("並び替え対象の集合が認証主体の userId に束縛される"
+            + "（MyScopeFolderService#reorderFolders は "
+            + "findByUserIdAndScopeTypeAndDeletedAtIsNullOrderBySortOrder で得た自分のフォルダのみを"
+            + "マップ化し、orderedIds はそのマップの引きにしか使わない。"
+            + "マップに無い ID は無視されるため他人のフォルダには到達しない）")
     @PutMapping("/reorder")
     @Operation(summary = "フォルダ並び替え",
             description = "指定スコープタイプのフォルダを orderedIds の順に並び替える")
@@ -170,7 +193,8 @@ public class MyScopeFolderController {
             @PathVariable Long folderId,
             @Valid @RequestBody AddFolderItemRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
-        ScopeFolderResponse response = folderService.addItem(userId, folderId, req);
+        ScopeFolderResponse response = folderService.addItemWithAssignedVia(
+                userId, folderId, req.scopeId(), AssignedVia.MANUAL);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
