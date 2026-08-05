@@ -1,8 +1,10 @@
 package com.mannschaft.app.survey.listener;
 
+import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.organization.service.OrganizationMembershipService;
+import com.mannschaft.app.role.fanout.OrgFanoutRecipientSource;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyNotificationType;
@@ -16,7 +18,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * アンケート公開イベントを受信し、配信母集団へ公開通知（{@code SURVEY_CREATED}）を送信するリスナー。
@@ -24,35 +30,33 @@ import java.util.List;
  * <p>設計書 F05.4 §1528 で {@code SURVEY_CREATED}＝「公開時にスコープ内全メンバーへ通知」が
  * enum 定義されていながら未発火だった既存乖離を、本リスナーで実装する。</p>
  *
- * <p><b>規模対応 Tier2（マスター御裁可済み）</b>:
- * <ul>
- *   <li>{@code AFTER_COMMIT} + {@code @Async("event-pool")} で動作するため、{@code publishSurvey}
- *       本体はステータス更新をコミットして即返しし、受信者ループ（通知行作成）は本スレッドで非同期実行する。
- *       これにより数万人規模でも公開 API 応答をブロックしない。</li>
- *   <li>配信タスクはコミット済みのイベント内容のみを読む（自己呼び出しによる {@code @Async} 無効化を回避し、
- *       別 Bean に切り出している）。</li>
- *   <li>個別ユーザーへの送信失敗は {@link NotificationHelper#notifyAll} 内で握りつつ継続する。</li>
- * </ul>
- * </p>
+ * <h2>fan-out 抜本改修 Wave-2: 組織スコープ×ALL は耐久ジョブへ移譲（AC-6）</h2>
+ * <p>組織スコープ×ALL の配信母集団（直属 ∪ 配下 ACTIVE チーム）は数万規模になり得るため、
+ * 受信者を同期展開せず {@link NotificationFanoutJobService#enqueue} で耐久 fan-out ジョブを
+ * <b>1 件 enqueue</b> するだけ（O(1)）とし、実配信は裏ワーカー {@code NotificationFanoutWorker} が
+ * ORG 受信者ソース（{@link OrgFanoutRecipientSource}）でキーセット・チャンク送り・クラッシュ再開可能に配信する。
+ * 応援者トグル {@code includeSupporters} はジョブ列 {@code include_supporters} へ運搬し、母集団条件
+ * （配下チーム展開・応援者除外・ACTIVE/未削除）はワーカー側の keyset クエリに閉じ込める。</p>
  *
- * <p><b>越境是正</b>: 組織スコープ×ALL の配信母集団は
- * {@link OrganizationMembershipService#resolveOrgDistributionUserIds(Long, boolean)}
- * 経由で「直属 ∪ 配下ACTIVEチーム」を展開する。{@code team_org_memberships}/{@code memberships}
- * は直接参照しない。</p>
+ * <p>チームスコープ×ALL（配下展開なし）／TARGETED（{@code survey_targets} 明示列挙）は母集団が有界のため、
+ * 従来どおり同期で {@link NotificationHelper#notifyAllPreAuthorized} に通知する（配信＝受信権統一）。</p>
  *
- * <p><b>TODO（規模対応 Tier3）</b>: 数万規模の組織では、ここで同期的に通知行を INSERT する方式すら
- * イベントスレッドを長時間占有する。将来は配信ジョブ（バッチ・キュー投入）に切り出し、
- * チャンク単位で進行・再実行可能にすることが望ましい。</p>
+ * <h2>best-effort・冪等（Wave-1 {@code ShiftPublishedNotificationListener} に倣う）</h2>
+ * <p>本リスナーは {@code AFTER_COMMIT} + {@code @Async("event-pool")} で走るため、公開の状態確定は既に確定済み。
+ * enqueue／通知の失敗は内部で捕捉してログに留め、業務トランザクションを巻き込まない（例外を外へ伝播しない）。
+ * 冪等キー {@code source_event_uuid} は「アンケート公開」という論理イベント（{@code surveyId × occurredAt}）から
+ * 決定的に導出し、同一公開の二重発火は {@code uk_fanout_idempotency} で 1 ジョブに収束する。再公開は
+ * {@code occurredAt} が更新されるため別キーとなり新ジョブが立つ（{@code surveyId} 単独による再通知の恒久抑止を避ける）。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SurveyPublishNotificationListener {
 
-    private final OrganizationMembershipService organizationMembershipService;
     private final UserRoleRepository userRoleRepository;
     private final SurveyTargetRepository surveyTargetRepository;
     private final NotificationHelper notificationHelper;
+    private final NotificationFanoutJobService fanoutJobService;
 
     /**
      * アンケート公開イベントを受信して配信母集団へ公開通知を送信する。
@@ -63,6 +67,30 @@ public class SurveyPublishNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSurveyPublished(SurveyPublishedEvent event) {
         try {
+            if (event.getDistributionMode() == DistributionMode.ALL
+                    && "ORGANIZATION".equals(event.getScopeType())) {
+                // 組織スコープ×ALL: 受信者を展開せず耐久 fan-out ジョブを 1 件 enqueue（O(1)）。
+                // 配下チーム展開・応援者トグル適用・ACTIVE/未削除の母集団条件はワーカー（OrgFanoutRecipientSource）が
+                // keyset クエリで処理する。
+                fanoutJobService.enqueue(
+                        OrgFanoutRecipientSource.SCOPE_TYPE,               // 戦略キー: ORGANIZATION
+                        String.valueOf(event.getScopeId()),                // scope_ref: 組織 ID 文字列
+                        SurveyNotificationType.SURVEY_CREATED.name(),
+                        sourceEventUuid(event.getSurveyId(), event.occurredAt()), // 冪等キー: 公開イベント（surveyId×occurredAt）
+                        event.getScopeId(),                                // organizationId: テナント（組織 ID）
+                        "新しいアンケートが公開されました",
+                        "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
+                        NotificationPriority.NORMAL,
+                        "SURVEY", event.getSurveyId(),
+                        "/surveys/" + event.getSurveyId(),
+                        event.getActorId(),
+                        event.isIncludeSupporters());                      // 応援者トグルをジョブへ運搬
+                log.info("アンケート公開通知を enqueue: surveyId={} orgId={} includeSupporters={}（受信者展開はワーカーへ移譲）",
+                        event.getSurveyId(), event.getScopeId(), event.isIncludeSupporters());
+                return;
+            }
+
+            // チームスコープ×ALL（配下展開なし）／TARGETED: 母集団が有界のため従来どおり同期通知する。
             List<Long> recipients = resolveRecipients(event);
             if (recipients.isEmpty()) {
                 return;
@@ -71,11 +99,8 @@ public class SurveyPublishNotificationListener {
                     ? NotificationScopeType.TEAM
                     : NotificationScopeType.ORGANIZATION;
             // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
-            // recipients は resolveRecipients が配信母集団（ORG=includeSupporters トグル準拠の
-            // 配下チーム展開 / TEAM=スコープ内）として確定済みのため、notifyAllPreAuthorized で
-            // canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない。これにより
-            // 直属一般メンバー・配下チームメンバーへの公開通知が誤 deny される (B) レグを根治する。
-            // TODO（Tier3）: 数万規模では受信者ループをジョブ化（チャンク投入）する。
+            // recipients は resolveRecipients が配信母集団として確定済みのため、notifyAllPreAuthorized で
+            // canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない。
             notificationHelper.notifyAllPreAuthorized(
                     recipients,
                     SurveyNotificationType.SURVEY_CREATED.name(),
@@ -95,24 +120,14 @@ public class SurveyPublishNotificationListener {
     }
 
     /**
-     * 配信母集団を解決する。
-     *
-     * <ul>
-     *   <li>{@link DistributionMode#ALL} × 組織スコープ → 直属 ∪ 配下ACTIVEチーム（応援者トグル適用）</li>
-     *   <li>{@link DistributionMode#ALL} × チームスコープ → 当該チームメンバー（配下展開なし・現状維持）</li>
-     *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
-     * </ul>
+     * 同期通知の配信母集団（チームスコープ×ALL / TARGETED）を解決する。
+     * 組織スコープ×ALL は {@link #onSurveyPublished} が耐久ジョブへ移譲するため本メソッドには到達しない。
      *
      * @param event アンケート公開イベント
      * @return 配信対象ユーザーIDリスト
      */
     private List<Long> resolveRecipients(SurveyPublishedEvent event) {
         if (event.getDistributionMode() == DistributionMode.ALL) {
-            if ("ORGANIZATION".equals(event.getScopeType())) {
-                // 組織スコープ×ALL: 配下参加チーム展開（応援者トグル適用）
-                return organizationMembershipService.resolveOrgDistributionUserIds(
-                        event.getScopeId(), event.isIncludeSupporters());
-            }
             // チームスコープ×ALL（および COMMITTEE 等）: 配下展開なし・従来挙動を維持
             return userRoleRepository.findUserIdsByScope(event.getScopeType(), event.getScopeId());
         }
@@ -122,5 +137,19 @@ public class SurveyPublishNotificationListener {
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
+    }
+
+    /**
+     * 「アンケート公開」という論理イベントから冪等キー UUID を決定的に導出する。
+     *
+     * <p>{@code surveyId × occurredAt}（公開イベント発生時刻）で構成する。同一 AFTER_COMMIT の二重発火は
+     * 同一 {@code occurredAt} ゆえ同一 UUID となり {@code uk_fanout_idempotency} で 1 ジョブに収束する。
+     * 再公開は {@code occurredAt} が更新されるため別 UUID となり新ジョブが立つ（{@code surveyId} 単独だと
+     * 再公開通知が恒久抑止される回帰を防ぐ）。</p>
+     */
+    private static UUID sourceEventUuid(long surveyId, LocalDateTime occurredAt) {
+        String seed = "SURVEY_CREATED_PUBLISH:" + surveyId + ":"
+                + (occurredAt == null ? "-" : String.valueOf(occurredAt.toInstant(ZoneOffset.UTC).toEpochMilli()));
+        return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
     }
 }

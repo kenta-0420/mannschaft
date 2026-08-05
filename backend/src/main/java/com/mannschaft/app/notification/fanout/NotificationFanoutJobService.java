@@ -90,6 +90,24 @@ public class NotificationFanoutJobService {
     public void enqueue(String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid,
                         Long organizationId, String title, String body, NotificationPriority priority,
                         String sourceType, Long sourceId, String actionUrl, Long actorId) {
+        // 応援者トグルを指定しない既存経路（VILLAGE 還流 / TEAM シフト公開）は全員配信＝includeSupporters=true。
+        enqueue(scopeType, scopeRef, notificationType, sourceEventUuid, organizationId, title, body, priority,
+                sourceType, sourceId, actionUrl, actorId, true);
+    }
+
+    /**
+     * 応援者トグル {@code includeSupporters} を運搬する enqueue（Wave-2・ORG 耐久 fan-out）。
+     *
+     * <p>ジョブ列 {@code include_supporters} へ運搬し、ワーカーが受信者ソースの 4 引数版
+     * {@link FanoutRecipientSource#nextPage(String, long, int, boolean)} へ渡す。冪等キー
+     * {@code uk_fanout_idempotency} には含めない（トグル違いを別ジョブにしない設計）。冪等・O(1) は 12 引数版と同じ。</p>
+     *
+     * @param includeSupporters 応援者（純 SUPPORTER）を配信対象に含めるか（ORGANIZATION 以外は既定 true で挙動不変）
+     */
+    public void enqueue(String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid,
+                        Long organizationId, String title, String body, NotificationPriority priority,
+                        String sourceType, Long sourceId, String actionUrl, Long actorId,
+                        boolean includeSupporters) {
         LocalDateTime now = LocalDateTime.now();
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(sourceEventUuid)
@@ -104,6 +122,7 @@ public class NotificationFanoutJobService {
                 .sourceId(sourceId)
                 .actionUrl(actionUrl)
                 .actorId(actorId)
+                .includeSupporters(includeSupporters)
                 .status(NotificationFanoutJobStatus.PENDING)
                 .cursorSubjectId(0L)
                 .insertedCount(0L)
