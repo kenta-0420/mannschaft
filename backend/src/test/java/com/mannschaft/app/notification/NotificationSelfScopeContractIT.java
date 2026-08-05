@@ -96,6 +96,9 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private NotificationEntity saveNotification(Long userId, String title) {
+        // scope_type は NOT NULL（NotificationEntity.java:64-65）。特定チーム/組織に紐付かない
+        // 個人宛通知のため NotificationScopeType.PERSONAL を用いる
+        // （本番実装でも個人宛通知は同様に PERSONAL を使う。例: ContactRequestService.java:265）。
         return notificationRepository.saveAndFlush(NotificationEntity.builder()
                 .userId(userId)
                 .notificationType("SYSTEM_ANNOUNCEMENT")
@@ -103,6 +106,7 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                 .body("本文")
                 .sourceType("SYSTEM")
                 .sourceId(1L)
+                .scopeType(NotificationScopeType.PERSONAL)
                 .build());
     }
 

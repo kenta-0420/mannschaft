@@ -5,6 +5,7 @@ import com.mannschaft.app.dashboard.entity.ChatContactFolderEntity;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderRepository;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
+import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -112,12 +113,17 @@ class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         @WithMockUser(username = "916501")
         @DisplayName("DashboardController#getNotices は自分宛のお知らせのみを返す")
         void getNotices_は自分宛のみ返す() throws Exception {
+            // scope_type は NOT NULL（NotificationEntity.java:64-65）。個人ダッシュボードの
+            // お知らせは特定チーム/組織に紐付かないため NotificationScopeType.PERSONAL を用いる
+            // （本番実装でも個人宛通知は同様に PERSONAL を使う。例: ContactRequestService.java:265）。
             notificationRepository.saveAndFlush(NotificationEntity.builder()
                     .userId(ME).notificationType("SYSTEM_ANNOUNCEMENT")
-                    .title("自分宛").body("本文").sourceType("SYSTEM").sourceId(1L).build());
+                    .title("自分宛").body("本文").sourceType("SYSTEM").sourceId(1L)
+                    .scopeType(NotificationScopeType.PERSONAL).build());
             notificationRepository.saveAndFlush(NotificationEntity.builder()
                     .userId(OTHER).notificationType("SYSTEM_ANNOUNCEMENT")
-                    .title("他人宛").body("本文").sourceType("SYSTEM").sourceId(1L).build());
+                    .title("他人宛").body("本文").sourceType("SYSTEM").sourceId(1L)
+                    .scopeType(NotificationScopeType.PERSONAL).build());
 
             mockMvc.perform(get("/api/v1/dashboard/notices"))
                     .andExpect(status().isOk())
