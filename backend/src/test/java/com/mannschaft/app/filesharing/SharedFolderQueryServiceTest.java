@@ -140,6 +140,8 @@ class SharedFolderQueryServiceTest {
 
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
             given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(sub));
+            // PERSONAL は所有者本人に束縛されるため、ガードは全許可（null）を返す契約である。
+            given(folderAccessGuard.resolveVisibleFileLevels(folder, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(file));
             given(fileRepository.countByFolderId(101L)).willReturn(2L);
             given(nameResolverService.resolveUserDisplayNames(any()))
@@ -158,9 +160,13 @@ class SharedFolderQueryServiceTest {
         @DisplayName("スコープの異なる各種フォルダでも、認可には常にリポジトリ由来の実体が渡る（BOLA 対策）")
         void 実体由来スコープでガードを呼ぶ() {
             SharedFolderEntity team = teamFolder();
+            Set<FileVisibilityRole> levels = Set.of(FileVisibilityRole.SUPPORTERS_AND_ABOVE,
+                    FileVisibilityRole.MEMBERS_AND_ABOVE);
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(team));
             given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
-            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            // TEAM スコープでは、ガードは操作者が満たすレベル集合を返す（一覧と同一の絞り込みに使う）。
+            given(folderAccessGuard.resolveVisibleFileLevels(team, USER_ID)).willReturn(levels);
+            given(fileRepository.findVisibleByFolderIdAndLevels(FOLDER_ID, levels)).willReturn(List.of());
             given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
 
             service.getFolderDetail(FOLDER_ID, USER_ID);
@@ -229,6 +235,8 @@ class SharedFolderQueryServiceTest {
             given(folderRepository.findById(bId)).willReturn(Optional.of(b));
             given(folderRepository.findById(aId)).willReturn(Optional.empty()); // 削除済み祖先
             given(folderRepository.findByParentIdOrderByNameAsc(cId)).willReturn(List.of());
+            // PERSONAL は所有者本人に束縛されるため、ガードは全許可（null）を返す契約である。
+            given(folderAccessGuard.resolveVisibleFileLevels(c, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(cId)).willReturn(List.of());
             given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
 
@@ -243,6 +251,8 @@ class SharedFolderQueryServiceTest {
         @DisplayName("AC-2: サブフォルダの fileCount は countByFolderId で解決される")
         void AC2_サブフォルダfileCount() {
             SharedFolderEntity folder = personalFolder(USER_ID);
+            // PERSONAL は所有者本人に束縛されるため、ガードは全許可（null）を返す契約である。
+            given(folderAccessGuard.resolveVisibleFileLevels(folder, USER_ID)).willReturn(null);
             SharedFolderEntity sub = SharedFolderEntity.builder()
                     .id(101L).scopeType(FileScopeType.PERSONAL).userId(USER_ID)
                     .parentId(FOLDER_ID).name("サブ").createdBy(USER_ID).build();
@@ -261,6 +271,8 @@ class SharedFolderQueryServiceTest {
         @DisplayName("AC-3: ファイルの versionCount は entity.currentVersion を反映する")
         void AC3_versionCount() {
             SharedFolderEntity folder = personalFolder(USER_ID);
+            // PERSONAL は所有者本人に束縛されるため、ガードは全許可（null）を返す契約である。
+            given(folderAccessGuard.resolveVisibleFileLevels(folder, USER_ID)).willReturn(null);
             SharedFileEntity file = SharedFileEntity.builder()
                     .id(201L).folderId(FOLDER_ID).name("doc.xlsx").fileKey("k").fileSize(20L)
                     .contentType("application/vnd.ms-excel").createdBy(USER_ID).currentVersion(4).build();
