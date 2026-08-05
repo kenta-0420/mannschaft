@@ -299,4 +299,239 @@ describe('SlotMatrixPicker.vue', () => {
     // 「Waiting」セルが実際に出現したことで判定する。
     expect(wrapper.text()).toContain('Waiting')
   })
+
+  // === AC-9〜AC-12: ドラッグ複数選択（機能H） ===
+  //
+  // ポインタ移動/離しの購読は window 上のため、必ず「セル要素から bubbles:true で
+  // dispatch」して window へ伝播させる（window に直接 dispatch すると event.target が
+  // window になり、実ブラウザでの挙動（target=カーソル直下の要素）と食い違う）。
+  // jsdom には PointerEvent が無いため MouseEvent で代替する（pointerType は undefined
+  // ＝タッチではない扱いになり、マウスドラッグと同じ経路を通る）。
+  function dispatchPointer(el: Element, type: string, init: MouseEventInit = {}) {
+    el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }))
+  }
+
+  /** ヘッダ列インデックスからセル要素を引く（data-header-index は実装の座標解決にも使う属性）。 */
+  function cellAt(root: Element, rowIndex: number, headerIndex: number): HTMLElement {
+    const el = root.querySelector<HTMLElement>(
+      `[data-row-index="${rowIndex}"][data-header-index="${headerIndex}"]`,
+    )
+    if (!el) throw new Error(`セルが見つからない: row=${rowIndex} header=${headerIndex}`)
+    return el
+  }
+
+  /** 30分の AVAILABLE セルが3枚連続する行（10:00/10:30/11:00）。 */
+  function consecutiveGridResponse() {
+    return {
+      data: {
+        axis: 'LINE',
+        meta: null,
+        days: [
+          {
+            date: tomorrow,
+            columns: [
+              {
+                lineId: 1,
+                lineName: 'Seat1',
+                lineIds: [],
+                cells: [
+                  { slotId: 901, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+                  { slotId: 902, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+                  { slotId: 903, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }
+  }
+
+  it('AC-9: 連続 AVAILABLE をドラッグして離すと、一括予約プレビュー（GroupBookingDialog）へ入る', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(consecutiveGridResponse())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+      // pointermove/pointerup は window で購読するため、実 DOM に接続しないと伝播しない
+      // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
+      attachTo: document.body,
+    })
+    await flush()
+
+    const root = wrapper.element as Element
+    const start = cellAt(root, 0, 0)
+    const end = cellAt(root, 0, 2)
+
+    dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
+    // しきい値(8px)を超えて 11:00 のセルまで移動
+    dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
+    await flush()
+
+    // ドラッグ中は選択範囲が視覚的に追従する（3枚ともハイライト）
+    expect(cellAt(root, 0, 0).className).toContain('ring-primary')
+    expect(cellAt(root, 0, 1).className).toContain('ring-primary')
+    expect(cellAt(root, 0, 2).className).toContain('ring-primary')
+
+    dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
+    await flush()
+
+    // メニュー選択ステップを飛ばして「連続枠プレビュー」に入る（＝確定ボタンが出る）
+    expect(findByTestId('group-confirm'), '一括予約の確定ボタンが出ること').not.toBeNull()
+    expect(findByTestId('group-no-menu'), 'ドラッグ経路ではメニュー選択ステップを挟まない').toBeNull()
+    // 3枠ぶんが選択されている
+    expect(document.body.textContent).toContain('10:00 - 11:30')
+    wrapper.unmount()
+  })
+
+  it('AC-10: BOOKED をまたぐドラッグは、その手前で打ち切られる', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        axis: 'LINE',
+        meta: null,
+        days: [
+          {
+            date: tomorrow,
+            columns: [
+              {
+                lineId: 1,
+                lineName: 'Seat1',
+                lineIds: [],
+                cells: [
+                  { slotId: 901, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+                  { slotId: 902, startTime: '10:30', endTime: '11:00', state: 'BOOKED' },
+                  { slotId: 903, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+      // pointermove/pointerup は window で購読するため、実 DOM に接続しないと伝播しない
+      // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
+      attachTo: document.body,
+    })
+    await flush()
+
+    const root = wrapper.element as Element
+    const start = cellAt(root, 0, 0)
+    const end = cellAt(root, 0, 2)
+
+    dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
+    dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
+    await flush()
+
+    // BOOKED の手前（10:00 のみ）で打ち切られ、その先はハイライトされない
+    expect(cellAt(root, 0, 0).className).toContain('ring-primary')
+    expect(cellAt(root, 0, 1).className).not.toContain('ring-primary')
+    expect(cellAt(root, 0, 2).className).not.toContain('ring-primary')
+
+    dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
+    await flush()
+
+    // 選択は1枠のみ＝従来どおりメニュー選択ステップから始まる（一括予約にはならない）
+    expect(findByTestId('group-no-menu')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('AC-11: ESC でドラッグ選択を取り消せる（予約導線に入らない）', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(consecutiveGridResponse())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+      // pointermove/pointerup は window で購読するため、実 DOM に接続しないと伝播しない
+      // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
+      attachTo: document.body,
+    })
+    await flush()
+
+    const root = wrapper.element as Element
+    const start = cellAt(root, 0, 0)
+    const end = cellAt(root, 0, 2)
+
+    dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
+    dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
+    await flush()
+    expect(cellAt(root, 0, 2).className).toContain('ring-primary')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flush()
+
+    // ハイライトが消え、離してもダイアログは開かない
+    expect(cellAt(root, 0, 0).className).not.toContain('ring-primary')
+    dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
+    await flush()
+    expect(findByTestId('group-confirm')).toBeNull()
+    expect(findByTestId('group-no-menu')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('AC-12: しきい値未満の pointerdown→pointerup は従来どおりの単発クリック挙動のまま', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(consecutiveGridResponse())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+      // pointermove/pointerup は window で購読するため、実 DOM に接続しないと伝播しない
+      // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
+      attachTo: document.body,
+    })
+    await flush()
+
+    const root = wrapper.element as Element
+    const start = cellAt(root, 0, 0)
+
+    // 3px しか動かない＝ドラッグ扱いにしない
+    dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
+    dispatchPointer(start, 'pointermove', { clientX: 103, clientY: 100 })
+    dispatchPointer(start, 'pointerup', { clientX: 103, clientY: 100 })
+    await flush()
+    // ドラッグ確定していないのでこの時点ではダイアログは開かない
+    expect(findByTestId('group-confirm')).toBeNull()
+
+    // 続けて発火する click が従来どおりメニュー選択ダイアログを開く
+    await wrapper.findAll('button').find(b => b.attributes('data-header-index') === '0')!.trigger('click')
+    await flush()
+    expect(findByTestId('group-no-menu'), '単発クリックの既存挙動が壊れていないこと').not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('AC-13: タッチ（pointerType=touch）ではドラッグ選択を開始しない（縦横パンを優先する）', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(consecutiveGridResponse())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+      // pointermove/pointerup は window で購読するため、実 DOM に接続しないと伝播しない
+      // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
+      attachTo: document.body,
+    })
+    await flush()
+
+    const root = wrapper.element as Element
+    const start = cellAt(root, 0, 0)
+    const end = cellAt(root, 0, 2)
+
+    // pointerType='touch' を明示した pointerdown
+    const down = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: 100, clientY: 100 })
+    Object.defineProperty(down, 'pointerType', { value: 'touch' })
+    start.dispatchEvent(down)
+    dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
+    await flush()
+
+    // 選択ハイライトが一切出ない＝スクロール（パン）を邪魔しない
+    expect(cellAt(root, 0, 0).className).not.toContain('ring-primary')
+    expect(cellAt(root, 0, 2).className).not.toContain('ring-primary')
+
+    dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
+    await flush()
+    expect(findByTestId('group-confirm')).toBeNull()
+    wrapper.unmount()
+  })
 })

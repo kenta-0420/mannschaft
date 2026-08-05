@@ -41,7 +41,7 @@ function findByTestId<T extends Element = HTMLElement>(testId: string): T | null
 
 function buildExport(overrides: Partial<DisclosureExport> = {}): DisclosureExport {
   return {
-    id: 1001,
+    exportId: 1001,
     scopeId: '7',
     draftId: 42,
     templateCodeSnapshot: 'mlit-standard',
@@ -140,7 +140,7 @@ describe('ExtendExpiryDialog.vue', () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
         organizationId: '7',
-        export: buildExport({ id: 1001, expiresAt: '2026-08-01T00:00:00' }),
+        export: buildExport({ exportId: 1001, expiresAt: '2026-08-01T00:00:00' }),
         open: true,
       },
     })
@@ -183,7 +183,7 @@ describe('ExtendExpiryDialog.vue', () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
         organizationId: '7',
-        export: buildExport({ id: 1001, expiresAt: '2026-08-01T00:00:00' }),
+        export: buildExport({ exportId: 1001, expiresAt: '2026-08-01T00:00:00' }),
         open: true,
       },
     })

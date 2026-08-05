@@ -92,9 +92,9 @@ public class VillageMatchRecruitService {
      * 練習試合・審判募集を作成する。村人なら誰でも投稿可。
      *
      * <ul>
-     *   <li>非村人は {@link VillageErrorCode#NOT_MEMBER}</li>
+     *   <li>非村人・BAN 中・退村済みはいずれも {@link VillageErrorCode#NOT_MEMBER} に畳んで返す
+     *       （状態を秘匿するため区別しない）</li>
      *   <li>match_time_end < match_time_start は {@link VillageErrorCode#MATCH_RECRUIT_TIME_INVALID}</li>
-     *   <li>BAN 中ユーザーは {@link VillageErrorCode#MEMBER_BANNED}</li>
      * </ul>
      */
     @Transactional
@@ -144,7 +144,7 @@ public class VillageMatchRecruitService {
                                               Long actorUserId) {
         loadActiveVillage(villageId);
         VillageMatchRecruitEntity entity = loadRecruitForVillage(villageId, recruitId);
-        ensureAuthor(entity, actorUserId);
+        ensureAuthor(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMatchRecruitStatus.OPEN) {
             throw new BusinessException(VillageErrorCode.MATCH_RECRUIT_NOT_OPEN);
@@ -234,8 +234,10 @@ public class VillageMatchRecruitService {
                                                  LocalDate matchDateFrom,
                                                  LocalDate matchDateTo,
                                                  int page,
-                                                 int size) {
+                                                 int size,
+                                                 Long actorUserId) {
         loadActiveVillage(villageId);
+        ensureVillager(villageId, actorUserId);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<VillageMatchRecruitEntity> p;
@@ -282,7 +284,8 @@ public class VillageMatchRecruitService {
      * 募集に応募する。
      *
      * <ul>
-     *   <li>非村人は {@link VillageErrorCode#NOT_MEMBER}</li>
+     *   <li>非村人・BAN 中・退村済みはいずれも {@link VillageErrorCode#NOT_MEMBER} に畳んで返す
+     *       （状態を秘匿するため区別しない）</li>
      *   <li>OPEN 以外の募集は {@link VillageErrorCode#MATCH_RECRUIT_NOT_OPEN}</li>
      *   <li>同一ユーザーで PENDING の応募がある場合は {@link VillageErrorCode#MATCH_APPLICATION_DUPLICATE}</li>
      *   <li>投稿者本人が自分の募集に応募するのは禁止（{@link CommonErrorCode#COMMON_002}）</li>
@@ -485,25 +488,36 @@ public class VillageMatchRecruitService {
         return a;
     }
 
-    /** 当該ユーザーが村人（USER 主体・BAN なし）であることを検証する。 */
+    /**
+     * 当該ユーザーが村の現役メンバー（USER 主体）であることを検証する。
+     *
+     * <p>BAN・退村・そもそも村人でないの三者はいずれも {@link VillageErrorCode#NOT_MEMBER} に
+     * 畳んで返す。BAN 事実は API 応答からは判別できない（本人への告知は UI 側の別導線で行う）。</p>
+     */
     private VillageMembershipEntity ensureVillager(UUID villageId, Long userId) {
         if (userId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(villageId, VillageSubjectType.USER, userId)
+        return membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, userId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
-        if (m.getBannedAt() != null) {
-            throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-        }
-        return m;
     }
 
-    /** 投稿者本人であることを検証する（更新時用）。 */
-    private void ensureAuthor(VillageMatchRecruitEntity entity, Long actorUserId) {
+    /**
+     * 投稿者本人であることを検証する（更新時用）。
+     *
+     * <p><strong>現役性の検査を含む（#2284 §12 と同型）</strong>: {@code findActiveByVillageIdAndSubject}
+     * 述語で「その村の現役メンバーであること」を確認したうえで投稿者本人かを判定する。
+     * 退村済み・BAN 済みの利用者は現役判定の段階で拒否される。判定の順序と述語は
+     * {@link #ensureRecruitReviewer} と揃えてあり、村内の更新系は一様にこの流儀に従う。</p>
+     */
+    private void ensureAuthor(UUID villageId, VillageMatchRecruitEntity entity, Long actorUserId) {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         if (!entity.getPostedByUserId().equals(actorUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }

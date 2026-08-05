@@ -516,8 +516,53 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 認可自体は Service 層で実施されており（PERSONAL スコープの actorId 照合、契約テスト
      * {@code TodoStatusLabelScopeContractIT} で他人アクセスの拒否も確認済み）、違反隠蔽ではなく
      * 実態にストアを合わせる是正。</p>
+     *
+     * <p>認可漏れ(IDOR)全域監査戦役・第3波「村」ロットA（2026-08-04）: 504 → 467（37 行削除）。
+     * 本ロットの基点は分岐時点の 509 であり単独では 509 − 37 = 472 だが、上記 #2531 の棚卸し（5 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。両者が削除する行は
+     * <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。したがって 504 − 37 = 467。
+     * 対象は {@code VillageMatchRecruitController}（11 EP）/ {@code VillageMeetupController}
+     * （在庫 10 EP。出欠・コメント・宿題系は別ロット担当のため対象外）/
+     * {@code VillageJoinRequestController}（6 EP）/ {@code VillageRecruitCategoryController}
+     * （5 EP）/ {@code VillageMembershipController}（5 EP）。全 37 EP は Service 層で
+     * {@code findActiveByVillageIdAndSubject} を根拠に認可判定済みであることを確認し、
+     * {@code @AuthorizedInService} を付与（{@code VillageJoinRequestController#listMine} のみ
+     * IDOR 閉塞（他人の識別子を受け取らない構造）を理由に {@code @SelfScopedEndpoint} を付与）。
+     * 監査の結果、2 箇所で認可条件を村内の標準の流儀へ揃えた:</p>
+     * <ul>
+     *   <li>{@code VillageMatchRecruitController#list}: 一覧も詳細取得（{@code get}）と同じく
+     *       村人限定とする。{@code VillageMatchRecruitService#listRecruits} に
+     *       {@code ensureVillager} を敷設し、兄弟メソッドと判定基準を一致させた。</li>
+     *   <li>{@code VillageMatchRecruitController#update} / {@code VillageMeetupController} の
+     *       update・cancel・confirm・candidate-dates 系: 投稿者/幹事の本人判定に、状態遷移系
+     *       （{@code ensureRecruitReviewer}）と同一の現役性述語
+     *       {@code findActiveByVillageIdAndSubject} を先行させ、更新系と状態遷移系の判定を
+     *       同一基準に揃えた（#2284 §12 と同型）。{@code ensureAuthor} / {@code requireOrganizer}
+     *       の双方に適用。</li>
+     * </ul>
+     *
+     * <p>467 → 434（2026-08-04 / 第3波「村」ロットB）: 村ドメインの 33 エンドポイントを全数監査し、
+     * 主張の内容ごとにマーカーを付与して返済した。内訳は
+     * {@code VillagePin} 4 / {@code VillageNewsletter} 4 / {@code VillageReport} 3 /
+     * {@code VillagePilgrimage} 3 / {@code VillageLobby} 3 / {@code VillageCreationRequest} 3 /
+     * {@code VillageCalendar} 3 / {@code VillageRepresentative} 2 / {@code VillageNickname} 2 /
+     * {@code VillageSerendipity} 1 / {@code VillageSearch} 1 / {@code VillageLobbyPresence} 1 /
+     * {@code VillageFeed} 1 / {@code VillageController} 1 / {@code PostingIdentity} 1。</p>
+     * <ul>
+     *   <li>認可を新設した 3 EP —
+     *       {@code VillageNewsletterController.getSettings}（掲示板と同一の閲覧認可へ委譲）/
+     *       {@code listSendLogs}（現役 HEADMAN・ELDER のみ）/
+     *       {@code VillageFeedController.feed}（村内コンテンツを現役の村人である村に限定）</li>
+     *   <li>残りは Service 層に実効的な認可が実在すること、または検索条件が認証主体に
+     *       束縛され他人のデータへ到達し得ないことを追跡して確認済み。契約テストは
+     *       {@code VillageLotBScopeContractIT} / {@code VillageSelfScopeContractIT} に張っている。</li>
+     * </ul>
+     * <p>本ロットの基点は分岐時点の 504 であり単独では 504 − 33 = 471 だが、上記ロットA（37 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。ロットA が削除する 37 行と
+     * 本ロットが削除する 33 行は <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。
+     * したがって 467 − 33 = 434。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 504;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 434;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

@@ -3,6 +3,7 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageCreateRequest;
 import com.mannschaft.app.village.dto.VillageResponse;
@@ -106,6 +107,15 @@ public class VillageController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 村を検索する。
+     *
+     * <p>可視性の絞り込みは {@link VillageService#search} 内で行い、
+     * {@code VillageSearchSpecifications.searchable()} が結果を可視性 PUBLIC かつ
+     * 未削除・未凍結の村に限定する。UNLISTED / 削除・凍結済みの村は結果に現れず、
+     * 村内のコンテンツも返さない（返すのは公開プロフィール相当の要約のみ）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/search")
     @Operation(summary = "村検索（PUBLIC のみ）")
     public ResponseEntity<VillageSearchResponse> search(

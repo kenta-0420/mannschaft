@@ -2,6 +2,8 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.PilgrimageRecommendationResponse;
 import com.mannschaft.app.village.service.VillagePilgrimageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +51,9 @@ public class VillagePilgrimageController {
     /**
      * 今日の巡礼推薦を取得する。バッチ未実行 / 対象村なしの場合は {@code data: null}。
      */
+    @SelfScopedEndpoint("検索条件が (SecurityUtils.getCurrentUserId(), 当日) のみで、"
+            + "リクエストは他ユーザーの識別子も推薦 ID も受け取らない"
+            + "（VillagePilgrimageService#getTodaysRecommendation の findByUserIdAndRecommendedDate）")
     @GetMapping("/today")
     @Operation(summary = "今日の巡礼推薦を取得する（無ければ data: null）")
     public ResponseEntity<ApiResponse<PilgrimageRecommendationResponse>> getToday() {
@@ -59,7 +64,12 @@ public class VillagePilgrimageController {
 
     /**
      * 巡礼推薦を訪問したことを記録する。既に訪問済みなら冪等 no-op。
+     *
+     * <p>認可は {@link VillagePilgrimageService#recordVisit} 内で実施する。推薦エンティティを
+     * 先に取得し、その {@code userId} が認証主体と一致しない場合は
+     * {@code PILGRIMAGE_NOT_FOUND}（404）で存在を秘匿する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/{recommendationId}/visit")
     @Operation(summary = "巡礼推薦の訪問を記録する（冪等）")
     public ApiResponse<PilgrimageRecommendationResponse> recordVisit(
@@ -71,6 +81,9 @@ public class VillagePilgrimageController {
     /**
      * 自分の巡礼履歴を取得する（推薦日降順）。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、"
+            + "リクエストはページング指定しか受け取らない"
+            + "（VillagePilgrimageService#listMyHistory の findByUserIdOrderByRecommendedDateDesc）")
     @GetMapping("/history")
     @Operation(summary = "自分の巡礼履歴を取得する（推薦日降順）")
     public ApiResponse<List<PilgrimageRecommendationResponse>> history(

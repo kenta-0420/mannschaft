@@ -21,6 +21,7 @@ import {
   computeStartableIndices,
   isPastCell,
   mondayOffsetDays,
+  resolveDragSelection,
   unavailableReasonOfSlot,
   type MatrixCellInput,
   type RowSlot,
@@ -41,6 +42,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
   manageLines: []
+  /**
+   * 「予約対象はあるが表示中の週に枠が1件も無い」空状態の管理者CTA。
+   * 予約対象ゼロ（manageLines）と違い、次の一手は**枠の作成**なので週間スケジュール管理へ誘導する。
+   */
+  manageSlots: []
   /** グループ/単枠 予約確定成功。親（TeamReservationsPanel）が一覧等を再読込する。 */
   reserved: []
   /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
@@ -96,6 +102,16 @@ const menuFilterOptions = computed(() => [
 ])
 
 const hasLines = computed(() => lines.value.length > 0)
+
+/**
+ * 表示中の週に枠が1件でもあるか。
+ *
+ * 「予約対象が無い」（`hasLines === false`）とは**別物**で、こちらは「予約対象はあるが、その週に
+ * 枠が1件も無い」の判定に使う。旧表示 SlotPicker には両方の空状態があったが、マトリックスには
+ * 枠ゼロ側が実装されておらず、既定がマトリックスになった時点で到達不能になっていた
+ * （PR #2574 の旧表示撤去で恒久化）。ここで復活させる。
+ */
+const hasSlots = computed(() => allCells.value.length > 0)
 
 function columnLabel(col: GridColumnDto): string {
   return col.lineId == null ? t('reservation.grid.column.common') : (col.lineName ?? '')
@@ -323,7 +339,189 @@ function cellAriaLabel(row: MatrixRowVM, headerIndex: number): string {
   return hint ? `${base}: ${hint}` : base
 }
 
+// === ドラッグ複数選択（機能H）===
+//
+// 同一行内で連続する AVAILABLE な30分セルを pointerdown→pointermove→pointerup でまとめて選び、
+// 離した時点で既存の GroupBookingDialog（連続枠の一括予約）へ渡す。
+//
+// 【長尺枠（span>1）の解き方】
+//   ドラッグ先のマスは「可視セルの通し番号」ではなく DOM の data-header-index（＝ヘッダ列
+//   インデックス）から取る。長尺枠は grid-column: span N で複数列を1要素で覆うため、通し番号で
+//   数えると跨ぎ枠の先で列がずれる。範囲解決の純関数 resolveDragSelection はヘッダ列基準で
+//   走査し、長尺枠（および covered 列）を「連続の切れ目」として打ち切る。
+//
+// 【座標→セル特定】
+//   document.elementFromPoint（ビューポート座標）で拾うため、コンテナのスクロール量や
+//   sticky ヘッダーのオフセットを自前計算する必要がない。sticky ヘッダー/行見出しが
+//   ポインタ下に来た場合は data-header-index を持つ祖先が無い（or 行が違う）ので、
+//   直前の有効なフォーカスを保持する＝ヘッダーの下を通っても選択が壊れない。
+//
+// 【タッチ端末での衝突回避】
+//   タッチはマトリックスの縦横パン（スクロール）に使う。ドラッグ選択を触ると衝突するため、
+//   pointerType が 'mouse'/'pen' のときだけドラッグ選択を有効にし、タッチでは touch-action を
+//   一切変更しない（＝スクロールは完全に従来どおり）。タッチ利用者の複数枠予約は、単発タップで
+//   開く GroupBookingDialog の「＋30分延長」で従来どおり行える。
+/** ドラッグ開始と判定する移動距離のしきい値（px）。これ未満で離せば単発クリック扱い。 */
+const DRAG_THRESHOLD_PX = 8
+
+interface DragAnchor { rowIndex: number; headerIndex: number; clientX: number; clientY: number }
+const dragAnchor = ref<DragAnchor | null>(null)
+const dragFocusIndex = ref<number | null>(null)
+/** しきい値を超えて実際にドラッグ中か（未超過なら単発クリックとして扱う）。 */
+const isDragging = ref(false)
+/** ドラッグ確定直後に発火する click を単発クリックとして処理しないための抑止フラグ。 */
+let suppressNextClick = false
+
+/** 現在のドラッグで選択中のヘッダ列インデックス（アンカー行のみ）。 */
+const dragSelectedIndices = computed<number[]>(() => {
+  const anchor = dragAnchor.value
+  if (!anchor || !isDragging.value) return []
+  const row = matrixRows.value[anchor.rowIndex]
+  if (!row) return []
+  return resolveDragSelection(
+    row.aligned,
+    anchor.headerIndex,
+    dragFocusIndex.value ?? anchor.headerIndex,
+    i => !isPastCell(row.date, cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
+  )
+})
+
+function cellStartTimeAt(row: MatrixRowVM, headerIndex: number): string | undefined {
+  const slot = row.aligned[headerIndex]
+  return slot && slot.kind === 'cell' ? slot.cell.startTime : undefined
+}
+
+/** そのマスがドラッグ選択のハイライト対象か（テンプレートの :class 用）。 */
+function isDragSelected(rowIndex: number, headerIndex: number): boolean {
+  if (dragAnchor.value?.rowIndex !== rowIndex) return false
+  return dragSelectedIndices.value.includes(headerIndex)
+}
+
+function clearDrag() {
+  dragAnchor.value = null
+  dragFocusIndex.value = null
+  isDragging.value = false
+  if (import.meta.client) {
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('pointercancel', onDragCancel)
+    window.removeEventListener('keydown', onDragKeydown)
+  }
+}
+
+/** ESC でドラッグ選択を取り消す。 */
+function onDragKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  // 取り消した直後の pointerup で予約導線へ入らないよう、click も併せて抑止する。
+  suppressNextClick = isDragging.value
+  clearDrag()
+}
+
+function onDragCancel() {
+  clearDrag()
+}
+
+function onCellPointerDown(rowIndex: number, row: MatrixRowVM, headerIndex: number, event: PointerEvent) {
+  // タッチはパン（スクロール）専用。マウス/ペンの主ボタンのみドラッグ選択を開始する。
+  if (event.pointerType === 'touch') return
+  if (event.button !== 0) return
+  const slot = row.aligned[headerIndex]
+  if (!slot || slot.kind !== 'cell') return
+  // ドラッグで一括予約できるのは span=1 の AVAILABLE セルのみ（長尺枠・満席は単発クリックの担当）。
+  if (slot.span !== 1 || slot.cell.state !== 'AVAILABLE') return
+  if (isCellDisabled(row, headerIndex)) return
+
+  dragAnchor.value = { rowIndex, headerIndex, clientX: event.clientX, clientY: event.clientY }
+  dragFocusIndex.value = headerIndex
+  isDragging.value = false
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onDragCancel)
+  window.addEventListener('keydown', onDragKeydown)
+}
+
+/**
+ * ポインタ直下のマスから、同一行の「ヘッダ列インデックス」を解決する。
+ *
+ * ポインタキャプチャを使っていないため、マウスドラッグ中の `event.target` は常に
+ * 「カーソル直下の最前面要素」＝拾いたいマスそのものになる。これを一次情報にし、
+ * target が要素でない等の例外時のみ座標から `elementFromPoint` で引き直す
+ * （ビューポート座標のため、コンテナのスクロール量や sticky ヘッダーのオフセットを
+ * 自前計算する必要がない）。
+ */
+function headerIndexFromEvent(event: PointerEvent, rowIndex: number): number | null {
+  const fromTarget = event.target instanceof Element ? event.target : null
+  const el = fromTarget ?? document.elementFromPoint(event.clientX, event.clientY)
+  const cell = el instanceof Element ? el.closest('[data-header-index]') : null
+  if (!(cell instanceof HTMLElement)) return null
+  if (Number(cell.dataset.rowIndex) !== rowIndex) return null
+  const index = Number(cell.dataset.headerIndex)
+  return Number.isInteger(index) ? index : null
+}
+
+function onPointerMove(event: PointerEvent) {
+  const anchor = dragAnchor.value
+  if (!anchor) return
+  if (!isDragging.value) {
+    const dx = event.clientX - anchor.clientX
+    const dy = event.clientY - anchor.clientY
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
+    isDragging.value = true
+  }
+  // ドラッグ中のテキスト選択を防ぐ（選択範囲が青く反転して見た目が壊れるため）。
+  event.preventDefault()
+  const index = headerIndexFromEvent(event, anchor.rowIndex)
+  // 解決できない位置（sticky ヘッダーの下・別行・グリッド外）では直前のフォーカスを保持する。
+  if (index != null) dragFocusIndex.value = index
+}
+
+function onPointerUp() {
+  const anchor = dragAnchor.value
+  const indices = dragSelectedIndices.value
+  const wasDragging = isDragging.value
+  if (!anchor || !wasDragging) {
+    // しきい値未満＝単発クリック。既存の @click（onCellClick）にそのまま任せる。
+    clearDrag()
+    return
+  }
+  const row = matrixRows.value[anchor.rowIndex]
+  clearDrag()
+  // ドラッグ確定時は直後の click を食わせない（単発クリックの導線と二重に走らせない）。
+  suppressNextClick = true
+  if (!row || indices.length === 0) return
+
+  const startIndex = indices[0]!
+  if (indices.length === 1) {
+    // 実質単発。メニューフィルター等の既存挙動をそのまま使う。
+    openGroupDialog(row, startIndex, null)
+    return
+  }
+  openGroupDialog(row, startIndex, indices.length)
+}
+
+/** GroupBookingDialog を開く（単発クリックとドラッグ確定の共通経路）。 */
+function openGroupDialog(row: MatrixRowVM, startIndex: number, dragCellCount: number | null) {
+  dialogContext.value = {
+    date: row.date,
+    columnLineId: row.column.lineId ?? null,
+    columnLineName: row.column.lineName ?? null,
+    rowSlots: row.aligned,
+    startIndex,
+    header: header.value,
+    preselectedMenuId: filterMenuId.value,
+    preselectedRequiredCellCount: requiredCellCount.value,
+    dragCellCount,
+  }
+  dialogVisible.value = true
+}
+
+onBeforeUnmount(() => clearDrag())
+
 function onCellClick(row: MatrixRowVM, headerIndex: number) {
+  if (suppressNextClick) {
+    suppressNextClick = false
+    return
+  }
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return
   if (isCellDisabled(row, headerIndex)) return
@@ -359,17 +557,7 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
     return
   }
 
-  dialogContext.value = {
-    date: row.date,
-    columnLineId: row.column.lineId ?? null,
-    columnLineName: row.column.lineName ?? null,
-    rowSlots: row.aligned,
-    startIndex: headerIndex,
-    header: header.value,
-    preselectedMenuId: filterMenuId.value,
-    preselectedRequiredCellCount: requiredCellCount.value,
-  }
-  dialogVisible.value = true
+  openGroupDialog(row, headerIndex, null)
 }
 
 function onDialogReserved() {
@@ -509,10 +697,36 @@ defineExpose({
       {{ errorMsg }}
     </Message>
 
+    <!-- 予約対象はあるが表示中の週の枠がゼロ: 枠作成導線（管理者のみCTA）。
+         上の「予約対象ゼロ」（*_no_lines）とは別物なので取り違えないこと。 -->
+    <DashboardEmptyState
+      v-else-if="!hasSlots"
+      icon="pi pi-calendar-times"
+      data-testid="matrix-no-slots-empty"
+      :message="isAdmin ? t('reservation.empty.book.admin_no_slots') : t('reservation.empty.book.member_no_slots')"
+      :sub-message="isAdmin ? t('reservation.empty.book.admin_no_slots_hint') : t('reservation.empty.book.member_no_slots_hint')"
+    >
+      <template v-if="isAdmin" #action>
+        <Button
+          :label="t('reservation.button.manage_slots')"
+          icon="pi pi-cog"
+          size="small"
+          @click="emit('manageSlots')"
+        />
+      </template>
+    </DashboardEmptyState>
+
     <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
          縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->
     <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
-      <div class="inline-grid min-w-full gap-1" :style="gridStyle(header.length)">
+      <!-- ドラッグ中のみテキスト選択を殺す（常時 select-none にはしない＝通常時のコピーを妨げない）。
+           touch-action は一切いじらない: タッチはマトリックスの縦横パン専用で、ドラッグ選択は
+           マウス/ペンのみ（onCellPointerDown で pointerType を判定）。 -->
+      <div
+        class="inline-grid min-w-full gap-1"
+        :class="isDragging ? 'select-none' : ''"
+        :style="gridStyle(header.length)"
+      >
         <!-- ヘッダー行: 左上コーナー（両軸 sticky・最前面）+ 時間見出し（sticky top） -->
         <div class="sticky left-0 top-0 z-20 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
           {{ t('reservation.matrix.date_line_header', { resourceName }) }}
@@ -537,10 +751,13 @@ defineExpose({
               type="button"
               class="rounded-md border p-2 text-center text-[11px] transition-all"
               :style="slot.kind === 'cell' && slot.span > 1 ? `grid-column: span ${slot.span};` : undefined"
-              :class="cellStateClass(row, ci)"
+              :class="[cellStateClass(row, ci), isDragSelected(ri, ci) ? 'border-primary bg-primary/20 ring-2 ring-primary' : '']"
               :disabled="isCellDisabled(row, ci)"
               :aria-label="cellAriaLabel(row, ci)"
+              :data-row-index="ri"
+              :data-header-index="ci"
               :title="unavailableReasonOf(row, ci) ?? (row.startable && slot.kind === 'cell' && slot.span === 1 && !row.startable.has(ci) && slot.cell.state === 'AVAILABLE' ? t('reservation.matrix.cannot_start_here', { menu: menuFilterOptions.find(o => o.value === filterMenuId)?.label ?? '' }) : undefined)"
+              @pointerdown="onCellPointerDown(ri, row, ci, $event)"
               @click="onCellClick(row, ci)"
             >
               {{ cellLabel(row, ci) }}

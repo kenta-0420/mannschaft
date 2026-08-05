@@ -42,6 +42,7 @@ import {
   toHm,
   isValidHalfHourRange,
 } from '~/composables/useReservationDayOptions'
+import { collectOccupiedCells, type SlotDragRange } from '~/composables/useSlotDragSelection'
 
 type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
@@ -330,6 +331,59 @@ async function save() {
   finally {
     saving.value = false
   }
+}
+
+// === 週グリッドのドラッグ範囲選択（管理者の枠作成の手数削減）===
+//
+// ダイアログのフォーム（曜日トグル＋開始/終了 Select＋定員）は残したまま（AC5・キーボード操作と
+// ドラッグが使えない場面のため）、グリッドを主導線として併設する。
+// ドラッグで曜日・開始/終了時刻は確定済みなので、確認では**定員だけ**を聞く（再入力させない）。
+
+/** グリッド上で既に埋まっているセル。枠テンプレと定期予約不可の両方を「埋まっている」とみなす。 */
+const occupiedCells = computed(() =>
+  collectOccupiedCells([...templates.value, ...recurringRules.value]),
+)
+
+const showDragConfirm = ref(false)
+const dragRange = ref<SlotDragRange | null>(null)
+const dragCapacity = ref(1)
+
+/** 確認ダイアログに出す確定済みの範囲（曜日ラベル＋時刻）。 */
+const dragRangeLabel = computed(() => {
+  const range = dragRange.value
+  if (!range) return ''
+  return `${range.days.map(d => dayLabel(d)).join(' / ')} ${range.startTime} - ${range.endTime}`
+})
+
+function onGridSelect(range: SlotDragRange) {
+  dragRange.value = range
+  dragCapacity.value = 1
+  showDragConfirm.value = true
+}
+
+/** 既存枠を含む範囲がなぞられた場合（重複作成の API エラーを踏ませない・AC6）。 */
+function onGridBlocked() {
+  notification.warn(t('reservation.template.title'), t('reservation.template.grid.blocked'))
+}
+
+/**
+ * ドラッグ確定＋定員入力から作成する。既存の `save()`（複数曜日ループ・generation 集約・
+ * 部分失敗処理）をそのまま再利用するため、フォーム状態へ流し込んでから呼ぶ（作成経路を二重化しない）。
+ */
+async function createFromDragRange() {
+  const range = dragRange.value
+  if (!range || range.days.length === 0) return
+  editingTemplate.value = null
+  form.value = {
+    ...defaultForm(),
+    startTime: range.startTime,
+    endTime: range.endTime,
+    capacity: dragCapacity.value,
+  }
+  selectedDays.value = [...range.days]
+  showDragConfirm.value = false
+  dragRange.value = null
+  await save()
 }
 
 async function remove(template: SlotTemplateResponse) {
@@ -677,6 +731,15 @@ defineExpose({
       </span>
     </p>
 
+    <!-- 週グリッド（ドラッグ範囲選択で枠を作成・ADMIN限定）。フォーム導線は下のダイアログに残置。 -->
+    <WeeklySlotDragGrid
+      v-if="isAdmin && !loading && !recurringLoading"
+      class="mb-4"
+      :occupied="occupiedCells"
+      @select="onGridSelect"
+      @blocked="onGridBlocked"
+    />
+
     <!-- 一覧（曜日ごとのグルーピング表示・§3.2/§4.5） -->
     <div v-if="loading || recurringLoading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
     <div v-else-if="hasAnyContent" class="space-y-3">
@@ -810,6 +873,32 @@ defineExpose({
         </div>
       </template>
     </DashboardEmptyState>
+
+    <!-- ドラッグ確定後の最小限確認（定員だけ。曜日・時刻は確定済みなので再入力させない） -->
+    <Dialog
+      v-model:visible="showDragConfirm"
+      :header="t('reservation.template.grid.confirm_title')"
+      :style="{ width: '360px' }"
+      modal
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-sm font-medium" data-testid="drag-range-label">{{ dragRangeLabel }}</p>
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.template.capacity') }}</label>
+          <InputNumber v-model="dragCapacity" :min="1" :max="99" show-buttons class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button :label="t('reservation.button.cancel')" text @click="showDragConfirm = false" />
+        <Button
+          :label="t('reservation.template.grid.create')"
+          icon="pi pi-check"
+          :loading="saving"
+          data-testid="drag-create-confirm"
+          @click="createFromDragRange"
+        />
+      </template>
+    </Dialog>
 
     <!-- 作成・編集ダイアログ -->
     <Dialog

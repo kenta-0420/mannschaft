@@ -290,7 +290,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村のニュースレター設定を取得する */
+        /** 村のニュースレター設定を取得する（掲示板と同一の閲覧認可） */
         get: operations["getSettings"];
         /** 村のニュースレター設定を upsert（HEADMAN / ELDER のみ） */
         put: operations["updateSettings"];
@@ -7207,7 +7207,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 村作成申請を行う */
+        /** 村作成申請を行う（OFFICIAL は SYSTEM_ADMIN のみ） */
         post: operations["create_9"];
         delete?: never;
         options?: never;
@@ -30072,7 +30072,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村内横断検索（投稿・メッセージ・メンバー） */
+        /** 村内横断検索（投稿・メッセージ・メンバー／村人のみ） */
         get: operations["search"];
         put?: never;
         post?: never;
@@ -30089,7 +30089,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定頻度のニュースレター配信履歴を取得する */
+        /** 指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ） */
         get: operations["listSendLogs"];
         put?: never;
         post?: never;
@@ -39837,7 +39837,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ピン留め村の最新動きをダッシュボード向けに集約取得 */
+        /** ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ） */
         get: operations["feed"];
         put?: never;
         post?: never;
@@ -55833,11 +55833,6 @@ export interface components {
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
         };
-        RecurrenceDto: {
-            /** Format: int64 */
-            parentSlotId?: number;
-            recurrenceRule?: string;
-        };
         ReservationSlotResponse: {
             audit?: components["schemas"]["SlotAuditDto"];
             basic?: components["schemas"]["SlotBasicDto"];
@@ -55848,7 +55843,6 @@ export interface components {
             lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
-            recurrence?: components["schemas"]["RecurrenceDto"];
             /** Format: int64 */
             staffUserId?: number;
             status?: components["schemas"]["SlotStatusDto"];
@@ -55886,7 +55880,6 @@ export interface components {
             /** Format: int32 */
             capacity?: number;
             closedReason?: string;
-            isException?: boolean;
             note?: string;
             slotStatus?: string;
         };

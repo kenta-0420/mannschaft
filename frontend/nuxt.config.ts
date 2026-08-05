@@ -93,7 +93,16 @@ export default defineNuxtConfig({
   },
 
   devServer: {
-    host: '0.0.0.0',
+    // 【根治】'0.0.0.0' は IPv4 のみの bind のため [::]:3000（IPv6 側）が空き、
+    // そこを dev サーバー由来の WebSocket が掴んでしまう。Windows の名前解決は
+    // localhost → ::1 を優先するため、この状態で http://localhost:3000 を開くと
+    // アプリではなく WS サーバーに当たり、恒久的に 426 Upgrade Required が返っていた
+    // （2026-07-28 に実機で確認）。
+    // '::' はデュアルスタック bind となり、Node/Nuxt が IPv4/IPv6 の両方で 3000 を
+    // 直接持つため、localhost / 127.0.0.1 / [::1] のいずれでも 200 になる
+    // （2026-08-04 実測で確認。HMR ポート分離だけでは [::]:3000 に別の WS サーバーが
+    // 残り根治しなかったため、この host 変更が正しい根治策）。
+    host: '::',
   },
 
   modules: [

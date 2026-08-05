@@ -161,13 +161,20 @@ class FlywayExistingDataReservationSlotLineTemplateMigrationTest {
                 + "FALSE, NOW(), NOW(), " + deletedAt + ")";
     }
 
-    /** V142 適用後スキーマへ、template_id NULL（手動枠）の行を同一セルで INSERT する SQL。 */
+    /**
+     * <b>全マイグレーション適用後</b>のスキーマへ、template_id NULL（手動枠）の行を同一セルで INSERT する SQL。
+     *
+     * <p>この INSERT だけは {@code rest.migrate()}（＝最新版まで適用）の<b>後</b>に実行されるため、
+     * 列一覧は「V142 時点」ではなく<b>最新スキーマ</b>に従う必要がある。
+     * {@code is_exception} は V174 で撤去済みのため指定しない
+     * （上の {@link #insertSlot} は V140.001 時点で実行されるので当時存在した列のままで正しい）。</p>
+     */
     private static String insertManualSlotPostMigration(long id, long teamId) {
         return "INSERT INTO reservation_slots "
                 + "(id, team_id, slot_date, start_time, end_time, booked_count, capacity, slot_status, "
-                + " is_exception, created_at, updated_at) VALUES ("
+                + " created_at, updated_at) VALUES ("
                 + id + ", " + teamId + ", '2026-08-01', '10:00:00', '10:30:00', 0, 1, 'AVAILABLE', "
-                + "FALSE, NOW(), NOW())";
+                + "NOW(), NOW())";
     }
 
     private static boolean columnExists(Connection conn, String table, String column) throws Exception {
