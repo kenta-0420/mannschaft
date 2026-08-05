@@ -159,7 +159,6 @@ async function countSurveyNotifications(
 
 test.describe('WAVE2-ORG-FANOUT: 通知fan-out Wave-2 ORGスコープ実機回帰', () => {
   let adminToken: string
-  let orgId: number
   let orgSlug: string
   let surveyAllTrue: number
   let surveyAllTrueTitle: string
@@ -171,7 +170,6 @@ test.describe('WAVE2-ORG-FANOUT: 通知fan-out Wave-2 ORGスコープ実機回�
     test.skip(!at, 'admin ログイン不可のためスキップ')
     adminToken = at!
     const org = await fetchFcTokyoOrg(request, adminToken)
-    orgId = org.id
     orgSlug = org.slug
 
     // AC-1/2/4/5 用: includeSupporters=true のORG×ALL公開
@@ -185,13 +183,16 @@ test.describe('WAVE2-ORG-FANOUT: 通知fan-out Wave-2 ORGスコープ実機回�
 
   test.afterAll(async ({ request }) => {
     for (const surveyId of [surveyAllTrue, surveyAllFalse]) {
-      if (surveyId && adminToken && orgSlug) {
-        await request
-          .delete(`${BACKEND_URL}/api/v1/organizations/${orgSlug}/surveys/${surveyId}`, {
-            headers: { Authorization: `Bearer ${adminToken}` },
-          })
-          .catch(() => {})
-      }
+      if (!surveyId || !adminToken || !orgSlug) continue
+      // NOTE: afterAllの後片付け失敗はテスト自体の合否に影響させたくないためcatchするが、
+      // 握りつぶさず必ず警告ログを出す（放置されたテストデータの検知手段として残す）。
+      await request
+        .delete(`${BACKEND_URL}/api/v1/organizations/${orgSlug}/surveys/${surveyId}`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        })
+        .catch((err) => {
+          console.warn(`afterAll: サーベイ削除で例外 surveyId=${surveyId}`, err)
+        })
     }
   })
 
