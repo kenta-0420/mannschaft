@@ -6,6 +6,7 @@ import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.service.ChatAttachmentService;
 import com.mannschaft.app.chat.service.ChatChannelService;
+import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -34,6 +35,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +61,8 @@ class ChatUploadControllerTest {
     @MockitoBean private StorageService storageService;
     @MockitoBean private ChatChannelService chatChannelService;
     @MockitoBean private ChatAttachmentService chatAttachmentService;
+    /** 署名 URL 発行の認可入口（投稿権限・添付の閲覧権限）を担うサービス。 */
+    @MockitoBean private ChatMessageService chatMessageService;
 
     // F11.3 / F14.1 共通フィルター・コンテキストの依存補完
     @MockitoBean private AuthTokenService authTokenService;
@@ -147,5 +153,71 @@ class ChatUploadControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("CHAT_001"));
+    }
+
+    @Test
+    @DisplayName("POST presign: 署名 URL を発行する前に、当該チャンネルへの投稿権限を検証する")
+    void presign_投稿権限を検証する() throws Exception {
+        ChatChannelEntity channel = teamChannel();
+        given(chatChannelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+        given(chatAttachmentService.resolveScope(any(ChatChannelEntity.class), anyLong()))
+                .willReturn(new ChatAttachmentService.ScopeResolution(StorageScopeType.TEAM, 50L));
+        given(storageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
+                .willReturn(new PresignedUploadResult(
+                        "https://r2.example/up", "chat/TEAM/50/uuid/photo.jpg", 3600L));
+
+        String body = """
+                {"channelId": 7, "fileName":"photo.jpg", "contentType":"image/jpeg", "fileSize":1024}
+                """;
+        mockMvc.perform(post("/api/v1/chat/files/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+
+        // 認可はリクエストのスコープ申告ではなく、解決済みチャンネル実体に対して当てる。
+        verify(chatMessageService).checkChannelPostAccess(channel, USER_ID);
+    }
+
+    @Test
+    @DisplayName("POST presign 異常系: 投稿権限が無ければ 403 (CHAT_005) で署名 URL を発行しない")
+    void presign_403_投稿権限なし() throws Exception {
+        given(chatChannelService.findChannelOrThrow(CHANNEL_ID)).willReturn(teamChannel());
+        willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                .given(chatMessageService).checkChannelPostAccess(any(ChatChannelEntity.class), anyLong());
+
+        String body = """
+                {"channelId": 7, "fileName":"photo.jpg", "contentType":"image/jpeg", "fileSize":1024}
+                """;
+        mockMvc.perform(post("/api/v1/chat/files/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+
+        verify(storageService, never()).generateUploadUrl(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("GET download-url: 署名 URL を発行する前に、対象オブジェクトの閲覧権限を検証する")
+    void download_閲覧権限を検証する() throws Exception {
+        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+                .willReturn("https://r2.example/dl");
+
+        mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url", "objectkey"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.downloadUrl").value("https://r2.example/dl"));
+
+        verify(chatMessageService).checkAttachmentDownloadAccess("objectkey", USER_ID);
+    }
+
+    @Test
+    @DisplayName("GET download-url 異常系: 閲覧権限が無ければ 403 (CHAT_005) で署名 URL を発行しない")
+    void download_403_閲覧権限なし() throws Exception {
+        willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                .given(chatMessageService).checkAttachmentDownloadAccess(anyString(), anyLong());
+
+        mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url", "objectkey"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+
+        verify(storageService, never()).generateDownloadUrl(anyString(), any(Duration.class));
     }
 }
