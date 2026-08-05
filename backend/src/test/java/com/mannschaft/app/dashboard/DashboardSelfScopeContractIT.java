@@ -79,7 +79,16 @@ class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
             notificationRepository.deleteAll(
                     notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()).getContent());
             folderRepository.deleteAll(folderRepository.findByUserIdOrderBySortOrder(userId));
-            widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId(userId, ScopeType.PERSONAL, 0L);
+            // widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId は @Modifying @Query の
+            // JPQL 一括 DELETE であり、外部トランザクション無しに直接呼ぶと Spring Data の既定
+            // トランザクション属性が読み取り専用のため Hibernate が拒否する
+            // （InvalidDataAccessApiUsageException: Executing an update/delete query）。
+            // findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder → deleteAll(List) の形にすれば、
+            // deleteAll は JpaRepository 標準の CRUD メソッド（SimpleJpaRepository に書込用の
+            // @Transactional が明示されている）のため、外部トランザクション無しでも安全に呼べる。
+            widgetSettingRepository.deleteAll(
+                    widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(
+                            userId, ScopeType.PERSONAL, 0L));
         }
     }
 
