@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 一切検証できない（PR #2614 で全モック化により致命欠陥を検出できなかった前例がある）。
  * よって実 DB（Testcontainers MySQL）上で検証する。</p>
  */
+@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("users.birth_year 埋め戻しバッチ 実DB結合テスト")
 class UserBirthYearBackfillBatchIntegrationTest extends AbstractMySqlIntegrationTest {
