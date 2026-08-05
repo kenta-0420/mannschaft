@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -254,6 +257,9 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete("/api/v1/me/ical/token"))
                     .andExpect(status().isNoContent());
 
+            // 派生 delete は EntityManager#remove まで（同一トランザクション内で未確定）のため、
+            // clear の前に flush して削除を確定させる。flush 無しの clear は削除を捨ててしまう。
+            em.flush();
             em.clear();
             assertThat(icalTokenRepository.findByUserId(memberId)).isPresent();
             assertThat(icalTokenRepository.findByUserId(outsiderId)).isEmpty();
@@ -329,6 +335,12 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("GoogleCalendarController#connect は state 検証に失敗しても他利用者の連携を壊さない")
         void connect_は他人の連携を壊さない() throws Exception {
             connectMember();
+
+            // Redis は基底クラスで Mock 化されているため、値操作を明示的に張る。
+            // 保存済み state が無い状態＝CSRF 検証に失敗する状態を作る。
+            @SuppressWarnings("unchecked")
+            ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/me/google-calendar/connect")
@@ -418,7 +430,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(memberId);
             mockMvc.perform(get("/api/v1/me/schedules/{id}", personalScheduleId))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.title").value("W4C 個人予定"));
+                    .andExpect(jsonPath("$.data.content.title").value("W4C 個人予定"));
         }
 
         @Test
@@ -443,7 +455,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "改題"))))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.title").value("改題"));
+                    .andExpect(jsonPath("$.data.content.title").value("改題"));
         }
 
         @Test
@@ -523,9 +535,11 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "title", "自分の予定",
                                     "startAt", "2026-05-01T10:00:00+09:00",
                                     "endAt", "2026-05-01T11:00:00+09:00",
+                                    "allDay", false,
                                     "eventType", "OTHER"))))
                     .andExpect(status().isCreated());
 
+            em.flush();
             em.clear();
             assertThat(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
                     outsiderId,
@@ -661,6 +675,9 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete("/api/v1/schedules/{id}/delegations/me", teamScheduleId))
                     .andExpect(status().isNoContent());
 
+            // 管理エンティティへの更新は同一トランザクション内では未確定のため、
+            // clear の前に flush して UPDATE を確定させる。
+            em.flush();
             em.clear();
             assertThat(delegationRepository.findById(delegationId).orElseThrow().getStatus())
                     .isEqualTo(ScheduleDelegationStatus.CANCELLED);
