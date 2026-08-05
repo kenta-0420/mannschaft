@@ -114,8 +114,7 @@ public class NotificationFanoutJob extends UuidV7Entity {
      * Wave-2（ORG スコープ耐久 fan-out）: SUPPORTER（応援者）を配信対象に含めるか。
      *
      * <p>{@code DEFAULT TRUE}（V175）で既存 VILLAGE 行の後方互換を保つ（旧経路は応援者も含め全員配信のため）。
-     * enqueue 時にこの列を実際に受け取る配線（{@code NotificationFanoutJobService}）は第三陣の担当で、
-     * ここでは列・Entity フィールドのみを追加する。</p>
+     * enqueue 経由で {@code NotificationFanoutJobService} からこの列に値が渡され、ジョブに保存される。</p>
      */
     @Builder.Default
     @Column(name = "include_supporters", nullable = false)

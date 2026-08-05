@@ -54,21 +54,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <h2>AC ↔ テスト対応</h2>
  * <ul>
- *   <li>AC-1 scopeType()=ORGANIZATION・Registry 解決 → {@link #ac1_registryResolvesOrgSource()}（未登録スタブ＝red）</li>
- *   <li>AC-2 直属∪配下再帰チームを user_id 昇順で供給 → {@link #ac2_recursiveUnionAscending()}（repo 土台＝green）</li>
- *   <li>AC-3 includeSupporters 制御（純SUPPORTER除外／MEMBER優先）→ {@link #ac3_includeSupportersFilter()}（repo 土台＝green）</li>
- *   <li>AC-4 母集団は users ACTIVE・未削除＋tom ACTIVE → {@link #ac4_populationActiveOnly()}（repo 土台＝green）</li>
- *   <li>AC-5 include_supporters 列が enqueue 経由でジョブに保存 → {@link #ac5_enqueueCarriesIncludeSupporters()}（enqueue 未配線＝red）
- *       ／列往復は {@link #ac5_includeSupportersColumnRoundTrips()}（列土台＝green）</li>
- *   <li>AC-7 ORG ジョブを worker 実行→現役全員に配信 → {@link #ac7_workerDeliversToOrgMembers()}（未登録スタブ＝red）</li>
- *   <li>AC-8 メンバー0件 ORG は DONE 正常終了 → {@link #ac8_emptyOrgCompletesAsDone()}（未登録スタブ＝red）</li>
- *   <li>AC-9 cursor=最終で空・limit 境界でページ跨ぎ → {@link #ac9_keysetBoundaryPaging()}（repo 土台＝green）</li>
- *   <li>AC-10 途中 cursor 再走で欠落なし → {@link #ac10_resumeFromMidCursorNoLoss()}（未登録スタブ＝red）</li>
- *   <li>AC-11 別 org のツリーは混入0 → {@link #ac11_orgTreeStrictSeparation()}（未登録スタブ＝red）</li>
- *   <li>AC-12 二重 enqueue は 1 ジョブ → {@link #ac12_doubleEnqueueIsIdempotent()}（enqueue 土台＝green）</li>
- *   <li>AC-13 キーセットで分割供給（全件 List 化しない）→ {@link #ac13_keysetPagingNotFullList()}（repo 土台＝green）</li>
- *   <li>AC-14 再帰深さ上限でサイクル/深ネスト停止 → {@link #ac14_recursionDepthBounded()}（repo 土台＝green）</li>
- *   <li>AC-15 配下チーム展開は tom.status=ACTIVE のみ → {@link #ac15_leftTeamMembersExcluded()}（repo 土台＝green）</li>
+ *   <li>AC-1 scopeType()=ORGANIZATION・Registry 解決 → {@link #ac1_registryResolvesOrgSource()}</li>
+ *   <li>AC-2 直属∪配下再帰チームを user_id 昇順で供給 → {@link #ac2_recursiveUnionAscending()}</li>
+ *   <li>AC-3 includeSupporters 制御（純SUPPORTER除外／MEMBER優先）→ {@link #ac3_includeSupportersFilter()}</li>
+ *   <li>AC-4 母集団は users ACTIVE・未削除＋tom ACTIVE → {@link #ac4_populationActiveOnly()}</li>
+ *   <li>AC-5 include_supporters 列が enqueue 経由でジョブに保存 → {@link #ac5_enqueueCarriesIncludeSupporters()}
+ *       ／列往復は {@link #ac5_includeSupportersColumnRoundTrips()}</li>
+ *   <li>AC-7 ORG ジョブを worker 実行→現役全員に配信 → {@link #ac7_workerDeliversToOrgMembers()}</li>
+ *   <li>AC-8 メンバー0件 ORG は DONE 正常終了 → {@link #ac8_emptyOrgCompletesAsDone()}</li>
+ *   <li>AC-9 cursor=最終で空・limit 境界でページ跨ぎ → {@link #ac9_keysetBoundaryPaging()}</li>
+ *   <li>AC-10 途中 cursor 再走で欠落なし → {@link #ac10_resumeFromMidCursorNoLoss()}</li>
+ *   <li>AC-11 別 org のツリーは混入0 → {@link #ac11_orgTreeStrictSeparation()}</li>
+ *   <li>AC-12 二重 enqueue は 1 ジョブ → {@link #ac12_doubleEnqueueIsIdempotent()}</li>
+ *   <li>AC-13 キーセットで分割供給（全件 List 化しない）→ {@link #ac13_keysetPagingNotFullList()}</li>
+ *   <li>AC-14 再帰深さ上限でサイクル/深ネスト停止 → {@link #ac14_recursionDepthBounded()}</li>
+ *   <li>AC-15 配下チーム展開は tom.status=ACTIVE のみ → {@link #ac15_leftTeamMembersExcluded()}</li>
  * </ul>
  *
  * <h2>SKIP 偽緑への注意</h2>
@@ -109,13 +109,12 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     private JdbcTemplate jdbc;
 
     // =====================================================================
-    // AC-1 Registry が "ORGANIZATION" で OrgFanoutRecipientSource を解決する（未登録スタブ=red）
+    // AC-1 Registry が "ORGANIZATION" で OrgFanoutRecipientSource を解決する
     // =====================================================================
     @Test
     @DisplayName("AC-1 Registry は scope_type=\"ORGANIZATION\" で OrgFanoutRecipientSource を解決する")
     void ac1_registryResolvesOrgSource() {
         // Registry が @Component 登録済みの OrgFanoutRecipientSource を "ORGANIZATION" で解決する。
-        // 現状は未登録スタブゆえ resolve は空＝FAIL(red)。
         Optional<FanoutRecipientSource> resolved = registry.resolve(OrgFanoutRecipientSource.SCOPE_TYPE);
 
         log.info("[AC-1] resolve(\"ORGANIZATION\") present={} type={}",
@@ -127,7 +126,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-2 直属∪配下再帰チームのメンバーを user_id 昇順・分割供給（repo 土台=green）
+    // AC-2 直属∪配下再帰チームのメンバーを user_id 昇順・分割供給
     // =====================================================================
     @Test
     @DisplayName("AC-2 keyset は直属メンバー∪配下再帰チームメンバーを user_id 昇順で返す（repo 土台）")
@@ -155,7 +154,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-3 includeSupporters 制御: false=純SUPPORTER除外（MEMBER優先）／true=含める（repo 土台=green）
+    // AC-3 includeSupporters 制御: false=純SUPPORTER除外（MEMBER優先）／true=含める
     // =====================================================================
     @Test
     @DisplayName("AC-3 includeSupporters=false は純SUPPORTERを除外し MEMBER 兼務は残す／true は含める（repo 土台）")
@@ -189,7 +188,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-4 母集団は users.deleted_at IS NULL AND status='ACTIVE'（停止/退会ユーザーは非受信・repo 土台=green）
+    // AC-4 母集団は users.deleted_at IS NULL AND status='ACTIVE'（停止/退会ユーザーは非受信）
     // =====================================================================
     @Test
     @DisplayName("AC-4 停止(FROZEN)・論理削除済ユーザーは user_role 開存でも供給しない（repo 土台）")
@@ -216,10 +215,10 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-5 include_supporters 列が enqueue 経由でジョブに保存される（enqueue 未配線=red）
+    // AC-5 include_supporters 列が enqueue 経由でジョブに保存される
     // =====================================================================
     @Test
-    @DisplayName("AC-5 enqueue した ORG ジョブに include_supporters=false が運搬される（未配線=red）")
+    @DisplayName("AC-5 enqueue した ORG ジョブに include_supporters=false が運搬される")
     void ac5_enqueueCarriesIncludeSupporters() {
         long org = 9_205L;
         String type = "ORG_FANOUT_IT_AC5";
@@ -238,12 +237,12 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
 
         log.info("[AC-5] includeSupporters={}（期待 false）", job.getIncludeSupporters());
         assertThat(job.getIncludeSupporters())
-                .as("AC-5: SUPPORTER 除外意図の enqueue はジョブに include_supporters=false を保存する（現状 TRUE 既定＝red）")
+                .as("AC-5: SUPPORTER 除外意図の enqueue はジョブに include_supporters=false を保存する")
                 .isFalse();
     }
 
     // =====================================================================
-    // AC-5(土台) include_supporters 列は builder→DB 往復で保持される（列存在の土台=green）
+    // AC-5(土台) include_supporters 列は builder→DB 往復で保持される
     // =====================================================================
     @Test
     @DisplayName("AC-5(土台) include_supporters 列は false を DB 往復で保持する（V175 列存在の土台）")
@@ -256,12 +255,12 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
 
         log.info("[AC-5土台] includeSupporters={}", reloaded.getIncludeSupporters());
         assertThat(reloaded.getIncludeSupporters())
-                .as("AC-5土台: include_supporters 列は false を保持する（列が実在する＝green）")
+                .as("AC-5土台: include_supporters 列は false を保持する")
                 .isFalse();
     }
 
     // =====================================================================
-    // AC-7 ORG ジョブを worker 実行→現役メンバー全員に通知が届く（未登録スタブ=red）
+    // AC-7 ORG ジョブを worker 実行→現役メンバー全員に通知が届く
     // =====================================================================
     @Test
     @DisplayName("AC-7 ORG ジョブを worker 実行すると現役メンバー全員に通知が届く")
@@ -272,20 +271,20 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         List<Long> members = seedOrgMembers(org, seed, 6);
         jobRepository.save(newOrgJob(org, type, 0L, Boolean.TRUE));
 
-        // green: nextPage で供給されたメンバーへバルク配信。現状は OrgFanoutRecipientSource が未登録スタブゆえ
-        // registry.resolve が空→processOne で解決できず配信0件＝FAIL(red)。processReady は例外を内部で握るため
-        // テストは配信件数の assertion で red になる（テスト自体は error にならない）。
+        // Registry が解決した OrgFanoutRecipientSource が nextPage で供給したメンバーへバルク配信する。
+        // processReady は内部で例外を握るため、配信0件になった場合もテスト自体は error にならず
+        // 配信件数の assertion で不一致として検出する。
         worker.processReady();
 
         long delivered = countNotifications(type);
         log.info("[AC-7] 配信件数={}（期待={}）", delivered, members.size());
         assertThat(delivered)
-                .as("AC-7: ORG 現役メンバー全員に通知が届く（現状は 0 件＝red）")
+                .as("AC-7: ORG 現役メンバー全員に通知が届く")
                 .isEqualTo(members.size());
     }
 
     // =====================================================================
-    // AC-8 メンバー0件 ORG は空供給で DONE 正常終了（500 にしない・未登録スタブ=red）
+    // AC-8 メンバー0件 ORG は空供給で DONE 正常終了（500 にしない）
     // =====================================================================
     @Test
     @DisplayName("AC-8 メンバー0件 ORG は空供給で DONE 完了する（例外で落とさない）")
@@ -294,7 +293,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         String type = "ORG_FANOUT_IT_AC8";
         NotificationFanoutJob job = jobRepository.save(newOrgJob(org, type, 0L, Boolean.TRUE));
 
-        // green: nextPage が空を返し markDone。現状は未登録スタブゆえ DONE に到達せず＝FAIL(red)。
+        // nextPage が空を返し markDone に到達する。
         worker.processReady();
 
         NotificationFanoutJob reloaded = jobRepository.findById(job.getId()).orElseThrow();
@@ -305,7 +304,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-9 cursor=最終 user_id で空返し・limit ちょうどでページ跨ぎ継続（境界・repo 土台=green）
+    // AC-9 cursor=最終 user_id で空返し・limit ちょうどでページ跨ぎ継続（境界）
     // =====================================================================
     @Test
     @DisplayName("AC-9 keyset は cursor=最終で空・limit 境界でページを跨いで継続する（境界・repo 土台）")
@@ -330,7 +329,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-10 途中 cursor（クラッシュ相当）から再走で欠落なし（at-least-once 代理・未登録スタブ=red）
+    // AC-10 途中 cursor（クラッシュ相当）から再走で欠落なし（at-least-once 代理）
     // =====================================================================
     @Test
     @DisplayName("AC-10 途中 cursor から再走しても欠落なく全員に届く（クラッシュ再開）")
@@ -346,8 +345,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long cursor = members.get(k - 1); // 処理済み末尾（k件目）の user_id
         NotificationFanoutJob job = jobRepository.save(newOrgJob(org, type, cursor, Boolean.TRUE));
 
-        // green: cursor より後の (N-k) 件のみ供給し、合計 N・欠落なし・DONE。
-        // 現状は未登録スタブゆえ再開分が供給されず＝FAIL(red)。
+        // cursor より後の (N-k) 件のみ供給し、合計 N・欠落なし・DONE で完走する。
         worker.processReady();
 
         long total = countNotifications(type);
@@ -360,7 +358,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-11 別 org のツリーを混入させても対象 org ツリーのメンバーのみ配信（未登録スタブ=red）
+    // AC-11 別 org のツリーを混入させても対象 org ツリーのメンバーのみ配信
     // =====================================================================
     @Test
     @DisplayName("AC-11 worker は scope_ref の org ツリーのメンバーのみ配信する（別 org 混入0）")
@@ -374,7 +372,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         List<Long> bMembers = seedOrgMembers(orgB, seedB, 3);
         jobRepository.save(newOrgJob(orgA, type, 0L, Boolean.TRUE)); // orgA のみ対象
 
-        // green: orgA ツリーの現役メンバーのみに配信。現状は未登録スタブゆえ配信0件＝FAIL(red)。
+        // orgA ツリーの現役メンバーのみに配信し、orgB へは混入しない。
         worker.processReady();
 
         long deliveredToA = countNotificationsForUsers(type, aMembers);
@@ -385,7 +383,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-12 二重 enqueue は uk_fanout_idempotency で 1 ジョブ（enqueue 土台=green）
+    // AC-12 二重 enqueue は uk_fanout_idempotency で 1 ジョブ
     // =====================================================================
     @Test
     @DisplayName("AC-12 同一(ORGANIZATION,scope_ref,type,source_event) の二重 enqueue はジョブ1件（冪等・土台）")
@@ -413,7 +411,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-13 受信者供給はキーセットページング（全件 List 化でなく分割）・全件重複なく列挙（repo 土台=green）
+    // AC-13 受信者供給はキーセットページング（全件 List 化でなく分割）・全件重複なく列挙
     // =====================================================================
     @Test
     @DisplayName("AC-13 keyset は limit で分割供給し、cursor 反復で全件を重複なく列挙する（全件 List 化しない・土台）")
@@ -449,7 +447,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-14 再帰深さ上限でサイクル/深ネストを停止（無限ループしない・repo 土台=green）
+    // AC-14 再帰深さ上限でサイクル/深ネストを停止（無限ループしない）
     // =====================================================================
     @Test
     @DisplayName("AC-14 自己参照サイクルでも maxDepth で停止し完了する／深ネストは maxDepth で打ち切る（repo 土台）")
@@ -489,7 +487,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-15 配下チーム展開は tom.status='ACTIVE' のみ（脱退チーム所属者は非受信・repo 土台=green）
+    // AC-15 配下チーム展開は tom.status='ACTIVE' のみ（脱退チーム所属者は非受信）
     // =====================================================================
     @Test
     @DisplayName("AC-15 配下チーム展開は tom.status=ACTIVE のみ（PENDING/脱退チーム所属者は非受信・repo 土台）")

@@ -5,7 +5,7 @@
 --    既存行の後方互換を保つよう DEFAULT TRUE（全員配信）とする。
 --    冪等ユニークキー uk_fanout_idempotency（scope_type, scope_ref, notification_type, source_event_uuid）
 --    には含めない（列追加のみ・キー再定義しない）。
---    enqueue 経路でこの列を実際に受け取る配線（NotificationFanoutJobService）は第三陣の担当。
+--    配信オプション列。enqueue 経由（NotificationFanoutJobService）でジョブに保存される。
 ALTER TABLE notification_fanout_jobs
     ADD COLUMN include_supporters BOOLEAN NOT NULL DEFAULT TRUE
         COMMENT 'Wave-2: SUPPORTER（応援者）を配信対象に含めるか（既定 TRUE=旧経路と同じ全員配信）';
