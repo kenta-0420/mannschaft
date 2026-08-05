@@ -612,7 +612,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    ) " +
             "  ) " +
             "  AND ur.user_id > :cursor " +
-            "ORDER BY ur.user_id ASC",
+            "ORDER BY uid ASC",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
             @Param("organizationId") Long organizationId,
