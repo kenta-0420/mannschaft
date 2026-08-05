@@ -83287,7 +83287,8 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20
+              "default": 20,
+              "minimum": 1
             }
           },
           {
@@ -83297,7 +83298,8 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 0
+              "default": 0,
+              "minimum": 0
             }
           }
         ],
