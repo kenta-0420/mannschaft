@@ -117,3 +117,31 @@ describe('useDatetime().buildOffsetDateTimeStr', () => {
     })
   })
 })
+
+/**
+ * 範囲検索の from/to 用ヘルパ（Issue #2508 Phase 1 で追加）。
+ *
+ * DAY-001: 暦日 → ユーザーTZでのその日の 00:00:00（オフセット付き）
+ * DAY-002: 暦日 → ユーザーTZでのその日の 23:59:59（BE の範囲検索は両端 inclusive）
+ * DAY-003: 非JSTユーザーでは +09:00 固定ではなくそのTZのオフセットが付く
+ */
+describe('useDatetime().buildDayStartStr / buildDayEndStr', () => {
+  it('DAY-001: 暦日をユーザーTZの 00:00:00 として解釈する（JST）', () => {
+    setUserTimezone('Asia/Tokyo')
+    const { buildDayStartStr } = useDatetime()
+    expect(buildDayStartStr('2026-08-01')).toBe('2026-08-01T00:00:00+09:00')
+  })
+
+  it('DAY-002: 暦日をユーザーTZの 23:59:59 として解釈する（JST）', () => {
+    setUserTimezone('Asia/Tokyo')
+    const { buildDayEndStr } = useDatetime()
+    expect(buildDayEndStr('2026-08-31')).toBe('2026-08-31T23:59:59+09:00')
+  })
+
+  it('DAY-003: 非JST（America/Los_Angeles）ではそのTZのオフセットが付く', () => {
+    setUserTimezone('America/Los_Angeles')
+    const { buildDayStartStr, buildDayEndStr } = useDatetime()
+    expect(buildDayStartStr('2026-08-01')).toBe('2026-08-01T00:00:00-07:00')
+    expect(buildDayEndStr('2026-01-31')).toBe('2026-01-31T23:59:59-08:00')
+  })
+})

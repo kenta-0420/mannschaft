@@ -37,7 +37,8 @@ import {
 } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
-const BE = 'http://localhost:8080'
+// 検証用 worktree では本陣（8080）とは別ポートの BE を建てるため、API_BASE_URL/BE_ORIGIN で上書き可能にする。
+const BE = process.env.API_BASE_URL ?? process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const FE_ORIGIN = process.env.BASE_URL ?? 'http://localhost:3002'
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
