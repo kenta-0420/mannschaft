@@ -2,6 +2,9 @@ package com.mannschaft.app.cms.repository;
 
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -36,6 +39,22 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      * blog_post_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
     List<BlogMediaUploadEntity> findByBlogPostIdIsNullAndCreatedAtBefore(LocalDateTime cutoff);
+
+    /**
+     * 孤立メディア 1 件を条件付きで物理削除し、実際に削除できた行数を返す（クリーンアップバッチ用）。
+     *
+     * <p>削除条件に {@code blog_post_id IS NULL} を含めるため、<b>行を確保できた実行だけが 1 を受け取る</b>。
+     * クリーンアップバッチはこの戻り値が 1 のときに限りストレージ使用量を減算する。
+     * 使用量更新は read-modify-write であり、同じ行を 2 つの実行が処理すると同じ容量が 2 回引かれて
+     * {@code used_bytes} が過少になるが、条件付き DELETE は行ロックで直列化されるため
+     * 2 回目以降は必ず 0 行となり、この二重減算が構造的に起こらない。</p>
+     *
+     * @param id 対象メディアID
+     * @return 実際に削除できた行数（0 なら他の実行が処理済み）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id AND m.blogPostId IS NULL")
+    int deleteOrphanById(@Param("id") Long id);
 
     /** 記事内のメディア数カウント（種別別）。 */
     int countByBlogPostIdAndMediaType(Long blogPostId, String mediaType);

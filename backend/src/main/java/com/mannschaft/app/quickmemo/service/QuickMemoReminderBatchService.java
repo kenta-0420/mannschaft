@@ -10,6 +10,7 @@ import com.mannschaft.app.quickmemo.repository.QuickMemoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,9 @@ public class QuickMemoReminderBatchService {
 
     @BatchEndpoint(name = "quickmemo-reminder-dispatch", description = "ポイっとメモのリマインド通知を 30 分毎にユーザー単位で集約送信する")
     @Scheduled(cron = "0 */30 * * * *")
+    // 起動間隔は 30 分。処理はリマインド対象のユーザー単位集約送信で通常は数秒〜数十秒。間隔と同値にすると 1 回の超過で二重通知になるため、
+    // 間隔の 2 倍を上限とする。
+    @SchedulerLock(name = "quickmemoReminderDispatch", lockAtLeastFor = "PT30S", lockAtMostFor = "PT1H")
     @Transactional
     public void execute() {
         // reminder_xScheduledAt は QuickMemoService で JST LocalDateTime として保存されるため

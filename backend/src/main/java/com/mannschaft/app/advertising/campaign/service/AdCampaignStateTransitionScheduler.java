@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.AdBannerDelivery;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
@@ -54,6 +55,8 @@ public class AdCampaignStateTransitionScheduler {
      */
     @Scheduled(cron = "${mannschaft.ad.state-transition.cron:0 */5 * * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adCampaignStateTransition", lockAtMostFor = "5m", lockAtLeastFor = "1m")
+    @BatchEndpoint(name = "ad-campaign-state-transition",
+            description = "予約(SCHEDULED)→配信中(DELIVERING)、配信中→完了(COMPLETED)のキャンペーン状態自動遷移を5分毎に実行する")
     public void runTransitions() {
         long startMs = System.currentTimeMillis();
         log.info("AdCampaignStateTransitionScheduler 開始");
@@ -130,6 +133,8 @@ public class AdCampaignStateTransitionScheduler {
      */
     @Scheduled(cron = "0 15 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adBannerReservationExpiry", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
+    @BatchEndpoint(name = "ad-banner-reservation-expire-daily",
+            description = "14日超過して未表示のまま残ったバナー広告予約を毎日02:15に期限切れ扱いにし、頻度キャップの枠を返却する")
     @Transactional
     public int expireStaleReservations() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(RESERVATION_EXPIRY_DAYS);

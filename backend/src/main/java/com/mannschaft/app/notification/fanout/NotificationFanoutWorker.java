@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +56,15 @@ public class NotificationFanoutWorker {
      *
      * <p>{@code poll} 全体を 1 トランザクションで包むと per-job／per-chunk の独立コミット（再開・リトライの確定）が
      * 巻き戻るため、外側 TX を張らない契約を {@code NEVER} で固定する（email_outbox ワーカー前例）。</p>
+     *
+     * <p><b>バッチ実行履歴基盤（{@code @BatchEndpoint}）へ登録しない理由</b>:
+     * 5 秒間隔＝日次 17,280 回の起動であり、1 回ごとに実行履歴を書くと
+     * 履歴テーブルが「実行可能ジョブ 0 件」の記録で埋まり、日次・月次バッチの記録が埋没する。
+     * fan-out の進捗・失敗は {@code notification_fanout_jobs} のジョブ行そのもの
+     * （ステータス・{@code cursor_subject_id}・リトライ回数）が記録しているため、実行履歴は不要である。</p>
      */
+    @BatchEndpointExempt("5 秒間隔（日次 17,280 回）の高頻度ワーカーであり、"
+        + "実行履歴を書くと日次・月次バッチの記録が埋没する。進捗は notification_fanout_jobs のジョブ行が記録")
     @Scheduled(fixedDelay = 5_000)
     @SchedulerLock(name = "notificationFanoutWorker", lockAtMostFor = "PT5M", lockAtLeastFor = "PT5S")
     @Transactional(propagation = Propagation.NEVER)
