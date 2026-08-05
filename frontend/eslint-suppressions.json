@@ -426,7 +426,7 @@
   },
   "tests/e2e/real/villages.spec.ts": {
     "no-restricted-syntax": {
-      "count": 12
+      "count": 8
     }
   },
   "tests/e2e/real/write-ops.spec.ts": {

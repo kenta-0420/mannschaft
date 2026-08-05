@@ -87,6 +87,29 @@ export function useDatetime() {
     return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
   }
 
+  /**
+   * `yyyy-MM-dd` 形式の暦日を「ユーザーTZでのその日の 00:00:00」として解釈し、
+   * オフセット付き ISO-8601 文字列を返す（範囲検索の from 用）。
+   *
+   * カレンダーの月境界・週グリッド境界のように、暦日が先に決まっている用途で使う。
+   * `Date` から組み立てる場合は {@link buildOffsetDateTimeStr} を使うこと。
+   *
+   * @example buildDayStartStr('2026-08-01') // JST → "2026-08-01T00:00:00+09:00"
+   */
+  function buildDayStartStr(ymd: string): string {
+    return dayjs.tz(`${ymd}T00:00:00`, userTimezone.value).format()
+  }
+
+  /**
+   * `yyyy-MM-dd` 形式の暦日を「ユーザーTZでのその日の 23:59:59」として解釈し、
+   * オフセット付き ISO-8601 文字列を返す（範囲検索の to 用。BE の範囲検索は両端 inclusive）。
+   *
+   * @example buildDayEndStr('2026-08-31') // JST → "2026-08-31T23:59:59+09:00"
+   */
+  function buildDayEndStr(ymd: string): string {
+    return dayjs.tz(`${ymd}T23:59:59`, userTimezone.value).format()
+  }
+
   return {
     userTimezone,
     formatDate,
@@ -94,5 +117,7 @@ export function useDatetime() {
     formatTime,
     fromNow,
     buildOffsetDateTimeStr,
+    buildDayStartStr,
+    buildDayEndStr,
   }
 }
