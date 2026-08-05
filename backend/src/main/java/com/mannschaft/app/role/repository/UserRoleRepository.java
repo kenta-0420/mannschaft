@@ -977,14 +977,27 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long countTeamAdminByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
 
     /**
-     * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
+     * 2ユーザーが所属を共有するチームの件数を返す（DM 受信制限チェック用）。
+     *
+     * <p><b>戻り値を件数（{@code long}）で受ける理由</b>: ネイティブクエリで
+     * {@code SELECT COUNT(*) > 0} と書くと MySQL は BIGINT（0/1）を返し、Hibernate は
+     * これを {@code Long} にマッピングする。メソッドの戻り値を {@code boolean} と宣言すると
+     * 代入時に {@code ClassCastException}（Long → Boolean）となり、呼び出し経路が
+     * 実行時に落ちる。真偽への変換は {@link #existsSharedTeam} で Java 側が行う。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +
+    @Query(value = "SELECT COUNT(*) FROM user_roles ur1 " +
             "JOIN user_roles ur2 ON ur1.team_id = ur2.team_id " +
             "WHERE ur1.user_id = :userId1 AND ur2.user_id = :userId2 " +
             "AND ur1.team_id IS NOT NULL",
             nativeQuery = true)
-    boolean existsSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+    long countSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+    /**
+     * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
+     */
+    default boolean existsSharedTeam(Long userId1, Long userId2) {
+        return countSharedTeam(userId1, userId2) > 0;
+    }
 
     /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。

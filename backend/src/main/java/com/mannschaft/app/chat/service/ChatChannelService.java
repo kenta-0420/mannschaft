@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelMemberRole;
@@ -19,6 +20,10 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.dashboard.FolderItemType;
+import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.user.repository.UserBlockRepository;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +53,9 @@ public class ChatChannelService {
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AccessControlService accessControlService;
+    private final UserBlockRepository userBlockRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
@@ -363,6 +371,12 @@ public class ChatChannelService {
             throw new BusinessException(ChatErrorCode.CHANNEL_SELF_DM);
         }
 
+        // 相手全員が呼出ユーザーからの DM を受け取れることを、チャンネル作成の副作用より前に保証する。
+        // 参加人数（Kabine / Zimmer）によって相手の受信設定が無視される非対称を作らない。
+        for (Long partnerId : userIds) {
+            requireDmDeliverable(callerId, partnerId);
+        }
+
         if (userIds.size() == 1) {
             return startKabine(callerId, userIds.get(0));
         } else {
@@ -374,10 +388,7 @@ public class ChatChannelService {
      * Kabine（1対1 DM）を開始する。既存があれば返却、なければ新規作成。
      */
     private ConversationResult startKabine(Long callerId, Long partnerId) {
-        // 相手のブロック設定・DM 受信範囲設定を保証する（Zimmer と同一の判定を通す）。
-        UserEntity partner = userRepository.findById(partnerId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-        channelAccessGuard.requireDmDeliverable(callerId, partner);
+        // 相手の受信可否は startConversation の入口で保証済み。
 
         // 既存 DM を検索
         return channelRepository.findExistingDm(callerId, partnerId)
@@ -402,13 +413,7 @@ public class ChatChannelService {
      * Zimmer（グループDM）を開始する。常に新規作成。
      */
     private ConversationResult startZimmer(Long callerId, List<Long> partnerIds) {
-        // 全参加者について、Kabine と同一の判定（ブロック設定・DM 受信範囲設定）を保証する。
-        // 参加人数によって相手の受信設定が無視される非対称を作らない。
-        for (Long partnerId : partnerIds) {
-            UserEntity partner = userRepository.findById(partnerId)
-                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-            channelAccessGuard.requireDmDeliverable(callerId, partner);
-        }
+        // 全参加者の受信可否は startConversation の入口で保証済み。
 
         ChatChannelEntity channel = ChatChannelEntity.builder()
                 .channelType(ChannelType.GROUP_DM)
@@ -482,9 +487,7 @@ public class ChatChannelService {
         // 新たに招待するメンバーを追加（ブロックチェック込み）
         for (Long inviteeId : request.getUserIds()) {
             // 招待対象のブロック設定・DM 受信範囲設定を、会話開始（Kabine/Zimmer）と同一の判定で保証する。
-            UserEntity invitee = userRepository.findById(inviteeId)
-                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-            channelAccessGuard.requireDmDeliverable(callerId, invitee);
+            requireDmDeliverable(callerId, inviteeId);
             if (!memberRepository.existsByChannelIdAndUserId(savedZimmer.getId(), inviteeId)) {
                 memberRepository.save(ChatChannelMemberEntity.builder()
                         .channelId(savedZimmer.getId())
@@ -546,6 +549,31 @@ public class ChatChannelService {
         ChatChannelEntity saved = channelRepository.save(channel);
         log.info("DMをグループDMに変換: channelId={}, callerId={}", channelId, callerId);
         return chatMapper.toChannelResponse(saved);
+    }
+
+    /**
+     * 会話相手が呼出ユーザーからの DM を受け取れることを保証する。
+     *
+     * <p>判定は {@link ChatChannelAccessGuard#requireDmDeliverable} に集約し、本メソッドは
+     * 判定に要る情報（相手ユーザー・ブロック関係・共通チーム所属・連絡先登録）の取得だけを担う。
+     * Kabine（1 対 1）・Zimmer（グループ）・Kabine からの招待・チャンネル作成の全経路がここを通り、
+     * 経路によって相手の受信設定が無視される非対称を作らない。</p>
+     *
+     * @param callerId   会話を開始するユーザー ID
+     * @param receiverId 会話相手のユーザー ID
+     */
+    private void requireDmDeliverable(Long callerId, Long receiverId) {
+        UserEntity receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
+        DmReceiveFrom setting = receiver.getDmReceiveFrom();
+        channelAccessGuard.requireDmDeliverable(
+                callerId,
+                receiverId,
+                userBlockRepository.existsByBlockerIdAndBlockedId(receiverId, callerId),
+                setting,
+                () -> userRoleRepository.existsSharedTeam(callerId, receiverId),
+                () -> chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
+                        receiverId, FolderItemType.CONTACT, callerId));
     }
 
     /**
@@ -616,9 +644,7 @@ public class ChatChannelService {
         }
 
         // ブロック設定・DM 受信範囲設定は会話開始（Kabine/Zimmer）と同一の判定を通す。
-        UserEntity receiver = userRepository.findById(receiverId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-        channelAccessGuard.requireDmDeliverable(senderId, receiver);
+        requireDmDeliverable(senderId, receiverId);
     }
 
     /**

@@ -1,5 +1,9 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.quota.entity.StoragePlanEntity;
+import com.mannschaft.app.common.storage.quota.repository.StoragePlanRepository;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileStarEntity;
@@ -26,9 +30,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +45,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -76,6 +87,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 実 MySQL ＋ 手動 SecurityContext ＋ {@code @EnabledIf isDockerAvailable}）。
  * コントローラが {@code SecurityUtils#getCurrentUserId} を呼ぶ EP では、未認証は
  * {@code COMMON_000} → 401 となる。</p>
+ *
+ * <p><b>テスト環境の前提</b>: {@code test} プロファイルはスキーマを Entity 定義から生成し Flyway を通さないため、
+ * マスタデータである {@code storage_plans} のデフォルトプランは本テストが自前で用意する
+ * （{@link #ensureDefaultStoragePlans()}。値は本番シード {@code V9.069} と同一）。
+ * 認可通過後に走る署名 URL 発行はオブジェクトストレージへの外部依存であるため
+ * {@link StorageService} をモックに差し替え、認可判定の成否だけがステータスに現れるようにする。
+ * この 2 点は {@code ChatAuthzScopeContractIT} と同一に揃えてあり、両契約 IT が同じ
+ * ApplicationContext を共有する（TestContext Cache の分裂を増やさない）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -100,6 +119,19 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private StoragePlanRepository storagePlanRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    /**
+     * オブジェクトストレージへの署名 URL 発行はテスト環境の外にあるため、決定的な値を返すモックに差し替える。
+     * 認可は署名 URL 発行より前段で完結しており、本モックは認可判定に一切関与しない。
+     */
+    @MockitoBean
+    private StorageService storageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -136,6 +168,9 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        ensureDefaultStoragePlans();
+        stubStorageService();
+
         // roles は priority を用いたロール強弱判定（hasRoleOrAbove）の基準になるため、
         // 本番 Flyway シード（V2.014）と同じ priority で確実に用意する。
         ensureRole("SYSTEM_ADMIN", "システム管理者", 1);
@@ -736,6 +771,51 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー（金型 TodoPersonalScopeContractIT より写経）
     // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * {@code storage_plans} のスコープ別デフォルトプランを用意する（値は本番シード {@code V9.069} と同一）。
+     *
+     * <p>ストレージサブスクリプションの自動払い出しは {@code REQUIRES_NEW} の独立トランザクションで走り、
+     * テストメソッドのトランザクション内の未コミット行を参照できない。そのため本 seed も
+     * {@code REQUIRES_NEW} でコミットして、払い出しから確実に見えるようにする。
+     * 既存行があるときは作らないため、テスト間で重複しない。</p>
+     */
+    private void ensureDefaultStoragePlans() {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(status -> {
+            ensureDefaultStoragePlan("ORGANIZATION", "フリー（組織）", 53_687_091_200L);
+            ensureDefaultStoragePlan("TEAM", "フリー（チーム）", 5_368_709_120L);
+            ensureDefaultStoragePlan("PERSONAL", "フリー（個人）", 1_073_741_824L);
+        });
+    }
+
+    private void ensureDefaultStoragePlan(String scopeLevel, String name, long includedBytes) {
+        if (storagePlanRepository
+                .findFirstByScopeLevelAndIsDefaultTrueAndDeletedAtIsNull(scopeLevel).isPresent()) {
+            return;
+        }
+        storagePlanRepository.save(StoragePlanEntity.builder()
+                .name(name)
+                .scopeLevel(scopeLevel)
+                .includedBytes(includedBytes)
+                .maxBytes(includedBytes)
+                .priceMonthly(BigDecimal.ZERO)
+                .isDefault(true)
+                .sortOrder((short) 1)
+                .build());
+    }
+
+    /** 署名 URL 発行が決定的な値を返すようにする（認可通過後に外部依存でステータスが揺れないようにする）。 */
+    private void stubStorageService() {
+        given(storageService.generateUploadUrl(any(), any(), any()))
+                .willAnswer(invocation -> new PresignedUploadResult(
+                        "https://storage.test.invalid/upload/" + invocation.getArgument(0),
+                        invocation.getArgument(0), 900L));
+        given(storageService.generateDownloadUrl(any(), any()))
+                .willAnswer(invocation ->
+                        "https://storage.test.invalid/download/" + invocation.getArgument(0));
+    }
 
     /** 公開リンク発行リクエスト本文（有効期限は必須・最大30日先）。 */
     private String linkRequestBody() {

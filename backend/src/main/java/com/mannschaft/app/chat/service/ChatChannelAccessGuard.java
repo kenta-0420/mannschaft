@@ -1,7 +1,6 @@
 package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.auth.DmReceiveFrom;
-import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
@@ -11,12 +10,10 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.dashboard.FolderItemType;
-import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.function.BooleanSupplier;
 
 /**
  * チャットドメインの認可判定を一元化するガード。
@@ -35,9 +32,6 @@ public class ChatChannelAccessGuard {
 
     private final ChatChannelMemberRepository memberRepository;
     private final AccessControlService accessControlService;
-    private final UserBlockRepository userBlockRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final ChatContactFolderItemRepository chatContactFolderItemRepository;
 
     /**
      * メンバーシップ管理種別（{@link ChannelType#isMembershipGated()}）のチャンネルについて、
@@ -158,26 +152,37 @@ public class ChatChannelAccessGuard {
      * 会話（Kabine / Zimmer）の相手側が、呼出ユーザーからの DM を受け取る設定であることを保証する。
      *
      * <p>相手のブロック設定と DM 受信範囲設定（{@link DmReceiveFrom}）の双方を検証する。
-     * 1 対 1 の Kabine とグループの Zimmer が<b>同一の判定</b>を通ることで、
-     * 参加人数によって相手の受信設定が無視される非対称を作らない。</p>
+     * 1 対 1 の Kabine とグループの Zimmer、および Kabine からの招待が<b>同一の判定</b>を通ることで、
+     * 参加人数や経路によって相手の受信設定が無視される非対称を作らない。</p>
      *
-     * @param callerId 会話を開始するユーザー ID
-     * @param receiver 会話相手のユーザー
+     * <p><b>入力を真偽値・列挙で受け取る理由</b>: 判定に要るユーザー・ブロック・所属・連絡先の各情報は
+     * それぞれ別ドメイン（auth / user / role / dashboard）が所有する。chat ドメインの本クラスが
+     * それらのエンティティ・リポジトリを直接参照するとドメイン境界を越えるため、取得は呼び出し側
+     * （{@code ChatChannelService}）が行い、本クラスは<b>判定のみ</b>を担う。
+     * 受信範囲設定に応じてしか要らない 2 つの照会は {@link BooleanSupplier} で受け、
+     * 不要な問い合わせが走らないようにする。</p>
+     *
+     * @param callerId            会話を開始するユーザー ID
+     * @param receiverId          会話相手のユーザー ID
+     * @param blockedByReceiver   相手が呼出ユーザーをブロックしているか
+     * @param receiverSetting     相手の DM 受信範囲設定
+     * @param sharesTeam          相手と共通チームに所属しているか（{@code TEAM_MEMBERS_ONLY} でのみ評価）
+     * @param registeredAsContact 相手の連絡先に登録されているか（{@code CONTACTS_ONLY} でのみ評価）
      * @throws BusinessException ブロックされている場合 / 受信範囲外の場合
      */
-    public void requireDmDeliverable(Long callerId, UserEntity receiver) {
-        Long receiverId = receiver.getId();
-        if (userBlockRepository.existsByBlockerIdAndBlockedId(receiverId, callerId)) {
+    public void requireDmDeliverable(Long callerId, Long receiverId, boolean blockedByReceiver,
+                                     DmReceiveFrom receiverSetting,
+                                     BooleanSupplier sharesTeam,
+                                     BooleanSupplier registeredAsContact) {
+        if (blockedByReceiver) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
-        DmReceiveFrom setting = receiver.getDmReceiveFrom();
-        if (setting == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
-            if (!userRoleRepository.existsSharedTeam(callerId, receiverId)) {
+        if (receiverSetting == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
+            if (!sharesTeam.getAsBoolean()) {
                 throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
             }
-        } else if (setting == DmReceiveFrom.CONTACTS_ONLY) {
-            if (!chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
-                    receiverId, FolderItemType.CONTACT, callerId)) {
+        } else if (receiverSetting == DmReceiveFrom.CONTACTS_ONLY) {
+            if (!registeredAsContact.getAsBoolean()) {
                 throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
             }
         }
