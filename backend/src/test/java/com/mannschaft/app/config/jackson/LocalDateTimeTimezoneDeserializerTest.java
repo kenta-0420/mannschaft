@@ -172,6 +172,38 @@ class LocalDateTimeTimezoneDeserializerTest {
 
             assertThat(read("2026-05-21T17:15")).isEqualTo(LocalDateTime.of(2026, 5, 22, 9, 15));
         }
+
+        // ------------------------------------------------------------------
+        // 任務B（Issue #2508 Phase 2）: DST（夏時間）gap / overlap の挙動を実測で固定する。
+        // JDK 既定規則（LocalDateTime#atZone）に処理を委ねているだけなので、期待値は
+        // 「理論上こうなるはず」ではなく実測値で固定する（推測で書かない）。
+        // ------------------------------------------------------------------
+
+        @Test
+        @DisplayName("DST gap（America/Los_Angeles 2027-03-14 02:00→03:00 に存在しない時刻）は"
+                + "JDK 既定規則によりギャップ分だけ前送りされる（実測: 02:30→03:30 PDT）")
+        void DST_gap_存在しない時刻は前送りされる() throws Exception {
+            TimezoneContextHolder.setResolved(LOS_ANGELES);
+
+            // 2027-03-14T02:30 は LA では存在しない時刻（02:00 PST → 03:00 PDT のギャップ内）。
+            // JDK 既定は「ギャップ長だけ前へずらし、遷移後（夏時間）オフセットを採用」する
+            // （LocalDateTime#atZone の仕様どおり）。実測: 02:30 → 03:30 PDT(-07:00) → JST 19:30
+            assertThat(read("2027-03-14T02:30:00"))
+                    .isEqualTo(LocalDateTime.of(2027, 3, 14, 19, 30));
+        }
+
+        @Test
+        @DisplayName("DST overlap（America/Los_Angeles 2027-11-07 01:00 台が2回存在）は"
+                + "JDK 既定規則により早い方（遷移前＝夏時間側）のオフセットが採用される（実測: -07:00 PDT）")
+        void DST_overlap_早い方のオフセットが採用される() throws Exception {
+            TimezoneContextHolder.setResolved(LOS_ANGELES);
+
+            // 2027-11-07T01:30 は LA では 2 回存在する時刻（03:00 PDT → 02:00 PST のオーバーラップ）。
+            // JDK 既定は「earlier」（遷移前＝夏時間側のオフセット）を採用する
+            // （ZonedDateTime#ofLocal の仕様どおり）。実測: 01:30 → -07:00 PDT(遷移前) → JST 17:30
+            assertThat(read("2027-11-07T01:30:00"))
+                    .isEqualTo(LocalDateTime.of(2027, 11, 7, 17, 30));
+        }
     }
 
     // ------------------------------------------------------------------
@@ -256,6 +288,26 @@ class LocalDateTimeTimezoneDeserializerTest {
             TimezoneContextHolder.setResolved(LOS_ANGELES);
 
             assertThatThrownBy(() -> read("2026/05/22 09:15:20"))
+                    .isInstanceOf(InvalidFormatException.class);
+        }
+
+        @Test
+        @DisplayName("AC-13: 値域超過のオフセット付き入力は InvalidFormatException（DateTimeException が握り潰されず400化される）")
+        void 値域超過_オフセット付き_例外() {
+            // OffsetDateTime.parse 自体は成功するが、atZoneSameInstant().toLocalDateTime() で
+            // EpochDay 値域超過の DateTimeException を投げる極端値
+            assertThatThrownBy(() -> read("+999999999-12-31T23:59:59-18:00"))
+                    .isInstanceOf(InvalidFormatException.class);
+            assertThatThrownBy(() -> read("-999999999-01-01T00:00:00+18:00"))
+                    .isInstanceOf(InvalidFormatException.class);
+        }
+
+        @Test
+        @DisplayName("AC-13: 値域超過のオフセット無し入力（解決済みユーザーTZ）も InvalidFormatException")
+        void 値域超過_オフセット無し_解決済み_例外() {
+            TimezoneContextHolder.setResolved(LOS_ANGELES);
+
+            assertThatThrownBy(() -> read("+999999999-12-31T23:59:59"))
                     .isInstanceOf(InvalidFormatException.class);
         }
 
