@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * <b>issue #2589: 「ローカルでは通り本番だけ壊れる照合順序のズレ」を恒久的に捕まえる網。</b>
@@ -220,6 +221,155 @@ class SchemaCollationConsistencyIT {
                 .as("照合不一致なら executeQuery が SQLException(Illegal mix of collations) を投げる。"
                         + "例外なく到達すること自体が検証内容であり、件数は問わない")
                 .isNotNull();
+    }
+
+    /**
+     * <b>STORED な文字列生成列を持つ表が {@code CONVERT TO CHARACTER SET} に耐えることの実証。</b>
+     *
+     * <p>生成列は式から値が決まるため、照合順序を変える再構築で問題を起こしやすい類型である。
+     * 本スキーマには {@code user_roles.scope_key}（{@code V2.006}）のように
+     * <b>STORED 生成列がパーシャルユニークキーの実体になっている</b>例があり、
+     * 「再構築で式が再評価され、新しい照合順序の下で一意制約に触れる」経路が理屈の上では存在する。</p>
+     *
+     * <p>そこで<b>実際に {@code CONVERT TO} を流して確かめる</b>。
+     * V175 は既にこれらの表を変換済みなので、ここでの再実行は冪等な no-op に見えるが、
+     * MySQL は CONVERT TO を受けると内容が同じでも表を作り直すため、
+     * 生成列の再評価と索引の再構築という<b>同じ経路を確かに通る</b>。
+     * 例外が飛ばずに完走することが検証内容である。</p>
+     *
+     * <p>対象表は静的に列挙せず {@code information_schema} から動的に導出する
+     * （#2589 で静的列挙が実体と食い違った反省による）。
+     * 併せて対象が 0 件でないことを表明し、列挙が空振りしてテストが
+     * 無内容に緑になることを防ぐ。</p>
+     */
+    @Test
+    @DisplayName("STORED な文字列生成列を持つ表が CONVERT TO に耐える（生成列の再評価を実地で確認）")
+    void STORED生成列を持つ表が変換に耐える() throws SQLException {
+        List<String> targets = query(
+                "SELECT DISTINCT TABLE_NAME FROM information_schema.COLUMNS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() "
+                        + "  AND EXTRA LIKE '%STORED GENERATED%' "
+                        + "  AND COLLATION_NAME IS NOT NULL "
+                        + "ORDER BY TABLE_NAME");
+
+        assertThat(targets)
+                .as("STORED な文字列生成列を持つ表が 1 つ以上あること。"
+                        + "0 件ならこのテストは何も検証しておらず、"
+                        + "列挙の書き間違いで無内容に緑になっている可能性がある")
+                .isNotEmpty();
+
+        SoftAssertions softly = new SoftAssertions();
+        for (String table : targets) {
+            try (Connection conn = connection();
+                 Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE `" + table + "` CONVERT TO CHARACTER SET "
+                        + SchemaCollationPolicy.UNIFIED_CHARSET + " COLLATE "
+                        + SchemaCollationPolicy.UNIFIED_COLLATION);
+            } catch (SQLException e) {
+                softly.fail("STORED 生成列を持つ %s の CONVERT TO が失敗した。"
+                        + "本番適用時に同じ箇所で migration が途中停止する: %s", table, e.getMessage());
+            }
+        }
+        softly.assertAll();
+
+        // 変換後も統一が保たれていること（生成列の再評価で照合順序が戻っていないか）
+        List<String> violations = query(
+                "SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME, ' -> ', COLLATION_NAME) "
+                        + "FROM information_schema.COLUMNS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() "
+                        + "  AND EXTRA LIKE '%STORED GENERATED%' "
+                        + "  AND COLLATION_NAME IS NOT NULL "
+                        + "  AND COLLATION_NAME <> ?",
+                SchemaCollationPolicy.UNIFIED_COLLATION);
+
+        assertThat(violations)
+                .as("再変換後も STORED 生成列の照合順序が統一されていること。違反=%s", violations)
+                .isEmpty();
+    }
+
+    /**
+     * <b>V175 STEP 1 の事前重複検出ゲートが、実際に衝突を検出できることの実証。</b>
+     *
+     * <h2>なぜこのテストが要るか</h2>
+     * <p>V175 は「変換で一意制約違反が起きないか」を実データで事前検査し、
+     * 衝突があれば 1 表も変換せずに中断する。しかし migration が Flyway で流れる
+     * テストスキーマには業務データが無いため、<b>ゲートは毎回「衝突 0 件」で素通りする</b>。
+     * つまり通常の IT では<b>検出できることが一度も確かめられない</b>。
+     * 検出しない安全装置は無いのと同じなので、衝突を人為的に作って発火を確認する。</p>
+     *
+     * <h2>何を衝突させるか</h2>
+     * <p>ASCII のゼロ {@code '0'}（U+0030）と NKo のゼロ（U+07C0）を使う。
+     * この 2 文字は {@code WEIGHT_STRING()} の全数比較（65,502 コードポイント）で
+     * 「{@code utf8mb4_unicode_ci} では区別され {@code utf8mb4_0900_ai_ci} では同一」
+     * と実測された 666 グループのうちの 1 つであり、実際にペア単位でも検算済みである。</p>
+     *
+     * <p><b>全角/半角の約物を使わない理由</b>: {@code ','} と {@code '，'}、
+     * {@code 'A'} と {@code 'Ａ'}、{@code '。'} と {@code '｡'} は
+     * <b>どちらの照合順序でも既に等価</b>であり（実測）、衝突を作れない。
+     * 変換で新たに等価化するのは、異なる字体系の数字や
+     * 縦書き用の異体（U+FE10 等）といった、より限定的な文字である。</p>
+     *
+     * <p>検査するのは V175 STEP 1 が組み立てるのと同じ述語
+     * （{@code GROUP BY <列> COLLATE <統一先> HAVING COUNT(*) > 1}）である。</p>
+     */
+    @Test
+    @DisplayName("事前重複検出ゲートが照合順序変更で生じる衝突を実際に検出する（発火の実証）")
+    void 事前重複検出ゲートが衝突を検出する() throws SQLException {
+        final String table = "tmp_precheck_probe_2589";
+        try (Connection conn = connection();
+             Statement st = conn.createStatement()) {
+            st.execute("DROP TABLE IF EXISTS `" + table + "`");
+            // 変換前の照合順序（utf8mb4_unicode_ci）では別物として共存できる 2 行を作る
+            st.execute("CREATE TABLE `" + table + "` ("
+                    + " id BIGINT PRIMARY KEY,"
+                    + " code VARCHAR(32) COLLATE utf8mb4_unicode_ci,"
+                    + " UNIQUE KEY uq_code (code)"
+                    + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            // '0'(U+0030) と NKo DIGIT ZERO(U+07C0)。unicode_ci では別物なので共存できる。
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO `" + table + "` (id, code) VALUES (1, ?), (2, ?)")) {
+                ps.setString(1, "a0b");
+                // 2 文字目は NKo DIGIT ZERO (U+07C0)。ASCII の '0' とは別文字である。
+                ps.setString(2, "a߀b");
+                ps.executeUpdate();
+            }
+
+            // 前提の検算: 変換前は UNIQUE 制約に共存できている（＝現状は衝突していない）
+            List<String> before = query("SELECT COUNT(*) FROM `" + table + "`");
+            assertThat(before).as("変換前は 2 行が共存できること").containsExactly("2");
+
+            // V175 STEP 1 と同じ述語で検査する
+            List<String> conflicts = query(
+                    "SELECT CONCAT(code, ' x', COUNT(*)) FROM `" + table + "`"
+                            + " WHERE code IS NOT NULL"
+                            + " GROUP BY code COLLATE " + SchemaCollationPolicy.UNIFIED_COLLATION
+                            + " HAVING COUNT(*) > 1");
+
+            assertThat(conflicts)
+                    .as("事前検査の述語が『変換すると一意制約に違反する組』を検出すること。"
+                            + "ここが空なら V175 STEP 1 は衝突を素通しし、"
+                            + "本番の変換途中で ERROR 1062 により停止して混在状態が残る")
+                    .hasSize(1);
+
+            // 実際に変換すると本当に失敗することも確かめる（ゲートの必要性そのものの裏取り）
+            assertThatThrownBy(() -> {
+                try (Connection c2 = connection();
+                     Statement s2 = c2.createStatement()) {
+                    s2.execute("ALTER TABLE `" + table + "` CONVERT TO CHARACTER SET "
+                            + SchemaCollationPolicy.UNIFIED_CHARSET + " COLLATE "
+                            + SchemaCollationPolicy.UNIFIED_COLLATION);
+                }
+            })
+                    .as("ゲートが無ければ CONVERT TO は一意制約違反で落ちる。"
+                            + "この失敗こそが V175 STEP 1 の存在理由である")
+                    .isInstanceOf(SQLException.class)
+                    .hasMessageContaining("Duplicate entry");
+        } finally {
+            try (Connection conn = connection();
+                 Statement st = conn.createStatement()) {
+                st.execute("DROP TABLE IF EXISTS `" + table + "`");
+            }
+        }
     }
 
     // ---------------------------------------------------------------- helpers

@@ -181,6 +181,16 @@ public interface MyRepository extends AbstractTenantAwareRepository<MyEntity, Lo
 | 静的番人 | `MigrationCollationDeclarationGuardTest` | 新規 migration の `CREATE TABLE` が宣言を欠いたら Docker 不要で即 fail |
 | 動的番人 | `SchemaCollationConsistencyIT` | 本番と同じ照合順序で Flyway を実際に流し、適用後の実スキーマ全体を検証 |
 
+⚠️ **V175 の適用・失敗時の対応は必ず [`collation_unification_runbook.md`](collation_unification_runbook.md) を参照すること。**
+全表再構築であり、**巻き戻しは実質不可能**（逆変換も同規模の再構築で、かつ逆変換自体が一意制約違反を起こしうる）。
+また「照合順序を粗い方へ／細かい方へ寄せれば安全」といった理屈で判断してはならない
+— `utf8mb4_unicode_ci` → `utf8mb4_0900_ai_ci` は**双方向に**等価判定が変わることが実測で確認されている
+（新たに等価化 666 グループ／新たに区別 44 グループ、65,502 コードポイント中）。
+危険なのは**異なる字体系の数字**（ASCII `0` と NKo `߀` など）や**縦書き用の異体**であり、
+全角/半角の素の形（`,` と `，`、`A` と `Ａ`）・アクセント・濁点・かな種別は
+**どちらの照合順序でも既に等価**で危険軸ではない（直感に反するので注意）。
+安全性は理屈ではなく、V175 の STEP 1（実データに対する UNIQUE 衝突の事前検査）で担保する。
+
 ---
 
 ## なぜこの設計か
