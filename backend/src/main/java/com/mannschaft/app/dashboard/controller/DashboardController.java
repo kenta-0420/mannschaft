@@ -7,6 +7,8 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.ScopeType;
@@ -112,6 +114,8 @@ public class DashboardController {
     /**
      * 個人ダッシュボードの全ウィジェットデータを一括取得する。
      */
+    @SelfScopedEndpoint("dashboardService.getPersonalDashboard の検索キーは SecurityUtils.getCurrentUserId() の"
+            + "userId のみで、リクエストは他ユーザーの識別子を受け取らない（DashboardController.java:120）")
     @GetMapping
     @Operation(summary = "個人ダッシュボード一括取得",
             description = "ログインユーザーの個人ダッシュボードを取得する。priority=CRITICALで第1段階ウィジェットのみ高速返却")
@@ -125,6 +129,14 @@ public class DashboardController {
     /**
      * プラットフォームお知らせ取得（WidgetPlatformAnnouncements 用）。
      */
+    // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
+    // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
+    // でログイン済みユーザーにのみ到達が強制されている。
+    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 応答は platformAnnouncementService.getActiveAnnouncements() が返す公開中の全ユーザー共通の
+    // お知らせのみで、認証済みユーザーであれば誰が呼んでも同一の結果になる（ユーザー固有データを
+    // 含まない）ため、authenticated() のみで安全に成立する。
+    @AuthorizedByPathConfig
     @GetMapping("/announcements")
     @Operation(summary = "プラットフォームお知らせ取得", description = "公開中のプラットフォームお知らせ一覧を返す")
     public ResponseEntity<ApiResponse<List<DashboardAnnouncementResponse>>> getAnnouncements() {
@@ -154,6 +166,8 @@ public class DashboardController {
     /**
      * お知らせ欄の詳細一覧（ページネーション対応）。
      */
+    @SelfScopedEndpoint("notificationRepository の検索条件が SecurityUtils.getCurrentUserId() の"
+            + "userId のみで、リクエストは他ユーザーの識別子を受け取らない（DashboardController.java:163）")
     @GetMapping("/notices")
     @Operation(summary = "お知らせ一覧", description = "個人ダッシュボードのお知らせ欄（カーソルページネーション対応）")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getNotices(
@@ -199,6 +213,9 @@ public class DashboardController {
     /**
      * 自分の投稿一覧（ページネーション対応）。
      */
+    @SelfScopedEndpoint("timelinePostRepository.findByUserIdOrderByCreatedAtDesc の検索条件が"
+            + "SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（DashboardController.java:210）")
     @GetMapping("/my-posts")
     @Operation(summary = "自分の投稿一覧", description = "自分のタイムライン投稿一覧（カーソルページネーション対応）")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMyPosts(
@@ -233,6 +250,8 @@ public class DashboardController {
     /**
      * 個人TODOウィジェット用データ取得。
      */
+    @SelfScopedEndpoint("dashboardService.getPersonalTodos の検索キーが SecurityUtils.getCurrentUserId() の"
+            + "userId のみで、リクエストは他ユーザーの識別子を受け取らない（DashboardController.java:239）")
     @GetMapping("/todos")
     @Operation(summary = "個人TODO一覧", description = "自分がアサインされた未完了TODOの一覧と期限切れ件数を取得")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPersonalTodos() {
@@ -333,6 +352,9 @@ public class DashboardController {
     /**
      * 未読スレッド一覧。
      */
+    @SelfScopedEndpoint("userRoleRepository.findByUserIdAndTeamIdIsNotNull と "
+            + "chatChannelMemberRepository.findByUserId がいずれも SecurityUtils.getCurrentUserId() の"
+            + "userId のみで絞り込まれ、リクエストは他ユーザーの識別子を受け取らない（DashboardController.java:340）")
     @GetMapping("/unread-threads")
     @Operation(summary = "未読スレッド一覧", description = "未読の掲示板スレッド + チャットチャネルを横断取得")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUnreadThreads(
@@ -370,6 +392,9 @@ public class DashboardController {
     /**
      * 最近のアクティビティ。
      */
+    @SelfScopedEndpoint("スコープIDが userRoleRepository.findByUserIdAndTeamIdIsNotNull(認証主体の userId) から"
+            + "導出された自分の所属チームIDのみで、リクエストで他ユーザーの識別子は受け取らない"
+            + "（DashboardController.java:380-382）")
     @GetMapping("/activity")
     @Operation(summary = "最近のアクティビティ", description = "所属チーム/組織を横断した最近の活動フィード")
     public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivity(
@@ -386,6 +411,9 @@ public class DashboardController {
     /**
      * 個人カレンダーサマリー。
      */
+    @SelfScopedEndpoint("scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc の検索条件が"
+            + "SecurityUtils.getCurrentUserId() の userId のみで、リクエストは他ユーザーの識別子を"
+            + "受け取らない（DashboardController.java:400-402）")
     @GetMapping("/calendar")
     @Operation(summary = "個人カレンダーサマリー", description = "個人スケジュール + 所属チームの公開イベントを集約")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCalendar(
@@ -421,6 +449,16 @@ public class DashboardController {
     /**
      * パフォーマンスサマリー。
      */
+    // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
+    // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
+    // でログイン済みユーザーにのみ到達が強制されている。
+    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 現状は静的な空配列のみを返すスタブ実装で、データ取得処理（リポジトリ・他ドメイン Service 呼び出し）
+    // 自体が存在しないため authenticated() のみで安全に成立する（認証済みなら誰が呼んでも同一の空応答）。
+    // 【重要・将来の実装者への歯止め】パフォーマンス管理モジュールと連携してユーザー固有データを
+    // 返すよう実装した瞬間、この根拠は失効する。実データ取得を実装する際は、本注釈をそのまま残さず
+    // 認可の要否（所属チーム/組織のスコープ検証等）を必ず再検討すること。
+    @AuthorizedByPathConfig
     @GetMapping("/performance")
     @Operation(summary = "パフォーマンスサマリー", description = "所属チーム/組織ごとの個人パフォーマンス概要")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformance() {
@@ -431,6 +469,8 @@ public class DashboardController {
     /**
      * チャットハブデータ取得。
      */
+    @SelfScopedEndpoint("chatHubService.getChatHub の検索キーが SecurityUtils.getCurrentUserId() の"
+            + "userId のみで、リクエストは他ユーザーの識別子を受け取らない（DashboardController.java:437）")
     @GetMapping("/chat-hub")
     @Operation(summary = "チャットハブ", description = "グループチャンネル・DM・フォルダ別連絡先の一覧を返す")
     public ResponseEntity<ApiResponse<ChatHubResponse>> getChatHub() {
@@ -548,6 +588,16 @@ public class DashboardController {
     /**
      * ウィジェット設定をリセットする。
      */
+    // 認可根治戦役 Wave4 ロットD: scopeId はリクエストから受け取るが、
+    // widgetService.resetWidgetSettings が呼ぶ
+    // widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId は
+    // userId を必須条件として含む複合キー検索であり、削除対象は常に
+    // 「呼び出しユーザー自身のウィジェット設定行」に限定される（DashboardWidgetService.java:236-238）。
+    // scopeId に他ユーザーが所属しないチーム/組織のIDを渡しても、当該ユーザー自身の設定行が
+    // 存在しなければ 0 件削除で無害。他ユーザーの設定行には userId 不一致のため到達しない。
+    @SelfScopedEndpoint("削除対象が (SecurityUtils.getCurrentUserId(), scopeType, scopeId) の複合キーで"
+            + "userId を必須条件に含むため、常に呼び出しユーザー自身のウィジェット設定行しか削除できない"
+            + "（DashboardWidgetService#resetWidgetSettings, DashboardWidgetService.java:236-238）")
     @DeleteMapping("/widgets")
     @Operation(summary = "ウィジェット設定リセット", description = "指定スコープの全設定を削除しデフォルトに復帰する")
     public ResponseEntity<Void> resetWidgetSettings(

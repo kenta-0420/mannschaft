@@ -610,7 +610,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 331;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 297;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
