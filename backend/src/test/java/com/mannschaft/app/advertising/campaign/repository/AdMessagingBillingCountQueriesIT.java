@@ -94,18 +94,22 @@ class AdMessagingBillingCountQueriesIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("PUSH: delivered_at IS NOT NULL かつ failed_reason が NULL または空文字のみ課金対象")
+    @DisplayName("PUSH: delivered_at IS NOT NULL かつ failed_reason が NULL・空文字・空白のみのいずれかで課金対象")
     void countBillablePushes_excludesFailed() {
         UUID campaignId = UUID.randomUUID();
         String monthKey = "2026-05";
 
         pushDeliveryRepository.save(push(campaignId, monthKey, null));
         pushDeliveryRepository.save(push(campaignId, monthKey, ""));
+        // 空白のみの failedReason（旧実装の String#isBlank() 相当）も課金対象であることを保証する。
+        // TRIM() を使わない素朴な `failedReason = ''` 判定に戻すとこのケースだけ課金対象外に
+        // なってしまう（旧実装との意味不一致）ため、退行検知のために明示的にケースを持つ。
+        pushDeliveryRepository.save(push(campaignId, monthKey, "  "));
         pushDeliveryRepository.save(push(campaignId, monthKey, "PROVIDER_ERROR"));
 
         long count = pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
 
-        assertThat(count).isEqualTo(2L);
+        assertThat(count).isEqualTo(3L);
     }
 
     private AdPushDelivery push(UUID campaignId, String monthKey, String failedReason) {

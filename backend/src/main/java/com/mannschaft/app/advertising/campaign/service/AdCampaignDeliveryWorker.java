@@ -25,9 +25,23 @@ import java.util.stream.Stream;
  * キャンペーンをスキャンし、{@link AdAudienceResolver#streamCandidateUserIds} で取得した
  * 各ユーザーに対して {@link AdCampaignDeliveryDispatcher#deliverForUser} を呼ぶ。</p>
  *
- * <h3>多重実行防止</h3>
- * <p>{@code @SchedulerLock} で複数ノード並列起動時の重複実行を防ぐ。
- * さらに {@code SELECT ... FOR UPDATE} で同一キャンペーンの並行配信も二重に防ぐ。</p>
+ * <h3>実行制御と重複配信防止の担当分離</h3>
+ * <p>{@code @SchedulerLock} は複数ノードでの本メソッド自体の並列起動を防ぐ。
+ * {@link #loadActiveCampaigns()} の {@code SELECT ... FOR UPDATE} はロック保持区間が
+ * その小さな {@code @Transactional} 内（候補キャンペーン一覧の取得のみ）に限られ、
+ * 後続の {@link #processCampaign} には及ばない。</p>
+ *
+ * <p>したがって「同一ユーザーへの重複配信を実際に防ぐ」役割はこのロックではなく、
+ * {@link AdCampaignDeliveryDispatcher#deliverForUser} が呼ぶ
+ * {@link AdFrequencyCapService#tryConsume}（Valkey INCR による原子的な週次消費枠判定）が担う。
+ * 同一ユーザー・同一広告主につき週内で許可されるのは 1 件のみのため、同じユーザーへ
+ * 同一広告主から複数回配信が試みられても、実際に配信されるのは 1 回だけになる
+ * （並行呼び出しに対する原子性の実証は {@code AdFrequencyCapIntegrationTest} を参照）。</p>
+ *
+ * <p>{@link #deliveryCursorByCampaignId} はノード内メモリのみで保持するベストエフォートの
+ * キーセットカーソルであり、1 回の実行時間を有界化する目的に限定される（再起動で先頭に
+ * 巻き戻り、以後の周回で処理済みユーザーへも再試行され得る）。その再試行によって同一ユーザーへ
+ * 重ねて実配信が行われないことの保証は、上記の FreqCap の冪等性に依っている。</p>
  *
  * <h3>独立失敗</h3>
  * <p>キャンペーン単位はトランザクション無し（{@link AdCampaignDeliveryDispatcher} が
@@ -100,7 +114,9 @@ public class AdCampaignDeliveryWorker {
      * 対象キャンペーンを {@code SELECT ... FOR UPDATE} で取得する。
      *
      * <p>{@code @Transactional} 境界はこのメソッド内で完結し、ロックはトランザクションコミット時に解放される
-     * （ループ全体のロック保持を避ける）。</p>
+     * （ループ全体のロック保持を避け、1 回の実行時間を有界化する）。したがってこのロックは
+     * 候補一覧の取得を DB 側の同時更新から守るものであり、後続の配信処理中の排他は提供しない
+     * （クラス Javadoc「実行制御と重複配信防止の担当分離」を参照）。</p>
      */
     @Transactional
     List<AdMessagingCampaign> loadActiveCampaigns() {
