@@ -130,24 +130,29 @@ public class NotificationService {
      * ここでは {@code switch} 式へ差し戻す。網羅性がコンパイラに保証される形（{@code switch} 式・
      * 全 enum 定数を列挙）を維持すること。</p>
      *
-     * <p><b>将来 {@code ScopeType} に定数が増えた場合</b>: {@code switch} 式のため、既定分岐
-     * （{@code default}）を用意しない限りコンパイルエラーで気付ける。ここでは意図的に
-     * {@code default} を用意し、未知値では {@link IllegalStateException} を投げて<b>必ず落とす</b>
-     * （黙って null や空ページを返して握りつぶすことはしない）。さらに番人テスト
-     * {@code NotificationScopeTypeMappingTest} が {@code ScopeType.values()} を全件ループして
-     * 写像可能性を検査しているため、<b>定数が増えた瞬間にそのテストが落ちて</b>写像先の判断を強制できる。</p>
+     * <p><b>将来 {@code ScopeType} に定数が増えた場合（重要・{@code default} を足さないこと）</b>:
+     * この {@code switch} 式には {@code TEAM} / {@code ORGANIZATION} の2ケースしか書いておらず、
+     * <b>意図的に {@code default} を用意していない</b>。{@code ScopeType} は現時点で定数2つの
+     * 純粋な enum であり、Java の {@code switch} 式は enum に対して既知の定数を網羅していれば
+     * {@code default} 無しでコンパイルできる。{@code default} を足すとこの網羅性チェックが
+     * 失われ、{@code ScopeType} に新しい定数が増えてもコンパイルが通ってしまい、写像漏れが
+     * 実行時まで表面化しない状態に逆戻りする。「安全のため」と善意で {@code default} を
+     * 足さないこと —— それは本メソッドをかつて {@code ==} 連鎖に歪めさせた事故
+     * （上記の過去の経緯）と<b>同じ型の事故</b>である。{@code ScopeType} に定数を追加した際は、
+     * ここに {@code case} を追加しない限り notification ドメインがコンパイルエラーになる。
+     * これが最強の検知であり、実行時に未知値が来ることは enum である以上あり得ない。</p>
+     *
+     * <p>番人テスト {@code NotificationScopeTypeMappingTest} は
+     * {@code ScopeType.values()} を全件ループして写像可能性を検査しており、コンパイル時の
+     * 網羅性チェックと合わせた二重の守りとして<b>そのまま維持する</b>。</p>
      *
      * @param scopeType scopefolder ドメインのスコープ種別
      * @return 通知ドメインのスコープ種別
-     * @throws IllegalStateException 写像先が定義されていないスコープ種別が渡された場合
      */
     static NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
         return switch (scopeType) {
             case TEAM -> NotificationScopeType.TEAM;
             case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
-            default -> throw new IllegalStateException(
-                    "ScopeType から NotificationScopeType への写像が未定義です: " + scopeType
-                            + "（NotificationService#toNotificationScopeType に写像先を追加すること）");
         };
     }
 

@@ -22,13 +22,15 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * （D-1 / {@code CrossDomainEntityImportArchTest}）に新規違反として誤検出され CI が落ちたため、
  * 一時的に {@code ==} による参照比較へ書き換えていた。D-1 番人に合成クラス除外
  * （{@code SyntheticClasses#isSynthetic}）を実装して根治したため、写像本体は
- * {@code default} 句付きの {@code switch} 式へ差し戻し済みである。</p>
+ * {@code switch} 式へ差し戻し済みである。</p>
  *
- * <p>{@code switch} 式には既知の定数のみを列挙し {@code default} で未知値を検出する形に
- * しているため、コンパイル時の網羅性チェックは働かない。本テストは
- * <b>{@code ScopeType.values()} を全件ループ</b>して、その実行時の網羅性保証を肩代わりする。
- * TEAM / ORGANIZATION を個別に書き並べる形にすると、{@code ScopeType} に定数が増えても
- * 何も落ちず、写像漏れが実行時 {@link IllegalStateException} として本番で初めて表面化してしまう。</p>
+ * <p>写像本体の {@code switch} 式は {@code TEAM} / {@code ORGANIZATION} の2ケースのみを列挙し、
+ * <b>意図的に {@code default} 句を置いていない</b>。これにより {@code ScopeType} に定数が
+ * 増えた瞬間、notification ドメインの写像本体がコンパイルエラーになる
+ * （コンパイル時の網羅性チェック。最強の検知）。本テストはそれに加えた
+ * <b>実行時の二重の守り</b>として {@code ScopeType.values()} を全件ループし、
+ * 「同名の {@code NotificationScopeType} 定数が存在するか」まで検査する。
+ * TEAM / ORGANIZATION を個別に書き並べる形にすると、この実行時チェックが働かなくなる。</p>
  *
  * <p>Docker 不要のプレーン単体テスト。実 DB での回帰は
  * {@code NotificationFolderFilterContractIT} が担保する。</p>
