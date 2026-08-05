@@ -1,6 +1,5 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelMemberRole;
@@ -20,11 +19,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.dashboard.FolderItemType;
-import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
-import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,12 +45,10 @@ public class ChatChannelService {
     private final ChatMessageRepository messageRepository;
     private final ChatMapper chatMapper;
     private final UserRepository userRepository;
-    private final UserBlockRepository userBlockRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AccessControlService accessControlService;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -214,6 +207,12 @@ public class ChatChannelService {
     @Transactional
     public ChannelResponse createChannel(CreateChannelRequest request, Long createdBy) {
         ChannelType channelType = ChannelType.valueOf(request.getChannelType());
+        boolean isPrivate = Boolean.TRUE.equals(request.getIsPrivate());
+
+        // チーム/組織チャンネルは当該スコープの内部資産である。作成者がそのスコープに属することを保証する
+        //（非公開チャンネルはスコープの ADMIN 以上に限定する）。
+        channelAccessGuard.requireChannelCreationScope(
+                channelType, request.getTeamId(), request.getOrganizationId(), isPrivate, createdBy);
 
         validateChannelNameUniqueness(request, channelType);
 
@@ -229,7 +228,7 @@ public class ChatChannelService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .iconKey(request.getIconKey())
-                .isPrivate(request.getIsPrivate() != null ? request.getIsPrivate() : false)
+                .isPrivate(isPrivate)
                 .createdBy(createdBy)
                 .build();
 
@@ -375,13 +374,10 @@ public class ChatChannelService {
      * Kabine（1対1 DM）を開始する。既存があれば返却、なければ新規作成。
      */
     private ConversationResult startKabine(Long callerId, Long partnerId) {
-        // ブロック・DM受信制限チェック
-        if (userBlockRepository.existsByBlockerIdAndBlockedId(partnerId, callerId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        // 相手のブロック設定・DM 受信範囲設定を保証する（Zimmer と同一の判定を通す）。
         UserEntity partner = userRepository.findById(partnerId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-        checkDmReceiveRestriction(callerId, partner);
+        channelAccessGuard.requireDmDeliverable(callerId, partner);
 
         // 既存 DM を検索
         return channelRepository.findExistingDm(callerId, partnerId)
@@ -406,11 +402,12 @@ public class ChatChannelService {
      * Zimmer（グループDM）を開始する。常に新規作成。
      */
     private ConversationResult startZimmer(Long callerId, List<Long> partnerIds) {
-        // 全参加者のブロックチェック（自分がブロックされている相手がいないか確認）
+        // 全参加者について、Kabine と同一の判定（ブロック設定・DM 受信範囲設定）を保証する。
+        // 参加人数によって相手の受信設定が無視される非対称を作らない。
         for (Long partnerId : partnerIds) {
-            if (userBlockRepository.existsByBlockerIdAndBlockedId(partnerId, callerId)) {
-                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            }
+            UserEntity partner = userRepository.findById(partnerId)
+                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
+            channelAccessGuard.requireDmDeliverable(callerId, partner);
         }
 
         ChatChannelEntity channel = ChatChannelEntity.builder()
@@ -431,23 +428,6 @@ public class ChatChannelService {
 
         log.info("Zimmer作成: channelId={}, callerId={}, members={}", saved.getId(), callerId, partnerIds.size() + 1);
         return new ConversationResult(chatMapper.toChannelResponse(saved), true);
-    }
-
-    /**
-     * DM受信制限チェック（相手の設定に基づいて DM を受け入れるか判定）。
-     */
-    private void checkDmReceiveRestriction(Long senderId, UserEntity receiver) {
-        DmReceiveFrom setting = receiver.getDmReceiveFrom();
-        if (setting == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
-            if (!userRoleRepository.existsSharedTeam(senderId, receiver.getId())) {
-                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
-            }
-        } else if (setting == DmReceiveFrom.CONTACTS_ONLY) {
-            if (!chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
-                    receiver.getId(), FolderItemType.CONTACT, senderId)) {
-                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
-            }
-        }
     }
 
     /**
@@ -477,9 +457,7 @@ public class ChatChannelService {
         if (kabine.getChannelType() != ChannelType.DM) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM);
         }
-        if (!memberRepository.existsByChannelIdAndUserId(channelId, callerId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        channelAccessGuard.requireChannelMember(channelId, callerId);
 
         // 新しいZimmer（GROUP_DM）を作成
         ChatChannelEntity zimmer = ChatChannelEntity.builder()
@@ -503,10 +481,10 @@ public class ChatChannelService {
 
         // 新たに招待するメンバーを追加（ブロックチェック込み）
         for (Long inviteeId : request.getUserIds()) {
-            // 招待対象が呼び出しユーザーをブロックしている場合は拒否
-            if (userBlockRepository.existsByBlockerIdAndBlockedId(inviteeId, callerId)) {
-                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            }
+            // 招待対象のブロック設定・DM 受信範囲設定を、会話開始（Kabine/Zimmer）と同一の判定で保証する。
+            UserEntity invitee = userRepository.findById(inviteeId)
+                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
+            channelAccessGuard.requireDmDeliverable(callerId, invitee);
             if (!memberRepository.existsByChannelIdAndUserId(savedZimmer.getId(), inviteeId)) {
                 memberRepository.save(ChatChannelMemberEntity.builder()
                         .channelId(savedZimmer.getId())
@@ -604,12 +582,7 @@ public class ChatChannelService {
      * {@code ChatMessageService} に依存できない（循環依存）ため、ここではメンバーシップ検査のみを行う。</p>
      */
     private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
-        if (!channel.getChannelType().isMembershipGated()) {
-            return;
-        }
-        if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        channelAccessGuard.requireChannelMembership(channel, userId);
     }
 
     /**
@@ -617,23 +590,7 @@ public class ChatChannelService {
      * チーム/組織チャンネルはADMIN以上、DM/GROUP_DMはチャンネルOWNERのみ許可。
      */
     private void checkChannelAdminAccess(ChatChannelEntity channel, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (channel.getTeamId() != null) {
-            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
-            return;
-        }
-        if (channel.getOrganizationId() != null) {
-            accessControlService.checkAdminOrAbove(userId, channel.getOrganizationId(), "ORGANIZATION");
-            return;
-        }
-        // DM / GROUP_DM: チャンネルのOWNERのみ許可
-        ChatChannelMemberEntity member = memberRepository.findByChannelIdAndUserId(channel.getId(), userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
-        if (member.getRole() != ChannelMemberRole.OWNER) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        channelAccessGuard.requireChannelAdminAccess(channel, userId);
     }
 
     /**
@@ -658,30 +615,10 @@ public class ChatChannelService {
             return;
         }
 
-        // 1. ブロックチェック: 受信者が送信者をブロックしている場合は拒否
-        if (userBlockRepository.existsByBlockerIdAndBlockedId(receiverId, senderId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
-
-        // 2. DM受信制限チェック
+        // ブロック設定・DM 受信範囲設定は会話開始（Kabine/Zimmer）と同一の判定を通す。
         UserEntity receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
-
-        DmReceiveFrom dmReceiveFrom = receiver.getDmReceiveFrom();
-
-        if (dmReceiveFrom == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
-            // 送信者と受信者がいずれかの共通チームに所属していなければ拒否
-            if (!userRoleRepository.existsSharedTeam(senderId, receiverId)) {
-                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
-            }
-        } else if (dmReceiveFrom == DmReceiveFrom.CONTACTS_ONLY) {
-            // 受信者の連絡先フォルダに送信者が CONTACT として登録されていなければ拒否
-            if (!chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
-                    receiverId, FolderItemType.CONTACT, senderId)) {
-                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
-            }
-        }
-        // ANYONE の場合はスルー
+        channelAccessGuard.requireDmDeliverable(senderId, receiver);
     }
 
     /**

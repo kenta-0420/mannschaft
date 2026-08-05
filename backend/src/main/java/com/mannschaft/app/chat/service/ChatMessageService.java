@@ -17,6 +17,7 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.entity.ChatMessageReactionEntity;
 import com.mannschaft.app.chat.event.InquiryReceivedEvent;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
+import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -72,7 +73,9 @@ public class ChatMessageService {
     private final ChatMapper chatMapper;
     /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
     private final ChatAttachmentService chatAttachmentService;
+    private final ChatChannelAccessGuard channelAccessGuard;
     private final ChatChannelMemberRepository memberRepository;
+    private final ChatChannelRepository channelRepository;
     /** F04.2: WebSocket STOMP でメッセージイベントをチャンネル参加者に配信する。 */
     private final ChatMessagePublisher chatMessagePublisher;
     /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証用。 */
@@ -577,6 +580,37 @@ public class ChatMessageService {
     }
 
     /**
+     * 添付ファイルの署名付きダウンロード URL 発行について、呼出ユーザーが当該オブジェクトを
+     * 閲覧してよいことを保証する。
+     *
+     * <p>オブジェクトキーからそれが属するチャンネルを解決し、本文閲覧と同一の判定
+     * （{@link #checkChannelViewAccess}）を適用する。対象はメッセージ添付
+     * （{@code chat_message_attachments.file_key}）とチャンネルアイコン
+     * （{@code chat_channels.icon_key}）であり、いずれにも該当しないキーは
+     * チャットが管理するオブジェクトではないため拒否する（fail-closed）。</p>
+     *
+     * @param fileKey ストレージ上のオブジェクトキー
+     * @param userId  呼出ユーザー ID
+     * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
+     */
+    public void checkAttachmentDownloadAccess(String fileKey, Long userId) {
+        Long channelId = attachmentRepository.findFirstByFileKey(fileKey)
+                .map(ChatMessageAttachmentEntity::getMessageId)
+                .flatMap(messageRepository::findById)
+                .map(ChatMessageEntity::getChannelId)
+                .orElse(null);
+        if (channelId == null) {
+            channelId = channelRepository.findFirstByIconKey(fileKey)
+                    .map(ChatChannelEntity::getId)
+                    .orElse(null);
+        }
+        if (channelId == null) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+        checkChannelViewAccess(channelId, userId);
+    }
+
+    /**
      * チャンネルへの投稿・モデレーション操作の認可を検証する。
      *
      * <p><b>認可根治 Wave 6</b>: 旧 {@code verifyTournamentChannelPost} は大会チャット以外で no-op だったため、
@@ -588,7 +622,7 @@ public class ChatMessageService {
      * @param senderId 操作ユーザー ID
      * @throws BusinessException 投稿権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
-    private void checkChannelPostAccess(ChatChannelEntity channel, Long senderId) {
+    public void checkChannelPostAccess(ChatChannelEntity channel, Long senderId) {
         ContactSpaceScopeType scope = tournamentScopeOf(channel);
         if (scope != null) {
             tournamentContactAccessService.checkPost(scope, channel.getSourceId(), senderId);
@@ -764,9 +798,7 @@ public class ChatMessageService {
     }
 
     private void validateMessageOwner(ChatMessageEntity message, Long userId) {
-        if (!userId.equals(message.getSenderId())) {
-            throw new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED);
-        }
+        channelAccessGuard.requireMessageOwner(message, userId);
     }
 
     private int resolveLimit(Integer limit) {
