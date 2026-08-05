@@ -45,12 +45,16 @@ public interface VillageRepository extends JpaRepository<VillageEntity, UUID> {
     Page<VillageEntity> findByDeletedAtIsNullAndArchivedAtIsNull(Pageable pageable);
 
     /**
-     * F17.1 Phase 3-β 巡礼推薦バッチ用: 巡礼推薦の候補村を SQL 側で絞り込んでランダム順に取得する。
+     * F17.1 Phase 3-β 巡礼推薦バッチ用: 巡礼推薦の候補村 ID を SQL 側の WHERE 句で絞り込んで取得する。
      *
      * <p>{@link com.mannschaft.app.village.batch.VillagePilgrimageBatchService} が全村を
      * {@code findAll()} でロードしユーザーごとにアプリ側でループ判定していた実装
-     * （ユーザー数 × 村数のオーダー）を、WHERE 句での絞り込み＋DB 側ランダム順に置き換えるために追加した。
-     * 呼び出し側は {@code pageable}（例: {@code PageRequest.of(0, 1)}）で必要件数だけ取得すること。</p>
+     * （ユーザー数 × 村数のオーダー）を、WHERE 句での絞り込みに置き換えるために追加した。</p>
+     *
+     * <p>{@code ORDER BY RAND()} は全行に乱数を振ってからソートするため村テーブルが大きくなるほど
+     * 致命的に遅くなり、インデックスも効かない。SQL 側ではソートせず絞り込みのみを行い、呼び出し側が
+     * 返却された ID 集合（WHERE 句で絞り込み済みのため件数は限られる）からアプリ側で {@code Random} により
+     * 1 件選ぶこと（候補数ぶんのメモリしか使わない）。</p>
      *
      * <p>{@code excludeIds} は呼び出し元ユーザーの参加済み／ピン留め済み村 ID 集合（非空必須。
      * MySQL は {@code IN ()} を許容しないため、呼び出し側は必ず 1 件以上を渡すこと）。</p>
@@ -59,16 +63,13 @@ public interface VillageRepository extends JpaRepository<VillageEntity, UUID> {
      * @param excludeIds     除外する村 ID 集合（参加済み・ピン留め済み。非空）
      * @param categoriesEmpty true の場合カテゴリ絞り込みを行わない（categories は無視される）
      * @param categories     一致させたいカテゴリ集合（categoriesEmpty=false のときのみ使用）
-     * @param pageable       取得件数の上限（ソートは本クエリの {@code ORDER BY RAND()} が優先される）
      */
-    @Query("SELECT v FROM VillageEntity v WHERE v.deletedAt IS NULL AND v.archivedAt IS NULL "
+    @Query("SELECT v.id FROM VillageEntity v WHERE v.deletedAt IS NULL AND v.archivedAt IS NULL "
             + "AND v.visibility = :visibility AND v.id NOT IN :excludeIds "
-            + "AND (:categoriesEmpty = true OR v.category IN :categories) "
-            + "ORDER BY FUNCTION('RAND')")
-    List<VillageEntity> findPilgrimageCandidatesRandomOrder(
+            + "AND (:categoriesEmpty = true OR v.category IN :categories)")
+    List<UUID> findPilgrimageCandidateIds(
             @Param("visibility") VillageVisibility visibility,
             @Param("excludeIds") Collection<UUID> excludeIds,
             @Param("categoriesEmpty") boolean categoriesEmpty,
-            @Param("categories") Collection<String> categories,
-            Pageable pageable);
+            @Param("categories") Collection<String> categories);
 }

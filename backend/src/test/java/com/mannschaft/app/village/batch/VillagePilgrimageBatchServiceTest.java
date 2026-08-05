@@ -17,7 +17,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -37,7 +36,7 @@ import static org.mockito.Mockito.verify;
  * {@link VillagePilgrimageBatchService} 単体テスト（F17.1 Phase 3-β 巡礼バッチ）。
  *
  * <p>候補選定の絞り込み（削除/凍結/UNLISTED除外・カテゴリ一致・参加済/ピン済除外）は
- * {@link VillageRepository#findPilgrimageCandidatesRandomOrder} の SQL 側 WHERE 句へ移管したため、
+ * {@link VillageRepository#findPilgrimageCandidateIds} の SQL 側 WHERE 句へ移管したため、
  * 本テストは「サービスが正しい引数（除外ID集合・カテゴリ絞り込みの有無）でリポジトリを呼ぶか」
  * 「候補の有無に応じて正しく作成/スキップするか」のみを検証する。SQL の絞り込み自体の正しさは
  * {@code VillagePilgrimageCandidateRepositoryIntegrationTest}（実 DB 結合テスト）で検証する。</p>
@@ -73,9 +72,12 @@ class VillagePilgrimageBatchServiceTest {
         given(villageRepository.findAllById(anyCollection()))
                 .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findPilgrimageCandidatesRandomOrder(
-                eq(VillageVisibility.PUBLIC), anyCollection(), eq(false), anyCollection(), any(Pageable.class)))
-                .willReturn(List.of(village(candidateVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
+        given(villageRepository.findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(false), anyCollection()))
+                .willReturn(List.of(candidateVillageId));
+        given(villageRepository.findById(candidateVillageId))
+                .willReturn(java.util.Optional.of(
+                        village(candidateVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pilgrimageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         boolean created = batch.generateForUser(USER_ID, today);
@@ -92,8 +94,8 @@ class VillagePilgrimageBatchServiceTest {
         // 参加済み・ピン済みの村IDが除外集合として渡っていること
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<UUID>> excludeCap = ArgumentCaptor.forClass(Collection.class);
-        verify(villageRepository).findPilgrimageCandidatesRandomOrder(
-                eq(VillageVisibility.PUBLIC), excludeCap.capture(), eq(false), anyCollection(), any(Pageable.class));
+        verify(villageRepository).findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), excludeCap.capture(), eq(false), anyCollection());
         assertThat(excludeCap.getValue()).contains(joinedVillageId);
     }
 
@@ -121,8 +123,8 @@ class VillagePilgrimageBatchServiceTest {
 
         assertThat(created).isFalse();
         verify(pilgrimageRepository, never()).save(any());
-        verify(villageRepository, never()).findPilgrimageCandidatesRandomOrder(
-                any(), any(), anyBoolean(), any(), any());
+        verify(villageRepository, never()).findPilgrimageCandidateIds(
+                any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -137,8 +139,8 @@ class VillagePilgrimageBatchServiceTest {
         given(villageRepository.findAllById(anyCollection()))
                 .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findPilgrimageCandidatesRandomOrder(
-                any(), anyCollection(), anyBoolean(), anyCollection(), any(Pageable.class)))
+        given(villageRepository.findPilgrimageCandidateIds(
+                any(), anyCollection(), anyBoolean(), anyCollection()))
                 .willReturn(List.of());
 
         boolean created = batch.generateForUser(USER_ID, today);
@@ -161,9 +163,12 @@ class VillagePilgrimageBatchServiceTest {
         given(villageRepository.findAllById(anyCollection()))
                 .willReturn(List.of(village(joinedVillageId, null, VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findPilgrimageCandidatesRandomOrder(
-                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection(), any(Pageable.class)))
-                .willReturn(List.of(village(candidateVillageId, "music", VillageVisibility.PUBLIC, false, false)));
+        given(villageRepository.findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection()))
+                .willReturn(List.of(candidateVillageId));
+        given(villageRepository.findById(candidateVillageId))
+                .willReturn(java.util.Optional.of(
+                        village(candidateVillageId, "music", VillageVisibility.PUBLIC, false, false)));
         given(pilgrimageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         boolean created = batch.generateForUser(USER_ID, today);
@@ -175,8 +180,8 @@ class VillagePilgrimageBatchServiceTest {
         assertThat(cap.getValue().getReason()).isEqualTo("RANDOM");
 
         // categoriesEmpty=true でリポジトリが呼ばれていること
-        verify(villageRepository).findPilgrimageCandidatesRandomOrder(
-                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection(), any(Pageable.class));
+        verify(villageRepository).findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection());
     }
 
     // ====================================================================

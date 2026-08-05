@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -20,15 +19,16 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link VillageRepository#findPilgrimageCandidatesRandomOrder} 結合テスト。
+ * {@link VillageRepository#findPilgrimageCandidateIds} 結合テスト。
  *
  * <p>{@code VillagePilgrimageBatchService} が全村ロード＋アプリ側フィルタ（ユーザー数×村数の
  * オーダー）から SQL 側の WHERE 句絞り込みへ載せ替えたことに伴い、削除済み・凍結・UNLISTED の除外、
  * カテゴリ一致、参加済み/ピン済み除外の各条件が実 DB 上で意図通り機能することを検証する
- * （モックでは JPQL の正しさを検証できないため）。</p>
+ * （モックでは JPQL の正しさを検証できないため）。ソートは {@code ORDER BY RAND()} の性能問題を
+ * 避けるため行わず、候補 ID 集合の絞り込みのみを検証する（ランダム選定はアプリ側）。</p>
  */
 @Transactional
-@DisplayName("VillageRepository#findPilgrimageCandidatesRandomOrder 結合テスト")
+@DisplayName("VillageRepository#findPilgrimageCandidateIds 結合テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class VillagePilgrimageCandidateRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
 
@@ -64,10 +64,10 @@ class VillagePilgrimageCandidateRepositoryIntegrationTest extends AbstractMySqlI
     void PUBLIC未削除未凍結が候補になる() {
         VillageEntity candidate = persistVillage("sports", VillageVisibility.PUBLIC, false, false);
 
-        List<VillageEntity> result = villageRepository.findPilgrimageCandidatesRandomOrder(
-                VillageVisibility.PUBLIC, excludeDummy(), true, List.of("__NONE__"), PageRequest.of(0, 10));
+        List<UUID> result = villageRepository.findPilgrimageCandidateIds(
+                VillageVisibility.PUBLIC, excludeDummy(), true, List.of("__NONE__"));
 
-        assertThat(result).extracting(VillageEntity::getId).contains(candidate.getId());
+        assertThat(result).contains(candidate.getId());
     }
 
     @Test
@@ -77,11 +77,10 @@ class VillagePilgrimageCandidateRepositoryIntegrationTest extends AbstractMySqlI
         VillageEntity archived = persistVillage("sports", VillageVisibility.PUBLIC, false, true);
         VillageEntity unlisted = persistVillage("sports", VillageVisibility.UNLISTED, false, false);
 
-        List<VillageEntity> result = villageRepository.findPilgrimageCandidatesRandomOrder(
-                VillageVisibility.PUBLIC, excludeDummy(), true, List.of("__NONE__"), PageRequest.of(0, 100));
+        List<UUID> result = villageRepository.findPilgrimageCandidateIds(
+                VillageVisibility.PUBLIC, excludeDummy(), true, List.of("__NONE__"));
 
-        assertThat(result).extracting(VillageEntity::getId)
-                .doesNotContain(deleted.getId(), archived.getId(), unlisted.getId());
+        assertThat(result).doesNotContain(deleted.getId(), archived.getId(), unlisted.getId());
     }
 
     @Test
@@ -90,11 +89,11 @@ class VillagePilgrimageCandidateRepositoryIntegrationTest extends AbstractMySqlI
         VillageEntity matched = persistVillage("sports", VillageVisibility.PUBLIC, false, false);
         VillageEntity unmatched = persistVillage("music", VillageVisibility.PUBLIC, false, false);
 
-        List<VillageEntity> result = villageRepository.findPilgrimageCandidatesRandomOrder(
-                VillageVisibility.PUBLIC, excludeDummy(), false, Set.of("sports"), PageRequest.of(0, 100));
+        List<UUID> result = villageRepository.findPilgrimageCandidateIds(
+                VillageVisibility.PUBLIC, excludeDummy(), false, Set.of("sports"));
 
-        assertThat(result).extracting(VillageEntity::getId).contains(matched.getId());
-        assertThat(result).extracting(VillageEntity::getId).doesNotContain(unmatched.getId());
+        assertThat(result).contains(matched.getId());
+        assertThat(result).doesNotContain(unmatched.getId());
     }
 
     @Test
@@ -103,25 +102,11 @@ class VillagePilgrimageCandidateRepositoryIntegrationTest extends AbstractMySqlI
         VillageEntity excluded = persistVillage("sports", VillageVisibility.PUBLIC, false, false);
         VillageEntity other = persistVillage("sports", VillageVisibility.PUBLIC, false, false);
 
-        List<VillageEntity> result = villageRepository.findPilgrimageCandidatesRandomOrder(
-                VillageVisibility.PUBLIC, List.of(excluded.getId()), true, List.of("__NONE__"),
-                PageRequest.of(0, 100));
+        List<UUID> result = villageRepository.findPilgrimageCandidateIds(
+                VillageVisibility.PUBLIC, List.of(excluded.getId()), true, List.of("__NONE__"));
 
-        assertThat(result).extracting(VillageEntity::getId)
+        assertThat(result)
                 .contains(other.getId())
                 .doesNotContain(excluded.getId());
-    }
-
-    @Test
-    @DisplayName("Pageable の件数上限で取得件数が制限される（例: 1件だけ取得）")
-    void Pageableで件数が制限される() {
-        for (int i = 0; i < 5; i++) {
-            persistVillage("sports", VillageVisibility.PUBLIC, false, false);
-        }
-
-        List<VillageEntity> result = villageRepository.findPilgrimageCandidatesRandomOrder(
-                VillageVisibility.PUBLIC, excludeDummy(), true, List.of("__NONE__"), PageRequest.of(0, 1));
-
-        assertThat(result).hasSize(1);
     }
 }

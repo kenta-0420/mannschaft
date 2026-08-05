@@ -13,7 +13,6 @@ import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 /**
@@ -134,26 +134,32 @@ public class VillagePilgrimageBatchService {
                 .map(UserVillagePinEntity::getVillageId)
                 .collect(Collectors.toSet());
 
-        // 3) 候補選定: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致を SQL 側の WHERE で絞り込み、
-        //    DB 側のランダム順（ORDER BY RAND()）から先頭 1 件のみ取得する。
+        // 3) 候補選定: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致を SQL 側の WHERE で絞り込む。
         //    旧実装は findAll() で全村をロードしユーザーごとにアプリ側フィルタしていた（ユーザー数 × 村数のオーダー）。
+        //    ORDER BY RAND() は全行に乱数を振ってからソートするため村テーブルが大きくなるほど致命的に遅く
+        //    インデックスも効かないので使わず、WHERE 句で絞り込んだ候補 ID（件数は限られる）だけを取得し
+        //    アプリ側で Random により 1 件選ぶ（候補数ぶんのメモリしか使わない）。
         Set<UUID> excludeIds = new HashSet<>();
         excludeIds.addAll(joinedVillageIds);
         excludeIds.addAll(pinnedVillageIds);
 
-        List<VillageEntity> candidates = villageRepository.findPilgrimageCandidatesRandomOrder(
+        List<UUID> candidateIds = villageRepository.findPilgrimageCandidateIds(
                 VillageVisibility.PUBLIC,
                 excludeIds,
                 categories.isEmpty(),
-                categories.isEmpty() ? NO_CATEGORY_FILTER : categories,
-                PageRequest.of(0, 1));
+                categories.isEmpty() ? NO_CATEGORY_FILTER : categories);
 
-        if (candidates.isEmpty()) {
+        if (candidateIds.isEmpty()) {
             return false;
         }
 
-        // 4) SQL 側で既にランダム選定済み（本格化は将来の TODO）
-        VillageEntity picked = candidates.get(0);
+        // 4) アプリ側でランダム選定（本格化は将来の TODO）
+        UUID pickedId = candidateIds.get(ThreadLocalRandom.current().nextInt(candidateIds.size()));
+        VillageEntity picked = villageRepository.findById(pickedId).orElse(null);
+        if (picked == null) {
+            // 取得直後に削除等が発生した稀なレース。今回は推薦を作らずスキップ（次回バッチで再試行）
+            return false;
+        }
 
         String reason;
         if (!categories.isEmpty() && categories.contains(picked.getCategory())) {

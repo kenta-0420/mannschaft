@@ -225,7 +225,16 @@ public class ScheduleReminderService {
      * ページ単位ではなく1件ごとに独立トランザクション（{@link #processDueReminder}）でコミットし、
      * 途中で失敗しても再実行時は未送信分から再開できる。1 件の送信失敗は握り潰さず記録した上で
      * 後続の処理を継続する。</p>
+     *
+     * <p>クラス既定の {@code @Transactional(readOnly = true)} を打ち消し {@code NEVER} で外側 TX
+     * を張らない契約を明示する（{@link com.mannschaft.app.notification.fanout.NotificationFanoutWorker#poll}
+     * 前例）。外側に readOnly TX が生きたまま {@code REQUIRES_NEW} を呼ぶと、最大 25 ページ×200件ぶんの
+     * トランザクション中断・再開コストと DB コネクション占有（プール枯渇リスク）を招くため。
+     * 呼び出し元（{@code @Scheduled} の {@code ScheduleReminderBatchService#runBatch} と
+     * {@code @BatchEndpoint} 経由の {@code BatchEndpointRegistry#invoke}）はいずれも本メソッド呼び出し
+     * までの経路に {@code @Transactional} を持たないため {@code NEVER} で問題ない。</p>
      */
+    @Transactional(propagation = Propagation.NEVER)
     public void processScheduledReminders() {
         LocalDateTime now = LocalDateTime.now();
         long cursorId = 0L;
