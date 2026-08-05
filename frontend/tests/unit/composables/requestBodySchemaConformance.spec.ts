@@ -391,6 +391,9 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
           isAnonymous: false,
           allowMultipleSubmissions: false,
           distributionMode: 'ALL',
+          // 親側の @NotBlank 必須を満たしたうえで、入れ子だけを壊す。
+          resultsVisibility: 'AFTER_RESPONSE',
+          // sortOrder は FE ドメインの名前。BE は displayOrder しか受けない。
           questions: [{ questionText: 'q', questionType: 'FREE_TEXT', sortOrder: 1 }],
         }),
       ).toThrow(/questions\[0\]\.sortOrder.*存在しないキー/)
