@@ -9,6 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -108,6 +109,17 @@ public class NotificationFanoutJob extends UuidV7Entity {
 
     @Column(name = "last_error", length = 500)
     private String lastError;
+
+    /**
+     * Wave-2（ORG スコープ耐久 fan-out）: SUPPORTER（応援者）を配信対象に含めるか。
+     *
+     * <p>{@code DEFAULT TRUE}（V175）で既存 VILLAGE 行の後方互換を保つ（旧経路は応援者も含め全員配信のため）。
+     * enqueue 時にこの列を実際に受け取る配線（{@code NotificationFanoutJobService}）は第三陣の担当で、
+     * ここでは列・Entity フィールドのみを追加する。</p>
+     */
+    @Builder.Default
+    @Column(name = "include_supporters", nullable = false)
+    private Boolean includeSupporters = Boolean.TRUE;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
