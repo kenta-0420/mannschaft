@@ -18,12 +18,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,10 +35,16 @@ import static org.mockito.Mockito.when;
 /**
  * {@link ParentalConsentReleaseBatchService} の単体テスト。
  * F01.9 年齢確認・保護者同意機能 Wave 3B の 18歳到達自動解放バッチを検証する。
+ *
+ * <p>本テストは「成人到達者が取得ページに埋もれて解放されない」飢餓を防ぐ番人である。
+ * 成人条件は取得クエリ側（WHERE 句）で絞り込まれていなければならない。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ParentalConsentReleaseBatchService")
 class ParentalConsentReleaseBatchServiceTest {
+
+    /** 本番実装と同じページサイズ（飢餓テスト用）。*/
+    private static final int PAGE_SIZE = 500;
 
     @InjectMocks
     private ParentalConsentReleaseBatchService releaseBatchService;
@@ -76,14 +85,13 @@ class ParentalConsentReleaseBatchServiceTest {
      * 指定の childUserId を持つ APPROVED リンクエンティティを生成する。
      */
     private ParentalConsentLinkEntity buildApprovedLink(Long childUserId) {
-        ParentalConsentLinkEntity link = ParentalConsentLinkEntity.builder()
+        return ParentalConsentLinkEntity.builder()
                 .childUserId(childUserId)
                 .parentEmail("parent@example.com")
                 .tokenHash("dummyhash")
                 .status(ParentalConsentLinkStatus.APPROVED)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
-        return link;
     }
 
     // ========================================
@@ -97,9 +105,9 @@ class ParentalConsentReleaseBatchServiceTest {
         @Test
         @DisplayName("正常_対象なし_何も実行されない")
         void 正常_対象なし_何も実行されない() {
-            // given: APPROVED リンクが存在しない
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
+            // given: 成人到達済みの APPROVED リンクが存在しない
+            when(parentalConsentLinkRepository.findAdultApprovedLinks(
+                    eq(ParentalConsentLinkStatus.APPROVED), anyString(), any(Pageable.class)))
                     .thenReturn(List.of());
 
             // when
@@ -118,9 +126,7 @@ class ParentalConsentReleaseBatchServiceTest {
             UserEntity adultUser = buildChildUser(childUserId, "adult@example.com", "1980-01-01");
             ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId);
 
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
-                    .thenReturn(List.of(approvedLink));
+            stubSinglePage(List.of(approvedLink));
             when(userRepository.findById(childUserId)).thenReturn(Optional.of(adultUser));
 
             // when
@@ -132,28 +138,6 @@ class ParentalConsentReleaseBatchServiceTest {
         }
 
         @Test
-        @DisplayName("正常_未成年_処理スキップ")
-        void 正常_未成年_処理スキップ() {
-            // given: 現在から18年未満（未成年）の子ユーザー
-            Long childUserId = 2L;
-            // 2010年生まれ（2026年現在 16歳、未成年）
-            UserEntity minorUser = buildChildUser(childUserId, "minor@example.com", "2010-06-15");
-            ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId);
-
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
-                    .thenReturn(List.of(approvedLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.of(minorUser));
-
-            // when
-            releaseBatchService.execute();
-
-            // then: リンクのステータスは変わらない（スキップ）
-            assertThat(approvedLink.getStatus()).isEqualTo(ParentalConsentLinkStatus.APPROVED);
-            verify(emailOutboxService, never()).enqueue(any());
-        }
-
-        @Test
         @DisplayName("正常_成人_メール送信される")
         void 正常_成人_メール送信される() {
             // given: 1980年生まれの成人ユーザー
@@ -161,9 +145,7 @@ class ParentalConsentReleaseBatchServiceTest {
             UserEntity adultUser = buildChildUser(childUserId, "adult3@example.com", "1980-03-20");
             ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId);
 
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
-                    .thenReturn(List.of(approvedLink));
+            stubSinglePage(List.of(approvedLink));
             when(userRepository.findById(childUserId)).thenReturn(Optional.of(adultUser));
 
             // when
@@ -186,9 +168,7 @@ class ParentalConsentReleaseBatchServiceTest {
             Long childUserId = 4L;
             ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId);
 
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
-                    .thenReturn(List.of(approvedLink));
+            stubSinglePage(List.of(approvedLink));
             when(userRepository.findById(childUserId)).thenReturn(Optional.empty());
 
             // when
@@ -200,24 +180,69 @@ class ParentalConsentReleaseBatchServiceTest {
         }
 
         @Test
-        @DisplayName("正常_生年月日未設定_スキップされる")
-        void 正常_生年月日未設定_スキップされる() {
-            // given: 生年月日が設定されていないユーザー
-            Long childUserId = 5L;
-            UserEntity userWithoutBirthDate = buildChildUser(childUserId, "nobirth@example.com", null);
-            ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId);
-
-            when(parentalConsentLinkRepository.findByStatus(
-                    eq(ParentalConsentLinkStatus.APPROVED), any(Pageable.class)))
-                    .thenReturn(List.of(approvedLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.of(userWithoutBirthDate));
+        @DisplayName("AC-0-7: 年齢の閾値は「今日ちょうど18歳」を含む境界で取得クエリに渡される")
+        void 年齢閾値は今日18歳到達を含む() {
+            // given
+            stubSinglePage(List.of());
 
             // when
             releaseBatchService.execute();
 
-            // then: リンクのステータスは変わらず、メール送信もされない
-            assertThat(approvedLink.getStatus()).isEqualTo(ParentalConsentLinkStatus.APPROVED);
-            verify(emailOutboxService, never()).enqueue(any());
+            // then: 誕生日当日に18歳へ到達した子（生年月日 = 今日の18年前）も
+            //       birth_date <= cutoff で拾えるよう、cutoff は「今日の18年前」ちょうどであること
+            ArgumentCaptor<String> cutoffCaptor = ArgumentCaptor.forClass(String.class);
+            verify(parentalConsentLinkRepository).findAdultApprovedLinks(
+                    eq(ParentalConsentLinkStatus.APPROVED), cutoffCaptor.capture(), any(Pageable.class));
+
+            LocalDate cutoff = LocalDate.parse(cutoffCaptor.getValue());
+            assertThat(cutoff).isEqualTo(
+                    com.mannschaft.app.common.util.AgeGroupCalculator.adultBirthDateThreshold(LocalDate.now()));
+            // 境界: cutoff 当日生まれは成人（未成年でない）／その翌日生まれは未成年
+            assertThat(com.mannschaft.app.common.util.AgeGroupCalculator.isMinor(cutoff, LocalDate.now())).isFalse();
+            assertThat(com.mannschaft.app.common.util.AgeGroupCalculator
+                    .isMinor(cutoff.plusDays(1), LocalDate.now())).isTrue();
         }
+
+        @Test
+        @DisplayName("AC-0-6: APPROVEDが上限超でも成人到達者は同日中に全員解放される（飢餓しない）")
+        void 上限超でも成人到達者が飢餓しない() {
+            // given: 成人到達者が PAGE_SIZE を超えて PAGE_SIZE + 10 人いる。
+            //        未成年は WHERE 句で除外されるため、そもそも取得ページに混ざらない。
+            List<ParentalConsentLinkEntity> firstPage = new ArrayList<>();
+            List<ParentalConsentLinkEntity> secondPage = new ArrayList<>();
+            for (long i = 1; i <= PAGE_SIZE; i++) {
+                firstPage.add(buildApprovedLink(i));
+            }
+            for (long i = PAGE_SIZE + 1; i <= PAGE_SIZE + 10; i++) {
+                secondPage.add(buildApprovedLink(i));
+            }
+
+            when(parentalConsentLinkRepository.findAdultApprovedLinks(
+                    eq(ParentalConsentLinkStatus.APPROVED), anyString(), any(Pageable.class)))
+                    .thenReturn(firstPage)
+                    .thenReturn(secondPage)
+                    .thenReturn(List.of());
+
+            when(userRepository.findById(any())).thenAnswer(invocation -> {
+                Long id = invocation.getArgument(0);
+                return Optional.of(buildChildUser(id, "adult" + id + "@example.com", "1980-01-01"));
+            });
+
+            // when
+            releaseBatchService.execute();
+
+            // then: 2ページ目の到達者まで含めて全員が REVOKED になる
+            assertThat(firstPage).allMatch(l -> l.getStatus() == ParentalConsentLinkStatus.REVOKED);
+            assertThat(secondPage).allMatch(l -> l.getStatus() == ParentalConsentLinkStatus.REVOKED);
+            verify(emailOutboxService, org.mockito.Mockito.times(PAGE_SIZE + 10)).enqueue(any());
+        }
+    }
+
+    /** 1ページだけ返し、以降は空を返す取得スタブ。*/
+    private void stubSinglePage(List<ParentalConsentLinkEntity> page) {
+        when(parentalConsentLinkRepository.findAdultApprovedLinks(
+                eq(ParentalConsentLinkStatus.APPROVED), anyString(), any(Pageable.class)))
+                .thenReturn(page)
+                .thenReturn(List.of());
     }
 }

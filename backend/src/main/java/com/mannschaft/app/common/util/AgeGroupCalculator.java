@@ -48,6 +48,34 @@ public final class AgeGroupCalculator {
      * @return true if 18歳未満
      */
     public static boolean isMinor(LocalDate birthDate, LocalDate baseDate) {
-        return ChronoUnit.YEARS.between(birthDate, baseDate) < 18;
+        return birthDate.isAfter(adultBirthDateThreshold(baseDate));
     }
+
+    /**
+     * 「基準日時点で成人（18歳以上）」となる生年月日の上限を返す。
+     *
+     * <p>生年月日が戻り値<b>以前（同日を含む）</b>であれば成人である。誕生日当日に18歳へ
+     * 到達した者を成人に含めるため、境界は閉区間（{@code birthDate <= threshold}）とする。</p>
+     *
+     * <p>本メソッドは {@link #isMinor(LocalDate, LocalDate)} と<b>同一の判定</b>を
+     * SQL の {@code WHERE} 句へ落とし込むための唯一の変換口である。年齢条件を
+     * アプリ側で取得後にフィルタすると、取得上限を超えた際に成人到達者が
+     * 未成年に埋もれて永久に処理されない飢餓が起きるため、成人判定は必ず
+     * 取得クエリ側で絞り込むこと。生年月日は {@code YYYY-MM-DD} 形式の文字列で
+     * 格納されており、辞書順比較が日付順比較と一致する。</p>
+     *
+     * @param baseDate 基準日（通常は今日）
+     * @return 成人と判定される生年月日の上限（この日を含む）
+     */
+    public static LocalDate adultBirthDateThreshold(LocalDate baseDate) {
+        LocalDate candidate = baseDate.minusYears(ADULT_AGE);
+        // うるう日生まれの補正: 2月29日生まれは平年では2月28日に満年齢へ到達する。
+        // minusYears は 2/29 → 2/28 に丸めるため、1日進めてもなお満18歳に達しているなら
+        // そちらが真の上限である（例: baseDate=2026-02-28 のとき上限は 2008-02-29）。
+        LocalDate next = candidate.plusDays(1);
+        return !next.plusYears(ADULT_AGE).isAfter(baseDate) ? next : candidate;
+    }
+
+    /** 成人年齢（民法上の成年）。保護者同意の要否判定に使用する。*/
+    private static final int ADULT_AGE = 18;
 }

@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.ParentalConsentLinkStatus;
 import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -113,14 +115,36 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
     void deleteByChildUserId(Long childUserId);
 
     /**
-     * Release バッチ用: 指定ステータスのリンクをページングで取得する。
-     * 主に APPROVED リンクを持つ子ユーザーの成人到達確認バッチで使用する。
+     * Release バッチ用: 指定ステータスかつ<b>子ユーザーが既に成人に到達している</b>
+     * リンクのみをページングで取得する。
      *
-     * @param status   絞り込むステータス（通常 APPROVED）
-     * @param pageable ページング設定
-     * @return 対象の同意リンクのリスト
+     * <p>年齢条件は必ず本クエリの {@code WHERE} 句で絞り込む。取得後にアプリ側で
+     * 未成年を読み飛ばす実装にすると、取得上限（ページサイズ）を未成年が占有した場合に
+     * 成人到達者が永久に取得されず、保護者同意が解放されないまま残る。これは未成年保護の
+     * 法的要件に直結する不具合であり、事後フィルタに戻してはならない。</p>
+     *
+     * <p>{@code birth_date} は {@code YYYY-MM-DD} 形式の文字列カラムであり、辞書順比較が
+     * 日付順比較と一致する。境界は閉区間（{@code <=}）とし、誕生日当日に18歳へ到達した
+     * 子ユーザーを当日中に解放する。{@code adultBirthDateThreshold} は
+     * {@code AgeGroupCalculator.adultBirthDateThreshold(today)} が唯一の算出元である
+     * （年齢判定を二重実装しない）。</p>
+     *
+     * @param status                  絞り込むステータス（通常 APPROVED）
+     * @param adultBirthDateThreshold 成人と判定される生年月日の上限（この日を含む）
+     * @param pageable                ページング設定
+     * @return 対象の同意リンクのリスト（id 昇順）
      */
-    List<ParentalConsentLinkEntity> findByStatus(ParentalConsentLinkStatus status, Pageable pageable);
+    @Query("SELECT l FROM ParentalConsentLinkEntity l "
+            + "WHERE l.status = :status AND EXISTS ("
+            + "  SELECT 1 FROM UserEntity u "
+            + "  WHERE u.id = l.childUserId AND u.deletedAt IS NULL "
+            + "    AND u.birthDate IS NOT NULL "
+            + "    AND u.birthDate <= :adultBirthDateThreshold"
+            + ") ORDER BY l.id ASC")
+    List<ParentalConsentLinkEntity> findAdultApprovedLinks(
+            @Param("status") ParentalConsentLinkStatus status,
+            @Param("adultBirthDateThreshold") String adultBirthDateThreshold,
+            Pageable pageable);
 
     /**
      * バッチ用: 指定ステータスのリンクを id 昇順で安定ページング取得する。
