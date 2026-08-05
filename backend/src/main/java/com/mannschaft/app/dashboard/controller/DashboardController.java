@@ -7,7 +7,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -129,10 +129,14 @@ public class DashboardController {
     /**
      * プラットフォームお知らせ取得（WidgetPlatformAnnouncements 用）。
      */
-    // 認可根治戦役 Wave4 ロットD: platformAnnouncementService.getActiveAnnouncements() は
-    // 公開中の全ユーザー共通のお知らせのみを返し、検索条件・応答のいずれにもユーザー固有の識別子を
-    // 含まない（他ユーザーのプライベートデータへ到達する経路が構造的に存在しない）。
-    @AuthorizedInService
+    // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
+    // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
+    // でログイン済みユーザーにのみ到達が強制されている。
+    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 応答は platformAnnouncementService.getActiveAnnouncements() が返す公開中の全ユーザー共通の
+    // お知らせのみで、認証済みユーザーであれば誰が呼んでも同一の結果になる（ユーザー固有データを
+    // 含まない）ため、authenticated() のみで安全に成立する。
+    @AuthorizedByPathConfig
     @GetMapping("/announcements")
     @Operation(summary = "プラットフォームお知らせ取得", description = "公開中のプラットフォームお知らせ一覧を返す")
     public ResponseEntity<ApiResponse<List<DashboardAnnouncementResponse>>> getAnnouncements() {
@@ -445,10 +449,16 @@ public class DashboardController {
     /**
      * パフォーマンスサマリー。
      */
-    // 認可根治戦役 Wave4 ロットD: 現状は静的な空配列のみを返すスタブ実装であり、
-    // データ取得処理（リポジトリ・他ドメイン Service 呼び出し）自体が存在しないため
-    // 認可判定の対象となるユーザー固有データが無い。
-    @AuthorizedInService
+    // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
+    // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
+    // でログイン済みユーザーにのみ到達が強制されている。
+    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 現状は静的な空配列のみを返すスタブ実装で、データ取得処理（リポジトリ・他ドメイン Service 呼び出し）
+    // 自体が存在しないため authenticated() のみで安全に成立する（認証済みなら誰が呼んでも同一の空応答）。
+    // 【重要・将来の実装者への歯止め】パフォーマンス管理モジュールと連携してユーザー固有データを
+    // 返すよう実装した瞬間、この根拠は失効する。実データ取得を実装する際は、本注釈をそのまま残さず
+    // 認可の要否（所属チーム/組織のスコープ検証等）を必ず再検討すること。
+    @AuthorizedByPathConfig
     @GetMapping("/performance")
     @Operation(summary = "パフォーマンスサマリー", description = "所属チーム/組織ごとの個人パフォーマンス概要")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformance() {
