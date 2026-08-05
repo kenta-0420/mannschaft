@@ -1,3 +1,9 @@
+// @vitest-environment happy-dom
+//
+// 検査対象は純関数と JSON だけで、Nuxt ランタイム（app context）を必要としない。
+// 既定の `environment: 'nuxt'` は beforeAll で setupNuxt() を走らせて遅く・不安定なため避ける。
+// ただし setup ファイル経由で読み込まれるモジュールが `document` を触るので、
+// 素の node ではなく DOM のある happy-dom を使う。
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
