@@ -11,6 +11,7 @@ import com.mannschaft.app.schedule.repository.ScheduleAttendanceReminderReposito
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleReminderService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -62,6 +65,13 @@ class ScheduleReminderServiceTest {
 
     @InjectMocks
     private ScheduleReminderService reminderService;
+
+    @BeforeEach
+    void injectSelf() {
+        // self-invocation の @Lazy 自己参照は InjectMocks では埋まらないため、
+        // トランザクション境界の検証を伴わない単体テストでは自分自身を割り当てる。
+        ReflectionTestUtils.setField(reminderService, "self", reminderService);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -310,13 +320,21 @@ class ScheduleReminderServiceTest {
     @DisplayName("processScheduledReminders")
     class ProcessScheduledReminders {
 
+        private ScheduleAttendanceReminderEntity withId(ScheduleAttendanceReminderEntity reminder, long id) {
+            ReflectionTestUtils.setField(reminder, "id", id);
+            return reminder;
+        }
+
         @Test
         @DisplayName("ABSOLUTE_due到来_送信済みにマークされる")
         void ABSOLUTE_due到来_送信済みにマークされる() {
-            // given: remindAt は過去 → due
+            // given: remindAt は過去 → due（SQL 側の絞り込みは findDuePage が担うため、
+            // ここでは「due として返ってきたものを処理できるか」のみ検証する）
             ScheduleAttendanceReminderEntity reminder =
-                    createAbsoluteReminderEntity(LocalDateTime.now().minusMinutes(5));
-            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
+                    withId(createAbsoluteReminderEntity(LocalDateTime.now().minusMinutes(5)), 1L);
+            given(reminderRepository.findDuePage(any(), any(), any(Pageable.class)))
+                    .willReturn(List.of(reminder), List.of());
+            given(reminderRepository.findById(1L)).willReturn(Optional.of(reminder));
             given(scheduleRepository.findById(SCHEDULE_ID))
                     .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
@@ -334,8 +352,10 @@ class ScheduleReminderServiceTest {
         @DisplayName("RELATIVE_開始N分前到来_送信済みにマークされる")
         void RELATIVE_開始N分前到来_送信済みにマークされる() {
             // given: 開始は5分後・30分前リマインド → 実効時刻は過去 → due
-            ScheduleAttendanceReminderEntity reminder = createRelativeReminderEntity(30);
-            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
+            ScheduleAttendanceReminderEntity reminder = withId(createRelativeReminderEntity(30), 1L);
+            given(reminderRepository.findDuePage(any(), any(), any(Pageable.class)))
+                    .willReturn(List.of(reminder), List.of());
+            given(reminderRepository.findById(1L)).willReturn(Optional.of(reminder));
             given(scheduleRepository.findById(SCHEDULE_ID))
                     .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusMinutes(5), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
@@ -350,27 +370,43 @@ class ScheduleReminderServiceTest {
         }
 
         @Test
-        @DisplayName("RELATIVE_開始まで余裕あり_送信されない")
-        void RELATIVE_開始まで余裕あり_送信されない() {
-            // given: 開始は10時間後・30分前リマインド → 実効時刻は未来 → スキップ
-            ScheduleAttendanceReminderEntity reminder = createRelativeReminderEntity(30);
-            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
-            given(scheduleRepository.findById(SCHEDULE_ID))
-                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(10), true)));
+        @DisplayName("1件送信失敗_例外を握り潰さず記録し後続に影響しない")
+        void 送信失敗_例外を握り潰さず記録し後続に影響しない() {
+            // given: 1ページ目に2件。1件目の送信元スケジュールが解決不能（想定外の例外）でも
+            // 2件目は継続して処理されることを検証する。
+            ScheduleAttendanceReminderEntity broken = withId(
+                    createAbsoluteReminderEntity(LocalDateTime.now().minusMinutes(5)), 1L);
+            ScheduleAttendanceReminderEntity ok = withId(
+                    createAbsoluteReminderEntity(LocalDateTime.now().minusMinutes(5)), 2L);
+            given(reminderRepository.findDuePage(any(), any(), any(Pageable.class)))
+                    .willReturn(List.of(broken, ok), List.of());
+            given(reminderRepository.findById(1L)).willReturn(Optional.of(broken));
+            given(reminderRepository.findById(2L)).willReturn(Optional.of(ok));
+            // broken 側の scheduleId 解決で例外発生
+            given(scheduleRepository.findById(broken.getScheduleId()))
+                    .willThrow(new IllegalStateException("想定外エラー"));
+
+            // ok は broken と scheduleId が同一のためスケジュール解決を分岐できない前提を避け、
+            // 別スケジュールIDに差し替える。
+            ReflectionTestUtils.setField(ok, "scheduleId", 2L);
+            given(scheduleRepository.findById(2L))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), false)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(2L)).willReturn(List.of());
 
             // when
             reminderService.processScheduledReminders();
 
-            // then
-            verify(reminderRepository, never()).save(any(ScheduleAttendanceReminderEntity.class));
-            assertThat(reminder.getIsSent()).isFalse();
+            // then: broken は保存されず、ok のみ保存・送信済み化される
+            assertThat(broken.getIsSent()).isFalse();
+            assertThat(ok.getIsSent()).isTrue();
+            verify(reminderRepository).save(ok);
         }
 
         @Test
         @DisplayName("未送信なし_何もしない")
         void 未送信なし_何もしない() {
             // given
-            given(reminderRepository.findByIsSentFalse()).willReturn(List.of());
+            given(reminderRepository.findDuePage(any(), any(), any(Pageable.class))).willReturn(List.of());
 
             // when
             reminderService.processScheduledReminders();

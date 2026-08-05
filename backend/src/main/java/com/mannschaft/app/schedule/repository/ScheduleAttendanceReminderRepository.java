@@ -1,7 +1,10 @@
 package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceReminderEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,12 +25,26 @@ public interface ScheduleAttendanceReminderRepository extends JpaRepository<Sche
     List<ScheduleAttendanceReminderEntity> findByIsSentFalseAndRemindAtBeforeOrderByRemindAtAsc(LocalDateTime now);
 
     /**
-     * 未送信のリマインダーを全件取得する（機能55 第二陣）。
+     * 未送信かつ実効リマインド時刻を過ぎたリマインダーを、ID キーセットページングで取得する。
      *
-     * <p>RELATIVE 指定は {@code remind_at} が NULL のため、実効時刻の due 判定は
-     * サービス層で親予定の開始時刻を解決して行う。ABSOLUTE/RELATIVE を区別せず未送信を返す。</p>
+     * <p>ABSOLUTE は {@code remind_at <= :now}、RELATIVE は親予定
+     * （{@link com.mannschaft.app.schedule.entity.ScheduleEntity}）の {@code start_at} を
+     * SQL 側で結合し {@code start_at <= now + remindBeforeMinutes} で due 判定する（アプリ側での
+     * 全件フィルタは行わない）。{@code cursorId} 以降を {@code id} 昇順で {@code pageable} 件のみ返す。</p>
+     *
+     * @param now      現在時刻
+     * @param cursorId 直前ページ最終 ID（先頭ページは 0）
+     * @param pageable 取得件数上限（{@code Pageable} の sort は無視され常に id 昇順）
      */
-    List<ScheduleAttendanceReminderEntity> findByIsSentFalse();
+    @Query("SELECT r FROM ScheduleAttendanceReminderEntity r, ScheduleEntity s "
+            + "WHERE r.scheduleId = s.id AND r.isSent = false AND r.id > :cursorId AND ("
+            + "  (r.reminderKind = com.mannschaft.app.schedule.ReminderKind.ABSOLUTE AND r.remindAt <= :now)"
+            + "  OR"
+            + "  (r.reminderKind = com.mannschaft.app.schedule.ReminderKind.RELATIVE AND r.remindBeforeMinutes IS NOT NULL"
+            + "   AND s.startAt <= FUNCTION('TIMESTAMPADD', MINUTE, r.remindBeforeMinutes, :now))"
+            + ") ORDER BY r.id ASC")
+    List<ScheduleAttendanceReminderEntity> findDuePage(
+            @Param("now") LocalDateTime now, @Param("cursorId") Long cursorId, Pageable pageable);
 
     /**
      * スケジュールIDでリマインダー数を取得する。
