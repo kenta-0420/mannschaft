@@ -17,7 +17,8 @@
       "label": "Results visibility",
       "CREATOR_ONLY": "Creator only",
       "RESPONDENTS": "Respondents only",
-      "ALL_MEMBERS": "All members"
+      "ALL_MEMBERS": "All members",
+      "AFTER_CLOSE": "All members after close"
     },
     "unrespondedVisibility": {
       "label": "Unresponded visibility",

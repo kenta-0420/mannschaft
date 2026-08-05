@@ -533,7 +533,8 @@
       "selfReviewEnd": "셀프 리뷰 종료 시간",
       "selfReviewHelp": "설정한 시간대는 게시 전 검토 기간으로 처리됩니다",
       "saveSettings": "설정 저장",
-      "loadFailed": "게시글을 불러올 수 없습니다"
+      "loadFailed": "게시글을 불러올 수 없습니다",
+      "scheduledPublishUnavailable": "예약 발행은 현재 사용할 수 없습니다. 발행하면 게시물이 즉시 공개됩니다."
     },
     "autoSave": {
       "label": "자동 저장",

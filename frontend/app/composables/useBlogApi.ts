@@ -1,4 +1,28 @@
 import type { BlogPostResponse, BlogReactionResponse, BlogTag, BlogSeries, BlogRevision } from '~/types/cms'
+import type { components } from '~/types/generated'
+
+/** BE `PublishRequest`（生成型が正準）。 */
+export type BlogPublishRequest = components['schemas']['PublishRequest']
+
+/**
+ * 公開／予約公開の送信ボディを組み立てる。
+ *
+ * BE の `PostStatus` に `SCHEDULED` は存在しない。予約公開は
+ * 「`status = PUBLISHED` ＋ 未来の `publishedAt`」で表現する
+ * （`SCHEDULED` を送ると `PostStatus.valueOf` が例外を投げて 500 になる）。
+ * また `status` は `@NotBlank` なので、即時公開でもボディ省略は不可（400）。
+ *
+ * @param scheduledAt 予約公開日時。null なら即時公開。
+ * @param toOffsetIso `Date` をオフセット付き ISO-8601 へ変換する関数（useDatetime 由来）。
+ */
+export function buildBlogPublishBody(
+  scheduledAt: Date | null,
+  toOffsetIso: (date: Date) => string | null,
+): BlogPublishRequest {
+  if (!scheduledAt) return { status: 'PUBLISHED' }
+  const publishedAt = toOffsetIso(scheduledAt)
+  return publishedAt ? { status: 'PUBLISHED', publishedAt } : { status: 'PUBLISHED' }
+}
 
 interface BlogSettings {
   displayName: string | null
@@ -167,7 +191,11 @@ export function useBlogApi() {
     return api(`/api/v1/users/me/blog/posts/${postId}`, { method: 'DELETE' })
   }
 
-  async function publishMyPost(postId: number, body?: Record<string, unknown>) {
+  /**
+   * 公開ステータス変更。`status` は BE 側 `@NotBlank` のため必須
+   * （ボディ省略・snake_case キーは 400 になる）。ボディは {@link buildBlogPublishBody} で組み立てる。
+   */
+  async function publishMyPost(postId: number, body: BlogPublishRequest) {
     return api(`/api/v1/users/me/blog/posts/${postId}/publish`, { method: 'PATCH', body })
   }
 
