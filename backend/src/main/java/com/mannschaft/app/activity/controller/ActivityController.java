@@ -48,7 +48,21 @@ public class ActivityController {
 
 
     /**
-     * 活動記録一覧を取得する（Cursor-based ページネーション）。
+     * 活動記録一覧を取得する（オフセットページネーション）。
+     *
+     * <p><b>ページング方式</b>: {@code page}（0始まり・既定 0）と {@code limit} を受け取り
+     * {@code PageRequest.of(page, limit)} に変換する単純なオフセットページングであり、
+     * カーソルベースではない（旧 javadoc の「Cursor-based」という記述は誤りだった）。
+     * {@code page} 未指定時は従来どおり 0 ページ目を返す（後方互換）。</p>
+     *
+     * <p><b>総件数は上界近似</b>: レスポンスの {@code data} 件数および将来 {@code meta} を追加する場合の
+     * 総件数は、{@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
+     * の Javadoc が明記するとおり「SQL で 1 ページ取得後に F00 可視性でメモリフィルタする」実装のため、
+     * <b>ページ内に歯抜けが残り得る</b>（他人の DRAFT 等が多いページでは要求件数より少ない件数しか
+     * 返らない）。この歯抜けの根治には F00 に「閲覧可能な可視性集合を返す API」を新設し SQL の
+     * {@code IN} 述語へ翻訳する必要があり、設計変更を伴うため本エンドポイントの修正範囲外である
+     * （後続戦役の対象。詳細は {@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
+     * の Javadoc を参照）。</p>
      */
     @GetMapping
     @Operation(summary = "活動記録一覧")
@@ -57,10 +71,11 @@ public class ActivityController {
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @RequestParam(value = "template_id", required = false) Long templateId,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int page) {
         Page<ActivityResultEntity> result = activityService.listActivities(
                 SecurityUtils.getCurrentUserId(),
-                ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(0, limit));
+                ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(page, limit));
         return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponseList(result.getContent())));
     }
 

@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -293,6 +294,65 @@ class VillageSearchServiceTest {
         // total は 0 でも response の size が clip されているか確認できれば良い
         VillageInternalSearchResponse res = service.search(VILLAGE_ID, "整骨", "POST", 0, 9999, ACTOR_USER_ID);
         assertThat(res.size()).isEqualTo(VillageSearchService.MAX_PAGE_SIZE);
+    }
+
+    /**
+     * AC-11 / AC-12: PER_TYPE_FETCH_HARD_CAP（50件）超のヒット数を持つタイプがあるとき、
+     * total が実際に到達可能な件数（= 取得済みプールサイズ）を超えず、
+     * その total から算出した最終ページを要求しても空配列にならないこと。
+     *
+     * <p>POST タイプの実件数（countPosts）は 60 件だが、SQL 取得は
+     * PER_TYPE_FETCH_HARD_CAP=50 件で頭打ちになる（bulletinThreadRepository の
+     * モックが返すのはこの 50 件のプールを模したもの）。旧実装は total にキャップ無しの
+     * 60 をそのまま返しており、その total を信じてページ送りすると
+     * 50 件を超える範囲は例外も出ずに空配列を返し続けていた。</p>
+     */
+    @Test
+    @DisplayName("AC-11: 1タイプが上限超のヒット数を持つとき total は実取得可能件数を超えない")
+    void search_total_neverExceedsRetrievablePool() {
+        prepareValidMembership();
+        List<BulletinThreadEntity> cappedPool = new ArrayList<>();
+        for (long i = 1; i <= VillageSearchService.MAX_PAGE_SIZE; i++) {
+            cappedPool.add(bulletinThread(i, "整骨" + i, "本文" + i, t((int) i)));
+        }
+        given(bulletinThreadRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(cappedPool);
+        // 実件数（キャップ無し）は 60 件だが、実際に取得できているのは 50 件のみ。
+        given(bulletinThreadRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(60L);
+        given(timelinePostRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(List.of());
+        given(timelinePostRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(0L);
+
+        VillageInternalSearchResponse res = service.search(VILLAGE_ID, "整骨", "POST", 0, 20, ACTOR_USER_ID);
+
+        assertThat(res.total()).isLessThanOrEqualTo(VillageSearchService.MAX_PAGE_SIZE);
+        assertThat(res.total()).isEqualTo(50L);
+    }
+
+    @Test
+    @DisplayName("AC-12: total が示す最終ページを要求しても空配列にならない")
+    void search_lastPageFromTotal_isNotEmpty() {
+        prepareValidMembership();
+        List<BulletinThreadEntity> cappedPool = new ArrayList<>();
+        for (long i = 1; i <= VillageSearchService.MAX_PAGE_SIZE; i++) {
+            cappedPool.add(bulletinThread(i, "整骨" + i, "本文" + i, t((int) i)));
+        }
+        given(bulletinThreadRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(cappedPool);
+        given(bulletinThreadRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(60L);
+        given(timelinePostRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(List.of());
+        given(timelinePostRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(0L);
+
+        int size = 20;
+        // まず total を得る（page=0 で問い合わせ）
+        VillageInternalSearchResponse first = service.search(VILLAGE_ID, "整骨", "POST", 0, size, ACTOR_USER_ID);
+        int lastPage = (int) ((first.total() - 1) / size);
+
+        VillageInternalSearchResponse lastRes =
+                service.search(VILLAGE_ID, "整骨", "POST", lastPage, size, ACTOR_USER_ID);
+
+        assertThat(lastRes.items()).isNotEmpty();
     }
 
     // ============================================================

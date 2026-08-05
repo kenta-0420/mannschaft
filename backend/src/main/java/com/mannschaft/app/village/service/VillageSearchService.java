@@ -147,11 +147,22 @@ public class VillageSearchService {
         int to = Math.min(from + safeSize, all.size());
         List<VillageInternalSearchItemResponse> pageItems = all.subList(from, to);
 
+        // total の是正: countXxx() はタイプごとの実件数（キャップ無し）の合算だが、
+        // 実際に取得しているのはタイプごとに PER_TYPE_FETCH_HARD_CAP（50件）で頭打ちにしたプール
+        // （all、最大 150 件）のみ。1タイプが 51 件以上ヒットすると totalEstimate が
+        // 実際にページ送りで到達可能な件数（= all.size()）を超えてしまい、その超過分を
+        // ページ送りすると例外は出ずに空配列が返り続ける「静かな空ページ地獄」になっていた。
+        // total は実際に到達可能な件数（= プールサイズ）を超えないよう補正する。
+        // DTO は変更せず、既存の total フィールドの意味を「実際に取得可能な総件数」に厳密化する形で対応する
+        // （「上限で打ち切られたか」を示す capped 相当のフィールド追加は、OpenAPI/FE 契約型の追随が
+        // 別途必要になる DTO 変更を伴うため、本 PR ではスコープ外とし total の補正のみで根治する）。
+        long total = Math.min(totalEstimate, all.size());
+
         return VillageInternalSearchResponse.builder()
                 .items(pageItems)
                 .page(safePage)
                 .size(safeSize)
-                .total(totalEstimate)
+                .total(total)
                 .build();
     }
 
