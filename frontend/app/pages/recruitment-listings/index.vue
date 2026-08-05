@@ -26,11 +26,20 @@ const currentPage = ref(0)
 const pageSize = 20
 const totalPages = ref(0)
 
-// DateオブジェクトをISO8601文字列（yyyy-MM-dd）に変換
+/**
+ * Date を `yyyy-MM-dd` に変換する。
+ *
+ * 以前は `toISOString().slice(0, 10)` で **UTC 日付**を作っており、JST では1日前、
+ * `America/*` の夕方以降は1日後の日付が送られていた（Issue #2508 ②）。
+ * `toLocalDateString()`（ローカル壁時計基準）が LocalDate 送信の正規ルート。
+ *
+ * なお本 API（求人検索）は PUBLIC でユーザーTZを解決できず、BE も `String` で受けて
+ * Service 層で直接 parse するため、オフセット付き OffsetDateTime は送れない。
+ * ここは `LocalDate` のままとする。
+ */
 function toIsoDateString(d: Date | undefined): string | undefined {
   if (!d) return undefined
-  if (typeof d === 'string') return d
-  return d.toISOString().slice(0, 10)
+  return toLocalDateString(d)
 }
 
 // カテゴリ読み込み
