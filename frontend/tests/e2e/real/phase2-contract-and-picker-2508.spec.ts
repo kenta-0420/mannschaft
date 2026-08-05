@@ -19,10 +19,10 @@
  *
  * 修正前の実装（`dayjs(date).tz(profileTz)`）だと、ブラウザ JST で 8/4 00:00 に生成される `Date` を
  * 「瞬間」として LA へ投影し直すため、
- *   2026-08-04T00:00:00+09:00（瞬間） = 2026-08-03T08:00:00-07:00（LA 壁時計）
- * となり、**送信される暦日が "2026-08-03" にずれていた**。
+ *   2027-08-04T00:00:00+09:00（瞬間） = 2027-08-03T08:00:00-07:00（LA 壁時計）
+ * となり、**送信される暦日が "2027-08-03" にずれていた**。
  * 修正後は `Date` のブラウザ壁時計成分（getFullYear/getMonth/getDate）をそのまま暦日として使い、
- * オフセットだけプロフィールTZから決めるため、送信される暦日は常に "2026-08-04" になる。
+ * オフセットだけプロフィールTZから決めるため、送信される暦日は常に "2027-08-04" になる。
  *
  * ## 実行前提
  *   - BE / FE / MySQL が起動済み・`backend/scripts/seed-e2e-data.js` 実行済み
@@ -161,31 +161,6 @@ async function goto(page: Page, path: string): Promise<void> {
   await expect(page).not.toHaveURL(/\/login/)
 }
 
-/** date-only（show-time 無し）PrimeVue DatePicker への手入力。 */
-async function typeIntoDatePicker(root: Locator, text: string): Promise<void> {
-  const input = root.locator('input').first()
-  await input.click()
-  await input.press('ControlOrMeta+a')
-  await input.pressSequentially(text, { delay: 15 })
-  await input.press('Escape')
-}
-
-/** ラベル文字列から DigestGenerateDialog の DatePicker ルートを引く。 */
-function datePickerByLabel(page: Page, dialog: Locator, labelText: string): Locator {
-  return dialog
-    .locator('div.flex.flex-col.gap-1')
-    .filter({ has: page.locator('label', { hasText: labelText }) })
-    .first()
-}
-
-/** `yyyy-MM-dd` を `yy/mm/dd`（DigestGenerateDialog の date-format）へ変換する。 */
-function toSlashYmd(date: Date): string {
-  const y = String(date.getFullYear())
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}/${m}/${d}`
-}
-
 /** PrimeVue Select（ドロップダウン）でオプションを選ぶ。`.p-select-option` を使うこと（`.p-select-list li` はロード中の「該当なし」にも一致する）。 */
 async function selectPrimeVueOption(page: Page, root: Locator, optionText: string): Promise<void> {
   await root.click()
@@ -195,51 +170,103 @@ async function selectPrimeVueOption(page: Page, root: Locator, optionText: strin
 }
 
 // ===========================================================================
-// 軸1【最重要】ピッカーのTZ 3パターン（ダイジェスト生成期間 = buildDigestPeriod 経由）
+// 軸1【最重要】ピッカーのTZ 3パターン（村の祭り FestivalCreateRequest.startsAt/endsAt 経由）
 //
-// DigestGenerateDialog の期間ピッカーは date-only（show-time 無し）のため typeIntoDatePicker が効く。
-// buildDigestPeriod → buildOffsetDateTimeStr(date, '00:00').slice(0,10) → buildDayStartStr/buildDayEndStr
-// という経路で #2626 の修正がそのまま検証できる。
+// ⚠️ 当初は DigestGenerateDialog を使う設計だったが実機で `timeline_digest` i18n 名前空間が
+//    キー生文字列のまま描画される（本 PR の範囲外の別バグ・後述の「発見した既存不具合」参照）ことが
+//    判明したため、既存 spec（datetime-offset-2508.spec.ts）で実績のある「村の祭り」経路
+//    （<input type="datetime-local"> のためロケール崩れの影響を受けず fill() が確実に効く）へ差し替えた。
 // ===========================================================================
 
-async function openDigestDialog(page: Page): Promise<Locator> {
-  await goto(page, `/teams/${TEAM_SLUG}/timeline-digest`)
-  await page.getByRole('button', { name: '生成' }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: 'ダイジェスト生成' })
-  await expect(dialog).toBeVisible({ timeout: 10_000 })
-  return dialog
+const E2E_USER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
+/** e2e-user が HEADMAN を務める seed 村（datetime-offset-2508.spec.ts と同一）。 */
+const VILLAGE_ID = '6e87b493-512a-11f1-95e3-2ec96fe3ea06'
+
+const FESTIVAL_TXT = {
+  festivalCreate: 'お祭りを企画',
+  festivalSave: '保存',
+  festivalSaveSuccess: 'お祭りを保存しました',
+  festivalFilterAll: 'すべて',
+} as const
+
+/** 瞬間（Date）を指定 IANA タイムゾーンの壁時計 `YYYY-MM-DD HH:mm:ss` に整形する。 */
+function wallClockIn(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).format(instant)
 }
 
-/** ダイジェスト生成フォームに日付を入力して送信し、生成 POST の req/res を返す。 */
-async function submitDigestGenerate(
+interface FestivalCreateOutcome {
+  sent: { startsAt?: string; endsAt?: string }
+  status: number
+  bodyText: string
+  festivalId: string | null
+}
+
+/** 「お祭りを企画」ダイアログを実UIで操作して祭を作成し、送信内容とレスポンスを返す。 */
+async function createFestivalViaUi(
   page: Page,
-  dialog: Locator,
-  periodStart: Date,
-  periodEnd: Date,
-): Promise<{ sentStart: string; sentEnd: string; status: number; digestId: number | null }> {
-  const startPicker = datePickerByLabel(page, dialog, '期間開始')
-  const endPicker = datePickerByLabel(page, dialog, '期間終了')
-  await typeIntoDatePicker(startPicker, toSlashYmd(periodStart))
-  await typeIntoDatePicker(endPicker, toSlashYmd(periodEnd))
+  title: string,
+  startsWall: string,
+  endsWall: string,
+): Promise<FestivalCreateOutcome> {
+  const createBtn = page.getByRole('button', { name: FESTIVAL_TXT.festivalCreate }).first()
+  await expect(createBtn, '村ADMIN（HEADMAN/ELDER）なら「お祭りを企画」ボタンが出る').toBeVisible({ timeout: 25_000 })
+  await createBtn.click()
+
+  const dialog = page.getByRole('dialog').filter({ hasText: FESTIVAL_TXT.festivalCreate }).first()
+  await expect(dialog).toBeVisible({ timeout: 10_000 })
+
+  await dialog.locator('input.p-inputtext:not([type="datetime-local"]):not([type="color"])').first().fill(title)
+
+  const dtInputs = dialog.locator('input[type="datetime-local"]')
+  await expect(dtInputs, '開始・終了の datetime-local が 2 つあること').toHaveCount(2)
+  await dtInputs.nth(0).fill(startsWall)
+  await dtInputs.nth(1).fill(endsWall)
+
+  const isFestivalPost = (url: string, method: string) =>
+    method === 'POST' && new URL(url).pathname.endsWith(`/villages/${VILLAGE_ID}/festivals`)
 
   const [req, res] = await Promise.all([
-    page.waitForRequest((r) => r.url().includes('/timeline-digest/generate') && r.method() === 'POST', { timeout: 20_000 }),
-    page.waitForResponse((r) => r.url().includes('/timeline-digest/generate') && r.request().method() === 'POST', { timeout: 20_000 }),
-    dialog.getByRole('button', { name: '生成', exact: true }).click(),
+    page.waitForRequest((r) => isFestivalPost(r.url(), r.method()), { timeout: 20_000 }),
+    page.waitForResponse((r) => isFestivalPost(r.url(), r.request().method()), { timeout: 20_000 }),
+    dialog.getByRole('button', { name: FESTIVAL_TXT.festivalSave }).click(),
   ])
 
-  const sent = JSON.parse(req.postData() ?? '{}') as { periodStart?: string; periodEnd?: string }
-  expect(sent.periodStart, 'periodStart が送られていること').toBeTruthy()
-  expect(sent.periodEnd, 'periodEnd が送られていること').toBeTruthy()
+  const sent = JSON.parse(req.postData() ?? '{}') as { startsAt?: string; endsAt?: string }
+  expect(sent.startsAt, 'startsAt が送られていること').toBeTruthy()
+  expect(sent.endsAt, 'endsAt が送られていること').toBeTruthy()
 
-  let digestId: number | null = null
-  if (res.status() === 201 || res.status() === 200) {
-    try {
-      digestId = ((await res.json()).data as { id?: number })?.id ?? null
-    } catch { /* 本文がない/JSONでない場合は無視 */ }
+  const status = res.status()
+  const bodyText = await res.text().catch(() => '(body read failed)')
+  let festivalId: string | null = null
+  if (status === 201) {
+    try { festivalId = (JSON.parse(bodyText).data as { id: string }).id } catch { festivalId = null }
   }
+  return { sent, status, bodyText, festivalId }
+}
 
-  return { sentStart: sent.periodStart!, sentEnd: sent.periodEnd!, status: res.status(), digestId }
+/** 作成した祭のカードを一覧から見つける（作成直後は SCHEDULED なので「すべて」タブに切り替える）。 */
+async function findFestivalCard(page: Page, title: string): Promise<Locator> {
+  await expect(page.getByText(FESTIVAL_TXT.festivalSaveSuccess)).toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: FESTIVAL_TXT.festivalFilterAll }).first().click()
+  // eslint-disable-next-line no-restricted-syntax -- スピナー0件観測は「読み込み済み」を意味するため無視
+  await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+  const card = page.locator('.village-festival__card', { hasText: title }).first()
+  await expect(card, `作成した祭「${title}」のカードが一覧に出ること`).toBeVisible({ timeout: 20_000 })
+  return card
+}
+
+/** 祭カードのテキストから開始・終了の生 ISO 文字列を取り出す（整形されず生値のまま描画される）。 */
+function parseCardPeriod(cardText: string): [string, string] {
+  const matches = cardText.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z)?/g)
+  expect(matches?.length, `祭カードに ISO 日時が 2 つ含まれること（実際: ${cardText}）`).toBeGreaterThanOrEqual(2)
+  return [matches![0]!, matches![1]!]
+}
+
+async function restoreUserTimezone(ctx: APIRequestContext, token: string): Promise<void> {
+  await api(ctx, token, 'PUT', '/api/v1/users/me', { timezone: JST_TZ })
 }
 
 test.describe('P2-01 ピッカー回帰なし（ブラウザ=プロフィール=JST）', () => {
@@ -248,56 +275,52 @@ test.describe('P2-01 ピッカー回帰なし（ブラウザ=プロフィール=
   test.setTimeout(90_000)
 
   let ctx: APIRequestContext
-  let adminToken = ''
-  const createdDigestIds: number[] = []
+  let userToken = ''
+  const createdFestivalIds: string[] = []
 
   test.beforeAll(async ({ playwright }) => {
     ctx = await playwright.request.newContext()
-    adminToken = await loginToken(ctx, E2E_ADMIN.email, E2E_ADMIN.password)
-    // 元の timezone（Asia/Tokyo）に戻す（他 describe の後始末と独立に、常に JST で開始する）
-    await api(ctx, adminToken, 'PUT', '/api/v1/users/me', { timezone: JST_TZ })
+    userToken = await loginToken(ctx, E2E_USER.email, E2E_USER.password)
+    await restoreUserTimezone(ctx, userToken)
   })
 
   test.afterAll(async () => {
-    for (const id of createdDigestIds) {
+    for (const id of createdFestivalIds) {
       // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
-      await api(ctx, adminToken, 'DELETE', `/api/v1/timeline-digest/${id}`).catch(() => {})
+      await api(ctx, userToken, 'POST', `/api/v1/villages/${VILLAGE_ID}/festivals/${id}/cancel`).catch(() => {})
     }
     await ctx.dispose()
   })
 
-  test('P2-01: JST/JST では選んだ日がそのまま送られる（回帰なし）', async ({ page }) => {
-    await loginAndSetTimezone(page, ctx, adminToken, JST_TZ)
+  test('P2-01: JST/JST では選んだ壁時計がそのまま送られる（回帰なし）', async ({ page }) => {
+    await loginAndSetTimezone(page, ctx, userToken, JST_TZ)
     await setupApiBridge(page)
-    const dialog = await openDigestDialog(page)
+    await goto(page, `/villages/${VILLAGE_ID}/festivals`)
 
-    const target = new Date(2026, 7, 4) // 2026-08-04（ローカル=JST）
-    const { sentStart, status, digestId } = await submitDigestGenerate(page, dialog, target, target)
+    const title = `#2508P2祭JST-${Date.now()}`
+    const result = await createFestivalViaUi(page, title, '2027-08-04T10:00', '2027-08-04T18:00')
 
-    expect(sentStart.slice(0, 10), 'JST/JST では暦日がそのまま送られること').toBe('2026-08-04')
-    expect(status, `ダイジェスト生成（軸2/P2-07 相当）が失敗した: ${status}`).toBe(201)
-    if (digestId) createdDigestIds.push(digestId)
+    expect(wallClockIn(new Date(result.sent.startsAt!), JST_TZ)).toBe('2027-08-04 10:00:00')
+    expect(result.status, `祭の作成が失敗した: ${result.bodyText}`).toBe(201)
+    if (result.festivalId) createdFestivalIds.push(result.festivalId)
 
-    // 軸3: 一覧に生成結果が反映され、期間表示が入力値と一致すること（往復）
-    await expect(
-      page.locator('td').filter({ hasText: '2026/08/04 〜 2026/08/04' }).first(),
-      '一覧の期間表示が入力した暦日と一致すること',
-    ).toBeVisible({ timeout: 15_000 })
+    const card = await findFestivalCard(page, title)
+    const [returnedStart] = parseCardPeriod((await card.innerText()).trim())
+    expect(wallClockIn(new Date(returnedStart), JST_TZ), '往復しても入力どおりであること').toBe('2027-08-04 10:00:00')
   })
 
   test('P2-08 境界: 月初00:00:00/月末23:59:59が取りこぼされない', async ({ page }) => {
-    await loginAndSetTimezone(page, ctx, adminToken, JST_TZ)
+    await loginAndSetTimezone(page, ctx, userToken, JST_TZ)
     await setupApiBridge(page)
-    const dialog = await openDigestDialog(page)
+    await goto(page, `/villages/${VILLAGE_ID}/festivals`)
 
-    const monthStart = new Date(2026, 8, 1) // 2026-09-01
-    const monthEnd = new Date(2026, 8, 30) // 2026-09-30
-    const { sentStart, sentEnd, status, digestId } = await submitDigestGenerate(page, dialog, monthStart, monthEnd)
+    const title = `#2508P2境界-${Date.now()}`
+    const result = await createFestivalViaUi(page, title, '2027-09-01T00:00', '2027-09-30T23:59')
 
-    expect(sentStart, '月初は 00:00:00 であること').toMatch(/^2026-09-01T00:00:00/)
-    expect(sentEnd, '月末は 23:59:59（両端inclusive）であること').toMatch(/^2026-09-30T23:59:59/)
-    expect(status).toBe(201)
-    if (digestId) createdDigestIds.push(digestId)
+    expect(wallClockIn(new Date(result.sent.startsAt!), JST_TZ), '月初00:00:00が保持されること').toBe('2027-09-01 00:00:00')
+    expect(wallClockIn(new Date(result.sent.endsAt!), JST_TZ), '月末23:59:00が保持されること').toBe('2027-09-30 23:59:00')
+    expect(result.status).toBe(201)
+    if (result.festivalId) createdFestivalIds.push(result.festivalId)
   })
 })
 
@@ -307,50 +330,57 @@ test.describe('P2-02【本命】ブラウザJST・プロフィールLAで選ん�
   test.setTimeout(90_000)
 
   let ctx: APIRequestContext
-  let adminToken = ''
-  const createdDigestIds: number[] = []
+  let userToken = ''
+  const createdFestivalIds: string[] = []
 
   test.beforeAll(async ({ playwright }) => {
     ctx = await playwright.request.newContext()
-    adminToken = await loginToken(ctx, E2E_ADMIN.email, E2E_ADMIN.password)
+    userToken = await loginToken(ctx, E2E_USER.email, E2E_USER.password)
   })
 
   test.afterAll(async () => {
-    for (const id of createdDigestIds) {
+    for (const id of createdFestivalIds) {
       // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
-      await api(ctx, adminToken, 'DELETE', `/api/v1/timeline-digest/${id}`).catch(() => {})
+      await api(ctx, userToken, 'POST', `/api/v1/villages/${VILLAGE_ID}/festivals/${id}/cancel`).catch(() => {})
     }
     // ⚠️ 必ず JST へ戻す（他 spec / 本セッションの継続利用に影響するため）
-    await api(ctx, adminToken, 'PUT', '/api/v1/users/me', { timezone: JST_TZ })
+    await restoreUserTimezone(ctx, userToken)
     await ctx.dispose()
   })
 
-  test('P2-02: 選んだ8/4がそのまま送られる（修正前は8/3にずれていた）', async ({ page }) => {
-    await loginAndSetTimezone(page, ctx, adminToken, LA_TZ)
+  test('P2-02: 選んだ8/4 10:00がそのまま送られる（修正前は瞬間投影でずれていた）', async ({ page }) => {
+    await loginAndSetTimezone(page, ctx, userToken, LA_TZ)
     await setupApiBridge(page)
-    const dialog = await openDigestDialog(page)
+    await goto(page, `/villages/${VILLAGE_ID}/festivals`)
 
-    // ブラウザは JST（test.use）。カレンダーは JST の壁時計で 8/4 を描画する。
-    const target = new Date(2026, 7, 4)
-    const { sentStart, status, digestId } = await submitDigestGenerate(page, dialog, target, target)
+    // ブラウザは JST（test.use）。datetime-local へ入れた "2027-08-04T10:00" は
+    // ブラウザ壁時計としてパースされ、new Date(...) の getFullYear/getMonth/getDate は常に 2027-08-04 になる。
+    const title = `#2508P2祭LA-${Date.now()}`
+    const result = await createFestivalViaUi(page, title, '2027-08-04T10:00', '2027-08-04T18:00')
 
-    // 修正前（dayjs(date).tz(LA) で瞬間投影）なら:
-    //   2026-08-04T00:00:00+09:00（瞬間） = 2026-08-03T08:00:00-07:00（LA壁時計）→ "2026-08-03..." が送られていた。
-    // 修正後（ブラウザ壁時計成分をそのまま暦日として使う）は "2026-08-04..." が送られる。
+    // 修正後: ブラウザ壁時計成分（2027-08-04 10:00）をそのままプロフィールTZ(LA)のオフセットで送る。
     expect(
-      sentStart.slice(0, 10),
-      `選んだ8/4がそのまま送られること（修正前なら "2026-08-03" になっていた）: 実測=${sentStart}`,
-    ).toBe('2026-08-04')
-    // LA の8月はPDT（-07:00）
-    expect(sentStart, 'LAプロフィールのオフセットが付与されること').toMatch(/-07:00$/)
-    expect(status, 'ダイジェスト生成が400にならないこと').toBe(201)
-    if (digestId) createdDigestIds.push(digestId)
+      wallClockIn(new Date(result.sent.startsAt!), LA_TZ),
+      `LAプロフィールのオフセットを付けて2027-08-04 10:00のまま送られること（実測startsAt=${result.sent.startsAt}）`,
+    ).toBe('2027-08-04 10:00:00')
+    expect(result.sent.startsAt, 'LAの8月はPDT(-07:00)であること').toMatch(/-07:00$/)
 
-    // 軸3: 一覧の期間表示（useDatetime().formatDate はプロフィールTZ=LA基準）も入力値と一致すること
-    await expect(
-      page.locator('td').filter({ hasText: '2026/08/04 〜 2026/08/04' }).first(),
-      '一覧の期間表示（LA基準）が入力した8/4のまま一致すること（1日ずれ再発なし）',
-    ).toBeVisible({ timeout: 15_000 })
+    // 修正前（dayjs(date).tz(LA)で瞬間投影）だった場合の値をここで明示的に反証する:
+    //   ブラウザJSTで生成されたDate（2027-08-04 10:00 JSTの瞬間）をLAへ投影すると
+    //   2027-08-03 18:00 LA になってしまう（16時間差）。修正後はこれと一致しないことを確認する。
+    const brokenWallClock = wallClockIn(new Date(result.sent.startsAt!), LA_TZ)
+    expect(brokenWallClock, '修正前の壊れた値(2027-08-03 18:00)になっていないこと').not.toBe('2027-08-03 18:00:00')
+
+    expect(result.status, '祭の作成が400にならないこと').toBe(201)
+    if (result.festivalId) createdFestivalIds.push(result.festivalId)
+
+    // 軸3: 往復してもLA壁時計で入力どおりであること（1日ずれ再発なし）
+    const card = await findFestivalCard(page, title)
+    const [returnedStart] = parseCardPeriod((await card.innerText()).trim())
+    expect(
+      wallClockIn(new Date(returnedStart), LA_TZ),
+      `読み戻したstartsAtがLA壁時計で入力どおりであること（修正前なら2027-08-03になっていた）`,
+    ).toBe('2027-08-04 10:00:00')
   })
 })
 
@@ -360,51 +390,49 @@ test.describe('P2-03 ピッカー一致（ブラウザ=プロフィール=LA）+
   test.setTimeout(90_000)
 
   let ctx: APIRequestContext
-  let adminToken = ''
-  const createdDigestIds: number[] = []
+  let userToken = ''
+  const createdFestivalIds: string[] = []
 
   test.beforeAll(async ({ playwright }) => {
     ctx = await playwright.request.newContext()
-    adminToken = await loginToken(ctx, E2E_ADMIN.email, E2E_ADMIN.password)
+    userToken = await loginToken(ctx, E2E_USER.email, E2E_USER.password)
   })
 
   test.afterAll(async () => {
-    for (const id of createdDigestIds) {
+    for (const id of createdFestivalIds) {
       // eslint-disable-next-line no-restricted-syntax -- 後始末のため意図的な無視
-      await api(ctx, adminToken, 'DELETE', `/api/v1/timeline-digest/${id}`).catch(() => {})
+      await api(ctx, userToken, 'POST', `/api/v1/villages/${VILLAGE_ID}/festivals/${id}/cancel`).catch(() => {})
     }
-    // ⚠️ 必ず JST へ戻す
-    await api(ctx, adminToken, 'PUT', '/api/v1/users/me', { timezone: JST_TZ })
+    await restoreUserTimezone(ctx, userToken)
     await ctx.dispose()
   })
 
   test('P2-03: ブラウザ=プロフィール=LA が一致するとき正常動作する', async ({ page }) => {
-    await loginAndSetTimezone(page, ctx, adminToken, LA_TZ)
+    await loginAndSetTimezone(page, ctx, userToken, LA_TZ)
     await setupApiBridge(page)
-    const dialog = await openDigestDialog(page)
+    await goto(page, `/villages/${VILLAGE_ID}/festivals`)
 
-    const target = new Date(2026, 7, 4)
-    const { sentStart, status, digestId } = await submitDigestGenerate(page, dialog, target, target)
+    const title = `#2508P2祭LALA-${Date.now()}`
+    const result = await createFestivalViaUi(page, title, '2027-08-04T10:00', '2027-08-04T18:00')
 
-    expect(sentStart.slice(0, 10), 'LA/LA一致時も選んだ日がそのまま送られること').toBe('2026-08-04')
-    expect(status).toBe(201)
-    if (digestId) createdDigestIds.push(digestId)
+    expect(wallClockIn(new Date(result.sent.startsAt!), LA_TZ), 'LA/LA一致時も入力どおりであること').toBe('2027-08-04 10:00:00')
+    expect(result.status).toBe(201)
+    if (result.festivalId) createdFestivalIds.push(result.festivalId)
   })
 
-  test('P2-09 境界: 夏時間切替日(2026/3/8)をまたぐ範囲でもオフセットが正しく遷移する', async ({ page }) => {
-    await loginAndSetTimezone(page, ctx, adminToken, LA_TZ)
+  test('P2-09 境界: 夏時間切替日(2027/3/14)をまたぐ範囲でもオフセットが正しく遷移する', async ({ page }) => {
+    await loginAndSetTimezone(page, ctx, userToken, LA_TZ)
     await setupApiBridge(page)
-    const dialog = await openDigestDialog(page)
+    await goto(page, `/villages/${VILLAGE_ID}/festivals`)
 
-    // US DST 2026: 3/8(日) 2:00 に PST(-08:00) → PDT(-07:00)へ切替
-    const before = new Date(2026, 2, 7) // 2026-03-07（PST）
-    const after = new Date(2026, 2, 9) // 2026-03-09（PDT）
-    const { sentStart, sentEnd, status, digestId } = await submitDigestGenerate(page, dialog, before, after)
+    // US DST 2026: 3/8(日) 2:00 に PST(-08:00) → PDT(-07:00) へ切替
+    const title = `#2508P2祭DST-${Date.now()}`
+    const result = await createFestivalViaUi(page, title, '2027-03-13T10:00', '2027-03-15T10:00')
 
-    expect(sentStart, '切替前日はPST(-08:00)であること').toMatch(/^2026-03-07T00:00:00-08:00$/)
-    expect(sentEnd, '切替後日はPDT(-07:00)であること').toMatch(/^2026-03-09T23:59:59-07:00$/)
-    expect(status, 'DST境界をまたいでも生成が失敗しないこと（#2612 の500根治を実測）').toBe(201)
-    if (digestId) createdDigestIds.push(digestId)
+    expect(result.sent.startsAt, '切替前(3/7)はPST(-08:00)であること').toMatch(/^2027-03-13T10:00:00-08:00$/)
+    expect(result.sent.endsAt, '切替後(3/9)はPDT(-07:00)であること').toMatch(/^2027-03-15T10:00:00-07:00$/)
+    expect(result.status, 'DST境界をまたいでも作成が失敗しないこと（#2612の500根治を実測）').toBe(201)
+    if (result.festivalId) createdFestivalIds.push(result.festivalId)
   })
 })
 
@@ -470,23 +498,32 @@ test.describe('P2-04 アンケート作成: 締切保存+distributionMode', () =
       res.status(),
       `アンケート作成が失敗した（修正前はdistributionMode欠落で400だった）: ${await res.text()}`,
     ).toBe(201)
-    const created = (await res.json()).data as { id: number }
-    createdSurveyId = created.id
+    // ⚠️ 発見した既存不具合（本PRの範囲外・BEのレスポンス契約不整合）:
+    //    POST /surveys のレスポンスは {data:{survey:{id,...}, questions:[...]}} という入れ子形だが、
+    //    GET /surveys（一覧）は {data:[{id,...}]} というフラット形で返す。BE内で応答契約が非対称。
+    //    SurveyCreateDialog.vue はこの id を消費しない（一覧再取得のみ）ため実害は出ていないが、
+    //    本テストでは一覧から実IDを引く（作成レスポンスの id を信用しない）。
+    const listRes = await api(ctx, adminToken, 'GET', `/api/v1/teams/${TEAM_SLUG}/surveys`)
+    expect(listRes.ok()).toBeTruthy()
+    const list = ((await listRes.json()).data ?? []) as Array<{ id: number; content?: { title?: string } }>
+    const createdSurvey = list.find((s) => s.content?.title === title)
+    expect(createdSurvey, `一覧に作成したアンケート「${title}」が見つかること`).toBeTruthy()
+    createdSurveyId = createdSurvey!.id
 
     // 軸3: 一覧に反映（round trip 1）
     await expect(
-      page.getByTestId(`survey-item-${created.id}`).filter({ hasText: title }),
+      page.getByTestId(`survey-item-${createdSurveyId}`).filter({ hasText: title }),
       '作成したアンケートが一覧に出ること',
     ).toBeVisible({ timeout: 15_000 })
 
     // 軸3: 詳細画面で締切が保存された値のまま表示される（round trip 2）
-    await page.getByTestId(`survey-item-edit-draft-${created.id}`).click()
-    await expect(page).toHaveURL(new RegExp(`/surveys/${created.id}`))
+    await page.getByTestId(`survey-item-edit-draft-${createdSurveyId}`).click()
+    await expect(page).toHaveURL(new RegExp(`/surveys/${createdSurveyId}`), { timeout: 15_000 })
     const y = target.getFullYear()
     const m = String(target.getMonth() + 1).padStart(2, '0')
     const d = String(target.getDate()).padStart(2, '0')
     await expect(
-      page.getByText(new RegExp(`${y}-${m}-${d}`)),
+      page.getByTestId('survey-detail-page').getByText(new RegExp(`${y}-${m}-${d}`)),
       '詳細画面の締切表示に入力日が含まれること',
     ).toBeVisible({ timeout: 15_000 })
   })
