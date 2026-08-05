@@ -28,9 +28,23 @@
  *    「画面で選んだ日と違う日が送信される」という、いま直そうとしているのと同じ症状を再生産してしまう。
  * 3. 既存の {@link ~/utils/activityFields#toYmd} も同じ方針（ローカル壁時計）で実装済みで、実績がある。
  *
- * なお、時刻を伴う `OffsetDateTime` 系の組み立ては瞬間の変換が必要なため、従来どおり
- * `useDatetime().buildOffsetDateTimeStr()`（`users.timezone` 基準）を使うこと。本関数は
- * **`LocalDate` 専用**であり、両者は用途が異なる。
+ * ## 時刻を伴う `OffsetDateTime` 系との関係（Issue #2508 Phase 2 で訂正）
+ *
+ * 以前ここには「`OffsetDateTime` 系は瞬間の変換が必要なので `users.timezone` 基準」と書かれていたが、
+ * **これは誤りであり、この一文が実際にバグを容認していた**。`useDatetime().buildOffsetDateTimeStr()` は
+ * ピッカーが返す `Date` を `dayjs(date).tz(users.timezone)` で投影し直しており、ブラウザ TZ と
+ * プロフィール TZ が食い違うユーザーで上記 2. とまったく同じ「選んだ日が 1 日ずれる」症状を出していた。
+ *
+ * 正しい原則は日付・日時で共通である:
+ *
+ * > **ピッカー由来の `Date` は「瞬間」ではなく「ユーザーが画面で指した壁時計」である。**
+ * > 年月日（および時分秒）はローカル壁時計成分として取り出し、`users.timezone` は
+ * > **投影ではなく、その壁時計に付けるオフセットの決定にのみ**使う。
+ *
+ * したがって `LocalDate` は本関数、`OffsetDateTime` は
+ * `useDatetime().buildOffsetDateTimeStr()`（内部で本関数を使い壁時計成分を取り出す）を使うこと。
+ * 暦日が文字列で先に決まっている範囲検索は `buildDayStartStr` / `buildDayEndStr` を使う。
+ * `yyyy-MM-dd` を作る処理を新規に書き起こしてはならない（同じバグを再生産する）。
  */
 
 /**

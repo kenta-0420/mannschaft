@@ -35,6 +35,7 @@ public class ChatMemberService {
     private final ChatMapper chatMapper;
     private final ChatChannelEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * チャンネルのメンバー一覧を取得する。
@@ -59,12 +60,9 @@ public class ChatMemberService {
     @Transactional
     public List<MemberResponse> addMembers(Long channelId, Long operatorUserId, AddMemberRequest request) {
         channelService.findChannelOrThrow(channelId);
-        // 操作者がチャンネルのOWNER/ADMINであることを確認（一般MEMBERによるメンバー追加を禁止）
-        ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
-        if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する（一般 MEMBER によるメンバー追加を禁止）。
+        channelAccessGuard.requireChannelManagerRole(
+                channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         List<ChatChannelMemberEntity> added = new java.util.ArrayList<>();
         for (Long userId : request.getUserIds()) {
@@ -92,13 +90,13 @@ public class ChatMemberService {
      */
     @Transactional
     public void removeMember(Long channelId, Long userId, Long operatorUserId) {
-        // 他人を除外する場合はOWNER/ADMINのみ許可（一般MEMBERによるキック禁止）
+        // 他人を除外する場合は OWNER / ADMIN のみ許可する（一般 MEMBER によるキックを禁止）。
+        // 自分自身の退出は当該チャンネルのメンバーであることのみを要する。
         if (!operatorUserId.equals(userId)) {
-            ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
-                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
-            if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
-                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            }
+            channelAccessGuard.requireChannelManagerRole(
+                    channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        } else {
+            channelAccessGuard.requireChannelMember(channelId, operatorUserId);
         }
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         if (member.getRole() == ChannelMemberRole.OWNER) {
@@ -171,12 +169,10 @@ public class ChatMemberService {
      */
     @Transactional
     public MemberResponse changeRole(Long channelId, Long targetUserId, ChangeRoleRequest request, Long operatorUserId) {
-        // 操作者がチャンネルのOWNER/ADMINであることを確認（一般MEMBERによる権限昇格・他人のロール変更を禁止）
-        ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
-        if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する
+        //（一般 MEMBER による権限昇格・他人のロール変更を禁止）。
+        channelAccessGuard.requireChannelManagerRole(
+                channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
         ChannelMemberRole newRole = ChannelMemberRole.valueOf(request.getRole());

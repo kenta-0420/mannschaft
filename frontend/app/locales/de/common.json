@@ -533,7 +533,8 @@
       "selfReviewEnd": "Endzeit der Selbstüberprüfung",
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
       "saveSettings": "Einstellungen speichern",
-      "loadFailed": "Artikel konnte nicht geladen werden"
+      "loadFailed": "Artikel konnte nicht geladen werden",
+      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar."
     },
     "autoSave": {
       "label": "Automatisch speichern",

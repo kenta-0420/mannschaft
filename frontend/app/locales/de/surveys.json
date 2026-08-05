@@ -17,7 +17,8 @@
       "label": "Sichtbarkeit der Ergebnisse",
       "CREATOR_ONLY": "Nur Ersteller",
       "RESPONDENTS": "Nur Befragte",
-      "ALL_MEMBERS": "Alle Mitglieder"
+      "ALL_MEMBERS": "Alle Mitglieder",
+      "AFTER_CLOSE": "Alle Mitglieder nach Abschluss"
     },
     "unrespondedVisibility": {
       "label": "Sichtbarkeit der Nicht-Befragten",

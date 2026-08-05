@@ -167,7 +167,14 @@ Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
 - コンストラクタが **1 本だけ**なら `@JsonCreator` は不要（`-parameters` ＋ `ParameterNamesModule` で暗黙 creator になる）
 - Lombok の `@Data + @NoArgsConstructor + @AllArgsConstructor` 様式も可（引数無しコンストラクタ＋setter で成立する）
 - `record` は Jackson が正準コンストラクタをネイティブ解決するため、コンストラクタが複数でも `@JsonCreator` は不要
-- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）
+- `@JsonCreator` は **1 本だけ**付けること。2 本のコンストラクタに付けると Jackson が
+  properties-based creator を一意に決められず（conflicting property-based creators）、
+  **付けていないのと同じく常時 500** になる（delegating creator と 1 本ずつの共存のみ可）
+- `@JsonCreator(mode = Mode.DISABLED)` は creator の**明示的な打ち消し**であり、
+  「付いているのに creator が 1 本も無い」状態になる。救済にはならない
+- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）。
+  その構造条件が実際の壊れ方と一致していることは `JsonRequestBodyCreatorRuntimeProofTest` が
+  本番同等設定の実 `ObjectMapper` でデシリアライズを走らせて実測固定している
 
 #### `@ModelAttribute`（フォームバインド）DTO は `@JsonCreator` では救えない
 

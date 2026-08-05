@@ -17,7 +17,8 @@
       "label": "结果可见范围",
       "CREATOR_ONLY": "仅创建者",
       "RESPONDENTS": "仅回答者",
-      "ALL_MEMBERS": "全体成员"
+      "ALL_MEMBERS": "全体成员",
+      "AFTER_CLOSE": "截止后全体成员"
     },
     "unrespondedVisibility": {
       "label": "未回答者可见范围",

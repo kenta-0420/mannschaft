@@ -11,8 +11,13 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
  *   ORG-CTX-001: 未解決の teamSlug は /me/teams から {orgId, teamId}（数値）を返す
  *   ORG-CTX-002: 同一 teamSlug の 2 回目はキャッシュを返し API を再度叩かない
  *   ORG-CTX-003: 別の teamSlug は正しい数値を返す（チーム切替バグ根治）
- *   ORG-CTX-004: slug 一致が無ければ null を返し通知する（解決不能）
- *   ORG-CTX-005: 親組織 organizationId が null なら null を返し通知する
+ *   ORG-CTX-004: slug 一致が無ければ静かに null を返す（想定内・警告トーストを出さない）
+ *   ORG-CTX-005: 親組織 organizationId が null なら静かに null を返す（単独チーム）
+ *
+ * 通知方針（#1850「match警告トースト抑止」で確定）:
+ *   「/me/teams に当該チームが無い」「親組織なし（単独チーム。DB 上 88%）」は想定内の正常状態のため
+ *   warn を出さず null へ縮退する（ダッシュボードを開くたび警告が出る不具合の根治）。
+ *   真のエラー（/me/teams 取得失敗）のみ warn する（ORG-CTX-006 で検証）。
  */
 
 const mockFetch = vi.fn()
@@ -82,7 +87,7 @@ describe('useMatchOrgContext', () => {
     expect(ctxB).toEqual({ orgId: 40, teamId: 400 })
   })
 
-  it('ORG-CTX-004: slug 一致が無ければ null を返し通知する', async () => {
+  it('ORG-CTX-004: slug 一致が無ければ静かに null を返す（警告トーストは出さない）', async () => {
     mockFetch.mockResolvedValueOnce({
       data: [{ id: 100, slug: TEAM_A_SLUG, organizationId: 10 }],
     })
@@ -91,13 +96,23 @@ describe('useMatchOrgContext', () => {
     const result = await resolveContext('unknown-team-slug')
 
     expect(result).toBeNull()
-    expect(mockWarn).toHaveBeenCalled()
+    expect(mockWarn).not.toHaveBeenCalled()
   })
 
-  it('ORG-CTX-005: 親組織 organizationId が null なら null を返し通知する', async () => {
+  it('ORG-CTX-005: 親組織 organizationId が null なら静かに null を返す（単独チーム）', async () => {
     mockFetch.mockResolvedValueOnce({
       data: [{ id: 100, slug: TEAM_A_SLUG, organizationId: null }],
     })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG)
+
+    expect(result).toBeNull()
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+
+  it('ORG-CTX-006: /me/teams の取得失敗は握り潰さず warn で通知する', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network down'))
 
     const { resolveContext } = useMatchOrgContext()
     const result = await resolveContext(TEAM_A_SLUG)
@@ -134,13 +149,23 @@ describe('useMatchOrgContext', () => {
     expect(second).toEqual(first)
   })
 
-  it('ORG-CTX-103: 自分が所属しない teamId（記録権限なし）は null を返し通知する', async () => {
+  it('ORG-CTX-103: 自分が所属しない teamId（記録権限なし）は静かに null を返す', async () => {
     mockFetch.mockResolvedValueOnce({
       data: [{ id: 700, slug: TEAM_A_SLUG, organizationId: 70 }],
     })
 
     const { resolveContextByTeamId } = useMatchOrgContext()
     const result = await resolveContextByTeamId(999)
+
+    expect(result).toBeNull()
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+
+  it('ORG-CTX-104: teamId 解決でも /me/teams 取得失敗は warn で通知する', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network down'))
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const result = await resolveContextByTeamId(800)
 
     expect(result).toBeNull()
     expect(mockWarn).toHaveBeenCalled()

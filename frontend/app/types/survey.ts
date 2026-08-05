@@ -16,6 +16,8 @@ export type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATIN
  */
 export type ResultsVisibility = 'CREATOR_ONLY' | 'RESPONDENTS' | 'ALL_MEMBERS' | 'AFTER_CLOSE'
 export type UnrespondedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
+/** 配信モード。BE `DistributionMode` enum と同値。 */
+export type DistributionMode = 'ALL' | 'TARGETED'
 
 // === Survey Response ===
 export interface SurveyScopeDto {
@@ -112,7 +114,16 @@ export interface CreateSurveyRequest {
   allowMultipleSubmissions?: boolean
   resultsVisibility?: ResultsVisibility
   unrespondedVisibility?: UnrespondedVisibility | null
-  deadline?: string
+  /**
+   * 回答締切。BE `CreateSurveyRequest.expiresAt` と同名・同義（オフセット付き ISO 文字列）。
+   * かつて `deadline` という BE に存在しない名前で送っており、締切が黙って捨てられていた。
+   */
+  expiresAt?: string
+  /**
+   * 配信モード。BE は `@NotBlank`（`ALL` / `TARGETED`）。
+   * 省略時は useSurveyApi が `ALL` を補う。
+   */
+  distributionMode?: DistributionMode
   /**
    * F05.4 (B) 組織→参加チーム配信: チーム別内訳（by_team）集計を有効にするか。
    * 既定 false。組織スコープのアンケートでのみ意味を持つ。匿名（isAnonymous=true）との併用は
@@ -140,7 +151,8 @@ export interface UpdateSurveyRequest {
   allowMultipleSubmissions?: boolean
   resultsVisibility?: ResultsVisibility
   unrespondedVisibility?: UnrespondedVisibility | null
-  deadline?: string | null
+  /** 回答締切。BE `UpdateSurveyRequest.expiresAt` と同名・同義。 */
+  expiresAt?: string | null
 }
 
 export interface SubmitResponseRequest {

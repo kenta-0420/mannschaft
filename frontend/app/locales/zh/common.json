@@ -533,7 +533,8 @@
       "selfReviewEnd": "自我审阅结束时间",
       "selfReviewHelp": "设定的时间段将作为发布前的审阅期",
       "saveSettings": "保存设置",
-      "loadFailed": "无法加载文章"
+      "loadFailed": "无法加载文章",
+      "scheduledPublishUnavailable": "定时发布目前不可用。发布后文章将立即公开。"
     },
     "autoSave": {
       "label": "自动保存",

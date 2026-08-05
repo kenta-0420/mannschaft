@@ -71,6 +71,8 @@ public class SharedFileStarService {
      */
     @Transactional
     public void removeStar(Long fileId, Long userId) {
+        // 追加（addStar）と同一の閲覧認可を当てる。兄弟メソッド間で判定が食い違う状態を作らない。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, userId);
         SharedFileStarEntity entity = starRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.STAR_NOT_FOUND));
         starRepository.delete(entity);

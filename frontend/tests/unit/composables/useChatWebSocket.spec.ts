@@ -242,7 +242,9 @@ describe('useChatApi — WebSocket STOMP 購読管理', () => {
       expect(mockSubscribeFn).toHaveBeenCalledTimes(1)
       const [, stompCallback] = mockSubscribeFn.mock.calls[0] as [string, SubscribeCallback]
 
-      // 受信メッセージをシミュレート
+      // 受信メッセージをシミュレート。
+      // BE ChatMessagePublisher の配信ペイロードは `{ "type": ..., "data": {...} }` のエンベロープ形式
+      // （backend/.../chat/service/ChatMessagePublisher.java 参照）。
       const fakeMessage = {
         id: 1,
         channelId: 30,
@@ -263,13 +265,14 @@ describe('useChatApi — WebSocket STOMP 購読管理', () => {
         createdAt: '2026-04-26T00:00:00Z',
         updatedAt: '2026-04-26T00:00:00Z',
       }
-      stompCallback({ body: JSON.stringify(fakeMessage) })
+      stompCallback({ body: JSON.stringify({ type: 'MESSAGE_CREATED', data: fakeMessage }) })
 
-      // EventBus で emit が呼ばれること
+      // EventBus で emit が呼ばれること（type / data のエンベロープをそのまま流す）
       expect(mockEmit).toHaveBeenCalledTimes(1)
-      expect(mockEmit).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, body: 'こんにちは', channelId: 30 }),
-      )
+      expect(mockEmit).toHaveBeenCalledWith({
+        type: 'MESSAGE_CREATED',
+        data: expect.objectContaining({ id: 1, body: 'こんにちは', channelId: 30 }),
+      })
     })
   })
 })
