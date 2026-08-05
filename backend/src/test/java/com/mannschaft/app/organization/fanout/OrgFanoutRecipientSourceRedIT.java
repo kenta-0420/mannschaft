@@ -44,15 +44,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>MySQL 依存機能（ORG 版キーセット再帰 CTE・耐久ワーカー経路）を実測するため
  * {@link AbstractMySqlIntegrationTest} 基底で回す。</p>
  *
- * <h2>red / 土台 green の別（各テスト冒頭コメントにも明示）</h2>
+ * <h2>検証の二層</h2>
  * <ul>
- *   <li><b>土台 green</b>: キーセットクエリ
- *       （{@link UserRoleRepository#findDistributionUserIdsForOrganizationRecursiveKeyset}）は第一陣で実装済みゆえ
- *       repository を直接叩く回帰テスト（AC-2/3/4/9/13/14/15）は green で成立しうる。</li>
- *   <li><b>red</b>: 受信者ソース／Registry 解決／ワーカー配信／enqueue の include_supporters 運搬
- *       （AC-1/7/8/10/11/5）は第三陣（出陣）の担当ゆえ現状 FAIL する。
- *       {@link OrgFanoutRecipientSource} は本試練では未登録の骨格スタブ（{@code nextPage} が例外を投げる）で、
- *       {@code FanoutRecipientSourceRegistry.resolve("ORGANIZATION")} が空を返すため配信は 0 件になる。</li>
+ *   <li><b>キーセット層</b>: {@link UserRoleRepository#findDistributionUserIdsForOrganizationRecursiveKeyset}
+ *       を直接叩く回帰テスト（AC-2/3/4/9/13/14/15）。母集団条件・再帰展開・純 SUPPORTER 除外を検証する。</li>
+ *   <li><b>配信層</b>: {@link OrgFanoutRecipientSource}／Registry 解決／ワーカー配信／enqueue の
+ *       include_supporters 運搬（AC-1/7/8/10/11/5）。ORG ジョブが受信者ページングを経て現役全員へ届くことを検証する。</li>
  * </ul>
  *
  * <h2>AC ↔ テスト対応</h2>
@@ -115,9 +112,9 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // AC-1 Registry が "ORGANIZATION" で OrgFanoutRecipientSource を解決する（未登録スタブ=red）
     // =====================================================================
     @Test
-    @DisplayName("AC-1 Registry は scope_type=\"ORGANIZATION\" で OrgFanoutRecipientSource を解決する（未実装=red）")
+    @DisplayName("AC-1 Registry は scope_type=\"ORGANIZATION\" で OrgFanoutRecipientSource を解決する")
     void ac1_registryResolvesOrgSource() {
-        // green: 第三陣が @Component 化すると resolve が present になり OrgFanoutRecipientSource が解決される。
+        // Registry が @Component 登録済みの OrgFanoutRecipientSource を "ORGANIZATION" で解決する。
         // 現状は未登録スタブゆえ resolve は空＝FAIL(red)。
         Optional<FanoutRecipientSource> resolved = registry.resolve(OrgFanoutRecipientSource.SCOPE_TYPE);
 
@@ -229,7 +226,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         UUID sourceEvent = UUID.randomUUID();
 
         // 「SUPPORTER を除外して配信したい」意図の enqueue。13 引数版で includeSupporters=false を運搬し、
-        // ジョブ列 include_supporters に false が保存される（第三陣で配線）。
+        // ジョブ列 include_supporters に false が保存される。
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,
                 "AC-5 include_supporters 運搬", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null,
                 false);
@@ -267,7 +264,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // AC-7 ORG ジョブを worker 実行→現役メンバー全員に通知が届く（未登録スタブ=red）
     // =====================================================================
     @Test
-    @DisplayName("AC-7 ORG ジョブを worker 実行すると現役メンバー全員に通知が届く（未実装=red）")
+    @DisplayName("AC-7 ORG ジョブを worker 実行すると現役メンバー全員に通知が届く")
     void ac7_workerDeliversToOrgMembers() {
         long seed = 9_107L;
         long org = createOrg(null);
@@ -291,7 +288,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // AC-8 メンバー0件 ORG は空供給で DONE 正常終了（500 にしない・未登録スタブ=red）
     // =====================================================================
     @Test
-    @DisplayName("AC-8 メンバー0件 ORG は空供給で DONE 完了する（例外で落とさない・未実装=red）")
+    @DisplayName("AC-8 メンバー0件 ORG は空供給で DONE 完了する（例外で落とさない）")
     void ac8_emptyOrgCompletesAsDone() {
         long org = createOrg(null); // メンバーを seed しない（0件）
         String type = "ORG_FANOUT_IT_AC8";
@@ -336,7 +333,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // AC-10 途中 cursor（クラッシュ相当）から再走で欠落なし（at-least-once 代理・未登録スタブ=red）
     // =====================================================================
     @Test
-    @DisplayName("AC-10 途中 cursor から再走しても欠落なく全員に届く（クラッシュ再開・未実装=red）")
+    @DisplayName("AC-10 途中 cursor から再走しても欠落なく全員に届く（クラッシュ再開）")
     void ac10_resumeFromMidCursorNoLoss() {
         long seed = 9_110L;
         long org = createOrg(null);
@@ -366,7 +363,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // AC-11 別 org のツリーを混入させても対象 org ツリーのメンバーのみ配信（未登録スタブ=red）
     // =====================================================================
     @Test
-    @DisplayName("AC-11 worker は scope_ref の org ツリーのメンバーのみ配信する（別 org 混入0・未実装=red）")
+    @DisplayName("AC-11 worker は scope_ref の org ツリーのメンバーのみ配信する（別 org 混入0）")
     void ac11_orgTreeStrictSeparation() {
         long seedA = 9_111L;
         long seedB = 9_112L;
