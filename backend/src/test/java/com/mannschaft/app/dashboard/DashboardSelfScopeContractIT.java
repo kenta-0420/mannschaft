@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * それぞれ実 DB で確認する。</p>
  */
 @AutoConfigureMockMvc
+@Transactional
 @DisplayName("個人ダッシュボード・チャットフォルダ 自己スコープ契約テスト（認可根治 Wave4 ロットD）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
@@ -80,13 +82,10 @@ class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
             notificationRepository.deleteAll(
                     notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()).getContent());
             folderRepository.deleteAll(folderRepository.findByUserIdOrderBySortOrder(userId));
-            // widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId は @Modifying @Query の
-            // JPQL 一括 DELETE であり、外部トランザクション無しに直接呼ぶと Spring Data の既定
-            // トランザクション属性が読み取り専用のため Hibernate が拒否する
-            // （InvalidDataAccessApiUsageException: Executing an update/delete query）。
-            // findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder → deleteAll(List) の形にすれば、
-            // deleteAll は JpaRepository 標準の CRUD メソッド（SimpleJpaRepository に書込用の
-            // @Transactional が明示されている）のため、外部トランザクション無しでも安全に呼べる。
+            // クラス @Transactional 配下（@BeforeEach/@AfterEach も同一トランザクションに含まれる）
+            // なので @Modifying クエリ・derived delete のどちらでも安全に呼べる。
+            // find → deleteAll の形にしているのは他の契約 IT（NotificationSelfScopeContractIT 等）と
+            // 削除手段を揃えるため。
             widgetSettingRepository.deleteAll(
                     widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(
                             userId, ScopeType.PERSONAL, 0L));

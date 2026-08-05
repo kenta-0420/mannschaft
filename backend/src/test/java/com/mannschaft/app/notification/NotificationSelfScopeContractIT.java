@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
@@ -45,6 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 結果のみが返る／自身の行のみが変更されることを確認する。</p>
  */
 @AutoConfigureMockMvc
+@Transactional
 @DisplayName("通知・通知設定・プッシュ購読 自己スコープ契約テスト（認可根治 Wave4 ロットD）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
