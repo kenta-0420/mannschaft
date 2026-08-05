@@ -8,7 +8,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
 import com.mannschaft.app.scopefolder.dto.FolderNotificationSummaryDto;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import org.junit.jupiter.api.BeforeEach;

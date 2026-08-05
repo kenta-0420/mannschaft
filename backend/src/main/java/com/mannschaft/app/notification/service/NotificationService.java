@@ -15,7 +15,7 @@ import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;

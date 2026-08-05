@@ -31800,7 +31800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応） */
+        /** 空きグリッド（ライン軸・日付レンジ/メニューフィルター対応） */
         get: operations["getGrid"];
         put?: never;
         post?: never;
@@ -69308,11 +69308,7 @@ export interface components {
             cells?: components["schemas"]["GridCellDto"][];
             /** Format: int64 */
             lineId?: number;
-            lineIds?: number[];
             lineName?: string;
-            staffName?: string;
-            /** Format: int64 */
-            staffUserId?: number;
         };
         GridDayDto: {
             columns?: components["schemas"]["GridColumnDto"][];
@@ -69329,7 +69325,6 @@ export interface components {
             requiredCellCount?: number;
         };
         ReservationGridResponse: {
-            axis?: string;
             columns?: components["schemas"]["GridColumnDto"][];
             /** Format: date */
             date?: string;
@@ -142786,11 +142781,8 @@ export interface operations {
                 from?: string;
                 /** @description 日付レンジ終了日 */
                 to?: string;
-                /** @description 列軸（既定 STAFF） */
-                axis?: "STAFF" | "LINE";
-                /** @description メニューフィルター（axis=LINE のときのみ有効） */
+                /** @description メニューフィルター（提供可能ラインで列を絞る） */
                 menuId?: string;
-                staffUserIds?: number[];
             };
             header?: never;
             path: {

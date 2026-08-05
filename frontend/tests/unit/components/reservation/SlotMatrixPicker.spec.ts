@@ -8,7 +8,7 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
  * SlotMatrixPicker.vue（F03.4.4 マトリックスUI・機能H）ユニットテスト — 番人
  *
  * 観点（AC 対応）:
- *   AC-1: axis=LINE のレンジ呼び（from/to）でグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
+ *   AC-1: from/to のレンジ呼びでグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
  *   AC-2: 予約対象ゼロは対象作成の空状態を表示する
  *   AC-3: 30分セル（span=1・AVAILABLE）クリックでメニュー選択ダイアログが開く（GroupBookingDialog）
  *   AC-4: 長尺手動枠（span>1・colspan跨ぎ描画）クリックは slotSelected を emit する（グループダイアログを開かない）
@@ -43,7 +43,6 @@ const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD')
 function gridResponseWithCells() {
   return {
     data: {
-      axis: 'LINE',
       meta: null,
       days: [
         {
@@ -70,7 +69,6 @@ function gridResponseWithCells() {
 function bookedGridResponse(slotId: number, date: string) {
   return {
     data: {
-      axis: 'LINE',
       meta: null,
       days: [
         {
@@ -115,7 +113,7 @@ afterEach(() => {
 })
 
 describe('SlotMatrixPicker.vue', () => {
-  it('AC-1: axis=LINE の from/to レンジ呼びでグリッドAPIを叩く', async () => {
+  it('AC-1: from/to レンジ呼びでグリッドAPIを叩く（#2575 で axis は送らない）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
 
@@ -127,7 +125,9 @@ describe('SlotMatrixPicker.vue', () => {
     expect(mockGetSlotGrid).toHaveBeenCalled()
     const [teamId, params] = mockGetSlotGrid.mock.calls[0] as [string, Record<string, unknown>]
     expect(teamId).toBe('team-slug')
-    expect(params.axis).toBe('LINE')
+    // #2575: 撤去済みの axis / staffUserIds は一切送らない。
+    expect(params.axis).toBeUndefined()
+    expect(params.staffUserIds).toBeUndefined()
     expect(params.from).toBeTruthy()
     expect(params.to).toBeTruthy()
     expect(params.date).toBeUndefined()
@@ -135,7 +135,7 @@ describe('SlotMatrixPicker.vue', () => {
 
   it('AC-2: 予約対象ゼロは対象作成の空状態を表示する', async () => {
     mockGetLines.mockResolvedValue({ data: [] })
-    mockGetSlotGrid.mockResolvedValue({ data: { axis: 'LINE', days: [] } })
+    mockGetSlotGrid.mockResolvedValue({ data: { days: [] } })
 
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: true },
@@ -221,7 +221,6 @@ describe('SlotMatrixPicker.vue', () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue({
       data: {
-        axis: 'LINE',
         meta: null,
         days: [
           {
@@ -324,7 +323,6 @@ describe('SlotMatrixPicker.vue', () => {
   function consecutiveGridResponse() {
     return {
       data: {
-        axis: 'LINE',
         meta: null,
         days: [
           {
@@ -388,7 +386,6 @@ describe('SlotMatrixPicker.vue', () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue({
       data: {
-        axis: 'LINE',
         meta: null,
         days: [
           {

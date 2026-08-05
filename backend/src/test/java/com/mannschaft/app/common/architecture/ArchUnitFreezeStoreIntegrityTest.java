@@ -561,6 +561,19 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 先に main へ着地したため、main 追随マージで合成し直した値である。ロットA が削除する 37 行と
      * 本ロットが削除する 33 行は <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。
      * したがって 467 − 33 = 434。</p>
+     *
+     * <p>434（変化なし、2026-08-04）: {@code scopefolder.entity.ScopeType} を
+     * {@code scopefolder.entity.enums.ScopeType} へ移設（D-1 番人の「共有される値オブジェクトは
+     * entity.enums 配下」除外規定に実体を合わせる是正）した副作用として、本ストアのキーが
+     * メソッド完全修飾シグネチャ（引数の完全修飾型名を含む）で構成されているため、
+     * {@code ScopeType} を引数に取る6エンドポイント（{@code NotificationController.listNotifications} /
+     * {@code MyScopeFolderController.createFolder / getDefaultFolder / getFolders /
+     * getNotificationSummary / reorderFolders}）のキー文字列がパッケージ名の変更分だけ変わった。
+     * 旧キー6件が解消・新キー6件が追加され、差引ゼロで行数は変わらない。
+     * 認可の実態（未認可であること自体）は一切変わっておらず、新規の認可違反ではなく
+     * 既存負債のキー改名である。この同一性は同一コミット内の
+     * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
+     * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
      */
     private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 434;
 
@@ -573,8 +586,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 一覧3エンドポイントを Summary DTO 返却に是正し、Controller からの他ドメイン Entity 参照
      * 3 件（auth.UserEntity / organization.OrganizationEntity / team.TeamEntity）が根治で解消。
      * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
+     *
+     * <p>2135 → 2129（2026-08-04）: {@code scopefolder.entity.ScopeType}（フィールド・振る舞いを
+     * 持たない純粋な2値enum）を {@code scopefolder.entity.enums.ScopeType} へ移設。D-1 番人は
+     * {@code ..entity.enums..} 配下の enum を「共有される値オブジェクト」としてドメイン越境import
+     * の対象外に除外しており、本 enum はこの除外規定に該当する実体であるにも関わらず
+     * {@code entity} 直下にあったため対象外になっていなかった。規約に実体を合わせた結果、
+     * dashboard / notification（2箇所） / role の計4クラスから参照していた既存違反6行が解消。
+     * 違反隠蔽ではなく、共有値オブジェクトの置き場所を規約どおりに是正した結果の縮小。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2135;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2129;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -604,8 +625,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@link CrossDomainRepositoryDependencyArchTest}）の初期凍結。既存負債の台帳であり、
      * 新規の越境 Repository 依存のみを fail させる。返済（chip-away）で行数が減った場合のみ
      * この定数を実測値へ更新する。</p>
+     *
+     * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
+     * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
+     * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2025;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
