@@ -12,6 +12,8 @@ import com.mannschaft.app.notification.repository.NotificationSettingsRepository
 import com.mannschaft.app.notification.repository.NotificationTypePreferenceRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,6 +74,9 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private PushSubscriptionRepository pushSubscriptionRepository;
 
+    @PersistenceContext
+    private EntityManager em;
+
     /** 本テスト専用の固有ユーザーID（他 IT のフィクスチャと衝突しないレンジを使う）。 */
     private static final Long ME = 916401L;
     private static final Long OTHER = 916402L;
@@ -128,9 +133,11 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
             saveNotification(ME, "自分宛2");
             saveNotification(OTHER, "他人宛");
 
+            // UnreadCountResponse のフィールド名は unreadCount（count ではない。
+            // UnreadCountResponse.java: private final long unreadCount;）。
             mockMvc.perform(get("/api/v1/notifications/unread-count"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.count").value(2));
+                    .andExpect(jsonPath("$.data.unreadCount").value(2));
         }
 
         @Test
@@ -144,6 +151,13 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(1));
 
+            // markAllAsReadByUserId は @Modifying の JPQL 一括 UPDATE
+            // （NotificationRepository.java:49-51）であり、永続化コンテキスト上で既に管理されている
+            // mine/others のインスタンスへは自動反映されない。flush で未確定の変更を確定させたうえで
+            // clear して 1 次キャッシュを捨て、DB の実体を素通しで引き直す（flush 無しの clear は
+            // 未確定の変更ごと捨てるため対で書く）。
+            em.flush();
+            em.clear();
             assertThat(notificationRepository.findById(mine.getId()).orElseThrow().getIsRead()).isTrue();
             assertThat(notificationRepository.findById(others.getId()).orElseThrow().getIsRead()).isFalse();
         }
@@ -210,20 +224,25 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         @WithMockUser(username = "916401")
         @DisplayName("bulkUpdateTypePreferences は 1 件ずつ自分の行のみを対象にする")
         void bulkUpdateTypePreferences_は自分の行のみ更新する() throws Exception {
+            // notificationType は NotificationType enum の name() と一致する必要がある
+            // （NotificationPreferenceService#bulkUpdateTypePreferences が
+            // NotificationType.fromValue で解決できない値を BusinessException として弾く）。
+            // "MENTION" は存在せず "CHAT_MENTION" / "TIMELINE_MENTION" が正しい値
+            // （NotificationType.java）。URGENT（isLocked）ではない CHAT_MENTION を使う。
             typePreferenceRepository.save(NotificationTypePreferenceEntity.builder()
-                    .userId(OTHER).notificationType("MENTION").isEnabled(true).build());
+                    .userId(OTHER).notificationType("CHAT_MENTION").isEnabled(true).build());
 
             mockMvc.perform(put("/api/v1/notification-type-preferences")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"preferences\":[{\"notificationType\":\"MENTION\","
+                            .content("{\"preferences\":[{\"notificationType\":\"CHAT_MENTION\","
                                     + "\"isEnabled\":false,\"channelOverride\":false}]}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.updatedCount").value(1));
 
-            assertThat(typePreferenceRepository.findByUserIdAndNotificationType(ME, "MENTION")
+            assertThat(typePreferenceRepository.findByUserIdAndNotificationType(ME, "CHAT_MENTION")
                             .orElseThrow().getIsEnabled())
                     .isFalse();
-            assertThat(typePreferenceRepository.findByUserIdAndNotificationType(OTHER, "MENTION")
+            assertThat(typePreferenceRepository.findByUserIdAndNotificationType(OTHER, "CHAT_MENTION")
                             .orElseThrow().getIsEnabled())
                     .isTrue();
         }
