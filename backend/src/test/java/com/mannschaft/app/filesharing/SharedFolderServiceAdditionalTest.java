@@ -8,6 +8,7 @@ import com.mannschaft.app.filesharing.dto.UpdateFolderRequest;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
+import com.mannschaft.app.filesharing.service.SharedFolderAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -47,6 +49,14 @@ class SharedFolderServiceAdditionalTest {
     /** 認可根治 Wave7: SharedFolderService に per-scope 認可が入ったため注入対象に追加。 */
     @Mock
     private AccessControlService accessControlService;
+
+    /**
+     * 親フォルダの接ぎ木封鎖を担う認可ガード。
+     * 判定そのものの網羅検証は {@link SharedFolderAccessGuardTest} が担い、
+     * 本テストはサービスがこのガードへ確実に委譲し、その拒否を伝播することを検証する。
+     */
+    @Mock
+    private SharedFolderAccessGuard folderAccessGuard;
 
     @InjectMocks
     private SharedFolderService service;
@@ -287,22 +297,28 @@ class SharedFolderServiceAdditionalTest {
             assertThat(entity.getName()).isEqualTo("新名前");
             assertThat(entity.getDescription()).isEqualTo("新説明");
             assertThat(entity.getParentId()).isEqualTo(50L);
+            // 移動先の親は、対象フォルダ実体のスコープ種別・スコープ ID でガードに照合される。
+            verify(folderAccessGuard).requireParentWithinScope(parent, FileScopeType.TEAM, TEAM_ID);
         }
 
         @Test
-        @DisplayName("認可 Wave7: 別チーム配下への移動（接ぎ木）は FOLDER_NOT_FOUND")
-        void 別チーム配下への移動は404() {
+        @DisplayName("認可 Wave7: 接ぎ木封鎖ガードの拒否は 404 として伝播し、フォルダは保存されない")
+        void 接ぎ木拒否は404で保存されない() {
             SharedFolderEntity entity = createFolder(FileScopeType.TEAM);
             SharedFolderEntity foreignParent = SharedFolderEntity.builder()
                     .scopeType(FileScopeType.TEAM).teamId(999L).name("他チームのフォルダ").build();
             given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(entity));
             given(folderRepository.findById(50L)).willReturn(Optional.of(foreignParent));
+            willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
+                    .given(folderAccessGuard)
+                    .requireParentWithinScope(foreignParent, FileScopeType.TEAM, TEAM_ID);
             UpdateFolderRequest request = new UpdateFolderRequest(null, null, 50L, null, null);
 
             assertThatThrownBy(() -> service.updateFolder(FOLDER_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+            verify(folderRepository, never()).save(any());
         }
 
         @Test

@@ -12,6 +12,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
+import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -94,6 +97,18 @@ class ChatMessageServiceTest {
     /** 送信者の表示名・アバター解決用（common 経由・sender 付与・N+1 回避の一括解決）。 */
     @Mock
     private com.mannschaft.app.common.NameResolverService nameResolver;
+
+    /**
+     * メッセージ編集・削除の「送信者本人か」の判定はガードに集約されている。
+     * 可否そのものは {@code ChatChannelAccessGuardTest} が検証し、
+     * 本テストは「取得済みメッセージ実体でガードへ委譲しているか」を検証する。
+     */
+    @Mock
+    private ChatChannelAccessGuard channelAccessGuard;
+
+    /** 添付キーからチャンネルを解決する経路（{@code checkAttachmentDownloadAccess}）で使用する。 */
+    @Mock
+    private ChatChannelRepository channelRepository;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -320,18 +335,27 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 他人のメッセージは編集不可")
-        void 他人のメッセージは編集不可() {
+        @DisplayName("認可委譲: 取得済みメッセージ実体で送信者本人判定へ委譲し、拒否されれば本文を書き換えない")
+        void 送信者本人判定はメッセージ実体で委譲される() {
             // given
             ChatMessageEntity message = createMessage();
             EditMessageRequest req = new EditMessageRequest("更新");
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            willThrow(new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED))
+                    .given(channelAccessGuard).requireMessageOwner(message, OTHER_USER_ID);
 
             // when & then
             assertThatThrownBy(() -> chatMessageService.editMessage(MESSAGE_ID, req, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MESSAGE_EDIT_DENIED));
+
+            // リクエスト値ではなくリポジトリから引いたメッセージが判定材料になる
+            ArgumentCaptor<ChatMessageEntity> captor = ArgumentCaptor.forClass(ChatMessageEntity.class);
+            verify(channelAccessGuard).requireMessageOwner(captor.capture(), eq(OTHER_USER_ID));
+            assertThat(captor.getValue()).isSameAs(message);
+            assertThat(message.getBody()).isEqualTo("テストメッセージ");
+            verify(messageRepository, never()).save(any(ChatMessageEntity.class));
         }
     }
 
@@ -358,17 +382,21 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 他人のメッセージは削除不可")
-        void 他人のメッセージは削除不可() {
+        @DisplayName("認可委譲: 送信者本人判定で拒否されればメッセージも添付集計も触らない")
+        void 送信者本人でなければ削除処理に入らない() {
             // given
             ChatMessageEntity message = createMessage();
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            willThrow(new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED))
+                    .given(channelAccessGuard).requireMessageOwner(message, OTHER_USER_ID);
 
             // when & then
             assertThatThrownBy(() -> chatMessageService.deleteMessage(MESSAGE_ID, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MESSAGE_EDIT_DENIED));
+            verify(messageRepository, never()).save(any(ChatMessageEntity.class));
+            verify(attachmentRepository, never()).findByMessageId(any());
         }
 
         @Test

@@ -1,12 +1,9 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
-import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
@@ -24,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,7 +56,8 @@ class ChatAttachmentServiceTest {
 
     @Mock private StorageQuotaService storageQuotaService;
     @Mock private StorageService storageService;
-    @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
+    /** 認可判定は {@link ChatChannelAccessGuard} に集約されている。可否そのものは ChatChannelAccessGuardTest が検証する。 */
+    @Mock private ChatChannelAccessGuard channelAccessGuard;
     @InjectMocks private ChatAttachmentService service;
 
     private ChatChannelEntity teamChannel(ChannelType type) {
@@ -335,22 +332,20 @@ class ChatAttachmentServiceTest {
 
     /**
      * F04.2 Phase 11 第二陣 2-β: チャンネルアイコン Pre-signed URL 発行のテスト。
+     *
+     * <p>アイコン変更の認可（OWNER / ADMIN のみ）は {@link ChatChannelAccessGuard} に集約されている。
+     * ロール別の可否そのものは {@code ChatChannelAccessGuardTest} が検証し、
+     * ここでは<b>ガードに正しい引数で委譲しているか</b>と、
+     * ガードが拒否した場合に署名 URL を発行しないことを検証する。</p>
      */
     @Nested
     @DisplayName("presignChannelIconUpload (Phase 11 2-β)")
     class PresignChannelIconUpload {
 
-        private ChatChannelMemberEntity memberAs(ChannelMemberRole role) {
-            return ChatChannelMemberEntity.builder()
-                    .channelId(CHANNEL_ID).userId(SENDER_ID).role(role).build();
-        }
-
         @Test
-        @DisplayName("正常系: OWNER が JPEG 1MB を投稿 → 5分有効の URL を発行")
-        void 正常系_OWNER_JPEG() {
+        @DisplayName("正常系: JPEG 1MB → 5分有効の URL を発行")
+        void 正常系_JPEG() {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
             given(storageService.generateUploadUrl(anyString(), eq("image/jpeg"), eq(Duration.ofMinutes(5))))
                     .willReturn(new PresignedUploadResult(
                             "https://r2.example/icon", "chat/TEAM/50/icons/uuid/icon.jpg", 300L));
@@ -363,53 +358,39 @@ class ChatAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: ADMIN は PNG 投稿可能")
-        void 正常系_ADMIN_PNG() {
+        @DisplayName("認可委譲: リクエスト値ではなく取得済みチャンネルの ID で管理者ロールを要求する")
+        void 認可はチャンネル実体のIDで委譲される() {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.ADMIN)));
             given(storageService.generateUploadUrl(anyString(), eq("image/png"), any(Duration.class)))
                     .willReturn(new PresignedUploadResult("https://r2", "chat/TEAM/50/icons/x/x.png", 300L));
 
-            PresignedUploadResult result = service.presignChannelIconUpload(
-                    ch, SENDER_ID, "image/png", 512L * 1024, "x.png");
-            assertThat(result).isNotNull();
+            service.presignChannelIconUpload(ch, SENDER_ID, "image/png", 512L * 1024, "x.png");
+
+            // アイコン変更経路の API 契約に合わせ、拒否コードは CHANNEL_ICON_PERMISSION_DENIED を渡す
+            verify(channelAccessGuard).requireChannelManagerRole(
+                    ch.getId(), SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
         }
 
         @Test
-        @DisplayName("異常系: MEMBER は権限なし (CHANNEL_ICON_PERMISSION_DENIED / 403)")
-        void 異常系_MEMBER_拒否() {
+        @DisplayName("異常系: 管理者ロールを持たない場合は CHANNEL_ICON_PERMISSION_DENIED で、署名 URL を発行しない")
+        void 異常系_権限なしはURL未発行() {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.MEMBER)));
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED))
+                    .given(channelAccessGuard).requireChannelManagerRole(
+                            CHANNEL_ID, SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
 
             assertThatThrownBy(() -> service.presignChannelIconUpload(
                     ch, SENDER_ID, "image/jpeg", 1024L, "x.jpg"))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
-        }
-
-        @Test
-        @DisplayName("異常系: 非メンバーは権限なし")
-        void 異常系_非メンバー() {
-            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.presignChannelIconUpload(
-                    ch, SENDER_ID, "image/jpeg", 1024L, "x.jpg"))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode",
-                            ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+            verify(storageService, never()).generateUploadUrl(anyString(), anyString(), any(Duration.class));
         }
 
         @Test
         @DisplayName("異常系: GIF 等の非対応 MIME は ICON_CONTENT_TYPE_INVALID")
         void 異常系_MIME不許可() {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
 
             assertThatThrownBy(() -> service.presignChannelIconUpload(
                     ch, SENDER_ID, "image/gif", 1024L, "anim.gif"))
@@ -422,8 +403,6 @@ class ChatAttachmentServiceTest {
         @DisplayName("異常系: 2MB 超過は ICON_SIZE_EXCEEDED (413)")
         void 異常系_サイズ超過() {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
 
             long over = ChatAttachmentService.CHANNEL_ICON_MAX_BYTES + 1;
             assertThatThrownBy(() -> service.presignChannelIconUpload(
@@ -434,11 +413,9 @@ class ChatAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: DM チャンネルでも OWNER であれば PERSONAL スコープのキーで発行")
+        @DisplayName("正常系: DM チャンネルは PERSONAL スコープのキーで発行")
         void 正常系_DM_PERSONAL() {
             ChatChannelEntity ch = dmChannel(ChannelType.DM);
-            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
-                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
             given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                     .willReturn(new PresignedUploadResult(
                             "https://r2", "chat/PERSONAL/" + SENDER_ID + "/icons/u/i.webp", 300L));

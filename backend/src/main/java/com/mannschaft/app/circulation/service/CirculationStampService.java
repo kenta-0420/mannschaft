@@ -56,6 +56,15 @@ public class CirculationStampService {
     private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
+     * 押印系操作の本人性判定に用いるガード。
+     *
+     * <p>押印・スキップ・拒否・押印訂正・押印委任は、対象の受信者行が<b>当該文書に属し、
+     * かつ操作者本人のものである</b>ことを {@link CirculationAccessGuard#requireRecipientSelf}
+     * で検証してから実行する。</p>
+     */
+    private final CirculationAccessGuard circulationAccessGuard;
+
+    /**
      * ADMIN 強制スキップの per-scope 認可に使用する（2026-05-29 fixup）。
      *
      * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため Controller の
@@ -95,6 +104,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -142,6 +152,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -170,6 +181,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -205,6 +217,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (recipient.getStatus() != RecipientStatus.STAMPED) {
             throw new BusinessException(CirculationErrorCode.NOT_STAMPED_CANNOT_CORRECT);
@@ -275,6 +288,7 @@ public class CirculationStampService {
 
         // 委任者が受信者として登録されているか
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, delegatorUserId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, delegatorUserId);
         if (recipient.getStatus() != RecipientStatus.PENDING) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
         }

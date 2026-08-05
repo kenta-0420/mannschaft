@@ -157417,6 +157417,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseDownloadUrlResponse"];
                 };
             };
+            /** @description 閲覧権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDownloadUrlResponse"];
+                };
+            };
         };
     };
     getActiveThreads: {

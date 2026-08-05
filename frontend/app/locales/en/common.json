@@ -533,7 +533,8 @@
       "selfReviewEnd": "Self-review end time",
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
-      "loadFailed": "Failed to load the post"
+      "loadFailed": "Failed to load the post",
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
     },
     "autoSave": {
       "label": "Auto-save",

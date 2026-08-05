@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
@@ -34,6 +35,9 @@ public class PersonalFolderController {
     /**
      * 個人のルートフォルダ一覧を取得する。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() と PERSONAL スコープのみで、"
+            + "リクエストは他ユーザーの識別子を受け取らない（SharedFolderService#listPersonalRootFolders の "
+            + "findByUserIdAndScopeTypeAndParentIdIsNullOrderByNameAsc が認証主体に束縛される）")
     @GetMapping
     @Operation(summary = "個人ルートフォルダ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
