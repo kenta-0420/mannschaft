@@ -121,8 +121,9 @@ public class MonthlyCohortBatchService {
 
     /**
      * {@code userRepository.countActiveByUserIds} を IN 句上限内のチャンクに分割して呼び出し、合算する。
+     * package-private: 単体テストから直接検証するため。
      */
-    private int countActiveByUserIdsChunked(List<Long> userIds) {
+    int countActiveByUserIdsChunked(List<Long> userIds) {
         int total = 0;
         for (List<Long> chunk : partition(userIds, USER_ID_IN_CLAUSE_CHUNK_SIZE)) {
             total += userRepository.countActiveByUserIds(chunk);
@@ -132,9 +133,9 @@ public class MonthlyCohortBatchService {
 
     /**
      * {@code memberPaymentRepository.sumPaidAmountByUserIdsAndMonth} を IN 句上限内のチャンクに分割して
-     * 呼び出し、合算する。
+     * 呼び出し、合算する。package-private: 単体テストから直接検証するため。
      */
-    private BigDecimal sumPaidAmountByUserIdsAndMonthChunked(
+    BigDecimal sumPaidAmountByUserIdsAndMonthChunked(
             List<Long> userIds, LocalDate monthStart, LocalDate monthEnd) {
         BigDecimal total = BigDecimal.ZERO;
         for (List<Long> chunk : partition(userIds, USER_ID_IN_CLAUSE_CHUNK_SIZE)) {
