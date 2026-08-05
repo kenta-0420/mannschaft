@@ -157,8 +157,19 @@ export function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
   }
 }
 
-/** FE `UpdateSurveyRequest` → BE `UpdateSurveyRequest`。未指定キーは送らない（PATCH セマンティクス）。 */
-export function toWireUpdateBody(body: UpdateSurveyRequest): WireUpdateSurvey {
+/**
+ * FE `UpdateSurveyRequest` → BE `UpdateSurveyRequest`。未指定キーは送らない（PATCH セマンティクス）。
+ *
+ * `description` / `expiresAt` は明示的な `null` を「値を消す」意図として素通しする。
+ * 生成型はこの nullable を表現していない（BE DTO に `@Schema` 注記が無いため）ので、
+ * その 2 キーだけ null を許す形に広げている。
+ */
+export function toWireUpdateBody(
+  body: UpdateSurveyRequest,
+): Omit<WireUpdateSurvey, 'description' | 'expiresAt'> & {
+  description?: string | null
+  expiresAt?: string | null
+} {
   return {
     ...(body.title !== undefined ? { title: body.title } : {}),
     ...(body.description !== undefined ? { description: body.description } : {}),
@@ -170,7 +181,7 @@ export function toWireUpdateBody(body: UpdateSurveyRequest): WireUpdateSurvey {
       ? { resultsVisibility: mapResultsVisibilityToBe(body.resultsVisibility) }
       : {}),
     ...(body.unrespondedVisibility ? { unrespondedVisibility: body.unrespondedVisibility } : {}),
-    ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt ?? undefined } : {}),
+    ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt } : {}),
   }
 }
 
