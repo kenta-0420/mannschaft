@@ -17,8 +17,8 @@ import { nextTick } from 'vue'
  *   LOGIN-003: AUTH_001（既定）→ 汎用「メール/パスワード不一致」文言キーで notification.error
  *   LOGIN-004: code 無し（ネットワーク断等）→ 既定の汎用文言にフォールバック
  *
- * テスト環境では i18n の locale messages を読み込まないため $t/t はキーをそのまま返す。
- * よって notification.error の引数はメッセージ文字列ではなく i18n キーで検証する。
+ * 検証は「どの i18n キーで通知したか」で行う（実訳文は環境ロケールに依存するため）。
+ * そのため useI18n をキーをそのまま返すスタブに差し替える。
  */
 
 const mockApi = vi.fn()
@@ -54,6 +54,11 @@ vi.mock('~/stores/useAuthStore', () => ({
     isSystemAdmin: false,
   }),
 }))
+
+// i18n は実インスタンスを使うと環境ロケール（happy-dom の navigator.language = en）に
+// 解決され、検証対象が訳文になってしまう。キーをそのまま返すスタブへ差し替えて
+// 「どのキーで通知したか」を検証できるようにする。
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 // useRoute / useRouter は Nuxt 内部プラグインが各メソッドを呼ぶため、
 // 完全なモックオブジェクトを返す必要がある。

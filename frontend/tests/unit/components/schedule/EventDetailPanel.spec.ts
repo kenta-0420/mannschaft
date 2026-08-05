@@ -117,7 +117,9 @@ describe('EventDetailPanel.vue（入口④）', () => {
       kind: 'PRACTICE',
       opponentName: '対 相手FC',
       scheduleId: 123,
-      kickoffAt: '2026-07-01T10:00:00+09:00',
+      // BE の CreateMatchRequest.kickoffAt は LocalDateTime（タイムゾーンなし）のため、
+      // ScheduleResponse.startAt の OffsetDateTime からオフセットを除去した値を送る（#1513）。
+      kickoffAt: '2026-07-01T10:00:00',
       venue: '市民グラウンド',
     })
     expect(mockNavigate).toHaveBeenCalledWith('/teams/team-uuid/matches/m-new/live')
