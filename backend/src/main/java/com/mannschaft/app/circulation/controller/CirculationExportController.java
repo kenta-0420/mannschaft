@@ -31,12 +31,10 @@ import java.net.URI;
  *   <li>{@code GET /api/v1/circulations/{documentId}/export/status} — 現在の生成状況を返却</li>
  * </ul>
  *
- * <p>認可（認可根治 Wave4 是正）: Service 層で「作成者 / 受信者 / 当該文書スコープの ADMIN」を
- * per-scope に判定する。旧実装は Controller が JWT の {@code ROLE_ADMIN}（スコープを問わない
- * 文字列一致）保有有無を判定して Service に渡し、無条件バイパスさせていたため、
- * どこか 1 つのチーム/組織で ADMIN であれば他団体の COMPLETED 回覧の押印済み証跡 PDF を
- * 無認可 DL できる BOLA だった。Controller はグローバル admin 判定を一切行わず、
- * {@code actorId} のみを Service に渡す。</p>
+ * <p>認可: 本 Controller の 2 エンドポイントは、対象文書の「作成者 / 拒否していない受信者 /
+ * 当該文書スコープの ADMIN・DEPUTY_ADMIN（SystemAdmin 含む）」のいずれかであることを
+ * Service 層で per-scope に検証する。Controller はスコープを問わないロール判定を一切行わず、
+ * 認証主体の {@code actorId} のみを Service に渡す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/circulations/{documentId}/export")
