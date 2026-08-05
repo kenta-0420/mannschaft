@@ -77,14 +77,20 @@ class LocalDateTimeQueryParamBindingTest {
     /**
      * 本番の登録経路（{@link WebMvcConfig#addFormatters}）を通した ConversionService を組み立てる。
      *
-     * <p>スコープ slug 変換器は本題と無関係なので mock を渡す。
-     * ここを {@code new DefaultFormattingConversionService()} だけで済ませてしまうと
+     * <p>スコープ slug 変換器は本題と無関係なので mock を渡す。ただし
+     * {@link ScopeSlugIdConverter} は {@code String→Long} を担うため、素の mock のままだと
+     * 数値のパス変数まで巻き込んで潰してしまう。数値をそのまま {@link Long} にする最小の振る舞いだけ与える。</p>
+     *
+     * <p>ここを {@code new DefaultFormattingConversionService()} だけで済ませてしまうと
      * 「本番に登録されているか」を確かめられなくなるため、必ず {@link WebMvcConfig} を経由させる。</p>
      */
     private static FormattingConversionService productionConversionService() {
         FormattingConversionService registry = new DefaultFormattingConversionService();
+        ScopeSlugIdConverter scopeSlugIdConverter = Mockito.mock(ScopeSlugIdConverter.class);
+        Mockito.when(scopeSlugIdConverter.convert(Mockito.anyString()))
+                .thenAnswer(invocation -> Long.valueOf(invocation.getArgument(0)));
         new WebMvcConfig(
-                Mockito.mock(ScopeSlugIdConverter.class),
+                scopeSlugIdConverter,
                 Mockito.mock(OrgScopeIdConverter.class),
                 Mockito.mock(TeamScopeIdConverter.class))
                 .addFormatters(registry);
