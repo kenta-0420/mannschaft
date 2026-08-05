@@ -22,7 +22,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,7 +42,6 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequestMapping("/api/v1/activities")
 @Tag(name = "活動記録", description = "F06.4 活動記録CRUD・参加者管理")
 @RequiredArgsConstructor
-@Validated
 public class ActivityController {
 
     private final ActivityResultService activityService;
@@ -60,7 +58,16 @@ public class ActivityController {
      * {@code page} に負値、{@code limit} に 0 以下を渡すと {@code PageRequest.of} が
      * {@link IllegalArgumentException} を投げ、{@link com.mannschaft.app.common.GlobalExceptionHandler}
      * には専用ハンドラが無いため 500 に化けてしまう（本 PR が新たに `page` を追加したことで
-     * 開けた口）。{@code @Min} 制約で 400（{@code ConstraintViolationException} ハンドラ経由）に倒す。</p>
+     * 開けた口）。{@code @Min} 制約で 400 に倒す（Spring 6.1+ の組込みメソッド検証により
+     * {@link org.springframework.web.method.annotation.HandlerMethodValidationException} が発火し、
+     * {@code GlobalExceptionHandler#handleHandlerMethodValidation} が処理する）。</p>
+     *
+     * <p><b>本クラスに {@code @Validated} を付けてはならない</b>: 付けると Spring は
+     * AOP プロキシ経由の従来型メソッドバリデーション（{@code ConstraintViolationException}）に
+     * 切り替え、上記の組込み検証を抑止する。AOP 代理を作らない
+     * {@code MockMvcBuilders.standaloneSetup(controller)} のような試験環境では
+     * どちらの検証機構も働かなくなり、{@code @Min} 制約が素通りして 500 に戻ってしまう
+     * （検分差し戻しで実際に踏んだ事故）。次に善意で {@code @Validated} を付け直さないこと。</p>
      *
      * <p><b>総件数は上界近似</b>: レスポンスの {@code data} 件数および将来 {@code meta} を追加する場合の
      * 総件数は、{@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
