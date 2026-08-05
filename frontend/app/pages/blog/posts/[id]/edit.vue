@@ -10,6 +10,7 @@ const { getMyPost, updateMyPost, publishMyPost, selfReviewPost, autoSave } = use
 const { success, info, error: showError } = useNotification()
 const authStore = useAuthStore()
 const api = useApi()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 const title = ref(route.query.title ? String(route.query.title) : '')
 const body = ref('')
@@ -123,11 +124,17 @@ async function publish() {
   publishing.value = true
   try {
     if (scheduledAt.value) {
-      await publishMyPost(postId, { published_at: scheduledAt.value.toISOString() })
-      status.value = 'SCHEDULED'
+      // BE の PostStatus に SCHEDULED は存在しない。予約公開は
+      // 「status=PUBLISHED + 未来の publishedAt」で表現する（送ると 500 になる）。
+      await publishMyPost(postId, {
+        status: 'PUBLISHED',
+        publishedAt: buildOffsetDateTimeStr(scheduledAt.value),
+      })
+      status.value = 'PUBLISHED'
       success('記事を予約公開しました')
     } else {
-      await publishMyPost(postId)
+      // status は BE 側 @NotBlank。ボディ無しで呼ぶと 400 になる。
+      await publishMyPost(postId, { status: 'PUBLISHED' })
       status.value = 'PUBLISHED'
       // お知らせウィジェットに表示する場合、公開後に登録
       if (displayInAnnouncement.value && isTeamOrOrgScope.value && scopeId.value) {

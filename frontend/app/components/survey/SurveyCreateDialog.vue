@@ -123,7 +123,9 @@ watch(visible, (nowVisible) => {
 const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
   { label: t('surveys.resultsVisibility.CREATOR_ONLY'), value: 'CREATOR_ONLY' },
   { label: t('surveys.resultsVisibility.RESPONDENTS'), value: 'RESPONDENTS' },
-  { label: t('surveys.resultsVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
+  // NOTE: 'ALL_MEMBERS'（締切前から全員閲覧可）は BE の ResultsVisibility enum に対応値が無い。
+  // BE が表現できる 'AFTER_CLOSE'（締切後に全員閲覧可）を提示する。
+  { label: t('surveys.resultsVisibility.AFTER_CLOSE'), value: 'AFTER_CLOSE' },
 ])
 
 const unrespondedVisibilityOptions = computed<Array<{ label: string; value: UnrespondedVisibility }>>(() => [
@@ -204,7 +206,7 @@ async function submitWith(mode: 'draft' | 'publish') {
       teamBreakdownEnabled: isOrganizationScope.value ? teamBreakdownEnabled.value : undefined,
       resultsVisibility: resultsVisibility.value,
       unrespondedVisibility: unrespondedVisibility.value,
-      deadline: deadline.value ? deadline.value.toISOString() : undefined,
+      expiresAt: deadline.value ? deadline.value.toISOString() : undefined,
       // 設問ゼロの場合は空配列を送る（BEはDRAFTとして保存）
       questions:
         questions.value.length > 0
@@ -224,11 +226,7 @@ async function submitWith(mode: 'draft' | 'publish') {
           : [],
     }
 
-    const res = await createSurvey(
-      props.scopeType,
-      props.scopeId,
-      body as unknown as Record<string, unknown>,
-    )
+    const res = await createSurvey(props.scopeType, props.scopeId, body)
 
     // 成功 → 下書き削除
     clearDraft()
