@@ -3,8 +3,6 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
 import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
@@ -18,6 +16,7 @@ import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
 import com.mannschaft.app.schedule.service.GoogleApiClient;
+import com.mannschaft.app.schedule.service.CalendarSyncAccessGuard;
 import com.mannschaft.app.schedule.service.GoogleCalendarService;
 import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import org.junit.jupiter.api.DisplayName;
@@ -84,8 +83,12 @@ class GoogleCalendarServiceTest {
     @Mock
     private com.mannschaft.app.schedule.service.GoogleCalendarWebhookService webhookService;
 
+    /**
+     * スコープ同期トグルの所属認可は CalendarSyncAccessGuard が担う。
+     * 本テストは同期処理の振る舞いを見るため、認可は通過させた状態で検証する。
+     */
     @Mock
-    private MembershipService membershipService;
+    private CalendarSyncAccessGuard calendarSyncAccessGuard;
 
     @InjectMocks
     private GoogleCalendarService googleCalendarService;
@@ -358,7 +361,6 @@ class GoogleCalendarServiceTest {
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(conn));
-            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
             given(googleEventRepository.countUnsyncedSchedules(USER_ID, "TEAM", 10L)).willReturn(5);
 
             // when
@@ -374,7 +376,6 @@ class GoogleCalendarServiceTest {
         @DisplayName("チーム同期_未連携_例外スロー")
         void チーム同期_未連携_例外スロー() {
             // given: 所属チェックは通過させ、連携チェック（後段）で例外になることを検証する
-            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
             // when & then
@@ -479,7 +480,6 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
             given(googleEventRepository.countUnsyncedSchedules(USER_ID, "ORGANIZATION", 20L)).willReturn(10);
 
             // when
@@ -497,7 +497,6 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
 
             // when
             CalendarSyncToggleResponse result = googleCalendarService.toggleOrgSync(20L, false, USER_ID);
@@ -511,7 +510,6 @@ class GoogleCalendarServiceTest {
         @DisplayName("組織同期_未連携_例外スロー")
         void 組織同期_未連携_例外スロー() {
             // given: 所属チェックは通過させ、連携チェック（後段）で例外になることを検証する
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, 20L)).willReturn(true);
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
             // when & then
@@ -681,7 +679,6 @@ class GoogleCalendarServiceTest {
             // given
             UserGoogleCalendarConnectionEntity conn = createActiveConnection();
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
-            given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, 10L)).willReturn(true);
 
             // when
             CalendarSyncToggleResponse result = googleCalendarService.toggleTeamSync(10L, false, USER_ID);

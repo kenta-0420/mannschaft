@@ -3,7 +3,6 @@ package com.mannschaft.app.scopefolder.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.scopefolder.ScopeFolderErrorCode;
-import com.mannschaft.app.scopefolder.dto.AddFolderItemRequest;
 import com.mannschaft.app.scopefolder.dto.BulkAssignRequest;
 import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
 import com.mannschaft.app.scopefolder.dto.CreateFolderRequest;
@@ -61,6 +60,7 @@ public class MyScopeFolderService {
     private final MyScopeFolderRepository folderRepository;
     private final MyScopeFolderItemRepository itemRepository;
     private final MembershipRepository membershipRepository;
+    private final ScopeFolderAccessGuard folderAccessGuard;
 
     /**
      * フォルダ一覧を取得する（アイテムID込み・notificationUnreadCount は 0 で返す）。
@@ -210,22 +210,12 @@ public class MyScopeFolderService {
     }
 
     /**
-     * フォルダにアイテムを追加する（1アイテム1フォルダ制約: 既存フォルダから移動してから追加）。
-     *
-     * <p>所属確認は F00.5 メンバーシップ基盤を使用（サポータ含む）。</p>
-     *
-     * @param userId   ユーザーID
-     * @param folderId フォルダID
-     * @param req      アイテム追加リクエスト
-     * @return 更新後のフォルダレスポンス
-     */
-    @Transactional
-    public ScopeFolderResponse addItem(Long userId, Long folderId, AddFolderItemRequest req) {
-        return addItemWithAssignedVia(userId, folderId, req.scopeId(), AssignedVia.MANUAL);
-    }
-
-    /**
      * 監査区分を明示してフォルダにアイテムを追加する（F15.3 §6.2）。
+     *
+     * <p>1アイテム1フォルダ制約のため、既存フォルダに属している場合は移動してから追加する。
+     * 追加先フォルダが操作者本人のものであることと、対象スコープに操作者がアクティブな
+     * メンバーシップを持つことの双方を、追加の前に検証する
+     * （所属確認は F00.5 メンバーシップ基盤。サポータを含む）。</p>
      *
      * @param userId      ユーザーID
      * @param folderId    フォルダID
@@ -472,12 +462,17 @@ public class MyScopeFolderService {
     // ============================================================
 
     /**
-     * IDOR防止: フォルダの所有者チェック。
-     * 自分のフォルダでなければBusinessExceptionを投げる。
+     * フォルダを取得し、それが操作者本人の所有物であることを
+     * {@link ScopeFolderAccessGuard} で確認したうえで返す。
+     *
+     * <p>取得クエリ自体が {@code user_id} を結合条件に含み、さらにガードが取得結果と
+     * 操作者を突き合わせる二重構造とする。不存在と他者所有は同一のエラーへ畳む。</p>
      */
     private MyScopeFolderEntity findOwnedFolder(Long userId, Long folderId) {
-        return folderRepository.findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
-                .orElseThrow(() -> new BusinessException(ScopeFolderErrorCode.SCOPE_FOLDER_NOT_FOUND));
+        MyScopeFolderEntity folder = folderRepository
+                .findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
+                .orElse(null);
+        return folderAccessGuard.requireOwnedFolder(folder, userId);
     }
 
     /**
