@@ -3,16 +3,17 @@ package com.mannschaft.app.auth.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,8 +26,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 取り出せているつもり」のテストがすべて緑になり、暗号化列を経由した実際の読み書きを
  * 一切検証できない（PR #2614 で全モック化により致命欠陥を検出できなかった前例がある）。
  * よって実 DB（Testcontainers MySQL）上で検証する。</p>
+ *
+ * <h2>クラスレベル {@code @Transactional} を付けない理由</h2>
+ * <p>本バッチの設計の中核は「オーケストレータ自体はトランザクション境界を持たず、
+ * チャンクごとに独立コミットする」ことにある（{@link UserBirthYearBackfillBatchService}
+ * の Javadoc 参照）。テストクラスに {@code @Transactional} を付けると、テストメソッドが
+ * 開始した外側トランザクションに {@code processChunk}（デフォルト伝播 {@code REQUIRED}）が
+ * 参加してしまい、チャンク単位で本当にコミットされているかを検証できなくなる
+ * （テスト終了時に全チャンクがまとめてロールバックされ、中核の性質が一度も真にならない）。
+ * よって本クラスは非トランザクションとし、各テストが作成した行は {@link #cleanup()} で
+ * 明示的に削除することでテスト間・他テストクラスとの DB 汚染を防ぐ（{@code users} 全体を
+ * 走査するバッチの性質上、コミットされた残留行はクエリに乗ってしまうため）。</p>
  */
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("users.birth_year 埋め戻しバッチ 実DB結合テスト")
 class UserBirthYearBackfillBatchIntegrationTest extends AbstractMySqlIntegrationTest {
@@ -42,6 +53,13 @@ class UserBirthYearBackfillBatchIntegrationTest extends AbstractMySqlIntegration
 
     /** メールアドレスの一意性を確保するための連番。*/
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
+
+    /**
+     * 本テストクラスが実 DB にコミットした行の id。{@link #cleanup()} で確実に削除する対象。
+     * クラス非 {@code @Transactional} 化に伴い、テストが作成した行は自動ロールバックされず
+     * 実コミットされるため、明示的な後始末が必須になる。
+     */
+    private final List<Long> createdUserIds = new ArrayList<>();
 
     /**
      * ユーザーを 1 人保存する。
@@ -64,7 +82,25 @@ class UserBirthYearBackfillBatchIntegrationTest extends AbstractMySqlIntegration
                 .birthDate(birthDate != null ? birthDate.toString() : null)
                 .birthYear(birthYear)
                 .build();
-        return userRepository.saveAndFlush(user);
+        UserEntity saved = userRepository.saveAndFlush(user);
+        createdUserIds.add(saved.getId());
+        return saved;
+    }
+
+    /**
+     * 本テストが実コミットした行を確実に削除する。
+     *
+     * <p>本バッチの候補クエリ（{@code birth_year IS NULL AND birth_date IS NOT NULL}）は
+     * {@code users} テーブル全体を走査するため、削除を怠ると後続テスト（本クラス内・
+     * 他クラスとも TestContext Cache により同一 MySQL コンテナ・同一テーブルを共有する）の
+     * 候補集合に残留行が混入する。{@code deleteAllByIdInBatch} は {@code @SQLRestriction}
+     * を経由しない実 DELETE のため、論理削除の有無に関わらず確実に消える。</p>
+     */
+    @AfterEach
+    void cleanup() {
+        if (!createdUserIds.isEmpty()) {
+            userRepository.deleteAllByIdInBatch(createdUserIds);
+        }
     }
 
     @Test
@@ -159,5 +195,64 @@ class UserBirthYearBackfillBatchIntegrationTest extends AbstractMySqlIntegration
         assertThat(page3.processedCount())
                 .as("全対象を処理し終えたら以降は空ページを返すこと")
                 .isZero();
+    }
+
+    /**
+     * 本 PR の中核要件（チャンク単位の独立コミット・再開可能性）を実 DB で実証する。
+     *
+     * <p>1 チャンク目のみを手動処理した時点で、2 チャンク目を処理していない（＝
+     * {@code execute()} の全走行が完了していない）にもかかわらず、1 チャンク目の更新が
+     * <b>別スレッド（別コネクション・別トランザクション）から確定済みとして見える</b>ことを
+     * 確認する。これは「オーケストレータがトランザクション境界を持たず、チャンクごとに
+     * 独立コミットする」設計が実際に機能していることの証明であり、テストメソッド自体が
+     * トランザクションを保持していたら（クラス {@code @Transactional} を付けていたら）
+     * この検証は原理的に不可能である。</p>
+     *
+     * <p>続けて {@code execute()} を再実行し、1 チャンク目は冪等で再更新されず、
+     * 未処理のまま残っていた 2 チャンク目が埋め戻されることを確認する。これは
+     * 「途中終了しても未処理カーソルから再開できる」という耐障害性の主張の実証である
+     * （本バッチは実行間でカーソルを永続化しないため、再開は「既に埋まっている行は
+     * 候補クエリから除外される」という冪等性の仕組みそのものによって成立する）。</p>
+     */
+    @Test
+    @DisplayName("チャンクは実DBに独立コミットされ、途中終了後もexecute()の再実行で未処理分から再開できる")
+    void チャンクは独立コミットされ再開可能() throws InterruptedException {
+        UserEntity chunk1User = saveUser(LocalDate.of(1980, 1, 1), null);
+        UserEntity chunk2User = saveUser(LocalDate.of(1981, 1, 1), null);
+
+        // 1チャンク目のみを手動処理し、2チャンク目を処理しないことで「途中終了」を模す。
+        UserBirthYearBackfillChunkService.ChunkResult chunk1Result = chunkService.processChunk(0L, 1);
+        assertThat(chunk1Result.processedCount()).isEqualTo(1);
+
+        // 別スレッド（＝別コネクション・別トランザクション）から1チャンク目の更新を読む。
+        // 同一スレッド内の読み取りだと「実はまだ同じトランザクション内にいるのでは」という
+        // 疑いを排除できないため、明示的にスレッドを分けて検証する。
+        AtomicReference<Integer> chunk1SeenFromOtherTx = new AtomicReference<>();
+        Thread reader = new Thread(() ->
+                chunk1SeenFromOtherTx.set(
+                        userRepository.findById(chunk1User.getId()).orElseThrow().getBirthYear()));
+        reader.start();
+        reader.join();
+        assertThat(chunk1SeenFromOtherTx.get())
+                .as("2チャンク目が未処理の時点で、1チャンク目の更新が別スレッドから確定済みとして見えること"
+                        + "（チャンク単位の独立コミットの証拠）")
+                .isEqualTo(1980);
+
+        UserEntity beforeResume = userRepository.findById(chunk2User.getId()).orElseThrow();
+        assertThat(beforeResume.getBirthYear())
+                .as("この時点で2チャンク目はまだ未処理であること")
+                .isNull();
+
+        // execute() を再実行し、未処理分（2チャンク目）から再開できることを確認する。
+        backfillBatchService.execute();
+
+        UserEntity resumedChunk1 = userRepository.findById(chunk1User.getId()).orElseThrow();
+        UserEntity resumedChunk2 = userRepository.findById(chunk2User.getId()).orElseThrow();
+        assertThat(resumedChunk1.getBirthYear())
+                .as("既処理の1チャンク目は冪等で再更新されないこと")
+                .isEqualTo(1980);
+        assertThat(resumedChunk2.getBirthYear())
+                .as("未処理だった2チャンク目がexecute()再実行で埋め戻されること（再開可能性の証拠）")
+                .isEqualTo(1981);
     }
 }
