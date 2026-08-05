@@ -66,9 +66,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>H-3: 両方未指定は Service 層の<b>専用メッセージ</b>の 400（バインド段階の汎用 400 でないことを
  *       {@code error.fieldErrors[0].message} 本文で確認）</li>
  *   <li>H-1（後方互換）: 従来の {@code ?date=} 単独呼びは無変更で 200</li>
- *   <li>H-2/H-4（バインド）: {@code axis}/{@code menuId}(UUID)/{@code from}/{@code to} が
- *       Service 層へ正しく引き渡される</li>
+ *   <li>H-4（バインド）: {@code menuId}(UUID)/{@code from}/{@code to} が Service 層へ正しく引き渡される</li>
  *   <li>H-10: 未認証は 401（認証層）</li>
+ *   <li>#2575: 撤去済みの {@code axis}/{@code staffUserIds} を送っても Service へは渡らず無視される
+ *       （「STAFF を渡したら 400」のような残骸を作らない＝ライン軸固定）</li>
  * </ul>
  * {@link ReservationSlotTemplateControllerContractTest} と同じ「SecurityConfig を最小コンテキストで読み込む」方式。
  * XOR・レンジ上限等の検証ロジック本体は {@code ReservationGridServiceExtensionTest}（UT）が実検証する。</p>
@@ -79,13 +80,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@DisplayName("空きグリッドAPI 契約テスト（F03.4.4 date required解除・レンジ・axis/menuIdバインド）")
+@DisplayName("空きグリッドAPI 契約テスト（date required解除・レンジ・menuId バインド・#2575 axis 撤去）")
 class TeamReservationSlotGridControllerContractTest {
 
     private static final Long TEAM_ID = 10L;
     private static final String GRID_PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-slots/grid";
     private static final LocalDate DATE = LocalDate.of(2026, 7, 10);
     private static final UUID MENU_ID = UUID.fromString("0198aaaa-bbbb-7ccc-8ddd-eeeeffff0001");
+    private static final Long LINE_ID = 11L;
 
     private static final String XOR_MESSAGE = "date または from/to のいずれかを指定してください";
 
@@ -231,7 +233,6 @@ class TeamReservationSlotGridControllerContractTest {
 
     private ReservationGridResponse rangeResponse() {
         return ReservationGridResponse.builder()
-                .axis("STAFF")
                 .days(List.of(new ReservationGridResponse.GridDayDto(DATE, List.of())))
                 .build();
     }
@@ -239,8 +240,7 @@ class TeamReservationSlotGridControllerContractTest {
     private ReservationGridResponse singleDayResponse() {
         return ReservationGridResponse.builder()
                 .date(DATE)
-                .columns(List.of())
-                .axis("STAFF")
+                .columns(List.of(new ReservationGridResponse.GridColumnDto(LINE_ID, "席1", List.of())))
                 .build();
     }
 
@@ -253,7 +253,7 @@ class TeamReservationSlotGridControllerContractTest {
     @DisplayName("H-3(B3): GET ?from&to（date なし）は MissingServletRequestParameter の汎用400で死なず 200")
     void rangeOnly_ok() throws Exception {
         given(gridService.getGrid(eq(TEAM_ID), anyLong(), isNull(),
-                eq(DATE), eq(DATE.plusDays(2)), isNull(), isNull(), isNull()))
+                eq(DATE), eq(DATE.plusDays(2)), isNull()))
                 .willReturn(rangeResponse());
 
         mockMvc.perform(get(GRID_PATH)
@@ -263,7 +263,7 @@ class TeamReservationSlotGridControllerContractTest {
                 .andExpect(jsonPath("$.data.days").isArray());
 
         verify(gridService).getGrid(eq(TEAM_ID), anyLong(), isNull(),
-                eq(DATE), eq(DATE.plusDays(2)), isNull(), isNull(), isNull());
+                eq(DATE), eq(DATE.plusDays(2)), isNull());
     }
 
     // ────────────────────────────────────────────────────────────
@@ -275,13 +275,23 @@ class TeamReservationSlotGridControllerContractTest {
     @DisplayName("H-1: GET ?date=（従来呼び）は 200・date/columns が応答に載る（後方互換）")
     void dateOnly_ok() throws Exception {
         given(gridService.getGrid(eq(TEAM_ID), anyLong(), eq(DATE),
-                isNull(), isNull(), isNull(), isNull(), isNull()))
+                isNull(), isNull(), isNull()))
                 .willReturn(singleDayResponse());
 
         mockMvc.perform(get(GRID_PATH).param("date", "2026-07-10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.date").value("2026-07-10"))
-                .andExpect(jsonPath("$.data.columns").isArray());
+                .andExpect(jsonPath("$.data.columns").isArray())
+                // #2575: 列はライン軸固定（lineId/lineName/cells のみ）。撤去したフィールドは応答に出ない。
+                .andExpect(jsonPath("$.data.columns[0].lineId").value(LINE_ID))
+                .andExpect(jsonPath("$.data.columns[0].lineName").value("席1"))
+                .andExpect(jsonPath("$.data.columns[0].cells").isArray())
+                .andExpect(jsonPath("$.data.columns[0].staffUserId").doesNotExist())
+                .andExpect(jsonPath("$.data.columns[0].staffName").doesNotExist())
+                .andExpect(jsonPath("$.data.columns[0].lineIds").doesNotExist())
+                .andExpect(jsonPath("$.data.axis").doesNotExist());
+
+        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), eq(DATE), isNull(), isNull(), isNull());
     }
 
     // ────────────────────────────────────────────────────────────
@@ -295,7 +305,7 @@ class TeamReservationSlotGridControllerContractTest {
         // 実際の XOR 検証は Service 層（UT で実検証）。ここでは「バインドを通過して Service に到達し、
         // Service 層の BusinessException(COMMON_001+fieldErrors) が契約どおり 400 へ写像される」ことを確認する。
         given(gridService.getGrid(eq(TEAM_ID), anyLong(), isNull(),
-                isNull(), isNull(), isNull(), isNull(), isNull()))
+                isNull(), isNull(), isNull()))
                 .willThrow(new BusinessException(CommonErrorCode.COMMON_001,
                         List.of(new ErrorResponse.FieldError("date", XOR_MESSAGE))));
 
@@ -307,46 +317,63 @@ class TeamReservationSlotGridControllerContractTest {
                 .andExpect(jsonPath("$.error.fieldErrors[0].message").value(XOR_MESSAGE));
 
         verify(gridService).getGrid(eq(TEAM_ID), anyLong(), isNull(),
-                isNull(), isNull(), isNull(), isNull(), isNull());
+                isNull(), isNull(), isNull());
     }
 
     // ────────────────────────────────────────────────────────────
-    // H-2/H-4: axis / menuId(UUID) / staffUserIds のバインド
+    // H-4: menuId(UUID) のバインド ／ #2575: 撤去パラメータの無視
     // ────────────────────────────────────────────────────────────
 
     @Test
     @WithMockUser(username = "200", roles = "MEMBER")
-    @DisplayName("H-2/H-4: GET ?date&axis=LINE&menuId=UUID が Service へ正しくバインドされる")
-    void axisAndMenuId_bound() throws Exception {
-        given(gridService.getGrid(eq(TEAM_ID), anyLong(), eq(DATE),
-                isNull(), isNull(), eq("LINE"), eq(MENU_ID), isNull()))
+    @DisplayName("H-4: GET ?date&menuId=UUID が Service へ正しくバインドされる")
+    void menuId_bound() throws Exception {
+        given(gridService.getGrid(eq(TEAM_ID), anyLong(), eq(DATE), isNull(), isNull(), eq(MENU_ID)))
                 .willReturn(singleDayResponse());
 
         mockMvc.perform(get(GRID_PATH)
                         .param("date", "2026-07-10")
-                        .param("axis", "LINE")
                         .param("menuId", MENU_ID.toString()))
                 .andExpect(status().isOk());
 
-        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), eq(DATE),
-                isNull(), isNull(), eq("LINE"), eq(MENU_ID), isNull());
+        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), eq(DATE), isNull(), isNull(), eq(MENU_ID));
     }
 
     @Test
     @WithMockUser(username = "200", roles = "MEMBER")
-    @DisplayName("H-1(互換): 既存 staffUserIds パラメータも従来どおりバインドされる")
-    void staffUserIds_bound() throws Exception {
-        given(gridService.getGrid(eq(TEAM_ID), anyLong(), eq(DATE),
-                isNull(), isNull(), isNull(), isNull(), eq(List.of(50L, 60L))))
+    @DisplayName("H-4×H-3: GET ?from&to&menuId でもレンジと menuId が同時にバインドされる")
+    void rangeAndMenuId_bound() throws Exception {
+        given(gridService.getGrid(eq(TEAM_ID), anyLong(), isNull(),
+                eq(DATE), eq(DATE.plusDays(2)), eq(MENU_ID)))
+                .willReturn(rangeResponse());
+
+        mockMvc.perform(get(GRID_PATH)
+                        .param("from", "2026-07-10")
+                        .param("to", "2026-07-12")
+                        .param("menuId", MENU_ID.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.days").isArray());
+
+        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), isNull(),
+                eq(DATE), eq(DATE.plusDays(2)), eq(MENU_ID));
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("#2575: 撤去済みの axis / staffUserIds を送っても 400 にせず黙って無視し、LINE 軸のまま 200")
+    void removedParams_ignored() throws Exception {
+        given(gridService.getGrid(eq(TEAM_ID), anyLong(), eq(DATE), isNull(), isNull(), isNull()))
                 .willReturn(singleDayResponse());
 
         mockMvc.perform(get(GRID_PATH)
                         .param("date", "2026-07-10")
+                        .param("axis", "STAFF")
                         .param("staffUserIds", "50", "60"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.columns[0].lineId").value(LINE_ID));
 
-        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), eq(DATE),
-                isNull(), isNull(), isNull(), isNull(), eq(List.of(50L, 60L)));
+        // 撤去したパラメータは Service のシグネチャに存在しないため、渡りようがないことを呼び出しで固定する。
+        verify(gridService).getGrid(eq(TEAM_ID), anyLong(), eq(DATE), isNull(), isNull(), isNull());
     }
 
     @Test
@@ -355,7 +382,6 @@ class TeamReservationSlotGridControllerContractTest {
     void menuId_invalidUuid_badRequest() throws Exception {
         mockMvc.perform(get(GRID_PATH)
                         .param("date", "2026-07-10")
-                        .param("axis", "LINE")
                         .param("menuId", "not-a-uuid"))
                 .andExpect(status().isBadRequest());
     }
