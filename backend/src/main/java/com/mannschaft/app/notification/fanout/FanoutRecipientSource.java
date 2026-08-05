@@ -31,4 +31,18 @@ public interface FanoutRecipientSource {
      * @return {@code subject_id > cursorSubjectId} の受信者 subject_id を昇順に最大 limit 件
      */
     List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit);
+
+    /**
+     * {@code includeSupporters}（応援者を配信対象に含めるか）を運搬する 4 引数版（Wave-2・ORG 耐久 fan-out）。
+     *
+     * <p>ワーカーは常にこの 4 引数版を呼ぶ。既定実装は {@code includeSupporters} を<b>無視</b>して 3 引数版へ委譲し、
+     * トグルを持たない VILLAGE / TEAM の挙動を不変に保つ（後方互換）。ORGANIZATION など応援者トグルを持つ実装のみ
+     * 本メソッドを override して {@code includeSupporters} を受信者解決へ渡す。</p>
+     *
+     * @param includeSupporters 応援者（純 SUPPORTER）を配信対象に含めるか（ジョブ {@code include_supporters}）
+     */
+    default List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters) {
+        // 既定はトグル無視（VILLAGE / TEAM は母集団が応援者トグルに依存しないため 3 引数版へ委譲）。
+        return nextPage(scopeRef, cursorSubjectId, limit);
+    }
 }

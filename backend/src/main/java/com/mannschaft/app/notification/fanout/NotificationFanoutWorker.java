@@ -101,7 +101,11 @@ public class NotificationFanoutWorker {
         try {
             while (true) {
                 long cursor = job.getCursorSubjectId();
-                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE);
+                // 常に 4 引数版で受信者供給する。VILLAGE / TEAM は既定実装が include_supporters を無視して
+                // 3 引数版へ委譲するため挙動不変。ORGANIZATION のみトグルを keyset クエリへ運搬する（Wave-2）。
+                // include_supporters は非 NULL 列（DEFAULT TRUE）。防御的に NULL は true 扱い（旧 VILLAGE 行の全員配信を保つ）。
+                boolean includeSupporters = !Boolean.FALSE.equals(job.getIncludeSupporters());
+                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters);
                 if (page.isEmpty()) {
                     jobService.markDone(job.getId());
                     break;
