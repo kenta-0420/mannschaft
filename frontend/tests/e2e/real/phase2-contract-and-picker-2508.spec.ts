@@ -550,10 +550,13 @@ test.describe('P2-05 アンケート設問追加: enum翻訳+displayOrder', () =
       isAnonymous: false,
       allowMultipleSubmissions: false,
       distributionMode: 'ALL',
+      resultsVisibility: 'AFTER_RESPONSE',
+      unrespondedVisibility: 'CREATOR_AND_ADMIN',
       questions: [],
     })
-    expect(res.ok(), `下書きアンケート作成に失敗: ${res.status()}`).toBeTruthy()
-    draftSurveyId = ((await res.json()).data as { id: number }).id
+    expect(res.ok(), `下書きアンケート作成に失敗: ${res.status()} ${await res.text()}`).toBeTruthy()
+    // ⚠️ POST /surveys のレスポンスは {data:{survey:{id,...}}} という入れ子形（P2-04 参照）。
+    draftSurveyId = ((await res.json()).data as { survey: { id: number } }).survey.id
   })
 
   test.afterAll(async () => {
@@ -611,9 +614,24 @@ test.describe('P2-05 アンケート設問追加: enum翻訳+displayOrder', () =
       'displayOrderが2件とも0に潰れず区別できること（修正前の残存事故）',
     ).toEqual([1, 2])
 
-    // 軸3: 公開後の詳細画面に2設問とも表示される（round trip）
-    await expect(page.getByText('#2508P2 設問1（TEXT）')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('#2508P2 設問2（単一選択）')).toBeVisible({ timeout: 15_000 })
+    // 軸3: 公開後もBE側に2設問がdisplayOrder順で往復していること（round trip）。
+    // ⚠️ 公開後の詳細画面は作成者=creatorのため「集計結果」パネル（設問文は展開しないと出ない）に
+    // 遷移し、getByText では設問文が見えない。BEへ読み戻して確認する。
+    const detailRes = await api(ctx, adminToken, 'GET', `/api/v1/teams/${TEAM_SLUG}/surveys/${draftSurveyId}`)
+    expect(detailRes.ok(), `詳細取得に失敗: ${detailRes.status()}`).toBeTruthy()
+    const detail = (await detailRes.json()).data as {
+      questions: Array<{ questionType: string; content: { questionText: string; displayOrder: number } }>
+    }
+    expect(detail.questions.map((q) => q.content.questionText).sort()).toEqual(
+      ['#2508P2 設問1（TEXT）', '#2508P2 設問2（単一選択）'].sort(),
+    )
+    const q1Readback = detail.questions.find((q) => q.content.questionText.includes('設問1'))
+    const q2Readback = detail.questions.find((q) => q.content.questionText.includes('設問2'))
+    expect(q1Readback?.questionType, '往復後もBE enum FREE_TEXTのまま保存されていること').toBe('FREE_TEXT')
+    expect(
+      [q1Readback?.content.displayOrder, q2Readback?.content.displayOrder].sort(),
+      '往復後もdisplayOrderが0に潰れず区別できること',
+    ).toEqual([1, 2])
   })
 })
 
