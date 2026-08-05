@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.contains;
@@ -207,7 +208,7 @@ class AuditLogArchiveBatchServiceTest {
         }
 
         @Test
-        @DisplayName("AC-0-5: R2アップロード失敗_パーティションDROPを実行しない")
+        @DisplayName("AC-0-5: R2アップロード失敗_パーティションDROPを実行せず失敗を呼び手へ伝える")
         void R2アップロード失敗_DB削除を実行しない() {
             // given
             givenLogs(YearMonth.of(2020, 1), 1L, 1);
@@ -215,10 +216,13 @@ class AuditLogArchiveBatchServiceTest {
             org.mockito.Mockito.doThrow(new RuntimeException("R2接続失敗"))
                     .when(storageService).upload(any(), any(byte[].class), any());
 
-            // when: 例外はキャッチされてバッチが完了する（ログのみ）
-            sut.archiveOldLogs();
+            // when / then: 失敗を握り潰して正常終了させない
+            //（手動起動でも失敗が呼び手へ伝わらなければ、アーカイブ未完了に運用が気付けない）
+            assertThatThrownBy(() -> sut.archiveOldLogs())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("2020-01");
 
-            // then: パーティション DROP は実行されない
+            // パーティション DROP は実行されない
             verify(jdbcTemplate, never()).execute(any(String.class));
         }
 
@@ -231,11 +235,37 @@ class AuditLogArchiveBatchServiceTest {
             org.mockito.Mockito.doNothing().doThrow(new RuntimeException("R2接続失敗"))
                     .when(storageService).upload(any(), any(byte[].class), any());
 
-            // when
-            sut.archiveOldLogs();
+            // when / then
+            assertThatThrownBy(() -> sut.archiveOldLogs())
+                    .isInstanceOf(IllegalStateException.class);
 
-            // then: 一部しかアップロードできていないのでパーティションを落としてはならない
+            // 一部しかアップロードできていないのでパーティションを落としてはならない
             verify(jdbcTemplate, never()).execute(any(String.class));
+        }
+
+        @Test
+        @DisplayName("ある月の失敗で後続の月まで打ち切らず、成功した月は削除まで進む")
+        void 失敗月があっても後続の月は処理される() {
+            // given: 3ヶ月分。最初の月のアップロードだけ失敗させる
+            givenLogs(YearMonth.of(2020, 1), 1L, 1);
+            givenLogs(YearMonth.of(2020, 2), 11L, 1);
+            givenLogs(YearMonth.of(2020, 3), 21L, 1);
+            stubRepository();
+            org.mockito.Mockito.doThrow(new RuntimeException("R2接続失敗"))
+                    .doNothing()
+                    .when(storageService).upload(any(), any(byte[].class), any());
+
+            // when / then: 失敗月は集約例外で報告される
+            assertThatThrownBy(() -> sut.archiveOldLogs())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("2020-01")
+                    .hasMessageNotContaining("2020-02")
+                    .hasMessageNotContaining("2020-03");
+
+            // 失敗月は DROP せず、後続の成功月は DROP まで到達する
+            verify(jdbcTemplate, never()).execute(contains("p_2020_01"));
+            verify(jdbcTemplate).execute(contains("p_2020_02"));
+            verify(jdbcTemplate).execute(contains("p_2020_03"));
         }
 
         @Test
@@ -266,14 +296,14 @@ class AuditLogArchiveBatchServiceTest {
         @Test
         @DisplayName("年月からR2キーが正しく生成される_1桁月")
         void 年月からR2キーが正しく生成される_1桁月() {
-            String key = AuditLogArchiveBatchService.buildR2Key(YearMonth.of(2024, 3));
+            String key = AuditLogArchiveBatchService.buildR2Key(YearMonth.of(2024, 3), 0);
             assertThat(key).isEqualTo("audit-archive/2024/03/audit-2024-03.json");
         }
 
         @Test
         @DisplayName("年月からR2キーが正しく生成される_2桁月")
         void 年月からR2キーが正しく生成される_2桁月() {
-            String key = AuditLogArchiveBatchService.buildR2Key(YearMonth.of(2025, 12));
+            String key = AuditLogArchiveBatchService.buildR2Key(YearMonth.of(2025, 12), 0);
             assertThat(key).isEqualTo("audit-archive/2025/12/audit-2025-12.json");
         }
 

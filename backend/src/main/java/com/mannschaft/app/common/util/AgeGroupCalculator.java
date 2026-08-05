@@ -58,11 +58,15 @@ public final class AgeGroupCalculator {
      * 到達した者を成人に含めるため、境界は閉区間（{@code birthDate <= threshold}）とする。</p>
      *
      * <p>本メソッドは {@link #isMinor(LocalDate, LocalDate)} と<b>同一の判定</b>を
-     * SQL の {@code WHERE} 句へ落とし込むための唯一の変換口である。年齢条件を
-     * アプリ側で取得後にフィルタすると、取得上限を超えた際に成人到達者が
-     * 未成年に埋もれて永久に処理されない飢餓が起きるため、成人判定は必ず
-     * 取得クエリ側で絞り込むこと。生年月日は {@code YYYY-MM-DD} 形式の文字列で
-     * 格納されており、辞書順比較が日付順比較と一致する。</p>
+     * バッチの絞り込み条件へ落とし込むための唯一の変換口である。</p>
+     *
+     * <p><b>注意: この閾値を SQL の {@code WHERE} 句で {@code users.birth_date} と
+     * 直接比較してはならない。</b>{@code birth_date} は {@code EncryptedStringConverter} により
+     * AES-256-GCM（ランダム IV）で暗号化されて格納されており、SQL 上の比較は暗号文同士の
+     * バイト比較にしかならず日付順とは無関係である。SQL で使えるのは平文・索引付きの
+     * {@code users.birth_year} だけであり、戻り値の<b>年</b>による粗い絞り込み
+     * （成人を取りこぼさないが境界年の未成年が混ざる）と、復号済み生年月日に対する
+     * 本メソッド／{@link #isMinor(LocalDate, LocalDate)} による確定判定を組み合わせること。</p>
      *
      * @param baseDate 基準日（通常は今日）
      * @return 成人と判定される生年月日の上限（この日を含む）

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -76,21 +77,26 @@ public class AuditLogArchiveBatchService {
         long totalArchived = 0;
         long totalDeleted = 0;
 
-        try {
-            LocalDateTime oldest = auditLogRepository.findOldestCreatedAtBefore(threshold);
-            if (oldest == null) {
-                log.info("[AuditLogArchiveBatch] アーカイブ対象なし。スキップします");
-                return;
-            }
+        LocalDateTime oldest = auditLogRepository.findOldestCreatedAtBefore(threshold);
+        if (oldest == null) {
+            log.info("[AuditLogArchiveBatch] アーカイブ対象なし。スキップします");
+            return;
+        }
 
-            // 閾値を含む月は「まだ経過しきっていない」ため、パーティションを落とすと
-            // 閾値より新しい行まで巻き込む。当該月は次回以降のバッチへ持ち越す。
-            YearMonth cutoffMonth = YearMonth.from(threshold.toLocalDate());
+        // 閾値を含む月は「まだ経過しきっていない」ため、パーティションを落とすと
+        // 閾値より新しい行まで巻き込む。当該月は次回以降のバッチへ持ち越す。
+        YearMonth cutoffMonth = YearMonth.from(threshold.toLocalDate());
 
-            for (YearMonth ym = YearMonth.from(oldest.toLocalDate());
-                 ym.isBefore(cutoffMonth);
-                 ym = ym.plusMonths(1)) {
+        // 失敗した月を記録して次月へ進む。1ヶ月の失敗で残りの月まで巻き添えに打ち切ると、
+        // 古い月ほど再試行の機会を失って滞留する。最後にまとめて例外を送出することで、
+        // 手動起動（@BatchEndpoint 経由）でも失敗が呼び手に伝わる。
+        List<String> failedMonths = new ArrayList<>();
 
+        for (YearMonth ym = YearMonth.from(oldest.toLocalDate());
+             ym.isBefore(cutoffMonth);
+             ym = ym.plusMonths(1)) {
+
+            try {
                 long archivedInMonth = archiveMonth(ym);
                 if (archivedInMonth == 0) {
                     // 当該月に行が無い。空ファイルも作らず、パーティションも落とさない。
@@ -102,14 +108,21 @@ public class AuditLogArchiveBatchService {
                 // アップロードが1ページでも失敗すれば例外が送出され DROP には至らない。
                 dropPartition(ym);
                 totalDeleted += archivedInMonth;
+            } catch (Exception e) {
+                log.error("[AuditLogArchiveBatch] 月次アーカイブ失敗: ym={}", ym, e);
+                failedMonths.add(ym.toString());
             }
+        }
 
-            log.info("[AuditLogArchiveBatch] アーカイブ完了: アーカイブ={}件, DB削除={}件",
-                    totalArchived, totalDeleted);
+        log.info("[AuditLogArchiveBatch] アーカイブ完了: アーカイブ={}件, DB削除={}件, 失敗月={}",
+                totalArchived, totalDeleted, failedMonths);
 
-        } catch (Exception e) {
-            log.error("[AuditLogArchiveBatch] アーカイブ処理失敗: アーカイブ済み={}件, DB削除={}件",
-                    totalArchived, totalDeleted, e);
+        if (!failedMonths.isEmpty()) {
+            // 握り潰すと「監査ログをアーカイブできていないのに正常終了」に化け、
+            // 運用がその事実に気付けない。集約して送出する。
+            throw new IllegalStateException(
+                    "[AuditLogArchiveBatch] アーカイブに失敗した月がある: " + failedMonths
+                            + "（アーカイブ=" + totalArchived + "件, DB削除=" + totalDeleted + "件）");
         }
     }
 
@@ -192,17 +205,14 @@ public class AuditLogArchiveBatchService {
     /**
      * アーカイブ完了後、指定年月のパーティションを DROP する（瞬時削除）。
      *
-     * <p>パーティション名の形式: {@code p_YYYY_MM}（例: p_2024_01）</p>
-     * <p>p_future パーティションは絶対に DROP しない。</p>
+     * <p>パーティション名の形式: {@code p_YYYY_MM}（例: p_2024_01）。
+     * 年月から機械的に組み立てるため {@code p_future} が生成されることはなく、
+     * 呼び出し元も経過済みの月しか渡さない。</p>
      *
      * @param ym 対象年月
      */
     public void dropPartition(YearMonth ym) {
         String partitionName = String.format("p_%d_%02d", ym.getYear(), ym.getMonthValue());
-        if ("p_future".equals(partitionName)) {
-            log.warn("[AuditLogArchiveBatch] p_future パーティションのDROPはスキップします");
-            return;
-        }
         String sql = "ALTER TABLE audit_logs DROP PARTITION " + partitionName;
         jdbcTemplate.execute(sql);
         log.info("[AuditLogArchiveBatch] パーティションDROP完了: {}", partitionName);
@@ -210,17 +220,6 @@ public class AuditLogArchiveBatchService {
 
     /**
      * R2 オブジェクトキーを生成する。
-     * 形式: {@code audit-archive/{year}/{month:02d}/audit-{year}-{month:02d}.json}
-     *
-     * @param ym 対象年月
-     * @return R2 オブジェクトキー
-     */
-    public static String buildR2Key(YearMonth ym) {
-        return buildR2Key(ym, 0);
-    }
-
-    /**
-     * パート番号付きの R2 オブジェクトキーを生成する。
      * 形式: {@code audit-archive/{year}/{month:02d}/audit-{year}-{month:02d}[.part{n}].json}
      *
      * <p>パート 0 は従来どおりサフィックス無し（既存アーカイブとの互換）。</p>
