@@ -104,7 +104,7 @@ beforeEach(() => {
   mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
   mockGetLines.mockResolvedValue({ data: [activeLine] })
   mockGetSlots.mockResolvedValue({ data: [availableSlot] })
-  mockGetSlotGrid.mockResolvedValue({ data: { axis: 'LINE', days: [] } })
+  mockGetSlotGrid.mockResolvedValue({ data: { days: [] } })
   mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyReservations.mockResolvedValue({ data: [] })
   // 既定は枠テンプレ・定期予約不可とも0件（badge検証テストのみ個別に上書きする）。
@@ -152,7 +152,7 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await flushPromises()
 
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
-    // マトリックスは axis=LINE のレンジ呼びでグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
+    // マトリックスは from/to のレンジ呼びでグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
     expect(mockGetSlotGrid).toHaveBeenCalled()
     // 旧リスト表示（SlotPicker）の単日枠API（getSlots）はもう呼ばれない
     expect(mockGetSlots).not.toHaveBeenCalled()

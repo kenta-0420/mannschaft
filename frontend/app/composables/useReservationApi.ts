@@ -10,10 +10,9 @@ type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
 type BusinessHoursUpdateRequest = components['schemas']['BusinessHoursUpdateRequest']
 // 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
-// F03.4.4（機能H・#2189）で axis=LINE・from/to レンジ・menuId フィルターへ拡張済み（後方互換）。
+// F03.4.4（機能H・#2189）で from/to レンジ・menuId フィルターへ拡張済み。
+// #2575 でスタッフ軸（axis=STAFF）と staffUserIds を撤去し、列軸はライン固定になった。
 type ReservationGridResponse = components['schemas']['ReservationGridResponse']
-/** グリッドの列軸。既定 STAFF（従来動作）／LINE（列=予約対象）。 */
-export type GridAxis = 'STAFF' | 'LINE'
 // F03.4.3（機能G・予約グループ・#2190）は BE で CRUD API を追加済み。
 type CreateReservationGroupRequest = components['schemas']['CreateReservationGroupRequest']
 type ReservationGroupResponse = components['schemas']['ReservationGroupResponse']
@@ -165,23 +164,18 @@ export function useReservationApi() {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots/available?${query}`)
   }
 
-  // 機能C: 複数予約対象の空きグリッド（列=予約対象／セル=時間帯 state）。
+  // 機能C: 空きグリッド（列=予約対象ライン＋共通列／セル=時間帯 state）。
   // BE: GET /reservation-slots/grid は date（単日）または from/to（レンジ・最大7日・排他）＋
-  // axis（STAFF既定/LINE）＋ menuId（axis=LINE時のみ）＋ staffUserIds（CSV・任意）。
-  // F03.4.4（機能H）で axis=LINE・from/to レンジ・menuId フィルターへ拡張（既存 date 単日呼びは無変更で後方互換）。
+  // menuId（提供可能ラインで列を絞る）。列軸はライン固定（#2575 でスタッフ軸を撤去）。
   async function getSlotGrid(
     teamId: string,
-    params: { date?: string; from?: string; to?: string; axis?: GridAxis; menuId?: string; staffUserIds?: number[] },
+    params: { date?: string; from?: string; to?: string; menuId?: string },
   ) {
     const query = new URLSearchParams()
     if (params.date) query.set('date', params.date)
     if (params.from) query.set('from', params.from)
     if (params.to) query.set('to', params.to)
-    if (params.axis) query.set('axis', params.axis)
     if (params.menuId) query.set('menuId', params.menuId)
-    if (params.staffUserIds && params.staffUserIds.length > 0) {
-      query.set('staffUserIds', params.staffUserIds.join(','))
-    }
     return api<{ data: ReservationGridResponse }>(
       `${base(teamId)}/reservation-slots/grid?${query}`,
     )
