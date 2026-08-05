@@ -533,7 +533,8 @@
       "selfReviewEnd": "セルフレビュー終了時刻",
       "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
       "saveSettings": "設定を保存",
-      "loadFailed": "記事を読み込めませんでした"
+      "loadFailed": "記事を読み込めませんでした",
+      "scheduledPublishUnavailable": "予約公開は現在ご利用いただけません。公開すると記事はすぐに公開されます。"
     },
     "autoSave": {
       "label": "自動保存",

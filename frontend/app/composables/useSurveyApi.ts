@@ -113,11 +113,17 @@ type WireCreateQuestion = components['schemas']['CreateQuestionRequest']
 type WireCreateOption = components['schemas']['CreateOptionRequest']
 type WireUpdateSurvey = components['schemas']['UpdateSurveyRequest']
 
+/** FE ドメイン形の設問入力（作成ダイアログ・DRAFT 詳細の設問追加で共通）。 */
+export type SurveyQuestionInput = NonNullable<CreateSurveyRequest['questions']>[number]
+
 /**
  * FE 設問 → BE `CreateQuestionRequest`。
  * `sortOrder` は BE では `displayOrder`、`questionType` は BE enum 値へ写す。
+ *
+ * 作成（createSurvey）と設問追加（addQuestion）の両経路が BE の同一 DTO を使うため、
+ * 翻訳はこの 1 箇所に集約する。
  */
-function toWireQuestion(q: NonNullable<CreateSurveyRequest['questions']>[number]): WireCreateQuestion {
+export function toWireQuestion(q: SurveyQuestionInput): WireCreateQuestion {
   const options: WireCreateOption[] | undefined = q.options?.map((o) => ({
     optionText: o.optionText,
     displayOrder: o.sortOrder,
@@ -409,15 +415,23 @@ export function useSurveyApi() {
   }
 
   // === Questions ===
+  /**
+   * 設問追加（DRAFT 詳細の「設問を保存して公開」経路）。
+   *
+   * BE は作成時と同じ `CreateQuestionRequest` を受けるため、翻訳も
+   * {@link toWireQuestion} に寄せる。FE ドメイン形（`questionType: 'TEXT'`・`sortOrder`）を
+   * そのまま送ると `questionType` は 400、`sortOrder` は BE が読まず
+   * displayOrder が全設問 0 になって並び順が失われる。
+   */
   async function addQuestion(
     scopeType: string,
     scopeId: string,
     surveyId: number,
-    body: Record<string, unknown>,
+    body: SurveyQuestionInput,
   ) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/questions`, {
       method: 'POST',
-      body,
+      body: toWireQuestion(body),
     })
   }
 
