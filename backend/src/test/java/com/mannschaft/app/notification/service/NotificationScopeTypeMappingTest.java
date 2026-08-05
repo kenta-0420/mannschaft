@@ -17,13 +17,16 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * <b>別ドメインの別 enum</b> であり、値集合が一致する保証はない。片方に定数が増えたときに
  * 黙って壊れる（あるいは握りつぶされる）ことがないよう、全定数が写像可能であることを機械的に固定する。</p>
  *
- * <p><b>本テストが唯一の網羅性保証である。</b> 写像本体は当初 {@code default} 句を持たない網羅 switch
- * で書いていたが、javac が enum switch のために生成する合成クラス {@code NotificationService$1} が
- * クロスドメイン Entity 参照の番人（D-1 / {@code CrossDomainEntityImportArchTest}）に新規違反として
- * 検出され CI が落ちたため、{@code ==} による参照比較へ書き換えた。その結果
- * <b>コンパイル時の網羅性チェックが失われた</b>ので、その保証をここで肩代わりする。</p>
+ * <p><b>経緯</b>: 写像本体はかつて javac が enum switch のために生成する合成クラス
+ * {@code NotificationService$1} がクロスドメイン Entity 参照の番人
+ * （D-1 / {@code CrossDomainEntityImportArchTest}）に新規違反として誤検出され CI が落ちたため、
+ * 一時的に {@code ==} による参照比較へ書き換えていた。D-1 番人に合成クラス除外
+ * （{@code SyntheticClasses#isSynthetic}）を実装して根治したため、写像本体は
+ * {@code default} 句付きの {@code switch} 式へ差し戻し済みである。</p>
  *
- * <p>したがって本テストは必ず <b>{@code ScopeType.values()} を全件ループ</b>して検査すること。
+ * <p>{@code switch} 式には既知の定数のみを列挙し {@code default} で未知値を検出する形に
+ * しているため、コンパイル時の網羅性チェックは働かない。本テストは
+ * <b>{@code ScopeType.values()} を全件ループ</b>して、その実行時の網羅性保証を肩代わりする。
  * TEAM / ORGANIZATION を個別に書き並べる形にすると、{@code ScopeType} に定数が増えても
  * 何も落ちず、写像漏れが実行時 {@link IllegalStateException} として本番で初めて表面化してしまう。</p>
  *
