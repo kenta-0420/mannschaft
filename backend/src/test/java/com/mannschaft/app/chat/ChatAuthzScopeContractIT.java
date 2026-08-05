@@ -12,7 +12,7 @@ import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageBookmarkRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.entity.StoragePlanEntity;
 import com.mannschaft.app.common.storage.quota.repository.StoragePlanRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -101,7 +101,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * マスタデータである {@code storage_plans} のデフォルトプランは本テストが自前で用意する
  * （{@link #ensureDefaultStoragePlans()}。値は本番シード {@code V9.069} と同一）。
  * 認可通過後に走る署名 URL 発行はオブジェクトストレージへの外部依存であるため
- * {@link StorageService} をモックに差し替え、認可判定の成否だけがステータスに現れるようにする。</p>
+ * {@link R2StorageService} をモックに差し替え、認可判定の成否だけがステータスに現れるようにする。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -139,9 +139,18 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     /**
      * オブジェクトストレージへの署名 URL 発行はテスト環境の外にあるため、決定的な値を返すモックに差し替える。
      * 認可は署名 URL 発行より前段で完結しており、本モックは認可判定に一切関与しない。
+     *
+     * <p>インターフェース型 {@code @MockitoBean StorageService} ではなく具象型
+     * {@code R2StorageService}（bean 名 {@code r2StorageService}）で置換する。
+     * インターフェース型で置換すると bean が {@code StorageService$MockitoMock} 型にすり替わり、
+     * 同一 context 内で具象 {@code R2StorageService} を注入する消費者
+     * （{@code StoragePathMigrationBatchService} 等）の DI が型不一致となって
+     * ApplicationContext の起動そのものが失敗する。具象型でモックすれば
+     * インターフェース消費者・具象型消費者の双方を満たす
+     * （{@code BudgetFlatWriteScopeContractIT} / {@code CirculationExportScopeContractIT} と同一方針）。</p>
      */
     @MockitoBean
-    private StorageService storageService;
+    private R2StorageService storageService;
 
     @PersistenceContext
     private EntityManager em;
