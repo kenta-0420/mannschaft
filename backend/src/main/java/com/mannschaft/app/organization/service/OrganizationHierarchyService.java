@@ -141,7 +141,36 @@ public class OrganizationHierarchyService {
     }
 
     /**
+     * 子組織一覧カーソルページングで「所属組織 0 件」の呼び出し者に渡すセンチネル ID。
+     *
+     * <p>JPQL の {@code IN :collection} は空コレクションだと構文エラーになるため、
+     * 所属組織が 0 件の場合はこの値のみを含む 1 要素リストを渡す。実在しない ID
+     * （組織 ID は 1 始まりの正の値のみ発行される）なので、可視性条件の
+     * {@code o.id IN :memberOrgIds} には絶対にマッチしない。PUBLIC 判定は
+     * この条件と OR で独立しているため、所属 0 件でも PUBLIC な子は正しく見える。</p>
+     */
+    private static final Long NO_MEMBERSHIP_SENTINEL_ORG_ID = -1L;
+
+    /**
      * 対象組織の直近の子組織一覧を返す。
+     *
+     * <p><b>根治した3つの欠陥（設計書なし・実測ベースの障害対応）</b>:</p>
+     * <ul>
+     *   <li><b>①カーソルが SQL に降りていない</b>: 旧実装は {@code PageRequest.of(0, n)} で
+     *       常に先頭ページを取得し、カーソル条件をメモリ上でフィルタしていた。DB は
+     *       毎回同じ先頭 {@code pageSize+1} 件を返すため、2ページ目以降が実質空になっていた。
+     *       {@link OrganizationRepository#findChildrenPage} でカーソルを SQL の
+     *       {@code WHERE o.id > :cursorId} へ降ろして根治した。</li>
+     *   <li><b>② ORDER BY が無い</b>: unsorted な {@code Pageable} を使っており、ID 昇順を
+     *       前提とするカーソルの順序保証が無かった。{@code findChildrenPage} に
+     *       {@code ORDER BY o.id ASC} を明示して根治した。</li>
+     *   <li><b>③ hasNext が可視性フィルタ後件数で判定されていた</b>: 非公開の子が1件混じるだけで
+     *       {@code visible.size()} が {@code pageSize+1} に届かず、DB にまだ続きがあるのに
+     *       {@code hasNext=false} になる偽陰性があった。可視性条件自体を SQL へ降ろし
+     *       （{@code findChildrenPage} の {@code visibility = PUBLIC OR o.id IN :memberOrgIds}）、
+     *       {@code hasNext} は「DB から {@code pageSize+1} 件返ってきたか」だけで判定するよう
+     *       改めた。</li>
+     * </ul>
      *
      * @param orgId       対象組織ID
      * @param requesterId 呼び出し者のユーザーID
@@ -167,20 +196,20 @@ public class OrganizationHierarchyService {
         Long cursorId = parseCursor(cursor);
         Pageable pageable = PageRequest.of(0, pageSize + 1); // 次ページ判定用に +1 件取得
 
+        // 可視性を SQL へ降ろすため、呼び出し者が直接所属する組織 ID 集合を事前取得する。
+        // 空コレクションは JPQL の IN () で構文エラーになるためセンチネルへ差し替える。
+        List<Long> memberOrgIds = userRoleRepository.findOrganizationIdsByUserId(requesterId);
+        List<Long> memberOrgIdsForQuery = memberOrgIds.isEmpty()
+                ? List.of(NO_MEMBERSHIP_SENTINEL_ORG_ID)
+                : memberOrgIds;
+
+        // カーソル・可視性・ID 昇順のすべてを SQL 側で解決した結果を取得する
         List<OrganizationEntity> rows = organizationRepository
-                .findByParentOrganizationIdAndDeletedAtIsNull(orgId, pageable)
-                .stream()
-                .filter(o -> cursorId == null || o.getId() > cursorId)
-                .toList();
+                .findChildrenPage(orgId, cursorId, memberOrgIdsForQuery, pageable);
 
-        // PRIVATE 子組織は呼び出し者がメンバーでない場合のみ除外
-        List<OrganizationEntity> visible = rows.stream()
-                .filter(child -> child.getVisibility() == OrganizationEntity.Visibility.PUBLIC
-                        || userRoleRepository.existsByUserIdAndOrganizationId(requesterId, child.getId()))
-                .toList();
-
-        boolean hasNext = visible.size() > pageSize;
-        List<OrganizationEntity> page = hasNext ? visible.subList(0, pageSize) : visible;
+        // hasNext は「DB から pageSize+1 件返ってきたか」で判定する（③の根治）
+        boolean hasNext = rows.size() > pageSize;
+        List<OrganizationEntity> page = hasNext ? rows.subList(0, pageSize) : rows;
         String nextCursor = hasNext && !page.isEmpty()
                 ? String.valueOf(page.get(page.size() - 1).getId())
                 : null;

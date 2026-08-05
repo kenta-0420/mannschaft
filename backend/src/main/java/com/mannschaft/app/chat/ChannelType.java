@@ -106,4 +106,20 @@ public enum ChannelType {
     public boolean isSelfJoinableScopeChannel() {
         return this == TEAM_PUBLIC || this == ORG_PUBLIC;
     }
+
+    /**
+     * チーム／組織という上位スコープの配下に属する種別かどうか。
+     *
+     * <p>{@code true} の種別は {@code chat_channels.team_id} または {@code organization_id} を持ち、
+     * そのスコープの内部資産として扱われる。作成時にはスコープ所属の検証を要する
+     * （{@code ChatChannelAccessGuard#requireChannelCreationScope}）。
+     * {@link #DM} / {@link #GROUP_DM} は当事者のみで構成されスコープを持たないため {@code false}、
+     * 村ロビー・イベント・大会チャットは各ドメイン側で自動払い出しされるため {@code false} を返す。</p>
+     *
+     * @return チーム／組織スコープ配下のチャンネル種別なら {@code true}
+     */
+    public boolean isScopeChannel() {
+        return this == TEAM_PUBLIC || this == TEAM_PRIVATE
+                || this == ORG_PUBLIC || this == ORG_PRIVATE;
+    }
 }
