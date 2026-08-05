@@ -227,6 +227,9 @@ public class TeamScheduleController {
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody BulkAttendanceRequest request) {
+        // 他者の出欠を書き換える操作のため、スケジュール実体由来のスコープに対する
+        // ADMIN/DEPUTY_ADMIN 判定を public 入口で行う（sendReminder と同じ流儀）。
+        scheduleService.checkScopeAdminAccess(scheduleId, SecurityUtils.getCurrentUserId());
         attendanceService.bulkUpdateAttendances(scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
