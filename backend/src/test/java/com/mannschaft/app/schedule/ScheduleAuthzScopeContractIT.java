@@ -221,6 +221,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.token").value(
                             org.hamcrest.Matchers.not("w4c-member-token")));
 
+            em.flush();
             em.clear();
             assertThat(icalTokenRepository.findByUserId(memberId).orElseThrow().getToken())
                     .isEqualTo("w4c-member-token");
@@ -238,6 +239,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/me/ical/token/regenerate"))
                     .andExpect(status().isOk());
 
+            em.flush();
             em.clear();
             assertThat(icalTokenRepository.findByUserId(memberId).orElseThrow().getToken())
                     .isEqualTo("w4c-member-token");
@@ -313,7 +315,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/me/google-calendar/sync"))
                     .andExpect(jsonPath("$.error.code").value("GCAL_001"));
 
-            em.clear();
             assertThat(connectionRepository.findByUserIdAndIsActiveTrue(memberId)).isPresent();
         }
 
@@ -351,7 +352,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "redirectUri", "https://example.com/callback"))))
                     .andExpect(jsonPath("$.error.code").value("GCAL_003"));
 
-            em.clear();
             assertThat(connectionRepository.findByUserId(outsiderId)).isEmpty();
             assertThat(connectionRepository.findByUserIdAndIsActiveTrue(memberId)).isPresent();
         }
@@ -442,7 +442,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(Map.of("title", "乗っ取り"))))
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_022"));
 
-            em.clear();
             assertThat(scheduleRepository.findById(personalScheduleId).orElseThrow().getTitle())
                     .isEqualTo("W4C 個人予定");
         }
@@ -465,7 +464,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete("/api/v1/me/schedules/{id}", personalScheduleId))
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_022"));
 
-            em.clear();
+            // スケジュールは論理削除（PersonalScheduleService が softDelete + save）のため deleted_at を見る。
             assertThat(scheduleRepository.findById(personalScheduleId).orElseThrow().getDeletedAt())
                     .isNull();
         }
@@ -476,6 +475,12 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(memberId);
             mockMvc.perform(delete("/api/v1/me/schedules/{id}", personalScheduleId))
                     .andExpect(status().isNoContent());
+
+            em.flush();
+            em.clear();
+            // ScheduleEntity は @SQLRestriction("deleted_at IS NULL") を持つため、
+            // 論理削除された行は SQL 経由の検索から見えなくなる（＝取得できないことが削除の証跡）。
+            assertThat(scheduleRepository.findById(personalScheduleId)).isEmpty();
         }
 
         @Test
@@ -490,6 +495,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.deletedCount").value(0))
                     .andExpect(jsonPath("$.data.skippedCount").value(1));
 
+            em.flush();
             em.clear();
             assertThat(scheduleRepository.findById(personalScheduleId).orElseThrow().getDeletedAt())
                     .isNull();
@@ -505,6 +511,12 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     Map.of("ids", List.of(personalScheduleId)))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.deletedCount").value(1));
+
+            em.flush();
+            em.clear();
+            // ScheduleEntity は @SQLRestriction("deleted_at IS NULL") を持つため、
+            // 論理削除された行は SQL 経由の検索から見えなくなる（＝取得できないことが削除の証跡）。
+            assertThat(scheduleRepository.findById(personalScheduleId)).isEmpty();
         }
 
         @Test
@@ -604,7 +616,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(patch("/api/v1/schedule-delegations/{id}/accept", delegationId))
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_079"));
 
-            em.clear();
             assertThat(delegationRepository.findById(delegationId).orElseThrow().getStatus())
                     .isEqualTo(ScheduleDelegationStatus.PENDING);
         }
@@ -625,7 +636,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(patch("/api/v1/schedule-delegations/{id}/reject", delegationId))
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_079"));
 
-            em.clear();
             assertThat(delegationRepository.findById(delegationId).orElseThrow().getStatus())
                     .isEqualTo(ScheduleDelegationStatus.PENDING);
         }
@@ -663,7 +673,6 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete("/api/v1/schedules/{id}/delegations/me", teamScheduleId))
                     .andExpect(status().isForbidden());
 
-            em.clear();
             assertThat(delegationRepository.findById(delegationId).orElseThrow().getStatus())
                     .isEqualTo(ScheduleDelegationStatus.PENDING);
         }

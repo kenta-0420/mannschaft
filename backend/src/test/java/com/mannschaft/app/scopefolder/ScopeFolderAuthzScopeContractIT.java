@@ -145,7 +145,8 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     Map.of("name", "乗っ取り", "color", "#FFFFFF"))))
                     .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
 
-            em.clear();
+            // clear すると未確定の変更ごと捨ててしまい「壊れていても緑」になるため、
+            // 永続化コンテキストの実体をそのまま見る。
             assertThat(folderRepository.findById(ownerFolderId).orElseThrow().getName())
                     .isEqualTo("所有者のフォルダ");
         }
@@ -174,9 +175,10 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete(BASE + "/{folderId}", ownerFolderId))
                     .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
 
-            em.clear();
-            assertThat(folderRepository.findByIdAndUserIdAndDeletedAtIsNull(ownerFolderId, ownerId))
-                    .isPresent();
+            // フォルダは論理削除（MyScopeFolderService#deleteFolder が softDelete + save）のため、
+            // 行の有無ではなく deleted_at を見る。clear は未確定の変更を捨てるので挟まない。
+            assertThat(folderRepository.findById(ownerFolderId).orElseThrow().getDeletedAt())
+                    .isNull();
         }
 
         @Test
@@ -186,7 +188,11 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete(BASE + "/{folderId}", ownerFolderId))
                     .andExpect(status().isNoContent());
 
+            // 論理削除は UPDATE のため、flush で確定させてから読み直す（flush 無しの clear は変更を捨てる）。
+            em.flush();
             em.clear();
+            assertThat(folderRepository.findById(ownerFolderId).orElseThrow().getDeletedAt())
+                    .isNotNull();
             assertThat(folderRepository.findByIdAndUserIdAndDeletedAtIsNull(ownerFolderId, ownerId))
                     .isEmpty();
         }
@@ -234,7 +240,6 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete(BASE + "/{folderId}/items/{scopeId}", ownerFolderId, teamId))
                     .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
 
-            em.clear();
             assertThat(itemRepository.findByFolderIdAndScopeId(ownerFolderId, teamId)).isPresent();
         }
 
@@ -245,6 +250,9 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(delete(BASE + "/{folderId}/items/{scopeId}", ownerFolderId, teamId))
                     .andExpect(status().isNoContent());
 
+            // アイテムは物理削除（MyScopeFolderService#removeItem が itemRepository.delete）。
+            // remove は同一トランザクション内では未確定なので flush で DELETE を確定させる。
+            em.flush();
             em.clear();
             assertThat(itemRepository.findByFolderIdAndScopeId(ownerFolderId, teamId)).isEmpty();
         }
@@ -266,7 +274,6 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "scopeType", "TEAM"))))
                     .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
 
-            em.clear();
             assertThat(itemRepository.findByFolderIdOrderBySortOrder(ownerFolderId)).hasSize(1);
         }
 
@@ -312,6 +319,7 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.isDefault").value(true));
 
+            em.flush();
             em.clear();
             assertThat(folderRepository
                     .findByUserIdAndScopeTypeAndIsDefaultTrueAndDeletedAtIsNull(attackerId, ScopeType.TEAM))
@@ -346,6 +354,7 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     Map.of("name", "新規フォルダ", "color", "#010203"))))
                     .andExpect(status().isCreated());
 
+            em.flush();
             em.clear();
             assertThat(folderRepository
                     .findByUserIdAndScopeTypeAndDeletedAtIsNullOrderBySortOrder(attackerId, ScopeType.TEAM))
@@ -367,6 +376,7 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                                     Map.of("orderedIds", List.of(ownerFolderId, attackerFolderId)))))
                     .andExpect(status().isNoContent());
 
+            em.flush();
             em.clear();
             // 他利用者のフォルダは自分のフォルダ集合に含まれないため無視され、sort_order は元のまま。
             assertThat(folderRepository.findById(ownerFolderId).orElseThrow().getSortOrder())
