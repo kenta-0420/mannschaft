@@ -575,7 +575,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
      * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 434;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 405;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 共有フォルダサービス。フォルダのCRUDと階層管理を担当する。
@@ -57,6 +56,7 @@ public class SharedFolderService {
     private final FolderScopeAccessGuard folderScopeAccessGuard;
     /** 認可根治 Wave7: TEAM / ORGANIZATION スコープの per-scope 認可（メンバー / 管理者）。 */
     private final AccessControlService accessControlService;
+    private final SharedFolderAccessGuard folderAccessGuard;
 
     /**
      * チームのルートフォルダ一覧を取得する。
@@ -466,10 +466,7 @@ public class SharedFolderService {
             return;
         }
         SharedFolderEntity parent = findFolderOrThrow(parentId);
-        if (parent.getScopeType() != expectedScope
-                || !Objects.equals(resolveScopeId(parent), expectedScopeId)) {
-            throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
-        }
+        folderAccessGuard.requireParentWithinScope(parent, expectedScope, expectedScopeId);
     }
 
     /** フォルダのスコープ ID を解決する（TEAM=teamId / ORG=organizationId / PERSONAL=userId / 大会系=scopeRefId）。 */

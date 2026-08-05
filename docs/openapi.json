@@ -135229,6 +135229,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "閲覧権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDownloadUrlResponse"
+                }
+              }
+            }
           }
         }
       }

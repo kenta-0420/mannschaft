@@ -57,7 +57,7 @@ Mannschaft の「タスクの地図」は二層で構成する。
 | CMP-014 | プロモ動画 制作資産（promo2） | 実装中 | — | promo2の8本すべての制作完了 | — | — |
 | CMP-015 | 大名システムのプラグイン化 | 実装中 | — | daimyo-marketplace の git commit・main統合完了 | 抽出済（git未コミット） | — |
 | CMP-016 | トークン週間リミット対策 | 実装中 | — | 殿モデル自動切替の実装完了 | CLAUDE.md ダイエット #2554（済・32.5→15KB）、MEMORY.md 退避（済） | — |
-| CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30） | `2026-07-10-authz-idor-audit.md` |
+| CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30）／第4波ロットA: chat・filesharing 29本を返済し凍結434→405（`ChatChannelAccessGuard` / `SharedFolderAccessGuard` を新設して認可判定を一元化、2026-08-05） | `2026-07-10-authz-idor-audit.md` |
 | CMP-018 | F08.7 シフト予算連動機能（Phase 9-β/γ/δ） | 実装中 | Phase 9-α（完了） | Phase 9-β（DDL+CRUD#1-5）／9-γ（TODO紐付#7-8）／9-δ（警告/月次締め+権限）の実装完了 | Phase 9-α 実装完了（2026-05-03）: 逆算API #6単独・feature.shift-budget.enabled既定false | — |
 | CMP-019 | TODO コメント棚卸し（FeatureFlag判定 34箇所ほか） | 未着手 | — | コード中の `// TODO` コメント（旧 `docs/TODO_LIST.txt` 記載分含む）を実チケット化し解消すること | — | — |
 

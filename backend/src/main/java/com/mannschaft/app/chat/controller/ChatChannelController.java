@@ -21,6 +21,7 @@ import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,6 +62,8 @@ public class ChatChannelController {
     /**
      * 自分が参加しているチャンネル一覧を取得する。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（ChatChannelService#listMyChannels の findByMemberUserId が認証主体の参加チャンネルに束縛される）")
     @GetMapping
     @Operation(summary = "チャンネル一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -254,6 +257,9 @@ public class ChatChannelController {
     /**
      * チャンネルの個人設定を更新する。
      */
+    @SelfScopedEndpoint("更新対象は (channelId, SecurityUtils.getCurrentUserId()) のメンバー行に限定され、"
+            + "対象ユーザー ID をリクエストで指定する余地が無い"
+            + "（ChatMemberService#updateSettings の findByChannelIdAndUserId が認証主体に束縛される）")
     @PatchMapping("/{channelId}/settings")
     @Operation(summary = "チャンネル個人設定")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -272,6 +278,9 @@ public class ChatChannelController {
      *
      * <p>認可: チャンネルメンバーであること（自分自身のみ）。</p>
      */
+    @SelfScopedEndpoint("更新対象は (channelId, SecurityUtils.getCurrentUserId()) のメンバー行に限定され、"
+            + "対象ユーザー ID をリクエストで指定する余地が無い"
+            + "（ChatMemberService#updateMySettings の findByChannelIdAndUserId が認証主体に束縛される）")
     @PatchMapping("/{channelId}/members/me")
     @Operation(summary = "自分のチャンネル個人設定更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
