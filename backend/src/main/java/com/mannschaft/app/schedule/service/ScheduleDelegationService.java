@@ -40,6 +40,7 @@ public class ScheduleDelegationService {
     private final ScheduleService scheduleService;
     private final ScheduleDelegationValidator validator;
     private final ScheduleDelegationNotifier notifier;
+    private final ScheduleAccessGuard scheduleAccessGuard;
 
     /**
      * 代理を指定する（§5.1 + §5.6）。
@@ -104,9 +105,7 @@ public class ScheduleDelegationService {
     @Transactional
     public ScheduleDelegationEntity accept(UUID delegationId, Long actingUserId) {
         ScheduleDelegationEntity delegation = findOrThrow(delegationId);
-        if (!delegation.getDelegateId().equals(actingUserId)) {
-            throw new BusinessException(ScheduleErrorCode.SCHEDULE_DELEGATION_NOT_DELEGATE);
-        }
+        scheduleAccessGuard.requireDelegationDelegate(delegation, actingUserId);
         if (delegation.getStatus() != ScheduleDelegationStatus.PENDING) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_DELEGATION_NOT_PENDING);
         }
@@ -132,9 +131,7 @@ public class ScheduleDelegationService {
     @Transactional
     public ScheduleDelegationEntity reject(UUID delegationId, Long actingUserId) {
         ScheduleDelegationEntity delegation = findOrThrow(delegationId);
-        if (!delegation.getDelegateId().equals(actingUserId)) {
-            throw new BusinessException(ScheduleErrorCode.SCHEDULE_DELEGATION_NOT_DELEGATE);
-        }
+        scheduleAccessGuard.requireDelegationDelegate(delegation, actingUserId);
         if (delegation.getStatus() != ScheduleDelegationStatus.PENDING) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_DELEGATION_NOT_PENDING);
         }
