@@ -11,37 +11,46 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * F09.17 Phase 11-b ε-B キャンペーン配信ワーカー。
+ * F09.17 Phase 11-b/c キャンペーン配信ワーカー。
  *
  * <p>1 分間隔で {@code status='DELIVERING' AND starts_at &lt;= now AND ends_at &gt;= now} の
  * キャンペーンをスキャンし、{@link AdAudienceResolver#streamCandidateUserIds} で取得した
  * 各ユーザーに対して {@link AdCampaignDeliveryDispatcher#deliverForUser} を呼ぶ。</p>
  *
- * <h3>実行制御と重複配信防止の担当分離</h3>
+ * <h3>実行制御と重複配信防止の担当分離（二重の守り）</h3>
  * <p>{@code @SchedulerLock} は複数ノードでの本メソッド自体の並列起動を防ぐ。
  * {@link #loadActiveCampaigns()} の {@code SELECT ... FOR UPDATE} はロック保持区間が
  * その小さな {@code @Transactional} 内（候補キャンペーン一覧の取得のみ）に限られ、
  * 後続の {@link #processCampaign} には及ばない。</p>
  *
- * <p>したがって「同一ユーザーへの重複配信を実際に防ぐ」役割はこのロックではなく、
- * {@link AdCampaignDeliveryDispatcher#deliverForUser} が呼ぶ
- * {@link AdFrequencyCapService#tryConsume}（Valkey INCR による原子的な週次消費枠判定）が担う。
- * 同一ユーザー・同一広告主につき週内で許可されるのは 1 件のみのため、同じユーザーへ
- * 同一広告主から複数回配信が試みられても、実際に配信されるのは 1 回だけになる
- * （並行呼び出しに対する原子性の実証は {@code AdFrequencyCapIntegrationTest} を参照）。</p>
+ * <p>「同一ユーザーへの重複配信を実際に防ぐ」役割は Valkey と DB の二重で担う。
+ * {@link AdCampaignDeliveryDispatcher#deliverForUser} は
+ * {@link AdFrequencyCapService#tryConsume}（Valkey INCR による原子的な週次消費枠判定）に加え、
+ * {@link AdCampaignDeliveryClaimService#tryClaim}（{@code (campaign_id, user_id, week_start)} の
+ * DB 一意制約による claim-then-act）の両方を通過した場合のみ実配信する。Valkey が落ちても
+ * DB 側の一意制約が構造的に二重配信を防ぎ、Valkey は上限（週内の配信可能回数）管理に専念できる
+ * （並行 claim に対する原子性の実証は {@code AdCampaignDeliveryClaimServiceIntegrationTest} を参照）。</p>
+ *
+ * <p>候補ユーザーは {@link AdCampaignDeliveryClaimService#findClaimedUserIds} で
+ * 「今週 claim 済み」のユーザーを SQL 側で除外してから {@link #CHUNK_SIZE} 件へチャンク化する。
+ * 取得後にアプリ側で読み飛ばす方式にすると、配信済みユーザーが取得上限を占有し続け未配信ユーザーへ
+ * 永久に届かなくなる「飢餓」を招くため、必ず除外を先に行う。</p>
  *
  * <p>{@link #deliveryCursorByCampaignId} はノード内メモリのみで保持するベストエフォートの
  * キーセットカーソルであり、1 回の実行時間を有界化する目的に限定される（再起動で先頭に
- * 巻き戻り、以後の周回で処理済みユーザーへも再試行され得る）。その再試行によって同一ユーザーへ
- * 重ねて実配信が行われないことの保証は、上記の FreqCap の冪等性に依っている。</p>
+ * 巻き戻り、以後の周回で処理済みユーザーへも再試行され得る）。claim 済みユーザーは既に候補から
+ * 除外されているため、この巻き戻りで再試行されるのは「未配信のまま」のユーザーのみであり、
+ * 二重配信には繋がらない。</p>
  *
  * <h3>独立失敗</h3>
  * <p>キャンペーン単位はトランザクション無し（{@link AdCampaignDeliveryDispatcher} が
@@ -64,6 +73,7 @@ public class AdCampaignDeliveryWorker {
     private final AdMessagingCampaignRepository campaignRepository;
     private final AdAudienceResolver audienceResolver;
     private final AdCampaignDeliveryDispatcher dispatcher;
+    private final AdCampaignDeliveryClaimService claimService;
 
     /**
      * キャンペーンごとの「直近まで処理した user_id」カーソル（キーセットページング用）。
@@ -140,24 +150,39 @@ public class AdCampaignDeliveryWorker {
             candidates = stream.sorted().toList();
         }
 
-        List<Long> targetUsers = candidates.stream()
+        // 既に今週 claim 済みのユーザーを候補から除外する（SQL 側絞り込み。取得後にアプリ側で
+        // 読み飛ばすと、取得上限（CHUNK_SIZE）を配信済みユーザーが占有し続け、未配信ユーザーへ
+        // 永久に届かなくなる「飢餓」を招く。週境界はユーザー TZ 依存で単一の値に定まらないため、
+        // AdCampaignDeliveryClaimService#findClaimedUserIds が安全マージンを取った範囲で検索する）。
+        Set<Long> alreadyClaimed = claimService.findClaimedUserIds(campaignId, LocalDate.now());
+        List<Long> unclaimedCandidates = candidates.stream()
+                .filter(id -> !alreadyClaimed.contains(id))
+                .toList();
+
+        List<Long> targetUsers = unclaimedCandidates.stream()
                 .filter(id -> id > cursor)
                 .limit(CHUNK_SIZE)
                 .toList();
         boolean reachedEnd = targetUsers.size() < CHUNK_SIZE;
-        if (targetUsers.isEmpty() && !candidates.isEmpty()) {
+        if (targetUsers.isEmpty() && !unclaimedCandidates.isEmpty()) {
             // カーソルが末尾を超えている（全件処理済み）→ 先頭から巻き戻して 1 チャンク処理する
-            targetUsers = candidates.stream().limit(CHUNK_SIZE).toList();
+            targetUsers = unclaimedCandidates.stream().limit(CHUNK_SIZE).toList();
             reachedEnd = targetUsers.size() < CHUNK_SIZE;
         }
 
         int delivered = 0;
+        int skippedAlreadyClaimed = 0;
+        int skippedFreqCapUnavailable = 0;
         int users = 0;
         for (Long userId : targetUsers) {
             users++;
             try {
-                if (dispatcher.deliverForUser(campaign, userId)) {
-                    delivered++;
+                AdDeliveryOutcome outcome = dispatcher.deliverForUser(campaign, userId);
+                switch (outcome) {
+                    case DELIVERED -> delivered++;
+                    case SKIPPED_ALREADY_CLAIMED -> skippedAlreadyClaimed++;
+                    case SKIPPED_FREQ_CAP_UNAVAILABLE -> skippedFreqCapUnavailable++;
+                    case SKIPPED -> { /* 通常スキップ（ブロック・FreqCap 超過・全 opt-out 等） */ }
                 }
             } catch (RuntimeException ex) {
                 log.warn("AdCampaignDeliveryWorker user 配信失敗 campaignId={} userId={}",
@@ -174,8 +199,10 @@ public class AdCampaignDeliveryWorker {
             }
         }
 
-        log.info("AdCampaignDeliveryWorker キャンペーン完了 campaignId={} 候補数={} users={} delivered={}",
-                campaignId, candidates.size(), users, delivered);
+        log.info("AdCampaignDeliveryWorker キャンペーン完了 campaignId={} 候補数={} 除外済(claim)={} "
+                        + "users={} delivered={} skip-already-claimed={} skip-freqcap-unavailable={}",
+                campaignId, candidates.size(), alreadyClaimed.size(), users, delivered,
+                skippedAlreadyClaimed, skippedFreqCapUnavailable);
         return new DeliveryResult(users, delivered);
     }
 
