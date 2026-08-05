@@ -13,16 +13,14 @@ import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -63,7 +61,8 @@ public class VillagePilgrimageBatchService {
     private final UserVillagePinRepository pinRepository;
     private final VillagePilgrimageRecommendationRepository pilgrimageRepository;
 
-    private final Random random = new SecureRandom();
+    /** 空カテゴリ集合時に JPQL の {@code IN ()} 空リストエラーを避けるためのダミー値（絞り込み条件は無効化される）。 */
+    private static final List<String> NO_CATEGORY_FILTER = List.of("__NONE__");
 
     /**
      * 毎日 09:00 JST にバッチ実行。
@@ -135,36 +134,26 @@ public class VillagePilgrimageBatchService {
                 .map(UserVillagePinEntity::getVillageId)
                 .collect(Collectors.toSet());
 
-        // 3) 候補プール作成: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致
-        //    findAll を使うのは Phase 3-β の最小実装ゆえ。村数が増えたら category インデックスでの絞込クエリに置換予定。
-        List<VillageEntity> allVillages = villageRepository.findAll();
-        List<VillageEntity> candidates = new ArrayList<>();
+        // 3) 候補選定: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致を SQL 側の WHERE で絞り込み、
+        //    DB 側のランダム順（ORDER BY RAND()）から先頭 1 件のみ取得する。
+        //    旧実装は findAll() で全村をロードしユーザーごとにアプリ側フィルタしていた（ユーザー数 × 村数のオーダー）。
         Set<UUID> excludeIds = new HashSet<>();
         excludeIds.addAll(joinedVillageIds);
         excludeIds.addAll(pinnedVillageIds);
 
-        for (VillageEntity v : allVillages) {
-            if (v.getDeletedAt() != null || v.getArchivedAt() != null) {
-                continue;
-            }
-            if (v.getVisibility() != VillageVisibility.PUBLIC) {
-                continue;
-            }
-            if (excludeIds.contains(v.getId())) {
-                continue;
-            }
-            if (!categories.isEmpty() && (v.getCategory() == null || !categories.contains(v.getCategory()))) {
-                continue;
-            }
-            candidates.add(v);
-        }
+        List<VillageEntity> candidates = villageRepository.findPilgrimageCandidatesRandomOrder(
+                VillageVisibility.PUBLIC,
+                excludeIds,
+                categories.isEmpty(),
+                categories.isEmpty() ? NO_CATEGORY_FILTER : categories,
+                PageRequest.of(0, 1));
 
         if (candidates.isEmpty()) {
             return false;
         }
 
-        // 4) ランダム選定（本格化は将来の TODO）
-        VillageEntity picked = candidates.get(random.nextInt(candidates.size()));
+        // 4) SQL 側で既にランダム選定済み（本格化は将来の TODO）
+        VillageEntity picked = candidates.get(0);
 
         String reason;
         if (!categories.isEmpty() && categories.contains(picked.getCategory())) {
