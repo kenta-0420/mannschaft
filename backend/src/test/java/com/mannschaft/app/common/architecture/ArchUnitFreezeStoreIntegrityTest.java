@@ -574,8 +574,23 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 既存負債のキー改名である。この同一性は同一コミット内の
      * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
      * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
+     *
+     * <p>405 → 369（第4波ロットB・2026-08-05）: circulation 22 行 / committee 14 行を返済。
+     * 内訳は次のとおりで、いずれも「実体由来スコープでの認可が呼び出しグラフ上で到達可能である」
+     * 状態にしたうえでの削除である（マーカー付与による沈黙ではない）。</p>
+     * <ul>
+     *   <li>circulation の押印 5 EP とコメント削除 1 EP — {@code CirculationAccessGuard} を新設し、
+     *       受信者行・コメント行が<b>当該文書に属し、かつ操作者本人のものである</b>ことを検証する</li>
+     *   <li>circulation の文書ライフサイクル 8 EP（Org/Team 各 4）・あて先増減 2 EP・添付管理 3 EP・
+     *       エクスポート 2 EP — 既存の {@code AccessControlService} による per-scope 判定を
+     *       委譲 1 段で到達できる形に整理（判定内容は不変）</li>
+     *   <li>{@code MyCirculationController.listCreatedDocuments} — 検索条件が認証主体に束縛されるため
+     *       {@code @SelfScopedEndpoint}（契約テストは {@code CirculationStampRecipientAclScopeContractIT}）</li>
+     *   <li>committee 14 EP — {@code CommitteeAccessGuard} を新設し、委員会メンバーシップ・
+     *       委員会内ロール・招集状の宛先本人性の判定を集約</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 405;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 369;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
