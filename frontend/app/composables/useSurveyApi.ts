@@ -137,7 +137,7 @@ function toWireQuestion(q: NonNullable<CreateSurveyRequest['questions']>[number]
  * BE 必須の `distributionMode` を必ず載せ（対象者を明示しない限り `ALL`）、
  * 締切は BE のフィールド名 `expiresAt` で送る。enum 値・設問の項目名も BE 形へ翻訳する。
  */
-function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
+export function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
   return {
     title: body.title,
     ...(body.description !== undefined ? { description: body.description } : {}),
@@ -158,7 +158,7 @@ function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
 }
 
 /** FE `UpdateSurveyRequest` → BE `UpdateSurveyRequest`。未指定キーは送らない（PATCH セマンティクス）。 */
-function toWireUpdateBody(body: UpdateSurveyRequest): WireUpdateSurvey {
+export function toWireUpdateBody(body: UpdateSurveyRequest): WireUpdateSurvey {
   return {
     ...(body.title !== undefined ? { title: body.title } : {}),
     ...(body.description !== undefined ? { description: body.description } : {}),

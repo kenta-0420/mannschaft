@@ -123,19 +123,14 @@ async function publish() {
   await save()
   publishing.value = true
   try {
+    // BE の PostStatus に SCHEDULED は無い。予約公開も status=PUBLISHED + 未来の publishedAt。
+    const publishBody = buildBlogPublishBody(scheduledAt.value, (d) => buildOffsetDateTimeStr(d))
+    await publishMyPost(postId, publishBody)
+    status.value = 'PUBLISHED'
+
     if (scheduledAt.value) {
-      // BE の PostStatus に SCHEDULED は存在しない。予約公開は
-      // 「status=PUBLISHED + 未来の publishedAt」で表現する（送ると 500 になる）。
-      await publishMyPost(postId, {
-        status: 'PUBLISHED',
-        publishedAt: buildOffsetDateTimeStr(scheduledAt.value),
-      })
-      status.value = 'PUBLISHED'
       success('記事を予約公開しました')
     } else {
-      // status は BE 側 @NotBlank。ボディ無しで呼ぶと 400 になる。
-      await publishMyPost(postId, { status: 'PUBLISHED' })
-      status.value = 'PUBLISHED'
       // お知らせウィジェットに表示する場合、公開後に登録
       if (displayInAnnouncement.value && isTeamOrOrgScope.value && scopeId.value) {
         const { createAnnouncement } = useAnnouncementFeed(
