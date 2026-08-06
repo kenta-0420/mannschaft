@@ -96,16 +96,15 @@ public class GuardianshipSwitchController {
 
     /**
      * 後見切替セッションを終了する（本人へ復帰・02_api_design §2.2）。
-     * サーバ側ステートレスのため監査記録のみ。常に 204。
+     * サーバ側ステートレスのため解除すべきサーバ状態はないが、監査ログへの記録は行う。
      *
-     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 本操作はサーバ側に解除すべき状態を持たず
-     * （セッションテーブル無し）、childUserId は監査ログの metadata に記録されるのみで、
-     * データの取得・書込・権原の付与を一切行わない。よって「終了」という操作そのものが
-     * 他人のデータ・アクセス権へ到達しない（{@code GuardianshipSwitchService#endSwitch}
-     * は保護者リンクの照合を意図的に行わない設計・javadoc に明記済み）。
-     * 万一 childUserId が実在の他人であっても、記録されるのは
-     * 「guardianUserId が childUserId への切替を終了しようとした」という監査事実のみであり、
-     * 閲覧・操作可能な状態は一切生じない（認可根治戦役 Wave5 監査済）。</p>
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code GuardianshipSwitchService#endSwitch}
+     * は、呼出ユーザーと対象の子との間に保護者リンクが<b>過去に一度でも</b>存在したこと
+     * （現在の状態は問わない・{@code hasEverBeenLinked}）を実データで検証してから監査記録する。
+     * 一切の関係がない childUserId を指定した場合は 403 {@code GUARDIANSHIP_LINK_NOT_FOUND}
+     * で拒否し、事実と異なる監査記録が作られることを防ぐ。切替セッション中にリンクが解除・
+     * 年齢封印された正当な保護者は締め出さないよう、判定は {@link #startSwitch} より緩い
+     * （現在有効性でなく「過去の存在」を見る）（認可根治戦役 Wave5 是正）。</p>
      */
     @AuthorizedInService
     @DeleteMapping("/switch")
