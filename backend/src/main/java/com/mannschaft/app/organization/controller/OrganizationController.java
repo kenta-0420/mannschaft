@@ -59,6 +59,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 組織管理コントローラー。
@@ -126,6 +128,9 @@ public class OrganizationController {
      * {@code @SQLRestriction} が除外）。未認証でも呼べる公開検索であるため、
      * チームの {@code searchPublicTeams} と同じく「公開スコープのみ」という最も安全側の流儀に揃える。</p>
      */
+    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。結果は PUBLIC かつ未アーカイブの
+    // 組織のみ（OrganizationRepository#searchByKeyword のクエリ担保）で、呼び出し元のユーザー固有情報は含まない。
+    @AuthorizedByPathConfig
     @GetMapping("/search")
     @Operation(summary = "組織検索（PUBLIC かつ未アーカイブの組織のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -134,6 +139,9 @@ public class OrganizationController {
         return ResponseEntity.ok(organizationService.searchOrganizations(keyword, pageable));
     }
 
+    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。slug の重複可否のみを返し、
+    // ユーザー固有情報は含まない（全認証済みユーザーに同一の判定結果）。
+    @AuthorizedByPathConfig
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
@@ -301,6 +309,9 @@ public class OrganizationController {
                 .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
+    // SupporterService#unfollow が SecurityUtils.getCurrentUserId() のみを対象ユーザーとして
+    // (userId, scopeType, scopeId) 複合キーで解除する（他ユーザーのフォロー状態には到達不能）。
+    @SelfScopedEndpoint("SupporterService#unfollow が呼び出し元の userId のみを対象にフォロー解除する")
     @DeleteMapping("/{slug}/follow")
     @Operation(summary = "組織サポーター解除・申請取消（APPROVED/PENDING どちらも取消可）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
@@ -310,6 +321,9 @@ public class OrganizationController {
         return ResponseEntity.noContent().build();
     }
 
+    // SupporterService#getFollowStatus が SecurityUtils.getCurrentUserId() のみを対象ユーザーとして
+    // (userId, scopeType, scopeId) 複合キーで自身のフォロー状態のみを引く。
+    @SelfScopedEndpoint("SupporterService#getFollowStatus が呼び出し元の userId 自身のフォロー状態のみを返す")
     @GetMapping("/{slug}/follow/status")
     @Operation(summary = "組織サポーター申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

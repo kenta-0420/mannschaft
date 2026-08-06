@@ -54,6 +54,12 @@ public class SafetyResponseService {
     @Transactional
     public SafetyResponseResponse respond(Long safetyCheckId, RespondRequest req, Long userId) {
         SafetyCheckEntity check = findCheckOrThrow(safetyCheckId);
+        // 認可根治戦役 Wave6 ロットC: 呼び出し元が対象安否確認のスコープ（チーム/組織）に
+        // 所属していることを検証する。未検証だと非所属者が他組織の安否確認へ回答を書き込め、
+        // 集計結果（安否確認結果集計・未回答ユーザー一覧）が汚染される。
+        if (!accessControlService.isMember(userId, check.getScopeId(), check.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND);
+        }
         validateActive(check);
 
         // 重複回答チェック

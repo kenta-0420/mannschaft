@@ -9,6 +9,8 @@ import com.mannschaft.app.residencestatus.entity.AnnualReview;
 import com.mannschaft.app.residencestatus.entity.AnnualReviewResponse;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewRepository;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewResponseRepository;
+import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
+import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +53,8 @@ class AnnualReviewResponseServiceTest {
     private AnnualReviewResponseRepository responseRepo;
     @Mock
     private AccessControlService accessControlService;
+    @Mock
+    private ResidentRegistryRepository residentRegistryRepository;
 
     @InjectMocks
     private AnnualReviewResponseService service;
@@ -92,6 +97,8 @@ class AnnualReviewResponseServiceTest {
         void submitResponse_new_increments_count() {
             when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(reviewId, ORG_ID))
                     .thenReturn(Optional.of(openReview));
+            when(residentRegistryRepository.findById(RESIDENT_REGISTRY_ID))
+                    .thenReturn(Optional.of(registryOwnedBy(RESIDENT_USER)));
             when(responseRepo.findByAnnualReviewIdAndResidentRegistryIdAndDeletedAtIsNull(reviewId, RESIDENT_REGISTRY_ID))
                     .thenReturn(Optional.empty());
             when(responseRepo.save(any(AnnualReviewResponse.class)))
@@ -122,6 +129,8 @@ class AnnualReviewResponseServiceTest {
 
             when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(reviewId, ORG_ID))
                     .thenReturn(Optional.of(openReview));
+            when(residentRegistryRepository.findById(RESIDENT_REGISTRY_ID))
+                    .thenReturn(Optional.of(registryOwnedBy(RESIDENT_USER)));
             when(responseRepo.findByAnnualReviewIdAndResidentRegistryIdAndDeletedAtIsNull(reviewId, RESIDENT_REGISTRY_ID))
                     .thenReturn(Optional.of(existing));
             when(responseRepo.save(any(AnnualReviewResponse.class)))
@@ -170,6 +179,8 @@ class AnnualReviewResponseServiceTest {
         void submitResponse_invalid_residence_state() {
             when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(reviewId, ORG_ID))
                     .thenReturn(Optional.of(openReview));
+            when(residentRegistryRepository.findById(RESIDENT_REGISTRY_ID))
+                    .thenReturn(Optional.of(registryOwnedBy(RESIDENT_USER)));
 
             SubmitAnnualResponseRequest invalidReq = SubmitAnnualResponseRequest.builder()
                     .dwellingUnitId(DWELLING_UNIT_ID)
@@ -196,6 +207,8 @@ class AnnualReviewResponseServiceTest {
 
                 when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(rid, ORG_ID))
                         .thenReturn(Optional.of(review));
+                when(residentRegistryRepository.findById(RESIDENT_REGISTRY_ID))
+                        .thenReturn(Optional.of(registryOwnedBy(RESIDENT_USER)));
                 when(responseRepo.findByAnnualReviewIdAndResidentRegistryIdAndDeletedAtIsNull(eq(rid), anyLong()))
                         .thenReturn(Optional.empty());
                 when(responseRepo.save(any(AnnualReviewResponse.class)))
@@ -216,6 +229,59 @@ class AnnualReviewResponseServiceTest {
                 AnnualReviewResponseDto dto = service.submitResponse(ORG_ID, rid, RESIDENT_USER, req);
                 assertThat(dto.getResidenceState()).isEqualTo(state);
             }
+        }
+
+        /**
+         * 認可根治戦役 Wave6 ロットC の根治対象: 旧実装は {@code req.getResidentRegistryId()} の
+         * 所有権を一切検証せず、他居住者の {@code residentRegistryId} を指定して居住状態・連絡先確認
+         * フラグを書き換えられた（未検証の引数が永続記録へ到達する BOLA）。
+         * 他ユーザーが所有する residentRegistryId を指定した場合に拒否されることを固定する。
+         */
+        @Test
+        @DisplayName("ANNUAL_REVIEW_RESPONSE_NOT_FOUND: 他ユーザーが所有する residentRegistryId を"
+                + "指定した回答は拒否される（他居住者の回答書き換えを根治）")
+        void submitResponse_residentRegistry_owned_by_other_user_denied() {
+            Long otherUsersRegistryId = 9999L;
+            SubmitAnnualResponseRequest req = SubmitAnnualResponseRequest.builder()
+                    .dwellingUnitId(DWELLING_UNIT_ID)
+                    .residentRegistryId(otherUsersRegistryId)
+                    .residenceState("OWNER_RESIDING")
+                    .build();
+
+            when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(reviewId, ORG_ID))
+                    .thenReturn(Optional.of(openReview));
+            when(residentRegistryRepository.findById(otherUsersRegistryId))
+                    .thenReturn(Optional.of(registryOwnedBy(8888L)));
+
+            assertThatThrownBy(() -> service.submitResponse(ORG_ID, reviewId, RESIDENT_USER, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND);
+
+            verify(responseRepo, never()).save(any());
+            verify(annualReviewRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("ANNUAL_REVIEW_RESPONSE_NOT_FOUND: 存在しない residentRegistryId を指定した場合")
+        void submitResponse_residentRegistry_not_found() {
+            SubmitAnnualResponseRequest req = SubmitAnnualResponseRequest.builder()
+                    .dwellingUnitId(DWELLING_UNIT_ID)
+                    .residentRegistryId(RESIDENT_REGISTRY_ID)
+                    .residenceState("OWNER_RESIDING")
+                    .build();
+
+            when(annualReviewRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(reviewId, ORG_ID))
+                    .thenReturn(Optional.of(openReview));
+            when(residentRegistryRepository.findById(RESIDENT_REGISTRY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.submitResponse(ORG_ID, reviewId, RESIDENT_USER, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND);
+
+            verify(responseRepo, never()).save(any());
         }
     }
 
@@ -292,6 +358,12 @@ class AnnualReviewResponseServiceTest {
                 .build();
         setField(response, "id", id);
         return response;
+    }
+
+    private ResidentRegistryEntity registryOwnedBy(Long userId) {
+        ResidentRegistryEntity registry = mock(ResidentRegistryEntity.class);
+        when(registry.getUserId()).thenReturn(userId);
+        return registry;
     }
 
     private static void setField(Object target, String fieldName, Object value) {
