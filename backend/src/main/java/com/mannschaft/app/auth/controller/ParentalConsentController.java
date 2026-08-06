@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,6 +53,9 @@ public class ParentalConsentController {
      * 保護者を招待する。招待メールを保護者のメールアドレスに送信する。
      * レートリミット・自己招待防止・PENDING 上限・重複チェックを行う。
      */
+    @SelfScopedEndpoint("childUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "ParentalConsentService#inviteParent は招待の発行元スコープとしてその値のみを使う"
+            + "（req.getParentEmail() は宛先の平文メールで DB 検索キーではない。他人の識別子を受け取らない）")
     @PostMapping("/invitations")
     @Operation(summary = "保護者招待送信", description = "子ユーザーが保護者のメールアドレスに同意確認メールを送信する")
     public ResponseEntity<ApiResponse<MessageResponse>> inviteParent(
@@ -64,6 +68,9 @@ public class ParentalConsentController {
     /**
      * 子ユーザーが送信済みの招待一覧を取得する。
      */
+    @SelfScopedEndpoint("childUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "ParentalConsentService#getInvitations はその値のみを検索条件に使う"
+            + "（parentalConsentLinkRepository.findByChildUserId。他人の識別子を受け取る余地が無い）")
     @GetMapping("/invitations")
     @Operation(summary = "送信済み招待一覧取得", description = "子ユーザーが送信した保護者招待の一覧を取得する")
     public ResponseEntity<ApiResponse<List<InvitationResponse>>> getInvitations() {
@@ -78,7 +85,13 @@ public class ParentalConsentController {
     /**
      * PENDING 状態の招待を取り消す（子ユーザー操作）。
      * PENDING 以外の状態の招待は取り消せない。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code ParentalConsentService#revokeInvitation}
+     * （{@code ParentalConsentService.java:152-168}）が linkId で {@code ParentalConsentLinkEntity}
+     * を取得し、{@code link.getChildUserId()} と呼出ユーザーの ID を実データで一致検証する。
+     * 不一致・PENDING 以外は AUTH_005 で拒否する（認可根治戦役 Wave5 監査済）。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/invitations/{linkId}")
     @Operation(summary = "招待取消", description = "PENDING 状態の保護者招待を取り消す")
     public ResponseEntity<ApiResponse<MessageResponse>> cancelInvitation(
@@ -96,6 +109,9 @@ public class ParentalConsentController {
     /**
      * 子ユーザーの承認済み保護者一覧を取得する。
      */
+    @SelfScopedEndpoint("childUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "ParentalConsentService#getApprovedParents はその値のみを検索条件に使う"
+            + "（parentalConsentLinkRepository.findByChildUserIdAndStatus。他人の識別子を受け取らない）")
     @GetMapping("/parents")
     @Operation(summary = "承認済み保護者一覧取得", description = "子ユーザーに紐付く承認済みの保護者リンク一覧を取得する")
     public ResponseEntity<ApiResponse<List<ParentLinkResponse>>> getParents() {
@@ -110,7 +126,13 @@ public class ParentalConsentController {
     /**
      * 子ユーザー側から保護者リンクを解除する。
      * 最後の承認済みリンクは解除不可（AUTH_064）。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code ParentalConsentService#removeParentalLink}
+     * （{@code ParentalConsentService.java:188-211}）が linkId で {@code ParentalConsentLinkEntity}
+     * を取得し、{@code link.getChildUserId()} と呼出ユーザーの ID を実データで一致検証する。
+     * 不一致・APPROVED 以外は AUTH_005 で拒否する（認可根治戦役 Wave5 監査済）。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/parents/{linkId}")
     @Operation(summary = "保護者リンク解除（子側）", description = "子ユーザーが自分の保護者リンクを解除する（最後のリンクは解除不可）")
     public ResponseEntity<ApiResponse<MessageResponse>> removeParent(
@@ -187,6 +209,9 @@ public class ParentalConsentController {
      * 保護者ユーザーが監護している子ユーザーの APPROVED リンク一覧を取得する。
      * PII リスク低減のため、子の表示名は null で返す。
      */
+    @SelfScopedEndpoint("parentUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "ParentalConsentService#getChildrenAsParent はその値のみを検索条件に使う"
+            + "（parentalConsentLinkRepository.findByParentUserIdAndStatus。他人の識別子を受け取らない）")
     @GetMapping("/children")
     @Operation(summary = "子ユーザー一覧取得（保護者）", description = "自分が保護者として登録されている子ユーザーの一覧を取得する")
     public ResponseEntity<ApiResponse<List<ChildLinkResponse>>> getChildren() {
@@ -202,7 +227,13 @@ public class ParentalConsentController {
     /**
      * 保護者ユーザー側から子リンクを解除する。
      * 子の唯一の保護者かつ子が PENDING_PARENTAL_CONSENT 状態の場合は解除不可（AUTH_065）。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code ParentalConsentService#removeParentalLinkAsParent}
+     * （{@code ParentalConsentService.java:347-370}）が linkId で {@code ParentalConsentLinkEntity}
+     * を取得し、{@code link.getParentUserId()} と呼出ユーザーの ID を実データで一致検証する。
+     * 不一致・APPROVED 以外は AUTH_005 で拒否する（認可根治戦役 Wave5 監査済）。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/children/{linkId}")
     @Operation(summary = "保護者リンク解除（保護者側）", description = "保護者ユーザーが自分と子ユーザーのリンクを解除する")
     public ResponseEntity<ApiResponse<MessageResponse>> removeChildLink(

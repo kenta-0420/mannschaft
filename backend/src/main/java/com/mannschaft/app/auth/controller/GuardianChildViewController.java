@@ -6,6 +6,7 @@ import com.mannschaft.app.auth.dto.GuardianChildProxyActionsResponse;
 import com.mannschaft.app.auth.guardianship.GuardianChildViewService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,7 +43,17 @@ public class GuardianChildViewController {
 
     private final GuardianChildViewService guardianChildViewService;
 
-    /** ① 子の今後の予定（横断カレンダー）。viewer=子基準で F00 可視性が適用される。 */
+    /**
+     * ① 子の今後の予定（横断カレンダー）。viewer=子基準で F00 可視性が適用される。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@link GuardianChildViewService#getChildSchedules}
+     * が冒頭で {@code assertGuardianCanView}（{@code GuardianChildViewService.java:215-232}）を呼び、
+     * {@code GuardianshipSwitchService#evaluateSwitch} で childUserId が呼出ユーザーの有効な保護者リンク
+     * （parental_consent APPROVED または care_links ACTIVE PARENT）を持つか実データで検証する。
+     * リンク非該当は 403 {@code GUARDIANSHIP_LINK_NOT_FOUND}、12歳以上の年齢封印は 403
+     * {@code GUARDIANSHIP_SWITCH_AGE_LOCKED} で一本化する（認可根治戦役 Wave5 監査済）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/children/{childUserId}/schedules")
     @Operation(summary = "子の予定閲覧",
             description = "12歳未満の子の横断カレンダーを閲覧専用で取得する（有効な保護者のみ・子基準の可視性）")
@@ -56,7 +67,15 @@ public class GuardianChildViewController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
-    /** ② 子の出席率統計。 */
+    /**
+     * ② 子の出席率統計。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@link GuardianChildViewService#getChildAttendanceStats}
+     * が {@code assertGuardianCanView}（{@code GuardianChildViewService.java:215-232}）を経由し、
+     * ①と同一の {@code evaluateSwitch} 判定（実データの保護者リンク＋年齢ゲート）を適用する
+     * （認可根治戦役 Wave5 監査済）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/children/{childUserId}/attendance/stats")
     @Operation(summary = "子の出欠状況閲覧",
             description = "12歳未満の子の出席率統計を閲覧専用で取得する（有効な保護者のみ）")
@@ -70,7 +89,14 @@ public class GuardianChildViewController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
-    /** ③ 子の所属チーム/組織。 */
+    /**
+     * ③ 子の所属チーム/組織。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@link GuardianChildViewService#getChildMemberships}
+     * が {@code assertGuardianCanView}（{@code GuardianChildViewService.java:215-232}）を経由し、
+     * ①と同一の {@code evaluateSwitch} 判定を適用する（認可根治戦役 Wave5 監査済）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/children/{childUserId}/memberships")
     @Operation(summary = "子の所属閲覧",
             description = "12歳未満の子が所属するチーム・組織を閲覧専用で取得する（有効な保護者のみ）")
@@ -96,7 +122,14 @@ public class GuardianChildViewController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
-    /** 代理履歴（件3）。subject=子 の代理入力記録のみを新しい順で返す。 */
+    /**
+     * 代理履歴（件3）。subject=子 の代理入力記録のみを新しい順で返す。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@link GuardianChildViewService#getChildProxyActions}
+     * が {@code assertGuardianCanView}（{@code GuardianChildViewService.java:215-232}）を経由し、
+     * ①と同一の {@code evaluateSwitch} 判定を適用する（認可根治戦役 Wave5 監査済）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/children/{childUserId}/proxy-actions")
     @Operation(summary = "子の代理入力履歴閲覧",
             description = "子の代わりに誰が何をしたか（代理入力記録・subject=子）を閲覧専用で取得する（有効な保護者のみ）")
