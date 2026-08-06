@@ -24,9 +24,11 @@ import java.util.UUID;
  * の週開始（受信者 TZ の月曜 00:00）と厳密に一致させる。定義がずれると Valkey の
  * フリークエンシーキャップと DB の claim が食い違い、二重の守りが機能しなくなる。</p>
  *
- * <p>本 Entity は claim の存在確認・削除にのみ使う（更新は行わない）。実際の INSERT は
- * {@link com.mannschaft.app.advertising.campaign.repository.AdCampaignDeliveryClaimRepository#tryClaim}
- * のネイティブ {@code INSERT IGNORE} を経由し、影響行数で成否を判定する（例外を使わない）。</p>
+ * <p>本 Entity は更新を行わない（作成・存在確認・削除のみ）。実際の claim 確保は
+ * {@link com.mannschaft.app.advertising.campaign.service.AdCampaignDeliveryClaimService#tryClaim}
+ * が {@code saveAndFlush} でこの Entity を保存し、一意制約違反（{@code DataIntegrityViolationException}）の
+ * 有無で成否を判定する（{@code REQUIRES_NEW} の専用トランザクション内で捕捉するため、
+ * 衝突しても呼び出し元のトランザクションは巻き込まれない）。</p>
  */
 @Entity
 @Table(name = "ad_campaign_delivery_claims")

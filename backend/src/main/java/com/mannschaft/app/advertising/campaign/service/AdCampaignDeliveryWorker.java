@@ -41,10 +41,13 @@ import java.util.stream.Stream;
  * DB 側の一意制約が構造的に二重配信を防ぎ、Valkey は上限（週内の配信可能回数）管理に専念できる
  * （並行 claim に対する原子性の実証は {@code AdCampaignDeliveryClaimServiceIntegrationTest} を参照）。</p>
  *
- * <p>候補ユーザーは {@link AdCampaignDeliveryClaimService#findClaimedUserIds} で
- * 「今週 claim 済み」のユーザーを SQL 側で除外してから {@link #CHUNK_SIZE} 件へチャンク化する。
- * 取得後にアプリ側で読み飛ばす方式にすると、配信済みユーザーが取得上限を占有し続け未配信ユーザーへ
- * 永久に届かなくなる「飢餓」を招くため、必ず除外を先に行う。</p>
+ * <p>{@link AdAudienceResolver#streamCandidateUserIds} が返す候補は現状すでに全件メモリ上へ
+ * 展開されるため（{@link AdAudienceResolver} 側の実装事情。SQL ページングではない）、
+ * 「今週 claim 済み」のユーザーの除外も {@link AdCampaignDeliveryClaimService#findClaimedUserIds}
+ * で取得したメモリ上の集合との突き合わせで行う。重要なのは<b>除外を {@link #CHUNK_SIZE} 件への
+ * チャンク化より必ず前に行う</b>ことで、これにより配信済みユーザーが取得上限を占有し続け
+ * 未配信ユーザーへ永久に届かなくなる「飢餓」を防げる（除外をチャンク化の後や dispatcher 側に
+ * 回すと、chunk の中身が既配信ユーザーで埋まり得るため飢餓が起こり得る）。</p>
  *
  * <p>{@link #deliveryCursorByCampaignId} はノード内メモリのみで保持するベストエフォートの
  * キーセットカーソルであり、1 回の実行時間を有界化する目的に限定される（再起動で先頭に
@@ -150,10 +153,12 @@ public class AdCampaignDeliveryWorker {
             candidates = stream.sorted().toList();
         }
 
-        // 既に今週 claim 済みのユーザーを候補から除外する（SQL 側絞り込み。取得後にアプリ側で
-        // 読み飛ばすと、取得上限（CHUNK_SIZE）を配信済みユーザーが占有し続け、未配信ユーザーへ
-        // 永久に届かなくなる「飢餓」を招く。週境界はユーザー TZ 依存で単一の値に定まらないため、
-        // AdCampaignDeliveryClaimService#findClaimedUserIds が安全マージンを取った範囲で検索する）。
+        // 既に今週 claim 済みのユーザーを候補から除外する。この除外は必ず CHUNK_SIZE への
+        // 切り出しより前に行う（順序が本質。取得上限を配信済みユーザーが占有し続け、未配信
+        // ユーザーへ永久に届かなくなる「飢餓」を防ぐため）。audienceResolver の候補は現状すでに
+        // 全件メモリ上にあるためアプリ側フィルタだが、順序さえ守れば SQL 側絞り込みと同じ効果になる。
+        // 週境界はユーザー TZ 依存で単一の値に定まらないため、
+        // AdCampaignDeliveryClaimService#findClaimedUserIds が安全マージンを取った範囲で検索する。
         Set<Long> alreadyClaimed = claimService.findClaimedUserIds(campaignId, LocalDate.now());
         List<Long> unclaimedCandidates = candidates.stream()
                 .filter(id -> !alreadyClaimed.contains(id))

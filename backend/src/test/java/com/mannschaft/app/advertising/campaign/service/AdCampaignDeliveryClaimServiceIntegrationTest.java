@@ -4,6 +4,7 @@ import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,8 @@ class AdCampaignDeliveryClaimServiceIntegrationTest extends AbstractMySqlIntegra
         LocalDateTime now = LocalDateTime.now();
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(7001L)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(9101L)
                 .name("claim結合テスト用キャンペーン")
                 .status(AdCampaignStatus.DELIVERING)
                 .moderationStatus(AdModerationStatus.APPROVED)
