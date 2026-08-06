@@ -167,6 +167,10 @@ class ReservationRecurringSeriesScopeTest {
         given(reservationPolicyService.getOrDefault(anyLong()))
                 .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
         given(reservationPolicyService.resolveApprovalMode(anyLong(), any())).willReturn(ApprovalMode.MANUAL);
+        // Issue #2538: teamId スコープ版（リクエスト由来の slotId 解決）と、
+        // 従来の 1 引数版（confirm/cancel 経路・entity 由来で teamId 検証済みの slotId 解決）の両方をスタブする。
+        given(slotService.getSlotEntity(anyLong(), anyLong()))
+                .willAnswer(inv -> slots.get((Long) inv.getArgument(1)));
         given(slotService.getSlotEntity(anyLong()))
                 .willAnswer(inv -> slots.get((Long) inv.getArgument(0)));
     }
