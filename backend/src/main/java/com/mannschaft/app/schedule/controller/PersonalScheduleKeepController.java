@@ -3,7 +3,10 @@ package com.mannschaft.app.schedule.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.schedule.authz.ScheduleKeepScope;
+import com.mannschaft.app.schedule.dto.ConvertScheduleKeepRequest;
+import com.mannschaft.app.schedule.dto.ConvertScheduleKeepResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleKeepRequest;
+import com.mannschaft.app.schedule.dto.ReorderScheduleKeepsRequest;
 import com.mannschaft.app.schedule.dto.ScheduleKeepResponse;
 import com.mannschaft.app.schedule.service.ScheduleKeepService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,11 +92,43 @@ public class PersonalScheduleKeepController {
 
     @DeleteMapping("/{keepId}")
     @Operation(summary = "個人キープ削除")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
     public ResponseEntity<Void> delete(@PathVariable UUID keepId) {
         Long userId = SecurityUtils.getCurrentUserId();
         scheduleKeepService.delete(ScheduleKeepScope.personal(userId), keepId, userId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{keepId}/convert")
+    @Operation(summary = "個人キープを予定へ変換")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変換成功")
+    public ResponseEntity<ApiResponse<ConvertScheduleKeepResponse>> convert(
+            @PathVariable UUID keepId,
+            @RequestBody ConvertScheduleKeepRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ConvertScheduleKeepResponse response = scheduleKeepService.convert(
+                ScheduleKeepScope.personal(userId), keepId, request, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    @PostMapping("/reorder")
+    @Operation(summary = "個人キープの並び替え")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "並び替え成功")
+    public ResponseEntity<Void> reorder(@RequestBody ReorderScheduleKeepsRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        scheduleKeepService.reorder(ScheduleKeepScope.personal(userId), request.getOrderedIds(), userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/by-schedule/{scheduleId}")
+    @Operation(summary = "予定から由来キープを逆引き")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ScheduleKeepResponse>> getByConvertedSchedule(
+            @PathVariable Long scheduleId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ScheduleKeepResponse response = scheduleKeepService.getByConvertedSchedule(
+                ScheduleKeepScope.personal(userId), scheduleId, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     @PostMapping("/{keepId}/archive")

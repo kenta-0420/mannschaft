@@ -12,6 +12,7 @@ import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -140,6 +141,40 @@ public class ScheduleKeepAccessGuard {
     }
 
     /**
+     * 変換先の予定 ID から由来キープを逆引きする（{@code GET .../by-schedule/{scheduleId}}・§4.5.1）。
+     *
+     * <p>逆引きも例外なく本ゲートを通す。{@code scheduleId} は<b>クライアントが自由に指定できる
+     * 連番の BIGINT</b> であり、スコープを織り込まずに {@code converted_schedule_id} だけで引くと、
+     * 総当たりで他チームのキープの<b>存在とタイトルが読み出せる</b>（キープ ID が UUIDv7 で
+     * 推測困難であることに頼れなくなる＝逆引きが IDOR の抜け道になる）。</p>
+     *
+     * <p>該当が複数ある場合は {@code created_at} が最新の1件を返す（§4.5.1 の決定則）。
+     * {@code revert} → 再 {@code convert} の履歴で同じ予定 ID を指すキープが複数生まれうるため。</p>
+     *
+     * @param scope        パスが指すスコープ
+     * @param scheduleId   変換先 {@code schedules.id}
+     * @param viewerUserId 実行者の users.id
+     * @return 由来キープ
+     * @throws BusinessException 未認証なら 401、キープ由来でない／閲覧不可なら 404
+     */
+    public ScheduleKeepEntity requireViewableByConvertedSchedule(
+            ScheduleKeepScope scope, Long scheduleId, Long viewerUserId) {
+        Objects.requireNonNull(scope, "scope must not be null");
+        requireAuthenticated(viewerUserId);
+        if (scheduleId == null) {
+            throw notFound();
+        }
+
+        // ① スコープ一致（IDOR 防御）: 逆引きクエリ自体にスコープを織り込む。
+        ScheduleKeepEntity keep = findByConvertedScheduleWithinScope(scope, scheduleId, viewerUserId)
+                .orElseThrow(ScheduleKeepAccessGuard::notFound);
+
+        // ② 可視性: 参照系の正準（requireViewable）へ合流させる。ここで独自判定を書くと、
+        //    キープ ID 経由では見えないものが予定 ID 経由でだけ見える非対称が生まれる。
+        return requireViewable(scope, keep.getId(), viewerUserId);
+    }
+
+    /**
      * 編集系（PATCH / DELETE / revert / archive / restore）が可能なキープを取得する。
      *
      * <p>閲覧可能であることを前提に、さらに<b>作成者本人</b>または<b>当該スコープの ADMIN 以上</b>で
@@ -188,6 +223,26 @@ public class ScheduleKeepAccessGuard {
                     ? scheduleKeepRepository.findByIdAndUserId(keepId, scope.id())
                     : Optional.empty();
         };
+    }
+
+    /**
+     * 逆引き（{@code converted_schedule_id}）もスコープを織り込んだ finder を選択する。
+     *
+     * <p>{@link #findWithinScope} と同じ規律。個人スコープは「スコープ ID＝実行者」を先に検証する。</p>
+     */
+    private Optional<ScheduleKeepEntity> findByConvertedScheduleWithinScope(
+            ScheduleKeepScope scope, Long scheduleId, Long viewerUserId) {
+        List<ScheduleKeepEntity> candidates = switch (scope.type()) {
+            case TEAM -> scheduleKeepRepository
+                    .findByTeamIdAndConvertedScheduleIdOrderByCreatedAtDescIdDesc(scope.id(), scheduleId);
+            case ORGANIZATION -> scheduleKeepRepository
+                    .findByOrganizationIdAndConvertedScheduleIdOrderByCreatedAtDescIdDesc(scope.id(), scheduleId);
+            case PERSONAL -> Objects.equals(scope.id(), viewerUserId)
+                    ? scheduleKeepRepository
+                            .findByUserIdAndConvertedScheduleIdOrderByCreatedAtDescIdDesc(scope.id(), scheduleId)
+                    : List.of();
+        };
+        return candidates.stream().findFirst();
     }
 
     /** 未認証は 401（{@code COMMON_000}）。認可判定より前に必ず通す。 */
