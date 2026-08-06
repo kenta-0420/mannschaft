@@ -68,3 +68,21 @@ export function toLocalDateString(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+/**
+ * `yyyy-MM-dd`（BE の `LocalDate`）を、いかなるTZの影響も受けずにロケール表示用の文字列へ変換する。
+ *
+ * `new Date("2026-08-20")` は **UTC の午前0時** として解釈されるため、これをブラウザTZで
+ * 描画すると UTC より西のTZ（`America/Los_Angeles` 等）では前日「8/19」にずれる。
+ * `LocalDate` は暦日そのものであり瞬間ではないため、本関数のように TZ 変換を経由しない
+ * 経路（`new Date(y, m - 1, d)` はローカルTZの壁時計成分から構築するため UTC を経由しない）
+ * で扱うこと（本ファイル冒頭の設計原則を参照）。
+ *
+ * @param ymd `yyyy-MM-dd` 形式の暦日（BE の `LocalDate`）
+ * @param locale `Intl.DateTimeFormat` へ渡すロケール（例: 'ja-JP'）
+ * @example formatLocalDateOnly('2026-08-20', 'ja-JP') // → "2026/8/20"（TZに関わらず 8/20）
+ */
+export function formatLocalDateOnly(ymd: string, locale: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(y!, m! - 1, d!))
+}

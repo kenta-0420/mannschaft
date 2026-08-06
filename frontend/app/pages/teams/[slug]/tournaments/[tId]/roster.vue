@@ -174,9 +174,11 @@ const isLocked = computed(() => {
   return roster.value.locked
 })
 
+const { formatDateTime } = useDatetime()
+
 const deadlineLabel = computed(() => {
   if (!roster.value?.rosterDeadline) return t('tournament.roster.deadline_none')
-  return new Date(roster.value.rosterDeadline).toLocaleString()
+  return formatDateTime(roster.value.rosterDeadline)
 })
 
 // ===== 初期化 =====

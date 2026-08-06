@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.dto.ValidateTotpLoginRequest;
 import com.mannschaft.app.auth.dto.VerifyTotpRequest;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,7 +38,17 @@ public class Auth2faController {
 
     /**
      * TOTP設定開始。秘密鍵とQRコードURLを返す。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code SecurityUtils.getCurrentUserId()} のみで対象ユーザーを解決する
+     * （{@code Auth2faService#setupTotp} が {@code findByUserId(userId)} のみで判定）。
+     * 後見切替セッション中は {@code assertNotActingAs()} が代理実行を拒否する。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで設定対象ユーザーを解決する"
+                    + "（Auth2faController#setupTotp）")
     @PostMapping("/setup")
     @Operation(summary = "TOTP設定開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "TOTP設定開始成功")
@@ -50,7 +61,16 @@ public class Auth2faController {
 
     /**
      * TOTPコードを検証し、二要素認証を有効化する。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code SecurityUtils.getCurrentUserId()} のみで対象ユーザーを解決する
+     * （{@code Auth2faService#verifyTotpSetup} が {@code findByUserId(userId)} のみで判定）。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで検証対象ユーザーを解決する"
+                    + "（Auth2faController#verifyTotpSetup）")
     @PostMapping("/verify")
     @Operation(summary = "TOTP設定検証・有効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "TOTP有効化成功")
@@ -99,7 +119,17 @@ public class Auth2faController {
 
     /**
      * バックアップコードを再生成する。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code SecurityUtils.getCurrentUserId()} のみで対象ユーザーを解決する
+     * （{@code Auth2faService#regenerateBackupCodes} が {@code findByUserId(userId)} のみで判定）。
+     * 後見切替セッション中は {@code assertNotActingAs()} が代理実行を拒否する。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで再生成対象ユーザーを解決する"
+                    + "（Auth2faController#regenerateBackupCodes）")
     @PostMapping("/backup-codes/regenerate")
     @Operation(summary = "バックアップコード再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")

@@ -464,6 +464,29 @@ public class CareLinkService {
     }
 
     /**
+     * 指定ユーザーが対象のケア対象者と<b>過去に一度でも</b>見守り PARENT のケアリンクを
+     * 持ったことがあるか（ステータスを問わない）を判定する。
+     *
+     * <p>F08.9 後見切替終了（{@code GuardianshipSwitchService#endSwitch}）の認可から呼び出される
+     * 境界メソッド。{@link #isActiveParentWatcher} より<b>緩い</b>存在チェックとして用意し、
+     * 切替中にリンクが解除された正当な保護者を締め出さない一方、一切の関係がない第三者による
+     * 監査ログの捏造を防ぐ（認可根治戦役 Wave5・endSwitch 是正）。
+     * 現在 REVOKED / REJECTED / PENDING であっても、当該 (recipient, watcher, PARENT) の組で
+     * ケアリンク行が一度でも作成されていれば true。</p>
+     *
+     * @param watcherUserId       見守り者候補（保護者候補）のユーザーID
+     * @param careRecipientUserId ケア対象者（子）のユーザーID
+     * @return 過去に一度でも当該組み合わせのケアリンクが存在した場合 true
+     */
+    public boolean hasEverBeenParentWatcher(Long watcherUserId, Long careRecipientUserId) {
+        if (watcherUserId == null || careRecipientUserId == null) {
+            return false;
+        }
+        return careLinkRepository.existsByCareRecipientUserIdAndWatcherUserIdAndRelationship(
+                careRecipientUserId, watcherUserId, CareRelationship.PARENT);
+    }
+
+    /**
      * 指定ユーザーが「ACTIVE な見守り PARENT」として登録されているケア対象者（子）のユーザーID一覧を返す。
      *
      * <p>F08.9 P3a 切替可能な子の列挙から呼び出される境界メソッド。
