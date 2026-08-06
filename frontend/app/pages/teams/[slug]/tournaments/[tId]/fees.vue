@@ -62,9 +62,11 @@ function formatAmount(fee: TournamentFeeResponse): string {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(fee.amount)
 }
 
+const { formatDate } = useDatetime()
+
 function formatDueDate(fee: TournamentFeeResponse): string {
   if (!fee.paymentDue) return '-'
-  return new Date(fee.paymentDue).toLocaleDateString('ja-JP')
+  return formatDate(fee.paymentDue)
 }
 
 function isOverdue(fee: TournamentFeeResponse): boolean {

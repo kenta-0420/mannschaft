@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.MinViewRole;
@@ -567,7 +568,7 @@ public class GoogleCalendarWebhookService {
     private LocalDateTime parseRfc3339DateTime(String rfc3339) {
         try {
             java.time.OffsetDateTime odt = java.time.OffsetDateTime.parse(rfc3339);
-            return odt.withOffsetSameInstant(java.time.ZoneOffset.ofHours(9)).toLocalDateTime();
+            return odt.atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDateTime();
         } catch (Exception e) {
             log.warn("RFC3339 日時のパース失敗: {} → フォールバック", rfc3339);
             return LocalDateTime.parse(rfc3339.substring(0, 19));
