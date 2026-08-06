@@ -33,6 +33,8 @@ mockNuxtImport('useNotification', () => () => ({
 function baseEvent(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
+    // schedule 行の uniqueKey は `String(id)`（CalendarEventItem の javadoc参照）
+    uniqueKey: '1',
     title: 'テストイベント',
     description: null,
     location: null,
@@ -41,6 +43,8 @@ function baseEvent(overrides: Record<string, unknown> = {}) {
     startAt: '2026-08-04T09:00:00-07:00',
     endAt: '2026-08-04T10:30:00-07:00',
     allDay: false,
+    color: null,
+    isPersonal: false,
     scopeName: null,
     attendanceRequired: false,
     myAttendance: null,
