@@ -42,7 +42,8 @@ import java.util.UUID;
  * {@code AdCampaignDeliveryClaimRepository} / {@code AdCampaignDeliveryClaimService} の Javadoc）。
  * ネイティブ INSERT は JPA の {@code @GeneratedValue}/{@code @PrePersist} ライフサイクルを経由しない
  * ため、{@code id} は呼び出し側が {@code UuidV7Entity} と同じ採番機構で事前生成し、
- * {@code created_at} は DDL の {@code DEFAULT CURRENT_TIMESTAMP} に任せる。</p>
+ * {@code created_at} も DB 側 DEFAULT に頼らず呼び出し側で明示的にバインドする
+ * （test プロファイルの Hibernate {@code ddl-auto=create} スキーマは DB 側 DEFAULT を持たないため）。</p>
  */
 @Entity
 @Table(name = "ad_campaign_delivery_claims",
@@ -69,6 +70,14 @@ public class AdCampaignDeliveryClaim extends UuidV7Entity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * claim 確保の本経路（{@code AdCampaignDeliveryClaimRepository#tryClaim} のネイティブ INSERT）は
+     * JPA のライフサイクルを経由しないため、このメソッドは現状発火しない（死んだコードに見えるが
+     * 意図して残している）。{@code AdCampaignDeliveryClaimRepository} は {@code JpaRepository} を
+     * 継承しており、{@code save}/{@code saveAndFlush} は API として引き続き呼び出し可能なため、
+     * 将来誰かが誤ってそちらを使った場合の防御的デフォルトとして残す
+     * （無ければ {@code created_at} が null のまま永続化されようとして例外になる）。
+     */
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {

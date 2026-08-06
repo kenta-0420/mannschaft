@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,22 +29,29 @@ public interface AdCampaignDeliveryClaimRepository extends JpaRepository<AdCampa
     /**
      * {@code (campaign_id, user_id, week_start)} の claim を確保しようと試みる。
      *
-     * <p>{@code created_at} は DDL 側の {@code DEFAULT CURRENT_TIMESTAMP} に任せるため
-     * INSERT 文からは省く（Entity の {@code @PrePersist} は {@code save} 経路専用で、
-     * このネイティブ INSERT には適用されない）。</p>
+     * <p>{@code created_at} は本番 DDL には {@code DEFAULT CURRENT_TIMESTAMP} があるが、
+     * test プロファイルのスキーマは Hibernate {@code ddl-auto=create} が Entity 定義から
+     * 生成するため DB 側デフォルトを持たない（{@code @Column} の Java 側属性だけでは DDL に
+     * 反映されない）。DEFAULT に依存すると test では非厳格モードで zero-date
+     * （{@code 0000-00-00 00:00:00}）が入り、読み出し時に
+     * {@code JpaSystemException: Zero date value prohibited} で落ちる（結合テストで実際に再現）。
+     * 環境差に依存しないよう、常に呼び出し側で生成した現在時刻を明示的にバインドする。</p>
      *
      * @param id         事前生成した UUID（{@link com.mannschaft.app.common.entity.UuidV7Entity} と
      *                   同じ採番機構で生成すること。ネイティブ INSERT は JPA の
      *                   {@code @GeneratedValue} ライフサイクルを経由しないため、呼び出し側で採番する）
+     * @param createdAt  呼び出し側で確定させた作成時刻（DB 側 DEFAULT には依存しない）
      * @return INSERT できた行数（0 または 1）。0 は「既に他の実行が確保済み」を意味する。
      */
     @Modifying
-    @Query(value = "INSERT IGNORE INTO ad_campaign_delivery_claims (id, campaign_id, user_id, week_start) "
-            + "VALUES (:id, :campaignId, :userId, :weekStart)", nativeQuery = true)
+    @Query(value = "INSERT IGNORE INTO ad_campaign_delivery_claims "
+            + "(id, campaign_id, user_id, week_start, created_at) "
+            + "VALUES (:id, :campaignId, :userId, :weekStart, :createdAt)", nativeQuery = true)
     int tryClaim(@Param("id") UUID id,
                  @Param("campaignId") UUID campaignId,
                  @Param("userId") Long userId,
-                 @Param("weekStart") LocalDate weekStart);
+                 @Param("weekStart") LocalDate weekStart,
+                 @Param("createdAt") LocalDateTime createdAt);
 
     /**
      * 全チャネル skip で実配信が 0 件だった場合の claim 解放。

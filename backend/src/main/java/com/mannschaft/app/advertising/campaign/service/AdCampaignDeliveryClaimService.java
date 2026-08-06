@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -61,7 +62,11 @@ public class AdCampaignDeliveryClaimService {
             throw new IllegalArgumentException("campaignId, userId, weekStart は必須です");
         }
         UUID id = UUID_GENERATOR.generateUuid(null);
-        int inserted = claimRepository.tryClaim(id, campaignId, userId, weekStart);
+        // created_at はアプリ側 LocalDateTime.now() で確定させる（DB の NOW() は使わない）。
+        // 他の Entity の @PrePersist（例: AdCampaignDeliveryClaim 自身の onCreate、AdEmailDelivery 等）
+        // が軒並みアプリ側 LocalDateTime.now() を使っており、DB サーバーとアプリでタイムゾーン設定が
+        // ずれる構成では NOW() 混在が created_at の意味を行ごとに変えてしまう。既存の作法に揃える。
+        int inserted = claimRepository.tryClaim(id, campaignId, userId, weekStart, LocalDateTime.now());
         if (inserted == 0) {
             log.debug("AD_DELIVERY_CLAIM_CONFLICT campaignId={} userId={} weekStart={}",
                     campaignId, userId, weekStart);
