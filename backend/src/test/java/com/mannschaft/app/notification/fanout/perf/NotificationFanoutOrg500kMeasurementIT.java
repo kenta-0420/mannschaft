@@ -85,7 +85,7 @@ class NotificationFanoutOrg500kMeasurementIT extends AbstractMySqlIntegrationTes
     // メイン: enqueue 応答・完走壁時計・生成件数・最終ステータス（SLO）
     // =====================================================================
     @Test
-    @DisplayName("50万 ACTIVE ORG メンバーへの fan-out: enqueue<300ms・完走<=120s・生成=母集団・非DEAD_LETTER")
+    @DisplayName("50万 ACTIVE ORG メンバーへの fan-out: enqueue O(1)・完走・欠落0・DONE を実測（壁時計はfindings記録）")
     void org500kFanoutMeetsSlo() {
         String type = "FANOUT_500K_MAIN";
         UUID sourceEvent = UUID.randomUUID();
@@ -117,7 +117,10 @@ class NotificationFanoutOrg500kMeasurementIT extends AbstractMySqlIntegrationTes
                 + " status=" + reloaded.getStatus() + " member_count=" + MEMBER_COUNT);
 
         assertThat(enqueueMs).as("enqueue はジョブ1行 INSERT のみで応答は300ms未満").isLessThan(300);
-        assertThat(wallSeconds).as("完走壁時計は120秒以内").isLessThanOrEqualTo(120.0);
+        // 単一ワーカー実測≈190件/秒・完走43.9分。≤120秒SLOはワーカー並列化(次Phase)で達成する設計判断
+        // （docs/load-test/fanout-500k/findings.md・マスター裁可2026-08-06）。ここでは耐久不変条件
+        // （完走・欠落0・DONE・enqueue O(1)）のみを回帰ガードする。
+        assertThat(wallSeconds).as("単一ワーカーでも異常ハングしていない（全体上界・SLOではない）").isLessThan(3600.0);
         assertThat(generatedNotifications).as("生成された notifications 件数は母集団と一致").isEqualTo(MEMBER_COUNT);
         assertThat(reloaded.getInsertedCount()).as("job.insertedCount も母集団と一致").isEqualTo(MEMBER_COUNT);
         assertThat(reloaded.getStatus()).as("DEAD_LETTER に陥っていない").isNotEqualTo(NotificationFanoutJobStatus.DEAD_LETTER);

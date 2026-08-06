@@ -47,6 +47,22 @@ public final class Fanout500kSeeder {
     /** users.id / user_roles.user_id の開始値（他テストとの衝突回避のため高位レンジ）。 */
     public static final long USER_ID_BASE = 700_000_000L;
 
+    /**
+     * {@code seed()} 呼び出しごとに払い出す user_id 帯の先頭を管理するカウンタ。
+     *
+     * <p>{@code perfTest}（{@code forkEvery=0}）は複数 IT クラスを同一 JVM・同一 DB 接続で実行するため、
+     * {@link #seed(int)} を複数回（同一クラス内の複数テスト・別クラスからの呼び出し双方）呼ぶと
+     * 固定値 {@link #USER_ID_BASE} が衝突し {@code users.PRIMARY} の一意制約違反になる
+     * （実測: {@code NotificationFanoutOrgCrashResumeIT} 実行後に
+     * {@code NotificationFanoutOrgIdempotencyBoundaryIT} が同一 user_id で衝突）。
+     * 呼び出しごとに単調増加する帯を払い出すことで JVM 内の全 {@code seed()} 呼び出しを衝突なく共存させる。</p>
+     */
+    private static final java.util.concurrent.atomic.AtomicLong NEXT_USER_ID_BASE =
+            new java.util.concurrent.atomic.AtomicLong(USER_ID_BASE);
+
+    /** 帯と帯の間に空けるマージン（他テストの偶発的な近接投入との衝突をさらに避ける）。 */
+    private static final long BAND_MARGIN = 1_000L;
+
     /** 1 バッチあたりの JDBC addBatch 件数。 */
     private static final int BATCH_SIZE = 2_000;
 
@@ -90,7 +106,7 @@ public final class Fanout500kSeeder {
     public SeedResult seed(int memberCount) {
         long t0 = System.nanoTime();
         long organizationId = insertOrganization();
-        long userIdFrom = USER_ID_BASE;
+        long userIdFrom = NEXT_USER_ID_BASE.getAndAdd(memberCount + BAND_MARGIN);
         insertUsersBatch(userIdFrom, memberCount);
         insertUserRolesBatch(userIdFrom, memberCount, organizationId);
         long ms = (System.nanoTime() - t0) / 1_000_000;
