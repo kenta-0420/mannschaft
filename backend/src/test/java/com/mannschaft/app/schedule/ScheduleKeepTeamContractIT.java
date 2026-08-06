@@ -83,8 +83,12 @@ class ScheduleKeepTeamContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamSlug = "keep-team-" + System.nanoTime();
-        otherTeamSlug = "keep-other-team-" + System.nanoTime();
+        // teams.slug は length=30（TeamEntity）。"keep-other-team-" + nanoTime(19桁) は
+        // 36桁で列長超過し MySQL の Data truncation で INSERT が落ちる（試練の既知バグ）。
+        // 短い接頭辞 + nanoTime を6桁に丸めたサフィックスで衝突を避けつつ列長に収める。
+        long suffix = System.nanoTime() % 1_000_000L;
+        teamSlug = "kt-" + suffix;
+        otherTeamSlug = "kt2-" + suffix;
         teamId = insertTeam("キープ試練チーム", teamSlug);
         otherTeamId = insertTeam("キープ試練別チーム", otherTeamSlug);
 
