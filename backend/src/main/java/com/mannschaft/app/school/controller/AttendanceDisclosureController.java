@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.DisclosedEvaluationResponse;
 import com.mannschaft.app.school.dto.DisclosureRequest;
 import com.mannschaft.app.school.dto.DisclosureResponse;
@@ -94,6 +95,8 @@ public class AttendanceDisclosureController {
      *
      * @return 開示済み評価情報のリスト
      */
+    @SelfScopedEndpoint("DisclosureService#getDisclosedEvaluationsForUser が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/me/attendance/requirements/disclosed")
     @Operation(summary = "自分に開示された評価一覧取得")
     public ApiResponse<List<DisclosedEvaluationResponse>> getDisclosedEvaluationsForMe() {

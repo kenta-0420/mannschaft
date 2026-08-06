@@ -2,6 +2,7 @@ package com.mannschaft.app.matching.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.matching.dto.ActivitySuggestionResponse;
 import com.mannschaft.app.matching.dto.CreateMatchRequestRequest;
 import com.mannschaft.app.matching.dto.MatchRequestCreateResponse;
@@ -145,7 +146,12 @@ public class MatchRequestController {
 
     /**
      * activity_detail のサジェスト。
+     *
+     * <p>全ユーザーに同一内容を返すマスタ的なサジェストAPI。{@code /api/v1/matching/**} は
+     * permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * で認証必須が強制される。</p>
      */
+    @AuthorizedByPathConfig
     @GetMapping("/api/v1/matching/activity-suggestions")
     @Operation(summary = "activity_detail サジェスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

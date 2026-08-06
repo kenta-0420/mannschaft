@@ -125,12 +125,13 @@ class AttendanceStatisticsControllerTest {
     // GET /api/v1/me/attendance/statistics/term
     // ════════════════════════════════════════════════
 
+    /** AttendanceStatisticsController#getTermStatistics の自己スコープ性を固定する契約テスト。 */
     @Nested
     @DisplayName("GET /api/v1/me/attendance/statistics/term")
     class GetTermStatistics {
 
         @Test
-        @DisplayName("正常系: 期間別集計を返す → 200 + data")
+        @DisplayName("正常系: 期間別集計を返す → 200 + data（studentUserIdはSecurityUtils.getCurrentUserId()に束縛）")
         void 正常系_200() throws Exception {
             StudentTermStatisticsResponse response = StudentTermStatisticsResponse.builder()
                     .studentUserId(USER_ID)

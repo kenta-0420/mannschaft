@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
 import com.mannschaft.app.school.dto.StudentTermStatisticsResponse;
 import com.mannschaft.app.school.service.AttendanceStatisticsService;
@@ -53,6 +54,9 @@ public class AttendanceStatisticsController {
      * @param to     集計終了日（YYYY-MM-DD）
      * @return 期間別集計レスポンス
      */
+    @SelfScopedEndpoint("AttendanceStatisticsService#getStudentTermStatistics に渡す "
+            + "studentUserId は常に SecurityUtils.getCurrentUserId() であり、集計クエリも "
+            + "studentUserId に束縛されるため他人の出欠集計へは到達できない")
     @GetMapping("/me/attendance/statistics/term")
     @Operation(summary = "期間別出欠集計取得", description = "生徒本人が指定期間の自分の出欠集計と教科別出席率を取得する。")
     public ApiResponse<StudentTermStatisticsResponse> getTermStatistics(
