@@ -2,10 +2,12 @@ package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.entity.ScheduleKeepStatus;
+import com.mannschaft.app.schedule.visibility.ScheduleKeepVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +55,25 @@ public interface ScheduleKeepRepository extends JpaRepository<ScheduleKeepEntity
             Long organizationId, List<Long> convertedScheduleIds);
 
     List<ScheduleKeepEntity> findByUserIdAndConvertedScheduleIdIn(Long userId, List<Long> convertedScheduleIds);
+
+    // --- F00 可視性判定用の射影取得（§4.6.4 手順8） ---
+
+    /**
+     * 可視性判定に必要な列だけを 1 SQL で一括取得する（{@code ScheduleKeepVisibilityResolver} 専用）。
+     *
+     * <p>本メソッドが「スコープを取らない finder」に見えるのは意図的である。
+     * {@code ScheduleKeepVisibilityResolver} の責務は<b>レコードのスコープを読み取って
+     * 閲覧可否を判定すること</b>であり、スコープを入力として絞り込んでしまうと判定材料が消える。
+     * パスのスコープとの一致検証（IDOR 防御・§4.6.3）は本メソッドではなく
+     * {@code ScheduleKeepAccessGuard} がスコープ込み finder で行う。</p>
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは返らない
+     * （不在＝fail-closed で存在を漏らさない）。</p>
+     *
+     * @param ids 判定対象のキープ ID 集合
+     * @return 実在するキープの射影（順序は保証しない）
+     */
+    List<ScheduleKeepVisibilityProjection> findVisibilityProjectionsByIdIn(Collection<UUID> ids);
 
     // --- §3.7 退会・チーム／組織削除時の後始末で使うスコープ一括 finder ---
 

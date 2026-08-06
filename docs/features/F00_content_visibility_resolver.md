@@ -170,6 +170,8 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 | 16 | `TEAM` | `TeamEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 | 17 | `ORGANIZATION` | `OrganizationEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 
+> **F03.17 連携追記（2026-08-06）**: `SCHEDULE_KEEP`（キープ＝日付未定の予定）を追加した。`schedule_keeps` は UUIDv7 主キーのため `idKind()` は `UUID_V7` であり、`ScheduleKeepVisibilityResolver`（`com.mannschaft.app.schedule.visibility`）が UUID 経路（`canViewUuid` / `filterAccessibleUuid`）を実装する。**visibility 戦略は「スコープ固定」**: キープは可視性設定列を持たず、チーム／組織スコープでは常に `MEMBERS_AND_ABOVE`（応援者・ゲストを除外。`EventVisibilityMapper` の締め直しと同じ判断）、個人スコープでは `PRIVATE`（所有者本人のみ）で評価する。**本 referenceType はコルクボード（引用・埋め込み）の対象外**であり、`corkboard_cards.reference_id_uuid` を使う用途を持たない。詳細: `F03.17_schedule_keep.md` §4.6。
+
 > **F19.1 連携追記（2026-05-18）**: `TEAM` / `ORGANIZATION` Resolver は F19.1 公開チーム・組織ページ機能で本基盤の Phase D を待たず繰り上げ実装される。`PublicTeamVisibilityResolver` / `PublicOrganizationVisibilityResolver` として `com.mannschaft.app.publicview` に配置される。詳細: `F19.1_public_pages_identity_disclosure.md` §7.2。
 
 **visibility 戦略の凡例**:

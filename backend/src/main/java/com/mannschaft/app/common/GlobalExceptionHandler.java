@@ -85,6 +85,12 @@ public class GlobalExceptionHandler {
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
+            // F03.17 キープ（日付未定の予定）: 認可の 2 コードを宣言どおりの status に上書きする。
+            //  - SCHEDULE_KEEP_001 不在・スコープ不一致（IDOR）・非メンバー・応援者を畳んで 404
+            //    （403 だと「そのチームにそのキープがある」ことが漏れる。設計書 §4.6.3）
+            //  - SCHEDULE_KEEP_005 閲覧はできるが編集権限が無い（作成者でも ADMIN でもない）→ 403
+            Map.entry("SCHEDULE_KEEP_001", HttpStatus.NOT_FOUND),
+            Map.entry("SCHEDULE_KEEP_005", HttpStatus.FORBIDDEN),
             // F08.1 マッチング: 認可拒否は 403（Severity.WARN 既定の 400 を上書き）。
             //  - MATCHING_010 権限不足（募集の編集/取り下げ・サービス内認可）
             //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）
