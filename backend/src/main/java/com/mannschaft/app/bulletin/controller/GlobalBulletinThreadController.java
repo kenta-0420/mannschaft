@@ -20,6 +20,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -156,7 +157,12 @@ public class GlobalBulletinThreadController {
      *
      * @param request 作成リクエスト
      * @return 作成されたスレッド（{@code { data: {...} }}・201）
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code createThreadGlobal} は既存の {@code createThread}（VILLAGE/ORG/TEAM/PERSONAL の
+     * 認可・投稿主体検証を内包）へ委譲する。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "スレッド作成（グローバル・JSON）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -176,7 +182,12 @@ public class GlobalBulletinThreadController {
      * @param dataJson スレッド本文・スコープ情報を含む JSON 文字列（{@code data} パート）
      * @param files    添付ファイル（任意・本フェーズ未保存）
      * @return 作成されたスレッド（{@code { data: {...} }}・201）
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code doCreate} 経由で {@code createThreadGlobal}（＝既存 {@code createThread}）に委譲する。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "スレッド作成（グローバル・multipart）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")

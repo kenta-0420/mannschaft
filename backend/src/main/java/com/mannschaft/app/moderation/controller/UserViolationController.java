@@ -8,6 +8,8 @@ import com.mannschaft.app.moderation.dto.ViolationResponse;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
 import com.mannschaft.app.moderation.service.UserViolationService;
 import com.mannschaft.app.moderation.service.WarningReReviewService;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,7 +40,17 @@ public class UserViolationController {
 
     /**
      * 自分の違反履歴を取得する。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code violationService.getViolationHistory} は {@code SecurityUtils.getCurrentUserId()} の
+     * みを検索条件に渡すため、他人の違反履歴へ到達する経路が構造的に無い
+     * （UserViolationController#getMyViolations）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "violationService.getViolationHistory(userId) は SecurityUtils.getCurrentUserId() の"
+                    + "みを検索条件に渡す（UserViolationController#getMyViolations）")
     @GetMapping("/users/me/violations")
     @Operation(summary = "自分の違反履歴取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -49,7 +61,13 @@ public class UserViolationController {
 
     /**
      * WARNING自主修正完了通知。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code UserViolationService#selfCorrect} が actionId から取得した違反の
+     * {@code userId} と操作者を比較し、不一致なら {@code VIOLATION_NOT_FOUND} を投げる。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/warnings/{actionId}/self-correct")
     @Operation(summary = "WARNING自主修正完了通知")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "修正完了")
@@ -63,7 +81,13 @@ public class UserViolationController {
 
     /**
      * WARNING再レビュー依頼。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code WarningReReviewService#createReReview} が actionId から取得した違反の
+     * {@code userId}/{@code reportId} と操作者・request を比較し、不一致なら
+     * {@code VIOLATION_NOT_FOUND} を投げる。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/warnings/{actionId}/re-review")
     @Operation(summary = "WARNING再レビュー依頼")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "依頼作成成功")
