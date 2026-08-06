@@ -129,7 +129,7 @@ class AccountPurgeServiceTest {
         given(oAuthAccountRepository.findByUserId(userId)).willReturn(List.of());
         given(twoFactorAuthRepository.findByUserId(userId)).willReturn(Optional.empty());
         given(webAuthnCredentialRepository.findByUserId(userId)).willReturn(List.of());
-        given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+        given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any())).willReturn(List.of());
     }
 
     @Nested
@@ -269,7 +269,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             service.purgeExpiredAccounts();
@@ -296,7 +296,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
             org.mockito.Mockito.doThrow(new RuntimeException("S3 connection refused"))
                     .when(storageService).delete("exports/100/data.zip");
@@ -404,7 +404,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             // 501文字のエラーメッセージ

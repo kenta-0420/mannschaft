@@ -22,6 +22,7 @@ const emit = defineEmits<{ open: [id: number]; responded: [] }>()
 
 const { t } = useI18n()
 const { responding, respond } = useAttendanceResponder(props.scopeType, props.scopeId)
+const { userTimezone, formatTime } = useDatetime()
 
 // 本人の出欠選択状態。API 失敗時は更新せず既存状態を保つ（楽観更新しない）。
 const localStatus = ref<string | null>(props.event.myAttendance ?? null)
@@ -44,14 +45,14 @@ async function onRespond(status: string) {
 
 const dateLabel = computed(() => {
   if (!props.event.startAt) return ''
-  return dayjs(props.event.startAt).format('M/D (ddd)')
+  return dayjs(props.event.startAt).tz(userTimezone.value).format('M/D (ddd)')
 })
 
 const timeLabel = computed(() => {
   if (props.event.allDay) return t('schedule.list.allDay')
   if (!props.event.startAt) return ''
-  const start = dayjs(props.event.startAt).format('HH:mm')
-  const end = props.event.endAt ? dayjs(props.event.endAt).format('HH:mm') : ''
+  const start = formatTime(props.event.startAt)
+  const end = props.event.endAt ? formatTime(props.event.endAt) : ''
   return end ? `${start} 〜 ${end}` : start
 })
 </script>

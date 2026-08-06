@@ -14,6 +14,7 @@ import com.mannschaft.app.quickmemo.repository.WithdrawJobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,8 @@ public class WithdrawSagaJobBatchService {
 
     @BatchEndpoint(name = "quickmemo-withdraw-saga", description = "退会 SAGA ジョブを 10 分毎に再開・継続実行する")
     @Scheduled(cron = "0 */10 * * * *")
+    // 起動間隔は 10 分。退会 SAGA の継続実行はストレージ削除を伴い 1 ジョブあたり数分かかりうる。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "quickmemoWithdrawSaga", lockAtLeastFor = "PT30S", lockAtMostFor = "PT30M")
     @Transactional
     public void execute() {
         List<WithdrawJobEntity> jobs = withdrawJobRepository.findPendingOrRetryableJobs();

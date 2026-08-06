@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
@@ -42,8 +43,11 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ScheduleScheduledTaskService {
 
-    /** ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleScheduledTaskRepository scheduledTaskRepository;
     private final ObjectMapper objectMapper;

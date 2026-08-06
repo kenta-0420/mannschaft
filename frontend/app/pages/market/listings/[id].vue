@@ -107,9 +107,7 @@ async function applyToListing() {
   }
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString()
-}
+const { formatDateTime: formatDate } = useDatetime()
 
 function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'danger' {
   switch (status) {

@@ -19,6 +19,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
+import com.mannschaft.app.role.dto.UserRoleOnlyDiffRow;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -611,5 +612,29 @@ public class RoleService {
                 throw new BusinessException(RoleErrorCode.ROLE_004);
             }
         }
+    }
+
+    /**
+     * F00.5 フェーズ 3 — {@code user_roles} のうち、対応する {@code memberships} のアクティブ行が
+     * 存在しない件数を返す（write-path 移行漏れの再発兆候）。
+     *
+     * <p>{@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} が membership
+     * ドメインから role ドメインのデータを参照するための Service 窓口。CrossDomainRepositoryDependencyArchTest
+     * が禁止する「他ドメインの Repository を直接注入・参照する」ことを避けるため、role ドメイン内部の
+     * {@code UserRoleRepository} は本サービスの外へ出さない。</p>
+     */
+    public long countUserRolesOnlyDiff() {
+        return userRoleRepository.countOnlyInUserRoles();
+    }
+
+    /**
+     * {@link #countUserRolesOnlyDiff()} が検出した差分のサンプルを {@code pageable} の pageSize 件まで返す。
+     * role ドメイン内部の Repository 射影（{@code UserRoleRepository.OnlyInUserRolesRow}）はドメイン境界を
+     * 越えて公開せず、{@link UserRoleOnlyDiffRow} DTO に詰め替えて返す。
+     */
+    public List<UserRoleOnlyDiffRow> sampleUserRolesOnlyDiff(Pageable pageable) {
+        return userRoleRepository.sampleOnlyInUserRoles(pageable).stream()
+                .map(row -> new UserRoleOnlyDiffRow(row.getUserId(), row.getScopeType(), row.getScopeId()))
+                .toList();
     }
 }

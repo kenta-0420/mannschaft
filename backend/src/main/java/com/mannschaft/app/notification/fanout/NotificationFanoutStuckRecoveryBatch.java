@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,8 @@ public class NotificationFanoutStuckRecoveryBatch {
     /** 毎時 0 分に RUNNING 残骸を PENDING に戻す。 */
     @Scheduled(cron = "0 0 * * * *")
     @SchedulerLock(name = "notificationFanoutStuckRecovery", lockAtMostFor = "PT5M", lockAtLeastFor = "PT10S")
+    @BatchEndpoint(name = "notification-fanout-stuck-recovery",
+            description = "5分以上RUNNINGのまま滞留した通知fan-outジョブをPENDINGに戻し再開可能にする（毎時0分）")
     @Transactional
     public void recover() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(STUCK_THRESHOLD_MINUTES);
