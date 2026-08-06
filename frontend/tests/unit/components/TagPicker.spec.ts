@@ -40,7 +40,8 @@ vi.mock('~/composables/useActionMemoApi', () => ({
 }))
 
 vi.mock('~/stores/useAuthStore', () => ({
-  useAuthStore: () => ({ user: { id: 42 } }),
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
+  useAuthStore: () => ({ user: { id: 42 }, isAuthenticated: false, loadFromStorage: vi.fn() }),
 }))
 
 const mockTags = [
