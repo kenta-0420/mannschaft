@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -24,6 +25,11 @@ import java.util.UUID;
  * の週開始（受信者 TZ の月曜 00:00）と厳密に一致させる。定義がずれると Valkey の
  * フリークエンシーキャップと DB の claim が食い違い、二重の守りが機能しなくなる。</p>
  *
+ * <p>一意制約は Flyway DDL（本番スキーマ）に加え、{@code @Table(uniqueConstraints=...)} でも
+ * 明示する。test プロファイルのスキーマは Flyway ではなく Hibernate {@code ddl-auto=create} が
+ * この Entity 定義から生成するため、Flyway 側にしか制約を書かないと結合テストで一意制約が
+ * 存在しないまま実行され、claim-then-act の並行安全性を偽陽性で「検証できてしまう」。</p>
+ *
  * <p>本 Entity は更新を行わない（作成・存在確認・削除のみ）。実際の claim 確保は
  * {@link com.mannschaft.app.advertising.campaign.service.AdCampaignDeliveryClaimService#tryClaim}
  * が {@code saveAndFlush} でこの Entity を保存し、一意制約違反（{@code DataIntegrityViolationException}）の
@@ -31,7 +37,10 @@ import java.util.UUID;
  * 衝突しても呼び出し元のトランザクションは巻き込まれない）。</p>
  */
 @Entity
-@Table(name = "ad_campaign_delivery_claims")
+@Table(name = "ad_campaign_delivery_claims",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_acdc_campaign_user_week",
+                columnNames = {"campaign_id", "user_id", "week_start"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

@@ -69,6 +69,15 @@ public class AdCampaignDeliveryDispatcher {
      * 例外はキャッチして {@link AdDeliveryOutcome#SKIPPED} を返し、
      * 上位ワーカーが次ユーザーに進めるようにする。</p>
      *
+     * <p>DB claim（{@link AdCampaignDeliveryClaimService#tryClaim}）確保後は、その claim 行が
+     * 別の {@code REQUIRES_NEW} トランザクションで既にコミットされているため、この
+     * {@code deliverForUser} 自体のトランザクションがロールバックされても claim は残る。
+     * したがって claim 確保後（channel 一覧取得〜配信）で発生した例外は必ずこのメソッド内で
+     * 捕捉し、{@link #rollbackFreqCapAndClaim} で claim と FreqCap の両方を返却してから
+     * {@link AdDeliveryOutcome#SKIPPED} を返す。ここを怠ると、そのユーザーは当該週このキャンペーンから
+     * 「配信済み」として除外され続け、実際には一度も配信されないまま対象外になる
+     * （二重配信ではなく配信対象が痩せる側の欠陥）。</p>
+     *
      * @param campaign 配信対象キャンペーン
      * @param userId   配信先ユーザー
      * @return 結果種別（{@link AdDeliveryOutcome}）
@@ -123,37 +132,51 @@ public class AdCampaignDeliveryDispatcher {
             return AdDeliveryOutcome.SKIPPED_ALREADY_CLAIMED;
         }
 
-        // 3) channel 一覧 + locale 解決
-        List<AdMessagingCampaignChannel> allChannels =
-                channelRepository.findByCampaignId(campaign.getId());
-        if (allChannels.isEmpty()) {
-            log.warn("AD_DELIVERY_NO_CHANNELS campaignId={}", campaign.getId());
-            // FreqCap / claim を消費したが配信無し → ロールバック
+        // 3) channel 一覧 + locale 解決 + 4) 各 channel への委譲
+        //    claim は既に別トランザクションでコミット済み（2.5 参照）のため、この区間で
+        //    RuntimeException が飛んでも自動では戻らない。ここで捕捉せず外へ通過させると、
+        //    そのユーザーは当該週このキャンペーンから claim だけが残って永久に配信対象外になる
+        //    （二重配信ではなく「配られなくなる」側の欠陥）。必ずここで捕捉し、claim / FreqCap を
+        //    返却してから SKIPPED を返す（Javadoc の「例外はキャッチして SKIPPED を返す」を
+        //    この区間でも守る）。
+        try {
+            List<AdMessagingCampaignChannel> allChannels =
+                    channelRepository.findByCampaignId(campaign.getId());
+            if (allChannels.isEmpty()) {
+                log.warn("AD_DELIVERY_NO_CHANNELS campaignId={}", campaign.getId());
+                // FreqCap / claim を消費したが配信無し → ロールバック
+                rollbackFreqCapAndClaim(userId, campaign, weekStart);
+                return AdDeliveryOutcome.SKIPPED;
+            }
+            String userLocale = resolveUserLocale(userId);
+
+            Map<AdChannelType, AdMessagingCampaignChannel> byType =
+                    pickLocaleChannelByType(allChannels, userLocale);
+
+            // 順序: ANNOUNCEMENT → EMAIL → PUSH → BANNER
+            int delivered = 0;
+            delivered += deliverChannel(AdChannelType.ANNOUNCEMENT, byType, pref,
+                    pref.getAcceptAnnouncementAds(), campaign, userId);
+            delivered += deliverChannel(AdChannelType.EMAIL, byType, pref,
+                    pref.getAcceptEmailAds(), campaign, userId);
+            delivered += deliverChannel(AdChannelType.PUSH, byType, pref,
+                    pref.getAcceptPushAds(), campaign, userId);
+            delivered += deliverChannel(AdChannelType.BANNER, byType, pref,
+                    pref.getAcceptBannerAds(), campaign, userId);
+
+            if (delivered == 0) {
+                // 全チャネル skip だった場合は FreqCap / claim を両方返す
+                rollbackFreqCapAndClaim(userId, campaign, weekStart);
+                return AdDeliveryOutcome.SKIPPED;
+            }
+            return AdDeliveryOutcome.DELIVERED;
+        } catch (RuntimeException ex) {
+            log.error("AD_DELIVERY_POST_CLAIM_ERROR claim確保後に例外発生。claim/FreqCapを返却してスキップ "
+                            + "userId={} campaignId={} weekStart={}",
+                    userId, campaign.getId(), weekStart, ex);
             rollbackFreqCapAndClaim(userId, campaign, weekStart);
             return AdDeliveryOutcome.SKIPPED;
         }
-        String userLocale = resolveUserLocale(userId);
-
-        Map<AdChannelType, AdMessagingCampaignChannel> byType =
-                pickLocaleChannelByType(allChannels, userLocale);
-
-        // 4) 各 channel に委譲（順序: ANNOUNCEMENT → EMAIL → PUSH → BANNER）
-        int delivered = 0;
-        delivered += deliverChannel(AdChannelType.ANNOUNCEMENT, byType, pref,
-                pref.getAcceptAnnouncementAds(), campaign, userId);
-        delivered += deliverChannel(AdChannelType.EMAIL, byType, pref,
-                pref.getAcceptEmailAds(), campaign, userId);
-        delivered += deliverChannel(AdChannelType.PUSH, byType, pref,
-                pref.getAcceptPushAds(), campaign, userId);
-        delivered += deliverChannel(AdChannelType.BANNER, byType, pref,
-                pref.getAcceptBannerAds(), campaign, userId);
-
-        if (delivered == 0) {
-            // 全チャネル skip だった場合は FreqCap / claim を両方返す
-            rollbackFreqCapAndClaim(userId, campaign, weekStart);
-            return AdDeliveryOutcome.SKIPPED;
-        }
-        return AdDeliveryOutcome.DELIVERED;
     }
 
     // ----------------------------------------------------------------

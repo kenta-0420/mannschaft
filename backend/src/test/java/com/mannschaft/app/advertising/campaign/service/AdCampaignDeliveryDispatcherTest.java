@@ -251,6 +251,27 @@ class AdCampaignDeliveryDispatcherTest {
     }
 
     @Test
+    @DisplayName("claim確保後（channel一覧取得）で例外が起きても claim/FreqCap を返却してから SKIPPED を返す（配信対象が痩せる欠陥の再発防止）")
+    void deliverForUser_exceptionAfterClaim_releasesClaimAndFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
+        // claim 確保後（channel 一覧取得）で DB 接続断等を想定した例外を発生させる
+        given(channelRepository.findByCampaignId(campaign.getId()))
+                .willThrow(new org.springframework.dao.DataAccessResourceFailureException("DB接続断"));
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
+        verify(claimService, times(1)).releaseClaim(eq(campaign.getId()), eq(42L), any());
+        verify(frequencyCapService, times(1)).releaseSlot(eq(42L), eq(100L), any());
+    }
+
+    @Test
     @DisplayName("fail-closed: FreqCap 判定で例外（Valkey 接続異常等）が起きたら配信せず SKIPPED_FREQ_CAP_UNAVAILABLE を返す")
     void deliverForUser_freqcap_error_failsClosed() {
         AdMessagingCampaign campaign = buildCampaign();
