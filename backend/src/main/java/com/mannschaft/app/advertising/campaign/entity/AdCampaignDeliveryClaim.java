@@ -30,11 +30,19 @@ import java.util.UUID;
  * この Entity 定義から生成するため、Flyway 側にしか制約を書かないと結合テストで一意制約が
  * 存在しないまま実行され、claim-then-act の並行安全性を偽陽性で「検証できてしまう」。</p>
  *
- * <p>本 Entity は更新を行わない（作成・存在確認・削除のみ）。実際の claim 確保は
+ * <p>本 Entity は更新を行わない（存在確認・削除・JPQL 経由の一覧取得のみに使う）。
+ * <b>claim の確保自体はこの Entity の {@code save} を経由しない</b>。
  * {@link com.mannschaft.app.advertising.campaign.service.AdCampaignDeliveryClaimService#tryClaim}
- * が {@code saveAndFlush} でこの Entity を保存し、一意制約違反（{@code DataIntegrityViolationException}）の
- * 有無で成否を判定する（{@code REQUIRES_NEW} の専用トランザクション内で捕捉するため、
- * 衝突しても呼び出し元のトランザクションは巻き込まれない）。</p>
+ * は {@link com.mannschaft.app.advertising.campaign.repository.AdCampaignDeliveryClaimRepository#tryClaim}
+ * のネイティブ {@code INSERT IGNORE} を経由し、影響行数（0 または 1）で成否を判定する
+ * （例外は使わない）。当初は {@code save} + {@code DataIntegrityViolationException} 捕捉で
+ * 実装していたが、一意制約違反はトランザクションを rollback-only に印付けるため、
+ * {@code REQUIRES_NEW} 内で例外を捕まえて正常 return してもコミット時に
+ * {@code UnexpectedRollbackException} が飛び原理的に成立しなかった（詳細は
+ * {@code AdCampaignDeliveryClaimRepository} / {@code AdCampaignDeliveryClaimService} の Javadoc）。
+ * ネイティブ INSERT は JPA の {@code @GeneratedValue}/{@code @PrePersist} ライフサイクルを経由しない
+ * ため、{@code id} は呼び出し側が {@code UuidV7Entity} と同じ採番機構で事前生成し、
+ * {@code created_at} は DDL の {@code DEFAULT CURRENT_TIMESTAMP} に任せる。</p>
  */
 @Entity
 @Table(name = "ad_campaign_delivery_claims",
