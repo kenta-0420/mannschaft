@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 /**
  * フォーム提出コントローラー。提出のCRUD・ステータス遷移APIを提供する。
@@ -90,6 +91,8 @@ public class FormSubmissionController {
     /**
      * 提出を更新する。
      */
+    @AuthorizedInService("FormSubmissionService#updateSubmission は findByIdAndSubmittedBy で"
+        + "submissionId の提出者を SecurityUtils.getCurrentUserId() と照合してから更新する")
     @PutMapping("/{submissionId}")
     @Operation(summary = "提出更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -109,6 +112,8 @@ public class FormSubmissionController {
      * <p>F05.7 Phase 11 第一陣: PUT による update + submitImmediately=true 経路の補完として、
      * 既存の DRAFT 提出に対して値を変更せず submit のみ行う専用 API。</p>
      */
+    @AuthorizedInService("FormSubmissionService#submit は findByIdAndSubmittedBy で"
+        + "submissionId の提出者を SecurityUtils.getCurrentUserId() と照合してから提出する")
     @PostMapping("/{submissionId}/submit")
     @Operation(summary = "提出実行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "提出成功")
@@ -127,6 +132,8 @@ public class FormSubmissionController {
      * <p>field_key に "signature" を含む場合は署名扱い（最大 500KB / image/png のみ）。
      * それ以外は一般ファイル扱い（最大 10MB / pdf, jpeg, png, gif, webp）。</p>
      */
+    @AuthorizedInService("FormSubmissionService#presignUploadUrl は findByIdAndSubmittedBy で"
+        + "submissionId の提出者を SecurityUtils.getCurrentUserId() と照合してから URL を発行する")
     @PostMapping("/{submissionId}/upload-url")
     @Operation(summary = "添付 Pre-signed URL 発行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL 発行成功")
@@ -143,6 +150,8 @@ public class FormSubmissionController {
     /**
      * 提出を削除する。
      */
+    @AuthorizedInService("FormSubmissionService#deleteSubmission は findByIdAndSubmittedBy で"
+        + "submissionId の提出者を SecurityUtils.getCurrentUserId() と照合してから削除する")
     @DeleteMapping("/{submissionId}")
     @Operation(summary = "提出削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")

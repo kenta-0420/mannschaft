@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 検索履歴・保存済みクエリコントローラー。検索履歴管理および保存済みクエリ管理APIを提供する。
@@ -37,6 +39,8 @@ public class SearchHistoryController {
     /**
      * 検索履歴一覧を取得する。
      */
+    @SelfScopedEndpoint("SearchHistoryService#listHistory は SecurityUtils.getCurrentUserId() の"
+        + "検索履歴（findByUserIdOrderBySearchedAtDesc）のみを返す")
     @GetMapping("/recent")
     @Operation(summary = "検索履歴一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -48,6 +52,8 @@ public class SearchHistoryController {
     /**
      * 検索履歴を全削除する。
      */
+    @SelfScopedEndpoint("SearchHistoryService#deleteAllHistory は"
+        + "SecurityUtils.getCurrentUserId() の履歴のみ deleteByUserId で削除する")
     @DeleteMapping("/recent")
     @Operation(summary = "検索履歴全削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -59,6 +65,8 @@ public class SearchHistoryController {
     /**
      * 検索履歴を個別削除する。
      */
+    @AuthorizedInService("SearchHistoryService#deleteHistory は findByIdAndUserId で"
+        + "historyId の所有者を SecurityUtils.getCurrentUserId() と照合してから削除する")
     @DeleteMapping("/recent/{historyId}")
     @Operation(summary = "検索履歴個別削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -70,6 +78,8 @@ public class SearchHistoryController {
     /**
      * 保存済みクエリ一覧を取得する。
      */
+    @SelfScopedEndpoint("SearchHistoryService#listSavedQueries は"
+        + "SecurityUtils.getCurrentUserId() のクエリのみ findByUserIdOrderByCreatedAtDesc で返す")
     @GetMapping("/saved")
     @Operation(summary = "保存済みクエリ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -81,6 +91,8 @@ public class SearchHistoryController {
     /**
      * 検索クエリを保存する。
      */
+    @SelfScopedEndpoint("SearchHistoryService#saveQuery は"
+        + "SecurityUtils.getCurrentUserId() を owner として保存するのみで他人のデータに触れない")
     @PostMapping("/saved")
     @Operation(summary = "検索クエリ保存")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "保存成功")

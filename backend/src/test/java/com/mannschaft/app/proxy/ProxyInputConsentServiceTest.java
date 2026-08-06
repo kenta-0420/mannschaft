@@ -187,6 +187,33 @@ class ProxyInputConsentServiceTest {
                     anyString(), anyLong(), anyLong(), any(), anyLong(),
                     any(), any(), any(), anyString());
         }
+
+        @Test
+        @DisplayName("権限チェック → AccessControlService#checkAdminOrAbove を org スコープで必ず呼ぶ"
+            + "（認可根治 Wave6 ロットD: 旧実装は本チェックが欠落し、DEPUTY_ADMIN 未満の任意の"
+            + "認証済みユーザーが任意組織向けの同意書を作成できた）")
+        void shouldCheckAdminOrAboveBeforeSaving() {
+            CreateProxyConsentCommand cmd = buildValidCommand();
+            given(consentRepository.existsActiveConsent(any(), any(), any(), any())).willReturn(false);
+            given(consentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.createConsent(REQUEST_USER_ID, ORG_ID, cmd);
+
+            verify(accessControlService).checkAdminOrAbove(REQUEST_USER_ID, ORG_ID, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("権限不足（DEPUTY_ADMIN 未満）→ BusinessException が伝播し保存されない")
+        void shouldPropagateExceptionWhenNotAuthorized() {
+            CreateProxyConsentCommand cmd = buildValidCommand();
+            org.mockito.Mockito.doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(REQUEST_USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> service.createConsent(REQUEST_USER_ID, ORG_ID, cmd))
+                    .isInstanceOf(BusinessException.class);
+
+            verify(consentRepository, never()).save(any());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

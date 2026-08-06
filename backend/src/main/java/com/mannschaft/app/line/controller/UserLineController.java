@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * ユーザーLINE連携コントローラー。
@@ -29,6 +30,8 @@ public class UserLineController {
     /**
      * LINE連携状態を取得する。
      */
+    @SelfScopedEndpoint("UserLineConnectionService#getStatus は"
+        + "SecurityUtils.getCurrentUserId() 自身の連携状態のみを返す")
     @GetMapping("/status")
     public ApiResponse<UserLineStatusResponse> getStatus() {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -38,6 +41,8 @@ public class UserLineController {
     /**
      * LINEアカウントをリンクする。
      */
+    @SelfScopedEndpoint("UserLineConnectionService#link は"
+        + "SecurityUtils.getCurrentUserId() 自身にのみ LINE アカウントを紐付ける")
     @PostMapping("/link")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<UserLineStatusResponse> link(
@@ -49,6 +54,8 @@ public class UserLineController {
     /**
      * LINEアカウントリンクを解除する。
      */
+    @SelfScopedEndpoint("UserLineConnectionService#unlink は"
+        + "SecurityUtils.getCurrentUserId() 自身の連携のみを解除する")
     @DeleteMapping("/link")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlink() {

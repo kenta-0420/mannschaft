@@ -5,6 +5,7 @@ import com.mannschaft.app.template.dto.ModuleSummaryResponse;
 import com.mannschaft.app.template.dto.TemplateResponse;
 import com.mannschaft.app.template.dto.TemplateSummaryResponse;
 import com.mannschaft.app.template.service.TemplateService;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,8 @@ public class TemplateController {
     /**
      * アクティブなテンプレート一覧を取得する。
      */
+    @AuthorizedByPathConfig("SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で"
+        + "保護され、TeamTemplateEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す")
     @GetMapping
     @Operation(summary = "テンプレート一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -40,6 +43,8 @@ public class TemplateController {
     /**
      * テンプレート詳細を取得する。
      */
+    @AuthorizedByPathConfig("SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で"
+        + "保護され、TeamTemplateEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す")
     @GetMapping("/{id}")
     @Operation(summary = "テンプレート詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -50,6 +55,8 @@ public class TemplateController {
     /**
      * テンプレートに紐付くモジュール一覧を取得する。
      */
+    @AuthorizedByPathConfig("SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で"
+        + "保護され、TeamTemplateEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す")
     @GetMapping("/{id}/modules")
     @Operation(summary = "テンプレートモジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
