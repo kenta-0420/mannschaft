@@ -553,6 +553,19 @@ class ScheduleKeepTeamContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("AC-16: チームSUPPORTERのキープ作成POSTは404")
+        void AC16_SUPPORTERの作成POSTは404() throws Exception {
+            // 作成も一覧と同じ requireScopeAccess を入口に持つ。一覧が SUPPORTER を通していた
+            // 以上、同じ入口の作成も通っていないことを実測で押さえる（AC の抜けを塞ぐ）。
+            setAuthentication(supporterId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedule-keeps", teamSlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "SUPPORTERは作れないはず"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_001"));
+        }
+
+        @Test
         @DisplayName("AC-16b: GUEST（当該チームに一切所属しない認証済み利用者）の単体GETは404")
         void AC16b_GUESTの単体GETは404() throws Exception {
             ScheduleKeepEntity keep = saveKeep(teamId, memberId, "GUESTには見えないはず", ScheduleKeepStatus.KEPT, 0);
