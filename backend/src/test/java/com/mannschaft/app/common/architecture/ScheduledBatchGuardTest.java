@@ -15,10 +15,21 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
+import org.springframework.scheduling.support.CronExpression;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 
@@ -36,7 +47,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *
  * <p>本番人は、その規約を CI で機械的に強制する。</p>
  *
- * <h2>本番人が固定する 3 つの不変条件</h2>
+ * <h2>本番人が固定する 4 つの不変条件</h2>
  * <ol>
  *   <li><b>{@code @Scheduled} ⇒ {@code @SchedulerLock} 必須</b>
  *       （例外は {@link PodLocalScheduled} を付けた監査済みのもののみ）。
@@ -52,19 +63,30 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       （例外は {@link BatchEndpointExempt} を付けた監査済みのもののみ）。
  *       {@link BatchEndpoint} が無いバッチは名前で起動できず実行履歴も残らないため、
  *       実機検証も障害調査もできない。</li>
+ *   <li><b>短周期バッチは {@code lockAtMostFor} > 起動間隔</b>（issue #2601 Phase 2）。
+ *       {@code lockAtMostFor} が起動間隔以下だと、1 回の実行がその時間を超えた瞬間に
+ *       ロックが失効し、次の起動が前の実行と重なる。<b>同値が最も危険</b>で、
+ *       実行がわずかに超過しただけで重なる。ルール 2 が「値を書かせる」ところまでしか
+ *       強制できないのに対し、本ルールは<b>書かれた値が実際に足りているか</b>を検証する。
+ *       設定だけで起きる事故であり、コードを読んでも気づけないため機械的に弾く。
+ *       適用範囲を高頻度（起動間隔 1 時間以下）に限る理由は
+ *       {@link #HIGH_FREQUENCY_THRESHOLD} の Javadoc を参照。</li>
  * </ol>
  *
  * <h2>発足時点の状態（試練＝テスト先行のため red で始まる）</h2>
  * <p>ルール 1 とルール 3 は<b>発足時点で違反が残っている</b>。これは意図した状態である。
  * 受け入れ条件から先に失敗するテストを置き（試練）、実装＝既存バッチの是正（Phase 1-c / Phase 3）で
  * green 化する、というプロジェクトの開発フローに従っている。
- * ルール 2 は発足時点で違反 0 件（green 発足）であり、目的は<b>新規流入の防止</b>である。</p>
+ * ルール 2 は発足時点で違反 0 件（green 発足）であり、目的は<b>新規流入の防止</b>である。
+ * ルール 4（Phase 2）も同じく試練＝ red 先行で発足し、既存 21 件の是正で green 化した
+ * （除外リストは設けていない）。</p>
  *
  * <h2>green 発足するルールの「偽陰性ゼロ」証明</h2>
  * <p>「違反 0 件」は<b>番人が動いていることの証明にはならない</b> ——
  * 判定ロジックが常に空リストを返す壊れ方をしていても、本番走査は緑のままだからである。
  * よって本番人の判定ロジック（{@link #findMissingSchedulerLock}、
- * {@link #findMissingLockAtMostFor}、{@link #findMissingBatchEndpoint}）は
+ * {@link #findMissingLockAtMostFor}、{@link #findMissingBatchEndpoint}、
+ * {@link #findInsufficientLockAtMostFor}）は
  * すべて package-visible な static ヘルパへ切り出してあり、
  * メタテスト {@link ScheduledBatchGuardConditionTest} が
  * {@code architecture/fixtures/} の意図的違反 fixture に対して<b>同じヘルパ</b>を評価する
@@ -137,9 +159,363 @@ class ScheduledBatchGuardTest {
                 + "@BatchEndpointExempt で理由とともに明示すること（issue #2601）")
             .as("@Scheduled methods should declare @BatchEndpoint for operability");
 
+    // ------------------------------------------------------------------
+    // ルール 4: 高頻度バッチの lockAtMostFor は実行間隔を上回ること
+    // ------------------------------------------------------------------
+
+    @ArchTest
+    static final ArchRule lock_at_most_for_should_exceed_schedule_interval =
+        methods().that().areAnnotatedWith(SchedulerLock.class)
+            .should(satisfy("declare a lockAtMostFor longer than the schedule interval",
+                ScheduledBatchGuardTest::findInsufficientLockAtMostFor))
+            .because("実行間隔以下の lockAtMostFor は、処理が長引いた瞬間にロックが失効し、"
+                + "次の周回と重なって同じ処理が並走する。設定だけで起きる事故であり"
+                + "コードを読んでも気づけないため機械的に弾く（issue #2601）")
+            .as("@SchedulerLock lockAtMostFor should exceed the schedule interval for high-frequency batches");
+
     // ══════════════════════════════════════════════════════════════════
     // 判定ロジック（メタテストと共有する単一正準）
     // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * 本ルールを適用する「高頻度」の境界（実行間隔がこれ以下のバッチだけを対象にする）。
+     *
+     * <p><b>なぜ全バッチに一律適用しないのか</b> —— 重なりが起きるのは
+     * 「実行がロック期限を超え、<b>かつ</b>その最中に次の起動が来る」ときだけである。
+     * 日次・週次・月次バッチは次の起動まで 24 時間以上あるため、
+     * {@code lockAtMostFor} が間隔より短くても重なりは起こらない。
+     * むしろ日次バッチに 24 時間超のロックを強いると、Pod が異常終了したときに
+     * <b>バッチが丸一日停止する</b>（規約 §30.1 が「日次・週次・月次は間隔ではなく
+     * 最悪ケースの処理時間から決める」としているのはこのためである）。
+     * よって構造的な保証（{@code lockAtMostFor > 実行間隔}）を機械的に要求するのは、
+     * 規約が「間隔の 3 倍を基本とする」と定めている<b>短周期バッチ</b>に限る。</p>
+     */
+    static final Duration HIGH_FREQUENCY_THRESHOLD = Duration.ofHours(1);
+
+    /** cron の最小発火間隔を求めるときの探索上限（発火回数）。 */
+    private static final int CRON_PROBE_MAX_FIRINGS = 5_000;
+
+    /** cron の最小発火間隔を求めるときの探索上限（暦の窓。月次・曜日指定を必ず 1 周させる長さ）。 */
+    private static final Duration CRON_PROBE_HORIZON = Duration.ofDays(400);
+
+    /** cron 探索の起点（曜日・月末を偏りなく踏むよう固定日時を使い、判定を実行時刻に依存させない）。 */
+    private static final LocalDateTime CRON_PROBE_START = LocalDateTime.of(2027, 1, 1, 0, 0);
+
+    /** {@code ${prop}} / {@code ${prop:default}} 形式のプロパティプレースホルダ。 */
+    private static final Pattern PLACEHOLDER = Pattern.compile("^\\$\\{([^:}]+)(?::(.*))?}$", Pattern.DOTALL);
+
+    /** ShedLock の ISO-8601 表記判定（{@code StringToDurationConverter} と同一）。 */
+    private static final Pattern ISO_8601_DURATION = Pattern.compile("^[+\\-]?P.*$");
+
+    /** ShedLock の簡易表記判定（{@code StringToDurationConverter} と同一）。 */
+    private static final Pattern SIMPLE_DURATION = Pattern.compile("^([+\\-]?\\d+)([a-zA-Z]{0,2})$");
+
+    /** ShedLock の簡易表記の単位（{@code StringToDurationConverter} と同一。<b>単位省略はミリ秒</b>）。 */
+    private static final Map<String, ChronoUnit> SHEDLOCK_UNITS = Map.of(
+        "us", ChronoUnit.MICROS,
+        "ns", ChronoUnit.NANOS,
+        "ms", ChronoUnit.MILLIS,
+        "s", ChronoUnit.SECONDS,
+        "m", ChronoUnit.MINUTES,
+        "h", ChronoUnit.HOURS,
+        "d", ChronoUnit.DAYS,
+        "", ChronoUnit.MILLIS);
+
+    /**
+     * {@code lockAtMostFor} が実行間隔を上回っていない高頻度バッチを違反として返す。
+     *
+     * <p>ルール 1（ロック必須）・ルール 2（{@code lockAtMostFor} 明示必須）が担当する形は
+     * ここでは鳴らさない（同じ欠陥で 2 つのルールが二重に鳴ると、どれを直せばよいか分からなくなる）。</p>
+     *
+     * @param method 検査対象メソッド
+     * @return 違反の説明文リスト（空なら合格）
+     */
+    static List<String> findInsufficientLockAtMostFor(JavaMethod method) {
+        if (!isScheduled(method) || !method.isAnnotatedWith(SchedulerLock.class)) {
+            return List.of();
+        }
+        SchedulerLock lock = method.getAnnotationOfType(SchedulerLock.class);
+        if (lock.lockAtMostFor().isBlank()) {
+            return List.of(); // ルール 2 の担当
+        }
+
+        String resolvedLock = resolvePlaceholder(lock.lockAtMostFor());
+        Duration lockAtMostFor = resolvedLock == null ? null : parseShedLockDuration(resolvedLock);
+        if (lockAtMostFor == null) {
+            return List.of(String.format(
+                "%s の lockAtMostFor = \"%s\" を CI から解釈できません。"
+                    + "解釈できない値は実行間隔との比較ができず、番人が何も守れなくなります。"
+                    + "ISO-8601（\"PT10M\"）か ShedLock の簡易表記（\"10m\"）で、"
+                    + "プレースホルダを使う場合は既定値付き（\"${prop:PT10M}\"）で書いてください。(%s)",
+                method.getFullName(), lock.lockAtMostFor(), method.getSourceCodeLocation()));
+        }
+
+        List<String> violations = new ArrayList<>();
+        for (Scheduled scheduled : scheduleAnnotations(method)) {
+            Cadence cadence = cadenceOf(scheduled);
+            if (cadence.interval() == null) {
+                violations.add(String.format(
+                    "%s の起動間隔を CI から確認できません（%s）。"
+                        + "間隔が分からなければ lockAtMostFor が足りているかを機械的に検証できず、"
+                        + "『cron を外部プロパティへ追い出す』が番人の抜け道になります。"
+                        + "既定値付きプレースホルダ（\"${prop:0 0 3 * * *}\"）で"
+                        + "本番の起動間隔がコード上から読めるようにしてください。(%s)",
+                    method.getFullName(), cadence.undecidableReason(), method.getSourceCodeLocation()));
+                continue;
+            }
+            if (cadence.interval().compareTo(HIGH_FREQUENCY_THRESHOLD) > 0) {
+                // 低頻度バッチ（日次・週次・月次）は次の起動まで十分間隔があるため重なりが起きない。
+                // これらの lockAtMostFor は最悪ケースの処理時間から決める（規約 §30.1）。
+                continue;
+            }
+            if (lockAtMostFor.compareTo(cadence.interval()) > 0) {
+                continue;
+            }
+            violations.add(String.format(
+                "%s は %s（起動間隔 %s）に対して lockAtMostFor = \"%s\"（%s）であり、"
+                    + "実行間隔を上回っていません。1 回の実行が lockAtMostFor を超えた時点でロックが失効し、"
+                    + "次の起動と重なって同じ処理が並走します（同値が最も危険です）。"
+                    + "短周期バッチは起動間隔の 3 倍を基本に lockAtMostFor を設定してください"
+                    + "（規約: backend/.claudecode.md §30.1）。(%s)",
+                method.getFullName(), cadence.description(), format(cadence.interval()),
+                lock.lockAtMostFor(), format(lockAtMostFor), method.getSourceCodeLocation()));
+        }
+        return violations;
+    }
+
+    /**
+     * メソッドに付いた {@code @Scheduled} をすべて返す（{@link Schedules} コンテナ込み）。
+     *
+     * @param method 検査対象メソッド
+     * @return スケジュール指定の一覧
+     */
+    static List<Scheduled> scheduleAnnotations(JavaMethod method) {
+        if (method.isAnnotatedWith(Schedules.class)) {
+            return List.of(method.getAnnotationOfType(Schedules.class).value());
+        }
+        if (method.isAnnotatedWith(Scheduled.class)) {
+            return List.of(method.getAnnotationOfType(Scheduled.class));
+        }
+        return List.of();
+    }
+
+    /**
+     * 1 つの {@code @Scheduled} から起動間隔を求める。
+     *
+     * <p>{@code cron} / {@code fixedRate} / {@code fixedDelay} の 3 形式すべてに対応する
+     * （文字列版 {@code fixedRateString} / {@code fixedDelayString} を含む）。
+     * 判定できない場合は理由付きの「判定不能」を返し、呼び出し側が安全側（違反）に倒す。</p>
+     *
+     * @param scheduled スケジュール指定
+     * @return 起動間隔、または判定不能の理由
+     */
+    static Cadence cadenceOf(Scheduled scheduled) {
+        if (!scheduled.cron().isBlank()) {
+            String cron = scheduled.cron();
+            if (Scheduled.CRON_DISABLED.equals(cron)) {
+                return Cadence.undecidable("cron = \"-\" で無効化されている");
+            }
+            String resolved = resolvePlaceholder(cron);
+            if (resolved == null) {
+                return Cadence.undecidable("cron = \"" + cron + "\" が既定値の無いプレースホルダである");
+            }
+            Duration interval = minimumCronInterval(resolved, resolveZone(scheduled.zone()));
+            if (interval == null) {
+                return Cadence.undecidable("cron 式 \"" + resolved + "\" を解釈できない");
+            }
+            return Cadence.of(interval, "cron = \"" + resolved + "\"");
+        }
+        ChronoUnit unit = scheduled.timeUnit().toChronoUnit();
+        if (scheduled.fixedRate() >= 0) {
+            return Cadence.of(Duration.of(scheduled.fixedRate(), unit),
+                "fixedRate = " + scheduled.fixedRate());
+        }
+        if (scheduled.fixedDelay() >= 0) {
+            return Cadence.of(Duration.of(scheduled.fixedDelay(), unit),
+                "fixedDelay = " + scheduled.fixedDelay());
+        }
+        if (!scheduled.fixedRateString().isBlank()) {
+            return cadenceOfDurationString(scheduled.fixedRateString(), unit, "fixedRateString");
+        }
+        if (!scheduled.fixedDelayString().isBlank()) {
+            return cadenceOfDurationString(scheduled.fixedDelayString(), unit, "fixedDelayString");
+        }
+        return Cadence.undecidable("cron / fixedRate / fixedDelay のいずれも指定されていない");
+    }
+
+    /** {@code fixedRateString} / {@code fixedDelayString} を Spring と同じ規則で解釈する。 */
+    private static Cadence cadenceOfDurationString(String raw, ChronoUnit unit, String attribute) {
+        String resolved = resolvePlaceholder(raw);
+        if (resolved == null) {
+            return Cadence.undecidable(attribute + " = \"" + raw + "\" が既定値の無いプレースホルダである");
+        }
+        Duration interval = parseSpringDurationString(resolved, unit);
+        if (interval == null) {
+            return Cadence.undecidable(attribute + " = \"" + resolved + "\" を解釈できない");
+        }
+        return Cadence.of(interval, attribute + " = \"" + resolved + "\"");
+    }
+
+    /**
+     * Spring の {@code fixedRateString} / {@code fixedDelayString} と同じ規則で期間を解釈する。
+     *
+     * <p>ISO-8601（{@code "PT30S"}）ならそのまま、数値のみなら {@code @Scheduled#timeUnit()}
+     * （既定はミリ秒）で解釈する。ShedLock 側とは規則が異なるため別実装にしている
+     * （ここを取り違えると「30 分と 30 ミリ秒」を取り違え、比較が丸ごと嘘になる）。</p>
+     *
+     * @param raw 解決済みの文字列
+     * @param unit 数値のみの場合に適用する単位
+     * @return 期間。解釈できない場合は {@code null}
+     */
+    static Duration parseSpringDurationString(String raw, ChronoUnit unit) {
+        String value = raw.strip();
+        try {
+            if (value.startsWith("P") || value.startsWith("-P")) {
+                return Duration.parse(value);
+            }
+            return Duration.of(Long.parseLong(value), unit);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * ShedLock が {@code lockAtMostFor} に受け付ける期間表記を解釈する。
+     *
+     * <p>ShedLock 6.2.0 の {@code net.javacrumbs.shedlock.spring.aop.StringToDurationConverter}
+     * と<b>同一の規則</b>を実装している: ISO-8601（{@code "PT5M"}）か、
+     * {@code <数値><単位>}（単位は {@code ns/us/ms/s/m/h/d}、<b>省略時はミリ秒</b>）。
+     * 「単位省略＝ミリ秒」を取り違えると {@code "300000"} を 300000 分と読んでしまい、
+     * 実際には不足しているロックを合格と判定する（＝番人が静かに嘘をつく）。</p>
+     *
+     * @param raw 解決済みの文字列
+     * @return 期間。解釈できない場合は {@code null}
+     */
+    static Duration parseShedLockDuration(String raw) {
+        String value = raw.strip();
+        try {
+            if (ISO_8601_DURATION.matcher(value).matches()) {
+                return Duration.parse(value);
+            }
+            Matcher matcher = SIMPLE_DURATION.matcher(value);
+            if (!matcher.matches()) {
+                return null;
+            }
+            ChronoUnit unit = SHEDLOCK_UNITS.get(matcher.group(2).toLowerCase(Locale.ROOT));
+            if (unit == null) {
+                return null;
+            }
+            return Duration.of(Long.parseLong(matcher.group(1)), unit);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * cron 式の<b>最小</b>発火間隔を求める。
+     *
+     * <p>cron 式を自前で構文解析すると、{@code 0 0/30 * * * *} のような刻み記法や
+     * 曜日・月末指定を取りこぼして「間隔が長い」と誤判定しやすい（＝違反の見逃し）。
+     * よって Spring 本体の {@link CronExpression} に実際の発火時刻を列挙させ、
+     * 隣り合う発火の差の最小値を採る。1 日に複数回発火する形（{@code 0 0,30 3 * * *}）で
+     * 最長の間隔を採ると危険な方を見逃すため、必ず<b>最小</b>を採る。</p>
+     *
+     * <p>探索は 5,000 回または 400 日の窓で打ち切る
+     * （月次・曜日指定を 1 周させるには十分で、毎秒起動のような式でも最小間隔は
+     * 最初の数回で確定する）。</p>
+     *
+     * @param cron cron 式（プレースホルダ解決済み）
+     * @param zone 評価に用いるタイムゾーン
+     * @return 最小発火間隔。解釈できない・発火しない場合は {@code null}
+     */
+    static Duration minimumCronInterval(String cron, ZoneId zone) {
+        CronExpression expression;
+        try {
+            expression = CronExpression.parse(cron.strip());
+        } catch (RuntimeException ex) {
+            return null;
+        }
+        ZonedDateTime start = CRON_PROBE_START.atZone(zone);
+        ZonedDateTime limit = start.plus(CRON_PROBE_HORIZON);
+        ZonedDateTime current = expression.next(start);
+        if (current == null) {
+            return null;
+        }
+        Duration minimum = null;
+        for (int i = 0; i < CRON_PROBE_MAX_FIRINGS && current.isBefore(limit); i++) {
+            ZonedDateTime next = expression.next(current);
+            if (next == null) {
+                break;
+            }
+            Duration gap = Duration.between(current, next);
+            if (minimum == null || gap.compareTo(minimum) < 0) {
+                minimum = gap;
+            }
+            current = next;
+        }
+        return minimum;
+    }
+
+    /**
+     * {@code ${prop}} / {@code ${prop:default}} を「コード上から読める値」に解決する。
+     *
+     * @param raw 注釈に書かれた生の値
+     * @return プレースホルダでなければそのまま、既定値付きなら既定値、既定値が無ければ {@code null}
+     */
+    static String resolvePlaceholder(String raw) {
+        String value = raw.strip();
+        Matcher matcher = PLACEHOLDER.matcher(value);
+        if (!matcher.matches()) {
+            return value;
+        }
+        return matcher.group(2);
+    }
+
+    /** {@code @Scheduled#zone()} を解決する（未指定・解決不能なら UTC で評価を固定する）。 */
+    private static ZoneId resolveZone(String zone) {
+        String resolved = resolvePlaceholder(zone == null ? "" : zone);
+        if (resolved == null || resolved.isBlank()) {
+            return ZoneOffset.UTC;
+        }
+        try {
+            return ZoneId.of(resolved);
+        } catch (RuntimeException ex) {
+            return ZoneOffset.UTC;
+        }
+    }
+
+    /** 違反メッセージ用に期間を人間可読へ整形する。 */
+    private static String format(Duration duration) {
+        long seconds = duration.getSeconds();
+        if (seconds % 86_400 == 0) {
+            return (seconds / 86_400) + " 日";
+        }
+        if (seconds % 3_600 == 0) {
+            return (seconds / 3_600) + " 時間";
+        }
+        if (seconds % 60 == 0) {
+            return (seconds / 60) + " 分";
+        }
+        return seconds + " 秒";
+    }
+
+    /**
+     * 1 つの {@code @Scheduled} から求めた起動間隔、または判定不能の理由。
+     *
+     * @param interval 起動間隔（判定不能なら {@code null}）
+     * @param description 違反メッセージに載せるスケジュール指定の説明
+     * @param undecidableReason 判定不能の理由（判定できたなら {@code null}）
+     */
+    record Cadence(Duration interval, String description, String undecidableReason) {
+
+        static Cadence of(Duration interval, String description) {
+            return new Cadence(interval, description, null);
+        }
+
+        static Cadence undecidable(String reason) {
+            return new Cadence(null, null, reason);
+        }
+    }
 
     /**
      * 当該メソッドがスケジュール実行されるか（{@code @Repeatable} コンテナ込み）。

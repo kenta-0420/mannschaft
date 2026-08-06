@@ -88,6 +88,101 @@ public class ScheduledBatchFixtureBatch {
         // 本文は空でよい
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ルール 4（lockAtMostFor > 実行間隔）用の fixture
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 違反（最も危険な同値）: 5 分間隔の cron に対し {@code lockAtMostFor} が
+     * ぴったり 5 分。実行が 5 分を超えた瞬間にロックが失効し、同時刻の次周回と重なる。
+     */
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "fixtureLockEqualToInterval", lockAtMostFor = "5m")
+    @BatchEndpoint(name = "fixture-lock-equal-to-interval")
+    public void lockAtMostForEqualToCronInterval() {
+        // 本文は空でよい
+    }
+
+    /** 違反: 1 分間隔の cron に対し {@code lockAtMostFor} が 30 秒（間隔より短い）。 */
+    @Scheduled(cron = "0 * * * * *")
+    @SchedulerLock(name = "fixtureLockShorterThanInterval", lockAtMostFor = "PT30S")
+    @BatchEndpoint(name = "fixture-lock-shorter-than-interval")
+    public void lockAtMostForShorterThanCronInterval() {
+        // 本文は空でよい
+    }
+
+    /** 違反: {@code fixedRate}（ミリ秒数値）60 秒に対し {@code lockAtMostFor} が 60 秒（同値）。 */
+    @Scheduled(fixedRate = 60_000)
+    @SchedulerLock(name = "fixtureFixedRateEqual", lockAtMostFor = "60s")
+    @BatchEndpoint(name = "fixture-fixed-rate-equal")
+    public void lockAtMostForEqualToFixedRate() {
+        // 本文は空でよい
+    }
+
+    /** 違反: {@code fixedDelay} 5 分に対し {@code lockAtMostFor} が 4 分（間隔より短い）。 */
+    @Scheduled(fixedDelay = 300_000)
+    @SchedulerLock(name = "fixtureFixedDelayShorter", lockAtMostFor = "PT4M")
+    @BatchEndpoint(name = "fixture-fixed-delay-shorter")
+    public void lockAtMostForShorterThanFixedDelay() {
+        // 本文は空でよい
+    }
+
+    /**
+     * 違反（判定不能）: cron が<b>既定値の無いプレースホルダ</b>であり、CI からは実際の
+     * 起動間隔を確認できない。安全側に倒して落とす（外部プロパティへの追い出しが
+     * 番人の抜け道にならないようにするため）。
+     */
+    @Scheduled(cron = "${fixture.undecidable.cron}")
+    @SchedulerLock(name = "fixtureUndecidableCron", lockAtMostFor = "PT1M")
+    @BatchEndpoint(name = "fixture-undecidable-cron")
+    public void undecidableCronPlaceholder() {
+        // 本文は空でよい
+    }
+
+    /**
+     * 違反（{@code @Repeatable} ケース）: 日次（安全）と 5 分間隔（危険）の 2 本を持ち、
+     * {@code lockAtMostFor} は 5 分間隔側に対して不足している。
+     * {@code @Schedules} コンテナを開かない実装はこの形を丸ごと取り逃す。
+     */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "fixtureRepeatableInsufficientLock", lockAtMostFor = "PT3M")
+    @BatchEndpoint(name = "fixture-repeatable-insufficient-lock")
+    public void repeatableScheduledWithInsufficientLock() {
+        // 本文は空でよい
+    }
+
+    /** 正当形: 5 分間隔の cron に対し {@code lockAtMostFor} が 10 分（間隔を上回る）。 */
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "fixtureLockExceedsInterval", lockAtMostFor = "PT10M")
+    @BatchEndpoint(name = "fixture-lock-exceeds-interval")
+    public void lockAtMostForExceedsCronInterval() {
+        // 本文は空でよい
+    }
+
+    /**
+     * 正当形（低頻度バッチ）: 日次 02:00 の cron に対し {@code lockAtMostFor} は 30 分。
+     *
+     * <p>間隔（24 時間）より短いが、次の起動まで 24 時間あるため
+     * 「ロック失効中に次周回が重なる」ことは起こらない。むしろ 24 時間超のロックは
+     * Pod 異常終了時にバッチを丸一日停止させるため有害である。
+     * 本番人が高頻度バッチだけを対象にしていることの実証。</p>
+     */
+    @Scheduled(cron = "0 0 2 * * *")
+    @SchedulerLock(name = "fixtureDailyBatch", lockAtMostFor = "PT30M")
+    @BatchEndpoint(name = "fixture-daily-batch")
+    public void dailyBatchWithShorterLock() {
+        // 本文は空でよい
+    }
+
+    /** 正当形: cron が<b>既定値付き</b>プレースホルダで、その既定値から間隔を確認できる。 */
+    @Scheduled(cron = "${fixture.resolvable.cron:0 */5 * * * *}")
+    @SchedulerLock(name = "fixtureResolvableCron", lockAtMostFor = "PT10M")
+    @BatchEndpoint(name = "fixture-resolvable-cron")
+    public void resolvableCronPlaceholder() {
+        // 本文は空でよい
+    }
+
     /** 対象外: そもそもスケジュールされていない普通のメソッド（巻き込んではならない）。 */
     public void notScheduledAtAll() {
         // 本文は空でよい

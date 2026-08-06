@@ -75,7 +75,7 @@ public class InboxSnoozeRevivalBatchService {
      */
     @BatchEndpoint(name = "inbox-snooze-revival", description = "スヌーズ復帰期限到来の通知へ push 再通知を 5 分毎に 1 度だけ送る")
     @Scheduled(cron = "0 */5 * * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "inboxSnoozeRevivalBatch", lockAtMostFor = "PT4M", lockAtLeastFor = "PT10S")
+    @SchedulerLock(name = "inboxSnoozeRevivalBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT10S")
     public void run() {
         LocalDateTime now = LocalDateTime.now();
         List<InboxItemStateEntity> due =

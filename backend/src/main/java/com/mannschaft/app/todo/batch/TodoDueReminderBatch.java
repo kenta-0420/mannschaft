@@ -112,7 +112,7 @@ public class TodoDueReminderBatch {
      */
     @BatchEndpoint(name = "todo-due-reminder-hourly", description = "TODO の明日期限と期限超過リマインドをユーザーTZ別に毎時チェックして送信する")
     @Scheduled(fixedDelay = 3_600_000)
-    @SchedulerLock(name = "todoDueReminderHourly", lockAtLeastFor = "PT50M", lockAtMostFor = "PT55M")
+    @SchedulerLock(name = "todoDueReminderHourly", lockAtLeastFor = "PT50M", lockAtMostFor = "PT2H")
     public void run() {
         log.info("TodoDueReminderBatch 開始");
         int dueTomorrowCount = sendDueTomorrowReminders();

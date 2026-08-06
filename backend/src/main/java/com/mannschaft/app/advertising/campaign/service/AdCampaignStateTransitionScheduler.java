@@ -66,7 +66,7 @@ public class AdCampaignStateTransitionScheduler {
      * 5 分間隔 (Asia/Tokyo) で起動する状態遷移本体。
      */
     @Scheduled(cron = "${mannschaft.ad.state-transition.cron:0 */5 * * * *}", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "adCampaignStateTransition", lockAtMostFor = "5m", lockAtLeastFor = "1m")
+    @SchedulerLock(name = "adCampaignStateTransition", lockAtMostFor = "PT15M", lockAtLeastFor = "1m")
     @BatchEndpoint(name = "ad-campaign-state-transition",
             description = "予約(SCHEDULED)→配信中(DELIVERING)、配信中→完了(COMPLETED)のキャンペーン状態自動遷移を5分毎に実行する")
     public void runTransitions() {
