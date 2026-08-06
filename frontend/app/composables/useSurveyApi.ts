@@ -12,6 +12,8 @@ import type {
   SurveyDetailWire,
   SurveyResponseRowWire,
   MyResponseWire,
+  CreateSurveyRequest,
+  UpdateSurveyRequest,
 } from '~/types/survey'
 import type { components } from '~/types/generated'
 
@@ -59,6 +61,29 @@ export function mapQuestionTypeToBe(fe: QuestionType): string {
 }
 
 /**
+ * FE ResultsVisibility → BE `ResultsVisibility` enum 値。
+ * {@link mapResultsVisibilityToFe} の逆写像。
+ *
+ * BE の enum は `AFTER_RESPONSE / AFTER_CLOSE / ADMINS_ONLY / VIEWERS_ONLY` の 4 値しか無く、
+ * FE の `ALL_MEMBERS`（締切前から全員閲覧可）に対応する値は存在しない。そのため作成ダイアログの
+ * 選択肢からは `ALL_MEMBERS` を外し、BE が表現できる `AFTER_CLOSE` を提示している。
+ * ここで `ALL_MEMBERS` を受けるのは localStorage に残った旧下書きの復元経路のみで、
+ * その場合は「未知値は最も閉じた値に倒す」既存方針（mapResultsVisibilityToFe 参照）に従い
+ * `ADMINS_ONLY` にフォールバックする（意図より広く公開して漏洩を作らないため）。
+ */
+export function mapResultsVisibilityToBe(fe: ResultsVisibility): string {
+  switch (fe) {
+    case 'RESPONDENTS':
+      return 'AFTER_RESPONSE'
+    case 'AFTER_CLOSE':
+      return 'AFTER_CLOSE'
+    case 'CREATOR_ONLY':
+    case 'ALL_MEMBERS':
+      return 'ADMINS_ONLY'
+  }
+}
+
+/**
  * BE resultsVisibility → FE ResultsVisibility。
  * AFTER_RESPONSE→RESPONDENTS / AFTER_CLOSE→AFTER_CLOSE /
  * ADMINS_ONLY・VIEWERS_ONLY→CREATOR_ONLY。既に FE 値ならそのまま返す（防御）。
@@ -79,6 +104,90 @@ function mapResultsVisibilityToFe(be: string): ResultsVisibility {
     default:
       // 未知値は最も閉じた CREATOR_ONLY に倒す（漏洩を作らない）
       return 'CREATOR_ONLY'
+  }
+}
+
+/** BE の CreateSurveyRequest / CreateQuestionRequest / CreateOptionRequest 形（生成型が正準）。 */
+type WireCreateSurvey = components['schemas']['CreateSurveyRequest']
+type WireCreateQuestion = components['schemas']['CreateQuestionRequest']
+type WireCreateOption = components['schemas']['CreateOptionRequest']
+type WireUpdateSurvey = components['schemas']['UpdateSurveyRequest']
+
+/** FE ドメイン形の設問入力（作成ダイアログ・DRAFT 詳細の設問追加で共通）。 */
+export type SurveyQuestionInput = NonNullable<CreateSurveyRequest['questions']>[number]
+
+/**
+ * FE 設問 → BE `CreateQuestionRequest`。
+ * `sortOrder` は BE では `displayOrder`、`questionType` は BE enum 値へ写す。
+ *
+ * 作成（createSurvey）と設問追加（addQuestion）の両経路が BE の同一 DTO を使うため、
+ * 翻訳はこの 1 箇所に集約する。
+ */
+export function toWireQuestion(q: SurveyQuestionInput): WireCreateQuestion {
+  const options: WireCreateOption[] | undefined = q.options?.map((o) => ({
+    optionText: o.optionText,
+    displayOrder: o.sortOrder,
+  }))
+  return {
+    questionText: q.questionText,
+    questionType: mapQuestionTypeToBe(q.questionType),
+    isRequired: q.isRequired ?? false,
+    displayOrder: q.sortOrder,
+    ...(options ? { options } : {}),
+  }
+}
+
+/**
+ * FE `CreateSurveyRequest` → BE `CreateSurveyRequest`（送信ボディ）。
+ *
+ * BE 必須の `distributionMode` を必ず載せ（対象者を明示しない限り `ALL`）、
+ * 締切は BE のフィールド名 `expiresAt` で送る。enum 値・設問の項目名も BE 形へ翻訳する。
+ */
+export function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
+  return {
+    title: body.title,
+    ...(body.description !== undefined ? { description: body.description } : {}),
+    isAnonymous: body.isAnonymous ?? false,
+    allowMultipleSubmissions: body.allowMultipleSubmissions ?? false,
+    ...(body.teamBreakdownEnabled !== undefined
+      ? { teamBreakdownEnabled: body.teamBreakdownEnabled }
+      : {}),
+    ...(body.resultsVisibility
+      ? { resultsVisibility: mapResultsVisibilityToBe(body.resultsVisibility) }
+      : {}),
+    ...(body.unrespondedVisibility ? { unrespondedVisibility: body.unrespondedVisibility } : {}),
+    // BE は @NotBlank。対象者を絞り込む UI がまだ無いため常に全員配信。
+    distributionMode: body.distributionMode ?? 'ALL',
+    ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
+    questions: (body.questions ?? []).map(toWireQuestion),
+  }
+}
+
+/**
+ * FE `UpdateSurveyRequest` → BE `UpdateSurveyRequest`。未指定キーは送らない（PATCH セマンティクス）。
+ *
+ * `description` / `expiresAt` は明示的な `null` を「値を消す」意図として素通しする。
+ * 生成型はこの nullable を表現していない（BE DTO に `@Schema` 注記が無いため）ので、
+ * その 2 キーだけ null を許す形に広げている。
+ */
+export function toWireUpdateBody(
+  body: UpdateSurveyRequest,
+): Omit<WireUpdateSurvey, 'description' | 'expiresAt'> & {
+  description?: string | null
+  expiresAt?: string | null
+} {
+  return {
+    ...(body.title !== undefined ? { title: body.title } : {}),
+    ...(body.description !== undefined ? { description: body.description } : {}),
+    ...(body.isAnonymous !== undefined ? { isAnonymous: body.isAnonymous } : {}),
+    ...(body.allowMultipleSubmissions !== undefined
+      ? { allowMultipleSubmissions: body.allowMultipleSubmissions }
+      : {}),
+    ...(body.resultsVisibility
+      ? { resultsVisibility: mapResultsVisibilityToBe(body.resultsVisibility) }
+      : {}),
+    ...(body.unrespondedVisibility ? { unrespondedVisibility: body.unrespondedVisibility } : {}),
+    ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt } : {}),
   }
 }
 
@@ -258,28 +367,32 @@ export function useSurveyApi() {
 
   /**
    * アンケート新規作成。
-   * body には CreateSurveyRequest（unrespondedVisibility 含む）相当のフィールドを渡す。
+   *
+   * FE ドメイン形（{@link CreateSurveyRequest}）を受け取り、{@link toWireCreateBody} で
+   * BE の `CreateSurveyRequest` 形へ翻訳してから送信する。呼び出し側は BE の enum 値や
+   * フィールド名（displayOrder / FREE_TEXT 等）を意識しなくてよい。
    */
-  async function createSurvey(scopeType: string, scopeId: string, body: Record<string, unknown>) {
+  async function createSurvey(scopeType: string, scopeId: string, body: CreateSurveyRequest) {
     return api<{ data: SurveyResponse }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`, {
       method: 'POST',
-      body,
+      body: toWireCreateBody(body),
     })
   }
 
   /**
    * アンケート更新。
-   * body には UpdateSurveyRequest（unrespondedVisibility 含む）相当のフィールドを渡す。
+   *
+   * FE ドメイン形（{@link UpdateSurveyRequest}）を {@link toWireUpdateBody} で BE 形へ翻訳して送る。
    */
   async function updateSurvey(
     scopeType: string,
     scopeId: string,
     surveyId: number,
-    body: Record<string, unknown>,
+    body: UpdateSurveyRequest,
   ) {
     return api<{ data: SurveyResponse }>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
-      { method: 'PATCH', body },
+      { method: 'PATCH', body: toWireUpdateBody(body) },
     )
   }
 
@@ -302,15 +415,23 @@ export function useSurveyApi() {
   }
 
   // === Questions ===
+  /**
+   * 設問追加（DRAFT 詳細の「設問を保存して公開」経路）。
+   *
+   * BE は作成時と同じ `CreateQuestionRequest` を受けるため、翻訳も
+   * {@link toWireQuestion} に寄せる。FE ドメイン形（`questionType: 'TEXT'`・`sortOrder`）を
+   * そのまま送ると `questionType` は 400、`sortOrder` は BE が読まず
+   * displayOrder が全設問 0 になって並び順が失われる。
+   */
   async function addQuestion(
     scopeType: string,
     scopeId: string,
     surveyId: number,
-    body: Record<string, unknown>,
+    body: SurveyQuestionInput,
   ) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/questions`, {
       method: 'POST',
-      body,
+      body: toWireQuestion(body),
     })
   }
 

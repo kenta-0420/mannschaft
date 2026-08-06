@@ -30,7 +30,9 @@ const questionTypeOptions = computed<Array<{ label: string; value: QuestionType 
   { label: t('surveys.questionType.MULTIPLE_CHOICE'), value: 'MULTIPLE_CHOICE' },
   { label: t('surveys.questionType.TEXT'), value: 'TEXT' },
   { label: t('surveys.questionType.RATING'), value: 'RATING' },
-  { label: t('surveys.questionType.DATE'), value: 'DATE' },
+  // NOTE: 'DATE' は BE の QuestionType enum に対応値が無く、送信すると必ず 400
+  //（SURVEY_024「指定された値は許可されていません: DATE」）になるため選択肢から外している。
+  // BE に DATE 相当を追加する際にここへ戻すこと。
 ])
 
 // modelValue を sortOrder 昇順で並べたビュー

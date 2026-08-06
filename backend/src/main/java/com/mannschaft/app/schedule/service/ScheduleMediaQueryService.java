@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -249,6 +250,8 @@ public class ScheduleMediaQueryService {
      */
     @BatchEndpoint(name = "schedule-media-orphan-cleanup-daily", description = "72 時間以上孤立した schedule メディアを毎日 02:30 に R2 から物理削除する")
     @Scheduled(cron = "0 30 2 * * *")
+    // 起動間隔は日次 02:30。1 件ごとに R2 削除が走るため、最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
+    @SchedulerLock(name = "scheduleMediaOrphanCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void cleanupOrphanMedia() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);

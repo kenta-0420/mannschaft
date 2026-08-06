@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.ParentalConsentLinkStatus;
 import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -113,14 +115,55 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
     void deleteByChildUserId(Long childUserId);
 
     /**
-     * Release バッチ用: 指定ステータスのリンクをページングで取得する。
-     * 主に APPROVED リンクを持つ子ユーザーの成人到達確認バッチで使用する。
+     * Release バッチ用: 指定ステータスかつ<b>子ユーザーが成人に到達している可能性がある</b>
+     * リンクを、{@code id} 昇順のキーセットページングで取得する。
      *
-     * @param status   絞り込むステータス（通常 APPROVED）
-     * @param pageable ページング設定
-     * @return 対象の同意リンクのリスト
+     * <h2>なぜ SQL では生年（{@code birth_year}）でしか絞れないのか</h2>
+     * <p>{@code users.birth_date} は {@code EncryptedStringConverter} により AES-256-GCM で
+     * 暗号化されて {@code VARBINARY} に格納されている。IV がランダムであるため同じ生年月日でも
+     * 暗号文は毎回異なり、SQL 上の比較は<b>暗号文同士のバイト比較</b>にしかならず日付順とは
+     * 無関係である。したがって {@code birth_date} を {@code WHERE} 句の範囲条件に使ってはならない。
+     * 平文・索引付きで比較可能なのは {@code users.birth_year}（{@code SMALLINT}）のみである。</p>
+     *
+     * <h2>粗い絞り込みと確定判定の二段構え</h2>
+     * <p>本クエリは {@code birthYear <= :maxBirthYear}（{@code maxBirthYear} = 今日の年 − 18）で
+     * <b>粗く</b>絞る。この年に生まれた者は「今年18歳になる」ため、まだ誕生日前の未成年が混ざる。
+     * それより古い年の者は全員確実に成人である。すなわち本クエリは
+     * <b>成人を取りこぼさない（偽陰性ゼロ）</b>ことだけを保証する候補抽出であり、
+     * 未成年を確実に除外することは保証しない。境界年の確定判定は呼び出し側が
+     * 復号済み {@code birthDate} を {@code AgeGroupCalculator} に掛けて行うこと。</p>
+     *
+     * <h2>{@code birth_year} が NULL の行を候補に含める理由</h2>
+     * <p>{@code birth_year} は F09.17 の広告セグメント用に後付けされた列で、登録経路での
+     * 書き込みが長らく無く、既存行はすべて NULL である。ここで {@code birth_year IS NOT NULL} と
+     * 書くと本バッチは 1 件も拾えない無処理バッチに堕ち、成人到達者の同意が永久に解放されない。
+     * よって NULL 行は候補に含め、呼び出し側の復号判定に委ねる（安全側）。
+     * {@code birth_year} が全行埋まれば、本条件はそのまま索引による絞り込みとして効き始める。</p>
+     *
+     * <h2>キーセットページング（飢餓の構造的排除）</h2>
+     * <p>{@code l.id > :cursor} で前ページの最終 {@code id} から続きを取る。呼び出し側は
+     * 判定結果にかかわらずカーソルを検査済みの最後の {@code id} まで前進させること。
+     * 先頭ページを毎回取り直すオフセットページングに戻すと、先頭ページが境界年の未成年で
+     * 埋まった場合に後方の成人到達者へ永久に到達できず、保護者同意が解放されないまま残る
+     * （未成年保護の法的要件に直結する）。</p>
+     *
+     * @param status       絞り込むステータス（通常 APPROVED）
+     * @param maxBirthYear 候補に含める生年の上限（この年を含む）。通常「今日の年 − 18」
+     * @param cursor       直前ページの最終 {@code id}（初回は {@code 00000000-0000-0000-0000-000000000000}）
+     * @param pageable     ページング設定（サイズのみ使用。ページ番号は常に 0）
+     * @return 対象の同意リンクのリスト（id 昇順）
      */
-    List<ParentalConsentLinkEntity> findByStatus(ParentalConsentLinkStatus status, Pageable pageable);
+    @Query("SELECT l FROM ParentalConsentLinkEntity l "
+            + "WHERE l.status = :status AND l.id > :cursor AND EXISTS ("
+            + "  SELECT 1 FROM UserEntity u "
+            + "  WHERE u.id = l.childUserId AND u.deletedAt IS NULL "
+            + "    AND (u.birthYear IS NULL OR u.birthYear <= :maxBirthYear)"
+            + ") ORDER BY l.id ASC")
+    List<ParentalConsentLinkEntity> findAdultCandidateLinksAfterId(
+            @Param("status") ParentalConsentLinkStatus status,
+            @Param("maxBirthYear") int maxBirthYear,
+            @Param("cursor") UUID cursor,
+            Pageable pageable);
 
     /**
      * バッチ用: 指定ステータスのリンクを id 昇順で安定ページング取得する。

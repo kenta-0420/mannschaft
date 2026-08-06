@@ -533,7 +533,8 @@
       "selfReviewEnd": "Hora de fin de autorevisión",
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
       "saveSettings": "Guardar configuración",
-      "loadFailed": "No se pudo cargar el artículo"
+      "loadFailed": "No se pudo cargar el artículo",
+      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato."
     },
     "autoSave": {
       "label": "Guardado automático",
