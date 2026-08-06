@@ -310,12 +310,34 @@ public class ReservationSlotService {
     /**
      * スロットエンティティを取得する（内部利用）。
      *
+     * <p><b>teamId スコープなし。</b>呼び出し元がすでに teamId 検証済みの
+     * {@link com.mannschaft.app.reservation.entity.ReservationEntity#getReservationSlotId()} 等、
+     * 「自チームの予約行に紐づく slotId」であることが別経路で保証されている場合のみ使用可（Issue #2538）。
+     * リクエスト由来（利用者が任意に指定できる）の slotId には
+     * {@link #getSlotEntity(Long, Long)} を使うこと。</p>
+     *
      * @param slotId スロットID
      * @return スロットエンティティ
      */
     public ReservationSlotEntity getSlotEntity(Long slotId) {
         return slotRepository.findById(slotId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
+    }
+
+    /**
+     * スロットエンティティを teamId スコープで取得する（内部利用）。
+     *
+     * <p>Issue #2538: リクエスト由来（呼び出し元の teamId とは無関係にユーザーが指定できる）の
+     * slotId を解決する経路は、必ずこちらを使うこと。{@code teamId} と slot の帰属が一致しない場合、
+     * 他チームの枠の存在を秘匿するため {@link ReservationErrorCode#SLOT_NOT_FOUND}（404 相当）で拒否する
+     * （403 だと枠の存在自体が漏れる）。</p>
+     *
+     * @param teamId 呼び出し元チームID
+     * @param slotId スロットID
+     * @return スロットエンティティ（当該チームに帰属するもののみ）
+     */
+    public ReservationSlotEntity getSlotEntity(Long teamId, Long slotId) {
+        return findSlotOrThrow(teamId, slotId);
     }
 
     /**
