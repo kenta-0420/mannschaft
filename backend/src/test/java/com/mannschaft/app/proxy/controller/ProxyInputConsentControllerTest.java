@@ -26,9 +26,7 @@ import static org.mockito.Mockito.verify;
  * {@code findActiveByProxyUserId(SecurityUtils.getCurrentUserId())} のみを参照する。
  * {@code #createConsent} は {@code AccessControlService#checkAdminOrAbove(requestUserId,
  * organizationId, "ORGANIZATION")} を Service 内で必ず呼び、URL の orgId に対する
- * DEPUTY_ADMIN 以上の権限を持たない利用者からの同意書登録を拒否する
- * （認可根治戦役 Wave6 ロットD で欠落を発見し追加。旧実装は権限チェックが一切無く、
- * 任意の認証済みユーザーが任意組織向けの同意書を作成できた）。</p>
+ * DEPUTY_ADMIN 以上の権限を持たない利用者からの同意書登録を拒否する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProxyInputConsentController 単体テスト")

@@ -190,8 +190,7 @@ class ProxyInputConsentServiceTest {
 
         @Test
         @DisplayName("権限チェック → AccessControlService#checkAdminOrAbove を org スコープで必ず呼ぶ"
-            + "（認可根治 Wave6 ロットD: 旧実装は本チェックが欠落し、DEPUTY_ADMIN 未満の任意の"
-            + "認証済みユーザーが任意組織向けの同意書を作成できた）")
+            + "（呼出ユーザーが対象組織の DEPUTY_ADMIN 以上であることを検証してから同意書を作成する）")
         void shouldCheckAdminOrAboveBeforeSaving() {
             CreateProxyConsentCommand cmd = buildValidCommand();
             given(consentRepository.existsActiveConsent(any(), any(), any(), any())).willReturn(false);
