@@ -150,10 +150,8 @@ public class AccountPurgeService {
         // data_exports: S3ファイルを削除してからレコード削除
         // （gdpr 自ドメイン。クロスドメイン操作は AccountPurgedEvent リスナーが担当）
         List<DataExportEntity> dataExports = dataExportRepository
-                .findByExpiresAtBeforeAndS3KeyIsNotNull(LocalDateTime.now().plusYears(100));
-        dataExports.stream()
-                .filter(de -> userId.equals(de.getUserId()))
-                .forEach(de -> {
+                .findByUserIdAndS3KeyIsNotNull(userId);
+        dataExports.forEach(de -> {
                     try {
                         storageService.delete(de.getS3Key());
                         log.debug("data_export S3削除: userId={}, s3Key={}", userId, de.getS3Key());

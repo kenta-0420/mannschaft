@@ -7,6 +7,7 @@ import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,8 @@ public class TicketExpiryBatchService {
      */
     @BatchEndpoint(name = "ticket-expiry-daily", description = "期限切れチケットを毎日 00:30 に EXPIRED へ遷移する")
     @Scheduled(cron = "0 30 0 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 00:30。期限切れチケットの一括状態遷移でチケット数に比例する。余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "ticketExpiryDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void expireTickets() {
         LocalDateTime now = LocalDateTime.now();
@@ -59,6 +62,8 @@ public class TicketExpiryBatchService {
      */
     @BatchEndpoint(name = "ticket-pending-cleanup-daily", description = "PENDING のまま 2 時間放置されたチケットを毎日 01:00 にキャンセルする")
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 01:00。2 時間以上 PENDING のチケットのキャンセルのみで対象は少数。余裕を取り 30 分を上限とする。
+    @SchedulerLock(name = "ticketPendingCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     @Transactional
     public void cleanupPendingBooks() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(2);
@@ -82,6 +87,8 @@ public class TicketExpiryBatchService {
      */
     @BatchEndpoint(name = "ticket-expiry-pre-notification-daily", description = "チケット期限 30/7/3/1 日前の事前通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 09:00。30/7/3/1 日前の事前通知送出で通知件数に比例する。余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "ticketExpiryPreNotificationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional(readOnly = true)
     public void sendExpiryNotifications() {
         java.time.LocalDate today = java.time.LocalDate.now();

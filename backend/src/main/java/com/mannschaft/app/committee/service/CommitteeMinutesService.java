@@ -8,10 +8,8 @@ import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.error.CommitteeErrorCode;
-import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +28,11 @@ import java.util.Map;
 public class CommitteeMinutesService {
 
     private final CommitteeRepository committeeRepository;
-    private final CommitteeMemberRepository committeeMemberRepository;
     private final ActivityResultRepository activityResultRepository;
     private final ObjectMapper objectMapper;
+
+    /** 委員会メンバーシップ・委員会内ロールに基づく認可判定の一元窓口。 */
+    private final CommitteeAccessGuard committeeAccessGuard;
 
     /**
      * 議事録を確定する。
@@ -60,14 +60,8 @@ public class CommitteeMinutesService {
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
         // 2. CHAIR / VICE_CHAIR 権限チェック
-        boolean hasRole = committeeMemberRepository
-                .findByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, currentUserId)
-                .map(member -> member.getRole() == CommitteeRole.CHAIR
-                        || member.getRole() == CommitteeRole.VICE_CHAIR)
-                .orElse(false);
-        if (!hasRole) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeRole(
+                committeeId, currentUserId, CommitteeRole.CHAIR, CommitteeRole.VICE_CHAIR);
 
         // 3. 活動記録の存在確認
         ActivityResultEntity record = activityResultRepository.findById(recordId)

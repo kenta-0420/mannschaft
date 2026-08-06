@@ -574,8 +574,43 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 既存負債のキー改名である。この同一性は同一コミット内の
      * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
      * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
+     *
+     * <p>405 → 369（第4波ロットB・2026-08-05）: circulation 22 行 / committee 14 行を返済。
+     * 内訳は次のとおりで、いずれも「実体由来スコープでの認可が呼び出しグラフ上で到達可能である」
+     * 状態にしたうえでの削除である（マーカー付与による沈黙ではない）。</p>
+     * <ul>
+     *   <li>circulation の押印 5 EP とコメント削除 1 EP — {@code CirculationAccessGuard} を新設し、
+     *       受信者行・コメント行が<b>当該文書に属し、かつ操作者本人のものである</b>ことを検証する</li>
+     *   <li>circulation の文書ライフサイクル 8 EP（Org/Team 各 4）・あて先増減 2 EP・添付管理 3 EP・
+     *       エクスポート 2 EP — 既存の {@code AccessControlService} による per-scope 判定を
+     *       委譲 1 段で到達できる形に整理（判定内容は不変）</li>
+     *   <li>{@code MyCirculationController.listCreatedDocuments} — 検索条件が認証主体に束縛されるため
+     *       {@code @SelfScopedEndpoint}（契約テストは {@code CirculationStampRecipientAclScopeContractIT}）</li>
+     *   <li>committee 14 EP — {@code CommitteeAccessGuard} を新設し、委員会メンバーシップ・
+     *       委員会内ロール・招集状の宛先本人性の判定を集約</li>
+     * </ul>
+     *
+     * <p>369 → 331（第4波ロットC・2026-08-05）: schedule 28 行 / scopefolder 10 行を返済。
+     * 内訳は次のとおりで、いずれも認可の所在をコード上に確立したうえでの削除である。</p>
+     * <ul>
+     *   <li>{@code ScheduleAccessGuard} を新設し、個人スケジュールの所有者判定と
+     *       代理委任のあて先本人判定を集約（{@code PersonalScheduleController} の
+     *       詳細・更新・削除・一括削除、{@code ScheduleDelegationController} の承諾・辞退）</li>
+     *   <li>{@code CalendarSyncAccessGuard} を新設し、チーム／組織のカレンダー同期トグルの
+     *       アクティブメンバー判定を集約（拒否は存在秘匿の 404 に畳む）</li>
+     *   <li>{@code ScopeFolderAccessGuard} を新設し、マイスコープフォルダの所有者判定を集約
+     *       （更新・削除・アイテム追加削除・一括振り分け。一括系も 1 件ずつ判定を通す）</li>
+     *   <li>代理委任の指定・取り消し・自状況照会は、スケジュール実体由来スコープに対する
+     *       {@code ScheduleService#checkScopeViewAccess} を public 入口で行う</li>
+     *   <li>出欠一括更新は {@code ScheduleService#checkScopeAdminAccess} を public 入口で行う</li>
+     *   <li>チーム／組織のスケジュール一覧は {@code ContentVisibilityChecker#filterAccessible} を
+     *       入口メソッドから直接呼ぶ形へ整理（判定内容は不変）</li>
+     *   <li>対象の識別子を一切受け取らない 19 EP は {@code @SelfScopedEndpoint}
+     *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
+     *       {@code ScopeFolderAuthzScopeContractIT}）</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 405;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 297;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

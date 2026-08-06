@@ -39,6 +39,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 /**
  * {@link BlogMediaService} の単体テスト。
@@ -278,6 +279,8 @@ class BlogMediaServiceTest {
 
             given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
                     .willReturn(List.of(orphanImage, orphanVideo));
+            // 行の確保に成功した（＝この実行が削除した）ケース
+            given(blogMediaUploadRepository.deleteOrphanById(any())).willReturn(1);
 
             // when
             blogMediaService.cleanupOrphanMedia();
@@ -286,12 +289,37 @@ class BlogMediaServiceTest {
             then(r2StorageService).should().delete("blog/TEAM/10/orphan-image.jpg");
             then(r2StorageService).should().delete("blog/TEAM/10/orphan-video.mp4");
             then(r2StorageService).should().delete("blog/TEAM/10/orphan-video-thumb.jpg");
-            // DB から一括削除
-            then(blogMediaUploadRepository).should().deleteAll(List.of(orphanImage, orphanVideo));
+            // DB からは行単位の条件付き削除で確保する（一括 deleteAll ではない）
+            then(blogMediaUploadRepository).should(times(2)).deleteOrphanById(any());
             // F13 Phase 4-δ: 使用量減算が呼ばれること（スコープ解析可能な s3Key の場合）
             then(storageQuotaService).should().recordDeletion(
                     eq(StorageScopeType.TEAM), eq(10L), eq(1024L),
                     eq(StorageFeatureType.CMS), anyString(), any(), any());
+        }
+
+        @Test
+        @DisplayName("競合_行を確保できなかった孤立メディアは使用量を減算しない")
+        void 競合_行を確保できなかった孤立メディアは使用量を減算しない() {
+            // given: 別実行が既に処理済みで、条件付き削除が 0 行を返す
+            BlogMediaUploadEntity orphanImage = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/orphan-image.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(orphanImage));
+            given(blogMediaUploadRepository.deleteOrphanById(any())).willReturn(0);
+
+            // when
+            blogMediaService.cleanupOrphanMedia();
+
+            // then: 使用量の二重減算をしない（used_bytes が実態より過少になるのを防ぐ）
+            then(storageQuotaService).should(never()).recordDeletion(
+                    any(), any(), anyLong(), any(), anyString(), any(), any());
+            then(r2StorageService).should(never()).delete(anyString());
         }
     }
 

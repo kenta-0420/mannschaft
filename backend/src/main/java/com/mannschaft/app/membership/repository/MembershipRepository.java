@@ -322,4 +322,23 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId,
             @Param("cursor") Long cursor,
             Pageable pageable);
+
+    /**
+     * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:
+     * memberships のアクティブ行（{@code left_at IS NULL}）のうち、対応する user_roles 行が
+     * 存在しない件数を SQL 側で集計する。
+     *
+     * <p>全件をアプリ側にロードして突き合わせると行数に比例してヒープを消費するため、
+     * {@code NOT EXISTS} 相関サブクエリで DB に差分を出させ、アプリはスカラー件数のみ受け取る。
+     * JPQL では membership↔role のクロスドメイン association を張れない（原則1・FK 禁止）ため
+     * native query とする（{@link #findActiveUserIdsByScopeKeyset} 前例踏襲）。</p>
+     */
+    @Query(value = "SELECT COUNT(*) FROM memberships m "
+            + "WHERE m.left_at IS NULL AND m.user_id IS NOT NULL AND NOT EXISTS ("
+            + "  SELECT 1 FROM user_roles ur WHERE ur.user_id = m.user_id AND ("
+            + "    (m.scope_type = 'TEAM' AND ur.team_id = m.scope_id) OR "
+            + "    (m.scope_type = 'ORGANIZATION' AND ur.organization_id = m.scope_id)"
+            + "  ))",
+            nativeQuery = true)
+    long countOnlyInMemberships();
 }

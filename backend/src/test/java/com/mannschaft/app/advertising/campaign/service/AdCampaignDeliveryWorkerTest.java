@@ -95,6 +95,34 @@ class AdCampaignDeliveryWorkerTest {
     }
 
     @Test
+    @DisplayName("processCampaign: 候補が CHUNK_SIZE を超える場合は上限件数のみ処理し、次回はカーソルの続きから処理する")
+    void processCampaign_boundedByChunkSizeAndResumesFromCursor() {
+        AdMessagingCampaign campaign = buildCampaign();
+        int total = AdCampaignDeliveryWorker.CHUNK_SIZE + 10;
+        List<Long> allIds = java.util.stream.LongStream.rangeClosed(1, total).boxed().toList();
+
+        given(audienceResolver.streamCandidateUserIds(campaign.getId()))
+                .willAnswer(inv -> allIds.stream());
+        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(true);
+
+        // 1 回目: 先頭から CHUNK_SIZE 件のみ処理される（有界化）
+        AdCampaignDeliveryWorker.DeliveryResult r1 = worker.processCampaign(campaign);
+        assertThat(r1.users()).isEqualTo(AdCampaignDeliveryWorker.CHUNK_SIZE);
+        for (long id = 1; id <= AdCampaignDeliveryWorker.CHUNK_SIZE; id++) {
+            verify(dispatcher, times(1)).deliverForUser(campaign, id);
+        }
+        // 残りの候補はまだ処理されていない
+        verify(dispatcher, never()).deliverForUser(campaign, (long) AdCampaignDeliveryWorker.CHUNK_SIZE + 1);
+
+        // 2 回目: カーソルの続きから残り 10 件が処理される（取りこぼしなし）
+        AdCampaignDeliveryWorker.DeliveryResult r2 = worker.processCampaign(campaign);
+        assertThat(r2.users()).isEqualTo(10);
+        for (long id = AdCampaignDeliveryWorker.CHUNK_SIZE + 1; id <= total; id++) {
+            verify(dispatcher, times(1)).deliverForUser(campaign, id);
+        }
+    }
+
+    @Test
     @DisplayName("loadActiveCampaigns: status=DELIVERING で FOR UPDATE クエリを呼ぶ")
     void loadActiveCampaigns_クエリ呼び出し() {
         given(campaignRepository.findActiveDeliveringForUpdate(

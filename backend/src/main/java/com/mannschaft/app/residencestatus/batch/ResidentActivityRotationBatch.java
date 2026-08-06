@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.residencestatus.service.ResidentActivityAggregatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,8 @@ public class ResidentActivityRotationBatch {
      */
     @BatchEndpoint(name = "residencestatus-activity-rotation-daily", description = "30 日以前の居住者アクティビティ snapshot を毎日 05:00 に論理削除する")
     @Scheduled(cron = "0 0 5 * * *")
+    // 起動間隔は日次 05:00。30 日以前スナップショットの論理削除（一括 UPDATE）のみで最悪でも数分。余裕を取り 30 分を上限とする。
+    @SchedulerLock(name = "residenceActivityRotationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void rotateOldSnapshots() {
         log.info("[ResidentActivityRotationBatch] ローテーション 開始");
         try {
