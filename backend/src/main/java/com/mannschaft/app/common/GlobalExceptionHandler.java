@@ -89,8 +89,16 @@ public class GlobalExceptionHandler {
             //  - SCHEDULE_KEEP_001 不在・スコープ不一致（IDOR）・非メンバー・応援者を畳んで 404
             //    （403 だと「そのチームにそのキープがある」ことが漏れる。設計書 §4.6.3）
             //  - SCHEDULE_KEEP_005 閲覧はできるが編集権限が無い（作成者でも ADMIN でもない）→ 403
+            //  - SCHEDULE_KEEP_006/007/009 状態遷移違反 → 409（設計書 §5.3・§7）
+            //  - SCHEDULE_KEEP_008 revert が出欠回答に阻まれる → 409
+            //  - SCHEDULE_KEEP_010 スコープあたりの件数上限超過 → 409
             Map.entry("SCHEDULE_KEEP_001", HttpStatus.NOT_FOUND),
             Map.entry("SCHEDULE_KEEP_005", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_KEEP_006", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_KEEP_007", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_KEEP_008", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_KEEP_009", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_KEEP_010", HttpStatus.CONFLICT),
             // F08.1 マッチング: 認可拒否は 403（Severity.WARN 既定の 400 を上書き）。
             //  - MATCHING_010 権限不足（募集の編集/取り下げ・サービス内認可）
             //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）
