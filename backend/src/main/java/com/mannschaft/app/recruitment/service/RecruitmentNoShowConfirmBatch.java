@@ -33,7 +33,7 @@ public class RecruitmentNoShowConfirmBatch {
      */
     @BatchEndpoint(name = "recruitment-no-show-confirm-hourly", description = "24h 経過した NO_SHOW 仮マークを毎時 0 分に確定する")
     @Scheduled(cron = "0 0 * * * *")
-    @SchedulerLock(name = "recruitment-no-show-confirm-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
+    @SchedulerLock(name = "recruitment-no-show-confirm-batch", lockAtMostFor = "2h", lockAtLeastFor = "5m")
     @Transactional
     public void confirmNoShows() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(24);

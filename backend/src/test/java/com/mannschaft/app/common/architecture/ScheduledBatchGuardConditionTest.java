@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
 
+import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ことを証明するメタテスト（issue #2601 Phase 1-a）。
  *
  * <h2>なぜ必要か</h2>
- * <p>本番人の 3 ルールのうち、<b>ルール 2（{@code lockAtMostFor} 明示）は発足時点で違反 0 件</b>
+ * <p>本番人の 4 ルールのうち、<b>ルール 2（{@code lockAtMostFor} 明示）は発足時点で違反 0 件</b>
  * ＝ green 発足である。しかし<b>「違反 0 件」は「番人が動いている」ことの証明にはならない</b> ——
  * 判定ロジックが常に空リストを返す壊れ方をしていても、本番走査は緑のままだからである。
  * green 発足するルールこそ、意図的違反 fixture に対して<b>違反が返ること</b>を assert しなければ、
@@ -190,6 +192,144 @@ class ScheduledBatchGuardConditionTest {
     }
 
     // ══════════════════════════════════════════════════════════════════
+    // ルール 4: lockAtMostFor > 実行間隔（高頻度バッチ）
+    // ══════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("ルール4 違反（最も危険な同値）: lockAtMostFor が実行間隔とぴったり同じなら検出される")
+    void lockAtMostForが実行間隔と同値なら違反として検出される() {
+        List<String> violations = ScheduledBatchGuardTest
+            .findInsufficientLockAtMostFor(method("lockAtMostForEqualToCronInterval"));
+
+        assertThat(violations)
+            .as("同値は『処理が 1 ミリ秒でも超過した瞬間に次周回と重なる』最も危険な形であり、"
+                + "ここを通すなら本ルールは存在しないに等しい")
+            .isNotEmpty();
+        assertThat(violations.getFirst())
+            .as("違反メッセージには是正の手掛かり（対象メソッドの完全名）が含まれるべき")
+            .contains("lockAtMostForEqualToCronInterval");
+    }
+
+    @Test
+    @DisplayName("ルール4 違反: lockAtMostFor が cron 間隔より短いなら検出される")
+    void lockAtMostForがcron間隔より短ければ違反として検出される() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("lockAtMostForShorterThanCronInterval")))
+            .isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 違反: fixedRate（ミリ秒数値）に対する不足も検出される")
+    void fixedRateに対する不足も検出される() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("lockAtMostForEqualToFixedRate")))
+            .as("cron だけを見る実装は fixedRate / fixedDelay のバッチを丸ごと取り逃す")
+            .isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 違反: fixedDelay に対する不足も検出される")
+    void fixedDelayに対する不足も検出される() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("lockAtMostForShorterThanFixedDelay")))
+            .isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 判定不能: 既定値の無い cron プレースホルダは安全側に倒して検出される")
+    void 既定値の無いcronプレースホルダは違反として検出される() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("undecidableCronPlaceholder")))
+            .as("判定不能を通してしまうと『cron を外部プロパティへ追い出す』が"
+                + "番人の抜け道になる。安全側＝落とす、が本ルールの選択である")
+            .isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 @Repeatable: @Schedules コンテナ内の高頻度スケジュールも検査される")
+    void 複数スケジュール指定でも高頻度側の不足を検出する() {
+        JavaMethod repeatable = method("repeatableScheduledWithInsufficientLock");
+
+        assertThat(repeatable.isAnnotatedWith(Schedules.class))
+            .as("前提の実証: @Scheduled を 2 つ書くと @Schedules コンテナに包まれる").isTrue();
+        assertThat(ScheduledBatchGuardTest.findInsufficientLockAtMostFor(repeatable))
+            .as("日次（安全）と 5 分間隔（危険）が同居する形で、コンテナを開かない実装は"
+                + "危険な方を丸ごと取り逃す")
+            .isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 正当形: lockAtMostFor が実行間隔を上回るなら違反にならない")
+    void 実行間隔を上回るlockAtMostForは違反にならない() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("lockAtMostForExceedsCronInterval")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 適用範囲: 低頻度（日次）バッチは短い lockAtMostFor でも違反にならない")
+    void 低頻度バッチは対象外() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("dailyBatchWithShorterLock")))
+            .as("日次バッチに 24 時間超のロックを強いると、Pod 異常終了時に"
+                + "バッチが丸一日停止する。適用範囲を高頻度に限るのが本ルールの設計である")
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 正当形: 既定値付き cron プレースホルダは既定値から間隔を解決できる")
+    void 既定値付きcronプレースホルダは解決できる() {
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("resolvableCronPlaceholder")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 対象外: @SchedulerLock / lockAtMostFor が無いメソッドを巻き込まない")
+    void ルール4はルール1と2の担当分を鳴らさない() {
+        assertThat(ScheduledBatchGuardTest.findInsufficientLockAtMostFor(method("missingSchedulerLock")))
+            .as("ロックが無いことはルール 1 の担当").isEmpty();
+        assertThat(ScheduledBatchGuardTest
+                .findInsufficientLockAtMostFor(method("schedulerLockWithoutLockAtMostFor")))
+            .as("lockAtMostFor 未指定はルール 2 の担当であり、ルール 4 が二重に鳴ってはならない")
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール4 部品: ShedLock の期間表記（ISO-8601 / 5m / 300000）を正しく解釈する")
+    void ShedLockの期間表記を正しく解釈する() {
+        // ShedLock 6.2.0 の StringToDurationConverter と同じ仕様（ISO-8601 と <数値><単位>、
+        // 単位省略時はミリ秒）を実装していることを固定する。ここがずれると比較そのものが嘘になる。
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("PT5M")).isEqualTo(Duration.ofMinutes(5));
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("5m")).isEqualTo(Duration.ofMinutes(5));
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("30s")).isEqualTo(Duration.ofSeconds(30));
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("2h")).isEqualTo(Duration.ofHours(2));
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("300000"))
+            .as("単位を省略した数値はミリ秒（分と誤読すると 300 分と判定して違反を見逃す）")
+            .isEqualTo(Duration.ofMinutes(5));
+        assertThat(ScheduledBatchGuardTest.parseShedLockDuration("gomi")).isNull();
+    }
+
+    @Test
+    @DisplayName("ルール4 部品: cron 式の最小発火間隔を算出できる")
+    void cron式の最小発火間隔を算出できる() {
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("0 */5 * * * *", ZoneOffset.UTC))
+            .isEqualTo(Duration.ofMinutes(5));
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("0 0 * * * *", ZoneOffset.UTC))
+            .isEqualTo(Duration.ofHours(1));
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("0 0 3 * * *", ZoneOffset.UTC))
+            .isEqualTo(Duration.ofDays(1));
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("0 0 9 * * MON", ZoneOffset.UTC))
+            .as("週次は 7 日間隔として算出できるべき")
+            .isEqualTo(Duration.ofDays(7));
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("0 0,30 3 * * *", ZoneOffset.UTC))
+            .as("1 日に複数回発火する形では『最も短い間隔』を採るべき（最長を採ると見逃す）")
+            .isEqualTo(Duration.ofMinutes(30));
+        assertThat(ScheduledBatchGuardTest.minimumCronInterval("これは cron ではない", ZoneOffset.UTC))
+            .isNull();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     // 走査の裏取り（fixture を実際に読めていることの証明）
     // ══════════════════════════════════════════════════════════════════
 
@@ -200,12 +340,12 @@ class ScheduledBatchGuardConditionTest {
 
         assertThat(fixture.getMethods())
             .as("fixture のメソッドが読めていなければ、全アサーションが空リスト同士の比較になる")
-            .hasSizeGreaterThanOrEqualTo(8);
+            .hasSizeGreaterThanOrEqualTo(17);
         assertThat(fixture.getMethods().stream()
                 .filter(ScheduledBatchGuardTest::isScheduled)
                 .count())
-            .as("fixture には 7 本のスケジュール済みメソッドを用意してある")
-            .isEqualTo(7);
+            .as("fixture には 16 本のスケジュール済みメソッドを用意してある")
+            .isEqualTo(16);
     }
 
     // ── ヘルパー ──────────────────────────────────────────────────────
