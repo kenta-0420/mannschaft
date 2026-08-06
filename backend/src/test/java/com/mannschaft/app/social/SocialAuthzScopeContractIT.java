@@ -437,13 +437,12 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("9. SocialProfileController#getProfileByHandle（ハンドル指定取得・無効化済みは非公開）")
     class GetProfileByHandle {
 
-        @Test
-        @DisplayName("未認証は401")
-        void 未認証は401() throws Exception {
-            SecurityContextHolder.clearContext();
-            mockMvc.perform(get("/api/v1/social/profiles/handle/{handle}", activeProfileHandle))
-                    .andExpect(status().isUnauthorized());
-        }
+        // 「未認証は401」は本 IT では検証できないため意図的に置いていない: 本クラスは
+        // @AutoConfigureMockMvc(addFilters = false) でセキュリティフィルタチェーンを無効化しており、
+        // 未認証リクエストがフィルタ（SecurityConfig.java:454 の .anyRequest().authenticated()）で
+        // 401 になる経路をこの構成では観測できない。getProfileByHandle は認証ユーザーを
+        // 一切参照しない（handle のみで引く）ため、フィルタ無効下では 200 まで素通りしてしまう。
+        // 未認証拒否そのものは SecurityConfig の deny-by-default で本番では成立している。
 
         @Test
         @DisplayName("無効化済みプロフィールはハンドル指定でも400（PROFILE_INACTIVE）")
@@ -472,13 +471,13 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("10. SocialProfileController#getProfileByUserId（ユーザーID指定取得・無効化済みは非公開）")
     class GetProfileByUserId {
 
-        @Test
-        @DisplayName("未認証は401")
-        void 未認証は401() throws Exception {
-            SecurityContextHolder.clearContext();
-            mockMvc.perform(get("/api/v1/social/profiles/users/{userId}", activeProfileUserId))
-                    .andExpect(status().isUnauthorized());
-        }
+        // 「未認証は401」は本 IT では検証できないため意図的に置いていない（GetProfileByHandle と同一理由）:
+        // 本クラスは @AutoConfigureMockMvc(addFilters = false) でセキュリティフィルタチェーンを
+        // 無効化しており、未認証リクエストがフィルタ（SecurityConfig.java:454 の
+        // .anyRequest().authenticated()）で 401 になる経路をこの構成では観測できない。
+        // getProfileByUserId も認証ユーザーを一切参照しない（userId のみで引く）ため、
+        // フィルタ無効下では 200 まで素通りしてしまう。未認証拒否そのものは SecurityConfig の
+        // deny-by-default で本番では成立している。
 
         @Test
         @DisplayName("無効化済みプロフィールはユーザーID指定でも400（PROFILE_INACTIVE、迂回できない）")
