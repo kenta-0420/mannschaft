@@ -67,15 +67,6 @@ beforeEach(() => {
 describe('ScheduleListRow', () => {
   it('SLR-001: プロフィールTZ=America/Los_Angeles・ブラウザTZ=Asia/Tokyoで、LA壁時計のラベルになる', async () => {
     await withSystemTz('Asia/Tokyo', async () => {
-      const authStore = useAuthStore()
-      authStore.user = {
-        id: 1,
-        email: 'user@example.com',
-        fullName: 'Test User',
-        profileImageUrl: null,
-        timezone: 'America/Los_Angeles',
-      }
-
       const wrapper = await mountSuspended(ScheduleListRow, {
         props: {
           event: baseEvent(),
@@ -83,6 +74,18 @@ describe('ScheduleListRow', () => {
           scopeId: 'team-1',
         },
       })
+
+      // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して setActivePinia() し直すため、
+      // mountSuspended より前に useAuthStore().user をセットしてもマウント後に上書きされる。
+      // 必ずマウント後にセットし、再描画を待つ。
+      useAuthStore().user = {
+        id: 1,
+        email: 'user@example.com',
+        fullName: 'Test User',
+        profileImageUrl: null,
+        timezone: 'America/Los_Angeles',
+      }
+      await wrapper.vm.$nextTick()
 
       const text = wrapper.text()
       // LA 壁時計（09:00〜10:30、8/4 (Tue)）が表示されること
