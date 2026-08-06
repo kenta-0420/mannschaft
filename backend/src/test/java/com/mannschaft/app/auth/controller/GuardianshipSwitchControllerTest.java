@@ -90,8 +90,10 @@ class GuardianshipSwitchControllerTest {
         securityUtilsMock.close();
     }
 
+    // GuardianshipSwitchController#getSwitchableChildren の自己スコープ性を固定する契約テスト
+    // （@SelfScopedEndpoint の付与要件・SelfScopedEndpointMarkerGuardTest が要求するトレーサビリティ・リンク）。
     @Test
-    @DisplayName("正常系: 200 OK / camelCase / viewer=自分が Service に渡る")
+    @DisplayName("GuardianshipSwitchController#getSwitchableChildren 正常系: 200 OK / camelCase / viewer=自分が Service に渡る")
     void list_ok_200_camelCase() throws Exception {
         SwitchableChildrenResponse serviceResponse = new SwitchableChildrenResponse(
                 List.of(new SwitchableChildDto(11L, "小学生の子", "elementary", true)),
