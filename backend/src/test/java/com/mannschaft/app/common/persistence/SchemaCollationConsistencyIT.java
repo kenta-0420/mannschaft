@@ -87,12 +87,53 @@ class SchemaCollationConsistencyIT {
     @BeforeAll
     void setUp() {
         MYSQL.start();
-        Flyway.configure()
-                .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
-                .locations("classpath:db/migration")
-                .outOfOrder(false)
-                .load()
-                .migrate();
+        try {
+            Flyway.configure()
+                    .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+                    .locations("classpath:db/migration")
+                    .outOfOrder(false)
+                    .load()
+                    .migrate();
+        } catch (RuntimeException e) {
+            // V175 の事前ゲートが発火した場合、詳細は collation_precheck_findings に入っている。
+            // SIGNAL の MESSAGE_TEXT は 128 文字までで理由を語り切れないため、
+            // ここで表の中身を読み出して例外メッセージに載せる。
+            // 落ちたテストが原因を語らないのはテストとして不完全なので、必ず添える。
+            throw new IllegalStateException(
+                    "Flyway migration に失敗した。V175 事前ゲートの検出内容:\n" + dumpFindings(), e);
+        }
+    }
+
+    /** {@code collation_precheck_findings} を人間が読める形に整形する（読めなければその旨を返す）。 */
+    private static String dumpFindings() {
+        StringBuilder sb = new StringBuilder();
+        try (Connection conn = connection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT seq, reason, table_name, index_name, column_list, dup_groups, "
+                             + "       err_code, err_message, check_sql "
+                             + "FROM collation_precheck_findings ORDER BY seq")) {
+            while (rs.next()) {
+                sb.append("  #").append(rs.getInt("seq"))
+                        .append(" [").append(rs.getString("reason")).append("] ")
+                        .append(rs.getString("table_name")).append('.')
+                        .append(rs.getString("index_name"))
+                        .append("\n      列=").append(rs.getString("column_list"));
+                Object dup = rs.getObject("dup_groups");
+                // NULL は「重複ゼロ」ではなく「計算に到達していない」。
+                // 0 と同じ見た目にすると「重複ゼロだから安全」と誤読される。
+                sb.append("\n      重複グループ数=")
+                        .append(dup == null ? "未計算（検査に到達せず）" : dup)
+                        .append("\n      errno=").append(rs.getObject("err_code"))
+                        .append(" errmsg=").append(rs.getString("err_message"))
+                        .append("\n      検査SQL=").append(rs.getString("check_sql"))
+                        .append('\n');
+            }
+        } catch (SQLException e) {
+            return "  （collation_precheck_findings を読めなかった: " + e.getMessage()
+                    + "。ゲート以外の原因で失敗した可能性が高い）";
+        }
+        return sb.length() == 0 ? "  （findings は空。ゲート以外の原因で失敗している）" : sb.toString();
     }
 
     @AfterAll
@@ -376,6 +417,155 @@ class SchemaCollationConsistencyIT {
         }
     }
 
+    /**
+     * <b>事前ゲートが UNIQUE 索引のキーパートを 1 本も取りこぼしていないことの検証。</b>
+     *
+     * <h2>なぜこの検証が要るか</h2>
+     * <p>ゲートは {@code information_schema.STATISTICS} と {@code COLUMNS} を突き合わせて
+     * グループ化式を組み立てる。ここが <b>INNER JOIN</b> だと、MySQL 8.0 の関数インデックス
+     * （{@code STATISTICS} 上で {@code COLUMN_NAME IS NULL} ＋ {@code EXPRESSION} 有り。
+     * 実体の隠し仮想生成列は {@code COLUMNS} に現れない）のキーパートが<b>丸ごと脱落する</b>。</p>
+     *
+     * <p>脱落すると本来より<b>粗い</b>グループ化式になり、実害は 2 方向に出る:</p>
+     * <ul>
+     *   <li><b>偽陽性</b>: 照合順序と無関係な重複を拾い、変換の必要が無いのに migration が中断する。
+     *       しかも runbook に従った運用者が「衝突データの正規化」＝実利用者データの削除に向かう</li>
+     *   <li><b>偽陰性</b>: 脱落した式が参照する文字列列の真の衝突が検査されない</li>
+     * </ul>
+     *
+     * <p>本スキーマには実際に関数インデックスが存在する
+     * （{@code recruitment_subcategories.uk_rs_active_name} / {@code V3.117}。
+     * 論理削除済みを UNIQUE 対象外にする部分索引の代替）。</p>
+     *
+     * <h2>検証方法</h2>
+     * <p>ゲートのグループ化式そのものを再実装すると同じ誤りを二度書くことになるので、
+     * <b>壊れた性質そのもの</b>——「STATISTICS 上のキーパート数」と
+     * 「ゲートの JOIN 後に残るキーパート数」が一致すること——を検証する。
+     * INNER JOIN に戻せば関数パートの分だけ数が合わなくなり、このテストが落ちる。</p>
+     */
+    @Test
+    @DisplayName("事前ゲートがUNIQUE索引のキーパートを取りこぼさない（関数インデックス脱落の回帰ガード）")
+    void 事前ゲートがキーパートを取りこぼさない() throws SQLException {
+        // 前提の検算: 関数キーパートを持つ UNIQUE 索引がこのスキーマに実在すること。
+        // 0 件ならこのテストは何も守っておらず、無内容に緑になっている。
+        List<String> functional = query(
+                "SELECT CONCAT(TABLE_NAME, '.', INDEX_NAME) "
+                        + "FROM information_schema.STATISTICS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0 "
+                        + "  AND EXPRESSION IS NOT NULL "
+                        + "GROUP BY TABLE_NAME, INDEX_NAME");
+
+        assertThat(functional)
+                .as("関数キーパートを持つ UNIQUE 索引が実在すること（本テストの前提）")
+                .isNotEmpty();
+
+        // ゲートと同じ JOIN 条件で、キーパートが脱落しないことを確認する。
+        List<String> lost = query(
+                "SELECT CONCAT(s.TABLE_NAME, '.', s.INDEX_NAME, ' 全', COUNT(*), "
+                        + "       '本中 突合できたのは', SUM(c.COLUMN_NAME IS NOT NULL OR s.EXPRESSION IS NOT NULL), '本') "
+                        + "FROM information_schema.STATISTICS s "
+                        + "LEFT JOIN information_schema.COLUMNS c "
+                        + "  ON c.TABLE_SCHEMA = s.TABLE_SCHEMA "
+                        + " AND c.TABLE_NAME   = s.TABLE_NAME "
+                        + " AND c.COLUMN_NAME  = s.COLUMN_NAME "
+                        + "WHERE s.TABLE_SCHEMA = DATABASE() "
+                        + "  AND s.NON_UNIQUE = 0 "
+                        + "  AND s.INDEX_TYPE <> 'FULLTEXT' "
+                        + "GROUP BY s.TABLE_NAME, s.INDEX_NAME "
+                        + "HAVING SUM(c.COLUMN_NAME IS NOT NULL OR s.EXPRESSION IS NOT NULL) <> COUNT(*)");
+
+        assertThat(lost)
+                .as("ゲートの突合でキーパートが脱落する UNIQUE 索引が無いこと。"
+                        + "脱落するとグループ化式が粗くなり、偽陽性（無関係な重複で migration 中断）と"
+                        + "偽陰性（真の衝突見逃し）が同時に起きる。違反=%s", lost)
+                .isEmpty();
+    }
+
+    /**
+     * <b>関数インデックスが「検査対象に入り、重複判定まで到達する」ことの直接検証。</b>
+     *
+     * <h2>なぜ「取りこぼしが無い」だけでは足りないか</h2>
+     * <p>{@link #事前ゲートがキーパートを取りこぼさない()} は突合の段階でキーパートが
+     * 落ちないことを見るが、<b>組み立てた SQL が実際に実行できるか</b>は見ていない。
+     * 実際、式に一律 {@code COLLATE} を付けていた時期は、数値・日時を返す式に対して
+     * {@code ERROR 1253} で実行できず、ゲートは全環境で {@code UNCHECKABLE} を立てて
+     * migration を必ず中断させていた（＝この PR が永久に適用できない状態だった）。
+     * 「対象に入っている」ことと「判定できている」ことは別なので、後者を直接確かめる。</p>
+     *
+     * <h2>検証内容</h2>
+     * <p>関数キーパートを持つ UNIQUE 索引について、migration と同じ形の
+     * グループ化式を組み立てて<b>実際に重複件数を数える</b>。
+     * 例外なく数値が返ることが、ゲートがその索引を判定できている証拠になる。</p>
+     */
+    @Test
+    @DisplayName("関数インデックスが検査対象に入り重複判定まで到達する（ERROR 1253 の回帰ガード）")
+    void 関数インデックスが重複判定まで到達する() throws SQLException {
+        // migration と同じ規則でグループ化式・NOT NULL 条件を組み立てる
+        // 統一照合順序はコード内の定数であって外部入力ではないので、SQL に直接埋め込む。
+        // （プレースホルダにすると SQL 文字列リテラルの中の '?' となり、
+        //   JDBC はそれをパラメータとみなさないためバインド数が食い違う）
+        final String coll = SchemaCollationPolicy.UNIFIED_COLLATION;
+        // migration と同じく EXPRESSION のバックスラッシュエスケープを解除する。
+        // ここを migration と揃えておかないと、ERROR 1064 の回帰をこのテストが見逃す。
+        final String unesc = "REPLACE(s.EXPRESSION, CONCAT(CHAR(92), CHAR(39)), CHAR(39))";
+
+        List<String> plans = query(
+                "SELECT CONCAT(s.TABLE_NAME, '<@>', "
+                        + " GROUP_CONCAT(CASE WHEN s.EXPRESSION IS NOT NULL "
+                        + "        THEN CONCAT('CAST((', " + unesc + ", ') AS CHAR) COLLATE " + coll + "') "
+                        + "        WHEN c.COLLATION_NAME IS NULL THEN CONCAT('`', s.COLUMN_NAME, '`') "
+                        + "        WHEN s.SUB_PART IS NULL "
+                        + "        THEN CONCAT('`', s.COLUMN_NAME, '` COLLATE " + coll + "') "
+                        + "        ELSE CONCAT('LEFT(`', s.COLUMN_NAME, '`, ', s.SUB_PART, "
+                        + "                    ') COLLATE " + coll + "') "
+                        + "   END ORDER BY s.SEQ_IN_INDEX SEPARATOR ', '), '<@>', "
+                        + " GROUP_CONCAT(CASE WHEN s.EXPRESSION IS NOT NULL "
+                        + "        THEN CONCAT('(', " + unesc + ", ') IS NOT NULL') "
+                        + "        ELSE CONCAT('`', s.COLUMN_NAME, '` IS NOT NULL') "
+                        + "   END ORDER BY s.SEQ_IN_INDEX SEPARATOR ' AND ')) "
+                        + "FROM information_schema.STATISTICS s "
+                        + "LEFT JOIN information_schema.COLUMNS c "
+                        + "  ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME "
+                        + " AND c.COLUMN_NAME = s.COLUMN_NAME "
+                        + "WHERE s.TABLE_SCHEMA = DATABASE() AND s.NON_UNIQUE = 0 "
+                        + "  AND s.INDEX_TYPE <> 'FULLTEXT' "
+                        + "GROUP BY s.TABLE_NAME, s.INDEX_NAME "
+                        + "HAVING SUM(s.EXPRESSION IS NOT NULL) > 0");
+
+        assertThat(plans)
+                .as("関数キーパートを持つ UNIQUE 索引が実在すること（本テストの前提）")
+                .isNotEmpty();
+
+        SoftAssertions softly = new SoftAssertions();
+        for (String plan : plans) {
+            String[] p = plan.split("<@>", -1);
+            String table = p[0];
+            String sql = "SELECT COUNT(*) FROM (SELECT 1 FROM `" + table + "`"
+                    + " WHERE " + p[2] + " GROUP BY " + p[1] + " HAVING COUNT(*) > 1) g";
+            try {
+                List<String> r = query(sql);
+                // 「例外が出なかった」だけでは不十分。
+                // dup 計算まで到達して実数が返ったこと（NULL でないこと）が到達の証明である。
+                softly.assertThat(r)
+                        .as("%s の重複件数が 1 行返ること", table)
+                        .hasSize(1);
+                if (r.size() == 1) {
+                    softly.assertThat(r.get(0))
+                            .as("%s の重複件数が NULL ではなく実数であること。"
+                                    + "NULL は『検査に到達していない』を意味し、"
+                                    + "ゲートはその索引を UNCHECKABLE として migration を中断させる", table)
+                            .isNotNull()
+                            .matches("\\d+");
+                }
+            } catch (SQLException e) {
+                softly.fail("関数インデックスを含む %s の重複判定が実行できない。"
+                        + "ゲートはこの索引を UNCHECKABLE として扱い migration を中断させる: %s",
+                        table, e.getMessage());
+            }
+        }
+        softly.assertAll();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** 1 列を文字列として返すクエリを実行する。 */
@@ -383,6 +573,20 @@ class SchemaCollationConsistencyIT {
         List<String> result = new ArrayList<>();
         try (Connection conn = connection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            // バインド数の食い違いは JDBC の内部例外
+            // （getCoreParameterIndex の ArrayIndexOutOfBounds 相当）として現れ、
+            // 「SQL のどこが悪いのか」が読み取れないスタックトレースになる。
+            // 本ヘルパの呼び出し側の誤りなので、ここで意味のあるメッセージにして落とす。
+            // 特に、SQL 文字列リテラルの中に書いた '?' は JDBC がパラメータとみなさないため、
+            // 引数だけ増えて食い違う事故が起きやすい（実際に起きた）。
+            int expected = ps.getParameterMetaData().getParameterCount();
+            if (expected != params.length) {
+                throw new IllegalArgumentException(
+                        "プレースホルダ数と引数の数が一致しない: SQL 側=" + expected
+                                + " 引数=" + params.length
+                                + "（SQL 文字列リテラル内の '?' はパラメータとして数えられない点に注意）"
+                                + " SQL=" + sql);
+            }
             for (int i = 0; i < params.length; i++) {
                 ps.setString(i + 1, params[i]);
             }

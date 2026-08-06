@@ -109,16 +109,142 @@ SELECT TABLE_NAME
    AND TABLE_COLLATION <> 'utf8mb4_0900_ai_ci'         -- 既に統一先の表は対象外（冪等性）
  ORDER BY TABLE_NAME;
 
--- 事前検査で見つけた衝突を貯める（1 件目で止めず全件報告してから中断するため）
-DROP TEMPORARY TABLE IF EXISTS tmp_collation_conflicts_2589;
-CREATE TEMPORARY TABLE tmp_collation_conflicts_2589 (
+-- 事前検査で見つけた衝突を貯める（1 件目で止めず全件報告してから中断するため）。
+--
+-- ⚠️ TEMPORARY ではなく**永続テーブル**にしてある。
+--    SIGNAL の MESSAGE_TEXT は MySQL の仕様で 128 文字までしか入らず、
+--    索引名・列名・衝突値といった対処に必要な詳細はそこに収まらない。
+--    詳細をメッセージに詰め込んで切り詰めるのは情報の消失であり、
+--    「詳細を見て対処せよ」と指示している runbook と噛み合わない。
+--    そこで詳細は本テーブルに残し、MESSAGE_TEXT には件数と参照先だけを入れる。
+--    中断せず正常終了した場合は不要なので末尾で DROP し、スキーマを汚さない。
+DROP TABLE IF EXISTS collation_precheck_findings;
+CREATE TABLE collation_precheck_findings (
     seq          INT AUTO_INCREMENT PRIMARY KEY,
     table_name   VARCHAR(64)  NOT NULL,
     index_name   VARCHAR(64)  NOT NULL,
     column_list  VARCHAR(512) NOT NULL,
     sample_value VARCHAR(512) NULL,
-    dup_groups   BIGINT       NOT NULL
+    -- 重複グループ数。UNCHECKABLE のときは「計算に到達していない」ので NULL を入れる。
+    -- ここに 0 を入れると「重複ゼロだから安全」と誤読され、
+    -- 検査できていないまま安全と判断される最悪の結末を招く。NULL と 0 は必ず区別する。
+    dup_groups   BIGINT       NULL,
+    -- DUPLICATE  … 変換すると一意制約に違反する組が実在する
+    -- UNCHECKABLE… 検査用 SQL 自体が実行できず、衝突の有無を判定できなかった
+    --              （黙って見逃さず、判定不能も中断理由として扱う）
+    reason       VARCHAR(16)  NOT NULL DEFAULT 'DUPLICATE',
+    -- UNCHECKABLE のとき、なぜ検査できなかったかを MySQL のエラー番号とメッセージで残す。
+    -- 「判定不能」というラベルだけでは ERROR 1253（非文字列への COLLATE）なのか
+    -- 別の原因なのかが区別できず、原因究明がここで止まってしまうため。
+    err_code     INT          NULL,
+    err_message  VARCHAR(512) NULL,
+    check_sql    TEXT         NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- =============================================================================
+-- 【教訓】診断の仕組みを足すたびに、その仕組み自体が新しい嘘をついた
+--
+-- この事前ゲートを動かすまでに、原因が 5 層に重なっていた。
+-- 各層は「前の層を直して初めて見える」ようになっており、
+-- **見えているエラーが真因とは限らない**ばかりか、
+-- **エラーが無いこと自体が異常のサインでありうる**ことを示している。
+--
+--   1層目 errno=1253  … 非文字列を返す式に COLLATE を付けていた（真の情報）
+--                        → CAST((expr) AS CHAR) COLLATE ... に是正
+--   2層目 errno=1243  … PREPARE 失敗後も CONTINUE ハンドラで EXECUTE/DEALLOCATE が走り、
+--                        後始末のエラーが真の errno を上書きしていた（自作の目隠し）
+--                        → 失敗したら後続の文を実行しない。初回の errno を保持する
+--   3層目 errno=NULL  … `IF @err_code IS NULL THEN GET DIAGNOSTICS ...` と書いたため、
+--                        IF の条件評価が診断領域をクリアしていた（自作の目隠し）
+--                        → GET DIAGNOSTICS をハンドラの第一文にする
+--   4層目 errno=NULL  … ハンドラ本体の DECLARE ... DEFAULT がブロック入場時に代入として走り、
+--                        やはり診断領域をクリアしていた（自作の目隠し）
+--                        → ローカル変数をやめ、セッション変数へ直接採取する
+--   5層目 errno=1064  … ようやく現れた真因。information_schema.STATISTICS.EXPRESSION は
+--                        クォートをバックスラッシュでエスケープした文字列を返すため
+--                        （例: _utf8mb4\'9999-12-31 00:00:00\'）、そのまま動的 SQL に
+--                        埋め込むと構文エラーになる
+--                        → REPLACE で \' を ' に戻してから埋め込む
+--
+-- ⇒ **診断コードを足したら、その診断コードが正しく動くことを別途確かめること。**
+--    本件では最小再現（わざと失敗する PREPARE だけのプロシージャ）を作って
+--    採取機構の正常性を先に確認し、そこで 3〜4 層目を切り分けた。
+-- =============================================================================
+
+-- 検査 SQL を実行し、成功可否を返す。
+-- 失敗を握りつぶすためではなく、「判定できなかった」ことを呼び出し側に伝えて
+-- 中断理由に積み上げるためのラッパである（例外を無視して先へ進むことはしない）。
+DROP PROCEDURE IF EXISTS try_count_dups_2589;
+
+CREATE PROCEDURE try_count_dups_2589(IN p_sql TEXT, OUT p_ok TINYINT)
+BEGIN
+    DECLARE v_failed TINYINT DEFAULT 0;
+
+    -- 失敗したときは「なぜ失敗したか」を必ず捕まえる。
+    -- ラベルだけ残して原因を捨てると、運用者も開発者もここで調査が止まる。
+    --
+    -- ⚠️ CONTINUE ハンドラは「失敗した文の次から実行を継続する」。
+    --    素直に PREPARE / EXECUTE / DEALLOCATE を並べると、PREPARE が失敗した場合に
+    --    EXECUTE と DEALLOCATE も «Unknown prepared statement handler» で失敗し、
+    --    真の原因が後始末のエラー（errno 1243）で上書きされて消える。
+    --    実際にこれで 1243 だけが記録され、原因究明が止まった。
+    --    そこで (1) 最初に捕まえたエラーだけを保持し、(2) 失敗後は後続の文を実行しない。
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        -- ⚠️⚠️ GET DIAGNOSTICS は「ハンドラ本体の正真正銘の第一文」でなければならない。
+        --    診断領域は多くの文の実行でクリアされるが、その「文」には
+        --    **ローカル変数の DECLARE ... DEFAULT も含まれる**（ブロック入場時に代入として走るため）。
+        --    したがってハンドラ本体に DECLARE を置いた時点で診断領域は失われる。
+        --    最小再現で実測済み:
+        --      A) ハンドラ内に DECLARE ... DEFAULT あり → errno = NULL（採取できない）
+        --      B) DECLARE 無し・GET DIAGNOSTICS が第一文 → errno = 1064（採取できる）
+        --    そのためローカル変数を使わず、セッション変数へ直接採取する（宣言が不要になる）。
+        --    採取（無条件・最初）と、初回値を優先する選別（その後）は必ず分けること。
+        GET DIAGNOSTICS CONDITION 1 @c_errno = MYSQL_ERRNO, @c_msg = MESSAGE_TEXT;
+
+        IF @err_code IS NULL THEN
+            SET @err_code = @c_errno;
+            SET @err_message = @c_msg;
+        END IF;
+        SET v_failed = 1;
+    END;
+
+    SET p_ok = 1;
+    SET @err_code = NULL;
+    SET @err_message = NULL;
+    SET @dup_groups = NULL;
+    SET @inner_sql = p_sql;
+    -- どこまで到達したかを残す。エラーが出ていないのに結果が無い場合、
+    -- 「どの文まで実行されたか」が分からないと原因を推測でしか語れなくなる。
+    SET @dbg_prepared = 0;
+    SET @dbg_executed = 0;
+    SET @dbg_after = 'unset';
+
+    PREPARE stmt FROM @inner_sql;
+
+    -- PREPARE が成功したときだけ EXECUTE / DEALLOCATE へ進む。
+    -- EXECUTE が失敗しても DEALLOCATE は必要（ハンドルは確保済みのため）なので
+    -- この IF の中で両方を実行する。
+    IF v_failed = 0 THEN
+        SET @dbg_prepared = 1;
+        EXECUTE stmt;
+        SET @dbg_executed = IF(v_failed = 0, 1, 0);
+        SET @dbg_after = CONCAT('dup=', IFNULL(CAST(@dup_groups AS CHAR), 'NULL'));
+        DEALLOCATE PREPARE stmt;
+    END IF;
+
+    IF v_failed = 1 THEN
+        SET p_ok = 0;
+        -- 「ハンドラは発火したのに errno が採れていない」は、診断機構そのものの故障である。
+        -- これを静かに通すと「例外なし」という嘘が記録され、無関係な場所を掘ることになる
+        -- （実際に一度そうなった）。矛盾は矛盾として明示的に記録する。
+        IF @err_code IS NULL THEN
+            SET @err_message = CONCAT(
+                '診断採取に失敗: SQLEXCEPTION ハンドラは発火したが errno を採取できなかった。',
+                'GET DIAGNOSTICS がハンドラの先頭で実行されているか確認すること');
+        END IF;
+    END IF;
+END;
 
 -- =============================================================================
 -- STEP 1: 事前検査 — 変換で一意制約違反が起きないかを実データで確認する
@@ -169,7 +295,26 @@ BEGIN
         SELECT s.TABLE_NAME,
                s.INDEX_NAME,
                GROUP_CONCAT(
-                   CASE WHEN c.COLLATION_NAME IS NULL
+                   CASE WHEN s.EXPRESSION IS NOT NULL
+                        -- 関数キーパート（MySQL 8.0 の関数インデックス）。
+                        -- COLUMN_NAME は NULL で、実体の隠し仮想生成列は COLUMNS に現れない。
+                        -- 式そのものをグループ化キーにする（これを落とすと式が粗くなり誤検知する）。
+                        --
+                        -- ⚠️ 式の結果型は information_schema からは分からない。
+                        --    素の式に COLLATE を付けると、数値・日時を返す式に対して
+                        --    ERROR 1253 (COLLATION ... is not valid for CHARACTER SET ...) になる
+                        --    （実在例: shift_budget_allocations.uq_sba_scope_category_period の
+                        --      coalesce(team_id,0) / coalesce(deleted_at,'9999-12-31 00:00:00')）。
+                        --    そこで CAST(... AS CHAR) で文字列に寄せてから COLLATE を当てる。
+                        --    数値・日時は文字列化しても正準表現が 1 対 1 に対応するので
+                        --    グループ化の意味論は保たれ、かつ照合順序に非依存になる。
+                        --    型判定を information_schema に頼らずに済むのが利点。
+                        THEN CONCAT('CAST((', REPLACE(s.EXPRESSION, CONCAT(CHAR(92), CHAR(39)), CHAR(39)), ') AS CHAR) COLLATE utf8mb4_0900_ai_ci')
+                        WHEN c.COLLATION_NAME IS NULL
+                        -- 非文字列列（数値・日時）とバイナリ列（BLOB/VARBINARY）。
+                        -- どちらも照合順序に非依存なので素のまま使う。
+                        -- バイナリ列は CAST(... AS CHAR) すると不正なバイト列になりうるため
+                        -- 決して文字列化しないこと。
                         THEN CONCAT('`', s.COLUMN_NAME, '`')
                         WHEN s.SUB_PART IS NULL
                         THEN CONCAT('`', s.COLUMN_NAME, '` COLLATE utf8mb4_0900_ai_ci')
@@ -178,14 +323,29 @@ BEGIN
                    END
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ', '),
                -- 報告用の表示式。ANY_VALUE() で包むのは必須である（下記 sql_mode の注意を参照）。
-               GROUP_CONCAT(CONCAT('ANY_VALUE(COALESCE(CAST(`', s.COLUMN_NAME,
-                                   '` AS CHAR), ''<NULL>''))')
+               GROUP_CONCAT(
+                   CASE WHEN s.EXPRESSION IS NOT NULL
+                        THEN CONCAT('ANY_VALUE(COALESCE(CAST((', REPLACE(s.EXPRESSION, CONCAT(CHAR(92), CHAR(39)), CHAR(39)),
+                                    ') AS CHAR), ''<NULL>''))')
+                        ELSE CONCAT('ANY_VALUE(COALESCE(CAST(`', s.COLUMN_NAME,
+                                    '` AS CHAR), ''<NULL>''))')
+                   END
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ', ''|'', '),
-               GROUP_CONCAT(CONCAT('`', s.COLUMN_NAME, '` IS NOT NULL')
+               GROUP_CONCAT(
+                   CASE WHEN s.EXPRESSION IS NOT NULL
+                        THEN CONCAT('(', REPLACE(s.EXPRESSION, CONCAT(CHAR(92), CHAR(39)), CHAR(39)), ') IS NOT NULL')
+                        ELSE CONCAT('`', s.COLUMN_NAME, '` IS NOT NULL')
+                   END
                    ORDER BY s.SEQ_IN_INDEX SEPARATOR ' AND '),
-               GROUP_CONCAT(s.COLUMN_NAME ORDER BY s.SEQ_IN_INDEX SEPARATOR ',')
+               GROUP_CONCAT(COALESCE(s.COLUMN_NAME, CONCAT('式:', LEFT(s.EXPRESSION, 60)))
+                   ORDER BY s.SEQ_IN_INDEX SEPARATOR ',')
           FROM information_schema.STATISTICS s
-          JOIN information_schema.COLUMNS c
+          -- ⚠️ LEFT JOIN であること。関数キーパートは COLUMN_NAME が NULL で
+          --    対応する行が COLUMNS に存在しないため、INNER JOIN にすると
+          --    そのキーパートだけが黙って脱落し、本来より粗いグループ化式が組まれる。
+          --    粗い式は「照合順序と無関係な重複」を拾って誤検知し、
+          --    かつ式に含まれる文字列列の真の衝突を見逃す（偽陽性と偽陰性が同居する）。
+          LEFT JOIN information_schema.COLUMNS c
             ON c.TABLE_SCHEMA = s.TABLE_SCHEMA
            AND c.TABLE_NAME   = s.TABLE_NAME
            AND c.COLUMN_NAME  = s.COLUMN_NAME
@@ -195,7 +355,10 @@ BEGIN
            AND s.NON_UNIQUE = 0                      -- UNIQUE / PRIMARY のみ
            AND s.INDEX_TYPE <> 'FULLTEXT'
          GROUP BY s.TABLE_NAME, s.INDEX_NAME
-        HAVING SUM(c.COLLATION_NAME IS NOT NULL) > 0 -- 文字列列を 1 本以上含むものだけ
+        -- 文字列列を含むものに加え、関数キーパートを持つ索引も検査対象にする
+        -- （式が文字列を返す場合は照合順序の影響を受けるため）。
+        HAVING SUM(c.COLLATION_NAME IS NOT NULL) > 0
+            OR SUM(s.EXPRESSION IS NOT NULL) > 0
          ORDER BY s.TABLE_NAME, s.INDEX_NAME;
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
@@ -213,9 +376,28 @@ BEGIN
             '` WHERE ', v_notnull_expr,
             ' GROUP BY ', v_group_expr,
             ' HAVING COUNT(*) > 1) AS g');
-        PREPARE stmt FROM @sql;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
+        CALL try_count_dups_2589(@sql, @exec_ok);
+
+        IF @exec_ok = 0 OR @dup_groups IS NULL THEN
+            -- 検査できなかった索引は「衝突なし」とみなさない。
+            -- 判定不能のまま変換に進むと、本番で ERROR 1062 に化けて途中停止する。
+            INSERT INTO collation_precheck_findings
+                (table_name, index_name, column_list, sample_value, dup_groups, reason,
+                 err_code, err_message, check_sql)
+            VALUES (v_table, v_index, LEFT(v_columns, 512),
+                    NULL, NULL, 'UNCHECKABLE',
+                    @err_code,
+                    LEFT(CONCAT(IFNULL(@err_message, '(例外なし)'),
+                                ' | 到達状況: prepared=', IFNULL(@dbg_prepared, '?'),
+                                ' executed=', IFNULL(@dbg_executed, '?'),
+                                ' EXECUTE直後の', IFNULL(@dbg_after, '?'),
+                                ' / 呼び出し元での@dup_groups=',
+                                IFNULL(CAST(@dup_groups AS CHAR), 'NULL'),
+                                ' @exec_ok=', IFNULL(CAST(@exec_ok AS CHAR), 'NULL')), 512),
+                    @sql);
+            ITERATE precheck_loop;
+        END IF;
+
         SET v_dups = @dup_groups;
 
         IF v_dups > 0 THEN
@@ -229,7 +411,7 @@ BEGIN
             EXECUTE stmt;
             DEALLOCATE PREPARE stmt;
 
-            INSERT INTO tmp_collation_conflicts_2589
+            INSERT INTO collation_precheck_findings
                 (table_name, index_name, column_list, sample_value, dup_groups)
             VALUES (v_table, v_index, LEFT(v_columns, 512), LEFT(@sample, 512), v_dups);
         END IF;
@@ -246,30 +428,45 @@ DROP PROCEDURE IF EXISTS abort_if_collation_conflicts_2589;
 CREATE PROCEDURE abort_if_collation_conflicts_2589()
 BEGIN
     DECLARE v_count INT DEFAULT 0;
-    DECLARE v_detail TEXT;
+    DECLARE v_dup_count INT DEFAULT 0;
+    DECLARE v_unchk_count INT DEFAULT 0;
+    DECLARE v_head VARCHAR(256);
 
-    SELECT COUNT(*) INTO v_count FROM tmp_collation_conflicts_2589;
+    SELECT COUNT(*),
+           SUM(reason = 'DUPLICATE'),
+           SUM(reason = 'UNCHECKABLE')
+      INTO v_count, v_dup_count, v_unchk_count
+      FROM collation_precheck_findings;
 
     IF v_count > 0 THEN
-        SELECT GROUP_CONCAT(
-                   CONCAT(table_name, '.', index_name, '(', column_list, ') 重複',
-                          dup_groups, '組 例=', COALESCE(sample_value, '?'))
-                   ORDER BY seq SEPARATOR ' / ')
-          INTO v_detail
-          FROM tmp_collation_conflicts_2589;
+        -- ⚠️ SIGNAL の MESSAGE_TEXT は MySQL の仕様で 128 文字までで、
+        --    超えると ERROR 1648 'Data too long for condition item MESSAGE_TEXT' になり、
+        --    本来報告したかった中断理由そのものが失われる。
+        --    詳細（索引名・列名・衝突値）は collation_precheck_findings テーブルに残してあるので、
+        --    メッセージには件数と参照先だけを 128 文字以内で入れる。
+        --    詳細をメッセージに詰めて切り詰めるのは情報の消失であり採らない。
+        -- 件数だけではログから原因が分からず、運用者が DB に入って表を引くまで何も掴めない。
+        -- 128 文字の範囲で最も情報量の多い要約（先頭 1 件の表.索引と、判定不能ならエラー番号）を載せる。
+        SELECT CONCAT(table_name, '.', index_name,
+                      IF(reason = 'UNCHECKABLE',
+                         CONCAT(' errno=', COALESCE(err_code, 0)), ''))
+          INTO v_head
+          FROM collation_precheck_findings
+         ORDER BY seq
+         LIMIT 1;
 
-        SET @msg = CONCAT(
-            'issue #2589: 照合順序の統一を中断しました（変換は一切行っていません）。',
-            'utf8mb4_0900_ai_ci へ変換すると一意制約に違反する既存データが ',
-            v_count, ' インデックスで見つかりました。',
-            '対処: docs/architecture/collation_unification_runbook.md / 詳細: ',
-            LEFT(v_detail, 300));
+        SET @msg = LEFT(CONCAT(
+            'issue #2589 中断(変換なし) 重複=', COALESCE(v_dup_count, 0),
+            ' 判定不能=', COALESCE(v_unchk_count, 0),
+            ' 例:', LEFT(COALESCE(v_head, '?'), 55),
+            ' 全件:collation_precheck_findings表'), 128);
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @msg;
     END IF;
 END;
 
 CALL abort_if_collation_conflicts_2589();
 DROP PROCEDURE abort_if_collation_conflicts_2589;
+DROP PROCEDURE IF EXISTS try_count_dups_2589;
 
 -- =============================================================================
 -- STEP 2: 変換前スナップショット
@@ -489,7 +686,7 @@ CALL verify_table_collation_2589();
 DROP PROCEDURE verify_table_collation_2589;
 
 DROP TEMPORARY TABLE IF EXISTS tmp_collation_targets_2589;
-DROP TEMPORARY TABLE IF EXISTS tmp_collation_conflicts_2589;
+DROP TABLE IF EXISTS collation_precheck_findings;
 DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_meta_2589;
 DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_cols_2589;
 DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_rows_2589;
