@@ -42,6 +42,9 @@ const mockCreateReservation = vi.fn()
 // 検分指摘（軽4）: 週間スケジュールの件数バッジ（枠テンプレ＋定期予約不可の合算）を検証するために追加。
 const mockGetSlotTemplates = vi.fn()
 const mockListRecurringBlockedTimes = vi.fn()
+// SlotMatrixPicker が自分のキャンセル待ち集合の取得に使う（#2609是正: 未モックだと
+// TypeError: reservationApi.listMyWaitlist is not a function が握りつぶされつつ毎回発生していた）。
+const mockListMyWaitlist = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -54,6 +57,7 @@ vi.mock('~/composables/useReservationApi', () => ({
     createReservation: mockCreateReservation,
     getSlotTemplates: mockGetSlotTemplates,
     listRecurringBlockedTimes: mockListRecurringBlockedTimes,
+    listMyWaitlist: mockListMyWaitlist,
   }),
 }))
 
@@ -99,6 +103,7 @@ beforeEach(() => {
   mockCreateReservation.mockReset()
   mockGetSlotTemplates.mockReset()
   mockListRecurringBlockedTimes.mockReset()
+  mockListMyWaitlist.mockReset()
   localStorage.clear()
 
   mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
@@ -110,6 +115,8 @@ beforeEach(() => {
   // 既定は枠テンプレ・定期予約不可とも0件（badge検証テストのみ個別に上書きする）。
   mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
   mockListRecurringBlockedTimes.mockResolvedValue({ data: [] })
+  // 自分がどの枠のキャンセル待ちにも登録していない既定状態（空配列が自然な初期値）。
+  mockListMyWaitlist.mockResolvedValue({ data: [] })
 
   // 既定は非管理者（MEMBER）。admin タブ構成を検証するテストのみ個別に上書きする。
   roleOverride.isAdmin = false

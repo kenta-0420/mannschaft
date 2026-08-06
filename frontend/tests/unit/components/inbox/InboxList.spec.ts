@@ -91,7 +91,8 @@ vi.mock('~/composables/useInboxApi', () => ({
 }))
 
 vi.mock('~/stores/useAuthStore', () => ({
-  useAuthStore: () => ({ user: { id: 1, timezone: 'Asia/Tokyo' } }),
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
+  useAuthStore: () => ({ user: { id: 1, timezone: 'Asia/Tokyo' }, isAuthenticated: false, loadFromStorage: vi.fn() }),
 }))
 
 vi.mock('~/composables/useNotification', () => ({
