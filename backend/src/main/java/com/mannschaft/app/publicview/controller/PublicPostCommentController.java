@@ -2,6 +2,7 @@ package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.publicview.dto.PublicPostCommentRequest;
 import com.mannschaft.app.publicview.dto.PublicPostCommentResponse;
 import com.mannschaft.app.publicview.service.PublicPostCommentService;
@@ -94,7 +95,14 @@ public class PublicPostCommentController {
      * @param request        コメント投稿リクエスト
      * @param authentication Spring Security の認証情報
      * @return 作成されたコメント（201 Created）
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code PublicPostCommentService#postComment} が {@code validatePublicPost} で
+     * postId が公開条件（visibility=PUBLIC・status=PUBLISHED・public_visible=true）を
+     * 満たすことを検証し、authorId は {@code SecurityUtils.getCurrentUserId()} に束縛される。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping
     @Operation(
             summary = "公開投稿コメント投稿（ログイン必須）",
@@ -120,7 +128,13 @@ public class PublicPostCommentController {
      * @param commentId      削除対象コメントの UUID
      * @param authentication Spring Security の認証情報
      * @return 204 No Content
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code PublicPostCommentService#deleteComment} が commentId から取得したコメントの
+     * {@code authorId} と操作者を比較し（{@code isAdmin} なら例外）、不一致なら 403 を投げる。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/{commentId}")
     @Operation(
             summary = "公開投稿コメント削除（ログイン必須）",

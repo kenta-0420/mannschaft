@@ -7,6 +7,7 @@ import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.service.EventCheckinService;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,7 +57,12 @@ public class EventCheckinController {
      *
      * <p>認可: {@code EventCheckinService} 側で QR トークンから解決したチケットの参加登録者本人
      * であることを検証する。</p>
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventCheckinService#selfCheckin} が {@code requireTicketOwner} でチケット所有者と
+     * 操作者を比較する。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/checkin/self")
     @Operation(summary = "セルフチェックイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "チェックイン成功")
