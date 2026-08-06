@@ -32,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -48,6 +49,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -178,7 +180,14 @@ class ReservationServiceTest {
      * キャンセル締切（⑤）の超過/境界を時刻別に検証するために使う。
      */
     private void reinitServiceWithClockAt(LocalDateTime now) {
-        Clock fixed = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
+        reinitServiceWithClock(Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC")));
+    }
+
+    /**
+     * 任意の {@link Clock}（ゾーン込み）を明示注入してサービスを再生成する。
+     * Issue #2526 のゾーン一致性番人テスト（同一瞬間・異なる Clock ゾーン）で使う。
+     */
+    private void reinitServiceWithClock(Clock clock) {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
@@ -187,7 +196,7 @@ class ReservationServiceTest {
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationCreateRateLimiter.class),
-                fixed);
+                clock);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -1105,6 +1114,47 @@ class ReservationServiceTest {
             assertThat(result).isNotNull();
             verify(slotService).decrementAndReopen(slot);
         }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 締切判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 締切判定はClockのゾーンに左右されない() {
+            // 枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00。
+            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て締切の 1 分前」＝2026-03-31T09:59 を指す
+            // 同一瞬間を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            // 正しい実装（LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))）なら
+            // Clock 自身のゾーン設定に左右されず両方とも「締切内」でキャンセル可となるはずである。
+            // バグ実装（LocalDateTime.now(clock) で Clock のゾーンをそのまま使う）だと、
+            // Asia/Tokyo 側は瞬間 +9h ずれた壁時計になり「締切超過」に誤判定される。
+            Instant sameInstant = LocalDateTime.of(2026, 3, 31, 9, 59).toInstant(ZoneOffset.UTC);
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
+
+            // ① UTC ゾーンの Clock（CI の既定ゾーンと一致）
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            ReservationEntity entityUtc = createReservationEntity();
+            given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
+                    .willReturn(Optional.of(entityUtc));
+            given(reservationRepository.save(entityUtc)).willReturn(entityUtc);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(createAvailableSlotEntity());
+            given(reservationMapper.toReservationResponse(entityUtc)).willReturn(createReservationResponse());
+            ReservationResponse resultUtc = service.cancelByUser(USER_ID, RESERVATION_ID, request);
+            assertThat(resultUtc).as("UTC Clock: 締切内のためキャンセル成功するはず").isNotNull();
+
+            // ② Asia/Tokyo ゾーンの Clock（同じ瞬間だが Clock 自身のゾーンが +09:00）
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            ReservationEntity entityTokyo = createReservationEntity();
+            given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
+                    .willReturn(Optional.of(entityTokyo));
+            given(reservationRepository.save(entityTokyo)).willReturn(entityTokyo);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(createAvailableSlotEntity());
+            given(reservationMapper.toReservationResponse(entityTokyo)).willReturn(createReservationResponse());
+
+            ReservationResponse resultTokyo = service.cancelByUser(USER_ID, RESERVATION_ID, request);
+            assertThat(resultTokyo)
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない"
+                            + "（同一瞬間なら UTC Clock と同じ『締切内』判定になるはず）")
+                    .isNotNull();
+        }
     }
 
     // ========================================
@@ -1371,6 +1421,30 @@ class ReservationServiceTest {
 
             // Then: 申込時刻ではなく「現在の日付＋時刻」で来店日時を絞り込む
             then(reservationRepository).should().findUpcomingByUserId(
+                    eq(USER_ID),
+                    eq(LocalDate.of(2026, 4, 1)),
+                    eq(LocalTime.of(9, 30)));
+        }
+
+        @Test
+        @DisplayName("Issue #2526 番人: 来店日時の絞り込み基準は Clock のゾーンに左右されない")
+        void 来店日時基準はClockのゾーンに左右されない() {
+            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て 2026-04-01 09:30」を指す同一瞬間を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            Instant sameInstant = LocalDateTime.of(2026, 4, 1, 9, 30).toInstant(ZoneOffset.UTC);
+            given(reservationRepository.findUpcomingByUserId(
+                    eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
+                    .willReturn(List.of());
+            given(reservationMapper.toReservationResponseList(anyList())).willReturn(List.of());
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            service.listUpcomingReservations(USER_ID);
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            service.listUpcomingReservations(USER_ID);
+
+            // 両呼び出しとも、Clock のゾーンに関わらず同一の日付・時刻でクエリされているはず。
+            then(reservationRepository).should(times(2)).findUpcomingByUserId(
                     eq(USER_ID),
                     eq(LocalDate.of(2026, 4, 1)),
                     eq(LocalTime.of(9, 30)));

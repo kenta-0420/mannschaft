@@ -84,6 +84,15 @@ class ReservationWaitlistServiceTest {
                 waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper, clock);
     }
 
+    /**
+     * 任意の {@link Clock}（ゾーン込み）を明示注入してサービスを再生成する。
+     * Issue #2526 のゾーン一致性番人テスト（同一瞬間・異なる Clock ゾーン）で使う。
+     */
+    private void reinitServiceWithClock(Clock injectedClock) {
+        service = new ReservationWaitlistService(
+                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper, injectedClock);
+    }
+
     private ReservationSlotEntity slot(SlotStatus status) {
         return ReservationSlotEntity.builder()
                 .id(SLOT_ID).teamId(TEAM_ID)
@@ -227,6 +236,42 @@ class ReservationWaitlistServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ReservationErrorCode.WAITLIST_RATE_LIMITED);
         verify(slotRepository, never()).findByIdAndTeamId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName(
+            "Issue #2526 番人: 過去枠判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+    void 過去枠判定はClockのゾーンに左右されない() {
+        // 枠開始は FUTURE_DATE(2026-08-01) 10:00。
+        // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て枠開始の 1 分前」＝2026-08-01T09:59 を指す
+        // 同一瞬間を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+        // 正しい実装（LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))）なら
+        // Clock 自身のゾーンに左右されず両方とも「未来枠」として登録できるはずである。
+        // バグ実装（LocalDateTime.now(clock)）だと、Asia/Tokyo 側は瞬間 +9h ずれた壁時計になり
+        // 「枠開始後 9 時間まで」誤って過去枠と判定されキャンセル待ち登録が通ってしまう
+        // （Issue の再現条件と逆に、ここでは「本来通るはずが弾かれる」形で不整合が露見する）。
+        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59).toInstant(ZoneOffset.UTC);
+        stubAllowedRate();
+        when(waitlistRepository.existsBySlotIdAndUserIdAndStatus(SLOT_ID, USER_ID, WaitlistStatus.WAITING))
+                .thenReturn(false);
+        when(waitlistRepository.countByUserIdAndStatus(USER_ID, WaitlistStatus.WAITING)).thenReturn(0L);
+        when(waitlistRepository.countBySlotIdAndStatus(SLOT_ID, WaitlistStatus.WAITING)).thenReturn(0L);
+        when(waitlistRepository.save(any())).thenAnswer(inv -> {
+            ReservationWaitlistEntryEntity e = inv.getArgument(0);
+            e.setId(UUID.randomUUID());
+            return e;
+        });
+        when(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).thenReturn(Optional.of(slot(SlotStatus.FULL)));
+
+        reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+        WaitlistEntryResponse responseUtc = service.register(TEAM_ID, SLOT_ID, USER_ID);
+        assertThat(responseUtc).as("UTC Clock: 未来枠のため登録成功するはず").isNotNull();
+
+        reinitServiceWithClock(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+        WaitlistEntryResponse responseTokyo = service.register(TEAM_ID, SLOT_ID, USER_ID);
+        assertThat(responseTokyo)
+                .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『未来枠』判定になるはず）")
+                .isNotNull();
     }
 
     // ────────────────────────────────────────────────────────────
@@ -374,5 +419,34 @@ class ReservationWaitlistServiceTest {
 
         assertThat(purged).isEqualTo(1);
         verify(waitlistRepository).deleteAll(List.of(expired));
+    }
+
+    @Test
+    @DisplayName(
+            "Issue #2526 番人: 失効クリーンアップの基準時刻は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+    void 失効クリーンアップの基準時刻はClockのゾーンに左右されない() {
+        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59).toInstant(ZoneOffset.UTC);
+        when(waitlistRepository.findExpiredWaiting(
+                eq(WaitlistStatus.WAITING), any(LocalDate.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+
+        reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+        service.purgeExpiredWaiting();
+
+        reinitServiceWithClock(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+        service.purgeExpiredWaiting();
+
+        ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+        ArgumentCaptor<LocalTime> timeCaptor = ArgumentCaptor.forClass(LocalTime.class);
+        verify(waitlistRepository, times(2)).findExpiredWaiting(
+                eq(WaitlistStatus.WAITING), dateCaptor.capture(), timeCaptor.capture());
+        assertThat(dateCaptor.getAllValues().get(0))
+                .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                .isEqualTo(dateCaptor.getAllValues().get(1));
+        assertThat(timeCaptor.getAllValues().get(0))
+                .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                .isEqualTo(timeCaptor.getAllValues().get(1));
+        assertThat(timeCaptor.getAllValues().get(0)).isEqualTo(LocalTime.of(9, 59));
+        assertThat(dateCaptor.getAllValues().get(0)).isEqualTo(LocalDate.of(2026, 8, 1));
     }
 }
