@@ -22,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -178,9 +179,16 @@ class ReservationServiceTest {
     /**
      * 指定した固定時刻を「現在」とする Clock を注入してサービスを再生成する。
      * キャンセル締切（⑤）の超過/境界を時刻別に検証するために使う。
+     *
+     * <p>Issue #2526 是正済み判定: 締切判定は {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))}
+     * で業務ローカル基準に揃えたため、この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@code now}
+     * になる」ものでなければならない。かつての {@code now.toInstant(ZoneOffset.UTC)}
+     * （＝Clock 自身のゾーンで直接 instant 化）は UTC 基準比較というバグ実装をそのまま固定していた
+     * （実行環境の JVM 既定ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で
+     * instant 化することで、実行環境に関わらず引数 {@code now} が正しく「現在時刻」として渡るようにする。
      */
     private void reinitServiceWithClockAt(LocalDateTime now) {
-        reinitServiceWithClock(Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC")));
+        reinitServiceWithClock(Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.of("UTC")));
     }
 
     /**
@@ -1119,14 +1127,14 @@ class ReservationServiceTest {
         @DisplayName(
                 "Issue #2526 番人: 締切判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
         void 締切判定はClockのゾーンに左右されない() {
-            // 枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00。
-            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て締切の 1 分前」＝2026-03-31T09:59 を指す
-            // 同一瞬間を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            // 枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00（業務ローカル時刻）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て締切の 1 分前」
+            // ＝2026-03-31T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
             // 正しい実装（LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))）なら
             // Clock 自身のゾーン設定に左右されず両方とも「締切内」でキャンセル可となるはずである。
-            // バグ実装（LocalDateTime.now(clock) で Clock のゾーンをそのまま使う）だと、
-            // Asia/Tokyo 側は瞬間 +9h ずれた壁時計になり「締切超過」に誤判定される。
-            Instant sameInstant = LocalDateTime.of(2026, 3, 31, 9, 59).toInstant(ZoneOffset.UTC);
+            Instant sameInstant = LocalDateTime.of(2026, 3, 31, 9, 59)
+                    .atZone(ZoneId.systemDefault()).toInstant();
             CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
 
             // ① UTC ゾーンの Clock（CI の既定ゾーンと一致）
@@ -1429,9 +1437,11 @@ class ReservationServiceTest {
         @Test
         @DisplayName("Issue #2526 番人: 来店日時の絞り込み基準は Clock のゾーンに左右されない")
         void 来店日時基準はClockのゾーンに左右されない() {
-            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て 2026-04-01 09:30」を指す同一瞬間を、
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て
+            // 2026-04-01 09:30」を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
             // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
-            Instant sameInstant = LocalDateTime.of(2026, 4, 1, 9, 30).toInstant(ZoneOffset.UTC);
+            Instant sameInstant = LocalDateTime.of(2026, 4, 1, 9, 30)
+                    .atZone(ZoneId.systemDefault()).toInstant();
             given(reservationRepository.findUpcomingByUserId(
                     eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
                     .willReturn(List.of());
@@ -1443,11 +1453,18 @@ class ReservationServiceTest {
             reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
             service.listUpcomingReservations(USER_ID);
 
-            // 両呼び出しとも、Clock のゾーンに関わらず同一の日付・時刻でクエリされているはず。
+            // 両呼び出しとも、Clock のゾーンに関わらず同一の日付・時刻でクエリされているはずである
+            // （期待値を決め打ちせず、2 回の呼び出しに渡された引数どうしが一致することだけを主張する）。
+            ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            ArgumentCaptor<LocalTime> timeCaptor = ArgumentCaptor.forClass(LocalTime.class);
             then(reservationRepository).should(times(2)).findUpcomingByUserId(
-                    eq(USER_ID),
-                    eq(LocalDate.of(2026, 4, 1)),
-                    eq(LocalTime.of(9, 30)));
+                    eq(USER_ID), dateCaptor.capture(), timeCaptor.capture());
+            assertThat(dateCaptor.getAllValues().get(0))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(dateCaptor.getAllValues().get(1));
+            assertThat(timeCaptor.getAllValues().get(0))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(timeCaptor.getAllValues().get(1));
         }
     }
 

@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -43,9 +44,20 @@ class ReservationReminderEventListenerTest {
     private static final Long ACTOR_USER_ID = 42L;
     private static final String SLOT_TITLE = "コートA";
 
-    /** 固定現在時刻: 2026-06-18T10:00（UTC 固定 Clock）。 */
+    /**
+     * 固定現在時刻: 2026-06-18T10:00。
+     *
+     * <p>Issue #2526 是正済み判定: {@code onReservationConfirmed} は slotStartAt（業務ローカル時刻）
+     * 基準で remindAt を逆算するため、比較対象の now も
+     * {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} で求める。
+     * この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@link #NOW} になる」ものである必要があり、
+     * かつての {@code NOW.toInstant(ZoneOffset.UTC)} は UTC 基準比較というバグ実装を固定していた
+     * （実行環境の既定ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で
+     * instant 化することで、実行環境に関わらず {@link #NOW} が正しく渡るようにする。
+     */
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 6, 18, 10, 0);
-    private final Clock fixedClock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
+    private final Clock fixedClock =
+            Clock.fixed(NOW.atZone(java.time.ZoneId.systemDefault()).toInstant(), ZoneOffset.UTC);
 
     @Mock
     private ReservationPolicyService policyService;
@@ -188,12 +200,14 @@ class ReservationReminderEventListenerTest {
         @DisplayName(
                 "Issue #2526 番人: 過去判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
         void 過去判定はClockのゾーンに左右されない() {
-            // slotStartAt は業務ローカル時刻。「業務基準（JVM 既定ゾーン。CI では UTC）で見て
-            // slotStartAt の 1h 前より 1 分未来」の同一瞬間を、ゾーン設定だけが異なる 2 つの Clock
-            // （UTC / Asia+09:00）で表現する。正しい実装なら Clock 自身のゾーンに左右されず、
+            // slotStartAt は業務ローカル時刻。「業務基準（JVM 既定ゾーン。実行環境に依存し得るため
+            // 決め打ちしない）で見て slotStartAt の 1h 前より 1 分未来」を、実際の JVM 既定ゾーンで
+            // instant 化した「同一瞬間」を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）
+            // で表現する。正しい実装なら Clock 自身のゾーンに左右されず、
             // どちらも同じ remindAtList（1h前のみ・24h前は過去でスキップ）を生成するはずである。
             LocalDateTime slotStartAt = LocalDateTime.of(2026, 6, 20, 12, 0);
-            Instant sameInstant = slotStartAt.minusHours(1).plusMinutes(1).toInstant(ZoneOffset.UTC);
+            Instant sameInstant = slotStartAt.minusHours(1).plusMinutes(1)
+                    .atZone(java.time.ZoneId.systemDefault()).toInstant();
             givenPolicy("24,1");
 
             initListener(Clock.fixed(sameInstant, ZoneOffset.UTC));

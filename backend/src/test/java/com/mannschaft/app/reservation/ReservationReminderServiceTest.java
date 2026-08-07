@@ -45,9 +45,20 @@ class ReservationReminderServiceTest {
 
     private ReservationReminderService service;
 
-    /** 送信判定の基準時刻を固定する Clock（直書き禁止・テストで境界を固定）。 */
+    /**
+     * 送信判定の基準時刻を固定する Clock（直書き禁止・テストで境界を固定）。
+     *
+     * <p>Issue #2526 是正済み判定: {@code findDueReminders} は {@code remind_at}（業務ローカル時刻）
+     * と比較するため {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} を使う。
+     * そのため、この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@link #NOW} になる」ものでなければ
+     * ならない。かつて {@code NOW.toInstant(ZoneOffset.UTC)}（＝Clock 自身のゾーンで直接 instant 化）
+     * だったのは、UTC 基準比較というバグ実装をそのまま固定していたテストだった（実行環境の JVM 既定
+     * ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で instant 化することで、
+     * 実行環境の既定ゾーンに関わらず {@link #NOW} が正しく「現在時刻」として渡るようにする。
+     */
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 4, 1, 12, 0);
-    private final Clock fixedClock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
+    private final Clock fixedClock =
+            Clock.fixed(NOW.atZone(java.time.ZoneId.systemDefault()).toInstant(), ZoneOffset.UTC);
 
     @BeforeEach
     void setUp() {
@@ -305,9 +316,10 @@ class ReservationReminderServiceTest {
                 "Issue #2526 番人: 送信対象の基準時刻は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
         void 基準時刻はClockのゾーンに左右されない() {
             // remind_at は業務ローカル時刻（ReservationReminderEventListener が slotStartAt から生成）。
-            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て 2026-04-01 12:00」を指す同一瞬間を、
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て
+            // 2026-04-01 12:00」を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
             // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
-            java.time.Instant sameInstant = NOW.toInstant(ZoneOffset.UTC);
+            java.time.Instant sameInstant = NOW.atZone(java.time.ZoneId.systemDefault()).toInstant();
             given(reminderRepository.findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), any()))
                     .willReturn(List.of());
 
@@ -320,9 +332,15 @@ class ReservationReminderServiceTest {
                     Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
             service.findDueReminders();
 
-            // 両呼び出しとも、Clock のゾーンに関わらず同一の基準時刻でクエリされているはず。
+            // 両呼び出しとも、Clock のゾーンに関わらず同一の基準時刻でクエリされているはず
+            // （期待値を決め打ちせず、2 回の呼び出しに渡された引数どうしが一致することだけを主張する）。
+            org.mockito.ArgumentCaptor<LocalDateTime> nowCaptor =
+                    org.mockito.ArgumentCaptor.forClass(LocalDateTime.class);
             verify(reminderRepository, org.mockito.Mockito.times(2))
-                    .findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), eq(NOW));
+                    .findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), nowCaptor.capture());
+            assertThat(nowCaptor.getAllValues().get(0))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(nowCaptor.getAllValues().get(1));
         }
     }
 }

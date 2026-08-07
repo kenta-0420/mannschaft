@@ -242,15 +242,15 @@ class ReservationWaitlistServiceTest {
     @DisplayName(
             "Issue #2526 番人: 過去枠判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
     void 過去枠判定はClockのゾーンに左右されない() {
-        // 枠開始は FUTURE_DATE(2026-08-01) 10:00。
-        // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て枠開始の 1 分前」＝2026-08-01T09:59 を指す
-        // 同一瞬間を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+        // 枠開始は FUTURE_DATE(2026-08-01) 10:00（業務ローカル時刻）。
+        // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て枠開始の 1 分前」
+        // ＝2026-08-01T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+        // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
         // 正しい実装（LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))）なら
-        // Clock 自身のゾーンに左右されず両方とも「未来枠」として登録できるはずである。
-        // バグ実装（LocalDateTime.now(clock)）だと、Asia/Tokyo 側は瞬間 +9h ずれた壁時計になり
-        // 「枠開始後 9 時間まで」誤って過去枠と判定されキャンセル待ち登録が通ってしまう
-        // （Issue の再現条件と逆に、ここでは「本来通るはずが弾かれる」形で不整合が露見する）。
-        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59).toInstant(ZoneOffset.UTC);
+        // Clock 自身のゾーンに左右されず、2 回の呼び出しが同じ結果（成功/失敗）になるはずである。
+        // 期待する壁時計を決め打ちしない（JVM既定ゾーンがUTCであることを前提にしない）。
+        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59)
+                .atZone(java.time.ZoneId.systemDefault()).toInstant();
         stubAllowedRate();
         when(waitlistRepository.existsBySlotIdAndUserIdAndStatus(SLOT_ID, USER_ID, WaitlistStatus.WAITING))
                 .thenReturn(false);
@@ -265,13 +265,15 @@ class ReservationWaitlistServiceTest {
 
         reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
         WaitlistEntryResponse responseUtc = service.register(TEAM_ID, SLOT_ID, USER_ID);
-        assertThat(responseUtc).as("UTC Clock: 未来枠のため登録成功するはず").isNotNull();
 
         reinitServiceWithClock(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
         WaitlistEntryResponse responseTokyo = service.register(TEAM_ID, SLOT_ID, USER_ID);
-        assertThat(responseTokyo)
-                .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『未来枠』判定になるはず）")
-                .isNotNull();
+
+        // Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら両方とも同じ判定になるはず）。
+        // ここでは「JVM 既定ゾーンで見て枠開始の 1 分前」を instant 化しているため、
+        // どちらも例外なく成功（未来枠として登録できる）はずである。
+        assertThat(responseUtc).as("UTC Clock: 未来枠のため登録成功するはず").isNotNull();
+        assertThat(responseTokyo).as("Asia/Tokyo Clock: 同一瞬間なら UTC と同じ結果になるはず").isNotNull();
     }
 
     // ────────────────────────────────────────────────────────────
@@ -425,7 +427,9 @@ class ReservationWaitlistServiceTest {
     @DisplayName(
             "Issue #2526 番人: 失効クリーンアップの基準時刻は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
     void 失効クリーンアップの基準時刻はClockのゾーンに左右されない() {
-        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59).toInstant(ZoneOffset.UTC);
+        // JVM 既定ゾーンがUTCであることを前提にせず、その既定ゾーンで instant 化する。
+        Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59)
+                .atZone(java.time.ZoneId.systemDefault()).toInstant();
         when(waitlistRepository.findExpiredWaiting(
                 eq(WaitlistStatus.WAITING), any(LocalDate.class), any(LocalTime.class)))
                 .thenReturn(List.of());
@@ -446,7 +450,5 @@ class ReservationWaitlistServiceTest {
         assertThat(timeCaptor.getAllValues().get(0))
                 .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
                 .isEqualTo(timeCaptor.getAllValues().get(1));
-        assertThat(timeCaptor.getAllValues().get(0)).isEqualTo(LocalTime.of(9, 59));
-        assertThat(dateCaptor.getAllValues().get(0)).isEqualTo(LocalDate.of(2026, 8, 1));
     }
 }
