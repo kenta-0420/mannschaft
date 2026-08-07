@@ -3,6 +3,8 @@ package com.mannschaft.app.favorite.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
 import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
@@ -12,7 +14,6 @@ import com.mannschaft.app.favorite.dto.request.ReorderFavoritesRequest;
 import com.mannschaft.app.favorite.dto.response.FavoriteCheckResponse;
 import com.mannschaft.app.favorite.dto.response.FavoriteResponse;
 import com.mannschaft.app.favorite.service.FavoriteService;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -67,9 +68,6 @@ public class FavoriteController {
     // 一覧取得
     // ─────────────────────────────────────────────
 
-    @SelfScopedEndpoint("FavoriteService#getFavorites は"
-            + "findByUserIdOrderByDisplayOrderAsc(userId) で SecurityUtils.getCurrentUserId() の"
-            + "行のみを返す（FavoriteController#listFavorites）。認可根治戦役 Wave6 監査済。")
     @GetMapping
     @Operation(summary = "お気に入り一覧取得",
             description = "認証ユーザーのお気に入りを表示順（displayOrder昇順）で返す。"
@@ -78,6 +76,8 @@ public class FavoriteController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "成功"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
     })
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listFavorites メソッド本体）")
     public ResponseEntity<ApiResponse<List<FavoriteResponse>>> listFavorites() {
         Long userId = SecurityUtils.getCurrentUserId();
         List<FavoriteResponse> responses = favoriteService.getFavorites(userId).stream()
@@ -90,9 +90,6 @@ public class FavoriteController {
     // 登録状態チェック
     // ─────────────────────────────────────────────
 
-    @SelfScopedEndpoint("FavoriteService#checkFavorite は"
-            + "findByUserIdAndEntityTypeAndEntityId(userId,...) で SecurityUtils.getCurrentUserId() の"
-            + "登録有無のみを返す（FavoriteController#checkFavorite）。認可根治戦役 Wave6 監査済。")
     @GetMapping("/check")
     @Operation(summary = "お気に入り登録状態チェック",
             description = "指定エンティティが当該ユーザーのお気に入りに登録されているか確認する。"
@@ -102,6 +99,10 @@ public class FavoriteController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "entityType 不正"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
     })
+    // 認可の所在: FavoriteService.checkFavorite（favorite/service/FavoriteService.java:193）が
+    // userFavoriteRepository.findByUserIdAndEntityTypeAndEntityId で常に userId を検索条件に
+    // AND 結合するため、entityId が他人に属していても自分の登録有無としてのみ結果が返る。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<FavoriteCheckResponse>> checkFavorite(
             @RequestParam("entityType") String entityTypeStr,
             @RequestParam("entityId") String entityId) {
@@ -206,10 +207,10 @@ public class FavoriteController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
                     description = "自分のお気に入りに存在しないIDが含まれている")
     })
-    @SelfScopedEndpoint("FavoriteService#reorderFavorites は"
-            + "findByUserIdOrderByDisplayOrderAsc(userId) から作った自分の行の写像でのみ"
-            + "orderedIds を解決し、自分の登録に無い ID は FAV_003（404）にする"
-            + "（FavoriteController#reorderFavorites）。認可根治戦役 Wave6 監査済。")
+    // 認可の所在: FavoriteService.reorderFavorites（favorite/service/FavoriteService.java:134）が
+    // userId 所有分のみを対象にロードし、orderedIds が自分の所有物に無ければ FAV_003（404）で
+    // 秘匿する。並び替えは引き当てた自分の Entity にのみ適用される。
+    @AuthorizedInService
     public ResponseEntity<Void> reorderFavorites(
             @Valid @RequestBody ReorderFavoritesRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();

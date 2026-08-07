@@ -3,6 +3,7 @@ package com.mannschaft.app.pointcard.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.pointcard.dto.CreateUserPointCardRequest;
 import com.mannschaft.app.pointcard.dto.ShareTokenResponse;
 import com.mannschaft.app.pointcard.dto.UpdateUserPointCardRequest;
@@ -56,6 +57,8 @@ public class PointCardController {
     // 一覧
     // ─────────────────────────────────────────────
 
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyCards メソッド本体）")
     @GetMapping
     @Operation(summary = "カード一覧取得",
             description = "自分のカード一覧をお気に入り → display_order → created_at 降順で返す。"
@@ -69,6 +72,8 @@ public class PointCardController {
     // 作成
     // ─────────────────────────────────────────────
 
+    @SelfScopedEndpoint("作成対象の所有者は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（createCard メソッド本体）")
     @PostMapping
     @Operation(summary = "カード追加",
             description = "規約同意 + 保有上限 200 枚チェック後、fuzzy match で provider を解決して保存する")

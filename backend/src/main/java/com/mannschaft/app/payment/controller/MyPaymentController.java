@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 自分の支払いコントローラー。ログインユーザー自身の支払い状況・未払い要件を提供する。
@@ -38,6 +39,8 @@ public class MyPaymentController {
     /**
      * 自分の支払い状況一覧を取得する。
      */
+    @SelfScopedEndpoint("スコープは SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyPayments メソッド本体）")
     @GetMapping("/payments")
     @Operation(summary = "自分の支払い状況一覧")
     public ResponseEntity<PagedResponse<MemberPaymentResponse>> listMyPayments(
@@ -53,6 +56,8 @@ public class MyPaymentController {
     /**
      * 自分に課されている未払い項目一覧を取得する。
      */
+    @SelfScopedEndpoint("スコープは SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getPaymentRequirements メソッド本体）")
     @GetMapping("/payment-requirements")
     @Operation(summary = "未払い項目一覧")
     public ResponseEntity<ApiResponse<List<PaymentRequirementResponse>>> getPaymentRequirements() {
@@ -64,6 +69,8 @@ public class MyPaymentController {
     /**
      * 自分の有効サブスクリプション一覧を取得する（Phase 4）。
      */
+    @SelfScopedEndpoint("スコープは SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMySubscriptions メソッド本体）")
     @GetMapping("/subscriptions")
     @Operation(summary = "自分のサブスクリプション一覧（Phase 4）")
     public ResponseEntity<ApiResponse<List<Object>>> listMySubscriptions() {

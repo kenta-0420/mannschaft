@@ -52,8 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code @AutoConfigureMockMvc(addFilters = false)} により本 IT では適用されない。</p>
  *
  * <p>本ファイルが {@code @SelfScopedEndpoint} の自己スコープ性を固定する対象:
- * {@code FavoriteController#listFavorites}・{@code FavoriteController#checkFavorite}・
- * {@code FavoriteController#reorderFavorites}。</p>
+ * {@code FavoriteController#listFavorites}。{@code checkFavorite} / {@code reorderFavorites} は
+ * {@code @AuthorizedInService}（Wave7 ロットA監査）だが、越境不能性の裏取りとして本ファイルに
+ * 契約テストを追加している。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -215,6 +216,7 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // 3. 一覧の自己スコープ
     // ═════════════════════════════════════════════════════════════════════
 
+    /** FavoriteController#listFavorites の自己スコープ性を固定する。 */
     @Nested
     @DisplayName("3. お気に入り一覧（自己スコープ）")
     class ListFavorites {
