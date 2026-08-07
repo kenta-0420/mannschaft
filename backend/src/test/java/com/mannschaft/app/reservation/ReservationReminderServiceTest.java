@@ -299,5 +299,30 @@ class ReservationReminderServiceTest {
             // Then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 送信対象の基準時刻は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 基準時刻はClockのゾーンに左右されない() {
+            // remind_at は業務ローカル時刻（ReservationReminderEventListener が slotStartAt から生成）。
+            // 「業務基準（JVM 既定ゾーン。CI では UTC）で見て 2026-04-01 12:00」を指す同一瞬間を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            java.time.Instant sameInstant = NOW.toInstant(ZoneOffset.UTC);
+            given(reminderRepository.findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), any()))
+                    .willReturn(List.of());
+
+            service = new ReservationReminderService(
+                    reminderRepository, reservationMapper, Clock.fixed(sameInstant, ZoneOffset.UTC));
+            service.findDueReminders();
+
+            service = new ReservationReminderService(
+                    reminderRepository, reservationMapper,
+                    Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+            service.findDueReminders();
+
+            // 両呼び出しとも、Clock のゾーンに関わらず同一の基準時刻でクエリされているはず。
+            verify(reminderRepository, org.mockito.Mockito.times(2))
+                    .findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), eq(NOW));
+        }
     }
 }

@@ -71,6 +71,10 @@ class ReservationReminderEventListenerTest {
         listener = new ReservationReminderEventListener(policyService, reminderService, fixedClock);
     }
 
+    private void initListener(Clock clock) {
+        listener = new ReservationReminderEventListener(policyService, reminderService, clock);
+    }
+
     @Nested
     @DisplayName("onReservationConfirmed（リマインド時刻の逆算）")
     class OnReservationConfirmed {
@@ -178,6 +182,37 @@ class ReservationReminderEventListenerTest {
             listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
 
             verify(reminderService, never()).generateReminders(eq(RESERVATION_ID), anyList());
+        }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 過去判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 過去判定はClockのゾーンに左右されない() {
+            // slotStartAt は業務ローカル時刻。「業務基準（JVM 既定ゾーン。CI では UTC）で見て
+            // slotStartAt の 1h 前より 1 分未来」の同一瞬間を、ゾーン設定だけが異なる 2 つの Clock
+            // （UTC / Asia+09:00）で表現する。正しい実装なら Clock 自身のゾーンに左右されず、
+            // どちらも同じ remindAtList（1h前のみ・24h前は過去でスキップ）を生成するはずである。
+            LocalDateTime slotStartAt = LocalDateTime.of(2026, 6, 20, 12, 0);
+            Instant sameInstant = slotStartAt.minusHours(1).plusMinutes(1).toInstant(ZoneOffset.UTC);
+            givenPolicy("24,1");
+
+            initListener(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
+            ArgumentCaptor<List<LocalDateTime>> captorUtc = ArgumentCaptor.captor();
+            verify(reminderService).generateReminders(eq(RESERVATION_ID), captorUtc.capture());
+
+            initListener(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+            listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
+            ArgumentCaptor<List<LocalDateTime>> captorTokyo = ArgumentCaptor.captor();
+            verify(reminderService, org.mockito.Mockito.times(2))
+                    .generateReminders(eq(RESERVATION_ID), captorTokyo.capture());
+
+            assertThat(captorUtc.getValue())
+                    .as("UTC Clock: 24h前は過去でスキップ・1h前のみ未来のはず")
+                    .containsExactly(slotStartAt.minusHours(1));
+            assertThat(captorTokyo.getAllValues().get(1))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(captorUtc.getValue());
         }
     }
 
