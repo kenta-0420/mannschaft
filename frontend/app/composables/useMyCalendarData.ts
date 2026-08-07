@@ -43,6 +43,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const SCOPE_FILTER_KEY = options?.storageKey ?? 'mannschaft:calendar:scopeFilter'
   const scheduleApi = useScheduleApi()
   const ganttApi = useTodoGantt()
+  const { buildDayStartStr, buildDayEndStr } = useDatetime()
 
   const extendedEvents = ref<CalEvent[]>([])
 
@@ -121,8 +122,10 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         id: -(t.id + 1),
         uniqueKey: `todo:${t.id}`,
         title: t.title,
-        startAt: `${t.startDate || t.dueDate}T00:00:00`,
-        endAt: `${t.dueDate}T23:59:59`,
+        // TODO の期限は LocalDate。ユーザーTZの 00:00:00 / 23:59:59 としてオフセット付きで組む
+        // （ナイーブ連結だと表示時に再度 TZ 変換されて日がずれる。Issue #2508 Phase 2）
+        startAt: buildDayStartStr(t.startDate || t.dueDate),
+        endAt: buildDayEndStr(t.dueDate),
         allDay: true,
         color: t.priority === 'HIGH' ? '#f97316'
           : t.priority === 'LOW' ? '#22c55e'

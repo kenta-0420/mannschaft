@@ -9,6 +9,7 @@ import com.mannschaft.app.residencestatus.entity.AnnualReview;
 import com.mannschaft.app.residencestatus.event.AnnualReviewClosedEvent;
 import com.mannschaft.app.residencestatus.event.AnnualReviewStartedEvent;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewRepository;
+import com.mannschaft.app.resident.service.ResidentRegistryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -34,6 +35,7 @@ public class AnnualReviewService {
     private final AnnualReviewRepository annualReviewRepo;
     private final AccessControlService accessControlService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ResidentRegistryService residentRegistryService;
 
     // ─────────────────────────────────────────────
     // キャンペーン起動
@@ -159,8 +161,18 @@ public class AnnualReviewService {
      *
      * <p>未クローズ（closedAt IS NULL）のキャンペーンを返す。
      * {@link org.hibernate.annotations.SQLRestriction} により deleted_at IS NULL は自動適用される。</p>
+     *
+     * <p><b>認可:</b> 呼び出し元が当該組織の現居住者（{@code ResidentRegistryService#isActiveResidentOfOrganization}
+     * が true）であることを要求する。組織 ID はパス変数のためクライアントが任意の値を指定できるが、
+     * 居住者台帳に紐づかない組織を指定した場合は存在秘匿（{@link ResidenceStatusErrorCode#ANNUAL_REVIEW_NOT_FOUND}）
+     * として 404 相当のエラーで返し、他組織のキャンペーン一覧を非居住者へ開示しない。
+     * resident ドメインへは {@code ResidentRegistryService} 経由でのみアクセスする
+     * （モジュラーモノリス原則: ドメイン間は ID 参照＋Service 経由のみ）。</p>
      */
     public List<AnnualReviewDto> listMyReviews(Long organizationId, Long requestUserId) {
+        if (!residentRegistryService.isActiveResidentOfOrganization(requestUserId, organizationId)) {
+            throw new BusinessException(ResidenceStatusErrorCode.ANNUAL_REVIEW_NOT_FOUND);
+        }
         return annualReviewRepo.findByOrganizationIdAndDeletedAtIsNull(organizationId)
                 .stream()
                 .filter(r -> r.getClosedAt() == null)

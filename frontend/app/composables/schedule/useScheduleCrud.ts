@@ -15,6 +15,7 @@ import type { ScheduleInvitationResponse } from '~/types/schedule'
 
 export function useScheduleCrud() {
   const api = useApi()
+  const { buildDayStartStr, buildDayEndStr } = useDatetime()
 
   function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
@@ -133,8 +134,11 @@ export function useScheduleCrud() {
   ) {
     const pad = (n: number) => String(n).padStart(2, '0')
     const lastDay = new Date(year, month, 0).getDate()
-    const from = `${year}-${pad(month)}-01T00:00:00`
-    const to = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`
+    // 暦日の月境界をユーザーTZの 00:00:00 / 23:59:59 として送る（Issue #2508 Phase 2）。
+    // ナイーブ連結は America/Santiago 等の「深夜0時にTZが切り替わる地域」で非存在時刻となり、
+    // 範囲の下端が1時間欠ける。
+    const from = buildDayStartStr(`${year}-${pad(month)}-01`)
+    const to = buildDayEndStr(`${year}-${pad(month)}-${pad(lastDay)}`)
     if (scopeType === 'TEAM' && scopeId) {
       const query = new URLSearchParams()
       query.set('from', from)

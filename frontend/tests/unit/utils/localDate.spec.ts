@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toLocalDateString } from '~/utils/localDate'
+import { toLocalDateString, formatLocalDateOnly } from '~/utils/localDate'
 
 /**
  * localDate ユニットテスト（BE の LocalDate へ送る yyyy-MM-dd の組み立て）
@@ -81,5 +81,43 @@ describe('toLocalDateString', () => {
 
   it('LDATE-005: Invalid Date は握りつぶさず例外を投げる', () => {
     expect(() => toLocalDateString(new Date('へんな日付'))).toThrow(RangeError)
+  })
+})
+
+/**
+ * formatLocalDateOnly ユニットテスト（payments/subscribe/[itemId].vue の termStartsOn/termEndsOn 用）。
+ *
+ * 背景（殿の指摘・Issue #2508 Phase 3 追補）:
+ *   `new Date("2026-08-20")` は BE の `LocalDate` 文字列を UTC の午前0時として解釈するため、
+ *   これをそのままロケール表示すると UTC より西のTZ（America/Los_Angeles 等）では
+ *   前日「8/19」にずれる。`LocalDate` は暦日そのものであり瞬間ではないため TZ 変換しては
+ *   ならない。`formatLocalDateOnly` はこの誤りを踏まずに壁時計として扱う。
+ *
+ * 検証観点:
+ *   LDONLY-001: ブラウザTZ=America/Los_Angeles で "2026-08-20" は 8/20 と表示される（8/19 にならない）
+ *   LDONLY-002: 壊れていた実装（new Date(ymd) をそのまま Intl.DateTimeFormat に渡す）は
+ *               同条件で 8/19 になることを示し、比較対象として明示する
+ */
+describe('formatLocalDateOnly', () => {
+  it('LDONLY-001: America/Los_Angeles でも "2026-08-20" は 8/20 と表示される', () => {
+    withTz('America/Los_Angeles', () => {
+      const formatted = formatLocalDateOnly('2026-08-20', 'ja-JP')
+      expect(formatted).toContain('8/20')
+      // SLR-002 と同様、壊れていた側の値（前日）とは一致しないことも明示する
+      expect(formatted).not.toContain('8/19')
+    })
+  })
+
+  it('LDONLY-002: 壊れていた実装（new Date(ymd) を直接 Intl に渡す）は同条件で前日になる（比較対象）', () => {
+    withTz('America/Los_Angeles', () => {
+      const broken = new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium' }).format(new Date('2026-08-20'))
+      expect(broken).toContain('8/19')
+    })
+  })
+
+  it('LDONLY-003: Asia/Tokyo（UTCより東）でも 8/20 のまま', () => {
+    withTz('Asia/Tokyo', () => {
+      expect(formatLocalDateOnly('2026-08-20', 'ja-JP')).toContain('8/20')
+    })
   })
 })

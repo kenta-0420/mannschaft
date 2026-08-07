@@ -6,6 +6,8 @@ import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +86,17 @@ public class TimelineFeedController {
      * @param cursor カーソル（この投稿 id 未満を取得）。未指定なら最新から
      * @param limit  取得件数（既定 20）
      * @return マイフィード（pinned 空・実カーソル付き）
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code postService.getMyFeed} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に渡すため（cursor/limit は非識別子パラメータ）、URL・クエリに他人の識別子を
+     * 指定する余地が構造的に無い（TimelineFeedController#getMyFeed）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "postService.getMyFeed(userId, ...) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（TimelineFeedController#getMyFeed）")
     @GetMapping("/my")
     @Operation(summary = "個人集約タイムライン取得（所属team/org横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -98,7 +110,15 @@ public class TimelineFeedController {
 
     /**
      * ユーザーの投稿一覧を取得する。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code TimelinePostService#getUserPosts} が {@code findByUserIdVisibleToCaller} で
+     * 呼び出し元（callerUserId）が所属するチーム/組織/村 ID の集合をリポジトリクエリの
+     * 可視性条件として渡し、対象ユーザー（targetUserId）の投稿のうち呼び出し元から見える
+     * 範囲のみを返す（{@code ContentVisibilityChecker} と同等の可視性境界をリポジトリ層で実装）。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @GetMapping("/users/{userId}/posts")
     @Operation(summary = "ユーザー投稿一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -129,7 +149,13 @@ public class TimelineFeedController {
 
     /**
      * 投稿を全文検索する。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code TimelinePostService#searchPosts} が呼び出し元の所属チーム/組織 ID を
+     * リポジトリクエリ（{@code searchByKeyword}）の可視性条件として渡し、
+     * 呼び出し元から見える範囲の投稿のみを検索対象とする。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @GetMapping("/search")
     @Operation(summary = "投稿検索")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "検索成功")

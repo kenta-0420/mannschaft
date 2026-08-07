@@ -391,4 +391,49 @@ class TeamControllerTest {
                 .isInstanceOf(BusinessException.class);
         verify(supporterService, Mockito.never()).follow(USER_ID, "TEAM", TEAM_ID);
     }
+
+    // ════════════════════════════════════════════════════════════
+    // 自己スコープ契約テスト: createTeam / getFollowStatus / unfollowTeam
+    // ════════════════════════════════════════════════════════════
+
+    /** TeamController#createTeam の自己スコープ性を固定する契約テスト。 */
+    @Test
+    @DisplayName("createTeam は SecurityUtils.getCurrentUserId() のみを作成者として渡す")
+    void createTeam_boundToCurrentUserOnly() {
+        com.mannschaft.app.team.dto.CreateTeamRequest request =
+                new com.mannschaft.app.team.dto.CreateTeamRequest();
+        request.setName("テストチーム");
+        given(teamService.createTeam(USER_ID, request)).willReturn(ApiResponse.of(teamResponse()));
+
+        controller.createTeam(request);
+
+        // 他人の userId を作成者として渡す経路が存在しないことの裏取り。
+        verify(teamService).createTeam(USER_ID, request);
+    }
+
+    /** TeamController#getFollowStatus の自己スコープ性を固定する契約テスト。 */
+    @Test
+    @DisplayName("getFollowStatus は SecurityUtils.getCurrentUserId() のみを検索条件に渡す")
+    void getFollowStatus_boundToCurrentUserOnly() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(supporterService.getFollowStatus(USER_ID, "TEAM", TEAM_ID))
+                .willReturn(ApiResponse.of(new FollowStatusResponse("NONE")));
+
+        controller.getFollowStatus(TEAM_SLUG);
+
+        // 他人の userId を検索条件に渡す経路が存在しないことの裏取り。
+        verify(supporterService).getFollowStatus(USER_ID, "TEAM", TEAM_ID);
+    }
+
+    /** TeamController#unfollowTeam の自己スコープ性を固定する契約テスト。 */
+    @Test
+    @DisplayName("unfollowTeam は SecurityUtils.getCurrentUserId() 自身のフォロー関係のみを解除する")
+    void unfollowTeam_boundToCurrentUserOnly() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+
+        controller.unfollowTeam(TEAM_SLUG);
+
+        // 他人の userId のフォロー関係を解除する経路が存在しないことの裏取り。
+        verify(supporterService).unfollow(USER_ID, "TEAM", TEAM_ID);
+    }
 }

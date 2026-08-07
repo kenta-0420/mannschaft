@@ -286,4 +286,27 @@ class AttendanceDisclosureControllerTest {
                     .contains("TEAM");
         }
     }
+
+    // ════════════════════════════════════════════════════════════
+    // GET /me/attendance/requirements/disclosed
+    // AttendanceDisclosureController#getDisclosedEvaluationsForMe の自己スコープ性を固定する契約テスト。
+    // ════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("GET /me/attendance/requirements/disclosed — 自己スコープ契約テスト")
+    class DisclosedEvaluationsForMe {
+
+        @Test
+        @DisplayName("getDisclosedEvaluationsForMe は SecurityUtils.getCurrentUserId() のみを検索条件に渡す")
+        void getDisclosedEvaluationsForMe_boundToCurrentUserOnly() throws Exception {
+            given(disclosureService.getDisclosedEvaluationsForUser(USER_ID)).willReturn(List.of());
+
+            mockMvc.perform(get("/api/v1/me/attendance/requirements/disclosed"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray());
+
+            // 他人の userId を検索条件に渡す経路が存在しないことの裏取り。
+            org.mockito.Mockito.verify(disclosureService).getDisclosedEvaluationsForUser(USER_ID);
+        }
+    }
 }

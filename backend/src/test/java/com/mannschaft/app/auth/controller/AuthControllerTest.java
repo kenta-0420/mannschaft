@@ -331,6 +331,48 @@ class AuthControllerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
             verify(authWebAuthnService).deleteCredential(USER_ID, CREDENTIAL_ID);
         }
+
+        // ──────────────────────────────────────────────
+        // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+        // AuthWebAuthnController#beginReauthenticate / AuthWebAuthnController#completeReauthenticate
+        //
+        // SecurityContextHolder に設定した USER_ID と厳密一致するスタブでのみ応答するため、
+        // 呼び出しが失敗せず値を検証できること自体が「対象ユーザーは認証主体のみで解決される」
+        // ことの証跡になる（他ユーザーIDが紛れ込めば未スタブ呼び出しとして失敗する）。
+        // ──────────────────────────────────────────────
+
+        @Test
+        @DisplayName("正常系: WebAuthn再認証開始は認証主体の userId のみで解決される"
+                + "（AuthWebAuthnController#beginReauthenticate）")
+        void beginReauthenticate_targetsOnlyAuthenticatedUser() {
+            var beginResponse = new com.mannschaft.app.auth.dto.WebAuthnReauthenticateBeginResponse(
+                    "reauth-challenge", "mannschaft.app", List.of("cred-id-1"), USER_ID, 300000L);
+            given(authWebAuthnService.beginReauthenticate(USER_ID)).willReturn(ApiResponse.of(beginResponse));
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.auth.dto.WebAuthnReauthenticateBeginResponse>> response =
+                    authWebAuthnController.beginReauthenticate();
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().getUserId()).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: WebAuthn再認証完了は認証主体の userId のみで解決される"
+                + "（AuthWebAuthnController#completeReauthenticate）")
+        void completeReauthenticate_targetsOnlyAuthenticatedUser() {
+            var req = new com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteRequest(
+                    "cred-id", "auth-data", "client-data", "signature", 7L);
+            var completeResponse = new com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse(
+                    java.time.OffsetDateTime.now().plusMinutes(5));
+            given(authWebAuthnService.completeReauthenticate(eq(USER_ID), eq(req)))
+                    .willReturn(ApiResponse.of(completeResponse));
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse>> response =
+                    authWebAuthnController.completeReauthenticate(req);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(authWebAuthnService).completeReauthenticate(USER_ID, req);
+        }
     }
 
     // ========================================

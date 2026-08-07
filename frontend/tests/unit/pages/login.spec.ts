@@ -48,10 +48,13 @@ vi.mock('~/composables/useLocale', () => ({
 }))
 
 vi.mock('~/stores/useAuthStore', () => ({
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
   useAuthStore: () => ({
     setTokens: vi.fn(),
     setUser: vi.fn(),
     isSystemAdmin: false,
+    isAuthenticated: false,
+    loadFromStorage: vi.fn(),
   }),
 }))
 

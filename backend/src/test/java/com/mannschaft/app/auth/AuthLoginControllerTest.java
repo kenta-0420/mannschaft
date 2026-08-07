@@ -8,6 +8,7 @@ import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
+import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.auth.AuthErrorCode;
@@ -15,20 +16,31 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -508,5 +520,63 @@ class AuthLoginControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
+
+    // ──────────────────────────────────────────────
+    // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+    // AuthLoginController#logoutAllDevices / AuthLoginController#getSessions
+    //
+    // SecurityContextHolder に userId=1 を設定し、Service へ渡る userId が
+    // 常にその値と一致すること（=リクエストパラメータで他人の userId を
+    // 指定する余地が無いこと）を厳密一致スタブで固定する。
+    // ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("自己スコープ契約（Wave5 ロットB）")
+    class SelfScopeContract {
+
+        private static final long SELF_USER_ID = 1L;
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(String.valueOf(SELF_USER_ID), null, List.of()));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("DELETE /sessions — 無効化対象は認証主体の userId のみ"
+                + "（AuthLoginController#logoutAllDevices）")
+        void logoutAllDevices_targetsOnlyAuthenticatedUser() throws Exception {
+            doNothing().when(authService)
+                    .logoutAllDevices(eq(SELF_USER_ID), any(), any(), any(Boolean.class));
+
+            mockMvc.perform(delete("/api/v1/auth/sessions"))
+                    .andExpect(status().isNoContent());
+            // eq(SELF_USER_ID) スタブに一致した時点で、SecurityContext 以外から
+            // 対象ユーザーが決まらないことが確認できる（不一致なら Mockito が未スタブ呼び出しとして検知する）。
+        }
+
+        @Test
+        @DisplayName("GET /sessions — 返るのは認証主体自身のセッション一覧のみ"
+                + "（AuthLoginController#getSessions）")
+        void getSessions_returnsOnlyAuthenticatedUsersSessions() throws Exception {
+            var session = new SessionResponse(
+                    100L, "自分のPC", "DESKTOP", "127.0.0.1", "Mozilla/5.0",
+                    false, LocalDateTime.of(2026, 7, 1, 10, 0),
+                    LocalDateTime.of(2026, 8, 1, 10, 0),
+                    LocalDateTime.of(2026, 8, 8, 10, 0), true);
+            given(authService.getSessions(eq(SELF_USER_ID), any(), any()))
+                    .willReturn(ApiResponse.of(List.of(session)));
+
+            mockMvc.perform(get("/api/v1/auth/sessions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].id").value(100))
+                    .andExpect(jsonPath("$.data[0].deviceName").value("自分のPC"));
+        }
     }
 }

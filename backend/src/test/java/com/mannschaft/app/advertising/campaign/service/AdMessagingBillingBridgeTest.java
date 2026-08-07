@@ -1,10 +1,6 @@
 package com.mannschaft.app.advertising.campaign.service;
 
-import com.mannschaft.app.advertising.campaign.entity.AdAnnouncementDelivery;
-import com.mannschaft.app.advertising.campaign.entity.AdEmailDelivery;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
-import com.mannschaft.app.advertising.campaign.entity.AdPushDelivery;
-import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.event.MessagingCampaignBudgetConsumedEvent;
 import com.mannschaft.app.advertising.campaign.repository.AdAnnouncementDeliveryRepository;
@@ -112,29 +108,16 @@ class AdMessagingBillingBridgeTest {
     @DisplayName("チャネル別単価で正しく課金額が算出され、bounce/failed は除外される")
     void billOneCampaign_normalCase_excludesUnbillable() {
         // ANN: 10 件全て delivered_at あり
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(buildAnns(10));
+        given(announcementDeliveryRepository.countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey))
+                .willReturn(10L);
 
-        // EMAIL: 計 6 件 (課金 4 件: sent=ok×3 + SOFT×1、課金外 2 件: HARD×1 + COMPLAINT×1)
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of(
-                        buildEmail(true, null),
-                        buildEmail(true, null),
-                        buildEmail(true, null),
-                        buildEmail(true, AdBounceType.SOFT),
-                        buildEmail(true, AdBounceType.HARD),
-                        buildEmail(true, AdBounceType.COMPLAINT)
-                ));
+        // EMAIL: 計 6 件中課金対象 4 件 (sent=ok×3 + SOFT×1、課金外 2 件: HARD×1 + COMPLAINT×1)
+        given(emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(4L);
 
-        // PUSH: 計 5 件 (課金 3 件: failed_reason なし、課金外 2 件: failed_reason あり)
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of(
-                        buildPush(true, null),
-                        buildPush(true, null),
-                        buildPush(true, null),
-                        buildPush(true, "PROVIDER_ERROR"),
-                        buildPush(true, "TOKEN_EXPIRED")
-                ));
+        // PUSH: 計 5 件中課金対象 3 件 (failed_reason なし、課金外 2 件: failed_reason あり)
+        given(pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(3L);
 
         // 冪等チェックは全て空
         given(invoiceItemRepository.findByMessagingCampaignIdAndChannelTypeAndMonthKey(
@@ -209,12 +192,12 @@ class AdMessagingBillingBridgeTest {
     @DisplayName("BANNER 課金: served 5 行のみ ¥3×5=¥15 の 1 行が計上され、未表示予約は課金されない")
     void billOneCampaign_banner_billsServedViewsOnly() {
         // ANN/EMAIL/PUSH はゼロ、BANNER のみ served=5（未表示 3 は count 対象外）
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
+        given(announcementDeliveryRepository.countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey))
+                .willReturn(0L);
+        given(emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(0L);
+        given(pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(0L);
         // served_at IS NOT NULL の予約行のみを数える（未表示予約 3 は含まれない）
         given(bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey))
                 .willReturn(5L);
@@ -258,12 +241,12 @@ class AdMessagingBillingBridgeTest {
     @Test
     @DisplayName("BANNER 冪等: 既存 BANNER 明細があれば再実行で行が増えない")
     void billOneCampaign_banner_idempotent() {
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
+        given(announcementDeliveryRepository.countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey))
+                .willReturn(0L);
+        given(emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(0L);
+        given(pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(0L);
         given(bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey))
                 .willReturn(5L);
         // 既存 BANNER 明細あり → skip
@@ -287,13 +270,13 @@ class AdMessagingBillingBridgeTest {
     @Test
     @DisplayName("冪等性: 既に同月同チャネルの invoice_item があれば skip され、消費予算もイベントも発火しない")
     void billOneCampaign_idempotent_skipsExisting() {
-        // 全チャネルで既存行ありとする
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(buildAnns(10));
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of(buildEmail(true, null)));
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of(buildPush(true, null)));
+        // 全チャネルで課金対象件数 > 0 とする（冪等スキップは既存 invoice_item の有無で判定されるため）
+        given(announcementDeliveryRepository.countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey))
+                .willReturn(10L);
+        given(emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(1L);
+        given(pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey))
+                .willReturn(1L);
 
         AdInvoiceItemEntity existing = AdInvoiceItemEntity.builder()
                 .invoiceId(1L).campaignName("dup").pricingModel(com.mannschaft.app.advertising.PricingModel.CPM)
@@ -319,13 +302,6 @@ class AdMessagingBillingBridgeTest {
     @Test
     @DisplayName("配信ゼロなら invoice 作成もイベント発行もせず無動作で終わる")
     void billOneCampaign_zeroDeliveries_noOp() {
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey))
-                .willReturn(List.of());
-
         bridge.billOneCampaign(campaign, targetMonth, monthKey);
 
         verify(invoiceItemRepository, never()).save(any());
@@ -351,58 +327,10 @@ class AdMessagingBillingBridgeTest {
                 eq(AdCampaignStatus.PAUSED), any()))
                 .willReturn(List.of());
 
-        // 配信は全部ゼロでも問題ない (本テストは loop が回ることが確認できれば十分)
-        given(announcementDeliveryRepository.findByCampaignIdAndMonthKey(any(), any()))
-                .willReturn(List.of());
-        given(emailDeliveryRepository.findByCampaignIdAndMonthKey(any(), any()))
-                .willReturn(List.of());
-        given(pushDeliveryRepository.findByCampaignIdAndMonthKey(any(), any()))
-                .willReturn(List.of());
-
         bridge.runMonthlyBilling(targetMonth);
 
-        verify(announcementDeliveryRepository, atLeastOnce()).findByCampaignIdAndMonthKey(any(), any());
+        verify(announcementDeliveryRepository, atLeastOnce())
+                .countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(any(), any());
     }
 
-    // ---- helpers ----
-
-    private List<AdAnnouncementDelivery> buildAnns(int count) {
-        java.util.List<AdAnnouncementDelivery> list = new java.util.ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            AdAnnouncementDelivery a = AdAnnouncementDelivery.builder()
-                    .campaignId(campaignId)
-                    .userId(1000L + i)
-                    .announcementFeedId(2000L + i)
-                    .deliveredAt(LocalDateTime.now())
-                    .monthKey(monthKey)
-                    .build();
-            list.add(a);
-        }
-        return list;
-    }
-
-    private AdEmailDelivery buildEmail(boolean sent, AdBounceType bounceType) {
-        AdEmailDelivery e = AdEmailDelivery.builder()
-                .campaignId(campaignId)
-                .userId(3000L)
-                .directMailRecipientId(4000L)
-                .sentAt(sent ? LocalDateTime.now() : null)
-                .bouncedAt(bounceType != null ? LocalDateTime.now() : null)
-                .bounceType(bounceType)
-                .monthKey(monthKey)
-                .build();
-        return e;
-    }
-
-    private AdPushDelivery buildPush(boolean delivered, String failedReason) {
-        AdPushDelivery p = AdPushDelivery.builder()
-                .campaignId(campaignId)
-                .userId(5000L)
-                .notificationId(6000L)
-                .deliveredAt(delivered ? LocalDateTime.now() : null)
-                .failedReason(failedReason)
-                .monthKey(monthKey)
-                .build();
-        return p;
-    }
 }
