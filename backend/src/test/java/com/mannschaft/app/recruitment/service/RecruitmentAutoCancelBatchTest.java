@@ -26,9 +26,11 @@ import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -180,6 +183,106 @@ class RecruitmentAutoCancelBatchTest {
             // 通知なし（affectedUserIds が空）
             verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
                     any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("CHUNK_SIZE(100件)を超える参加者 → 全員キャンセルされる（縮小クエリのドレイン挙動を再現）")
+        void processSingleListing_moreThanChunkSize_allParticipantsCancelled() throws Exception {
+            // given: 250人（CHUNK_SIZE=100の2.5倍）
+            RecruitmentListingEntity listing = buildOpenListing(300, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            int participantCount = 250;
+            List<RecruitmentParticipantEntity> remaining = new ArrayList<>();
+            for (int i = 0; i < participantCount; i++) {
+                remaining.add(buildParticipant((long) (i + 1), RecruitmentParticipantStatus.CONFIRMED));
+            }
+
+            // 実DBの挙動を再現: クエリは常に「現時点で対象ステータスの行」の先頭ページを返す。
+            // save() でステータスがCANCELLEDになった行は、以後のクエリ結果から自然に除外される。
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(PageRequest.class)))
+                    .willAnswer(invocation -> {
+                        PageRequest pageRequest = invocation.getArgument(2);
+                        // page番号を進めて叩いてきた場合は不正利用として空ページを返す
+                        // （常にpage=0で叩くべき、というのが本テストの検証対象）
+                        if (pageRequest.getPageNumber() != 0) {
+                            return new PageImpl<>(Collections.emptyList(), pageRequest, remaining.size());
+                        }
+                        int size = pageRequest.getPageSize();
+                        List<RecruitmentParticipantEntity> content = remaining.stream()
+                                .limit(size)
+                                .collect(Collectors.toList());
+                        return new PageImpl<>(content, pageRequest, remaining.size());
+                    });
+
+            given(participantRepository.save(any())).willAnswer(invocation -> {
+                RecruitmentParticipantEntity saved = invocation.getArgument(0);
+                // ステータスがCANCELLEDになった参加者は対象集合から取り除く（実DBの絞り込みを模す）
+                remaining.removeIf(p -> p.getId().equals(saved.getId()));
+                return saved;
+            });
+            given(historyRepository.save(any())).willReturn(null);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 250人全員がキャンセルされる（後続100人が読み飛ばされない）
+            assertThat(result).isEqualTo(participantCount);
+            assertThat(remaining).isEmpty();
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.AUTO_CANCELLED);
+        }
+
+        @Test
+        @DisplayName("対象外ステータス（CANCELLED済み）の参加者はキャンセル対象クエリに含まれないためキャンセルされない")
+        void processSingleListing_nonTargetStatusParticipant_notCancelled() throws Exception {
+            // given: クエリは CANCEL_TARGET_STATUSES に絞り込まれる前提のため、
+            // 既にCANCELLEDの参加者はそもそもfindByListingIdAndStatusInの結果に現れない。
+            RecruitmentListingEntity listing = buildOpenListing(10, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            RecruitmentParticipantEntity alreadyCancelled =
+                    buildParticipant(77L, RecruitmentParticipantStatus.CANCELLED);
+
+            // 対象外ステータスの参加者はクエリ結果に含まれない（空ページ）ことをシミュレート
+            Page<RecruitmentParticipantEntity> emptyPage = new PageImpl<>(
+                    Collections.emptyList(), PageRequest.of(0, 100), 0);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any(Pageable.class))).willReturn(emptyPage);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 対象外ステータスの参加者はキャンセルされず、処理件数は0
+            assertThat(result).isEqualTo(0);
+            assertThat(alreadyCancelled.getStatus()).isEqualTo(RecruitmentParticipantStatus.CANCELLED);
+            verify(participantRepository, never()).save(alreadyCancelled);
+        }
+
+        @Test
+        @DisplayName("進捗ゼロが続く異常系 → 無限ループにならず安全弁で中断する")
+        void processSingleListing_noProgress_breaksViaSafetyValve() throws Exception {
+            // given: クエリが常に同じ1件を返し続ける（ステータス遷移が反映されない異常状態を模す）
+            RecruitmentListingEntity listing = buildOpenListing(10, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            RecruitmentParticipantEntity stuckParticipant =
+                    buildParticipant(55L, RecruitmentParticipantStatus.CONFIRMED);
+            Page<RecruitmentParticipantEntity> stuckPage = new PageImpl<>(
+                    List.of(stuckParticipant), PageRequest.of(0, 100), 1);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any(Pageable.class))).willReturn(stuckPage);
+            given(participantRepository.save(any())).willReturn(stuckParticipant);
+            given(historyRepository.save(any())).willReturn(null);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when: 無限ループにならず、有限時間で結果が返ってくることを検証する
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 1件目は処理されるが、2周目以降は同じ参加者が再抽出されるため
+            // 進捗ゼロと判定され安全弁で中断する（無限ループに陥らない）
+            assertThat(result).isEqualTo(1);
         }
     }
 
