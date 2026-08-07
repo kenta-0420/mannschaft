@@ -478,15 +478,27 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("一括アーカイブは認証主体所有のテーマのみを対象にする（他人のテーマは変化しない）")
+        @DisplayName("一括アーカイブは認証主体所有のテーマのみを対象にする（同条件でも他人のテーマは変化しない）")
         void 一括アーカイブは自己スコープ() throws Exception {
+            // bulkArchive は academicYear/termLabel/subjectName の3フィールドすべて null だと
+            // 全件一括アーカイブ防止の安全弁（REFLECTION_011）で400になる仕様のため、
+            // 条件に合致するテーマを owner・attacker 双方に用意し、同一条件で叩く。
+            int targetYear = 2031;
+            UUID ownerTargetThemeId = saveThemeWithAcademicYear(ownerId, "REFLAUTHZ 一括対象(所有者)", targetYear);
+            UUID attackerTargetThemeId = saveThemeWithAcademicYear(attackerId, "REFLAUTHZ 一括対象(攻撃者)", targetYear);
+
             setAuth(attackerId);
             mockMvc.perform(post("/api/v1/me/reflections/archive/bulk-archive")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
+                            .content("{\"academicYear\":" + targetYear + "}"))
                     .andExpect(status().isOk());
 
-            assertThat(themeRepository.findById(ownerThemeId).orElseThrow().getArchivedAt()).isNull();
+            em.flush();
+            em.clear();
+            assertThat(themeRepository.findById(attackerTargetThemeId).orElseThrow().getArchivedAt())
+                    .isNotNull();
+            assertThat(themeRepository.findById(ownerTargetThemeId).orElseThrow().getArchivedAt())
+                    .isNull();
         }
 
         @Test
@@ -539,6 +551,16 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
         if (archived) {
             theme.archive();
         }
+        return themeRepository.save(theme).getId();
+    }
+
+    /** 一括アーカイブ契約テスト用: academicYear 条件に合致する未アーカイブテーマを作成する。 */
+    private UUID saveThemeWithAcademicYear(Long userId, String title, int academicYear) {
+        ReflectionThemeEntity theme = ReflectionThemeEntity.builder()
+                .userId(userId)
+                .title(title)
+                .academicYear(academicYear)
+                .build();
         return themeRepository.save(theme).getId();
     }
 
