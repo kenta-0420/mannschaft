@@ -45,4 +45,18 @@ public interface FanoutRecipientSource {
         // 既定はトグル無視（VILLAGE / TEAM は母集団が応援者トグルに依存しないため 3 引数版へ委譲）。
         return nextPage(scopeRef, cursorSubjectId, limit);
     }
+
+    /**
+     * シャード対応 6 引数版（CMP-001⑤ ワーカー並列化・出陣-N で実装。現状は red を成立させるスタブ）。
+     *
+     * <p>{@code shardIndex}/{@code shardCount} を運搬し、{@code subject_id % shardCount == shardIndex} の
+     * 受信者だけを返す想定（各シャードが互いに素な部分集合を担当・母集団の和集合は全件に一致）。
+     * 現時点では未実装であり、呼び出すと必ず {@link UnsupportedOperationException} を投げる。
+     * 実装は出陣（CMP-001⑤）で行う。</p>
+     */
+    default List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters,
+                                int shardIndex, int shardCount) {
+        throw new UnsupportedOperationException(
+                "シャード対応 nextPage は出陣（CMP-001⑤）で実装予定・現状未実装");
+    }
 }
