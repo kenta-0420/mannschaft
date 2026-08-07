@@ -62,6 +62,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>金型: {@code TodoPersonalScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext + {@code @EnabledIf isDockerAvailable}）。未認証は
  * {@code SecurityUtils} の {@code COMMON_000} → 401。</p>
+ *
+ * <p>本ファイルが {@code @SelfScopedEndpoint} の自己スコープ性を固定する対象:
+ * {@code ContactController#listContacts}・{@code ContactHandleController#getMyHandle}・
+ * {@code ContactHandleController#updateHandle}・{@code ContactHandleController#checkHandle}・
+ * {@code ContactInviteTokenController#createToken}・{@code ContactInviteTokenController#listTokens}・
+ * {@code ContactPrivacyController#getPrivacySettings}・
+ * {@code ContactPrivacyController#updatePrivacySettings}・
+ * {@code ContactRequestBlockController#addBlock}・{@code ContactRequestBlockController#listBlocks}・
+ * {@code ContactRequestController#listReceived}・{@code ContactRequestController#listSent}・
+ * {@code ContactRequestController#sendRequest}。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -612,6 +622,18 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     @Nested
     @DisplayName("8. 自己スコープ新規マーカー対象（ハンドル重複確認・変更／トークン発行／事前拒否追加／申請送信）")
     class SelfScopedNewMarkers {
+
+        @Test
+        @DisplayName("未認証は401（重複確認・トークン発行）")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/users/contact-handle-check").param("handle", "newhandle123"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(post("/api/v1/contact-invite-tokens")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized());
+        }
 
         @Test
         @DisplayName("ハンドル重複確認は自分以外の存在有無しか返さない（保持者情報は非開示）")

@@ -59,7 +59,7 @@ public class ContactInviteController {
      * （{@code ContactInviteTokenService.java:113-160}）。トークン不在・無効化済み・期限切れ・
      * 利用回数超過は {@code CONTACT_012}、自分が発行したトークンは {@code CONTACT_013} で拒否し、
      * ブロック・事前拒否は設計書 §2.3 のサイレント方式（応答差を作らない）で扱う。
-     * 契約は {@code ContactScopeContractIT} で固定する。</p>
+     * 契約は {@code ContactScopeContractIT} で固定する。認可根治戦役 Wave6 監査済。</p>
      */
     @AuthorizedInService
     @PostMapping("/{token}/accept")

@@ -41,7 +41,7 @@ public class ContactController {
      */
     @SelfScopedEndpoint("フォルダ集合は SecurityUtils.getCurrentUserId() で確定した認証主体から解決し、"
             + "folderId は自分のフォルダ集合との積で絞り込むだけのため他ユーザーのフォルダへは到達できない"
-            + "（ContactService#listContacts）")
+            + "（ContactService#listContacts）。認可根治戦役 Wave6/Wave7 で重複監査・双方一致。")
     @GetMapping
     @Operation(summary = "連絡先一覧取得")
     public ResponseEntity<ApiResponse<List<ContactResponse>>> listContacts(
