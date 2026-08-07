@@ -56,18 +56,55 @@ class ScheduleKeepNoReminderArchTest {
      * AC-28c で許可する「通知発行かつ ScheduleKeep 系型に依存してよい」実装クラスの許可リスト。
      *
      * <p>F03.17 §6.1 が通知する契機として認めているのは「変換された」（実装済み・
-     * {@link ScheduleKeepNotificationService}）のみである。「作成された」通知は Wave2 では
-     * 未配線（§6.2「スコープ内 MEMBER 全員への配信は Wave2 では実装していない」）のため、
-     * 現時点の許可リストは 1 件で正しい。将来「作成された」通知を配線する際は、
-     * 本許可リストへの追記と本 Javadoc の更新をセットで行うこと。</p>
+     * {@link ScheduleKeepNotificationService#notifyConverted}）のみである。「作成された」通知は
+     * Wave2 では未配線（§6.2「スコープ内 MEMBER 全員への配信は Wave2 では実装していない」）のため、
+     * 現時点の許可リストはこの実装経路を構成する2クラスで正しい。将来「作成された」通知を
+     * 配線する際は、本許可リストへの追記と本 Javadoc の更新をセットで行うこと。</p>
+     *
+     * <p><b>{@link ScheduleKeepService} も許可リストに含める理由</b>: {@link #SCHEDULE_KEEP_CORE_TYPE_NAMES}
+     * に {@code ScheduleKeepNotificationService} を加えた結果（穴1の是正）、
+     * {@code ScheduleKeepNotificationService} を呼ぶクラスは自動的に「ScheduleKeep 系の型に依存する」
+     * を満たすようになった。{@code ScheduleKeepService.convert()} は §6.1 で許可された変換通知を
+     * 発火させるために {@code ScheduleKeepNotificationService.notifyConverted()} を呼ぶ、
+     * <b>正規の実装経路の一部</b>であり、これも許可リストに載せなければ実測で false positive
+     * になることを確認した（AC-28c が ScheduleKeepService 自身を 70 件の依存で違反として
+     * 検出した。ScheduleKeepEntity/Repository への依存はキープ本体の CRUD として当然であり、
+     * 滞留リマインドとは無関係）。</p>
+     *
+     * <h2>⚠️ 残存リスク（構造的には塞げない・人によるレビュー必須）</h2>
+     * <p>{@link ScheduleKeepNotificationService} と {@link ScheduleKeepService} は許可リストに
+     * 載っているため、<b>この2クラス自身の中に</b>滞留リマインドを実装し、かつ {@code @Scheduled} も
+     * {@code @BatchEndpoint} も付けない（例: 既存の許可されたトリガー——変換処理からの
+     * 呼び出しに相乗りする、イベントリスナーから周期的に呼ぶ等）場合、AC-28a/28b/28c の
+     * いずれも検知できない。AC-28c は許可リストで自身を除外しており、AC-28a/28b は
+     * {@code @Scheduled}/{@code @BatchEndpoint} の有無を軸にしているため、
+     * どちらの軸にも乗らないコードは原理的に見えない。
+     * <b>この許可リストに載る2クラスへメソッドを追加する際は、それが滞留リマインド（催促通知）で
+     * ないことを人間がレビューで確認すること。</b> 本番人はあくまで「型依存」という
+     * 一つの軸で機械的に保証する多層防御の一部であり、許可リスト内部の実装の妥当性は
+     * 番人ではなくコードレビューが担う。</p>
      */
     private static final Set<String> ALLOWED_NOTIFIER_CLASS_NAMES = Set.of(
-        ScheduleKeepNotificationService.class.getName());
+        ScheduleKeepNotificationService.class.getName(),
+        ScheduleKeepService.class.getName());
 
+    /**
+     * 中核型集合に {@code ScheduleKeepNotificationService} も含める理由【穴1の是正】。
+     *
+     * <p>当初は {@code ScheduleKeepEntity}/{@code ScheduleKeepRepository}/{@code ScheduleKeepService}
+     * の3型のみだったが、それだと「滞留リマインドが {@code ScheduleKeepNotificationService} 経由で
+     * 通知する」経路が素通りした——AC-28c の母集団述語は {@code NotificationService} への<b>直接</b>
+     * 依存を条件にしており、{@code ScheduleKeepNotificationService} を1段挟むだけで外れてしまう。
+     * ArchUnit の {@code dependOnClassesThat} は<b>推移的依存を辿らない</b>ため、AC-28a/28b の
+     * 「ScheduleKeep 系型への依存」チェックにも同様に引っかからなかった（実測で確認済み）。
+     * {@code ScheduleKeepNotificationService} 自体を中核型集合に加えることで、
+     * これを直接依存する側（＝間接的な通知送出クラス）を AC-28a/28b/28c いずれからも捕まえられる。</p>
+     */
     private static final Set<String> SCHEDULE_KEEP_CORE_TYPE_NAMES = Set.of(
         ScheduleKeepEntity.class.getName(),
         ScheduleKeepRepository.class.getName(),
-        ScheduleKeepService.class.getName());
+        ScheduleKeepService.class.getName(),
+        ScheduleKeepNotificationService.class.getName());
 
     // ------------------------------------------------------------------
     // AC-28a: @Scheduled メソッドを持つクラスは ScheduleKeep 系の型に依存しない
@@ -157,16 +194,31 @@ class ScheduleKeepNoReminderArchTest {
     }
 
     /**
-     * 「{@code NotificationService} を呼び出し、かつ {@code ScheduleKeep} 系の型に依存する」クラス。
-     * AC-28c の対象母集団を定義する述語。
+     * 「{@code NotificationService} <b>または</b> {@code ScheduleKeepNotificationService} を呼び出し、
+     * かつ {@code ScheduleKeep} 系の型に依存する」クラス。AC-28c の対象母集団を定義する述語。
+     *
+     * <p>{@code ScheduleKeepNotificationService} も送信口の入口として扱う理由【穴1の是正】:
+     * {@code NotificationService} への直接依存のみを条件にすると、滞留リマインドが
+     * {@code ScheduleKeepNotificationService} を1段挟んで通知した場合に素通りする
+     * （{@code @Scheduled} が付いていても AC-28a は推移的依存を辿らないため同様に素通りする。
+     * 実測で確認済み）。{@code ScheduleKeepNotificationService} 自体は
+     * {@link #SCHEDULE_KEEP_CORE_TYPE_NAMES} に含まれるため、これを呼ぶクラスは
+     * 「ScheduleKeep 系の型に依存する」を自動的に満たす——したがって、
+     * {@code ScheduleKeepNotificationService} を呼ぶクラスは通知発行の条件を満たした時点で
+     * 常に母集団に入る。</p>
      */
     private static DescribedPredicate<JavaClass> callNotificationServiceAndDependOnScheduleKeep() {
         return new DescribedPredicate<>(
-            "call NotificationService and depend on ScheduleKeep core types") {
+            "call NotificationService (directly or via ScheduleKeepNotificationService) "
+                + "and depend on ScheduleKeep core types") {
             @Override
             public boolean test(JavaClass javaClass) {
                 boolean callsNotificationService = javaClass.getDirectDependenciesFromSelf().stream()
-                    .anyMatch(dependency -> dependency.getTargetClass().isEquivalentTo(NotificationService.class));
+                    .anyMatch(dependency -> {
+                        JavaClass target = dependency.getTargetClass();
+                        return target.isEquivalentTo(NotificationService.class)
+                            || target.isEquivalentTo(ScheduleKeepNotificationService.class);
+                    });
                 if (!callsNotificationService) {
                     return false;
                 }
