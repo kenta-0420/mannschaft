@@ -8094,6 +8094,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームキープ一覧 */
+        get: operations["list_13"];
+        put?: never;
+        /** チームキープ作成 */
+        post: operations["create_12"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープの変換取消 */
+        post: operations["revert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープのアーカイブ解除 */
+        post: operations["restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープを予定へ変換 */
+        post: operations["convert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープをアーカイブ */
+        post: operations["archive_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープの並び替え */
+        post: operations["reorder_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/translations": {
         parameters: {
             query?: never;
@@ -8273,10 +8376,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームステータスラベル一覧（SYSTEM 既定 + チームスコープ） */
-        get: operations["list_13"];
+        get: operations["list_14"];
         put?: never;
         /** チームステータスラベル作成（ADMIN/DEPUTY_ADMIN） */
-        post: operations["create_12"];
+        post: operations["create_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8807,10 +8910,10 @@ export interface paths {
             cookie?: never;
         };
         /** プリセット一覧 */
-        get: operations["list_14"];
+        get: operations["list_15"];
         put?: never;
         /** プリセット作成 */
-        post: operations["create_13"];
+        post: operations["create_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8910,7 +9013,7 @@ export interface paths {
             cookie?: never;
         };
         /** 書類一覧 */
-        get: operations["list_15"];
+        get: operations["list_16"];
         put?: never;
         /** 書類アップロード */
         post: operations["upload"];
@@ -9391,10 +9494,10 @@ export interface paths {
             cookie?: never;
         };
         /** サブカテゴリ一覧 */
-        get: operations["list_16"];
+        get: operations["list_17"];
         put?: never;
         /** サブカテゴリ作成 */
-        post: operations["create_14"];
+        post: operations["create_15"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9411,7 +9514,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** サブカテゴリ削除 (論理削除) */
-        post: operations["archive_2"];
+        post: operations["archive_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9426,10 +9529,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム募集枠一覧 */
-        get: operations["list_17"];
+        get: operations["list_18"];
         put?: never;
         /** チーム募集枠作成 (DRAFT で作成) */
-        post: operations["create_15"];
+        post: operations["create_16"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9587,10 +9690,10 @@ export interface paths {
             cookie?: never;
         };
         /** 物件一覧 */
-        get: operations["list_18"];
+        get: operations["list_19"];
         put?: never;
         /** 物件掲示作成 */
-        post: operations["create_16"];
+        post: operations["create_17"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9623,10 +9726,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロモーション一覧 */
-        get: operations["list_19"];
+        get: operations["list_20"];
         put?: never;
         /** プロモーション作成 */
-        post: operations["create_17"];
+        post: operations["create_18"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9933,10 +10036,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームウォッチリスト一覧 */
-        get: operations["list_20"];
+        get: operations["list_21"];
         put?: never;
         /** チームウォッチリスト追加 */
-        post: operations["create_18"];
+        post: operations["create_19"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9987,10 +10090,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームサブリース一覧 */
-        get: operations["list_21"];
+        get: operations["list_22"];
         put?: never;
         /** チームサブリース作成 */
-        post: operations["create_19"];
+        post: operations["create_20"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10125,10 +10228,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム譲渡希望一覧 */
-        get: operations["list_22"];
+        get: operations["list_23"];
         put?: never;
         /** チーム譲渡希望作成 */
-        post: operations["create_20"];
+        post: operations["create_21"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10160,10 +10263,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム申請一覧 */
-        get: operations["list_23"];
+        get: operations["list_24"];
         put?: never;
         /** チーム区画申請 */
-        post: operations["create_21"];
+        post: operations["create_22"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10194,9 +10297,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_24"];
+        get: operations["list_25"];
         put?: never;
-        post: operations["create_22"];
+        post: operations["create_23"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10494,9 +10597,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_25"];
+        get: operations["list_26"];
         put?: never;
-        post: operations["create_23"];
+        post: operations["create_24"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10510,9 +10613,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_26"];
+        get: operations["list_27"];
         put?: never;
-        post: operations["create_24"];
+        post: operations["create_25"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10973,10 +11076,10 @@ export interface paths {
             cookie?: never;
         };
         /** 居室一覧 */
-        get: operations["list_27"];
+        get: operations["list_28"];
         put?: never;
         /** 居室作成 */
-        post: operations["create_25"];
+        post: operations["create_26"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10994,7 +11097,7 @@ export interface paths {
         get: operations["listByUnit"];
         put?: never;
         /** 居住者登録 */
-        post: operations["create_26"];
+        post: operations["create_27"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11182,10 +11285,10 @@ export interface paths {
             cookie?: never;
         };
         /** クーポン一覧 */
-        get: operations["list_28"];
+        get: operations["list_29"];
         put?: never;
         /** クーポン作成 */
-        post: operations["create_27"];
+        post: operations["create_28"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11218,7 +11321,7 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知一覧取得 */
-        get: operations["list_29"];
+        get: operations["list_30"];
         put?: never;
         /** 確認通知送信 */
         post: operations["send"];
@@ -11270,10 +11373,10 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知テンプレート一覧取得 */
-        get: operations["list_30"];
+        get: operations["list_31"];
         put?: never;
         /** 確認通知テンプレート作成 */
-        post: operations["create_28"];
+        post: operations["create_29"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11498,10 +11601,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームのキャンセルポリシー一覧 */
-        get: operations["list_31"];
+        get: operations["list_32"];
         put?: never;
         /** キャンセルポリシー作成 (テンプレート用 or 募集用) */
-        post: operations["create_29"];
+        post: operations["create_30"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11515,9 +11618,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_32"];
+        get: operations["list_33"];
         put?: never;
-        post: operations["create_30"];
+        post: operations["create_31"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11900,9 +12003,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_33"];
+        get: operations["list_34"];
         put?: never;
-        post: operations["create_31"];
+        post: operations["create_32"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12044,9 +12147,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_34"];
+        get: operations["list_35"];
         put?: never;
-        post: operations["create_32"];
+        post: operations["create_33"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12124,9 +12227,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_35"];
+        get: operations["list_36"];
         put?: never;
-        post: operations["create_33"];
+        post: operations["create_34"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12769,7 +12872,7 @@ export interface paths {
          * セキュリティインシデント登録
          * @description 新規セキュリティインシデントを登録する。
          */
-        post: operations["create_34"];
+        post: operations["create_35"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12829,7 +12932,7 @@ export interface paths {
          * ナビ項目追加
          * @description 新しいナビ項目を追加する。key は ^[a-z0-9\-]+$ のみ可。
          */
-        post: operations["create_35"];
+        post: operations["create_36"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12896,10 +12999,10 @@ export interface paths {
             cookie?: never;
         };
         /** 障害告知バナー一覧取得 */
-        get: operations["list_36"];
+        get: operations["list_37"];
         put?: never;
         /** 障害告知バナー作成 */
-        post: operations["create_36"];
+        post: operations["create_37"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12988,13 +13091,13 @@ export interface paths {
          * 手数料パターン割当一覧
          * @description 未削除の割当一覧（source_kind＋sub_key → policy_key）を作成順で返す。
          */
-        get: operations["list_37"];
+        get: operations["list_38"];
         put?: never;
         /**
          * 手数料パターン割当作成
          * @description 割当を作成する。参照先 policy 不在は 404・無効は 422。同条件の既存割当は 409。割当変更は新規課金のみ反映（既存取引は焼き付け済みで不変）。
          */
-        post: operations["create_37"];
+        post: operations["create_38"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13012,13 +13115,13 @@ export interface paths {
          * 手数料パターン一覧
          * @description 全パターンを返す（enabled=false 含む全件・policy_key 昇順・割当数付き）。
          */
-        get: operations["list_38"];
+        get: operations["list_39"];
         put?: never;
         /**
          * 手数料パターン新規
          * @description 新しいパターンを作成する。既存キーは 409（更新は PUT）。率・固定額の業務制約あり。
          */
-        post: operations["create_38"];
+        post: operations["create_39"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13366,9 +13469,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_39"];
+        get: operations["list_40"];
         put?: never;
-        post: operations["create_39"];
+        post: operations["create_40"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14312,13 +14415,13 @@ export interface paths {
          * 代理一覧（ADMIN）
          * @description F03.10 §4.1: 管理者が代理委任の一覧を取得する
          */
-        get: operations["list_40"];
+        get: operations["list_41"];
         put?: never;
         /**
          * 代理指定
          * @description F03.10 §4.1: 委任者が代理人を指定する
          */
-        post: operations["create_40"];
+        post: operations["create_41"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14634,7 +14737,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 募集枠 論理削除 */
-        post: operations["archive_3"];
+        post: operations["archive_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15473,10 +15576,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ウォッチリスト一覧 */
-        get: operations["list_41"];
+        get: operations["list_42"];
         put?: never;
         /** 組織ウォッチリスト追加 */
-        post: operations["create_41"];
+        post: operations["create_42"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15527,10 +15630,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織サブリース一覧 */
-        get: operations["list_42"];
+        get: operations["list_43"];
         put?: never;
         /** 組織サブリース作成 */
-        post: operations["create_42"];
+        post: operations["create_43"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15665,10 +15768,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織譲渡希望一覧 */
-        get: operations["list_43"];
+        get: operations["list_44"];
         put?: never;
         /** 組織譲渡希望作成 */
-        post: operations["create_43"];
+        post: operations["create_44"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15700,10 +15803,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織申請一覧 */
-        get: operations["list_44"];
+        get: operations["list_45"];
         put?: never;
         /** 組織区画申請 */
-        post: operations["create_44"];
+        post: operations["create_45"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15825,7 +15928,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_45"];
+        post: operations["create_46"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15855,9 +15958,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_45"];
+        get: operations["list_46"];
         put?: never;
-        post: operations["create_46"];
+        post: operations["create_47"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15903,9 +16006,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_46"];
+        get: operations["list_47"];
         put?: never;
-        post: operations["create_47"];
+        post: operations["create_48"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16047,9 +16150,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_47"];
+        get: operations["list_48"];
         put?: never;
-        post: operations["create_48"];
+        post: operations["create_49"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16127,9 +16230,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_48"];
+        get: operations["list_49"];
         put?: never;
-        post: operations["create_49"];
+        post: operations["create_50"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16182,6 +16285,109 @@ export interface paths {
         put?: never;
         /** 組織スケジュールキャンセル */
         post: operations["cancelSchedule_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織キープ一覧 */
+        get: operations["list_50"];
+        put?: never;
+        /** 組織キープ作成 */
+        post: operations["create_51"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープの変換取消 */
+        post: operations["revert_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープのアーカイブ解除 */
+        post: operations["restore_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープを予定へ変換 */
+        post: operations["convert_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープをアーカイブ */
+        post: operations["archive_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープの並び替え */
+        post: operations["reorder_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16818,10 +17024,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ） */
-        get: operations["list_49"];
+        get: operations["list_51"];
         put?: never;
         /** 組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN） */
-        post: operations["create_50"];
+        post: operations["create_52"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17095,10 +17301,10 @@ export interface paths {
             cookie?: never;
         };
         /** プリセット一覧 */
-        get: operations["list_50"];
+        get: operations["list_52"];
         put?: never;
         /** プリセット作成 */
-        post: operations["create_51"];
+        post: operations["create_53"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17164,7 +17370,7 @@ export interface paths {
             cookie?: never;
         };
         /** 書類一覧 */
-        get: operations["list_51"];
+        get: operations["list_53"];
         put?: never;
         /** 書類アップロード */
         post: operations["upload_1"];
@@ -17276,10 +17482,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織募集枠一覧 */
-        get: operations["list_52"];
+        get: operations["list_54"];
         put?: never;
         /** 組織募集枠作成 (DRAFT で作成) */
-        post: operations["create_52"];
+        post: operations["create_54"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17349,10 +17555,10 @@ export interface paths {
             cookie?: never;
         };
         /** 物件一覧 */
-        get: operations["list_53"];
+        get: operations["list_55"];
         put?: never;
         /** 物件掲示作成 */
-        post: operations["create_53"];
+        post: operations["create_55"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17385,10 +17591,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロモーション一覧 */
-        get: operations["list_54"];
+        get: operations["list_56"];
         put?: never;
         /** プロモーション作成 */
-        post: operations["create_54"];
+        post: operations["create_56"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17597,10 +17803,10 @@ export interface paths {
             cookie?: never;
         };
         /** 協会の発行請求一覧（status フィルタ・ページング） */
-        get: operations["list_55"];
+        get: operations["list_57"];
         put?: never;
         /** 協会請求の発行（DRAFT） */
-        post: operations["create_55"];
+        post: operations["create_57"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17614,9 +17820,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_56"];
+        get: operations["list_58"];
         put?: never;
-        post: operations["create_56"];
+        post: operations["create_58"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17700,7 +17906,7 @@ export interface paths {
             cookie?: never;
         };
         /** 局面写真一覧（閲覧可視性・作成日時昇順） */
-        get: operations["list_57"];
+        get: operations["list_59"];
         put?: never;
         /** 局面写真の確定（メタデータ登録・記録権限） */
         post: operations["confirm_3"];
@@ -17999,10 +18205,10 @@ export interface paths {
             cookie?: never;
         };
         /** 居室一覧 */
-        get: operations["list_58"];
+        get: operations["list_60"];
         put?: never;
         /** 居室作成 */
-        post: operations["create_57"];
+        post: operations["create_59"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18020,7 +18226,7 @@ export interface paths {
         get: operations["listByUnit_1"];
         put?: never;
         /** 居住者登録 */
-        post: operations["create_58"];
+        post: operations["create_60"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18190,10 +18396,10 @@ export interface paths {
             cookie?: never;
         };
         /** クーポン一覧 */
-        get: operations["list_59"];
+        get: operations["list_61"];
         put?: never;
         /** クーポン作成 */
-        post: operations["create_59"];
+        post: operations["create_61"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18226,7 +18432,7 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知一覧取得（組織） */
-        get: operations["list_60"];
+        get: operations["list_62"];
         put?: never;
         /** 確認通知送信（組織） */
         post: operations["send_1"];
@@ -18278,10 +18484,10 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知テンプレート一覧取得（組織） */
-        get: operations["list_61"];
+        get: operations["list_63"];
         put?: never;
         /** 確認通知テンプレート作成（組織） */
-        post: operations["create_60"];
+        post: operations["create_62"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18365,9 +18571,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_62"];
+        get: operations["list_64"];
         put?: never;
-        post: operations["create_61"];
+        post: operations["create_63"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18638,7 +18844,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_4"];
+        post: operations["archive_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18975,10 +19181,10 @@ export interface paths {
             cookie?: never;
         };
         /** カスタム項目一覧 */
-        get: operations["list_63"];
+        get: operations["list_65"];
         put?: never;
         /** カスタム項目作成（最大10件） */
-        post: operations["create_62"];
+        post: operations["create_64"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19085,6 +19291,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人キープ一覧 */
+        get: operations["list_66"];
+        put?: never;
+        /** 個人キープ作成 */
+        post: operations["create_65"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープの変換取消 */
+        post: operations["revert_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープのアーカイブ解除 */
+        post: operations["restore_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープを予定へ変換 */
+        post: operations["convert_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープをアーカイブ */
+        post: operations["archive_7"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープの並び替え */
+        post: operations["reorder_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/themes": {
         parameters: {
             query?: never;
@@ -19179,10 +19488,10 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割一覧（自分） */
-        get: operations["list_64"];
+        get: operations["list_67"];
         put?: never;
         /** 個人時間割作成（DRAFT） */
-        post: operations["create_63"];
+        post: operations["create_66"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19197,7 +19506,7 @@ export interface paths {
             cookie?: never;
         };
         /** 共有先一覧（自分の個人時間割） */
-        get: operations["list_65"];
+        get: operations["list_68"];
         put?: never;
         /** 共有先追加（最大3、家族チームのみ） */
         post: operations["add"];
@@ -19269,7 +19578,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 個人時間割をアーカイブ（ACTIVE → ARCHIVED） */
-        post: operations["archive_5"];
+        post: operations["archive_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19572,7 +19881,7 @@ export interface paths {
          * 広告を通報する
          * @description campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。
          */
-        post: operations["create_64"];
+        post: operations["create_67"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19979,7 +20288,7 @@ export interface paths {
          * アーカイブ
          * @description 通知を保管庫へ退避する（時間復帰なし）。
          */
-        post: operations["archive_6"];
+        post: operations["archive_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20471,13 +20780,13 @@ export interface paths {
          * 代理一覧（ADMIN）
          * @description F03.10 §4.2: 管理者が代理委任の一覧を取得する
          */
-        get: operations["list_66"];
+        get: operations["list_69"];
         put?: never;
         /**
          * 代理指定
          * @description F03.10 §4.2: 委任者が代理人を指定する
          */
-        post: operations["create_65"];
+        post: operations["create_68"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20548,7 +20857,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** エラーレポート送信 */
-        post: operations["create_66"];
+        post: operations["create_69"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21510,7 +21819,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** ポリシー論理削除 */
-        post: operations["archive_7"];
+        post: operations["archive_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21580,7 +21889,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** スレッドアーカイブ状態変更（グローバル） */
-        post: operations["archive_8"];
+        post: operations["archive_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21749,7 +22058,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_67"];
+        post: operations["create_70"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21845,7 +22154,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_2"];
         put?: never;
-        post: operations["create_68"];
+        post: operations["create_71"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22988,7 +23297,7 @@ export interface paths {
          * 同義語新規登録
          * @description synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。
          */
-        post: operations["create_69"];
+        post: operations["create_72"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23039,7 +23348,7 @@ export interface paths {
         };
         get: operations["listAll_2"];
         put?: never;
-        post: operations["create_70"];
+        post: operations["create_73"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24173,6 +24482,25 @@ export interface paths {
         head?: never;
         /** チーム出欠一括更新 */
         patch: operations["bulkUpdateAttendances"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームキープ詳細 */
+        get: operations["get_23"];
+        put?: never;
+        post?: never;
+        /** チームキープ削除 */
+        delete: operations["delete_43"];
+        options?: never;
+        head?: never;
+        /** チームキープ更新 */
+        patch: operations["update_49"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/translations/{id}/status": {
@@ -25389,13 +25717,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_23"];
+        get: operations["get_24"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_49"];
+        patch: operations["update_50"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/attendance/periods/{recordId}": {
@@ -25877,7 +26205,7 @@ export interface paths {
          * セキュリティインシデント更新
          * @description ステータス変更・DPA 通知記録を行う。
          */
-        patch: operations["update_50"];
+        patch: operations["update_51"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/templates/{templateId}": {
@@ -26026,14 +26354,14 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート詳細取得 */
-        get: operations["get_24"];
+        get: operations["get_25"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** エラーレポート更新 */
-        patch: operations["update_51"];
+        patch: operations["update_52"];
         trace?: never;
     };
     "/api/v1/system-admin/error-reports/{id}/workflow-stage": {
@@ -26696,14 +27024,14 @@ export interface paths {
             cookie?: never;
         };
         /** 募集枠詳細取得 */
-        get: operations["get_25"];
+        get: operations["get_26"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 募集枠編集 (§5.7) */
-        patch: operations["update_52"];
+        patch: operations["update_53"];
         trace?: never;
     };
     "/api/v1/quick-memos/{id}/restore": {
@@ -27519,6 +27847,25 @@ export interface paths {
         patch: operations["updateSchedule_4"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織キープ詳細 */
+        get: operations["get_27"];
+        put?: never;
+        post?: never;
+        /** 組織キープ削除 */
+        delete: operations["delete_44"];
+        options?: never;
+        head?: never;
+        /** 組織キープ更新 */
+        patch: operations["update_54"];
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/translations/{id}/status": {
         parameters: {
             query?: never;
@@ -28079,13 +28426,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_26"];
+        get: operations["get_28"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_53"];
+        patch: operations["update_55"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/announcements/{id}/pin": {
@@ -28192,7 +28539,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** ピン並び替え */
-        patch: operations["reorder_1"];
+        patch: operations["reorder_4"];
         trace?: never;
     };
     "/api/v1/me/timetable-slot-note-fields/{fieldId}": {
@@ -28206,11 +28553,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** カスタム項目削除 */
-        delete: operations["delete_43"];
+        delete: operations["delete_45"];
         options?: never;
         head?: never;
         /** カスタム項目更新 */
-        patch: operations["update_54"];
+        patch: operations["update_56"];
         trace?: never;
     };
     "/api/v1/me/schedules/{id}": {
@@ -28230,6 +28577,25 @@ export interface paths {
         head?: never;
         /** 個人スケジュール更新 */
         patch: operations["updateSchedule_5"];
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人キープ詳細 */
+        get: operations["get_29"];
+        put?: never;
+        post?: never;
+        /** 個人キープ削除 */
+        delete: operations["delete_46"];
+        options?: never;
+        head?: never;
+        /** 個人キープ更新 */
+        patch: operations["update_57"];
         trace?: never;
     };
     "/api/v1/me/reflections/themes/{themeId}": {
@@ -28293,15 +28659,15 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割詳細 */
-        get: operations["get_27"];
+        get: operations["get_30"];
         put?: never;
         post?: never;
         /** 個人時間割論理削除 */
-        delete: operations["delete_44"];
+        delete: operations["delete_47"];
         options?: never;
         head?: never;
         /** 個人時間割メタ情報更新 */
-        patch: operations["update_55"];
+        patch: operations["update_58"];
         trace?: never;
     };
     "/api/v1/me/favorites/reorder": {
@@ -28837,14 +29203,14 @@ export interface paths {
             cookie?: never;
         };
         /** ポリシー詳細 (段階含む) */
-        get: operations["get_28"];
+        get: operations["get_31"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** ポリシー編集 (is_template_policy=true のみ) */
-        patch: operations["update_56"];
+        patch: operations["update_59"];
         trace?: never;
     };
     "/api/v1/bulletin/threads/{threadId}/priority": {
@@ -28908,10 +29274,10 @@ export interface paths {
         get: operations["getById_2"];
         put?: never;
         post?: never;
-        delete: operations["delete_45"];
+        delete: operations["delete_48"];
         options?: never;
         head?: never;
-        patch: operations["update_57"];
+        patch: operations["update_60"];
         trace?: never;
     };
     "/api/v1/budget/categories/{categoryId}": {
@@ -28924,10 +29290,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_46"];
+        delete: operations["delete_49"];
         options?: never;
         head?: never;
-        patch: operations["update_58"];
+        patch: operations["update_61"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/publish": {
@@ -29335,14 +29701,14 @@ export interface paths {
          * 同義語削除
          * @description 物理削除。削除後にキャッシュリビルド。
          */
-        delete: operations["delete_47"];
+        delete: operations["delete_50"];
         options?: never;
         head?: never;
         /**
          * 同義語編集
          * @description synonymDisplay 指定時は再正規化と重複チェックを行う。
          */
-        patch: operations["update_59"];
+        patch: operations["update_62"];
         trace?: never;
     };
     "/api/v1/admin/permission-groups/{id}/unassign/{userId}": {
@@ -30277,7 +30643,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村史（行事アーカイブ）一覧を取得する（archived_at 降順・sourceType 絞り込み可） */
-        get: operations["list_67"];
+        get: operations["list_70"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30294,7 +30660,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村の村史一覧（月次ダイジェスト）を取得する */
-        get: operations["list_68"];
+        get: operations["list_71"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30311,7 +30677,7 @@ export interface paths {
             cookie?: never;
         };
         /** 指定月の村史を取得する（YYYY-MM-DD 形式） */
-        get: operations["get_29"];
+        get: operations["get_32"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30328,7 +30694,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN） */
-        get: operations["get_30"];
+        get: operations["get_33"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31165,7 +31531,7 @@ export interface paths {
             cookie?: never;
         };
         /** ダイジェスト履歴一覧取得 */
-        get: operations["list_69"];
+        get: operations["list_72"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31251,6 +31617,23 @@ export interface paths {
         };
         /** チーム出欠CSVエクスポート */
         get: operations["exportAttendancesCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32160,7 +32543,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信した協会請求の一覧 */
-        get: operations["list_70"];
+        get: operations["list_73"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32211,7 +32594,7 @@ export interface paths {
             cookie?: never;
         };
         /** 立替/精算記録の一覧 */
-        get: operations["list_71"];
+        get: operations["list_74"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32347,7 +32730,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_72"];
+        get: operations["list_75"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33480,7 +33863,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_73"];
+        get: operations["list_76"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34398,7 +34781,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_74"];
+        get: operations["list_77"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34648,7 +35031,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_75"];
+        get: operations["list_78"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35286,7 +35669,7 @@ export interface paths {
          * 通報一覧
          * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
          */
-        get: operations["list_76"];
+        get: operations["list_79"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35334,7 +35717,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_77"];
+        get: operations["list_80"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35370,7 +35753,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_78"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35889,7 +36272,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_79"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37975,6 +38358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/users/{userId}/teams/{teamId}/match-stats": {
         parameters: {
             query?: never;
@@ -38891,7 +39291,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_80"];
+        get: operations["list_83"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39269,7 +39669,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_81"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39440,7 +39840,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_82"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39804,7 +40204,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_83"];
+        get: operations["list_86"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39872,7 +40272,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_84"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40035,6 +40435,23 @@ export interface paths {
          * @description 未分類フォルダを取得する。存在しない場合は lazy 生成して返す
          */
         get: operations["getDefaultFolder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41261,7 +41678,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_85"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41541,7 +41958,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_31"];
+        get: operations["get_34"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42616,7 +43033,7 @@ export interface paths {
         get: operations["getById_7"];
         put?: never;
         post?: never;
-        delete: operations["delete_48"];
+        delete: operations["delete_51"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44134,7 +44551,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 書類削除 */
-        delete: operations["delete_49"];
+        delete: operations["delete_52"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44168,7 +44585,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チームウォッチリスト削除 */
-        delete: operations["delete_50"];
+        delete: operations["delete_53"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44437,7 +44854,7 @@ export interface paths {
          * 手数料パターン割当解除
          * @description 割当を解除する（論理削除）。既存課金には影響しない（焼き付け済みで不変）。
          */
-        delete: operations["delete_51"];
+        delete: operations["delete_54"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44773,7 +45190,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織ウォッチリスト削除 */
-        delete: operations["delete_52"];
+        delete: operations["delete_55"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44931,7 +45348,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 書類削除 */
-        delete: operations["delete_53"];
+        delete: operations["delete_56"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44948,7 +45365,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 局面写真の削除（記録権限・R2 ベストエフォート削除） */
-        delete: operations["delete_54"];
+        delete: operations["delete_57"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45019,7 +45436,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 個人メモ削除（論理） */
-        delete: operations["delete_55"];
+        delete: operations["delete_58"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45036,7 +45453,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 添付削除（論理） */
-        delete: operations["delete_56"];
+        delete: operations["delete_59"];
         options?: never;
         head?: never;
         patch?: never;
@@ -55117,6 +55534,66 @@ export interface components {
             /** Format: int64 */
             targetScheduleId?: number;
             targetType?: string;
+        };
+        CreateScheduleKeepRequest: {
+            candidateDates?: string[];
+            memo?: string;
+            title?: string;
+        };
+        ApiResponseScheduleKeepResponse: {
+            data?: components["schemas"]["ScheduleKeepResponse"];
+        };
+        CreatedByDto: {
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ScheduleKeepResponse: {
+            candidateDates?: string[];
+            /** Format: int64 */
+            convertedScheduleId?: number;
+            convertedScheduleState?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            createdBy?: components["schemas"]["CreatedByDto"];
+            id?: string;
+            memo?: string;
+            organizationPublicId?: string;
+            scopeType?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            status?: string;
+            teamPublicId?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ConvertScheduleKeepRequest: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: date-time */
+            startAt?: string;
+        };
+        ApiResponseConvertScheduleKeepResponse: {
+            data?: components["schemas"]["ConvertScheduleKeepResponse"];
+        };
+        ConvertScheduleKeepResponse: {
+            keep?: components["schemas"]["ScheduleKeepResponse"];
+            schedule?: components["schemas"]["ConvertedScheduleDto"];
+        };
+        ConvertedScheduleDto: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            startAt?: string;
+            title?: string;
+        };
+        ReorderScheduleKeepsRequest: {
+            orderedIds?: string[];
         };
         CreateTranslationRequest: {
             body?: string;
@@ -68822,6 +69299,9 @@ export interface components {
         };
         ApiResponseListAttendanceResponse: {
             data?: components["schemas"]["AttendanceResponse"][];
+        };
+        ApiResponseListScheduleKeepResponse: {
+            data?: components["schemas"]["ScheduleKeepResponse"][];
         };
         ApiResponseListWallpaperResponse: {
             data?: components["schemas"]["WallpaperResponse"][];
@@ -98340,6 +98820,178 @@ export interface operations {
             };
         };
     };
+    list_13: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_12: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listTeamTranslations: {
         parameters: {
             query?: {
@@ -98751,7 +99403,7 @@ export interface operations {
             };
         };
     };
-    list_13: {
+    list_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -98773,7 +99425,7 @@ export interface operations {
             };
         };
     };
-    create_12: {
+    create_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -99855,7 +100507,7 @@ export interface operations {
             };
         };
     };
-    list_14: {
+    list_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -99877,7 +100529,7 @@ export interface operations {
             };
         };
     };
-    create_13: {
+    create_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -100021,7 +100673,7 @@ export interface operations {
             };
         };
     };
-    list_15: {
+    list_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -101011,7 +101663,7 @@ export interface operations {
             };
         };
     };
-    list_16: {
+    list_17: {
         parameters: {
             query?: {
                 categoryId?: number;
@@ -101035,7 +101687,7 @@ export interface operations {
             };
         };
     };
-    create_14: {
+    create_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -101061,7 +101713,7 @@ export interface operations {
             };
         };
     };
-    archive_2: {
+    archive_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -101082,7 +101734,7 @@ export interface operations {
             };
         };
     };
-    list_17: {
+    list_18: {
         parameters: {
             query?: {
                 status?: string;
@@ -101108,7 +101760,7 @@ export interface operations {
             };
         };
     };
-    create_15: {
+    create_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -101438,7 +102090,7 @@ export interface operations {
             };
         };
     };
-    list_18: {
+    list_19: {
         parameters: {
             query?: {
                 status?: string;
@@ -101465,7 +102117,7 @@ export interface operations {
             };
         };
     };
-    create_16: {
+    create_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -101541,7 +102193,7 @@ export interface operations {
             };
         };
     };
-    list_19: {
+    list_20: {
         parameters: {
             query?: {
                 status?: string;
@@ -101567,7 +102219,7 @@ export interface operations {
             };
         };
     };
-    create_17: {
+    create_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -102096,7 +102748,7 @@ export interface operations {
             };
         };
     };
-    list_20: {
+    list_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -102118,7 +102770,7 @@ export interface operations {
             };
         };
     };
-    create_18: {
+    create_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -102244,7 +102896,7 @@ export interface operations {
             };
         };
     };
-    list_21: {
+    list_22: {
         parameters: {
             query?: {
                 status?: string;
@@ -102270,7 +102922,7 @@ export interface operations {
             };
         };
     };
-    create_19: {
+    create_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -102505,7 +103157,7 @@ export interface operations {
             };
         };
     };
-    list_22: {
+    list_23: {
         parameters: {
             query?: {
                 status?: string;
@@ -102531,7 +103183,7 @@ export interface operations {
             };
         };
     };
-    create_20: {
+    create_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -102584,7 +103236,7 @@ export interface operations {
             };
         };
     };
-    list_23: {
+    list_24: {
         parameters: {
             query?: {
                 status?: string;
@@ -102610,7 +103262,7 @@ export interface operations {
             };
         };
     };
-    create_21: {
+    create_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -102660,7 +103312,7 @@ export interface operations {
             };
         };
     };
-    list_24: {
+    list_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -102682,7 +103334,7 @@ export interface operations {
             };
         };
     };
-    create_22: {
+    create_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -103325,7 +103977,7 @@ export interface operations {
             };
         };
     };
-    list_25: {
+    list_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -103347,7 +103999,7 @@ export interface operations {
             };
         };
     };
-    create_23: {
+    create_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -103373,7 +104025,7 @@ export interface operations {
             };
         };
     };
-    list_26: {
+    list_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -103395,7 +104047,7 @@ export interface operations {
             };
         };
     };
-    create_24: {
+    create_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -104308,7 +104960,7 @@ export interface operations {
             };
         };
     };
-    list_27: {
+    list_28: {
         parameters: {
             query?: {
                 page?: number;
@@ -104333,7 +104985,7 @@ export interface operations {
             };
         };
     };
-    create_25: {
+    create_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -104382,7 +105034,7 @@ export interface operations {
             };
         };
     };
-    create_26: {
+    create_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -104735,7 +105387,7 @@ export interface operations {
             };
         };
     };
-    list_28: {
+    list_29: {
         parameters: {
             query?: {
                 page?: number;
@@ -104760,7 +105412,7 @@ export interface operations {
             };
         };
     };
-    create_27: {
+    create_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -104834,7 +105486,7 @@ export interface operations {
             };
         };
     };
-    list_29: {
+    list_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -104924,7 +105576,7 @@ export interface operations {
             };
         };
     };
-    list_30: {
+    list_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -104946,7 +105598,7 @@ export interface operations {
             };
         };
     };
-    create_28: {
+    create_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -105431,7 +106083,7 @@ export interface operations {
             };
         };
     };
-    list_31: {
+    list_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -105453,7 +106105,7 @@ export interface operations {
             };
         };
     };
-    create_29: {
+    create_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -105479,7 +106131,7 @@ export interface operations {
             };
         };
     };
-    list_32: {
+    list_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -105501,7 +106153,7 @@ export interface operations {
             };
         };
     };
-    create_30: {
+    create_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -106151,7 +106803,7 @@ export interface operations {
             };
         };
     };
-    list_33: {
+    list_34: {
         parameters: {
             query: {
                 status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
@@ -106176,7 +106828,7 @@ export interface operations {
             };
         };
     };
-    create_31: {
+    create_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -106394,7 +107046,7 @@ export interface operations {
             };
         };
     };
-    list_34: {
+    list_35: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -106420,7 +107072,7 @@ export interface operations {
             };
         };
     };
-    create_32: {
+    create_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -106538,7 +107190,7 @@ export interface operations {
             };
         };
     };
-    list_35: {
+    list_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -106561,7 +107213,7 @@ export interface operations {
             };
         };
     };
-    create_33: {
+    create_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -107854,7 +108506,7 @@ export interface operations {
             };
         };
     };
-    create_34: {
+    create_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -107986,7 +108638,7 @@ export interface operations {
             };
         };
     };
-    create_35: {
+    create_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -108100,7 +108752,7 @@ export interface operations {
             };
         };
     };
-    list_36: {
+    list_37: {
         parameters: {
             query?: {
                 page?: number;
@@ -108123,7 +108775,7 @@ export interface operations {
             };
         };
     };
-    create_36: {
+    create_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -108238,7 +108890,7 @@ export interface operations {
             };
         };
     };
-    list_37: {
+    list_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -108258,7 +108910,7 @@ export interface operations {
             };
         };
     };
-    create_37: {
+    create_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -108282,7 +108934,7 @@ export interface operations {
             };
         };
     };
-    list_38: {
+    list_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -108302,7 +108954,7 @@ export interface operations {
             };
         };
     };
-    create_38: {
+    create_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -108901,7 +109553,7 @@ export interface operations {
             };
         };
     };
-    list_39: {
+    list_40: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];
@@ -108923,7 +109575,7 @@ export interface operations {
             };
         };
     };
-    create_39: {
+    create_40: {
         parameters: {
             query?: never;
             header?: never;
@@ -110625,7 +111277,7 @@ export interface operations {
             };
         };
     };
-    list_40: {
+    list_41: {
         parameters: {
             query?: {
                 page?: number;
@@ -110650,7 +111302,7 @@ export interface operations {
             };
         };
     };
-    create_40: {
+    create_41: {
         parameters: {
             query?: never;
             header?: never;
@@ -111177,7 +111829,7 @@ export interface operations {
             };
         };
     };
-    archive_3: {
+    archive_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -112758,7 +113410,7 @@ export interface operations {
             };
         };
     };
-    list_41: {
+    list_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -112780,7 +113432,7 @@ export interface operations {
             };
         };
     };
-    create_41: {
+    create_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -112906,7 +113558,7 @@ export interface operations {
             };
         };
     };
-    list_42: {
+    list_43: {
         parameters: {
             query?: {
                 status?: string;
@@ -112932,7 +113584,7 @@ export interface operations {
             };
         };
     };
-    create_42: {
+    create_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -113167,7 +113819,7 @@ export interface operations {
             };
         };
     };
-    list_43: {
+    list_44: {
         parameters: {
             query?: {
                 status?: string;
@@ -113193,7 +113845,7 @@ export interface operations {
             };
         };
     };
-    create_43: {
+    create_44: {
         parameters: {
             query?: never;
             header?: never;
@@ -113246,7 +113898,7 @@ export interface operations {
             };
         };
     };
-    list_44: {
+    list_45: {
         parameters: {
             query?: {
                 status?: string;
@@ -113272,7 +113924,7 @@ export interface operations {
             };
         };
     };
-    create_44: {
+    create_45: {
         parameters: {
             query?: never;
             header?: never;
@@ -113549,7 +114201,7 @@ export interface operations {
             };
         };
     };
-    create_45: {
+    create_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -113602,7 +114254,7 @@ export interface operations {
             };
         };
     };
-    list_45: {
+    list_46: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "READY" | "EXPORTED";
@@ -113628,7 +114280,7 @@ export interface operations {
             };
         };
     };
-    create_46: {
+    create_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -113708,7 +114360,7 @@ export interface operations {
             };
         };
     };
-    list_46: {
+    list_47: {
         parameters: {
             query: {
                 status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
@@ -113733,7 +114385,7 @@ export interface operations {
             };
         };
     };
-    create_47: {
+    create_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -113951,7 +114603,7 @@ export interface operations {
             };
         };
     };
-    list_47: {
+    list_48: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -113977,7 +114629,7 @@ export interface operations {
             };
         };
     };
-    create_48: {
+    create_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -114095,7 +114747,7 @@ export interface operations {
             };
         };
     };
-    list_48: {
+    list_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -114118,7 +114770,7 @@ export interface operations {
             };
         };
     };
-    create_49: {
+    create_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -114236,6 +114888,178 @@ export interface operations {
         responses: {
             /** @description キャンセル成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_50: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_51: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -115528,7 +116352,7 @@ export interface operations {
             };
         };
     };
-    list_49: {
+    list_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -115550,7 +116374,7 @@ export interface operations {
             };
         };
     };
-    create_50: {
+    create_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -116129,7 +116953,7 @@ export interface operations {
             };
         };
     };
-    list_50: {
+    list_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -116151,7 +116975,7 @@ export interface operations {
             };
         };
     };
-    create_51: {
+    create_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -116247,7 +117071,7 @@ export interface operations {
             };
         };
     };
-    list_51: {
+    list_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -116496,7 +117320,7 @@ export interface operations {
             };
         };
     };
-    list_52: {
+    list_54: {
         parameters: {
             query?: {
                 status?: string;
@@ -116522,7 +117346,7 @@ export interface operations {
             };
         };
     };
-    create_52: {
+    create_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -116644,7 +117468,7 @@ export interface operations {
             };
         };
     };
-    list_53: {
+    list_55: {
         parameters: {
             query?: {
                 status?: string;
@@ -116671,7 +117495,7 @@ export interface operations {
             };
         };
     };
-    create_53: {
+    create_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -116747,7 +117571,7 @@ export interface operations {
             };
         };
     };
-    list_54: {
+    list_56: {
         parameters: {
             query?: {
                 status?: string;
@@ -116773,7 +117597,7 @@ export interface operations {
             };
         };
     };
-    create_54: {
+    create_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -117124,7 +117948,7 @@ export interface operations {
             };
         };
     };
-    list_55: {
+    list_57: {
         parameters: {
             query?: {
                 status?: ("DRAFT" | "SENT" | "VIEWED" | "PAID" | "OVERDUE" | "CANCELLED")[];
@@ -117150,7 +117974,7 @@ export interface operations {
             };
         };
     };
-    create_55: {
+    create_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -117176,7 +118000,7 @@ export interface operations {
             };
         };
     };
-    list_56: {
+    list_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -117198,7 +118022,7 @@ export interface operations {
             };
         };
     };
-    create_56: {
+    create_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -117372,7 +118196,7 @@ export interface operations {
             };
         };
     };
-    list_57: {
+    list_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -117924,7 +118748,7 @@ export interface operations {
             };
         };
     };
-    list_58: {
+    list_60: {
         parameters: {
             query?: {
                 page?: number;
@@ -117949,7 +118773,7 @@ export interface operations {
             };
         };
     };
-    create_57: {
+    create_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -117998,7 +118822,7 @@ export interface operations {
             };
         };
     };
-    create_58: {
+    create_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -118303,7 +119127,7 @@ export interface operations {
             };
         };
     };
-    list_59: {
+    list_61: {
         parameters: {
             query?: {
                 page?: number;
@@ -118328,7 +119152,7 @@ export interface operations {
             };
         };
     };
-    create_59: {
+    create_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -118402,7 +119226,7 @@ export interface operations {
             };
         };
     };
-    list_60: {
+    list_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -118492,7 +119316,7 @@ export interface operations {
             };
         };
     };
-    list_61: {
+    list_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -118514,7 +119338,7 @@ export interface operations {
             };
         };
     };
-    create_60: {
+    create_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -118689,7 +119513,7 @@ export interface operations {
             };
         };
     };
-    list_62: {
+    list_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -118711,7 +119535,7 @@ export interface operations {
             };
         };
     };
-    create_61: {
+    create_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -119186,7 +120010,7 @@ export interface operations {
             };
         };
     };
-    archive_4: {
+    archive_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -119664,7 +120488,7 @@ export interface operations {
             };
         };
     };
-    list_63: {
+    list_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -119684,7 +120508,7 @@ export interface operations {
             };
         };
     };
-    create_62: {
+    create_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -119904,6 +120728,168 @@ export interface operations {
             };
         };
     };
+    list_66: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_65: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_7: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listThemes: {
         parameters: {
             query?: never;
@@ -120046,7 +121032,7 @@ export interface operations {
             };
         };
     };
-    list_64: {
+    list_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -120066,7 +121052,7 @@ export interface operations {
             };
         };
     };
-    create_63: {
+    create_66: {
         parameters: {
             query?: never;
             header?: never;
@@ -120090,7 +121076,7 @@ export interface operations {
             };
         };
     };
-    list_65: {
+    list_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -120236,7 +121222,7 @@ export interface operations {
             };
         };
     };
-    archive_5: {
+    archive_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -120723,7 +121709,7 @@ export interface operations {
             };
         };
     };
-    create_64: {
+    create_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -121434,7 +122420,7 @@ export interface operations {
             };
         };
     };
-    archive_6: {
+    archive_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -122469,7 +123455,7 @@ export interface operations {
             };
         };
     };
-    list_66: {
+    list_69: {
         parameters: {
             query?: {
                 page?: number;
@@ -122494,7 +123480,7 @@ export interface operations {
             };
         };
     };
-    create_65: {
+    create_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -122591,7 +123577,7 @@ export interface operations {
             };
         };
     };
-    create_66: {
+    create_69: {
         parameters: {
             query?: never;
             header?: never;
@@ -124248,7 +125234,7 @@ export interface operations {
             };
         };
     };
-    archive_7: {
+    archive_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -124394,7 +125380,7 @@ export interface operations {
             };
         };
     };
-    archive_8: {
+    archive_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -124712,7 +125698,7 @@ export interface operations {
             };
         };
     };
-    create_67: {
+    create_70: {
         parameters: {
             query?: never;
             header?: never;
@@ -124907,7 +125893,7 @@ export interface operations {
             };
         };
     };
-    create_68: {
+    create_71: {
         parameters: {
             query: {
                 scopeId: number;
@@ -126804,7 +127790,7 @@ export interface operations {
             };
         };
     };
-    create_69: {
+    create_72: {
         parameters: {
             query?: never;
             header?: never;
@@ -126920,7 +127906,7 @@ export interface operations {
             };
         };
     };
-    create_70: {
+    create_73: {
         parameters: {
             query?: never;
             header?: never;
@@ -129223,6 +130209,79 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_23: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_43: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_49: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
             };
         };
     };
@@ -131559,7 +132618,7 @@ export interface operations {
             };
         };
     };
-    get_23: {
+    get_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -131581,7 +132640,7 @@ export interface operations {
             };
         };
     };
-    update_49: {
+    update_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -132614,7 +133673,7 @@ export interface operations {
             };
         };
     };
-    update_50: {
+    update_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -132878,7 +133937,7 @@ export interface operations {
             };
         };
     };
-    get_24: {
+    get_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -132900,7 +133959,7 @@ export interface operations {
             };
         };
     };
-    update_51: {
+    update_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -134048,7 +135107,7 @@ export interface operations {
             };
         };
     };
-    get_25: {
+    get_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -134070,7 +135129,7 @@ export interface operations {
             };
         };
     };
-    update_52: {
+    update_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -135581,6 +136640,79 @@ export interface operations {
             };
         };
     };
+    get_27: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_44: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_54: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
     changeOrgTranslationStatus: {
         parameters: {
             query?: never;
@@ -136752,7 +137884,7 @@ export interface operations {
             };
         };
     };
-    get_26: {
+    get_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -136774,7 +137906,7 @@ export interface operations {
             };
         };
     };
-    update_53: {
+    update_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -136973,7 +138105,7 @@ export interface operations {
             };
         };
     };
-    reorder_1: {
+    reorder_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -136997,7 +138129,7 @@ export interface operations {
             };
         };
     };
-    delete_43: {
+    delete_45: {
         parameters: {
             query?: never;
             header?: never;
@@ -137017,7 +138149,7 @@ export interface operations {
             };
         };
     };
-    update_54: {
+    update_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -137109,6 +138241,76 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePersonalScheduleResponse"];
+                };
+            };
+        };
+    };
+    get_29: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_46: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_57: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -137225,7 +138427,7 @@ export interface operations {
             };
         };
     };
-    get_27: {
+    get_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -137247,7 +138449,7 @@ export interface operations {
             };
         };
     };
-    delete_44: {
+    delete_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -137267,7 +138469,7 @@ export interface operations {
             };
         };
     };
-    update_55: {
+    update_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -138424,7 +139626,7 @@ export interface operations {
             };
         };
     };
-    get_28: {
+    get_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -138446,7 +139648,7 @@ export interface operations {
             };
         };
     };
-    update_56: {
+    update_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -138572,7 +139774,7 @@ export interface operations {
             };
         };
     };
-    delete_45: {
+    delete_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -138592,7 +139794,7 @@ export interface operations {
             };
         };
     };
-    update_57: {
+    update_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -138618,7 +139820,7 @@ export interface operations {
             };
         };
     };
-    delete_46: {
+    delete_49: {
         parameters: {
             query: {
                 scopeId: number;
@@ -138641,7 +139843,7 @@ export interface operations {
             };
         };
     };
-    update_58: {
+    update_61: {
         parameters: {
             query: {
                 scopeId: number;
@@ -139298,7 +140500,7 @@ export interface operations {
             };
         };
     };
-    delete_47: {
+    delete_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -139318,7 +140520,7 @@ export interface operations {
             };
         };
     };
-    update_59: {
+    update_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -140693,7 +141895,7 @@ export interface operations {
             };
         };
     };
-    list_67: {
+    list_70: {
         parameters: {
             query?: {
                 sourceType?: "FESTIVAL" | "CALENDAR_EVENT" | "MEETUP";
@@ -140719,7 +141921,7 @@ export interface operations {
             };
         };
     };
-    list_68: {
+    list_71: {
         parameters: {
             query?: never;
             header?: never;
@@ -140741,7 +141943,7 @@ export interface operations {
             };
         };
     };
-    get_29: {
+    get_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -140764,7 +141966,7 @@ export interface operations {
             };
         };
     };
-    get_30: {
+    get_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -141881,7 +143083,7 @@ export interface operations {
             };
         };
     };
-    list_69: {
+    list_72: {
         parameters: {
             query: {
                 scopeType: string;
@@ -142013,6 +143215,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    getByConvertedSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -143327,7 +144552,7 @@ export interface operations {
             };
         };
     };
-    list_70: {
+    list_73: {
         parameters: {
             query?: never;
             header?: never;
@@ -143395,7 +144620,7 @@ export interface operations {
             };
         };
     };
-    list_71: {
+    list_74: {
         parameters: {
             query?: never;
             header?: never;
@@ -143607,7 +144832,7 @@ export interface operations {
             };
         };
     };
-    list_72: {
+    list_75: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -145189,7 +146414,7 @@ export interface operations {
             };
         };
     };
-    list_73: {
+    list_76: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -146478,7 +147703,7 @@ export interface operations {
             };
         };
     };
-    list_74: {
+    list_77: {
         parameters: {
             query?: {
                 billingStatus?: string;
@@ -146783,7 +148008,7 @@ export interface operations {
             };
         };
     };
-    list_75: {
+    list_78: {
         parameters: {
             query?: {
                 status?: string;
@@ -147641,7 +148866,7 @@ export interface operations {
             };
         };
     };
-    list_76: {
+    list_79: {
         parameters: {
             query?: {
                 status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
@@ -147714,7 +148939,7 @@ export interface operations {
             };
         };
     };
-    list_77: {
+    list_80: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -147759,7 +148984,7 @@ export interface operations {
             };
         };
     };
-    list_78: {
+    list_81: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -148468,7 +149693,7 @@ export interface operations {
             };
         };
     };
-    list_79: {
+    list_82: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -151395,6 +152620,29 @@ export interface operations {
             };
         };
     };
+    getByConvertedSchedule_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
     getUserTeamStats: {
         parameters: {
             query?: {
@@ -152653,7 +153901,7 @@ export interface operations {
             };
         };
     };
-    list_80: {
+    list_83: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -153177,7 +154425,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_84: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -153416,7 +154664,7 @@ export interface operations {
             };
         };
     };
-    list_82: {
+    list_85: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -153898,7 +155146,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_86: {
         parameters: {
             query?: never;
             header?: never;
@@ -153982,7 +155230,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_87: {
         parameters: {
             query?: never;
             header?: never;
@@ -154205,6 +155453,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseScopeFolderResponse"];
+                };
+            };
+        };
+    };
+    getByConvertedSchedule_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -155866,7 +157136,7 @@ export interface operations {
             };
         };
     };
-    list_85: {
+    list_88: {
         parameters: {
             query?: never;
             header?: never;
@@ -156268,7 +157538,7 @@ export interface operations {
             };
         };
     };
-    get_31: {
+    get_34: {
         parameters: {
             query: {
                 organizationId: number;
@@ -157662,7 +158932,7 @@ export interface operations {
             };
         };
     };
-    delete_48: {
+    delete_51: {
         parameters: {
             query: {
                 scopeId: number;
@@ -159741,7 +161011,7 @@ export interface operations {
             };
         };
     };
-    delete_49: {
+    delete_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -159784,7 +161054,7 @@ export interface operations {
             };
         };
     };
-    delete_50: {
+    delete_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -160102,7 +161372,7 @@ export interface operations {
             };
         };
     };
-    delete_51: {
+    delete_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -160506,7 +161776,7 @@ export interface operations {
             };
         };
     };
-    delete_52: {
+    delete_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -160706,7 +161976,7 @@ export interface operations {
             };
         };
     };
-    delete_53: {
+    delete_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -160728,7 +161998,7 @@ export interface operations {
             };
         };
     };
-    delete_54: {
+    delete_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -160814,7 +162084,7 @@ export interface operations {
             };
         };
     };
-    delete_55: {
+    delete_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -160834,7 +162104,7 @@ export interface operations {
             };
         };
     };
-    delete_56: {
+    delete_59: {
         parameters: {
             query?: never;
             header?: never;
