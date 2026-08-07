@@ -10,6 +10,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 
 /**
  * 定期予約不可枠の強行登録で予約をキャンセルされた申込者へ通知するリスナー
@@ -76,16 +77,25 @@ public class ReservationForceCancelNotificationEventListener {
      * 通知本文を組み立てる。事由ラベルは管理者の自由入力だが、
      * 本通知は<b>当該予約の本人だけ</b>に届く（会員全員への公開ではない）ため、
      * {@code is_public} に関わらず理由として提示してよい（§4.4 の PII 注意は公開表示の話）。
+     *
+     * <p>Issue #2543: グループ予約の兄弟行まで含め、<b>そのユーザーについて実際にキャンセルされた
+     * 枠を全て列挙</b>する。「枠が 1 つ消えた」ように見える本文と実際の消失数の不一致を防ぐ。</p>
      */
     private String buildBody(ReservationForceCancelledByBlockEvent event) {
-        String slotAt = event.getSlotStartAt() != null
-                ? event.getSlotStartAt().format(SLOT_AT_FORMAT) : "お申し込み";
-        String title = event.getSlotTitle() != null ? event.getSlotTitle() : "ご予約";
+        String slotList = event.getCancelledSlots().stream()
+                .map(this::formatSlot)
+                .collect(Collectors.joining("、"));
         String reason = event.getBlockReason() != null && !event.getBlockReason().isBlank()
                 ? "（" + event.getBlockReason() + "）" : "";
         return String.format(
-                "%s の「%s」は、この時間帯が毎週の予約不可時間%sに設定されたためキャンセルとなりました。"
-                        + "ご不便をおかけして申し訳ありません。別の時間帯でのご予約をご検討ください。",
-                slotAt, title, reason);
+                "以下のご予約は、この時間帯が毎週の予約不可時間%sに設定されたためキャンセルとなりました。"
+                        + "ご不便をおかけして申し訳ありません。別の時間帯でのご予約をご検討ください。\n%s",
+                reason, slotList);
+    }
+
+    private String formatSlot(ReservationForceCancelledByBlockEvent.CancelledSlot slot) {
+        String slotAt = slot.slotStartAt() != null ? slot.slotStartAt().format(SLOT_AT_FORMAT) : "お申し込み";
+        String title = slot.slotTitle() != null ? slot.slotTitle() : "ご予約";
+        return String.format("%s の「%s」", slotAt, title);
     }
 }
