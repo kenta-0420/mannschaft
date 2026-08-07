@@ -188,4 +188,21 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
      * @return いずれかのステータスに一致するリンクが存在する場合 true
      */
     boolean existsByChildUserIdAndStatusIn(Long childUserId, Collection<ParentalConsentLinkStatus> statuses);
+
+    /**
+     * 子ユーザー・保護者ユーザーの組み合わせで、<b>ステータスを問わず</b>同意リンクが
+     * 存在したことがあるかを確認する（PENDING/APPROVED/REJECTED/REVOKED のいずれでも true）。
+     *
+     * <p>{@code GuardianshipSwitchService#endSwitch}（後見切替終了）の認可で使用する。
+     * 行は {@link ParentalConsentLinkEntity#revoke} 等でステータスを書き換えるのみで
+     * 物理削除されないため、本メソッドは「過去に一度でも当該 (child, parent) の組で
+     * リンクが作成されたか」を判定する。切替中にリンクが解除された正当な保護者を
+     * 締め出さないための<b>意図的に緩い</b>存在チェックである
+     * （認可根治戦役 Wave5・endSwitch 是正）。</p>
+     *
+     * @param childUserId  子ユーザーの ID
+     * @param parentUserId 保護者ユーザーの ID
+     * @return いずれかのステータスでリンクが存在したことがある場合 true
+     */
+    boolean existsByChildUserIdAndParentUserId(Long childUserId, Long parentUserId);
 }

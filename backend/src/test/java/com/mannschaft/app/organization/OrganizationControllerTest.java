@@ -346,6 +346,23 @@ class OrganizationControllerTest {
         verify(supporterService).unfollow(USER_ID, "ORGANIZATION", ORG_ID);
     }
 
+    /**
+     * OrganizationController#getFollowStatus の自己スコープ契約テスト（認可根治戦役 Wave6 ロットC）。
+     *
+     * <p>SupporterService#getFollowStatus には常に認証主体の USER_ID のみが渡り、
+     * 他ユーザーの ID を指定する経路がエンドポイントに存在しないことを固定する。</p>
+     */
+    @Test
+    @DisplayName("getFollowStatus: 認証主体自身の userId のみで問い合わせる（他ユーザーIDを受け取る経路が無い）")
+    void getFollowStatus_自己スコープ() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(supporterService.getFollowStatus(USER_ID, "ORGANIZATION", ORG_ID))
+                .willReturn(ApiResponse.of(FollowStatusResponse.approved()));
+
+        assertThat(controller.getFollowStatus(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(supporterService).getFollowStatus(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
     @Test
     @DisplayName("createInviteToken: 201 Created")
     void createInviteToken_201() {

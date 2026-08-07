@@ -53,8 +53,11 @@ vi.mock('~/composables/useNotification', () => ({
 }))
 
 vi.mock('~/stores/useAuthStore', () => ({
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
   useAuthStore: () => ({
     currentUser: { id: 42 },
+    isAuthenticated: false,
+    loadFromStorage: vi.fn(),
   }),
 }))
 

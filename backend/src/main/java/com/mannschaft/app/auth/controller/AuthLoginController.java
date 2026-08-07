@@ -12,7 +12,9 @@ import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.dto.VerifyEmailRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -102,7 +104,16 @@ public class AuthLoginController {
 
     /**
      * メール認証。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
+     * リクエストは操作者の識別子を一切受け取らず、メール送信時に払い出した
+     * {@code EmailVerificationTokenEntity} のワンタイム capability トークンのみで対象ユーザーを解決する。
+     * {@link com.mannschaft.app.auth.service.AuthRegistrationService#verifyEmail} がハッシュ突合・有効期限・
+     * 使用済みフラグを検証してから有効化するため、トークンを知る者だけが対象ユーザーを認証できる。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/verify-email")
     @Operation(summary = "メール認証トークン検証")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "認証成功")
@@ -114,7 +125,17 @@ public class AuthLoginController {
 
     /**
      * メール認証メール再送信。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
+     * 対象は認証主体ではなくリクエストの {@code email} で解決するが、
+     * {@link com.mannschaft.app.auth.service.AuthRegistrationService#resendVerificationEmail}
+     * はユーザー不在・非対象ステータスでも同一レスポンスを返し（列挙対策）、副作用は
+     * 「そのメールアドレス宛に確認メールを再送する」のみで呼出者に情報を返さない。
+     * クールダウンにより濫用も抑制される。パスワードリセット要求と同型の設計。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/verify-email/resend")
     @Operation(summary = "メール認証メール再送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再送信完了")
@@ -183,7 +204,17 @@ public class AuthLoginController {
     /**
      * ログアウト（単一デバイス）。
      * access_token Cookie を削除する。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * 対象セッションは呼出者自身の {@code HttpOnly} な {@code refresh_token_hash} / {@code refresh_token}
+     * Cookie の値のみから解決され、リクエストに他人のセッションを指す ID を渡す余地が無い。
+     * Cookie は同一オリジンのブラウザにのみ保持され、クロスオリジンから読めない。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "refresh_token_hash Cookie の値のみで対象セッションを解決し、userId 等のリクエストパラメータは使用しない"
+                    + "（AuthLoginController#logout）")
     @PostMapping("/logout")
     @Operation(summary = "ログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログアウト成功")
@@ -203,7 +234,17 @@ public class AuthLoginController {
     /**
      * 全デバイスからログアウト（F12.4）。
      * keepCurrent=true で現セッションを保持して他を一括無効化。デフォルト false（後方互換）。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * 無効化対象は {@code SecurityUtils.getCurrentUserId()} で解決した呼出者本人の全セッションのみ
+     * （{@code AuthLoginController#logoutAllDevices:215-217}）。{@code currentSessionId} は
+     * 「どれを現セッションとして除外するか」の指定に過ぎず、他人のセッションへは到達しない。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで無効化対象ユーザーを解決する"
+                    + "（AuthLoginController#logoutAllDevices）")
     @DeleteMapping("/sessions")
     @Operation(summary = "全デバイスからログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "全デバイスログアウト成功")
@@ -221,7 +262,15 @@ public class AuthLoginController {
     /**
      * 特定デバイスからログアウト（F12.4）。
      * 現セッションの無効化は 409 Conflict で拒否する。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
+     * {@code AuthSessionService#logoutDevice} がパス変数 {@code id} で {@code RefreshTokenEntity} を取得し、
+     * {@code .filter(t -> t.getUserId().equals(userId))} で所有者が呼出ユーザーであることを検証してから
+     * 無効化する（他人のセッション ID を指定すると存在しない扱いで拒否される）。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/sessions/{id}")
     @Operation(summary = "特定デバイスからログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "デバイスログアウト成功")
@@ -239,7 +288,16 @@ public class AuthLoginController {
     /**
      * アクティブセッション一覧取得（F12.4）。
      * isCurrent=true を先頭、以降 lastUsedAt 降順でソートして返却する。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件に用い（{@code AuthLoginController#getSessions:250}）、
+     * リクエストに他人のユーザー ID を指定する余地が無い。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで検索対象ユーザーを解決する"
+                    + "（AuthLoginController#getSessions）")
     @GetMapping("/sessions")
     @Operation(summary = "アクティブセッション一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -254,7 +312,15 @@ public class AuthLoginController {
 
     /**
      * セッションのデバイス名変更（F12.4）。
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
+     * {@code AuthSessionService#updateSessionDeviceName} がパス変数 {@code id} で {@code RefreshTokenEntity} を
+     * 取得し、{@code .filter(t -> t.getUserId().equals(userId))} で所有者を検証してから改名する
+     * （他人のセッション ID を指定すると存在しない扱いで拒否される）。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/sessions/{id}")
     @Operation(summary = "セッションのデバイス名変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "デバイス名変更成功")

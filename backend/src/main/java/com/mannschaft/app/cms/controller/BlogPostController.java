@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import org.springframework.lang.Nullable;
 
 /**
@@ -231,6 +232,7 @@ public class BlogPostController {
     @PostMapping("/posts/{id}/revisions/{revisionId}/restore")
     @Operation(summary = "リビジョン復元")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
+    @AuthorizedInService // BlogPostRevisionService#restoreRevision の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<ApiResponse<BlogPostResponse>> restoreRevision(
             @PathVariable Long id,
             @PathVariable Long revisionId) {
@@ -244,6 +246,7 @@ public class BlogPostController {
     @PostMapping("/posts/{id}/preview-token")
     @Operation(summary = "プレビュートークン発行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    @AuthorizedInService // BlogPostShareService#issuePreviewToken の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<ApiResponse<BlogPostResponse>> issuePreviewToken(@PathVariable Long id) {
         BlogPostResponse response = postService.issuePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -255,6 +258,7 @@ public class BlogPostController {
     @DeleteMapping("/posts/{id}/preview-token")
     @Operation(summary = "プレビュートークン無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
+    @AuthorizedInService // BlogPostShareService#revokePreviewToken の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<Void> revokePreviewToken(@PathVariable Long id) {
         postService.revokePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
@@ -268,6 +272,7 @@ public class BlogPostController {
     @PatchMapping("/posts/{id}/public-visible")
     @Operation(summary = "投稿公開設定変更", description = "投稿者本人が public_visible フラグを切り替える（F19.1 Phase 7）。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功")
+    @AuthorizedInService // BlogPostService#patchPublicVisible が post.getAuthorId() との一致を検証する（本メソッド上部の javadoc 参照）
     public ResponseEntity<Void> patchPublicVisible(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePublicVisibleRequest req) {

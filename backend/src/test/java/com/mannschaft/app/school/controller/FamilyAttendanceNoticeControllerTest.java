@@ -252,12 +252,13 @@ class FamilyAttendanceNoticeControllerTest {
     // GET /api/v1/me/attendance/notices
     // ════════════════════════════════════════════════
 
+    /** FamilyAttendanceNoticeController#getMyNotices の自己スコープ性を固定する契約テスト。 */
     @Nested
     @DisplayName("GET /api/v1/me/attendance/notices")
     class GetMyNotices {
 
         @Test
-        @DisplayName("正常系: 送信履歴を返す → 200 + data 配列")
+        @DisplayName("正常系: 送信履歴を返す → 200 + data 配列（submitterUserIdはSecurityUtils.getCurrentUserId()に束縛）")
         void 正常系_200() throws Exception {
             given(noticeService.getMyNotices(eq(USER_ID), any(), any()))
                     .willReturn(List.of(buildNoticeResponse("ACKNOWLEDGED")));

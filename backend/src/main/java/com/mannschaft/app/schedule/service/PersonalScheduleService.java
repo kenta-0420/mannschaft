@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
@@ -54,8 +55,11 @@ public class PersonalScheduleService {
     /** 個人スケジュールの相対・絶対を合算したリマインダー上限件数（機能55 第二陣で 3→5 拡張）。 */
     private static final int MAX_TOTAL_PERSONAL_REMINDERS = CreatePersonalScheduleRequest.MAX_TOTAL_REMINDERS;
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
-    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";

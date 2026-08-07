@@ -61,7 +61,7 @@ public class ActionMemoReminderBatchService {
      */
     @BatchEndpoint(name = "actionmemo-reminder", description = "行動メモのリマインド通知を毎分送信する")
     @Scheduled(cron = "0 * * * * *")
-    @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT50S", lockAtLeastFor = "PT0S")
+    @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT3M", lockAtLeastFor = "PT0S")
     @Transactional(readOnly = true)
     public void execute() {
         ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));

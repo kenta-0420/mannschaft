@@ -48,7 +48,7 @@ public class IncidentSlaBatchService {
      */
     @BatchEndpoint(name = "incident-sla-check-hourly", description = "インシデント SLA 超過チェックと定期メンテナンス自動起票を毎時実行する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "incident_sla_check", lockAtMostFor = "PT5M")
+    @SchedulerLock(name = "incident_sla_check", lockAtMostFor = "PT2H")
     @Transactional
     public void runSlaCheck() {
         log.info("インシデントSLAチェックバッチ開始");

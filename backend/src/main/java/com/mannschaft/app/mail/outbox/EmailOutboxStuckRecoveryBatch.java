@@ -35,7 +35,7 @@ public class EmailOutboxStuckRecoveryBatch {
     @Scheduled(cron = "0 0 * * * *")
     @SchedulerLock(
             name = "emailOutboxStuckRecovery",
-            lockAtMostFor = "PT5M",
+            lockAtMostFor = "PT2H",
             lockAtLeastFor = "PT10S"
     )
     @BatchEndpoint(name = "email-outbox-stuck-recovery",

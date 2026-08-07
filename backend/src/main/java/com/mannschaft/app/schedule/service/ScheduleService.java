@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
@@ -63,8 +64,11 @@ public class ScheduleService {
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
-    /** スケジュール日時の保存タイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * スケジュール日時の保存タイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleRepository scheduleRepository;
     private final EventSurveyService eventSurveyService;
