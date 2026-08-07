@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.List;
 
@@ -113,6 +114,9 @@ public class ShiftChangeRequestController {
     /**
      * 変更依頼を取り下げる（依頼者のみ、OPEN のもの）。
      */
+    // ShiftChangeRequestService#withdraw が依頼エンティティの requesterUserId と
+    // SecurityUtils.getCurrentUserId() の一致を検証してから取下げる（依頼者本人以外は拒否）。
+    @AuthorizedInService
     @DeleteMapping("/{id}")
     @Operation(summary = "変更依頼取下")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取下成功")
