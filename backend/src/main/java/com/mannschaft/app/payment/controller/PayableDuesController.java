@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.BulkCheckoutRequest;
 import com.mannschaft.app.payment.dto.BulkCheckoutResponse;
 import com.mannschaft.app.payment.dto.PayableDuesResponse;
@@ -40,7 +41,15 @@ public class PayableDuesController {
 
     /**
      * 払える未払い会費一覧（本人＋後見下の子）を取得する。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code payableDuesService.getPayableDues}
+     * は払い手を {@code SecurityUtils.getCurrentUserId()} 固定で解決し、後見下の子は当該払い手の
+     * 後見関係から導出するため、リクエストで他人を払い手に据える経路が構造的に無い
+     * （PayableDuesController#getPayableDues）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "payableDuesService.getPayableDues(userId) は SecurityUtils.getCurrentUserId() 固定の払い手から"
+                    + "後見関係を導出する（PayableDuesController#getPayableDues）")
     @GetMapping("/payable-dues")
     @Operation(summary = "払える未払い会費一覧（後見まとめ払い）")
     public ResponseEntity<ApiResponse<PayableDuesResponse>> getPayableDues() {

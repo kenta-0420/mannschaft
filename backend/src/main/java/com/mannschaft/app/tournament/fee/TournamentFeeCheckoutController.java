@@ -2,6 +2,8 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.tournament.fee.dto.MyTournamentFeesResponse;
 import com.mannschaft.app.tournament.fee.dto.TournamentFeeCheckoutRequest;
 import com.mannschaft.app.tournament.fee.dto.TournamentFeeCheckoutResponse;
@@ -39,7 +41,16 @@ public class TournamentFeeCheckoutController {
 
     /**
      * 認証ユーザーが対象となっている大会参加費一覧を取得する。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code tournamentFeePaymentService.getMyTournamentFees}
+     * は {@code SecurityUtils.getCurrentUserId()} から解決した自身の所属組織・所属チーム集合のみを対象に
+     * 参加費を導出するため、他人の参加費へ到達する経路が構造的に無い
+     * （TournamentFeeCheckoutController#getMyTournamentFees）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "tournamentFeePaymentService.getMyTournamentFees(userId) は SecurityUtils.getCurrentUserId() から"
+                    + "解決した自身の所属組織・所属チームのみを対象とする"
+                    + "（TournamentFeeCheckoutController#getMyTournamentFees）")
     @GetMapping("/my")
     @Operation(summary = "自分の大会参加費一覧",
             description = "認証ユーザーが属する組織／チームを対象とした参加費を返す。支払い済みフラグ付き")
@@ -51,7 +62,15 @@ public class TournamentFeeCheckoutController {
 
     /**
      * 大会参加費の Connect 決済チェックアウトを実行する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 払い手は {@code SecurityUtils.getCurrentUserId()}
+     * 固定で、{@code tournamentFeePaymentService.checkoutFee} が委譲する
+     * {@code MemberPaymentService.createConnectCheckout} 内の
+     * {@code PaymentAuthorizationService.authorizePayment}（payer=beneficiary=SELF）が
+     * 権原を実行時評価する（{@code checkoutFee} は payer/beneficiary をともに認証ユーザー固定で渡す）。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/{feeId}/checkout")
     @Operation(summary = "大会参加費 Connect 決済チェックアウト",
             description = "指定した参加費を Stripe Connect 経由で支払う。clientSecret を返すので Stripe.js で confirm する")

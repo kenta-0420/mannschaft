@@ -8,6 +8,7 @@ import com.mannschaft.app.family.dto.PresenceGoingOutRequest;
 import com.mannschaft.app.family.dto.PresenceHomeRequest;
 import com.mannschaft.app.family.dto.PresenceStatsResponse;
 import com.mannschaft.app.family.dto.PresenceStatusResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.family.service.PresenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,7 +59,15 @@ public class PresenceController {
 
     /**
      * 帰ったよ通知を一括送信する（全所属チーム）。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code presenceService.sendHomeBulk} は
+     * 送信元・対象チームともに {@code SecurityUtils.getCurrentUserId()} から解決した所属チーム集合に
+     * 束縛され、リクエストで他ユーザーや対象チームを指定する余地が構造的に無い
+     * （PresenceController#sendHomeBulk）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "presenceService.sendHomeBulk(userId) は SecurityUtils.getCurrentUserId() から解決した"
+                    + "自身の所属チームのみを対象とする（PresenceController#sendHomeBulk）")
     @PostMapping("/api/v1/users/me/presence/home")
     @Operation(summary = "帰ったよ通知一括送信（全チーム）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
@@ -82,7 +91,15 @@ public class PresenceController {
 
     /**
      * お出かけ連絡を一括送信する（全所属チーム）。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code presenceService.sendGoingOutBulk} は
+     * 送信元・対象チームともに {@code SecurityUtils.getCurrentUserId()} から解決した所属チーム集合に
+     * 束縛され、リクエストで他ユーザーや対象チームを指定する余地が構造的に無い
+     * （PresenceController#sendGoingOutBulk）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "presenceService.sendGoingOutBulk(userId, request) は SecurityUtils.getCurrentUserId() から解決した"
+                    + "自身の所属チームのみを対象とする（PresenceController#sendGoingOutBulk）")
     @PostMapping("/api/v1/users/me/presence/going-out")
     @Operation(summary = "お出かけ連絡一括送信（全チーム）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")

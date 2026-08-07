@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,14 @@ public class SubscriptionController {
 
     /**
      * サブスクリプション期末解約を実行する（Phase 4）。
+     *
+     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>: {@code SecurityConfig.java:457
+     * — .anyRequest().authenticated()}。Phase 4 未実装のため {@code itemId}/{@code subscriptionId} による
+     * 実体照会を行わず、認証済みユーザー全員に共通の固定応答を返す
+     * （SubscriptionController#cancelSubscription）。実データ照会・解約処理を実装する際は本注釈を外し、
+     * entity 由来スコープでの所有者照合を追加すること。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedByPathConfig
     @DeleteMapping("/{subscriptionId}")
     @Operation(summary = "サブスクリプション期末解約（Phase 4）")
     public ResponseEntity<ApiResponse<Map<String, String>>> cancelSubscription(
@@ -38,7 +46,14 @@ public class SubscriptionController {
 
     /**
      * 期末解約の取り消しを実行する（Phase 4）。
+     *
+     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>: {@code SecurityConfig.java:457
+     * — .anyRequest().authenticated()}。Phase 4 未実装のため {@code itemId}/{@code subscriptionId} による
+     * 実体照会を行わず、認証済みユーザー全員に共通の固定応答を返す
+     * （SubscriptionController#resumeSubscription）。実データ照会・再開処理を実装する際は本注釈を外し、
+     * entity 由来スコープでの所有者照合を追加すること。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedByPathConfig
     @PatchMapping("/{subscriptionId}/resume")
     @Operation(summary = "期末解約取り消し（Phase 4）")
     public ResponseEntity<ApiResponse<Map<String, String>>> resumeSubscription(

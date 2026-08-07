@@ -402,12 +402,19 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
     // 5. 自己スコープ EP（一覧・招待の発行・プレゼンス一括送信）
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * 本 Nested クラスが自己スコープ性を固定する対象エンドポイント（認可根治戦役 Wave6 ロットG）:
+     * {@code CareLinkController#getActiveWatchers} / {@code CareLinkController#getActiveRecipients} /
+     * {@code CareLinkController#getPendingInvitations} / {@code CareLinkController#inviteWatcher} /
+     * {@code CareLinkController#inviteRecipient} / {@code PresenceController#sendHomeBulk} /
+     * {@code PresenceController#sendGoingOutBulk}。
+     */
     @Nested
     @DisplayName("5. 自己スコープ EP（一覧・招待発行・プレゼンス一括）")
     class SelfScopedEndpoints {
 
         @Test
-        @DisplayName("未認証は401（一覧3種）")
+        @DisplayName("未認証は401（一覧3種: CareLinkController#getActiveWatchers/getActiveRecipients/getPendingInvitations）")
         void 未認証は401() throws Exception {
             SecurityContextHolder.clearContext();
             mockMvc.perform(get("/api/v1/me/care-links/watchers"))
@@ -419,7 +426,7 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("他ユーザーのケアリンクは一覧に混入しない")
+        @DisplayName("他ユーザーのケアリンクは一覧に混入しない（CareLinkController#getActiveWatchers/getActiveRecipients/getPendingInvitations）")
         void 一覧に混入しない() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/me/care-links/watchers"))
@@ -434,7 +441,7 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正常系: 当事者の一覧には自分のケアリンクが出る")
+        @DisplayName("正常系: 当事者の一覧には自分のケアリンクが出る（CareLinkController#getActiveWatchers/getActiveRecipients）")
         void 当事者の一覧は200() throws Exception {
             setAuth(recipientId);
             mockMvc.perform(get("/api/v1/me/care-links/watchers"))
@@ -448,7 +455,8 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("招待の発行は自分側の当事者 ID が認証主体に固定される（PENDING で作成）")
+        @DisplayName("招待の発行は自分側の当事者 ID が認証主体に固定される（PENDING で作成・"
+                + "CareLinkController#inviteWatcher/inviteRecipient の自己スコープ性を固定）")
         void 招待発行は自己スコープ() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/me/care-links/invite-watcher")
@@ -469,7 +477,7 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("プレゼンス一括送信は認証主体のみを送信元とする")
+        @DisplayName("プレゼンス一括送信は認証主体のみを送信元とする（PresenceController#sendHomeBulk/sendGoingOutBulk の自己スコープ性を固定）")
         void プレゼンス一括は自己スコープ() throws Exception {
             SecurityContextHolder.clearContext();
             mockMvc.perform(post("/api/v1/users/me/presence/home"))

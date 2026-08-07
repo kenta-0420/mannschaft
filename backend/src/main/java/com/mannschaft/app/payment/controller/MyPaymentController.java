@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 自分の支払いコントローラー。ログインユーザー自身の支払い状況・未払い要件を提供する。
@@ -37,7 +39,14 @@ public class MyPaymentController {
 
     /**
      * 自分の支払い状況一覧を取得する。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code memberPaymentService.listMyPayments}
+     * は {@code SecurityUtils.getCurrentUserId()} のみを検索条件に渡すため、他人の支払い状況へ
+     * 到達する経路が構造的に無い（MyPaymentController#listMyPayments）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "memberPaymentService.listMyPayments(userId, pageable) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（MyPaymentController#listMyPayments）")
     @GetMapping("/payments")
     @Operation(summary = "自分の支払い状況一覧")
     public ResponseEntity<PagedResponse<MemberPaymentResponse>> listMyPayments(
@@ -52,7 +61,14 @@ public class MyPaymentController {
 
     /**
      * 自分に課されている未払い項目一覧を取得する。
+     *
+     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code paymentRequirementService.getPaymentRequirements}
+     * は {@code SecurityUtils.getCurrentUserId()} のみを検索条件に渡すため、他人の未払い項目へ
+     * 到達する経路が構造的に無い（MyPaymentController#getPaymentRequirements）。認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "paymentRequirementService.getPaymentRequirements(userId) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（MyPaymentController#getPaymentRequirements）")
     @GetMapping("/payment-requirements")
     @Operation(summary = "未払い項目一覧")
     public ResponseEntity<ApiResponse<List<PaymentRequirementResponse>>> getPaymentRequirements() {
@@ -63,7 +79,14 @@ public class MyPaymentController {
 
     /**
      * 自分の有効サブスクリプション一覧を取得する（Phase 4）。
+     *
+     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>: {@code SecurityConfig.java:457
+     * — .anyRequest().authenticated()}。Phase 4 未実装のため実体照会を行わず、認証済みユーザー全員に
+     * 共通の固定応答（空リスト）を返す（MyPaymentController#listMySubscriptions）。
+     * 実データ照会を実装する際は本注釈を外し、{@code SelfScopedEndpoint} 等へ差し替えること。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedByPathConfig
     @GetMapping("/subscriptions")
     @Operation(summary = "自分のサブスクリプション一覧（Phase 4）")
     public ResponseEntity<ApiResponse<List<Object>>> listMySubscriptions() {

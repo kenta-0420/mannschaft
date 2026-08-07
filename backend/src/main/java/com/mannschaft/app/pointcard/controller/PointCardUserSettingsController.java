@@ -2,6 +2,7 @@ package com.mannschaft.app.pointcard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.pointcard.dto.PointCardUserSettingsResponse;
 import com.mannschaft.app.pointcard.dto.UpdateUserSettingsRequest;
 import com.mannschaft.app.pointcard.service.PointCardUserSettingsService;
@@ -32,6 +33,9 @@ public class PointCardUserSettingsController {
 
     private final PointCardUserSettingsService settingsService;
 
+    @SelfScopedEndpoint(
+            "settingsService.getOrCreateSettings(userId) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（PointCardUserSettingsController#getSettings）")
     @GetMapping
     @Operation(summary = "ウォレット設定取得",
             description = "自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却")
@@ -40,6 +44,9 @@ public class PointCardUserSettingsController {
         return ResponseEntity.ok(ApiResponse.of(settingsService.getOrCreateSettings(userId)));
     }
 
+    @SelfScopedEndpoint(
+            "settingsService.updateSettings(userId, request) は SecurityUtils.getCurrentUserId() 固定の"
+                    + "設定行のみを更新する（PointCardUserSettingsController#updateSettings）")
     @PutMapping
     @Operation(summary = "ウォレット設定更新",
             description = "オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新")

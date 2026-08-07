@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +47,9 @@ public class ContentGateCheckController {
      * @param contentId   コンテンツ ID
      * @return 200 OK + {@link GateCheckResponse}（accessible / titleHidden / requiredItems）
      */
+    @SelfScopedEndpoint(
+            "viewerUserId は SecurityUtils.getCurrentUserId() 固定で、クエリでは受け付けない"
+                    + "（ContentGateCheckController#check、クラス Javadoc の IDOR 防止方針参照）")
     @GetMapping("/check")
     @Operation(summary = "ペイウォール判定（F08.9 P4・自分自身の閲覧可否）")
     public ResponseEntity<ApiResponse<GateCheckResponse>> check(

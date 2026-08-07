@@ -65,4 +65,20 @@ class MyTicketControllerAuthzTest {
         // スタブ時代は常に 1L が渡っていた。除去後は SecurityContext の 42 が渡ること。
         verify(bookService).getMyTickets(eq(42L), eq(42L), isNull());
     }
+
+    /**
+     * 認可根治戦役 Wave6 ロットG: {@code MyTicketController#getWidget} の自己スコープ性を固定する。
+     * {@code bookService.getWidget} へは常にログイン主体の userId が渡り、
+     * 他ユーザーの userId が紛れ込まないことを検証する。
+     */
+    @Test
+    @DisplayName("MyTicketController#getWidget: ログイン主体(userId=42)で叩くと service へ 42 が渡る")
+    void getWidget_passesAuthenticatedUserId() {
+        loginAs(42L);
+        when(bookService.getWidget(eq(42L), eq(42L))).thenReturn(null);
+
+        controller.getWidget(42L);
+
+        verify(bookService).getWidget(eq(42L), eq(42L));
+    }
 }
