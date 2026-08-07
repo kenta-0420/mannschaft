@@ -815,6 +815,44 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
     class ReorderAndScopeAuthz {
 
         @Test
+        @DisplayName("AC-05: orderedIdsの順に並び替わり、リクエストに含めなかったキープのsortOrderは変化しない")
+        void AC05_reorderで指定順に並び替わり非対象は据え置き() throws Exception {
+            // 初期の sort_order は 0/1/2（＝a, b, c の順）。これを c, a, b に並べ替える。
+            // untouched は 99 を与え、並び替え後も末尾に留まる（＝据え置きが観測できる）位置に置く。
+            ScheduleKeepEntity keepA = saveKeep(teamId, memberId, "AC05-a", ScheduleKeepStatus.KEPT, 0);
+            ScheduleKeepEntity keepB = saveKeep(teamId, memberId, "AC05-b", ScheduleKeepStatus.KEPT, 1);
+            ScheduleKeepEntity keepC = saveKeep(teamId, memberId, "AC05-c", ScheduleKeepStatus.KEPT, 2);
+            ScheduleKeepEntity untouched = saveKeep(teamId, memberId, "AC05-untouched", ScheduleKeepStatus.KEPT, 99);
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedule-keeps/reorder", teamSlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "orderedIds", List.of(
+                                            keepC.getId().toString(),
+                                            keepA.getId().toString(),
+                                            keepB.getId().toString())))))
+                    .andExpect(status().isOk());
+
+            // 一覧の並びが指定どおり（c, a, b）で、含めなかった untouched が末尾に残ること。
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedule-keeps", teamSlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(4))
+                    .andExpect(jsonPath("$.data[0].title").value("AC05-c"))
+                    .andExpect(jsonPath("$.data[1].title").value("AC05-a"))
+                    .andExpect(jsonPath("$.data[2].title").value("AC05-b"))
+                    .andExpect(jsonPath("$.data[3].title").value("AC05-untouched"));
+
+            em.flush();
+            em.clear();
+            // リクエストに含めなかったキープの sort_order は変化しない（§4.4.1 部分並び替え）。
+            assertThat(scheduleKeepRepository.findById(untouched.getId()).orElseThrow().getSortOrder())
+                    .isEqualTo(99);
+        }
+
+        @Test
         @DisplayName("AC-20b: orderedIdsに重複IDは400 SCHEDULE_KEEP_012")
         void AC20b_reorder重複IDは400() throws Exception {
             ScheduleKeepEntity keep = saveKeep(teamId, memberId, "AC20b-1", ScheduleKeepStatus.KEPT, 0);

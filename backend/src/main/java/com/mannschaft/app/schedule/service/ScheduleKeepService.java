@@ -47,7 +47,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * キープ（日付未定の予定）の CRUD サービス（F03.17 第三陣・Wave1）。
+ * キープ（日付未定の予定）のサービス（F03.17 第三陣・Wave1 CRUD ＋ Wave2 変換・状態遷移）。
  *
  * <p>認可は必ず {@link ScheduleKeepAccessGuard} を通す（独自の認可判定を書かない）。
  * Wave2 で変換（convert）・逆引き（by-schedule）・並び替え（reorder）と、
