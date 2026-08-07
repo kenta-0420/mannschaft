@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.ReflectionSettingsResponse;
 import com.mannschaft.app.reflection.dto.UpdateReflectionSettingsRequest;
 import com.mannschaft.app.reflection.service.ReflectionSettingsService;
@@ -28,6 +29,9 @@ public class ReflectionSettingsController {
     private final ReflectionSettingsService reflectionSettingsService;
 
     /** 想起通知設定取得（§7 #14・remind_hour・未設定は既定 8 時）。 */
+    @SelfScopedEndpoint("ReflectionSettingsService#getSettings が"
+            + " userReflectionSettingsRepository.findById(userId=SecurityUtils.getCurrentUserId())"
+            + " のみで解決する")
     @GetMapping
     @Operation(summary = "想起通知設定取得")
     public ResponseEntity<ApiResponse<ReflectionSettingsResponse>> getSettings() {
@@ -37,6 +41,9 @@ public class ReflectionSettingsController {
     }
 
     /** 想起通知設定更新（§7 #15・remind_hour 0-23）。 */
+    @SelfScopedEndpoint("ReflectionSettingsService#updateSettings が"
+            + " userReflectionSettingsRepository.findById(userId=SecurityUtils.getCurrentUserId())"
+            + " でUPSERTし他ユーザーの設定行には到達不能")
     @PutMapping
     @Operation(summary = "想起通知設定更新")
     public ResponseEntity<ApiResponse<ReflectionSettingsResponse>> updateSettings(

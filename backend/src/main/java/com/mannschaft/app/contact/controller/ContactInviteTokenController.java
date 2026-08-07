@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
 import com.mannschaft.app.contact.dto.CreateInviteTokenBody;
 import com.mannschaft.app.contact.service.ContactInviteTokenService;
@@ -43,6 +44,9 @@ public class ContactInviteTokenController {
 
     private final ContactInviteTokenService contactInviteTokenService;
 
+    @SelfScopedEndpoint("ContactInviteTokenService#createToken は"
+            + "SecurityUtils.getCurrentUserId() を userId として新規保存するのみで他人のデータに触れない"
+            + "（ContactInviteTokenController#createToken）。認可根治戦役 Wave6 監査済。")
     @PostMapping
     @Operation(summary = "招待トークンを発行する")
     public ResponseEntity<ApiResponse<ContactInviteTokenResponse>> createToken(
@@ -52,6 +56,10 @@ public class ContactInviteTokenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @SelfScopedEndpoint("ContactInviteTokenService#listTokens は"
+            + "findByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(userId) で"
+            + "SecurityUtils.getCurrentUserId() の行のみを返す（ContactInviteTokenController#listTokens）。"
+            + "認可根治戦役 Wave6 監査済。")
     @GetMapping
     @Operation(summary = "発行済みトークン一覧")
     public ResponseEntity<ApiResponse<List<ContactInviteTokenResponse>>> listTokens() {
