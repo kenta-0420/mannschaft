@@ -9,11 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -37,16 +35,21 @@ import java.util.TreeMap;
  *
  * <h2>処理フロー</h2>
  * <ol>
- *   <li>基準日時（現在から2年前）より古いログをページング取得</li>
- *   <li>年月ごとにグループ化して JSON ファイルを R2 にアップロード</li>
- *   <li>アーカイブ済みの最大 ID を記録し、DB から物理削除</li>
+ *   <li>基準日時（現在から2年前）より古い最古のログから、経過しきった月を1ヶ月ずつ走査</li>
+ *   <li>月内をキーセットページング（{@code id > cursor}）で全件取得し、ページ単位で R2 へアップロード</li>
+ *   <li>当該月を書き切った後にのみ、その月のパーティションを DROP</li>
  * </ol>
  *
  * <h2>設計上の注意</h2>
  * <ul>
  *   <li>R2 キー形式: {@code audit-archive/{year}/{month}/audit-{year}-{month:02d}.json}</li>
- *   <li>1バッチあたり最大 {@code PAGE_SIZE} 件ずつ処理（メモリ枯渇防止）</li>
- *   <li>R2 アップロード失敗時はバッチを中断し、DB 削除を行わない（データ損失防止）</li>
+ *   <li>1回の取得は最大 {@code PAGE_SIZE} 件（メモリ枯渇防止）。1ヶ月が複数ページに
+ *       またがる場合は {@code .part{n}} 付きキーへ分割して書き出す</li>
+ *   <li><b>アーカイブ内容と削除範囲は常に一致させる。</b>R2 アップロードが1ページでも失敗したら
+ *       例外を送出し、当該月のパーティション DROP には決して進まない（未アーカイブのまま
+ *       削除する事故の防止）</li>
+ *   <li>基準日時を含む月は経過しきっていないため DROP せず次回へ持ち越す
+ *       （パーティション単位の削除が基準日時より新しい行を巻き込むのを防ぐ）</li>
  * </ul>
  *
  * @see F10.3 audit_logs 設計書 §6「保持ポリシー」
@@ -74,77 +77,115 @@ public class AuditLogArchiveBatchService {
         long totalArchived = 0;
         long totalDeleted = 0;
 
-        try {
-            // グループ化用バッファ: 年月 → ログリスト
-            Map<YearMonth, List<AuditLogEntity>> groupedByMonth = new TreeMap<>();
+        LocalDateTime oldest = auditLogRepository.findOldestCreatedAtBefore(threshold);
+        if (oldest == null) {
+            log.info("[AuditLogArchiveBatch] アーカイブ対象なし。スキップします");
+            return;
+        }
 
-            boolean hasMore = true;
-            while (hasMore) {
-                Slice<AuditLogEntity> slice = auditLogRepository.findOlderThan(
-                        threshold, PageRequest.of(0, PAGE_SIZE));
-                List<AuditLogEntity> logs = slice.getContent();
+        // 閾値を含む月は「まだ経過しきっていない」ため、パーティションを落とすと
+        // 閾値より新しい行まで巻き込む。当該月は次回以降のバッチへ持ち越す。
+        YearMonth cutoffMonth = YearMonth.from(threshold.toLocalDate());
 
-                if (logs.isEmpty()) {
-                    break;
+        // 失敗した月を記録して次月へ進む。1ヶ月の失敗で残りの月まで巻き添えに打ち切ると、
+        // 古い月ほど再試行の機会を失って滞留する。最後にまとめて例外を送出することで、
+        // 手動起動（@BatchEndpoint 経由）でも失敗が呼び手に伝わる。
+        List<String> failedMonths = new ArrayList<>();
+
+        for (YearMonth ym = YearMonth.from(oldest.toLocalDate());
+             ym.isBefore(cutoffMonth);
+             ym = ym.plusMonths(1)) {
+
+            try {
+                long archivedInMonth = archiveMonth(ym);
+                if (archivedInMonth == 0) {
+                    // 当該月に行が無い。空ファイルも作らず、パーティションも落とさない。
+                    continue;
                 }
+                totalArchived += archivedInMonth;
 
-                // 年月ごとにグループ化
-                for (AuditLogEntity entry : logs) {
-                    YearMonth ym = YearMonth.from(entry.getCreatedAt().toLocalDate());
-                    groupedByMonth.computeIfAbsent(ym, k -> new ArrayList<>()).add(entry);
-                }
-
-                totalArchived += logs.size();
-                hasMore = slice.hasNext();
-
-                if (!hasMore || totalArchived >= 100_000) {
-                    // 10万件以上になったら一旦 R2 にアップロードして DB 削除
-                    break;
-                }
+                // ここに到達するのは当該月の全行を R2 へ書き切った場合のみ。
+                // アップロードが1ページでも失敗すれば例外が送出され DROP には至らない。
+                dropPartition(ym);
+                totalDeleted += archivedInMonth;
+            } catch (Exception e) {
+                log.error("[AuditLogArchiveBatch] 月次アーカイブ失敗: ym={}", ym, e);
+                failedMonths.add(ym.toString());
             }
+        }
 
-            if (groupedByMonth.isEmpty()) {
-                log.info("[AuditLogArchiveBatch] アーカイブ対象なし。スキップします");
-                return;
-            }
+        log.info("[AuditLogArchiveBatch] アーカイブ完了: アーカイブ={}件, DB削除={}件, 失敗月={}",
+                totalArchived, totalDeleted, failedMonths);
 
-            // 年月ごとに R2 へアップロード
-            for (Map.Entry<YearMonth, List<AuditLogEntity>> monthEntry : groupedByMonth.entrySet()) {
-                YearMonth ym = monthEntry.getKey();
-                List<AuditLogEntity> monthLogs = monthEntry.getValue();
-
-                uploadToR2(ym, monthLogs);
-                log.info("[AuditLogArchiveBatch] R2アップロード完了: {}, {}件", ym, monthLogs.size());
-            }
-
-            // R2 アップロード完了後、対象年月のパーティションを DROP（瞬時削除）
-            for (Map.Entry<YearMonth, List<AuditLogEntity>> monthEntry : groupedByMonth.entrySet()) {
-                dropPartition(monthEntry.getKey());
-                totalDeleted += monthEntry.getValue().size();
-            }
-
-            log.info("[AuditLogArchiveBatch] アーカイブ完了: アーカイブ={}件, DB削除={}件",
-                    totalArchived, totalDeleted);
-
-        } catch (Exception e) {
-            log.error("[AuditLogArchiveBatch] アーカイブ処理失敗: アーカイブ済み={}件, DB削除={}件",
-                    totalArchived, totalDeleted, e);
+        if (!failedMonths.isEmpty()) {
+            // 握り潰すと「監査ログをアーカイブできていないのに正常終了」に化け、
+            // 運用がその事実に気付けない。集約して送出する。
+            throw new IllegalStateException(
+                    "[AuditLogArchiveBatch] アーカイブに失敗した月がある: " + failedMonths
+                            + "（アーカイブ=" + totalArchived + "件, DB削除=" + totalDeleted + "件）");
         }
     }
 
     /**
-     * 指定年月の監査ログを R2 にアップロードする。
-     * キー形式: {@code audit-archive/{year}/{month:02d}/audit-{year}-{month:02d}.json}
+     * 指定年月の監査ログを<b>キーセットページング</b>で全件走査し、ページ単位で R2 へ書き出す。
      *
-     * <p>既存のオブジェクトが存在する場合は追記する（同月分の2回目バッチ実行への対応）。
-     * R2 は append をサポートしないため、既存オブジェクトの内容は新規の upload で上書きされる。
-     * Phase 1 では重複リスクを許容し、シンプルな上書き方式を採用する。</p>
+     * <p>カーソル（直前ページの最終 {@code id}）を必ず前進させるため、同一レコードが
+     * 二重に出力されることはなく、当該月の全行が漏れなく書き出される。走査中に行を
+     * 削除しないバッチでオフセットページングを使うと、毎周同じ先頭ページを取り直して
+     * 出力が重複し、かつ2ページ目以降が永久に書き出されない。後段でパーティションごと
+     * 削除する以上、それは監査ログの欠損に直結する。</p>
+     *
+     * <p>ページごとに別オブジェクトへ書くため、1ヶ月分をメモリに載せきる必要が無い。
+     * 例外を握り潰さずそのまま送出し、呼び出し側でパーティション DROP を行わせない。</p>
+     *
+     * @param ym 対象年月
+     * @return 当該月で R2 へ書き出した件数（0 なら対象行なし）
+     */
+    private long archiveMonth(YearMonth ym) {
+        LocalDateTime from = ym.atDay(1).atStartOfDay();
+        LocalDateTime to = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+        long cursor = 0L;
+        int part = 0;
+        long archived = 0;
+
+        while (true) {
+            List<AuditLogEntity> page = auditLogRepository.findMonthSliceAfterId(
+                    from, to, cursor, PageRequest.of(0, PAGE_SIZE));
+            if (page.isEmpty()) {
+                break;
+            }
+
+            uploadToR2(ym, part, page);
+            archived += page.size();
+            cursor = page.get(page.size() - 1).getId();
+            part++;
+
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+        }
+
+        if (archived > 0) {
+            log.info("[AuditLogArchiveBatch] R2アップロード完了: {}, {}件（{}オブジェクト）",
+                    ym, archived, part);
+        }
+        return archived;
+    }
+
+    /**
+     * 指定年月・指定パートの監査ログを R2 にアップロードする。
+     *
+     * <p>1ヶ月分が1ページに収まらない場合、パート番号ごとに別オブジェクトへ書き出す。
+     * 同一キーへ上書きすると先に書いたページが失われ、パーティション DROP 後に
+     * 復元不能な欠損となるため、パートごとにキーを分けること。</p>
      *
      * @param ym   対象年月
+     * @param part パート番号（0 起点）
      * @param logs 対象ログ一覧
      */
-    private void uploadToR2(YearMonth ym, List<AuditLogEntity> logs) {
-        String r2Key = buildR2Key(ym);
+    private void uploadToR2(YearMonth ym, int part, List<AuditLogEntity> logs) {
+        String r2Key = buildR2Key(ym, part);
 
         List<Map<String, Object>> records = logs.stream()
                 .map(this::toRecord)
@@ -162,32 +203,16 @@ public class AuditLogArchiveBatchService {
     }
 
     /**
-     * アーカイブ済みのログを DB から物理削除する（パーティション DROP の代替手段）。
-     * パーティション導入後は通常 {@link #dropPartition(YearMonth)} を使用する。
-     *
-     * @param maxId     削除対象の最大 ID
-     * @param threshold 基準日時（二重チェック用）
-     * @return 削除件数
-     */
-    @Transactional
-    public int deleteArchivedFromDb(Long maxId, LocalDateTime threshold) {
-        return auditLogRepository.deleteArchivedLogs(maxId, threshold);
-    }
-
-    /**
      * アーカイブ完了後、指定年月のパーティションを DROP する（瞬時削除）。
      *
-     * <p>パーティション名の形式: {@code p_YYYY_MM}（例: p_2024_01）</p>
-     * <p>p_future パーティションは絶対に DROP しない。</p>
+     * <p>パーティション名の形式: {@code p_YYYY_MM}（例: p_2024_01）。
+     * 年月から機械的に組み立てるため {@code p_future} が生成されることはなく、
+     * 呼び出し元も経過済みの月しか渡さない。</p>
      *
      * @param ym 対象年月
      */
     public void dropPartition(YearMonth ym) {
         String partitionName = String.format("p_%d_%02d", ym.getYear(), ym.getMonthValue());
-        if ("p_future".equals(partitionName)) {
-            log.warn("[AuditLogArchiveBatch] p_future パーティションのDROPはスキップします");
-            return;
-        }
         String sql = "ALTER TABLE audit_logs DROP PARTITION " + partitionName;
         jdbcTemplate.execute(sql);
         log.info("[AuditLogArchiveBatch] パーティションDROP完了: {}", partitionName);
@@ -195,15 +220,19 @@ public class AuditLogArchiveBatchService {
 
     /**
      * R2 オブジェクトキーを生成する。
-     * 形式: {@code audit-archive/{year}/{month:02d}/audit-{year}-{month:02d}.json}
+     * 形式: {@code audit-archive/{year}/{month:02d}/audit-{year}-{month:02d}[.part{n}].json}
      *
-     * @param ym 対象年月
+     * <p>パート 0 は従来どおりサフィックス無し（既存アーカイブとの互換）。</p>
+     *
+     * @param ym   対象年月
+     * @param part パート番号（0 起点）
      * @return R2 オブジェクトキー
      */
-    public static String buildR2Key(YearMonth ym) {
-        return String.format("audit-archive/%d/%02d/audit-%d-%02d.json",
+    public static String buildR2Key(YearMonth ym, int part) {
+        String suffix = part == 0 ? "" : String.format(".part%d", part);
+        return String.format("audit-archive/%d/%02d/audit-%d-%02d%s.json",
                 ym.getYear(), ym.getMonthValue(),
-                ym.getYear(), ym.getMonthValue());
+                ym.getYear(), ym.getMonthValue(), suffix);
     }
 
     /**

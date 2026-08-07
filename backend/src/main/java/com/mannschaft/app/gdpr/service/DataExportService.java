@@ -192,7 +192,7 @@ public class DataExportService {
      */
     @BatchEndpoint(name = "gdpr-export-stuck-recovery-hourly", description = "スタックした GDPR エクスポートジョブを毎時 FAILED に戻す")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "exportRecoveryBatch", lockAtMostFor = "PT5M", lockAtLeastFor = "PT1M")
+    @SchedulerLock(name = "exportRecoveryBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT1M")
     @Transactional
     public void recoverStuckExports() {
         LocalDateTime stuckThreshold = LocalDateTime.now().minusHours(1);

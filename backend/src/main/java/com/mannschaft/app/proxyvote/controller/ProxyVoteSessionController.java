@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 投票セッションコントローラー。セッションのCRUD・ライフサイクル・投票APIを提供する。
@@ -169,6 +170,8 @@ public class ProxyVoteSessionController {
     /**
      * 自分の投票・委任履歴を取得する。
      */
+    @SelfScopedEndpoint("ProxyVoteSessionService#getMyHistory は"
+        + "findByUserInvolvement(SecurityUtils.getCurrentUserId()) のみを検索条件にする")
     @GetMapping("/my")
     @Operation(summary = "自分の投票履歴")
     public ResponseEntity<PagedResponse<SessionListResponse>> getMyHistory(

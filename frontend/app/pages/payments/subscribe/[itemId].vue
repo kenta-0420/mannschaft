@@ -2,6 +2,7 @@
 import type { SwitchableChild } from '~/types/guardianship'
 import type { SubscribeRequest } from '~/types/membershipSubscription'
 import type { PaymentItemResponse } from '~/types/payment'
+import { formatLocalDateOnly } from '~/utils/localDate'
 
 /**
  * F08.9 P5/P6 継続課金・期別課金 加入ページ（専用ページ方式・殿裁定 / 設計書 04 §2）。
@@ -47,14 +48,14 @@ const isTermType = computed(() => paymentItem.value?.meta.type === 'TERM')
 const termStartsOnFormatted = computed<string | null>(() => {
   const d = paymentItem.value?.term?.termStartsOn
   if (!d) return null
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+  return formatLocalDateOnly(d, locale.value)
 })
 
 /** TERM 有効期間終了日（ロケールに合わせてフォーマット）。 */
 const termEndsOnFormatted = computed<string | null>(() => {
   const d = paymentItem.value?.term?.termEndsOn
   if (!d) return null
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+  return formatLocalDateOnly(d, locale.value)
 })
 
 /**

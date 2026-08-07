@@ -63,7 +63,7 @@ public class VillageFestivalStateTransitionBatchService {
     @SchedulerLock(
             name = "villageFestivalStateTransitionBatch",
             lockAtLeastFor = "PT30S",
-            lockAtMostFor = "PT10M")
+            lockAtMostFor = "PT30M")
     public void runBatch() {
         LocalDateTime now = LocalDateTime.now();
         log.info("村お祭り状態遷移バッチ開始: now={}", now);

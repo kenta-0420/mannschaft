@@ -19,6 +19,7 @@ import com.mannschaft.app.files.service.MultipartUploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -132,16 +133,37 @@ public class BlogMediaService {
      * <p><b>F13 Phase 4-δ</b>: R2 削除成功後に {@link StorageQuotaService#recordDeletion} で
      * 使用量を減算する。s3Key のプレフィックス（{@code blog/{SCOPE_TYPE}/{SCOPE_ID}/}）から
      * スコープを復元する。スコープ解析に失敗した場合は警告ログのみで減算をスキップする。</p>
+     *
+     * <p><b>使用量減算は「この実行が実際に削除した行」に対してのみ行う（claim-then-act）。</b>
+     * 使用量の更新は read-modify-write（現在値を読んで差分を適用して書き戻す）であり、
+     * 同じ孤立行を 2 つの実行が処理すると同じ容量が 2 回引かれて {@code used_bytes} が過少になる。
+     * 過少になったクォータは以後の上限判定を誤らせ、ドリフト検出バッチが走るまで是正されない。
+     * {@code @SchedulerLock} は同時実行を減らすが、ロック期限切れや手動起動との競合まで塞ぐものではなく、
+     * また「冪等である」ことは「同時に走らない」ことを意味しない。
+     * そこで減算の前に {@link BlogMediaUploadRepository#deleteOrphanById} で行を<b>先に確保</b>し、
+     * 1 行削除できた実行だけが減算する。条件付き DELETE は行ロックで直列化されるため、
+     * 同じ行に対して 2 回目以降は 0 行となり、二重減算が構造的に起こり得なくなる。</p>
      */
     @BatchEndpoint(name = "cms-blog-media-orphan-cleanup", description = "72 時間以上孤立した blog メディアを毎日 02:00 に R2 から物理削除する")
     @Scheduled(cron = "0 0 2 * * *")
+    // 起動間隔は日次 02:00。処理量は「72 時間以内に孤立したメディア」に限られるが、1 件ごとに R2 削除 2 回（本体・サムネ）
+    // が走るため最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
+    @SchedulerLock(name = "cmsBlogMediaOrphanCleanup", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void cleanupOrphanMedia() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);
         List<BlogMediaUploadEntity> orphans = blogMediaUploadRepository
                 .findByBlogPostIdIsNullAndCreatedAtBefore(cutoff);
 
+        int deletedCount = 0;
         for (BlogMediaUploadEntity orphan : orphans) {
+            // 行を先に確保する。0 行なら他の実行が既にこの行を処理済みであり、
+            // R2 削除も使用量減算もその実行が行う（ここで重ねて減算してはならない）。
+            if (blogMediaUploadRepository.deleteOrphanById(orphan.getId()) == 0) {
+                log.debug("孤立メディアは別実行が処理済みのためスキップ: mediaId={}", orphan.getId());
+                continue;
+            }
+            deletedCount++;
             try {
                 r2StorageService.delete(orphan.getS3Key());
                 if (orphan.getThumbnailR2Key() != null) {
@@ -162,8 +184,7 @@ public class BlogMediaService {
             }
         }
 
-        blogMediaUploadRepository.deleteAll(orphans);
-        log.info("孤立メディアのクリーンアップ完了: 削除件数={}", orphans.size());
+        log.info("孤立メディアのクリーンアップ完了: 対象={}件, 本実行が削除={}件", orphans.size(), deletedCount);
     }
 
     /**

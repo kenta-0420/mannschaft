@@ -52,21 +52,19 @@ async function onSaveQuestionsAndPublish() {
   if (!survey.value) return
   draftQuestionsSubmitting.value = true
   try {
-    // 設問を順次追加（BE addQuestion API を呼ぶ）
+    // 設問を順次追加。FE ドメイン形のまま渡し、BE 形への翻訳（questionType の enum 値・
+    // sortOrder → displayOrder）は useSurveyApi 側に集約している。
     for (const q of draftQuestions.value) {
-      const beBody: Record<string, unknown> = {
+      await addQuestion(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId, {
         questionText: q.questionText.trim(),
         questionType: q.questionType,
         isRequired: q.isRequired,
         sortOrder: q.sortOrder,
-      }
-      if (q.questionType !== 'TEXT' && q.questionType !== 'DATE' && q.options && q.options.length > 0) {
-        beBody.options = q.options.map((o) => ({
-          optionText: o.optionText.trim(),
-          sortOrder: o.sortOrder,
-        }))
-      }
-      await addQuestion(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId, beBody)
+        options:
+          q.questionType !== 'TEXT' && q.questionType !== 'DATE' && q.options?.length
+            ? q.options.map((o) => ({ optionText: o.optionText.trim(), sortOrder: o.sortOrder }))
+            : undefined,
+      })
     }
     // 公開
     await publishSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)

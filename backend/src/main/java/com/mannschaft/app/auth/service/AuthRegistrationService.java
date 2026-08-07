@@ -163,6 +163,10 @@ public class AuthRegistrationService {
                 .status(UserEntity.UserStatus.PENDING_VERIFICATION)
                 .isSearchable(true)
                 .birthDate(req.getBirthDate())
+                // birth_date は AES-256-GCM（ランダム IV）暗号化列のため SQL で範囲比較できない。
+                // 生年のみ平文・索引付きの birth_year に複写し、年齢に基づくバッチ・セグメント抽出が
+                // SQL 側で粗く絞り込めるようにする（登録時に必ずセットする唯一の書き込み口）。
+                .birthYear(birthDate.getYear())
                 .build();
         // 4.1. プライバシーポリシー同意を記録する（F_privacy_policy。GDPR Art.7 準拠）
         // privacyPolicyAccepted=false は @Valid で弾かれているため、ここに到達した場合は必ず true。

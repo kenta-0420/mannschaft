@@ -705,6 +705,57 @@ void setUp() {
 
 ---
 
+## 9.6 バッチ（`@Scheduled`）を書くときの規約 — 番人あり
+
+本番は複数 Pod で動く。**`@Scheduled` を書いたメソッドは、何もしなければ Pod 数だけ同時に走る**
+（＝二重通知・二重課金・二重集計）。従来この規約は `ShedLockConfig` の Javadoc 一覧という
+「人間の善意」だけで維持されていたが、番人 `ScheduledBatchGuardTest` が CI で機械的に強制する。
+
+| ルール | 内容 |
+|---|---|
+| 1 | `@Scheduled` には **`@SchedulerLock` を必ず併記**する。例外は `@PodLocalScheduled` のみ |
+| 2 | `@SchedulerLock` には **`lockAtMostFor` を必ず明示**する（既定 30m への暗黙依存を禁止） |
+| 3 | `@Scheduled` には **`@BatchEndpoint` を必ず併記**する。例外は `@BatchEndpointExempt` のみ |
+| 4 | 短周期バッチ（起動間隔 1 時間以下）は **`lockAtMostFor` を起動間隔より長く**する（同値も不可） |
+
+```java
+/** 予約リマインドを送出する（毎分）。 */
+@BatchEndpoint(name = "reservation-reminder-dispatch", description = "予約リマインド送出")
+@Scheduled(cron = "0 * * * * *")
+@SchedulerLock(name = "reservationReminderDispatchBatch", lockAtMostFor = "PT5M")
+public void dispatch() { ... }
+```
+
+**`lockAtMostFor` を必ず書かせる理由**: 未指定だと `@EnableSchedulerLock(defaultLockAtMostFor = "30m")`
+の既定値に暗黙依存する。既定 30 分は数秒で終わるワーカーには長すぎ（Pod が異常終了するとロックが
+30 分残り、その間バッチが完全停止する）、1 時間かかる夜間集計には短すぎる（処理中に他 Pod が
+二重起動しうる）。**そのバッチの最大実行時間を書き手に必ず考えさせる**のが本ルールの目的である。
+
+**`lockAtMostFor` が起動間隔以下だと何が起きるか（ルール 4）**: 1 回の実行が `lockAtMostFor` を
+超えた時点でロックが失効するため、次の起動が前の実行と重なる。**同値が最も危険**で、実行が
+わずかに超過しただけで重なる。番人は起動間隔を `cron` / `fixedRate` / `fixedDelay`（文字列版含む）
+から算出し、cron は Spring の `CronExpression` に発火時刻を列挙させて**最小**間隔を採る。
+**算出できない場合は安全側に倒して落とす**（`${prop}` を既定値なしで書いて番人を迂回させないため。
+`${prop:0 0 3 * * *}` のように既定値付きで書くこと）。
+日次・週次・月次は次の起動まで 24 時間以上あり重なりが起きないため**対象外**であり、
+これらは間隔ではなく最悪ケースの処理時間から `lockAtMostFor` を決める。
+
+**例外マーカーの使い方**: `@PodLocalScheduled` / `@BatchEndpointExempt` は番人の出力を黙らせる力を
+持つため、**理由の記述（`value()` の文字列リテラル）と対象メソッドの Javadoc を必須**とする。
+これを二次番人 `BatchMarkerAnnotationGuardTest` が機械的に検証する（免除リストは無い）。
+「ロックの付け方が分からない」は付与理由にならない。付与が正当なのは、
+**ロックを掛けるとかえって壊れる**場合（Pod ローカルのメモリバッファ flush・Pod ごとの死活監視）と、
+**数秒間隔の高頻度ワーカーで実行履歴が有害**な場合だけである。
+
+**番人自体のテスト（`@Repeatable` の罠）**: `@Scheduled` は `@Repeatable(Schedules.class)` であり、
+1 メソッドに 2 つ以上書くと javac は `@Scheduled` を直接付けず `@Schedules` コンテナに包む。
+`areAnnotatedWith(Scheduled.class)` だけを見る番人は**複数スケジュール指定のバッチを丸ごと取り逃す**。
+メタテスト `ScheduledBatchGuardConditionTest` がこのケースを fixture で実証している。
+番人の判定ロジックを触るときは、必ずメタテストの負例で「違反が返ること」を確認すること
+（**違反 0 件は番人が動いていることの証明にはならない**）。
+
+---
+
 ## 10. テストに関する禁止事項
 
 | 禁止事項 | 理由 |

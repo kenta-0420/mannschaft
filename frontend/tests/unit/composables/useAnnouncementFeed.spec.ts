@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import type { AnnouncementFeedItem, AnnouncementFeedResponse } from '~/types/announcement'
 
 /**
@@ -28,7 +27,11 @@ import type { AnnouncementFeedItem, AnnouncementFeedResponse } from '~/types/ann
 //
 // この composable は setup 外（async イベントハンドラの await 後）からも構築されるため、
 // useI18n / useNotification / useErrorHandler ではなく nuxtApp の $i18n / $toast を掴む。
-// テストもそれに合わせて useNuxtApp をモックする。
+// テストもそれに合わせて $i18n / $toast を差し替えるが、`mockNuxtImport('useNuxtApp')` で
+// useNuxtApp 自体を置き換えてはならない（#2565）。@nuxt/test-utils の setupNuxt() が
+// beforeAll で `useRouter().afterEach(...)` を呼ぶところ、useRouter は useNuxtApp().$router を
+// 引くため、差し替えた戻り値に $router が無いと beforeAll が throw し全テストが skip になる。
+// そこで実物の nuxtApp インスタンスに $i18n / $toast だけを注入する。
 // ============================================================
 const mockFetch = vi.fn()
 vi.mock('~/composables/useApi', () => ({
@@ -48,12 +51,47 @@ vi.mock('~/composables/useErrorReport', () => ({
 
 const tMock = vi.fn((key: string): string => key)
 const toastAddMock = vi.fn()
-mockNuxtImport('useNuxtApp', () => () => ({
-  $i18n: { t: tMock },
-  $toast: { add: toastAddMock },
-}))
 
-// テスト対象（モック設定後に動的 import。@nuxt/test-utils の hoisting に依存するため
+/** テスト用に差し替える nuxtApp の依存（composable が構築時に掴む） */
+interface NuxtAppStubTarget {
+  $i18n?: { t: unknown }
+  $toast?: { add: unknown }
+}
+
+/**
+ * nuxtApp のプロパティを差し替える。
+ *
+ * `$i18n` は nuxt-i18n が非 configurable なプロパティとして定義しているため、
+ * プロパティごとの差し替え（defineProperty）はできない。その場合は中身のメソッドだけを
+ * 差し替える。存在しない場合（`$toast` はクライアントプラグイン由来のため未定義になりうる）は
+ * defineProperty でスタブを生やす。
+ */
+function stubNuxtAppMember(
+  nuxtApp: NuxtAppStubTarget,
+  key: '$i18n' | '$toast',
+  member: 't' | 'add',
+  impl: unknown,
+): void {
+  const existing = nuxtApp[key] as Record<string, unknown> | undefined
+  if (existing) {
+    existing[member] = impl
+    return
+  }
+  Object.defineProperty(nuxtApp, key, {
+    value: { [member]: impl },
+    configurable: true,
+    writable: true,
+  })
+}
+
+/** 実物の nuxtApp に $i18n.t / $toast.add を注入する */
+function injectNuxtAppStubs(): void {
+  const nuxtApp = useNuxtApp() as unknown as NuxtAppStubTarget
+  stubNuxtAppMember(nuxtApp, '$i18n', 't', tMock)
+  stubNuxtAppMember(nuxtApp, '$toast', 'add', toastAddMock)
+}
+
+// テスト対象（vi.mock 設定後に評価される。@nuxt/test-utils の hoisting に依存するため
 // import/first の ESLint ルールを無効化する）
 // eslint-disable-next-line import/first
 import {
@@ -138,6 +176,7 @@ function toastCalls(severity: 'warn' | 'error') {
 }
 
 beforeEach(() => {
+  injectNuxtAppStubs()
   mockFetch.mockReset()
   toastAddMock.mockReset()
   mockCaptureQuiet.mockReset()
@@ -256,7 +295,7 @@ describe('useAnnouncementFeed — markAsReadBeforeOpen（#2495）', () => {
     // createAnnouncement 経路（TimelinePostForm / blog edit）は async イベントハンドラの
     // await 後に構築する。useI18n() / useToast() を構築時に呼ぶとそこで throw し、
     // 「投稿は成功しているのに『投稿に失敗しました』」という silent な事故になる。
-    // useNuxtApp のみをモックした状態で構築が完走すること自体が回帰ガードになる。
+    // nuxtApp の $i18n / $toast だけがある状態で構築が完走すること自体が回帰ガードになる。
     expect(() => useAnnouncementFeed('TEAM', 'my-team')).not.toThrow()
   })
 })

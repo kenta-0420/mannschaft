@@ -1,5 +1,6 @@
 package com.mannschaft.app.circulation;
 
+import com.mannschaft.app.circulation.service.CirculationAccessGuard;
 import com.mannschaft.app.circulation.dto.AdminSkipRecipientRequest;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
 import com.mannschaft.app.circulation.dto.StampCorrectionRequest;
@@ -58,6 +59,7 @@ class CirculationStampService3BTest {
     @Mock private CirculationStampCorrectionLogRepository correctionLogRepository;
     @Mock private CirculationStampDelegationRepository delegationRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private CirculationAccessGuard circulationAccessGuard;
 
     @InjectMocks
     private CirculationStampService service;

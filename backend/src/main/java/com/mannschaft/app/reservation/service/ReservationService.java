@@ -191,7 +191,9 @@ public class ReservationService {
      */
     private ReservationResponse doCreateReservation(
             Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
-        ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
+        // Issue #2538: reservationSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する。他チームの枠 id を渡した場合は SLOT_NOT_FOUND（404）で秘匿する。
+        ReservationSlotEntity slot = slotService.getSlotEntity(teamId, request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
             throw new BusinessException(
@@ -711,10 +713,14 @@ public class ReservationService {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
+        // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
+        // 自チームの枠であることが保証されている（teamId スコープ不要）。
         ReservationSlotEntity oldSlot = slotService.getSlotEntity(entity.getReservationSlotId());
         slotService.decrementAndReopen(oldSlot);
 
-        ReservationSlotEntity newSlot = slotService.getSlotEntity(request.getNewSlotId());
+        // newSlot: request.newSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する（Issue #2538）。他チームの枠 id は 404 で秘匿する。
+        ReservationSlotEntity newSlot = slotService.getSlotEntity(teamId, request.getNewSlotId());
         if (!newSlot.isAvailable()) {
             throw new BusinessException(ReservationErrorCode.SLOT_FULL);
         }

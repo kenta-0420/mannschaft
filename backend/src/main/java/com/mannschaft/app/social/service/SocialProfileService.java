@@ -112,12 +112,18 @@ public class SocialProfileService {
     /**
      * ユーザーIDでソーシャルプロフィールを取得する。
      *
+     * <p>{@link #getProfileByHandle} と同一の可視性判定を適用する。無効化済み
+     * プロフィールは所有者以外に非公開とし、無効化フラグを迂回した閲覧を防ぐ。</p>
+     *
      * @param userId ユーザーID
      * @return プロフィール
      */
     public ProfileResponse getProfileByUserId(Long userId) {
         UserSocialProfileEntity profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(SocialErrorCode.PROFILE_NOT_FOUND));
+        if (!profile.getIsActive()) {
+            throw new BusinessException(SocialErrorCode.PROFILE_INACTIVE);
+        }
         return toProfileResponse(profile);
     }
 

@@ -11,6 +11,8 @@ import com.mannschaft.app.visibility.dto.VisibilityTemplateDetailResponse;
 import com.mannschaft.app.visibility.dto.VisibilityTemplateListResponse;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import com.mannschaft.app.visibility.service.VisibilityTemplateService;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -60,6 +62,9 @@ public class VisibilityTemplateController {
     /**
      * 自分のテンプレート一覧を取得する。
      */
+    @SelfScopedEndpoint("VisibilityTemplateService#listTemplates は"
+        + "findByOwnerUserIdOrderByCreatedAtDesc(SecurityUtils.getCurrentUserId())"
+        + " とシステムプリセットのみを返す")
     @Operation(summary = "テンプレート一覧取得", description = "認証ユーザーが所有するカスタム公開範囲テンプレートの一覧を返す")
     @GetMapping
     public ResponseEntity<ApiResponse<VisibilityTemplateListResponse>> listTemplates() {
@@ -70,8 +75,12 @@ public class VisibilityTemplateController {
     /**
      * テンプレート詳細を取得する。
      *
+     * <p>VisibilityTemplateService#getTemplate は findAccessibleById(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致（またはプリセット）を検証してから返す。</p>
+     *
      * @param id テンプレートID
      */
+    @AuthorizedInService
     @Operation(summary = "テンプレート詳細取得", description = "指定IDのカスタム公開範囲テンプレートの詳細を返す")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VisibilityTemplateDetailResponse>> getTemplate(
@@ -85,6 +94,8 @@ public class VisibilityTemplateController {
      *
      * @param request 作成リクエスト
      */
+    @SelfScopedEndpoint("VisibilityTemplateService#createTemplate は"
+        + "SecurityUtils.getCurrentUserId() を owner として新規保存するのみ")
     @Operation(summary = "テンプレート作成", description = "カスタム公開範囲テンプレートを新規作成する")
     @PostMapping
     public ResponseEntity<ApiResponse<VisibilityTemplateDetailResponse>> createTemplate(
@@ -97,9 +108,13 @@ public class VisibilityTemplateController {
     /**
      * テンプレートを更新する。
      *
+     * <p>VisibilityTemplateService#updateTemplate は findByIdAndOwnerUserId(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致を検証してから更新する（不一致は404で存在秘匿）。</p>
+     *
      * @param id      テンプレートID
      * @param request 更新リクエスト
      */
+    @AuthorizedInService
     @Operation(summary = "テンプレート更新", description = "指定IDのカスタム公開範囲テンプレートを更新する")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VisibilityTemplateDetailResponse>> updateTemplate(
@@ -112,8 +127,12 @@ public class VisibilityTemplateController {
     /**
      * テンプレートを削除する。
      *
+     * <p>VisibilityTemplateService#deleteTemplate は findByIdAndOwnerUserId(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致を検証してから削除する（不一致は404で存在秘匿）。</p>
+     *
      * @param id テンプレートID
      */
+    @AuthorizedInService
     @Operation(summary = "テンプレート削除", description = "指定IDのカスタム公開範囲テンプレートを削除する")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {

@@ -8,6 +8,7 @@ import com.mannschaft.app.event.dto.DismissalStatusResponse;
 import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.service.EventDismissalService;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -110,6 +111,9 @@ public class EventDismissalController {
      *
      * @return 主催未解散イベントのリスト（endAt 昇順）
      */
+    @SelfScopedEndpoint(
+            "EventDismissalService#getMyDismissalReminderTargets は createdBy=userId のみを"
+                    + "検索条件に渡す（EventDismissalController#getMyDismissalReminderTargets）")
     @GetMapping("/api/v1/events/my-organizing/dismissal-reminders")
     @Operation(summary = "主催未解散イベント一覧",
             description = "ログインユーザー主催・終了済み・未解散のチームイベントを返す（Widget 用）")

@@ -272,7 +272,7 @@ public class CirculationService {
     @Transactional
     public DocumentResponse createDocument(String scopeType, Long scopeId, Long userId,
                                            CreateDocumentRequest request) {
-        // 認可根治 Wave3-B8: 回覧の起票は当該スコープのメンバー、または当該スコープの管理者
+        // 回覧の起票は当該スコープのメンバー、または当該スコープの管理者
         // （ADMIN/DEPUTY_ADMIN・SYSTEM_ADMIN）のみ許可する（非関与者による勝手な起票を防ぐ）。
         // isMember 単体にしなかった理由: ADMIN(user_roles) は必ず memberships 行を伴うとは限らない
         // （自己アンフォロー等で MEMBER 行のみ脱落する既知のギャップが MembershipConsistencyChecker で
@@ -342,7 +342,7 @@ public class CirculationService {
                                            UpdateDocumentRequest request) {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 文書ライフサイクル管理（更新）は当該文書スコープの ADMIN/DEPUTY_ADMIN
+        // 文書ライフサイクル管理（更新）は当該文書スコープの ADMIN/DEPUTY_ADMIN
         // （または SYSTEM_ADMIN）のみ許可する。scope は文書エンティティ由来で解決するため IDOR を防ぐ。
         if (accessControlService != null) {
             checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
@@ -385,7 +385,7 @@ public class CirculationService {
     public DocumentResponse activateDocument(String scopeType, Long scopeId, Long documentId) {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 文書ライフサイクル管理（公開）は当該文書スコープの ADMIN/DEPUTY_ADMIN
+        // 文書ライフサイクル管理（公開）は当該文書スコープの ADMIN/DEPUTY_ADMIN
         // （または SYSTEM_ADMIN）のみ許可する。
         if (accessControlService != null) {
             checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
@@ -425,7 +425,7 @@ public class CirculationService {
     public DocumentResponse cancelDocument(String scopeType, Long scopeId, Long documentId) {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 文書ライフサイクル管理（キャンセル）は当該文書スコープの ADMIN/DEPUTY_ADMIN
+        // 文書ライフサイクル管理（キャンセル）は当該文書スコープの ADMIN/DEPUTY_ADMIN
         // （または SYSTEM_ADMIN）のみ許可する。
         if (accessControlService != null) {
             checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
@@ -454,7 +454,7 @@ public class CirculationService {
     public void deleteDocument(String scopeType, Long scopeId, Long documentId) {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 文書ライフサイクル管理（削除）は当該文書スコープの ADMIN/DEPUTY_ADMIN
+        // 文書ライフサイクル管理（削除）は当該文書スコープの ADMIN/DEPUTY_ADMIN
         // （または SYSTEM_ADMIN）のみ許可する。
         if (accessControlService != null) {
             checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
@@ -469,8 +469,7 @@ public class CirculationService {
     /**
      * 受信者一覧を取得する。
      *
-     * <p>認可根治 Wave3-B8: 受信者一覧の閲覧は文書の読取 ACL（作成者 or 受信者 or SystemAdmin）に従う。
-     * 是正前は documentId さえ分かれば無認可で全受信者（氏名・押印状況等）を列挙できる BOLA だった。
+     * <p>受信者一覧の閲覧は文書の読取 ACL（作成者 or 受信者 or SystemAdmin）に従う。
      * {@link ContentVisibilityChecker#assertCanView} が文書不在なら {@code VISIBILITY_004}（404）、
      * 非受信者なら {@code VISIBILITY_001}（403）で遮断する。Bean 不在のテスト構成では
      * {@code contentVisibilityChecker} が {@code null} 注入されガードはスキップされる。</p>
@@ -572,7 +571,7 @@ public class CirculationService {
         CirculationDocumentEntity document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
-        // 認可根治 Wave3-B8: 添付アップロードURLの発行は文書作成者 or 当該文書スコープの管理者のみ許可する。
+        // 添付アップロードURLの発行は文書作成者 or 当該文書スコープの管理者のみ許可する。
         if (accessControlService != null) {
             checkAttachmentManageAccess(document, SecurityUtils.getCurrentUserId());
         }
@@ -597,7 +596,7 @@ public class CirculationService {
     /**
      * 添付ファイル一覧を取得する。
      *
-     * <p>認可根治 Wave3-B8: 受信者一覧と同じ読取 ACL（作成者 or 受信者 or SystemAdmin）で保護する
+     * <p>受信者一覧と同じ読取 ACL（作成者 or 受信者 or SystemAdmin）で保護する
      * （{@link #listRecipients(Long)} と同一パターン）。</p>
      *
      * @param documentId 文書ID
@@ -627,8 +626,7 @@ public class CirculationService {
                                             CreateAttachmentRequest request) {
         CirculationDocumentEntity document = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 添付追加は文書作成者 or 当該文書スコープの管理者のみ許可する
-        // （Javadoc に「作成者チェックは上位で」とあったが実装されていなかった穴を塞ぐ）。
+        // 添付追加は文書作成者 or 当該文書スコープの管理者のみ許可する。
         if (accessControlService != null) {
             checkAttachmentManageAccess(document, SecurityUtils.getCurrentUserId());
         }
@@ -657,8 +655,7 @@ public class CirculationService {
      *   <li>文書が DRAFT 状態の場合のみ削除可能</li>
      *   <li>R2 オブジェクトをベストエフォートで削除（失敗時は WARN ログ）</li>
      *   <li>監査ログ {@code CIRCULATION_ATTACHMENT_DELETED} を発火</li>
-     *   <li>作成者本人チェックは本メソッド内で実施（認可根治 Wave3-B8。旧 Javadoc は「Controller /
-     *       上位ガード側で実施」としていたが未実装だった穴を塞ぐ）</li>
+     *   <li>作成者本人または当該文書スコープの管理者であることを本メソッド内で検証する</li>
      * </ul>
      * </p>
      *
@@ -672,7 +669,7 @@ public class CirculationService {
     public void removeAttachment(String scopeType, Long scopeId, Long documentId, Long attachmentId, Long userId) {
         CirculationDocumentEntity document = findDocumentOrThrow(scopeType, scopeId, documentId);
 
-        // 認可根治 Wave3-B8: 添付削除は文書作成者 or 当該文書スコープの管理者のみ許可する。
+        // 添付削除は文書作成者 or 当該文書スコープの管理者のみ許可する。
         if (accessControlService != null) {
             checkAttachmentManageAccess(document, userId);
         }
@@ -746,7 +743,7 @@ public class CirculationService {
      * @return 統計レスポンス
      */
     public DocumentStatsResponse getStats(String scopeType, Long scopeId) {
-        // 認可根治 Wave3-B8: 統計集計は当該スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ許可する。
+        // 統計集計は当該スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ許可する。
         // getStats は文書エンティティを介さない集計 API のため、path 由来の scopeType/scopeId で直接判定する。
         if (accessControlService != null) {
             checkScopeAdminAccess(scopeType, scopeId, SecurityUtils.getCurrentUserId());
@@ -997,7 +994,12 @@ public class CirculationService {
      * @throws BusinessException 当該スコープの管理者でない場合（COMMON_002、403）
      */
     private void checkScopeAdminAccess(CirculationDocumentEntity document, Long actorUserId) {
-        checkScopeAdminAccess(document.getScopeType(), document.getScopeId(), actorUserId);
+        if (accessControlService.isSystemAdmin(actorUserId)) {
+            return;
+        }
+        String scopeType = document.getScopeType();
+        requireScopeWithAdminConcept(scopeType);
+        accessControlService.checkAdminOrAbove(actorUserId, document.getScopeId(), scopeType);
     }
 
     /**
@@ -1016,11 +1018,20 @@ public class CirculationService {
         if (accessControlService.isSystemAdmin(actorUserId)) {
             return;
         }
+        requireScopeWithAdminConcept(scopeType);
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+    }
+
+    /**
+     * team / org 管理者の概念を持つスコープであることを要求する。
+     *
+     * <p>{@code PERSONAL} 等、当該概念を持たないスコープは SYSTEM_ADMIN 以外を
+     * {@code COMMON_002}（403）で遮断する（SYSTEM_ADMIN は呼び出し元で先に許可される）。</p>
+     */
+    private static void requireScopeWithAdminConcept(String scopeType) {
         if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
-            // PERSONAL 等、team/org 管理者の概念が無いスコープは SYSTEM_ADMIN のみ許可
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
-        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
     }
 
     /**
@@ -1037,7 +1048,12 @@ public class CirculationService {
         if (document.getCreatedBy() != null && document.getCreatedBy().equals(actorUserId)) {
             return;
         }
-        checkScopeAdminAccess(document, actorUserId);
+        if (accessControlService.isSystemAdmin(actorUserId)) {
+            return;
+        }
+        String scopeType = document.getScopeType();
+        requireScopeWithAdminConcept(scopeType);
+        accessControlService.checkAdminOrAbove(actorUserId, document.getScopeId(), scopeType);
     }
 
     /**

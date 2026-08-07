@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.timezone;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -37,10 +38,25 @@ import java.time.format.DateTimeParseException;
  *     <td>{@link #SERVER_ZONE} の壁時計として解釈する（＝恒等変換・旧挙動と一致）</td>
  *   </tr>
  *   <tr>
- *     <td>解釈不能</td>
+ *     <td>解釈不能・または値域超過（{@code year +999999999} 等の TZ 変換で EpochDay が
+ *         {@link LocalDateTime} の表現域を超える場合）</td>
  *     <td>{@link DateTimeParseException}。呼び出し側が各経路の 400 応答へ翻訳する</td>
  *   </tr>
  * </table>
+ *
+ * <h2>値域超過（Issue #2508 Phase 2）</h2>
+ *
+ * <p>{@code OffsetDateTime.parse(text)} は<b>構文解析には成功</b>したうえで、続く
+ * {@code atZoneSameInstant(SERVER_ZONE).toLocalDateTime()} が値域超過（例:
+ * {@code +999999999-12-31T23:59:59-18:00}）で {@link DateTimeException}（
+ * {@link DateTimeParseException} のスーパークラスであり、そのサブクラスではない）や
+ * {@link ArithmeticException} を投げることがある。オフセット無し分岐の
+ * {@code atZone(...).withZoneSameInstant(...)} も同じ穴を持つ。これらを補足せずに伝播させると
+ * 呼び出し側の {@code catch (DateTimeParseException)} を素通りし、400 ではなく 500 になる
+ * （実測: {@code LocalDateTimeQueryParamBindingTest#ac13_outOfRangeOffsetInput_returns400NotServerError}
+ * / {@code LocalDateTimeTimezoneDeserializerTest} の AC-13 で確認）。
+ * よって本メソッドは {@link DateTimeException} と {@link ArithmeticException} を
+ * {@link DateTimeParseException} へ正規化し、既存の「不正入力→400」経路に合流させる。</p>
  *
  * <h2>未解決を Asia/Tokyo として扱う理由</h2>
  *
@@ -49,6 +65,26 @@ import java.time.format.DateTimeParseException;
  * {@code get()} を無条件に信じると、フィルターを通らないバッチスレッドのオフセット無し入力が
  * UTC 壁時計として解釈され −9 時間ずれる。よって {@link TimezoneContextHolder#isResolved()} が
  * {@code true} のときだけユーザー TZ を採用する。</p>
+ *
+ * <h2>夏時間（DST）の gap / overlap の扱い（Issue #2508 Phase 2・意図的に JDK 既定へ委譲）</h2>
+ *
+ * <p>オフセット無し入力をユーザー TZ の壁時計として解釈する際（{@link #toServerWallClock}）、
+ * {@link LocalDateTime#atZone(ZoneId)} の<b>JDK 既定規則</b>にそのまま従う（独自のガード・補正は
+ * 意図して入れていない）。</p>
+ *
+ * <ul>
+ *   <li><b>gap（夏時間開始で存在しない時刻。例: America/Los_Angeles の
+ *       {@code 2027-03-14T02:30}）</b> — ギャップ長だけ<b>前送り</b>され、遷移後（夏時間側）の
+ *       オフセットが採用される（実測: {@code 02:30} → {@code 03:30 PDT(-07:00)}）。</li>
+ *   <li><b>overlap（夏時間終了で 2 回存在する時刻。例: America/Los_Angeles の
+ *       {@code 2027-11-07T01:30}）</b> — <b>早い方（遷移前＝夏時間側）</b>のオフセットが採用される
+ *       （実測: {@code 01:30} → {@code -07:00 PDT}）。</li>
+ * </ul>
+ *
+ * <p>いずれも 400 では弾かない（overlap は時刻自体が実在するため片手落ちの拒否になる。
+ * gap も含め、影響範囲が読み切れない拒否より現状の JDK 既定固定を優先する）。
+ * 実測値は {@code LocalDateTimeTimezoneDeserializerTest} の
+ * 「DST_gap_存在しない時刻は前送りされる」「DST_overlap_早い方のオフセットが採用される」で固定している。</p>
  */
 public final class UserZoneLocalDateTimeParser {
 
@@ -68,19 +104,27 @@ public final class UserZoneLocalDateTimeParser {
      *
      * @param text 入力文字列（トリム済みであること・空でないこと）
      * @return サーバー保持形式の {@link LocalDateTime}
-     * @throws DateTimeParseException オフセット付き・オフセット無しのいずれとしても解釈できない場合
+     * @throws DateTimeParseException オフセット付き・オフセット無しのいずれとしても解釈できない場合、
+     *      または解釈自体は成功しても TZ 変換の結果が値域超過になる場合
      */
     public static LocalDateTime parse(String text) {
+        OffsetDateTime withOffset;
         try {
-            // 1. オフセット付き: 瞬間が確定しているのでサーバー基準 TZ の壁時計へ変換する
-            return OffsetDateTime.parse(text)
-                    .atZoneSameInstant(SERVER_ZONE)
-                    .toLocalDateTime();
+            withOffset = OffsetDateTime.parse(text);
         } catch (DateTimeParseException withOffsetFailed) {
             // 2. オフセット無し: 解決済みならユーザー TZ の壁時計、未解決ならサーバー基準 TZ の壁時計
             //    ここで再度失敗した場合は DateTimeParseException がそのまま呼び出し側へ伝播する
             //    （握り潰さず 400 として失敗させるのが契約）
             return toServerWallClock(LocalDateTime.parse(text));
+        }
+        try {
+            // 1. オフセット付き: 瞬間が確定しているのでサーバー基準 TZ の壁時計へ変換する
+            return withOffset.atZoneSameInstant(SERVER_ZONE).toLocalDateTime();
+        } catch (DateTimeException | ArithmeticException outOfRange) {
+            // 構文解析には成功したが、TZ 変換の結果が LocalDateTime の表現域を超えた
+            // （DateTimeException は DateTimeParseException のスーパークラスなので素通りしうる）。
+            // 握り潰さず、既存の 400 経路（DateTimeParseException）へ正規化する。
+            throw outOfRangeAsParseException(text, outOfRange);
         }
     }
 
@@ -98,8 +142,28 @@ public final class UserZoneLocalDateTimeParser {
             // 恒等変換（国内ユーザー・バッチ・未認証）。無駄な TZ 往復を避ける
             return wallClock;
         }
-        return wallClock.atZone(inputZone)
-                .withZoneSameInstant(SERVER_ZONE)
-                .toLocalDateTime();
+        try {
+            return wallClock.atZone(inputZone)
+                    .withZoneSameInstant(SERVER_ZONE)
+                    .toLocalDateTime();
+        } catch (DateTimeException | ArithmeticException outOfRange) {
+            // parse() 側と同じ穴（値域超過）。同じく 400 経路へ正規化する
+            throw outOfRangeAsParseException(wallClock.toString(), outOfRange);
+        }
+    }
+
+    /**
+     * 値域超過（{@link DateTimeException} / {@link ArithmeticException}）を、
+     * 呼び出し元 3 箇所（{@code UserZoneLocalDateTimeFormatter} /
+     * {@code LocalDateTimeTimezoneDeserializer}）が握っている既存の
+     * {@code catch (DateTimeParseException)} 経路へ合流させるための正規化。
+     *
+     * <p>ここで個別に catch を広げさせず 1 箇所に集約するのは、このクラスの存在理由
+     * （解釈規則の一元化＝片方だけ直る事故の防止）と同じ理由による。</p>
+     */
+    private static DateTimeParseException outOfRangeAsParseException(String text, RuntimeException cause) {
+        DateTimeParseException wrapped = new DateTimeParseException(
+                "日時が表現可能な範囲を超えています: " + text, text, 0, cause);
+        return wrapped;
     }
 }

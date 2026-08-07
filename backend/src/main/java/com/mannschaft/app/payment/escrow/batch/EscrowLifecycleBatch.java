@@ -65,7 +65,7 @@ public class EscrowLifecycleBatch {
     @BatchEndpoint(name = "escrow-lifecycle-hourly",
             description = "謝礼 escrow の未確認放置を自動取消（PENDING_CONFIRMATION 期限超過 / HELD・AUTHORIZED hold 失効）")
     @Scheduled(fixedDelay = 3_600_000)
-    @SchedulerLock(name = "escrowLifecycleHourly", lockAtLeastFor = "PT5M", lockAtMostFor = "PT55M")
+    @SchedulerLock(name = "escrowLifecycleHourly", lockAtLeastFor = "PT5M", lockAtMostFor = "PT2H")
     public void run() {
         LocalDateTime now = LocalDateTime.now(clock);
         log.info("escrow ライフサイクルバッチ開始: now={}", now);

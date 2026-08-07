@@ -86,7 +86,10 @@ export function useGuardianshipApi() {
 
   /**
    * ① 子の今後の予定（横断カレンダー）を取得する。閲覧専用（見守り・件2）。
-   * from/to は LocalDateTime 文字列（"YYYY-MM-DDTHH:mm:ss"・schedule 系既存 EP と同一流儀）。
+   * from/to は**オフセット付き** ISO-8601 文字列（例: "2026-08-04T00:00:00+09:00"）。
+   * ナイーブな "YYYY-MM-DDTHH:mm:ss" を渡してはならない（Issue #2508。深夜0時にTZが切り替わる
+   * America/Santiago 等で非存在時刻となり、範囲の下端が1時間欠ける）。
+   * 呼び出し側は `useDatetime()` の `buildDayStartStr` / `buildDayEndStr` などで組み立てること。
    * 12歳以上（AGE_LOCKED）・リンク無し（LINK_NOT_FOUND）は 403（呼び出し側で errorCode 判定）。
    */
   async function getChildSchedules(childUserId: number, from: string, to: string) {

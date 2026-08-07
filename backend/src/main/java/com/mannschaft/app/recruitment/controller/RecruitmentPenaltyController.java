@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.LiftPenaltyRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentPenaltySettingResponse;
@@ -120,6 +121,8 @@ public class RecruitmentPenaltyController {
     /**
      * 自分のペナルティ確認（本人）。
      */
+    @SelfScopedEndpoint("RecruitmentPenaltyService#getMyPenalties が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/recruitment/penalties/me")
     @Operation(summary = "自分のペナルティ一覧 (本人)")
     public ResponseEntity<ApiResponse<List<RecruitmentUserPenaltyResponse>>> getMyPenalties() {

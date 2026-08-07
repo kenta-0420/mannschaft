@@ -28,14 +28,10 @@ const { showError, showSuccess } = useNotification()
 const { respondAttendance } = useScheduleApi()
 
 const submitting = ref(false)
+const { formatDateTime } = useDatetime()
 
 function close() {
   emit('update:visible', false)
-}
-
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleString()
 }
 
 async function respond(status: 'ATTENDING' | 'ABSENT' | 'UNDECIDED') {

@@ -35,14 +35,11 @@ import java.time.Duration;
  *   <li>監査ログ {@code CIRCULATION_EXPORT_REQUESTED} を発火</li>
  * </ul>
  *
- * <p>認可（認可根治 Wave4 是正）: 旧実装は Controller が JWT の {@code ROLE_ADMIN}
- * （スコープを問わない文字列一致）保持有無を渡し、本サービスが無条件にバイパスしていたため、
- * 「どこか 1 つのチーム/組織で ADMIN であれば他団体の COMPLETED 回覧の押印済み証跡 PDF を
- * 無認可 DL できる」BOLA だった。本サービスは
- * {@link #assertCanAccessExport(CirculationDocumentEntity, Long)} で
- * 「作成者 OR 受信者 OR 当該文書スコープの ADMIN/DEPUTY_ADMIN（SystemAdmin 含む）」の
- * いずれかを満たすかを {@link AccessControlService} で per-scope に確認する
- * （{@code CirculationService#checkScopeAdminAccess} と同型）。</p>
+ * <p>認可: 本サービスは {@link #assertCanAccessExport(CirculationDocumentEntity, Long)} で
+ * 「作成者 OR 拒否していない受信者 OR 当該文書スコープの ADMIN/DEPUTY_ADMIN（SystemAdmin 含む）」の
+ * いずれかを満たすことを {@link AccessControlService} により per-scope に確認する
+ * （{@code CirculationService#checkScopeAdminAccess} と同型）。判定に用いるスコープは
+ * 文書エンティティ由来であり、リクエストが申告した識別子は用いない。</p>
  *
  * <p>非同期ジョブ本体は {@link CirculationExportAsyncExecutor} に分離されている。
  * これは Spring の {@code @Async} プロキシが同一 Bean 内 self-call では効かないため、
@@ -183,9 +180,8 @@ public class CirculationExportService {
     /**
      * 認可判定: 作成者 / 受信者 / 当該文書スコープの ADMIN のいずれかを満たすか。
      *
-     * <p>認可根治 Wave4: グローバル {@code ROLE_ADMIN}（スコープを問わない文字列一致）による
-     * 無条件バイパスを廃し、{@link #isScopeAdmin} で当該文書の scopeType/scopeId に限定した
-     * 管理者判定に差し替えた。</p>
+     * <p>管理者判定は当該文書の scopeType / scopeId に限定した per-scope 判定であり、
+     * スコープを問わないグローバルなロール文字列は判定材料に用いない。</p>
      *
      * @throws BusinessException {@code COMMON_002} 権限不足
      */
@@ -203,34 +199,19 @@ public class CirculationExportService {
         if (isRecipient) {
             return;
         }
-        if (isScopeAdmin(entity, actorId)) {
+        // per-scope 管理者判定: SystemAdmin は常に許可、TEAM/ORGANIZATION は当該スコープの
+        // ADMIN/DEPUTY_ADMIN のみ許可、それ以外のスコープ（PERSONAL 等）は SystemAdmin 以外拒否する。
+        // accessControlService が null のテスト構成（Mockito @InjectMocks）では管理者経路を通さない。
+        if (accessControlService != null && accessControlService.isSystemAdmin(actorId)) {
+            return;
+        }
+        String scopeType = entity.getScopeType();
+        if (accessControlService != null
+                && ("TEAM".equals(scopeType) || "ORGANIZATION".equals(scopeType))
+                && accessControlService.isAdminOrAbove(actorId, entity.getScopeId(), scopeType)) {
             return;
         }
         throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
-    }
-
-    /**
-     * per-scope 管理者判定（認可根治 Wave4）。
-     *
-     * <p>{@code CirculationService#checkScopeAdminAccess} と同型のロジック:
-     * SystemAdmin は常に許可、TEAM/ORGANIZATION スコープは当該スコープの ADMIN/DEPUTY_ADMIN のみ許可、
-     * それ以外のスコープ（PERSONAL 等、team/org 管理者の概念が無い）は SystemAdmin 以外拒否する。</p>
-     *
-     * <p>{@code accessControlService} が {@code null} のテスト構成（Mockito {@code @InjectMocks}）では
-     * false を返しスキップする（既存の null-safe 防御パターン）。</p>
-     */
-    private boolean isScopeAdmin(CirculationDocumentEntity entity, Long actorId) {
-        if (accessControlService == null) {
-            return false;
-        }
-        if (accessControlService.isSystemAdmin(actorId)) {
-            return true;
-        }
-        String scopeType = entity.getScopeType();
-        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
-            return false;
-        }
-        return accessControlService.isAdminOrAbove(actorId, entity.getScopeId(), scopeType);
     }
 
 }

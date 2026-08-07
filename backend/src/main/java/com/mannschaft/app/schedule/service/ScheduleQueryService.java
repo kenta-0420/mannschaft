@@ -75,7 +75,9 @@ public class ScheduleQueryService {
             Long teamId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
                 .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
-        return toVisibleScheduleResponses(schedules, viewerUserId);
+        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.SCHEDULE, idsOf(schedules), viewerUserId);
+        return toVisibleScheduleResponses(schedules, visibleIds, viewerUserId);
     }
 
     /**
@@ -94,15 +96,25 @@ public class ScheduleQueryService {
             Long orgId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
                 .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
-        return toVisibleScheduleResponses(schedules, viewerUserId);
+        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.SCHEDULE, idsOf(schedules), viewerUserId);
+        return toVisibleScheduleResponses(schedules, visibleIds, viewerUserId);
+    }
+
+    /** スケジュール群の ID 一覧を返す（可視性判定を 1 回の呼び出しにまとめるための材料）。 */
+    private List<Long> idsOf(List<ScheduleEntity> schedules) {
+        return schedules.stream().map(ScheduleEntity::getId).toList();
     }
 
     /**
-     * チーム/組織スコープのスケジュール群を可視性フィルタにかけ、閲覧可能なものだけを
+     * チーム/組織スコープのスケジュール群を、判定済みの可視 ID 集合で絞り込み
      * レスポンス DTO に変換する。
      *
-     * <p>取得済み ID 群を 1 回の {@link ContentVisibilityChecker#filterAccessible} 呼び出しで
-     * 判定する（N+1 を避ける）。fail-closed 原則（Resolver 未登録時は空 Set）に従う。</p>
+     * <p>可視性判定そのものは呼び出し元の public 入口
+     * （{@link #listTeamSchedules} / {@link #listOrgSchedules}）が
+     * {@link ContentVisibilityChecker#filterAccessible} を 1 回だけ呼んで行う
+     * （N+1 を避けるとともに、認可判定を入口に置く）。fail-closed 原則
+     * （Resolver 未登録時は空 Set）に従い、集合に無いスケジュールは一切返さない。</p>
      *
      * <p>あわせて {@code myAttendanceStatus}（閲覧者自身の出欠状態）も
      * {@link #fetchMyAttendanceStatusByScheduleId} で 1 クエリバッチ取得し合流する
@@ -111,19 +123,17 @@ public class ScheduleQueryService {
      * （出欠レコード自体が存在しない = null、存在すれば実ステータス文字列）に揃える。</p>
      *
      * @param schedules    取得済みスケジュール（同一スコープ前提）
+     * @param visibleIds   閲覧可能と判定されたスケジュール ID 集合
      * @param viewerUserId 閲覧者ユーザーID
      * @return 可視なスケジュールの DTO 一覧（元の並び順を維持）
      */
     private List<ScheduleResponse> toVisibleScheduleResponses(
-            List<ScheduleEntity> schedules, Long viewerUserId) {
+            List<ScheduleEntity> schedules, Set<Long> visibleIds, Long viewerUserId) {
         if (schedules.isEmpty()) {
             return List.of();
         }
-        List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
-        Set<Long> visibleIds = contentVisibilityChecker
-                .filterAccessible(ReferenceType.SCHEDULE, ids, viewerUserId);
         Map<Long, String> myAttendanceStatusByScheduleId =
-                fetchMyAttendanceStatusByScheduleId(ids, viewerUserId);
+                fetchMyAttendanceStatusByScheduleId(idsOf(schedules), viewerUserId);
         return schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
                 .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId())))

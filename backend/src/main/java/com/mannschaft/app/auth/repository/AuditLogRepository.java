@@ -2,9 +2,7 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,25 +16,39 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLogEntity, Long> {
 
     /**
-     * 指定日時より前に作成された監査ログをページング取得する（アーカイブバッチ用）。
+     * 指定日時より前に作成された監査ログのうち、最も古い {@code createdAt} を返す
+     * （アーカイブバッチの走査開始月の決定用）。
      *
      * @param threshold 基準日時（この日時より前のログが対象）
-     * @param pageable  ページング情報
-     * @return スライス形式の監査ログ一覧
+     * @return 最古の作成日時。対象が1件も無ければ {@code null}
      */
-    @Query("SELECT a FROM AuditLogEntity a WHERE a.createdAt < :threshold ORDER BY a.id ASC")
-    Slice<AuditLogEntity> findOlderThan(@Param("threshold") LocalDateTime threshold, Pageable pageable);
+    @Query("SELECT MIN(a.createdAt) FROM AuditLogEntity a WHERE a.createdAt < :threshold")
+    LocalDateTime findOldestCreatedAtBefore(@Param("threshold") LocalDateTime threshold);
 
     /**
-     * 指定 ID より前の監査ログを物理削除する（アーカイブ完了後のクリーンアップ用）。
+     * 指定月の監査ログを <b>キーセットページング</b>（{@code id > cursor}）で昇順取得する
+     * （アーカイブバッチ用）。
      *
-     * @param maxId    削除対象の最大 ID（この ID 以下のレコードを削除）
-     * @param threshold 基準日時（この日時より前かつ maxId 以下のレコードを削除。二重チェック）
-     * @return 削除件数
+     * <p>オフセットページング（{@code PageRequest.of(0, N)} を繰り返す形）は、走査中に行を
+     * 削除も更新もしないバッチでは<b>毎回まったく同じ先頭ページを返し続ける</b>ため、
+     * アーカイブ出力に同一レコードが際限なく重複し、かつ2ページ目以降が永久に
+     * アーカイブされない。監査ログは後段でパーティションごと削除されるため、
+     * これは「アーカイブされないまま消える」データ欠損に直結する。カーソルを
+     * 直前ページの最終 {@code id} まで必ず前進させること。</p>
+     *
+     * @param from     対象月の開始日時（含む）
+     * @param to       対象月の翌月開始日時（含まない）
+     * @param cursor   直前ページの最終 ID（初回は 0）
+     * @param pageable ページング情報（サイズのみ使用。ソートは本クエリで固定）
+     * @return id 昇順の監査ログ一覧（該当なしは空リスト）
      */
-    @Modifying
-    @Query("DELETE FROM AuditLogEntity a WHERE a.id <= :maxId AND a.createdAt < :threshold")
-    int deleteArchivedLogs(@Param("maxId") Long maxId, @Param("threshold") LocalDateTime threshold);
+    @Query("SELECT a FROM AuditLogEntity a "
+            + "WHERE a.createdAt >= :from AND a.createdAt < :to AND a.id > :cursor "
+            + "ORDER BY a.id ASC")
+    List<AuditLogEntity> findMonthSliceAfterId(@Param("from") LocalDateTime from,
+                                               @Param("to") LocalDateTime to,
+                                               @Param("cursor") Long cursor,
+                                               Pageable pageable);
 
     /**
      * 指定ユーザーの、指定日時以降のアクティブ日数（ログイン成功日の distinct DATE 数）を数える。

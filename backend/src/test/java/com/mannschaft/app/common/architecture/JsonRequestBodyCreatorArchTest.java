@@ -4,7 +4,9 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaConstructor;
+import com.tngtech.archunit.core.domain.JavaEnumConstant;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -18,9 +20,11 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -87,8 +91,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *     <ul>
  *       <li><b>JSON 経路</b>: {@code @RequestBody} / {@code @RequestPart} が付いた引数の型</li>
  *       <li><b>フォーム経路</b>: {@code @ModelAttribute} が付いた引数、および
- *           <b>アノテーションを一切持たない複合型引数</b>（Spring が暗黙 {@code @ModelAttribute}
- *           として扱う）の型</li>
+ *           <b>バインド元を決める注釈を持たない複合型引数</b>（Spring が暗黙 {@code @ModelAttribute}
+ *           として扱う）の型。<b>{@code @Valid} / {@code @Validated} のような検証注釈は
+ *           バインド元を決めない</b>ため、それしか付いていない引数もここに入れる
+ *           （「注釈が 1 つでもあれば対象外」にすると、この形がどの経路にも入らず素通りする）</li>
  *     </ul>
  *     いずれも {@code List<Foo>} 等のジェネリクス入れ子は全関与生型へ展開し、
  *     配列 {@code Foo[]} は要素型まで剥がす。</li>
@@ -105,8 +111,15 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * 次を<b>すべて</b>満たすものを違反とする:</p>
  * <ul>
  *   <li>宣言コンストラクタが <b>2 本以上</b>ある</li>
- *   <li>{@code @JsonCreator} の付いたコンストラクタが<b>無い</b></li>
- *   <li>{@code @JsonCreator} の付いた<b>static ファクトリメソッド</b>も<b>無い</b></li>
+ *   <li><b>使える {@code @JsonCreator} が 1 本も無く</b>（コンストラクタ・static ファクトリの
+ *       いずれも。{@code mode = DISABLED} は creator の<b>明示的な打ち消し</b>なので
+ *       「付いている」ではなく「使える」で数える）、かつ
+ *       <b>{@code DISABLED} で打ち消されていないコンストラクタがちょうど 1 本ではない</b>
+ *       （0 本＝ creator 皆無／2 本以上＝一意に決められない。実測 2026-08-05 で
+ *       「2 本のうち片方が {@code DISABLED}」は残る 1 本が暗黙 creator になり正常に往復する）</li>
+ *   <li>または <b>properties-based creator が 2 本以上</b>ある
+ *       （Jackson はちょうど 1 本しか採れず Conflicting property-based creators で落ちる。
+ *       delegating creator との 1 本ずつの共存は正常なので properties-based だけを数える）</li>
  *   <li><b>引数無しコンストラクタが無い</b></li>
  *   <li>{@code @JsonDeserialize} で<b>クラス自身の生成手段</b>（{@code using} または {@code builder}）
  *       が指定されていない</li>
@@ -157,8 +170,27 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * {@link ArchUnitFreezeStoreIntegrityTest} の管理対象外である
  * （{@code memory/feedback_baseline_suppression_is_debt}: 凍結は免罪符にしない）。</p>
  *
+ * <h2>構造条件と実挙動の一致は実測で裏取りしている</h2>
+ * <p>本番人は「{@code @JsonCreator} が付いているか」「コンストラクタが何本か」という
+ * <b>構造</b>しか見ない。その構造条件が本当に「Jackson が実体を作れない形」と対応しているかは、
+ * {@link JsonRequestBodyCreatorRuntimeProofTest} が<b>本番同等設定の実 {@code ObjectMapper} で
+ * デシリアライズを走らせて</b>両方向（弾く形は本当に {@code InvalidDefinitionException} で落ちる／
+ * 通す形は本当に往復できる）を固定している。構造条件を変えるときは必ず同テストを先に更新すること。
+ *
  * <h2>限界（既知の偽陰性）</h2>
  * <ul>
+ *   <li><b>フォーム経路の「入れ子」型は守れていない。</b>
+ *       番人はフォーム経路の閉包に入れ子型も入れるが、判定は根と同じ
+ *       {@link #lacksResolvableConstructor(JavaClass)}（＝コンストラクタ 1 本なら合格）である。
+ *       ところが Spring がフォームの入れ子パス（{@code foo.bar}）に対して入れ子オブジェクトを
+ *       自動生成するのは {@code BeanWrapperImpl} の auto-grow であり、これは
+ *       {@code BeanUtils.instantiateClass(type)}＝<b>引数無しコンストラクタしか使わない</b>。
+ *       したがって「引数付きコンストラクタ 1 本だけ」の入れ子フォーム型は番人を通過するが
+ *       実行時には生成に失敗しうる。根（{@code @ModelAttribute} 直下の型）は
+ *       {@code getResolvableConstructor} で 1 本コンストラクタが使われるため条件が異なり、
+ *       同じ判定で両方を賄えていないのが本質。実測（2026-08-05）でフォーム経路の閉包に
+ *       入れ子アプリ型は存在せず現実の被害は無いが、フォーム DTO を入れ子構造にする際は
+ *       この穴が開いていることを前提に、入れ子型へ引数無しコンストラクタを必ず持たせること。</li>
  *   <li>{@code @JsonTypeInfo}/{@code @JsonSubTypes} によるポリモーフィック body の派生型は、
  *       フィールド型経由で到達しないため閉包に入らない。</li>
  *   <li><b>{@code @RequestBody}/{@code @RequestPart} を {@code String} で受けて
@@ -199,6 +231,35 @@ class JsonRequestBodyCreatorArchTest {
     /** Jackson の creator マーカー FQN。 */
     static final String JSON_CREATOR_ANNOTATION = "com.fasterxml.jackson.annotation.JsonCreator";
 
+    /** {@code @JsonProperty} FQN（creator の properties-based 判定に使う）。 */
+    static final String JSON_PROPERTY_ANNOTATION = "com.fasterxml.jackson.annotation.JsonProperty";
+
+    /** {@code @JsonCreator#mode} の enum 定数名。 */
+    private static final String CREATOR_MODE_DEFAULT = "DEFAULT";
+
+    private static final String CREATOR_MODE_PROPERTIES = "PROPERTIES";
+
+    private static final String CREATOR_MODE_DELEGATING = "DELEGATING";
+
+    private static final String CREATOR_MODE_DISABLED = "DISABLED";
+
+    /**
+     * バインド元を決定しない「非バインド注釈」の FQN 集合。
+     *
+     * <p>{@code @Valid} / {@code @Validated} は<b>検証を要求するだけ</b>でバインド元を選ばない。
+     * これらしか付いていない複合型引数は、Spring から見ればバインド注釈が無いのと同じで
+     * 暗黙の {@code @ModelAttribute} として実体化される。
+     * 「注釈が 1 つでもあればフォーム経路ではない」と判定すると、この形が<b>どの経路の
+     * 検査対象にも入らず</b>素通りする。
+     */
+    private static final Set<String> NON_BINDING_PARAMETER_ANNOTATIONS = Set.of(
+        "jakarta.validation.Valid",
+        "org.springframework.validation.annotation.Validated",
+        "jakarta.annotation.Nullable",
+        "jakarta.annotation.Nonnull",
+        "org.springframework.lang.Nullable",
+        "org.springframework.lang.NonNull");
+
     /** カスタム deserializer / builder 指定の脱出口 FQN。 */
     static final String JSON_DESERIALIZE_ANNOTATION =
         "com.fasterxml.jackson.databind.annotation.JsonDeserialize";
@@ -226,6 +287,12 @@ class JsonRequestBodyCreatorArchTest {
 
     /** D-7 検査対象の下限（走査ロジック破損の検知用。実測 1085 型に対する保守的な下限）。 */
     private static final int MIN_EXPECTED_PAYLOAD_BOUND_TYPES = 500;
+
+    /** JSON 経路（{@code @RequestBody}/{@code @RequestPart}）の走査件数の下限。 */
+    private static final int MIN_EXPECTED_JSON_BOUND_TYPES = 500;
+
+    /** フォーム経路（{@code @ModelAttribute}/バインド注釈なし複合型）の走査件数の下限。 */
+    private static final int MIN_EXPECTED_FORM_BOUND_TYPES = 1;
 
     @ArchTest
     static final ArchRule request_payload_types_must_be_constructible_by_their_binder =
@@ -257,14 +324,23 @@ class JsonRequestBodyCreatorArchTest {
      */
     @ArchTest
     static void payload_bound_type_scan_must_not_silently_become_empty(JavaClasses classes) {
-        int scanned = requestPayloadBoundTypes(classes).all().size();
-        if (scanned < MIN_EXPECTED_PAYLOAD_BOUND_TYPES) {
+        PayloadBoundTypes bound = requestPayloadBoundTypes(classes);
+        assertScanSize("和集合（両経路）", bound.all().size(), MIN_EXPECTED_PAYLOAD_BOUND_TYPES);
+        // 経路ごとに下限を置く。和集合だけを見ると、片方の経路の走査が丸ごと死んでも
+        // もう片方の件数で閾値を超えてしまい「番人が半分死んでいる」ことを検知できない。
+        assertScanSize("JSON 経路（@RequestBody/@RequestPart）",
+            bound.jsonBound().size(), MIN_EXPECTED_JSON_BOUND_TYPES);
+        assertScanSize("フォーム経路（@ModelAttribute/バインド注釈なし複合型）",
+            bound.formBound().size(), MIN_EXPECTED_FORM_BOUND_TYPES);
+    }
+
+    private static void assertScanSize(String pathName, int scanned, int minimum) {
+        if (scanned < minimum) {
             throw new AssertionError(String.format(
-                "D-7 の検査対象（@RequestBody/@RequestPart/@ModelAttribute から到達する型）が "
-                    + "%d 件しか見つからなかった（期待: %d 件以上）。"
+                "D-7 の検査対象 %s が %d 件しか見つからなかった（期待: %d 件以上）。"
                     + "走査ロジックが壊れて番人が「常に緑」になっている疑いが強い。"
                     + "requestPayloadBoundTypes() の Controller 走査・フィールド閉包を確認すること。",
-                scanned, MIN_EXPECTED_PAYLOAD_BOUND_TYPES));
+                pathName, scanned, minimum));
         }
     }
 
@@ -346,18 +422,31 @@ class JsonRequestBodyCreatorArchTest {
             return false;
         }
         Set<JavaConstructor> constructors = clazz.getConstructors();
-        if (constructors.size() < 2) {
-            // 単一コンストラクタは -parameters + ParameterNamesModule で暗黙 creator になる。
-            return false;
-        }
         if (hasNoArgConstructor(constructors)) {
             // 引数無しコンストラクタがあれば Jackson は既定 creator として実体を生成できる。
             return false;
         }
-        if (hasJsonCreatorConstructor(constructors)) {
-            return false;
+        // @JsonCreator は「付いているか」ではなく「使える creator を何本与えるか」で見る。
+        // mode = DISABLED は creator の明示的な打ち消しであり 1 本も与えない。
+        List<JavaCodeUnit> usableCreators = usableJsonCreators(clazz, constructors);
+        if (!usableCreators.isEmpty()) {
+            // properties-based creator は Jackson がちょうど 1 本しか採れない。
+            // 2 本以上宣言されると Conflicting property-based creators で構築に失敗する
+            // （delegating creator との共存は 1 本ずつなら正常なので properties-based だけを数える）。
+            return usableCreators.stream()
+                .filter(JsonRequestBodyCreatorArchTest::isPropertiesBasedCreator)
+                .count() >= 2;
         }
-        return !hasJsonCreatorStaticFactory(clazz);
+        // ここから先は「使える @JsonCreator が 1 本も無い」場合の暗黙解決の可否。
+        // mode = DISABLED で打ち消されたコンストラクタは候補から外れる。
+        // 実測（2026-08-05）: 2 本のうち片方が DISABLED なら残る 1 本が暗黙 creator として
+        // 採用され正常に往復する。逆に唯一のコンストラクタが DISABLED だと候補が 0 本になり、
+        // 「1 本だから暗黙 creator になる」という免責が成り立たず常時 500 になる。
+        long candidates = constructors.stream()
+            .filter(constructor -> !isDisabledJsonCreator(constructor))
+            .count();
+        // 候補 0 本＝ creator 皆無。候補 2 本以上＝どれを使うか一意に決められない。
+        return candidates != 1;
     }
 
     /**
@@ -409,8 +498,9 @@ class JsonRequestBodyCreatorArchTest {
     private static ArchCondition<JavaClass> beConstructibleByTheirBinder() {
         return new ArchCondition<>(
                 "be constructible by their binder when bound as a request payload "
-                    + "(@JsonCreator constructor/factory, or a no-arg constructor, "
-                    + "or a single constructor)") {
+                    + "(a no-arg constructor, or exactly one usable properties-based "
+                    + "@JsonCreator constructor/factory, or exactly one constructor that is not "
+                    + "disabled via @JsonCreator(mode = DISABLED))") {
 
             private Set<String> jsonBoundNames = Set.of();
             private Set<String> formBoundNames = Set.of();
@@ -484,15 +574,23 @@ class JsonRequestBodyCreatorArchTest {
     /**
      * 引数がフォームバインド（{@code @ModelAttribute}）の対象か。
      *
-     * <p>{@code @ModelAttribute} が明示されている場合に加え、<b>アノテーションを一切持たない</b>
-     * 引数も対象とする。Spring はこれを暗黙の {@code @ModelAttribute} として扱うためである。
-     * {@code HttpServletRequest} / {@code Pageable} / {@code Authentication} のような
+     * <p>{@code @ModelAttribute} が明示されている場合に加え、<b>バインド元を決める注釈を
+     * 一切持たない</b>引数も対象とする。Spring はこれを暗黙の {@code @ModelAttribute} として
+     * 扱うためである。ここで「注釈が 1 つも無い」ではなく「バインド注釈が無い」で判定するのが
+     * 要点で、{@code @Valid} だけが付いた複合型引数（検証を要求するだけでバインド元は選ばない）を
+     * 取り逃さないためである（{@link #NON_BINDING_PARAMETER_ANNOTATIONS}）。
+     *
+     * <p>{@code HttpServletRequest} / {@code Pageable} / {@code Authentication} のような
      * 引数リゾルバが処理する型もここに入るが、閉包は {@code com.mannschaft.app} 配下に
      * 限定しているため実害がない（実測でアプリパッケージの無注釈引数は 0 件）。
      */
     private static boolean isFormBoundParameter(JavaParameter parameter) {
-        return parameter.isAnnotatedWith(MODEL_ATTRIBUTE_ANNOTATION)
-            || parameter.getAnnotations().isEmpty();
+        if (parameter.isAnnotatedWith(MODEL_ATTRIBUTE_ANNOTATION)) {
+            return true;
+        }
+        return parameter.getAnnotations().stream()
+            .allMatch(annotation ->
+                NON_BINDING_PARAMETER_ANNOTATIONS.contains(annotation.getRawType().getName()));
     }
 
     /** アプリ配下のバインド可能クラスなら根の集合へ追加する（配列は要素型まで剥がす）。 */
@@ -572,15 +670,72 @@ class JsonRequestBodyCreatorArchTest {
             .anyMatch(constructor -> constructor.getRawParameterTypes().isEmpty());
     }
 
-    private static boolean hasJsonCreatorConstructor(Set<JavaConstructor> constructors) {
-        return constructors.stream()
-            .anyMatch(constructor -> constructor.isAnnotatedWith(JSON_CREATOR_ANNOTATION));
+    /**
+     * Jackson が実際に creator として採用しうる宣言（コンストラクタ＋ static ファクトリ）を返す。
+     *
+     * <p>{@code @JsonCreator(mode = Mode.DISABLED)} は「この宣言を creator として使うな」という
+     * <b>明示的な打ち消し</b>であり creator を与えない。注釈の<b>存在</b>だけを見ると、
+     * creator が 1 本も無い（＝ no suitable creator で常時 500）状態を合格にしてしまう。
+     */
+    private static List<JavaCodeUnit> usableJsonCreators(
+            JavaClass clazz, Set<JavaConstructor> constructors) {
+        List<JavaCodeUnit> creators = new ArrayList<>();
+        for (JavaConstructor constructor : constructors) {
+            if (isUsableJsonCreator(constructor)) {
+                creators.add(constructor);
+            }
+        }
+        for (JavaMethod method : clazz.getMethods()) {
+            if (method.getModifiers().contains(JavaModifier.STATIC) && isUsableJsonCreator(method)) {
+                creators.add(method);
+            }
+        }
+        return creators;
     }
 
-    private static boolean hasJsonCreatorStaticFactory(JavaClass clazz) {
-        return clazz.getMethods().stream()
-            .filter(method -> method.getModifiers().contains(JavaModifier.STATIC))
-            .anyMatch(method -> method.isAnnotatedWith(JSON_CREATOR_ANNOTATION));
+    /** {@code @JsonCreator(mode = DISABLED)} で creator としての採用を打ち消されているか。 */
+    private static boolean isDisabledJsonCreator(JavaCodeUnit codeUnit) {
+        return codeUnit.tryGetAnnotationOfType(JSON_CREATOR_ANNOTATION)
+            .map(annotation -> CREATOR_MODE_DISABLED.equals(creatorMode(annotation)))
+            .orElse(false);
+    }
+
+    /** {@code @JsonCreator} が付き、かつ {@code mode = DISABLED} で打ち消されていないか。 */
+    private static boolean isUsableJsonCreator(JavaCodeUnit codeUnit) {
+        return codeUnit.tryGetAnnotationOfType(JSON_CREATOR_ANNOTATION)
+            .map(annotation -> !CREATOR_MODE_DISABLED.equals(creatorMode(annotation)))
+            .orElse(false);
+    }
+
+    /**
+     * creator が properties-based（JSON オブジェクトのプロパティ単位で束ねる形）か。
+     *
+     * <p>Jackson の解決規則に合わせる: {@code mode} 明示があればそれに従い、既定
+     * （{@code DEFAULT}）の場合は「引数が 2 つ以上」または「いずれかの引数に {@code @JsonProperty}
+     * が付く」なら properties-based とみなす（それ以外は delegating 候補）。
+     */
+    private static boolean isPropertiesBasedCreator(JavaCodeUnit codeUnit) {
+        String mode = codeUnit.tryGetAnnotationOfType(JSON_CREATOR_ANNOTATION)
+            .map(JsonRequestBodyCreatorArchTest::creatorMode)
+            .orElse(CREATOR_MODE_DEFAULT);
+        if (CREATOR_MODE_PROPERTIES.equals(mode)) {
+            return true;
+        }
+        if (CREATOR_MODE_DELEGATING.equals(mode)) {
+            return false;
+        }
+        List<JavaParameter> parameters = codeUnit.getParameters();
+        return parameters.size() >= 2
+            || parameters.stream().anyMatch(p -> p.isAnnotatedWith(JSON_PROPERTY_ANNOTATION));
+    }
+
+    /** {@code @JsonCreator#mode} の enum 定数名（未指定なら {@code DEFAULT}）。 */
+    private static String creatorMode(JavaAnnotation<?> annotation) {
+        return annotation.get("mode")
+            .filter(JavaEnumConstant.class::isInstance)
+            .map(JavaEnumConstant.class::cast)
+            .map(JavaEnumConstant::name)
+            .orElse(CREATOR_MODE_DEFAULT);
     }
 
     /** 違反メッセージ用のコンストラクタ引数型シグネチャ一覧（安定した順序で出す）。 */

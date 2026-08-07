@@ -17,6 +17,8 @@ import com.mannschaft.app.event.dto.EventDelegationResponse;
 import com.mannschaft.app.event.dto.ProxyCheckinResponse;
 import com.mannschaft.app.event.service.EventDelegationService;
 import com.mannschaft.app.event.service.EventService;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -64,7 +66,12 @@ public class EventDelegationController {
 
     /**
      * 代理を指定する（委任者が操作。MEMBER+）。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventDelegationValidator#validateForCreate} が委任者・代理人ともスコープの
+     * アクティブメンバーであることを検証する。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/events/{eventId}/delegations")
     @Operation(summary = "代理指定", description = "F03.10 §4.2: 委任者が代理人を指定する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "指定成功")
@@ -80,7 +87,18 @@ public class EventDelegationController {
 
     /**
      * 自分の代理を取り消す（委任者。MEMBER+）。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code EventDelegationService#withdraw} が
+     * {@code findFirstByEventIdAndDelegatorIdAndStatusIn(eventId, delegatorId, ...)} と、
+     * 検索条件に {@code SecurityUtils.getCurrentUserId()} のみを渡すため、他人の代理を
+     * 取り消す経路が構造的に無い（EventDelegationController#withdraw）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "delegationService.withdraw(eventId, delegatorId) の delegatorId は"
+                    + "SecurityUtils.getCurrentUserId() のみで束縛される（EventDelegationController#withdraw）")
     @DeleteMapping("/events/{eventId}/delegations/me")
     @Operation(summary = "代理取り消し", description = "F03.10 §4.2: 委任者が自分の代理を取り消す")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取り消し成功")
@@ -121,7 +139,17 @@ public class EventDelegationController {
 
     /**
      * 自分の代理状況を確認する（MEMBER+）。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code findAsDelegator} / {@code findAsDelegate} はいずれも
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件に渡すため、
+     * 他人の代理状況を照会する経路が構造的に無い（EventDelegationController#me）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "findAsDelegator/findAsDelegate は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（EventDelegationController#me）")
     @GetMapping("/events/{eventId}/delegations/me")
     @Operation(summary = "自分の代理状況", description = "F03.10 §4.2: 委任者/代理人としての自分の代理状況を取得する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -144,7 +172,13 @@ public class EventDelegationController {
 
     /**
      * 代理を承認する（代理人本人。MEMBER+）。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventDelegationService#accept} が delegationId から取得した委任の
+     * {@code delegateId} と操作者を比較し、不一致なら {@code DELEGATION_NOT_DELEGATE} を投げる。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/event-delegations/{delegationId}/accept")
     @Operation(summary = "代理承認", description = "F03.10 §4.2: 代理人が代理を承認する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承認成功")
@@ -157,7 +191,13 @@ public class EventDelegationController {
 
     /**
      * 代理を拒否する（代理人本人。MEMBER+）。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventDelegationService#reject} が delegationId から取得した委任の
+     * {@code delegateId} と操作者を比較し、不一致なら {@code DELEGATION_NOT_DELEGATE} を投げる。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/event-delegations/{delegationId}/reject")
     @Operation(summary = "代理拒否", description = "F03.10 §4.2: 代理人が代理を拒否する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "拒否成功")
