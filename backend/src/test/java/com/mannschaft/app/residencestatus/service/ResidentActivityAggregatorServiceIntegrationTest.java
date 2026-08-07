@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * バッチ処理側（別トランザクション）での論理削除がこのテストのコンテキストから
  * 見えなくなる事故を避けるため（既知の罠）。検証は毎回 {@link EntityManager#clear()} 後に
  * DB から読み直した {@code deletedAt} の値そのもので行う。
+ *
+ * <p>その代わり、フィクスチャ投入は {@link TransactionTemplate} で明示的な
+ * トランザクションに包んで<b>コミットまで確定させる</b>。バッチ側は
+ * {@code REQUIRES_NEW} の独立トランザクションで動くため、未コミットのフィクスチャは
+ * そもそも見えないという事情もある。
  */
 @DisplayName("ResidentActivityAggregatorService#deleteOldSnapshots 統合テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -37,14 +43,24 @@ class ResidentActivityAggregatorServiceIntegrationTest extends AbstractMySqlInte
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired
+    private TransactionTemplate txTemplate;
+
     private static final Long ORG_ID = 8001L;
     private static final Long DWELLING_ID = 8101L;
     private static final Long REGISTRY_ID = 8201L;
     private static final Long USER_ID = 8301L;
 
+    /** 冪等テスト用。件数アサーションを行うテストと組織を分け、実行順に依存させない。 */
+    private static final Long ORG_ID_IDEMPOTENT = 8002L;
+
     private ResidentActivitySnapshot buildSnapshot(LocalDate snapshotDate) {
+        return buildSnapshot(snapshotDate, ORG_ID);
+    }
+
+    private ResidentActivitySnapshot buildSnapshot(LocalDate snapshotDate, Long organizationId) {
         return ResidentActivitySnapshot.builder()
-                .organizationId(ORG_ID)
+                .organizationId(organizationId)
                 .dwellingUnitId(DWELLING_ID)
                 .residentRegistryId(REGISTRY_ID)
                 .subjectUserId(USER_ID)
@@ -62,16 +78,18 @@ class ResidentActivityAggregatorServiceIntegrationTest extends AbstractMySqlInte
 
         // バッチサイズ定数を跨ぐ件数（AC-1: ループが回ることの証明）
         int oldCount = ResidentActivityAggregatorService.SNAPSHOT_DELETE_BATCH_SIZE + 250;
-        for (int i = 0; i < oldCount; i++) {
-            em.persist(buildSnapshot(oldDate));
-            if (i % 100 == 0) {
-                em.flush();
-                em.clear();
+        txTemplate.executeWithoutResult(status -> {
+            for (int i = 0; i < oldCount; i++) {
+                em.persist(buildSnapshot(oldDate));
+                if (i % 100 == 0) {
+                    em.flush();
+                    em.clear();
+                }
             }
-        }
-        // AC-2: cutoff 以降のものは削除対象外
-        em.persist(buildSnapshot(withinRetentionDate));
-        em.flush();
+            // AC-2: cutoff 以降のものは削除対象外
+            em.persist(buildSnapshot(withinRetentionDate));
+            em.flush();
+        });
         em.clear();
 
         service.deleteOldSnapshots();
@@ -104,17 +122,17 @@ class ResidentActivityAggregatorServiceIntegrationTest extends AbstractMySqlInte
     @DisplayName("既に論理削除済みのスナップショットは対象外（冪等）で updated_at が変化しない")
     void deleteOldSnapshots_既に削除済みは二重更新されない() {
         LocalDate oldDate = LocalDate.now().minusDays(40);
-        ResidentActivitySnapshot alreadyDeleted = buildSnapshot(oldDate);
-        em.persist(alreadyDeleted);
-        em.flush();
-
+        ResidentActivitySnapshot alreadyDeleted = buildSnapshot(oldDate, ORG_ID_IDEMPOTENT);
         LocalDateTime fixedDeletedAt = LocalDateTime.now().minusDays(10);
-        em.createNativeQuery(
-                        "UPDATE resident_activity_snapshots SET deleted_at = :deletedAt, updated_at = :deletedAt WHERE id = :id")
-                .setParameter("deletedAt", fixedDeletedAt)
-                .setParameter("id", alreadyDeleted.getId())
-                .executeUpdate();
-        em.flush();
+        txTemplate.executeWithoutResult(status -> {
+            em.persist(alreadyDeleted);
+            em.flush();
+            em.createNativeQuery(
+                            "UPDATE resident_activity_snapshots SET deleted_at = :deletedAt, updated_at = :deletedAt WHERE id = :id")
+                    .setParameter("deletedAt", fixedDeletedAt)
+                    .setParameter("id", alreadyDeleted.getId())
+                    .executeUpdate();
+        });
         em.clear();
 
         service.deleteOldSnapshots();
