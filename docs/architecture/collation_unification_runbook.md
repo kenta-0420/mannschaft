@@ -60,8 +60,8 @@ utf8mb4_0900_ai_ci へ変換すると一意制約に違反する既存データ�
    検査できていない索引が 1 つでもある限り、変換は安全とは言えない。
 
    ```sql
-   SELECT seq, reason, table_name, index_name, dup_groups, err_code, err_message, check_sql
-     FROM collation_precheck_findings ORDER BY seq;
+   SELECT reason, table_name, index_name, dup_groups, err_code, err_message, check_sql
+     FROM collation_precheck_findings ORDER BY table_name, index_name;
    ```
 
 1. メッセージ中の表・索引・列・サンプル値から、衝突している行を特定する。

@@ -120,7 +120,10 @@ SELECT TABLE_NAME
 --    中断せず正常終了した場合は不要なので末尾で DROP し、スキーマを汚さない。
 DROP TABLE IF EXISTS collation_precheck_findings;
 CREATE TABLE collation_precheck_findings (
-    seq          INT AUTO_INCREMENT PRIMARY KEY,
+    -- 主キーは (表名, 索引名) の自然キー。1 索引につき最大 1 行しか記録しないため一意である。
+    -- AUTO_INCREMENT の代理キーは使わない（MigrationPrimaryKeyConventionTest の
+    -- 「major>=70 の新規表に AUTO_INCREMENT 主キーを使わない」規約に従う。
+    --  順序付けのためだけの連番は自然キーで代替できるので、allowlist に逃がす理由が無い）。
     table_name   VARCHAR(64)  NOT NULL,
     index_name   VARCHAR(64)  NOT NULL,
     column_list  VARCHAR(512) NOT NULL,
@@ -138,7 +141,8 @@ CREATE TABLE collation_precheck_findings (
     -- 別の原因なのかが区別できず、原因究明がここで止まってしまうため。
     err_code     INT          NULL,
     err_message  VARCHAR(512) NULL,
-    check_sql    TEXT         NULL
+    check_sql    TEXT         NULL,
+    PRIMARY KEY (table_name, index_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =============================================================================
@@ -452,7 +456,7 @@ BEGIN
                          CONCAT(' errno=', COALESCE(err_code, 0)), ''))
           INTO v_head
           FROM collation_precheck_findings
-         ORDER BY seq
+         ORDER BY table_name, index_name
          LIMIT 1;
 
         SET @msg = LEFT(CONCAT(

@@ -110,12 +110,11 @@ class SchemaCollationConsistencyIT {
         try (Connection conn = connection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT seq, reason, table_name, index_name, column_list, dup_groups, "
+                     "SELECT reason, table_name, index_name, column_list, dup_groups, "
                              + "       err_code, err_message, check_sql "
-                             + "FROM collation_precheck_findings ORDER BY seq")) {
+                             + "FROM collation_precheck_findings ORDER BY table_name, index_name")) {
             while (rs.next()) {
-                sb.append("  #").append(rs.getInt("seq"))
-                        .append(" [").append(rs.getString("reason")).append("] ")
+                sb.append("  [").append(rs.getString("reason")).append("] ")
                         .append(rs.getString("table_name")).append('.')
                         .append(rs.getString("index_name"))
                         .append("\n      列=").append(rs.getString("column_list"));
