@@ -60,6 +60,9 @@ Mannschaft の「タスクの地図」は二層で構成する。
 | CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30）／第4波ロットA: chat・filesharing 29本を返済し凍結434→405（`ChatChannelAccessGuard` / `SharedFolderAccessGuard` を新設して認可判定を一元化、2026-08-05） | `2026-07-10-authz-idor-audit.md` |
 | CMP-018 | F08.7 シフト予算連動機能（Phase 9-β/γ/δ） | 実装中 | Phase 9-α（完了） | Phase 9-β（DDL+CRUD#1-5）／9-γ（TODO紐付#7-8）／9-δ（警告/月次締め+権限）の実装完了 | Phase 9-α 実装完了（2026-05-03）: 逆算API #6単独・feature.shift-budget.enabled既定false | — |
 | CMP-019 | TODO コメント棚卸し（FeatureFlag判定 34箇所ほか） | 未着手 | — | コード中の `// TODO` コメント（旧 `docs/TODO_LIST.txt` 記載分含む）を実チケット化し解消すること | — | — |
+| CMP-020 | 本番のみで顕在化するスキーマ差の是正（照合順序不一致） | 実機検証待ち | — | 実装は完了・main着地済み。残るは**本番環境の構築後に V175 を適用し、当該APIの復旧を実機で確認すること**（本番は未デプロイのため現時点では実施不能） | PR #2591 マージ済（squash `65a72380a`、CI 全10チェック SUCCESS）。全migration走査で全726表を3分類（明示unicode_ci 551/明示0900_ai_ci 33/サーバ既定依存 142）し実害JOIN 1件を特定。V175統一migration＋`SchemaCollationConsistencyIT`(9件)＋`MigrationCollationDeclarationGuardTest`＋runbook。ローカル実測 37 tests/0 failures（#2589） | — |
+| CMP-021 | 裏目付・第二陣の残務 | 未着手 | CMP-017 | #2541 の番人強化、#2544 の次の波、2スキーマ差分ITの導入判断、`my_scope_folder_items.scope_id` の符号性統一をすべて処理すること | 第二陣は 2026-07-30 完結（残=#2530） | — |
+| CMP-022 | 番人テスト群の走査ロジック監査 | 未着手 | — | migration SQL をテキスト走査する番人テスト群について、コメント未除去・一時表の誤帰属・文範囲の取り違えといった同型の欠陥を洗い出し是正すること | #2589 で `MigrationPrimaryKeyConventionTest` に3件の欠陥を実測（コメント中の語を違反として検出／`CREATE TEMPORARY TABLE` 未認識で違反を別表に誤帰属／本体が次のCREATE TABLEまで伸びる）。`CrossDomainForeignKeyArchTest` は行コメントのみ除去済みで対処が不統一 | — |
 
 台帳列はローカル限定（`.gitignore` 済み）のファイル名を指すため、clone 直後の環境や worktree には存在しない。`—` は「まだ台帳を作っていない」の意。戦役の再開時に台帳ファイルを作成したら、この列にファイル名を書き足すこと。
 

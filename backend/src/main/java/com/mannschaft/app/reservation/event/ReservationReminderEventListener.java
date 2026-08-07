@@ -13,6 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,7 +69,11 @@ public class ReservationReminderEventListener {
                 return;
             }
 
-            LocalDateTime now = LocalDateTime.now(clock);
+            // Issue #2526（表に無い同型バグとして監査で発見）: slotStartAt は業務ローカル時刻
+            // （slot_date/start_time 由来）のため、Clock の瞬間を JVM 既定ゾーンで解釈し直してから
+            // 比較する。ここで生成される remindAt も業務ローカル基準になるため、消費側
+            // （ReservationReminderService#findDueReminders）も同じ基準に揃える必要がある。
+            LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
             LocalDateTime slotStartAt = event.getSlotStartAt();
             List<LocalDateTime> remindAtList = new ArrayList<>();
             for (Integer h : hours) {

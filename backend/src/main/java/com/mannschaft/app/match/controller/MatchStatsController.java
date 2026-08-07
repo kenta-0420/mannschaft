@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.time.LocalDateTime;
 
@@ -66,6 +67,9 @@ public class MatchStatsController {
     // F.1 個人キャリア統計（本人・チーム横断）
     // ─────────────────────────────────────────────
 
+    // 認可: 呼び出し元(viewer)と対象 userId の一致を本メソッド内で直接検証する（下記 78-82 行目）。
+    // 不一致は MatchErrorCode.MATCH_010 で 403 相当として拒否する。
+    @AuthorizedInService
     @GetMapping("/users/{userId}/match-stats")
     @Operation(summary = "個人キャリア統計（本人のみ・チーム横断）")
     public ResponseEntity<ApiResponse<UserMatchStatsResponse>> getUserStats(
@@ -84,6 +88,9 @@ public class MatchStatsController {
                 aggregationService.aggregateUserStats(orgId.value(), userId, null, from, to, kind, sport)));
     }
 
+    // 認可: 呼び出し元(viewer)と対象 userId の一致を本メソッド内で直接検証する（下記 98-100 行目付近）。
+    // 不一致は MatchErrorCode.MATCH_010 で 403 相当として拒否する。
+    @AuthorizedInService
     @GetMapping("/users/{userId}/match-stats/timeline")
     @Operation(summary = "個人タイムライン（本人のみ・チーム横断・ページング）")
     public ResponseEntity<PagedResponse<UserMatchTimelineEntry>> getUserTimeline(
