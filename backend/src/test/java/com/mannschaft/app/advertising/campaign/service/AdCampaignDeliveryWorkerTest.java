@@ -35,7 +35,12 @@ class AdCampaignDeliveryWorkerTest {
     @Mock private AdMessagingCampaignRepository campaignRepository;
     @Mock private AdAudienceResolver audienceResolver;
     @Mock private AdCampaignDeliveryDispatcher dispatcher;
+    @Mock private AdCampaignDeliveryClaimService claimService;
     @InjectMocks private AdCampaignDeliveryWorker worker;
+
+    private void stubNoClaims() {
+        given(claimService.findClaimedUserIds(any(), any())).willReturn(java.util.Set.of());
+    }
 
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
@@ -60,9 +65,10 @@ class AdCampaignDeliveryWorkerTest {
     @DisplayName("processCampaign: 候補ユーザー全員に dispatcher.deliverForUser が呼ばれる")
     void processCampaign_全ユーザー配信() {
         AdMessagingCampaign campaign = buildCampaign();
+        stubNoClaims();
         given(audienceResolver.streamCandidateUserIds(campaign.getId()))
                 .willReturn(Stream.of(1L, 2L, 3L));
-        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(true);
+        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(AdDeliveryOutcome.DELIVERED);
 
         AdCampaignDeliveryWorker.DeliveryResult r = worker.processCampaign(campaign);
 
@@ -77,12 +83,13 @@ class AdCampaignDeliveryWorkerTest {
     @DisplayName("processCampaign: 1 ユーザー失敗で次ユーザーへ続行する")
     void processCampaign_例外で続行() {
         AdMessagingCampaign campaign = buildCampaign();
+        stubNoClaims();
         given(audienceResolver.streamCandidateUserIds(campaign.getId()))
                 .willReturn(Stream.of(1L, 2L, 3L));
-        given(dispatcher.deliverForUser(eq(campaign), eq(1L))).willReturn(true);
+        given(dispatcher.deliverForUser(eq(campaign), eq(1L))).willReturn(AdDeliveryOutcome.DELIVERED);
         given(dispatcher.deliverForUser(eq(campaign), eq(2L)))
                 .willThrow(new RuntimeException("user2 failure"));
-        given(dispatcher.deliverForUser(eq(campaign), eq(3L))).willReturn(true);
+        given(dispatcher.deliverForUser(eq(campaign), eq(3L))).willReturn(AdDeliveryOutcome.DELIVERED);
 
         AdCampaignDeliveryWorker.DeliveryResult r = worker.processCampaign(campaign);
 
@@ -100,10 +107,11 @@ class AdCampaignDeliveryWorkerTest {
         AdMessagingCampaign campaign = buildCampaign();
         int total = AdCampaignDeliveryWorker.CHUNK_SIZE + 10;
         List<Long> allIds = java.util.stream.LongStream.rangeClosed(1, total).boxed().toList();
+        stubNoClaims();
 
         given(audienceResolver.streamCandidateUserIds(campaign.getId()))
                 .willAnswer(inv -> allIds.stream());
-        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(true);
+        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(AdDeliveryOutcome.DELIVERED);
 
         // 1 回目: 先頭から CHUNK_SIZE 件のみ処理される（有界化）
         AdCampaignDeliveryWorker.DeliveryResult r1 = worker.processCampaign(campaign);
@@ -120,6 +128,27 @@ class AdCampaignDeliveryWorkerTest {
         for (long id = AdCampaignDeliveryWorker.CHUNK_SIZE + 1; id <= total; id++) {
             verify(dispatcher, times(1)).deliverForUser(campaign, id);
         }
+    }
+
+    @Test
+    @DisplayName("processCampaign: claim 済みユーザーは候補から除外され、CHUNK_SIZE を占有しない（飢餓防止）")
+    void processCampaign_excludesAlreadyClaimedBeforeChunking() {
+        AdMessagingCampaign campaign = buildCampaign();
+        // claim 済み(1,2) が候補の先頭に来ても、除外後に残る未配信ユーザー(3,4)へ到達できることを確認する
+        given(audienceResolver.streamCandidateUserIds(campaign.getId()))
+                .willReturn(Stream.of(1L, 2L, 3L, 4L));
+        given(claimService.findClaimedUserIds(eq(campaign.getId()), any()))
+                .willReturn(java.util.Set.of(1L, 2L));
+        given(dispatcher.deliverForUser(eq(campaign), anyLong())).willReturn(AdDeliveryOutcome.DELIVERED);
+
+        AdCampaignDeliveryWorker.DeliveryResult r = worker.processCampaign(campaign);
+
+        assertThat(r.users()).isEqualTo(2);
+        assertThat(r.delivered()).isEqualTo(2);
+        verify(dispatcher, never()).deliverForUser(campaign, 1L);
+        verify(dispatcher, never()).deliverForUser(campaign, 2L);
+        verify(dispatcher, times(1)).deliverForUser(campaign, 3L);
+        verify(dispatcher, times(1)).deliverForUser(campaign, 4L);
     }
 
     @Test
@@ -148,7 +177,8 @@ class AdCampaignDeliveryWorkerTest {
                 .willThrow(new RuntimeException("c1 failure"));
         given(audienceResolver.streamCandidateUserIds(c2.getId()))
                 .willReturn(Stream.of(10L));
-        given(dispatcher.deliverForUser(eq(c2), eq(10L))).willReturn(true);
+        given(claimService.findClaimedUserIds(eq(c2.getId()), any())).willReturn(java.util.Set.of());
+        given(dispatcher.deliverForUser(eq(c2), eq(10L))).willReturn(AdDeliveryOutcome.DELIVERED);
 
         worker.runDelivery();
 

@@ -128191,6 +128191,7 @@ export interface operations {
                 scope_id: number;
                 template_id?: number;
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path?: never;

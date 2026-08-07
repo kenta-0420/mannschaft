@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduledTaskStatus;
@@ -51,8 +52,9 @@ public class ScheduleScheduledTaskBatchService {
     /**
      * 予定本体（{@code schedules}）が日時を保持するタイムゾーン。
      * payload の TZ 付き締切をここへ変換して適用する（{@code ScheduleScheduledTaskService} と対）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
      */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleScheduledTaskRepository scheduledTaskRepository;
     private final ObjectMapper objectMapper;

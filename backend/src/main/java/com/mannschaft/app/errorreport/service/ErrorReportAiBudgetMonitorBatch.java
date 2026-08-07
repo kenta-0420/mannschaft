@@ -46,7 +46,7 @@ public class ErrorReportAiBudgetMonitorBatch {
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportAiBudgetMonitor",
-            lockAtMostFor = "PT5M",
+            lockAtMostFor = "PT2H",
             lockAtLeastFor = "PT30S")
     public void execute() {
         if (!props.getAi().isEnabled()) {

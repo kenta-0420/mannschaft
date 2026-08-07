@@ -46,7 +46,7 @@ public class ErrorReportAiHealthMonitor {
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportAiHealthMonitor",
-            lockAtMostFor = "PT5M",
+            lockAtMostFor = "PT2H",
             lockAtLeastFor = "PT30S")
     public void execute() {
         executeAt(LocalDateTime.now());

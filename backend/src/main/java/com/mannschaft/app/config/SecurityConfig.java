@@ -227,7 +227,10 @@ public class SecurityConfig {
                     "/api/v1/auth/register",
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/password-reset/**",
-                    "/api/v1/auth/email-verification/**",
+                    // メール認証（登録直後は未ログインのため未認証到達が必須。トークンは
+                    // EmailVerificationTokenEntity のワンタイム capability で検証。password-reset/** と同型）
+                    "/api/v1/auth/verify-email",
+                    "/api/v1/auth/verify-email/resend",
                     "/api/v1/auth/oauth/**",
                     // 2FA ログインフロー（MFA セッショントークンで認証するため既存セッション不要）
                     "/api/v1/auth/2fa/validate",

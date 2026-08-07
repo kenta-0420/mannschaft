@@ -27,9 +27,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link DelinquencyEscalationBatchService} のユニットテスト（F09.15 S5-C）。
+ * {@link DelinquencyEscalationBatchService} のユニットテスト（F09.15 S5-C / Issue #2601）。
  *
- * <p>外部依存（Repository / DelinquencyEscalationService）はすべて Mockito スタブ化する。
+ * <p>外部依存（Repository / {@link DelinquencyEscalationAdvanceRunner}）はすべて Mockito スタブ化する。
+ * 個別トランザクション化（REQUIRES_NEW）は {@link DelinquencyEscalationAdvanceRunner} に切り出し済みのため、
+ * 本テストではその呼び出し可否のみを検証する（実トランザクション境界は統合テストで検証する）。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DelinquencyEscalationBatchService")
@@ -39,7 +41,7 @@ class DelinquencyEscalationBatchServiceTest {
     private DelinquencyEscalationRepository escalationRepository;
 
     @Mock
-    private DelinquencyEscalationService escalationService;
+    private DelinquencyEscalationAdvanceRunner advanceRunner;
 
     @InjectMocks
     private DelinquencyEscalationBatchService batchService;
@@ -167,13 +169,13 @@ class DelinquencyEscalationBatchServiceTest {
 
             when(escalationRepository.findByResolvedAtIsNullAndFrozenAtIsNullAndDeletedAtIsNull())
                     .thenReturn(List.of(stage1entity));
-            when(escalationService.advanceStage(eq(id60), eq(ORG_ID)))
+            when(advanceRunner.advanceStage(eq(id60), eq(ORG_ID)))
                     .thenReturn(stage1entity);
 
             batchService.advanceEscalations();
 
             // D+65 で STAGE_1 のため STAGE_2 への昇格が呼ばれる
-            verify(escalationService).advanceStage(id60, ORG_ID);
+            verify(advanceRunner).advanceStage(id60, ORG_ID);
         }
 
         @Test
@@ -186,13 +188,13 @@ class DelinquencyEscalationBatchServiceTest {
 
             when(escalationRepository.findByResolvedAtIsNullAndFrozenAtIsNullAndDeletedAtIsNull())
                     .thenReturn(List.of(entity));
-            when(escalationService.advanceStage(eq(id), eq(ORG_ID)))
+            when(advanceRunner.advanceStage(eq(id), eq(ORG_ID)))
                     .thenReturn(entity);
 
             batchService.advanceEscalations();
 
             // STAGE_4 への昇格（advanceStage 内で markDeathSuspected が呼ばれる）
-            verify(escalationService).advanceStage(id, ORG_ID);
+            verify(advanceRunner).advanceStage(id, ORG_ID);
         }
 
         @Test
@@ -205,7 +207,7 @@ class DelinquencyEscalationBatchServiceTest {
 
             batchService.advanceEscalations();
 
-            verify(escalationService, never()).advanceStage(any(), any());
+            verify(advanceRunner, never()).advanceStage(any(), any());
         }
 
         @Test
@@ -218,7 +220,7 @@ class DelinquencyEscalationBatchServiceTest {
 
             batchService.advanceEscalations();
 
-            verify(escalationService, never()).advanceStage(any(), any());
+            verify(advanceRunner, never()).advanceStage(any(), any());
         }
 
         @Test
@@ -234,7 +236,7 @@ class DelinquencyEscalationBatchServiceTest {
             batchService.advanceEscalations();
 
             // D+29 は requiredStage = null のため昇格しない
-            verify(escalationService, never()).advanceStage(any(), any());
+            verify(advanceRunner, never()).advanceStage(any(), any());
         }
 
         @Test
@@ -251,17 +253,17 @@ class DelinquencyEscalationBatchServiceTest {
                     .thenReturn(List.of(entity1, entity2));
 
             // entity1 は失敗、entity2 は成功
-            when(escalationService.advanceStage(eq(id1), eq(ORG_ID)))
+            when(advanceRunner.advanceStage(eq(id1), eq(ORG_ID)))
                     .thenThrow(new RuntimeException("昇格失敗"));
-            when(escalationService.advanceStage(eq(id2), eq(ORG_ID)))
+            when(advanceRunner.advanceStage(eq(id2), eq(ORG_ID)))
                     .thenReturn(entity2);
 
             // バッチは例外を吐かない（内部でキャッチしてログを記録）
             batchService.advanceEscalations();
 
             // 両方に advanceStage が呼ばれている（バッチが継続している）
-            verify(escalationService).advanceStage(id1, ORG_ID);
-            verify(escalationService).advanceStage(id2, ORG_ID);
+            verify(advanceRunner).advanceStage(id1, ORG_ID);
+            verify(advanceRunner).advanceStage(id2, ORG_ID);
         }
     }
 

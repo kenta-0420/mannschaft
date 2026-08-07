@@ -110,6 +110,12 @@ public class SuccessionCovenantService {
         ResidentRegistryEntity resident = residentRegistryRepository.findById(req.getResidentRegistryId())
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.RESIDENT_REGISTRY_NOT_FOUND));
 
+        // 本人の居住者台帳であることを検証（他人の residentRegistryId を指定した
+        // 代理署名・PII 混入・多重署名ロックを防ぐ。存在秘匿のため NOT_FOUND を返す）。
+        if (resident.getUserId() == null || !resident.getUserId().equals(currentUserId)) {
+            throw new BusinessException(SuccessionErrorCode.RESIDENT_REGISTRY_NOT_FOUND);
+        }
+
         DwellingUnitEntity unit = dwellingUnitRepository.findById(resident.getDwellingUnitId())
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.DWELLING_UNIT_NOT_FOUND));
 

@@ -211,6 +211,7 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // 3. 一覧の自己スコープ
     // ═════════════════════════════════════════════════════════════════════
 
+    /** FavoriteController#listFavorites の自己スコープ性を固定する。 */
     @Nested
     @DisplayName("3. お気に入り一覧（自己スコープ）")
     class ListFavorites {

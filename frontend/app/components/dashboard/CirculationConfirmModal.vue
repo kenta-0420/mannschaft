@@ -33,6 +33,7 @@ const userId = computed(() => authStore.currentUser?.id ?? null)
 const seals = ref<ElectronicSeal[]>([])
 const loadingSeals = ref(false)
 const stamping = ref(false)
+const { formatDate } = useDatetime()
 
 /** 印鑑が1つ以上あるか */
 const hasSeal = computed(() => seals.value.length > 0)
@@ -73,12 +74,6 @@ async function onConfirm() {
   } finally {
     stamping.value = false
   }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return d.toLocaleDateString()
 }
 
 // immediate: true が必須。利用側（ScopeActionRequiredWidget / WidgetCommandCenter）は

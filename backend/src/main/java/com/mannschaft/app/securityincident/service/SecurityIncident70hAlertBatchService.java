@@ -51,7 +51,7 @@ public class SecurityIncident70hAlertBatchService {
             description = "セキュリティインシデントの70時間アラートを SYSTEM_ADMIN に送信する"
     )
     @Scheduled(cron = "0 */30 * * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "security_incident_70h_alert", lockAtMostFor = "PT9M", lockAtLeastFor = "PT1M")
+    @SchedulerLock(name = "security_incident_70h_alert", lockAtMostFor = "PT60M", lockAtLeastFor = "PT1M")
     @Transactional(readOnly = true)
     public void checkAndAlert() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(70);

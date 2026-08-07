@@ -110,4 +110,28 @@ class TimelineFeedControllerTest {
             assertThat(body.getMeta().getLimit()).isEqualTo(20);
         }
     }
+
+    /**
+     * TimelineFeedController#getMyFeed の自己スコープ性を固定する契約テスト。
+     * {@code postService.getMyFeed} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に束縛する（cursor/limit は非識別子パラメータ）ため、
+     * URL・クエリに他人の識別子を指定する余地が構造的に無い。
+     */
+    @Nested
+    @DisplayName("getMyFeed - 自己スコープ")
+    class GetMyFeedSelfScope {
+
+        @Test
+        @DisplayName("SecurityUtils.getCurrentUserId() のみを検索条件に渡す")
+        void getMyFeed_boundToCurrentUserOnly() {
+            PostResponse post = PostResponse.builder().id(1L).build();
+            given(postService.getMyFeed(eq(USER_ID), any(), anyInt())).willReturn(List.of(post));
+
+            ResponseEntity<TimelineFeedResponse> response = controller.getMyFeed(null, 20);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            // 他人の userId をクエリに渡す経路が存在しないことの裏取り: 呼び出しは常に USER_ID のみ。
+            verify(postService).getMyFeed(USER_ID, null, 20);
+        }
+    }
 }

@@ -51,7 +51,7 @@ public class ErrorReportSlaOverdueAlertBatch {
     @Scheduled(cron = "0 0/30 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportSlaOverdueAlert",
-            lockAtMostFor = "PT10M",
+            lockAtMostFor = "PT60M",
             lockAtLeastFor = "PT1M")
     public void run() {
         try {

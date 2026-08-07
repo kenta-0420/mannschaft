@@ -55,10 +55,16 @@ vi.mock('~/composables/useFavoritesApi', () => ({
 // useAuthStore は ref ベースで isAuthenticated を切替できるようにする
 const mockIsAuthenticated = ref(true)
 vi.mock('~/stores/useAuthStore', () => ({
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
   useAuthStore: () => ({
     get isAuthenticated() {
       return mockIsAuthenticated.value
     },
+    loadFromStorage: vi.fn(),
+    // isAuthenticated=true の既定値だと auth.client.ts の armProactiveRefresh が発火し、
+    // トークン更新失敗時に authStore.logout() を呼ぶ（#2609是正: 未モックで Unhandled Rejection）。
+    // このテストでは検証対象外の副作用のため無害化する。
+    logout: vi.fn(),
   }),
 }))
 

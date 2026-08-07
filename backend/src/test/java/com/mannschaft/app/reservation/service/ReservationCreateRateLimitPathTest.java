@@ -130,7 +130,7 @@ class ReservationCreateRateLimitPathTest {
                 FIXED_CLOCK);
 
         // 単枠は枠解決で止める（レートリミット消費より後）。
-        given(slotService.getSlotEntity(anyLong()))
+        given(slotService.getSlotEntity(anyLong(), anyLong()))
                 .willThrow(new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
     }
 

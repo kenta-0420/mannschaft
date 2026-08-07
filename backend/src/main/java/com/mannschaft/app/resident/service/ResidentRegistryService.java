@@ -196,6 +196,39 @@ public class ResidentRegistryService {
     }
 
     /**
+     * 指定ユーザーが指定組織の現役居住者（active、moveOutDate 無し）であるかを判定する。
+     *
+     * <p>他ドメイン（例: residencestatus）からの越境呼び出しの受け口。モジュラーモノリスの
+     * 「ドメイン間はID参照＋Service経由のみ」原則に従い、{@link ResidentRegistryEntity} を
+     * 境界の外へ返さず boolean のみを返す（呼び出し側は resident ドメインの Repository/Entity へ
+     * 直接依存しない）。</p>
+     *
+     * @param userId         判定対象ユーザー ID
+     * @param organizationId 組織 ID
+     * @return 当該組織の現役居住者であれば true
+     */
+    public boolean isActiveResidentOfOrganization(Long userId, Long organizationId) {
+        return residentRepository.findActiveByUserIdAndOrganizationId(userId, organizationId).isPresent();
+    }
+
+    /**
+     * 指定の居住者台帳 ID の所有者（userId）が、指定ユーザーと一致するかを判定する。
+     *
+     * <p>他ドメインからのBOLA対策（未検証の residentRegistryId が永続記録へ到達する事故を防ぐ）
+     * の受け口。台帳が存在しない場合は false を返す（存在秘匿は呼び出し側の責務）。</p>
+     *
+     * @param residentRegistryId 居住者台帳 ID（呼び出し元のリクエストボディ等、信頼できない入力）
+     * @param userId             所有者として期待するユーザー ID（認証主体）
+     * @return 台帳が実在し、かつその所有者が userId と一致すれば true
+     */
+    public boolean isResidentRegistryOwnedBy(Long residentRegistryId, Long userId) {
+        return residentRepository.findById(residentRegistryId)
+                .map(ResidentRegistryEntity::getUserId)
+                .map(userId::equals)
+                .orElse(false);
+    }
+
+    /**
      * D+120 エスカレーション到達時の自動起票: death_status を ALIVE → SUSPECTED に変更する。
      *
      * <p>既に SUSPECTED / CONFIRMED の場合は何もしない（冪等）。

@@ -95,7 +95,7 @@ class ReservationRecurringServiceTest {
                 viewAccessGuard, createRateLimiter, reservationService, slotService,
                 slotResolver, FIXED_CLOCK);
 
-        given(slotService.getSlotEntity(BASE_SLOT_ID)).willReturn(baseSlot());
+        given(slotService.getSlotEntity(TEAM_ID, BASE_SLOT_ID)).willReturn(baseSlot());
 
         // 予約作成は「成功して ID を採番する」ふるまいに固定する（呼び出し順も記録）。
         willAnswer(inv -> {

@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -191,7 +192,9 @@ public class ReservationService {
      */
     private ReservationResponse doCreateReservation(
             Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
-        ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
+        // Issue #2538: reservationSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する。他チームの枠 id を渡した場合は SLOT_NOT_FOUND（404）で秘匿する。
+        ReservationSlotEntity slot = slotService.getSlotEntity(teamId, request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
             throw new BusinessException(
@@ -424,7 +427,10 @@ public class ReservationService {
                 t -> reservationPolicyService.getOrDefault(t).getCancelDeadlineHours());
         LocalDateTime deadline =
                 LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
-        return LocalDateTime.now(clock).isAfter(deadline);
+        // Issue #2526: deadline は slot_date/start_time（業務ローカル時刻）由来のため、
+        // Clock（UTC固定）の瞬間を JVM 既定ゾーンで解釈し直してから比較する
+        // （ReservationPendingExpireService#findExpirableUnits と同型）。
+        return LocalDateTime.now(clock.withZone(ZoneId.systemDefault())).isAfter(deadline);
     }
 
     /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
@@ -711,10 +717,14 @@ public class ReservationService {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
+        // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
+        // 自チームの枠であることが保証されている（teamId スコープ不要）。
         ReservationSlotEntity oldSlot = slotService.getSlotEntity(entity.getReservationSlotId());
         slotService.decrementAndReopen(oldSlot);
 
-        ReservationSlotEntity newSlot = slotService.getSlotEntity(request.getNewSlotId());
+        // newSlot: request.newSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する（Issue #2538）。他チームの枠 id は 404 で秘匿する。
+        ReservationSlotEntity newSlot = slotService.getSlotEntity(teamId, request.getNewSlotId());
         if (!newSlot.isAvailable()) {
             throw new BusinessException(ReservationErrorCode.SLOT_FULL);
         }
@@ -782,8 +792,9 @@ public class ReservationService {
      */
     public List<ReservationResponse> listUpcomingReservations(Long userId) {
         // 直近予約は「申込時刻（booked_at）」ではなく「来店日時（枠の日付＋開始時刻）」で判定する。
-        // 現在時刻は注入 Clock 基準（cancel_deadline 等と同様）。
-        LocalDateTime now = LocalDateTime.now(clock);
+        // Issue #2526（表に無い同型バグとして監査で発見）: 来店日時は業務ローカル時刻のため、
+        // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（cancel_deadline 等と同様）。
+        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
         List<ReservationEntity> reservations =
                 reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
         return enrichList(reservations);

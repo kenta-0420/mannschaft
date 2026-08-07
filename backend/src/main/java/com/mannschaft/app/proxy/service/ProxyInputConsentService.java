@@ -52,6 +52,9 @@ public class ProxyInputConsentService {
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentCreatedEventで分離予定
     public ProxyInputConsentEntity createConsent(Long requestUserId, Long organizationId,
                                                   CreateProxyConsentCommand command) {
+        // 権限チェック（DEPUTY_ADMIN以上）。組合IDはURLパス由来のためここで検証する。
+        accessControlService.checkAdminOrAbove(requestUserId, organizationId, "ORGANIZATION");
+
         // 有効期間の上限チェック（最長1年）
         long days = command.effectiveFrom().until(command.effectiveUntil(), java.time.temporal.ChronoUnit.DAYS);
         if (days > MAX_CONSENT_DAYS || days <= 0) {
