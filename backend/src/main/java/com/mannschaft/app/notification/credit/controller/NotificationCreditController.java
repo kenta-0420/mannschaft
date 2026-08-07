@@ -82,12 +82,10 @@ public class NotificationCreditController {
     /**
      * 販売中パッケージ一覧を取得する（認証済みユーザー）。
      *
-     * <p>全ユーザーに同一内容を返すマスタ参照 EP（組織固有・ユーザー固有データを含まない）。
-     * {@code /api/v1/notification-credits/**} は permitAll 未登録のため
-     * {@code SecurityConfig.java:457 — anyRequest().authenticated()} で認証必須が強制される。</p>
-     *
      * @return パッケージレスポンスリスト
      */
+    // SecurityConfig.java:457 の anyRequest().authenticated() で認証必須。応答は販売中パッケージの
+    // マスタ情報のみで、全認証済みユーザーに同一の結果を返す（利用者固有情報を含まない）。
     @AuthorizedByPathConfig
     @GetMapping("/api/v1/notification-credits/packages")
     @Operation(summary = "通知クレジットパッケージ一覧")

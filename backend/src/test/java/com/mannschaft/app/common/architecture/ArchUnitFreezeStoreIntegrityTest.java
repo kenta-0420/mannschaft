@@ -609,8 +609,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
+     *
+     * <p>43 → 30（Wave6 ロットF・2026-08-08）: reflection 10 行 / corkboard 2 行 /
+     * advertising 1 行の計13行を返済。対象データの検索・更新条件が認証主体
+     * （{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。本コミットは同時に
+     * origin/main 側で先行着地した Wave7 ロットA（PR #2670・notification 1行/todo 7行を
+     * 別途返済済み・74→43）との合流も反映しており、43 という起点値自体が既にロットAの
+     * 返済後の実測値である。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 74;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 30;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

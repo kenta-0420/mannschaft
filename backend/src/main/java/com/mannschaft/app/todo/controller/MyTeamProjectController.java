@@ -37,9 +37,8 @@ public class MyTeamProjectController {
     /**
      * 自分が所属する全チームのプロジェクトを集約取得する。
      */
-    @SelfScopedEndpoint("ProjectService#listTeamProjectsForUser が"
-            + " userId=SecurityUtils.getCurrentUserId() の所属チームからのみプロジェクトを解決する"
-            + "（TodoPersonalScopeContractIT の 7. で固定）")
+    @SelfScopedEndpoint("集約対象のチームは SecurityUtils.getCurrentUserId() の所属から解決し、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyTeamProjects メソッド本体）")
     @GetMapping("/team-projects")
     @Operation(summary = "所属チームのプロジェクト集約")
     public ResponseEntity<PagedResponse<TeamProjectSummaryResponse>> listMyTeamProjects(

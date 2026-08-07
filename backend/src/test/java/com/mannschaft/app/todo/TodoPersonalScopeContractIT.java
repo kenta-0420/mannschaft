@@ -333,9 +333,8 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * {@code PersonalTodoController#getMyTodos} / {@code PersonalTodoController#getGanttTodos} /
-     * {@code PersonalTodoController#createPersonalTodo} の自己スコープ性を固定する
-     * （@SelfScopedEndpoint 契約テスト）。
+     * PersonalTodoController#getMyTodos・PersonalTodoController#getGanttTodos・
+     * PersonalTodoController#createPersonalTodo の自己スコープ性を固定する。
      */
     @Nested
     @DisplayName("5. 自己スコープ EP（一覧・ガント・作成）")
@@ -435,8 +434,8 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * {@code UserProjectController#listProjects} / {@code UserProjectController#createProject}
-     * の自己スコープ性を固定する（@SelfScopedEndpoint 契約テスト）。
+     * UserProjectController#listProjects・UserProjectController#createProject の
+     * 自己スコープ性を固定する。
      */
     @Nested
     @DisplayName("6. /users/me/projects（個人プロジェクト一覧・作成）")
@@ -493,8 +492,8 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * {@code MyTeamProjectController#listMyTeamProjects} / {@code MyOrgProjectController#listMyOrgProjects}
-     * の自己スコープ性を固定する（@SelfScopedEndpoint 契約テスト）。
+     * MyTeamProjectController#listMyTeamProjects・MyOrgProjectController#listMyOrgProjects の
+     * 自己スコープ性を固定する。
      */
     @Nested
     @DisplayName("7. /me/team-projects・/me/org-projects（集約）")

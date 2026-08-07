@@ -3,7 +3,6 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
@@ -14,6 +13,7 @@ import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
 import com.mannschaft.app.todo.dto.UpdateProjectRequest;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.todo.security.ProjectAccessGuard;
 import com.mannschaft.app.todo.service.ProjectService;
 import com.mannschaft.app.todo.service.TodoService;
@@ -66,9 +66,8 @@ public class UserProjectController {
     /**
      * 個人プロジェクト一覧を取得する。
      */
-    @SelfScopedEndpoint("ProjectService#listProjects が"
-            + " TodoScopeType.PERSONAL + userId=SecurityUtils.getCurrentUserId() のみを検索条件に使う"
-            + "（TodoPersonalScopeContractIT の 6. で固定）")
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listProjects メソッド本体）")
     @GetMapping
     @Operation(summary = "プロジェクト一覧（個人）")
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
@@ -83,9 +82,8 @@ public class UserProjectController {
     /**
      * 個人プロジェクトを作成する。
      */
-    @SelfScopedEndpoint("ProjectService#createProject が"
-            + " TodoScopeType.PERSONAL + userId=SecurityUtils.getCurrentUserId() を所有者として登録する"
-            + "（TodoPersonalScopeContractIT の 6. で固定）")
+    @SelfScopedEndpoint("作成対象の所有者は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（createProject メソッド本体）")
     @PostMapping
     @Operation(summary = "プロジェクト作成（個人）")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(

@@ -39,9 +39,8 @@ public class MyOrgProjectController {
     /**
      * 自分が所属する全組織のプロジェクトを集約取得する。
      */
-    @SelfScopedEndpoint("ProjectService#listOrgProjectsForUser が"
-            + " userId=SecurityUtils.getCurrentUserId() の所属組織からのみプロジェクトを解決する"
-            + "（TodoPersonalScopeContractIT の 7. で固定）")
+    @SelfScopedEndpoint("集約対象の組織は SecurityUtils.getCurrentUserId() の所属から解決し、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyOrgProjects メソッド本体）")
     @GetMapping("/org-projects")
     @Operation(summary = "所属組織のプロジェクト集約")
     public ResponseEntity<PagedResponse<OrgProjectSummaryResponse>> listMyOrgProjects(
