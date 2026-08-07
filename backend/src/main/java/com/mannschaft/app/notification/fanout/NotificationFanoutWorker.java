@@ -41,8 +41,16 @@ import java.util.concurrent.Future;
 @RequiredArgsConstructor
 public class NotificationFanoutWorker {
 
-    /** 1 周回で取得するジョブ数の上限。 */
-    static final int BATCH_SIZE = 20;
+    /**
+     * 1 周回で取得するジョブ数の上限。
+     *
+     * <p>{@link NotificationFanoutJobService#MAX_SHARDS}（=32）と揃える（検分ステップ2の是正・CMP-001⑤）。
+     * 1 スコープの enqueue は最大 32 本のシャードジョブに分割されるが、{@code BATCH_SIZE} が
+     * {@code MAX_SHARDS} を下回ると同一スコープのシャード群が 1 回の {@link #processReady} で
+     * 全数 claim できず 2 波以降に直列化し、500,000 人（25 シャード）規模で ≤120 秒 SLO を割り込む。
+     * {@code MAX_SHARDS} と同値にすることで 1 スコープの全シャードを同一 poll で並列消化できる。</p>
+     */
+    static final int BATCH_SIZE = 32;
 
     /** 1 チャンクで配信する受信者数（P1 の受信者ストリームチャンクと同規模）。 */
     static final int CHUNK_SIZE = 500;
@@ -92,7 +100,7 @@ public class NotificationFanoutWorker {
      * 他ジョブの処理は止めない。各タスクの {@code Future#get} で throw を捕捉してログに残す
      * （握り潰さずログと状態遷移で露見させる）。配信失敗は {@code processOne} 内で {@code recordFailure} 済み。</p>
      *
-     * <p><b>コネクション有界性</b>: 並列度の上限は batch 件数（{@code BATCH_SIZE}=20）であり、
+     * <p><b>コネクション有界性</b>: 並列度の上限は batch 件数（{@code BATCH_SIZE}=32）であり、
      * Hikari 最大プール（50）に収まる。Virtual Thread 自体は多重化されるが、同時に DB を掴むタスク数は
      * batch 件数が上限のため枯渇しない想定（最終的な 50 万実測は検分で裏取り）。</p>
      */
