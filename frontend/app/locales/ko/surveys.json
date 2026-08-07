@@ -17,7 +17,8 @@
       "label": "결과 공개 범위",
       "CREATOR_ONLY": "작성자만",
       "RESPONDENTS": "응답자만",
-      "ALL_MEMBERS": "전체 멤버"
+      "ALL_MEMBERS": "전체 멤버",
+      "AFTER_CLOSE": "마감 후 전체 멤버"
     },
     "unrespondedVisibility": {
       "label": "미응답자 공개 범위",

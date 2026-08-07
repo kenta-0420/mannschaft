@@ -22,15 +22,14 @@ onMounted(async () => {
   await loadHistory()
 })
 
+// BE はオフセット付きの LocalDateTime を受理する（Issue #2508 / PR #2596）ため、
+// ユーザーTZのオフセットを付けたまま送る。剥ぎ取ると BE 側で二重にTZ解釈され逆方向にずれる。
 function toDateStart(date: Date | null): string | undefined {
-  const s = buildOffsetDateTimeStr(date, '00:00')
-  // BEの LocalDateTime は +09:00 オフセットをパースできないため除去
-  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
+  return buildOffsetDateTimeStr(date, '00:00') ?? undefined
 }
 
 function toDateEnd(date: Date | null): string | undefined {
-  const s = buildOffsetDateTimeStr(date, '23:59')
-  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
+  return buildOffsetDateTimeStr(date, '23:59') ?? undefined
 }
 
 async function loadHistory(cursor?: string) {

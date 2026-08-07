@@ -540,8 +540,77 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       同一基準に揃えた（#2284 §12 と同型）。{@code ensureAuthor} / {@code requireOrganizer}
      *       の双方に適用。</li>
      * </ul>
+     *
+     * <p>467 → 434（2026-08-04 / 第3波「村」ロットB）: 村ドメインの 33 エンドポイントを全数監査し、
+     * 主張の内容ごとにマーカーを付与して返済した。内訳は
+     * {@code VillagePin} 4 / {@code VillageNewsletter} 4 / {@code VillageReport} 3 /
+     * {@code VillagePilgrimage} 3 / {@code VillageLobby} 3 / {@code VillageCreationRequest} 3 /
+     * {@code VillageCalendar} 3 / {@code VillageRepresentative} 2 / {@code VillageNickname} 2 /
+     * {@code VillageSerendipity} 1 / {@code VillageSearch} 1 / {@code VillageLobbyPresence} 1 /
+     * {@code VillageFeed} 1 / {@code VillageController} 1 / {@code PostingIdentity} 1。</p>
+     * <ul>
+     *   <li>認可を新設した 3 EP —
+     *       {@code VillageNewsletterController.getSettings}（掲示板と同一の閲覧認可へ委譲）/
+     *       {@code listSendLogs}（現役 HEADMAN・ELDER のみ）/
+     *       {@code VillageFeedController.feed}（村内コンテンツを現役の村人である村に限定）</li>
+     *   <li>残りは Service 層に実効的な認可が実在すること、または検索条件が認証主体に
+     *       束縛され他人のデータへ到達し得ないことを追跡して確認済み。契約テストは
+     *       {@code VillageLotBScopeContractIT} / {@code VillageSelfScopeContractIT} に張っている。</li>
+     * </ul>
+     * <p>本ロットの基点は分岐時点の 504 であり単独では 504 − 33 = 471 だが、上記ロットA（37 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。ロットA が削除する 37 行と
+     * 本ロットが削除する 33 行は <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。
+     * したがって 467 − 33 = 434。</p>
+     *
+     * <p>434（変化なし、2026-08-04）: {@code scopefolder.entity.ScopeType} を
+     * {@code scopefolder.entity.enums.ScopeType} へ移設（D-1 番人の「共有される値オブジェクトは
+     * entity.enums 配下」除外規定に実体を合わせる是正）した副作用として、本ストアのキーが
+     * メソッド完全修飾シグネチャ（引数の完全修飾型名を含む）で構成されているため、
+     * {@code ScopeType} を引数に取る6エンドポイント（{@code NotificationController.listNotifications} /
+     * {@code MyScopeFolderController.createFolder / getDefaultFolder / getFolders /
+     * getNotificationSummary / reorderFolders}）のキー文字列がパッケージ名の変更分だけ変わった。
+     * 旧キー6件が解消・新キー6件が追加され、差引ゼロで行数は変わらない。
+     * 認可の実態（未認可であること自体）は一切変わっておらず、新規の認可違反ではなく
+     * 既存負債のキー改名である。この同一性は同一コミット内の
+     * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
+     * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
+     *
+     * <p>405 → 369（第4波ロットB・2026-08-05）: circulation 22 行 / committee 14 行を返済。
+     * 内訳は次のとおりで、いずれも「実体由来スコープでの認可が呼び出しグラフ上で到達可能である」
+     * 状態にしたうえでの削除である（マーカー付与による沈黙ではない）。</p>
+     * <ul>
+     *   <li>circulation の押印 5 EP とコメント削除 1 EP — {@code CirculationAccessGuard} を新設し、
+     *       受信者行・コメント行が<b>当該文書に属し、かつ操作者本人のものである</b>ことを検証する</li>
+     *   <li>circulation の文書ライフサイクル 8 EP（Org/Team 各 4）・あて先増減 2 EP・添付管理 3 EP・
+     *       エクスポート 2 EP — 既存の {@code AccessControlService} による per-scope 判定を
+     *       委譲 1 段で到達できる形に整理（判定内容は不変）</li>
+     *   <li>{@code MyCirculationController.listCreatedDocuments} — 検索条件が認証主体に束縛されるため
+     *       {@code @SelfScopedEndpoint}（契約テストは {@code CirculationStampRecipientAclScopeContractIT}）</li>
+     *   <li>committee 14 EP — {@code CommitteeAccessGuard} を新設し、委員会メンバーシップ・
+     *       委員会内ロール・招集状の宛先本人性の判定を集約</li>
+     * </ul>
+     *
+     * <p>369 → 331（第4波ロットC・2026-08-05）: schedule 28 行 / scopefolder 10 行を返済。
+     * 内訳は次のとおりで、いずれも認可の所在をコード上に確立したうえでの削除である。</p>
+     * <ul>
+     *   <li>{@code ScheduleAccessGuard} を新設し、個人スケジュールの所有者判定と
+     *       代理委任のあて先本人判定を集約（{@code PersonalScheduleController} の
+     *       詳細・更新・削除・一括削除、{@code ScheduleDelegationController} の承諾・辞退）</li>
+     *   <li>{@code CalendarSyncAccessGuard} を新設し、チーム／組織のカレンダー同期トグルの
+     *       アクティブメンバー判定を集約（拒否は存在秘匿の 404 に畳む）</li>
+     *   <li>{@code ScopeFolderAccessGuard} を新設し、マイスコープフォルダの所有者判定を集約
+     *       （更新・削除・アイテム追加削除・一括振り分け。一括系も 1 件ずつ判定を通す）</li>
+     *   <li>代理委任の指定・取り消し・自状況照会は、スケジュール実体由来スコープに対する
+     *       {@code ScheduleService#checkScopeViewAccess} を public 入口で行う</li>
+     *   <li>出欠一括更新は {@code ScheduleService#checkScopeAdminAccess} を public 入口で行う</li>
+     *   <li>チーム／組織のスケジュール一覧は {@code ContentVisibilityChecker#filterAccessible} を
+     *       入口メソッドから直接呼ぶ形へ整理（判定内容は不変）</li>
+     *   <li>対象の識別子を一切受け取らない 19 EP は {@code @SelfScopedEndpoint}
+     *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
+     *       {@code ScopeFolderAuthzScopeContractIT}）</li>
+     * </ul>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 467;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 148;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
@@ -552,8 +621,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 一覧3エンドポイントを Summary DTO 返却に是正し、Controller からの他ドメイン Entity 参照
      * 3 件（auth.UserEntity / organization.OrganizationEntity / team.TeamEntity）が根治で解消。
      * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
+     *
+     * <p>2135 → 2129（2026-08-04）: {@code scopefolder.entity.ScopeType}（フィールド・振る舞いを
+     * 持たない純粋な2値enum）を {@code scopefolder.entity.enums.ScopeType} へ移設。D-1 番人は
+     * {@code ..entity.enums..} 配下の enum を「共有される値オブジェクト」としてドメイン越境import
+     * の対象外に除外しており、本 enum はこの除外規定に該当する実体であるにも関わらず
+     * {@code entity} 直下にあったため対象外になっていなかった。規約に実体を合わせた結果、
+     * dashboard / notification（2箇所） / role の計4クラスから参照していた既存違反6行が解消。
+     * 違反隠蔽ではなく、共有値オブジェクトの置き場所を規約どおりに是正した結果の縮小。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2135;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2129;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -583,8 +660,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@link CrossDomainRepositoryDependencyArchTest}）の初期凍結。既存負債の台帳であり、
      * 新規の越境 Repository 依存のみを fail させる。返済（chip-away）で行数が減った場合のみ
      * この定数を実測値へ更新する。</p>
+     *
+     * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
+     * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
+     * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2025;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

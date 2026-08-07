@@ -457,6 +457,29 @@ public class ParentalConsentService {
                 childUserId, parentUserId, ParentalConsentLinkStatus.APPROVED);
     }
 
+    /**
+     * 指定ユーザーが対象の子ユーザーと<b>過去に一度でも</b>保護者リンクを持ったことがあるか
+     * （ステータスを問わない）を判定する。
+     *
+     * <p>F08.9 後見切替終了（{@code GuardianshipSwitchService#endSwitch}）の認可から呼び出される
+     * 境界メソッド。切替終了はサーバ側に解除すべき状態を持たない監査記録のみの操作だが、
+     * 一切の関係がない第三者が任意の {@code childUserId} を指定して監査ログへ
+     * 「保護者Xが子Yへの切替を終了した」という事実と異なる記録を作れてしまう穴を塞ぐため、
+     * 現在の状態（{@link #isApprovedGuardian}）より<b>緩い</b>存在チェックとして用意する。
+     * 切替中にリンクが解除された正当な保護者を締め出さないため、現在 REVOKED / REJECTED /
+     * PENDING であっても、当該 (child, parent) の組でリンク行が一度でも作成されていれば true。</p>
+     *
+     * @param parentUserId 保護者候補のユーザー ID
+     * @param childUserId  子のユーザー ID
+     * @return 過去に一度でも当該組み合わせのリンクが存在した場合 true
+     */
+    public boolean hasEverBeenGuardian(Long parentUserId, Long childUserId) {
+        if (parentUserId == null || childUserId == null) {
+            return false;
+        }
+        return parentalConsentLinkRepository.existsByChildUserIdAndParentUserId(childUserId, parentUserId);
+    }
+
     // ========================================
     // 退会ブロックチェック
     // ========================================

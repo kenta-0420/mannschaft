@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
@@ -54,8 +55,11 @@ public class PersonalScheduleService {
     /** 個人スケジュールの相対・絶対を合算したリマインダー上限件数（機能55 第二陣で 3→5 拡張）。 */
     private static final int MAX_TOTAL_PERSONAL_REMINDERS = CreatePersonalScheduleRequest.MAX_TOTAL_REMINDERS;
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
-    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
@@ -66,6 +70,7 @@ public class PersonalScheduleService {
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
     private final ScheduleRecurrenceService recurrenceService;
+    private final ScheduleAccessGuard scheduleAccessGuard;
 
     /**
      * 個人スケジュールを作成する。ソフトリミット1000件を超過している場合はエラーとする。
@@ -197,7 +202,7 @@ public class PersonalScheduleService {
      */
     public PersonalScheduleResponse getPersonalSchedule(Long scheduleId, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
         // 詳細 GET では相対・絶対 両方のリマインダーを露出する（足軽3 時点で詳細にリマインダーが
         // 一切載っていなかった不足の根治）。relative 分（分数）は後方互換の reminders にも反映する。
         return toPersonalScheduleResponse(schedule, loadReminders(scheduleId), loadDetailedReminders(scheduleId));
@@ -217,7 +222,7 @@ public class PersonalScheduleService {
                                                             UpdatePersonalScheduleRequest req,
                                                             Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
@@ -275,7 +280,7 @@ public class PersonalScheduleService {
     @Transactional
     public void deletePersonalSchedule(Long scheduleId, String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
 
         String resolvedScope = updateScope != null ? updateScope : UPDATE_SCOPE_THIS_ONLY;
 
@@ -320,7 +325,7 @@ public class PersonalScheduleService {
 
         for (Long id : ids) {
             ScheduleEntity schedule = scheduleRepository.findById(id).orElse(null);
-            if (schedule == null || !userId.equals(schedule.getUserId())) {
+            if (!scheduleAccessGuard.isScheduleOwnedBy(schedule, userId)) {
                 skippedCount++;
                 continue;
             }
@@ -341,15 +346,6 @@ public class PersonalScheduleService {
     private ScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-    }
-
-    /**
-     * スケジュールのオーナーチェックを行う。userId が一致しない場合は例外をスローする。
-     */
-    private void validateOwner(ScheduleEntity schedule, Long userId) {
-        if (!userId.equals(schedule.getUserId())) {
-            throw new BusinessException(ScheduleErrorCode.NOT_SCHEDULE_OWNER);
-        }
     }
 
     /**

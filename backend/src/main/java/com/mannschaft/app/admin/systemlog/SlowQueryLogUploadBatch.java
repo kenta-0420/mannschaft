@@ -3,6 +3,7 @@ package com.mannschaft.app.admin.systemlog;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,9 @@ public class SlowQueryLogUploadBatch {
      */
     @BatchEndpoint(name = "systemlog-slow-query-upload-daily", description = "前日分スロークエリログを R2 へ毎日 01:00 アップロードする")
     @Scheduled(cron = "${mannschaft.system-log.slow-query-cron:0 0 1 * * *}")
+    // 起動間隔は日次 01:00。処理は前日分スロークエリログ 1 ファイルの R2 アップロードのみで、最悪ケース（ログが上限まで肥大 + R2 リトライ）
+    // でも数分。ネットワーク停滞を見込んで 30 分を上限とする。
+    @SchedulerLock(name = "systemLogSlowQueryUpload", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void run() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         log.info("スロークエリログアップロードバッチ開始: date={}", yesterday);

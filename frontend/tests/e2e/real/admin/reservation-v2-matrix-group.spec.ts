@@ -41,7 +41,8 @@ import {
 } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
-const BE = 'http://localhost:8080'
+// 検証用 worktree では本陣（8080）とは別ポートの BE を建てるため、API_BASE_URL/BE_ORIGIN で上書き可能にする。
+const BE = process.env.API_BASE_URL ?? process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const FE_ORIGIN = process.env.BASE_URL ?? 'http://localhost:3001'
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
@@ -123,7 +124,7 @@ async function installApiBridge(page: Page, token: string): Promise<void> {
   await page.route('**/api/v1/**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())
-    const target = `http://127.0.0.1:8080${url.pathname}${url.search}`
+    const target = `${BE}${url.pathname}${url.search}`
     const pageOrigin = req.headers()['origin'] || FE_ORIGIN
     const headers: Record<string, string> = {
       ...req.headers(),
@@ -212,6 +213,16 @@ function tomorrowInfo(): { iso: string; slash: string; dayCode: (typeof DAY_CODE
     slash: iso.replaceAll('-', '/'),
     dayCode: DAY_CODES[isoWeekday(iso)]!,
   }
+}
+
+/**
+ * BOOKED セルのアクセシブルネーム照合パターン。
+ * 実体は「{日付} {時刻} {ライン} 埋まっている: 押すとキャンセル待ちに登録できます」（W2-4-FE）で、
+ * 末尾の案内文はキャンセル待ち可否で付いたり付かなかったりするため、前半を先頭一致で固定する。
+ */
+function bookedCellNamePattern(dateLabel: string, time: string, lineName: string): RegExp {
+  const escaped = `${dateLabel} ${time} ${lineName} 埋まっている`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`^${escaped}`)
 }
 
 /** マトリックスの行ラベル "YYYY/MM/DD (ddd)" を再現する（dayjs ja ロケール互換）。 */
@@ -375,7 +386,9 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     await page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await openManageTab(page)
-    await openAccordionSection(page, '週間テンプレート')
+    // 管理タブの第4セクションは「週間スケジュール」に改称され、週間テンプレートはその中に統合された
+    // （reservation.weekly_schedule.section_title）。旧ラベル「週間テンプレート」では見つからない。
+    await openAccordionSection(page, '週間スケジュール')
 
     // テンプレ作成: 席A・明日の曜日・10:00-13:00・定員1
     await page.getByTestId('template-add').click()
@@ -484,16 +497,15 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     await expect(previewDialog).not.toBeVisible({ timeout: 10_000 })
 
     // マトリックスが自動リフレッシュされ、10:00〜12:30の5セルがBOOKEDに変わる（emit連鎖・ポーリング無し）
+    // 注: W2-4-FE のキャンセル待ち導線により BOOKED セルのアクセシブルネームには
+    // 「: 押すとキャンセル待ちに登録できます」が続くため、先頭一致の正規表現で照合する。
+    const bookedCell = (time: string) =>
+      page.getByRole('button', { name: bookedCellNamePattern(dateLabel, time, '席A') })
     for (const t of ['10:00', '10:30', '11:00', '11:30', '12:00']) {
-      await expect(
-        page.getByRole('button', { name: `${dateLabel} ${t} 席A 埋まっている`, exact: true }),
-        `${t}セルがBOOKEDに変わること`,
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(bookedCell(t), `${t}セルがBOOKEDに変わること`).toBeVisible({ timeout: 15_000 })
     }
     // 12:30は事前予約分でもとからBOOKED
-    await expect(
-      page.getByRole('button', { name: `${dateLabel} 12:30 席A 埋まっている`, exact: true }),
-    ).toBeVisible()
+    await expect(bookedCell('12:30')).toBeVisible()
     await page.screenshot({ path: 'test-results/rsv-v2b-07-matrix-booked.png', fullPage: true })
 
     // STEP-8: 予約一覧タブでグループが1行表示（代表行のみ・兄弟行が複数行に見えない）
@@ -536,7 +548,7 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
       ).toBeVisible({ timeout: 15_000 })
     }
     await expect(
-      page.getByRole('button', { name: `${dateLabel} 12:30 席A 埋まっている`, exact: true }),
+      page.getByRole('button', { name: bookedCellNamePattern(dateLabel, '12:30', '席A') }),
       '事前予約(12:30)は今回のグループキャンセルの対象外で不変であること',
     ).toBeVisible()
     await page.screenshot({ path: 'test-results/rsv-v2b-10-matrix-restored.png', fullPage: true })

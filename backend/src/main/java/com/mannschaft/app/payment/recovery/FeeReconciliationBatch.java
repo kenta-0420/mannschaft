@@ -55,7 +55,7 @@ public class FeeReconciliationBatch {
     // ロック未保持の ShedLock ノイズや未ウォームアップ実行を招く。15 分後の初回＝EscrowLifecycleBatch
     // （fixedDelay=1h で起動中に発火しない）と同じく「テスト実行時間内には発火しない」作法へ揃える。
     @Scheduled(initialDelay = 900_000, fixedDelay = 900_000)
-    @SchedulerLock(name = "paymentFeeReconciliation", lockAtLeastFor = "PT2M", lockAtMostFor = "PT14M")
+    @SchedulerLock(name = "paymentFeeReconciliation", lockAtLeastFor = "PT2M", lockAtMostFor = "PT30M")
     public void reconcileEvery15Min() {
         LocalDateTime now = LocalDateTime.now(clock);
         log.info("リコンシリ（15分）開始: now={}", now);

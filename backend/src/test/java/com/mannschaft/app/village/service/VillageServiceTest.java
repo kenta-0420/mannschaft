@@ -255,6 +255,10 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
+            when(membershipRepository.findActiveByVillageIdAndSubject(
+                    VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
+                    .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
+            // 表示メタ（myRole）の解決は在籍ベースのクエリを使うため別途スタブする
             when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                     VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
@@ -306,7 +310,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
             when(villageRepository.existsByName("新しい名前")).thenReturn(false);
@@ -327,7 +331,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
 
@@ -347,7 +351,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
 
@@ -365,7 +369,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
             when(villageRepository.existsByName("既存名前")).thenReturn(true);
@@ -395,7 +399,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
 
@@ -568,7 +572,7 @@ class VillageServiceTest {
 
         private void givenHeadman() {
             lenient().when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
                             VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
         }

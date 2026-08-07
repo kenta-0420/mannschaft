@@ -20,6 +20,11 @@
  * 【優先度B】定期予約: 段階開示→4週作成→結果明細→seriesバッジ→キャンセル2択→series一括承認
  * 【優先度C】仮押さえ失効設定＋429レートリミット
  * 【優先度D】強行登録: impact件数と実際のキャンセル件数の一致確認（数を数える）
+ *
+ * 【担当の引き継ぎ】キャンセル2択（この回だけ／この回以降すべて）の検証は本 spec では行わない。
+ * cancelMine()（mode="mine"）経由でしか発火せず、本 spec の固定ユーザーは自作チームで常に ADMIN の
+ * ため到達不能だったため、MEMBER ロールの別ユーザーを招待フローで用意する
+ * `tests/e2e/real/reservation-member-role.spec.ts` の M1-2 / M1-3 が担当する（実機踏破済み）。
  */
 
 import {
@@ -64,6 +69,20 @@ const BE_API = `${API_BASE_URL}/api/v1`
 
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-pwui-1782136885@test.mannschaft.local'
 const USER_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'Passw0rd!2026'
+
+/**
+ * 会員（MEMBER）視点検証用の永続ユーザー。reservation-member-role.spec.ts と同一の実ユーザー。
+ * 固定ユーザー(USER_EMAIL)は自作チームで常に ADMIN になるため、
+ * 「WAITING 登録者」と「予約をキャンセルする管理者」を別人にするために使う。
+ */
+const MEMBER_EMAIL = process.env.TEST_MEMBER_EMAIL ?? 'e2e-member-1785848177@test.mannschaft.local'
+const MEMBER_PASSWORD = process.env.TEST_MEMBER_PASSWORD ?? 'Passw0rd!2026'
+
+/** 招待トークンの roleId。InviteTokenList.vue の既定値と同一（MEMBER）。 */
+const ROLE_ID_MEMBER = 4
+
+/** キャンセル待ちの空き通知タイプ（ReservationWaitlistService.NOTIFICATION_TYPE と同値）。 */
+const WAITLIST_OPENING_TYPE = 'RESERVATION_WAITLIST_OPENING'
 
 interface MeProfile {
   id: number
@@ -173,6 +192,85 @@ async function findSlotId(
     )
   }
   return found.id
+}
+
+/**
+ * MEMBER ロールでチームへ参加させる（招待トークン発行 → 参加 の実プロダクト経路）。
+ * 実際に付与されたロールを GET /teams/{slug}/me/permissions で裏取りして返す。
+ * 写経元: reservation-member-role.spec.ts joinAsMember()。
+ */
+async function joinAsMember(
+  adminCtx: APIRequestContext,
+  adminToken: string,
+  memberCtx: APIRequestContext,
+  memberToken: string,
+  slug: string,
+): Promise<string> {
+  const inviteRes = await adminCtx.post(`${BE_API}/teams/${slug}/invite-tokens`, {
+    headers: authHeaders(adminToken),
+    data: { roleId: ROLE_ID_MEMBER, expiresIn: '7d', maxUses: 10 },
+  })
+  if (!inviteRes.ok()) throw new Error(`招待トークン作成失敗: ${inviteRes.status()} ${await inviteRes.text()}`)
+  const inviteToken = ((await inviteRes.json()).data as { token: string }).token
+
+  const joinRes = await memberCtx.post(`${BE_API}/invite/${inviteToken}/join`, {
+    headers: authHeaders(memberToken),
+    data: {},
+  })
+  if (!joinRes.ok()) throw new Error(`招待参加失敗: ${joinRes.status()} ${await joinRes.text()}`)
+
+  const permRes = await memberCtx.get(`${BE_API}/teams/${slug}/me/permissions`, { headers: authHeaders(memberToken) })
+  if (!permRes.ok()) throw new Error(`権限取得失敗: ${permRes.status()} ${await permRes.text()}`)
+  return ((await permRes.json()).data as { roleName: string }).roleName
+}
+
+/** 通知一覧の1件（NotificationResponse のうち本 spec が使うフィールドのみ）。 */
+interface NotificationRow {
+  id: number
+  notificationType: string
+  title: string
+  body: string
+  sourceType: string
+  sourceId: number | null
+  actionUrl: string | null
+  createdAt: string
+}
+
+/**
+ * 自分宛の通知一覧を取得する。
+ * BE 実体: NotificationController は GET /api/v1/notifications で Spring 標準の
+ * Pageable（page/size）を受け、PagedResponse（{ data: [...], meta: {...} }）を返す。
+ * `limit` というパラメータは存在しない。
+ */
+async function fetchNotifications(ctx: APIRequestContext, token: string, size = 50): Promise<NotificationRow[]> {
+  const res = await ctx.get(`${BE_API}/notifications?page=0&size=${size}`, { headers: authHeaders(token) })
+  if (!res.ok()) throw new Error(`通知一覧取得失敗: ${res.status()} ${await res.text()}`)
+  return (await res.json()).data as NotificationRow[]
+}
+
+/** ReservationResponse のうち本 spec が使うフィールド（slotId は identifier 配下にある）。 */
+interface TeamReservationRow {
+  id: number
+  identifier: { reservationSlotId: number; lineId: number; teamId: number; userId: number }
+  status: { status: string }
+}
+
+/**
+ * チームの予約一覧を取得する（ADMIN 限定）。
+ * BE 実体: TeamReservationController#listReservations のクエリパラメータは
+ * status / page / size のみ（from/to は存在せず、Spring に黙って捨てられる）。
+ */
+async function fetchTeamReservations(
+  ctx: APIRequestContext,
+  token: string,
+  slug: string,
+  size = 100,
+): Promise<TeamReservationRow[]> {
+  const res = await ctx.get(`${BE_API}/teams/${slug}/reservations?page=0&size=${size}`, {
+    headers: authHeaders(token),
+  })
+  if (!res.ok()) throw new Error(`チーム予約一覧取得失敗: ${res.status()} ${await res.text()}`)
+  return (await res.json()).data as TeamReservationRow[]
 }
 
 const test = base.extend<
@@ -348,44 +446,169 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
     await page.screenshot({ path: 'test-results/d-a-05-after-cancel.png', fullPage: true })
   })
 
-  test('シナリオA-2: 満席予約を1つキャンセルするとWAITING者に通知が飛ぶ', async ({ page, tokens }) => {
-    // 是正(殿指摘): 検証環境はE2E固定ユーザー1名しかおらず、WAITING登録者と予約キャンセル実行者が
-    // 常に同一ユーザーになる（別ユーザーでの受信確認ができない）。さらに対象予約特定に使うAPIの
-    // クエリパラメータ(from/to)がBE TeamReservationControllerの実パラメータ(status/page/size)と
-    // 不一致で対象予約が常に見つからず、`if (target)` 配下が実行されない構造的欠陥がある。
-    // 「静かに素通り」させず、明示的にスキップして理由を残す。
-    test.skip(true, '単一ユーザー検証環境の構造的制約によりWAITING者への通知飛来を確定検証できない（別ユーザー環境が必要）。踏めなかった。')
-    const ctx = await playwrightRequest.newContext()
-    const slotId = await findSlotId(ctx, teamSlug, tokens.admin, day.iso, '09:00', lineId)
-    const joinRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-waitlist/${slotId}`, {
+})
+
+// ============================================================================
+// 優先A-2: 満席予約のキャンセルで WAITING 者へ空き通知が飛ぶこと（別ユーザー間）
+// ============================================================================
+/**
+ * 【踏破の経緯 2026-08-05】本シナリオは以下2つの理由で長らく test.skip されていた。両方とも根治済み。
+ *
+ * (a) 単一ユーザー制約 — WAITING 登録者と予約キャンセル実行者が同一ユーザーになってしまい、
+ *     「別人に通知が飛ぶ」ことを検証できなかった。
+ *     → 招待トークン（roleId=4）→参加 の実プロダクト経路で MEMBER ロールの別ユーザーを
+ *       チームに入れることで解消（写経元: reservation-member-role.spec.ts）。
+ *       ユーザーごとに APIRequestContext を分けるためトークンローテーションの衝突も起きない。
+ *
+ * (b) API パラメータ不一致 — 旧実装は GET /teams/{slug}/reservations?from=..&to=.. を投げていたが、
+ *     TeamReservationController#listReservations の実パラメータは status/page/size のみで
+ *     from/to は存在しない（Spring が黙って捨てる）。さらに対象予約の判定に使っていた
+ *     `r.reservationSlotId` は ReservationResponse では `identifier.reservationSlotId` の
+ *     ネスト配下にあり、トップレベルは常に undefined。結果として target が必ず undefined になり
+ *     `if (target)` 配下のキャンセルが一度も実行されない空振り構造だった。
+ *     → 実在するパラメータ・実在するフィールドで取り直し、対象が無ければ expect で失敗させる。
+ *
+ * 通知経路の実体（BE）:
+ *   ReservationSlotService が ReservationSlotReopenedEvent を publish
+ *   → ReservationWaitlistNotificationEventListener（@Async("event-pool") + AFTER_COMMIT）
+ *   → ReservationWaitlistService#notifySlotReopened が
+ *     notificationType="RESERVATION_WAITLIST_OPENING" / title="キャンセルが出ました" で通知作成。
+ *   非同期のため expect.poll で有界に待つ（届かなければタイムアウトして失敗する）。
+ */
+test.describe('D群 優先A-2: 満席予約のキャンセルでWAITING者（別ユーザー）に空き通知が飛ぶ', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  let teamSlug = ''
+  let lineId = 0
+  let slotId = 0
+  let memberCtx: APIRequestContext
+  let memberToken = ''
+  let memberRoleName = ''
+  const day = dateInfo(3)
+
+  test.beforeAll(async ({ tokens }) => {
+    const adminCtx = await playwrightRequest.newContext()
+    memberCtx = await playwrightRequest.newContext()
+    memberToken = await login(memberCtx, MEMBER_EMAIL, MEMBER_PASSWORD)
+
+    const team = await createThrowawayTeam(adminCtx, tokens.admin, 'wlnotify')
+    teamSlug = team.slug
+    await enableReservationModule(adminCtx, tokens.admin, teamSlug)
+
+    const hours = DAY_CODES.map(code => ({ dayOfWeek: code, isOpen: true, openTime: '08:00:00', closeTime: '22:00:00' }))
+    const hoursRes = await adminCtx.put(`${BE_API}/teams/${teamSlug}/reservation-settings/business-hours`, {
       headers: authHeaders(tokens.admin),
+      data: { hours },
     })
-    console.log(`[シナリオA-2] waitlist再登録 status=${joinRes.status()}`)
+    if (!hoursRes.ok()) throw new Error(`営業時間PUT失敗: ${hoursRes.status()} ${await hoursRes.text()}`)
 
-    // 予約一覧から対象予約を取得してキャンセル
-    const listRes = await ctx.get(`${BE_API}/teams/${teamSlug}/reservations?from=${day.iso}&to=${day.iso}`, {
+    const lineRes = await adminCtx.post(`${BE_API}/teams/${teamSlug}/reservation-lines`, {
       headers: authHeaders(tokens.admin),
+      data: { name: '面談室' },
     })
-    const reservations = (await listRes.json()).data as Array<{ id: string; reservationSlotId: number; status: string }>
-    const target = reservations.find(r => r.reservationSlotId === slotId && r.status !== 'CANCELLED')
-    console.log(`[シナリオA-2] 対象予約=${JSON.stringify(target)}`)
+    if (!lineRes.ok()) throw new Error(`ライン作成失敗: ${lineRes.status()} ${await lineRes.text()}`)
+    lineId = ((await lineRes.json()).data as { id: number }).id
 
-    const notifBeforeRes = await ctx.get(`${BE_API}/notifications?limit=20`, { headers: authHeaders(tokens.admin) })
-    const notifBefore = notifBeforeRes.ok() ? ((await notifBeforeRes.json()).data as unknown[] ?? []) : []
+    // 定員1の枠テンプレ（=管理者1件の予約で満席になる）
+    const tplRes = await adminCtx.post(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, {
+      headers: authHeaders(tokens.admin),
+      data: { lineId, dayOfWeek: day.dayCode, startTime: '09:00:00', endTime: '09:30:00', capacity: 1 },
+    })
+    if (!tplRes.ok()) throw new Error(`テンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`)
 
-    if (target) {
-      const cancelRes = await ctx.delete(`${BE_API}/teams/${teamSlug}/reservations/${target.id}`, {
-        headers: authHeaders(tokens.admin),
-      })
-      console.log(`[シナリオA-2] 予約キャンセル status=${cancelRes.status()}`)
-    }
+    slotId = await findSlotId(adminCtx, teamSlug, tokens.admin, day.iso, '09:00', lineId)
+    const reserveRes = await adminCtx.post(`${BE_API}/teams/${teamSlug}/reservations`, {
+      headers: authHeaders(tokens.admin),
+      data: { reservationSlotId: slotId, lineId, userNote: 'E2E満席化用(管理者)' },
+    })
+    if (!reserveRes.ok()) throw new Error(`満席化用予約失敗: ${reserveRes.status()} ${await reserveRes.text()}`)
 
-    await page.waitForTimeout(2000)
-    const notifAfterRes = await ctx.get(`${BE_API}/notifications?limit=20`, { headers: authHeaders(tokens.admin) })
-    const notifAfter = notifAfterRes.ok() ? ((await notifAfterRes.json()).data as unknown[] ?? []) : []
-    console.log(`[シナリオA-2] 通知件数 before=${notifBefore.length} after=${notifAfter.length}`)
-    console.log(`[シナリオA-2] 通知一覧実体(after)=${JSON.stringify(notifAfter).slice(0, 1000)}`)
-    await ctx.dispose()
+    memberRoleName = await joinAsMember(adminCtx, tokens.admin, memberCtx, memberToken, teamSlug)
+    console.log(`[SETUP-A2] teamSlug=${teamSlug} lineId=${lineId} day=${day.iso}(${day.dayCode}) slotId=${slotId} memberRole=${memberRoleName}`)
+    await adminCtx.dispose()
+  })
+
+  test.afterAll(async () => {
+    await memberCtx.dispose()
+  })
+
+  test('シナリオA-2-0: 招待フローで参加した会員の実ロールが MEMBER であること（別人であることの前提）', async ({ tokens }) => {
+    expect(memberRoleName, '招待トークン roleId=4 で参加した結果のロール').toBe('MEMBER')
+    const memberMe = await fetchMe(memberCtx, memberToken)
+    expect(memberMe.email).toBe(MEMBER_EMAIL)
+    expect(memberMe.id, 'WAITING 登録者は予約キャンセルを行う管理者とは別人であること').not.toBe(tokens.adminMe.id)
+  })
+
+  test('シナリオA-2: 満席予約を管理者が1件キャンセルすると、WAITING中の別ユーザーに空き通知が届く', async ({ tokens }) => {
+    // 1) MEMBER が満席枠にキャンセル待ち登録
+    //    BE 実体パスは /teams/{teamId}/reservation-slots/{slotId}/waitlist
+    //    （旧実装が使っていた /teams/{slug}/reservation-waitlist/{slotId} は存在しない）
+    const joinRes = await memberCtx.post(`${BE_API}/teams/${teamSlug}/reservation-slots/${slotId}/waitlist`, {
+      headers: authHeaders(memberToken),
+      data: {},
+    })
+    const joinBody = await joinRes.text()
+    console.log(`[シナリオA-2] キャンセル待ち登録 status=${joinRes.status()} body=${joinBody}`)
+    expect(joinRes.ok(), `MEMBER が満席枠のキャンセル待ちに登録できること: ${joinRes.status()} ${joinBody}`).toBe(true)
+
+    // 実体裏取り: MEMBER の /users/me/reservation-waitlist に当該 slot が載っていること
+    const myWaitlistRes = await memberCtx.get(`${BE_API}/users/me/reservation-waitlist`, {
+      headers: authHeaders(memberToken),
+    })
+    expect(myWaitlistRes.ok(), 'キャンセル待ち一覧APIが通ること').toBe(true)
+    const myWaitlist = (await myWaitlistRes.json()).data as Array<{ slotId: number; status: string }>
+    console.log(`[シナリオA-2] MEMBER のキャンセル待ち一覧=${JSON.stringify(myWaitlist)}`)
+    expect(myWaitlist.some(w => w.slotId === slotId), '対象 slot が MEMBER のキャンセル待ちに載っていること').toBe(true)
+
+    // 2) キャンセル前の通知スナップショット（同一 slot 由来の空き通知は 0 件のはず）
+    const notifBefore = await fetchNotifications(memberCtx, memberToken)
+    const openingBefore = notifBefore.filter(n => n.notificationType === WAITLIST_OPENING_TYPE && n.sourceId === slotId)
+    console.log(`[シナリオA-2] キャンセル前 MEMBER 通知総数=${notifBefore.length} 当該slotの空き通知=${openingBefore.length}`)
+    expect(openingBefore.length, 'キャンセル前は当該枠の空き通知がまだ無いこと').toBe(0)
+
+    // 3) ADMIN が満席の原因になっている自分の予約を特定してキャンセル
+    //    （このエンドポイントは @accessGuard.isScopeAdmin で ADMIN 限定なので ADMIN コンテキストで呼ぶ）
+    const adminCtx = await playwrightRequest.newContext()
+    const reservations = await fetchTeamReservations(adminCtx, tokens.admin, teamSlug)
+    console.log(`[シナリオA-2] チーム予約一覧=${JSON.stringify(reservations.map(r => ({ id: r.id, slot: r.identifier?.reservationSlotId, st: r.status?.status })))}`)
+    const target = reservations.find(r => r.identifier?.reservationSlotId === slotId && r.status?.status !== 'CANCELLED')
+    expect(target, `満席の原因になっている生存予約が slotId=${slotId} に存在すること（見つからなければ空振りではなく失敗させる）`).toBeDefined()
+
+    const cancelRes = await adminCtx.post(`${BE_API}/teams/${teamSlug}/reservations/${target!.id}/cancel`, {
+      headers: authHeaders(tokens.admin),
+      data: { reason: 'E2E空き通知検証' },
+    })
+    const cancelBody = await cancelRes.text()
+    console.log(`[シナリオA-2] 管理者キャンセル status=${cancelRes.status()} body=${cancelBody.slice(0, 400)}`)
+    expect(cancelRes.ok(), `管理者による予約キャンセルが成功すること: ${cancelRes.status()} ${cancelBody}`).toBe(true)
+    await adminCtx.dispose()
+
+    // 4) MEMBER の通知一覧に空き通知が届くのを有界に待つ（AFTER_COMMIT + @Async のため非同期）。
+    //    タイムアウトしたらテストは失敗する（「来なければスキップ」はしない）。
+    let received: NotificationRow | undefined
+    await expect.poll(async () => {
+      const rows = await fetchNotifications(memberCtx, memberToken)
+      received = rows.find(n => n.notificationType === WAITLIST_OPENING_TYPE && n.sourceId === slotId)
+      return received ? 1 : 0
+    }, {
+      message: `WAITING 中の MEMBER に ${WAITLIST_OPENING_TYPE}(sourceId=${slotId}) の空き通知が届くこと`,
+      timeout: 45_000,
+      intervals: [1000, 2000, 3000],
+    }).toBe(1)
+
+    console.log(`[シナリオA-2] 受信した空き通知の実体=${JSON.stringify(received)}`)
+    expect(received!.title, '通知タイトルは ReservationWaitlistService の実装どおりであること').toBe('キャンセルが出ました')
+    expect(received!.body, '本文に空きが出た旨が含まれること').toContain('空きが出ました')
+    expect(received!.sourceType, 'sourceType は RESERVATION であること').toBe('RESERVATION')
+    expect(received!.actionUrl, '通知の遷移先は当該チームの予約画面であること').toContain('/reservations')
+
+    // 5) ADMIN 側には空き通知が飛ばないこと（WAITING 登録者宛の通知であることの裏取り）
+    const adminNotifCtx = await playwrightRequest.newContext()
+    const adminNotifs = await fetchNotifications(adminNotifCtx, tokens.admin)
+    await adminNotifCtx.dispose()
+    const adminOpening = adminNotifs.filter(n => n.notificationType === WAITLIST_OPENING_TYPE && n.sourceId === slotId)
+    console.log(`[シナリオA-2] ADMIN 側の当該slot空き通知=${adminOpening.length}件`)
+    expect(adminOpening.length, 'キャンセルを実行した管理者は WAITING 者ではないので空き通知を受け取らないこと').toBe(0)
   })
 })
 
@@ -415,14 +638,19 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     })
     lineId = ((await lineRes.json()).data as { id: number }).id
 
-    const tplRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-slot-templates`, {
-      headers: authHeaders(tokens.admin),
-      // 【旧表示撤去 2026-08-04 追従】定期予約UI（repeatWeeks トグルを持つ ReservationForm）へは
-      // マトリックスの「長尺手動枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
-      // 旧リスト表示（SlotPicker）が撤去されたため、テンプレを60分枠にして span=2 のセルを作る。
-      data: { lineId, dayOfWeek: day.dayCode, startTime: '11:00:00', endTime: '12:00:00', capacity: 3 },
-    })
-    if (!tplRes.ok()) throw new Error(`テンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`)
+    // 【是正 2026-08-04】定期予約UI（repeatWeeks トグルを持つ ReservationForm）へは
+    // マトリックスの「長尺枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
+    // 枠テンプレートは 60 分で登録しても BE が 30 分単位に分割して枠を生成する（cellCount=2）ため、
+    // テンプレでは長尺セルを作れず本シナリオは到達不能だった（実測で確認）。
+    // 長尺セルは手動枠（POST /reservation-slots）でのみ作れるので、4週分をそれで用意する。
+    for (const offset of [0, 7, 14, 21]) {
+      const slotDate = addDaysIso(day.iso, offset)
+      const slotRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservation-slots`, {
+        headers: authHeaders(tokens.admin),
+        data: { lineId, slotDate, startTime: '11:00:00', endTime: '12:00:00', capacity: 3 },
+      })
+      if (!slotRes.ok()) throw new Error(`手動枠作成失敗(${slotDate}): ${slotRes.status()} ${await slotRes.text()}`)
+    }
 
     console.log(`[SETUP-B] teamSlug=${teamSlug} lineId=${lineId} day=${day.iso}(${day.dayCode})`)
     await ctx.dispose()
@@ -489,17 +717,11 @@ test.describe('D群 優先B: 定期予約（毎週繰り返し・実機）', () 
     await page.screenshot({ path: 'test-results/d-b-04-series-badge.png', fullPage: true })
   })
 
-  test('シナリオB-2: series所属予約のキャンセル2択（この回以降すべて）', async ({ page }) => {
-    // 是正(殿指摘への追加調査): コード実測の結果、キャンセル2択（cancel-scope-this-only /
-    // cancel-scope-this-and-following）は ReservationList.vue の cancelMine()（mode="mine"）
-    // 経由でのみ発火する設計で、canManage=true の admin/deputy 用 cancel()（mode="team"）は
-    // series 判定なしの単純キャンセルしか呼ばない（371行目、testidも無し）。
-    // TeamReservationsPanel.vue は isAdminOrDeputy(実ロールベース・切替不可)で mode を固定するため、
-    // 本specのE2E固定ユーザー(自チーム作成者=常にADMIN)ではmode="mine"に到達する経路が存在しない。
-    // 静かに素通りさせず、理由を明記して明示スキップする（MEMBERロールの別ユーザーが必要）。
-    test.skip(true, 'キャンセル2択はcancelMine()(mode="mine")経由のみで到達可能。E2E固定ユーザーは全チームでADMINのため到達不能（コード実測済み。MEMBERロールの別ユーザーが必要）。踏めなかった。')
-    void page
-  })
+  // 旧シナリオB-2（series所属予約のキャンセル2択）はここから撤去した。
+  // キャンセル2択は cancelMine()（mode="mine"）経由でしか発火せず、本 spec の固定ユーザーは
+  // 自作チームで常に ADMIN のため到達不能で、空の skip が残り続けていた。
+  // MEMBER ロールの別ユーザーを招待フローで用意する tests/e2e/real/reservation-member-role.spec.ts
+  // の M1-2 / M1-3 が実機で踏破済みのため、そちらへ担当を移した。
 })
 
 // ============================================================================

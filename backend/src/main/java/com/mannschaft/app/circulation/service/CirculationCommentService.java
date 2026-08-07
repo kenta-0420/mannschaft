@@ -34,17 +34,24 @@ public class CirculationCommentService {
     private final CirculationMapper circulationMapper;
 
     /**
-     * 認可根治 Wave3-B8: コメント一覧・作成の読取 ACL ガード用。
+     * コメント一覧・作成の読取 ACL ガード用。
      * Bean 不在のテスト構成では {@code null} 注入され、ガードはスキップされる
      * （{@link com.mannschaft.app.circulation.service.CirculationService} と同一パターン）。
      */
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
+     * コメントの更新・削除の本人性判定に用いるガード。
+     *
+     * <p>対象コメントが<b>パスで指定された文書に属し、かつ操作者が投稿者本人</b>であることを
+     * {@link CirculationAccessGuard#requireCommentAuthor} で検証してから実行する。</p>
+     */
+    private final CirculationAccessGuard circulationAccessGuard;
+
+    /**
      * コメント一覧をページング取得する。
      *
-     * <p>認可根治 Wave3-B8: 文書の読取 ACL（作成者 or 受信者 or SystemAdmin）で保護する。
-     * 是正前は documentId さえ分かれば無認可で他文書のコメントを閲覧できる BOLA だった。</p>
+     * <p>文書の読取 ACL（作成者 or 受信者 or SystemAdmin）で保護する。</p>
      *
      * @param documentId 文書ID
      * @param pageable   ページング情報
@@ -73,7 +80,7 @@ public class CirculationCommentService {
         CirculationDocumentEntity document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
-        // 認可根治 Wave3-B8: コメント投稿は文書の読取 ACL と同じ（作成者 or 受信者 or SystemAdmin）。
+        // コメント投稿は文書の読取 ACL と同じ（作成者 or 受信者 or SystemAdmin）。
         // 受信者は読める文書にコメントできる、という設計方針（listComments と同一 ACL）。
         if (contentVisibilityChecker != null) {
             contentVisibilityChecker.assertCanView(ReferenceType.CIRCULATION_DOCUMENT, documentId, userId);
@@ -106,10 +113,7 @@ public class CirculationCommentService {
     public CommentResponse updateComment(Long documentId, Long commentId, Long userId,
                                          UpdateCommentRequest request) {
         CirculationCommentEntity comment = findCommentOrThrow(documentId, commentId);
-
-        if (!comment.isOwnedBy(userId)) {
-            throw new BusinessException(CirculationErrorCode.COMMENT_NOT_OWNED);
-        }
+        circulationAccessGuard.requireCommentAuthor(comment, documentId, userId);
 
         comment.updateBody(request.getBody());
         CirculationCommentEntity saved = commentRepository.save(comment);
@@ -128,10 +132,7 @@ public class CirculationCommentService {
     @Transactional
     public void deleteComment(Long documentId, Long commentId, Long userId) {
         CirculationCommentEntity comment = findCommentOrThrow(documentId, commentId);
-
-        if (!comment.isOwnedBy(userId)) {
-            throw new BusinessException(CirculationErrorCode.COMMENT_NOT_OWNED);
-        }
+        circulationAccessGuard.requireCommentAuthor(comment, documentId, userId);
 
         comment.softDelete();
         commentRepository.save(comment);

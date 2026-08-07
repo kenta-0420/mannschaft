@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.AttendanceHistoryItem;
 import com.mannschaft.app.school.dto.DailyAttendanceListResponse;
 import com.mannschaft.app.school.dto.DailyAttendanceResponse;
@@ -95,6 +96,10 @@ public class DailyAttendanceController {
      * @param to   終了日（YYYY-MM-DD）
      * @return 日次出欠履歴アイテム一覧
      */
+    @SelfScopedEndpoint("DailyAttendanceService#getStudentHistory に渡す studentUserId は "
+            + "常に SecurityUtils.getCurrentUserId() であり、他人の studentUserId を指定する "
+            + "余地が Controller に無い（Service 側も currentUserId.equals(studentUserId) を "
+            + "二重防御として検証する）")
     @GetMapping("/me/attendance/daily")
     @Operation(summary = "自分の日次出欠履歴取得", description = "生徒本人が自分の日次出欠履歴を取得する。期間指定で絞り込み可能。")
     public ApiResponse<List<AttendanceHistoryItem>> getMyDailyAttendanceHistory(

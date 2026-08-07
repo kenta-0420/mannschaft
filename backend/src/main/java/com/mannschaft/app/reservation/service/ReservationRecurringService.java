@@ -91,7 +91,9 @@ public class ReservationRecurringService {
         // 3. レートリミット（AC-5-11: 1 series = 1 消費。週数ぶん消費しない）。
         createRateLimiter.assertNotRateLimited(userId);
 
-        ReservationSlotEntity baseSlot = slotService.getSlotEntity(request.getReservationSlotId());
+        // Issue #2538: 起点枠の reservationSlotId もリクエスト由来のため teamId スコープで解決する。
+        // 他チームの枠 id を渡した場合は SLOT_NOT_FOUND（404）で秘匿する。
+        ReservationSlotEntity baseSlot = slotService.getSlotEntity(teamId, request.getReservationSlotId());
         UUID seriesId = UuidV7.generate(clock);
 
         // 4. 起点週。失敗（満席・予約不可枠・重複 等）は<b>そのまま伝播させて全体を失敗</b>にする（AC-5-4）。

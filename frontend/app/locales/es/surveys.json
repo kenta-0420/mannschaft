@@ -17,7 +17,8 @@
       "label": "Visibilidad de resultados",
       "CREATOR_ONLY": "Solo el creador",
       "RESPONDENTS": "Solo los encuestados",
-      "ALL_MEMBERS": "Todos los miembros"
+      "ALL_MEMBERS": "Todos los miembros",
+      "AFTER_CLOSE": "Todos los miembros tras el cierre"
     },
     "unrespondedVisibility": {
       "label": "Visibilidad de no encuestados",

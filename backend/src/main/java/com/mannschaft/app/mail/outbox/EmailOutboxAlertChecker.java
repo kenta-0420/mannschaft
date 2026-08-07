@@ -1,7 +1,9 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +34,11 @@ public class EmailOutboxAlertChecker {
     private final EmailOutboxRepository repository;
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    // 起動間隔は 1 分（fixedDelay）。処理は集計クエリとアラート送出のみで通常は 1 秒未満。アラートは外部に届く副作用であるため多重送出を避ける必要があり、
+    // 間隔の 5 倍を上限とする。
+    @SchedulerLock(name = "emailOutboxAlertChecker", lockAtLeastFor = "PT10S", lockAtMostFor = "PT5M")
+    @BatchEndpoint(name = "email-outbox-alert-check",
+            description = "メール送信キュー(email_outbox)のPENDING滞留・成功率・DEAD_LETTER件数を毎分監視し、閾値超過をログ通報する")
     void checkAlerts() {
         checkQueueDepthPending();
         checkOldestPendingAge();

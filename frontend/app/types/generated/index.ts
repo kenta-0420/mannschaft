@@ -290,7 +290,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村のニュースレター設定を取得する */
+        /** 村のニュースレター設定を取得する（掲示板と同一の閲覧認可） */
         get: operations["getSettings"];
         /** 村のニュースレター設定を upsert（HEADMAN / ELDER のみ） */
         put: operations["updateSettings"];
@@ -7207,7 +7207,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 村作成申請を行う */
+        /** 村作成申請を行う（OFFICIAL は SYSTEM_ADMIN のみ） */
         post: operations["create_9"];
         delete?: never;
         options?: never;
@@ -30072,7 +30072,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村内横断検索（投稿・メッセージ・メンバー） */
+        /** 村内横断検索（投稿・メッセージ・メンバー／村人のみ） */
         get: operations["search"];
         put?: never;
         post?: never;
@@ -30089,7 +30089,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定頻度のニュースレター配信履歴を取得する */
+        /** 指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ） */
         get: operations["listSendLogs"];
         put?: never;
         post?: never;
@@ -31800,7 +31800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応） */
+        /** 空きグリッド（ライン軸・日付レンジ/メニューフィルター対応） */
         get: operations["getGrid"];
         put?: never;
         post?: never;
@@ -39837,7 +39837,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ピン留め村の最新動きをダッシュボード向けに集約取得 */
+        /** ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ） */
         get: operations["feed"];
         put?: never;
         post?: never;
@@ -69308,11 +69308,7 @@ export interface components {
             cells?: components["schemas"]["GridCellDto"][];
             /** Format: int64 */
             lineId?: number;
-            lineIds?: number[];
             lineName?: string;
-            staffName?: string;
-            /** Format: int64 */
-            staffUserId?: number;
         };
         GridDayDto: {
             columns?: components["schemas"]["GridColumnDto"][];
@@ -69329,7 +69325,6 @@ export interface components {
             requiredCellCount?: number;
         };
         ReservationGridResponse: {
-            axis?: string;
             columns?: components["schemas"]["GridColumnDto"][];
             /** Format: date */
             date?: string;
@@ -142786,11 +142781,8 @@ export interface operations {
                 from?: string;
                 /** @description 日付レンジ終了日 */
                 to?: string;
-                /** @description 列軸（既定 STAFF） */
-                axis?: "STAFF" | "LINE";
-                /** @description メニューフィルター（axis=LINE のときのみ有効） */
+                /** @description メニューフィルター（提供可能ラインで列を絞る） */
                 menuId?: string;
-                staffUserIds?: number[];
             };
             header?: never;
             path: {
@@ -157418,6 +157410,15 @@ export interface operations {
         responses: {
             /** @description 発行成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDownloadUrlResponse"];
+                };
+            };
+            /** @description 閲覧権限なし */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

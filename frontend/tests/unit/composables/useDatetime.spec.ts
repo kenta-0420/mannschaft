@@ -117,3 +117,82 @@ describe('useDatetime().buildOffsetDateTimeStr', () => {
     })
   })
 })
+
+/**
+ * ブラウザTZとプロフィールTZが食い違うケース（Issue #2508 Phase 2・実機で発見）。
+ *
+ * ピッカーが返す `Date` は「瞬間」ではなく「ユーザーが画面で指した壁時計」である。
+ * 旧実装は `dayjs(date).tz(userTimezone)` でその瞬間をプロフィールTZへ投影し直していたため、
+ * ブラウザ JST で 8/4 00:00 を選ぶと LA では 8/3 08:00 となり **1日前** が送信されていた。
+ *
+ * ODT-101: time 指定 → 選んだ暦日がずれない（旧実装は 2026-08-03 を返していた）
+ * ODT-102: time 省略 → 壁時計の時分がそのまま採用される（旧実装は瞬間変換で 8/3 08:00 になっていた）
+ * ODT-103: 逆向き（ブラウザ LA / プロフィール JST）でもずれない
+ * ODT-104: 終日（time === ''）でも暦日がずれない
+ */
+describe('useDatetime().buildOffsetDateTimeStr（ブラウザTZ ≠ プロフィールTZ）', () => {
+  it('ODT-101: ブラウザJST・プロフィールLAで選んだ日がずれない', () => {
+    withSystemTz('Asia/Tokyo', () => {
+      setUserTimezone('America/Los_Angeles')
+      const { buildOffsetDateTimeStr } = useDatetime()
+      const d = new Date(2026, 7, 4, 0, 0) // 画面上で 2026-08-04 を選択
+      expect(buildOffsetDateTimeStr(d, '09:00')).toBe('2026-08-04T09:00:00-07:00')
+    })
+  })
+
+  it('ODT-102: time 省略時も壁時計の時分がそのまま採用される', () => {
+    withSystemTz('Asia/Tokyo', () => {
+      setUserTimezone('America/Los_Angeles')
+      const { buildOffsetDateTimeStr } = useDatetime()
+      const d = new Date(2026, 7, 4, 13, 45, 0) // 画面上で 2026-08-04 13:45 を選択
+      expect(buildOffsetDateTimeStr(d)).toBe('2026-08-04T13:45:00-07:00')
+    })
+  })
+
+  it('ODT-103: 逆向き（ブラウザLA・プロフィールJST）でもずれない', () => {
+    withSystemTz('America/Los_Angeles', () => {
+      setUserTimezone('Asia/Tokyo')
+      const { buildOffsetDateTimeStr } = useDatetime()
+      const d = new Date(2026, 7, 4, 20, 0) // 画面上で 2026-08-04 20:00 を選択
+      expect(buildOffsetDateTimeStr(d)).toBe('2026-08-04T20:00:00+09:00')
+      expect(buildOffsetDateTimeStr(d, '09:00')).toBe('2026-08-04T09:00:00+09:00')
+    })
+  })
+
+  it('ODT-104: 終日（time === ""）でも暦日がずれない', () => {
+    withSystemTz('Asia/Tokyo', () => {
+      setUserTimezone('America/Los_Angeles')
+      const { buildOffsetDateTimeStr } = useDatetime()
+      const d = new Date(2026, 7, 4, 0, 0)
+      expect(buildOffsetDateTimeStr(d, '')).toBe('2026-08-04T00:00:00-07:00')
+    })
+  })
+})
+
+/**
+ * 範囲検索の from/to 用ヘルパ（Issue #2508 Phase 1 で追加）。
+ *
+ * DAY-001: 暦日 → ユーザーTZでのその日の 00:00:00（オフセット付き）
+ * DAY-002: 暦日 → ユーザーTZでのその日の 23:59:59（BE の範囲検索は両端 inclusive）
+ * DAY-003: 非JSTユーザーでは +09:00 固定ではなくそのTZのオフセットが付く
+ */
+describe('useDatetime().buildDayStartStr / buildDayEndStr', () => {
+  it('DAY-001: 暦日をユーザーTZの 00:00:00 として解釈する（JST）', () => {
+    setUserTimezone('Asia/Tokyo')
+    const { buildDayStartStr } = useDatetime()
+    expect(buildDayStartStr('2026-08-01')).toBe('2026-08-01T00:00:00+09:00')
+  })
+
+  it('DAY-002: 暦日をユーザーTZの 23:59:59 として解釈する（JST）', () => {
+    setUserTimezone('Asia/Tokyo')
+    const { buildDayEndStr } = useDatetime()
+    expect(buildDayEndStr('2026-08-31')).toBe('2026-08-31T23:59:59+09:00')
+  })
+
+  it('DAY-003: 非JST（America/Los_Angeles）ではそのTZのオフセットが付く', () => {
+    setUserTimezone('America/Los_Angeles')
+    const { buildDayStartStr, buildDayEndStr } = useDatetime()
+    expect(buildDayStartStr('2026-08-01')).toBe('2026-08-01T00:00:00-07:00')
+    expect(buildDayEndStr('2026-01-31')).toBe('2026-01-31T23:59:59-08:00')
+  })
+})

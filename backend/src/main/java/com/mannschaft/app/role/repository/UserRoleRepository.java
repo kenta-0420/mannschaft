@@ -47,6 +47,24 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    /**
+     * F01.2 子組織一覧カーソルページングの可視性 SQL 降下用: 指定ユーザーが
+     * {@code user_roles} 上で直接所属する組織 ID 一覧を重複なく返す。
+     *
+     * <p>{@code OrganizationHierarchyService#getChildren} が「呼び出し者は PRIVATE な
+     * 子組織のうち自分がメンバーのものだけ見える」という可視性条件を、子ごとの
+     * {@code existsByUserIdAndOrganizationId} 個別呼び出し（N+1・メモリ上フィルタ）ではなく
+     * SQL の {@code IN} 句へ一括で降ろすために追加した。既存の
+     * {@code existsByUserIdAndOrganizationId} と同じ {@code user_roles} テーブルを
+     * 参照するため、判定結果は完全に一致する（membership ドメインとの二重管理は生じない）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
+     */
+    @Query("SELECT DISTINCT ur.organizationId FROM UserRoleEntity ur "
+            + "WHERE ur.userId = :userId AND ur.organizationId IS NOT NULL")
+    List<Long> findOrganizationIdsByUserId(@Param("userId") Long userId);
+
     boolean existsByUserIdAndTeamIdAndRoleId(Long userId, Long teamId, Long roleId);
 
     boolean existsByUserIdAndOrganizationIdAndRoleId(Long userId, Long organizationId, Long roleId);
@@ -544,6 +562,84 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("maxDepth") int maxDepth);
 
     /**
+     * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の<strong>キーセットページング版</strong>
+     * （通知 fan-out 抜本改修 Wave-2・ORG 耐久 fan-out 用）。
+     *
+     * <p>母集団条件（org_tree 再帰展開・user_roles ∪ team_org_memberships(ACTIVE) の配信対象判定・
+     * users.deleted_at IS NULL AND status='ACTIVE'・includeSupporters による純 SUPPORTER 除外の 2 段 NOT EXISTS）は
+     * 1 つも変更・削除せず、旧クエリの WHERE をそのまま継承する（Wave-1 で母集団ドリフトが検分差し戻しになった
+     * 教訓・殿裁定）。差分は末尾の {@code ur.user_id > :cursor} カーソル条件と {@code ORDER BY ur.user_id ASC}
+     * のみで、{@code LIMIT} は {@link Pageable}（{@code PageRequest.of(0, chunk)}）から供給する。</p>
+     *
+     * <p>{@code CAST(... AS SIGNED)} で戻り値を確実に {@code Long} にマップする
+     * （{@link com.mannschaft.app.membership.repository.MembershipRepository#findActiveUserIdsByScopeKeyset}
+     * の TEAM 版キーセットクエリと同一パターン。native query の集計列は環境により {@code BigInteger} に
+     * mismap しうるための対策）。</p>
+     *
+     * @param organizationId    配信元となる組織 ID（org_tree の根）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @param cursor            直前チャンク末尾の user_id（初回は {@code 0L} 等の最小値未満を渡す）
+     * @param pageable          チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
+     * @return {@code user_id > cursor} の配信対象ユーザー ID を昇順に最大 chunk 件（重複なし）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT DISTINCT CAST(ur.user_id AS SIGNED) AS uid FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    OR ur.team_id IN ( " +
+            "      SELECT tom.team_id FROM team_org_memberships tom " +
+            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "    ) " +
+            "  ) " +
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  ) " +
+            "  AND ur.user_id > :cursor " +
+            "ORDER BY uid ASC",
+            nativeQuery = true)
+    List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth,
+            @Param("cursor") long cursor,
+            Pageable pageable);
+
+    /**
      * 組織スコープ配信の母集団を「ユーザー × 所属チーム」の組で返す（出欠のチーム別内訳 by_team 用）。
      *
      * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と<b>同一の org_tree CTE
@@ -977,14 +1073,27 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long countTeamAdminByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
 
     /**
-     * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
+     * 2ユーザーが所属を共有するチームの件数を返す（DM 受信制限チェック用）。
+     *
+     * <p><b>戻り値を件数（{@code long}）で受ける理由</b>: ネイティブクエリで
+     * {@code SELECT COUNT(*) > 0} と書くと MySQL は BIGINT（0/1）を返し、Hibernate は
+     * これを {@code Long} にマッピングする。メソッドの戻り値を {@code boolean} と宣言すると
+     * 代入時に {@code ClassCastException}（Long → Boolean）となり、呼び出し経路が
+     * 実行時に落ちる。真偽への変換は {@link #existsSharedTeam} で Java 側が行う。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +
+    @Query(value = "SELECT COUNT(*) FROM user_roles ur1 " +
             "JOIN user_roles ur2 ON ur1.team_id = ur2.team_id " +
             "WHERE ur1.user_id = :userId1 AND ur2.user_id = :userId2 " +
             "AND ur1.team_id IS NOT NULL",
             nativeQuery = true)
-    boolean existsSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+    long countSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+    /**
+     * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
+     */
+    default boolean existsSharedTeam(Long userId1, Long userId2) {
+        return countSharedTeam(userId1, userId2) > 0;
+    }
 
     /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
@@ -1189,4 +1298,59 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             nativeQuery = true)
     List<Long> findDeputyAdminUserIdsByTeamIdAndPermission(@Param("teamId") Long teamId,
                                                             @Param("permissionName") String permissionName);
+
+    /**
+     * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:
+     * user_roles（TEAM/ORGANIZATION 行）のうち、対応する memberships のアクティブ行
+     * （{@code left_at IS NULL}）が存在しない件数を SQL 側で集計する。
+     *
+     * <p>{@link com.mannschaft.app.membership.repository.MembershipRepository#countOnlyInMemberships} の
+     * 対（逆方向）。0 より大きい場合は F00.5 write-path 移行漏れの再発兆候（該当ユーザーが
+     * memberships 側の 403 判定で締め出されるリスク）。DISTINCT サブクエリで
+     * {@code (user_id, scope_type, scope_id)} の組数を数え、全件ロードを避ける。</p>
+     */
+    @Query(value = "SELECT COUNT(*) FROM ("
+            + "  SELECT DISTINCT ur.user_id, "
+            + "    CASE WHEN ur.team_id IS NOT NULL THEN 'TEAM' ELSE 'ORGANIZATION' END AS scope_type, "
+            + "    COALESCE(ur.team_id, ur.organization_id) AS scope_id "
+            + "  FROM user_roles ur "
+            + "  WHERE ur.user_id IS NOT NULL AND (ur.team_id IS NOT NULL OR ur.organization_id IS NOT NULL) "
+            + "    AND NOT EXISTS ("
+            + "      SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id AND m.left_at IS NULL AND ("
+            + "        (ur.team_id IS NOT NULL AND m.scope_type = 'TEAM' AND m.scope_id = ur.team_id) OR "
+            + "        (ur.organization_id IS NOT NULL AND m.scope_type = 'ORGANIZATION' AND m.scope_id = ur.organization_id)"
+            + "      )"
+            + "    )"
+            + ") diff",
+            nativeQuery = true)
+    long countOnlyInUserRoles();
+
+    /**
+     * {@link #countOnlyInUserRoles()} が検出した差分のサンプル（アラートログ添付用）を
+     * {@code pageable} の pageSize 件まで返す。全件は返さず、ログ氾濫を防ぐために呼び出し側で件数を絞る
+     * （{@code findOrphanUserIds} と同じ {@code :#{#pageable.pageSize}} 埋め込み方式）。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id AS userId, "
+            + "  CASE WHEN ur.team_id IS NOT NULL THEN 'TEAM' ELSE 'ORGANIZATION' END AS scopeType, "
+            + "  COALESCE(ur.team_id, ur.organization_id) AS scopeId "
+            + "FROM user_roles ur "
+            + "WHERE ur.user_id IS NOT NULL AND (ur.team_id IS NOT NULL OR ur.organization_id IS NOT NULL) "
+            + "  AND NOT EXISTS ("
+            + "    SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id AND m.left_at IS NULL AND ("
+            + "      (ur.team_id IS NOT NULL AND m.scope_type = 'TEAM' AND m.scope_id = ur.team_id) OR "
+            + "      (ur.organization_id IS NOT NULL AND m.scope_type = 'ORGANIZATION' AND m.scope_id = ur.organization_id)"
+            + "    )"
+            + "  ) "
+            + "LIMIT :#{#pageable.pageSize}",
+            nativeQuery = true)
+    List<OnlyInUserRolesRow> sampleOnlyInUserRoles(Pageable pageable);
+
+    /**
+     * {@link #sampleOnlyInUserRoles(int)} の結果行プロジェクション。
+     */
+    interface OnlyInUserRolesRow {
+        Long getUserId();
+        String getScopeType();
+        Long getScopeId();
+    }
 }

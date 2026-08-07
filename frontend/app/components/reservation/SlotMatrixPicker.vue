@@ -218,7 +218,6 @@ async function loadGrid(opts?: { silent?: boolean }) {
     const res = await reservationApi.getSlotGrid(props.teamId, {
       from,
       to,
-      axis: 'LINE',
       menuId: filterMenuId.value ?? undefined,
     })
     days.value = (res.data.days ?? []).map(d => ({ date: d.date ?? '', columns: d.columns ?? [] }))
