@@ -434,6 +434,168 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 6. 自己スコープ EP（一覧・設定・アーカイブ集計・一括アーカイブ）
+    //   （認可根治戦役 Wave6 ロットF・@SelfScopedEndpoint 契約テスト）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * {@code ReflectionThemeController#listThemes} /
+     * {@code ReflectionSettingsController#getSettings} /
+     * {@code ReflectionSettingsController#updateSettings} /
+     * {@code ReflectionArchiveController#getFolders} /
+     * {@code ReflectionArchiveController#search} /
+     * {@code ReflectionArchiveController#bulkArchive} の自己スコープ性を固定する。
+     */
+    @Nested
+    @DisplayName("6. 自己スコープ EP（テーマ一覧・想起通知設定・アーカイブ集計/検索/一括）")
+    class SelfScopedEndpoints {
+
+        @Test
+        @DisplayName("テーマ一覧: 未認証は401")
+        void テーマ一覧_未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/themes"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("テーマ一覧: 他ユーザーのテーマは混入しない")
+        void テーマ一覧_他ユーザーのテーマは混入しない() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/themes"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(ownerThemeId.toString()))));
+        }
+
+        @Test
+        @DisplayName("正常系 テーマ一覧: 所有者本人のテーマが返る")
+        void テーマ一覧_所有者は自分のテーマが返る() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/themes"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", hasItem(ownerThemeId.toString())));
+        }
+
+        @Test
+        @DisplayName("想起通知設定: 未認証は401")
+        void 設定_未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/settings"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("正常系 想起通知設定: 更新は自分の設定のみに反映され、他ユーザーには影響しない")
+        void 設定_更新は自身のみに反映() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/settings"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.remindHour").value(8)); // 既定値（未設定）
+
+            setAuth(ownerId);
+            mockMvc.perform(put("/api/v1/me/reflections/settings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"remindHour\":21}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.remindHour").value(21));
+
+            // 攻撃者側の設定は既定のまま（owner の更新が漏れていない）
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/settings"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.remindHour").value(8));
+        }
+
+        @Test
+        @DisplayName("アーカイブフォルダ集計: 未認証は401")
+        void フォルダ集計_未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/archive/folders"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("正常系 アーカイブフォルダ集計/検索/一括アーカイブ: 自分のテーマのみが対象になる")
+        void アーカイブ集計検索一括_自分のテーマのみ対象() throws Exception {
+            // owner・attacker それぞれに academicYear=2026 のアクティブテーマを用意する。
+            UUID ownerCondTheme = themeRepository.save(ReflectionThemeEntity.builder()
+                    .userId(ownerId).title("REFLAUTHZ 集計対象テーマ").academicYear(2026).build()).getId();
+            UUID attackerCondTheme = themeRepository.save(ReflectionThemeEntity.builder()
+                    .userId(attackerId).title("REFLAUTHZ 攻撃者集計対象テーマ").academicYear(2026).build()).getId();
+
+            // フォルダ集計（アーカイブ済みのみ集計対象のため、いったんアーカイブする）
+            setAuth(ownerId);
+            mockMvc.perform(patch("/api/v1/me/reflections/themes/{id}/archive", ownerCondTheme))
+                    .andExpect(status().isOk());
+            setAuth(attackerId);
+            mockMvc.perform(patch("/api/v1/me/reflections/themes/{id}/archive", attackerCondTheme))
+                    .andExpect(status().isOk());
+
+            // owner のフォルダ集計に attacker の学年度は混入しない件数で現れる（本人分のみ集計）。
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/archive/folders"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.academicYear==2026)].themeCount").value(hasItem(1)));
+
+            // 検索も本人のアーカイブ済みテーマのみ返す。
+            mockMvc.perform(get("/api/v1/me/reflections/archive/search")
+                            .param("academicYear", "2026"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content[*].id", hasItem(ownerCondTheme.toString())))
+                    .andExpect(jsonPath("$.data.content[*].id", not(hasItem(attackerCondTheme.toString()))));
+
+            // 一括アーカイブ: owner・attacker それぞれに academicYear=2027 のアクティブテーマを別途用意し、
+            // owner が bulk-archive を実行しても attacker 側は対象にならないことを固定する。
+            UUID ownerBulkTheme = themeRepository.save(ReflectionThemeEntity.builder()
+                    .userId(ownerId).title("REFLAUTHZ 一括対象テーマ").academicYear(2027).build()).getId();
+            UUID attackerBulkTheme = themeRepository.save(ReflectionThemeEntity.builder()
+                    .userId(attackerId).title("REFLAUTHZ 攻撃者一括対象テーマ").academicYear(2027).build()).getId();
+
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/me/reflections/archive/bulk-archive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"academicYear\":2027,\"termLabel\":null,\"subjectName\":null}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.archivedCount").value(1));
+
+            assertThat(themeRepository.findById(ownerBulkTheme).orElseThrow().getArchivedAt())
+                    .as("owner 自身のテーマは一括アーカイブされる")
+                    .isNotNull();
+            assertThat(themeRepository.findById(attackerBulkTheme).orElseThrow().getArchivedAt())
+                    .as("攻撃者のテーマは owner の一括アーカイブの影響を受けない")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("正常系 科目紐づけ候補一覧/学期提案/今日ビュー/単語帳: 未認証は401・認証済みは200（自己スコープで完結）")
+        void その他自己スコープEP_未認証401_認証済み200() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/linkable-slots"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/cards")
+                            .param("from", "2026-01-01").param("to", "2026-01-31"))
+                    .andExpect(status().isUnauthorized());
+
+            // 認証済みなら 200（対象は SecurityUtils.getCurrentUserId() のみに構造的に束縛されるため、
+            // 他ユーザーの ID を指定する余地がない＝リクエストパラメータに他ユーザー識別子が無い）。
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/linkable-slots"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/cards")
+                            .param("from", "2026-01-01").param("to", "2026-01-31"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

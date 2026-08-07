@@ -49,6 +49,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>AC-9.8 両 ID 400/AD_032・不存在 404</li>
  *   <li>AC-9.9 同一ユーザー 2 回 = 2 行・RESOLVED/DISMISSED は 3 件カウント除外</li>
  * </ul>
+ *
+ * <p><b>MeAdReportController#create の自己スコープ性</b>（認可根治戦役 Wave6 ロットF・
+ * {@code @SelfScopedEndpoint} 契約テスト）: {@code CreateAdReportRequest} は
+ * reporterUserId 相当のフィールドを持たず、Controller が常に
+ * {@code SecurityUtils.getCurrentUserId()} を {@code AdReportService#createReport} の
+ * userId 引数に渡す。本 IT は同 Service を各 reporter の userId で直接呼び出し、
+ * 通報行が呼び出し元の userId で作成されること（AC-9.1/AC-9.2/AC-9.9）を固定する。</p>
  */
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")

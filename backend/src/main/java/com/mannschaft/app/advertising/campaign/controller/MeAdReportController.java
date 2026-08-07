@@ -5,6 +5,7 @@ import com.mannschaft.app.advertising.campaign.dto.CreateAdReportRequest;
 import com.mannschaft.app.advertising.campaign.service.AdReportService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,6 +33,9 @@ public class MeAdReportController {
     private final AdReportService adReportService;
 
     /** 通報を作成する。201 {@code { data: { id, status, createdAt } }}。 */
+    @SelfScopedEndpoint("AdReportService#createReport は"
+            + " userId=SecurityUtils.getCurrentUserId() を reporterUserId として新規保存するのみで"
+            + "他人のデータに触れない（対象キャンペーンの実在検証のみ行う）")
     @PostMapping
     @Operation(summary = "広告を通報する",
             description = "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。"

@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.controller;
 
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.dto.OrgProjectSummaryResponse;
 import com.mannschaft.app.todo.service.ProjectService;
@@ -38,6 +39,9 @@ public class MyOrgProjectController {
     /**
      * 自分が所属する全組織のプロジェクトを集約取得する。
      */
+    @SelfScopedEndpoint("ProjectService#listOrgProjectsForUser が"
+            + " userId=SecurityUtils.getCurrentUserId() の所属組織からのみプロジェクトを解決する"
+            + "（TodoPersonalScopeContractIT の 7. で固定）")
     @GetMapping("/org-projects")
     @Operation(summary = "所属組織のプロジェクト集約")
     public ResponseEntity<PagedResponse<OrgProjectSummaryResponse>> listMyOrgProjects(

@@ -42,6 +42,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 個人TODOコントローラー。全スコープ横断の自分のTODO一覧を提供する。
@@ -81,6 +82,9 @@ public class PersonalTodoController {
     /**
      * 個人TODOを作成する。
      */
+    @SelfScopedEndpoint("TodoService#createTodo が TodoScopeType.PERSONAL +"
+            + " userId=SecurityUtils.getCurrentUserId() をスコープに固定し、指定されたプロジェクト・"
+            + "親TODOが自分の個人スコープに属することを照合する（TodoPersonalScopeContractIT の 5. で固定）")
     @PostMapping
     @Operation(summary = "個人TODO作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -220,6 +224,9 @@ public class PersonalTodoController {
     /**
      * 自分に割り当てられた全TODOを取得する（全スコープ横断）。
      */
+    @SelfScopedEndpoint("TodoService#getMyTodos が"
+            + " userId=SecurityUtils.getCurrentUserId() の担当TODOのみを検索条件に使う"
+            + "（TodoPersonalScopeContractIT の 5. で固定）")
     @GetMapping("/my")
     @Operation(summary = "自分のTODO一覧（全スコープ横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -277,6 +284,9 @@ public class PersonalTodoController {
     /**
      * 個人ガントバー用TODO一覧を取得する。
      */
+    @SelfScopedEndpoint("TodoGanttService#getGanttTodos が"
+            + " TodoScopeType.PERSONAL + userId=SecurityUtils.getCurrentUserId() のみを検索条件に使う"
+            + "（TodoPersonalScopeContractIT の 5. で固定）")
     @GetMapping("/gantt")
     @Operation(summary = "個人ガントバー用TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

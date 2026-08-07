@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
@@ -65,6 +66,9 @@ public class UserProjectController {
     /**
      * 個人プロジェクト一覧を取得する。
      */
+    @SelfScopedEndpoint("ProjectService#listProjects が"
+            + " TodoScopeType.PERSONAL + userId=SecurityUtils.getCurrentUserId() のみを検索条件に使う"
+            + "（TodoPersonalScopeContractIT の 6. で固定）")
     @GetMapping
     @Operation(summary = "プロジェクト一覧（個人）")
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
@@ -79,6 +83,9 @@ public class UserProjectController {
     /**
      * 個人プロジェクトを作成する。
      */
+    @SelfScopedEndpoint("ProjectService#createProject が"
+            + " TodoScopeType.PERSONAL + userId=SecurityUtils.getCurrentUserId() を所有者として登録する"
+            + "（TodoPersonalScopeContractIT の 6. で固定）")
     @PostMapping
     @Operation(summary = "プロジェクト作成（個人）")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
