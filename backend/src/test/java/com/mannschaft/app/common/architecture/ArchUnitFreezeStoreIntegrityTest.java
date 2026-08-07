@@ -632,16 +632,27 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 追加削除する形で行った（favorite 3 行は既に main 側の削除で消えているため二重に触れていない）。
      * 削除後の実行数は {@code grep -c . <ストアファイル>} で 22 であることを実測確認済み。</p>
      *
-     * <p><b>22 → 0</b>（第7波ロットB・戦役最終ロット）: 本ロットの基点は分岐時点の 43 であり、
+     * <h3>Wave6 ロットF の合流（22 → 9）</h3>
+     * <p>Wave6 ロットF（reflection 10・corkboard 2・advertising 1 の計13EP、本ファイル）を
+     * ロットE 着地後の main（22行）へ追随マージした。ロットFが監査した13EPは、いずれも
+     * ロットE・ロットAの対象と重複しない（ドメインが完全に独立）。対象データの検索・更新条件が
+     * 認証主体（{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。したがって 22 − 13 = 9。
+     * 削除後の残行数は {@code grep -c . <ストアファイル>} で 9（family 7・tournament 2）であることを
+     * 実測確認済み。</p>
+     *
+     * <p><b>9 → 0</b>（第7波ロットB・戦役最終ロット）: 本ロットの基点は分岐時点の 43 であり、
      * 独立に family 7 / inbox 6 / reflection 10 / corkboard 2 / advertising 1 /
      * tournament fee 2 / contact 15 の計 43 EP を全数監査してストアを空にする形で作業していたが、
-     * 並行して進んでいた Wave6 ロットE（contact 15・inbox 6 を含む 24 EP）が先に main へ着地したため、
-     * main 追随マージで合成し直した。本ロットが監査した contact 15・inbox 6（計 21 行）は
-     * ロットEが削除した行と<b>完全に重複</b>し（同一 EP を両ロットが別々に認可監査し、
-     * いずれも同一結論・自己スコープに到達）、二重差分は生じない。ロットEが未着手だった
-     * family 7 / reflection 10 / corkboard 2 / advertising 1 / tournament fee 2（計 22 行）が
-     * 本ロット固有の追加解消であり、ロットE合流後の 22 行とちょうど一致する。したがって
-     * 22 − 22 = 0。内訳:</p>
+     * 並行して進んでいた Wave6 ロットE（contact 15・inbox 6 を含む 24 EP）およびロットF
+     * （reflection 10・corkboard 2・advertising 1 の計13EP）が先に main へ着地したため、
+     * main 追随マージで合成し直した。本ロットが監査した contact 15・inbox 6・reflection 10・
+     * corkboard 2・advertising 1（計 34 行）は、ロットE・ロットFが削除した行と<b>完全に重複</b>し
+     * （同一 EP を両ロットが別々に認可監査し、いずれも同一結論・自己スコープに到達）、二重差分は
+     * 生じない。ロットE・ロットFが未着手だった family 7 / tournament fee 2（計 9 行）が
+     * 本ロット固有の追加解消であり、両ロット合流後の 9 行とちょうど一致する。したがって
+     * 9 − 9 = 0。内訳:</p>
      * <ul>
      *   <li><b>実装是正（1件）</b>: {@code TournamentFeeCheckoutController#checkout} は
      *       fee 実体の主催組織・対象チームと払い手を照合する認可判定が無く、対象外の
