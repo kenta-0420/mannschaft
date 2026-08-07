@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
 import com.mannschaft.app.contact.dto.CreateInviteTokenBody;
 import com.mannschaft.app.contact.service.ContactInviteTokenService;
@@ -43,6 +44,8 @@ public class ContactInviteTokenController {
 
     private final ContactInviteTokenService contactInviteTokenService;
 
+    @SelfScopedEndpoint("発行者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "リクエストから他ユーザー名義のトークンを発行する余地がない（ContactInviteTokenService#createToken）")
     @PostMapping
     @Operation(summary = "招待トークンを発行する")
     public ResponseEntity<ApiResponse<ContactInviteTokenResponse>> createToken(
@@ -52,6 +55,8 @@ public class ContactInviteTokenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザーが発行したトークンは混入しない（ContactInviteTokenService#listTokens）")
     @GetMapping
     @Operation(summary = "発行済みトークン一覧")
     public ResponseEntity<ApiResponse<List<ContactInviteTokenResponse>>> listTokens() {

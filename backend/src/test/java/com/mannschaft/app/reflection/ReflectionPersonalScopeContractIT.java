@@ -434,6 +434,95 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 6. 認可根治戦役 第7波ロットB: 自己スコープ EP
+    //
+    // ReflectionArchiveController#getFolders / ReflectionArchiveController#search /
+    // ReflectionArchiveController#bulkArchive / ReflectionLinkableSlotController#listLinkableSlots /
+    // ReflectionSettingsController#getSettings / ReflectionSettingsController#updateSettings /
+    // ReflectionTermSuggestionController#suggest / ReflectionThemeController#listThemes /
+    // ReflectionTodayController#getToday / ReflectionVocabCardController#getVocabCards
+    // の自己スコープ性を固定する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. 自己スコープ EP（アーカイブフォルダ/検索/一括アーカイブ・科目紐づけ候補・"
+            + "通知設定・学期提案・今日ビュー・単語帳）")
+    class SelfScopedEndpoints {
+
+        @Test
+        @DisplayName("未認証は401（一覧系）")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/themes"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/archive/folders"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me/reflections/settings"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("テーマ一覧・アーカイブフォルダ・アーカイブ検索は自己スコープ（他人のテーマは混入しない）")
+        void テーマ関連一覧は自己スコープ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/themes"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(ownerThemeId.toString()))));
+
+            mockMvc.perform(get("/api/v1/me/reflections/archive/search")
+                            .param("archived", "true"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content[*].id", not(hasItem(ownerArchivedThemeId.toString()))));
+        }
+
+        @Test
+        @DisplayName("一括アーカイブは認証主体所有のテーマのみを対象にする（他人のテーマは変化しない）")
+        void 一括アーカイブは自己スコープ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/me/reflections/archive/bulk-archive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+
+            assertThat(themeRepository.findById(ownerThemeId).orElseThrow().getArchivedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("想起通知設定の取得・更新は認証主体本人にしか作用しない")
+        void 想起通知設定は自己スコープ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(put("/api/v1/me/reflections/settings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"remindHour\":9}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.remindHour").value(9));
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/settings"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.remindHour").value(not(9)));
+        }
+
+        @Test
+        @DisplayName("今日ビュー・単語帳・学期提案・科目紐づけ候補は認証主体のデータのみで解決される")
+        void その他の自己スコープEPは200() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/linkable-slots"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/me/reflections/cards")
+                            .param("from", LocalDate.now().minusDays(7).toString())
+                            .param("to", LocalDate.now().toString()))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

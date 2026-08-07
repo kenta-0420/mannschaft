@@ -609,8 +609,34 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
+     *
+     * <p><b>43 → 0</b>（第7波ロットB・戦役最終ロット）: 残っていた個人領域の最終 43 EP
+     * （contact 15 / family 7 / inbox 6 / reflection 10 / corkboard 2 / advertising 1 /
+     * tournament fee 2）を実コードで全数監査し、ストアを完全に空にした。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（1件）</b>: {@code TournamentFeeCheckoutController#checkout} は
+     *       fee 実体の主催組織・対象チームと払い手を照合する認可判定が無く、対象外の
+     *       fee でも決済が実行できる状態だった。{@code TournamentFeePaymentService#requireEligible}
+     *       を新設し、{@code getMyTournamentFees} と同一基準（主催組織のアクティブメンバー・
+     *       {@code SPECIFIC_TEAMS} は対象チームのアクティブメンバー）で fee 実体から検証し、
+     *       対象外は不存在と同じ {@code FEE_NOT_FOUND}（404）で秘匿するよう是正した。</li>
+     *   <li><b>自己スコープ（40件）</b>: 検索・作成・登録先が
+     *       {@code SecurityUtils#getCurrentUserId()} に束縛され、リクエストで他人の識別子を
+     *       指定する余地が構造的に無い EP 群。{@code @SelfScopedEndpoint} を付与し、
+     *       {@code SelfScopedEndpointMarkerGuardTest} が要求する契約テストを併せて新設・拡張した。</li>
+     *   <li><b>認可済み・番人から不可視（2件）</b>: {@code ContactHandleController#searchByHandle}
+     *       （開示は対象ユーザー自身の公開設定に従うサイレント方式）・
+     *       {@code ContactInviteController#acceptInvite}（capability トークンで認可）・
+     *       {@code TournamentFeeCheckoutController#checkout}（上記 requireEligible）は
+     *       {@code @AuthorizedInService} で明示した。</li>
+     * </ul>
+     * <p>契約テスト: {@code ContactScopeContractIT} / {@code CareLinkInvitationScopeContractIT} /
+     * {@code InboxScopeContractIT} / {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} 拡張、{@code AdReportServiceTest} 新設、
+     * {@code TournamentFeePaymentServiceTest} 拡張（対象外 fee の決済拒否を追加）。
+     * 本 PR をもって認可漏れ(IDOR)全域監査戦役の凍結ストア全数返済が完結する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 43;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 0;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

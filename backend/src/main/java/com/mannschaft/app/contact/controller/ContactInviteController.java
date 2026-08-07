@@ -61,6 +61,7 @@ public class ContactInviteController {
      * ブロック・事前拒否は設計書 §2.3 のサイレント方式（応答差を作らない）で扱う。
      * 契約は {@code ContactScopeContractIT} で固定する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/{token}/accept")
     @Operation(summary = "招待リンクで連絡先追加（認証必須）")
     public ResponseEntity<ApiResponse<SendContactRequestResponse>> acceptInvite(

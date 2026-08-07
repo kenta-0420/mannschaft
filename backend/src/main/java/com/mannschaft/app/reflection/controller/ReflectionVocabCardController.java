@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.ReflectionSourceType;
 import com.mannschaft.app.reflection.dto.ReflectionVocabCardsResponse;
 import com.mannschaft.app.reflection.service.ReflectionVocabCardService;
@@ -45,6 +46,8 @@ public class ReflectionVocabCardController {
      * @param page        ページ番号（0 始まり・既定 0）
      * @param size        1 ページサイズ（既定 200・上限 500）
      */
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionVocabCardService#getVocabCards）")
     @GetMapping
     @Operation(summary = "期間横断 単語帳ビュー取得")
     public ResponseEntity<ApiResponse<ReflectionVocabCardsResponse>> getVocabCards(

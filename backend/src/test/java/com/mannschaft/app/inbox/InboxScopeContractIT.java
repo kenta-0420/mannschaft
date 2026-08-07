@@ -391,6 +391,79 @@ class InboxScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 5. 認可根治戦役 第7波ロットB: 自己スコープ EP
+    //
+    // InboxController#getInbox / InboxController#getSummary / InboxController#getLabels /
+    // InboxController#createLabel / InboxController#unsnooze / InboxController#unarchive
+    // の自己スコープ性を固定する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. 自己スコープ EP（一覧・サマリ・ラベル一覧/作成・スヌーズ/アーカイブ解除）")
+    class SelfScopedEndpoints {
+
+        @Test
+        @DisplayName("未認証は401（一覧・サマリ・ラベル一覧）")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox/summary"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox/labels"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("一覧・サマリ・ラベル一覧は自己スコープ（他人宛て通知やラベルは混入しない）")
+        void 一覧サマリラベル一覧は自己スコープ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.items[*].sourceId",
+                            org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(ownerNotificationId.intValue()))));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox/summary"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/inbox/labels"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", org.hamcrest.Matchers.not(
+                            org.hamcrest.Matchers.hasItem(ownerLabelId.toString()))));
+        }
+
+        @Test
+        @DisplayName("ラベル作成は認証主体名義でのみ作成される")
+        void ラベル作成は自分名義のみ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/inbox/labels")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"INBOXAUTHZ 新規\",\"color\":\"#3b82f6\"}"))
+                    .andExpect(status().isCreated());
+
+            assertThat(labelRepository.countByUserId(attackerId)).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("スヌーズ解除・アーカイブ解除は自分のオーバーレイ行にのみ作用する（他人の行には404）")
+        void スヌーズ解除アーカイブ解除は自己スコープ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/inbox/unarchive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(triagedNotificationId)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("INBOX_SOURCE_NOT_FOUND"));
+
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/inbox/unarchive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(triagedNotificationId)))
+                    .andExpect(status().isOk());
+
+            assertThat(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(
+                    ownerId, InboxSourceType.NOTIFICATION, triagedNotificationId)).isEmpty();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
