@@ -104,7 +104,7 @@ public class NotificationFanoutWorker {
         log.debug("NotificationFanoutWorker claimed {} jobs", batch.size());
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> futures = batch.stream()
-                    .map(job -> executor.submit(() -> processOne(job)))
+                    .<Future<?>>map(job -> executor.submit(() -> processOne(job)))
                     .toList();
             for (int i = 0; i < futures.size(); i++) {
                 NotificationFanoutJob job = batch.get(i);
