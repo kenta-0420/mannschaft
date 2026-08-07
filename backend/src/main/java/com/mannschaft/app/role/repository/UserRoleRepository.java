@@ -640,6 +640,148 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             Pageable pageable);
 
     /**
+     * {@link #findDistributionUserIdsForOrganizationRecursiveKeyset} の<strong>シャード分割版</strong>
+     * （通知 fan-out ワーカー並列化・CMP-001⑤）。
+     *
+     * <p>母集団条件・CTE・SUPPORTER 除外・keyset カーソル・{@code ORDER BY uid ASC} は本家キーセット版と
+     * <b>完全一致</b>させ、差分は末尾の {@code AND MOD(ur.user_id, :shardCount) = :shardIndex} 述語ただ 1 行のみ。
+     * これにより各シャードが {@code user_id % shardCount == shardIndex} の互いに素な部分集合だけを担当し、
+     * 全シャードの和集合が母集団と過不足なく一致する。呼び出し側は {@code shardCount > 1} のときのみ本メソッドを使い、
+     * {@code shardCount == 1}（従来経路）は {@link #findDistributionUserIdsForOrganizationRecursiveKeyset} を使う
+     * （非シャードと完全一致）。</p>
+     *
+     * <p><b>インデックス影響</b>: {@code MOD(ur.user_id, N)} は関数適用のため user_id インデックスの range scan には
+     * 効かない（keyset 側 {@code ur.user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
+     * 50 万規模でもチャンク境界の keyset 走査が支配的でありシャードフィルタの追加コストは限定的。</p>
+     *
+     * @param shardIndex 担当シャード番号（0..shardCount-1）
+     * @param shardCount 総シャード数（{@code > 1}）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT DISTINCT CAST(ur.user_id AS SIGNED) AS uid FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    OR ur.team_id IN ( " +
+            "      SELECT tom.team_id FROM team_org_memberships tom " +
+            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "    ) " +
+            "  ) " +
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  ) " +
+            "  AND ur.user_id > :cursor " +
+            "  AND MOD(ur.user_id, :shardCount) = :shardIndex " +
+            "ORDER BY uid ASC",
+            nativeQuery = true)
+    List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth,
+            @Param("cursor") long cursor,
+            @Param("shardIndex") int shardIndex,
+            @Param("shardCount") int shardCount,
+            Pageable pageable);
+
+    /**
+     * 組織スコープ配信の<strong>母集団総数</strong>を返す（enqueue の自動シャード数算出用・CMP-001⑤）。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の {@code SELECT} を
+     * {@code COUNT(DISTINCT ur.user_id)} に置換したもの。CTE・母集団条件・SUPPORTER 除外規約は
+     * 一切変更せず完全一致させる（カウントと実配信の母集団を厳密に一致させるため）。native の集計列は
+     * {@code Long} で受ける（BIGINT→Long。{@code COUNT(*)>0} を boolean で受けない規約に整合）。</p>
+     *
+     * @param organizationId    配信元となる組織 ID（org_tree の根）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @return 配信対象ユーザーの実人数（DISTINCT user_id・{@code >= 0}）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    OR ur.team_id IN ( " +
+            "      SELECT tom.team_id FROM team_org_memberships tom " +
+            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "    ) " +
+            "  ) " +
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    long countDistributionUserIdsForOrganizationRecursive(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth);
+
+    /**
      * 組織スコープ配信の母集団を「ユーザー × 所属チーム」の組で返す（出欠のチーム別内訳 by_team 用）。
      *
      * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と<b>同一の org_tree CTE
