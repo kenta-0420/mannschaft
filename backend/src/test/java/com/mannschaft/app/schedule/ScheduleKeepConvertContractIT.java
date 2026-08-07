@@ -18,6 +18,8 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +33,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +86,15 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    /**
+     * 通知の永続化は {@code REQUIRES_NEW} の独立トランザクションで行われる（§6.2.1）ため、
+     * <b>テストの外側トランザクションからは観測できない</b>（MySQL REPEATABLE READ のスナップショットは
+     * 外側 TX の最初の読み取り時に確定しており、その後に別 TX がコミットした行は見えない）。
+     * 素の {@link DataSource} から新しい接続＝新しいスナップショットを取って数える。
+     */
+    @Autowired
+    private DataSource dataSource;
 
     private Long teamId;
     private Long otherTeamId;
@@ -299,30 +315,56 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("AC-09b: 予定20件の一覧で由来キープを解決しても、キープ側へのクエリは1回（IN句1発）")
-        void AC09b_一覧の逆引き解決はN1回避() throws Exception {
-            for (int i = 0; i < 20; i++) {
-                ScheduleEntity converted = saveSchedule(teamId, "予定" + i, null);
-                ScheduleKeepEntity keep = saveKeep(teamId, memberId, "予定" + i, ScheduleKeepStatus.SCHEDULED, 0);
+        @DisplayName("AC-09b: 一覧のキープ解決は行数に比例してクエリが増えない"
+                + "（Hibernate統計で実測。5件と20件でSQL発行数がほぼ同じ）")
+        void AC09b_一覧の解決はN1回避() throws Exception {
+            Statistics statistics = em.getEntityManagerFactory()
+                    .unwrap(SessionFactory.class).getStatistics();
+            boolean wasEnabled = statistics.isStatisticsEnabled();
+            statistics.setStatisticsEnabled(true);
+            try {
+                setAuthentication(memberId);
+
+                createConvertedKeeps(5, "N1-a");
+                long queriesFor5 = measureListQueryCount();
+
+                createConvertedKeeps(15, "N1-b");
+                long queriesFor20 = measureListQueryCount();
+
+                // 行ごとに引く実装なら 15 行増でクエリは数十発増える（変換先・slug・表示名で行あたり3発）。
+                // 一括解決なら増分は 0（IN 句の要素が増えるだけ）。実測の揺らぎに 2 発だけ余裕を持たせる。
+                assertThat(queriesFor20 - queriesFor5)
+                        .as("キープ一覧のSQL発行数が行数に比例して増えている（§10.3 一括解決の違反）。"
+                                + "5件=%d発, 20件=%d発", queriesFor5, queriesFor20)
+                        .isLessThanOrEqualTo(2L);
+            } finally {
+                statistics.setStatisticsEnabled(wasEnabled);
+            }
+        }
+
+        /** SCHEDULED（変換済み）のキープを count 件作る。変換先の予定も1件ずつ作る。 */
+        private void createConvertedKeeps(int count, String prefix) {
+            for (int i = 0; i < count; i++) {
+                ScheduleEntity converted = saveSchedule(teamId, prefix + "-予定" + i, null);
+                ScheduleKeepEntity keep = saveKeep(teamId, memberId, prefix + "-キープ" + i,
+                        ScheduleKeepStatus.SCHEDULED, i);
                 keep.setConvertedScheduleId(converted.getId());
                 scheduleKeepRepository.save(keep);
             }
             em.flush();
             em.clear();
+        }
 
-            // クエリ回数計測はHibernate統計に依存するため、ここでは「専用の一括取得APIが機能し、
-            // 20件全件の逆引きが解決されること」を観測可能な形で検証する
-            // （実装が1件ずつ引いていれば当然通るため、真の否定判定はコードレビューで補う）。
-            setAuthentication(memberId);
-            List<Long> scheduleIds = scheduleKeepRepository.findByTeamIdAndStatus(
-                            teamId, ScheduleKeepStatus.SCHEDULED,
-                            org.springframework.data.domain.PageRequest.of(0, 100))
-                    .stream().map(ScheduleKeepEntity::getConvertedScheduleId).toList();
-            assertThat(scheduleIds).hasSize(20);
-
-            List<ScheduleKeepEntity> resolved = scheduleKeepRepository
-                    .findByTeamIdAndConvertedScheduleIdIn(teamId, scheduleIds);
-            assertThat(resolved).hasSize(20);
+        /** 一覧APIを1回叩くのに要した JDBC ステートメント数を測る。 */
+        private long measureListQueryCount() throws Exception {
+            Statistics statistics = em.getEntityManagerFactory()
+                    .unwrap(SessionFactory.class).getStatistics();
+            long before = statistics.getPrepareStatementCount();
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedule-keeps", teamSlug)
+                            .param("status", "SCHEDULED")
+                            .param("size", "50"))
+                    .andExpect(status().isOk());
+            return statistics.getPrepareStatementCount() - before;
         }
 
         @Test
@@ -676,12 +718,31 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.keep.status").value("SCHEDULED"));
 
-            long notificationCount = ((Number) em.createNativeQuery(
-                            "SELECT COUNT(*) FROM notifications "
-                                    + "WHERE user_id = :uid AND notification_type = 'SCHEDULE_KEEP_CONVERTED'")
-                    .setParameter("uid", memberId)
-                    .getSingleResult()).longValue();
-            assertThat(notificationCount).isGreaterThan(0);
+            assertThat(countConvertedNotifications(memberId)).isGreaterThan(0);
+        }
+
+        @Test
+        @DisplayName("SUPPORTERへ降格した作成者には変換通知が作られない"
+                + "（キープ本体では404で秘匿しているタイトルが通知経由で漏れないこと）")
+        void 降格した作成者には変換通知が作られない() throws Exception {
+            // supporterId が作ったキープ。その後 SUPPORTER になった（＝キープが見えなくなった）状況を模す。
+            ScheduleKeepEntity keep = saveKeep(teamId, supporterId, "降格作成者のキープ", ScheduleKeepStatus.KEPT, 0);
+            em.flush();
+            em.clear();
+
+            // 前提の確認: 作成者はもうこのキープを見られない（404 で秘匿されている）。
+            setAuthentication(supporterId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId()))
+                    .andExpect(status().isNotFound());
+
+            setAuthentication(memberId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/convert",
+                            teamSlug, keep.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("startAt", "2026-09-21T00:00:00"))))
+                    .andExpect(status().isOk());
+
+            assertThat(countConvertedNotifications(supporterId)).isZero();
         }
     }
 
@@ -1071,8 +1132,139 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // PATCH ボディの型検証（§7.1: クライアント入力起因の500を作らない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("PATCH candidateDates の型検証")
+    class PatchCandidateDatesTypeCheck {
+
+        @Test
+        @DisplayName("candidateDatesが配列でなく文字列でも500にならず400 SCHEDULE_KEEP_004")
+        void 配列でない文字列は400() throws Exception {
+            ScheduleKeepEntity keep = saveKeep(teamId, memberId, "型検証キープ1", ScheduleKeepStatus.KEPT, 0);
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"candidateDates\":\"2026-08-15\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_004"));
+        }
+
+        @Test
+        @DisplayName("candidateDatesの要素が数値でも500にならず400 SCHEDULE_KEEP_004")
+        void 要素が数値は400() throws Exception {
+            ScheduleKeepEntity keep = saveKeep(teamId, memberId, "型検証キープ2", ScheduleKeepStatus.KEPT, 0);
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"candidateDates\":[20260815]}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_004"));
+        }
+
+        @Test
+        @DisplayName("11件かつ1件が形式不正でも、件数超過の SCHEDULE_KEEP_003 が返る（AC-13の判定順）")
+        void 件数超過は形式不正より先に判定される() throws Exception {
+            ScheduleKeepEntity keep = saveKeep(teamId, memberId, "型検証キープ3", ScheduleKeepStatus.KEPT, 0);
+            em.flush();
+            em.clear();
+
+            List<String> dates = new java.util.ArrayList<>();
+            for (int i = 1; i <= 10; i++) {
+                dates.add(String.format("2026-08-%02d", i));
+            }
+            dates.add("2026/08/20");
+
+            setAuthentication(memberId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("candidateDates", dates))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_003"));
+        }
+
+        @Test
+        @DisplayName("titleは前後の空白をtrimして保存され、trim後200文字以内なら通る")
+        void titleはtrimして保存される() throws Exception {
+            ScheduleKeepEntity keep = saveKeep(teamId, memberId, "trim検証キープ", ScheduleKeepStatus.KEPT, 0);
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "  合宿の相談  "))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.title").value("合宿の相談"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // §4.4: SCHEDULED のキープは変換先 schedules.title を正として返す
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("変換後のタイトル同期")
+    class ConvertedTitleSync {
+
+        @Test
+        @DisplayName("変換先の予定名を変更すると、キープの単体GET・一覧の title も追随する"
+                + "（SCHEDULEDはtitleのPATCHが409で直せないため、旧題目が残ると袋小路になる）")
+        void 変換先の予定名変更にキープのtitleが追随する() throws Exception {
+            ScheduleEntity converted = saveSchedule(teamId, "旧タイトル", null);
+            ScheduleKeepEntity keep = saveKeep(teamId, memberId, "旧タイトル", ScheduleKeepStatus.SCHEDULED, 0);
+            keep.setConvertedScheduleId(converted.getId());
+            scheduleKeepRepository.save(keep);
+            em.flush();
+
+            em.createNativeQuery("UPDATE schedules SET title = :t WHERE id = :id")
+                    .setParameter("t", "新タイトル")
+                    .setParameter("id", converted.getId())
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}", teamSlug, keep.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.title").value("新タイトル"));
+
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedule-keeps", teamSlug)
+                            .param("status", "SCHEDULED"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id=='" + keep.getId() + "')].title").value("新タイトル"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // フィクスチャ
     // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 変換通知の件数を<b>新しい接続＝新しいトランザクション</b>で数える。
+     *
+     * <p>通知は {@code REQUIRES_NEW} で独立コミットされる（§6.2.1）ため、
+     * テストの外側トランザクションから {@code em} で数えても 0 のままになる。</p>
+     */
+    private long countConvertedNotifications(Long userId) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM notifications "
+                             + "WHERE user_id = ? AND notification_type = 'SCHEDULE_KEEP_CONVERTED'")) {
+            statement.setLong(1, userId);
+            try (ResultSet rs = statement.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        }
+    }
 
     private ScheduleKeepEntity saveKeep(Long teamId, Long createdBy, String title,
                                          ScheduleKeepStatus status, int sortOrder) {

@@ -135,9 +135,24 @@ public class ScheduleKeepService {
         // 変換先の生存状態はページ内の全件分を 1 クエリで解決する（§4.5.1・N+1 回避）。
         // 1件ずつ引くと SCHEDULED が並ぶ一覧でそのままページサイズ分の SELECT になる。
         List<ScheduleKeepEntity> entities = results.getContent();
-        Map<Long, String> stateByScheduleId = resolveConvertedScheduleStates(entities);
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ConvertedSchedule> convertedByScheduleId = resolveConvertedSchedules(entities);
 
-        return entities.stream().map(entity -> toResponse(entity, scope, stateByScheduleId)).toList();
+        // slug は全行同じスコープなので 1 回だけ。表示名も一括解決する（§10.3）。
+        // 行ごとに引くと 20 件の一覧で slug 20 回・表示名 20 回の往復になる。
+        String scopeSlug = resolveScopeSlug(scope, entities.get(0));
+        Map<Long, String> displayNameByUserId = nameResolverService.resolveUserDisplayNames(
+                entities.stream()
+                        .map(ScheduleKeepEntity::getCreatedBy)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .toList());
+
+        return entities.stream()
+                .map(entity -> toResponse(entity, scope, convertedByScheduleId, scopeSlug, displayNameByUserId))
+                .toList();
     }
 
     private Page<ScheduleKeepEntity> fetchByStatus(ScheduleKeepScope scope, String statusParam, Pageable pageable) {
@@ -218,9 +233,8 @@ public class ScheduleKeepService {
             keep.setMemo(rawMemo == null ? null : rawMemo.toString());
         }
         if (body.containsKey("candidateDates")) {
-            @SuppressWarnings("unchecked")
-            List<String> rawDates = (List<String>) body.get("candidateDates");
-            keep.setCandidateDates(toJson(validateAndNormalizeCandidateDates(rawDates)));
+            keep.setCandidateDates(toJson(
+                    validateAndNormalizeCandidateDates(toCandidateDateStrings(body.get("candidateDates")))));
         }
 
         ScheduleKeepEntity saved = scheduleKeepRepository.save(keep);
@@ -298,7 +312,7 @@ public class ScheduleKeepService {
                 // 予定を作ったのは変換した人。キープの作成者は逆引きで辿れる（§4.5.2）。
                 .createdBy(viewerUserId)
                 .build();
-        // 直後の通知で F00 可視性判定が SQL で予定を引くため、ここで flush して可視にする。
+        // 直後の通知判定が SQL でキープ／メンバーシップを引くため、ここで flush して整合させる。
         ScheduleEntity savedSchedule = scheduleRepository.saveAndFlush(schedule);
 
         keep.setStatus(ScheduleKeepStatus.SCHEDULED);
@@ -325,6 +339,12 @@ public class ScheduleKeepService {
      * <p>通知は notification ドメインへの越境であり、失敗しても<b>変換は巻き戻さない</b>
      * （best-effort・§6.2）。ただし<b>握りつぶさずログには必ず残す</b>
      * （CLAUDE.md 障害対応の原則2）。</p>
+     *
+     * <p><b>この try/catch が実際に効くのは、通知の永続化が
+     * {@link ScheduleKeepNotificationPublisher}（{@code REQUIRES_NEW}）に隔離されているからである</b>
+     * （§6.2.1）。同一 TX のまま catch していた頃は、永続化例外が TX を rollback-only にし、
+     * 本メソッドから戻った直後のコミットが {@code UnexpectedRollbackException} で 500 になって
+     * <b>変換ごと失われていた</b>（しかもログには「変換自体は成立」と嘘が残る）。</p>
      */
     private void notifyConverted(ScheduleKeepScope scope, ScheduleKeepEntity keep,
                                   ScheduleEntity schedule, Long actorUserId) {
@@ -497,16 +517,55 @@ public class ScheduleKeepService {
     // バリデーション
     // ------------------------------------------------------------------
 
+    /**
+     * PATCH の緩い {@code Map} ボディから候補日配列を安全に取り出す（§7.1）。
+     *
+     * <p>{@code (List<String>)} の無検査キャストだと {@code {"candidateDates": "2026-08-15"}}
+     * （配列でなく文字列）や {@code [20260815]}（数値要素）で {@code ClassCastException} になり、
+     * <b>クライアント入力起因で 500</b> になる。§7.1 はこれを禁じているので、
+     * 形が違えば {@code SCHEDULE_KEEP_004}（400）へ畳む。要素は数値等でも
+     * {@code toString()} で受けて日付形式の検証に委ねる（判定はひとところに置く）。</p>
+     */
+    private List<String> toCandidateDateStrings(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (!(raw instanceof List<?> rawList)) {
+            throw new BusinessException(ScheduleKeepErrorCode.KEEP_INVALID_CANDIDATE_DATE);
+        }
+        List<String> values = new ArrayList<>(rawList.size());
+        for (Object element : rawList) {
+            if (element == null) {
+                throw new BusinessException(ScheduleKeepErrorCode.KEEP_INVALID_CANDIDATE_DATE);
+            }
+            values.add(element.toString());
+        }
+        return values;
+    }
+
+    /**
+     * タイトルを検証し、<b>正規化後の値</b>（前後の空白を除いたもの）を返す。
+     *
+     * <p>trim した値で判定しておきながら未 trim の値を返していると、
+     * 「199 文字＋前後の空白」が 200 文字超として 400 になる一方、保存される値には空白が残る。
+     * 判定と保存で同じ値を使う。</p>
+     */
     private String validateAndNormalizeTitle(String title) {
-        if (title == null || title.trim().isEmpty() || title.length() > MAX_TITLE_LENGTH) {
+        String normalized = title == null ? null : title.trim();
+        if (normalized == null || normalized.isEmpty() || normalized.length() > MAX_TITLE_LENGTH) {
             throw new BusinessException(ScheduleKeepErrorCode.KEEP_TITLE_REQUIRED);
         }
-        return title;
+        return normalized;
     }
 
     private List<LocalDate> validateAndNormalizeCandidateDates(List<String> raw) {
         if (raw == null || raw.isEmpty()) {
             return null;
+        }
+        // 件数超過は形式検証より先に見る。後ろに回すと「11件中1件でも形式不正」のときに
+        // AC-13 が期待する _003（件数超過）でなく _004（形式不正）が返ってしまう。
+        if (raw.size() > MAX_CANDIDATE_DATES) {
+            throw new BusinessException(ScheduleKeepErrorCode.KEEP_TOO_MANY_CANDIDATE_DATES);
         }
         List<LocalDate> parsed = new ArrayList<>();
         for (String s : raw) {
@@ -515,9 +574,6 @@ public class ScheduleKeepService {
             } catch (DateTimeParseException | NullPointerException e) {
                 throw new BusinessException(ScheduleKeepErrorCode.KEEP_INVALID_CANDIDATE_DATE);
             }
-        }
-        if (raw.size() > MAX_CANDIDATE_DATES) {
-            throw new BusinessException(ScheduleKeepErrorCode.KEEP_TOO_MANY_CANDIDATE_DATES);
         }
         List<LocalDate> distinctSorted = parsed.stream().distinct().sorted().toList();
         return distinctSorted.isEmpty() ? null : distinctSorted;
@@ -561,11 +617,11 @@ public class ScheduleKeepService {
      * 一覧分の変換先の生存状態を 1 クエリで解決する（§4.5.1・N+1 回避）。
      *
      * @param keeps 対象キープ
-     * @return {@code schedules.id} → {@code ACTIVE}/{@code CANCELLED} のマップ。
+     * @return {@code schedules.id} → 生存状態と<b>現在のタイトル</b>のマップ。
      *         <b>マップに載らない ID は「消えている」＝{@code DELETED}</b>（{@code @SQLRestriction} により
      *         論理削除済みは取得されないため、不在がそのまま削除の証拠になる）
      */
-    private Map<Long, String> resolveConvertedScheduleStates(List<ScheduleKeepEntity> keeps) {
+    private Map<Long, ConvertedSchedule> resolveConvertedSchedules(List<ScheduleKeepEntity> keeps) {
         List<Long> scheduleIds = keeps.stream()
                 .map(ScheduleKeepEntity::getConvertedScheduleId)
                 .filter(java.util.Objects::nonNull)
@@ -574,13 +630,26 @@ public class ScheduleKeepService {
         if (scheduleIds.isEmpty()) {
             return Map.of();
         }
-        // ID の出所は既にスコープ検証済みのキープ行であり、ここで読むのは status のみ
+        // ID の出所は既にスコープ検証済みのキープ行であり、ここで読むのは status と title のみ
         // （認可判定には使わない）。よって主キー一括取得でよい。
-        Map<Long, String> states = new HashMap<>();
+        Map<Long, ConvertedSchedule> resolved = new HashMap<>();
         for (ScheduleEntity schedule : scheduleRepository.findAllById(scheduleIds)) {
-            states.put(schedule.getId(), scheduleStateOf(schedule));
+            resolved.put(schedule.getId(), new ConvertedSchedule(scheduleStateOf(schedule), schedule.getTitle()));
         }
-        return states;
+        return resolved;
+    }
+
+    /**
+     * 変換先の予定から拾う表示用の情報（§4.4 / §5.4）。
+     *
+     * <p>タイトルを一緒に持ち帰るのが要点である。{@code SCHEDULED} のキープは title の PATCH が
+     * 409 でロックされるため、変換先の予定名を変えたあとキープ側が旧題目のままだと
+     * <b>ユーザーが自力で直せない</b>。同じ物を指す 2 つの名前を並べない。</p>
+     *
+     * @param state {@code ACTIVE} / {@code CANCELLED}
+     * @param title 変換先 {@code schedules.title}（表示の正）
+     */
+    private record ConvertedSchedule(String state, String title) {
     }
 
     /** 予定 1 件の生存状態（§5.4）。中止と論理削除は FE の案内文が違うので畳まない。 */
@@ -620,46 +689,70 @@ public class ScheduleKeepService {
         }
     }
 
-    /** 単体用。変換先の状態はその場で 1 件だけ引く（一覧は {@link #resolveConvertedScheduleStates} を使う）。 */
+    /** 単体用。変換先はその場で 1 件だけ引く（一覧は {@link #resolveConvertedSchedules} を使う）。 */
     private ScheduleKeepResponse toResponse(ScheduleKeepEntity entity, ScheduleKeepScope scope) {
-        Map<Long, String> states = entity.getConvertedScheduleId() == null
+        Map<Long, ConvertedSchedule> converted = entity.getConvertedScheduleId() == null
                 ? Map.of()
-                : resolveConvertedScheduleStates(List.of(entity));
-        return toResponse(entity, scope, states);
+                : resolveConvertedSchedules(List.of(entity));
+        return toResponse(entity, scope, converted, resolveScopeSlug(scope, entity),
+                entity.getCreatedBy() == null
+                        ? Map.of()
+                        : nameResolverService.resolveUserDisplayNames(List.of(entity.getCreatedBy())));
+    }
+
+    /**
+     * スコープの slug を 1 回だけ引く（§10.3「一括解決」）。
+     *
+     * <p>一覧は<b>全行が同じスコープ</b>（パスで固定される）なので、行ごとに引くのは常に無駄である。</p>
+     */
+    private String resolveScopeSlug(ScheduleKeepScope scope, ScheduleKeepEntity sample) {
+        return switch (scope.type()) {
+            case TEAM -> teamService.getSlugById(sample.getTeamId());
+            case ORGANIZATION -> organizationService.getSlugById(sample.getOrganizationId());
+            case PERSONAL -> null;
+        };
     }
 
     private ScheduleKeepResponse toResponse(ScheduleKeepEntity entity, ScheduleKeepScope scope,
-                                             Map<Long, String> stateByScheduleId) {
+                                             Map<Long, ConvertedSchedule> convertedByScheduleId,
+                                             String scopeSlug,
+                                             Map<Long, String> displayNameByUserId) {
         String teamPublicId = null;
         String organizationPublicId = null;
         String scopeType;
         switch (scope.type()) {
             case TEAM -> {
                 scopeType = "TEAM";
-                teamPublicId = teamService.getSlugById(entity.getTeamId());
+                teamPublicId = scopeSlug;
             }
             case ORGANIZATION -> {
                 scopeType = "ORGANIZATION";
-                organizationPublicId = organizationService.getSlugById(entity.getOrganizationId());
+                organizationPublicId = scopeSlug;
             }
             default -> scopeType = "PERSONAL";
         }
 
         ScheduleKeepResponse.CreatedByDto createdBy = null;
         if (entity.getCreatedBy() != null) {
-            String displayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
             createdBy = ScheduleKeepResponse.CreatedByDto.builder()
                     .userId(entity.getCreatedBy())
-                    .displayName(displayName)
+                    // 一括解決に載らない ID＝該当ユーザー不在。単体解決時と同じ表記に揃える。
+                    .displayName(displayNameByUserId.getOrDefault(entity.getCreatedBy(), "不明なユーザー"))
                     .build();
         }
+
+        ConvertedSchedule converted = entity.getConvertedScheduleId() == null
+                ? null
+                : convertedByScheduleId.get(entity.getConvertedScheduleId());
 
         return ScheduleKeepResponse.builder()
                 .id(entity.getId().toString())
                 .scopeType(scopeType)
                 .teamPublicId(teamPublicId)
                 .organizationPublicId(organizationPublicId)
-                .title(entity.getTitle())
+                // 変換済みなら変換先 schedules.title が正（§4.4）。予定名を変えたあとも一致させる。
+                // 追加クエリは発生しない（変換先は上で一括ロード済み）。
+                .title(converted == null ? entity.getTitle() : converted.title())
                 .memo(entity.getMemo())
                 .candidateDates(fromJson(entity.getCandidateDates()))
                 .status(entity.getStatus().name())
@@ -667,7 +760,7 @@ public class ScheduleKeepService {
                 // 未変換は NONE。変換済みなのに引けなかったものは論理削除済み＝DELETED（§5.4）。
                 .convertedScheduleState(entity.getConvertedScheduleId() == null
                         ? "NONE"
-                        : stateByScheduleId.getOrDefault(entity.getConvertedScheduleId(), "DELETED"))
+                        : (converted == null ? "DELETED" : converted.state()))
                 .sortOrder(entity.getSortOrder())
                 .createdBy(createdBy)
                 .createdAt(entity.getCreatedAt())
