@@ -48,6 +48,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -158,9 +159,25 @@ class ReservationGroupServiceTest {
         given(accessControlService.isAdminOrAbove(eq(ADMIN_USER_ID), eq(TEAM_ID), eq("TEAM"))).willReturn(true);
     }
 
-    /** 固定 Clock を差し替えてサービスを再生成する（締切・過去枠判定の時刻別検証用）。 */
+    /**
+     * 固定 Clock を差し替えてサービスを再生成する（締切・過去枠判定の時刻別検証用）。
+     *
+     * <p>Issue #2526 是正済み判定: 過去枠・締切判定は
+     * {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} で業務ローカル基準に揃えたため、
+     * この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@code now} になる」ものでなければならない。
+     * かつての {@code now.toInstant(ZoneOffset.UTC)} は UTC 基準比較というバグ実装をそのまま固定していた
+     * （実行環境の JVM 既定ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で
+     * instant 化することで、実行環境に関わらず引数 {@code now} が正しく「現在時刻」として渡るようにする。
+     */
     private void reinitServiceWithClockAt(LocalDateTime now) {
-        Clock fixed = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
+        reinitServiceWithClock(Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.of("UTC")));
+    }
+
+    /**
+     * 任意の {@link Clock}（ゾーン込み）を明示注入してサービスを再生成する。
+     * Issue #2526 のゾーン一致性番人テスト（同一瞬間・異なる Clock ゾーン）で使う。
+     */
+    private void reinitServiceWithClock(Clock fixed) {
         TransactionTemplate txTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
         service = new ReservationGroupService(
                 reservationRepository, slotRepository, slotService, lineRepository, menuRepository,
@@ -515,6 +532,28 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 過去枠判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 過去枠判定はClockのゾーンに左右されない() {
+            // 先頭枠開始は SLOT_DATE(2026-04-01) 10:00（業務ローカル時刻）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て枠開始の 1 分前」
+            // ＝2026-04-01T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            Instant sameInstant = LocalDateTime.of(2026, 4, 1, 9, 59)
+                    .atZone(ZoneId.systemDefault()).toInstant();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            ReservationGroupResponse resultUtc = service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+            assertThat(resultUtc).as("UTC Clock: 未来枠のはずなので成功する").isNotNull();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            ReservationGroupResponse resultTokyo = service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+            assertThat(resultTokyo)
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『未来枠』判定になるはず）")
+                    .isNotNull();
+        }
     }
 
     @Nested
@@ -760,6 +799,32 @@ class ReservationGroupServiceTest {
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, null));
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
+        }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 締切判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 締切判定はClockのゾーンに左右されない() {
+            // 先頭枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00（業務ローカル時刻）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て締切の 1 分前」
+            // ＝2026-03-31T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            Instant sameInstant = LocalDateTime.of(2026, 3, 31, 9, 59)
+                    .atZone(ZoneId.systemDefault()).toInstant();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            stubGroupRows(ReservationStatus.CONFIRMED);
+            ReservationGroupCancelResponse responseUtc =
+                    service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
+            assertThat(responseUtc.status()).as("UTC Clock: 締切内のためキャンセル成功するはず").isEqualTo("CANCELLED");
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            stubGroupRows(ReservationStatus.CONFIRMED);
+            ReservationGroupCancelResponse responseTokyo =
+                    service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
+            assertThat(responseTokyo.status())
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『締切内』判定になるはず）")
+                    .isEqualTo("CANCELLED");
         }
 
         @Test
