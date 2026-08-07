@@ -141,7 +141,9 @@ public class RecruitmentAutoCancelBatch {
         // （常に PageRequest.of(0, CHUNK_SIZE) で先頭ページを取り直す）。
         // もし page++ のようにオフセットを前進させると、集合が縮んでいるのに読み取り位置だけ
         // 前進することになり、後続の参加者を読み飛ばしてキャンセル漏れが発生する
-        // （PaymentRequestOverdueBatchService と同型のバグパターン。同クラスの execute() を参照）。
+        // 同じ判断を先に下している正しい実装が PaymentRequestOverdueBatchService#execute() にある。
+        // あちらも同じ理由で page=0 固定にしているので、迷ったら参照すること（あちらは手本であり、
+        // バグを抱えている側ではない。誤って「ページングし忘れ」として直しに行かないこと）。
         List<Long> affectedUserIds = new ArrayList<>();
         int totalProcessed = 0;
         int iteration = 0;
