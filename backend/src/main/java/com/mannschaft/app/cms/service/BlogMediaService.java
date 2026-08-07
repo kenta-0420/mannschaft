@@ -79,7 +79,7 @@ public class BlogMediaService {
     private static final String BLOG_PREFIX_TEMPLATE = "blog/%s/%d/";
 
     /** F13 Phase 4-δ: storage_usage_logs.reference_type に記録するテーブル名。 */
-    private static final String REFERENCE_TYPE = "blog_media_uploads";
+    static final String REFERENCE_TYPE = "blog_media_uploads";
 
     // ==================== 依存 ====================
 
@@ -88,6 +88,8 @@ public class BlogMediaService {
     private final BlogMediaUploadRepository blogMediaUploadRepository;
     /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** Issue #2601: 1 件処理を REQUIRES_NEW 独立トランザクションで実行する Bean。 */
+    private final BlogMediaOrphanCleanupRunner orphanCleanupRunner;
 
     // ==================== 公開メソッド ====================
 
@@ -143,48 +145,48 @@ public class BlogMediaService {
      * そこで減算の前に {@link BlogMediaUploadRepository#deleteOrphanById} で行を<b>先に確保</b>し、
      * 1 行削除できた実行だけが減算する。条件付き DELETE は行ロックで直列化されるため、
      * 同じ行に対して 2 回目以降は 0 行となり、二重減算が構造的に起こり得なくなる。</p>
+     *
+     * <p><b>Issue #2601</b>: 1 件の処理（行の確保 → R2 削除 → 使用量減算）は
+     * {@link BlogMediaOrphanCleanupRunner#cleanupOne} に {@code REQUIRES_NEW} の独立トランザクションで
+     * 委譲する。R2 削除は取り消せない外部操作であり、本メソッド全体を単一トランザクションに包むと
+     * 途中の 1 件で例外が発生した際にロールバックで DB 行が復活する一方、既に削除済みの R2 オブジェクトは
+     * 戻らず実体の無い行が残ってしまう。本メソッド自体は対象一覧の読み取りのみのため
+     * {@code @Transactional} を付けない。</p>
+     *
+     * <p>1 件の呼び出し自体も try で囲む。想定外の例外で 1 件が失敗してもバッチ全体を止めない。</p>
      */
     @BatchEndpoint(name = "cms-blog-media-orphan-cleanup", description = "72 時間以上孤立した blog メディアを毎日 02:00 に R2 から物理削除する")
     @Scheduled(cron = "0 0 2 * * *")
     // 起動間隔は日次 02:00。処理量は「72 時間以内に孤立したメディア」に限られるが、1 件ごとに R2 削除 2 回（本体・サムネ）
     // が走るため最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
     @SchedulerLock(name = "cmsBlogMediaOrphanCleanup", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
-    @Transactional
     public void cleanupOrphanMedia() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);
         List<BlogMediaUploadEntity> orphans = blogMediaUploadRepository
                 .findByBlogPostIdIsNullAndCreatedAtBefore(cutoff);
 
         int deletedCount = 0;
+        int r2FailureCount = 0;
         for (BlogMediaUploadEntity orphan : orphans) {
-            // 行を先に確保する。0 行なら他の実行が既にこの行を処理済みであり、
-            // R2 削除も使用量減算もその実行が行う（ここで重ねて減算してはならない）。
-            if (blogMediaUploadRepository.deleteOrphanById(orphan.getId()) == 0) {
-                log.debug("孤立メディアは別実行が処理済みのためスキップ: mediaId={}", orphan.getId());
-                continue;
-            }
-            deletedCount++;
             try {
-                r2StorageService.delete(orphan.getS3Key());
-                if (orphan.getThumbnailR2Key() != null) {
-                    r2StorageService.delete(orphan.getThumbnailR2Key());
-                }
-                // F13 Phase 4-δ: 使用量減算（s3Key からスコープを復元）
-                if (orphan.getFileSize() != null && orphan.getFileSize() > 0) {
-                    resolveScopeFromKey(orphan.getS3Key()).ifPresent(scope ->
-                            storageQuotaService.recordDeletion(
-                                    scope.scopeType(), scope.scopeId(),
-                                    orphan.getFileSize(), StorageFeatureType.CMS,
-                                    REFERENCE_TYPE, orphan.getId(), orphan.getUploaderId()));
+                BlogMediaOrphanCleanupRunner.OrphanCleanupResult result =
+                        orphanCleanupRunner.cleanupOne(orphan, this::resolveScopeFromKey);
+                if (result.claimed()) {
+                    deletedCount++;
+                    if (result.r2DeleteFailed()) {
+                        r2FailureCount++;
+                    }
+                } else {
+                    log.debug("孤立メディアは別実行が処理済みのためスキップ: mediaId={}", orphan.getId());
                 }
             } catch (Exception e) {
-                // R2 削除失敗は警告ログのみ（DB 削除は続行する）
-                log.warn("孤立メディアの R2 削除に失敗しました（DB 削除は続行）: mediaId={}, key={}",
-                        orphan.getId(), orphan.getS3Key(), e);
+                // 個別メディアの失敗でバッチ全体を停止しない
+                log.error("孤立メディアのクリーンアップに失敗しました: mediaId={}", orphan.getId(), e);
             }
         }
 
-        log.info("孤立メディアのクリーンアップ完了: 対象={}件, 本実行が削除={}件", orphans.size(), deletedCount);
+        log.info("孤立メディアのクリーンアップ完了: 対象={}件, 本実行が削除={}件, R2削除失敗={}件",
+                orphans.size(), deletedCount, r2FailureCount);
     }
 
     /**
