@@ -33,12 +33,9 @@ public class PointCardProviderController {
     /**
      * 有効化されている全プロバイダーをカテゴリ昇順・表示名昇順で返す。
      * レスポンス形式は設計書 §6.2 に準拠し {@code {"data": [...]}} でラップする。
-     *
-     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>: {@code SecurityConfig.java:457
-     * — .anyRequest().authenticated()}。応答はプロバイダー運営マスタ（is_active=true の一覧）であり、
-     * ユーザー固有データを含まない（PointCardProviderController#listProviders）。認証必須のみで足りる。
-     * 認可根治戦役 Wave6 監査済。</p>
      */
+    // SecurityConfig.java:457 の anyRequest().authenticated() で認証必須。応答は運営マスタの
+    // プロバイダー一覧のみで、全認証済みユーザーに同一の結果を返す（利用者固有情報を含まない）。
     @AuthorizedByPathConfig
     @GetMapping
     @Operation(summary = "プロバイダー一覧取得",

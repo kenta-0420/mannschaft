@@ -67,8 +67,8 @@ class MyTicketControllerAuthzTest {
     }
 
     /**
-     * 認可根治戦役 Wave6 ロットG: {@code MyTicketController#getWidget} の自己スコープ性を固定する。
-     * {@code bookService.getWidget} へは常にログイン主体の userId が渡り、
+     * 認可根治戦役 Wave6 ロットG: {@code MyTicketController#getWidget}（{@code @AuthorizedInService} 付与済み）
+     * について、{@code bookService.getWidget} へは常にログイン主体の userId が渡り、
      * 他ユーザーの userId が紛れ込まないことを検証する。
      */
     @Test

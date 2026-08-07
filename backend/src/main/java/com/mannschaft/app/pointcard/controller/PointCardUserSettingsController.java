@@ -33,9 +33,8 @@ public class PointCardUserSettingsController {
 
     private final PointCardUserSettingsService settingsService;
 
-    @SelfScopedEndpoint(
-            "settingsService.getOrCreateSettings(userId) は SecurityUtils.getCurrentUserId() のみを"
-                    + "検索条件に渡す（PointCardUserSettingsController#getSettings）")
+    @SelfScopedEndpoint("取得対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getSettings メソッド本体）")
     @GetMapping
     @Operation(summary = "ウォレット設定取得",
             description = "自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却")
@@ -44,9 +43,8 @@ public class PointCardUserSettingsController {
         return ResponseEntity.ok(ApiResponse.of(settingsService.getOrCreateSettings(userId)));
     }
 
-    @SelfScopedEndpoint(
-            "settingsService.updateSettings(userId, request) は SecurityUtils.getCurrentUserId() 固定の"
-                    + "設定行のみを更新する（PointCardUserSettingsController#updateSettings）")
+    @SelfScopedEndpoint("更新対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（updateSettings メソッド本体）")
     @PutMapping
     @Operation(summary = "ウォレット設定更新",
             description = "オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新")

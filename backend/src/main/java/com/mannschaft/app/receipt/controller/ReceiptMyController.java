@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 領収書マイページコントローラー。メンバー自身宛の領収書取得APIを提供する。
@@ -43,14 +42,12 @@ public class ReceiptMyController {
     /**
      * 自分宛の領収書一覧を取得する。
      *
-     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code receiptMyService.listMyReceipts}
-     * は {@code SecurityUtils.getCurrentUserId()} を recipientUserId として検索条件に必ず束縛し、
-     * クエリの {@code scopeId} は自分宛の結果をさらに絞り込むだけで、他人宛の領収書へ到達する経路が
-     * 構造的に無い（ReceiptMyController#listMyReceipts）。認可根治戦役 Wave6 監査済。</p>
+     * <p><b>認可の所在</b>: {@code ReceiptMyService.listMyReceipts}
+     * （{@code receipt/service/ReceiptMyService.java:51}）が、リクエストの scopeId 有無に関わらず
+     * 常に {@code recipientUserId=userId} を検索条件に AND 結合するため、他人の scopeId を渡しても
+     * 自分宛以外の領収書は 1 件も返らない。</p>
      */
-    @SelfScopedEndpoint(
-            "receiptMyService.listMyReceipts(userId, ...) は SecurityUtils.getCurrentUserId() を"
-                    + "recipientUserId として必ず束縛する（ReceiptMyController#listMyReceipts）")
+    @AuthorizedInService
     @GetMapping
     @Operation(summary = "自分宛の領収書一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -68,11 +65,11 @@ public class ReceiptMyController {
     /**
      * 自分宛の領収書 PDF をダウンロードする。
      *
-     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: {@code receiptMyService.getMyReceiptPdf}
-     * が {@code receiptRepository.findByIdAndRecipientUserId(id, userId)} で「当該領収書 ID かつ
-     * 受取人本人」の複合条件で引き当てる。受取人以外の id は不存在と区別せず
-     * {@code RECEIPT_NOT_FOUND}（404）で秘匿する（ReceiptMyController#downloadMyReceiptPdf）。
-     * 認可根治戦役 Wave6 監査済。</p>
+     * <p><b>認可の所在</b>: {@code ReceiptMyService.getMyReceiptPdf}
+     * （{@code receipt/service/ReceiptMyService.java:92}）が
+     * {@code receiptRepository.findByIdAndRecipientUserId(receiptId, userId)} で
+     * 「当該領収書 ID かつ受取人本人」の複合条件で引き当て、不一致は
+     * {@code RECEIPT_NOT_FOUND}（404）で秘匿する。PDF 生成は引き当てた Entity にのみ適用される。</p>
      */
     @AuthorizedInService
     @GetMapping("/{id}/pdf")
@@ -89,14 +86,12 @@ public class ReceiptMyController {
     /**
      * 年間サマリーを取得する。
      *
-     * <p><b>認可根拠（{@link SelfScopedEndpoint}）</b>: {@code receiptMyService.getAnnualSummary}
-     * は {@code SecurityUtils.getCurrentUserId()} を recipientUserId として検索条件に必ず束縛し、
-     * クエリの {@code scopeId} は自分宛の集計をさらに絞り込むだけで、他人宛の領収書集計へ到達する経路が
-     * 構造的に無い（ReceiptMyController#getAnnualSummary）。認可根治戦役 Wave6 監査済。</p>
+     * <p><b>認可の所在</b>: {@code ReceiptMyService.getAnnualSummary}
+     * （{@code receipt/service/ReceiptMyService.java:113}）が、リクエストの scopeId 有無に関わらず
+     * 常に {@code recipientUserId=userId} を検索条件に AND 結合するため、他人の scopeId を渡しても
+     * 自分宛以外の領収書は集計対象に含まれない。</p>
      */
-    @SelfScopedEndpoint(
-            "receiptMyService.getAnnualSummary(userId, ...) は SecurityUtils.getCurrentUserId() を"
-                    + "recipientUserId として必ず束縛する（ReceiptMyController#getAnnualSummary）")
+    @AuthorizedInService
     @GetMapping("/annual-summary")
     @Operation(summary = "年間サマリー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

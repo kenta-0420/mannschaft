@@ -54,9 +54,8 @@ public class PointCardGroupController {
     // 一覧
     // ─────────────────────────────────────────────
 
-    @SelfScopedEndpoint(
-            "groupService.listMyGroups(userId) は SecurityUtils.getCurrentUserId() のみを"
-                    + "検索条件に渡す（PointCardGroupController#listMyGroups）")
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyGroups メソッド本体）")
     @GetMapping
     @Operation(summary = "グループ一覧取得",
             description = "自分のグループ一覧を display_order → created_at 昇順で返す。"

@@ -47,9 +47,8 @@ public class ContentGateCheckController {
      * @param contentId   コンテンツ ID
      * @return 200 OK + {@link GateCheckResponse}（accessible / titleHidden / requiredItems）
      */
-    @SelfScopedEndpoint(
-            "viewerUserId は SecurityUtils.getCurrentUserId() 固定で、クエリでは受け付けない"
-                    + "（ContentGateCheckController#check、クラス Javadoc の IDOR 防止方針参照）")
+    @SelfScopedEndpoint("viewerUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "クエリで受け取らないため他人の受益者キーを指定する余地が構造的に無い（check メソッド本体）")
     @GetMapping("/check")
     @Operation(summary = "ペイウォール判定（F08.9 P4・自分自身の閲覧可否）")
     public ResponseEntity<ApiResponse<GateCheckResponse>> check(

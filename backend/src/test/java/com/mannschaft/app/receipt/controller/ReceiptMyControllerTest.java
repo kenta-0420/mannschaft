@@ -35,8 +35,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link ReceiptMyController} 契約テスト（F08.4 自分宛の領収書取得）。
  *
  * <p>認可根治戦役 Wave6 ロットG: {@code ReceiptMyController#listMyReceipts} /
- * {@code ReceiptMyController#getAnnualSummary} の自己スコープ性
- * （{@code SecurityUtils.getCurrentUserId()} のみが recipientUserId として Service へ渡ること）を固定する。</p>
+ * {@code ReceiptMyController#getAnnualSummary}（{@code @AuthorizedInService} 付与済み）について、
+ * {@code SecurityUtils.getCurrentUserId()} のみが recipientUserId として Service へ渡ることを固定する。
+ * 番人の契約テスト必須要件は {@code SelfScopedEndpoint} 付与時のみだが、Service 側の認可根拠
+ * （recipientUserId=userId の AND 結合）を裏取りする回帰テストとして維持する。</p>
  *
  * <p>{@code MockMvcBuilders.standaloneSetup} + {@code MockedStatic<SecurityUtils>} で
  * Controller のみを構成し Spring Security コンテキストを回避する（同型: {@code PaymentMethodControllerTest}）。</p>
