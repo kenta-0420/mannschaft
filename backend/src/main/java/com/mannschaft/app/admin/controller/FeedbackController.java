@@ -67,9 +67,11 @@ public class FeedbackController {
 
     /**
      * フィードバックに投票する。
+     *
+     * <p>FeedbackService#vote は existsById で対象フィードバックの実在を検証し、
+     * SecurityUtils.getCurrentUserId() 単位の重複投票を existsByFeedbackIdAndUserId で防ぐ。</p>
      */
-    @AuthorizedInService("FeedbackService#vote は existsById で対象フィードバックの実在を検証し、"
-        + "SecurityUtils.getCurrentUserId() 単位の重複投票を existsByFeedbackIdAndUserId で防ぐ")
+    @AuthorizedInService
     @PostMapping("/{id}/votes")
     @Operation(summary = "フィードバック投票")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投票成功")
@@ -80,9 +82,11 @@ public class FeedbackController {
 
     /**
      * フィードバックの投票を取り消す。
+     *
+     * <p>FeedbackService#unvote は SecurityUtils.getCurrentUserId() 自身の
+     * 投票のみ existsByFeedbackIdAndUserId で検証してから取り消す。</p>
      */
-    @AuthorizedInService("FeedbackService#unvote は SecurityUtils.getCurrentUserId() 自身の"
-        + "投票のみ existsByFeedbackIdAndUserId で検証してから取り消す")
+    @AuthorizedInService
     @DeleteMapping("/{id}/votes")
     @Operation(summary = "フィードバック投票取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")

@@ -75,10 +75,12 @@ public class VisibilityTemplateController {
     /**
      * テンプレート詳細を取得する。
      *
+     * <p>VisibilityTemplateService#getTemplate は findAccessibleById(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致（またはプリセット）を検証してから返す。</p>
+     *
      * @param id テンプレートID
      */
-    @AuthorizedInService("VisibilityTemplateService#getTemplate は findAccessibleById(id, "
-        + "SecurityUtils.getCurrentUserId()) で所有者一致（またはプリセット）を検証してから返す")
+    @AuthorizedInService
     @Operation(summary = "テンプレート詳細取得", description = "指定IDのカスタム公開範囲テンプレートの詳細を返す")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VisibilityTemplateDetailResponse>> getTemplate(
@@ -106,12 +108,13 @@ public class VisibilityTemplateController {
     /**
      * テンプレートを更新する。
      *
+     * <p>VisibilityTemplateService#updateTemplate は findByIdAndOwnerUserId(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致を検証してから更新する（不一致は404で存在秘匿）。</p>
+     *
      * @param id      テンプレートID
      * @param request 更新リクエスト
      */
-    @AuthorizedInService("VisibilityTemplateService#updateTemplate は"
-        + "findByIdAndOwnerUserId(id, SecurityUtils.getCurrentUserId()) で所有者一致を"
-        + "検証してから更新する（不一致は404で存在秘匿）")
+    @AuthorizedInService
     @Operation(summary = "テンプレート更新", description = "指定IDのカスタム公開範囲テンプレートを更新する")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VisibilityTemplateDetailResponse>> updateTemplate(
@@ -124,11 +127,12 @@ public class VisibilityTemplateController {
     /**
      * テンプレートを削除する。
      *
+     * <p>VisibilityTemplateService#deleteTemplate は findByIdAndOwnerUserId(id,
+     * SecurityUtils.getCurrentUserId()) で所有者一致を検証してから削除する（不一致は404で存在秘匿）。</p>
+     *
      * @param id テンプレートID
      */
-    @AuthorizedInService("VisibilityTemplateService#deleteTemplate は"
-        + "findByIdAndOwnerUserId(id, SecurityUtils.getCurrentUserId()) で所有者一致を"
-        + "検証してから削除する（不一致は404で存在秘匿）")
+    @AuthorizedInService
     @Operation(summary = "テンプレート削除", description = "指定IDのカスタム公開範囲テンプレートを削除する")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {

@@ -28,9 +28,11 @@ public class ModuleController {
 
     /**
      * 選択式モジュールカタログを取得する。
+     *
+     * <p>SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で保護され、
+     * ModuleDefinitionEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す。</p>
      */
-    @AuthorizedByPathConfig("SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で"
-        + "保護され、ModuleDefinitionEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す")
+    @AuthorizedByPathConfig
     @GetMapping
     @Operation(summary = "モジュールカタログ取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -40,9 +42,11 @@ public class ModuleController {
 
     /**
      * モジュール詳細を取得する。
+     *
+     * <p>SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で保護され、
+     * ModuleDefinitionEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す。</p>
      */
-    @AuthorizedByPathConfig("SecurityConfig.java:454 — anyRequest().authenticated()（既定ルール）で"
-        + "保護され、ModuleDefinitionEntity は組織非依存のグローバルカタログのため全認証ユーザーに同一内容を返す")
+    @AuthorizedByPathConfig
     @GetMapping("/{id}")
     @Operation(summary = "モジュール詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

@@ -64,9 +64,11 @@ public class SearchHistoryController {
 
     /**
      * 検索履歴を個別削除する。
+     *
+     * <p>SearchHistoryService#deleteHistory は findByIdAndUserId で
+     * historyId の所有者を SecurityUtils.getCurrentUserId() と照合してから削除する。</p>
      */
-    @AuthorizedInService("SearchHistoryService#deleteHistory は findByIdAndUserId で"
-        + "historyId の所有者を SecurityUtils.getCurrentUserId() と照合してから削除する")
+    @AuthorizedInService
     @DeleteMapping("/recent/{historyId}")
     @Operation(summary = "検索履歴個別削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")

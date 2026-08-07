@@ -85,10 +85,11 @@ public class OfflineSyncController {
 
     /**
      * コンフリクト詳細を取得する。
+     *
+     * <p>ConflictResolverService#getConflictDetail は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから返す。</p>
      */
-    @AuthorizedInService("ConflictResolverService#getConflictDetail は"
-        + "findByIdAndCheckOwnership で対象コンフリクトの所有者を"
-        + " SecurityUtils.getCurrentUserId() と照合してから返す")
+    @AuthorizedInService
     @GetMapping("/conflicts/{id}")
     @Operation(summary = "コンフリクト詳細")
     public ResponseEntity<ApiResponse<ConflictDetailResponse>> getConflictDetail(
@@ -101,10 +102,11 @@ public class OfflineSyncController {
     /**
      * コンフリクトを解決する。
      * resolution: CLIENT_WIN / SERVER_WIN / MANUAL_MERGE
+     *
+     * <p>ConflictResolverService#resolveConflict は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから解決する。</p>
      */
-    @AuthorizedInService("ConflictResolverService#resolveConflict は"
-        + "findByIdAndCheckOwnership で対象コンフリクトの所有者を"
-        + " SecurityUtils.getCurrentUserId() と照合してから解決する")
+    @AuthorizedInService
     @PatchMapping("/conflicts/{id}/resolve")
     @Operation(summary = "コンフリクト解決")
     public ResponseEntity<ApiResponse<ConflictDetailResponse>> resolveConflict(
@@ -117,10 +119,11 @@ public class OfflineSyncController {
 
     /**
      * コンフリクトを破棄（DISCARDED）する。
+     *
+     * <p>ConflictResolverService#discardConflict は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから破棄する。</p>
      */
-    @AuthorizedInService("ConflictResolverService#discardConflict は"
-        + "findByIdAndCheckOwnership で対象コンフリクトの所有者を"
-        + " SecurityUtils.getCurrentUserId() と照合してから破棄する")
+    @AuthorizedInService
     @DeleteMapping("/conflicts/{id}")
     @Operation(summary = "コンフリクト破棄")
     public ResponseEntity<Void> discardConflict(@PathVariable Long id) {
