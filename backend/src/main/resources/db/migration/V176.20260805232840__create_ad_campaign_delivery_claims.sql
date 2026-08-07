@@ -13,5 +13,10 @@ CREATE TABLE ad_campaign_delivery_claims (
     INDEX idx_acdc_campaign_week (campaign_id, week_start),
     CONSTRAINT fk_acdc_campaign FOREIGN KEY (campaign_id)
         REFERENCES ad_messaging_campaigns (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+-- 照合順序は utf8mb4_0900_ai_ci（issue #2589 でスキーマ全体を統一した先）。
+-- 本ファイルは統一 migration（V175）と並行して作られたため当初 utf8mb4_unicode_ci を
+-- 宣言しており、V175 の直後に非統一の表を作る形になっていた。
+-- MigrationCollationDeclarationGuardTest と SchemaCollationConsistencyIT の双方が
+-- これを検出したため、宣言を統一先へ修正した。
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='F09.17 キャンペーン配信 claim（週内・同一ユーザーへの二重配信防止）';

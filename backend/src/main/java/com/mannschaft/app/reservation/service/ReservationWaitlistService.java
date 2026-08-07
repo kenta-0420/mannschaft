@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,8 +101,12 @@ public class ReservationWaitlistService {
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
 
         // 過去枠は待つ意味がない（既存 014 を再利用）。
+        // Issue #2526: slot_date/start_time は「業務ローカル時刻」であり、注入 Clock（UTC固定）を
+        // そのまま LocalDateTime.now(clock) で使うと JVM 既定ゾーンとの差分だけ判定がずれる。
+        // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
+        // JVM 既定ゾーンで解釈し直してから比較する。
         LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now(clock))) {
+        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(ZoneId.systemDefault())))) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。
@@ -269,6 +274,10 @@ public class ReservationWaitlistService {
             return;
         }
 
+        // Issue #2526 検討済み・変更しない: ここでの比較相手は notifiedAt であり、
+        // notifiedAt 自体も本メソッド内で LocalDateTime.now(clock) から書かれる（markNotified(now)）。
+        // 業務ローカル時刻（slot_date/start_time）は一切絡まない UTC Clock 同士の自己完結した比較のため、
+        // .withZone(ZoneId.systemDefault()) に変えると逆に他の判定基準とズレて壊れる。一律置換禁止。
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime suppressBefore = now.minus(RENOTIFY_SUPPRESSION);
         String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
@@ -319,7 +328,9 @@ public class ReservationWaitlistService {
      */
     @Transactional
     public int purgeExpiredWaiting() {
-        LocalDateTime now = LocalDateTime.now(clock);
+        // Issue #2526: 枠開始（slot_date/start_time・業務ローカル時刻）と比較するため、
+        // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（register と同型）。
+        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
         List<ReservationWaitlistEntryEntity> expired = waitlistRepository.findExpiredWaiting(
                 WaitlistStatus.WAITING, now.toLocalDate(), now.toLocalTime());
         if (expired.isEmpty()) {

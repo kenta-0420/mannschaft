@@ -25,11 +25,25 @@ services:
     #      気になる場合は `docker compose down -v` でボリュームを破棄して作り直すこと
     #      （本番環境は未構築＝既存データが無いため、この混在は本番には存在しない）。
     #
+    # --collation-server=utf8mb4_0900_ai_ci — 本番 RDS の collation_server
+    #   （infra/terraform/modules/data/main.tf）と一致させる（Issue #2589）。
+    #
+    #   ⚠️ 以前はここが utf8mb4_unicode_ci で本番と食い違っていた。照合順序を宣言していない表は
+    #      サーバ既定を継承するため、ローカルと本番で同じ表の照合順序が変わり、
+    #      「ローカルでは通るのに本番だけ Illegal mix of collations で落ちる JOIN」が生まれていた。
+    #      V175 の migration がスキーマ全体を utf8mb4_0900_ai_ci へ統一し、
+    #      ALTER DATABASE でデータベース既定も固定したので実害は除去済みだが、
+    #      サーバ既定自体を本番へ揃えて「ローカルで再現しない本番障害」の温床を断つ。
+    #
+    #   ⚠️ 既存のローカル DB ボリュームには変更前の照合順序の表が残っているが、
+    #      V175 が起動時に information_schema を見て差分のある表だけ変換するため、
+    #      作り直さなくても収束する。
+    #
     # ⚠️ 下の `command: >` は折り畳みスカラー。内部に # 行を書くとコメントではなく
     #    起動引数の一部として MySQL に渡り、起動が失敗する。注釈は必ずこの位置に書くこと。
     command: >
       --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+      --collation-server=utf8mb4_0900_ai_ci
       --default-time-zone=+00:00
       --slow_query_log=ON
       --slow_query_log_file=/var/log/mysql-slow/mannschaft-slow.log
