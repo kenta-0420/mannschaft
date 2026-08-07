@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -46,19 +45,20 @@ import static com.mannschaft.app.succession.entity.DelinquencyEscalationStage.ST
 public class DelinquencyEscalationBatchService {
 
     private final DelinquencyEscalationRepository escalationRepository;
-    private final DelinquencyEscalationService escalationService;
+    private final DelinquencyEscalationAdvanceRunner advanceRunner;
 
     /**
      * 日次バッチ: 経過日数に応じてエスカレーションを自動昇格する。
      *
      * <p>処理対象: {@code resolved_at IS NULL AND frozen_at IS NULL} の全エスカレーション。
-     * バッチ失敗時のリトライ安全性を確保するため、各昇格は個別トランザクションで実行する。
+     * バッチ失敗時のリトライ安全性を確保するため、各昇格は個別トランザクションで実行する
+     * （{@link DelinquencyEscalationAdvanceRunner} を {@code REQUIRES_NEW} で経由する）。
+     * 本メソッド自体は読み取りのみのため {@code @Transactional} を付けない。
      */
     @BatchEndpoint(name = "succession-delinquency-escalation-daily", description = "滞納エスカレーションを毎日 02:00 に経過日数で 5 段階自動昇格する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     // 起動間隔は日次 02:00。滞納契約の段階昇格と通知送出で、契約数に比例する。余裕を取り 1 時間を上限とする。
     @SchedulerLock(name = "successionDelinquencyEscalationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
-    @Transactional
     public void advanceEscalations() {
         List<DelinquencyEscalationEntity> actives =
                 escalationRepository.findByResolvedAtIsNullAndFrozenAtIsNullAndDeletedAtIsNull();
@@ -74,7 +74,9 @@ public class DelinquencyEscalationBatchService {
 
             if (shouldAdvance(e.getCurrentStage(), requiredStage)) {
                 try {
-                    escalationService.advanceStage(e.getId(), e.getOrganizationId());
+                    // 別トランザクション（REQUIRES_NEW）で実行するため、このループで
+                    // 取得済みのエンティティは使わず ID で再フェッチさせる。
+                    advanceRunner.advanceStage(e.getId(), e.getOrganizationId());
                     advancedCount++;
                     log.info("エスカレーション自動昇格: id={}, currentStage={}, daysElapsed={}",
                             e.getId(), e.getCurrentStage(), daysElapsed);
