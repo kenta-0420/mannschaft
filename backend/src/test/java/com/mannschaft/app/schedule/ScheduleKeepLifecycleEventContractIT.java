@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,8 +34,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link ScheduleKeepTeamContractIT} 等と異なりクラスレベル {@code @Transactional} を採らず、
  * 各テストは自前でフィクスチャの後始末（{@code @AfterEach}）を行う。</p>
  *
- * <p>Wave2 時点では該当リスナー（{@code ScheduleKeepScopeDeletedEventListener} /
- * {@code ScheduleKeepAnonymizationEventListener}）が未実装のため、後始末は発生せず red で正常。</p>
+ * <p>後始末は {@code ScheduleKeepScopeDeletedEventListener} /
+ * {@code ScheduleKeepAnonymizationEventListener} が担う。</p>
+ *
+ * <p><b>フィクスチャは {@code TransactionTemplate} で明示的にコミットする</b>。クラスレベル
+ * {@code @Transactional} を採らない以上 {@code EntityManager} にトランザクションが無く、
+ * 素の {@code executeUpdate()} / {@code flush()} は {@code TransactionRequiredException} になるためである。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("F03.17 キープ チーム/組織削除・退会時の後始末（試練 Wave2）")
@@ -52,6 +57,10 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    /** フィクスチャ用の明示トランザクション（本クラスは @Transactional を採らないため必須）。 */
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -62,40 +71,50 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
     @BeforeEach
     void setUp() {
         long suffix = System.nanoTime() % 1_000_000L;
-        teamId = insertTeam("キープ後始末チーム", "kl-t-" + suffix);
-        orgId = insertOrganization("キープ後始末組織", "kl-o-" + suffix);
-        userId = insertUser("keeplifecycle-" + suffix + "@example.com");
+        // 本クラスはクラスレベル @Transactional を採らない（AFTER_COMMIT を実発火させるため）。
+        // その結果 EntityManager にはトランザクションが無く、素の executeUpdate()/flush() は
+        // TransactionRequiredException になる。フィクスチャは TransactionTemplate で
+        // 明示的に「自前のトランザクション」に載せてコミットする。
+        transactionTemplate.executeWithoutResult(status -> {
+            teamId = insertTeam("キープ後始末チーム", "kl-t-" + suffix);
+            orgId = insertOrganization("キープ後始末組織", "kl-o-" + suffix);
+            userId = insertUser("keeplifecycle-" + suffix + "@example.com");
 
-        MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, userId, "MEMBER", teamId, null);
-        MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, userId, "MEMBER", null, orgId);
-        em.flush();
+            MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, userId, "MEMBER", teamId, null);
+            MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, userId, "MEMBER", null, orgId);
+            em.flush();
+        });
         em.clear();
     }
 
     @AfterEach
     void tearDown() {
-        em.createNativeQuery("DELETE FROM schedule_keeps WHERE team_id = :tid OR organization_id = :oid OR user_id = :uid")
-                .setParameter("tid", teamId)
-                .setParameter("oid", orgId)
-                .setParameter("uid", userId)
-                .executeUpdate();
-        em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid")
-                .setParameter("uid", userId)
-                .executeUpdate();
-        em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid")
-                .setParameter("uid", userId)
-                .executeUpdate();
-        em.createNativeQuery("DELETE FROM teams WHERE id = :tid")
-                .setParameter("tid", teamId)
-                .executeUpdate();
-        em.createNativeQuery("DELETE FROM organizations WHERE id = :oid")
-                .setParameter("oid", orgId)
-                .executeUpdate();
-        em.createNativeQuery("DELETE FROM users WHERE id = :uid")
-                .setParameter("uid", userId)
-                .executeUpdate();
+        transactionTemplate.executeWithoutResult(status -> {
+            em.createNativeQuery(
+                            "DELETE FROM schedule_keeps "
+                                    + "WHERE team_id = :tid OR organization_id = :oid OR user_id = :uid")
+                    .setParameter("tid", teamId)
+                    .setParameter("oid", orgId)
+                    .setParameter("uid", userId)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid")
+                    .setParameter("uid", userId)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid")
+                    .setParameter("uid", userId)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM teams WHERE id = :tid")
+                    .setParameter("tid", teamId)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM organizations WHERE id = :oid")
+                    .setParameter("oid", orgId)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM users WHERE id = :uid")
+                    .setParameter("uid", userId)
+                    .executeUpdate();
+        });
     }
 
     @Test
@@ -109,14 +128,14 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
                 .sortOrder(0)
                 .createdBy(userId)
                 .build());
-        em.flush();
+        // トランザクション外なので repository.save() は既に自前のトランザクションでコミット済み。
+        // ここでの em.flush() は TransactionRequiredException になるため clear() のみ行う。
         em.clear();
 
         teamService.deleteTeam(teamId, userId);
 
-        // AFTER_COMMIT リスナーの発火を待つ余地を与える（テストは実トランザクション内で完結しないため
-        // 即時反映されない可能性があるが、Wave2 時点ではリスナー自体が存在せず、
-        // 待っても論理削除は発生しない＝red が正しい）。
+        // deleteTeam のコミット後に AFTER_COMMIT リスナーが同一スレッドで同期実行される
+        // （@Async を付けていないため待ち合わせ不要）。1次キャッシュを捨てて DB の実状態を読む。
         em.clear();
         ScheduleKeepEntity reloaded = scheduleKeepRepository.findByIdAndTeamId(keep.getId(), teamId).orElse(null);
         assertThat(reloaded).as("チーム削除後、キープは論理削除され findByIdAndTeamId で見えなくなるはず").isNull();
@@ -133,7 +152,8 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
                 .sortOrder(0)
                 .createdBy(userId)
                 .build());
-        em.flush();
+        // トランザクション外なので repository.save() は既に自前のトランザクションでコミット済み。
+        // ここでの em.flush() は TransactionRequiredException になるため clear() のみ行う。
         em.clear();
 
         organizationService.deleteOrganization(orgId, userId);
@@ -155,7 +175,8 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
                 .sortOrder(0)
                 .createdBy(userId)
                 .build());
-        em.flush();
+        // トランザクション外なので repository.save() は既に自前のトランザクションでコミット済み。
+        // ここでの em.flush() は TransactionRequiredException になるため clear() のみ行う。
         em.clear();
 
         eventPublisher.publishEvent(new UserAnonymizedEvent(userId, "keeplifecycle@example.com"));
@@ -177,7 +198,8 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
                 .sortOrder(0)
                 .createdBy(userId)
                 .build());
-        em.flush();
+        // トランザクション外なので repository.save() は既に自前のトランザクションでコミット済み。
+        // ここでの em.flush() は TransactionRequiredException になるため clear() のみ行う。
         em.clear();
 
         eventPublisher.publishEvent(new UserAnonymizedEvent(userId, "keeplifecycle@example.com"));
