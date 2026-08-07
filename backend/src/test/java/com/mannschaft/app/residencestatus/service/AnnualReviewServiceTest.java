@@ -9,8 +9,7 @@ import com.mannschaft.app.residencestatus.entity.AnnualReview;
 import com.mannschaft.app.residencestatus.event.AnnualReviewClosedEvent;
 import com.mannschaft.app.residencestatus.event.AnnualReviewStartedEvent;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewRepository;
-import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
-import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
+import com.mannschaft.app.resident.service.ResidentRegistryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,7 +32,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -55,7 +53,7 @@ class AnnualReviewServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
-    private ResidentRegistryRepository residentRegistryRepository;
+    private ResidentRegistryService residentRegistryService;
 
     @InjectMocks
     private AnnualReviewService service;
@@ -316,8 +314,8 @@ class AnnualReviewServiceTest {
         void listMyReviews_only_open() {
             UUID openId = UUID.randomUUID();
             UUID closedId = UUID.randomUUID();
-            when(residentRegistryRepository.findActiveByUserIdAndOrganizationId(MEMBER_USER, ORG_ID))
-                    .thenReturn(Optional.of(mock(ResidentRegistryEntity.class)));
+            when(residentRegistryService.isActiveResidentOfOrganization(MEMBER_USER, ORG_ID))
+                    .thenReturn(true);
             when(annualReviewRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
                     .thenReturn(List.of(
                             buildReview(openId, ORG_ID, 2026, null),
@@ -338,8 +336,8 @@ class AnnualReviewServiceTest {
         @DisplayName("ANNUAL_REVIEW_NOT_FOUND: 当該組織の居住者台帳を持たないユーザーは拒否される"
                 + "（非居住者による他組織キャンペーン一覧の閲覧を根治）")
         void listMyReviews_non_resident_denied() {
-            when(residentRegistryRepository.findActiveByUserIdAndOrganizationId(MEMBER_USER, ORG_ID))
-                    .thenReturn(Optional.empty());
+            when(residentRegistryService.isActiveResidentOfOrganization(MEMBER_USER, ORG_ID))
+                    .thenReturn(false);
 
             assertThatThrownBy(() -> service.listMyReviews(ORG_ID, MEMBER_USER))
                     .isInstanceOf(BusinessException.class)

@@ -141,4 +141,67 @@ class ResidentRegistryServiceTest {
                             .isEqualTo("RESIDENT_008"));
         }
     }
+
+    /**
+     * 認可根治戦役 Wave6 ロットC: residencestatus ドメインからの越境呼び出しの受け口。
+     * モジュラーモノリス原則（ドメイン間は ID 参照＋Service 経由のみ）に従い、
+     * Entity を境界の外へ返さず boolean のみを返すことを固定する。
+     */
+    @Nested
+    @DisplayName("isActiveResidentOfOrganization")
+    class IsActiveResidentOfOrganization {
+
+        @Test
+        @DisplayName("正常系: 当該組織の現役居住者であれば true")
+        void 現役居住者は true を返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findActiveByUserIdAndOrganizationId(100L, 10L))
+                    .willReturn(Optional.of(entity));
+
+            assertThat(service.isActiveResidentOfOrganization(100L, 10L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: 当該組織の居住者台帳が無ければ false")
+        void 非居住者は false を返す() {
+            given(residentRepository.findActiveByUserIdAndOrganizationId(999L, 10L))
+                    .willReturn(Optional.empty());
+
+            assertThat(service.isActiveResidentOfOrganization(999L, 10L)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("isResidentRegistryOwnedBy")
+    class IsResidentRegistryOwnedBy {
+
+        @Test
+        @DisplayName("正常系: 台帳の所有者と一致すれば true")
+        void 所有者一致は true を返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
+
+            assertThat(service.isResidentRegistryOwnedBy(3001L, 100L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: 台帳の所有者が別ユーザーであれば false（BOLA対策）")
+        void 所有者不一致は false を返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
+
+            assertThat(service.isResidentRegistryOwnedBy(3001L, 999L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("異常系: 台帳が存在しなければ false（存在秘匿は呼び出し側の責務）")
+        void 台帳不在は false を返す() {
+            given(residentRepository.findById(9999L)).willReturn(Optional.empty());
+
+            assertThat(service.isResidentRegistryOwnedBy(9999L, 100L)).isFalse();
+        }
+    }
 }

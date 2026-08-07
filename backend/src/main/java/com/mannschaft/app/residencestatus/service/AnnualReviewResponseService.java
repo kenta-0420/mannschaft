@@ -9,8 +9,7 @@ import com.mannschaft.app.residencestatus.entity.AnnualReview;
 import com.mannschaft.app.residencestatus.entity.AnnualReviewResponse;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewRepository;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewResponseRepository;
-import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
-import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
+import com.mannschaft.app.resident.service.ResidentRegistryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +38,7 @@ public class AnnualReviewResponseService {
     private final AnnualReviewRepository annualReviewRepo;
     private final AnnualReviewResponseRepository responseRepo;
     private final AccessControlService accessControlService;
-    private final ResidentRegistryRepository residentRegistryRepository;
+    private final ResidentRegistryService residentRegistryService;
 
     // ─────────────────────────────────────────────
     // 回答送信（UPSERT）
@@ -73,9 +72,9 @@ public class AnnualReviewResponseService {
         // residentRegistryId 所有権確認（BOLA 対策）: req.getResidentRegistryId() はリクエストボディの値であり、
         // 呼び出し元の requestUserId に紐づく居住者台帳であることを検証する。他居住者の residentRegistryId を
         // 指定して回答（居住状態・連絡先確認フラグ）を書き換えられる穴を塞ぐ（存在秘匿のため 404 相当）。
-        ResidentRegistryEntity registry = residentRegistryRepository.findById(req.getResidentRegistryId())
-                .orElseThrow(() -> new BusinessException(ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND));
-        if (!requestUserId.equals(registry.getUserId())) {
+        // resident ドメインへは ResidentRegistryService 経由でのみアクセスする
+        // （モジュラーモノリス原則: ドメイン間は ID 参照＋Service 経由のみ。Entity/Repository への直接依存禁止）。
+        if (!residentRegistryService.isResidentRegistryOwnedBy(req.getResidentRegistryId(), requestUserId)) {
             throw new BusinessException(ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND);
         }
 
