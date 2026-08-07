@@ -108,10 +108,14 @@ class ScheduleKeepNoReminderArchTest {
             // 報告される。つまり「(通知発行 かつ ScheduleKeep 依存 かつ 許可リスト外)」に
             // 該当した時点で赤、という許可リスト方式をそのまま表現している。
             .should().dependOnClassesThat(areScheduleKeepCoreType())
+            .allowEmptyShould(true)
             .because("F03.17 §9.5 AC-28c — 通知を発行する型（NotificationService 等の送信口）を呼び、"
                 + "かつ ScheduleKeep 系の型に依存するクラスは §6.1 が許可した変換通知の実装クラス"
                 + "（ScheduleKeepNotificationService）のみ。許可リスト外に新しく現れた時点で、"
-                + "それは未承認の通知経路（滞留リマインド等）である疑いが強いため赤にする")
+                + "それは未承認の通知経路（滞留リマインド等）である疑いが強いため赤にする。"
+                + "許可リスト方式の性質上、正常状態（違反ゼロ）では母集団が空集合になる。"
+                + "allowEmptyShould(true) はその正常系を fail 扱いしないための宣言であり、"
+                + "検知力を弱めるものではない（母集団の絞り込みは that() 側の述語が担う）")
             .as("only the allow-listed class may send notifications while depending on ScheduleKeep (AC-28c)");
 
     // ══════════════════════════════════════════════════════════════════
