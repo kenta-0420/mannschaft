@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +38,18 @@ public class NotificationFanoutJobService {
 
     private static final int LAST_ERROR_MAX = 500;
 
+    /**
+     * 自動シャード化のしきい値ポリシー（CMP-001⑤・マスター裁可）。
+     * 受信者数が {@link #SHARD_THRESHOLD} を超えたら自動シャード化し、
+     * {@code shard_count = min(MAX_SHARDS, ceil(recipientCount / SHARD_TARGET_SIZE))} 本のジョブ行を発行する。
+     * しきい値以下（カウント非対応の {@code -1} を含む）は従来どおり {@code shard_count=1}（単一行）。
+     */
+    static final long SHARD_THRESHOLD = 10_000L;
+    /** 1 シャードが担う目安の受信者数（総数をこれで割り上げてシャード数を決める）。 */
+    static final long SHARD_TARGET_SIZE = 20_000L;
+    /** シャード数の上限（並列度の天井・ジョブ行の過剰生成防止）。 */
+    static final int MAX_SHARDS = 32;
+
     /** リトライバックオフの基準秒（指数：base * 2^(retryCount-1)、上限つき）。 */
     private static final long BACKOFF_BASE_SECONDS = 30L;
     private static final long BACKOFF_MAX_SECONDS = 3_600L;
@@ -51,14 +64,18 @@ public class NotificationFanoutJobService {
     private final TransactionTemplate enqueueTxTemplate;
     /** MeterRegistry（optional。narrowed test context 等では不在・P1 と同じ ObjectProvider 方式）。 */
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+    /** 自動シャード数算出のため scope_type から受信者ソース（{@code countRecipients}）を引くレジストリ（CMP-001⑤）。 */
+    private final FanoutRecipientSourceRegistry recipientSourceRegistry;
 
     public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
                                         PlatformTransactionManager transactionManager,
-                                        ObjectProvider<MeterRegistry> meterRegistryProvider) {
+                                        ObjectProvider<MeterRegistry> meterRegistryProvider,
+                                        FanoutRecipientSourceRegistry recipientSourceRegistry) {
         this.jobRepository = jobRepository;
         this.enqueueTxTemplate = new TransactionTemplate(transactionManager);
         this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.meterRegistryProvider = meterRegistryProvider;
+        this.recipientSourceRegistry = recipientSourceRegistry;
     }
 
     /**
@@ -109,32 +126,44 @@ public class NotificationFanoutJobService {
                         String sourceType, Long sourceId, String actionUrl, Long actorId,
                         boolean includeSupporters) {
         LocalDateTime now = LocalDateTime.now();
-        NotificationFanoutJob job = NotificationFanoutJob.builder()
-                .sourceEventUuid(sourceEventUuid)
-                .scopeType(scopeType)
-                .scopeRef(scopeRef)
-                .notificationType(notificationType)
-                .organizationId(organizationId)
-                .title(title)
-                .body(body)
-                .priority(priority == null ? NotificationPriority.NORMAL : priority)
-                .sourceType(sourceType)
-                .sourceId(sourceId)
-                .actionUrl(actionUrl)
-                .actorId(actorId)
-                .includeSupporters(includeSupporters)
-                .status(NotificationFanoutJobStatus.PENDING)
-                .cursorSubjectId(0L)
-                .insertedCount(0L)
-                .retryCount(0)
-                .nextAttemptAt(now)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        // 母集団しきい値で自動シャード数を算出（閾値以下／カウント非対応は 1・従来どおり単一行）。
+        int shardCount = resolveShardCount(scopeType, scopeRef, includeSupporters);
+        // shardCount 本のジョブ行（shard_index=0..N-1・shard_count=N）を組み立てる。
+        List<NotificationFanoutJob> jobs = new ArrayList<>(shardCount);
+        for (short shardIndex = 0; shardIndex < shardCount; shardIndex++) {
+            jobs.add(NotificationFanoutJob.builder()
+                    .sourceEventUuid(sourceEventUuid)
+                    .scopeType(scopeType)
+                    .scopeRef(scopeRef)
+                    .notificationType(notificationType)
+                    .organizationId(organizationId)
+                    .title(title)
+                    .body(body)
+                    .priority(priority == null ? NotificationPriority.NORMAL : priority)
+                    .sourceType(sourceType)
+                    .sourceId(sourceId)
+                    .actionUrl(actionUrl)
+                    .actorId(actorId)
+                    .includeSupporters(includeSupporters)
+                    .shardIndex(shardIndex)
+                    .shardCount((short) shardCount)
+                    .status(NotificationFanoutJobStatus.PENDING)
+                    .cursorSubjectId(0L)
+                    .insertedCount(0L)
+                    .retryCount(0)
+                    .nextAttemptAt(now)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build());
+        }
         try {
-            // 独立 TX（REQUIRES_NEW）で INSERT を確定。ユニーク違反時はこの TX のみロールバックし、
-            // 例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
-            enqueueTxTemplate.execute(status -> jobRepository.saveAndFlush(job));
+            // 独立 TX（REQUIRES_NEW）で全シャード行を一括 INSERT・原子確定する。ユニーク違反時はこの TX のみ
+            // 丸ごとロールバック（部分的なシャード行が中途半端に残らない）。例外は TX 境界の外（本 try）で捕捉するため
+            // 呼び出し側 TX は無傷。saveAll 後に flush して衝突を execute の内側で発火させる（TX 境界内でロールバック）。
+            enqueueTxTemplate.executeWithoutResult(status -> {
+                jobRepository.saveAll(jobs);
+                jobRepository.flush();
+            });
         } catch (DataIntegrityViolationException e) {
             // 握るのは「同一 fan-out の二重登録（uk_fanout_idempotency 衝突）」だけ。
             // catch を DataIntegrityViolationException で広く受けると、NOT NULL 違反や別制約違反まで
@@ -151,6 +180,28 @@ public class NotificationFanoutJobService {
             log.debug("fan-out ジョブは既に登録済み（冪等 skip）: scopeType={} scopeRef={} type={} sourceEvent={}",
                     scopeType, scopeRef, notificationType, sourceEventUuid);
         }
+    }
+
+    /**
+     * 母集団しきい値ポリシーで自動シャード数を算出する（CMP-001⑤）。
+     *
+     * <p>受信者ソースが {@link FanoutRecipientSource#countRecipients} を実装している（ORGANIZATION）場合のみ
+     * 総数を取り、{@code count > SHARD_THRESHOLD} なら
+     * {@code min(MAX_SHARDS, ceil(count / SHARD_TARGET_SIZE))} を返す。閾値以下・カウント非対応（{@code -1}）・
+     * 未登録 scope_type・分割対象外（VILLAGE / TEAM）はすべて {@code 1} を返し従来の単一行経路を保つ。</p>
+     */
+    private int resolveShardCount(String scopeType, String scopeRef, boolean includeSupporters) {
+        FanoutRecipientSource source = recipientSourceRegistry.resolve(scopeType).orElse(null);
+        if (source == null) {
+            return 1;
+        }
+        long recipientCount = source.countRecipients(scopeRef, includeSupporters);
+        if (recipientCount <= SHARD_THRESHOLD) {
+            // 閾値以下（カウント非対応の -1・母集団0・小規模）は単一シャード（既存挙動）。
+            return 1;
+        }
+        long shards = (recipientCount + SHARD_TARGET_SIZE - 1) / SHARD_TARGET_SIZE; // ceil
+        return (int) Math.min(MAX_SHARDS, Math.max(1L, shards));
     }
 
     /**
