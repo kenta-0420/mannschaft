@@ -248,7 +248,18 @@
     "AUTH_010": "Your current password is incorrect",
     "AUTH_011": "No password has been set yet",
     "AUTH_044": "Too many requests. Please wait a moment and try again",
-    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys"
+    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys",
+    "SCHEDULE_KEEP_001": "Keep not found",
+    "SCHEDULE_KEEP_002": "Please enter a title",
+    "SCHEDULE_KEEP_003": "Up to 10 candidate dates",
+    "SCHEDULE_KEEP_004": "Invalid date format",
+    "SCHEDULE_KEEP_005": "You don't have permission for this keep",
+    "SCHEDULE_KEEP_006": "This keep can't be converted",
+    "SCHEDULE_KEEP_007": "Can't edit in this state",
+    "SCHEDULE_KEEP_008": "Can't undo -- attendance replies exist",
+    "SCHEDULE_KEEP_009": "This transition isn't allowed",
+    "SCHEDULE_KEEP_010": "Keep limit reached",
+    "SCHEDULE_KEEP_012": "Invalid reorder request"
   },
   "annual_plan": {
     "title": "Annual Event Plan",
