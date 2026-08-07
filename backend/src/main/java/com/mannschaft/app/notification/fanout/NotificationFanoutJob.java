@@ -37,7 +37,9 @@ import java.time.LocalDateTime;
         name = "notification_fanout_jobs",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_fanout_idempotency",
-                columnNames = {"scope_type", "scope_ref", "notification_type", "source_event_uuid"}),
+                columnNames = {
+                        "scope_type", "scope_ref", "notification_type", "source_event_uuid", "shard_index"
+                }),
         indexes = @Index(name = "idx_fanout_status_next", columnList = "status, next_attempt_at"))
 @Getter
 @Setter
@@ -119,6 +121,25 @@ public class NotificationFanoutJob extends UuidV7Entity {
     @Builder.Default
     @Column(name = "include_supporters", nullable = false)
     private Boolean includeSupporters = Boolean.TRUE;
+
+    /**
+     * CMP-001⑤（ワーカー並列化）: このジョブが属するシャード番号（0始まり）。
+     *
+     * <p>{@code DEFAULT 0}（V176）で既存行・既存経路（単一ワーカー担当）の後方互換を保つ。
+     * enqueue 時のシャード算出ロジックは本フィールド追加時点では未実装（出陣-3 担当）。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_index", nullable = false)
+    private short shardIndex = 0;
+
+    /**
+     * CMP-001⑤（ワーカー並列化）: enqueue 時点の総シャード数。
+     *
+     * <p>{@code DEFAULT 1}（V176）で既存行・既存経路（シャーディング未使用）の後方互換を保つ。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_count", nullable = false)
+    private short shardCount = 1;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
