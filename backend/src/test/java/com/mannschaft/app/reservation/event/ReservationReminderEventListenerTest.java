@@ -201,12 +201,14 @@ class ReservationReminderEventListenerTest {
                 "Issue #2526 番人: 過去判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
         void 過去判定はClockのゾーンに左右されない() {
             // slotStartAt は業務ローカル時刻。「業務基準（JVM 既定ゾーン。実行環境に依存し得るため
-            // 決め打ちしない）で見て slotStartAt の 1h 前より 1 分未来」を、実際の JVM 既定ゾーンで
+            // 決め打ちしない）で見て slotStartAt の 1h 前より 1 分手前」を、実際の JVM 既定ゾーンで
             // instant 化した「同一瞬間」を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）
             // で表現する。正しい実装なら Clock 自身のゾーンに左右されず、
             // どちらも同じ remindAtList（1h前のみ・24h前は過去でスキップ）を生成するはずである。
+            // 1h 前の目印（11:00）より手前でなければ 1h 前も過去扱いになり生成が 0 件になるため、
+            // minusMinutes(1) であることが本テストの成立条件（plusMinutes だと全件スキップ）。
             LocalDateTime slotStartAt = LocalDateTime.of(2026, 6, 20, 12, 0);
-            Instant sameInstant = slotStartAt.minusHours(1).plusMinutes(1)
+            Instant sameInstant = slotStartAt.minusHours(1).minusMinutes(1)
                     .atZone(java.time.ZoneId.systemDefault()).toInstant();
             givenPolicy("24,1");
 
