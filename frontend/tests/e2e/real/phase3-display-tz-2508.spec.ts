@@ -36,7 +36,6 @@ import { waitForHydration } from '../helpers/wait'
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:3005'
 const API_BASE = process.env.API_BASE_URL ?? 'http://127.0.0.1:8085'
 
-const E2E_USER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
 const E2E_ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
 
 const TEAM_SLUG = 'fc-u-18'
