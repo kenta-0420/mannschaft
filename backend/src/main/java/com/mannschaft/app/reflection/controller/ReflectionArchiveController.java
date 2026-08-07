@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.ArchiveFolderResponse;
 import com.mannschaft.app.reflection.dto.BulkArchiveRequest;
 import com.mannschaft.app.reflection.dto.BulkArchiveResult;
@@ -38,6 +39,8 @@ public class ReflectionArchiveController {
     /**
      * EP #17: アーカイブ済みテーマのフォルダ集計（学年×学期×教科 GROUP BY）（AC-42）。
      */
+    @SelfScopedEndpoint("ReflectionArchiveService#getFolders が"
+            + " findArchivedFolders(userId=SecurityUtils.getCurrentUserId()) のみを検索条件に使う")
     @GetMapping("/folders")
     @Operation(summary = "アーカイブフォルダ一覧取得")
     public ResponseEntity<ApiResponse<List<ArchiveFolderResponse>>> getFolders() {
@@ -57,6 +60,8 @@ public class ReflectionArchiveController {
      * @param page         ページ番号（0始まり・省略時は 0）
      * @param size         1ページサイズ（省略時は 20・上限 50）
      */
+    @SelfScopedEndpoint("ReflectionArchiveService#search が"
+            + " searchArchived(userId=SecurityUtils.getCurrentUserId(), ...) のみを検索条件に使う")
     @GetMapping("/search")
     @Operation(summary = "アーカイブテーマ横断検索")
     public ResponseEntity<ApiResponse<Page<ReflectionThemeResponse>>> search(
@@ -76,6 +81,8 @@ public class ReflectionArchiveController {
     /**
      * EP #21: 条件に合致するアクティブテーマを一括アーカイブする。
      */
+    @SelfScopedEndpoint("ReflectionArchiveService#bulkArchive が"
+            + " findActiveByCondition(userId=SecurityUtils.getCurrentUserId(), ...) のみを対象に更新する")
     @PostMapping("/bulk-archive")
     @Operation(summary = "テーマ一括アーカイブ")
     public ResponseEntity<ApiResponse<BulkArchiveResult>> bulkArchive(

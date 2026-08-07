@@ -631,8 +631,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 実際の解消手順は、main の43行（ロットA適用後）から本ロット独自の contact・inbox 計21行を
      * 追加削除する形で行った（favorite 3 行は既に main 側の削除で消えているため二重に触れていない）。
      * 削除後の実行数は {@code grep -c . <ストアファイル>} で 22 であることを実測確認済み。</p>
+     *
+     * <h3>Wave6 ロットF の合流（22 → 9）</h3>
+     * <p>Wave6 ロットF（reflection 10・corkboard 2・advertising 1 の計13EP、本ファイル）を
+     * ロットE 着地後の main（22行）へ追随マージした。ロットFが監査した13EPは、いずれも
+     * ロットE・ロットAの対象と重複しない（ドメインが完全に独立）。対象データの検索・更新条件が
+     * 認証主体（{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。したがって 22 − 13 = 9。
+     * 削除後の残行数は {@code grep -c . <ストアファイル>} で 9（family 7・tournament 2）であることを
+     * 実測確認済み。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 22;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 9;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

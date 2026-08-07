@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.ReflectionTodayResponse;
 import com.mannschaft.app.reflection.service.ReflectionTodayService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,9 @@ public class ReflectionTodayController {
      *
      * @param date 対象日（省略時はサーバがユーザー TZ の今日を採用・§4.3）
      */
+    @SelfScopedEndpoint("ReflectionTodayService#getToday が"
+            + " userId=SecurityUtils.getCurrentUserId() を全クエリ（テーマ・当日エントリ・時間割）の"
+            + "検索条件に使い、他ユーザーのデータには到達不能")
     @GetMapping("/today")
     @Operation(summary = "今日の振り返りビュー取得")
     public ResponseEntity<ApiResponse<ReflectionTodayResponse>> getToday(

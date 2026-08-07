@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.CreateReflectionThemeRequest;
 import com.mannschaft.app.reflection.dto.ReflectionThemeResponse;
 import com.mannschaft.app.reflection.dto.UpdateReflectionThemeRequest;
@@ -41,6 +42,9 @@ public class ReflectionThemeController {
     private final ReflectionArchiveService reflectionArchiveService;
 
     /** 自分のテーマ一覧（§7 #1）。 */
+    @SelfScopedEndpoint("ReflectionThemeService#listMyThemes が"
+            + " findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(userId=SecurityUtils.getCurrentUserId())"
+            + " のみを検索条件に使う")
     @GetMapping
     @Operation(summary = "テーマ一覧取得")
     public ResponseEntity<ApiResponse<List<ReflectionThemeResponse>>> listThemes() {
