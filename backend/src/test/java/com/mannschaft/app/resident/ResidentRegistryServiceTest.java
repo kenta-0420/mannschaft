@@ -153,7 +153,7 @@ class ResidentRegistryServiceTest {
 
         @Test
         @DisplayName("正常系: 当該組織の現役居住者であれば true")
-        void 現役居住者は true を返す() {
+        void 現役居住者はtrueを返す() {
             ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
                     .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
             given(residentRepository.findActiveByUserIdAndOrganizationId(100L, 10L))
@@ -164,7 +164,7 @@ class ResidentRegistryServiceTest {
 
         @Test
         @DisplayName("異常系: 当該組織の居住者台帳が無ければ false")
-        void 非居住者は false を返す() {
+        void 非居住者はfalseを返す() {
             given(residentRepository.findActiveByUserIdAndOrganizationId(999L, 10L))
                     .willReturn(Optional.empty());
 
@@ -178,7 +178,7 @@ class ResidentRegistryServiceTest {
 
         @Test
         @DisplayName("正常系: 台帳の所有者と一致すれば true")
-        void 所有者一致は true を返す() {
+        void 所有者一致はtrueを返す() {
             ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
                     .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
             given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
@@ -188,7 +188,7 @@ class ResidentRegistryServiceTest {
 
         @Test
         @DisplayName("異常系: 台帳の所有者が別ユーザーであれば false（BOLA対策）")
-        void 所有者不一致は false を返す() {
+        void 所有者不一致はfalseを返す() {
             ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
                     .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
             given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
@@ -198,7 +198,7 @@ class ResidentRegistryServiceTest {
 
         @Test
         @DisplayName("異常系: 台帳が存在しなければ false（存在秘匿は呼び出し側の責務）")
-        void 台帳不在は false を返す() {
+        void 台帳不在はfalseを返す() {
             given(residentRepository.findById(9999L)).willReturn(Optional.empty());
 
             assertThat(service.isResidentRegistryOwnedBy(9999L, 100L)).isFalse();
