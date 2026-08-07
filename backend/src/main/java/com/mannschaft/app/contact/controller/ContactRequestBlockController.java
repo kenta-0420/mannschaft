@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.AddContactRequestBlockBody;
 import com.mannschaft.app.contact.dto.ContactRequestBlockResponse;
 import com.mannschaft.app.contact.service.ContactRequestBlockService;
@@ -38,6 +39,9 @@ public class ContactRequestBlockController {
 
     private final ContactRequestBlockService contactRequestBlockService;
 
+    @SelfScopedEndpoint("ContactRequestBlockService#listBlocks は"
+            + "findByUserIdOrderByCreatedAtDesc(userId) で SecurityUtils.getCurrentUserId() の"
+            + "設定のみを返す（ContactRequestBlockController#listBlocks）。認可根治戦役 Wave6 監査済。")
     @GetMapping
     @Operation(summary = "事前拒否リスト取得")
     public ResponseEntity<ApiResponse<List<ContactRequestBlockResponse>>> listBlocks() {
@@ -45,6 +49,10 @@ public class ContactRequestBlockController {
         return ResponseEntity.ok(ApiResponse.of(contactRequestBlockService.listBlocks(userId)));
     }
 
+    @SelfScopedEndpoint("ContactRequestBlockService#addBlock は"
+            + "SecurityUtils.getCurrentUserId() を userId として新規保存するのみで"
+            + "自分の事前拒否設定にしか作用しない（ContactRequestBlockController#addBlock）。"
+            + "認可根治戦役 Wave6 監査済。")
     @PostMapping
     @Operation(summary = "事前拒否を追加する")
     public ResponseEntity<ApiResponse<ContactRequestBlockResponse>> addBlock(

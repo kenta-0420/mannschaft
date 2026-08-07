@@ -53,6 +53,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li><b>正常系の非回帰</b>: 本人のラベル・本人宛て通知に対する操作は従来どおり成功すること。</li>
  *   <li><b>未認証</b>: 401。</li>
  * </ul>
+ *
+ * <p>本ファイルが {@code @SelfScopedEndpoint} の自己スコープ性を固定する対象:
+ * {@code InboxController#getInbox}・{@code InboxController#getSummary}・
+ * {@code InboxController#getLabels}・{@code InboxController#createLabel}・
+ * {@code InboxController#unarchive}・{@code InboxController#unsnooze}。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -387,6 +392,128 @@ class InboxScopeContractIT extends AbstractMySqlIntegrationTest {
                                     + ownerNotificationId + "}]}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.processed").value(1));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. 一覧・サマリ・ラベル一覧・ラベル作成・unarchive/unsnooze の自己スコープ
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. 一覧/サマリ/ラベル一覧/ラベル作成/unarchive/unsnooze（自己スコープ）")
+    class SelfScopedReadAndOwnCreate {
+
+        @Test
+        @DisplayName("未認証は401（一覧・サマリ・ラベル一覧）")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox/summary"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox/labels"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("他ユーザーの一覧・サマリ・ラベル一覧には owner のデータが混入しない")
+        void 他ユーザーには混入しない() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox").param("state", "ALL"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.items[*].sourceId")
+                            .value(org.hamcrest.Matchers.not(
+                                    org.hamcrest.Matchers.hasItem(ownerNotificationId.intValue()))));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox/labels"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id",
+                            org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(ownerLabelId.toString()))));
+        }
+
+        @Test
+        @DisplayName("正常系: 本人は自分の一覧/サマリ/ラベル一覧を取得できる")
+        void 本人は自分のデータを取得できる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox").param("state", "ALL"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.items[*].sourceId")
+                            .value(org.hamcrest.Matchers.hasItem(ownerNotificationId.intValue())));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox/summary"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/api/v1/inbox/labels"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id",
+                            org.hamcrest.Matchers.hasItem(ownerLabelId.toString())));
+        }
+
+        @Test
+        @DisplayName("正常系: ラベル作成は認証主体自身の所有として作られる")
+        void ラベル作成は自分の所有になる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/inbox/labels")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"INBOXAUTHZ 新規ラベル\",\"color\":\"#3b82f6\"}"))
+                    .andExpect(status().isCreated());
+            assertThat(labelRepository.existsByUserIdAndName(ownerId, "INBOXAUTHZ 新規ラベル")).isTrue();
+        }
+
+        @Test
+        @DisplayName("他人が triage 済みの通知に対する unarchive は自分のオーバーレイ行が無く404")
+        void 他人のtriage済み通知のunarchiveは404() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/inbox/unarchive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(triagedNotificationId)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正常系: 自分の triage 済み（アーカイブ）通知の unarchive は成功する")
+        void 本人はunarchiveできる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/inbox/unarchive")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(triagedNotificationId)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("他人がスヌーズ済みの通知に対する unsnooze は自分のオーバーレイ行が無く404")
+        void 他人のスヌーズ済み通知のunsnoozeは404() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/inbox/snooze")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(snoozeBody(ownerNotificationId)))
+                    .andExpect(status().isOk());
+
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/inbox/unsnooze")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(ownerNotificationId)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正常系: 自分のスヌーズ済み通知の unsnooze は成功する")
+        void 本人はunsnoozeできる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/inbox/snooze")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(snoozeBody(ownerNotificationId)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/inbox/unsnooze")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(triageTargetBody(ownerNotificationId)))
+                    .andExpect(status().isOk());
         }
     }
 

@@ -50,6 +50,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>レート制限フィルタ（{@code FavoriteRateLimitFilter}）は
  * {@code @AutoConfigureMockMvc(addFilters = false)} により本 IT では適用されない。</p>
+ *
+ * <p>本ファイルが {@code @SelfScopedEndpoint} の自己スコープ性を固定する対象:
+ * {@code FavoriteController#listFavorites}。{@code checkFavorite} / {@code reorderFavorites} は
+ * {@code @AuthorizedInService}（Wave7 ロットA監査）だが、越境不能性の裏取りとして本ファイルに
+ * 契約テストを追加している。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -241,6 +246,90 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(get("/api/v1/me/favorites"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[*].id", hasItem(ownerFavoriteId.toString())));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 4. 登録状態チェック（自己スコープ・FavoriteController#checkFavorite）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("4. GET /me/favorites/check（自己スコープ）")
+    class CheckFavorite {
+
+        @Test
+        @DisplayName("未認証は401")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "TEAM")
+                            .param("entityId", publicTeamId.toString()))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("他ユーザーは owner の登録があっても isFavorited=false（自己スコープ）")
+        void 他ユーザーは未登録扱い() throws Exception {
+            setAuth(memberId);
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "TEAM")
+                            .param("entityId", publicTeamId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isFavorited").value(false));
+        }
+
+        @Test
+        @DisplayName("正常系: 登録者本人は isFavorited=true")
+        void 本人は登録済み() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "TEAM")
+                            .param("entityId", publicTeamId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isFavorited").value(true))
+                    .andExpect(jsonPath("$.data.favoriteId").value(ownerFavoriteId.toString()));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. 並び替え（自己スコープ・FavoriteController#reorderFavorites）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. PATCH /me/favorites/reorder（自己スコープ）")
+    class ReorderFavorites {
+
+        @Test
+        @DisplayName("未認証は401")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .patch("/api/v1/me/favorites/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"orderedIds\":[\"" + ownerFavoriteId + "\"]}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("他ユーザーが owner のお気に入りIDを並び替え指定→404秘匿（自分の登録にないIDのため）")
+        void 他人のIDは404() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .patch("/api/v1/me/favorites/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"orderedIds\":[\"" + ownerFavoriteId + "\"]}"))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("正常系: 本人は自分の登録IDで並び替えできる")
+        void 本人は並び替えできる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .patch("/api/v1/me/favorites/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"orderedIds\":[\"" + ownerFavoriteId + "\"]}"))
+                    .andExpect(status().isNoContent());
         }
     }
 

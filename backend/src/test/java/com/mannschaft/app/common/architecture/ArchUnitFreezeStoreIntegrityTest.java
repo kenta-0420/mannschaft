@@ -610,16 +610,39 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
      *
-     * <p>43 → 30（Wave6 ロットF・2026-08-08）: reflection 10 行 / corkboard 2 行 /
-     * advertising 1 行の計13行を返済。対象データの検索・更新条件が認証主体
-     * （{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * <h3>Wave6 ロットE（74 → 50 単独時点）</h3>
+     * <p>contact / favorite / inbox の 24 EP を監査し、いずれも
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件・保存条件に渡す自己スコープ
+     * （{@code @SelfScopedEndpoint}）、ないしサービス層で開示制御を行う
+     * （{@code @AuthorizedInService}）であることを確認したうえで、該当 24 行を削除した。
+     * 契約テストは {@code ContactScopeContractIT} / {@code FavoriteScopeContractIT} /
+     * {@code InboxScopeContractIT}。</p>
+     *
+     * <h3>Wave6 ロットE と Wave7 ロットA の合流（74 → 22）</h3>
+     * <p>本ロットの基点は分岐時点の 74 であり単独では 74 − 24 = 50 だが、並行して進んでいた
+     * Wave7 ロットA（金銭・記録系17コントローラ31EP、PR #2670）が先に main へ着地したため、
+     * main 追随マージで合成し直した値である。ロットA は 74 → 43（31 行削除）で、その31行の内訳は
+     * favorite 3 行（listFavorites / checkFavorite / reorderFavorites）＋
+     * notification/payment/pointcard/receipt/ticket/todo 系 28 行。
+     * 本ロットの24行（contact 15・favorite 3・inbox 6）とロットA の31行は
+     * <b>favorite 3 行のみが重複</b>し（同一 EP を両ロットが別々に認可監査した）、
+     * それ以外（本ロットの contact 15・inbox 6 の計21行、ロットAの28行）は互いに素である。
+     * 重複除去した和集合は 24 + 31 − 3 = 52 行。したがって 74 − 52 = 22。
+     * 実際の解消手順は、main の43行（ロットA適用後）から本ロット独自の contact・inbox 計21行を
+     * 追加削除する形で行った（favorite 3 行は既に main 側の削除で消えているため二重に触れていない）。
+     * 削除後の実行数は {@code grep -c . <ストアファイル>} で 22 であることを実測確認済み。</p>
+     *
+     * <h3>Wave6 ロットF の合流（22 → 9）</h3>
+     * <p>Wave6 ロットF（reflection 10・corkboard 2・advertising 1 の計13EP、本ファイル）を
+     * ロットE 着地後の main（22行）へ追随マージした。ロットFが監査した13EPは、いずれも
+     * ロットE・ロットAの対象と重複しない（ドメインが完全に独立）。対象データの検索・更新条件が
+     * 認証主体（{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
      * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
-     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。本コミットは同時に
-     * origin/main 側で先行着地した Wave7 ロットA（PR #2670・notification 1行/todo 7行を
-     * 別途返済済み・74→43）との合流も反映しており、43 という起点値自体が既にロットAの
-     * 返済後の実測値である。</p>
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。したがって 22 − 13 = 9。
+     * 削除後の残行数は {@code grep -c . <ストアファイル>} で 9（family 7・tournament 2）であることを
+     * 実測確認済み。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 30;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 9;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。

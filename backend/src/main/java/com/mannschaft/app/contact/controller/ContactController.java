@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactResponse;
 import com.mannschaft.app.contact.service.ContactService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,9 @@ public class ContactController {
      * 他ユーザーのフォルダ ID を指定しても自分の連絡先しか返らない（自己スコープ）。
      * 契約は {@code ContactScopeContractIT} で固定する。</p>
      */
+    @SelfScopedEndpoint("ContactService#listContacts はフォルダ集合を"
+            + "findByUserIdOrderBySortOrder(userId) で解決し、folderId は自分のフォルダ集合との積で"
+            + "絞り込むのみ（ContactController#listContacts）。認可根治戦役 Wave6 監査済。")
     @GetMapping
     @Operation(summary = "連絡先一覧取得")
     public ResponseEntity<ApiResponse<List<ContactResponse>>> listContacts(
