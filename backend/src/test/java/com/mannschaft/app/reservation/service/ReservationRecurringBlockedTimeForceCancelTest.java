@@ -353,8 +353,9 @@ class ReservationRecurringBlockedTimeForceCancelTest {
 
         ArgumentCaptor<ReservationForceCancelledByBlockEvent> captor =
                 ArgumentCaptor.forClass(ReservationForceCancelledByBlockEvent.class);
-        verify(eventPublisher, times(1))
-                .as("同一ユーザーに2通飛んではならない（グループにつき1通）")
+        // 失敗時の説明は Mockito の VerificationMode#description で付ける
+        // （.as(...) は AssertJ のメソッドで、verify() の戻り値には存在しない）。
+        verify(eventPublisher, times(1).description("同一ユーザーに2通飛んではならない（グループにつき1通）"))
                 .publishEvent(captor.capture());
         ReservationForceCancelledByBlockEvent event = captor.getValue();
         assertThat(event.getUserId()).isEqualTo(APPLICANT_A);
