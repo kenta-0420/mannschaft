@@ -4,6 +4,7 @@ import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -44,6 +45,21 @@ class DelinquencyEscalationBatchServiceIntegrationTest extends AbstractMySqlInte
 
     private static final Long ORG_ID = 9001L;
     private static final Long DWELLING_ID = 9101L;
+
+    /**
+     * 本テストが投入した行を毎回撤去する。
+     *
+     * <p>バッチは組織を問わず未解決のエスカレーションを全件走査するため、
+     * 投入した行（特に不正なステージ文字列を持つ行）を残すと、後続のテストや
+     * 他のテストクラスのバッチ実行まで巻き込んでしまう。
+     */
+    @AfterEach
+    void cleanUpFixtures() {
+        txTemplate.executeWithoutResult(status ->
+                em.createNativeQuery("DELETE FROM delinquency_escalations WHERE organization_id = :orgId")
+                        .setParameter("orgId", ORG_ID)
+                        .executeUpdate());
+    }
 
     private DelinquencyEscalationEntity buildEscalation(Long residentRegistryId, String stage, LocalDate delinquencyStartedAt) {
         return DelinquencyEscalationEntity.builder()
