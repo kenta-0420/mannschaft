@@ -5,6 +5,10 @@ import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
+import com.mannschaft.app.timetable.personal.PersonalTimetableVisibility;
+import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
+import com.mannschaft.app.timetable.personal.repository.PersonalTimetableRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +32,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -67,6 +72,9 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ReflectionEntryRepository entryRepository;
+
+    @Autowired
+    private PersonalTimetableRepository personalTimetableRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -567,14 +575,10 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正常系 科目紐づけ候補一覧/学期提案/今日ビュー/単語帳: 未認証は401・認証済みは200（自己スコープで完結）")
+        @DisplayName("正常系 科目紐づけ候補一覧/単語帳: 未認証は401・認証済みは200（自己スコープで完結）")
         void その他自己スコープEP_未認証401_認証済み200() throws Exception {
             SecurityContextHolder.clearContext();
             mockMvc.perform(get("/api/v1/me/reflections/linkable-slots"))
-                    .andExpect(status().isUnauthorized());
-            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
-                    .andExpect(status().isUnauthorized());
-            mockMvc.perform(get("/api/v1/me/reflections/today"))
                     .andExpect(status().isUnauthorized());
             mockMvc.perform(get("/api/v1/me/reflections/cards")
                             .param("from", "2026-01-01").param("to", "2026-01-31"))
@@ -585,13 +589,71 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(ownerId);
             mockMvc.perform(get("/api/v1/me/reflections/linkable-slots"))
                     .andExpect(status().isOk());
-            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
-                    .andExpect(status().isOk());
-            mockMvc.perform(get("/api/v1/me/reflections/today"))
-                    .andExpect(status().isOk());
             mockMvc.perform(get("/api/v1/me/reflections/cards")
                             .param("from", "2026-01-01").param("to", "2026-01-31"))
                     .andExpect(status().isOk());
+        }
+
+        /**
+         * {@code ReflectionTermSuggestionController#suggest} の自己スコープ性を固定する。
+         *
+         * <p>owner にのみ ACTIVE な個人時間割（academicYear=2026・termLabel="1学期"）を用意し、
+         * owner の提案結果にのみ反映され、時間割を持たない attacker には反映されない
+         * （＝他ユーザーの時間割データへ到達できない）ことを検証する。</p>
+         */
+        @Test
+        @DisplayName("ReflectionTermSuggestionController#suggest: 未認証は401・owner のみ自分の時間割を反映")
+        void 学期提案_ownerのみ自分の時間割を反映() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isUnauthorized());
+
+            personalTimetableRepository.save(PersonalTimetableEntity.builder()
+                    .userId(ownerId)
+                    .name("REFLAUTHZ 学期提案用時間割")
+                    .academicYear(2026)
+                    .termLabel("1学期")
+                    .effectiveFrom(LocalDate.now().minusDays(30))
+                    .status(PersonalTimetableStatus.ACTIVE)
+                    .visibility(PersonalTimetableVisibility.PRIVATE)
+                    .build());
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.academicYear").value(2026))
+                    .andExpect(jsonPath("$.data.termLabel").value("1学期"));
+
+            // 攻撃者は時間割を持たないため、owner の時間割データへは到達できず未設定のまま返る。
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/term-suggestion"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.academicYear").value(nullValue()))
+                    .andExpect(jsonPath("$.data.termLabel").value(nullValue()));
+        }
+
+        /**
+         * {@code ReflectionTodayController#getToday} の自己スコープ性を固定する。
+         *
+         * <p>owner の自由テーマ（{@code ownerThemeId}・時間割スロット未紐づけ）が
+         * owner の今日ビューにのみ現れ、attacker の今日ビューには混入しないことを検証する。</p>
+         */
+        @Test
+        @DisplayName("ReflectionTodayController#getToday: 未認証は401・owner の自由テーマは attacker に混入しない")
+        void 今日ビュー_ownerの自由テーマはattackerに混入しない() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isUnauthorized());
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.items[*].themeId", hasItem(ownerThemeId.toString())));
+
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/me/reflections/today"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.items[*].themeId", not(hasItem(ownerThemeId.toString()))));
         }
     }
 
