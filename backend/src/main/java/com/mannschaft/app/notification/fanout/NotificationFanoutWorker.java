@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * 通知 fan-out 耐久ジョブの裏ワーカー（P2）。
@@ -74,7 +77,24 @@ public class NotificationFanoutWorker {
     }
 
     /**
-     * 実行可能ジョブを claim（RUNNING 化）して各ジョブを {@link #processOne} で排出する（1 周回）。
+     * 実行可能ジョブを claim（RUNNING 化）して各ジョブを {@link #processOne} で
+     * <b>Virtual Threads で並列</b>に排出する（1 周回・CMP-001⑤）。
+     *
+     * <p><b>並列化の狙い（AC-1/6）</b>: 1 スコープが複数シャードジョブに分割されている場合、
+     * 各シャードを別スレッドで同時配信してスループットを稼ぐ。{@code @SchedulerLock}（クラスタ単一 poll）は
+     * {@link #poll()} 側で維持しており、並列度は 1 poll 内に閉じる（複数 pod が同一 batch を掴まない）。</p>
+     *
+     * <p><b>claim 整合</b>: {@link NotificationFanoutJobService#claimReady} が
+     * {@code FOR UPDATE SKIP LOCKED} ＋ RUNNING 化で排他 claim 済みの batch を並列処理するだけであり、
+     * 同一ジョブを 2 スレッドが持つことはない（並列化で新たな二重 claim は生じない）。</p>
+     *
+     * <p><b>例外分離（AC-6）</b>: 1 ジョブ（=1 シャード）の {@link #processOne} が例外を投げても
+     * 他ジョブの処理は止めない。各タスクの {@code Future#get} で throw を捕捉してログに残す
+     * （握り潰さずログと状態遷移で露見させる）。配信失敗は {@code processOne} 内で {@code recordFailure} 済み。</p>
+     *
+     * <p><b>コネクション有界性</b>: 並列度の上限は batch 件数（{@code BATCH_SIZE}=20）であり、
+     * Hikari 最大プール（50）に収まる。Virtual Thread 自体は多重化されるが、同時に DB を掴むタスク数は
+     * batch 件数が上限のため枯渇しない想定（最終的な 50 万実測は検分で裏取り）。</p>
      */
     public void processReady() {
         List<NotificationFanoutJob> batch = jobService.claimReady(LocalDateTime.now(), BATCH_SIZE);
@@ -82,12 +102,19 @@ public class NotificationFanoutWorker {
             return;
         }
         log.debug("NotificationFanoutWorker claimed {} jobs", batch.size());
-        for (NotificationFanoutJob job : batch) {
-            try {
-                processOne(job);
-            } catch (Exception ex) {
-                // processOne は失敗を内部で recordFailure に落とす設計。ここに来るのは想定外（バグ）。
-                log.error("NotificationFanoutWorker: 想定外の例外 jobId={}", job.getId(), ex);
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> futures = batch.stream()
+                    .map(job -> executor.submit(() -> processOne(job)))
+                    .toList();
+            for (int i = 0; i < futures.size(); i++) {
+                NotificationFanoutJob job = batch.get(i);
+                try {
+                    futures.get(i).get();
+                } catch (Exception ex) {
+                    // processOne は失敗を内部で recordFailure に落とす設計。ここに来るのは想定外（バグ）。
+                    // 1 ジョブの想定外例外で他ジョブを止めないため、ここで捕捉してログに残す（露見させる）。
+                    log.error("NotificationFanoutWorker: 想定外の例外 jobId={}", job.getId(), ex);
+                }
             }
         }
     }
@@ -114,7 +141,12 @@ public class NotificationFanoutWorker {
                 // 3 引数版へ委譲するため挙動不変。ORGANIZATION のみトグルを keyset クエリへ運搬する（Wave-2）。
                 // include_supporters は非 NULL 列（DEFAULT TRUE）。防御的に NULL は true 扱い（旧 VILLAGE 行の全員配信を保つ）。
                 boolean includeSupporters = !Boolean.FALSE.equals(job.getIncludeSupporters());
-                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters);
+                // シャード対応 6 引数版で受信者供給する（CMP-001⑤）。
+                // 各シャードジョブ（shard_index=0..N-1・shard_count=N）は自分のモジュロ区画
+                // （subject_id % shardCount == shardIndex）だけを配信し、シャード間で重複しない。
+                // shard_count=1 のジョブは 6 引数既定実装がそのまま 4 引数版へ委譲＝既存挙動不変。
+                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
+                        job.getShardIndex(), job.getShardCount());
                 if (page.isEmpty()) {
                     jobService.markDone(job.getId());
                     break;
