@@ -2,6 +2,7 @@ package com.mannschaft.app.contact.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactPrivacyRequest;
 import com.mannschaft.app.contact.dto.ContactPrivacyResponse;
 import com.mannschaft.app.contact.service.ContactPrivacyService;
@@ -32,6 +33,9 @@ public class ContactPrivacyController {
 
     private final ContactPrivacyService contactPrivacyService;
 
+    @SelfScopedEndpoint("ContactPrivacyService#getPrivacySettings は"
+            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみ"
+            + "（ContactPrivacyController#getPrivacySettings）。認可根治戦役 Wave6 監査済。")
     @GetMapping
     @Operation(summary = "プライバシー設定取得")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> getPrivacySettings() {
@@ -39,6 +43,10 @@ public class ContactPrivacyController {
         return ResponseEntity.ok(ApiResponse.of(contactPrivacyService.getPrivacySettings(userId)));
     }
 
+    @SelfScopedEndpoint("ContactPrivacyService#updatePrivacySettings は"
+            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみで、"
+            + "更新も同じ user の行にしか作用しない（ContactPrivacyController#updatePrivacySettings）。"
+            + "認可根治戦役 Wave6 監査済。")
     @PutMapping
     @Operation(summary = "プライバシー設定更新")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> updatePrivacySettings(

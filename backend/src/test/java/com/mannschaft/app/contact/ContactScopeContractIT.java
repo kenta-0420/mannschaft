@@ -62,6 +62,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>金型: {@code TodoPersonalScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext + {@code @EnabledIf isDockerAvailable}）。未認証は
  * {@code SecurityUtils} の {@code COMMON_000} → 401。</p>
+ *
+ * <p>本ファイルが {@code @SelfScopedEndpoint} の自己スコープ性を固定する対象:
+ * {@code ContactController#listContacts}・{@code ContactHandleController#getMyHandle}・
+ * {@code ContactHandleController#updateHandle}・{@code ContactHandleController#checkHandle}・
+ * {@code ContactInviteTokenController#createToken}・{@code ContactInviteTokenController#listTokens}・
+ * {@code ContactPrivacyController#getPrivacySettings}・
+ * {@code ContactPrivacyController#updatePrivacySettings}・
+ * {@code ContactRequestBlockController#addBlock}・{@code ContactRequestBlockController#listBlocks}・
+ * {@code ContactRequestController#listReceived}・{@code ContactRequestController#listSent}・
+ * {@code ContactRequestController#sendRequest}。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -590,6 +600,78 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(get("/api/v1/users/me/contact-handle"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.contactHandle").value(handleOf(ownerId)));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. ハンドル重複確認・招待トークン発行・事前拒否追加・申請送信（自己スコープの書き込み系）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. ハンドル重複確認・招待トークン発行・事前拒否追加・申請送信（自己スコープ）")
+    class SelfScopedWrites {
+
+        @Test
+        @DisplayName("未認証は401（重複確認・トークン発行・事前拒否追加・申請送信）")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/users/contact-handle-check").param("handle", "newhandle123"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(post("/api/v1/contact-invite-tokens")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("重複確認は自分以外の既存ハンドルとの重複だけを見る（保持者情報は返さない）")
+        void 重複確認は自分を除外して真偽のみ返す() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/users/contact-handle-check").param("handle", handleOf(ownerId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.available").value(true));
+
+            mockMvc.perform(get("/api/v1/users/contact-handle-check").param("handle", handleOf(friendId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.available").value(false));
+        }
+
+        @Test
+        @DisplayName("正常系: 招待トークン発行は認証主体自身の所有として作られる")
+        void トークン発行は自分の所有になる() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/contact-invite-tokens")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isCreated());
+
+            assertThat(contactInviteTokenRepository.findByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(ownerId))
+                    .isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("正常系: 事前拒否追加は認証主体自身の設定として作られる")
+        void 事前拒否追加は自分の設定になる() throws Exception {
+            setAuth(friendId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + attackerId + "}"))
+                    .andExpect(status().isCreated());
+
+            assertThat(contactRequestBlockRepository.existsByUserIdAndBlockedId(friendId, attackerId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: 申請送信は認証主体を requesterId として作られ、宛先の既存データは変更されない")
+        void 申請送信は自分をrequesterIdとして作られる() throws Exception {
+            setAuth(hiddenId);
+            mockMvc.perform(post("/api/v1/contact-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + friendId + "}"))
+                    .andExpect(status().isOk());
+
+            assertThat(contactRequestRepository.findByRequesterIdAndStatusOrderByCreatedAtDesc(hiddenId, "PENDING"))
+                    .isNotEmpty();
         }
     }
 
