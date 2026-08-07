@@ -609,8 +609,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
+     *
+     * <h3>Wave6 ロットE（74 → 50）</h3>
+     * <p>contact / favorite / inbox の 24 EP を監査し、いずれも
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件・保存条件に渡す自己スコープ
+     * （{@code @SelfScopedEndpoint}）、ないしサービス層で開示制御を行う
+     * （{@code @AuthorizedInService}）であることを確認したうえで、該当 24 行を削除した。
+     * 契約テストは {@code ContactScopeContractIT} / {@code FavoriteScopeContractIT} /
+     * {@code InboxScopeContractIT}。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 74;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 50;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
