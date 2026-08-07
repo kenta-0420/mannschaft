@@ -35,5 +35,5 @@ CREATE TABLE schedule_keeps (
   INDEX idx_skeep_conv_team (team_id,         converted_schedule_id),
   INDEX idx_skeep_conv_org  (organization_id, converted_schedule_id),
   INDEX idx_skeep_conv_user (user_id,         converted_schedule_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='キープ（日付未定の予定）。F03.17';
