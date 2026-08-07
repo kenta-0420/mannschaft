@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -58,10 +59,23 @@ public class ResidentActivityAggregatorService {
     /** v1 スコア算定: スナップショット未取得時の inactiveDays デフォルト値 */
     private static final int DEFAULT_INACTIVE_DAYS = 30;
 
+    /**
+     * 30 日ローテバッチの 1 回あたり UPDATE 件数上限（Issue #2601）。
+     * ID をアプリ層に持ち上げず、DB 側の {@code LIMIT} 付き一括 UPDATE をこの件数ずつ繰り返す。
+     */
+    static final int SNAPSHOT_DELETE_BATCH_SIZE = 1000;
+
+    /**
+     * 30 日ローテバッチの最大ループ回数（暴走防止の安全弁）。
+     * {@link #SNAPSHOT_DELETE_BATCH_SIZE} との積が 1 回の起動で処理しうる上限件数となる。
+     */
+    private static final int SNAPSHOT_DELETE_MAX_LOOPS = 2000;
+
     private final ResidentActivitySnapshotRepository snapshotRepo;
     private final AnnualReviewRepository annualReviewRepo;
     private final AccessControlService accessControlService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ResidentActivitySnapshotBatchDeleter batchDeleter;
 
     // ─────────────────────────────────────────────────────────────────
     // 日次 UPSERT
@@ -255,20 +269,33 @@ public class ResidentActivityAggregatorService {
     /**
      * 30 日以前の snapshot を論理削除する。
      *
-     * <p>毎日 05:00 のローテーションバッチから呼ばれる。
+     * <p>毎日 05:00 のローテーションバッチから呼ばれる。対象件数が多い場合に備え、
+     * {@link ResidentActivitySnapshotBatchDeleter#deleteBatch} を {@link #SNAPSHOT_DELETE_BATCH_SIZE}
+     * 件ずつ、影響行数が 0 になるまで繰り返す。1 バッチ = 1 独立トランザクションとし、
+     * 一部バッチの失敗が全体をロールバックしないようにする。
+     *
+     * <p>クラスレベルの {@code @Transactional(readOnly = true)} を無効化するため
+     * {@link Propagation#NOT_SUPPORTED} を明示する（本メソッド自身はトランザクションを持たず、
+     * 実際の更新は {@link ResidentActivitySnapshotBatchDeleter} 側の独立トランザクションで行う）。
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void deleteOldSnapshots() {
         LocalDate cutoff = LocalDate.now().minusDays(30);
-        List<ResidentActivitySnapshot> oldSnapshots =
-                snapshotRepo.findBySnapshotDateLessThanAndDeletedAtIsNull(cutoff);
+        int totalDeleted = 0;
+        int loops = 0;
+        int affected;
+        do {
+            affected = batchDeleter.deleteBatch(cutoff, SNAPSHOT_DELETE_BATCH_SIZE);
+            totalDeleted += affected;
+            loops++;
+        } while (affected == SNAPSHOT_DELETE_BATCH_SIZE && loops < SNAPSHOT_DELETE_MAX_LOOPS);
 
-        oldSnapshots.forEach(s -> {
-            s.setDeletedAt(LocalDateTime.now());
-            snapshotRepo.save(s);
-        });
+        if (affected == SNAPSHOT_DELETE_BATCH_SIZE && loops >= SNAPSHOT_DELETE_MAX_LOOPS) {
+            log.warn("[ActivityAggregator] {}日以前の snapshot 削除がループ上限({}回)に到達。残存分あり: {}件処理済み",
+                    cutoff, SNAPSHOT_DELETE_MAX_LOOPS, totalDeleted);
+        }
 
-        log.info("[ActivityAggregator] {}日以前の snapshot を論理削除: {}件", cutoff, oldSnapshots.size());
+        log.info("[ActivityAggregator] {}日以前の snapshot を論理削除: {}件（{}バッチ）", cutoff, totalDeleted, loops);
     }
 
     // ─────────────────────────────────────────────────────────────────
