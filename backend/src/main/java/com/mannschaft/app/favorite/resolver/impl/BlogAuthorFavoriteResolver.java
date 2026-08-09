@@ -21,6 +21,12 @@ import java.util.stream.Collectors;
  *
  * <p>UserRepositoryでバッチ取得し、自分自身のプロフィールのみ編集可として扱う。
  * 退会（匿名化）済みユーザーは@SQLRestrictionにより自動除外される。</p>
+ *
+ * <p><b>可視性</b>: 表示メタ（表示名・アバター）を返す対象は、本人自身、または
+ * 公開プロフィール設定（{@link UserEntity#isPublicProfileEnabled()}）を有効にしている
+ * ユーザーに限る。判定基準は公開プロフィール API（{@code PublicUserProfileQueryService}）と
+ * 同一であり、お気に入り経由で別の可視性判定が生まれないようにしている。
+ * 対象外のユーザーは UNAVAILABLE（{@code available=false}）として名称・アイコンを返さない。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -50,6 +56,12 @@ public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
         if (!idMapping.isEmpty()) {
             // バッチ取得（@SQLRestrictionにより論理削除済みユーザーは自動除外）
             List<UserEntity> users = userRepository.findByIdIn(idMapping.keySet());
+            // 本人自身、または公開プロフィールを有効にしているユーザーのみ表示対象とする
+            // （公開プロフィール API と同一判定。それ以外は下の UNAVAILABLE 処理に落ちる）
+            users = users.stream()
+                    .filter(u -> u.isPublicProfileEnabled()
+                            || (currentUserId != null && currentUserId.equals(u.getId())))
+                    .toList();
             Set<Long> foundIds = users.stream().map(UserEntity::getId).collect(Collectors.toSet());
 
             for (UserEntity user : users) {
@@ -68,7 +80,7 @@ public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
                 ));
             }
 
-            // 存在しないID（論理削除・匿名化済み含む）はUNAVAILABLE
+            // 存在しないID（論理削除・匿名化済み含む）、閲覧対象外のIDはUNAVAILABLE
             for (Map.Entry<Long, String> entry : idMapping.entrySet()) {
                 if (!foundIds.contains(entry.getKey())) {
                     result.put(entry.getValue(), FavoriteEntityMetaDto.unavailable(entry.getValue(), FavoriteEntityType.BLOG_AUTHOR));

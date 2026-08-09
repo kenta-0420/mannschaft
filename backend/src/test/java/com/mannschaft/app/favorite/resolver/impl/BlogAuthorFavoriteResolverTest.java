@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
+import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,5 +62,55 @@ class BlogAuthorFavoriteResolverTest {
         assertThat(meta.iconUrl()).isNotEqualTo("user/5/avatar/raw.png");
         // 自分のプロフィールは編集可
         assertThat(meta.canEdit()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resolveAll: 公開プロフィール無効の他ユーザーはUNAVAILABLEを返す")
+    void resolveAll_nonPublicOtherUser_returnsUnavailable() {
+        UserEntity user = UserEntity.builder()
+                .email("author@example.com")
+                .displayName("著者太郎")
+                .avatarUrl("user/5/avatar/raw.png")
+                .publicProfileEnabled(false)
+                .build();
+        ReflectionTestUtils.setField(user, "id", 5L);
+
+        given(userRepository.findByIdIn(any())).willReturn(List.of(user));
+
+        // 閲覧者は著者本人ではない
+        Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("5"), 99L);
+
+        FavoriteEntityMetaDto meta = result.get("5");
+        assertThat(meta).isNotNull();
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
+        assertThat(meta.displayName()).isNull();
+        assertThat(meta.iconUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("resolveAll: 公開プロフィール有効な他ユーザーは従来どおり身元を返す")
+    void resolveAll_publicOtherUser_returnsIdentity() {
+        UserEntity user = UserEntity.builder()
+                .email("author@example.com")
+                .displayName("著者太郎")
+                .avatarUrl("user/5/avatar/raw.png")
+                .publicProfileEnabled(true)
+                .build();
+        ReflectionTestUtils.setField(user, "id", 5L);
+
+        given(userRepository.findByIdIn(any())).willReturn(List.of(user));
+        given(mediaUrlResolver.resolve("user/5/avatar/raw.png"))
+                .willReturn("https://cdn.example/signed/user-5");
+
+        // 閲覧者は著者本人ではない
+        Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("5"), 99L);
+
+        FavoriteEntityMetaDto meta = result.get("5");
+        assertThat(meta).isNotNull();
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.AVAILABLE);
+        assertThat(meta.displayName()).isEqualTo("著者太郎");
+        assertThat(meta.iconUrl()).isEqualTo("https://cdn.example/signed/user-5");
+        // 他者のプロフィールは編集不可
+        assertThat(meta.canEdit()).isFalse();
     }
 }
