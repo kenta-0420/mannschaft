@@ -715,6 +715,53 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 9. 招待プレビュー（GET /contact-invite/{token}・認証不要）
+    //
+    // 情報最小化: 発行者の表示名（ニックネーム）のみを返し、実名は返さない。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. GET /contact-invite/{token}（招待プレビュー・認証不要）")
+    class InvitePreview {
+
+        @Test
+        @DisplayName("有効なトークンでは発行者の表示名（ニックネーム）が返り、実名は含まれない")
+        void 有効なトークンは表示名を返す() throws Exception {
+            String uniq = Long.toString(System.nanoTime(), 36);
+            Long issuerId = insertUserWithDistinctNames(
+                    "contactauthz-issuer-" + uniq + "@example.test",
+                    "issuer-" + uniq,
+                    "招待発行者実名テスト",
+                    "招待発行者ニックネーム");
+            ContactInviteTokenEntity issuerToken = contactInviteTokenRepository.save(
+                    ContactInviteTokenEntity.builder()
+                            .userId(issuerId)
+                            .token("contactauthz-preview-token-" + uniq)
+                            .label("CONTACTAUTHZ プレビュー用")
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build());
+            em.flush();
+            em.clear();
+
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/contact-invite/{token}", issuerToken.getToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isValid").value(true))
+                    .andExpect(jsonPath("$.data.issuer.fullName").value("招待発行者ニックネーム"));
+        }
+
+        @Test
+        @DisplayName("不存在・無効トークンは isValid=false のみで発行者情報を一切返さない")
+        void 無効なトークンは発行者情報を返さない() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/contact-invite/{token}", "contactauthz-nonexistent-token"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isValid").value(false))
+                    .andExpect(jsonPath("$.data.issuer").doesNotExist());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー（金型 TodoPersonalScopeContractIT より写経）
     // ═════════════════════════════════════════════════════════════════════
 
@@ -747,6 +794,32 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("email", email)
                 .setParameter("handle", handle)
                 .setParameter("searchable", handleSearchable ? 1 : 0)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
+                .setParameter("email", email)
+                .getSingleResult()).longValue();
+    }
+
+    /** 実名（lastName+firstName）と表示名（displayName）を意図的に異なる値にしたユーザーを作成する。 */
+    private Long insertUserWithDistinctNames(String email, String handle, String fullName, String displayName) {
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "email, last_name, first_name, display_name, status, contact_handle, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:email, :fullName, '', :displayName, 'ACTIVE', :handle, "
+                                + "1, 1, 1, "
+                                + "'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                                + "1, 0, "
+                                + "NOW(), NOW())")
+                .setParameter("email", email)
+                .setParameter("handle", handle)
+                .setParameter("fullName", fullName)
+                .setParameter("displayName", displayName)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
                 .setParameter("email", email)
