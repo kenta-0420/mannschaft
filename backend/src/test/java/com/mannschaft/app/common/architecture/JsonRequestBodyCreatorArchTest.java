@@ -258,7 +258,13 @@ class JsonRequestBodyCreatorArchTest {
         "jakarta.annotation.Nullable",
         "jakarta.annotation.Nonnull",
         "org.springframework.lang.Nullable",
-        "org.springframework.lang.NonNull");
+        "org.springframework.lang.NonNull",
+        // springdoc のドキュメント注釈。バインド元を一切決めない純粋な注釈で、
+        // @Parameter は単純型への併用のみ（実害ゼロ）、@ParameterObject は現状未使用だが、
+        // 将来 @ParameterObject @Valid SomeRequest のように使われるとバインド注釈と
+        // 誤認され、対象から漏れる穴が #2541 の項目2と同型で再発する（#2613）。
+        "io.swagger.v3.oas.annotations.Parameter",
+        "org.springdoc.core.annotations.ParameterObject");
 
     /** カスタム deserializer / builder 指定の脱出口 FQN。 */
     static final String JSON_DESERIALIZE_ANNOTATION =
@@ -422,12 +428,15 @@ class JsonRequestBodyCreatorArchTest {
             return false;
         }
         Set<JavaConstructor> constructors = clazz.getConstructors();
-        if (hasNoArgConstructor(constructors)) {
-            // 引数無しコンストラクタがあれば Jackson は既定 creator として実体を生成できる。
-            return false;
-        }
         // @JsonCreator は「付いているか」ではなく「使える creator を何本与えるか」で見る。
         // mode = DISABLED は creator の明示的な打ち消しであり 1 本も与えない。
+        //
+        // この二重 creator 検査は「引数無しコンストラクタの有無」より先に行う。
+        // Jackson は _addDeserializerConstructors で properties-based creator が 2 本以上あると
+        // 無条件で Conflicting property-based creators を投げるため、引数無しコンストラクタの
+        // 存在はこの衝突を一切抑止しない（「引数無しコンストラクタあり＋creator 2 本」も常時 500）。
+        // 早期 return を先に置くと、この形が「引数無しコンストラクタがある」で合格になってしまう
+        // （#2613 で発見された偽陰性）。
         List<JavaCodeUnit> usableCreators = usableJsonCreators(clazz, constructors);
         if (!usableCreators.isEmpty()) {
             // properties-based creator は Jackson がちょうど 1 本しか採れない。
@@ -436,6 +445,10 @@ class JsonRequestBodyCreatorArchTest {
             return usableCreators.stream()
                 .filter(JsonRequestBodyCreatorArchTest::isPropertiesBasedCreator)
                 .count() >= 2;
+        }
+        if (hasNoArgConstructor(constructors)) {
+            // 引数無しコンストラクタがあれば Jackson は既定 creator として実体を生成できる。
+            return false;
         }
         // ここから先は「使える @JsonCreator が 1 本も無い」場合の暗黙解決の可否。
         // mode = DISABLED で打ち消されたコンストラクタは候補から外れる。
