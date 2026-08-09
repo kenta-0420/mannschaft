@@ -414,6 +414,9 @@ class IcalServiceTest {
                     .status(ScheduleStatus.SCHEDULED)
                     .build();
             ReflectionTestUtils.setField(s, "id", id);
+            // calculateETag が updatedAt の MAX を取るため、監査フィールド未設定(null)だと
+            // Stream#max が NPE する（本テストの主眼である可視性フィルタとは無関係のため埋める）。
+            ReflectionTestUtils.setField(s, "updatedAt", LocalDateTime.of(2026, 4, 1, 9, 0));
             return s;
         }
 
