@@ -102,6 +102,8 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
     private Long orgSupporterId;
     /** 親組織に直接所属する MEMBER（チームには所属しない）。 */
     private Long orgMemberId;
+    /** 親組織の ADMIN。組織予定の書込（create / update）を行える唯一のロール。 */
+    private Long orgAdminId;
     /** プラットフォーム SYSTEM_ADMIN。 */
     private Long systemAdminId;
 
@@ -119,6 +121,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         teamGuestId = insertUser("mvr-team-guest@example.com");
         orgSupporterId = insertUser("mvr-org-supporter@example.com");
         orgMemberId = insertUser("mvr-org-member@example.com");
+        orgAdminId = insertUser("mvr-org-admin@example.com");
         systemAdminId = insertUser("mvr-system-admin@example.com");
 
         // memberships（所属）と user_roles（権限ロール）は別系統のため双方に行を張る。
@@ -139,6 +142,9 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
 
         MembershipTestHelper.insertMembership(em, orgMemberId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, orgMemberId, "MEMBER", null, orgId);
+
+        MembershipTestHelper.insertMembership(em, orgAdminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, orgAdminId, "ADMIN", null, orgId);
 
         // SYSTEM_ADMIN はプラットフォームレベル割当（team_id / organization_id ともに null）。
         MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
@@ -352,7 +358,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC-22 create: includeSupporters=TRUE × minViewRole=MEMBER_PLUS は 400 で拒否される")
         void create_矛盾する組み合わせは400() throws Exception {
-            setAuthentication(orgMemberId);
+            setAuthentication(orgAdminId);
             mockMvc.perform(post("/api/v1/organizations/{slug}/schedules", orgSlug)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(
@@ -363,7 +369,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC-22 create: includeSupporters=TRUE × minViewRole=ADMIN_ONLY は 400 で拒否される")
         void create_矛盾する組み合わせadminOnlyも400() throws Exception {
-            setAuthentication(orgMemberId);
+            setAuthentication(orgAdminId);
             mockMvc.perform(post("/api/v1/organizations/{slug}/schedules", orgSlug)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(
@@ -381,7 +387,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("minViewRole", "MEMBER_PLUS");
 
-            setAuthentication(orgMemberId);
+            setAuthentication(orgAdminId);
             mockMvc.perform(patch("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
@@ -391,7 +397,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC-23 minViewRole 未指定 × includeSupporters=TRUE の create は SUPPORTER_PLUS で保存される")
         void create_未指定かつincludeSupporters真はSUPPORTER_PLUS() throws Exception {
-            setAuthentication(orgMemberId);
+            setAuthentication(orgAdminId);
             String response = mockMvc.perform(post("/api/v1/organizations/{slug}/schedules", orgSlug)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(
@@ -410,7 +416,7 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC-23 minViewRole 未指定 × includeSupporters=FALSE の create は MEMBER_PLUS で保存される")
         void create_未指定かつincludeSupporters偽はMEMBER_PLUS() throws Exception {
-            setAuthentication(orgMemberId);
+            setAuthentication(orgAdminId);
             String response = mockMvc.perform(post("/api/v1/organizations/{slug}/schedules", orgSlug)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(
