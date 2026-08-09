@@ -490,6 +490,103 @@ class MembershipBatchQueryServiceTest {
         };
     }
 
+    @Nested
+    @DisplayName("CMP-017b: 親 ORG のロール名マップ（orgRoleByScope）")
+    class ParentOrgRoleNames {
+
+        @Test
+        @DisplayName("親 ORG の user_roles ロール名が orgRoleByScope に入り閾値評価できる")
+        void 親ORGのuser_rolesロール名が閾値評価に使える() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            // 親 ORG に DEPUTY_ADMIN として所属
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of(projection(2L, null, 10L, 52L)));
+            when(roleRepository.findAllById(Set.of(52L)))
+                    .thenReturn(List.of(role(52L, "DEPUTY_ADMIN")));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "DEPUTY_ADMIN");
+            // DEPUTY_ADMIN(3) は DEPUTY_ADMIN 閾値を満たすが ADMIN(2) 閾値は満たさない
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "DEPUTY_ADMIN")).isTrue();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "MEMBER")).isTrue();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isFalse();
+            // direct スコープの roleByScope は汚染されないこと
+            assertThat(result.roleByScope()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("親 ORG の memberships SUPPORTER は MEMBER+ 閾値を満たさない（AC-06 の土台）")
+        void 親ORGのSUPPORTERはMEMBER閾値を満たさない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                    eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.SUPPORTER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "SUPPORTER");
+            // 所属はしている（ORGANIZATION_WIDE は従来どおり可視）
+            assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();
+            // だが MEMBER+ の閾値は満たさない ＝ min_view_role=MEMBER+ を弾ける
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "MEMBER")).isFalse();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG に user_roles ADMIN と memberships MEMBER が併存 → 最強の ADMIN を採用")
+        void 親ORGの併存ロールは最強を採用() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of(projection(2L, null, 10L, 51L)));
+            when(roleRepository.findAllById(Set.of(51L)))
+                    .thenReturn(List.of(role(51L, "ADMIN")));
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                    eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.MEMBER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "ADMIN");
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG 非所属なら orgRoleByScope は空で閾値評価も false")
+        void 親ORG非所属なら閾値false() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).isEmpty();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "SUPPORTER")).isFalse();
+        }
+
+        @Test
+        @DisplayName("SystemAdmin は親 ORG 閾値も常に true")
+        void systemAdminは親ORG閾値も常にtrue() {
+            UserScopeRoleSnapshot admin = UserScopeRoleSnapshot.forSystemAdmin();
+
+            assertThat(admin.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+    }
+
     private static RoleEntity role(Long id, String name) {
         // RoleEntity は Builder.toBuilder() を持つので Builder 経由で生成。
         // 必須 NotNull 列も埋める。

@@ -61,10 +61,17 @@ public enum StandardVisibility {
     /**
      * ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式 / 旧 ADMINS_ONLY 改名）。
      *
-     * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 ADMIN 以上）。MEMBER 以下は不可視。
+     * <p>包含: <strong>ADMIN のみ</strong>（= 優先度 ADMIN 以上）。DEPUTY_ADMIN 以下は不可視。
      *
-     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} と同等。
-     * 新ラダーの最上位閾値であり、機微度も最高位として扱う。
+     * <p><strong>注意（CMP-017b で是正）</strong>: 本 javadoc は長らく「包含: ADMIN / DEPUTY_ADMIN」と
+     * 記していたが<strong>誤り</strong>であった。判定は
+     * {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} =
+     * {@code priority(actual) <= priority("ADMIN") = 2} であり、
+     * DEPUTY_ADMIN は {@code priority = 3} のため実際には弾かれる。
+     * 「ADMIN と副管理者の両方」を意図する場合は
+     * {@link #DEPUTY_ADMINS_AND_ABOVE} を用いること。
+     *
+     * <p>新ラダーの最上位閾値であり、機微度も最高位として扱う。
      * 設計書 §5.1 / §5.1.5 を参照。
      */
     ADMINS_AND_ABOVE,
