@@ -173,6 +173,9 @@ class RecruitmentPenaltyRecomputeBatchTest {
                 return;
             } catch (NoSuchFieldException e) {
                 clazz = clazz.getSuperclass();
+            } catch (IllegalAccessException e) {
+                // テストフィクスチャ構築の失敗は原因を保持したまま送出する（握り潰さない）
+                throw new IllegalStateException("failed to set field: " + name, e);
             }
         }
         throw new IllegalStateException("field not found: " + name);

@@ -270,7 +270,7 @@ class RecruitmentPaymentRetryBatchTest {
                     .filter(r -> r.getPaymentRetryCount() < maxRetries)
                     .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
                     .limit(pageSize)
-                    .peek(processedIds::add)
+                    .peek(r -> processedIds.add(r.getId()))
                     .collect(Collectors.toList());
             return result;
         }
