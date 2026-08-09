@@ -48,10 +48,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * は例外を内部で {@code recordFailure}（FAILED 遷移・独立コミット）に落とすため、本テストのシャードループは
  * 中断せず次シャードへ進む（「他シャードは継続」の実測）。</p>
  *
- * <h2>なぜ今 red になるか</h2>
- * <p>{@code enqueue} は現状 shard_count=1 固定（複数シャード行を生成しない）ため、
- * 「AC-6前提: 大母集団は複数シャードに分割される」の assertion で即座に red になる。
- * シャード自動分割が実装された後は、クラッシュ注入・再開ロジック自体の正しさを検証する。</p>
+ * <h2>B案（worker 側シャード分割）への追随</h2>
+ * <p>enqueue は O(1) のため親ジョブ 1 行（{@code shard_count=0}）しか作らない。本 IT はクラッシュ注入の前段で
+ * {@link NotificationFanoutJobService#resolveAndSplitShards} を明示呼びしてシャードを確定・分割してから
+ * （配信は伴わない）、全シャードのクラッシュ再開ロジックの正しさを検証する。</p>
  */
 @DisplayName("通知 fan-out シャード版クラッシュ再開の実測IT（CMP-001⑤・難所・red）")
 @Tag("perf")
@@ -96,12 +96,21 @@ class NotificationFanoutOrgShardCrashResumeIT extends AbstractMySqlIntegrationTe
                 type, sourceEvent, seed.organizationId(), "AC-6 シャードクラッシュ再開", "本文",
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
+        // enqueue は O(1)（親 1 行・shard_count=0）。クラッシュ注入の前段でシャードを確定・分割する
+        // （resolveAndSplitShards は配信を伴わないため、以降のチャンク通し番号は 0 から始まる）。
+        List<NotificationFanoutJob> afterEnqueue = jobRepository
+                .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
+                        OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()), type, sourceEvent);
+        assertThat(afterEnqueue).as("AC-6前提: enqueue 直後は親 1 行").hasSize(1);
+        assertThat(afterEnqueue.get(0).getShardCount()).as("AC-6前提: enqueue 直後は shard_count=0").isEqualTo((short) 0);
+
+        int splitN = jobService.resolveAndSplitShards(afterEnqueue.get(0).getId());
+        assertThat(splitN).as("AC-6前提: 大母集団は複数シャードに分割される").isGreaterThan(1);
+
         List<NotificationFanoutJob> jobs = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
                         OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()), type, sourceEvent);
-
-        // AC-6 前提: 大母集団は複数シャードに分割される（現状 enqueue は未実装のためここで red になる）。
-        assertThat(jobs).as("AC-6前提: 大母集団は複数シャードに分割される").hasSizeGreaterThan(1);
+        assertThat(jobs).as("AC-6前提: 分割後は複数シャードのジョブ行").hasSize(splitN);
         int shardCount = jobs.size();
 
         // --- 1 回目: 全シャードを順に処理する（うち1本がグローバル通し番号CRASH_AT_CHUNK目でクラッシュする）。

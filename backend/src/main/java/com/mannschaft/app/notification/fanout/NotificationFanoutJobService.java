@@ -15,7 +15,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 通知 fan-out 耐久ジョブの enqueue 口＋ジョブ状態遷移サービス（P2）。
@@ -126,42 +128,39 @@ public class NotificationFanoutJobService {
                         String sourceType, Long sourceId, String actionUrl, Long actorId,
                         boolean includeSupporters) {
         LocalDateTime now = LocalDateTime.now();
-        // 母集団しきい値で自動シャード数を算出（閾値以下／カウント非対応は 1・従来どおり単一行）。
-        int shardCount = resolveShardCount(scopeType, scopeRef, includeSupporters);
-        // shardCount 本のジョブ行（shard_index=0..N-1・shard_count=N）を組み立てる。
-        List<NotificationFanoutJob> jobs = new ArrayList<>(shardCount);
-        for (short shardIndex = 0; shardIndex < shardCount; shardIndex++) {
-            jobs.add(NotificationFanoutJob.builder()
-                    .sourceEventUuid(sourceEventUuid)
-                    .scopeType(scopeType)
-                    .scopeRef(scopeRef)
-                    .notificationType(notificationType)
-                    .organizationId(organizationId)
-                    .title(title)
-                    .body(body)
-                    .priority(priority == null ? NotificationPriority.NORMAL : priority)
-                    .sourceType(sourceType)
-                    .sourceId(sourceId)
-                    .actionUrl(actionUrl)
-                    .actorId(actorId)
-                    .includeSupporters(includeSupporters)
-                    .shardIndex(shardIndex)
-                    .shardCount((short) shardCount)
-                    .status(NotificationFanoutJobStatus.PENDING)
-                    .cursorSubjectId(0L)
-                    .insertedCount(0L)
-                    .retryCount(0)
-                    .nextAttemptAt(now)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build());
-        }
+        // 真の O(1)（AC-7）: 受信者数を数えず、母集団評価は worker 側へ先送りする（B案・マスター裁可 2026-08-08）。
+        // enqueue は常に「親ジョブ 1 行だけ」を INSERT する。shard_index=0・shard_count=0（0＝「シャード未評価」の
+        // 番人値）で作り、初回 claim した worker が resolveAndSplitShards で N を確定して子シャード行を発行する。
+        NotificationFanoutJob job = NotificationFanoutJob.builder()
+                .sourceEventUuid(sourceEventUuid)
+                .scopeType(scopeType)
+                .scopeRef(scopeRef)
+                .notificationType(notificationType)
+                .organizationId(organizationId)
+                .title(title)
+                .body(body)
+                .priority(priority == null ? NotificationPriority.NORMAL : priority)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .actionUrl(actionUrl)
+                .actorId(actorId)
+                .includeSupporters(includeSupporters)
+                .shardIndex((short) 0)
+                .shardCount((short) 0) // 0＝未評価（worker が初回 claim 時に確定）
+                .status(NotificationFanoutJobStatus.PENDING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
         try {
-            // 独立 TX（REQUIRES_NEW）で全シャード行を一括 INSERT・原子確定する。ユニーク違反時はこの TX のみ
-            // 丸ごとロールバック（部分的なシャード行が中途半端に残らない）。例外は TX 境界の外（本 try）で捕捉するため
-            // 呼び出し側 TX は無傷。saveAll 後に flush して衝突を execute の内側で発火させる（TX 境界内でロールバック）。
+            // 独立 TX（REQUIRES_NEW）で親ジョブ 1 行を INSERT・確定する。ユニーク違反時はこの TX のみ丸ごと
+            // ロールバック。例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
+            // save 後に flush して衝突を execute の内側で発火させる（TX 境界内でロールバック）。
             enqueueTxTemplate.executeWithoutResult(status -> {
-                jobRepository.saveAll(jobs);
+                jobRepository.save(job);
                 jobRepository.flush();
             });
         } catch (DataIntegrityViolationException e) {
@@ -185,23 +184,101 @@ public class NotificationFanoutJobService {
     /**
      * 母集団しきい値ポリシーで自動シャード数を算出する（CMP-001⑤）。
      *
-     * <p>受信者ソースが {@link FanoutRecipientSource#countRecipients} を実装している（ORGANIZATION）場合のみ
-     * 総数を取り、{@code count > SHARD_THRESHOLD} なら
-     * {@code min(MAX_SHARDS, ceil(count / SHARD_TARGET_SIZE))} を返す。閾値以下・カウント非対応（{@code -1}）・
-     * 未登録 scope_type・分割対象外（VILLAGE / TEAM）はすべて {@code 1} を返し従来の単一行経路を保つ。</p>
+     * <p>{@code count > SHARD_THRESHOLD} なら {@code min(MAX_SHARDS, ceil(count / SHARD_TARGET_SIZE))} を返す。
+     * 閾値以下・カウント非対応（{@code -1}）・母集団0はすべて {@code 1} を返し従来の単一行経路を保つ。</p>
      */
-    private int resolveShardCount(String scopeType, String scopeRef, boolean includeSupporters) {
-        FanoutRecipientSource source = recipientSourceRegistry.resolve(scopeType).orElse(null);
-        if (source == null) {
-            return 1;
-        }
-        long recipientCount = source.countRecipients(scopeRef, includeSupporters);
+    static int computeShardCount(long recipientCount) {
         if (recipientCount <= SHARD_THRESHOLD) {
             // 閾値以下（カウント非対応の -1・母集団0・小規模）は単一シャード（既存挙動）。
             return 1;
         }
         long shards = (recipientCount + SHARD_TARGET_SIZE - 1) / SHARD_TARGET_SIZE; // ceil
         return (int) Math.min(MAX_SHARDS, Math.max(1L, shards));
+    }
+
+    /**
+     * worker が初回 claim 時にシャードを確定・分割する（B案・CMP-001⑤ 是正・マスター裁可 2026-08-08）。
+     *
+     * <p>enqueue は O(1) のため親ジョブ 1 行（{@code shard_index=0}・{@code shard_count=0}）しか作らない。
+     * 本メソッドは初回 claim した worker から呼ばれ、母集団を数えてシャード数 N を確定し、子シャード行
+     * （{@code shard_index=1..N-1}・{@code shard_count=N}）を発行したうえで親自身の {@code shard_count} を N に更新する。
+     * 子 INSERT と親更新は<b>同一 REQUIRES_NEW TX</b>で原子確定する（途中クラッシュで中途半端に残さない）。</p>
+     *
+     * <h2>冪等・クラッシュ耐性の不変条件</h2>
+     * <p>{@code shard_count != 0}（評価済 or レガシー行）なら何もせず現状の N を返す（冪等）。分割コミット前に
+     * クラッシュした場合、親は {@code shard_count=0} のまま残り（子 INSERT も同一 TX でロールバック済み）、
+     * {@link NotificationFanoutStuckRecoveryBatch} が RUNNING を PENDING へ戻す→再 claim→再度本メソッドが走る。
+     * その際、既存の子シャード行は事前 existence チェックで除外し、万一の競合は {@code uk_fanout_idempotency}
+     * （{@code shard_index} 込み）が二重挿入を弾く（別原因の整合性違反は握り潰さず露見させる）。</p>
+     *
+     * @param jobId 親ジョブ（{@code shard_index=0}）の ID
+     * @return 確定したシャード総数 N（{@code >= 1}）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int resolveAndSplitShards(UUID jobId) {
+        NotificationFanoutJob parent = jobRepository.findById(jobId).orElseThrow();
+        short existing = parent.getShardCount();
+        if (existing != 0) {
+            // 既に評価済み（or レガシー行 shard_count>=1）。冪等に現状を返す（再 claim・再入で二重分割しない）。
+            return existing;
+        }
+        // 母集団を数えてシャード数 N を確定する（カウント非対応・未登録 scope_type は N=1）。
+        FanoutRecipientSource source = recipientSourceRegistry.resolve(parent.getScopeType()).orElse(null);
+        boolean includeSupporters = !Boolean.FALSE.equals(parent.getIncludeSupporters());
+        long recipientCount = source == null ? -1L : source.countRecipients(parent.getScopeRef(), includeSupporters);
+        int shardCount = computeShardCount(recipientCount);
+
+        // 既存の子シャード行を洗い出す（クラッシュ再開時の二重挿入防止・冪等）。
+        List<NotificationFanoutJob> siblings = jobRepository
+                .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
+                        parent.getScopeType(), parent.getScopeRef(),
+                        parent.getNotificationType(), parent.getSourceEventUuid());
+        Set<Short> existingIndices = siblings.stream()
+                .map(NotificationFanoutJob::getShardIndex)
+                .collect(Collectors.toSet());
+
+        LocalDateTime now = LocalDateTime.now();
+        List<NotificationFanoutJob> children = new ArrayList<>();
+        for (short shardIndex = 1; shardIndex < shardCount; shardIndex++) {
+            if (existingIndices.contains(shardIndex)) {
+                continue; // 再開時に既存＝二重挿入しない（冪等 skip）。
+            }
+            children.add(NotificationFanoutJob.builder()
+                    .sourceEventUuid(parent.getSourceEventUuid())
+                    .scopeType(parent.getScopeType())
+                    .scopeRef(parent.getScopeRef())
+                    .notificationType(parent.getNotificationType())
+                    .organizationId(parent.getOrganizationId())
+                    .title(parent.getTitle())
+                    .body(parent.getBody())
+                    .priority(parent.getPriority())
+                    .sourceType(parent.getSourceType())
+                    .sourceId(parent.getSourceId())
+                    .actionUrl(parent.getActionUrl())
+                    .actorId(parent.getActorId())
+                    .includeSupporters(parent.getIncludeSupporters())
+                    .shardIndex(shardIndex)
+                    .shardCount((short) shardCount)
+                    .status(NotificationFanoutJobStatus.PENDING)
+                    .cursorSubjectId(0L)
+                    .insertedCount(0L)
+                    .retryCount(0)
+                    .nextAttemptAt(now)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build());
+        }
+        if (!children.isEmpty()) {
+            // 子 INSERT。同一キー・同一 shard_index の二重挿入は uk_fanout_idempotency が弾く
+            // （別原因の整合性違反はここで rethrow され、TX ロールバック→recovery で再走）。
+            jobRepository.saveAll(children);
+        }
+        // 親自身（shard_index=0）を shard_count=N に更新（子 INSERT と同一 TX で原子確定）。
+        parent.setShardCount((short) shardCount);
+        parent.setUpdatedAt(now);
+        jobRepository.save(parent);
+        jobRepository.flush();
+        return shardCount;
     }
 
     /**

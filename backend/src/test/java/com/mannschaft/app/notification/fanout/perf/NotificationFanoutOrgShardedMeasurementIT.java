@@ -98,12 +98,17 @@ class NotificationFanoutOrgShardedMeasurementIT extends AbstractMySqlIntegration
                 NotificationPriority.NORMAL, "FANOUT_SHARDED_500K_IT", null, "/x", null, true);
         long enqueueMs = (System.nanoTime() - tEnqueue0) / 1_000_000;
 
-        List<NotificationFanoutJob> jobs = jobRepository
+        // enqueue は真の O(1)（AC-7）: 母集団に依らず親ジョブ 1 行・shard_count=0（未評価）だけを作る。
+        // シャード確定・分割は初回 claim した worker（resolveAndSplitShards）が行い、1 波では終わらず複数波になる。
+        List<NotificationFanoutJob> afterEnqueue = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
                         OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seedResult.organizationId()),
                         type, sourceEvent);
-        int shardCount = jobs.size();
-        log.info("[fanout-sharded-500k] enqueueMs={} shardCount={}", enqueueMs, shardCount);
+        assertThat(afterEnqueue).as("AC-7: enqueue 直後は親ジョブ 1 行だけ").hasSize(1);
+        assertThat(afterEnqueue.get(0).getShardCount()).as("AC-7: enqueue 直後は shard_count=0（未評価）")
+                .isEqualTo((short) 0);
+        log.info("[fanout-sharded-500k] enqueueMs={} enqueueRows={} shardCount(pending)=0", enqueueMs,
+                afterEnqueue.size());
 
         // --- processReady() を全シャード DONE まで壁時計計測しつつループ排出 ---
         long tWall0 = System.nanoTime();
@@ -119,6 +124,7 @@ class NotificationFanoutOrgShardedMeasurementIT extends AbstractMySqlIntegration
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
                         OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seedResult.organizationId()),
                         type, sourceEvent);
+        int shardCount = finalJobs.size();
         long generated = countNotifications(type);
         long distinct = countDistinctUsers(type);
         double throughputPerSecond = wallSeconds > 0 ? generated / wallSeconds : generated;

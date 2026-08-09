@@ -142,6 +142,17 @@ public class NotificationFanoutWorker {
                 .orElseThrow(() -> new IllegalStateException(
                         "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）"));
         jobService.markRunning(job.getId());
+        // 初回 claim 時のシャード確定・分割（B案・CMP-001⑤ 是正）。enqueue は O(1) のため親ジョブは
+        // shard_count=0（未評価）で作られる。ここで母集団を数えて N を確定し子シャード行を発行する
+        // （REQUIRES_NEW で原子確定・冪等）。shard_count!=0 の行（評価済 or レガシー）は現状の N を返すだけ。
+        if (job.getShardCount() == 0) {
+            int n = jobService.resolveAndSplitShards(job.getId());
+            job.setShardCount((short) n);
+        }
+        // 防御ガード: shard_count=0 を nextPage に渡すと MOD(user_id, 0) が 0 除算になる。ここで必ず >=1 を保証する。
+        if (job.getShardCount() < 1) {
+            job.setShardCount((short) 1);
+        }
         try {
             while (true) {
                 long cursor = job.getCursorSubjectId();

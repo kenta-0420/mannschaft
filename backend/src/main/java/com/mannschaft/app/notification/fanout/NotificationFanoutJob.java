@@ -133,9 +133,15 @@ public class NotificationFanoutJob extends UuidV7Entity {
     private short shardIndex = 0;
 
     /**
-     * CMP-001⑤（ワーカー並列化）: enqueue 時点の総シャード数。
+     * CMP-001⑤（ワーカー並列化・B案 是正）: 総シャード数を表す番人値。
      *
-     * <p>{@code DEFAULT 1}（V176）で既存行・既存経路（シャーディング未使用）の後方互換を保つ。</p>
+     * <p><b>番人値契約</b>: {@code 0}＝未評価（enqueue 直後の親ジョブ。初回 claim した worker が
+     * {@link NotificationFanoutJobService#resolveAndSplitShards} で母集団を数えて確定する）／
+     * {@code 1..N}＝評価済（{@code 1}=単一シャード・{@code N}=N 本に分割済）。enqueue は真の O(1) のため
+     * 受信者数を数えず、常に親 1 行を {@code shard_count=0} で作る。</p>
+     *
+     * <p>{@code @Builder.Default} は {@code 1} のまま残す。DB 既定値（V176）と一致させ、レガシー行・
+     * shard_count を明示しない経路の後方互換を保つため（enqueue は明示的に {@code 0} をセットする）。</p>
      */
     @Builder.Default
     @Column(name = "shard_count", nullable = false)
