@@ -6,6 +6,7 @@ import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,9 @@ class BlogAuthorFavoriteResolverTest {
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
     @InjectMocks
     private BlogAuthorFavoriteResolver resolver;
 
@@ -65,7 +69,7 @@ class BlogAuthorFavoriteResolverTest {
     }
 
     @Test
-    @DisplayName("resolveAll: 公開プロフィール無効の他ユーザーはUNAVAILABLEを返す")
+    @DisplayName("resolveAll: 公開プロフィール無効かつ無関係な他ユーザーはUNAVAILABLEを返す")
     void resolveAll_nonPublicOtherUser_returnsUnavailable() {
         UserEntity user = UserEntity.builder()
                 .email("author@example.com")
@@ -76,6 +80,8 @@ class BlogAuthorFavoriteResolverTest {
         ReflectionTestUtils.setField(user, "id", 5L);
 
         given(userRepository.findByIdIn(any())).willReturn(List.of(user));
+        // 閲覧者と同一チームに所属していない
+        given(userRoleRepository.existsSharedTeam(99L, 5L)).willReturn(false);
 
         // 閲覧者は著者本人ではない
         Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("5"), 99L);
@@ -85,6 +91,35 @@ class BlogAuthorFavoriteResolverTest {
         assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
         assertThat(meta.displayName()).isNull();
         assertThat(meta.iconUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("resolveAll: 公開プロフィール無効でも閲覧者と同一チームの他ユーザーは身元を返す")
+    void resolveAll_nonPublicSharedTeamUser_returnsIdentity() {
+        UserEntity user = UserEntity.builder()
+                .email("author@example.com")
+                .displayName("著者太郎")
+                .avatarUrl("user/5/avatar/raw.png")
+                .publicProfileEnabled(false)
+                .build();
+        ReflectionTestUtils.setField(user, "id", 5L);
+
+        given(userRepository.findByIdIn(any())).willReturn(List.of(user));
+        // 閲覧者と同一チームに所属している
+        given(userRoleRepository.existsSharedTeam(99L, 5L)).willReturn(true);
+        given(mediaUrlResolver.resolve("user/5/avatar/raw.png"))
+                .willReturn("https://cdn.example/signed/user-5");
+
+        // 閲覧者は著者本人ではない
+        Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("5"), 99L);
+
+        FavoriteEntityMetaDto meta = result.get("5");
+        assertThat(meta).isNotNull();
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.AVAILABLE);
+        assertThat(meta.displayName()).isEqualTo("著者太郎");
+        assertThat(meta.iconUrl()).isEqualTo("https://cdn.example/signed/user-5");
+        // 他者のプロフィールは編集不可
+        assertThat(meta.canEdit()).isFalse();
     }
 
     @Test
