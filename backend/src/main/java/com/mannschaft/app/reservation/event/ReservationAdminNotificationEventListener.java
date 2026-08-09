@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.event;
 
 import com.mannschaft.app.admin.service.AdminBusinessAlertService;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -8,13 +10,17 @@ import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Locale;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 予約関連イベントに対する管理者通知リスナー（F10.7 業務アラート用）。
@@ -28,8 +34,10 @@ import java.util.List;
 public class ReservationAdminNotificationEventListener {
 
     private final UserRoleRepository userRoleRepository;
+    private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final AdminBusinessAlertService adminBusinessAlertService;
+    private final MessageSource messageSource;
 
     /**
      * 予約作成イベントを受信し、管理者へ通知する。
@@ -40,25 +48,32 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCreated(ReservationCreatedEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
-        String notificationType;
-        String title;
-        String body;
+        Map<Long, UserEntity> userMap = userRepository.findByIdIn(recipientIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, u -> u));
 
-        if (event.getApprovalMode() == ApprovalMode.MANUAL) {
-            notificationType = "RESERVATION_PENDING_APPROVAL";
-            title = "承認待ての予約があります";
-            body = event.getSlotTitle() + "への予約申込があります（" + event.getBookedAtFormatted() + "）";
-        } else {
-            notificationType = "RESERVATION_RECEIVED";
-            title = "予約が入りました";
-            body = event.getSlotTitle() + "が予約されました（" + event.getBookedAtFormatted() + "）";
-        }
+        boolean pendingApproval = event.getApprovalMode() == ApprovalMode.MANUAL;
+        String notificationType = pendingApproval ? "RESERVATION_PENDING_APPROVAL" : "RESERVATION_RECEIVED";
+        String titleKey = pendingApproval
+                ? "notification.reservation.admin.pendingApproval.title"
+                : "notification.reservation.admin.received.title";
+        String bodyKey = pendingApproval
+                ? "notification.reservation.admin.pendingApproval.body"
+                : "notification.reservation.admin.received.body";
+        String defaultTitle = pendingApproval ? "承認待ての予約があります" : "予約が入りました";
 
         for (Long recipientId : recipientIds) {
             if (recipientId.equals(event.getActorUserId())) {
                 continue; // 自己通知スキップ
             }
             try {
+                Locale locale = resolveLocale(userMap.get(recipientId));
+                String title = messageSource.getMessage(titleKey, null, defaultTitle, locale);
+                String body = messageSource.getMessage(
+                        bodyKey,
+                        new Object[]{event.getSlotTitle(), event.getBookedAtFormatted()},
+                        event.getSlotTitle() + (pendingApproval ? "への予約申込があります（" : "が予約されました（")
+                                + event.getBookedAtFormatted() + "）",
+                        locale);
                 notificationService.createNotification(
                         recipientId,
                         notificationType,
@@ -89,18 +104,29 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelledByMember(ReservationCancelledByMemberEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
+        Map<Long, UserEntity> userMap = userRepository.findByIdIn(recipientIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, u -> u));
 
         for (Long recipientId : recipientIds) {
             if (recipientId.equals(event.getActorUserId())) {
                 continue;
             }
             try {
+                Locale locale = resolveLocale(userMap.get(recipientId));
+                String title = messageSource.getMessage(
+                        "notification.reservation.admin.cancelledByMember.title", null,
+                        "予約がキャンセルされました", locale);
+                String body = messageSource.getMessage(
+                        "notification.reservation.admin.cancelledByMember.body",
+                        new Object[]{event.getSlotTitle()},
+                        event.getSlotTitle() + "の予約がキャンセルされました",
+                        locale);
                 notificationService.createNotification(
                         recipientId,
                         "RESERVATION_CANCELLED_BY_MEMBER",
                         NotificationPriority.NORMAL,
-                        "予約がキャンセルされました",
-                        event.getSlotTitle() + "の予約がキャンセルされました",
+                        title,
+                        body,
                         "RESERVATION",
                         event.getReservationId(),
                         NotificationScopeType.TEAM,
@@ -129,5 +155,11 @@ public class ReservationAdminNotificationEventListener {
         recipients.addAll(userRoleRepository.findAdminUserIdsByTeamId(teamId));
         recipients.addAll(userRoleRepository.findDeputyAdminUserIdsByTeamIdAndPermission(teamId, "MANAGE_RESERVATIONS"));
         return recipients.stream().distinct().toList();
+    }
+
+    /** 受信者ユーザーの locale を解決する（未解決/未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
+    private Locale resolveLocale(UserEntity user) {
+        String locale = (user == null) ? null : user.getLocale();
+        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
     }
 }

@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -12,11 +14,13 @@ import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Locale;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +74,8 @@ public class ReservationReminderDispatchBatchService {
     private final ReservationRepository reservationRepository;
     private final ReservationSlotRepository slotRepository;
     private final NotificationHelper notificationHelper;
+    private final UserRepository userRepository;
+    private final MessageSource messageSource;
 
     /**
      * {@code remind_at} が到来した PENDING リマインダーを拾って通知送出する。
@@ -147,12 +153,19 @@ public class ReservationReminderDispatchBatchService {
      * </ul>
      */
     private void sendReminder(ReservationEntity reservation, ReservationSlotEntity slot) {
+        Locale locale = resolveLocale(reservation.getUserId());
         LocalDateTime slotStartAt = slot.getSlotDate().atTime(slot.getStartTime());
         String slotAtStr = slotStartAt.format(SLOT_AT_FORMAT);
-        String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
+        String slotTitle = slot.getTitle() != null ? slot.getTitle()
+                : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
 
-        String title = "予約リマインド";
-        String body = String.format("%s に「%s」のご予約があります。", slotAtStr, slotTitle);
+        String title = messageSource.getMessage(
+                "notification.reservation.reminder.title", null, "予約リマインド", locale);
+        String body = messageSource.getMessage(
+                "notification.reservation.reminder.body",
+                new Object[]{slotAtStr, slotTitle},
+                slotAtStr + " に「" + slotTitle + "」のご予約があります。",
+                locale);
         String actionUrl = "/teams/" + reservation.getTeamId() + "/reservations";
 
         notificationHelper.notify(
@@ -170,5 +183,11 @@ public class ReservationReminderDispatchBatchService {
 
         log.info("予約リマインド送出: reservationId={}, userId={}, slotStartAt={}",
                 reservation.getId(), reservation.getUserId(), slotStartAt);
+    }
+
+    /** 受信者ユーザーの locale を解決する（未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
+    private Locale resolveLocale(Long userId) {
+        String locale = userRepository.findById(userId).map(UserEntity::getLocale).orElse(null);
+        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
     }
 }

@@ -15,11 +15,13 @@ import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Locale;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ public class EmergencyClosureReminderBatchService {
     private final UserRepository userRepository;
     private final NotificationHelper notificationHelper;
     private final EmailOutboxService emailOutboxService;
+    private final MessageSource messageSource;
 
     @BatchEndpoint(name = "reservation-emergency-closure-reminder", description = "臨時休業の未確認患者・送信者リマインドを 1 分毎に処理する")
     @Scheduled(fixedDelay = 60_000)
@@ -135,12 +138,20 @@ public class EmergencyClosureReminderBatchService {
             EmergencyClosureEntity closure,
             UserEntity patient) {
 
+        Locale locale = resolveLocale(patient);
         String appointmentStr = confirmation.getAppointmentAt()
                 .format(DateTimeFormatter.ofPattern("M月d日 HH:mm"));
 
-        String title = "【再送】" + closure.getSubject();
-        String body  = String.format("%s — %sのご予約まで3時間前です。内容のご確認をお願いします。",
-                closure.getReason(), appointmentStr);
+        String title = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.patientReminder.title",
+                new Object[]{closure.getSubject()},
+                "【再送】" + closure.getSubject(),
+                locale);
+        String body = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.patientReminder.body",
+                new Object[]{closure.getReason(), appointmentStr},
+                closure.getReason() + " — " + appointmentStr + "のご予約まで3時間前です。内容のご確認をお願いします。",
+                locale);
 
         // アプリ内通知（EMERGENCY_CLOSURE タイプで送ることで、通知リストに「確認しました」ボタンが表示される）
         notificationHelper.notify(
@@ -164,7 +175,7 @@ public class EmergencyClosureReminderBatchService {
         );
         emailOutboxService.enqueue(new EmailOutboxRequest(
                 "RESERVATION_EMERGENCY_REMINDER",
-                "ja",
+                locale.toLanguageTag(),
                 patient.getEmail(),
                 Map.of("subject", title, "body", htmlBody),
                 "reservation",
@@ -184,12 +195,21 @@ public class EmergencyClosureReminderBatchService {
             UserEntity patient,
             UserEntity operator) {
 
+        Locale locale = resolveLocale(operator);
         String patientName = patient.getLastName() + " " + patient.getFirstName();
         String appointmentStr = confirmation.getAppointmentAt()
                 .format(DateTimeFormatter.ofPattern("M月d日 HH:mm"));
 
-        String title = String.format("【要確認】%sさんが臨時休業通知を未確認です", patientName);
-        String body  = String.format("%sの予約まで2時間を切りました。連絡が届いていない可能性があります。", appointmentStr);
+        String title = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.operatorAlert.title",
+                new Object[]{patientName},
+                "【要確認】" + patientName + "さんが臨時休業通知を未確認です",
+                locale);
+        String body = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.operatorAlert.body",
+                new Object[]{appointmentStr},
+                appointmentStr + "の予約まで2時間を切りました。連絡が届いていない可能性があります。",
+                locale);
 
         // アプリ内通知（WebSocket + PWA Push）→ 送信者へ
         notificationHelper.notify(
@@ -206,16 +226,23 @@ public class EmergencyClosureReminderBatchService {
         );
 
         // #14: メールも送信 (outbox 経由)
+        String emailLabelPatient = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.operatorAlert.emailLabelPatient", null, "患者名", locale);
+        String emailLabelAppointment = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.operatorAlert.emailLabelAppointment", null, "予約日時", locale);
         String htmlBody = String.format(
                 "<p><strong>%s</strong></p><p>%s</p><hr>" +
-                "<p>患者名: %s</p><p>予約日時: %s</p>",
-                title, body, patientName, appointmentStr
+                "<p>%s: %s</p><p>%s: %s</p>",
+                title, body, emailLabelPatient, patientName, emailLabelAppointment, appointmentStr
         );
+        String emailSubject = messageSource.getMessage(
+                "notification.reservation.emergencyClosure.operatorAlert.emailSubject", null,
+                "【要確認】臨時休業未確認患者様のお知らせ", locale);
         emailOutboxService.enqueue(new EmailOutboxRequest(
                 "RESERVATION_EMERGENCY_UNCONFIRMED",
-                "ja",
+                locale.toLanguageTag(),
                 operator.getEmail(),
-                Map.of("subject", "【要確認】臨時休業未確認患者様のお知らせ", "body", htmlBody),
+                Map.of("subject", emailSubject, "body", htmlBody),
                 "reservation",
                 "emergency-unconfirmed:" + confirmation.getEmergencyClosureId() + ":" + patient.getId(),
                 null,
@@ -225,5 +252,11 @@ public class EmergencyClosureReminderBatchService {
 
         log.info("臨時休業未確認リマインド送信: closureId={}, patientId={}, operatorId={}",
                 confirmation.getEmergencyClosureId(), confirmation.getUserId(), operator.getId());
+    }
+
+    /** 受信者ユーザーの locale を解決する（未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
+    private Locale resolveLocale(UserEntity user) {
+        String locale = user.getLocale();
+        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
     }
 }

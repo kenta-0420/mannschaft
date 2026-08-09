@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
@@ -7,6 +8,7 @@ import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -60,15 +62,27 @@ class ReservationReminderDispatchBatchServiceContextTest {
         }
 
         @Bean
+        UserRepository userRepository() {
+            return Mockito.mock(UserRepository.class);
+        }
+
+        @Bean
+        MessageSource messageSource() {
+            return Mockito.mock(MessageSource.class);
+        }
+
+        @Bean
         ReservationReminderDispatchBatchService reservationReminderDispatchBatchService(
                 ReservationReminderService reminderService,
                 ReservationReminderRepository reminderRepository,
                 ReservationRepository reservationRepository,
                 ReservationSlotRepository slotRepository,
-                NotificationHelper notificationHelper) {
+                NotificationHelper notificationHelper,
+                UserRepository userRepository,
+                MessageSource messageSource) {
             return new ReservationReminderDispatchBatchService(
                     reminderService, reminderRepository, reservationRepository,
-                    slotRepository, notificationHelper);
+                    slotRepository, notificationHelper, userRepository, messageSource);
         }
     }
 
