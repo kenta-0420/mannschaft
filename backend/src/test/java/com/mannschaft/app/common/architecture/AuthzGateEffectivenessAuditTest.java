@@ -60,6 +60,13 @@ import static org.junit.jupiter.api.Assertions.fail;
  *       return Meta.unavailable(id, type);   // ← 応答を止めている
  *   }
  * }</pre>
+ * <p><b>対象は同一メソッド内で書込（Repository の save/delete 等・イベント発行）を伴う
+ * メソッドに限る。</b> 応答へ能力フラグ（{@code canEdit} 等）やロール名を載せることは
+ * 読み取り専用の DTO 組み立てメソッド（Controller の {@code toResponse} 等）における
+ * 正当な仕様であり、その実効的な門番は書込経路（形③が担当）が別途負う。
+ * 静的解析だけで「この代入が唯一の門番か」を読み取り専用マッパに対して判定するのは
+ * 原理的に困難であるため、書込を伴わないメソッドは形②の対象から外し、
+ * 誤検知で信号を埋もれさせないことを優先する。</p>
  *
  * <h3>形③ ゲートが書込より後ろ（{@link #認可ゲートが副作用より前にあること()}）</h3>
  * <p>認可呼び出しがメソッド末尾にあり、その手前で既に
@@ -182,13 +189,14 @@ class AuthzGateEffectivenessAuditTest {
      * <p>走査の実測では、表示フラグとして正当な既存箇所
      * （{@code MatchRecord*Controller#toResponse} の {@code canEdit}/{@code canRecord}、
      * {@code Organization/TeamController#getMyPermissions} の {@code roleName}）は
-     * いずれも {@code return XxxResponse.from(.., flag)} の形であり、判定ロジック上
-     * <b>PROPAGATE（return による委譲）</b>に分類されて違反にならない。よって
+     * いずれも書込（Repository保存／イベント発行）を伴わない<b>読み取り専用の DTO 組み立て
+     * メソッド</b>であり、形②の対象（同一メソッド内で書込を伴うもの）から外れるため
+     * 違反にならない。応答へ能力フラグ・ロール名を載せること自体は仕様であり、
      * baseline へ積む必要が無い。</p>
      *
      * <p>したがって本 baseline が空である状態で本テストが赤くなるということは、
-     * <b>認可判定が DTO のフィールドへ直接代入されて応答が止まっていない</b>箇所が
-     * 実在することを意味する。baseline は免罪符ではない
+     * <b>書込を伴うメソッド内で認可判定が DTO のフィールドへ直接代入されて
+     * 応答が止まっていない</b>箇所が実在することを意味する。baseline は免罪符ではない
      * （{@code feedback_baseline_suppression_is_debt}）ので、赤は原則として是正で消すこと。</p>
      */
     private static final Set<String> TYPE2_REVIEWED = Set.of();
@@ -281,6 +289,15 @@ class AuthzGateEffectivenessAuditTest {
                 continue;
             }
             int recvStart = m.start(1);
+            MethodDecl enclosing = enclosingMethod(methods, recvStart);
+            if (enclosing == null) {
+                continue; // メソッド境界を確定できない箇所は保守的に対象外
+            }
+            String enclosingBody = masked.substring(enclosing.bodyStart, enclosing.bodyEnd + 1);
+            if (!WRITE_CALL.matcher(enclosingBody).find()) {
+                continue; // 同一メソッド内に書込（Repository保存／イベント発行）が無い
+                          // ＝読み取り専用のDTO組み立てメソッドは形②の対象外（能力フラグの応答搭載は仕様）
+            }
             int open = masked.indexOf('(', m.end() - 1);
             int close = matchParen(masked, open);
             if (close < 0) {
@@ -297,9 +314,8 @@ class AuthzGateEffectivenessAuditTest {
             if (!onlyFlowsIntoDto(masked, close + 1, blockEnd, var)) {
                 continue;
             }
-            MethodDecl enclosing = enclosingMethod(methods, recvStart);
-            if (enclosing != null && hasIndependentGate(masked, enclosing, recvStart, close + 1)) {
-                continue; // 同一メソッド内に対象集合へ実効する別の門番（フィルタ／throw）が在るため
+            if (hasIndependentGate(masked, enclosing, recvStart, close + 1)) {
+                continue; // 同一メソッド内に対象集合へ実効する別の門番（フィルタ）が在るため
                           // この代入は純粋な表示ヒントとして許容する
             }
             int line = lineOf(s.content, recvStart);
@@ -974,13 +990,20 @@ class AuthzGateEffectivenessAuditTest {
             """);
 
         private List<Violation> type2(String body) {
+            // 形②は同一メソッド内の書込を伴う場合のみが対象（Plan A）なので、
+            // fixture のメソッドにも書込呼び出しを1件含めておく。
             String caller = """
                 package com.mannschaft.app.demo.web;
                 import com.mannschaft.app.demo.service.DemoAccessService;
                 public class DemoResolver {
                     private final DemoAccessService accessControlService;
-                    DemoResolver(DemoAccessService s) { this.accessControlService = s; }
-                    Object resolve(Long userId, Long id) {
+                    private final DemoRepository demoRepository;
+                    DemoResolver(DemoAccessService s, DemoRepository r) {
+                        this.accessControlService = s;
+                        this.demoRepository = r;
+                    }
+                    public Object resolve(Long userId, Long id) {
+                        demoRepository.save(new Object());
                 __BODY__
                     }
                 }
@@ -1007,6 +1030,28 @@ class AuthzGateEffectivenessAuditTest {
                         boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
                         return DemoMetaDto.from(id, canEdit);
                 """).isEmpty(), "静的ファクトリ経由の表示フラグ化も違反であるべき");
+        }
+
+        @Test
+        @DisplayName("a2: 書込を伴わない読み取り専用メソッドは形②の対象外 → 非違反")
+        void a2_書込を伴わないメソッドは対象外() {
+            String caller = """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoReadonlyResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoReadonlyResolver(DemoAccessService s) { this.accessControlService = s; }
+                    public Object toResponse(Long userId, Long id) {
+                        boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
+                        return new DemoMetaDto(id, "name", canEdit);
+                    }
+                }
+                """;
+            assertTrue(analyzeType2(Arrays.asList(gate,
+                new Src("src/main/java/com/mannschaft/app/demo/web/DemoReadonlyResolver.java", caller)))
+                    .isEmpty(),
+                "同一メソッド内に書込が無ければ、DTOへの表示フラグ代入は違反にしないべき"
+                    + "（読み取り専用マッパへの能力フラグ搭載は仕様）");
         }
 
         // ── 形② 陰性（門番として機能している形） ─────────────────────────
@@ -1061,11 +1106,14 @@ class AuthzGateEffectivenessAuditTest {
                 public class DemoListResolver {
                     private final DemoAccessService accessControlService;
                     private final DemoVisibilityChecker visibilityChecker;
-                    DemoListResolver(DemoAccessService s, DemoVisibilityChecker v) {
+                    private final DemoRepository demoRepository;
+                    DemoListResolver(DemoAccessService s, DemoVisibilityChecker v, DemoRepository r) {
                         this.accessControlService = s;
                         this.visibilityChecker = v;
+                        this.demoRepository = r;
                     }
-                    java.util.List<Object> resolveAll(java.util.List<Long> ids, Long userId) {
+                    public java.util.List<Object> resolveAll(java.util.List<Long> ids, Long userId) {
+                        demoRepository.save(new Object());
                         java.util.Set<Long> visibleIds = visibilityChecker.filterAccessible(ids, userId);
                         java.util.List<Long> visible =
                                 ids.stream().filter(id -> visibleIds.contains(id)).toList();
@@ -1079,7 +1127,8 @@ class AuthzGateEffectivenessAuditTest {
                 }
                 """);
             assertTrue(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
-                "対象集合への実効フィルタが同一メソッド内に別途在れば表示ヒントとして許容されるべき");
+                "対象集合への実効フィルタが同一メソッド内に別途在れば表示ヒントとして許容されるべき"
+                    + "（書込を伴うため形②の対象メソッドである点は a と同条件）");
         }
 
         @Test
@@ -1092,18 +1141,24 @@ class AuthzGateEffectivenessAuditTest {
                 import com.mannschaft.app.demo.service.DemoAccessService;
                 public class DemoUnrelatedThrowResolver {
                     private final DemoAccessService accessControlService;
-                    DemoUnrelatedThrowResolver(DemoAccessService s) { this.accessControlService = s; }
-                    Object resolve(Long id, Long userId) {
+                    private final DemoRepository demoRepository;
+                    DemoUnrelatedThrowResolver(DemoAccessService s, DemoRepository r) {
+                        this.accessControlService = s;
+                        this.demoRepository = r;
+                    }
+                    public Object resolve(Long id, Long userId) {
                         if (id == null) {
                             throw new IllegalArgumentException("id must not be null");
                         }
+                        demoRepository.save(new Object());
                         boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
                         return new DemoMetaDto(id, "name", canEdit);
                     }
                 }
                 """);
             assertFalse(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
-                "認可と無関係な throw だけでは免除されず、引き続き違反として検出されるべき");
+                "認可と無関係な throw だけでは免除されず、書込を伴うメソッドとして"
+                    + "引き続き違反として検出されるべき");
         }
 
         @Test
