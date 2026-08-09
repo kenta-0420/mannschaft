@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
@@ -55,6 +56,9 @@ class IcalServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private IcalService icalService;
 
@@ -69,6 +73,14 @@ class IcalServiceTest {
     void setUp() {
         // @Value("${app.base-url}") は @InjectMocks では注入されないため ReflectionTestUtils で設定する
         ReflectionTestUtils.setField(icalService, "appBaseUrl", "http://localhost:3000");
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （可視性判定そのものを検証するテストは個別に上書きする）。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
     }
 
     private UserIcalTokenEntity createActiveToken() {
@@ -380,6 +392,98 @@ class IcalServiceTest {
             assertThat(result).contains("SUMMARY:テスト予定");
             verify(accessControlService, org.mockito.Mockito.never())
                     .hasRoleOrAbove(any(), any(), any(), any());
+        }
+    }
+
+    // ========================================
+    // CMP-017b 第五隊: F00 可視性基盤連携（AC-10 / AC-11）
+    // ========================================
+
+    @Nested
+    @DisplayName("iCalフィードのF00可視性連携（AC-10/AC-11）")
+    class VisibilityFiltering {
+
+        private ScheduleEntity scheduleWithId(long id, String title) {
+            ScheduleEntity s = ScheduleEntity.builder()
+                    .teamId(500L)
+                    .title(title)
+                    .startAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+                    .eventType(EventType.MEETING)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .build();
+            ReflectionTestUtils.setField(s, "id", id);
+            return s;
+        }
+
+        @Test
+        @DisplayName("AC-10: min_view_role で不可視な予定はフィードから除外される（応援者にMEMBER_PLUS予定を漏らさない）")
+        void 不可視な予定はフィードから除外される() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, 500L, "TEAM", "SUPPORTER")).willReturn(true);
+            ScheduleEntity hidden = scheduleWithId(1L, "MEMBER_PLUS限定予定");
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(500L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(hidden));
+            // 応援者には不可視（filterAccessible が空集合を返す）。
+            // doReturn().when(...) を使う: given()/when() は再登録時に既存の lenient デフォルト
+            // Answer（setUp のもの）を実行してしまい ids=null で NPE になるため回避する。
+            org.mockito.Mockito.doReturn(java.util.Set.of())
+                    .when(contentVisibilityChecker).filterAccessible(any(), any(), any());
+
+            String result = icalService.generateIcalFeed(TOKEN, "team", 500L);
+
+            assertThat(result).doesNotContain("BEGIN:VEVENT");
+            assertThat(result).doesNotContain("MEMBER_PLUS限定予定");
+        }
+
+        @Test
+        @DisplayName("塞ぎすぎていない: SUPPORTER_PLUS 予定は可視なら通常どおりフィードに含まれる")
+        void 可視な予定はフィードに含まれる() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, 500L, "TEAM", "SUPPORTER")).willReturn(true);
+            ScheduleEntity visible = scheduleWithId(2L, "SUPPORTER_PLUS予定");
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(500L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(visible));
+            org.mockito.Mockito.doReturn(java.util.Set.of(2L))
+                    .when(contentVisibilityChecker).filterAccessible(any(), any(), any());
+
+            String result = icalService.generateIcalFeed(TOKEN, "team", 500L);
+
+            assertThat(result).contains("BEGIN:VEVENT");
+            assertThat(result).contains("SUPPORTER_PLUS予定");
+        }
+
+        @Test
+        @DisplayName("AC-11: ETag は可視性フィルタ後の件数から算出される（不可視予定の件数漏洩を防ぐ）")
+        void ETagはフィルタ後の件数から算出される() {
+            given(icalTokenRepository.findByToken(TOKEN)).willReturn(Optional.of(createActiveToken()));
+            given(accessControlService.hasRoleOrAbove(USER_ID, 500L, "TEAM", "SUPPORTER")).willReturn(true);
+            ScheduleEntity visible = scheduleWithId(3L, "可視予定");
+            ScheduleEntity hidden = scheduleWithId(4L, "不可視予定");
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(500L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(visible, hidden));
+            // id=3 のみ可視。
+            org.mockito.Mockito.doReturn(java.util.Set.of(3L))
+                    .when(contentVisibilityChecker).filterAccessible(any(), any(), any());
+
+            String etagWithTwoRawButOneVisible = icalService.calculateETag(TOKEN, "team", 500L);
+
+            // 比較対象: 可視な予定が1件だけ最初から存在した場合の ETag と一致するはず
+            // （= 不可視な予定の有無が ETag に影響しない）。
+            org.mockito.Mockito.reset(scheduleRepository, contentVisibilityChecker);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(500L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(visible));
+            org.mockito.Mockito.doReturn(java.util.Set.of(3L))
+                    .when(contentVisibilityChecker).filterAccessible(any(), any(), any());
+
+            String etagWithOnlyVisible = icalService.calculateETag(TOKEN, "team", 500L);
+
+            assertThat(etagWithTwoRawButOneVisible).isEqualTo(etagWithOnlyVisible);
         }
     }
 

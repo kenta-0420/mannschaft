@@ -8,6 +8,8 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.SwipeWidgetKey;
@@ -84,6 +86,7 @@ public class DashboardService {
     private final PlatformAnnouncementRepository platformAnnouncementRepository;
     private final UserRoleRepository userRoleRepository;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
     private final ScopeWidgetSummaryService scopeWidgetSummaryService;
@@ -139,9 +142,20 @@ public class DashboardService {
         List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
                 ? List.of()
                 : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, now, weekLater);
+        // F00 認可基盤連携（CMP-017b 第五隊）: チーム予定は所属チームIDだけで取得しており
+        // min_view_role 等の可視性判定を通していなかった（title/location が丸見え）。
+        // filterAccessible で可視なものだけに絞る。個人予定は本人所有のため常に可視。
+        Set<Long> visibleTeamScheduleIds = teamSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
         List<Map<String, Object>> upcomingItems = new java.util.ArrayList<>();
         personalSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
-        teamSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
+        teamSchedules.stream()
+                .filter(s -> visibleTeamScheduleIds.contains(s.getId()))
+                .map(this::toScheduleMap).forEach(upcomingItems::add);
         upcomingItems.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
         if (upcomingItems.size() > 10) {
             upcomingItems = upcomingItems.subList(0, 10);
@@ -293,7 +307,17 @@ public class DashboardService {
         List<ScheduleEntity> schedules = new ArrayList<>(
                 scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd));
         if (!teamIds.isEmpty()) {
-            schedules.addAll(scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd));
+            List<ScheduleEntity> teamSchedules =
+                    scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd);
+            // F00 認可基盤連携（CMP-017b 第五隊）: 件数集計であっても正規の可視性判定を通す
+            // （件数専用の軽い判定を新設するのは二重実装＝今回の事故の再生産のため禁止）。
+            Set<Long> visibleTeamScheduleIds = contentVisibilityChecker.filterAccessible(
+                    ReferenceType.SCHEDULE,
+                    teamSchedules.stream().map(ScheduleEntity::getId).toList(),
+                    userId);
+            teamSchedules.stream()
+                    .filter(s -> visibleTeamScheduleIds.contains(s.getId()))
+                    .forEach(schedules::add);
         }
 
         long eventsToday = 0;
@@ -367,7 +391,16 @@ public class DashboardService {
         // ここではチームのスケジュールを今後7日間取得
         List<ScheduleEntity> teamUpcoming = scheduleRepository
                 .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, now, now.plusDays(7));
+        // F00 認可基盤連携（CMP-017b 第五隊）: チーム所属だけで取得しており min_view_role
+        // 等の可視性判定を通していなかった（title/location が丸見え）。
+        Set<Long> visibleTeamUpcomingIds = teamUpcoming.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamUpcoming.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
         List<Map<String, Object>> teamUpcomingItems = teamUpcoming.stream()
+                .filter(s -> visibleTeamUpcomingIds.contains(s.getId()))
                 .limit(10)
                 .map(this::toScheduleMap)
                 .toList();
@@ -392,8 +425,17 @@ public class DashboardService {
         long postsThisWeek = teamPosts.stream()
                 .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(periodStart))
                 .count();
-        long eventsThisWeek = scheduleRepository
-                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, periodStart, now).size();
+        List<ScheduleEntity> teamPeriodSchedules = scheduleRepository
+                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, periodStart, now);
+        Set<Long> visibleTeamPeriodIds = teamPeriodSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamPeriodSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        long eventsThisWeek = teamPeriodSchedules.stream()
+                .filter(s -> visibleTeamPeriodIds.contains(s.getId()))
+                .count();
         long totalMembers = userRoleRepository.countByTeamId(teamId);
 
         // チーム最新投稿
@@ -494,7 +536,7 @@ public class DashboardService {
         CompletableFuture<Map<String, Object>> chatFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("TEAM", teamId, userId));
         CompletableFuture<Map<String, Object>> calendarFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("TEAM", teamId, userZone));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("TEAM", teamId, userZone, userId));
         CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
                 CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "TEAM", teamId));
 
@@ -607,7 +649,7 @@ public class DashboardService {
         final java.time.ZoneId userZone = TimezoneContextHolder.get();
 
         CompletableFuture<List<Map<String, Object>>> upcomingFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUpcomingEvents(orgId));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUpcomingEvents(orgId, userId));
         CompletableFuture<List<Map<String, Object>>> postsFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgLatestPosts(orgId));
         CompletableFuture<Map<String, Object>> unreadFuture =
@@ -617,7 +659,7 @@ public class DashboardService {
         CompletableFuture<Map<String, Object>> chatFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("ORGANIZATION", orgId, userId));
         CompletableFuture<Map<String, Object>> calendarFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("ORGANIZATION", orgId, userZone));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("ORGANIZATION", orgId, userZone, userId));
         CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
                 CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "ORGANIZATION", orgId));
 

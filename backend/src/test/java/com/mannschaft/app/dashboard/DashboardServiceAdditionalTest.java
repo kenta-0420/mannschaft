@@ -76,6 +76,7 @@ class DashboardServiceAdditionalTest {
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -107,6 +108,14 @@ class DashboardServiceAdditionalTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(3));
+
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), org.mockito.ArgumentMatchers.anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
     }
 
     private void stubCommonPersonal() {

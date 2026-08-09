@@ -2,6 +2,8 @@ package com.mannschaft.app.search.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -46,6 +48,7 @@ public class GlobalSearchService {
     private final UserRepository userRepository;
     private final AccessControlService accessControlService;
     private final MembershipService membershipService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     private static final int SEARCH_LIMIT = 10;
 
@@ -84,7 +87,19 @@ public class GlobalSearchService {
         Map<String, Long> counts = new LinkedHashMap<>();
 
         // schedules
-        var schedules = scheduleRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
+        // F00 認可基盤連携（CMP-017b 第五隊）: SQL 述語（teamId/orgId の所属絞り）だけでは
+        // schedules.min_view_role を評価できない（閲覧者の実効ロールはスコープごとに異なり
+        // SQL 1行の predicate に落とせないため）。取得後に filterAccessible へ通して
+        // 閲覧不可（例: SUPPORTER に対する min_view_role=MEMBER_PLUS）を除外する。
+        // CUSTOM_TEMPLATE の除外は既存どおり SQL 述語のまま維持。
+        var scheduleCandidates = scheduleRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
+        var visibleScheduleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.SCHEDULE,
+                scheduleCandidates.stream().map(com.mannschaft.app.schedule.entity.ScheduleEntity::getId).toList(),
+                userId);
+        var schedules = scheduleCandidates.stream()
+                .filter(s -> visibleScheduleIds.contains(s.getId()))
+                .toList();
         results.put("schedules", schedules.stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle(),
