@@ -37347,6 +37347,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payment-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 支払い項目取得（Issue #2657） */
+        get: operations["getPaymentItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parental-consent/parents": {
         parameters: {
             query?: never;
@@ -150426,6 +150443,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseConnectStatusResponse"];
+                };
+            };
+        };
+    };
+    getPaymentItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePaymentItemResponse"];
                 };
             };
         };
