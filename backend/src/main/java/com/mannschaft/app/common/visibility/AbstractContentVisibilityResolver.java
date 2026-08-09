@@ -425,6 +425,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             // MEMBERS_AND_ABOVE = MEMBER 以上の閾値（SUPPORTER/GUEST 不可視）。
             case MEMBERS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "MEMBER");
+            // DEPUTY_ADMINS_AND_ABOVE = DEPUTY_ADMIN 以上の閾値（ADMIN + 副管理者）。
+            // ADMINS_AND_ABOVE へ丸めると DEPUTY_ADMIN を誤って弾くため、独立の閾値として評価する。
+            case DEPUTY_ADMINS_AND_ABOVE -> scope != null
+                    && snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             // ADMINS_AND_ABOVE = ADMIN 以上の閾値（旧 ADMINS_ONLY 相当の正準値）。
             case ADMINS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "ADMIN");
@@ -470,8 +474,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             case ORGANIZATION_WIDE, SCOPE_AFFILIATED, ORGANIZATION_AND_DESCENDANTS ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
-            // MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
-            case SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE ->
+            // MEMBERS_AND_ABOVE / DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
+            // 新段も「スコープに居るが役職が足りない（INSUFFICIENT_ROLE）」と
+            // 「そもそも非所属（NOT_A_MEMBER）」の区別が他の閾値段と全く同じ意味を持つため同居させる。
+            case SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE, DEPUTY_ADMINS_AND_ABOVE, ADMINS_AND_ABOVE ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
             case FOLLOWERS_ONLY, CUSTOM, PUBLIC -> DenyReason.UNSPECIFIED;
