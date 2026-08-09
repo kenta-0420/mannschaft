@@ -3,6 +3,7 @@ package com.mannschaft.app.family.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.family.dto.CareLinkNotifySettingsRequest;
 import com.mannschaft.app.family.dto.CareLinkResponse;
 import com.mannschaft.app.family.dto.InviteRecipientRequest;
@@ -54,6 +55,8 @@ public class CareLinkController {
     /**
      * 自分がケア対象者として登録されているアクティブな見守り者一覧を取得する。
      */
+    @SelfScopedEndpoint("当事者の自分側 ID は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CareLinkService#getActiveLinksForCareRecipient）")
     @GetMapping("/watchers")
     @Operation(summary = "見守り者一覧取得（ケア対象者視点）")
     public ResponseEntity<ApiResponse<List<CareLinkResponse>>> getActiveWatchers() {
@@ -65,6 +68,8 @@ public class CareLinkController {
     /**
      * 自分が見守る対象者一覧（ウォッチ中）を取得する。
      */
+    @SelfScopedEndpoint("当事者の自分側 ID は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CareLinkService#getActiveLinksForWatcher）")
     @GetMapping("/recipients")
     @Operation(summary = "ケア対象者一覧取得（見守り者視点）")
     public ResponseEntity<ApiResponse<List<CareLinkResponse>>> getActiveRecipients() {
@@ -76,6 +81,8 @@ public class CareLinkController {
     /**
      * 保留中の招待一覧を取得する。
      */
+    @SelfScopedEndpoint("当事者の自分側 ID は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CareLinkService#getPendingInvitationsForUser）")
     @GetMapping("/invitations")
     @Operation(summary = "保留中招待一覧取得")
     public ResponseEntity<ApiResponse<List<CareLinkResponse>>> getPendingInvitations() {
@@ -87,6 +94,8 @@ public class CareLinkController {
     /**
      * ケア対象者が見守り者を招待する。
      */
+    @SelfScopedEndpoint("自分側の当事者 ID は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "PENDING で作成されるだけで相手の承認がない限り成立しない（CareLinkService#inviteWatcher）")
     @PostMapping("/invite-watcher")
     @Operation(summary = "見守り者招待（ケア対象者から）")
     public ResponseEntity<ApiResponse<CareLinkResponse>> inviteWatcher(
@@ -99,6 +108,9 @@ public class CareLinkController {
     /**
      * 見守り者がケア対象者を招待する。
      */
+    @SelfScopedEndpoint("自分側の当事者 ID は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "PENDING で作成されるだけで相手の承認がない限り成立しない"
+            + "（CareLinkService#inviteCareRecipient）")
     @PostMapping("/invite-recipient")
     @Operation(summary = "ケア対象者招待（見守り者から）")
     public ResponseEntity<ApiResponse<CareLinkResponse>> inviteRecipient(

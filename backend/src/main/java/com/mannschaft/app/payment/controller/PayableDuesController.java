@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.BulkCheckoutRequest;
 import com.mannschaft.app.payment.dto.BulkCheckoutResponse;
 import com.mannschaft.app.payment.dto.PayableDuesResponse;
@@ -41,6 +42,8 @@ public class PayableDuesController {
     /**
      * 払える未払い会費一覧（本人＋後見下の子）を取得する。
      */
+    @SelfScopedEndpoint("払い手は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getPayableDues メソッド本体）")
     @GetMapping("/payable-dues")
     @Operation(summary = "払える未払い会費一覧（後見まとめ払い）")
     public ResponseEntity<ApiResponse<PayableDuesResponse>> getPayableDues() {

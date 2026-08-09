@@ -1,6 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
@@ -44,6 +45,8 @@ public class MyCorkboardController {
     /**
      * 個人ボード一覧を取得する。
      */
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#listPersonalBoards）")
     @GetMapping
     @Operation(summary = "個人コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -55,6 +58,8 @@ public class MyCorkboardController {
     /**
      * 個人ボードを作成する。
      */
+    @SelfScopedEndpoint("作成先は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#createPersonalBoard）")
     @PostMapping
     @Operation(summary = "個人コルクボード作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")

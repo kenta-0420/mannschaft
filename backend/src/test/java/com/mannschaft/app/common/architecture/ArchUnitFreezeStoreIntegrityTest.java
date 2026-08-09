@@ -609,8 +609,74 @@ class ArchUnitFreezeStoreIntegrityTest {
      *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
      *       {@code ScopeFolderAuthzScopeContractIT}）</li>
      * </ul>
+     *
+     * <h3>Wave6 ロットE（74 → 50 単独時点）</h3>
+     * <p>contact / favorite / inbox の 24 EP を監査し、いずれも
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件・保存条件に渡す自己スコープ
+     * （{@code @SelfScopedEndpoint}）、ないしサービス層で開示制御を行う
+     * （{@code @AuthorizedInService}）であることを確認したうえで、該当 24 行を削除した。
+     * 契約テストは {@code ContactScopeContractIT} / {@code FavoriteScopeContractIT} /
+     * {@code InboxScopeContractIT}。</p>
+     *
+     * <h3>Wave6 ロットE と Wave7 ロットA の合流（74 → 22）</h3>
+     * <p>本ロットの基点は分岐時点の 74 であり単独では 74 − 24 = 50 だが、並行して進んでいた
+     * Wave7 ロットA（金銭・記録系17コントローラ31EP、PR #2670）が先に main へ着地したため、
+     * main 追随マージで合成し直した値である。ロットA は 74 → 43（31 行削除）で、その31行の内訳は
+     * favorite 3 行（listFavorites / checkFavorite / reorderFavorites）＋
+     * notification/payment/pointcard/receipt/ticket/todo 系 28 行。
+     * 本ロットの24行（contact 15・favorite 3・inbox 6）とロットA の31行は
+     * <b>favorite 3 行のみが重複</b>し（同一 EP を両ロットが別々に認可監査した）、
+     * それ以外（本ロットの contact 15・inbox 6 の計21行、ロットAの28行）は互いに素である。
+     * 重複除去した和集合は 24 + 31 − 3 = 52 行。したがって 74 − 52 = 22。
+     * 実際の解消手順は、main の43行（ロットA適用後）から本ロット独自の contact・inbox 計21行を
+     * 追加削除する形で行った（favorite 3 行は既に main 側の削除で消えているため二重に触れていない）。
+     * 削除後の実行数は {@code grep -c . <ストアファイル>} で 22 であることを実測確認済み。</p>
+     *
+     * <h3>Wave6 ロットF の合流（22 → 9）</h3>
+     * <p>Wave6 ロットF（reflection 10・corkboard 2・advertising 1 の計13EP、本ファイル）を
+     * ロットE 着地後の main（22行）へ追随マージした。ロットFが監査した13EPは、いずれも
+     * ロットE・ロットAの対象と重複しない（ドメインが完全に独立）。対象データの検索・更新条件が
+     * 認証主体（{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。したがって 22 − 13 = 9。
+     * 削除後の残行数は {@code grep -c . <ストアファイル>} で 9（family 7・tournament 2）であることを
+     * 実測確認済み。</p>
+     *
+     * <p><b>9 → 0</b>（第7波ロットB・戦役最終ロット）: 本ロットの基点は分岐時点の 43 であり、
+     * 独立に family 7 / inbox 6 / reflection 10 / corkboard 2 / advertising 1 /
+     * tournament fee 2 / contact 15 の計 43 EP を全数監査してストアを空にする形で作業していたが、
+     * 並行して進んでいた Wave6 ロットE（contact 15・inbox 6 を含む 24 EP）およびロットF
+     * （reflection 10・corkboard 2・advertising 1 の計13EP）が先に main へ着地したため、
+     * main 追随マージで合成し直した。本ロットが監査した contact 15・inbox 6・reflection 10・
+     * corkboard 2・advertising 1（計 34 行）は、ロットE・ロットFが削除した行と<b>完全に重複</b>し
+     * （同一 EP を両ロットが別々に認可監査し、いずれも同一結論・自己スコープに到達）、二重差分は
+     * 生じない。ロットE・ロットFが未着手だった family 7 / tournament fee 2（計 9 行）が
+     * 本ロット固有の追加解消であり、両ロット合流後の 9 行とちょうど一致する。したがって
+     * 9 − 9 = 0。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（1件）</b>: {@code TournamentFeeCheckoutController#checkout} は
+     *       fee 実体の主催組織・対象チームと払い手を照合する認可判定が無く、対象外の
+     *       fee でも決済が実行できる状態だった。{@code TournamentFeePaymentService#requireEligible}
+     *       を新設し、{@code getMyTournamentFees} と同一基準（主催組織のアクティブメンバー・
+     *       {@code SPECIFIC_TEAMS} は対象チームのアクティブメンバー）で fee 実体から検証し、
+     *       対象外は不存在と同じ {@code FEE_NOT_FOUND}（404）で秘匿するよう是正した。</li>
+     *   <li><b>自己スコープ（大半）</b>: 検索・作成・登録先が
+     *       {@code SecurityUtils#getCurrentUserId()} に束縛され、リクエストで他人の識別子を
+     *       指定する余地が構造的に無い EP 群。{@code @SelfScopedEndpoint} を付与し、
+     *       {@code SelfScopedEndpointMarkerGuardTest} が要求する契約テストを併せて新設・拡張した。</li>
+     *   <li><b>認可済み・番人から不可視</b>: {@code ContactHandleController#searchByHandle}
+     *       （開示は対象ユーザー自身の公開設定に従うサイレント方式）・
+     *       {@code ContactInviteController#acceptInvite}（capability トークンで認可）・
+     *       {@code TournamentFeeCheckoutController#checkout}（上記 requireEligible）は
+     *       {@code @AuthorizedInService} で明示した。</li>
+     * </ul>
+     * <p>契約テスト: {@code ContactScopeContractIT} / {@code CareLinkInvitationScopeContractIT} /
+     * {@code InboxScopeContractIT} / {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} 拡張、{@code AdReportServiceTest} 新設、
+     * {@code TournamentFeePaymentServiceTest} 拡張（対象外 fee の決済拒否を追加）。
+     * 本 PR をもって認可漏れ(IDOR)全域監査戦役の凍結ストア全数返済が完結する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 74;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 0;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
