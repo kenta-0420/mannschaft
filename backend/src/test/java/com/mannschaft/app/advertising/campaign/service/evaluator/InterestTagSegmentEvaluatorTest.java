@@ -131,6 +131,30 @@ class InterestTagSegmentEvaluatorTest {
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
     }
 
+    @Test
+    @DisplayName("countUserIds: 正常な tag_ids → COUNT クエリで件数を返す")
+    void countUserIds_validTagIds_returnsCount() {
+        when(encryptionService.hmac("sports_football")).thenReturn("hash1");
+        when(encryptionService.hmac("neighborhood_event")).thenReturn("hash2");
+        when(userInterestTagRepository.countUserIdsByTagHashIn(List.of("hash1", "hash2")))
+                .thenReturn(2L);
+
+        AdAudienceSegment seg = segment("{\"tag_ids\":[\"sports_football\",\"neighborhood_event\"]}");
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("countUserIds: tag_ids 配列欠落 → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_missingArray_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

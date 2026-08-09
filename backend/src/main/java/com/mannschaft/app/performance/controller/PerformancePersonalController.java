@@ -57,9 +57,9 @@ public class PerformancePersonalController {
     /**
      * 指標テンプレート一覧を取得する。
      */
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。sportCategory 別の
+    // SecurityConfig の anyRequest().authenticated() で認証必須。sportCategory 別の
     // 共通テンプレート定義を返すのみで、ユーザー固有情報は含まない。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/metric-templates")
     @Operation(summary = "指標テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
