@@ -181,9 +181,9 @@ public class SafetyCheckController {
     /**
      * メッセージプリセット一覧を取得する（回答時の選択肢）。
      */
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。全組織共通のアクティブ
+    // SecurityConfig の anyRequest().authenticated() で認証必須。全組織共通のアクティブ
     // プリセット一覧を返すのみで、ユーザー固有情報は含まない。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/presets")
     @Operation(summary = "メッセージプリセット一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

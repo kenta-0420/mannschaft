@@ -69,7 +69,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 
 > **注**: 公開してよいと判断した**理由の記述（Javadoc）は本体であり、引用形式の変更後も必ず残すこと。** 理由なき付与は「認可漏れの永久凍結」と区別がつかない。
 >
-> **残務**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で、実測 **40 件中 38 件がずれている**（残り 2 件はパス引用が無く測定不能）。同じ移行が必要だが、対象 Controller が 30 以上に及び並行 PR との衝突面が大きいため別チケットとする。
+> **追記（2026-08-05）**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で腐っていた（実測 42 箇所全件が実物より一律 +31 行ずれ）。**matcher 式を `value()` 属性へ申告する規約へ移行済み**（対象 37 箇所・34 ファイル）。番人 `AuthorizedByPathConfigMatcherGuardTest` が新設され、申告された matcher が `SecurityConfig` に実在し、かつ `permitAll()` **ではない**こと（誤って permitAll へ「認可済み」と偽装付与する事故の検知が本丸）を機械検証する。`SecurityConfig` の走査ロジックは `SecurityConfigRules` へ共通化し `IntentionallyPublicMatcherGuardTest` と共有している。突き合わせの結果、対応する認可規則が存在しない・permitAll だった箇所は無かった。
 
 ### 3.1 インフラ・ドキュメント
 | パターン | メソッド | 公開理由 |

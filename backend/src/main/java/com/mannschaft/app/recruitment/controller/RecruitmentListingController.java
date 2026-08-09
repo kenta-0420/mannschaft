@@ -60,10 +60,10 @@ public class RecruitmentListingController {
      * keyword / location は空文字列の場合 null 扱いとして LIKE 検索を省略する。
      *
      * <p>本文中の「認証不要」は将来設計を示す旧コメント。実際は {@code /api/v1/recruitment-listings/**}
-     * が permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * が permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
      * で認証必須が現に強制されている（結果として OPEN の公開募集のみを返す参照系）。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "募集枠 全体検索 (§Phase4)")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(

@@ -34,9 +34,9 @@ public class PointCardProviderController {
      * 有効化されている全プロバイダーをカテゴリ昇順・表示名昇順で返す。
      * レスポンス形式は設計書 §6.2 に準拠し {@code {"data": [...]}} でラップする。
      */
-    // SecurityConfig.java:457 の anyRequest().authenticated() で認証必須。応答は運営マスタの
+    // SecurityConfig の anyRequest().authenticated() で認証必須。応答は運営マスタの
     // プロバイダー一覧のみで、全認証済みユーザーに同一の結果を返す（利用者固有情報を含まない）。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping
     @Operation(summary = "プロバイダー一覧取得",
             description = "is_active=true のプロバイダーを category, display_name 昇順で返す")

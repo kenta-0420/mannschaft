@@ -132,11 +132,11 @@ public class DashboardController {
     // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
     // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
     // でログイン済みユーザーにのみ到達が強制されている。
-    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 根拠: SecurityConfig の .anyRequest().authenticated()
     // 応答は platformAnnouncementService.getActiveAnnouncements() が返す公開中の全ユーザー共通の
     // お知らせのみで、認証済みユーザーであれば誰が呼んでも同一の結果になる（ユーザー固有データを
     // 含まない）ため、authenticated() のみで安全に成立する。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/announcements")
     @Operation(summary = "プラットフォームお知らせ取得", description = "公開中のプラットフォームお知らせ一覧を返す")
     public ResponseEntity<ApiResponse<List<DashboardAnnouncementResponse>>> getAnnouncements() {
@@ -452,13 +452,13 @@ public class DashboardController {
     // 認可根治戦役 Wave4 ロットD: 本エンドポイントは Controller / Service にコード上の認可判定を
     // 持たないが、SecurityConfig のパス単位宣言的認可（deny-by-default の anyRequest().authenticated()）
     // でログイン済みユーザーにのみ到達が強制されている。
-    // 根拠: SecurityConfig.java:454 — .anyRequest().authenticated()
+    // 根拠: SecurityConfig の .anyRequest().authenticated()
     // 現状は静的な空配列のみを返すスタブ実装で、データ取得処理（リポジトリ・他ドメイン Service 呼び出し）
     // 自体が存在しないため authenticated() のみで安全に成立する（認証済みなら誰が呼んでも同一の空応答）。
     // 【重要・将来の実装者への歯止め】パフォーマンス管理モジュールと連携してユーザー固有データを
     // 返すよう実装した瞬間、この根拠は失効する。実データ取得を実装する際は、本注釈をそのまま残さず
     // 認可の要否（所属チーム/組織のスコープ検証等）を必ず再検討すること。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/performance")
     @Operation(summary = "パフォーマンスサマリー", description = "所属チーム/組織ごとの個人パフォーマンス概要")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformance() {
