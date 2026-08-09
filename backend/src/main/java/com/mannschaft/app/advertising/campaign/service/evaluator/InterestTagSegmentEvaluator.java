@@ -52,6 +52,24 @@ public class InterestTagSegmentEvaluator implements AdSegmentEvaluator {
 
     @Override
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
+        List<String> tagHashes = validateAndResolveHashes(segment);
+        List<Long> userIds = userInterestTagRepository.findUserIdsByTagHashIn(tagHashes);
+        log.debug("INTEREST_TAG segment 評価完了: tagCount={}, matchedUserCount={}, campaignId={}",
+                tagHashes.size(), userIds.size(), segment.getCampaignId());
+        return new HashSet<>(userIds);
+    }
+
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        List<String> tagHashes = validateAndResolveHashes(segment);
+        return userInterestTagRepository.countUserIdsByTagHashIn(tagHashes);
+    }
+
+    /**
+     * segment_value をバリデーションし、HMAC ブラインドインデックスのハッシュリストへ変換する。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーション・変換ロジック。
+     */
+    private List<String> validateAndResolveHashes(AdAudienceSegment segment) {
         Map<String, Object> value = deserialize(segment.getSegmentValue());
         Object tagsObj = value.get("tag_ids");
         if (!(tagsObj instanceof List<?> rawList) || rawList.isEmpty()) {
@@ -77,14 +95,9 @@ public class InterestTagSegmentEvaluator implements AdSegmentEvaluator {
         }
 
         // タグを HMAC-SHA256 でハッシュ化してブラインドインデックス検索
-        List<String> tagHashes = tags.stream()
+        return tags.stream()
                 .map(encryptionService::hmac)
                 .toList();
-
-        List<Long> userIds = userInterestTagRepository.findUserIdsByTagHashIn(tagHashes);
-        log.debug("INTEREST_TAG segment 評価完了: tagCount={}, matchedUserCount={}, campaignId={}",
-                tags.size(), userIds.size(), segment.getCampaignId());
-        return new HashSet<>(userIds);
     }
 
     private Map<String, Object> deserialize(String json) {

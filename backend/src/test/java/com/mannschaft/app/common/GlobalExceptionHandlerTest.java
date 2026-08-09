@@ -124,6 +124,54 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("正常系: CIRCULATION_001エラーコード（回覧文書不在）で404 NotFoundが返る")
+        void handleBusinessException_CIRCULATION001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.DOCUMENT_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_001");
+        }
+
+        @Test
+        @DisplayName("正常系: CIRCULATION_010エラーコード（コメント編集権限なし）で403 Forbiddenが返る")
+        void handleBusinessException_CIRCULATION010_403Forbidden() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.COMMENT_NOT_OWNED);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_010");
+        }
+
+        @Test
+        @DisplayName("正常系: CIRCULATION_005エラーコード（文書ステータス不正）で409 Conflictが返る")
+        void handleBusinessException_CIRCULATION005_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.INVALID_DOCUMENT_STATUS);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_005");
+        }
+
+        @Test
         @DisplayName("正常系: COMMON_999エラーコード（ERROR severity）で500が返る")
         void handleBusinessException_COMMON999_500InternalError() {
             // Given

@@ -106,9 +106,8 @@ public class CirculationService {
     /**
      * 管理操作の per-scope 認可に使用する（2026-05-29 fixup）。
      *
-     * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため、Controller の
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は実機では強制力を持たない（将来の method-security
-     * 有効化に備えた宣言に留まる）。さらに JWT には {@code MEMBER} しか乗らず、ADMIN/DEPUTY_ADMIN は
+     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上
+     * per-scope 判定にならない。JWT には {@code MEMBER} しか乗らず、ADMIN/DEPUTY_ADMIN は
      * {@code user_roles} にスコープ別保持されるため {@code hasRole} では per-scope 判定にならない。
      * そこで強制完了・一括強制完了・手動リマインド・複製・押印状況閲覧の各管理操作で、処理本体の前に
      * {@link AccessControlService} による per-scope 認可（当該文書のスコープの ADMIN/DEPUTY_ADMIN、
