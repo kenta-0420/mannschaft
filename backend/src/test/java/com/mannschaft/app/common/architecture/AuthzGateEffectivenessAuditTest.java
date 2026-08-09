@@ -105,8 +105,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  *       {@code .builder()} 系のみ → <b>DTO_SINK</b>＝<b>違反候補</b></li>
  * </ul>
  * <p>GATE が 1 つでもあれば門番として合格。PROPAGATE があれば保守的に合格（下流の
- * enforce を否定できないため）。<b>DTO_SINK のみ</b>のときだけ違反とする
+ * enforce を否定できないため）。<b>DTO_SINK のみ</b>のときだけ違反候補とする
  * （recall より precision を優先＝誤検知で信号を埋もれさせない）。</p>
+ * <p>ただし DTO_SINK 候補であっても、<b>同一メソッド内の他所に対象集合へ実効する門番
+ * （stream {@code .filter}/{@code .anyMatch} 等・{@code throw}）が在る</b>場合は違反としない。
+ * その代入は表示ヒントに過ぎず、実際の絞り込みは別の門番が担っているとみなせるためである。
+ * この痕跡検出はゲート語彙（{@link GateVocabulary}）に依存しない
+ * （{@code ContentVisibilityChecker} のように命名規約上ゲートクラスに含まれない
+ * 可視性フィルタも対象集合への実効門番として認識するため）。</p>
  *
  * <h2>既知の限界（隠さず明記する）</h2>
  * <ul>
@@ -266,6 +272,7 @@ class AuthzGateEffectivenessAuditTest {
         if (receivers.isEmpty()) {
             return out;
         }
+        List<MethodDecl> methods = parseMethods(masked);
         Matcher m = QUALIFIED_CALL.matcher(masked);
         while (m.find()) {
             String recv = m.group(1);
@@ -290,12 +297,51 @@ class AuthzGateEffectivenessAuditTest {
             if (!onlyFlowsIntoDto(masked, close + 1, blockEnd, var)) {
                 continue;
             }
+            MethodDecl enclosing = enclosingMethod(methods, recvStart);
+            if (enclosing != null && hasIndependentGate(masked, enclosing, recvStart, close + 1)) {
+                continue; // 同一メソッド内に対象集合へ実効する別の門番（フィルタ／throw）が在るため
+                          // この代入は純粋な表示ヒントとして許容する
+            }
             int line = lineOf(s.content, recvStart);
             out.add(new Violation(s.relPath, line,
                 snippet(s.content, statementStart(masked, recvStart), close), var));
         }
         return out;
     }
+
+    /** {@code pos} を包含するメソッド宣言（無ければ {@code null}）。 */
+    private static MethodDecl enclosingMethod(List<MethodDecl> methods, int pos) {
+        for (MethodDecl d : methods) {
+            if (d.bodyStart <= pos && pos <= d.bodyEnd) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 認可ゲートクラス（{@code *AccessGuard} 等）に限らず、対象集合へ実効する門番の痕跡
+     * （stream フィルタ・{@code throw}）がメソッド本体の他所に在るかを判定する。
+     *
+     * <p>{@link ContentVisibilityChecker} のように命名規約上ゲートクラスに含まれない
+     * 可視性フィルタ経由の門番（{@code list.stream().filter(x -> visibleIds.contains(..))}）を
+     * 拾うため、ゲート語彙（{@link GateVocabulary}）に依存しない広めの痕跡検出とする。
+     * 判定対象の代入文自身は除外して探索する（代入直後に {@code .filter} 等が続く記法による
+     * 自己マッチを避けるため）。</p>
+     */
+    private static boolean hasIndependentGate(String masked, MethodDecl method,
+            int excludeFrom, int excludeTo) {
+        int from = Math.max(method.bodyStart, Math.min(excludeFrom, method.bodyEnd + 1));
+        int to = Math.max(from, Math.min(excludeTo, method.bodyEnd + 1));
+        String before = masked.substring(method.bodyStart, from);
+        String after = masked.substring(to, method.bodyEnd + 1);
+        return INDEPENDENT_GATE_EVIDENCE.matcher(before).find()
+            || INDEPENDENT_GATE_EVIDENCE.matcher(after).find();
+    }
+
+    /** 対象集合への実効フィルタ・不許可時の {@code throw} とみなす痕跡。 */
+    private static final Pattern INDEPENDENT_GATE_EVIDENCE = Pattern.compile(
+        "\\.(?:filter|anyMatch|noneMatch|removeIf|takeWhile)\\s*\\(|\\bthrow\\b");
 
     /**
      * {@code var} の {@code [from, to)} 区間内の全使用箇所を分類し、
@@ -317,8 +363,10 @@ class AuthzGateEffectivenessAuditTest {
                 || before.matches("(?s).*\\bthrow\\b[^;]*$")) {
                 return false;
             }
-            // PROPAGATE: return
-            if (before.matches("(?s).*\\breturn\\b[^;]*$")) {
+            // PROPAGATE: return v;（var 自体が返り値。new Xxx(.. v ..) のように
+            // var が呼び出しの引数として return 文に包まれている形はここでは判定しない
+            // ——それは直後の enclosingCallee による DTO_SINK 判定に委ねる）
+            if (before.matches("(?s).*\\breturn\\s*$")) {
                 return false;
             }
             String callee = enclosingCallee(masked, pos);
@@ -992,6 +1040,38 @@ class AuthzGateEffectivenessAuditTest {
                         java.util.Set<Long> ids = accessControlService.filterAccessible(java.util.List.of(id), userId);
                         return new DemoMetaDto(id, "name", ids);
                 """).isEmpty(), "throw 様式・絞り込み様式は形②の対象外であるべき");
+        }
+
+        @Test
+        @DisplayName("f2: 同一メソッド内に対象集合への実効フィルタが別に在る形 → 非違反（表示ヒントとして許容）")
+        void f2_同一メソッド内の独立門番は許容() {
+            Src resolver = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoListResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoListResolver {
+                    private final DemoAccessService accessControlService;
+                    private final DemoVisibilityChecker visibilityChecker;
+                    DemoListResolver(DemoAccessService s, DemoVisibilityChecker v) {
+                        this.accessControlService = s;
+                        this.visibilityChecker = v;
+                    }
+                    java.util.List<Object> resolveAll(java.util.List<Long> ids, Long userId) {
+                        java.util.Set<Long> visibleIds = visibilityChecker.filterAccessible(ids, userId);
+                        java.util.List<Long> visible =
+                                ids.stream().filter(id -> visibleIds.contains(id)).toList();
+                        java.util.List<Object> out = new java.util.ArrayList<>();
+                        for (Long id : visible) {
+                            boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
+                            out.add(new DemoMetaDto(id, "name", canEdit));
+                        }
+                        return out;
+                    }
+                }
+                """);
+            assertTrue(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
+                "対象集合への実効フィルタが同一メソッド内に別途在れば表示ヒントとして許容されるべき");
         }
 
         @Test
