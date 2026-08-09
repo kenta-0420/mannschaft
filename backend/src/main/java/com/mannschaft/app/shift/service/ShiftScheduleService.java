@@ -278,9 +278,8 @@ public class ShiftScheduleService {
      * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
      *
      * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効のため
-     * 実機では効かず、かつ JWT には {@code MEMBER} しか乗らないため per-scope 認可にならない。
-     * 本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は、JWT には {@code MEMBER} しか乗らないため
+     * per-scope 認可にならない。本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
      * （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。</p>
      *
      * @param id     スケジュール ID

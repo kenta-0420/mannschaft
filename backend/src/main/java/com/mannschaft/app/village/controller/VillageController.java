@@ -35,7 +35,7 @@ import java.util.UUID;
 /**
  * 村本体 CRUD・検索コントローラ（F17.1 Phase 1 §4.1 / §4.2）。
  *
- * <p>認証は全 API で必須（SecurityConfig の {@code anyRequest().permitAll()} 配下のため
+ * <p>認証は全 API で必須（SecurityConfig の {@code anyRequest().authenticated()} フォールバックに加え、
  * SecurityUtils.getCurrentUserId() が未認証なら 401 を返す）。</p>
  *
  * <h2>エンドポイント一覧</h2>
