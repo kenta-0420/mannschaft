@@ -9,6 +9,7 @@ import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityDecision;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -119,7 +120,7 @@ class ScheduleVisibilityResolverTest {
                     1L, null, null, /*userId*/ 100L,
                     /*createdBy*/ null,
                     ScheduleVisibility.MEMBERS_ONLY, null,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(100L);
 
@@ -310,7 +311,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, /*templateId*/ 555L,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
             when(templateEvaluator.canView(200L, 555L, 100L)).thenReturn(true);
@@ -324,7 +325,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, 555L,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
             when(templateEvaluator.canView(200L, 555L, 100L)).thenReturn(false);
@@ -338,7 +339,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, /*templateId*/ null,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
 
@@ -372,7 +373,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.MEMBERS_ONLY, null,
-                    /*status*/ null);
+                    /*status*/ null, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
 
@@ -430,23 +431,27 @@ class ScheduleVisibilityResolverTest {
                 .thenReturn(UserScopeRoleSnapshot.empty());
     }
 
+    // 本テストが固定するのは «scope 軸»（visibility × status）の判定である。
+    // CMP-017b で射影に加わった閲覧閾値軸（min_view_role）は独立した軸のため、
+    // ここでは閾値なし（ANYONE）を与えて中立化し、scope 軸の期待値をそのまま保つ。
+    // 閾値軸そのものの契約は ScheduleMinViewRoleContractIT が固定する。
     private static ScheduleVisibilityProjection personal(long id, Long createdBy) {
         return new ScheduleVisibilityProjection(
                 id, null, null, /*userId*/ createdBy,
                 createdBy,
                 ScheduleVisibility.MEMBERS_ONLY, null,
-                ScheduleStatus.SCHEDULED);
+                ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 
     private static ScheduleVisibilityProjection team(long id, Long teamId, ScheduleVisibility v) {
         return new ScheduleVisibilityProjection(
                 id, teamId, null, null, 100L,
-                v, null, ScheduleStatus.SCHEDULED);
+                v, null, ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 
     private static ScheduleVisibilityProjection org(long id, Long orgId, ScheduleVisibility v) {
         return new ScheduleVisibilityProjection(
                 id, null, orgId, null, 100L,
-                v, null, ScheduleStatus.SCHEDULED);
+                v, null, ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 }
