@@ -6,7 +6,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.schedule.AttendanceGenerationStatus;
+import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleKeepErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -305,6 +308,12 @@ public class ScheduleKeepService {
                 .status(ScheduleStatus.SCHEDULED)
                 // 日程が決まっただけの段階で出欠を強制しない（§1.3「急かさない」）。
                 .attendanceRequired(false)
+                // schedules.attendance_status / min_response_role / comment_option はいずれも NOT NULL
+                // （ScheduleService.create の通常作成経路と同じ既定値を踏襲）。3列とも省略すると
+                // DataIntegrityViolationException で convert が常に 500 になる（実機E2Eで発見・2026-08-09）。
+                .attendanceStatus(AttendanceGenerationStatus.READY)
+                .minResponseRole(MinResponseRole.MEMBER_PLUS)
+                .commentOption(CommentOption.OPTIONAL)
                 // ⚠️ 可視性は固定値で書く（§4.5.2.1）。スコープ既定を継承させると、既定が緩い
                 // チームでは「変換した瞬間に応援者・ゲストへ見える予定になる」＝可視性が変換で緩む。
                 .visibility(ScheduleVisibility.MEMBERS_ONLY)
