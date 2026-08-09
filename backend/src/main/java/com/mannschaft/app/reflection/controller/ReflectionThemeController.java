@@ -42,9 +42,8 @@ public class ReflectionThemeController {
     private final ReflectionArchiveService reflectionArchiveService;
 
     /** 自分のテーマ一覧（§7 #1）。 */
-    @SelfScopedEndpoint("ReflectionThemeService#listMyThemes が"
-            + " findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(userId=SecurityUtils.getCurrentUserId())"
-            + " のみを検索条件に使う")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionThemeService#listMyThemes）")
     @GetMapping
     @Operation(summary = "テーマ一覧取得")
     public ResponseEntity<ApiResponse<List<ReflectionThemeResponse>>> listThemes() {

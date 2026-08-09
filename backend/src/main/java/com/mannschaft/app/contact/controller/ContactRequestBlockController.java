@@ -39,9 +39,8 @@ public class ContactRequestBlockController {
 
     private final ContactRequestBlockService contactRequestBlockService;
 
-    @SelfScopedEndpoint("ContactRequestBlockService#listBlocks は"
-            + "findByUserIdOrderByCreatedAtDesc(userId) で SecurityUtils.getCurrentUserId() の"
-            + "設定のみを返す（ContactRequestBlockController#listBlocks）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestBlockService#listBlocks）")
     @GetMapping
     @Operation(summary = "事前拒否リスト取得")
     public ResponseEntity<ApiResponse<List<ContactRequestBlockResponse>>> listBlocks() {
@@ -49,10 +48,8 @@ public class ContactRequestBlockController {
         return ResponseEntity.ok(ApiResponse.of(contactRequestBlockService.listBlocks(userId)));
     }
 
-    @SelfScopedEndpoint("ContactRequestBlockService#addBlock は"
-            + "SecurityUtils.getCurrentUserId() を userId として新規保存するのみで"
-            + "自分の事前拒否設定にしか作用しない（ContactRequestBlockController#addBlock）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("登録先は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザー名義の事前拒否リストへ登録する余地がない（ContactRequestBlockService#addBlock）")
     @PostMapping
     @Operation(summary = "事前拒否を追加する")
     public ResponseEntity<ApiResponse<ContactRequestBlockResponse>> addBlock(

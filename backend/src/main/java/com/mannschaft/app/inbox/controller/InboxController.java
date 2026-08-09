@@ -2,6 +2,7 @@ package com.mannschaft.app.inbox.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.dto.BulkInboxRequest;
@@ -19,7 +20,6 @@ import com.mannschaft.app.inbox.service.InboxAggregationService;
 import com.mannschaft.app.inbox.service.InboxBulkService;
 import com.mannschaft.app.inbox.service.InboxLabelService;
 import com.mannschaft.app.inbox.service.InboxTriageService;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -67,9 +67,8 @@ public class InboxController {
     // 一覧
     // ─────────────────────────────────────────────
 
-    @SelfScopedEndpoint("InboxAggregationService#getInbox は全アダプタの fetch(userId, window) と"
-            + "オーバーレイ取得を SecurityUtils.getCurrentUserId() のみで束縛する"
-            + "（InboxController#getInbox）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("集約対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（InboxAggregationService#getInbox）")
     @GetMapping
     @Operation(summary = "インボックス一覧取得",
             description = "通知ソースを集約し、状態/緊急度/種類/ラベルで絞り込んだ一覧を返す"
@@ -87,9 +86,8 @@ public class InboxController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
-    @SelfScopedEndpoint("InboxAggregationService#getSummary は getInbox と同じ"
-            + "SecurityUtils.getCurrentUserId() 束縛の集約経路を使う（InboxController#getSummary）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("集計対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（InboxAggregationService#getSummary）")
     @GetMapping("/summary")
     @Operation(summary = "インボックス件数サマリ取得",
             description = "状態別・緊急度別・種類別の件数を返す（タブ/バッジ用）。")
@@ -114,11 +112,11 @@ public class InboxController {
         return ResponseEntity.ok(ApiResponse.of(item));
     }
 
+    @SelfScopedEndpoint("解除対象の複合キーは (userId, sourceType, sourceId) で、userId は "
+            + "SecurityUtils.getCurrentUserId() 固定のため他ユーザーの行には到達しない"
+            + "（InboxTriageService#unsnooze の requireExisting）")
     @PostMapping("/unsnooze")
     @Operation(summary = "スヌーズ解除", description = "スヌーズを解除して受信箱へ戻す。")
-    @SelfScopedEndpoint("InboxTriageService#unsnooze は"
-            + "findByUserIdAndSourceTypeAndSourceId(userId,...) で自分のオーバーレイ行のみを解除する"
-            + "（InboxController#unsnooze）。認可根治戦役 Wave6 監査済。")
     public ResponseEntity<ApiResponse<InboxItemDto>> unsnooze(
             @Valid @RequestBody TriageTargetRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -137,11 +135,11 @@ public class InboxController {
         return ResponseEntity.ok(ApiResponse.of(item));
     }
 
+    @SelfScopedEndpoint("解除対象の複合キーは (userId, sourceType, sourceId) で、userId は "
+            + "SecurityUtils.getCurrentUserId() 固定のため他ユーザーの行には到達しない"
+            + "（InboxTriageService#unarchive の requireExisting）")
     @PostMapping("/unarchive")
     @Operation(summary = "アーカイブ解除", description = "保管庫から受信箱へ戻す。")
-    @SelfScopedEndpoint("InboxTriageService#unarchive は"
-            + "findByUserIdAndSourceTypeAndSourceId(userId,...) で自分のオーバーレイ行のみを解除する"
-            + "（InboxController#unarchive）。認可根治戦役 Wave6 監査済。")
     public ResponseEntity<ApiResponse<InboxItemDto>> unarchive(
             @Valid @RequestBody TriageTargetRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -154,9 +152,8 @@ public class InboxController {
     // ラベル CRUD（Phase 2）
     // ─────────────────────────────────────────────
 
-    @SelfScopedEndpoint("InboxLabelService#getLabels は"
-            + "findByUserIdOrderBySortOrderAsc(userId) で自分のラベルのみを返す"
-            + "（InboxController#getLabels）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（InboxLabelService#getLabels）")
     @GetMapping("/labels")
     @Operation(summary = "ラベル一覧取得",
             description = "現役（論理削除されていない）ラベルを sortOrder 昇順で返す。")
@@ -166,13 +163,12 @@ public class InboxController {
         return ResponseEntity.ok(ApiResponse.of(labels));
     }
 
+    @SelfScopedEndpoint("作成先は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（InboxLabelService#createLabel）")
     @PostMapping("/labels")
     @Operation(summary = "ラベル作成",
             description = "ラベルを作成する。上限 20 件・同名重複・色/アイコン形式を検証する。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    @SelfScopedEndpoint("InboxLabelService#createLabel は"
-            + "SecurityUtils.getCurrentUserId() を userId として新規保存するのみで他人のデータに触れない"
-            + "（InboxController#createLabel）。認可根治戦役 Wave6 監査済。")
     public ResponseEntity<ApiResponse<LabelDto>> createLabel(
             @Valid @RequestBody CreateLabelRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();

@@ -44,9 +44,8 @@ public class ContactInviteTokenController {
 
     private final ContactInviteTokenService contactInviteTokenService;
 
-    @SelfScopedEndpoint("ContactInviteTokenService#createToken は"
-            + "SecurityUtils.getCurrentUserId() を userId として新規保存するのみで他人のデータに触れない"
-            + "（ContactInviteTokenController#createToken）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("発行者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "リクエストから他ユーザー名義のトークンを発行する余地がない（ContactInviteTokenService#createToken）")
     @PostMapping
     @Operation(summary = "招待トークンを発行する")
     public ResponseEntity<ApiResponse<ContactInviteTokenResponse>> createToken(
@@ -56,10 +55,8 @@ public class ContactInviteTokenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
-    @SelfScopedEndpoint("ContactInviteTokenService#listTokens は"
-            + "findByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(userId) で"
-            + "SecurityUtils.getCurrentUserId() の行のみを返す（ContactInviteTokenController#listTokens）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザーが発行したトークンは混入しない（ContactInviteTokenService#listTokens）")
     @GetMapping
     @Operation(summary = "発行済みトークン一覧")
     public ResponseEntity<ApiResponse<List<ContactInviteTokenResponse>>> listTokens() {

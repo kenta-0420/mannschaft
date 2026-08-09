@@ -1,6 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 個人コルクボードコントローラー。
@@ -45,9 +45,8 @@ public class MyCorkboardController {
     /**
      * 個人ボード一覧を取得する。
      */
-    @SelfScopedEndpoint("CorkboardService#listPersonalBoards が"
-            + " findByOwnerIdAndScopeTypeOrderByCreatedAtDesc(userId=SecurityUtils.getCurrentUserId(), PERSONAL)"
-            + " のみを検索条件に使う")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#listPersonalBoards）")
     @GetMapping
     @Operation(summary = "個人コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -59,9 +58,8 @@ public class MyCorkboardController {
     /**
      * 個人ボードを作成する。
      */
-    @SelfScopedEndpoint("CorkboardService#createPersonalBoard が"
-            + " userId=SecurityUtils.getCurrentUserId() を ownerId として新規保存するのみで"
-            + "他ユーザーのデータに触れない")
+    @SelfScopedEndpoint("作成先は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#createPersonalBoard）")
     @PostMapping
     @Operation(summary = "個人コルクボード作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")

@@ -33,9 +33,8 @@ public class ContactPrivacyController {
 
     private final ContactPrivacyService contactPrivacyService;
 
-    @SelfScopedEndpoint("ContactPrivacyService#getPrivacySettings は"
-            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみ"
-            + "（ContactPrivacyController#getPrivacySettings）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("取得対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactPrivacyService#getPrivacySettings）")
     @GetMapping
     @Operation(summary = "プライバシー設定取得")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> getPrivacySettings() {
@@ -43,10 +42,8 @@ public class ContactPrivacyController {
         return ResponseEntity.ok(ApiResponse.of(contactPrivacyService.getPrivacySettings(userId)));
     }
 
-    @SelfScopedEndpoint("ContactPrivacyService#updatePrivacySettings は"
-            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみで、"
-            + "更新も同じ user の行にしか作用しない（ContactPrivacyController#updatePrivacySettings）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("更新対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactPrivacyService#updatePrivacySettings）")
     @PutMapping
     @Operation(summary = "プライバシー設定更新")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> updatePrivacySettings(

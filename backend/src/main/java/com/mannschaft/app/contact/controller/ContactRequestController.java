@@ -41,10 +41,9 @@ public class ContactRequestController {
 
     private final ContactRequestService contactRequestService;
 
-    @SelfScopedEndpoint("ContactRequestService#sendRequest は"
-            + "SecurityUtils.getCurrentUserId() を requesterId として新規保存するのみで、"
-            + "宛先ユーザーの既存データを読み取りも変更もしない"
-            + "（ContactRequestController#sendRequest）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("送信者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "対象の応答差はブロック・事前拒否のいずれもサイレント（同一PENDING応答）で秘匿する"
+            + "（ContactRequestService#sendRequest）")
     @PostMapping
     @Operation(summary = "連絡先申請を送信する")
     public ResponseEntity<ApiResponse<SendContactRequestResponse>> sendRequest(
@@ -54,10 +53,8 @@ public class ContactRequestController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
-    @SelfScopedEndpoint("ContactRequestService#listReceivedRequests は"
-            + "findByTargetIdAndStatusOrderByCreatedAtDesc(userId,...) で"
-            + "SecurityUtils.getCurrentUserId() 宛ての申請のみを返す"
-            + "（ContactRequestController#listReceived）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestService#listReceivedRequests）")
     @GetMapping("/received")
     @Operation(summary = "受信申請一覧（PENDING のみ）")
     public ResponseEntity<ApiResponse<List<ContactRequestResponse>>> listReceived() {
@@ -65,10 +62,8 @@ public class ContactRequestController {
         return ResponseEntity.ok(ApiResponse.of(contactRequestService.listReceivedRequests(userId)));
     }
 
-    @SelfScopedEndpoint("ContactRequestService#listSentRequests は"
-            + "findByRequesterIdAndStatusOrderByCreatedAtDesc(userId,...) で"
-            + "SecurityUtils.getCurrentUserId() が送信した申請のみを返す"
-            + "（ContactRequestController#listSent）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestService#listSentRequests）")
     @GetMapping("/sent")
     @Operation(summary = "送信済み申請一覧（PENDING のみ）")
     public ResponseEntity<ApiResponse<List<ContactRequestResponse>>> listSent() {

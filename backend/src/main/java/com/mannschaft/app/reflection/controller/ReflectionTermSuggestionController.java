@@ -33,9 +33,8 @@ public class ReflectionTermSuggestionController {
      *
      * @param baseDate 基準日（YYYY-MM-DD・省略時は今日）
      */
-    @SelfScopedEndpoint("ReflectionTermSuggestionService#suggest が"
-            + " personalTimetableService.findEffectiveAt(userId=SecurityUtils.getCurrentUserId(), ...)"
-            + " のみを対象に解決する")
+    @SelfScopedEndpoint("照合対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionTermSuggestionService#suggest）")
     @GetMapping
     @Operation(summary = "学年・学期自動提案取得")
     public ResponseEntity<ApiResponse<TermSuggestionResponse>> suggest(

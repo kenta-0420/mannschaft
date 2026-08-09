@@ -33,9 +33,8 @@ public class ReflectionTodayController {
      *
      * @param date 対象日（省略時はサーバがユーザー TZ の今日を採用・§4.3）
      */
-    @SelfScopedEndpoint("ReflectionTodayService#getToday が"
-            + " userId=SecurityUtils.getCurrentUserId() を全クエリ（テーマ・当日エントリ・時間割）の"
-            + "検索条件に使い、他ユーザーのデータには到達不能")
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionTodayService#getToday）")
     @GetMapping("/today")
     @Operation(summary = "今日の振り返りビュー取得")
     public ResponseEntity<ApiResponse<ReflectionTodayResponse>> getToday(

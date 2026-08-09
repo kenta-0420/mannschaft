@@ -49,9 +49,8 @@ public class ContactHandleController {
 
     private final ContactHandleService contactHandleService;
 
-    @SelfScopedEndpoint("ContactHandleService#getMyHandle は"
-            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみ"
-            + "（ContactHandleController#getMyHandle）。認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("取得対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "リクエストから他ユーザーのハンドル情報を指定する余地がない（ContactHandleService#getMyHandle）")
     @GetMapping("/me/contact-handle")
     @Operation(summary = "自分の@ハンドル情報取得")
     public ResponseEntity<ApiResponse<ContactHandleResponse>> getMyHandle() {
@@ -59,10 +58,8 @@ public class ContactHandleController {
         return ResponseEntity.ok(ApiResponse.of(contactHandleService.getMyHandle(userId)));
     }
 
-    @SelfScopedEndpoint("ContactHandleService#updateHandle は"
-            + "userRepository.findById(userId) の userId が SecurityUtils.getCurrentUserId() のみで、"
-            + "更新も同じ user の行にしか作用しない（ContactHandleController#updateHandle）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("更新対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "リクエストから他ユーザーのハンドルを変更する余地がない（ContactHandleService#updateHandle）")
     @PutMapping("/me/contact-handle")
     @Operation(summary = "@ハンドル設定・変更")
     public ResponseEntity<ApiResponse<ContactHandleResponse>> updateHandle(
@@ -71,10 +68,8 @@ public class ContactHandleController {
         return ResponseEntity.ok(ApiResponse.of(contactHandleService.updateHandle(userId, req)));
     }
 
-    @SelfScopedEndpoint("ContactHandleService#checkHandleAvailability は"
-            + "existsByContactHandleAndIdNot(handle, currentUserId) の真偽のみを返し、"
-            + "保持者の情報は一切返さない（ContactHandleController#checkHandle）。"
-            + "認可根治戦役 Wave6 監査済。")
+    @SelfScopedEndpoint("戻り値は自分以外に同じハンドルが存在するかの真偽のみで、保持者の情報は一切返さない"
+            + "（ContactHandleService#checkHandleAvailability）")
     @GetMapping("/contact-handle-check")
     @Operation(summary = "@ハンドル重複確認")
     public ResponseEntity<ApiResponse<HandleCheckResponse>> checkHandle(
@@ -84,11 +79,12 @@ public class ContactHandleController {
     }
 
     /**
-     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 対象は任意ユーザーだが、開示は
-     * <b>対象ユーザー自身の公開設定</b>で認可する。{@code ContactHandleService.java:104-138}
-     * （{@code searchByHandle}）が対象の {@code handleSearchable=false} およびブロック関係
-     * （双方向）を検索より先に判定し、非該当の場合は {@code found=false} のみを返す
-     * （氏名・アバター等は一切含めない・サイレント方式）。認可根治戦役 Wave6 監査済。</p>
+     * ハンドルでユーザーを検索する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 開示は<b>対象ユーザー自身の公開設定</b>に
+     * 従う。{@code ContactHandleService.java:114-122}（{@code searchByHandle}）が
+     * {@code handleSearchable=false} または双方向ブロック関係にある相手には {@code found=false} のみを
+     * 返し、氏名・アバターを一切開示しないサイレント方式（設計書 {@code F04.8_contact.md §2.3}）。</p>
      */
     @AuthorizedInService
     @GetMapping("/contact-handle/{handle}")

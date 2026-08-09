@@ -46,10 +46,8 @@ public class ReflectionVocabCardController {
      * @param page        ページ番号（0 始まり・既定 0）
      * @param size        1 ページサイズ（既定 200・上限 500）
      */
-    @SelfScopedEndpoint("ReflectionVocabCardService#getVocabCards が"
-            + " findByUserIdAndTargetDateBetween(userId=SecurityUtils.getCurrentUserId(), ...) の"
-            + "エントリのみを対象に、themeId フィルタも本人所有テーマの Map と突き合わせるため"
-            + "他ユーザーの themeId は自然に空になる")
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionVocabCardService#getVocabCards）")
     @GetMapping
     @Operation(summary = "期間横断 単語帳ビュー取得")
     public ResponseEntity<ApiResponse<ReflectionVocabCardsResponse>> getVocabCards(

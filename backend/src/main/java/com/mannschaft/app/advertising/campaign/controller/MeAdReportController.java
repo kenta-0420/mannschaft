@@ -33,9 +33,8 @@ public class MeAdReportController {
     private final AdReportService adReportService;
 
     /** 通報を作成する。201 {@code { data: { id, status, createdAt } }}。 */
-    @SelfScopedEndpoint("AdReportService#createReport は"
-            + " userId=SecurityUtils.getCurrentUserId() を reporterUserId として新規保存するのみで"
-            + "他人のデータに触れない（対象キャンペーンの実在検証のみ行う）")
+    @SelfScopedEndpoint("通報者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザー名義で通報を記録する余地がない（AdReportService#createReport）")
     @PostMapping
     @Operation(summary = "広告を通報する",
             description = "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。"

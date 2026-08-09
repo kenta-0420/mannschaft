@@ -458,6 +458,55 @@ class CorkboardBoardScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 個人ボード 一覧・作成（認可根治戦役 第7波ロットB）
+    //   MyCorkboardController#listBoards / MyCorkboardController#createBoard の
+    //   自己スコープ性を固定する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("個人ボード 一覧・作成（自己スコープ）")
+    class PersonalBoardsSelfScope {
+
+        @Test
+        @DisplayName("未認証は401")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("他ユーザーの個人ボードは一覧に混入しない")
+        void 一覧に混入しない() throws Exception {
+            Long boardId = insertPersonalBoard(memberAId, "個人ボード一覧混入チェック");
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id",
+                            org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(boardId.intValue()))));
+        }
+
+        @Test
+        @DisplayName("正常系: 作成は認証主体名義でのみ行われ、自分の一覧に現れる")
+        void 作成は自分名義のみ() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/users/me/corkboards")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBoardBody("自己スコープ作成"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.id").exists());
+
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk());
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

@@ -442,8 +442,9 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 6. 自己スコープ EP（一覧・設定・アーカイブ集計・一括アーカイブ）
-    //   （認可根治戦役 Wave6 ロットF・@SelfScopedEndpoint 契約テスト）
+    // 6. 自己スコープ EP（一覧・設定・アーカイブ集計・一括アーカイブ・科目紐づけ候補・
+    //   単語帳・学期提案・今日ビュー）
+    //   （認可根治戦役 Wave6 ロットF・第7波ロットB・@SelfScopedEndpoint 契約テスト）
     // ═════════════════════════════════════════════════════════════════════
 
     /**
@@ -452,10 +453,15 @@ class ReflectionPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
      * {@code ReflectionSettingsController#updateSettings} /
      * {@code ReflectionArchiveController#getFolders} /
      * {@code ReflectionArchiveController#search} /
-     * {@code ReflectionArchiveController#bulkArchive} の自己スコープ性を固定する。
+     * {@code ReflectionArchiveController#bulkArchive} /
+     * {@code ReflectionLinkableSlotController#listLinkableSlots} /
+     * {@code ReflectionVocabCardController#getVocabCards} /
+     * {@code ReflectionTermSuggestionController#suggest} /
+     * {@code ReflectionTodayController#getToday} の自己スコープ性を固定する。
      */
     @Nested
-    @DisplayName("6. 自己スコープ EP（テーマ一覧・想起通知設定・アーカイブ集計/検索/一括）")
+    @DisplayName("6. 自己スコープ EP（テーマ一覧・想起通知設定・アーカイブ集計/検索/一括・"
+            + "科目紐づけ候補・単語帳・学期提案・今日ビュー）")
     class SelfScopedEndpoints {
 
         @Test

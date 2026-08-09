@@ -39,8 +39,8 @@ public class ReflectionArchiveController {
     /**
      * EP #17: アーカイブ済みテーマのフォルダ集計（学年×学期×教科 GROUP BY）（AC-42）。
      */
-    @SelfScopedEndpoint("ReflectionArchiveService#getFolders が"
-            + " findArchivedFolders(userId=SecurityUtils.getCurrentUserId()) のみを検索条件に使う")
+    @SelfScopedEndpoint("集計対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionArchiveService#getFolders）")
     @GetMapping("/folders")
     @Operation(summary = "アーカイブフォルダ一覧取得")
     public ResponseEntity<ApiResponse<List<ArchiveFolderResponse>>> getFolders() {
@@ -60,8 +60,8 @@ public class ReflectionArchiveController {
      * @param page         ページ番号（0始まり・省略時は 0）
      * @param size         1ページサイズ（省略時は 20・上限 50）
      */
-    @SelfScopedEndpoint("ReflectionArchiveService#search が"
-            + " searchArchived(userId=SecurityUtils.getCurrentUserId(), ...) のみを検索条件に使う")
+    @SelfScopedEndpoint("検索対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionArchiveService#search）")
     @GetMapping("/search")
     @Operation(summary = "アーカイブテーマ横断検索")
     public ResponseEntity<ApiResponse<Page<ReflectionThemeResponse>>> search(
@@ -81,8 +81,8 @@ public class ReflectionArchiveController {
     /**
      * EP #21: 条件に合致するアクティブテーマを一括アーカイブする。
      */
-    @SelfScopedEndpoint("ReflectionArchiveService#bulkArchive が"
-            + " findActiveByCondition(userId=SecurityUtils.getCurrentUserId(), ...) のみを対象に更新する")
+    @SelfScopedEndpoint("一括アーカイブの対象は SecurityUtils.getCurrentUserId() で確定した認証主体所有の"
+            + "テーマに限定される（ReflectionArchiveService#bulkArchive）")
     @PostMapping("/bulk-archive")
     @Operation(summary = "テーマ一括アーカイブ")
     public ResponseEntity<ApiResponse<BulkArchiveResult>> bulkArchive(
