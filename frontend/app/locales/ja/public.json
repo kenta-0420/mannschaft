@@ -158,6 +158,16 @@
     "events": {
       "title": "イベント",
       "empty": "イベントはありません"
+    },
+    "tabs": {
+      "posts": "投稿",
+      "timeline": "タイムライン",
+      "events": "行事",
+      "activities": "活動記録"
+    },
+    "activities": {
+      "sectionTitle": "活動記録",
+      "empty": "公開された活動記録はまだありません"
     }
   }
 }
