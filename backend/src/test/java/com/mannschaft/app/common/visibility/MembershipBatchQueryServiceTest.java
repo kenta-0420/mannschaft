@@ -355,7 +355,7 @@ class MembershipBatchQueryServiceTest {
 
             assertThat(result.descendantMemberOfOrgIds()).isEmpty();
             verify(userRoleRepository, never())
-                    .findOrgRootsWhereUserIsDescendantMember(anySet(), anyLong(), anyInt());
+                    .findDescendantMembershipRolesByOrgRoots(anySet(), anyLong(), anyInt());
         }
 
         @Test
@@ -370,8 +370,9 @@ class MembershipBatchQueryServiceTest {
             when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
                     .thenReturn(List.of());
             // 下向き再帰バルク: viewer は ORG_10 の配下再帰メンバー
-            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
-                    .thenReturn(List.of(10L));
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "MEMBER")));
 
             UserScopeRoleSnapshot result = service.snapshotForUser(
                     USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
@@ -394,7 +395,8 @@ class MembershipBatchQueryServiceTest {
                     .thenReturn(List.of());
             when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
                     .thenReturn(List.of());
-            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
                     .thenReturn(List.of()); // どの根にも属さない
 
             UserScopeRoleSnapshot result = service.snapshotForUser(
@@ -415,8 +417,9 @@ class MembershipBatchQueryServiceTest {
             // 当該 ORG 自身が削除済
             when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
                     .thenReturn(List.of(10L));
-            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
-                    .thenReturn(List.of(10L));
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "MEMBER")));
 
             UserScopeRoleSnapshot result = service.snapshotForUser(
                     USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
@@ -424,6 +427,55 @@ class MembershipBatchQueryServiceTest {
             assertThat(result.isOrgInactive(ORG_10)).isTrue();
             // 配下メンバーではあるが ORG 非アクティブ。Resolver 側 case で fail-closed される。
             assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 配下所属のロール名が descendantRoleByOrgId に載り閾値評価できる")
+        void 配下所属のロール名が閾値評価に使える() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "SUPPORTER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantRoleByOrgId()).containsEntry(10L, "SUPPORTER");
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "SUPPORTER")).isTrue();
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isFalse();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 同一根に複数の所属経路がある場合は最も強いロールを採用する")
+        void 複数経路は最強ロールを採用() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(
+                            descendantRow(10L, "SUPPORTER"),
+                            descendantRow(10L, "MEMBER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantRoleByOrgId()).containsEntry(10L, "MEMBER");
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b ロール名が解決できない行でも所属集合は従来どおり成立する（閾値のみ fail-closed）")
+        void ロール名不明でも所属は成立し閾値は満たさない() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, null)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+            assertThat(result.descendantRoleByOrgId()).isEmpty();
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isFalse();
         }
 
         @Test
@@ -440,6 +492,32 @@ class MembershipBatchQueryServiceTest {
     // -----------------------------------------------------------------------
     // ヘルパー
     // -----------------------------------------------------------------------
+
+    /** 新段（ORG_10 が根）の周辺クエリを «該当なし» で固めるヘルパー。 */
+    private void stubDescendantSideQueries() {
+        when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+        when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                eq(USER_ID), eq(Set.of()), eq(Set.of(10L)))).thenReturn(List.of());
+        when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                .thenReturn(List.of());
+        when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+    }
+
+    /** 下向き再帰バルククエリの射影スタブ（根 ORG × ロール名）。 */
+    private static UserRoleRepository.DescendantMembershipRoleProjection descendantRow(
+            Long rootOrgId, String roleName) {
+        return new UserRoleRepository.DescendantMembershipRoleProjection() {
+            @Override
+            public Long getRootOrgId() {
+                return rootOrgId;
+            }
+
+            @Override
+            public String getRoleName() {
+                return roleName;
+            }
+        };
+    }
 
     private static MembershipScopeRoleProjection membershipProjection(
             ScopeType scopeType, Long scopeId, RoleKind roleKind) {

@@ -288,6 +288,82 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // AC-06d（三b）: 組織スコープ × visibility=ORGANIZATION（下向き再帰・フェーズ M2）の閾値
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("組織予定（visibility=ORGANIZATION・下向き再帰）の閾値評価")
+    class OrganizationAndDescendantsThreshold {
+
+        // 組織スコープ × visibility=ORGANIZATION は ORGANIZATION_AND_DESCENDANTS へ昇格し、
+        // 配下 ACTIVE チームのみに所属するユーザーへ開かれる（欠陥 Z の根治 / フェーズ M2）。
+        // 閾値が掛かっていなかったため、配下チームの SUPPORTER に MEMBER_PLUS 予定が見えていた。
+
+        @Test
+        @DisplayName("AC-06d 単体GET: MEMBER_PLUS の組織予定は配下チーム SUPPORTER に 403、配下チーム MEMBER には 200")
+        void 下向き再帰_memberPlus_配下supporterは403_配下memberは200() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.MEMBER_PLUS);
+
+            setAuthentication(teamSupporterId);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("VISIBILITY_001"));
+
+            // M2（欠陥 Z の根治）が閾値の導入で殺されていないことの証明。
+            setAuthentication(teamMemberId);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-06d 単体GET: SUPPORTER_PLUS の組織予定なら配下チーム SUPPORTER も 200（塞ぎすぎない）")
+        void 下向き再帰_supporterPlusなら配下supporterも200() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.SUPPORTER_PLUS);
+
+            setAuthentication(teamSupporterId);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-06d 単体GET: MEMBER_PLUS の組織予定は組織直接所属 MEMBER に 200（直接所属を取りこぼさない）")
+        void 下向き再帰_組織直接所属memberは200() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.MEMBER_PLUS);
+
+            setAuthentication(orgMemberId);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-06d 一覧: MEMBER_PLUS の組織予定は配下チーム SUPPORTER の一覧に現れず、配下チーム MEMBER には現れる")
+        void 下向き再帰_一覧_supporterには現れずmemberには現れる() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.MEMBER_PLUS);
+
+            setAuthentication(teamSupporterId);
+            mockMvc.perform(listOrgSchedules())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + scheduleId + ")]").isEmpty());
+
+            setAuthentication(teamMemberId);
+            mockMvc.perform(listOrgSchedules())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + scheduleId + ")]").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("AC-06d 一覧: SUPPORTER_PLUS の組織予定は配下チーム SUPPORTER の一覧に現れる（塞ぎすぎない）")
+        void 下向き再帰_一覧_supporterPlusなら現れる() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.SUPPORTER_PLUS);
+
+            setAuthentication(teamSupporterId);
+            mockMvc.perform(listOrgSchedules())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + scheduleId + ")]").isNotEmpty());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // AC-08: 個人予定（ADMIN_ONLY 固定）の PRIVATE 経路が閾値で潰されないこと
     // ═════════════════════════════════════════════════════════════════════
 
@@ -440,6 +516,12 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
                 .param("to", "2026-04-30T00:00:00");
     }
 
+    private org.springframework.test.web.servlet.RequestBuilder listOrgSchedules() {
+        return get("/api/v1/organizations/{slug}/schedules", orgSlug)
+                .param("from", "2026-04-01T00:00:00")
+                .param("to", "2026-04-30T00:00:00");
+    }
+
     private org.springframework.test.web.servlet.RequestBuilder myCalendar() {
         return get("/api/v1/my/calendar")
                 .param("from", "2026-04-01T00:00:00")
@@ -481,6 +563,31 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
                 .allowProxyAttendance(true)
                 .isProxyAutoAccept(false)
                 .createdBy(teamDeputyId)
+                .build()).getId();
+        em.flush();
+        em.clear();
+        return id;
+    }
+
+    /**
+     * 組織スコープ × {@code visibility = ORGANIZATION} の予定を保存する。
+     * Resolver 側で {@code ORGANIZATION_AND_DESCENDANTS}（下向き再帰）へ昇格する経路。
+     */
+    private Long saveOrgWideSchedule(MinViewRole minViewRole) {
+        Long id = scheduleRepository.save(ScheduleEntity.builder()
+                .organizationId(orgId)
+                .title("MVR 組織全体予定 " + minViewRole)
+                .startAt(LocalDateTime.of(2026, 4, 12, 10, 0))
+                .endAt(LocalDateTime.of(2026, 4, 12, 12, 0))
+                .eventType(EventType.OTHER)
+                .visibility(ScheduleVisibility.ORGANIZATION)
+                .minViewRole(minViewRole)
+                .includeSupporters(false)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(false)
+                .allowProxyAttendance(true)
+                .isProxyAutoAccept(false)
+                .createdBy(orgAdminId)
                 .build()).getId();
         em.flush();
         em.clear();

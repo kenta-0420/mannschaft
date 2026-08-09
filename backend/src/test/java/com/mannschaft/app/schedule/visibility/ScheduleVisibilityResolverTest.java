@@ -268,6 +268,80 @@ class ScheduleVisibilityResolverTest {
 
             assertThat(resolver.canView(1L, 300L)).isFalse();
         }
+
+        // ── CMP-017b 三b: 下向き再帰段にも min_view_role の閾値を効かせる ──
+
+        @Test
+        @DisplayName("CMP-017b MEMBER_PLUS の組織予定は配下 SUPPORTER に不可視")
+        void descendantSupporter_memberPlus_denied() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "SUPPORTER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("CMP-017b MEMBER_PLUS の組織予定は配下 MEMBER には可視（M2 を殺さない）")
+        void descendantMember_memberPlus_canView() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "MEMBER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b SUPPORTER_PLUS なら配下 SUPPORTER にも可視（塞ぎすぎない）")
+        void descendantSupporter_supporterPlus_canView() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.SUPPORTER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "SUPPORTER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 配下ロールが未知でも当該 ORG への直接所属ロールが閾値を満たせば可視")
+        void directOrgRole_satisfiesThreshold() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ null, /*directRole*/ "MEMBER");
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b ADMIN_ONLY は配下 DEPUTY_ADMIN に可視・配下 MEMBER に不可視")
+        void adminOnly_deputyAdminOnly() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.ADMIN_ONLY));
+            stubDescendantSnapshot(300L, 20L, "DEPUTY_ADMIN", null);
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+
+            stubProjection(orgWithThreshold(2L, 20L, MinViewRole.ADMIN_ONLY));
+            stubDescendantSnapshot(301L, 20L, "MEMBER", null);
+            assertThat(resolver.canView(2L, 301L)).isFalse();
+        }
+
+        /** 下向き再帰段の snapshot スタブ（配下ロール／当該 ORG 直接ロールを任意に置ける）。 */
+        private void stubDescendantSnapshot(
+                Long viewerId, Long organizationId, String descendantRole, String directRole) {
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", organizationId);
+            when(membershipBatchQueryService.snapshotForUser(eq(viewerId), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            directRole != null ? Map.of(orgScope, directRole) : Map.of(),
+                            Map.of(orgScope, organizationId),
+                            Set.of(),
+                            Set.of(),
+                            Set.of(organizationId),
+                            Map.of(),
+                            descendantRole != null
+                                    ? Map.of(organizationId, descendantRole) : Map.of()));
+        }
+    }
+
+    private static ScheduleVisibilityProjection orgWithThreshold(
+            long id, Long orgId, MinViewRole minViewRole) {
+        return new ScheduleVisibilityProjection(
+                id, null, orgId, null, 100L,
+                ScheduleVisibility.ORGANIZATION, null, ScheduleStatus.SCHEDULED, minViewRole);
     }
 
     // ========================================================================

@@ -179,11 +179,16 @@ public class MembershipBatchQueryService {
 
         // SQL 8 (descendantScopes が非空のみ): 下向き再帰メンバーシップを 1 バルク SQL で解決。
         //        ORGANIZATION_WIDE とは独立に発行し、新段 row が無ければ SQL 0。
-        Set<Long> descendantMemberOfOrgIds = resolveDescendantMembership(userId, descendantRootOrgIds);
+        //        CMP-017b: 同じ 1 クエリの結果から「所属集合」と「配下所属のロール名」を
+        //        双方を組み立てる（SQL 本数は従来と同一）。
+        List<UserRoleRepository.DescendantMembershipRoleProjection> descendantRows =
+                fetchDescendantMembershipRoles(userId, descendantRootOrgIds);
+        Set<Long> descendantMemberOfOrgIds = resolveDescendantMembership(descendantRows);
+        Map<Long, String> descendantRoleByOrgId = resolveDescendantRoleNames(descendantRows);
 
         return new UserScopeRoleSnapshot(
                 false, roleByScope, parentOrgs, orgMemberOf, suspendedOrgIds,
-                descendantMemberOfOrgIds, orgRoleByScope);
+                descendantMemberOfOrgIds, orgRoleByScope, descendantRoleByOrgId);
     }
 
     /**
@@ -204,22 +209,74 @@ public class MembershipBatchQueryService {
     }
 
     /**
-     * 下向き再帰メンバーシップを 1 バルク SQL で解決する（フェーズ M2）。
+     * 下向き再帰メンバーシップ（根 ORG × ロール名の組）を 1 バルク SQL で取得する（フェーズ M2）。
      *
      * <p>{@code rootOrgIds} が空のときは SQL を発行しない（空 IN () 回避 / SQL 0）。
      * SUPPORTER 除外は行わない（G7）。{@code maxDepth} は M1 と同じ
      * {@link com.mannschaft.app.organization.service.OrganizationMembershipService} の上限 32 を用いる。</p>
      */
-    private Set<Long> resolveDescendantMembership(Long userId, Set<Long> rootOrgIds) {
+    private List<UserRoleRepository.DescendantMembershipRoleProjection> fetchDescendantMembershipRoles(
+            Long userId, Set<Long> rootOrgIds) {
         if (rootOrgIds.isEmpty()) {
-            return Set.of();
+            return List.of();
         }
-        List<Long> matchedRoots = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
+        return userRoleRepository.findDescendantMembershipRolesByOrgRoots(
                 rootOrgIds, userId, ORG_DESCENDANT_MAX_DEPTH);
-        if (matchedRoots.isEmpty()) {
+    }
+
+    /**
+     * 下向き再帰の<strong>所属集合</strong>を組み立てる（フェーズ M2）。
+     *
+     * <p>ロール名が解決できない行（{@code roles} への LEFT JOIN が null）も所属としては数える。
+     * これにより CMP-017b でロール名取得を足す前と所属判定は完全に一致する。</p>
+     */
+    private Set<Long> resolveDescendantMembership(
+            List<UserRoleRepository.DescendantMembershipRoleProjection> rows) {
+        if (rows.isEmpty()) {
             return Set.of();
         }
-        return new HashSet<>(matchedRoots);
+        Set<Long> result = new HashSet<>();
+        for (UserRoleRepository.DescendantMembershipRoleProjection p : rows) {
+            if (p.getRootOrgId() != null) {
+                result.add(p.getRootOrgId());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 下向き再帰の所属における<strong>実効ロール名</strong>マップを組み立てる（CMP-017b 三b）。
+     *
+     * <p>{@link #resolveDescendantMembership} が「配下に属するか（真偽）」しか返さないため、
+     * {@code ORGANIZATION_AND_DESCENDANTS} 段では閲覧閾値（{@code schedules.min_view_role}）を
+     * 評価する材料が無く、配下チームの SUPPORTER に組織の {@code MEMBER_PLUS} 予定が
+     * 見えていた。本メソッドは<strong>同じクエリ結果</strong>からロール名を取り出すだけで、
+     * SQL を 1 本も追加しない（{@code orgRoleByScope} と同じ流儀）。</p>
+     *
+     * <p>同一の根 ORG に複数の所属経路（複数チーム / 直属＋チーム）がある場合は
+     * {@link #mergeStrongerRole} と同じ規約で<strong>最も強いロール</strong>
+     * （priority の数値が最小）を採用する。配下ツリー全体に対する viewer の «立場» を
+     * 1 つの値で表す以上、弱い方を採ると「別経路では MEMBER なのに閲覧できない」という
+     * direct スコープ側と非対称な過小権限になるためである。</p>
+     */
+    private Map<Long, String> resolveDescendantRoleNames(
+            List<UserRoleRepository.DescendantMembershipRoleProjection> rows) {
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new HashMap<>();
+        for (UserRoleRepository.DescendantMembershipRoleProjection p : rows) {
+            Long rootOrgId = p.getRootOrgId();
+            String roleName = p.getRoleName();
+            if (rootOrgId == null || roleName == null) {
+                continue;
+            }
+            String existing = result.get(rootOrgId);
+            if (existing == null || RolePriority.priority(roleName) < RolePriority.priority(existing)) {
+                result.put(rootOrgId, roleName);
+            }
+        }
+        return result;
     }
 
     /**

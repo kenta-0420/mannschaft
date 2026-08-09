@@ -1018,10 +1018,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （空 IN () 回避・SQL 0 回）。これにより新段スコープが無いリクエストでは SQL を一切増やさず、
      * 既存の SQL 数番人予算を侵さない。</p>
      *
+     * <p><b>ロール名の同時取得（CMP-017b）</b>: 本メソッドは「属するか否か」に加えて、
+     * その配下所属で viewer が持つ<b>ロール名</b>（{@code roles.name}）を同じ 1 クエリで返す。
+     * 呼び出し側は所属集合とロール名マップの双方を同一結果から組み立てるため、SQL は増えない。
+     * {@code roles} への結合は <b>LEFT JOIN</b> であり、role_id が解決できない不整合行があっても
+     * 「所属している」判定（従来の戻り値集合）は一切変化しない（ロール名だけが {@code null} になる）。</p>
+     *
      * @param rootOrgIds 下向き再帰の根となる ORG ID 集合（空集合で呼ばないこと）
      * @param userId     判定対象 viewer の user_id
      * @param maxDepth   再帰展開の最大深さ（サイクル防止上限・通常 32）
-     * @return viewer が「直属（配下組織）∪ 配下 ACTIVE チーム」に属する根 ORG の ID リスト
+     * @return viewer が「直属（配下組織）∪ 配下 ACTIVE チーム」に属する根 ORG と、その所属のロール名の組
      */
     @Query(value =
             "WITH RECURSIVE org_tree (root_id, id, depth) AS ( " +
@@ -1032,7 +1038,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT t.root_id FROM org_tree t " +
+            "SELECT DISTINCT t.root_id AS rootOrgId, r.name AS roleName FROM org_tree t " +
             "JOIN user_roles ur " +
             "  ON ( ur.organization_id = t.id " +
             "       OR ur.team_id IN ( " +
@@ -1040,13 +1046,30 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "         WHERE tom.organization_id = t.id AND tom.status = 'ACTIVE' " +
             "       ) ) " +
             "JOIN users u ON u.id = ur.user_id " +
+            "LEFT JOIN roles r ON r.id = ur.role_id " +
             "WHERE ur.user_id = :userId " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
-    List<Long> findOrgRootsWhereUserIsDescendantMember(
+    List<DescendantMembershipRoleProjection> findDescendantMembershipRolesByOrgRoots(
             @Param("rootOrgIds") Set<Long> rootOrgIds,
             @Param("userId") Long userId,
             @Param("maxDepth") int maxDepth);
+
+    /**
+     * {@link #findDescendantMembershipRolesByOrgRoots} の射影（CMP-017b）。
+     *
+     * <p>「どの根 ORG の配下ツリーに属するか」と「その所属で持つロール名」の組。
+     * 同一根に複数の所属経路（複数チーム / 直属＋チーム）がある場合は複数行が返り、
+     * 呼び出し側が最も強いロール（{@code RolePriority} の数値が最小）へ畳み込む。</p>
+     */
+    interface DescendantMembershipRoleProjection {
+
+        /** 配下ツリーの根となる ORG の ID。 */
+        Long getRootOrgId();
+
+        /** その所属で viewer が持つロール名。role_id が解決できない不整合行では {@code null}。 */
+        String getRoleName();
+    }
 
     /**
      * 複数チームの ADMIN/DEPUTY_ADMIN を (team_id, user_id) ペアで返す（通知ループのN+1回避用）。

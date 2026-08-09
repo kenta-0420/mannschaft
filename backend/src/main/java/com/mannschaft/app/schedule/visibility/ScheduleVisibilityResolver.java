@@ -135,17 +135,20 @@ public class ScheduleVisibilityResolver
      * {@link #adjustLevel} および {@code GoogleCalendarService} の push 判定と共有する。</p>
      *
      * <p><strong>{@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}（下向き再帰・組織スコープ）
-     * は本フックの対象外</strong>である。当該段の閲覧者は子孫組織配下チームの所属者であり得るが、
-     * snapshot は «その配下ツリーにおけるロール名» を保持していないため閾値を評価する材料が無い。
-     * 所有 ORG の直接ロールで評価すると、配下チームのみ所属のメンバーが既定 {@code MEMBER_PLUS} で
-     * 一律 deny となり、下向き再帰（欠陥 Z の根治）が事実上無効化される。安全側と機能維持の
-     * どちらへ倒すかは設計判断のため、本隊では現状維持とし別途上申する。</p>
+     * も本フックで評価する</strong>（CMP-017b 三b）。当該段の閲覧者は子孫組織配下チームのみの
+     * 所属者であり得るため、所有 ORG への直接所属ロールだけで評価すると既定 {@code MEMBER_PLUS} で
+     * 一律 deny となり、下向き再帰（欠陥 Z の根治）が無効化されてしまう。そこで
+     * {@link UserScopeRoleSnapshot#hasDescendantRoleOrAbove}（配下ツリーにおける実効ロール）と
+     * {@link UserScopeRoleSnapshot#hasRoleOrAbove}（当該 ORG への直接所属ロール）の
+     * <strong>いずれかが閾値を満たすこと</strong>を要求する。前者だけでは組織へ直接所属する
+     * メンバーを取りこぼし、後者だけでは M2 を殺すため、両方の «立場» を突き合わせる。</p>
      */
     @Override
     protected boolean visibleByAdditionalAxis(
             ScheduleVisibilityProjection row, Long viewerUserId,
             UserScopeRoleSnapshot snapshot, StandardVisibility level) {
-        if (level != StandardVisibility.ORGANIZATION_WIDE) {
+        if (level != StandardVisibility.ORGANIZATION_WIDE
+                && level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
             return true;
         }
         String required = MinViewRoleThreshold.requiredRoleName(row.minViewRole());
@@ -155,8 +158,12 @@ public class ScheduleVisibilityResolver
         if (row.scopeType() == null || row.scopeId() == null) {
             return false;
         }
-        return snapshot.hasParentOrgRoleOrAbove(
-                new ScopeKey(row.scopeType(), row.scopeId()), required);
+        ScopeKey scope = new ScopeKey(row.scopeType(), row.scopeId());
+        if (level == StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
+            return snapshot.hasDescendantRoleOrAbove(scope, required)
+                    || snapshot.hasRoleOrAbove(scope, required);
+        }
+        return snapshot.hasParentOrgRoleOrAbove(scope, required);
     }
 
     @Override
