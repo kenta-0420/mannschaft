@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactInvitePreviewResponse;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
@@ -45,6 +46,7 @@ public class ContactInviteTokenService {
     private final ContactService contactService;
     private final NotificationService notificationService;
     private final BrandedQrImageWriter brandedQrImageWriter;
+    private final NameResolverService nameResolverService;
 
     /**
      * 招待トークンを発行する。
@@ -98,7 +100,7 @@ public class ContactInviteTokenService {
         return ContactInvitePreviewResponse.builder()
                 .isValid(true)
                 .issuer(issuer != null ? ContactInvitePreviewResponse.IssuerInfo.builder()
-                        .fullName(issuer.getLastName() + " " + issuer.getFirstName())
+                        .fullName(nameResolverService.resolveUserDisplayName(issuer.getId()))
                         .contactHandle(issuer.getContactHandle())
                         .build() : null)
                 .expiresAt(entity.getExpiresAt())
