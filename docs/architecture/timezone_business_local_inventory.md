@@ -81,7 +81,7 @@ LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
 | auth | 30 | 8 | 要精査（トークン失効・保護者同意の年齢境界日） |
 | recruitment | 25 | 6 | **含む**（応募締切・ノーショー判定） |
 | tournament | 23 | 2 | 要精査（提出要件エンティティ） |
-| schedule | 22 | 12 | **含む**（B-2で全件精査、詳細後述） |
+| schedule | 22 | 1（訂正: 当初「含む・12」と誤記載。B-2で行レベル全件精査した結果、確度をもって「含む」と言えるのは1件のみ） | 大半は対象外（監査タイムスタンプ・外部API絶対時刻比較）。**含む**は1件（詳細後述） |
 | reservation | 21 | 10 | **含む**（B-3で全件精査、詳細後述） |
 | notification | 20 | 4 | 要精査（confirmable の期限） |
 | family | 18 | 3 | 要精査（不在アラート・イベント終了リマインド） |
@@ -106,23 +106,28 @@ LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
 
 （残り75ドメインは低effortでの全数精査が非現実的なため、ヒューリスティック候補ファイル一覧＝170ファイルを付録として保持しているが、個別のコード読解までは行っていない。**未調査**として正直に記載する。）
 
-### B-2. schedule ドメイン（全件精査）— reservation と並ぶ最重要対象
+### B-2. schedule ドメイン（全件精査・訂正版）
 
-**重大な発見**: schedule ドメインは reservation ドメインと異なり、Issue #2526 の是正パターン（`clock.withZone(ZoneId.systemDefault())`）が**適用されていない**。業務ローカル判定と思われる箇所の大半が素の `LocalDateTime.now()`（JVM既定ゾーン直読み）のままである。
+> **訂正履歴**: 本節は初版で「schedule は reservation と並ぶ含む・12件」としていたが、殿の実測指摘を受けて `backend/src/main/java/com/mannschaft/app/schedule` 配下の `ZoneId.systemDefault()` / `LocalDateTime.now()` / `LocalDate.now()` の全出現（48箇所）を1件ずつ読み直した。**その結果、確度をもって「業務ローカル時刻の解釈が必要」と言えるのは1箇所のみであり、初版の判定は過大だった。** 以下は再精査後の正確な内訳。
 
-| ファイル:行 | 内容 | 判定 |
-|---|---|---|
-| `ScheduleAttendanceService.java:913` | `LocalDateTime.now().isAfter(schedule.getAttendanceDeadline())` — 出欠回答締切判定 | **含む**（締切は業務ローカル時刻の想定） |
-| `ScheduleMediaQueryService.java:257` | `LocalDateTime cutoff = LocalDateTime.now().minusHours(72)` | 要精査（72時間の相対判定だが、由来が投稿時刻＝業務ローカルなら対象） |
-| `ScheduleReminderService.java:93` コメント | 「OffsetDateTime → JSTのLocalDateTimeに変換して保存（バッチ側はLocalDateTime.now()=JSTと比較）」 | **含む・明示的にJST前提が書かれている** |
-| `ScheduleScheduledTaskService.java:47,76` コメント | 「ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）」 | **含む・明示的にJST前提が書かれている** |
-| `PersonalScheduleService.java:400` コメント | 「バッチ側は LocalDateTime.now()（JVM=JST）と比較するため」 | **含む・JVM既定ゾーン=JSTという暗黙前提の明文化** |
-| `GoogleCalendarWebhookService.java:170` | `channel.getExpiresAt().isBefore(LocalDateTime.now().plusDays(...))` | 要精査（Google側の絶対時刻との比較が主目的で、暦日境界に意味があるかは要確認） |
-| `GoogleCalendarService.java:166,217,481,696` / `GoogleCalendarWebhookService.java:137,143,275,548,559` | トークン有効期限・最終同期時刻 | 対象外に近い（外部API都合のUTC/瞬間比較が主。ただし現状 `LocalDateTime.now()` で書いており、監査目的にせよ瞬間の取り違えリスクはある） |
-| `IcalService.java:167,168,213,214` | iCal取得範囲 `now().minusMonths/plusMonths` | 要精査（「過去N月〜未来N月」の範囲は暦日境界に意味がある） |
-| entity群（`ScheduleAttendanceEntity`, `ScheduleDelegationEntity`, `ScheduleCrossRefEntity` 等）の `createdAt`/`updatedAt`/`respondedAt`/`reviewedAt`/`sentAt` | 監査タイムスタンプ | **対象外**（瞬間の記録であり暦日・業務時刻の解釈不要） |
+**実測結果（事実）**:
+- `schedule` 配下に `LocalDate.now()` は **1件も存在しない**（`ZoneId.systemDefault()` / `LocalDateTime.now()` / `LocalDate.now()` を Grep ツールで機械的に列挙して確認）。したがって「暦日の境界」が意味を持つ判定は schedule には存在しない。
+- 出現48箇所のうち、entity群（`ScheduleAttendanceEntity.respondedAt`、`ScheduleDelegationEntity.updatedAt/reviewedAt`、`ScheduleCrossRefEntity.createdAt/respondedAt`、`ScheduleScheduledTaskEntity.updatedAt/deletedAt`、`ScheduleAttendanceReminderEntity.createdAt/sentAt`、`ScheduleMediaUploadEntity.createdAt`、`UserGoogleCalendarConnectionEntity.lastSyncErrorAt`、`UserScheduleGoogleEventEntity.lastSyncedAt`、`UserIcalTokenEntity.lastPolledAt`、`EventSurveyEntity.createdAt`、`PersonalScheduleReminderEntity.createdAt`、`ScheduleEntity.deletedAt` 等・計21箇所）は**すべて監査タイムスタンプ**（A-1基準1・4により対象外）。
 
-**所見（推測を含む）**: `PersonalScheduleService.java:400` と `ScheduleScheduledTaskService.java:47` のコメントは「JVM既定ゾーン = JST」であることを開発者が前提として明記しており、reservation の Issue #2526 と**同一クラスの潜在バグ**が schedule ドメインに存在する可能性が高い（推測）。ただし実際に JVM のデフォルトタイムゾーンが本番環境で何に設定されているかは本調査では確認していない（**未調査**）。もし本番の JVM 既定ゾーンが UTC であれば、この前提コメント自体が現状の実態と食い違っており「バッチが常に9時間ずれて動いている」可能性がある。これは棚卸しの範囲を超える実測（本番/CI環境変数 `TZ` の確認、または実際の稼働ログの確認）が必要なため、**結論は出さず要精査として明記するに留める**。
+| ファイル:行 | 内容 | 比較相手 | 判定 | 根拠 |
+|---|---|---|---|---|
+| `ScheduleAttendanceService.java:913` | `LocalDateTime.now().isAfter(schedule.getAttendanceDeadline())` | `schedule.getAttendanceDeadline()` | **含む**（確定） | `attendanceDeadline` は `CreateScheduleRequest`/`UpdateScheduleRequest` が `OffsetDateTime`（クライアントTZ付き絶対時刻）で受け取り、`ScheduleService.java:217`（`toJst(...)`）で `Asia/Tokyo` 壁時計の `LocalDateTime` に変換して保存する（`ScheduleEntity.attendanceDeadline`、javadoc「出欠回答期限（JST の LocalDateTime）」）。読み出し側は素の `LocalDateTime.now()`（JVM既定ゾーン依存）と比較しており、**JVM既定ゾーンが Asia/Tokyo と一致しない環境では締切判定がずれる**。これは reservation の Issue #2526 と同型の構造的リスクである（保存側は固定JSTでエンコード、比較側はJVM既定ゾーン依存の `now()`）。 |
+| `GoogleWebhookChannelRenewalBatch.java:45` | `LocalDateTime.now().plusDays(...)` と `channel.getExpiresAt()` の比較 | Google Calendar Webhookチャンネルの有効期限（外部APIが発行する絶対時刻） | 対象外 | 基準4：比較相手は業務ローカル値ではなく外部サービスが発行した絶対時刻（瞬間）。 |
+| `GoogleCalendarService.java:166,217,481,681,696` / `GoogleCalendarWebhookService.java:137,143,170,275,548,559` | OAuthトークン有効期限・Webhookチャンネル有効期限・最終同期時刻 | いずれも外部API（Google）が発行する絶対時刻、または技術的な同期記録 | 対象外 | 基準1・4：DATE/TIME型の業務ローカル値との比較ではなく、外部サービスの絶対時刻または監査記録との比較。 |
+| `IcalService.java:167,168,183,213,214` | iCal取得範囲 `now().minusMonths(...)`/`plusMonths(...)`、最終ポーリング時刻更新 | 外部iCalフィードへの問い合わせ範囲、および `lastPolledAt`（監査記録） | 対象外 | 「過去N月〜未来N月」は取得ウィンドウの技術的な広さであり、利用者に「何時」として提示される値でも暦日境界の判定でもない。 |
+| `ScheduleMediaQueryService.java:257` | `LocalDateTime cutoff = LocalDateTime.now().minusHours(72)` → `findOrphanMedia(cutoff)` | 孤立メディアの `createdAt`（アップロード時刻＝監査タイムスタンプ） | 対象外 | 基準1・4：比較相手はアップロード時刻という瞬間の記録であり、業務ローカルの暦日・営業時間とは無関係な技術的保持期間（72時間）。 |
+| `ScheduleAttendanceService.java:461` | `LocalDateTime now = LocalDateTime.now()` → `findUnansweredUpcomingFor...(scopeId, userId, now)` | 予定の開始時刻（クエリ内部で「開始が現在以降」を判定） | 要精査 | クエリの中身（SQL/JPQL側の比較列）までは確認していない。予定開始時刻と比較している可能性があり、`ScheduleAttendanceService.java:913` と同様の構造リスクを持ちうるが、確定はしていない。 |
+| `ScheduleReminderService.java:243` / `ScheduleScheduledTaskBatchService.java:95` | `LocalDateTime now = LocalDateTime.now()` → `findDuePage(now, ...)` / `findByStatusAndScheduledAtBeforeAndDeletedAtIsNull(..., now)` | `remind_at`/`scheduledAt`（`ScheduleAttendanceReminderEntity`/`ScheduleScheduledTaskEntity` に `UserZoneLocalDateTimeParser.SERVER_ZONE`＝Asia/Tokyo 固定で変換保存された絶対時刻由来の値。詳細は `ScheduleScheduledTaskService.java:47,76`・`ScheduleScheduledTaskBatchService.java:190-191` を参照） | **要精査（含む寄り）** | 保存側は `OffsetDateTime`（絶対時刻）を `Asia/Tokyo` 壁時計に変換して格納しており、読み出し側の `LocalDateTime.now()` と正しく比較できるかは JVM既定ゾーンが Asia/Tokyo と一致するかに依存する。`attendanceDeadline` と同根の構造だが、`remind_at`/`scheduledAt` 自体が「利用者が指定した任意の絶対時刻」であり `slot_date`/`start_time` のような業務ローカルの暦日値そのものではないため、A-1基準1に厳密には該当しない可能性がある。**行レベルでの最終判定は保留**。 |
+| `ScheduleReminderService.java:93` コメント / `ScheduleScheduledTaskService.java:47,76` コメント / `PersonalScheduleService.java:400` コメント | 「バッチ側は `LocalDateTime.now()`（JVM=JST）と比較するため」等 | — | コメントのみ（コード上の判定根拠にはならない） | 初版ではこれらのコメント文言のみを根拠に「含む」と判定していたが、**コメントに JST と書いてあることは判定根拠にならない**（殿の指摘のとおり）。実際の比較相手（`attendanceDeadline`/`scheduledAt`/`remind_at`）がどの型・由来かで判定すべきであり、上記の各行で個別に再判定した。 |
+
+**結論（訂正）**: schedule ドメインで**確度をもって「含む」と判定できるのは `ScheduleAttendanceService.java:913`（出欠回答締切）の1件のみ**。`ScheduleReminderService.java:243` と `ScheduleScheduledTaskBatchService.java:95` は保存側が固定JSTエンコードである点で類似の構造的リスクを抱えるが、比較相手が「業務が設定する暦日値」ではなく「利用者が指定した任意の絶対時刻」であるため、A-1基準への当てはめが確定しておらず「要精査」に留める。それ以外（Google連携、iCal、メディアクリーンアップ、entity群の監査スタンプ）は対象外と判定する。
+
+**所見（推測を含む）**: 上記の構造（`OffsetDateTime` を `Asia/Tokyo` 固定で `LocalDateTime` に変換して保存し、素の `LocalDateTime.now()` と比較する）自体は、JVM既定ゾーンが実際に `Asia/Tokyo` であることに依存しており、これは「テナントTZ」の論点というより「サーバーの技術的な保持基準（JST）とJVM既定ゾーンが一致しているか」という別種のリスクである（推測）。本番/CI環境のJVM既定タイムゾーンが実際に何かは本調査では確認していない（**未調査**）。もし一致していなければ、`ScheduleAttendanceService.java:913` の締切判定は現在進行形でずれている可能性があるが、これも実測なしでは断定できない。
 
 ### B-3. reservation ドメイン（全件精査）
 
@@ -153,65 +158,61 @@ Issue #2526 で既に是正済み。`clock.withZone(ZoneId.systemDefault())` パ
 - `shift/service/ShiftRequestService.java:330` — `LocalDateTime.now().isAfter(schedule.getRequestDeadline())` でシフト希望締切判定。**含む**。
 - `shift/service/ShiftAutoArchiveBatchService.java:48` / `ShiftCleanupBatchService.java:48,89` / `ShiftPreferenceReminderBatchService.java:73` — いずれも `ZoneId.of("Asia/Tokyo")` を直書きして `LocalDate`/`LocalDateTime` を算出。**含む・かつC章の固定JST直書きにも該当**。
 
-### B-5. 「業務ローカル時刻の解釈が必要」と判定した箇所の総件数
+### B-5. 「業務ローカル時刻の解釈が必要」と判定した箇所の総件数（訂正）
 
-- **全件精査した2ドメイン（reservation + schedule）で確認できた具体箇所: reservation 9件 + schedule 6件 = 15件**（是正済み・未是正を問わず、A-1基準に該当すると判定した箇所。うち reservation は是正済み、schedule は概ね未是正）。
+- **reservation（全件精査）: 8〜9件**（是正済み。`ReservationGroupService.java:188,369`、`ReservationWaitlistService.java:109,333`、`ReservationPendingExpireService.java:116`、`ReservationService.java:433`、`ReservationReminderService.java:146`、`ReservationReminderEventListener.java:76` の8件は確定。`ReservationService.java:797` は同型パターンだが個別文脈は未確認のため参考扱い）。
+- **schedule（全件精査・訂正後）: 確定1件**（`ScheduleAttendanceService.java:913`）＋**要精査2件**（`ScheduleReminderService.java:243`、`ScheduleScheduledTaskBatchService.java:95`。当初「含む・複数件」としていたが、実測により対象外・要精査へ大幅に下方修正した）。
 - **サンプリングで確認した他ドメインの具体箇所: 5件**（ticket 1、parking 1、timetable 1、shift 2 のファイル単位。行単位ではticket 3行・shift 4行など複数箇所を含む）。
 - **ヒューリスティック候補として抽出したが個別の行レベル確認まで至っていない残り: 約155ファイル**（170候補 − 上記で個別確認した約15ファイル）。この155ファイルの中に業務ローカル判定が実際に何件含まれるかは**未調査**。
 
-したがって、**確度をもって「業務ローカル時刻の解釈が必要」と断定できたのは合計 約20件（行レベル）**であり、これは氷山の一角である可能性が高い（推測）。真の総量は候補170ファイルの全数精査（および共起語に引っかからなかった残り約750ファイルの再確認）をもって初めて確定する。**「約1932件のうち大半は監査タイムスタンプ」という前提は本調査で覆らなかった**が、業務ローカル判定の総数を正確に確定するには追加調査が必要、というのが正直な結論である。
+したがって、**確度をもって「業務ローカル時刻の解釈が必要」と断定できたのは reservation 8件 + schedule 1件 + 他ドメインサンプル 5件 = 合計 約14件（行レベル）**であり、これに「要精査」（reservation 1件・schedule 2件）を加えても約17件である。初版で「約20件」としていたのは、schedule ドメインの実測不足によりコメント文言（「JST」という記載があること自体）を判定根拠に使ってしまったための過大評価だった。**確定件数はこれで全てではなく、氷山の一角である可能性は依然として残る**（未確認の候補155ファイルが残っているため）。真の総量は候補170ファイルの全数精査（および共起語に引っかからなかった残り約750ファイルの再確認）をもって初めて確定する。**「約1932件のうち大半は監査タイムスタンプ」という前提は、少なくとも schedule ドメインの実測によって裏付けられた**（48出現中21件が明確な監査タイムスタンプ、確定して業務ローカルと言えるのは1件のみ）。他ドメインでも同様の比率になる可能性は高いが、これは**推測**であり実測ではない。
 
 ---
 
-## C. 固定JST直書き（`ZoneId.of("Asia/Tokyo")` 等）の全件リスト
+## C. 固定JST直書き（`ZoneId.of("Asia/Tokyo")` の全件リスト（訂正版）
 
-コードに `ZoneId.of("Asia/Tokyo")` 等を直書きしている箇所（`backend/src/main/java` 配下、テストコード除く）。**これらは「JST以外のチームが混在した瞬間に破綻する」最も明白な証拠**である。
+> **訂正**: 初版は「53件」としていたが、これは `ZoneId.of("Asia/Tokyo")` の**リテラル直書き**と、`ZoneId.of(変数)`（ユーザーTZ文字列などを動的に解決する呼び出し）を混同してカウントしていた。後者は「JST固定」ではなく、むしろ逆に**既にテナント/個人TZに対応しようとしている箇所**であり、固定直書きの証拠として数えるのは不正確だった。Grep ツールで `ZoneId\.of\(` を再列挙し、引数がリテラル文字列 `"Asia/Tokyo"` のもの（コメント中の言及を除く）のみを数え直した結果は**48ファイル・51箇所**であり、これは殿の実測（48ファイル・51箇所）と一致した。
 
 ```
-actionmemo/service/ActionMemoPublishingService.java:56       private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-actionmemo/service/ActionMemoReminderBatchService.java:48     private static final ZoneId ZONE_FALLBACK = ZoneId.of("Asia/Tokyo");
-actionmemo/service/ActionMemoReminderBatchService.java:67     ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
-actionmemo/service/ActionMemoReminderBatchService.java:195    return ZoneId.of(tz);                         // ユーザーTZ文字列を動的解決（フォールバックがJST）
-actionmemo/service/ActionMemoWeeklySummaryService.java:76     private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
+actionmemo/service/ActionMemoPublishingService.java:56        private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
+actionmemo/service/ActionMemoReminderBatchService.java:48      private static final ZoneId ZONE_FALLBACK = ZoneId.of("Asia/Tokyo");
+actionmemo/service/ActionMemoWeeklySummaryService.java:76      private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
 admin/service/AdminBusinessAlertService.java:55                private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 advertising/campaign/service/AdFrequencyCapService.java:52     private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");
-advertising/campaign/service/AdFrequencyCapService.java:250    return ZoneId.of(tz);                         // 同上、動的解決
-advertising/controller/StripeAdInvoiceWebhookController.java:108  ZoneId.of("Asia/Tokyo") でLocalDateTime変換
+advertising/controller/StripeAdInvoiceWebhookController.java:108  LocalDateTime.ofInstant(..., ZoneId.of("Asia/Tokyo"))
 advertising/controller/SystemAdminSpotlightBatchController.java:43  private static final ZoneId ZONE = ZoneId.of("Asia/Tokyo");
 advertising/ranking/controller/EquipmentReplenishLinkController.java:88  LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
 advertising/ranking/service/EquipmentRankingBatchService.java:89,152  LocalDateTime.now(ZoneId.of("Asia/Tokyo")) ×2
-advertising/ranking/service/EquipmentRankingService.java:89   LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
+advertising/ranking/service/EquipmentRankingService.java:89    LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
 advertising/service/AdDailyStatsAggregationBatchService.java:53  private static final ZoneId ZONE = ZoneId.of("Asia/Tokyo");
-analytics/service/DailyAggregationBatchService.java:59         LocalDate.now(ZoneId.of("Asia/Tokyo")).minusDays(1)
-analytics/service/DateRangeResolver.java:22                    private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-analytics/service/MonthlyCohortBatchService.java:46             LocalDate.now(ZoneId.of("Asia/Tokyo"))
-analytics/service/MonthlyKpiSnapshotBatchService.java:52         LocalDate.now(ZoneId.of("Asia/Tokyo"))
-analytics/service/PageViewDailyAggregationBatchService.java:47  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-analytics/service/PageViewRecordingService.java:48              private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-auth/guardianship/JapanGuardianshipAgePolicy.java:44            private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");  ※国別ポリシーとして意図的にJST固定の可能性（推測）
-auth/service/ParentalConsentReleaseBatchService.java:77         private static final ZoneId BATCH_ZONE = ZoneId.of("Asia/Tokyo");
-billing/beta/LoginActivityQueryService.java:86,207              DEFAULT_ZONE固定 + ユーザー指定TZの動的解決
-budget/service/BudgetAdminSummaryQueryService.java:53           private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-cms/service/BlogFeedService.java:137                            ldt.atZone(ZoneId.of("Asia/Tokyo")).toInstant()
-common/timezone/UserTimezoneFilter.java:78,163                 SERVER_ZONE固定 + リクエストTZの動的解決（共通基盤・後述）
-common/timezone/UserZoneLocalDateTimeParser.java:97             public static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");（共通基盤）
-config/jackson/LenientOffsetDateTimeDeserializer.java:35         private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");
-dashboard/service/ScopeWidgetSummaryService.java:173             LocalDate.now(zoneId != null ? zoneId : ZoneId.of("UTC"))  ※フォールバックはUTC
-digest/service/DigestConfigService.java:166                      ZoneId.of(timezone) のバリデーション用途
-inbox/service/InboxTriageService.java:42                         private static final ZoneId APP_ZONE = ZoneId.of("Asia/Tokyo");
-incident/service/IncidentSlaBatchService.java:189                ZonedDateTime.now(ZoneId.of("Asia/Tokyo"))
-incident/service/MaintenanceScheduleService.java:309             ZonedDateTime.now(ZoneId.of("Asia/Tokyo"))
-membership/service/MembershipStatsQueryService.java:35            private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+analytics/service/DailyAggregationBatchService.java:59          LocalDate.now(ZoneId.of("Asia/Tokyo")).minusDays(1)
+analytics/service/DateRangeResolver.java:22                     private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+analytics/service/MonthlyCohortBatchService.java:46              LocalDate.now(ZoneId.of("Asia/Tokyo"))
+analytics/service/MonthlyKpiSnapshotBatchService.java:52          LocalDate.now(ZoneId.of("Asia/Tokyo"))
+analytics/service/PageViewDailyAggregationBatchService.java:47   private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+analytics/service/PageViewRecordingService.java:48               private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+auth/guardianship/JapanGuardianshipAgePolicy.java:44             private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");  ※国別ポリシーとして意図的にJST固定の可能性（推測）
+auth/service/ParentalConsentReleaseBatchService.java:77          private static final ZoneId BATCH_ZONE = ZoneId.of("Asia/Tokyo");
+billing/beta/LoginActivityQueryService.java:86                   private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");（フォールバック用。動的解決は別行・非カウント）
+budget/service/BudgetAdminSummaryQueryService.java:53            private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+cms/service/BlogFeedService.java:137                             ldt.atZone(ZoneId.of("Asia/Tokyo")).toInstant()
+common/timezone/UserTimezoneFilter.java:78                      private static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");（共通基盤・後述D-1で詳述）
+common/timezone/UserZoneLocalDateTimeParser.java:97              public static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");（共通基盤・後述D-1で詳述）
+config/jackson/LenientOffsetDateTimeDeserializer.java:35          private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");
+inbox/service/InboxTriageService.java:42                          private static final ZoneId APP_ZONE = ZoneId.of("Asia/Tokyo");
+incident/service/IncidentSlaBatchService.java:189                 ZonedDateTime.now(ZoneId.of("Asia/Tokyo"))
+incident/service/MaintenanceScheduleService.java:309              ZonedDateTime.now(ZoneId.of("Asia/Tokyo"))
+membership/service/MembershipStatsQueryService.java:35             private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 notification/confirmable/dto/ConfirmableNotificationCreateRequest.java:22  private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-notification/service/NotificationService.java:228                 snoozedUntil.atZoneSameInstant(ZoneId.of("Asia/Tokyo"))
-onboarding/service/OnboardingReminderBatchService.java:48          LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
-quickmemo/service/QuickMemoReminderBatchService.java:41            private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-quickmemo/service/QuickMemoService.java:39                         private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-quickmemo/service/UserQuickMemoSettingsService.java:39              private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-reflection/service/RecallService.java:35,109                       DEFAULT_ZONE固定 + ユーザーTZ動的解決
-reflection/service/ReflectionEntryService.java:41,311               同上
-reflection/service/ReflectionSpacedReminderService.java:43,44,244   STORAGE_ZONE/FALLBACK固定 + ユーザーTZ動的解決
-reflection/service/ReflectionTodayService.java:51,285                同上
+notification/service/NotificationService.java:228                  snoozedUntil.atZoneSameInstant(ZoneId.of("Asia/Tokyo"))
+onboarding/service/OnboardingReminderBatchService.java:48           LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
+quickmemo/service/QuickMemoReminderBatchService.java:41             private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
+quickmemo/service/QuickMemoService.java:39                          private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+quickmemo/service/UserQuickMemoSettingsService.java:39               private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+reflection/service/RecallService.java:35                            private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");（フォールバック用）
+reflection/service/ReflectionEntryService.java:41                   private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");（フォールバック用）
+reflection/service/ReflectionSpacedReminderService.java:43,44        STORAGE_ZONE / ZONE_FALLBACK ×2（フォールバック用）
+reflection/service/ReflectionTodayService.java:51                   private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");（フォールバック用）
 repairplan/batch/TeamMemberTermDemoteBatch.java:48                  LocalDate.now(java.time.ZoneId.of("Asia/Tokyo"))
 repairplan/batch/TeamMemberTermReminderBatch.java:49                LocalDate.now(java.time.ZoneId.of("Asia/Tokyo"))
 reservation/service/ReservationAdminAlertQueryService.java:31       private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
@@ -220,28 +221,56 @@ resume/service/ResumeExportService.java:209                         OffsetDateTi
 shift/service/ShiftAutoArchiveBatchService.java:48                  LocalDate.now(ZoneId.of("Asia/Tokyo")).minusDays(...)
 shift/service/ShiftCleanupBatchService.java:48,89                   LocalDateTime.now(ZoneId.of("Asia/Tokyo")) ×2
 shift/service/ShiftPreferenceReminderBatchService.java:73            LocalDateTime.now(ZoneId.of("Asia/Tokyo"))
-todo/batch/TodoDueReminderBatch.java:90,252                          FALLBACK_ZONE固定 + ユーザーTZ動的解決
+todo/batch/TodoDueReminderBatch.java:90                              private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");（フォールバック用）
 ```
 
-**件数**: 定義・使用箇所を1行1件として数え、**53件**（上記リストの行数。同一ファイル内の複数箇所は別カウント）。ドメイン数では**約30ドメイン**にまたがる。
+**件数（訂正）**: **48ファイル・51箇所**（リテラル `"Asia/Tokyo"` の直書きのみを対象とし、`ZoneId.of(変数)` のような動的解決呼び出しは含めない）。ドメイン数では約26ドメインにまたがる。この48ファイル・51箇所は殿の実測値と一致している。
+
+**除外した箇所（参考・別カテゴリ）**: 以下は「JST固定直書き」ではなく、**動的にユーザー/テナントのTZ文字列を解決する呼び出し**であり、性質が逆（テナントTZ対応の先例）のため上記件数から除外した。
+- `ZoneId.of(tz)` / `ZoneId.of(timezoneStr)` / `ZoneId.of(userTimezoneCache.getTimezone(userId))` 等: `ActionMemoReminderBatchService.java:195`、`AdFrequencyCapService.java:250`、`LoginActivityQueryService.java:207`、`RecallService.java:109`、`ReflectionEntryService.java:311`、`ReflectionSpacedReminderService.java:244`、`ReflectionTodayService.java:285`、`TodoDueReminderBatch.java:252`、`UserTimezoneFilter.java:163`、`DigestConfigService.java:166`（バリデーション用途）
+- コメント中の `ZoneId.of()` への言及のみ（コードとしての呼び出しではない）: `common/validation/ValidTimezone.java:18`、`common/validation/TimezoneValidator.java:16`
+- `ZoneId.of("UTC")` （JSTではなくUTCの明示指定）: `ActionMemoReminderBatchService.java:67`、`ScopeWidgetSummaryService.java:173`（フォールバックのみ）
 
 **パターンの分類（事実）**:
 1. **完全固定型**（フォールバックもJST固定、動的解決なし）: `AdminBusinessAlertService` / `AdDailyStatsAggregationBatchService` / `DateRangeResolver` / `MonthlyCohortBatchService` 系 / `IncidentSlaBatchService` / `MembershipStatsQueryService` / `QuickMemoService` 系 / `repairplan` バッチ2件 / `reservation` の2件 / `ResumeExportService` / `shift` バッチ3件 など。テナントTZが導入されても**個別に書き換えないと反映されない**。
-2. **ユーザーTZ動的解決＋JSTフォールバック型**（`ZoneId.of(userTimezoneCache.getTimezone(userId))` 等）: `actionmemo`, `advertising/AdFrequencyCapService`, `billing/LoginActivityQueryService`, `reflection` 全4サービス, `todo/TodoDueReminderBatch`。**既に `users.timezone`（個人TZ）を使う基盤が一部ドメインで実装済み**であることを示す（後述D章の論点に直結する事実）。
-3. **共通基盤で明示的にJST固定**: `common/timezone/UserTimezoneFilter.java` / `UserZoneLocalDateTimeParser.java` — コメントに「なぜ `ZoneId.of("UTC")` ではないのか」という設計意図の記述がある（`UserTimezoneFilter.java:87`）。この共通基盤の詳細な設計意図・利用範囲は本調査では深掘りしていない（**未調査**、D章の論点に関わる）。
+2. **ユーザーTZ動的解決＋JSTフォールバック型**（上記「除外した箇所」参照）: `actionmemo`, `advertising/AdFrequencyCapService`, `billing/LoginActivityQueryService`, `reflection` 全4サービス, `todo/TodoDueReminderBatch`。**既に `users.timezone`（個人TZ）を使う基盤が一部ドメインで実装済み**であることを示す（D-1で詳述）。
+3. **共通基盤で明示的にJST固定**: `common/timezone/UserTimezoneFilter.java` / `UserZoneLocalDateTimeParser.java` — この共通基盤を D-1 で読み込んで詳述する。
 
 ---
 
 ## D. 設計上の論点整理（結論は出さない）
 
+### D-0. 既存の共通基盤 `common/timezone/`（今回読み込んで判明した事実）
+
+殿の指摘を受けて `common/timezone/UserTimezoneFilter.java` と `common/timezone/UserZoneLocalDateTimeParser.java` を全文読み込んだ。テナントTZ導入は**この既存基盤の上に乗るはずであり、これを知らずに設計すると車輪の再発明・二重実装になる**。以下、この基盤が「何を解決していて、何を解決していないか」を明記する。
+
+**構成要素（事実）**:
+1. `TimezoneContextHolder`（本調査では未読だが、両クラスから参照される保持先。**未調査**）— リクエストスレッドローカルに「解決済みZoneId」を保持する。
+2. `UserTimezoneFilter`（`OncePerRequestFilter`、`@Order(LOWEST_PRECEDENCE - 9)`）— リクエストごとに、認証済みユーザーの `users.timezone`（`UserTimezoneCache` 経由、TTL5分）を読み、`TimezoneContextHolder` に「解決済みの印」付きでセットする。未ログイン・キャッシュ未使用時（`@WebMvcTest` スライス等）は `ZoneOffset.UTC` を「未解決の印」で積む。不正なTZ文字列は `Asia/Tokyo` にフォールバック。
+3. `UserZoneLocalDateTimeParser`（static utility）— クライアントから届く日時文字列（リクエストボディ・クエリパラメータの両経路）を、**サーバー保持形式（`Asia/Tokyo` の壁時計 `LocalDateTime`、定数 `SERVER_ZONE`）へ正規化して解釈する**共通パーサ。
+   - オフセット付き入力（`+09:00`/`Z` 等）: 瞬間が確定しているので `SERVER_ZONE`（Asia/Tokyo）の壁時計へ変換。
+   - オフセット無し入力＋ユーザーTZが解決済み: そのユーザーTZの壁時計として解釈した上で `SERVER_ZONE` へ変換。
+   - オフセット無し入力＋未解決（未認証・バッチスレッド）: `SERVER_ZONE`（Asia/Tokyo）の壁時計としてそのまま解釈（恒等変換）。
+   - 夏時間（DST）のgap/overlapはJDK既定規則にそのまま従う（独自補正なし、意図的な設計判断とjavadocに明記）。
+   - 値域超過（`+999999999-12-31...` 等）は `DateTimeException`/`ArithmeticException` を `DateTimeParseException` に正規化し、呼び出し側の400応答経路に合流させる。
+
+**この基盤が解決していること（事実）**:
+- **「入力（書き込み）時の解釈」を1箇所に集約**している。リクエストボディ（Jackson `LocalDateTimeTimezoneDeserializer`）とクエリパラメータ（Spring `ConversionService`）という2つの別経路が、同じ解釈規則（`UserZoneLocalDateTimeParser`）を共有する構造になっている（javadocに「片方だけ直る／片方だけ壊れる事故を構造的に防ぐ」と明記）。
+- ユーザー個人のTZ（`users.timezone`）を使って、クライアントが送るオフセット無し日時文字列を正しく解釈する仕組みは**既に存在する**。
+
+**この基盤が解決していないこと（事実）**:
+- **「読み出し（比較）時の `now()` 側」は関与しない。** `UserZoneLocalDateTimeParser` は入力文字列をサーバー保持形式（Asia/Tokyo固定）の `LocalDateTime` に変換するだけであり、B章で確認した `LocalDateTime.now()`（JVM既定ゾーン依存）とサーバー保持値を比較する箇所（`ScheduleAttendanceService.java:913` 等）の安全性は、この基盤の存在だけでは保証されない。JVM既定ゾーンが `Asia/Tokyo` と一致していることが暗黙の前提のままである。
+- **「テナント（チーム・組織）TZ」という概念は一切扱っていない。** 解決するのは常に「個人（`users.timezone`）」のみであり、「店舗・チームが設定する営業時間・枠の日時をどのTZで解釈するか」という reservation/schedule の悩みには答えていない。全ての入力は最終的に単一の `SERVER_ZONE`（Asia/Tokyo 固定）に正規化される設計であり、**テナントごとに異なる正規化先を持つ余地は現状の実装には無い**（`SERVER_ZONE` は `public static final` の単一定数）。
+- `TimezoneContextHolder` の詳細な実装・スコープ（リクエストスレッド以外＝バッチスレッドでどう振る舞うか）は本調査では読み込んでいない（**未調査**）。
+
 ### D-1. 個人TZ（既存）と店舗TZ（新規検討）が並立した場合、どちらを使うべきか
 
-- 既に `users.timezone` を使った「個人TZ動的解決」パターンが `actionmemo`/`reflection`/`todo`/`billing`/`advertising` 等**複数ドメインで実装済み**（C章パターン2）。これらは「個人が見る通知・集計」を個人の生活時間で解釈する用途と推測される。
-- 一方 reservation の `slot_date`/`start_time` は「店舗（チーム）が設定する枠」であり、その枠を予約する利用者のTZではなく**店舗側のTZ**で解釈するのが業務上自然、という考え方があり得る（推測・要マスター判断）。
+- 既に `users.timezone` を使った「個人TZ動的解決」パターンが `actionmemo`/`reflection`/`todo`/`billing`/`advertising` 等**複数ドメインで実装済み**（C章パターン2）。加えて `common/timezone/` パッケージ（D-0）が、リクエスト入力の解釈という**より基盤的なレイヤーで個人TZを既に扱っている**。これらは「個人が見る通知・集計・入力」を個人の生活時間で解釈する用途と推測される。
+- 一方 reservation の `slot_date`/`start_time` は「店舗（チーム）が設定する枠」であり、その枠を予約する利用者のTZではなく**店舗側のTZ**で解釈するのが業務上自然、という考え方があり得る（推測・要マスター判断）。D-0で確認した通り、既存の `common/timezone/` 基盤は個人TZしか扱っておらず、店舗TZの概念を追加するならこの基盤とは別の解決経路（またはこの基盤の拡張）が必要になる。
 - 選択肢（列挙のみ）:
-  - (a) 判定対象ごとに「個人が見る値か」「店舗・チームが管理する値か」で個人TZ/店舗TZを使い分ける。
-  - (b) 個人TZに一本化し、店舗TZは導入しない（既存 `users.timezone` の適用範囲を reservation/schedule にも拡大）。
-  - (c) 店舗TZに一本化し、個人TZ側の実装（C章パターン2）も店舗TZ経由に将来的に寄せる。
+  - (a) 判定対象ごとに「個人が見る値か」「店舗・チームが管理する値か」で個人TZ/店舗TZを使い分ける。`common/timezone/` は個人TZ専用のまま残し、店舗TZは別の解決経路（例: `TeamTimezoneContextHolder` 相当）を新設する。
+  - (b) 個人TZに一本化し、店舗TZは導入しない（既存 `users.timezone` ＋ `common/timezone/` の適用範囲を reservation/schedule の該当箇所にも拡大）。
+  - (c) 店舗TZに一本化し、個人TZ側の実装（C章パターン2、および `common/timezone/` の `SERVER_ZONE` 正規化）も店舗TZ経由に将来的に寄せる。
 - 得失は本調査の範囲外（推測での記載は避ける）。
 
 ### D-2. `ClockConfig`（現状UTC単一Bean）の扱い
@@ -249,7 +278,7 @@ todo/batch/TodoDueReminderBatch.java:90,252                          FALLBACK_ZO
 - 選択肢:
   - (a) 現状維持（`utcClock` は瞬間のみを提供し、業務ローカル解釈は呼び出し側が個別に `withZone` する）。reservation の是正パターンがこれに該当。
   - (b) テナントTZ解決済みの `Clock` を都度生成するファクトリ/ヘルパーを共通化する（例: `ClockConfig` に `Clock forTenant(Long teamId)` のようなAPIを追加）。
-  - (c) `Clock` Bean 自体は変えず、`UserZoneLocalDateTimeParser`（既存の共通基盤）と同様の「テナントZone解決＋比較ヘルパー」を新設する。
+  - (c) `Clock` Bean 自体は変えず、`UserZoneLocalDateTimeParser`（D-0で詳述した既存の共通基盤）と同様の「テナントZone解決＋比較ヘルパー」を新設する。ただし D-0 の通り `UserZoneLocalDateTimeParser` は「入力解釈」専用であり「`now()` との比較」は扱っていないため、この選択肢を採る場合は新規に「比較用ヘルパー」を設計する必要がある（既存基盤の単純な流用では済まない）。
 - 各選択肢の得失（パフォーマンス、テスト容易性、既存の `LocalDateTime.now(clock)` 呼び出し箇所への影響範囲）は未検討。
 
 ### D-3. timezone を `teams` に持たせる場合と `organizations` に持たせる場合の得失
@@ -271,14 +300,22 @@ todo/batch/TodoDueReminderBatch.java:90,252                          FALLBACK_ZO
 
 ## 付録: 未調査・判断に迷った点の一覧
 
-1. **本番/CI環境のJVM既定タイムゾーン設定が何か**（`TZ` 環境変数、Dockerイメージのタイムゾーン設定、Spring Boot起動オプション等）を実測していない。schedule ドメインのコメントは「JVM既定ゾーン=JST」を前提にしているが、これが実態と一致しているかは未確認。もし本番が実は UTC 稼働なら、schedule ドメインの締切判定は**現在進行形で壊れている**可能性がある（推測、要実測）。
+1. **本番/CI環境のJVM既定タイムゾーン設定が何か**（`TZ` 環境変数、Dockerイメージのタイムゾーン設定、Spring Boot起動オプション等）を実測していない。`ScheduleAttendanceService.java:913` の出欠締切判定は「JVM既定ゾーン=Asia/Tokyo」に暗黙依存しているが、これが実態と一致しているかは未確認。もし本番が実は UTC 稼働なら、この締切判定は**現在進行形で壊れている**可能性がある（推測、要実測）。
 2. **170件のヒューリスティック候補ファイルのうち、reservation/schedule/ticket/parking/timetable/shift 以外の約150ファイル**は行レベルでの個別確認をしていない。「含む/含まない」の最終判定は保留（要精査のまま）。
 3. **候補抽出で漏れた可能性のあるファイル**（共起語検索に引っかからなかった約750ファイル）を再確認していない。命名規則から外れた業務ローカル判定（例: 変数名が `deadline` ではなく独自の言い回しのもの）を見落としている可能性がある。
-4. `common/timezone/UserTimezoneFilter.java` / `UserZoneLocalDateTimeParser.java` という共通基盤が既に存在し、リクエストスコープでのTZ解決の仕組みを持っていることが判明したが、この基盤がどのドメインでどう使われているか、reservation/schedule がなぜこの基盤を使っていないのかは深掘りしていない。
+4. `common/timezone/` の `TimezoneContextHolder`（`UserTimezoneFilter`/`UserZoneLocalDateTimeParser` から参照される保持先）自体の実装・バッチスレッドでの振る舞いは読み込んでいない。また、この基盤が reservation/schedule ドメインで実際に使われているか（使われていないなら理由は何か）は未確認。
 5. `ReservationPendingExpireService.java` のjavadocコメントに残る「未修正」という記述と実コードの状態（既に修正済み）の食い違いの原因（コメント更新漏れか、別のリファクタで再度直したのか）は特定していない。
 6. `JapanGuardianshipAgePolicy.java` のJST固定は「国別ポリシー」という性質上、意図的な固定である可能性があるが、この判断はドメイン知識を要するため本調査では踏み込んでいない。
 7. FE側（`useDatetime.ts` 以外の箇所でTZに依存する処理があるか）は前提事実の確認のみで、再調査していない。
+8. **（訂正で新たに生じた未確認事項）** `ScheduleReminderService.java:243` と `ScheduleScheduledTaskBatchService.java:95` を「要精査」としたが、`remind_at`/`scheduledAt` が A-1基準1（DATE/TIME型の業務ローカル値）に厳密に該当するかどうかの最終判断はしていない。「利用者が指定した任意の絶対時刻」と「業務が設定する暦日値」の境界線をどこに引くかは、A章の判定基準そのものの解釈に関わるため、マスター判断を仰ぐべき論点として残す。
 
 ---
+
+## 訂正履歴
+
+- **2026-08-09（初版公開後の同日訂正）**: 殿の実測指摘を受け、以下を修正した。
+  1. schedule ドメインの判定を「含む・12件相当」から「確定1件（`ScheduleAttendanceService.java:913`）＋要精査2件」に下方修正（B-2, B-1, B-5）。誤りの原因は、コメント中の「JST」という記述のみを根拠に判定してしまい、実際の比較相手（DATE/TIME型か、外部API絶対時刻か、監査タイムスタンプか）を1行ずつ確認していなかったこと。
+  2. C章の固定JST直書き件数を「53件」から「48ファイル・51箇所」に訂正。`ZoneId.of("Asia/Tokyo")` のリテラル直書きと `ZoneId.of(変数)` の動的解決呼び出しを混同していたことが原因。
+  3. `common/timezone/UserTimezoneFilter.java` / `UserZoneLocalDateTimeParser.java` を全文読み込み、D-0として新設し、この基盤が「個人TZの入力解釈」を解決している一方「テナントTZ」「`now()` 側の比較」は解決していないことを明記した。
 
 以上。
