@@ -3,7 +3,6 @@ package com.mannschaft.app.recruitment.repository;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -59,17 +58,29 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
     List<RecruitmentUserPenaltyEntity> findExpiredPenalties(@Param("now") LocalDateTime now);
 
     /**
-     * アクティブペナルティをチャンク単位で取得する（バッチ処理用）。
-     * アクティブ条件: liftedAt IS NULL かつ expiresAt が now より未来。
+     * アクティブペナルティを <b>キーセットページング</b>（{@code id > cursor}）で id 昇順に取得する
+     * （再計算バッチ用）。
+     *
+     * <p>このバッチはループ内で解除条件を満たした行の {@code liftedAt} をセットするため、
+     * その行は次回の絞り込み（{@code liftedAt IS NULL}）から外れる。OFFSET ページングで
+     * 「取得済み件数ぶん進める」方式にすると、母集合が縮んだ分だけ後続の行が
+     * OFFSET の網から漏れて読み飛ばされる（解除すべきペナルティが解除されないまま残る）。
+     * カーソルを直前チャンクの最終 {@code id} まで前進させることで、この読み飛ばしを防ぐ。</p>
+     *
+     * @param now      現在日時
+     * @param cursor   直前チャンクの最終 ID（初回は 0）
+     * @param pageable ページング情報（サイズのみ使用。ソートは本クエリで固定）
      */
     @Query("""
             SELECT p FROM RecruitmentUserPenaltyEntity p
             WHERE p.liftedAt IS NULL
               AND p.expiresAt > :now
+              AND p.id > :cursor
             ORDER BY p.id ASC
             """)
-    Page<RecruitmentUserPenaltyEntity> findActivePenaltiesPage(
+    List<RecruitmentUserPenaltyEntity> findActivePenaltiesAfterId(
             @Param("now") LocalDateTime now,
+            @Param("cursor") Long cursor,
             Pageable pageable);
 
     /** ユーザーの全ペナルティ履歴（マイページ用）。 */
