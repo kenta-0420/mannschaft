@@ -1,6 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
@@ -64,14 +64,14 @@ class ReservationPendingExpireServiceClockZoneTest {
     @Mock
     private NotificationHelper notificationHelper;
     @Mock
-    private UserRepository userRepository;
+    private UserLocaleCache userLocaleCache;
     @Mock
     private MessageSource messageSource;
 
     private ReservationPendingExpireService serviceWith(Clock clock) {
         return new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
-                userRepository, messageSource, clock);
+                userLocaleCache, messageSource, clock);
     }
 
     private void stubEmptyResult() {
@@ -112,7 +112,7 @@ class ReservationPendingExpireServiceClockZoneTest {
     void 取得上限がクエリへ渡る() {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
-                userRepository, messageSource,
+                userLocaleCache, messageSource,
                 Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
         given(reservationRepository.findExpirablePendingPrimaryRows(
                 eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), any(Pageable.class)))
@@ -134,7 +134,7 @@ class ReservationPendingExpireServiceClockZoneTest {
     void 既定時間がクエリへ渡る() {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
-                userRepository, messageSource,
+                userLocaleCache, messageSource,
                 Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
         given(reservationRepository.findExpirablePendingPrimaryRows(
                 eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), any(Pageable.class)))

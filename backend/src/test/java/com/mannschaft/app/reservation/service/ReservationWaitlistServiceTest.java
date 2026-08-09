@@ -1,8 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -42,7 +41,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -78,7 +76,7 @@ class ReservationWaitlistServiceTest {
     @Mock
     private NotificationHelper notificationHelper;
     @Mock
-    private UserRepository userRepository;
+    private UserLocaleCache userLocaleCache;
 
     /** 実プロパティファイル（messages*.properties）を読む実体（i18n の locale 分岐を実データで検証するため）。 */
     private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
@@ -96,9 +94,11 @@ class ReservationWaitlistServiceTest {
 
     @BeforeEach
     void setUp() {
+        // 既定 locale は ja（未スタブのテストで NPE にならないよう lenient で用意）。
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         service = new ReservationWaitlistService(
                 waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
-                userRepository, messageSource, clock);
+                userLocaleCache, messageSource, clock);
     }
 
     /**
@@ -108,7 +108,7 @@ class ReservationWaitlistServiceTest {
     private void reinitServiceWithClock(Clock injectedClock) {
         service = new ReservationWaitlistService(
                 waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
-                userRepository, messageSource, injectedClock);
+                userLocaleCache, messageSource, injectedClock);
     }
 
     private ReservationSlotEntity slot(SlotStatus status) {
@@ -401,11 +401,8 @@ class ReservationWaitlistServiceTest {
                 .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING).build();
         when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING))
                 .thenReturn(List.of(jaEntry, enEntry));
-        UserEntity jaUser = UserEntity.builder().locale("ja").build();
-        org.springframework.test.util.ReflectionTestUtils.setField(jaUser, "id", 901L);
-        UserEntity enUser = UserEntity.builder().locale("en").build();
-        org.springframework.test.util.ReflectionTestUtils.setField(enUser, "id", 902L);
-        when(userRepository.findByIdIn(anySet())).thenReturn(List.of(jaUser, enUser));
+        when(userLocaleCache.getLocale(901L)).thenReturn("ja");
+        when(userLocaleCache.getLocale(902L)).thenReturn("en");
 
         service.notifySlotReopened(TEAM_ID, SLOT_ID);
 

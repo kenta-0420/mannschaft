@@ -1,8 +1,7 @@
 package com.mannschaft.app.reservation.event;
 
 import com.mannschaft.app.admin.service.AdminBusinessAlertService;
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -16,11 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.time.Locale;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 /**
  * 予約関連イベントに対する管理者通知リスナー（F10.7 業務アラート用）。
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
 public class ReservationAdminNotificationEventListener {
 
     private final UserRoleRepository userRoleRepository;
-    private final UserRepository userRepository;
+    private final UserLocaleCache userLocaleCache;
     private final NotificationService notificationService;
     private final AdminBusinessAlertService adminBusinessAlertService;
     private final MessageSource messageSource;
@@ -48,8 +45,6 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCreated(ReservationCreatedEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
-        Map<Long, UserEntity> userMap = userRepository.findByIdIn(recipientIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, u -> u));
 
         boolean pendingApproval = event.getApprovalMode() == ApprovalMode.MANUAL;
         String notificationType = pendingApproval ? "RESERVATION_PENDING_APPROVAL" : "RESERVATION_RECEIVED";
@@ -66,7 +61,7 @@ public class ReservationAdminNotificationEventListener {
                 continue; // 自己通知スキップ
             }
             try {
-                Locale locale = resolveLocale(userMap.get(recipientId));
+                Locale locale = resolveLocale(recipientId);
                 String title = messageSource.getMessage(titleKey, null, defaultTitle, locale);
                 String body = messageSource.getMessage(
                         bodyKey,
@@ -104,15 +99,13 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelledByMember(ReservationCancelledByMemberEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
-        Map<Long, UserEntity> userMap = userRepository.findByIdIn(recipientIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, u -> u));
 
         for (Long recipientId : recipientIds) {
             if (recipientId.equals(event.getActorUserId())) {
                 continue;
             }
             try {
-                Locale locale = resolveLocale(userMap.get(recipientId));
+                Locale locale = resolveLocale(recipientId);
                 String title = messageSource.getMessage(
                         "notification.reservation.admin.cancelledByMember.title", null,
                         "予約がキャンセルされました", locale);
@@ -157,9 +150,11 @@ public class ReservationAdminNotificationEventListener {
         return recipients.stream().distinct().toList();
     }
 
-    /** 受信者ユーザーの locale を解決する（未解決/未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
-    private Locale resolveLocale(UserEntity user) {
-        String locale = (user == null) ? null : user.getLocale();
-        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
+    /**
+     * 受信者ユーザーの locale を解決する（{@link UserLocaleCache} 経由。D-5: 予約ドメインから
+     * auth ドメインのリポジトリへ直接依存しない・{@code common.i18n} 配下の共有サービス経由に限定する）。
+     */
+    private Locale resolveLocale(Long userId) {
+        return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
 }

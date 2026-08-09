@@ -1,8 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -27,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.Locale;
+import java.util.Locale;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +70,7 @@ public class ReservationWaitlistService {
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ValkeyRateLimiter rateLimiter;
     private final NotificationHelper notificationHelper;
-    private final UserRepository userRepository;
+    private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
     private final Clock clock;
 
@@ -288,13 +287,6 @@ public class ReservationWaitlistService {
         LocalDateTime suppressBefore = now.minus(RENOTIFY_SUPPRESSION);
         String actionUrl = "/teams/" + teamId + "/reservations";
 
-        // 受信者ごとに locale が異なりうるため一括取得する（N+1 回避・GuardianshipProgressionNoticeBatchService と同型）。
-        Set<Long> recipientIds = waiting.stream()
-                .map(ReservationWaitlistEntryEntity::getUserId)
-                .collect(Collectors.toSet());
-        Map<Long, UserEntity> userMap = userRepository.findByIdIn(recipientIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, u -> u));
-
         int notified = 0;
         for (ReservationWaitlistEntryEntity entry : waiting) {
             // 再通知抑制: 直近 60 分以内に通知済みならスキップ。
@@ -302,7 +294,9 @@ public class ReservationWaitlistService {
                 continue;
             }
             try {
-                Locale locale = resolveLocale(userMap.get(entry.getUserId()));
+                // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
+                // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
+                Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(entry.getUserId()));
                 String slotTitle = slot.getTitle() != null ? slot.getTitle()
                         : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
                 String title = messageSource.getMessage(
@@ -364,12 +358,6 @@ public class ReservationWaitlistService {
     // ────────────────────────────────────────────────────────────
     // 内部ヘルパー
     // ────────────────────────────────────────────────────────────
-
-    /** 受信者ユーザーの locale を解決する（未解決/未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
-    private Locale resolveLocale(UserEntity user) {
-        String locale = (user == null) ? null : user.getLocale();
-        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
-    }
 
     private WaitlistEntryResponse toResponse(ReservationWaitlistEntryEntity entry, ReservationSlotEntity slot) {
         WaitlistEntryResponse.WaitlistEntryResponseBuilder builder = WaitlistEntryResponse.builder()

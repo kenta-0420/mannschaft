@@ -1,6 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
@@ -62,8 +62,8 @@ class ReservationReminderDispatchBatchServiceContextTest {
         }
 
         @Bean
-        UserRepository userRepository() {
-            return Mockito.mock(UserRepository.class);
+        UserLocaleCache userLocaleCache() {
+            return Mockito.mock(UserLocaleCache.class);
         }
 
         @Bean
@@ -78,11 +78,11 @@ class ReservationReminderDispatchBatchServiceContextTest {
                 ReservationRepository reservationRepository,
                 ReservationSlotRepository slotRepository,
                 NotificationHelper notificationHelper,
-                UserRepository userRepository,
+                UserLocaleCache userLocaleCache,
                 MessageSource messageSource) {
             return new ReservationReminderDispatchBatchService(
                     reminderService, reminderRepository, reservationRepository,
-                    slotRepository, notificationHelper, userRepository, messageSource);
+                    slotRepository, notificationHelper, userLocaleCache, messageSource);
         }
     }
 

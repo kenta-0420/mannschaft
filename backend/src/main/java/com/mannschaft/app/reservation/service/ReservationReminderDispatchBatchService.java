@@ -1,8 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -20,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.Locale;
+import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,7 @@ public class ReservationReminderDispatchBatchService {
     private final ReservationRepository reservationRepository;
     private final ReservationSlotRepository slotRepository;
     private final NotificationHelper notificationHelper;
-    private final UserRepository userRepository;
+    private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
     /**
@@ -185,9 +184,11 @@ public class ReservationReminderDispatchBatchService {
                 reservation.getId(), reservation.getUserId(), slotStartAt);
     }
 
-    /** 受信者ユーザーの locale を解決する（未設定は ja・{@code GuardianshipProgressionNoticeBatchService} と同型）。 */
+    /**
+     * 受信者ユーザーの locale を解決する（{@link UserLocaleCache} 経由。D-5: 予約ドメインから
+     * auth ドメインのリポジトリへ直接依存しない・{@code common.i18n} 配下の共有サービス経由に限定する）。
+     */
     private Locale resolveLocale(Long userId) {
-        String locale = userRepository.findById(userId).map(UserEntity::getLocale).orElse(null);
-        return (locale == null || locale.isBlank()) ? Locale.JAPANESE : Locale.forLanguageTag(locale);
+        return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
 }
