@@ -33,6 +33,12 @@ import java.lang.annotation.Target;
  * 機械的に突き合わせられる。パス定義を変更・削除した際は本注釈の根拠が失効するため、
  * 必ず併せて見直すこと。</p>
  *
+ * <p><b>特定パスの {@code requestMatcher} を持たないエンドポイント（deny-by-default の
+ * {@code .anyRequest().authenticated()} フォールバックのみで保護されている場合）</b>:
+ * この場合は {@link #value()} に sentinel 文字列 {@code "anyRequest().authenticated()"}
+ * （実際の決定に応じて {@code .hasRole(...)} 等でも可）をそのまま列挙すること。
+ * 番人はこの sentinel を {@code SecurityConfig} の {@code .anyRequest()} 宣言と突き合わせて検証する。</p>
+ *
  * <p><b>{@link AuthorizedInService} との使い分け</b>: 「Service 内で認可済み」を意味する
  * {@link AuthorizedInService} を、実際には SecurityConfig のパス認可で守られているだけの
  * エンドポイントへ貼ると<b>誤った証跡</b>となり、後年の監査で認可の実在箇所を見失う。

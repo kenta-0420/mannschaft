@@ -156,6 +156,9 @@ final class SecurityConfigRules {
                 ".authenticated()", ".denyAll()", ".anonymous()",
         };
 
+        /** {@code .anyRequest()}（deny-by-default フォールバック）を申告するための sentinel 文字列。 */
+        static final String ANY_REQUEST_SENTINEL_PREFIX = "anyRequest()";
+
         /** permitAll されているパターン。 */
         final Set<String> permitAll = new LinkedHashSet<>();
         /** permitAll 以外で登場するパターン → その判断（診断メッセージ用）。 */
@@ -196,6 +199,32 @@ final class SecurityConfigRules {
                     } else if (decision != null) {
                         rules.other.putIfAbsent(literal, decision.replace("(", "").replace(")", ""));
                         rules.anyDecision.add(literal);
+                    }
+                }
+            }
+
+            // deny-by-default の .anyRequest() フォールバック（特定パスの requestMatcher を持たない
+            // エンドポイント向け）。sentinel 文字列 "anyRequest().<decision>" として anyDecision へ
+            // 登録する。これにより、パス固有の requestMatcher が存在しないが SecurityConfig の
+            // deny-by-default で保護されているエンドポイントも、@AuthorizedByPathConfig が
+            // "anyRequest().authenticated()" 等の sentinel を申告することで検証可能になる。
+            int anyReqAt = code.indexOf(".anyRequest()");
+            if (anyReqAt >= 0) {
+                int i = anyReqAt + ".anyRequest()".length();
+                while (i < code.length() && Character.isWhitespace(code.charAt(i))) {
+                    i++;
+                }
+                String rest = code.substring(i);
+                for (String d : DECISIONS) {
+                    if (rest.startsWith(d)) {
+                        String sentinel = ANY_REQUEST_SENTINEL_PREFIX + d;
+                        if (".permitAll()".equals(d)) {
+                            rules.permitAll.add(sentinel);
+                        } else {
+                            rules.other.putIfAbsent(sentinel, d.replace("(", "").replace(")", ""));
+                        }
+                        rules.anyDecision.add(sentinel);
+                        break;
                     }
                 }
             }
