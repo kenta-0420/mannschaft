@@ -71,3 +71,10 @@ jobs:
         run: npm run typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+
+      # ユニットテスト（Issue #2609 後続）。ワーカー過剰供給是正のため
+      # vitest.config.ts の maxWorkers はコア数8未満（本ランナーは2〜4コア）
+      # では未指定（vitest既定）のまま動くため、typecheck と同様の
+      # メモリ配慮は不要（多コア機のみで踏む問題のため）。
+      - name: Unit test (vitest)
+        run: npm run test:unit
