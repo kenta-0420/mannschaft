@@ -89,63 +89,9 @@ final class SecurityConfigRules {
      * @param keepStrings true なら文字列リテラルの中身を残す。false なら文字列も空白化する。
      */
     static String blankOutCommentsAndStrings(String s, boolean keepStrings) {
-        StringBuilder out = new StringBuilder(s.length());
-        int i = 0;
-        int n = s.length();
-        while (i < n) {
-            char c = s.charAt(i);
-            if (c == '"') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '"') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i, keepStrings);
-                continue;
-            }
-            if (c == '\'') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '\'') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '/') {
-                int start = i;
-                while (i < n && s.charAt(i) != '\n') {
-                    i++;
-                }
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '*') {
-                int start = i;
-                int end = s.indexOf("*/", i + 2);
-                i = (end < 0) ? n : end + 2;
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            out.append(c);
-            i++;
-        }
-        return out.toString();
-    }
-
-    private static void appendMasked(StringBuilder out, String s, int start, int end, boolean keep) {
-        for (int k = start; k < end; k++) {
-            char ch = s.charAt(k);
-            out.append(keep || ch == '\n' ? ch : (ch == '\r' ? ch : ' '));
-        }
+        return keepStrings
+            ? JavaSourceScanningUtils.maskCommentsOnly(s)
+            : JavaSourceScanningUtils.maskCommentsAndLiterals(s);
     }
 
     /** SecurityConfig から抽出した matcher パターン → 認可判断。 */
