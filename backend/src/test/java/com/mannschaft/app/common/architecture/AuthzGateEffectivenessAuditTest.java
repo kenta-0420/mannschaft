@@ -193,6 +193,7 @@ class AuthzGateEffectivenessAuditTest {
      * <p>いずれも「呼び出し元（Controller）に門番が在る」ことを個別に確認済み。
      * ただし引数が死んでいる事実は防御多重化の欠落であり、返済対象として台帳
      * {@code .claude/campaigns/2026-07-10-authz-idor-audit.md} に残す。
+     * {@code CareLinkService} の 2 件は PR #2547 で是正済みのため本 baseline から除いてある。
      */
     private static final Set<String> TYPE1_REVIEWED = Set.of(
         // 門番は EventRollCallController の requireScopeAdmin(operator, TEAM, teamId, eventId)。
@@ -200,10 +201,6 @@ class AuthzGateEffectivenessAuditTest {
         "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:150:teamId",
         // 門番は EventRsvpController の requireScopeMember(userId, TEAM, teamId, eventId)。
         "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:303:teamId",
-        // PR #2547 で是正済み。main 着地後に本 2 エントリを削除すること
-        // （raw 検出から消えるため、残しても無害だが陳腐化した baseline は掃除する）。
-        "src/main/java/com/mannschaft/app/family/service/CareLinkService.java:141:currentUserId",
-        "src/main/java/com/mannschaft/app/family/service/CareLinkService.java:160:currentUserId",
         // 門番は各 *ProfileMediaController の checkAdminOrAbove / 自己スコープ突合。
         "src/main/java/com/mannschaft/app/profile/service/ProfileMediaService.java:232:requestUserId",
         // 認可をキャッシュの外側へ出した設計。userId はキャッシュキー専用と javadoc に明記済み。
