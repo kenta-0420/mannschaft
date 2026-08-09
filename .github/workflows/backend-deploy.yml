@@ -31,6 +31,58 @@
 #
 #   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
 # =============================================================================
+#
+# 2026-08-09: main の Backend CI が一度も完走していなかった問題を根治。
+#
+#   [実測した症状]
+#   直近8回の実行中 7回が cancelled、1回のみ完走したがその結果は
+#   `BUILD FAILED in 4h 14m 3s`（21158 tests completed, 27 failed）。
+#   つまり main のどのコミットも「テストが最後まで通った」実績が存在しなかった。
+#
+#   [特定した原因（2つが複合）]
+#   (1) 旧来はワークフロー全体を単一の concurrency group
+#       `backend-deploy-${{ github.ref }}` + cancel-in-progress: true で
+#       束ねていた。main は頻繁にマージされるため、次の push が来るたびに
+#       「デプロイ中の古いコミットを打ち切る」つもりが「検証中の test job」も
+#       道連れで打ち切っていた（7/8 cancelled の主因）。
+#   (2) test job が backend-ci.yml（PR側）のような shard 分割をしておらず、
+#       単一ジョブで全テストを直列実行していた。PR側は 6 shard で 26〜46 分に
+#       収まっているのに対し、main 側は無分割のため実測 4h14m（timeout-minutes
+#       未指定＝デフォルト6時間の枠にギリギリ収まっていただけ）。実行時間が
+#       長いほど「次の push に打ち切られる」確率も上がる悪循環だった。
+#
+#   [採った設計判断]
+#   - デプロイの cancel-in-progress: true 自体は正しい振る舞い（古いコミットを
+#     デプロイする意味はない）ので維持する。ただし対象を build-and-deploy job
+#     専用の concurrency group `backend-deploy-${{ github.ref }}` に限定し、
+#     test job 側は cancel されない別グループ
+#     `backend-main-test-${{ github.ref }}`（cancel-in-progress: false）に分離。
+#     test は打ち切られず、同一 ref への連続 push があってもキューイングされて
+#     必ず最後まで完走する。
+#   - test job は backend-ci.yml と同じ 6-shard 構成（matrix.shard 0..5 /
+#     -Pshard.total / -Pshard.index）に揃え、壁時計を 4h14m → 実測 26〜46 分
+#     （PR側と同条件）まで短縮。timeout-minutes: 60 を明示。
+#   - PR 側で strict up-to-date required check が効いており、main への
+#     マージ前には必ず backend-ci.yml の 6-shard フルテストが緑になっている
+#     ことが保証されている。そのため main 側の test job は「別コミットの
+#     組み合わせで初めて壊れる」ケース（semantic conflict 等）を拾うための
+#     二重検証と位置付け、PR側と同じ厳密さ（全 shard 完走必須）で構わない
+#     —— 省略や間引きは行わない。
+#   - build-and-deploy は needs: test のまま。GitHub Actions は matrix job を
+#     needs に指定すると needs.test.result が全 shard の集約結果になる
+#     （1つでも failure/cancelled なら 'failure'/'cancelled'）ため、追加の
+#     集約 gate job は不要（backend-ci.yml と異なり docs-only skip 分岐が
+#     無いためこの単純な形で足りる）。
+#
+#   [捨てた案とその理由]
+#   - timeout-minutes を単純に伸ばす／test を skip する／continue-on-error で
+#     緑に見せる: 対処療法であり禁止（症状を隠すだけで「打ち切られる」構造は
+#     残る。CLAUDE.md 障害対応の原則）。
+#   - main 側の test job 自体を廃止し PR CI の結果のみを信用する案: 「マージ
+#     直前は緑だったが、そのコミットが実際に main に乗った状態」を誰も検証
+#     しないことになり、CMP でも指摘されている「穴が入った瞬間を特定できない」
+#     問題を再発させるため却下。
+# =============================================================================
 
 name: Backend — Build, Test & Deploy
 
@@ -42,26 +94,35 @@ on:
       - "backend/**"
       - ".github/workflows/backend-deploy.yml"
 
-# Prevent concurrent deploys; cancel in-progress runs on the same branch
-concurrency:
-  group: backend-deploy-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   AWS_REGION: ap-northeast-1
   JAVA_VERSION: "21"
+  # PR側 backend-ci.yml と同じ shard 数に揃える（詳細な選定根拠は backend-ci.yml 末尾を参照）。
+  SHARD_TOTAL: "6"
 
 jobs:
   # ---------------------------------------------------------------------------
   # Job 1 — Run all tests (Testcontainers requires Docker)
+  #
+  # PR側 backend-ci.yml と同じ 6-shard 構成。concurrency group をデプロイと
+  # 分離し cancel-in-progress: false とすることで、後続 push があっても
+  # 打ち切られず必ず完走する（同一 ref への push はキューイングされる）。
   # ---------------------------------------------------------------------------
   test:
-    name: Test
+    name: Test (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: backend-main-test-${{ github.ref }}-shard-${{ matrix.shard }}
+      cancel-in-progress: false
     # Docker is available by default on ubuntu-latest — required for Testcontainers
     defaults:
       run:
         working-directory: ./backend
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
 
     steps:
       - name: Checkout source
@@ -78,10 +139,14 @@ jobs:
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
 
+      # このシャードに割り当てられたテストクラスのみ実行する（backend-ci.yml と同じ方式）。
       # Testcontainers pulls docker images on first run; the Docker daemon is
       # already running on ubuntu-latest so no additional setup is needed.
-      - name: Run tests
-        run: ./gradlew test --no-daemon --continue
+      - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        run: >-
+          ./gradlew test --no-daemon --continue
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+          -Pshard.index=${{ matrix.shard }}
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
@@ -90,17 +155,24 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: test-reports-shard-${{ matrix.shard }}
           path: build/reports/tests/
           retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Job 2 — Build Docker image, push to ECR, deploy to ECS
+  #
+  # concurrency group をデプロイ専用に限定。古いコミットのデプロイを新しい
+  # push が打ち切るのは正しい振る舞いなのでここだけ cancel-in-progress: true
+  # を維持する（test job は打ち切り対象から外れている）。
   # ---------------------------------------------------------------------------
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    needs: test  # only runs when test job succeeds
+    needs: test  # only runs when all test shards succeed（matrix needs は全 shard の集約結果）
+    concurrency:
+      group: backend-deploy-${{ github.ref }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: ./backend
