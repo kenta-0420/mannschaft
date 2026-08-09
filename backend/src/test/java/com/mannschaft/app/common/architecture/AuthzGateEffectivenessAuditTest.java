@@ -339,9 +339,17 @@ class AuthzGateEffectivenessAuditTest {
             || INDEPENDENT_GATE_EVIDENCE.matcher(after).find();
     }
 
-    /** 対象集合への実効フィルタ・不許可時の {@code throw} とみなす痕跡。 */
+    /**
+     * 対象集合への実効フィルタとみなす痕跡。
+     *
+     * <p>裸の {@code throw} は含めない。認可と無関係な入力検証・不在チェックの
+     * {@code throw} は通常のサービスメソッドにありふれており、これを証跡に含めると
+     * ほぼ全メソッドが免除対象になり番人が空洞化する。集合に対して実際に絞り込みが
+     * 効く形（{@code .filter}/{@code .anyMatch}/{@code .noneMatch}/{@code .removeIf}/
+     * {@code .takeWhile}）のみを証跡とする。</p>
+     */
     private static final Pattern INDEPENDENT_GATE_EVIDENCE = Pattern.compile(
-        "\\.(?:filter|anyMatch|noneMatch|removeIf|takeWhile)\\s*\\(|\\bthrow\\b");
+        "\\.(?:filter|anyMatch|noneMatch|removeIf|takeWhile)\\s*\\(");
 
     /**
      * {@code var} の {@code [from, to)} 区間内の全使用箇所を分類し、
@@ -1072,6 +1080,30 @@ class AuthzGateEffectivenessAuditTest {
                 """);
             assertTrue(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
                 "対象集合への実効フィルタが同一メソッド内に別途在れば表示ヒントとして許容されるべき");
+        }
+
+        @Test
+        @DisplayName("f3: 同一メソッド内に認可と無関係な throw のみが在る形 → 違反のまま（免除しない）")
+        void f3_無関係なthrowだけでは免除されない() {
+            Src resolver = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoUnrelatedThrowResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoUnrelatedThrowResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoUnrelatedThrowResolver(DemoAccessService s) { this.accessControlService = s; }
+                    Object resolve(Long id, Long userId) {
+                        if (id == null) {
+                            throw new IllegalArgumentException("id must not be null");
+                        }
+                        boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
+                        return new DemoMetaDto(id, "name", canEdit);
+                    }
+                }
+                """);
+            assertFalse(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
+                "認可と無関係な throw だけでは免除されず、引き続き違反として検出されるべき");
         }
 
         @Test
