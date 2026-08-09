@@ -104,6 +104,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long attackerId;   // 無関係な他ユーザー（越境元）
     private Long friendId;     // owner の連絡先に登録済みのユーザー
     private Long hiddenId;     // ハンドル検索を拒否しているユーザー
+    private Long visibleId;    // ハンドル検索を許可している無関係なユーザー（事前拒否の身元開示テスト用）
 
     private Long privateTeamId;   // owner のみが所属する非公開チーム
     private Long publicTeamId;    // 公開チーム
@@ -125,6 +126,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
         attackerId = insertUser("contactauthz-attacker-" + uniq + "@example.test", "atk-" + uniq, true);
         friendId = insertUser("contactauthz-friend-" + uniq + "@example.test", "frd-" + uniq, true);
         hiddenId = insertUser("contactauthz-hidden-" + uniq + "@example.test", "hdn-" + uniq, false);
+        visibleId = insertUser("contactauthz-visible-" + uniq + "@example.test", "vis-" + uniq, true);
 
         privateTeamId = insertTeam("CONTACTAUTHZ 非公開チーム", "cat-priv-" + uniq, "MEMBERS_AND_ABOVE");
         publicTeamId = insertTeam("CONTACTAUTHZ 公開チーム", "cat-pub-" + uniq, "PUBLIC");
@@ -711,6 +713,60 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
                     contactRequestRepository.findByRequesterIdAndTargetIdAndStatus(
                             attackerId, friendId, "PENDING").map(List::of).orElse(List.of());
             assertThat(sent).isNotEmpty();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 9. 事前拒否レスポンスの身元開示制御（@ハンドル検索と同一の可視性条件を共有）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. 事前拒否レスポンスの身元開示は@ハンドル検索と同一条件")
+    class RequestBlockIdentityDisclosure {
+
+        @Test
+        @DisplayName("ハンドル検索を拒否している相手を事前拒否に追加しても、応答に氏名等は含めない（識別子のみ）")
+        void 検索不可の相手は識別子のみ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + hiddenId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(hiddenId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").doesNotExist())
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").doesNotExist())
+                    .andExpect(jsonPath("$.data.blockedUser.avatarUrl").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("正常系: ハンドル検索を許可している相手を事前拒否に追加すると、応答に氏名等が含まれる")
+        void 検索可能な相手は身元が含まれる() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(visibleId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value("CONTACTAUTHZ テスト"))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(handleOf(visibleId)));
+        }
+
+        @Test
+        @DisplayName("一覧でも同じ条件が適用される（検索不可は識別子のみ・検索可能は身元あり）")
+        void 一覧でも同じ条件() throws Exception {
+            // owner は setUp で hiddenId を事前拒否済み。ここでは visibleId も追加で事前拒否する。
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated());
+
+            mockMvc.perform(get("/api/v1/contact-request-blocks"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + hiddenId + ")].blockedUser.fullName")
+                            .isEmpty())
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + visibleId + ")].blockedUser.fullName")
+                            .value(hasItem("CONTACTAUTHZ テスト")));
         }
     }
 

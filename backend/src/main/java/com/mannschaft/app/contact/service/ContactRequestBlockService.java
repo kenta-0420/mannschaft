@@ -28,6 +28,7 @@ public class ContactRequestBlockService {
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final UserRepository userRepository;
     private final MediaUrlResolver mediaUrlResolver;
+    private final ContactHandleService contactHandleService;
 
     /**
      * 事前拒否リストを取得する。
@@ -45,12 +46,7 @@ public class ContactRequestBlockService {
             UserEntity u = userMap.get(block.getBlockedId());
             return ContactRequestBlockResponse.builder()
                     .id(block.getId())
-                    .blockedUser(u != null ? ContactUserDto.builder()
-                            .id(u.getId())
-                            .fullName(u.getLastName() + " " + u.getFirstName())
-                            .contactHandle(u.getContactHandle())
-                            .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
-                            .build() : ContactUserDto.builder().id(block.getBlockedId()).build())
+                    .blockedUser(toVisibleUserDto(userId, u, block.getBlockedId()))
                     .createdAt(block.getCreatedAt())
                     .build();
         }).toList();
@@ -74,13 +70,25 @@ public class ContactRequestBlockService {
         UserEntity u = userRepository.findById(targetUserId).orElse(null);
         return ContactRequestBlockResponse.builder()
                 .id(saved.getId())
-                .blockedUser(u != null ? ContactUserDto.builder()
-                        .id(u.getId())
-                        .fullName(u.getLastName() + " " + u.getFirstName())
-                        .contactHandle(u.getContactHandle())
-                        .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
-                        .build() : ContactUserDto.builder().id(targetUserId).build())
+                .blockedUser(toVisibleUserDto(userId, u, targetUserId))
                 .createdAt(saved.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * 事前拒否対象ユーザーの身元情報を、要求者が閲覧資格を持つ場合に限定して DTO に詰める。
+     * 閲覧資格の判定は {@link ContactHandleService#isIdentityVisibleTo} と共有し、
+     * 資格がない・対象ユーザーが存在しない場合は識別子のみを返す。
+     */
+    private ContactUserDto toVisibleUserDto(Long viewerId, UserEntity u, Long fallbackId) {
+        if (u == null || !contactHandleService.isIdentityVisibleTo(viewerId, u)) {
+            return ContactUserDto.builder().id(fallbackId).build();
+        }
+        return ContactUserDto.builder()
+                .id(u.getId())
+                .fullName(u.getLastName() + " " + u.getFirstName())
+                .contactHandle(u.getContactHandle())
+                .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
                 .build();
     }
 
