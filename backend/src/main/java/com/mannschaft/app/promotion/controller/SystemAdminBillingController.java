@@ -23,14 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><b>根拠</b>:
  * 本クラスはクラスレベル @RequestMapping を持たず、唯一の Mapping メソッドが GET /api/v1/system-admin/promotion-billing
- * を直接宣言する。根拠は SecurityConfig.java:419 — requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
+ * を直接宣言する。根拠は SecurityConfig の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
  * </p>
  *
  * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
  * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
  * 失効するため、必ず併せて見直すこと。</p>
  */
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig("/api/v1/system-admin/**")
 @RestController
 @Tag(name = "プロモーション課金（SYSTEM_ADMIN）", description = "F09.2 課金状況一覧")
 @RequiredArgsConstructor

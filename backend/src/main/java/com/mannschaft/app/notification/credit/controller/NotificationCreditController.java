@@ -84,9 +84,9 @@ public class NotificationCreditController {
      *
      * @return パッケージレスポンスリスト
      */
-    // SecurityConfig.java:457 の anyRequest().authenticated() で認証必須。応答は販売中パッケージの
+    // SecurityConfig の anyRequest().authenticated() で認証必須。応答は販売中パッケージの
     // マスタ情報のみで、全認証済みユーザーに同一の結果を返す（利用者固有情報を含まない）。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/notification-credits/packages")
     @Operation(summary = "通知クレジットパッケージ一覧")
     public ResponseEntity<ApiResponse<List<NotificationCreditPackageResponse>>> listPackages() {
