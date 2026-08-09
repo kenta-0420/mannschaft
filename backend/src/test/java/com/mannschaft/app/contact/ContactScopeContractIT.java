@@ -32,8 +32,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -733,9 +735,9 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content("{\"targetUserId\":" + hiddenId + "}"))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.blockedUser.id").value(hiddenId.intValue()))
-                    .andExpect(jsonPath("$.data.blockedUser.fullName").doesNotExist())
-                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").doesNotExist())
-                    .andExpect(jsonPath("$.data.blockedUser.avatarUrl").doesNotExist());
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.avatarUrl").value(nullValue()));
         }
 
         @Test
@@ -761,12 +763,16 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content("{\"targetUserId\":" + visibleId + "}"))
                     .andExpect(status().isCreated());
 
+            // JSONPath のフィルタ式 [?(...)] は常に配列を返すため、「存在しない」系の
+            // アサーション（doesNotExist/isEmpty）では「該当要素が0件」なのか
+            // 「該当要素はあるがフィールド値が null」なのかを区別できない。
+            // ここでは配列の要素数と、その中身が null であることを明示的に検証する。
             mockMvc.perform(get("/api/v1/contact-request-blocks"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + hiddenId + ")].blockedUser.fullName")
-                            .isEmpty())
+                            .value(contains(nullValue())))
                     .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + visibleId + ")].blockedUser.fullName")
-                            .value(hasItem("CONTACTAUTHZ テスト")));
+                            .value(contains("CONTACTAUTHZ テスト")));
         }
     }
 
