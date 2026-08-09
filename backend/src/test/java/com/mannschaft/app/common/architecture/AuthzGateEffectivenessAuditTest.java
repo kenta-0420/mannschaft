@@ -230,7 +230,8 @@ class AuthzGateEffectivenessAuditTest {
     private static final Set<String> JAVA_KEYWORDS = Set.of(
         "extends", "implements", "throws", "return", "new", "instanceof", "public", "private",
         "protected", "static", "final", "abstract", "if", "for", "while", "switch", "catch",
-        "synchronized", "try", "else", "do", "case", "default", "this", "super");
+        "synchronized", "try", "else", "do", "case", "default", "this", "super",
+        "assert", "yield", "finally", "throw");
 
     // ═══════════════════════════════════════════════════════════════════════
     // 形② 呼びはするが応答を止めないゲート
@@ -754,8 +755,20 @@ class AuthzGateEffectivenessAuditTest {
         }
     }
 
+    /**
+     * メソッド宣言。
+     *
+     * <p>アクセス修飾子は<b>省略可能</b>とする（{@code (?:public|protected|private)\s+}
+     * を optional 化）。修飾子を必須にすると <b>package-private メソッドを一切認識できず</b>、
+     * その内側の違反（形①の死んだ引数・形②の書込を伴う DTO_SINK・形③の書込順序）が
+     * 丸ごと検出対象から漏れる（{@code enclosingMethod} が {@code null} を返し保守的に
+     * 対象外へ倒れるため）。修飾子省略で緩んだ分の誤検知（{@code new Xxx() { .. }} の
+     * 匿名クラス・{@code return f()}・{@code throw new X()}・{@code assert f()} 等、
+     * 「キーワード＋識別子＋(」の形）は、返り値型側のトークンが {@link #JAVA_KEYWORDS} に
+     * 含まれる場合に除外することで防ぐ。</p>
+     */
     private static final Pattern METHOD_DECL = Pattern.compile(
-        "(?:^|[;{}\\s])(?:public|protected|private)\\s+"
+        "(?:^|[;{}\\s])(?:(?:public|protected|private)\\s+)?"
             + "(?:static\\s+|final\\s+|synchronized\\s+|abstract\\s+|default\\s+|native\\s+)*"
             + "(?:<[^>{};]{0,120}>\\s*)?"
             + "([A-Za-z_$][\\w$.]*(?:\\s*<[^;{}]{0,200}>)?(?:\\s*\\[\\s*\\])*)\\s+"
@@ -765,9 +778,10 @@ class AuthzGateEffectivenessAuditTest {
         List<MethodDecl> out = new ArrayList<>();
         Matcher m = METHOD_DECL.matcher(masked);
         while (m.find()) {
+            String returnTypeToken = m.group(1);
             String name = m.group(2);
-            if (JAVA_KEYWORDS.contains(name)) {
-                continue;
+            if (JAVA_KEYWORDS.contains(name) || JAVA_KEYWORDS.contains(returnTypeToken)) {
+                continue; // 修飾子省略により拾いうる疑似宣言（new Xxx(){ / return f( / throw new X( 等）を除外
             }
             int open = masked.indexOf('(', m.end() - 1);
             int close = matchParen(masked, open);
@@ -1159,6 +1173,55 @@ class AuthzGateEffectivenessAuditTest {
             assertFalse(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
                 "認可と無関係な throw だけでは免除されず、書込を伴うメソッドとして"
                     + "引き続き違反として検出されるべき");
+        }
+
+        @Test
+        @DisplayName("n: アクセス修飾子の無い（package-private）メソッド内の違反も検出される")
+        void n_package_private_メソッドも検出される() {
+            Src resolver = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoPackagePrivateResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                class DemoPackagePrivateResolver {
+                    private final DemoAccessService accessControlService;
+                    private final DemoRepository demoRepository;
+                    DemoPackagePrivateResolver(DemoAccessService s, DemoRepository r) {
+                        this.accessControlService = s;
+                        this.demoRepository = r;
+                    }
+                    Object resolve(Long userId, Long id) {
+                        demoRepository.save(new Object());
+                        boolean canEdit = accessControlService.isAdminOrAbove(userId, id, "TEAM");
+                        return new DemoMetaDto(id, "name", canEdit);
+                    }
+                }
+                """);
+            assertFalse(analyzeType2(Arrays.asList(gate, resolver)).isEmpty(),
+                "アクセス修飾子（public/protected/private）が無いメソッドでも、"
+                    + "書込を伴う表示フラグ止まりは違反として検出されるべき"
+                    + "（メソッド境界を確定できず対象外へ倒れる偽陰性を防ぐ）");
+        }
+
+        @Test
+        @DisplayName("o: 匿名クラス生成（new Xxx() { .. }）がメソッド宣言として誤認されないこと")
+        void o_匿名クラス生成は誤認されない() {
+            String src = """
+                package com.mannschaft.app.demo.web;
+                public class DemoAnonHolder {
+                    private final Runnable task = new Runnable() {
+                        @Override
+                        public void run() {
+                            doWork();
+                        }
+                    };
+                }
+                """;
+            List<MethodDecl> methods = parseMethods(AuthzGateReturnValueGuardTest.mask(src));
+            assertTrue(methods.stream().noneMatch(d -> "Runnable".equals(d.name)),
+                "アクセス修飾子を省略可能にしたことで `new Runnable() {` の"
+                    + "匿名クラス生成をメソッド宣言（返り値型=new・名前=Runnable）と"
+                    + "誤認してはならない");
         }
 
         @Test
