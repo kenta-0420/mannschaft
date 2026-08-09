@@ -206,9 +206,8 @@ public class ShiftPreferenceReminderBatchService {
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
 
         // per-scope 認可（Track2 第二陣 / 2026-05-29）:
-        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は @EnableMethodSecurity 未有効ゆえ
-        // 実機では効かないため、ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、
-        // または SYSTEM_ADMIN」を強制する。
+        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は per-scope 判定にならないため、
+        // ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN」を強制する。
         if (!accessControlService.isSystemAdmin(userId)) {
             accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
         }
