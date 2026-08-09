@@ -156,8 +156,10 @@ test.describe('SK-01 タイトル1項目だけで作成（AC-01・ADHD中核）'
     const keeps = await listKeeps(ctx, userToken, 'KEPT')
     const created = keeps.find((k) => k['title'] === title)
     expect(created, 'BE側でも201作成が確認できること').toBeTruthy()
-    expect(created?.['memo'], 'memoは未入力のためnullであること').toBeNull()
-    expect(created?.['candidateDates'], 'candidateDatesは未入力のためnullであること').toBeNull()
+    // BEはJacksonのNON_NULL方針で未設定フィールドをキー省略する（レスポンスJSON実測で確認済み）。
+    // FE/クライアント視点では省略キー(undefined)と明示null は同義（§4.2の「null」はこの2表現を含む）。
+    expect(created?.['memo'] ?? null, 'memoは未入力のためnull相当（省略含む）であること').toBeNull()
+    expect(created?.['candidateDates'] ?? null, 'candidateDatesは未入力のためnull相当（省略含む）であること').toBeNull()
   })
 })
 
@@ -236,8 +238,10 @@ test.describe('SK-02/03 候補日1タップ変換とキープの残存（AC-06/A
 
     const scheduleDetailRes = await api(ctx, userToken, 'GET', `/api/v1/teams/${TEAM_SLUG}/schedules/${convertedScheduleId}`)
     expect(scheduleDetailRes.ok(), 'AC-06(b): 変換で生成されたschedulesが実在すること').toBeTruthy()
-    const scheduleDetail = (await scheduleDetailRes.json()) as { data: { title: string; time?: { startAt?: string } } }
-    expect(scheduleDetail.data.title, 'AC-06(b): 変換先予定のタイトルがキープと一致すること').toBe(title)
+    // GET .../schedules/{id} のレスポンスは content.title にネストされる（実測で確認済み。
+    // ScheduleDetailResponse は content/time/scope/academic/audit の4サブオブジェクトに分割されている）。
+    const scheduleDetail = (await scheduleDetailRes.json()) as { data: { content: { title: string }; time?: { startAt?: string } } }
+    expect(scheduleDetail.data.content.title, 'AC-06(b): 変換先予定のタイトルがキープと一致すること').toBe(title)
 
     // AC-06(b) の本体: 画面上でもチームカレンダーに実際に現れることを確認する（API実測だけで終わらせない）
     await expect(
@@ -394,7 +398,8 @@ test.describe('SK-05 revertで変換取消・予定が消える（AC-11）', () 
       const keeps = await listKeeps(ctx, userToken, 'ALL')
       const found = keeps.find((k) => k['title'] === title)
       expect(found?.['status'], 'AC-11: revert後はKEPTに戻ること').toBe('KEPT')
-      expect(found?.['convertedScheduleId'], 'AC-11: convertedScheduleIdがnullになること').toBeNull()
+      // BEはJacksonのNON_NULL方針でnullフィールドをキー省略するため undefined ?? null で判定する。
+      expect(found?.['convertedScheduleId'] ?? null, 'AC-11: convertedScheduleIdがnull相当（省略含む）になること').toBeNull()
     }).toPass({ timeout: 15_000 })
 
     // 変換先の予定がカレンダーから消えている（論理削除）ことを実測
