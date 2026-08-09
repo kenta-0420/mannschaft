@@ -274,6 +274,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<Long> findUserIdsByGenderHashIn(@Param("hashes") List<String> hashes);
 
     /**
+     * GENDER セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByGenderHashIn} の件数版）。
+     * 配信対象数の見積り用途で、user_id をメモリ展開しない。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.genderHash IN :hashes AND u.deletedAt IS NULL")
+    long countUserIdsByGenderHashIn(@Param("hashes") List<String> hashes);
+
+    /**
      * REGION_PREFECTURE セグメント: prefecture_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
      *
      * <p>prefecture_code は AES-256-GCM 暗号化済みのため直接比較不可。
@@ -286,6 +293,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<Long> findUserIdsByPrefectureCodeHashIn(@Param("hashes") List<String> hashes);
 
     /**
+     * REGION_PREFECTURE セグメントの件数のみを COUNT クエリ1本で取得する
+     * （{@link #findUserIdsByPrefectureCodeHashIn} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.prefectureCodeHash IN :hashes AND u.deletedAt IS NULL")
+    long countUserIdsByPrefectureCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
      * REGION_CITY セグメント: city_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
      *
      * <p>city_code は AES-256-GCM 暗号化済みのため直接比較不可。
@@ -296,6 +310,12 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     @Query("SELECT u.id FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL")
     List<Long> findUserIdsByCityCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * REGION_CITY セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByCityCodeHashIn} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL")
+    long countUserIdsByCityCodeHashIn(@Param("hashes") List<String> hashes);
 
     /**
      * AGE_RANGE セグメント: birth_year が指定範囲（minBirthYear 以上 maxBirthYear 以下）のアクティブユーザーIDを取得する。
@@ -311,6 +331,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
     List<Long> findUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
                                              @Param("maxBirthYear") int maxBirthYear);
+
+    /**
+     * AGE_RANGE セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByBirthYearBetween} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
+    long countUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
+                                        @Param("maxBirthYear") int maxBirthYear);
 
     /**
      * F20.3 ベータ特典 Phase3 シスアド審査画面用: 指定 ID 集合の id → displayName（表示名）を一括取得する。
