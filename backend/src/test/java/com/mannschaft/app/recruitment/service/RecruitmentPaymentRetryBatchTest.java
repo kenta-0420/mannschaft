@@ -72,10 +72,10 @@ class RecruitmentPaymentRetryBatchTest {
         void run_withFailedRecord_processRetryIsCalled() throws Exception {
             // given: FAILED レコード1件 (retryCount=0)
             RecruitmentCancellationRecordEntity record = buildFailedRecord(1L, 0);
+            // レコードは1件のみのため 1ページ目（cursor=0）で hasNext=false となり
+            // ループはそこで終了する（2回目の問い合わせは発生しない）
             given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), eq0L(), any(Pageable.class)))
                     .willReturn(List.of(record));
-            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), eqNot0L(), any(Pageable.class)))
-                    .willReturn(Collections.emptyList());
             given(cancellationRecordRepository.save(any())).willReturn(record);
 
             // when
@@ -200,10 +200,6 @@ class RecruitmentPaymentRetryBatchTest {
 
     private static Long eq0L() {
         return org.mockito.ArgumentMatchers.eq(0L);
-    }
-
-    private static Long eqNot0L() {
-        return org.mockito.ArgumentMatchers.longThat(l -> l != 0L);
     }
 
     /**
