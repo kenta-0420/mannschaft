@@ -7,7 +7,7 @@ import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.resolver.FavoriteEntityResolver;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,9 +27,10 @@ import java.util.stream.Collectors;
  * 公開プロフィール設定（{@link UserEntity#isPublicProfileEnabled()}）を有効にしているユーザー、
  * または閲覧者と同一チームに所属するユーザーに限る。公開プロフィール判定基準は公開プロフィール API
  * （{@code PublicUserProfileQueryService}）と同一であり、お気に入り経由で別の可視性判定が
- * 生まれないようにしている。同一チーム判定は {@link UserRoleRepository#existsSharedTeam}
- * （DM 受信制限チェックで実績のある既存ヘルパー）に委譲する。所属チームは第三者が任意に
- * 成立させられる関係ではないため、この経路を許しても総当たり照会の窓口にはならない。
+ * 生まれないようにしている。同一チーム判定は {@link RoleService#existsSharedTeam}
+ * （role ドメインの {@code UserRoleRepository} を薄く包む Service 経路）に委譲する。
+ * 所属チームは第三者が任意に成立させられる関係ではないため、この経路を許しても
+ * 総当たり照会の窓口にはならない。
  * 対象外のユーザーは UNAVAILABLE（{@code available=false}）として名称・アイコンを返さない。</p>
  *
  * <p><b>N+1 について</b>: お気に入りは1ユーザーあたり最大20件（{@code FavoriteService} の上限）
@@ -43,7 +44,7 @@ public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
 
     private final UserRepository userRepository;
     private final MediaUrlResolver mediaUrlResolver;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
 
     @Override
     public FavoriteEntityType entityType() {
@@ -71,7 +72,7 @@ public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
             users = users.stream()
                     .filter(u -> isSelf(currentUserId, u.getId())
                             || u.isPublicProfileEnabled()
-                            || (currentUserId != null && userRoleRepository.existsSharedTeam(currentUserId, u.getId())))
+                            || (currentUserId != null && roleService.existsSharedTeam(currentUserId, u.getId())))
                     .toList();
             Set<Long> foundIds = users.stream().map(UserEntity::getId).collect(Collectors.toSet());
 

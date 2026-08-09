@@ -6,7 +6,7 @@ import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,9 +23,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**
- * {@link BlogAuthorFavoriteResolver} 単体テスト（画像 404 根治 Phase3）。
+ * {@link BlogAuthorFavoriteResolver} 単体テスト。
  *
- * <p>著者アバターが {@link MediaUrlResolver} 解決後の署名付き表示 URL として返ることを検証する。</p>
+ * <p>著者アバターが {@link MediaUrlResolver} 解決後の署名付き表示URLとして返ることと、
+ * 本人・公開プロフィール・同一チーム所属による可視性判定を検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogAuthorFavoriteResolver 単体テスト")
@@ -38,13 +39,13 @@ class BlogAuthorFavoriteResolverTest {
     private MediaUrlResolver mediaUrlResolver;
 
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private RoleService roleService;
 
     @InjectMocks
     private BlogAuthorFavoriteResolver resolver;
 
     @Test
-    @DisplayName("resolveAll: avatarUrl は生 R2 キーでなく署名付き表示 URL を返す")
+    @DisplayName("resolveAll: avatarUrl は生R2キーでなく署名付き表示URLを返す")
     void resolveAll_resolvesAvatarUrl() {
         UserEntity user = UserEntity.builder()
                 .email("author@example.com")
@@ -81,7 +82,7 @@ class BlogAuthorFavoriteResolverTest {
 
         given(userRepository.findByIdIn(any())).willReturn(List.of(user));
         // 閲覧者と同一チームに所属していない
-        given(userRoleRepository.existsSharedTeam(99L, 5L)).willReturn(false);
+        given(roleService.existsSharedTeam(99L, 5L)).willReturn(false);
 
         // 閲覧者は著者本人ではない
         Map<String, FavoriteEntityMetaDto> result = resolver.resolveAll(List.of("5"), 99L);
@@ -106,7 +107,7 @@ class BlogAuthorFavoriteResolverTest {
 
         given(userRepository.findByIdIn(any())).willReturn(List.of(user));
         // 閲覧者と同一チームに所属している
-        given(userRoleRepository.existsSharedTeam(99L, 5L)).willReturn(true);
+        given(roleService.existsSharedTeam(99L, 5L)).willReturn(true);
         given(mediaUrlResolver.resolve("user/5/avatar/raw.png"))
                 .willReturn("https://cdn.example/signed/user-5");
 
