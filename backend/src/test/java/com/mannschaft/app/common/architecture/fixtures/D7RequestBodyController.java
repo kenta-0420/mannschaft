@@ -99,6 +99,16 @@ public class D7RequestBodyController {
         return request.getTitle();
     }
 
+    /**
+     * 違反（#2613）: 引数無しコンストラクタがあっても properties-based creator が
+     * 2 本あれば Conflicting property-based creators で常時 500 になる。
+     */
+    @PostMapping("/no-args-plus-dual-creator")
+    public String noArgsPlusDualCreator(
+            @RequestBody D7NoArgsPlusDualCreatorRequest request) {
+        return request.getTitle();
+    }
+
     /** 違反: {@code @JsonCreator(mode = DISABLED)} は creator を与えない。 */
     @PostMapping("/disabled-creator")
     public String disabledCreator(@RequestBody D7DisabledModeCreatorRequest request) {
