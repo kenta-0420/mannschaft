@@ -32,8 +32,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -104,6 +106,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long attackerId;   // 無関係な他ユーザー（越境元）
     private Long friendId;     // owner の連絡先に登録済みのユーザー
     private Long hiddenId;     // ハンドル検索を拒否しているユーザー
+    private Long visibleId;    // ハンドル検索を許可している無関係なユーザー（事前拒否の身元開示テスト用）
 
     private Long privateTeamId;   // owner のみが所属する非公開チーム
     private Long publicTeamId;    // 公開チーム
@@ -125,6 +128,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
         attackerId = insertUser("contactauthz-attacker-" + uniq + "@example.test", "atk-" + uniq, true);
         friendId = insertUser("contactauthz-friend-" + uniq + "@example.test", "frd-" + uniq, true);
         hiddenId = insertUser("contactauthz-hidden-" + uniq + "@example.test", "hdn-" + uniq, false);
+        visibleId = insertUser("contactauthz-visible-" + uniq + "@example.test", "vis-" + uniq, true);
 
         privateTeamId = insertTeam("CONTACTAUTHZ 非公開チーム", "cat-priv-" + uniq, "MEMBERS_AND_ABOVE");
         publicTeamId = insertTeam("CONTACTAUTHZ 公開チーム", "cat-pub-" + uniq, "PUBLIC");
@@ -715,13 +719,71 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 9. 招待プレビュー（GET /contact-invite/{token}・認証不要）
+    // 9. 事前拒否レスポンスの身元開示制御（@ハンドル検索と同一の可視性条件を共有）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. 事前拒否レスポンスの身元開示は@ハンドル検索と同一条件")
+    class RequestBlockIdentityDisclosure {
+
+        @Test
+        @DisplayName("ハンドル検索を拒否している相手を事前拒否に追加しても、応答に氏名等は含めない（識別子のみ）")
+        void 検索不可の相手は識別子のみ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + hiddenId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(hiddenId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.avatarUrl").value(nullValue()));
+        }
+
+        @Test
+        @DisplayName("正常系: ハンドル検索を許可している相手を事前拒否に追加すると、応答に氏名等が含まれる")
+        void 検索可能な相手は身元が含まれる() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(visibleId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value("CONTACTAUTHZ テスト"))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(handleOf(visibleId)));
+        }
+
+        @Test
+        @DisplayName("一覧でも同じ条件が適用される（検索不可は識別子のみ・検索可能は身元あり）")
+        void 一覧でも同じ条件() throws Exception {
+            // owner は setUp で hiddenId を事前拒否済み。ここでは visibleId も追加で事前拒否する。
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated());
+
+            // JSONPath のフィルタ式 [?(...)] は常に配列を返すため、「存在しない」系の
+            // アサーション（doesNotExist/isEmpty）では「該当要素が0件」なのか
+            // 「該当要素はあるがフィールド値が null」なのかを区別できない。
+            // ここでは配列の要素数と、その中身が null であることを明示的に検証する。
+            mockMvc.perform(get("/api/v1/contact-request-blocks"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + hiddenId + ")].blockedUser.fullName")
+                            .value(contains(nullValue())))
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + visibleId + ")].blockedUser.fullName")
+                            .value(contains("CONTACTAUTHZ テスト")));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 10. 招待プレビュー（GET /contact-invite/{token}・認証不要）
     //
     // 情報最小化: 発行者の表示名（ニックネーム）のみを返し、実名は返さない。
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("9. GET /contact-invite/{token}（招待プレビュー・認証不要）")
+    @DisplayName("10. GET /contact-invite/{token}（招待プレビュー・認証不要）")
     class InvitePreview {
 
         @Test
