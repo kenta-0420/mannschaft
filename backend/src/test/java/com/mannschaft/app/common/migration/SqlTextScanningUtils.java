@@ -58,7 +58,19 @@ public final class SqlTextScanningUtils {
 
     /**
      * {@code from} の位置にある引用符（{@code quote}）に対応する閉じ引用符の位置を返す。
-     * バックスラッシュエスケープを 1 文字スキップする（MySQL 既定のエスケープ規則）。
+     * MySQL の 2 通りのエスケープ規則の両方に対応する:
+     * <ul>
+     *   <li>バックスラッシュエスケープ（{@code \'}）— 1 文字スキップする。</li>
+     *   <li>引用符の二重化（{@code ''} / {@code ""} / <code>``</code>）— {@code '}・{@code "}・
+     *       <code>`</code> いずれの引用符でも常に有効な標準 SQL のエスケープ規則。
+     *       閉じ引用符候補の直後にもう一つ同じ引用符が続く場合はエスケープと判定し、
+     *       2 文字ともスキップして走査を継続する（閉じない）。
+     *       これを見落とすと {@code DEFAULT 'don''t'} のような合法なリテラルで
+     *       閉じ引用符を誤認し、対応する引用符が見つからないまま文字列末尾まで走査してしまい、
+     *       結果として {@link #findStatementEnd(String, int)} が文の {@code ;} を検出できず
+     *       文の境界がファイル末尾まで暴走する（本パッケージの番人が是正した
+     *       「本体の範囲が無制限に伸びる」欠陥の再発経路）。</li>
+     * </ul>
      * 閉じ引用符が見つからない場合は文字列末尾を返す。
      */
     public static int skipQuoted(CharSequence s, int from, char quote) {
@@ -68,7 +80,11 @@ public final class SqlTextScanningUtils {
             if (c == '\\') {
                 i++;
             } else if (c == quote) {
-                return i;
+                if (i + 1 < n && s.charAt(i + 1) == quote) {
+                    i++; // 引用符の二重化＝エスケープ。閉じずに走査を継続する。
+                } else {
+                    return i;
+                }
             }
         }
         return n - 1;

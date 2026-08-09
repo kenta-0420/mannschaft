@@ -77,6 +77,39 @@ class SqlTextScanningUtilsTest {
     }
 
     @Test
+    @DisplayName("引用符の二重化(''）でエスケープされたリテラル内のセミコロンで文が誤終端しない")
+    void doubledQuoteEscapeDoesNotBreakStatementBoundary() {
+        // DEFAULT 'don''t' は標準SQLで合法な引用符二重化エスケープ。
+        // 修正前の skipQuoted は1つ目の ' を閉じ引用符と誤認し、続く t' を新たな
+        // 開き引用符として扱うため、対応する閉じ引用符が見つからず文の境界が
+        // ファイル末尾まで暴走していた（本テストは修正前なら失敗する）。
+        String sql = "CREATE TABLE bar (id INT, note VARCHAR(64) DEFAULT 'don''t') "
+            + "ENGINE=InnoDB COLLATE=utf8mb4_0900_ai_ci;\n"
+            + "CREATE TABLE baz (id INT);";
+        List<String> statements = SqlTextScanningUtils.splitStatements(sql);
+
+        assertThat(statements).hasSize(2);
+        assertThat(statements.get(0))
+            .contains("DEFAULT 'don''t'")
+            .contains("COLLATE=utf8mb4_0900_ai_ci");
+        assertThat(statements.get(1)).contains("CREATE TABLE baz");
+    }
+
+    @Test
+    @DisplayName("バックスラッシュエスケープと引用符二重化が混在しても文の境界を誤らない")
+    void backslashEscapeStillWorksAlongsideDoubledQuoteEscape() {
+        // 'a\\' … バックスラッシュでエスケープされた \ の後に閉じ引用符が続く形。
+        // 二重化エスケープ対応を入れてもバックスラッシュエスケープの既存挙動を壊さないこと。
+        String sql = "CREATE TABLE bar (id INT, note VARCHAR(64) DEFAULT 'a\\\\') "
+            + "ENGINE=InnoDB COLLATE=utf8mb4_0900_ai_ci;\n"
+            + "CREATE TABLE baz (id INT);";
+        List<String> statements = SqlTextScanningUtils.splitStatements(sql);
+
+        assertThat(statements).hasSize(2);
+        assertThat(statements.get(1)).contains("CREATE TABLE baz");
+    }
+
+    @Test
     @DisplayName("CREATE TEMPORARY TABLEの本体は空白化され後続の走査から除外される")
     void temporaryTableBodyIsBlankedOut() {
         String sql = "CREATE TABLE real_table (id INT);\n"
