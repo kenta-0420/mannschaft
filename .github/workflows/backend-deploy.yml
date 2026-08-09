@@ -82,6 +82,33 @@
 #     直前は緑だったが、そのコミットが実際に main に乗った状態」を誰も検証
 #     しないことになり、CMP でも指摘されている「穴が入った瞬間を特定できない」
 #     問題を再発させるため却下。
+#
+# 2026-08-09（追記）: 上記の是正で main の Backend CI が初めて完走した結果、
+#   これまで打ち切られ続けて誰も見たことのなかった別の欠陥が表面化した。
+#
+#   [実測した症状]（run 31292148013 / main 4675d4b5d）
+#   test（6 shard）は全て success。build-and-deploy のみ failure。ログ実体:
+#     Run if [ -z "$AWS_KEY" ]; then ... fi
+#     ##[error]An error occurred trying to start process '/usr/bin/bash' with
+#     working directory '/home/runner/work/mannschaft/mannschaft/./backend'.
+#     No such file or directory
+#
+#   [特定した原因]
+#   build-and-deploy job には defaults.run.working-directory: ./backend が
+#   ジョブ全体に効いている。先頭の「Check AWS credentials」step は
+#   checkout より前に実行される設計（AWS 未設定環境では checkout 以降の
+#   全 step を丸ごと skip するため、この判定自体はリポジトリの中身を必要と
+#   しない）。しかし working-directory の job 既定を上書きしていなかったため、
+#   checkout 前に存在しない ./backend で bash を起動しようとして失敗していた。
+#
+#   [採った処置]
+#   「Check AWS credentials」step にのみ working-directory: . を追加し、
+#   job 既定の作用を外した。checkout の順序自体は変えていない —
+#   「AWS 未設定なら checkout すら不要」という元の設計意図（skip 時に
+#   余計な処理を一切行わない）は正しく、崩す理由が無いため。
+#   AWS_KEY が空のときは skip=true を出力して以降の全 step が
+#   if: steps.aws-check.outputs.skip != 'true' で skip されるだけなので、
+#   job 全体としては失敗なく success で終わる。
 # =============================================================================
 
 name: Backend — Build, Test & Deploy
@@ -180,6 +207,12 @@ jobs:
     steps:
       - name: Check AWS credentials
         id: aws-check
+        # job 既定の working-directory: ./backend を上書きする。
+        # このジョブは checkout より前にこの判定を行う設計（AWS 未設定環境では
+        # checkout 以降の全 step を丸ごと skip する）なので、checkout 前の
+        # ./backend は存在しない。job 既定に従うと bash の起動自体が
+        # 「No such file or directory」で失敗する（2026-08-09 実測）。
+        working-directory: .
         run: |
           if [ -z "$AWS_KEY" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"

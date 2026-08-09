@@ -43,4 +43,14 @@ public interface UserInterestTagRepository extends JpaRepository<UserInterestTag
      */
     @Query("SELECT DISTINCT t.userId FROM UserInterestTagEntity t WHERE t.tagHash IN :tagHashes")
     List<Long> findUserIdsByTagHashIn(@Param("tagHashes") List<String> tagHashes);
+
+    /**
+     * INTEREST_TAG セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByTagHashIn} の件数版）。
+     * DISTINCT ユーザー数を数えるため {@code COUNT(DISTINCT ...)} を用いる。
+     *
+     * @param tagHashes HMAC-SHA256 ハッシュのリスト
+     * @return 一致したユーザー数
+     */
+    @Query("SELECT COUNT(DISTINCT t.userId) FROM UserInterestTagEntity t WHERE t.tagHash IN :tagHashes")
+    long countUserIdsByTagHashIn(@Param("tagHashes") List<String> tagHashes);
 }
