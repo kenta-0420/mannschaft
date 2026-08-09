@@ -29,10 +29,10 @@ public class OnboardingPresetCatalogController {
      * プリセットカタログ一覧を取得する。カテゴリでフィルタ可能。
      *
      * <p>全ユーザーに同一内容を返す参照系マスタ EP（組織固有データを含まない）。
-     * {@code /api/v1/onboarding/presets} は permitAll 未登録のため SecurityConfig.java:454 の
+     * {@code /api/v1/onboarding/presets} は permitAll 未登録のため SecurityConfig の
      * {@code anyRequest().authenticated()} で認証必須が強制される。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping
     public ApiResponse<List<PresetCatalogResponse>> listCatalog(
             @RequestParam(required = false) OnboardingPresetCategory category) {

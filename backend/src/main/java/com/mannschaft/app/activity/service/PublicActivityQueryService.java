@@ -145,22 +145,25 @@ public class PublicActivityQueryService {
      * @param teamId 対象チーム ID
      * @param limit  取得件数（{@code 0} 以下は {@value #DEFAULT_PAGE_SIZE}、
      *               {@value #MAX_PAGE_SIZE} 超は {@value #MAX_PAGE_SIZE} に丸める）
+     * @param page   ページ番号（0始まり。負値は Controller の {@code @Min(0)} で 400 に倒すため
+     *               ここに到達する値は常に 0 以上）
      */
-    public List<PublicActivitySummary> listPublicTeamActivities(Long teamId, int limit) {
+    public List<PublicActivitySummary> listPublicTeamActivities(Long teamId, int limit, int page) {
         PublicScopeRef scopeRef = resolvePublicScopeRefOrThrow(ActivityScopeType.TEAM, teamId);
-        return listPublicActivities(ActivityScopeType.TEAM, teamId, limit, scopeRef);
+        return listPublicActivities(ActivityScopeType.TEAM, teamId, limit, page, scopeRef);
     }
 
     /**
      * 組織配下の公開活動記録一覧を取得する。
      *
      * @param orgId 対象組織 ID
-     * @param limit 取得件数（丸め規則は {@link #listPublicTeamActivities(Long, int)} と同じ）
+     * @param limit 取得件数（丸め規則は {@link #listPublicTeamActivities(Long, int, int)} と同じ）
+     * @param page  ページ番号（0始まり）
      */
-    public List<PublicActivitySummary> listPublicOrganizationActivities(Long orgId, int limit) {
+    public List<PublicActivitySummary> listPublicOrganizationActivities(Long orgId, int limit, int page) {
         PublicScopeRef scopeRef = resolvePublicScopeRefOrThrow(
                 ActivityScopeType.ORGANIZATION, orgId);
-        return listPublicActivities(ActivityScopeType.ORGANIZATION, orgId, limit, scopeRef);
+        return listPublicActivities(ActivityScopeType.ORGANIZATION, orgId, limit, page, scopeRef);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -175,24 +178,28 @@ public class PublicActivityQueryService {
      * SQL が増える（契約テスト AC-28 が件数を変えて SQL 数の不変性を検証している）。</p>
      */
     private List<PublicActivitySummary> listPublicActivities(
-            ActivityScopeType scopeType, Long scopeId, int limit, PublicScopeRef scopeRef) {
-        Page<ActivityResultEntity> page =
-                activityResultService.listPublicActivities(scopeType, scopeId, toPageable(limit));
-        return page.getContent().stream()
+            ActivityScopeType scopeType, Long scopeId, int limit, int page, PublicScopeRef scopeRef) {
+        Page<ActivityResultEntity> resultPage =
+                activityResultService.listPublicActivities(scopeType, scopeId, toPageable(limit, page));
+        return resultPage.getContent().stream()
                 .map(entity -> toSummary(entity, scopeRef))
                 .toList();
     }
 
     /**
-     * {@code limit} クエリパラメータを安全な {@link Pageable} に丸める。
+     * {@code limit} / {@code page} クエリパラメータを安全な {@link Pageable} に丸める。
      *
-     * <p>旧実装は {@code PageRequest.of(0, limit)} をそのまま渡しており、
-     * {@code limit=100000} で全件取得できる DoS 経路になっていた。さらに {@code limit=0} は
-     * {@link IllegalArgumentException} → 500 になっていた（未認証で 500 を誘発できる状態）。</p>
+     * <p>旧実装は {@code PageRequest.of(0, limit)} と第 0 ページを直書きしており、
+     * 公開一覧は {@code page} を受け取れず 2 ページ目以降へ永久に到達できなかった
+     * （2026-08-06 マスター裁可の第三陣で是正。先例 PR #2598 と同じ流儀）。
+     * {@code limit} の丸め規則は変更なし: {@code limit=100000} で全件取得できる DoS 経路を防ぐため
+     * {@value #MAX_PAGE_SIZE} で頭打ちにし、{@code limit=0}（{@link IllegalArgumentException} → 500 の口）
+     * は {@value #DEFAULT_PAGE_SIZE} に丸める。{@code page} の負値は Controller の {@code @Min(0)} で
+     * 400 に倒しているため、ここでは追加の丸めは行わない。</p>
      */
-    static Pageable toPageable(int limit) {
+    static Pageable toPageable(int limit, int page) {
         int size = limit <= 0 ? DEFAULT_PAGE_SIZE : Math.min(limit, MAX_PAGE_SIZE);
-        return PageRequest.of(0, size);
+        return PageRequest.of(Math.max(page, 0), size);
     }
 
     /**

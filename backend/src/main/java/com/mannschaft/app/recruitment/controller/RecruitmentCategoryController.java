@@ -26,8 +26,8 @@ public class RecruitmentCategoryController {
     private final RecruitmentCategoryService categoryService;
 
     // 全ユーザーに同一内容を返すマスタ参照 EP。/api/v1/recruitment-categories は permitAll 未登録の
-    // ため SecurityConfig.java:454 の anyRequest().authenticated() で認証必須が強制される。
-    @AuthorizedByPathConfig
+    // ため SecurityConfig の anyRequest().authenticated() で認証必須が強制される。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping
     @Operation(summary = "全カテゴリ取得", description = "i18n キー込みで全アクティブカテゴリを表示順で返す")
     public ResponseEntity<ApiResponse<List<RecruitmentCategoryResponse>>> listCategories() {

@@ -105,9 +105,9 @@ public class TeamController {
      * {@code TeamRepository#searchByKeyword} のクエリが担保。論理削除は {@code @SQLRestriction} が除外）。</p>
      */
     // 全ユーザーに同一内容を返す（PUBLIC チームのみ）参照系 EP。/api/v1/teams/search は
-    // permitAll 未登録のため SecurityConfig.java:454 の anyRequest().authenticated() で
+    // permitAll 未登録のため SecurityConfig の anyRequest().authenticated() で
     // 認証必須が強制される（同名の /api/v1/public/teams/search とは別エンドポイント）。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "チーム検索（PUBLIC かつ未アーカイブのチームのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -117,9 +117,9 @@ public class TeamController {
     }
 
     // 全ユーザーに同一内容を返す（重複有無のみ）参照系 EP。/api/v1/teams/slug-available は
-    // permitAll 未登録のため SecurityConfig.java:454 の anyRequest().authenticated() で
+    // permitAll 未登録のため SecurityConfig の anyRequest().authenticated() で
     // 認証必須が強制される。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")

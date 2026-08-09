@@ -83287,7 +83287,19 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
             }
           }
         ],
@@ -121319,6 +121331,17 @@
               "format": "int32",
               "default": 20
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
           }
         ],
         "responses": {
@@ -122102,6 +122125,17 @@
               "type": "integer",
               "format": "int32",
               "default": 20
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
             }
           }
         ],

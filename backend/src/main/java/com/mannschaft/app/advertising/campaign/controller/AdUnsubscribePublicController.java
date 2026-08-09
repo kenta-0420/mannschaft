@@ -34,8 +34,7 @@ import java.time.Instant;
  * <p>SecurityConfig の {@code /api/v1/public/**} ではなく {@code /api/v1/ads/}
  * 直下に置く理由は、メーラー / 受信者の URL が極力短く・正規であるべきため
  * （RFC 8058 List-Unsubscribe ヘッダ表記との整合）。
- * 一方で同パスは現在 SecurityConfig.anyRequest().permitAll() の範囲に入っているため
- * 認証不要で到達できる。本番運用化時に明示 {@code permitAll} 列挙すること。</p>
+ * 同パスは SecurityConfig で明示的に {@code permitAll} 列挙されており、認証不要で到達できる。</p>
  *
  * <p>レート制限は {@link com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter}
  * が IP 単位の Bucket4j で行う（unsubscribe=60/分、open-pixel=600/分）。</p>

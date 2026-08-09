@@ -167,6 +167,66 @@ class AdAudienceResolverTest {
         assertThat(count).isEqualTo(100_000L);
     }
 
+    @Test
+    @DisplayName("countCandidates: INCLUDE 1件・EXCLUDE無しの高速経路では resolveUserIds を一度も呼ばない")
+    void countCandidates_singleInclude_neverResolvesUserIds() {
+        UUID campaignId = UUID.randomUUID();
+        AdAudienceSegment seg = segment(campaignId, AdSegmentType.LOCALE, AdSegmentInclusionMode.INCLUDE);
+        given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(seg));
+
+        AdSegmentEvaluator evaluator = org.mockito.Mockito.mock(AdSegmentEvaluator.class);
+        org.mockito.Mockito.when(evaluator.supports(AdSegmentType.LOCALE)).thenReturn(true);
+        org.mockito.Mockito.when(evaluator.countUserIds(seg)).thenReturn(42L);
+        evaluators.add(evaluator);
+
+        long count = resolver.countCandidates(campaignId);
+
+        assertThat(count).isEqualTo(42L);
+        org.mockito.Mockito.verify(evaluator, org.mockito.Mockito.never()).resolveUserIds(org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(evaluator, org.mockito.Mockito.times(1)).countUserIds(seg);
+    }
+
+    @Test
+    @DisplayName("countCandidates: 複数セグメント（積集合）は従来どおり resolveUserIds 経由で正しい件数を返す")
+    void countCandidates_multipleSegments_usesResolveUserIds() {
+        UUID campaignId = UUID.randomUUID();
+        AdAudienceSegment localeInclude = segment(campaignId, AdSegmentType.LOCALE, AdSegmentInclusionMode.INCLUDE);
+        AdAudienceSegment orgInclude = segment(campaignId, AdSegmentType.ORG_TYPE, AdSegmentInclusionMode.INCLUDE);
+        given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(localeInclude, orgInclude));
+
+        AdSegmentEvaluator localeEvaluator = org.mockito.Mockito.mock(AdSegmentEvaluator.class);
+        org.mockito.Mockito.when(localeEvaluator.supports(AdSegmentType.LOCALE)).thenReturn(true);
+        org.mockito.Mockito.when(localeEvaluator.resolveUserIds(localeInclude)).thenReturn(Set.of(1L, 2L, 3L, 4L, 5L));
+        AdSegmentEvaluator orgEvaluator = org.mockito.Mockito.mock(AdSegmentEvaluator.class);
+        org.mockito.Mockito.when(orgEvaluator.supports(AdSegmentType.ORG_TYPE)).thenReturn(true);
+        org.mockito.Mockito.when(orgEvaluator.resolveUserIds(orgInclude)).thenReturn(Set.of(3L, 4L, 5L, 6L, 7L));
+        evaluators.add(localeEvaluator);
+        evaluators.add(orgEvaluator);
+
+        long count = resolver.countCandidates(campaignId);
+
+        // 異 type は AND → 積集合 {3,4,5} = 3件
+        assertThat(count).isEqualTo(3L);
+        org.mockito.Mockito.verify(localeEvaluator, org.mockito.Mockito.never()).countUserIds(org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(orgEvaluator, org.mockito.Mockito.never()).countUserIds(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("countCandidates: INCLUDE + EXCLUDE がある場合は高速経路を使わず正しい差集合件数を返す")
+    void countCandidates_includeAndExclude_usesResolveUserIds() {
+        UUID campaignId = UUID.randomUUID();
+        AdAudienceSegment localeInclude = segment(campaignId, AdSegmentType.LOCALE, AdSegmentInclusionMode.INCLUDE);
+        AdAudienceSegment orgExclude = segment(campaignId, AdSegmentType.ORG_TYPE, AdSegmentInclusionMode.EXCLUDE);
+        given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(localeInclude, orgExclude));
+
+        evaluators.add(stubEvaluator(AdSegmentType.LOCALE, Set.of(1L, 2L, 3L, 4L, 5L)));
+        evaluators.add(stubEvaluator(AdSegmentType.ORG_TYPE, Set.of(3L, 4L)));
+
+        long count = resolver.countCandidates(campaignId);
+
+        assertThat(count).isEqualTo(3L);
+    }
+
     // ------------------------------------------------------------------
     // PII 漏洩防止: Service の公開 API 戻り値型に user_id 単体型が無いことを反射で確認
     // ------------------------------------------------------------------
@@ -262,6 +322,11 @@ class AdAudienceResolverTest {
             @Override
             public Set<Long> resolveUserIds(AdAudienceSegment segment) {
                 return new HashSet<>(userIds);
+            }
+
+            @Override
+            public long countUserIds(AdAudienceSegment segment) {
+                return userIds.size();
             }
         };
     }

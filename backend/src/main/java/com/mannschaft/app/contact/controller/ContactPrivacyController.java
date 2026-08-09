@@ -2,6 +2,7 @@ package com.mannschaft.app.contact.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactPrivacyRequest;
 import com.mannschaft.app.contact.dto.ContactPrivacyResponse;
 import com.mannschaft.app.contact.service.ContactPrivacyService;
@@ -32,6 +33,8 @@ public class ContactPrivacyController {
 
     private final ContactPrivacyService contactPrivacyService;
 
+    @SelfScopedEndpoint("取得対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactPrivacyService#getPrivacySettings）")
     @GetMapping
     @Operation(summary = "プライバシー設定取得")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> getPrivacySettings() {
@@ -39,6 +42,8 @@ public class ContactPrivacyController {
         return ResponseEntity.ok(ApiResponse.of(contactPrivacyService.getPrivacySettings(userId)));
     }
 
+    @SelfScopedEndpoint("更新対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactPrivacyService#updatePrivacySettings）")
     @PutMapping
     @Operation(summary = "プライバシー設定更新")
     public ResponseEntity<ApiResponse<ContactPrivacyResponse>> updatePrivacySettings(

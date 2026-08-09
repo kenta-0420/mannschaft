@@ -6,6 +6,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.ticket.PaymentMethod;
 import com.mannschaft.app.ticket.dto.QrCodeResponse;
 import com.mannschaft.app.ticket.dto.TicketBookDetailResponse;
@@ -59,7 +60,14 @@ public class MyTicketController {
 
     /**
      * 自分のチケット一覧を取得する（MEMBER / SUPPORTER）。
+     *
+     * <p><b>認可の所在</b>: {@code TicketBookService.getMyTickets}
+     * （{@code ticket/service/TicketBookService.java:205}）が
+     * {@code bookRepository.findByUserIdAndTeamId...} で常に userId を検索条件に AND 結合するため、
+     * 所属していない teamId を渡しても自分のチケットが他チームへ混入することはなく、
+     * 該当チームに自分のチケットが無ければ空配列が返るのみで他人のチケットは返らない。</p>
      */
+    @AuthorizedInService
     @GetMapping
     @Operation(summary = "マイチケット一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -183,7 +191,12 @@ public class MyTicketController {
 
     /**
      * ダッシュボードウィジェット用の ACTIVE チケット残数サマリを取得する。
+     *
+     * <p><b>認可の所在</b>: {@code TicketBookService.getWidget}
+     * （{@code ticket/service/TicketBookService.java:597}）が常に userId を検索条件に AND 結合するため、
+     * 所属していない teamId を渡してもサマリは自分の保有分のみに限られる。</p>
      */
+    @AuthorizedInService
     @GetMapping("/widget")
     @Operation(summary = "チケットウィジェット")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

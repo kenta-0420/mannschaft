@@ -39,16 +39,22 @@ import com.mannschaft.app.common.SecurityUtils;
  *
  * <p><b>根拠</b>:
  * 本クラスは @RequestMapping("/api/v1/admin") だが、全 7 Mapping メソッドが SYSTEM_ADMIN
- * 予約済みサブパスに収まる: /users/*→SecurityConfig.java:373、/reports/*→SecurityConfig.java:370、
- * /warning-re-reviews/*→SecurityConfig.java:372、/moderation/*→SecurityConfig.java:371（いずれも
- * .hasRole("SYSTEM_ADMIN")）
+ * 予約済みサブパスに収まる: /users/*→requestMatchers("/api/v1/admin/users/**")、
+ * /reports/*→requestMatchers("/api/v1/admin/reports/**")、
+ * /warning-re-reviews/*→requestMatchers("/api/v1/admin/warning-re-reviews/**")、
+ * /moderation/*→requestMatchers("/api/v1/admin/moderation/**")（いずれも .hasRole("SYSTEM_ADMIN")）
  * </p>
  *
  * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
  * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
  * 失効するため、必ず併せて見直すこと。</p>
  */
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig({
+        "/api/v1/admin/users/**",
+        "/api/v1/admin/reports/**",
+        "/api/v1/admin/warning-re-reviews/**",
+        "/api/v1/admin/moderation/**"
+})
 @RestController
 @RequestMapping("/api/v1/admin")
 @Tag(name = "ADMIN違反管理", description = "F10.2 ADMIN向けモデレーション拡張")

@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.TermSuggestionResponse;
 import com.mannschaft.app.reflection.service.ReflectionTermSuggestionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,8 @@ public class ReflectionTermSuggestionController {
      *
      * @param baseDate 基準日（YYYY-MM-DD・省略時は今日）
      */
+    @SelfScopedEndpoint("照合対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionTermSuggestionService#suggest）")
     @GetMapping
     @Operation(summary = "学年・学期自動提案取得")
     public ResponseEntity<ApiResponse<TermSuggestionResponse>> suggest(
