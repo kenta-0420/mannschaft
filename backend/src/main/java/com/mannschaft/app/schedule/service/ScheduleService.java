@@ -26,7 +26,6 @@ import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
 import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,12 +79,6 @@ public class ScheduleService {
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
-    /**
-     * 関所(2)閲覧の OR寄せ（配信＝受信権）で、組織スケジュールの配信母集団判定に用いる越境窓口。
-     * {@code team_org_memberships} / {@code organizations} を直接参照せず Service 経由で解決する
-     * （CLAUDE.md ドメイン境界の原則・ScheduleAttendanceService と同じ越境窓口方式）。
-     */
-    private final OrganizationMembershipService organizationMembershipService;
     /**
      * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
      */
@@ -144,24 +137,18 @@ public class ScheduleService {
      * @throws BusinessException 閲覧権限が無い、または存在しない場合
      */
     public ScheduleEntity getScheduleWithAccessCheck(Long id, Long userId) {
-        // 関所(2)閲覧（配信＝受信権 統一・案ロ OR寄せ）:
-        // 通常の F00 可視性 canView が true ならそのまま許可。false でも、組織スケジュールで
-        // 当該ユーザーがコンテンツの includeSupporters トグル準拠の配信母集団に属するなら閲覧許可する。
-        // 可視性 level の書換・新段昇格は行わず（旧案B同種の地雷回避）、OR の一辺として母集団判定を足すのみ。
-        if (contentVisibilityChecker.canView(ReferenceType.SCHEDULE, id, userId)) {
-            return findScheduleOrThrow(id);
-        }
-        ScheduleEntity schedule = findScheduleOrThrow(id);
-        if (schedule.getOrganizationId() != null
-                && organizationMembershipService.isInOrgDistributionAudience(
-                        schedule.getOrganizationId(), userId,
-                        Boolean.TRUE.equals(schedule.getIncludeSupporters()))) {
-            return schedule;
-        }
-        // 母集団にも属さない場合は従来どおり assertCanView に委譲し、
-        // 正規の deny 監査記録（VISIBILITY_DENIED）と例外コード（VISIBILITY_001/004）を発火させる。
+        // 関所(2)閲覧: F00 可視性判定に一本化する。
+        //
+        // CMP-017b で「配信母集団に属するなら可視性判定を迂回して見せる」OR 迂回路を撤去した。
+        // 迂回路は「出欠を求めた相手には予定を見せねばならない」という正しい不変条件を守るために
+        // 置かれていたが、min_view_role が閲覧判定でどこからも読まれない状態と組み合わさって
+        // 「閾値を満たさない応援者に予定を見せる」抜け道になっていた。
+        //
+        // 書込時の不変条件（includeSupporters=TRUE ⇒ minViewRole ∈ {ANYONE, SUPPORTER_PLUS}・
+        // resolveMinViewRole / assertSupporterAxesConsistent）を先に入れたことで、
+        // 配信母集団に入る応援者は必ず閲覧閾値も満たすようになり、OR は論理的に冗長になった。
         contentVisibilityChecker.assertCanView(ReferenceType.SCHEDULE, id, userId);
-        return schedule;
+        return findScheduleOrThrow(id);
     }
 
     /**
@@ -528,6 +515,49 @@ public class ScheduleService {
      * <p>startAtJst / endAtJst / deadlineJst は呼び出し元で
      * {@link #toJst(OffsetDateTime)} により JST LocalDateTime に変換済みのもの。</p>
      */
+    /**
+     * 作成時の {@code min_view_role} を解決する（CMP-017b T-2 / AC-22・AC-23）。
+     *
+     * <p>{@code include_supporters}（配信軸）と {@code min_view_role}（閲覧軸）は独立設定だが、
+     * 「応援者に出欠を配るが応援者は予定を見られない」組み合わせは自己矛盾である。よって
+     * 書込時に {@code includeSupporters = TRUE ⇒ minViewRole ∈ {ANYONE, SUPPORTER_PLUS}} を強制し、
+     * 未指定時は配信軸に整合する既定へ導出する。</p>
+     *
+     * <p>この不変条件が成立することで初めて「配信母集団に入る応援者は必ず閲覧閾値も満たす」が
+     * 保証され、閲覧側の OR 迂回路（配信母集団に居れば閾値を無視して見せる）が論理的に冗長になる。</p>
+     *
+     * @param requestedMinViewRole リクエストの {@code minViewRole}（{@code null} 可＝未指定）
+     * @param includeSupporters    リクエストの {@code includeSupporters}（{@code null} 可＝既定 false）
+     * @return 保存すべき閾値
+     * @throws BusinessException 矛盾する組み合わせが明示指定された場合（400）
+     */
+    private MinViewRole resolveMinViewRole(String requestedMinViewRole, Boolean includeSupporters) {
+        boolean supportersIncluded = Boolean.TRUE.equals(includeSupporters);
+        if (requestedMinViewRole == null) {
+            // 未指定: 配信軸に整合する既定を導出する（応援者に配るなら SUPPORTER_PLUS）。
+            return supportersIncluded ? MinViewRole.SUPPORTER_PLUS : MinViewRole.MEMBER_PLUS;
+        }
+        MinViewRole requested = MinViewRole.valueOf(requestedMinViewRole);
+        assertSupporterAxesConsistent(requested, includeSupporters);
+        return requested;
+    }
+
+    /**
+     * 二軸（配信 × 閲覧）の不変条件を検証する（CMP-017b T-2）。
+     *
+     * @param minViewRole       閲覧閾値
+     * @param includeSupporters 応援者を配信母集団に含めるか（{@code null} 可）
+     * @throws BusinessException 応援者に配信しながら応援者が閲覧できない組み合わせの場合（400）
+     */
+    private void assertSupporterAxesConsistent(MinViewRole minViewRole, Boolean includeSupporters) {
+        if (!Boolean.TRUE.equals(includeSupporters) || minViewRole == null) {
+            return;
+        }
+        if (minViewRole == MinViewRole.MEMBER_PLUS || minViewRole == MinViewRole.ADMIN_ONLY) {
+            throw new BusinessException(ScheduleErrorCode.INCONSISTENT_SUPPORTER_AXES);
+        }
+    }
+
     private ScheduleEntity buildScheduleEntity(CreateScheduleRequest req, Long scopeId,
                                                String scopeType, Long userId,
                                                LocalDateTime startAtJst, LocalDateTime endAtJst,
@@ -557,8 +587,7 @@ public class ScheduleService {
                 .eventType(EventType.valueOf(req.getEventType()))
                 .visibility(req.getVisibility() != null
                         ? ScheduleVisibility.valueOf(req.getVisibility()) : ScheduleVisibility.MEMBERS_ONLY)
-                .minViewRole(req.getMinViewRole() != null
-                        ? MinViewRole.valueOf(req.getMinViewRole()) : MinViewRole.MEMBER_PLUS)
+                .minViewRole(resolveMinViewRole(req.getMinViewRole(), req.getIncludeSupporters()))
                 .minResponseRole(req.getMinResponseRole() != null
                         ? MinResponseRole.valueOf(req.getMinResponseRole()) : MinResponseRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED)
@@ -604,7 +633,13 @@ public class ScheduleService {
         if (req.getAllDay() != null) builder.allDay(req.getAllDay());
         if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
         if (req.getVisibility() != null) builder.visibility(ScheduleVisibility.valueOf(req.getVisibility()));
-        if (req.getMinViewRole() != null) builder.minViewRole(MinViewRole.valueOf(req.getMinViewRole()));
+        if (req.getMinViewRole() != null) {
+            MinViewRole requested = MinViewRole.valueOf(req.getMinViewRole());
+            // 二軸の不変条件（CMP-017b T-2）: UpdateScheduleRequest は includeSupporters を持たないため、
+            // 更新経路で不変条件を破りうるのは «既存 include_supporters=TRUE の行の閾値を引き上げる» 側のみ。
+            assertSupporterAxesConsistent(requested, schedule.getIncludeSupporters());
+            builder.minViewRole(requested);
+        }
         if (req.getMinResponseRole() != null) builder.minResponseRole(MinResponseRole.valueOf(req.getMinResponseRole()));
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));

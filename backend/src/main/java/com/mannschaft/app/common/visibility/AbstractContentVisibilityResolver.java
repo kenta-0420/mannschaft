@@ -416,6 +416,16 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return false;
         }
 
+        return visibleByLevel(row, viewerUserId, snapshot, level)
+                && visibleByAdditionalAxis(row, viewerUserId, snapshot, level);
+    }
+
+    /**
+     * 解決済み {@link StandardVisibility} 1 値による scope 軸の評価（本体）。
+     */
+    private boolean visibleByLevel(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+        ScopeKey scope = scopeOf(row);
         return switch (level) {
             case PUBLIC -> true;
             // 新ラダー（§5.1.5）。SCOPE_AFFILIATED = 直接所属（旧 MEMBERS_ONLY 相当の正準値）。
@@ -602,6 +612,38 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     protected StandardVisibility adjustLevel(P row, StandardVisibility level) {
         return level;
+    }
+
+    /**
+     * scope 軸（{@link StandardVisibility} 1 値）の評価に <strong>AND で合成される</strong>
+     * 機能独自の追加軸フック（既定: 追加軸なし＝常に {@code true}）。
+     *
+     * <p>{@link #adjustLevel(VisibilityProjection, StandardVisibility)} は「同じ enum 値でも
+     * scope で意味が変わる」ケースを 1 値へ畳み込むフックだが、
+     * <strong>評価対象スコープが異なる第二の軸</strong>は 1 値では表現できない。典型が F03.1 の
+     * {@code schedules.min_view_role} で、{@code visibility = 'ORGANIZATION'} のときだけ閾値を
+     * <strong>親組織</strong>への直接所属ロールで評価する必要がある
+     * （{@link UserScopeRoleSnapshot#hasParentOrgRoleOrAbove}）。ここで
+     * {@link StandardVisibility#ORGANIZATION_WIDE} を閾値段へ畳み込んでしまうと、
+     * {@link #collectOrgWideScopes} が親 ORG を解決対象から外し、判定と SQL 集計がずれる。</p>
+     *
+     * <p>本フックは {@link #filterAccessible(Collection, Long)} と {@link #decide(Long, Long)} の
+     * <strong>両経路が通る唯一の合流点</strong>（{@code visibleByVisibility}）で呼ばれるため、
+     * 個別 Service にゲートを散らさずに追加軸を効かせられる。SystemAdmin 高速パス・
+     * DRAFT/SCHEDULED の作者本人スキップ・§11.6 親 ORG 連鎖ガードはいずれも本フックより
+     * <strong>手前</strong>で確定するため、追加軸がそれらを覆すことはない。</p>
+     *
+     * <p>DB アクセスを行ってはならない（snapshot と row のみで純メモリ判定すること）。</p>
+     *
+     * @param row          判定対象 Projection
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
+     * @param snapshot     メンバーシップスナップショット
+     * @param level        scope 軸で解決済みのレベル（{@code null} ではない）
+     * @return 追加軸を満たすなら {@code true}
+     */
+    protected boolean visibleByAdditionalAxis(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+        return true;
     }
 
     /** filterAccessible / decide の SQL 集計ヘルパ: 直接所属判定が必要なスコープ集合。 */

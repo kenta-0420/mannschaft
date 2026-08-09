@@ -198,7 +198,7 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
      */
     @Query("SELECT new com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection("
             + "s.id, s.teamId, s.organizationId, s.userId, s.createdBy, "
-            + "s.visibility, s.visibilityTemplateId, s.status) "
+            + "s.visibility, s.visibilityTemplateId, s.status, s.minViewRole) "
             + "FROM ScheduleEntity s WHERE s.id IN :ids")
     List<ScheduleVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }
