@@ -279,6 +279,58 @@ class CorkboardBoardScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 個人ボード 一覧／作成（自己スコープ・Wave6 ロットF）
+    //   MyCorkboardController#listBoards / MyCorkboardController#createBoard の
+    //   自己スコープ性を固定する（@SelfScopedEndpoint 契約テスト）。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("個人ボード 一覧・作成（自己スコープ・MyCorkboardController#listBoards/#createBoard）")
+    class PersonalBoardsSelfScoped {
+
+        @Test
+        @DisplayName("一覧: 未認証は401")
+        void 一覧_未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("一覧: 他ユーザーの個人ボードは混入しない")
+        void 一覧_他ユーザーのボードは混入しない() throws Exception {
+            Long boardId = insertPersonalBoard(memberAId, "個人ボード一覧混入NG");
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", org.hamcrest.Matchers.not(
+                            org.hamcrest.Matchers.hasItem(boardId.intValue()))));
+        }
+
+        @Test
+        @DisplayName("正常系 一覧: 自分の個人ボードが返る")
+        void 一覧_所有者は自分のボードが返る() throws Exception {
+            Long boardId = insertPersonalBoard(memberAId, "個人ボード一覧OK");
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", org.hamcrest.Matchers.hasItem(boardId.intValue())));
+        }
+
+        @Test
+        @DisplayName("正常系 作成: スコープは認証主体に固定される（201・ownerId=自身）")
+        void 作成_スコープは認証主体に固定() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/users/me/corkboards")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBoardBody("CB認可契約 新規個人ボード"))))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // 個人ボード（認可根治戦役 第1波・個人領域 ロットC）
     //   詳細・更新・削除・カードのピン止めは所有者本人のみ。
     //   他者所有・不存在はいずれも同一エラーへ正規化して存在を秘匿する。
@@ -402,6 +454,55 @@ class CorkboardBoardScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
 
             assertThat(cardIsPinned(cardId)).isTrue();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 個人ボード 一覧・作成（認可根治戦役 第7波ロットB）
+    //   MyCorkboardController#listBoards / MyCorkboardController#createBoard の
+    //   自己スコープ性を固定する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("個人ボード 一覧・作成（自己スコープ）")
+    class PersonalBoardsSelfScope {
+
+        @Test
+        @DisplayName("未認証は401")
+        void 未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("他ユーザーの個人ボードは一覧に混入しない")
+        void 一覧に混入しない() throws Exception {
+            Long boardId = insertPersonalBoard(memberAId, "個人ボード一覧混入チェック");
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id",
+                            org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(boardId.intValue()))));
+        }
+
+        @Test
+        @DisplayName("正常系: 作成は認証主体名義でのみ行われ、自分の一覧に現れる")
+        void 作成は自分名義のみ() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(post("/api/v1/users/me/corkboards")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBoardBody("自己スコープ作成"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.id").exists());
+
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk());
+
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/users/me/corkboards"))
+                    .andExpect(status().isOk());
         }
     }
 

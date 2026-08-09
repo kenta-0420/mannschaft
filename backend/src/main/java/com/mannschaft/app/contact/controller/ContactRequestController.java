@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.ContactRequestResponse;
 import com.mannschaft.app.contact.dto.SendContactRequestBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
@@ -40,6 +41,9 @@ public class ContactRequestController {
 
     private final ContactRequestService contactRequestService;
 
+    @SelfScopedEndpoint("送信者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "対象の応答差はブロック・事前拒否のいずれもサイレント（同一PENDING応答）で秘匿する"
+            + "（ContactRequestService#sendRequest）")
     @PostMapping
     @Operation(summary = "連絡先申請を送信する")
     public ResponseEntity<ApiResponse<SendContactRequestResponse>> sendRequest(
@@ -49,6 +53,8 @@ public class ContactRequestController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestService#listReceivedRequests）")
     @GetMapping("/received")
     @Operation(summary = "受信申請一覧（PENDING のみ）")
     public ResponseEntity<ApiResponse<List<ContactRequestResponse>>> listReceived() {
@@ -56,6 +62,8 @@ public class ContactRequestController {
         return ResponseEntity.ok(ApiResponse.of(contactRequestService.listReceivedRequests(userId)));
     }
 
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestService#listSentRequests）")
     @GetMapping("/sent")
     @Operation(summary = "送信済み申請一覧（PENDING のみ）")
     public ResponseEntity<ApiResponse<List<ContactRequestResponse>>> listSent() {

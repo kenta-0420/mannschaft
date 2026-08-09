@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.contact.dto.AddContactRequestBlockBody;
 import com.mannschaft.app.contact.dto.ContactRequestBlockResponse;
 import com.mannschaft.app.contact.service.ContactRequestBlockService;
@@ -38,6 +39,8 @@ public class ContactRequestBlockController {
 
     private final ContactRequestBlockService contactRequestBlockService;
 
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ContactRequestBlockService#listBlocks）")
     @GetMapping
     @Operation(summary = "事前拒否リスト取得")
     public ResponseEntity<ApiResponse<List<ContactRequestBlockResponse>>> listBlocks() {
@@ -45,6 +48,8 @@ public class ContactRequestBlockController {
         return ResponseEntity.ok(ApiResponse.of(contactRequestBlockService.listBlocks(userId)));
     }
 
+    @SelfScopedEndpoint("登録先は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザー名義の事前拒否リストへ登録する余地がない（ContactRequestBlockService#addBlock）")
     @PostMapping
     @Operation(summary = "事前拒否を追加する")
     public ResponseEntity<ApiResponse<ContactRequestBlockResponse>> addBlock(

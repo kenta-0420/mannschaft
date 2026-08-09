@@ -76,10 +76,11 @@ public class AuthLoginController {
      *
      * <p><b>公開してよいと判断した理由</b>:
      * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
-     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。
+     * {@code verifyEmail} / {@code resendVerificationEmail} も同様の入口だが matcher が異なるため各メソッドへ
+     * 個別に {@link IntentionallyPublic} を付与する。<b>クラス付与は不可</b>
      * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
-     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
-     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName} は認証必須のためクラスへ貼ると誤った証跡になる。
      * </p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
@@ -105,15 +106,25 @@ public class AuthLoginController {
     /**
      * メール認証。
      *
-     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
-     * リクエストは操作者の識別子を一切受け取らず、メール送信時に払い出した
-     * {@code EmailVerificationTokenEntity} のワンタイム capability トークンのみで対象ユーザーを解決する。
-     * {@link com.mannschaft.app.auth.service.AuthRegistrationService#verifyEmail} がハッシュ突合・有効期限・
-     * 使用済みフラグを検証してから有効化するため、トークンを知る者だけが対象ユーザーを認証できる。</p>
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
      *
-     * <p>認可根治戦役 Wave5 監査済。</p>
+     * <p><b>根拠</b>:
+     * SecurityConfig — requestMatchers("/api/v1/auth/verify-email").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * 登録直後のユーザーはログイン済みでない（{@code register} はトークンを発行しない）ため、
+     * 未認証で到達できなければメール認証そのものが成立しない。リクエストは操作者の識別子を
+     * 一切受け取らず、メール送信時に払い出した {@code EmailVerificationTokenEntity} のワンタイム
+     * capability トークンのみで対象ユーザーを解決する。
+     * {@link com.mannschaft.app.auth.service.AuthRegistrationService#verifyEmail} がハッシュ突合・
+     * 有効期限・使用済みフラグを検証してから有効化するため、トークンを知る者だけが対象ユーザーを
+     * 認証できる。パスワードリセットと同型の設計。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。email-verification/verify-email 未整合是正（2026-08-07）。</p>
      */
-    @AuthorizedInService
+    @IntentionallyPublic("/api/v1/auth/verify-email")
     @PostMapping("/verify-email")
     @Operation(summary = "メール認証トークン検証")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "認証成功")
@@ -126,16 +137,25 @@ public class AuthLoginController {
     /**
      * メール認証メール再送信。
      *
-     * <p><b>認可方式（{@link com.mannschaft.app.common.security.AuthorizedInService} メソッド付与）</b>:
-     * 対象は認証主体ではなくリクエストの {@code email} で解決するが、
+     * <p><b>公開根拠（{@link IntentionallyPublic} メソッド付与）</b>:
+     * 本エンドポイントは {@code SecurityConfig} で {@code permitAll()} 済み。</p>
+     *
+     * <p><b>根拠</b>:
+     * SecurityConfig — requestMatchers("/api/v1/auth/verify-email/resend").permitAll()
+     * </p>
+     *
+     * <p><b>公開してよいと判断した理由</b>:
+     * 登録直後のユーザーはログイン済みでないため未認証で到達できる必要がある。対象は認証主体
+     * ではなくリクエストの {@code email} で解決するが、
      * {@link com.mannschaft.app.auth.service.AuthRegistrationService#resendVerificationEmail}
      * はユーザー不在・非対象ステータスでも同一レスポンスを返し（列挙対策）、副作用は
      * 「そのメールアドレス宛に確認メールを再送する」のみで呼出者に情報を返さない。
-     * クールダウンにより濫用も抑制される。パスワードリセット要求と同型の設計。</p>
+     * Valkey による 60 秒クールダウン（メールアドレス単位）で濫用も抑制される。
+     * パスワードリセット要求と同型の設計。</p>
      *
-     * <p>認可根治戦役 Wave5 監査済。</p>
+     * <p>認可根治戦役 Wave5 監査済。email-verification/verify-email 未整合是正（2026-08-07）。</p>
      */
-    @AuthorizedInService
+    @IntentionallyPublic("/api/v1/auth/verify-email/resend")
     @PostMapping("/verify-email/resend")
     @Operation(summary = "メール認証メール再送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再送信完了")
@@ -160,10 +180,11 @@ public class AuthLoginController {
      *
      * <p><b>公開してよいと判断した理由</b>:
      * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
-     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。
+     * {@code verifyEmail} / {@code resendVerificationEmail} も同様の入口だが matcher が異なるため各メソッドへ
+     * 個別に {@link IntentionallyPublic} を付与する。<b>クラス付与は不可</b>
      * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
-     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
-     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName} は認証必須のためクラスへ貼ると誤った証跡になる。
      * </p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
@@ -439,10 +460,11 @@ public class AuthLoginController {
      *
      * <p><b>公開してよいと判断した理由</b>:
      * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
-     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。
+     * {@code verifyEmail} / {@code resendVerificationEmail} も同様の入口だが matcher が異なるため各メソッドへ
+     * 個別に {@link IntentionallyPublic} を付与する。<b>クラス付与は不可</b>
      * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
-     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
-     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName} は認証必須のためクラスへ貼ると誤った証跡になる。
      * </p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
@@ -488,10 +510,11 @@ public class AuthLoginController {
      *
      * <p><b>公開してよいと判断した理由</b>:
      * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
-     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。
+     * {@code verifyEmail} / {@code resendVerificationEmail} も同様の入口だが matcher が異なるため各メソッドへ
+     * 個別に {@link IntentionallyPublic} を付与する。<b>クラス付与は不可</b>
      * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
-     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
-     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName} は認証必須のためクラスへ貼ると誤った証跡になる。
      * </p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
@@ -526,10 +549,11 @@ public class AuthLoginController {
      *
      * <p><b>公開してよいと判断した理由</b>:
      * ログイン・新規登録・トークン更新・パスワードリセットは<b>認証を確立する（または認証手段を回復する）ための入口</b>
-     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。<b>クラス付与は不可</b>
+     * であり、認証前に未認証で到達できなければ機能しない。資格情報・リセットトークンの検証は認証処理そのものが行う。
+     * {@code verifyEmail} / {@code resendVerificationEmail} も同様の入口だが matcher が異なるため各メソッドへ
+     * 個別に {@link IntentionallyPublic} を付与する。<b>クラス付与は不可</b>
      * : 同クラスの {@code logout} / {@code getSessions} / {@code logoutDevice}
-     * / {@code logoutAllDevices} / {@code updateSessionDeviceName}
-     * / {@code verifyEmail} / {@code resendVerificationEmail} は認証必須のためクラスへ貼ると誤った証跡になる。
+     * / {@code logoutAllDevices} / {@code updateSessionDeviceName} は認証必須のためクラスへ貼ると誤った証跡になる。
      * </p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>

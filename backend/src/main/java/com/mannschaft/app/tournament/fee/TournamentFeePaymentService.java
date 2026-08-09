@@ -181,7 +181,11 @@ public class TournamentFeePaymentService {
     /**
      * 大会参加費の Connect 決済チェックアウトを実行する。
      *
-     * <p>fee の存在確認後、{@link MemberPaymentService#createConnectCheckout} に委譲する。
+     * <p>fee の存在確認後、{@link #requireEligible} で {@link #getMyTournamentFees} と同一の
+     * 対象判定（主催組織のアクティブメンバー、かつ {@code SPECIFIC_TEAMS} の場合は対象チームの
+     * アクティブメンバー）を通し、対象外の fee は不存在と同じ {@code FEE_NOT_FOUND}（404）で
+     * 存在を秘匿する。判定を通過した場合のみ
+     * {@link MemberPaymentService#createConnectCheckout} に委譲する。
      * 受益者・払い手ともに認証ユーザー本人（SELF）とする（F08.7.1 §6 ・選手自払い）。</p>
      *
      * @param feeId          参加費 ID
@@ -194,6 +198,9 @@ public class TournamentFeePaymentService {
         // 1. fee 存在確認（@SQLRestriction により削除済みは自動除外）
         TournamentFeeEntity fee = tournamentFeeRepository.findById(feeId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.FEE_NOT_FOUND));
+
+        // 1b. 対象判定（getMyTournamentFees と同一基準）。対象外は不存在と同じ扱いで秘匿する。
+        requireEligible(fee, payerUserId);
 
         // 2. idempotencyKey 補完
         String key = (idempotencyKey != null && !idempotencyKey.isBlank())
@@ -218,5 +225,33 @@ public class TournamentFeePaymentService {
                 resp.getMemberPaymentId(),
                 resp.getEscrowTransactionId()
         );
+    }
+
+    /**
+     * fee の対象ユーザーであることを検証する（{@link #getMyTournamentFees} と同一基準）。
+     * 主催組織のアクティブメンバーであること、かつ {@code targetScope == SPECIFIC_TEAMS} の場合は
+     * 対象チームのいずれかにアクティブメンバーとして所属していることを要求する。
+     * 対象外の場合は不存在と同じ {@code FEE_NOT_FOUND}（404）で存在を秘匿する。
+     */
+    private void requireEligible(TournamentFeeEntity fee, Long userId) {
+        boolean isOrgMember = membershipRepository
+                .existsActiveByUserAndScope(userId, ScopeType.ORGANIZATION, fee.getOrganizationId());
+        if (!isOrgMember) {
+            throw new BusinessException(TournamentErrorCode.FEE_NOT_FOUND);
+        }
+
+        if (fee.getTargetScope() == TournamentFeeTargetScope.SPECIFIC_TEAMS) {
+            List<Long> teamIds = membershipRepository
+                    .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
+                    .stream()
+                    .map(MembershipEntity::getScopeId)
+                    .distinct()
+                    .toList();
+            boolean eligible = teamIds.stream()
+                    .anyMatch(teamId -> tournamentFeeTargetRepository.existsByFeeIdAndTeamId(fee.getId(), teamId));
+            if (!eligible) {
+                throw new BusinessException(TournamentErrorCode.FEE_NOT_FOUND);
+            }
+        }
     }
 }

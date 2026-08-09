@@ -70,9 +70,15 @@ class MigrationPrimaryKeyConventionTest {
     private static final Pattern VERSION_PATTERN =
         Pattern.compile("^V(\\d+)\\..*\\.sql$");
 
-    /** {@code CREATE TABLE [IF NOT EXISTS] `?name`?} のテーブル名抽出。 */
+    /**
+     * {@code CREATE [TEMPORARY] TABLE [IF NOT EXISTS] `?name`?} のテーブル名抽出。
+     *
+     * <p>group(1) が非 null なら {@code TEMPORARY}、group(2) がテーブル名。
+     * {@code TEMPORARY} を<b>認識だけはする</b>のが要点で、認識しないと
+     * 一時表の本体が直前の実テーブルの本体に紛れ込み、違反を別のテーブルのせいにしてしまう。</p>
+     */
     private static final Pattern CREATE_TABLE_PATTERN = Pattern.compile(
-        "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?`?([A-Za-z0-9_]+)`?",
+        "CREATE\\s+(TEMPORARY\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?`?([A-Za-z0-9_]+)`?",
         Pattern.CASE_INSENSITIVE);
 
     private static final Pattern AUTO_INCREMENT_PATTERN =
@@ -111,21 +117,40 @@ class MigrationPrimaryKeyConventionTest {
         if (major == null || major < CONVENTION_MIN_MAJOR) {
             return;
         }
-        String content;
+        String raw;
         try {
-            content = Files.readString(sqlFile, StandardCharsets.UTF_8);
+            raw = Files.readString(sqlFile, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("SQL 読み込み失敗: " + fileName, e);
         }
+        // コメントは DDL ではない。除去せずに走査すると、
+        // 「AUTO_INCREMENT を使わない」と説明した注釈自体を違反として検出してしまう
+        // （実際に V175 でこの誤検知が起きた）。
+        String content = stripComments(raw);
 
         // CREATE TABLE 文ごとにテーブル本体を切り出し、AUTO_INCREMENT の有無を判定。
         Matcher createMatcher = CREATE_TABLE_PATTERN.matcher(content);
         while (createMatcher.find()) {
-            String tableName = createMatcher.group(1);
+            boolean temporary = createMatcher.group(1) != null;
+            String tableName = createMatcher.group(2);
+
+            // 一時テーブルは対象外。
+            // 原則 #6（新規テーブルは UuidV7Entity 継承＝主キー UUIDv7）は
+            // ドメインの「永続表」に対する規約であり、マイグレーション実行中だけ存在して
+            // セッション終了で消える作業用の一時表には Entity も主キー設計も存在しない。
+            // 除外は番人を緩めるのではなく、対象範囲を規約の意図に合わせる修正である。
+            // （履歴上、一時表を含むマイグレーションは V175 が唯一であり、
+            //   従来 allowlist で黙らされていた一時表は存在しない＝既存の検出力は落ちない）
+            if (temporary) {
+                continue;
+            }
+
+            // 本体は「当該 CREATE TABLE 文の終端（;）まで」に限定する。
+            // 以前は「次の CREATE TABLE まで」としていたため、
+            // 認識できない CREATE TEMPORARY TABLE を挟むとその中身まで
+            // 直前の実テーブルの本体に含まれ、違反を別のテーブルのせいにしていた。
             int bodyStart = createMatcher.end();
-            // 当該 CREATE TABLE の本体（次の CREATE TABLE か文末まで）を対象にする。
-            int nextCreate = findNextCreateTable(content, bodyStart);
-            String body = content.substring(bodyStart, nextCreate);
+            String body = content.substring(bodyStart, findStatementEnd(content, bodyStart));
 
             if (AUTO_INCREMENT_PATTERN.matcher(body).find()
                     && !ALLOWLISTED_TABLES.contains(tableName)) {
@@ -136,11 +161,59 @@ class MigrationPrimaryKeyConventionTest {
         }
     }
 
-    /** {@code from} 以降で次の {@code CREATE TABLE} が始まる位置（無ければ文末）。 */
-    private static int findNextCreateTable(String content, int from) {
-        Matcher m = CREATE_TABLE_PATTERN.matcher(content);
-        if (m.find(from)) {
-            return m.start();
+    /**
+     * SQL コメント（行コメントとブロックコメントの両方）を空白へ置換する。
+     *
+     * <p>削除ではなく同じ長さの空白に置き換えるのは、以降の位置計算
+     * （本体の切り出し）がずれないようにするため。引用符の中の {@code --} は
+     * コメントではないので、文字列リテラルは読み飛ばす。</p>
+     */
+    private static String stripComments(String sql) {
+        StringBuilder sb = new StringBuilder(sql);
+        for (int i = 0; i < sb.length(); i++) {
+            char c = sb.charAt(i);
+            if (c == '\'' || c == '"' || c == '`') {
+                i = skipQuoted(sb, i, c);
+            } else if (c == '-' && i + 1 < sb.length() && sb.charAt(i + 1) == '-') {
+                while (i < sb.length() && sb.charAt(i) != '\n') {
+                    sb.setCharAt(i++, ' ');
+                }
+            } else if (c == '/' && i + 1 < sb.length() && sb.charAt(i + 1) == '*') {
+                int end = sb.indexOf("*/", i + 2);
+                end = (end < 0) ? sb.length() : end + 2;
+                for (int j = i; j < end; j++) {
+                    if (sb.charAt(j) != '\n') {
+                        sb.setCharAt(j, ' ');
+                    }
+                }
+                i = end - 1;
+            }
+        }
+        return sb.toString();
+    }
+
+    /** {@code from} の位置にある引用符に対応する閉じ引用符の位置を返す。 */
+    private static int skipQuoted(CharSequence s, int from, char quote) {
+        for (int i = from + 1; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\') {
+                i++;
+            } else if (c == quote) {
+                return i;
+            }
+        }
+        return s.length() - 1;
+    }
+
+    /** {@code from} 以降で文を終える {@code ;} の位置（引用符内は無視。無ければ文末）。 */
+    private static int findStatementEnd(String content, int from) {
+        for (int i = from; i < content.length(); i++) {
+            char c = content.charAt(i);
+            if (c == '\'' || c == '"' || c == '`') {
+                i = skipQuoted(content, i, c);
+            } else if (c == ';') {
+                return i;
+            }
         }
         return content.length();
     }
