@@ -244,8 +244,13 @@ test.describe('SK-02/03 候補日1タップ変換とキープの残存（AC-06/A
     expect(scheduleDetail.data.content.title, 'AC-06(b): 変換先予定のタイトルがキープと一致すること').toBe(title)
 
     // AC-06(b) の本体: 画面上でもチームカレンダーに実際に現れることを確認する（API実測だけで終わらせない）
+    // schedule.vue はレスポンシブ2系統（`.md:hidden` のモバイル用リストビュー / `.hidden md:grid` の
+    // デスクトップ用 CalendarGrid）を CSS で出し分けるだけで、両方とも常に DOM 上に存在する設計のため、
+    // page.getByText(title) は常に2要素へ一致し strict mode violation になる。
+    // `.first()` で曖昧に丸めるのではなく、実際に可視な要素へ絞り込む（filter({ visible: true })、
+    // Playwright 1.60 で利用可能）ことで、どちらが表示されているかを明確にしたまま検証する。
     await expect(
-      page.getByText(title),
+      page.getByText(title).filter({ visible: true }),
       'AC-06(b): 変換された予定がチームカレンダー画面に実際に表示されること',
     ).toBeVisible({ timeout: 20_000 })
 
