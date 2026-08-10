@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -17,6 +18,7 @@ import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,6 +70,8 @@ public class ReservationWaitlistService {
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ValkeyRateLimiter rateLimiter;
     private final NotificationHelper notificationHelper;
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
     private final Clock clock;
 
     // ────────────────────────────────────────────────────────────
@@ -100,8 +106,12 @@ public class ReservationWaitlistService {
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
 
         // 過去枠は待つ意味がない（既存 014 を再利用）。
+        // Issue #2526: slot_date/start_time は「業務ローカル時刻」であり、注入 Clock（UTC固定）を
+        // そのまま LocalDateTime.now(clock) で使うと JVM 既定ゾーンとの差分だけ判定がずれる。
+        // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
+        // JVM 既定ゾーンで解釈し直してから比較する。
         LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now(clock))) {
+        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(ZoneId.systemDefault())))) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。
@@ -269,11 +279,12 @@ public class ReservationWaitlistService {
             return;
         }
 
+        // Issue #2526 検討済み・変更しない: ここでの比較相手は notifiedAt であり、
+        // notifiedAt 自体も本メソッド内で LocalDateTime.now(clock) から書かれる（markNotified(now)）。
+        // 業務ローカル時刻（slot_date/start_time）は一切絡まない UTC Clock 同士の自己完結した比較のため、
+        // .withZone(ZoneId.systemDefault()) に変えると逆に他の判定基準とズレて壊れる。一律置換禁止。
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime suppressBefore = now.minus(RENOTIFY_SUPPRESSION);
-        String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
-        String title = "キャンセルが出ました";
-        String body = String.format("「%s」に空きが出ました。お早めにご予約ください。", slotTitle);
         String actionUrl = "/teams/" + teamId + "/reservations";
 
         int notified = 0;
@@ -283,6 +294,18 @@ public class ReservationWaitlistService {
                 continue;
             }
             try {
+                // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
+                // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
+                Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(entry.getUserId()));
+                String slotTitle = slot.getTitle() != null ? slot.getTitle()
+                        : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
+                String title = messageSource.getMessage(
+                        "notification.reservation.waitlistOpening.title", null, "キャンセルが出ました", locale);
+                String body = messageSource.getMessage(
+                        "notification.reservation.waitlistOpening.body",
+                        new Object[]{slotTitle},
+                        "「" + slotTitle + "」に空きが出ました。お早めにご予約ください。",
+                        locale);
                 notificationHelper.notify(
                         entry.getUserId(),
                         NOTIFICATION_TYPE,
@@ -319,7 +342,9 @@ public class ReservationWaitlistService {
      */
     @Transactional
     public int purgeExpiredWaiting() {
-        LocalDateTime now = LocalDateTime.now(clock);
+        // Issue #2526: 枠開始（slot_date/start_time・業務ローカル時刻）と比較するため、
+        // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（register と同型）。
+        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
         List<ReservationWaitlistEntryEntity> expired = waitlistRepository.findExpiredWaiting(
                 WaitlistStatus.WAITING, now.toLocalDate(), now.toLocalTime());
         if (expired.isEmpty()) {

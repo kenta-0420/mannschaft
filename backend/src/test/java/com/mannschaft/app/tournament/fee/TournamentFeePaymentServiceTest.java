@@ -372,6 +372,8 @@ class TournamentFeePaymentServiceTest {
             UUID escrowId = UUID.randomUUID();
 
             given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(true);
             given(memberPaymentService.createConnectCheckout(
                     eq(PAYMENT_ITEM_ID), eq(USER_ID), eq(USER_ID), any(String.class)))
                     .willReturn(new ConnectCheckoutResponse(clientSecret, memberPaymentId, escrowId));
@@ -394,6 +396,8 @@ class TournamentFeePaymentServiceTest {
             TournamentFeeEntity fee = allTeamsFee();
             fee.setId(feeId);
             given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(true);
             given(memberPaymentService.createConnectCheckout(
                     eq(PAYMENT_ITEM_ID), eq(USER_ID), eq(USER_ID), any(String.class)))
                     .willReturn(new ConnectCheckoutResponse("secret", 1L, UUID.randomUUID()));
@@ -419,5 +423,76 @@ class TournamentFeePaymentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(TournamentErrorCode.FEE_NOT_FOUND.getMessage());
         }
+
+        @Test
+        @DisplayName("TournamentFeeCheckoutController#checkout: 主催組織のメンバーでないユーザーは"
+                + "FEE_NOT_FOUND で拒否され、決済は一切実行されない（対象外 fee への到達を遮断）")
+        void checkoutFee_notOrgMember_throwsFeeNotFoundAndNeverCharges() {
+            // given
+            UUID feeId = UUID.randomUUID();
+            TournamentFeeEntity fee = allTeamsFee();
+            fee.setId(feeId);
+            given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(false);
+
+            // when / then
+            assertThatThrownBy(() -> service.checkoutFee(feeId, USER_ID, "key"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(TournamentErrorCode.FEE_NOT_FOUND.getMessage());
+            org.mockito.Mockito.verifyNoInteractions(memberPaymentService);
+        }
+
+        @Test
+        @DisplayName("TournamentFeeCheckoutController#checkout: SPECIFIC_TEAMS の対象外チームメンバーは"
+                + "FEE_NOT_FOUND で拒否され、決済は一切実行されない")
+        void checkoutFee_specificTeamsNotEligible_throwsFeeNotFoundAndNeverCharges() {
+            // given
+            UUID feeId = UUID.randomUUID();
+            TournamentFeeEntity fee = specificTeamsFee(feeId);
+            given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(true);
+            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
+                    .willReturn(List.of(teamMembership()));
+            given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
+                    .willReturn(false);
+
+            // when / then
+            assertThatThrownBy(() -> service.checkoutFee(feeId, USER_ID, "key"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(TournamentErrorCode.FEE_NOT_FOUND.getMessage());
+            org.mockito.Mockito.verifyNoInteractions(memberPaymentService);
+        }
+
+        @Test
+        @DisplayName("TournamentFeeCheckoutController#checkout: SPECIFIC_TEAMS の対象チームメンバーは決済できる")
+        void checkoutFee_specificTeamsEligible_success() {
+            // given
+            UUID feeId = UUID.randomUUID();
+            TournamentFeeEntity fee = specificTeamsFee(feeId);
+            given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(true);
+            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
+                    .willReturn(List.of(teamMembership()));
+            given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
+                    .willReturn(true);
+            given(memberPaymentService.createConnectCheckout(
+                    eq(PAYMENT_ITEM_ID), eq(USER_ID), eq(USER_ID), any(String.class)))
+                    .willReturn(new ConnectCheckoutResponse("secret", 1L, UUID.randomUUID()));
+
+            // when
+            TournamentFeeCheckoutResponse response = service.checkoutFee(feeId, USER_ID, "key");
+
+            // then
+            assertThat(response.clientSecret()).isEqualTo("secret");
+        }
     }
+
+    // =========================================================
+    // getMyTournamentFees: TournamentFeeCheckoutController#getMyTournamentFees の
+    // 自己スコープ性（対象組織／チームは認証主体の所属からのみ解決される）は
+    // 上記 GetMyTournamentFees ネストクラスの各テストで固定済み。
+    // =========================================================
 }

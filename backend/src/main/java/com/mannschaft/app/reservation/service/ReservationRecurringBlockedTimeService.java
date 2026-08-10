@@ -404,16 +404,27 @@ public class ReservationRecurringBlockedTimeService {
 
         // 予約を消して黙っているのは許されない。AFTER_COMMIT で申込者へ通知する
         // （ロールバックされた登録では通知が飛ばない）。
-        // 通知は「overlap 判定に直接ヒットした行」につき 1 通。グループ予約が兄弟スロット 2 枠で
-        // ルール時間帯に跨る場合は同一ユーザーへ 2 通飛ぶ（通知の集約は別チケット）。
-        for (ReservationEntity row : affected.directlyOverlapping()) {
+        // Issue #2543: 通知対象は user_id 単位に束ねる（overlap 判定に直接ヒットした行の集合ではなく、
+        // 実際にキャンセルされた行の全集合 = toCancel を使う。グループ予約が兄弟スロット複数に跨り
+        // ルール時間帯を両方覆う場合でも、申込者は 1 人なので通知も 1 通）。
+        // 本文には、そのユーザーについて実際にキャンセルされた枠を全て列挙する（兄弟行含む）。
+        Map<Long, List<ReservationForceCancelledByBlockEvent.CancelledSlot>> slotsByUser = new LinkedHashMap<>();
+        Map<Long, Long> representativeReservationIdByUser = new LinkedHashMap<>();
+        for (ReservationEntity row : toCancel) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            slotsByUser.computeIfAbsent(row.getUserId(), k -> new ArrayList<>())
+                    .add(new ReservationForceCancelledByBlockEvent.CancelledSlot(
+                            slot != null ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()) : null,
+                            slot != null ? slot.getTitle() : null));
+            representativeReservationIdByUser.putIfAbsent(row.getUserId(), row.getId());
+        }
+        for (Map.Entry<Long, List<ReservationForceCancelledByBlockEvent.CancelledSlot>> entry : slotsByUser.entrySet()) {
+            Long userId = entry.getKey();
             eventPublisher.publishEvent(new ReservationForceCancelledByBlockEvent(
                     teamId,
-                    row.getId(),
-                    row.getUserId(),
-                    slot != null ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()) : null,
-                    slot != null ? slot.getTitle() : null,
+                    representativeReservationIdByUser.get(userId),
+                    userId,
+                    entry.getValue(),
                     blockReason));
         }
 

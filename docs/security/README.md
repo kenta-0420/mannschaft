@@ -99,7 +99,7 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 |---|---|---|---|
 | `@SelfScopedEndpoint` | **他人のデータへ構造的に到達できない**（検索・更新の対象が認証主体に束縛され、リクエストで他人の識別子を指定する余地が無い） | **メソッドのみ** | `value()` に根拠を記述（必須属性）＋**対応する契約テストの実在**（番人 `SelfScopedEndpointMarkerGuardTest` が機械的に要求） |
 | `@AuthorizedInService` | 白名簿クラスを介さず **Service 内の別方式で認可済み**（webhook 署名検証・capability トークン等） | メソッド / クラス | 認可の実施箇所と方式を Javadoc に明記 |
-| `@AuthorizedByPathConfig` | `SecurityConfig` のパス単位 `hasRole()` 等で**宣言的に強制済み** | メソッド / クラス | 根拠となる `requestMatcher` を Javadoc に明記 |
+| `@AuthorizedByPathConfig` | `SecurityConfig` のパス単位 `hasRole()` 等で**宣言的に強制済み** | メソッド / クラス | 根拠となる `requestMatcher` パス文字列を `value()` 属性に列挙（必須属性・空不可）＋番人 `AuthorizedByPathConfigMatcherGuardTest` が `SecurityConfig` 実在かつ非 permitAll を機械検証 |
 | `@IntentionallyPublic` | `permitAll()` 配下で**意図的に無認可公開** | メソッド / クラス | `permitAll()` 行＋公開してよい理由を Javadoc に明記 |
 
 **`@SelfScopedEndpoint` の運用ルール**（2026-07-30 新設・マスター御裁可）:

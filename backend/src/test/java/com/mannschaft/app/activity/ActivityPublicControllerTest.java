@@ -118,10 +118,23 @@ class ActivityPublicControllerTest {
         @Test
         @DisplayName("limit をそのまま Query Service へ渡す（丸めは Query Service の責務）")
         void limitを委譲する() {
-            given(publicActivityQueryService.listPublicTeamActivities(TEAM_ID, 100000))
+            given(publicActivityQueryService.listPublicTeamActivities(TEAM_ID, 100000, 0))
                     .willReturn(java.util.List.of());
 
-            var response = controller.listTeamPublicActivities(TEAM_ID, 100000);
+            var response = controller.listTeamPublicActivities(TEAM_ID, 100000, 0);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getData()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("page をそのまま Query Service へ渡す（2ページ目以降への到達性）")
+        void pageを委譲する() {
+            given(publicActivityQueryService.listPublicTeamActivities(TEAM_ID, 20, 2))
+                    .willReturn(java.util.List.of());
+
+            var response = controller.listTeamPublicActivities(TEAM_ID, 20, 2);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();

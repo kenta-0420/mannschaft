@@ -15,6 +15,7 @@ import com.mannschaft.app.common.architecture.fixtures.D7DisabledPlusFallbackCre
 import com.mannschaft.app.common.architecture.fixtures.D7DualJsonCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7JsonCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7NoArgsAndSettersRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7NoArgsPlusDualCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7PreFixCreateThreadRequestReplica;
 import com.mannschaft.app.common.architecture.fixtures.D7SingleConstructorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7StaticFactoryCreatorRequest;
@@ -84,6 +85,21 @@ class JsonRequestBodyCreatorRuntimeProofTest {
     @DisplayName("実測: @JsonCreator二重付与はInvalidDefinitionExceptionで落ちる（番人も弾く）")
     void duplicatePropertiesCreatorsReallyFail() {
         assertBothRejected(D7DualJsonCreatorRequest.class,
+            "{\"categoryId\":1,\"title\":\"t\",\"body\":\"b\"}");
+    }
+
+    /**
+     * #2613 是正の裏取り: 引数無しコンストラクタがあっても properties-based creator が
+     * 2 本あれば実際に {@link InvalidDefinitionException} で落ちることの実測。
+     *
+     * <p>是正前の {@code lacksUsableJacksonCreator} は no-arg コンストラクタの有無による
+     * 早期 return が二重 creator の検査より先にあり、この形を合格と誤判定していた
+     * （＝偽陰性）。ここで実際に壊れることを確認し、是正後の判定と一致させる。
+     */
+    @Test
+    @DisplayName("実測(#2613): no-argコンストラクタありでもproperties-based creator2本はInvalidDefinitionExceptionで落ちる")
+    void noArgsConstructorDoesNotRescueDuplicatePropertiesCreators() {
+        assertBothRejected(D7NoArgsPlusDualCreatorRequest.class,
             "{\"categoryId\":1,\"title\":\"t\",\"body\":\"b\"}");
     }
 

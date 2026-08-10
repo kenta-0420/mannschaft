@@ -31,12 +31,12 @@ public class ActiveAdController {
      * 現在有効な広告一覧を取得する。
      *
      * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>:
-     * {@code SecurityConfig.java:454 — .anyRequest().authenticated()}。
+     * {@code SecurityConfig の .anyRequest().authenticated()}。
      * 応答は全ユーザー共通（ユーザー固有データを含まない）。</p>
      *
      * <p>認可根治戦役 Wave6 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/active")
     public ApiResponse<List<ActiveAdResponse>> activeAds() {
         return ApiResponse.of(affiliateConfigService.findActiveAds());
@@ -47,12 +47,12 @@ public class ActiveAdController {
      * パラメータ未指定時は全対象の広告のみ返す。
      *
      * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>:
-     * {@code SecurityConfig.java:454 — .anyRequest().authenticated()}。
+     * {@code SecurityConfig の .anyRequest().authenticated()}。
      * 応答は全ユーザー共通（ユーザー固有データを含まない）。</p>
      *
      * <p>認可根治戦役 Wave6 監査済。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/targeted")
     public ApiResponse<List<ActiveAdResponse>> targetedAds(
             @RequestParam(required = false) String template,

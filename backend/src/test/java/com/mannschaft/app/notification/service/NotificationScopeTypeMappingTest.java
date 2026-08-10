@@ -17,15 +17,20 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * <b>別ドメインの別 enum</b> であり、値集合が一致する保証はない。片方に定数が増えたときに
  * 黙って壊れる（あるいは握りつぶされる）ことがないよう、全定数が写像可能であることを機械的に固定する。</p>
  *
- * <p><b>本テストが唯一の網羅性保証である。</b> 写像本体は当初 {@code default} 句を持たない網羅 switch
- * で書いていたが、javac が enum switch のために生成する合成クラス {@code NotificationService$1} が
- * クロスドメイン Entity 参照の番人（D-1 / {@code CrossDomainEntityImportArchTest}）に新規違反として
- * 検出され CI が落ちたため、{@code ==} による参照比較へ書き換えた。その結果
- * <b>コンパイル時の網羅性チェックが失われた</b>ので、その保証をここで肩代わりする。</p>
+ * <p><b>経緯</b>: 写像本体はかつて javac が enum switch のために生成する合成クラス
+ * {@code NotificationService$1} がクロスドメイン Entity 参照の番人
+ * （D-1 / {@code CrossDomainEntityImportArchTest}）に新規違反として誤検出され CI が落ちたため、
+ * 一時的に {@code ==} による参照比較へ書き換えていた。D-1 番人に合成クラス除外
+ * （{@code SyntheticClasses#isSynthetic}）を実装して根治したため、写像本体は
+ * {@code switch} 式へ差し戻し済みである。</p>
  *
- * <p>したがって本テストは必ず <b>{@code ScopeType.values()} を全件ループ</b>して検査すること。
- * TEAM / ORGANIZATION を個別に書き並べる形にすると、{@code ScopeType} に定数が増えても
- * 何も落ちず、写像漏れが実行時 {@link IllegalStateException} として本番で初めて表面化してしまう。</p>
+ * <p>写像本体の {@code switch} 式は {@code TEAM} / {@code ORGANIZATION} の2ケースのみを列挙し、
+ * <b>意図的に {@code default} 句を置いていない</b>。これにより {@code ScopeType} に定数が
+ * 増えた瞬間、notification ドメインの写像本体がコンパイルエラーになる
+ * （コンパイル時の網羅性チェック。最強の検知）。本テストはそれに加えた
+ * <b>実行時の二重の守り</b>として {@code ScopeType.values()} を全件ループし、
+ * 「同名の {@code NotificationScopeType} 定数が存在するか」まで検査する。
+ * TEAM / ORGANIZATION を個別に書き並べる形にすると、この実行時チェックが働かなくなる。</p>
  *
  * <p>Docker 不要のプレーン単体テスト。実 DB での回帰は
  * {@code NotificationFolderFilterContractIT} が担保する。</p>

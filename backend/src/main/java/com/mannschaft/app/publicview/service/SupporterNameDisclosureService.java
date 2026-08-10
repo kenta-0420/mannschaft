@@ -220,8 +220,8 @@ public class SupporterNameDisclosureService {
     /**
      * 投稿者識別モード切替・履歴閲覧に対する per-scope 認可を強制する（認可根治 Phase 3-a）。
      *
-     * <p>Controller の {@code @PreAuthorize} は {@code @EnableMethodSecurity} 未有効ゆえ実機 no-op のため、
-     * Service 層で明示的に認可する。SYSTEM_ADMIN は短絡的に許可し、それ以外は当該スコープの
+     * <p>Controller の {@code @PreAuthorize} に加え、Service 層でも明示的に認可する。
+     * SYSTEM_ADMIN は短絡的に許可し、それ以外は当該スコープの
      * ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。</p>
      *
      * @param userId    操作ユーザー ID

@@ -41,6 +41,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -181,8 +182,10 @@ public class ReservationGroupService {
         ReservationSlotEntity firstSlot = slots.get(0);
 
         // 2-b. 先頭枠開始が未来（過去は 400=014・注入 Clock 基準）
+        // Issue #2526: slot_date/start_time は業務ローカル時刻のため、Clock（UTC固定）の瞬間を
+        // JVM 既定ゾーンで解釈し直してから比較する（ReservationPendingExpireService と同型）。
         LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-        if (!firstStartAt.isAfter(LocalDateTime.now(clock))) {
+        if (!firstStartAt.isAfter(LocalDateTime.now(clock.withZone(ZoneId.systemDefault())))) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
 
@@ -357,10 +360,13 @@ public class ReservationGroupService {
         if (isAdmin) {
             cancelledBy = CancelledBy.ADMIN;
         } else {
+            // Issue #2526（表に無い同型バグとして監査で発見）: deadline は firstStartAt
+            // （業務ローカル時刻）由来のため、単枠版 ReservationService#isCancelDeadlinePassed と
+            // 同じく Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する。
             int deadlineHours = reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours();
             LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
             LocalDateTime deadline = firstStartAt.minusHours(deadlineHours);
-            if (LocalDateTime.now(clock).isAfter(deadline)) {
+            if (LocalDateTime.now(clock.withZone(ZoneId.systemDefault())).isAfter(deadline)) {
                 throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
             }
             cancelledBy = CancelledBy.USER;

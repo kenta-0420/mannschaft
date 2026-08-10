@@ -3,21 +3,16 @@ package com.mannschaft.app.common.architecture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import static com.mannschaft.app.common.architecture.SecurityConfigRules.blankOutCommentsAndStrings;
+import static com.mannschaft.app.common.architecture.SecurityConfigRules.javaFiles;
+import static com.mannschaft.app.common.architecture.SecurityConfigRules.read;
+import static com.mannschaft.app.common.architecture.SecurityConfigRules.sourceRoot;
+import static com.mannschaft.app.common.architecture.SecurityConfigRules.stringLiterals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -41,24 +36,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * したがって ArchUnit 凍結ストア（{@code src/test/resources/archunit_store}）を
  * 一切読み書きしない。{@code --tests} での絞り込み実行をしても凍結ストアは壊れない。</p>
  *
+ * <p>{@code SecurityConfig} の走査ロジックは {@link SecurityConfigRules} へ共通化されている
+ * （{@code @AuthorizedByPathConfig} 用の番人と共有。二重管理を避けるため）。</p>
+ *
  * @see com.mannschaft.app.common.security.IntentionallyPublic
  */
 @DisplayName("番人: @IntentionallyPublic の matcher 式は SecurityConfig で permitAll されていること")
 class IntentionallyPublicMatcherGuardTest {
 
     private static final String ANNOTATION = "@IntentionallyPublic";
-
-    /** production ソースルート（{@code backend/} 実行と リポジトリルート実行の両方に対応）。 */
-    private static Path sourceRoot() {
-        for (String candidate : new String[]{"src/main/java", "backend/src/main/java"}) {
-            Path p = Paths.get(candidate);
-            if (Files.isDirectory(p)) {
-                return p;
-            }
-        }
-        throw new IllegalStateException(
-                "src/main/java が見つからない（cwd=" + Paths.get("").toAbsolutePath() + "）");
-    }
 
     // ────────────────────────────────────────────────────────────
     // テスト本体
@@ -68,7 +54,8 @@ class IntentionallyPublicMatcherGuardTest {
     @DisplayName("引用された matcher 式はすべて SecurityConfig に実在し permitAll されている")
     void everyCitedMatcherIsPermitAllInSecurityConfig() {
         Path root = sourceRoot();
-        SecurityRules rules = SecurityRules.parse(root.resolve("com/mannschaft/app/config/SecurityConfig.java"));
+        SecurityConfigRules.Rules rules =
+                SecurityConfigRules.Rules.parse(root.resolve("com/mannschaft/app/config/SecurityConfig.java"));
 
         assertThat(rules.permitAll)
                 .as("SecurityConfig の permitAll 解析に失敗している（パーサーの前提が壊れた可能性）")
@@ -204,164 +191,5 @@ class IntentionallyPublicMatcherGuardTest {
             }
         });
         return usages;
-    }
-
-    private static List<String> stringLiterals(String s) {
-        List<String> out = new ArrayList<>();
-        boolean in = false;
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (in) {
-                if (c == '\\' && i + 1 < s.length()) {
-                    sb.append(s.charAt(++i));
-                } else if (c == '"') {
-                    out.add(sb.toString());
-                    sb.setLength(0);
-                    in = false;
-                } else {
-                    sb.append(c);
-                }
-            } else if (c == '"') {
-                in = true;
-            }
-        }
-        return out;
-    }
-
-    /**
-     * コメントを空白へ置換する（行番号を保つため改行は残す）。
-     *
-     * @param keepStrings true なら文字列リテラルの中身を残す。false なら文字列も空白化する。
-     */
-    private static String blankOutCommentsAndStrings(String s, boolean keepStrings) {
-        StringBuilder out = new StringBuilder(s.length());
-        int i = 0;
-        int n = s.length();
-        while (i < n) {
-            char c = s.charAt(i);
-            if (c == '"') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '"') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i, keepStrings);
-                continue;
-            }
-            if (c == '\'') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '\'') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '/') {
-                int start = i;
-                while (i < n && s.charAt(i) != '\n') {
-                    i++;
-                }
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '*') {
-                int start = i;
-                int end = s.indexOf("*/", i + 2);
-                i = (end < 0) ? n : end + 2;
-                appendMasked(out, s, start, i, false);
-                continue;
-            }
-            out.append(c);
-            i++;
-        }
-        return out.toString();
-    }
-
-    private static void appendMasked(StringBuilder out, String s, int start, int end, boolean keep) {
-        for (int k = start; k < end; k++) {
-            char ch = s.charAt(k);
-            out.append(keep || ch == '\n' ? ch : (ch == '\r' ? ch : ' '));
-        }
-    }
-
-    private static List<Path> javaFiles(Path root) {
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(p -> p.toString().endsWith(".java")).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static String read(Path p) {
-        try {
-            return new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    // ────────────────────────────────────────────────────────────
-    // SecurityConfig の authorizeHttpRequests 解析
-    // ────────────────────────────────────────────────────────────
-
-    /** SecurityConfig から抽出した matcher パターン → 認可判断。 */
-    private static final class SecurityRules {
-
-        private static final String[] DECISIONS = {
-                ".permitAll()", ".hasRole(", ".hasAnyRole(", ".hasAuthority(", ".hasAnyAuthority(",
-                ".authenticated()", ".denyAll()", ".anonymous()",
-        };
-
-        /** permitAll されているパターン。 */
-        final Set<String> permitAll = new LinkedHashSet<>();
-        /** permitAll 以外で登場するパターン → その判断（診断メッセージ用）。 */
-        final Map<String, String> other = new LinkedHashMap<>();
-
-        static SecurityRules parse(Path securityConfig) {
-            SecurityRules rules = new SecurityRules();
-            // コメントは潰し、文字列リテラルは残す
-            String code = blankOutCommentsAndStrings(read(securityConfig), true);
-
-            String[] chunks = code.split("\\.requestMatchers\\(", -1);
-            for (int i = 1; i < chunks.length; i++) {
-                String chunk = chunks[i];
-                int cut = -1;
-                String decision = null;
-                for (String d : DECISIONS) {
-                    int p = chunk.indexOf(d);
-                    if (p >= 0 && (cut < 0 || p < cut)) {
-                        cut = p;
-                        decision = d;
-                    }
-                }
-                String head = (cut >= 0) ? chunk.substring(0, cut) : chunk;
-                // CORS プリフライト（OPTIONS "/**"）は「公開の根拠」にはならないため除外する。
-                // これを permitAll 集合に入れると "/**" を引用するだけで番人を通せてしまう。
-                if (head.contains("HttpMethod.OPTIONS")) {
-                    continue;
-                }
-                for (String literal : stringLiterals(head)) {
-                    if (!literal.startsWith("/")) {
-                        continue;
-                    }
-                    if (".permitAll()".equals(decision)) {
-                        rules.permitAll.add(literal);
-                    } else if (decision != null) {
-                        rules.other.putIfAbsent(literal, decision.replace("(", "").replace(")", ""));
-                    }
-                }
-            }
-            return rules;
-        }
     }
 }

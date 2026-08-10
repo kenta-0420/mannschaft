@@ -3,6 +3,7 @@ package com.mannschaft.app.pointcard.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.pointcard.dto.CreateGroupRequest;
 import com.mannschaft.app.pointcard.dto.GroupDetailResponse;
 import com.mannschaft.app.pointcard.dto.GroupListItemResponse;
@@ -53,6 +54,8 @@ public class PointCardGroupController {
     // 一覧
     // ─────────────────────────────────────────────
 
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyGroups メソッド本体）")
     @GetMapping
     @Operation(summary = "グループ一覧取得",
             description = "自分のグループ一覧を display_order → created_at 昇順で返す。"

@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.persistence;
 
+import com.mannschaft.app.common.architecture.SchemaCollationPolicy;
 import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeEntity;
 import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeRepository;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderItemRepository;
@@ -43,7 +44,6 @@ import java.util.Map;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * <b>issue #2545: ネイティブクエリのスカラ型は本番 DDL の {@code BIGINT UNSIGNED} 列に対して
@@ -90,6 +90,9 @@ class NativeQueryUnsignedBigintTypeIT {
     /** インデックス選択を意味のあるものにするための noise 通知件数。 */
     private static final int NOISE_NOTIFICATIONS = 500;
 
+    /** スキーマ全体の統一照合順序（issue #2589）。 */
+    private static final String UNIFIED_COLLATION = SchemaCollationPolicy.UNIFIED_COLLATION;
+
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("mannschaft_nativetype")
@@ -97,7 +100,12 @@ class NativeQueryUnsignedBigintTypeIT {
             .withPassword("test")
             .withTmpFs(Map.of("/var/lib/mysql", "rw"))
             // V13.045 等が CREATE TRIGGER を含む。本番（RDS はパラメータグループで有効化）と同条件に揃える。
-            .withCommand("--log_bin_trust_function_creators=1");
+            // --collation-server は本番 RDS の collation_server と同値を明示指定する（issue #2589）。
+            // mysql:8.0 の既定はたまたま同じ値だが、既定に依存すると
+            // 「本番と同じ照合順序で走っている」ことが偶然に依存するため明示で固定する。
+            .withCommand("--log_bin_trust_function_creators=1",
+                    "--character-set-server=" + SchemaCollationPolicy.UNIFIED_CHARSET,
+                    "--collation-server=" + SchemaCollationPolicy.PRODUCTION_COLLATION_SERVER);
 
     public static boolean isDockerAvailable() {
         try {
@@ -263,7 +271,7 @@ class NativeQueryUnsignedBigintTypeIT {
 
         long userId = seedUnreadCountFixture();
 
-        String currentSql = measurableSql();
+        String currentSql = repositorySql();
         // 現行（撤去後）の SQL に CAST が残っていないこと ＝ 撤去の回帰ガード
         assertThat(currentSql)
                 .as("aggregateFolderUnreadCounts の JOIN 条件に CAST が復活していないこと")
@@ -311,7 +319,7 @@ class NativeQueryUnsignedBigintTypeIT {
     void CAST撤去でnotifications側の索引が使われるようになる() throws Exception {
         long userId = seedUnreadCountFixture();
 
-        String currentSql = measurableSql();
+        String currentSql = repositorySql();
         String castedSql = currentSql.replace(
                 "n.scope_id = item.scope_id", "CAST(n.scope_id AS UNSIGNED) = item.scope_id");
 
@@ -337,51 +345,59 @@ class NativeQueryUnsignedBigintTypeIT {
     // =====================================================================
 
     /**
-     * <b>【新規発見・本 issue の想定外】{@code aggregateFolderUnreadCounts} は本番 RDS の
-     * 照合順序設定では {@code Illegal mix of collations} で失敗する。</b>
+     * <b>issue #2589 の是正が効いていること</b>を、本番と同じ照合順序で構築したスキーマ上で検証する。
      *
-     * <h2>機構</h2>
+     * <h2>かつての欠陥（V175 以前）</h2>
      * <ul>
-     *   <li>{@code notifications}（V4.019）は {@code COLLATE utf8mb4_unicode_ci} を<b>明示宣言</b>している</li>
-     *   <li>{@code my_scope_folders}（V9.100）は照合順序を宣言せず<b>サーバ既定</b>に従う</li>
+     *   <li>{@code notifications}（V4.019）は {@code COLLATE utf8mb4_unicode_ci} を<b>明示宣言</b>していた</li>
+     *   <li>{@code my_scope_folders}（V9.100）は照合順序を宣言せず<b>サーバ既定</b>に従っていた</li>
      *   <li>本番 RDS のサーバ既定は {@code utf8mb4_0900_ai_ci}
-     *       （{@code infra/terraform/modules/data/main.tf} の {@code collation_server}。
-     *       「MySQL 8.0 標準の ICU ベース照合順序」として意図的に選択されている）</li>
-     *   <li>ローカル {@code docker-compose.yml} のサーバ既定は {@code utf8mb4_unicode_ci}
-     *       （{@code --collation-server}）なので<b>ローカルでは一致してしまい問題が出ない</b></li>
+     *       （{@code infra/terraform/modules/data/main.tf} の {@code collation_server}）</li>
+     *   <li>ローカル {@code docker-compose.yml} のサーバ既定は {@code utf8mb4_unicode_ci} だったため
+     *       <b>ローカルでは一致してしまい問題が出なかった</b></li>
      * </ul>
+     * <p>結果 {@code ON ... AND n.scope_type = folder.scope_type} が異なる照合順序の列同士の比較となり、
+     * <b>本番だけ {@code Illegal mix of collations} で落ちていた</b>。</p>
      *
-     * <p>結果、{@code ON ... AND n.scope_type = folder.scope_type} が異なる照合順序の列同士の
-     * 比較となり、<b>本番だけ SQL が例外で落ちる</b>。
-     * まさに本 issue が扱っている「test/local では通り本番だけ壊れるスキーマ差」の一種であり、
-     * しかも符号性ではなく<b>照合順序</b>という別の軸だった。</p>
+     * <h2>是正と、本テストが今固定していること</h2>
+     * <p>{@code V175.20260804134628__unify_table_collation.sql} が全表・全文字列列を
+     * {@code utf8mb4_0900_ai_ci} へ統一し、{@code ALTER DATABASE} でデータベース既定も固定した。
+     * 本テストは <b>(1)</b> 当時食い違っていた 2 列が今は一致すること、
+     * <b>(2)</b> リポジトリの SQL を<b>無加工で</b>走らせて例外なく結果が返ること、を固定する。
+     * 中和用の {@code COLLATE} を挟まないことが要点で、
+     * 是正が巻き戻れば {@code Illegal mix of collations} で即座に赤くなる。</p>
      *
-     * <h2>本テストの立場</h2>
-     * <p>これは<b>欠陥を正常として凍結するものではない</b>。是正（{@code notifications} の照合順序を
-     * サーバ既定へ揃える migration、あるいは全テーブルの照合順序統一）は DDL 変更であり
-     * 別途承認と設計判断を要するため本 PR の範囲外とし、
-     * <b>事実を測定して可視化する</b>ところまでを担う。
-     * 是正されればこのテストが赤くなり、そのとき本テストと {@code measurableSql()} を削除すればよい。</p>
+     * <p>スキーマ全体の統一が維持されているかは {@code SchemaCollationConsistencyIT} が担当する。
+     * 本テストは「実際に壊れていた 1 本の実クエリ」に対する回帰ガードである。</p>
      */
     @Test
-    @DisplayName("【既知欠陥】本番RDSの照合順序設定では aggregateFolderUnreadCounts が照合不一致で失敗する")
-    void 本番照合順序では実クエリが照合不一致で失敗する() throws Exception {
+    @DisplayName("本番と同じ照合順序でも aggregateFolderUnreadCounts が無加工で成功する（issue #2589 回帰ガード）")
+    void 本番照合順序でも実クエリが照合不一致にならない() throws Exception {
         long userId = seedUnreadCountFixture();
 
-        // given: 本番 RDS と同じサーバ既定照合順序（utf8mb4_0900_ai_ci）で構築されたスキーマ
+        // given: かつて食い違っていた 2 列が、V175 により同一照合順序へ統一されていること
         assertThat(readColumnCollation("notifications", "scope_type"))
-                .as("notifications は V4.019 で utf8mb4_unicode_ci を明示宣言している")
-                .isEqualTo("utf8mb4_unicode_ci");
+                .as("notifications.scope_type は V175 で統一先へ変換されている"
+                        + "（V4.019 の utf8mb4_unicode_ci 明示宣言が残っていれば本番で JOIN が落ちる）")
+                .isEqualTo(UNIFIED_COLLATION);
         assertThat(readColumnCollation("my_scope_folders", "scope_type"))
-                .as("my_scope_folders は宣言せずサーバ既定に従う（本コンテナ = 本番 RDS と同じ 0900_ai_ci）")
-                .isEqualTo("utf8mb4_0900_ai_ci");
+                .as("my_scope_folders.scope_type も同一照合順序であること")
+                .isEqualTo(UNIFIED_COLLATION);
 
-        // when / then: リポジトリの SQL をそのまま走らせると本番と同じ例外で落ちる
+        // when: リポジトリの SQL を「中和なし・無加工」で実行する
         String rawSql = repositorySql();
-        assertThatThrownBy(() -> runUnreadCounts(rawSql, userId))
-                .as("照合順序不一致により本番では当該 API が 500 になる（要是正・本 PR 範囲外）")
-                .isInstanceOf(SQLException.class)
-                .hasMessageContaining("Illegal mix of collations");
+        assertThat(rawSql)
+                .as("実クエリに COLLATE による対症的な中和が入り込んでいないこと"
+                        + "（入っていたら統一が壊れていても本テストが気付けなくなる）")
+                .doesNotContain("COLLATE");
+
+        List<String> rows = runUnreadCounts(rawSql, userId);
+
+        // then: 例外なく、CAST 同値性テストと同じ結果が返る
+        assertThat(rows).as("フォルダ 1 件が返ること").hasSize(1);
+        assertThat(rows.get(0))
+                .as("未読件数が 1 件として集計されること")
+                .endsWith("=1");
     }
 
     // =====================================================================
@@ -389,26 +405,13 @@ class NativeQueryUnsignedBigintTypeIT {
     // =====================================================================
 
     /**
-     * 本測定に無関係な既知欠陥（{@code scope_type} の照合順序不一致。下記 §参照）だけを中和した SQL を返す。
+     * {@code aggregateFolderUnreadCounts} の SQL をリポジトリの {@link Query} から反射で取り出す。
      *
-     * <p><b>これは症状の握りつぶしではない。</b> 照合順序不一致は本 IT が新たに発見した
-     * <b>別個の本番欠陥</b>であり、{@link #本番照合順序では実クエリが照合不一致で失敗する()} が
-     * 事実として測定・記録している。本メソッドはその欠陥を「測定対象外の既知ノイズ」として
-     * 明示的に除去し、{@code scope_id} の符号性という本来の測定対象に到達させるためのものである。
-     * 照合順序欠陥が是正されたら本メソッドは不要になり削除できる。</p>
+     * <p>かつては照合順序不一致（issue #2589）を中和する {@code measurableSql()} を経由していたが、
+     * {@code V175.20260804134628__unify_table_collation.sql} が照合順序をスキーマ全体で統一したため
+     * 中和は不要になり、本メソッドを直接使う。中和を復活させてはならない
+     * — 中和は「本番だけ落ちる欠陥」をテストから見えなくするからである。</p>
      */
-    private static String measurableSql() throws NoSuchMethodException {
-        String sql = repositorySql();
-        String neutralized = sql.replace(
-                "n.scope_type = folder.scope_type",
-                "n.scope_type = folder.scope_type COLLATE utf8mb4_unicode_ci");
-        assertThat(neutralized)
-                .as("照合順序の中和が空振りしていないこと（空振りすると本番と同じ例外で落ちる）")
-                .isNotEqualTo(sql);
-        return neutralized;
-    }
-
-    /** {@code aggregateFolderUnreadCounts} の SQL をリポジトリの {@link Query} から反射で取り出す。 */
     private static String repositorySql() throws NoSuchMethodException {
         Query query = MyScopeFolderItemRepository.class
                 .getMethod("aggregateFolderUnreadCounts", Long.class, String.class)

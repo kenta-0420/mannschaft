@@ -402,6 +402,13 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
     // 5. 自己スコープ EP（一覧・招待の発行・プレゼンス一括送信）
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * 認可根治戦役 第7波ロットB: {@code @SelfScopedEndpoint} の自己スコープ性を固定する。
+     * CareLinkController#getActiveWatchers / CareLinkController#getActiveRecipients /
+     * CareLinkController#getPendingInvitations / CareLinkController#inviteWatcher /
+     * CareLinkController#inviteRecipient / PresenceController#sendHomeBulk /
+     * PresenceController#sendGoingOutBulk。
+     */
     @Nested
     @DisplayName("5. 自己スコープ EP（一覧・招待発行・プレゼンス一括）")
     class SelfScopedEndpoints {

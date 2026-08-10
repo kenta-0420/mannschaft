@@ -60,4 +60,11 @@ public interface NotificationFanoutJobRepository extends JpaRepository<Notificat
      */
     Optional<NotificationFanoutJob> findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
             String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid);
+
+    /**
+     * 冪等キーに属する<b>全シャード</b>のジョブ行を {@code shard_index} 昇順で引く
+     * （CMP-001⑤ ワーカー並列化・{@code uk_fanout_idempotency} は shard_index を含むため複数行が同一キーで存在しうる）。
+     */
+    List<NotificationFanoutJob> findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
+            String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid);
 }

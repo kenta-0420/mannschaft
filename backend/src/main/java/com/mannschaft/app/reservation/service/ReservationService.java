@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -426,7 +427,10 @@ public class ReservationService {
                 t -> reservationPolicyService.getOrDefault(t).getCancelDeadlineHours());
         LocalDateTime deadline =
                 LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
-        return LocalDateTime.now(clock).isAfter(deadline);
+        // Issue #2526: deadline は slot_date/start_time（業務ローカル時刻）由来のため、
+        // Clock（UTC固定）の瞬間を JVM 既定ゾーンで解釈し直してから比較する
+        // （ReservationPendingExpireService#findExpirableUnits と同型）。
+        return LocalDateTime.now(clock.withZone(ZoneId.systemDefault())).isAfter(deadline);
     }
 
     /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
@@ -788,8 +792,9 @@ public class ReservationService {
      */
     public List<ReservationResponse> listUpcomingReservations(Long userId) {
         // 直近予約は「申込時刻（booked_at）」ではなく「来店日時（枠の日付＋開始時刻）」で判定する。
-        // 現在時刻は注入 Clock 基準（cancel_deadline 等と同様）。
-        LocalDateTime now = LocalDateTime.now(clock);
+        // Issue #2526（表に無い同型バグとして監査で発見）: 来店日時は業務ローカル時刻のため、
+        // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（cancel_deadline 等と同様）。
+        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
         List<ReservationEntity> reservations =
                 reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
         return enrichList(reservations);

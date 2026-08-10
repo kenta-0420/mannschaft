@@ -110,14 +110,8 @@ public class ContactHandleService {
             return HandleSearchResponse.builder().found(false).build();
         }
 
-        // 検索不可設定の場合
-        if (!target.getHandleSearchable()) {
-            return HandleSearchResponse.builder().found(false).build();
-        }
-
-        // ブロック関係（双方向）の場合
-        if (userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, target.getId())
-                || userBlockRepository.existsByBlockedIdAndBlockerId(target.getId(), currentUserId)) {
+        // 検索不可設定・ブロック関係の場合
+        if (!isIdentityVisibleTo(currentUserId, target)) {
             return HandleSearchResponse.builder().found(false).build();
         }
 
@@ -136,5 +130,18 @@ public class ContactHandleService {
                 .hasPendingRequest(hasPending)
                 .contactApprovalRequired(target.getContactApprovalRequired())
                 .build();
+    }
+
+    /**
+     * 要求者に対して対象ユーザーの身元情報（氏名・ハンドル・アバター等）を開示してよいかを判定する。
+     * @ハンドル検索（{@link #searchByHandle}）と同一の可視性条件（検索可否設定・双方向ブロック関係）を用いる。
+     * 連絡先ドメイン内で身元を開示しうる箇所は、この判定を必ず共有すること。
+     */
+    public boolean isIdentityVisibleTo(Long viewerId, UserEntity target) {
+        if (!target.getHandleSearchable()) {
+            return false;
+        }
+        return !userBlockRepository.existsByBlockerIdAndBlockedId(viewerId, target.getId())
+                && !userBlockRepository.existsByBlockedIdAndBlockerId(target.getId(), viewerId);
     }
 }

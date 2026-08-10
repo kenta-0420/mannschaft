@@ -213,8 +213,8 @@ public class ShiftChangeRequestService {
     /**
      * 変更依頼審査に対する per-scope 認可を強制する（認可根治 Phase 3-a）。
      *
-     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は per-scope 文脈を持てず
-     * かつ {@code @EnableMethodSecurity} 未有効ゆえ実機 no-op のため、Service 層で明示的に認可する。
+     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は per-scope 文脈を持てないため、
+     * Service 層で明示的に認可する。
      * 変更依頼の {@code scheduleId} から所属チームを解決し（IDOR 封鎖）、SYSTEM_ADMIN は短絡許可、
      * それ以外は当該チームの ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
      * {@code ShiftScheduleService#checkScheduleAdminAccess}（#1189）と同一方針。</p>

@@ -49,6 +49,21 @@ public class CitySegmentEvaluator implements AdSegmentEvaluator {
 
     @Override
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
+        List<String> hashes = validateAndResolveHashes(segment);
+        return new HashSet<>(userRepository.findUserIdsByCityCodeHashIn(hashes));
+    }
+
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        List<String> hashes = validateAndResolveHashes(segment);
+        return userRepository.countUserIdsByCityCodeHashIn(hashes);
+    }
+
+    /**
+     * segment_value をバリデーションし、HMAC ブラインドインデックスのハッシュリストへ変換する。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーション・変換ロジック。
+     */
+    private List<String> validateAndResolveHashes(AdAudienceSegment segment) {
         Map<String, Object> value = deserialize(segment.getSegmentValue());
         Object codesObj = value.get("codes");
         if (!(codesObj instanceof List<?> rawList) || rawList.isEmpty()) {
@@ -75,10 +90,9 @@ public class CitySegmentEvaluator implements AdSegmentEvaluator {
 
         // segment_value: {"codes":["13113"]}
         // city_code は AES-256-GCM 暗号化済みのため HMAC ブラインドインデックス (city_code_hash) で検索する
-        List<String> hashes = codes.stream()
+        return codes.stream()
                 .map(encryptionService::hmac)
                 .toList();
-        return new HashSet<>(userRepository.findUserIdsByCityCodeHashIn(hashes));
     }
 
     private Map<String, Object> deserialize(String json) {

@@ -46,7 +46,7 @@ Mannschaft の「タスクの地図」は二層で構成する。
 | CMP-003 | 村FE/BE契約不一致17件戦役 | 設計中 | — | 高深刻度8件の軍議完了後、実装・実機検証まで完了 | 設計 #2284 | — |
 | CMP-004 | WS外部ブローカー化＋IaCコスト削減戦役 | 未着手 | — | A案（Valkey中継）の実装・実機検証完了 | 御裁可済（未出陣） | — |
 | CMP-005 | ADHDフレンドリーUX全面改修戦役 | 未着手 | — | 御裁可済の設計に沿った実装・実機検証完了 | 御裁可済（未出陣） | `2026-07-05-adhd-ux-overhaul.md` |
-| CMP-006 | 予約v2根本再設計 | 未着手 | — | 実装3弾すべての実装・実機検証完了 | 設計 #2157（済） | `2026-07-05-reservation-redesign.md` |
+| CMP-006 | 予約v2根本再設計 | 実機検証待ち | — | D群4弾の実機E2E完了 | 設計 #2157(済)・D群4弾実装完了(#2525/#2536/#2539/#2553 全2026-07-30 main着地) | `2026-07-05-reservation-redesign.md` |
 | CMP-007 | toBuilder更新破壊campaign | 実装中 | — | 第三波（約12件）の修正完了 | — | — |
 | CMP-008 | 1000万ユーザーDB再構築 | 実装中 | — | 新規テーブルのUUID方針（ポストポリシー長PK違反ゼロ）を含む再構築完了 | — | — |
 | CMP-009 | F18 残高凍結＋AccountPurge法務対応 | 凍結 | 法務レビュー | 法務レビュー完了後、AccountPurgeの実装・実機検証完了 | — | — |
@@ -57,9 +57,12 @@ Mannschaft の「タスクの地図」は二層で構成する。
 | CMP-014 | プロモ動画 制作資産（promo2） | 実装中 | — | promo2の8本すべての制作完了 | — | — |
 | CMP-015 | 大名システムのプラグイン化 | 実装中 | — | daimyo-marketplace の git commit・main統合完了 | 抽出済（git未コミット） | — |
 | CMP-016 | トークン週間リミット対策 | 実装中 | — | 殿モデル自動切替の実装完了 | CLAUDE.md ダイエット #2554（済・32.5→15KB）、MEMORY.md 退避（済） | — |
-| CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30）／第4波ロットA: chat・filesharing 29本を返済し凍結434→405（`ChatChannelAccessGuard` / `SharedFolderAccessGuard` を新設して認可判定を一元化、2026-08-05） | `2026-07-10-authz-idor-audit.md` |
+| CMP-017 | 認可漏れ(IDOR)全域監査戦役 残務7件 | 実装中 | — | 別チケット7件の処理完了 | Wave7 全14本 main 着地済（凍結795→653・穴119件処理済、2026-07-30）／第4波ロットA: chat・filesharing 29本を返済し凍結434→405（`ChatChannelAccessGuard` / `SharedFolderAccessGuard` を新設して認可判定を一元化、2026-08-05）／第7波 ロットA #2670（31件）・ロットB #2673（43件・戦役最終）で、並行着地した Wave6 ロットE #2666・ロットF #2667 との重複を解消のうえ返済完了。凍結ストアは 795（戦役開始）→434（第3波）→74（第6波）→**0（2026-08-09、全数返済）**、`EXPECTED_LINES_AUTHZ_WAVE4 = 0`。ロットBでは大会参加費チェックアウトについて、一覧取得と同一基準の対象判定を新設した | `2026-07-10-authz-idor-audit.md` |
 | CMP-018 | F08.7 シフト予算連動機能（Phase 9-β/γ/δ） | 実装中 | Phase 9-α（完了） | Phase 9-β（DDL+CRUD#1-5）／9-γ（TODO紐付#7-8）／9-δ（警告/月次締め+権限）の実装完了 | Phase 9-α 実装完了（2026-05-03）: 逆算API #6単独・feature.shift-budget.enabled既定false | — |
 | CMP-019 | TODO コメント棚卸し（FeatureFlag判定 34箇所ほか） | 未着手 | — | コード中の `// TODO` コメント（旧 `docs/TODO_LIST.txt` 記載分含む）を実チケット化し解消すること | — | — |
+| CMP-020 | 本番のみで顕在化するスキーマ差の是正（照合順序不一致） | 実機検証待ち | — | 実装は完了・main着地済み。残るは**本番環境の構築後に V175 を適用し、当該APIの復旧を実機で確認すること**（本番は未デプロイのため現時点では実施不能） | PR #2591 マージ済（squash `65a72380a`、CI 全10チェック SUCCESS）。全migration走査で全726表を3分類（明示unicode_ci 551/明示0900_ai_ci 33/サーバ既定依存 142）し実害JOIN 1件を特定。V175統一migration＋`SchemaCollationConsistencyIT`(9件)＋`MigrationCollationDeclarationGuardTest`＋runbook。ローカル実測 37 tests/0 failures（#2589） | — |
+| CMP-021 | 裏目付・第二陣の残務 | 未着手 | CMP-017 | #2541 の番人強化、#2544 の次の波、2スキーマ差分ITの導入判断、`my_scope_folder_items.scope_id` の符号性統一をすべて処理すること | 第二陣は 2026-07-30 完結（残=#2530） | — |
+| CMP-022 | 番人テスト群の走査ロジック監査 | 実装中 | — | migration SQL をテキスト走査する番人テスト群（第一波）に加え、Java ソースを走査する番人群（`//` `/* */` のコメント規約系、第二波）についても同型の走査欠陥を洗い出し是正すること | 第一波（migration SQL 走査番人）は PR #2671 で完了（2026-08-09 マージ、squash `e1b4df6cc`、CI 全10チェック SUCCESS）: migration SQL を走査する番人4クラスの前処理を `SqlTextScanningUtils`（新規）へ共通化し、(1)ブロックコメント未除去 (2)`CREATE TEMPORARY TABLE` 未認識による誤帰属 (3)テーブル本体範囲が次の CREATE/EOF まで伸びる (4)素朴な `sql.split(";")` の引用符内 `;` 誤分割 (5)引用符スキップが標準SQLの二重化エスケープ（`'don''t'`）を閉じ引用符と誤認し走査暴走、の5欠陥を是正。判定ロジック自体は各番人固有のまま維持。検出力低下なしを実測で証明（CrossDomainFK実効482件完全一致・PK番人allowlist外0件/全2件・collation番人対象2件/違反0件）。回帰テスト`SqlTextScanningUtilsTest`(9ケース)・`CrossDomainForeignKeyArchTest$ScanningRegressionTest`(2ケース)新設、ローカル実走で全緑（XML実測）。**残務: Java ソース走査番人群（第二波）は未監査**、同種欠陥の潜在リスクあり | — |
 
 台帳列はローカル限定（`.gitignore` 済み）のファイル名を指すため、clone 直後の環境や worktree には存在しない。`—` は「まだ台帳を作っていない」の意。戦役の再開時に台帳ファイルを作成したら、この列にファイル名を書き足すこと。
 
