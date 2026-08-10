@@ -70,4 +70,36 @@ public class OrgFanoutRecipientSource implements FanoutRecipientSource {
                 organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
                 PageRequest.of(0, limit));
     }
+
+    /**
+     * シャード対応 6 引数版（CMP-001⑤ ワーカー並列化）。
+     *
+     * <p>{@code shardCount <= 1} は分割せず 4 引数版へ委譲し従来経路と完全一致させる。{@code shardCount > 1} のみ
+     * keyset クエリに {@code MOD(user_id, shardCount) = shardIndex} 述語を足したシャード版クエリを引き、
+     * 自シャード担当（{@code user_id % shardCount == shardIndex}）の受信者だけを昇順・キーセットで供給する。
+     * 母集団条件・SUPPORTER 除外・keyset は非シャード版と共有（差分は MOD 述語 1 行のみ）。</p>
+     */
+    @Override
+    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters,
+                               int shardIndex, int shardCount) {
+        if (shardCount <= 1) {
+            // 単一シャード（従来経路）は非シャード版と完全一致（MOD 述語を挟まない）。
+            return nextPage(scopeRef, cursorSubjectId, limit, includeSupporters);
+        }
+        long organizationId = Long.parseLong(scopeRef);
+        return userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+                organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
+                shardIndex, shardCount, PageRequest.of(0, limit));
+    }
+
+    /**
+     * 受信者総数（{@code COUNT(DISTINCT user_id)}）を返す（enqueue の自動シャード数算出用・CMP-001⑤）。
+     * 母集団条件は実配信の keyset クエリと同一のものを共有し、カウントと配信の母集団を厳密一致させる。
+     */
+    @Override
+    public long countRecipients(String scopeRef, boolean includeSupporters) {
+        long organizationId = Long.parseLong(scopeRef);
+        return userRoleRepository.countDistributionUserIdsForOrganizationRecursive(
+                organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+    }
 }
