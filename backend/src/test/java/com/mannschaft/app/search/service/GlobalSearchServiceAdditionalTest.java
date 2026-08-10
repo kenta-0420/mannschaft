@@ -3,6 +3,8 @@ package com.mannschaft.app.search.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -42,8 +44,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -91,10 +95,26 @@ class GlobalSearchServiceAdditionalTest {
     @Mock
     private MembershipService membershipService;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private GlobalSearchService globalSearchService;
 
     private static final Long USER_ID = 100L;
+
+    /**
+     * {@code filterAccessible} を「渡した ID をそのまま返す（全件可視）」でスタブする。
+     * 実データのフィールドマッピング検証が主眼のテストで使う既定挙動。
+     * 可視性そのものを検証したいテストではこれを使わず個別にスタブすること。
+     */
+    private void stubAllAccessible() {
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), anyCollection(), any()))
+                .willAnswer(invocation -> {
+                    Collection<Long> ids = invocation.getArgument(1);
+                    return Set.copyOf(ids);
+                });
+    }
 
     private void stubEmptyResults(String query) {
         given(scheduleRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
@@ -106,6 +126,7 @@ class GlobalSearchServiceAdditionalTest {
         given(teamRepository.searchByKeyword(eq(query), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
         given(organizationRepository.searchByKeyword(eq(query), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
         given(userRepository.searchByKeyword(eq(query), anyCollection(), any(Pageable.class))).willReturn(List.of());
+        stubAllAccessible();
     }
 
     // ========================================
@@ -141,6 +162,7 @@ class GlobalSearchServiceAdditionalTest {
             given(teamRepository.searchByKeyword(eq("春季"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
             given(organizationRepository.searchByKeyword(eq("春季"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
             given(userRepository.searchByKeyword(eq("春季"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            stubAllAccessible();
 
             // When
             SearchResultResponse result = globalSearchService.search("春季", USER_ID);
@@ -179,6 +201,7 @@ class GlobalSearchServiceAdditionalTest {
             given(teamRepository.searchByKeyword(eq("ミーティング"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
             given(organizationRepository.searchByKeyword(eq("ミーティング"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
             given(userRepository.searchByKeyword(eq("ミーティング"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            stubAllAccessible();
 
             // When
             SearchResultResponse result = globalSearchService.search("ミーティング", USER_ID);
@@ -399,6 +422,7 @@ class GlobalSearchServiceAdditionalTest {
             given(teamRepository.searchByKeyword(eq("テスト"), any(Pageable.class))).willReturn(new PageImpl<>(List.of(team)));
             given(organizationRepository.searchByKeyword(eq("テスト"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
             given(userRepository.searchByKeyword(eq("テスト"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            stubAllAccessible();
 
             // When
             SearchResultResponse result = globalSearchService.search("テスト", USER_ID);
@@ -408,6 +432,43 @@ class GlobalSearchServiceAdditionalTest {
             assertThat(result.getCounts().get("teams")).isEqualTo(1L);
             assertThat(result.getCounts().get("events")).isEqualTo(0L);
             assertThat(result.getCounts().get("users")).isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("正常系: 可視性で絞られた予定は検索結果に含まれない（応援者が MEMBER_PLUS 予定を検索してもヒットしない）")
+        void search_可視性で絞られた予定はヒットしない() {
+            // Given: SQL 述語では拾えるが、min_view_role=MEMBER_PLUS のため応援者からは不可視な予定
+            ScheduleEntity invisible = ScheduleEntity.builder()
+                    .teamId(10L)
+                    .title("非公開練習")
+                    .location("第2グラウンド")
+                    .startAt(LocalDateTime.of(2026, 5, 1, 10, 0))
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .build();
+            ReflectionTestUtils.setField(invisible, "id", 11L);
+
+            given(scheduleRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of(invisible));
+            given(eventRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
+            given(facilityBookingRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
+            given(shiftScheduleRepository.searchByKeyword(eq("練習"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(safetyCheckRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(queueTicketRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
+            given(teamRepository.searchByKeyword(eq("練習"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(organizationRepository.searchByKeyword(eq("練習"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(userRepository.searchByKeyword(eq("練習"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            // 応援者（SUPPORTER）視点: ContentVisibilityChecker が非公開予定を除外する
+            given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), anyCollection(), any()))
+                    .willReturn(Set.of());
+
+            // When
+            SearchResultResponse result = globalSearchService.search("練習", USER_ID);
+
+            // Then: SQL 述語では候補に挙がったが、可視性フィルタで除外されヒット0件
+            assertThat(result.getCounts().get("schedules")).isEqualTo(0L);
+            assertThat(result.getResults().get("schedules")).isEmpty();
         }
     }
 }
