@@ -1,15 +1,20 @@
 package com.mannschaft.app.cms.service;
 
+import com.mannschaft.app.cms.entity.BlogMediaR2DeleteRetryEntity;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
+import com.mannschaft.app.cms.repository.BlogMediaR2DeleteRetryRepository;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * 孤立ブログメディアクリーンアップ日次バッチ用の 1 件処理 REQUIRES_NEW 実行 Bean（Issue #2601）。
@@ -34,6 +39,7 @@ class BlogMediaOrphanCleanupRunner {
     private final R2StorageService r2StorageService;
     private final BlogMediaUploadRepository blogMediaUploadRepository;
     private final StorageQuotaService storageQuotaService;
+    private final BlogMediaR2DeleteRetryRepository r2DeleteRetryRepository;
 
     /**
      * 1 件の孤立メディアを独立トランザクションで処理する。
@@ -74,6 +80,7 @@ class BlogMediaOrphanCleanupRunner {
             // 本格的な自動リトライ機構は別任務とし、ここでは追跡可能なログ記録に留める。
             log.error("{}: mediaId={}, key={}, thumbnailKey={}",
                     R2_DELETE_FAILED_MARKER, orphan.getId(), orphan.getS3Key(), orphan.getThumbnailR2Key(), e);
+            registerRetry(orphan, scopeResolver);
         }
 
         // F13 Phase 4-δ: 使用量減算（s3Key からスコープを復元）
@@ -92,6 +99,46 @@ class BlogMediaOrphanCleanupRunner {
         }
 
         return new OrphanCleanupResult(true, r2DeleteFailed);
+    }
+
+    /**
+     * R2 削除に失敗したオブジェクトを {@code blog_media_r2_delete_retries} に登録する
+     * （Issue #2601 別任務）。DB 行は既に削除済みのため、この登録が唯一の再発見手段となる。
+     *
+     * <p>スコープが解決できない場合は使用量減算の対象を特定できないため登録しない
+     * （{@link #R2_DELETE_FAILED_MARKER} ログが唯一の追跡手段のまま残る）。
+     * 登録処理自体の失敗（一意制約違反等）はここで catch し、掃除処理全体を巻き込まない。
+     * ただし握り潰さず必ず error ログを残す。</p>
+     */
+    private void registerRetry(
+            BlogMediaUploadEntity orphan,
+            java.util.function.Function<String, java.util.Optional<BlogMediaService.ScopeResolution>> scopeResolver) {
+        try {
+            String objectKey = orphan.getS3Key();
+            String objectKeyHash = SessionHashUtil.hash(objectKey);
+            if (r2DeleteRetryRepository.findByObjectKeyHash(objectKeyHash).isPresent()) {
+                log.debug("R2削除リトライは登録済みのためスキップ: key={}", objectKey);
+                return;
+            }
+            scopeResolver.apply(objectKey).ifPresentOrElse(scope -> {
+                LocalDateTime now = LocalDateTime.now();
+                BlogMediaR2DeleteRetryEntity retry = BlogMediaR2DeleteRetryEntity.builder()
+                        .objectKey(objectKey)
+                        .objectKeyHash(objectKeyHash)
+                        .fileSize(orphan.getFileSize() != null ? orphan.getFileSize() : 0L)
+                        .scopeType(scope.scopeType().name())
+                        .scopeId(String.valueOf(scope.scopeId()))
+                        .nextAttemptAt(now)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build();
+                r2DeleteRetryRepository.save(retry);
+            }, () -> log.warn("R2削除リトライ登録スキップ（スコープ解決不可）: key={}", objectKey));
+        } catch (Exception e) {
+            // 登録処理の失敗は掃除処理全体（DB行削除・R2削除試行）を巻き込んではならない。
+            // 握り潰しではなく必ず error ログを残して続行する。
+            log.error("R2削除リトライの登録に失敗しました: mediaId={}, key={}", orphan.getId(), orphan.getS3Key(), e);
+        }
     }
 
     /**
