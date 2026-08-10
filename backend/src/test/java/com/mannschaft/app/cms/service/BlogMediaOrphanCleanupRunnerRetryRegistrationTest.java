@@ -54,6 +54,7 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
     private BlogMediaOrphanCleanupRunner runner;
 
     private static final String S3_KEY = "blog/TEAM/8801/orphan.jpg";
+    private static final String THUMBNAIL_KEY = "blog/TEAM/8801/orphan-thumb.jpg";
 
     private final Function<String, Optional<BlogMediaService.ScopeResolution>> scopeResolver =
             key -> Optional.of(new BlogMediaService.ScopeResolution(StorageScopeType.TEAM, 8801L));
@@ -71,6 +72,18 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
                 .s3Key(S3_KEY)
                 .fileSize(fileSize)
                 .contentType("image/jpeg")
+                .processingStatus("READY")
+                .build();
+    }
+
+    private BlogMediaUploadEntity buildOrphanWithThumbnail(long fileSize) {
+        return BlogMediaUploadEntity.builder()
+                .uploaderId(1L)
+                .mediaType("VIDEO")
+                .s3Key(S3_KEY)
+                .thumbnailR2Key(THUMBNAIL_KEY)
+                .fileSize(fileSize)
+                .contentType("video/mp4")
                 .processingStatus("READY")
                 .build();
     }
@@ -164,6 +177,58 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
             // when / then: 例外を投げずに完走する
             org.assertj.core.api.Assertions.assertThatCode(() -> runner.cleanupOne(orphan, scopeResolver))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("本体は成功しサムネイルのみ削除失敗した場合、サムネイルのキーだけが登録され本体キーは登録されない")
+        void 本体成功サムネイルのみ失敗時はサムネイルキーのみ登録される() {
+            // given: s3Key の削除は成功、thumbnailR2Key の削除だけが失敗する
+            BlogMediaUploadEntity orphan = buildOrphanWithThumbnail(4096L);
+            given(blogMediaUploadRepository.deleteOrphanById(any())).willReturn(1);
+            doThrow(new RuntimeException("R2接続エラー")).when(r2StorageService).delete(THUMBNAIL_KEY);
+            given(r2DeleteRetryRepository.findByObjectKeyHash(anyString())).willReturn(Optional.empty());
+
+            // when
+            runner.cleanupOne(orphan, scopeResolver);
+
+            // then: サムネイルキーの1行のみ登録され、本体キー（既に削除成功済み）は登録されない
+            ArgumentCaptor<BlogMediaR2DeleteRetryEntity> captor =
+                    ArgumentCaptor.forClass(BlogMediaR2DeleteRetryEntity.class);
+            then(r2DeleteRetryRepository).should().save(captor.capture());
+            BlogMediaR2DeleteRetryEntity saved = captor.getValue();
+            assertThat(saved.getObjectKey()).isEqualTo(THUMBNAIL_KEY);
+            assertThat(saved.getStatus()).isEqualTo(BlogMediaR2DeleteRetryStatus.PENDING);
+            // サムネイルは使用量計上の対象外のため file_size は 0（成功時の二重減算防止）
+            assertThat(saved.getFileSize()).isZero();
+        }
+
+        @Test
+        @DisplayName("本体・サムネイルの両方が削除失敗した場合、それぞれ独立した2行が登録される")
+        void 本体サムネイル両方失敗時は2行登録される() {
+            // given
+            BlogMediaUploadEntity orphan = buildOrphanWithThumbnail(4096L);
+            given(blogMediaUploadRepository.deleteOrphanById(any())).willReturn(1);
+            doThrow(new RuntimeException("R2接続エラー")).when(r2StorageService).delete(S3_KEY);
+            doThrow(new RuntimeException("R2接続エラー")).when(r2StorageService).delete(THUMBNAIL_KEY);
+            given(r2DeleteRetryRepository.findByObjectKeyHash(anyString())).willReturn(Optional.empty());
+
+            // when
+            runner.cleanupOne(orphan, scopeResolver);
+
+            // then: 本体・サムネイルそれぞれ1行ずつ、計2行登録される
+            ArgumentCaptor<BlogMediaR2DeleteRetryEntity> captor =
+                    ArgumentCaptor.forClass(BlogMediaR2DeleteRetryEntity.class);
+            then(r2DeleteRetryRepository).should(org.mockito.Mockito.times(2)).save(captor.capture());
+            java.util.List<BlogMediaR2DeleteRetryEntity> savedRows = captor.getAllValues();
+            assertThat(savedRows).extracting(BlogMediaR2DeleteRetryEntity::getObjectKey)
+                    .containsExactlyInAnyOrder(S3_KEY, THUMBNAIL_KEY);
+            // 本体行は file_size 分、サムネイル行は 0（使用量二重計上防止）
+            BlogMediaR2DeleteRetryEntity mainRow = savedRows.stream()
+                    .filter(r -> r.getObjectKey().equals(S3_KEY)).findFirst().orElseThrow();
+            BlogMediaR2DeleteRetryEntity thumbnailRow = savedRows.stream()
+                    .filter(r -> r.getObjectKey().equals(THUMBNAIL_KEY)).findFirst().orElseThrow();
+            assertThat(mainRow.getFileSize()).isEqualTo(4096L);
+            assertThat(thumbnailRow.getFileSize()).isZero();
         }
     }
 }
