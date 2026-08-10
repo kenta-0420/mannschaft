@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 
@@ -183,8 +184,17 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
         @DisplayName("本体は成功しサムネイルのみ削除失敗した場合、サムネイルのキーだけが登録され本体キーは登録されない")
         void 本体成功サムネイルのみ失敗時はサムネイルキーのみ登録される() {
             // given: s3Key の削除は成功、thumbnailR2Key の削除だけが失敗する
+            //
+            // delete(THUMBNAIL_KEY) のみを doThrow で明示的にスタブすると、Mockito の strict stubs
+            // （MockitoExtension 既定）は「同一メソッドに対する別引数でのスタブが存在するのに、
+            // このコール(delete(S3_KEY))はどのスタブにもマッチしない」を潜在的なテスト記述ミスと
+            // 判定し、delete(S3_KEY) 呼び出し自体が PotentialStubbingProblem を投げてしまう。
+            // それを cleanupOne 側の catch(Exception) が「本体の削除失敗」として拾ってしまい、
+            // 意図せず本体キーまで登録されて本テストの検証が壊れる（TooManyActualInvocations）。
+            // delete(S3_KEY) を明示的に「成功（何もしない）」とスタブし、この誤検知を避ける。
             BlogMediaUploadEntity orphan = buildOrphanWithThumbnail(4096L);
             given(blogMediaUploadRepository.deleteOrphanById(any())).willReturn(1);
+            doNothing().when(r2StorageService).delete(S3_KEY);
             doThrow(new RuntimeException("R2接続エラー")).when(r2StorageService).delete(THUMBNAIL_KEY);
             given(r2DeleteRetryRepository.findByObjectKeyHash(anyString())).willReturn(Optional.empty());
 
