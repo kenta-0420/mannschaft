@@ -87,6 +87,7 @@ class DashboardBulletinUnreadN1Test {
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;

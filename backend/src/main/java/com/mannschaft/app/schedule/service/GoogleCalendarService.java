@@ -6,10 +6,8 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
-import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse.SyncSettingItem;
 import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
@@ -26,6 +24,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
+import com.mannschaft.app.schedule.visibility.MinViewRoleThreshold;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -557,7 +556,7 @@ public class GoogleCalendarService {
         }
         // 最小閲覧ロール軸（memberships 統合）
         String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
-        return satisfiesMinViewRole(roleName, schedule.getMinViewRole());
+        return MinViewRoleThreshold.satisfies(roleName, schedule.getMinViewRole());
     }
 
     /**
@@ -615,25 +614,6 @@ public class GoogleCalendarService {
     }
 
     /**
-     * 実効ロール名が {@code min_view_role} の閾値を満たすかを判定する（純メモリ・追加クエリなし）。
-     *
-     * <p>ロール優先度は {@link RolePriority}（roles テーブルの priority と一致）で比較する。
-     * 非メンバー（roleName=null）は最弱扱いとなり ANYONE 以外は満たさない。</p>
-     */
-    private boolean satisfiesMinViewRole(String roleName, MinViewRole minViewRole) {
-        if (minViewRole == null || minViewRole == MinViewRole.ANYONE) {
-            return true;
-        }
-        String required = switch (minViewRole) {
-            case ANYONE -> null;
-            case SUPPORTER_PLUS -> "SUPPORTER";
-            case MEMBER_PLUS -> "MEMBER";
-            case ADMIN_ONLY -> "ADMIN";
-        };
-        return required == null || RolePriority.isAtLeast(roleName, required);
-    }
-
-    /**
      * バックフィル対象スケジュールを可視性（F00 バッチ）＋最小閲覧ロールで絞り込む（AC-4/AC-5）。
      *
      * <p>N+1 回避: 可視性は {@link ContentVisibilityChecker#filterAccessible} で 1 バッチ判定し、
@@ -651,7 +631,7 @@ public class GoogleCalendarService {
         String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
         return schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
-                .filter(s -> satisfiesMinViewRole(roleName, s.getMinViewRole()))
+                .filter(s -> MinViewRoleThreshold.satisfies(roleName, s.getMinViewRole()))
                 .toList();
     }
 

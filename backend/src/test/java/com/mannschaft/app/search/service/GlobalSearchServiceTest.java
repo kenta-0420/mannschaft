@@ -2,6 +2,7 @@ package com.mannschaft.app.search.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -84,6 +85,9 @@ class GlobalSearchServiceTest {
     @Mock
     private MembershipService membershipService;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private GlobalSearchService globalSearchService;
 
@@ -124,6 +128,14 @@ class GlobalSearchServiceTest {
         given(teamRepository.searchByKeyword(any(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
         given(organizationRepository.searchByKeyword(any(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
         given(userRepository.searchByKeyword(any(), anyCollection(), any(Pageable.class))).willReturn(List.of());
+
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （min_view_role 判定そのものを検証するテストは個別に上書きする）。
+        given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                .willAnswer(inv -> {
+                    Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
     }
 
     // ========================================
@@ -270,6 +282,67 @@ class GlobalSearchServiceTest {
             ArgumentCaptor<Collection<Long>> visibleUserIdsCaptor = ArgumentCaptor.forClass(Collection.class);
             verify(userRepository).searchByKeyword(any(), visibleUserIdsCaptor.capture(), any(Pageable.class));
             assertThat(visibleUserIdsCaptor.getValue()).containsExactly(NO_MATCH_ID);
+        }
+    }
+
+    // ========================================
+    // CMP-017b 第五隊: schedules の min_view_role 連携（AC-12）
+    // ========================================
+    @Nested
+    @DisplayName("横断検索 schedules の min_view_role 連携（AC-12）")
+    class ScheduleMinViewRoleFiltering {
+
+        private com.mannschaft.app.schedule.entity.ScheduleEntity scheduleWithId(long id, String title) {
+            com.mannschaft.app.schedule.entity.ScheduleEntity s =
+                    com.mannschaft.app.schedule.entity.ScheduleEntity.builder()
+                            .teamId(TEAM_ID)
+                            .title(title)
+                            .startAt(java.time.LocalDateTime.of(2026, 4, 1, 10, 0))
+                            .eventType(com.mannschaft.app.schedule.EventType.MEETING)
+                            .visibility(com.mannschaft.app.schedule.ScheduleVisibility.MEMBERS_ONLY)
+                            .minViewRole(com.mannschaft.app.schedule.MinViewRole.MEMBER_PLUS)
+                            .status(com.mannschaft.app.schedule.ScheduleStatus.SCHEDULED)
+                            .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(s, "id", id);
+            return s;
+        }
+
+        @Test
+        @DisplayName("SQL述語（所属チーム/組織絞り）だけではヒットする min_view_role=MEMBER_PLUS 予定は、"
+                + "filterAccessible で不可視なら検索結果から除外される（応援者にタイトルを漏らさない）")
+        void 不可視な予定はヒットから除外される() {
+            var hidden = scheduleWithId(1L, "MEMBER_PLUS限定の作戦会議");
+            given(scheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
+                    .willReturn(List.of(hidden));
+            given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                    .willReturn(Set.of());
+
+            SearchResultResponse result = globalSearchService.search("作戦会議", USER_ID);
+
+            @SuppressWarnings("unchecked")
+            List<java.util.Map<String, Object>> scheduleHits =
+                    (List<java.util.Map<String, Object>>) result.getResults().get("schedules");
+            assertThat(scheduleHits).isEmpty();
+            assertThat(result.getCounts().get("schedules")).isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("塞ぎすぎていない: SUPPORTER_PLUS 予定は可視なら通常どおりヒットする")
+        void 可視な予定はヒットする() {
+            var visible = scheduleWithId(2L, "SUPPORTER_PLUS予定");
+            given(scheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
+                    .willReturn(List.of(visible));
+            given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                    .willReturn(Set.of(2L));
+
+            SearchResultResponse result = globalSearchService.search("SUPPORTER_PLUS予定", USER_ID);
+
+            @SuppressWarnings("unchecked")
+            List<java.util.Map<String, Object>> scheduleHits =
+                    (List<java.util.Map<String, Object>>) result.getResults().get("schedules");
+            assertThat(scheduleHits).hasSize(1);
+            assertThat(scheduleHits.get(0).get("title")).isEqualTo("SUPPORTER_PLUS予定");
+            assertThat(result.getCounts().get("schedules")).isEqualTo(1L);
         }
     }
 }

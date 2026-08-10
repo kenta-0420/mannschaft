@@ -8,6 +8,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
@@ -117,6 +118,9 @@ class DashboardServiceTest {
     @Mock
     private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private DashboardService dashboardService;
 
@@ -127,6 +131,18 @@ class DashboardServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubContentVisibilityCheckerPassThrough() {
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （本テストの主眼は可視性判定そのものではないため pass-through）。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
+    }
 
     /**
      * F02.2.1 で追加された RoleResolver / WidgetVisibilityResolver のデフォルトスタブ。
