@@ -58,7 +58,8 @@ import java.util.stream.Collectors;
  *   <li>1: ピン止めカード一覧取得</li>
  *   <li>1: ボード名バッチ取得</li>
  *   <li>1: 総件数取得</li>
- *   <li>0〜N: 参照先閲覧権限・論理削除判定（MVP では DB アクセスなし、将来 type 別に最大 5）</li>
+ *   <li>0〜N: 参照先閲覧権限・論理削除判定（{@link AccessControlDispatcher} 経由で
+ *       {@code ContentVisibilityChecker} に委譲。論理削除判定は暫定実装のまま常に空集合を返す）</li>
  * </ul>
  */
 @Slf4j

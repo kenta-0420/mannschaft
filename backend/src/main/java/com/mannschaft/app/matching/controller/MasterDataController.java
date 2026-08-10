@@ -31,9 +31,9 @@ public class MasterDataController {
      * 都道府県マスタ一覧。
      *
      * <p>全ユーザーに同一内容を返すマスタ参照 EP。{@code /api/v1/master/**} は permitAll 未登録のため
-     * SecurityConfig.java:454 の {@code anyRequest().authenticated()} で認証必須が強制される。</p>
+     * SecurityConfig の {@code anyRequest().authenticated()} で認証必須が強制される。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/prefectures")
     @Operation(summary = "都道府県マスタ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -45,10 +45,10 @@ public class MasterDataController {
     /**
      * 都道府県内の市区町村一覧。
      *
-     * <p>全ユーザーに同一内容を返すマスタ参照 EP。SecurityConfig.java:454 の
+     * <p>全ユーザーに同一内容を返すマスタ参照 EP。SecurityConfig の
      * {@code anyRequest().authenticated()} で認証必須が強制される。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/prefectures/{code}/cities")
     @Operation(summary = "市区町村一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

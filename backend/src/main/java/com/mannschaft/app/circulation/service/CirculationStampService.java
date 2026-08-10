@@ -67,9 +67,8 @@ public class CirculationStampService {
     /**
      * ADMIN 強制スキップの per-scope 認可に使用する（2026-05-29 fixup）。
      *
-     * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため Controller の
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は実機で効かず、かつ {@code hasRole} は per-scope
-     * 判定にならない。そこで {@code adminSkipRecipient} の処理本体前に、対象文書のスコープの
+     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上
+     * per-scope 判定にならない。そこで {@code adminSkipRecipient} の処理本体前に、対象文書のスコープの
      * ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）であることを {@link AccessControlService} で要求し、
      * 他団体の回覧受信者を強制スキップする操作を遮断する。</p>
      */
@@ -344,7 +343,7 @@ public class CirculationStampService {
      * SKIPPED に強制遷移させる。</p>
      *
      * <p><b>認可（2026-05-29 fixup）:</b> Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は
-     * {@code @EnableMethodSecurity} 未有効ゆえ実機で効かない（将来宣言）。真の強制は本メソッド先頭の
+     * {@code hasRole} である以上 per-scope 判定にならない。真の強制は本メソッド先頭の
      * {@link #checkScopeAdminAccess} による per-scope 認可（対象文書スコープの ADMIN/DEPUTY_ADMIN、
      * または SYSTEM_ADMIN）で行う。</p>
      *

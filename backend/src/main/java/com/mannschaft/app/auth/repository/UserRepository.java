@@ -270,8 +270,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
      * @return 一致したユーザーID リスト
      */
-    @Query("SELECT u.id FROM UserEntity u WHERE u.genderHash IN :hashes AND u.deletedAt IS NULL")
+    @Query("SELECT u.id FROM UserEntity u WHERE u.genderHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
     List<Long> findUserIdsByGenderHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * GENDER セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByGenderHashIn} の件数版）。
+     * 配信対象数の見積り用途で、user_id をメモリ展開しない。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.genderHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    long countUserIdsByGenderHashIn(@Param("hashes") List<String> hashes);
 
     /**
      * REGION_PREFECTURE セグメント: prefecture_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
@@ -282,8 +291,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
      * @return 一致したユーザーID リスト
      */
-    @Query("SELECT u.id FROM UserEntity u WHERE u.prefectureCodeHash IN :hashes AND u.deletedAt IS NULL")
+    @Query("SELECT u.id FROM UserEntity u WHERE u.prefectureCodeHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
     List<Long> findUserIdsByPrefectureCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * REGION_PREFECTURE セグメントの件数のみを COUNT クエリ1本で取得する
+     * （{@link #findUserIdsByPrefectureCodeHashIn} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.prefectureCodeHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    long countUserIdsByPrefectureCodeHashIn(@Param("hashes") List<String> hashes);
 
     /**
      * REGION_CITY セグメント: city_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
@@ -294,8 +312,16 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
      * @return 一致したユーザーID リスト
      */
-    @Query("SELECT u.id FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL")
+    @Query("SELECT u.id FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
     List<Long> findUserIdsByCityCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * REGION_CITY セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByCityCodeHashIn} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    long countUserIdsByCityCodeHashIn(@Param("hashes") List<String> hashes);
 
     /**
      * AGE_RANGE セグメント: birth_year が指定範囲（minBirthYear 以上 maxBirthYear 以下）のアクティブユーザーIDを取得する。
@@ -308,9 +334,18 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param maxBirthYear 対象年齢範囲の最小生年（年齢の高い側: 例 age=20 なら currentYear-20）
      * @return 一致したユーザーID リスト
      */
-    @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
+    @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear "
+            + "AND u.deletedAt IS NULL AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
     List<Long> findUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
                                              @Param("maxBirthYear") int maxBirthYear);
+
+    /**
+     * AGE_RANGE セグメントの件数のみを COUNT クエリ1本で取得する（{@link #findUserIdsByBirthYearBetween} の件数版）。
+     */
+    @Query("SELECT COUNT(u.id) FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear "
+            + "AND u.deletedAt IS NULL AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    long countUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
+                                        @Param("maxBirthYear") int maxBirthYear);
 
     /**
      * F20.3 ベータ特典 Phase3 シスアド審査画面用: 指定 ID 集合の id → displayName（表示名）を一括取得する。

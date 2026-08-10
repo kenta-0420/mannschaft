@@ -125,7 +125,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp", docId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(stampBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -139,7 +139,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp", docId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(stampBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -170,7 +170,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
 
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp/skip", docId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -194,7 +194,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
 
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp/reject", docId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -225,7 +225,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp/correct", docId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"reason\":\"押し直し\"}"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -258,7 +258,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
             mockMvc.perform(post("/api/v1/circulations/{documentId}/stamp/delegate", docId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"delegateeUserId\":" + otherRecipientId + "}"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_002"));
         }
 
@@ -294,7 +294,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
 
             setAuthentication(authorId);
             mockMvc.perform(delete("/api/v1/circulations/{documentId}/comments/{commentId}", docId, commentId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_010"));
         }
 
@@ -308,7 +308,7 @@ class CirculationStampRecipientAclScopeContractIT extends AbstractMySqlIntegrati
             setAuthentication(recipientId);
             mockMvc.perform(delete("/api/v1/circulations/{documentId}/comments/{commentId}",
                             otherDocId, commentId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("CIRCULATION_004"));
         }
 

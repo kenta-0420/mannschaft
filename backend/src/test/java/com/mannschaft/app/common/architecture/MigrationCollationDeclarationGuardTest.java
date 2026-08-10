@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.architecture;
 
+import com.mannschaft.app.common.migration.SqlTextScanningUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -78,8 +79,8 @@ class MigrationCollationDeclarationGuardTest {
                 continue; // 既存資産（Flyway チェックサム制約により修正不能）
             }
 
-            String sql = stripComments(Files.readString(file, StandardCharsets.UTF_8));
-            for (String statement : sql.split(";")) {
+            String sql = SqlTextScanningUtils.stripComments(Files.readString(file, StandardCharsets.UTF_8));
+            for (String statement : SqlTextScanningUtils.splitStatements(sql)) {
                 if (statement.toUpperCase(Locale.ROOT).contains("CREATE TEMPORARY TABLE")) {
                     continue;
                 }
@@ -125,12 +126,9 @@ class MigrationCollationDeclarationGuardTest {
                 && SchemaCollationPolicy.UNIFIED_COLLATION.equalsIgnoreCase(m.group(1));
     }
 
-    /** 行コメント・ブロックコメントを除去する（コメント中の CREATE TABLE を拾わないため）。 */
-    private static String stripComments(String sql) {
-        String s = sql.replaceAll("(?s)/\\*.*?\\*/", " ");
-        s = s.replaceAll("--[^\\n]*", " ");
-        return s;
-    }
+    // コメント除去・文分割（引用符内の ; を無視）は SqlTextScanningUtils（common.migration）に
+    // 共通化してある（CMP-022: 独自の正規表現実装が引用符を考慮しておらず、
+    // 文字列リテラルに ; を含む CREATE TABLE で誤分割する潜在欠陥があった）。
 
     private static List<Path> listMigrationFiles() throws IOException {
         assertTrue(Files.isDirectory(MIGRATION_DIR),

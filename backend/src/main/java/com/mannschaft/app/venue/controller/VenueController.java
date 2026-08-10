@@ -26,13 +26,13 @@ import java.util.List;
  * <p>{@link com.mannschaft.app.venue.entity.VenueEntity} は組織/チームに属さない
  * 全テナント共有のマスタデータ（Google Places 由来 or 手動登録の住所録）であり、
  * organizationId/teamId のようなテナントスコープを持たない。そのため各 EP は
- * SecurityConfig.java:454 の anyRequest().authenticated() による認証必須のみで足り、
+ * SecurityConfig の deny-by-default（anyRequest().authenticated()）による認証必須のみで足り、
  * 全認証済みユーザーに同一の応答を返す（ユーザー固有情報を含まない）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/venues")
 @RequiredArgsConstructor
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig("anyRequest().authenticated()")
 public class VenueController {
 
     private final VenueService venueService;

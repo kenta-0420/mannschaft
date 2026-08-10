@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.CancelledBy;
@@ -11,6 +12,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -76,6 +79,8 @@ public class ReservationPendingExpireService {
     private final ReservationSlotRepository slotRepository;
     private final ReservationSlotService slotService;
     private final NotificationHelper notificationHelper;
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
     private final Clock clock;
 
     // ────────────────────────────────────────────────────────────
@@ -233,15 +238,24 @@ public class ReservationPendingExpireService {
      * （{@link ReservationReminderDispatchBatchService} と同じ決め方）。</p>
      */
     private void notifyApplicant(ReservationEntity primary, ReservationSlotEntity slot) {
-        String title = "仮予約が期限切れになりました";
+        Locale locale = resolveLocale(primary.getUserId());
+        String title = messageSource.getMessage(
+                "notification.reservation.pendingExpire.title", null,
+                "仮予約が期限切れになりました", locale);
         String body;
         if (slot != null) {
             String slotAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).format(SLOT_AT_FORMAT);
-            String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
-            body = String.format("%s の「%s」は承認期限を過ぎたため自動的にキャンセルされました。",
-                    slotAt, slotTitle);
+            String slotTitle = slot.getTitle() != null ? slot.getTitle()
+                    : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
+            body = messageSource.getMessage(
+                    "notification.reservation.pendingExpire.body.withSlot",
+                    new Object[]{slotAt, slotTitle},
+                    slotAt + " の「" + slotTitle + "」は承認期限を過ぎたため自動的にキャンセルされました。",
+                    locale);
         } else {
-            body = "お申し込みの仮予約は承認期限を過ぎたため自動的にキャンセルされました。";
+            body = messageSource.getMessage(
+                    "notification.reservation.pendingExpire.body.noSlot", null,
+                    "お申し込みの仮予約は承認期限を過ぎたため自動的にキャンセルされました。", locale);
         }
         String actionUrl = "/teams/" + primary.getTeamId() + "/reservations";
 
@@ -256,6 +270,14 @@ public class ReservationPendingExpireService {
                 primary.getTeamId(),
                 actionUrl,
                 null);
+    }
+
+    /**
+     * 受信者ユーザーの locale を解決する（{@link UserLocaleCache} 経由。D-5: 予約ドメインから
+     * auth ドメインのリポジトリへ直接依存しない・{@code common.i18n} 配下の共有サービス経由に限定する）。
+     */
+    private Locale resolveLocale(Long userId) {
+        return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
 
     /**

@@ -23,14 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
  * SYSTEM_ADMIN ロール保持者のみへ宣言的に予約されている。</p>
  *
  * <p><b>根拠</b>:
- * SecurityConfig.java:369 — requestMatchers("/api/v1/admin/stripe/**").hasRole("SYSTEM_ADMIN")
+ * SecurityConfig の requestMatchers("/api/v1/admin/stripe/**").hasRole("SYSTEM_ADMIN")
  * </p>
  *
  * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
  * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
  * 失効するため、必ず併せて見直すこと。</p>
  */
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig("/api/v1/admin/stripe/**")
 @RestController
 @RequestMapping("/api/v1/admin/stripe")
 @Tag(name = "管理者支払い操作", description = "F08.2 SYSTEM_ADMIN 専用支払い管理")

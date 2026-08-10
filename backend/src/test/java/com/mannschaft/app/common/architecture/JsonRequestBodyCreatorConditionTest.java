@@ -15,6 +15,7 @@ import com.mannschaft.app.common.architecture.fixtures.D7FormOkSearchRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7JsonCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7NestedBrokenAttachment;
 import com.mannschaft.app.common.architecture.fixtures.D7NoArgsAndSettersRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7NoArgsPlusDualCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7PreFixCreateThreadRequestReplica;
 import com.mannschaft.app.common.architecture.fixtures.D7RootRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7SingleConstructorRequest;
@@ -66,6 +67,9 @@ import org.junit.jupiter.api.Test;
  *   <tr><td>{@link D7DualJsonCreatorRequest}</td>
  *       <td>2 ctor の<b>両方</b>に {@code @JsonCreator}（properties-based が 2 本）</td>
  *       <td><b>検出</b>＝注釈の存在ではなく採用可能な creator の本数で見る</td></tr>
+ *   <tr><td>{@link D7NoArgsPlusDualCreatorRequest}</td>
+ *       <td>引数無しコンストラクタあり ＋ properties-based creator が 2 本（#2613）</td>
+ *       <td><b>検出</b>＝引数無しコンストラクタの有無は二重 creator の衝突を抑止しない</td></tr>
  *   <tr><td>{@link D7DisabledModeCreatorRequest}</td>
  *       <td><b>唯一の</b> ctor に {@code @JsonCreator(mode = DISABLED)}</td>
  *       <td><b>検出</b>＝暗黙 creator も明示的に断たれている</td></tr>
@@ -211,6 +215,18 @@ class JsonRequestBodyCreatorConditionTest {
             .as("Jackson は properties-based creator をちょうど 1 本しか採れず、"
                 + "2 本宣言されると Conflicting property-based creators で常時 500 になる。"
                 + "「@JsonCreator が 1 つでもあれば合格」という判定はこの形を素通りさせる")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("抜け道封じ(#2613): 引数無しctorがあってもproperties-based creatorが2本なら検出される")
+    void noArgsPlusDualCreatorIsDetected() {
+        assertThat(jsonBoundNames).contains(D7NoArgsPlusDualCreatorRequest.class.getName());
+        assertThat(violatesJson(D7NoArgsPlusDualCreatorRequest.class))
+            .as("引数無しコンストラクタの有無による早期 return を二重 creator 検査より前に置くと、"
+                + "この形（no-arg あり＋properties-based creator 2 本）が素通りする。"
+                + "Jackson は creator の衝突を先に検出するため、no-arg コンストラクタへの"
+                + "フォールバックは起きず常時 500 になる")
             .isTrue();
     }
 

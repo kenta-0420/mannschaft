@@ -126,7 +126,7 @@ class MigrationPrimaryKeyConventionTest {
         // コメントは DDL ではない。除去せずに走査すると、
         // 「AUTO_INCREMENT を使わない」と説明した注釈自体を違反として検出してしまう
         // （実際に V175 でこの誤検知が起きた）。
-        String content = stripComments(raw);
+        String content = SqlTextScanningUtils.stripComments(raw);
 
         // CREATE TABLE 文ごとにテーブル本体を切り出し、AUTO_INCREMENT の有無を判定。
         Matcher createMatcher = CREATE_TABLE_PATTERN.matcher(content);
@@ -150,7 +150,8 @@ class MigrationPrimaryKeyConventionTest {
             // 認識できない CREATE TEMPORARY TABLE を挟むとその中身まで
             // 直前の実テーブルの本体に含まれ、違反を別のテーブルのせいにしていた。
             int bodyStart = createMatcher.end();
-            String body = content.substring(bodyStart, findStatementEnd(content, bodyStart));
+            String body = content.substring(bodyStart,
+                SqlTextScanningUtils.findStatementEnd(content, bodyStart));
 
             if (AUTO_INCREMENT_PATTERN.matcher(body).find()
                     && !ALLOWLISTED_TABLES.contains(tableName)) {
@@ -161,62 +162,8 @@ class MigrationPrimaryKeyConventionTest {
         }
     }
 
-    /**
-     * SQL コメント（行コメントとブロックコメントの両方）を空白へ置換する。
-     *
-     * <p>削除ではなく同じ長さの空白に置き換えるのは、以降の位置計算
-     * （本体の切り出し）がずれないようにするため。引用符の中の {@code --} は
-     * コメントではないので、文字列リテラルは読み飛ばす。</p>
-     */
-    private static String stripComments(String sql) {
-        StringBuilder sb = new StringBuilder(sql);
-        for (int i = 0; i < sb.length(); i++) {
-            char c = sb.charAt(i);
-            if (c == '\'' || c == '"' || c == '`') {
-                i = skipQuoted(sb, i, c);
-            } else if (c == '-' && i + 1 < sb.length() && sb.charAt(i + 1) == '-') {
-                while (i < sb.length() && sb.charAt(i) != '\n') {
-                    sb.setCharAt(i++, ' ');
-                }
-            } else if (c == '/' && i + 1 < sb.length() && sb.charAt(i + 1) == '*') {
-                int end = sb.indexOf("*/", i + 2);
-                end = (end < 0) ? sb.length() : end + 2;
-                for (int j = i; j < end; j++) {
-                    if (sb.charAt(j) != '\n') {
-                        sb.setCharAt(j, ' ');
-                    }
-                }
-                i = end - 1;
-            }
-        }
-        return sb.toString();
-    }
-
-    /** {@code from} の位置にある引用符に対応する閉じ引用符の位置を返す。 */
-    private static int skipQuoted(CharSequence s, int from, char quote) {
-        for (int i = from + 1; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\\') {
-                i++;
-            } else if (c == quote) {
-                return i;
-            }
-        }
-        return s.length() - 1;
-    }
-
-    /** {@code from} 以降で文を終える {@code ;} の位置（引用符内は無視。無ければ文末）。 */
-    private static int findStatementEnd(String content, int from) {
-        for (int i = from; i < content.length(); i++) {
-            char c = content.charAt(i);
-            if (c == '\'' || c == '"' || c == '`') {
-                i = skipQuoted(content, i, c);
-            } else if (c == ';') {
-                return i;
-            }
-        }
-        return content.length();
-    }
+    // SQL コメント除去・引用符スキップ・文末検出は SqlTextScanningUtils（同パッケージ）に
+    // 共通化してある（CMP-022: 番人ごとに不統一だった前処理ロジックの一本化）。
 
     /** ファイル名から major バージョンを抽出（取れなければ {@code null}）。 */
     private static Integer extractMajor(String fileName) {

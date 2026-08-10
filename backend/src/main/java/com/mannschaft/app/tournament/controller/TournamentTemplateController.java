@@ -103,9 +103,9 @@ public class TournamentTemplateController {
         return ResponseEntity.noContent().build();
     }
 
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。全組織共通のシステム公開
+    // SecurityConfig の anyRequest().authenticated() で認証必須。全組織共通のシステム公開
     // プリセット一覧を返すのみで、ユーザー固有情報は含まない。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/tournament-presets")
     @Operation(summary = "公開プリセット一覧")
     public ResponseEntity<PagedResponse<PresetResponse>> listPublicPresets(
