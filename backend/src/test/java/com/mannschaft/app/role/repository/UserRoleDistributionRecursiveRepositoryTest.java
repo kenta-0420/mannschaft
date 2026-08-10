@@ -465,12 +465,35 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         grantOrgRole(viewer, rootC);        // C の直属
         flushClear();
 
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootA, rootB, rootC), viewer, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(
+                java.util.Set.of(rootA, rootB, rootC), viewer);
 
         // A（配下チーム所属）と C（直属）は返り、B は返らない
         assertThat(matched).containsExactlyInAnyOrder(rootA, rootC);
         assertThat(matched).doesNotContain(rootB, leafA, leafB);
+    }
+
+    @Test
+    @DisplayName("バルク版_配下所属のロール名が同じ1クエリで返る（CMP-017b 閾値評価の材料）")
+    void バルク版_ロール名が同時に返る() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_130L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long viewer = persistActiveUser();
+        grantTeamRole(viewer, leafTeam);
+        flushClear();
+
+        List<UserRoleRepository.DescendantMembershipRoleProjection> rows =
+                userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                        java.util.Set.of(rootOrg), viewer, MAX_DEPTH);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getRootOrgId()).isEqualTo(rootOrg);
+        assertThat(rows.get(0).getRoleName())
+                .as("ロール名が取れなければ ORGANIZATION_AND_DESCENDANTS 段で min_view_role を評価できない")
+                .isEqualTo("MEMBER");
     }
 
     @Test
@@ -486,8 +509,7 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         addMembership(supporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
         flushClear();
 
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootOrg), supporter, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(java.util.Set.of(rootOrg), supporter);
 
         assertThat(matched).containsExactly(rootOrg);
     }
@@ -510,9 +532,17 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         flushClear();
 
         // 中間組織が削除 → その配下 leaf も枝刈り → leafTeamMember は root の配下と見なされない
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootOrg), leafTeamMember, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(java.util.Set.of(rootOrg), leafTeamMember);
         assertThat(matched).isEmpty();
+    }
+
+    /** バルク版の戻り値（根 ORG × ロール名）から根 ORG ID だけを取り出すヘルパー。 */
+    private List<Long> matchedRootIds(java.util.Set<Long> rootOrgIds, Long userId) {
+        return userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                        rootOrgIds, userId, MAX_DEPTH).stream()
+                .map(UserRoleRepository.DescendantMembershipRoleProjection::getRootOrgId)
+                .distinct()
+                .toList();
     }
 
     // ---------------------------------------------------------------------

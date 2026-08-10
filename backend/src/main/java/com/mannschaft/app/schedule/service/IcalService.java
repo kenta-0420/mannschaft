@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse.ScopedUrlItem;
@@ -62,6 +64,7 @@ public class IcalService {
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /** スコープ種別: チーム */
     private static final String SCOPE_TYPE_TEAM = "TEAM";
@@ -238,21 +241,26 @@ public class IcalService {
 
     /**
      * スコープに応じてスケジュールを取得する。
+     *
+     * <p>F00 認可基盤連携（CMP-017b 第五隊）: {@link ContentVisibilityChecker#filterAccessible}
+     * で閲覧者 {@code userId} が可視な予定だけに絞り込んでから {@link #ICAL_MAX_EVENTS} 件数上限を
+     * 適用する。**順序が肝**——上限を先に適用してから絞り込むと非公開予定に埋まって公開予定が
+     * 歯抜けになる（CMP-020 が問題視する構造の新規作り込みを避ける）。</p>
      */
     private List<ScheduleEntity> fetchSchedulesForFeed(Long userId, String scope, Long scopeId,
                                                        LocalDateTime from, LocalDateTime to) {
         if ("team".equals(scope) && scopeId != null) {
-            return scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to),
+                    userId);
         } else if ("organization".equals(scope) && scopeId != null) {
-            return scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to),
+                    userId);
         } else if ("personal".equals(scope)) {
-            return scheduleRepository
-                    .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to),
+                    userId);
         }
 
         List<ScheduleEntity> allSchedules = new ArrayList<>(
@@ -270,8 +278,20 @@ public class IcalService {
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to));
         }
 
-        return allSchedules.stream()
+        List<ScheduleEntity> sorted = allSchedules.stream()
                 .sorted((a, b) -> a.getStartAt().compareTo(b.getStartAt()))
+                .toList();
+        return limitAfterFilter(sorted, userId);
+    }
+
+    /**
+     * 可視性フィルタを通してから件数上限を適用する（順序固定。危険箇所5参照）。
+     */
+    private List<ScheduleEntity> limitAfterFilter(List<ScheduleEntity> schedules, Long userId) {
+        List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
+        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, ids, userId);
+        return schedules.stream()
+                .filter(s -> visibleIds.contains(s.getId()))
                 .limit(ICAL_MAX_EVENTS)
                 .toList();
     }

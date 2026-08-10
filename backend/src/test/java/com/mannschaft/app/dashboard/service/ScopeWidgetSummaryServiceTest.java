@@ -4,6 +4,7 @@ import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -56,9 +57,22 @@ class ScopeWidgetSummaryServiceTest {
     private com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository bulletinReadStatusRepository;
     @Mock
     private NameResolverService nameResolverService;
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private ScopeWidgetSummaryService service;
+
+    /** CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す（pass-through）。 */
+    @org.junit.jupiter.api.BeforeEach
+    void stubVisibilityPassThrough() {
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), org.mockito.ArgumentMatchers.anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
+    }
 
     @Nested
     @DisplayName("buildLatestBlogPosts")
@@ -121,12 +135,59 @@ class ScopeWidgetSummaryServiceTest {
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(10L), any(), any()))
                     .willReturn(List.of(event(e1, "今日の会議"), event(e2, "明後日の会議")));
 
-            Map<String, Object> result = service.buildCalendarSummary("TEAM", 10L, ZoneId.of("UTC"));
+            Map<String, Object> result = service.buildCalendarSummary("TEAM", 10L, ZoneId.of("UTC"), 7L);
 
             assertThat(result).containsKeys("events_today", "events_this_week", "next_event", "days_with_events");
             @SuppressWarnings("unchecked")
             List<Integer> days = (List<Integer>) result.get("days_with_events");
             assertThat(days).contains(today.getDayOfMonth());
+        }
+
+        @Test
+        @DisplayName("CMP-017b 第五隊 AC-13: 不可視な予定は next_event / 件数 / days_with_events から除外される")
+        void calendar_不可視予定は除外() {
+            LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+            LocalDateTime e1 = today.atTime(10, 0);
+            ScheduleEntity hidden = event(e1, "応援者に見せないMEMBER_PLUS予定");
+            org.springframework.test.util.ReflectionTestUtils.setField(hidden, "id", 99L);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(10L), any(), any()))
+                    .willReturn(List.of(hidden));
+            // filterAccessible は空集合を返す（応援者には不可視）。
+            given(contentVisibilityChecker.filterAccessible(any(), any(), any()))
+                    .willReturn(java.util.Set.of());
+
+            Map<String, Object> result = service.buildCalendarSummary("TEAM", 10L, ZoneId.of("UTC"), 7L);
+
+            assertThat(result.get("events_today")).isEqualTo(0L);
+            assertThat(result.get("events_this_week")).isEqualTo(0L);
+            assertThat(result.get("next_event")).isNull();
+            assertThat((List<?>) result.get("days_with_events")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 第五隊: 塞ぎすぎていない側 — SUPPORTER_PLUS 予定は可視なら通常どおり集計される")
+        void calendar_可視な予定はSUPPORTER_PLUSでも集計される() {
+            // next_event 判定（実装側）は LocalDateTime.now()（システムデフォルトTZ）で比較するため、
+            // テストもシステムデフォルトTZの「現在」から1時間後に固定する（UTC基準だと環境のTZ次第でずれる）。
+            LocalDateTime e1 = LocalDateTime.now().plusHours(1);
+            ScheduleEntity visible = ScheduleEntity.builder()
+                    .teamId(10L).title("応援者にも見えるSUPPORTER_PLUS予定").startAt(e1)
+                    .eventType(EventType.MEETING)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.SUPPORTER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(visible, "id", 42L);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(10L), any(), any()))
+                    .willReturn(List.of(visible));
+            given(contentVisibilityChecker.filterAccessible(any(), any(), any()))
+                    .willReturn(java.util.Set.of(42L));
+
+            Map<String, Object> result = service.buildCalendarSummary("TEAM", 10L, ZoneId.of("UTC"), 7L);
+
+            // next_event 判定はシステムデフォルトTZの「現在」基準（実装側の既存仕様を維持）。
+            // events_today は zoneId=UTC 基準のため環境TZ次第でずれうるので、本テストでは next_event のみ検証する。
+            assertThat(result.get("next_event")).isEqualTo("応援者にも見えるSUPPORTER_PLUS予定");
         }
     }
 
@@ -154,7 +215,7 @@ class ScopeWidgetSummaryServiceTest {
             given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(20L), any(), any()))
                     .willReturn(List.of(ev));
 
-            List<Map<String, Object>> result = service.buildOrgUpcomingEvents(20L);
+            List<Map<String, Object>> result = service.buildOrgUpcomingEvents(20L, 7L);
             assertThat(result).hasSize(1);
             assertThat(result.get(0).get("title")).isEqualTo("総会");
         }
