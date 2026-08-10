@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -73,15 +75,30 @@ class ReservationWaitlistServiceTest {
     private ValkeyRateLimiter rateLimiter;
     @Mock
     private NotificationHelper notificationHelper;
+    @Mock
+    private UserLocaleCache userLocaleCache;
+
+    /** 実プロパティファイル（messages*.properties）を読む実体（i18n の locale 分岐を実データで検証するため）。 */
+    private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-08T00:00:00Z"), ZoneOffset.UTC);
 
     private ReservationWaitlistService service;
 
+    private static ReloadableResourceBundleMessageSource realMessageSource() {
+        ReloadableResourceBundleMessageSource source = new ReloadableResourceBundleMessageSource();
+        source.setBasenames("classpath:messages");
+        source.setDefaultEncoding("UTF-8");
+        return source;
+    }
+
     @BeforeEach
     void setUp() {
+        // 既定 locale は ja（未スタブのテストで NPE にならないよう lenient で用意）。
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper, clock);
+                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
+                userLocaleCache, messageSource, clock);
     }
 
     /**
@@ -90,7 +107,8 @@ class ReservationWaitlistServiceTest {
      */
     private void reinitServiceWithClock(Clock injectedClock) {
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper, injectedClock);
+                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
+                userLocaleCache, messageSource, injectedClock);
     }
 
     private ReservationSlotEntity slot(SlotStatus status) {
@@ -371,6 +389,33 @@ class ReservationWaitlistServiceTest {
                 eq("RESERVATION"), eq(SLOT_ID), eq(NotificationScopeType.TEAM), eq(TEAM_ID), anyString(), eq(null));
         assertThat(e1.getNotifiedAt()).isNotNull();
         assertThat(e2.getNotifiedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("i18n: 受信者の locale が en の場合、通知本文が英語で組み立てられる")
+    void 空き復帰通知は受信者localeで組み立てられる() {
+        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.AVAILABLE)));
+        ReservationWaitlistEntryEntity jaEntry = ReservationWaitlistEntryEntity.builder()
+                .teamId(TEAM_ID).slotId(SLOT_ID).userId(901L).status(WaitlistStatus.WAITING).build();
+        ReservationWaitlistEntryEntity enEntry = ReservationWaitlistEntryEntity.builder()
+                .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING).build();
+        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING))
+                .thenReturn(List.of(jaEntry, enEntry));
+        when(userLocaleCache.getLocale(901L)).thenReturn("ja");
+        when(userLocaleCache.getLocale(902L)).thenReturn("en");
+
+        service.notifySlotReopened(TEAM_ID, SLOT_ID);
+
+        ArgumentCaptor<String> jaBody = ArgumentCaptor.forClass(String.class);
+        verify(notificationHelper).notify(eq(901L), anyString(), any(NotificationPriority.class),
+                anyString(), jaBody.capture(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
+        ArgumentCaptor<String> enBody = ArgumentCaptor.forClass(String.class);
+        verify(notificationHelper).notify(eq(902L), anyString(), any(NotificationPriority.class),
+                anyString(), enBody.capture(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
+
+        assertThat(jaBody.getValue()).contains("空きが出ました");
+        assertThat(enBody.getValue()).contains("slot has opened up");
+        assertThat(jaBody.getValue()).isNotEqualTo(enBody.getValue());
     }
 
     @Test
