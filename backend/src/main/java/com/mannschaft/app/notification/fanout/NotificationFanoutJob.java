@@ -37,7 +37,9 @@ import java.time.LocalDateTime;
         name = "notification_fanout_jobs",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_fanout_idempotency",
-                columnNames = {"scope_type", "scope_ref", "notification_type", "source_event_uuid"}),
+                columnNames = {
+                        "scope_type", "scope_ref", "notification_type", "source_event_uuid", "shard_index"
+                }),
         indexes = @Index(name = "idx_fanout_status_next", columnList = "status, next_attempt_at"))
 @Getter
 @Setter
@@ -119,6 +121,31 @@ public class NotificationFanoutJob extends UuidV7Entity {
     @Builder.Default
     @Column(name = "include_supporters", nullable = false)
     private Boolean includeSupporters = Boolean.TRUE;
+
+    /**
+     * CMP-001⑤（ワーカー並列化）: このジョブが属するシャード番号（0始まり）。
+     *
+     * <p>{@code DEFAULT 0}（V176）で既存行・既存経路（単一ワーカー担当）の後方互換を保つ。
+     * enqueue 時のシャード算出ロジックは本フィールド追加時点では未実装（出陣-3 担当）。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_index", nullable = false)
+    private short shardIndex = 0;
+
+    /**
+     * CMP-001⑤（ワーカー並列化・B案 是正）: 総シャード数を表す番人値。
+     *
+     * <p><b>番人値契約</b>: {@code 0}＝未評価（enqueue 直後の親ジョブ。初回 claim した worker が
+     * {@link NotificationFanoutJobService#resolveAndSplitShards} で母集団を数えて確定する）／
+     * {@code 1..N}＝評価済（{@code 1}=単一シャード・{@code N}=N 本に分割済）。enqueue は真の O(1) のため
+     * 受信者数を数えず、常に親 1 行を {@code shard_count=0} で作る。</p>
+     *
+     * <p>{@code @Builder.Default} は {@code 1} のまま残す。DB 既定値（V176）と一致させ、レガシー行・
+     * shard_count を明示しない経路の後方互換を保つため（enqueue は明示的に {@code 0} をセットする）。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_count", nullable = false)
+    private short shardCount = 1;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

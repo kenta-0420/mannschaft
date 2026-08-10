@@ -45,4 +45,40 @@ public interface FanoutRecipientSource {
         // 既定はトグル無視（VILLAGE / TEAM は母集団が応援者トグルに依存しないため 3 引数版へ委譲）。
         return nextPage(scopeRef, cursorSubjectId, limit);
     }
+
+    /**
+     * シャード対応 6 引数版（CMP-001⑤ ワーカー並列化）。
+     *
+     * <p>{@code shardIndex}/{@code shardCount} を運搬し、{@code subject_id % shardCount == shardIndex} の
+     * 受信者だけを返す（各シャードが互いに素な部分集合を担当・母集団の和集合は全件に一致）。</p>
+     *
+     * <p>既定実装は {@code shardCount <= 1} のとき分割せず 4 引数版へ委譲する（VILLAGE / TEAM・小規模 ORG の
+     * 単一シャード経路は従来と完全一致）。{@code shardCount > 1} のシャード分割に対応しないソース
+     * （VILLAGE / TEAM）は enqueue が {@code shard_count=1} でしか発行しないため本経路（>1）に到達しない。
+     * 万一到達したら未対応として {@link UnsupportedOperationException} を投げる（握り潰さず露見させる）。
+     * シャード分割を要する ORGANIZATION のみ本メソッドを override して {@code MOD(user_id, shardCount)} 述語を渡す。</p>
+     */
+    default List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters,
+                                int shardIndex, int shardCount) {
+        if (shardCount <= 1) {
+            return nextPage(scopeRef, cursorSubjectId, limit, includeSupporters);
+        }
+        throw new UnsupportedOperationException(
+                scopeType() + " はシャード分割に非対応（shard_count>1 で呼ばれた）");
+    }
+
+    /**
+     * 受信者総数を返す（enqueue の自動シャード数算出に使う・CMP-001⑤）。
+     *
+     * <p>既定は {@code -1}（＝カウント非対応／シャード対象外）を返し、enqueue はこれを見て {@code shard_count=1} とする。
+     * 分割対象外の VILLAGE / TEAM は override しない（挙動不変）。母集団しきい値でシャード化する
+     * ORGANIZATION のみ本メソッドを override し、母集団の {@code COUNT(DISTINCT user_id)} を返す。</p>
+     *
+     * @param scopeRef          多型スコープ参照（各実装が自ドメインの型へ復元する）
+     * @param includeSupporters 応援者（純 SUPPORTER）を配信対象に含めるか
+     * @return 受信者総数（{@code >= 0}）。カウント非対応なら {@code -1}
+     */
+    default long countRecipients(String scopeRef, boolean includeSupporters) {
+        return -1L;
+    }
 }

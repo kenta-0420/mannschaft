@@ -32,8 +32,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -104,6 +106,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long attackerId;   // 無関係な他ユーザー（越境元）
     private Long friendId;     // owner の連絡先に登録済みのユーザー
     private Long hiddenId;     // ハンドル検索を拒否しているユーザー
+    private Long visibleId;    // ハンドル検索を許可している無関係なユーザー（事前拒否の身元開示テスト用）
 
     private Long privateTeamId;   // owner のみが所属する非公開チーム
     private Long publicTeamId;    // 公開チーム
@@ -125,6 +128,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
         attackerId = insertUser("contactauthz-attacker-" + uniq + "@example.test", "atk-" + uniq, true);
         friendId = insertUser("contactauthz-friend-" + uniq + "@example.test", "frd-" + uniq, true);
         hiddenId = insertUser("contactauthz-hidden-" + uniq + "@example.test", "hdn-" + uniq, false);
+        visibleId = insertUser("contactauthz-visible-" + uniq + "@example.test", "vis-" + uniq, true);
 
         privateTeamId = insertTeam("CONTACTAUTHZ 非公開チーム", "cat-priv-" + uniq, "MEMBERS_AND_ABOVE");
         publicTeamId = insertTeam("CONTACTAUTHZ 公開チーム", "cat-pub-" + uniq, "PUBLIC");
@@ -715,6 +719,111 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 9. 事前拒否レスポンスの身元開示制御（@ハンドル検索と同一の可視性条件を共有）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. 事前拒否レスポンスの身元開示は@ハンドル検索と同一条件")
+    class RequestBlockIdentityDisclosure {
+
+        @Test
+        @DisplayName("ハンドル検索を拒否している相手を事前拒否に追加しても、応答に氏名等は含めない（識別子のみ）")
+        void 検索不可の相手は識別子のみ() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + hiddenId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(hiddenId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(nullValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.avatarUrl").value(nullValue()));
+        }
+
+        @Test
+        @DisplayName("正常系: ハンドル検索を許可している相手を事前拒否に追加すると、応答に氏名等が含まれる")
+        void 検索可能な相手は身元が含まれる() throws Exception {
+            setAuth(attackerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.blockedUser.id").value(visibleId.intValue()))
+                    .andExpect(jsonPath("$.data.blockedUser.fullName").value("CONTACTAUTHZ テスト"))
+                    .andExpect(jsonPath("$.data.blockedUser.contactHandle").value(handleOf(visibleId)));
+        }
+
+        @Test
+        @DisplayName("一覧でも同じ条件が適用される（検索不可は識別子のみ・検索可能は身元あり）")
+        void 一覧でも同じ条件() throws Exception {
+            // owner は setUp で hiddenId を事前拒否済み。ここでは visibleId も追加で事前拒否する。
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/contact-request-blocks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserId\":" + visibleId + "}"))
+                    .andExpect(status().isCreated());
+
+            // JSONPath のフィルタ式 [?(...)] は常に配列を返すため、「存在しない」系の
+            // アサーション（doesNotExist/isEmpty）では「該当要素が0件」なのか
+            // 「該当要素はあるがフィールド値が null」なのかを区別できない。
+            // ここでは配列の要素数と、その中身が null であることを明示的に検証する。
+            mockMvc.perform(get("/api/v1/contact-request-blocks"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + hiddenId + ")].blockedUser.fullName")
+                            .value(contains(nullValue())))
+                    .andExpect(jsonPath("$.data[?(@.blockedUser.id == " + visibleId + ")].blockedUser.fullName")
+                            .value(contains("CONTACTAUTHZ テスト")));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 10. 招待プレビュー（GET /contact-invite/{token}・認証不要）
+    //
+    // 情報最小化: 発行者の表示名（ニックネーム）のみを返し、実名は返さない。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("10. GET /contact-invite/{token}（招待プレビュー・認証不要）")
+    class InvitePreview {
+
+        @Test
+        @DisplayName("有効なトークンでは発行者の表示名（ニックネーム）が返り、実名は含まれない")
+        void 有効なトークンは表示名を返す() throws Exception {
+            String uniq = Long.toString(System.nanoTime(), 36);
+            Long issuerId = insertUserWithDistinctNames(
+                    "contactauthz-issuer-" + uniq + "@example.test",
+                    "issuer-" + uniq,
+                    "招待発行者実名テスト",
+                    "招待発行者ニックネーム");
+            ContactInviteTokenEntity issuerToken = contactInviteTokenRepository.save(
+                    ContactInviteTokenEntity.builder()
+                            .userId(issuerId)
+                            .token("contactauthz-preview-token-" + uniq)
+                            .label("CONTACTAUTHZ プレビュー用")
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build());
+            em.flush();
+            em.clear();
+
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/contact-invite/{token}", issuerToken.getToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isValid").value(true))
+                    .andExpect(jsonPath("$.data.issuer.fullName").value("招待発行者ニックネーム"));
+        }
+
+        @Test
+        @DisplayName("不存在・無効トークンは isValid=false のみで発行者情報を一切返さない")
+        void 無効なトークンは発行者情報を返さない() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/contact-invite/{token}", "contactauthz-nonexistent-token"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isValid").value(false))
+                    .andExpect(jsonPath("$.data.issuer").doesNotExist());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー（金型 TodoPersonalScopeContractIT より写経）
     // ═════════════════════════════════════════════════════════════════════
 
@@ -747,6 +856,32 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("email", email)
                 .setParameter("handle", handle)
                 .setParameter("searchable", handleSearchable ? 1 : 0)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
+                .setParameter("email", email)
+                .getSingleResult()).longValue();
+    }
+
+    /** 実名（lastName+firstName）と表示名（displayName）を意図的に異なる値にしたユーザーを作成する。 */
+    private Long insertUserWithDistinctNames(String email, String handle, String fullName, String displayName) {
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "email, last_name, first_name, display_name, status, contact_handle, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:email, :fullName, '', :displayName, 'ACTIVE', :handle, "
+                                + "1, 1, 1, "
+                                + "'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                                + "1, 0, "
+                                + "NOW(), NOW())")
+                .setParameter("email", email)
+                .setParameter("handle", handle)
+                .setParameter("fullName", fullName)
+                .setParameter("displayName", displayName)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
                 .setParameter("email", email)

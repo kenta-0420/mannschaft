@@ -352,6 +352,22 @@ public class RoleService {
     }
 
     /**
+     * 2ユーザーが共通のチームに所属しているかを返す。
+     *
+     * <p>他ドメイン（例: favorite ドメインの著者お気に入り表示可否判定）が {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路（D-3 ArchUnit 準拠:
+     * クラスは別ドメイン Repository に直接依存しない）。所属チームの共有可否はロール割当
+     * （{@code user_roles}）が正本のため、本ドメインの Service で薄く包んで公開する。</p>
+     *
+     * @param userId1 対象ユーザー1
+     * @param userId2 対象ユーザー2
+     * @return 共通のチームに所属していれば true
+     */
+    public boolean existsSharedTeam(Long userId1, Long userId2) {
+        return userRoleRepository.existsSharedTeam(userId1, userId2);
+    }
+
+    /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *
