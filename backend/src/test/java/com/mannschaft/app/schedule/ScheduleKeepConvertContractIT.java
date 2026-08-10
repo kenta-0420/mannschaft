@@ -248,10 +248,11 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
             assertThat(created.getVisibility()).isEqualTo(ScheduleVisibility.MEMBERS_ONLY);
             assertThat(created.getMinViewRole()).isEqualTo(MinViewRole.MEMBER_PLUS);
 
-            // 変換前にキープを見られなかったSUPPORTERは、変換後の予定も見られないこと（404）。
+            // 変換前にキープを見られなかったSUPPORTERは、変換後の予定も見られないこと（403。
+            // PR #2705でmin_view_roleが可視性基盤の生きた軸になり、閲覧不可の裁定は404から403に是正された）。
             setAuthentication(supporterId);
             mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}", teamSlug, scheduleId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden());
         }
 
         @Test
