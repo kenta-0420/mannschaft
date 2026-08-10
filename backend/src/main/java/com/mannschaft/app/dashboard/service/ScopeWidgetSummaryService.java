@@ -11,6 +11,8 @@ import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timeline.PostScopeType;
@@ -29,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 /**
@@ -57,6 +60,7 @@ public class ScopeWidgetSummaryService {
     private final BulletinThreadRepository bulletinThreadRepository;
     private final BulletinReadStatusRepository bulletinReadStatusRepository;
     private final NameResolverService nameResolverService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /** 直近アイテムの件数（02 §3.3: ブログ/タイムライン等 直近 3 件）。 */
     private static final int RECENT_LIMIT = 3;
@@ -166,9 +170,10 @@ public class ScopeWidgetSummaryService {
      * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
      * @param scopeId   スコープ ID
      * @param zoneId    閲覧ユーザーのタイムゾーン（並行実行のため呼び出し元で解決して渡す）
+     * @param userId    閲覧ユーザー ID（可視性判定用）
      * @return カレンダーサマリ Map
      */
-    public Map<String, Object> buildCalendarSummary(String scopeType, Long scopeId, ZoneId zoneId) {
+    public Map<String, Object> buildCalendarSummary(String scopeType, Long scopeId, ZoneId zoneId, Long userId) {
         boolean org = isOrganization(scopeType);
         LocalDate today = LocalDate.now(zoneId != null ? zoneId : ZoneId.of("UTC"));
         LocalDateTime todayStart = today.atStartOfDay();
@@ -176,26 +181,45 @@ public class ScopeWidgetSummaryService {
         LocalDateTime weekEnd = todayStart.plusDays(7);
         LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
         LocalDateTime monthEnd = monthStart.plusMonths(1);
+        LocalDateTime widestEnd = todayStart.plusMonths(3);
 
-        long eventsToday = scopeEvents(org, scopeId, todayStart, todayEnd).size();
-        long eventsThisWeek = scopeEvents(org, scopeId, todayStart, weekEnd).size();
+        // F00 認可基盤連携（CMP-017b 第五隊）: today ⊂ week ⊂ month ⊂ 3か月先の入れ子期間を
+        // 個別に 4 クエリ発行していたのを、最広範囲（todayStart〜3か月先）を 1 クエリで取得し
+        // filterAccessible で可視性判定を通してからアプリ層で集計する（AC-13a/b/c）。
+        List<ScheduleEntity> widest = scopeEvents(org, scopeId, todayStart, widestEnd);
+        Set<Long> visibleIds = widest.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        widest.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        List<ScheduleEntity> visible = widest.stream().filter(e -> visibleIds.contains(e.getId())).toList();
 
-        // 当月内のイベント日集合
-        List<ScheduleEntity> monthEvents = scopeEvents(org, scopeId, monthStart, monthEnd);
+        long eventsToday = 0;
+        long eventsThisWeek = 0;
         TreeSet<Integer> daysWithEvents = new TreeSet<>();
-        for (ScheduleEntity e : monthEvents) {
-            if (e.getStartAt() != null) {
-                daysWithEvents.add(e.getStartAt().toLocalDate().getDayOfMonth());
+        String nextEvent = null;
+        LocalDateTime nextEventStart = null;
+        for (ScheduleEntity e : visible) {
+            LocalDateTime startAt = e.getStartAt();
+            if (startAt == null) {
+                continue;
+            }
+            if (!startAt.isAfter(todayEnd)) {
+                eventsToday++;
+            }
+            if (!startAt.isAfter(weekEnd)) {
+                eventsThisWeek++;
+            }
+            if (!startAt.isBefore(monthStart) && startAt.isBefore(monthEnd)) {
+                daysWithEvents.add(startAt.toLocalDate().getDayOfMonth());
+            }
+            if (!startAt.isBefore(LocalDateTime.now())
+                    && (nextEventStart == null || startAt.isBefore(nextEventStart))) {
+                nextEventStart = startAt;
+                nextEvent = e.getTitle();
             }
         }
-
-        // next_event: 現在以降の最も近いイベントタイトル
-        List<ScheduleEntity> upcoming = scopeEvents(org, scopeId, todayStart, todayStart.plusMonths(3));
-        String nextEvent = upcoming.stream()
-                .filter(e -> e.getStartAt() != null && !e.getStartAt().isBefore(LocalDateTime.now()))
-                .findFirst()
-                .map(ScheduleEntity::getTitle)
-                .orElse(null);
 
         Map<String, Object> result = new HashMap<>();
         result.put("events_today", eventsToday);
@@ -212,14 +236,27 @@ public class ScopeWidgetSummaryService {
     /**
      * 組織スコープの今後の予定（今後 7 日間・最大 10 件）を返す。チーム版と同形。
      *
-     * @param orgId 組織 ID
+     * @param orgId  組織 ID
+     * @param userId 閲覧ユーザー ID（可視性判定用）
      * @return start_at 昇順の予定 Map リスト
      */
-    public List<Map<String, Object>> buildOrgUpcomingEvents(Long orgId) {
+    public List<Map<String, Object>> buildOrgUpcomingEvents(Long orgId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleEntity> events = scheduleRepository
                 .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, now, now.plusDays(7));
-        return events.stream().limit(10).map(this::toScheduleMap).toList();
+        // F00 認可基盤連携（CMP-017b 第五隊）: 組織所属だけで取得しており min_view_role
+        // 等の可視性判定を通していなかった。
+        Set<Long> visibleIds = events.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        events.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        return events.stream()
+                .filter(e -> visibleIds.contains(e.getId()))
+                .limit(10)
+                .map(this::toScheduleMap)
+                .toList();
     }
 
     // ─────────────────────────────────────────────

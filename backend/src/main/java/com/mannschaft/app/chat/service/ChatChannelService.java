@@ -658,8 +658,8 @@ public class ChatChannelService {
      * </ul>
      *
      * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効ゆえ
-     * 実機では効かないため、本メソッド内で per-scope 認可（当該チャンネルが属するチームの
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上 per-scope 判定にならないため、
+     * 本メソッド内で per-scope 認可（当該チャンネルが属するチームの
      * ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。
      * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
      *

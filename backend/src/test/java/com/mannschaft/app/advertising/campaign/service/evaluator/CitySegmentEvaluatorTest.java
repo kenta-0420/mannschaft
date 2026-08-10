@@ -140,6 +140,30 @@ class CitySegmentEvaluatorTest {
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
     }
 
+    @Test
+    @DisplayName("countUserIds: 正常な 5 桁コード → COUNT クエリで件数を返す")
+    void countUserIds_validCodes_returnsCount() {
+        when(encryptionService.hmac("13113")).thenReturn("hash_shinjuku");
+        when(encryptionService.hmac("13104")).thenReturn("hash_shinjuku2");
+        when(userRepository.countUserIdsByCityCodeHashIn(List.of("hash_shinjuku", "hash_shinjuku2")))
+                .thenReturn(2L);
+
+        AdAudienceSegment seg = segment("{\"codes\":[\"13113\",\"13104\"]}");
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("countUserIds: 4 桁 → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_fourDigit_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{\"codes\":[\"1234\"]}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

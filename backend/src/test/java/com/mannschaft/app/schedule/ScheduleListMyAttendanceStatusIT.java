@@ -89,8 +89,11 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamSlug = "wb-myattend-team-" + System.nanoTime();
-        orgSlug = "wb-myattend-org-" + System.nanoTime();
+        // slug 列は VARCHAR(30) かつ一意制約。"wb-myattend-team-" + nanoTime()（19桁）は
+        // 36文字超で Data too long になる（既存不良・本件の差分とは無関係）。
+        // 接頭辞を短縮し nanoTime() を6桁に丸めて 30文字以内に収める。
+        teamSlug = "wbmat-t-" + (System.nanoTime() % 1_000_000L);
+        orgSlug = "wbmat-o-" + (System.nanoTime() % 1_000_000L);
 
         teamId = insertTeam("MYATTEND チーム", teamSlug);
         orgId = insertOrganization("MYATTEND 組織", orgSlug);

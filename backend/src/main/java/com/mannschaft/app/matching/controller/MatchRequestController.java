@@ -148,10 +148,10 @@ public class MatchRequestController {
      * activity_detail のサジェスト。
      *
      * <p>全ユーザーに同一内容を返すマスタ的なサジェストAPI。{@code /api/v1/matching/**} は
-     * permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
      * で認証必須が強制される。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/matching/activity-suggestions")
     @Operation(summary = "activity_detail サジェスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

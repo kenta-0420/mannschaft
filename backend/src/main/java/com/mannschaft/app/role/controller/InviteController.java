@@ -37,11 +37,11 @@ public class InviteController {
      * 招待トークンをプレビューする。
      *
      * <p>「未認証可」は招待UXの将来設計を示す旧コメント。実際は {@code /api/v1/invite/**} が
-     * permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
      * で認証必須が現に強制されている。返却内容も招待トークン自体（bearer capability）に紐づく
      * 情報のみで、個人の非公開情報は含まない。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/{token}")
     @Operation(summary = "招待プレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -54,10 +54,10 @@ public class InviteController {
      * 招待URLをエンコードした QR コード画像（PNG）を返す。
      *
      * <p>「未認証可」は招待UXの将来設計を示す旧コメント。実際は {@code /api/v1/invite/**} が
-     * permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
      * で認証必須が現に強制されている。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping(value = "/{token}/qr", produces = MediaType.IMAGE_PNG_VALUE)
     @Operation(summary = "招待QRコード取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "PNG画像")

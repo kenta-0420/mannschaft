@@ -154,10 +154,10 @@ public class IncidentController {
      * インシデントのコメント一覧を取得する。
      * TODO: コメント機能実装後に本実装に差し替えること
      */
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。
+    // SecurityConfig の anyRequest().authenticated() で認証必須。
     // コメント機能は未実装のため常に固定の空リストを返し、id 値に関わらずユーザー固有データを
     // 一切参照しない（本実装差し替え時は id の所有権検証を追加すること）。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/{id}/comments")
     public ResponseEntity<ApiResponse<List<Object>>> listComments(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(List.of()));

@@ -150565,6 +150565,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path: {
@@ -150985,6 +150986,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path: {

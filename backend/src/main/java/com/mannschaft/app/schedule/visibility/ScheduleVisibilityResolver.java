@@ -6,7 +6,9 @@ import com.mannschaft.app.common.visibility.ContentStatus;
 import com.mannschaft.app.common.visibility.FollowBatchService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.common.visibility.StandardVisibility;
+import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.common.visibility.mapping.ScheduleVisibilityMapper;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -105,12 +107,63 @@ public class ScheduleVisibilityResolver
     @Override
     protected StandardVisibility adjustLevel(
             ScheduleVisibilityProjection row, StandardVisibility level) {
-        if (level == StandardVisibility.ORGANIZATION_WIDE
+        StandardVisibility adjusted = level;
+        if (adjusted == StandardVisibility.ORGANIZATION_WIDE
                 && row.scopeType() != null
                 && "ORGANIZATION".equals(row.scopeType())) {
-            return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
+            adjusted = StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
         }
-        return level;
+        // CMP-017b: 閲覧閾値軸（min_view_role）を scope 軸へ合成する。
+        // 所有スコープの直接所属ロールで評価される段（SCOPE_AFFILIATED / 閾値ラダー）は
+        // ここで «狭い方» へ引き上げれば足りる。所属拡大軸（ORGANIZATION_WIDE）は評価対象
+        // スコープが親組織であり 1 値へ畳み込めないため visibleByAdditionalAxis 側で扱う。
+        return MinViewRoleThreshold.tighten(adjusted, row.minViewRole());
+    }
+
+    /**
+     * CMP-017b — 閲覧閾値軸（{@code min_view_role}）のうち、
+     * {@link StandardVisibility#ORGANIZATION_WIDE}（組織共有）に対する評価。
+     *
+     * <p>設計書 {@code docs/features/F03.1_schedule_shared.md}「{@code min_view_role} の評価スコープ
+     * （親子関係）」は、{@code visibility = 'ORGANIZATION'} のスケジュールの閾値を
+     * <strong>親組織への直接所属ロール</strong>で評価すると定める（親グループのロールは
+     * 子グループへ継承しない）。所有スコープのロールを見る
+     * {@link UserScopeRoleSnapshot#hasRoleOrAbove} ではなく
+     * {@link UserScopeRoleSnapshot#hasParentOrgRoleOrAbove} を用いるのはこのためである。</p>
+     *
+     * <p>閾値段そのものへの写像は {@link MinViewRoleThreshold} が単一正準で持ち、
+     * {@link #adjustLevel} および {@code GoogleCalendarService} の push 判定と共有する。</p>
+     *
+     * <p><strong>{@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}（下向き再帰・組織スコープ）
+     * も本フックで評価する</strong>（CMP-017b 三b）。当該段の閲覧者は子孫組織配下チームのみの
+     * 所属者であり得るため、所有 ORG への直接所属ロールだけで評価すると既定 {@code MEMBER_PLUS} で
+     * 一律 deny となり、下向き再帰（欠陥 Z の根治）が無効化されてしまう。そこで
+     * {@link UserScopeRoleSnapshot#hasDescendantRoleOrAbove}（配下ツリーにおける実効ロール）と
+     * {@link UserScopeRoleSnapshot#hasRoleOrAbove}（当該 ORG への直接所属ロール）の
+     * <strong>いずれかが閾値を満たすこと</strong>を要求する。前者だけでは組織へ直接所属する
+     * メンバーを取りこぼし、後者だけでは M2 を殺すため、両方の «立場» を突き合わせる。</p>
+     */
+    @Override
+    protected boolean visibleByAdditionalAxis(
+            ScheduleVisibilityProjection row, Long viewerUserId,
+            UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+        if (level != StandardVisibility.ORGANIZATION_WIDE
+                && level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
+            return true;
+        }
+        String required = MinViewRoleThreshold.requiredRoleName(row.minViewRole());
+        if (required == null) {
+            return true;
+        }
+        if (row.scopeType() == null || row.scopeId() == null) {
+            return false;
+        }
+        ScopeKey scope = new ScopeKey(row.scopeType(), row.scopeId());
+        if (level == StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
+            return snapshot.hasDescendantRoleOrAbove(scope, required)
+                    || snapshot.hasRoleOrAbove(scope, required);
+        }
+        return snapshot.hasParentOrgRoleOrAbove(scope, required);
     }
 
     @Override

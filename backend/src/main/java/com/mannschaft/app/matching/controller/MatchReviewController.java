@@ -52,10 +52,10 @@ public class MatchReviewController {
      *
      * <p>チームの対戦評価（星評価・件数）はマッチング相手選定のため全認証ユーザーに公開される
      * 設計であり、個人の非公開情報は含まない。{@code /api/v1/teams/*}{@code /matching/reviews} は
-     * permitAll 未登録のため SecurityConfig.java:454 の {@code anyRequest().authenticated()}
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
      * で認証必須が強制される。</p>
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/teams/{teamId}/matching/reviews")
     @Operation(summary = "チームのレビュー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

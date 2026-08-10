@@ -1263,7 +1263,27 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_029", HttpStatus.NOT_FOUND),                 // CONTACT_SPACE_NOT_FOUND（IDOR 秘匿 → 404）
             // F17.1 村ニュースレター §4.2: 凍結済み号の集計値更新は状態遷移違反のため 409
             //（兄弟の VILLAGE_086 / VILLAGE_089 と流儀を揃える）。
-            Map.entry("VILLAGE_087", HttpStatus.CONFLICT)                // NEWSLETTER_ISSUE_ALREADY_FROZEN → 409
+            Map.entry("VILLAGE_087", HttpStatus.CONFLICT),               // NEWSLETTER_ISSUE_ALREADY_FROZEN → 409
+            // F05.2 回覧板: 不在は存在秘匿のため 404、状態不整合・重複登録は 409、
+            // 権限拒否は 403（Severity.WARN 既定の 400 を上書き）。CirculationErrorCode の Javadoc に対応。
+            Map.entry("CIRCULATION_001", HttpStatus.NOT_FOUND),          // DOCUMENT_NOT_FOUND（スコープ不一致も畳む秘匿）
+            Map.entry("CIRCULATION_002", HttpStatus.NOT_FOUND),          // RECIPIENT_NOT_FOUND（本人以外も畳む秘匿）
+            Map.entry("CIRCULATION_003", HttpStatus.NOT_FOUND),          // ATTACHMENT_NOT_FOUND
+            Map.entry("CIRCULATION_004", HttpStatus.NOT_FOUND),          // COMMENT_NOT_FOUND（他文書も畳む秘匿）
+            Map.entry("CIRCULATION_005", HttpStatus.CONFLICT),           // INVALID_DOCUMENT_STATUS
+            Map.entry("CIRCULATION_006", HttpStatus.CONFLICT),           // INVALID_RECIPIENT_STATUS
+            Map.entry("CIRCULATION_007", HttpStatus.CONFLICT),           // DUPLICATE_RECIPIENT
+            Map.entry("CIRCULATION_008", HttpStatus.CONFLICT),           // SEQUENTIAL_ORDER_VIOLATION
+            Map.entry("CIRCULATION_009", HttpStatus.CONFLICT),           // DOCUMENT_ALREADY_STAMPED
+            Map.entry("CIRCULATION_010", HttpStatus.FORBIDDEN),          // COMMENT_NOT_OWNED
+            Map.entry("CIRCULATION_011", HttpStatus.CONFLICT),           // DOCUMENT_OVERDUE
+            Map.entry("CIRCULATION_015", HttpStatus.CONFLICT),           // CORRECTION_WINDOW_EXPIRED
+            Map.entry("CIRCULATION_016", HttpStatus.CONFLICT),           // NOT_STAMPED_CANNOT_CORRECT
+            Map.entry("CIRCULATION_018", HttpStatus.CONFLICT),           // DELEGATION_ALREADY_EXISTS
+            Map.entry("CIRCULATION_019", HttpStatus.FORBIDDEN),          // ADMIN_REQUIRED
+            Map.entry("CIRCULATION_020", HttpStatus.CONFLICT),           // ATTACHMENT_NOT_DELETABLE
+            Map.entry("CIRCULATION_021", HttpStatus.CONFLICT),           // EXPORT_NOT_AVAILABLE_NON_COMPLETED
+            Map.entry("CIRCULATION_022", HttpStatus.CONFLICT)            // EXPORT_NOT_REQUESTED
     );
 
     /**

@@ -21,7 +21,7 @@ import java.util.Map;
  *
  * <p><b>認可</b>: Phase 4 未実装のため対象データへの到達が無く、
  * 応答は認証済みユーザー全員で同一の固定メッセージである。
- * 認証必須は {@code SecurityConfig.java:457 — anyRequest().authenticated()} の
+ * 認証必須は {@code SecurityConfig の anyRequest().authenticated()} の
  * deny-by-default で担保される。データアクセスを伴う実装時は、subscriptionId が
  * 認証主体の所有物であることを Service 層で検証する構成へ改める必要がある。</p>
  */
@@ -34,7 +34,7 @@ public class SubscriptionController {
     /**
      * サブスクリプション期末解約を実行する（Phase 4）。
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @DeleteMapping("/{subscriptionId}")
     @Operation(summary = "サブスクリプション期末解約（Phase 4）")
     public ResponseEntity<ApiResponse<Map<String, String>>> cancelSubscription(
@@ -47,7 +47,7 @@ public class SubscriptionController {
     /**
      * 期末解約の取り消しを実行する（Phase 4）。
      */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @PatchMapping("/{subscriptionId}/resume")
     @Operation(summary = "期末解約取り消し（Phase 4）")
     public ResponseEntity<ApiResponse<Map<String, String>>> resumeSubscription(

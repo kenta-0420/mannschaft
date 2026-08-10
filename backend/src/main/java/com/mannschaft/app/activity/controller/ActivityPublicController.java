@@ -7,6 +7,7 @@ import com.mannschaft.app.publicview.dto.PublicActivityDetail;
 import com.mannschaft.app.publicview.dto.PublicActivitySummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,7 +91,18 @@ public class ActivityPublicController {
     /**
      * チーム公開活動記録一覧を取得する。
      *
+     * <p><b>ページング方式</b>: {@code page}（0始まり・既定 0）と {@code limit} を受け取り
+     * {@link PublicActivityQueryService#toPageable(int, int)} で {@link org.springframework.data.domain.Pageable}
+     * に変換するオフセットページング。{@code page} 未指定時は従来どおり 0 ページ目（後方互換）。
+     * 先例 PR #2598（{@code ActivityController#listActivities}）と同じ流儀:
+     * {@code page} に負値を渡すと {@code PageRequest.of} が
+     * {@link IllegalArgumentException} を投げ 500 に化ける口が開くため {@code @Min(0)} で 400 に倒す。
+     * <b>本クラスに {@code @Validated} を付けてはならない</b>（付けると Spring 6.1+ の組込みメソッド検証
+     * ではなく AOP プロキシ経由の従来型検証に切り替わり、standalone 試験環境では {@code @Min} が
+     * 素通りして 500 に戻る。PR #2598 の教訓と同一）。</p>
+     *
      * @param limit 取得件数（上限 {@code 100}・0 以下は既定 {@code 20} に丸める）
+     * @param page  ページ番号（0始まり・既定 0）
      */
     @GetMapping("/teams/{teamId}/activities")
     @Operation(summary = "チーム公開活動記録一覧")
@@ -99,9 +111,10 @@ public class ActivityPublicController {
             responseCode = "404", description = "チームが存在しない / 非公開（区別しない）")
     public ResponseEntity<ApiResponse<List<PublicActivitySummary>>> listTeamPublicActivities(
             @PathVariable Long teamId,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") @Min(0) int page) {
         return ResponseEntity.ok(ApiResponse.of(
-                publicActivityQueryService.listPublicTeamActivities(teamId, limit)));
+                publicActivityQueryService.listPublicTeamActivities(teamId, limit, page)));
     }
 
     /**
@@ -124,7 +137,10 @@ public class ActivityPublicController {
     /**
      * 組織公開活動記録一覧を取得する。
      *
+     * <p>ページング方式・{@code @Validated} 禁止の理由は {@link #listTeamPublicActivities} と同じ。</p>
+     *
      * @param limit 取得件数（上限 {@code 100}・0 以下は既定 {@code 20} に丸める）
+     * @param page  ページ番号（0始まり・既定 0）
      */
     @GetMapping("/organizations/{orgId}/activities")
     @Operation(summary = "組織公開活動記録一覧")
@@ -133,9 +149,10 @@ public class ActivityPublicController {
             responseCode = "404", description = "組織が存在しない / 非公開（区別しない）")
     public ResponseEntity<ApiResponse<List<PublicActivitySummary>>> listOrgPublicActivities(
             @PathVariable Long orgId,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") @Min(0) int page) {
         return ResponseEntity.ok(ApiResponse.of(
-                publicActivityQueryService.listPublicOrganizationActivities(orgId, limit)));
+                publicActivityQueryService.listPublicOrganizationActivities(orgId, limit, page)));
     }
 
     /**

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code @PreAuthorize} のクラスレベル付与と完全対称にクラスレベルのマーカーも
  * 認可済みとして扱われることを保証する。
  */
-@AuthorizedByPathConfig
+@AuthorizedByPathConfig("/fixtures/path-config-marker-class-annotated")
 @RestController
 @RequestMapping("/fixtures/path-config-marker-class-annotated")
 public class PathConfigMarkerClassAnnotatedController {

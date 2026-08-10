@@ -273,17 +273,28 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
       }
     }
 
+    // buildDigestPeriod → buildOffsetDateTimeStr → toLocalDateString は「ピッカーが返す Date は
+    // 瞬間(instant)ではなく実行機のローカル壁時計」という設計（app/utils/localDate.ts の説明を参照）
+    // に基づき、Date#getFullYear() 等の**実行機ローカルTZでの**壁時計成分を読む。
+    // そのため入力は `new Date('...+09:00')` のような「絶対 instant を固定する」形ではなく、
+    // `new Date(year, monthIndex, day, ...)` の**ローカル壁時計成分**で組み立てる必要がある
+    // （DatePicker が v-model で返す Date と同じ形）。ISO 文字列＋固定オフセットで書くと、
+    // 実行機のTZ（CIはUTC、開発機はJST）によって抽出される暦日がずれ、CIでのみ落ちていた。
+    function localWallClock(year: number, month1to12: number, day: number, hour = 0, minute = 0, second = 0) {
+      return new Date(year, month1to12 - 1, day, hour, minute, second)
+    }
+
     it('生成ダイアログが組み立てるボディがスキーマに適合する', () => {
       assertConformsToSchema(
         'DigestGenerateRequest',
-        buildDialogBody(new Date('2026-07-01T00:00:00+09:00'), new Date('2026-07-31T00:00:00+09:00')),
+        buildDialogBody(localWallClock(2026, 7, 1), localWallClock(2026, 7, 31)),
       )
     })
 
     it('期間が date-only ではなく date-time で送られる', () => {
       const body = buildDialogBody(
-        new Date('2026-07-01T00:00:00+09:00'),
-        new Date('2026-07-31T00:00:00+09:00'),
+        localWallClock(2026, 7, 1),
+        localWallClock(2026, 7, 31),
       )
       expect(body.periodStart).toBe('2026-07-01T00:00:00+09:00')
       expect(body.periodEnd).toBe('2026-07-31T23:59:59+09:00')
@@ -291,8 +302,8 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
 
     it('終端はその日の 23:59:59 まで含める（BE の期間比較は両端 inclusive）', () => {
       const body = buildDialogBody(
-        new Date('2026-07-01T00:00:00+09:00'),
-        new Date('2026-07-31T00:00:00+09:00'),
+        localWallClock(2026, 7, 1),
+        localWallClock(2026, 7, 31),
       )
       // 翌日 00:00:00 だと翌日ちょうどの投稿を巻き込む
       expect(body.periodEnd).not.toBe('2026-08-01T00:00:00+09:00')
@@ -301,9 +312,14 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
 
     it('JST 深夜でも暦日が前日にずれない（toISOString の UTC 基準に戻さない）', () => {
       // UTC では 2026-06-30T15:00Z = JST 2026-07-01 00:00。toISOString().slice(0,10) だと 06-30 になる。
+      // ここでは「ユーザーが 7/1 00:30 を選んだ」という壁時計成分そのものを入力するため、
+      // 実行機のTZに関わらず periodStart は必ず 2026-07-01 になるべき
+      // （dayjs.tz(userTimezone) 側の投影は buildOffsetDateTimeStr 内で別途行われる。ずれる実装に
+      // 戻す＝toLocalDateString の代わりに dayjs(date).tz(userTimezone) で日付を取り直すと、
+      // このテストは実行機のTZ次第で落ちる）。
       const body = buildDialogBody(
-        new Date('2026-07-01T00:30:00+09:00'),
-        new Date('2026-07-31T23:30:00+09:00'),
+        localWallClock(2026, 7, 1, 0, 30),
+        localWallClock(2026, 7, 31, 23, 30),
       )
       expect(body.periodStart.startsWith('2026-07-01')).toBe(true)
       expect(body.periodEnd.startsWith('2026-07-31')).toBe(true)

@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -17,6 +18,7 @@ import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +70,8 @@ public class ReservationWaitlistService {
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ValkeyRateLimiter rateLimiter;
     private final NotificationHelper notificationHelper;
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
     private final Clock clock;
 
     // ────────────────────────────────────────────────────────────
@@ -280,9 +285,6 @@ public class ReservationWaitlistService {
         // .withZone(ZoneId.systemDefault()) に変えると逆に他の判定基準とズレて壊れる。一律置換禁止。
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime suppressBefore = now.minus(RENOTIFY_SUPPRESSION);
-        String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
-        String title = "キャンセルが出ました";
-        String body = String.format("「%s」に空きが出ました。お早めにご予約ください。", slotTitle);
         String actionUrl = "/teams/" + teamId + "/reservations";
 
         int notified = 0;
@@ -292,6 +294,18 @@ public class ReservationWaitlistService {
                 continue;
             }
             try {
+                // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
+                // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
+                Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(entry.getUserId()));
+                String slotTitle = slot.getTitle() != null ? slot.getTitle()
+                        : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
+                String title = messageSource.getMessage(
+                        "notification.reservation.waitlistOpening.title", null, "キャンセルが出ました", locale);
+                String body = messageSource.getMessage(
+                        "notification.reservation.waitlistOpening.body",
+                        new Object[]{slotTitle},
+                        "「" + slotTitle + "」に空きが出ました。お早めにご予約ください。",
+                        locale);
                 notificationHelper.notify(
                         entry.getUserId(),
                         NOTIFICATION_TYPE,

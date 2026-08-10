@@ -128,9 +128,9 @@ public class OrganizationController {
      * {@code @SQLRestriction} が除外）。未認証でも呼べる公開検索であるため、
      * チームの {@code searchPublicTeams} と同じく「公開スコープのみ」という最も安全側の流儀に揃える。</p>
      */
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。結果は PUBLIC かつ未アーカイブの
+    // SecurityConfig の anyRequest().authenticated() で認証必須。結果は PUBLIC かつ未アーカイブの
     // 組織のみ（OrganizationRepository#searchByKeyword のクエリ担保）で、呼び出し元のユーザー固有情報は含まない。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "組織検索（PUBLIC かつ未アーカイブの組織のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -139,9 +139,9 @@ public class OrganizationController {
         return ResponseEntity.ok(organizationService.searchOrganizations(keyword, pageable));
     }
 
-    // SecurityConfig.java:454 の anyRequest().authenticated() で認証必須。slug の重複可否のみを返し、
+    // SecurityConfig の anyRequest().authenticated() で認証必須。slug の重複可否のみを返し、
     // ユーザー固有情報は含まない（全認証済みユーザーに同一の判定結果）。
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
