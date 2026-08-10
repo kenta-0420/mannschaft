@@ -127,9 +127,13 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
     /**
      * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
      *
-     * <p>可視範囲は「所属チームのスケジュール」「所属組織のスケジュール」「自分の個人スケジュール」の
-     * 和集合とする。閲覧者依存の可視性解決であり、所属していれば非公開スケジュールも通常どおりヒットする
-     * （横断検索の正常系を維持する）。</p>
+     * <p>本メソッドが SQL 述語で絞り込むのは「所属チームのスケジュール」「所属組織のスケジュール」
+     * 「自分の個人スケジュール」の和集合という<strong>所属軸</strong>のみである。閲覧閾値軸
+     * （{@code min_view_role}）はスコープごとに閲覧者の実効ロールを見る必要があり SQL 1 行の
+     * predicate に落とせないため、ここでは評価しない。呼び出し側（{@code GlobalSearchService}）が
+     * 取得結果を {@code ContentVisibilityChecker#filterAccessible} に通し、閾値を満たさない
+     * スケジュール（例: SUPPORTER に対する {@code min_view_role=MEMBER_PLUS}）を除外して初めて
+     * 横断検索の可視性判定が完成する（CMP-017b 第五隊）。</p>
      *
      * <p>{@code CUSTOM_TEMPLATE}（F01.7 カスタム公開範囲テンプレート）は、テンプレート評価が
      * SQL 述語に落とせずクエリ段階で判定できないため、本検索の対象から除外する（fail-closed）。
