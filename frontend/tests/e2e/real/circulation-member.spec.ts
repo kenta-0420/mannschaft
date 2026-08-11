@@ -20,10 +20,18 @@ test.describe('CIRC-REAL: 回覧ページ実機（無限loading リグレッシ�
   test.setTimeout(120_000)
 
   test('CIRC-001: 認証済みメンバーで回覧ページが一覧or空状態を表示する', async ({ page }) => {
-    // --- 権限 EP が settle すること（門番解除の核心） ---
-    const [permResp] = await Promise.all([
+    // --- 権限EP・一覧EPの両方を goto 前に登録する ---
+    // 一覧APIは見出し可視化を待っている間に既に発火・完了してしまうため、
+    // waitForResponse は goto と同じ Promise.all の中で先に登録しないと
+    // 「過ぎ去った応答」を拾えず必ずタイムアウトする（リスナー登録レース）。
+    const [permResp, listResp] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/api/v1/teams/team-000092/me/permissions')
+          && r.request().method() === 'GET',
+        { timeout: 20_000 },
+      ),
+      page.waitForResponse(
+        (r) => r.url().includes('/api/v1/teams/team-000092/circulations')
           && r.request().method() === 'GET',
         { timeout: 20_000 },
       ),
@@ -36,11 +44,6 @@ test.describe('CIRC-REAL: 回覧ページ実機（無限loading リグレッシ�
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 20_000 })
 
     // --- 一覧 EP も settle すること ---
-    const listResp = await page.waitForResponse(
-      (r) => r.url().includes('/api/v1/teams/team-000092/circulations')
-        && r.request().method() === 'GET',
-      { timeout: 20_000 },
-    )
     expect(listResp.status(), `一覧取得失敗: ${await listResp.text()}`).toBe(200)
 
     // --- 成功パスのUI: 一覧項目 or 空状態のいずれかが見えること（エラー面/スピナー固着でない） ---

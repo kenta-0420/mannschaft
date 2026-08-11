@@ -266,17 +266,22 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   })
 
   // ===========================================================================
-  // FAV-008: チーム詳細ページ /teams/{id} が描画される
+  // FAV-008: チーム詳細ページ /teams/{slug} が描画される
+  //
+  //   このプロジェクトはURL識別子を slug に一本化済みで、数値IDのURL
+  //   (/teams/1 等) はチームページとして解決しない（アプリ外枠のみ描画され
+  //   見出しが一切出ない）。実機確認済みの slug 'team-000092'（e2e-user が
+  //   MEMBER として所属、circulation-member.spec.ts と同一チーム）を使う。
   //
   //   F02.9 Phase 3 の FavoriteToggleButton は main 未マージのため、
   //   ボタン有無に依存せず「チームページ自体が描画される」レベルで検証する。
   //   将来 FavoriteToggleButton が組み込まれたら data-testid="favorite-toggle"
   //   など強い検証に書き換えること。
   // ===========================================================================
-  test('FAV-008: /teams/{id} ページが描画される (FavoriteToggleButton配置先)', async ({ page }) => {
+  test('FAV-008: /teams/{slug} ページが描画される (FavoriteToggleButton配置先)', async ({ page }) => {
     await loginIfNeeded(page)
-    // FC東京U-18 (id=1) はシード済みチーム
-    await page.goto('/teams/1')
+    // team-000092 は実機確認済みの実在チーム（slug=team-000092, numericId=92）
+    await page.goto('/teams/team-000092')
     await waitForHydration(page)
     await waitForSpinnerGone(page)
 
