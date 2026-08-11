@@ -11,10 +11,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum MatchingErrorCode implements ErrorCode {
 
-    /** 募集が見つからない */
+    /** 募集が見つからない（NGチームブロック・非所属×非OPENも同一コードに畳む存在秘匿 → 404） */
     REQUEST_NOT_FOUND("MATCHING_001", "募集が見つかりません", Severity.WARN),
 
-    /** 応募が見つからない */
+    /** 応募が見つからない（レビュー対象外の応募も同一コードに畳む存在秘匿 → 404） */
     PROPOSAL_NOT_FOUND("MATCHING_002", "応募が見つかりません", Severity.WARN),
 
     /** 募集が編集不可（OPEN以外） */
