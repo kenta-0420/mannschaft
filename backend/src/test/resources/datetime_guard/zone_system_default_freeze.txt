@@ -7,3 +7,31 @@
 # キー形式: ZONE_SYSTEM_DEFAULT|<完全修飾クラス名>#<メソッド名またはコンストラクタ名>#<同一メソッド内の出現順>
 #
 # 2026-08-11 初期凍結（issue #2700 実装時点のスナップショット）。
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#2
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#3
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#4
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer#serialize#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.jobmatching.service.JobCheckInService#detectConcurrentConflict#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.mail.outbox.EmailOutboxMicrometerMetrics#registerGauges#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#applyCurrentPeriodEnd#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#computeNextCycleAnchorEpochSec#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#skip#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService#toLocalDateOrNull#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#2
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#3
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#4
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicEventQueryService#toOffsetDateTime#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicPostQueryService#toOffsetDateTime#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicTimelinePostQueryService#toOffsetDateTime#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.event.ReservationReminderEventListener#(不明ブロック)#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService#(不明ブロック)#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService#doCreateGroup#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationPendingExpireService#findExpirableUnits#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationReminderService#findDueReminders#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService#isCancelDeadlinePassed#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService#listUpcomingReservations#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService#purgeExpiredWaiting#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService#register#1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.timetable.notes.service.TimetableSlotUserNoteService#(不明ブロック)#1

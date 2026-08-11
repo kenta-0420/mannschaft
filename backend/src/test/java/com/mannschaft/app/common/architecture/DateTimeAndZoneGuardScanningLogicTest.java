@@ -3,7 +3,9 @@ package com.mannschaft.app.common.architecture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -248,5 +250,61 @@ class DateTimeAndZoneGuardScanningLogicTest {
         assertThat(DateTimeAndZoneGuardTest.collectViolationsInFile(code, FQCN))
                 .filteredOn(v -> v.category() == DateTimeAndZoneGuardTest.Category.LOCAL_DATE_TIME_FIELD)
                 .isEmpty();
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 凍結件数スナップショット照合（freezeCountMismatches）が増減を実際に検知することの実証
+    // ────────────────────────────────────────────────────────────
+
+    private static Map<DateTimeAndZoneGuardTest.Category, Integer> allCounts(int noArgNow, int zoneSystemDefault,
+            int zoneLiteral, int localDateTimeField) {
+        Map<DateTimeAndZoneGuardTest.Category, Integer> m =
+                new EnumMap<>(DateTimeAndZoneGuardTest.Category.class);
+        m.put(DateTimeAndZoneGuardTest.Category.NO_ARG_NOW, noArgNow);
+        m.put(DateTimeAndZoneGuardTest.Category.ZONE_SYSTEM_DEFAULT, zoneSystemDefault);
+        m.put(DateTimeAndZoneGuardTest.Category.ZONE_LITERAL, zoneLiteral);
+        m.put(DateTimeAndZoneGuardTest.Category.LOCAL_DATE_TIME_FIELD, localDateTimeField);
+        return m;
+    }
+
+    @Test
+    @DisplayName("凍結件数が記録スナップショットと完全一致する場合はミスマッチなし")
+    void freezeCountMismatches_noDiff_whenExactMatch() {
+        Map<DateTimeAndZoneGuardTest.Category, Integer> snapshot = allCounts(10, 10, 10, 10);
+        assertThat(DateTimeAndZoneGuardTest.freezeCountMismatches(snapshot, snapshot)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("凍結件数が1件でも増えたらミスマッチとして検出する（増加=禁止の実証）")
+    void freezeCountMismatches_detectsIncrease() {
+        Map<DateTimeAndZoneGuardTest.Category, Integer> snapshot = allCounts(10, 10, 10, 10);
+        // ZONE_SYSTEM_DEFAULT だけ凍結ファイルへ1行こっそり追記された想定（新規違反の凍結による誤魔化し）。
+        Map<DateTimeAndZoneGuardTest.Category, Integer> actualAfterSneakyAppend = allCounts(10, 11, 10, 10);
+
+        List<String> mismatches = DateTimeAndZoneGuardTest.freezeCountMismatches(actualAfterSneakyAppend, snapshot);
+
+        assertThat(mismatches).hasSize(1);
+        assertThat(mismatches.get(0))
+                .contains("ZONE_SYSTEM_DEFAULT")
+                .contains("実件数=11")
+                .contains("記録スナップショット=10")
+                .contains("増加=禁止");
+    }
+
+    @Test
+    @DisplayName("凍結件数が減った場合もミスマッチとして検出する（要追随更新の実証）")
+    void freezeCountMismatches_detectsDecrease() {
+        Map<DateTimeAndZoneGuardTest.Category, Integer> snapshot = allCounts(10, 10, 10, 10);
+        // 是正が進み NO_ARG_NOW が1件減った想定（chip-away）。
+        Map<DateTimeAndZoneGuardTest.Category, Integer> actualAfterFix = allCounts(9, 10, 10, 10);
+
+        List<String> mismatches = DateTimeAndZoneGuardTest.freezeCountMismatches(actualAfterFix, snapshot);
+
+        assertThat(mismatches).hasSize(1);
+        assertThat(mismatches.get(0))
+                .contains("NO_ARG_NOW")
+                .contains("実件数=9")
+                .contains("記録スナップショット=10")
+                .contains("減少=要追随更新");
     }
 }
