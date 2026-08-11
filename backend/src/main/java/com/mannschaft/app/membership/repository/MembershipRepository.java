@@ -324,6 +324,51 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             Pageable pageable);
 
     /**
+     * CMP-017c: TEAM スコープの<b>MEMBER 以上（{@code role_kind='MEMBER'}）</b>現役メンバーの user_id を、
+     * 指定 2 名（変換操作者・キープ作成者）を除いて<strong>キーセットページング</strong>で 1 チャンク取得する
+     * （キープ変換通知の耐久 fan-out・母集団供給用）。
+     *
+     * <p><b>なぜ {@code role_kind='MEMBER'} か（SUPPORTER/GUEST 除外の一次根拠）</b>: memberships の
+     * {@code role_kind} は {@link RoleKind} の 2 値（{@code MEMBER}／{@code SUPPORTER}）。管理者（ADMIN/DEPUTY）も
+     * memberships には {@code role_kind='MEMBER'} 行として在籍する（権限ロールは user_roles 側の別概念）ため、
+     * 「MEMBER 以上（ADMIN/DEPUTY/MEMBER）」の母集団は {@code role_kind='MEMBER'} で過不足なく表せる。
+     * 純 SUPPORTER は {@code role_kind='SUPPORTER'} で除外され、GUEST は memberships 行を持たないため自然に外れる。
+     * キープ本体は {@code ScheduleKeepVisibilityResolver}（{@code MEMBERS_AND_ABOVE}）で SUPPORTER に不可視であり、
+     * 受信者ごとの可視性再チェックをしない一括配信でも<b>母集団段階で SUPPORTER を落とすことでタイトル漏洩を防ぐ</b>
+     * （§6.1・CMP-017b の SUPPORTER 素通り欠陥の根治）。</p>
+     *
+     * <p>操作者・作成者の除外は母集団側で行う（{@code m.user_id <> :excludedA AND m.user_id <> :excludedB}）。
+     * 作成者は別途「必達」の直送で受領するため母集団からは外し二重送信を避ける。除外不要枠には
+     * 使われない番人値（{@code 0}・user_id は常に正）を渡す。ユーザー状態フィルタ（{@code status='ACTIVE'}・
+     * {@code deleted_at IS NULL}）は {@link #findActiveUserIdsByScopeKeyset} と同じく users を JOIN して補う
+     * （停止・削除済みユーザーへの漏洩回帰防止）。被覆索引 {@code idx_membership_keep_fanout}
+     * （{@code scope_type, scope_id, role_kind, left_at, user_id}）で index-only 走査になる。</p>
+     *
+     * @param teamId    対象チーム ID（{@code scope_id}）
+     * @param excludedA 母集団から除く user_id その1（変換操作者。番人値 {@code 0} 可）
+     * @param excludedB 母集団から除く user_id その2（キープ作成者。作成者匿名化時は番人値 {@code 0}）
+     * @param cursor    直前チャンク末尾の user_id（初回は {@code 0L}）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}）
+     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の user_id を昇順に最大 chunk 件
+     */
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+            + "JOIN users u ON u.id = m.user_id "
+            + "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId "
+            + "AND m.role_kind = 'MEMBER' "
+            + "AND m.left_at IS NULL "
+            + "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' "
+            + "AND m.user_id <> :excludedA AND m.user_id <> :excludedB "
+            + "AND m.user_id > :cursor "
+            + "ORDER BY m.user_id ASC",
+            nativeQuery = true)
+    List<Long> findMemberAndAboveTeamUserIdsByKeysetExcluding(
+            @Param("teamId") Long teamId,
+            @Param("excludedA") Long excludedA,
+            @Param("excludedB") Long excludedB,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
      * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:
      * memberships のアクティブ行（{@code left_at IS NULL}）のうち、対応する user_roles 行が
      * 存在しない件数を SQL 側で集計する。

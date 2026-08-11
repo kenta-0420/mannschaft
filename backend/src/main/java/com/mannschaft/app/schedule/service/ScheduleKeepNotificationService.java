@@ -2,6 +2,8 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.membership.fanout.ScheduleKeepTeamFanoutRecipientSource;
+import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.schedule.ScheduleKeepScopeType;
@@ -82,37 +84,54 @@ public class ScheduleKeepNotificationService {
     public void notifyConverted(ScheduleKeepScope scope, ScheduleKeepEntity keep,
                                  ScheduleEntity schedule, Long actorUserId) {
         if (scope.type() == ScheduleKeepScopeType.PERSONAL) {
-            return;
-        }
-        Long creatorId = keep.getCreatedBy();
-        if (creatorId == null || Objects.equals(creatorId, actorUserId)) {
-            // created_by が NULL＝匿名化済み。届け先が存在しないのでスキップする（§6.1）。
-            return;
-        }
-
-        // キープ側の正準（SCHEDULE_KEEP = MEMBERS_AND_ABOVE）で明示的に判定する。
-        // 通らなければ通知を作らない＝タイトルを漏らさない。
-        if (!contentVisibilityChecker.canViewUuid(ReferenceType.SCHEDULE_KEEP, keep.getId(), creatorId)) {
-            log.debug("キープ作成者に閲覧権が無いため変換通知を発行しません: keepId={}, creatorId={}",
-                    keep.getId(), creatorId);
+            // 個人スコープは自分しかいない。fan-out も直送も出さない（§6.1・AC-5）。
             return;
         }
 
         String title = "「" + keep.getTitle() + "」の日程が決まりました";
         String body = keep.getTitle() + " が予定になりました。カレンダーで確認できます。";
+        String actionUrl = actionUrlFor(scope, schedule);
+        Long creatorId = keep.getCreatedBy();
 
-        // 以降の値はすべてここで確定させる。publisher は別 TX のため再検索できない（§6.2.1）。
-        scheduleKeepNotificationPublisher.publishConverted(
-                creatorId,
-                NOTIFICATION_TYPE_CONVERTED,
-                title,
-                body,
-                SOURCE_TYPE_SCHEDULE,
-                schedule.getId(),
-                notificationScopeTypeOf(scope),
-                scope.id(),
-                actionUrlFor(scope, schedule),
-                actorUserId);
+        // ① 作成者必達（直送）。変換は MEMBER 全員に開放されており「言い出しっぺの知らぬ間に予定化」しうるため、
+        //    作成者への通知は §2.1.1 の代償として必須（§6.1）。ただし次のいずれかでは送らない:
+        //    - 作成者自身が操作者（自分の操作を自分に通知しない）
+        //    - created_by が NULL＝匿名化済み（届け先が存在しない）
+        //    - 作成者にキープの閲覧権が無い（降格・脱退。SCHEDULE_KEEP=MEMBERS_AND_ABOVE で判定。
+        //      通らなければタイトルを漏らさない・§6.1・AC-4）
+        //    直送は fan-out enqueue より前に行う。enqueue が失敗しても作成者は受領済みになる（best-effort・AC-9）。
+        if (creatorId != null && !Objects.equals(creatorId, actorUserId)
+                && contentVisibilityChecker.canViewUuid(ReferenceType.SCHEDULE_KEEP, keep.getId(), creatorId)) {
+            // publisher は別 TX（REQUIRES_NEW）のため再検索できない。値はここで確定して渡す（§6.2.1）。
+            scheduleKeepNotificationPublisher.publishConverted(
+                    creatorId, NOTIFICATION_TYPE_CONVERTED, title, body,
+                    SOURCE_TYPE_SCHEDULE, schedule.getId(),
+                    notificationScopeTypeOf(scope), scope.id(), actionUrl, actorUserId);
+        } else if (creatorId != null && !Objects.equals(creatorId, actorUserId)) {
+            log.debug("キープ作成者に閲覧権が無いため作成者への変換通知（直送）は発行しません: keepId={}, creatorId={}",
+                    keep.getId(), creatorId);
+        }
+
+        // ② TEAM スコープは MEMBER 以上 全員（操作者・作成者を除く）へ CMP-001 の耐久 fan-out で配信する
+        //    （§6.1・AC-1）。母集団の SUPPORTER/GUEST 除外・keyset 供給は受信者ソースへ委ねる。
+        //    enqueue は母集団を数えず親ジョブ 1 行を INSERT する O(1)（AC-8）。冪等キーはキープ ID。
+        if (scope.type() == ScheduleKeepScopeType.TEAM) {
+            long excludedCreator = creatorId == null ? 0L : creatorId;
+            String scopeRef = scope.id() + ":" + actorUserId + ":" + excludedCreator;
+            scheduleKeepFanoutJobService.enqueue(
+                    ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE,
+                    scopeRef,
+                    NOTIFICATION_TYPE_CONVERTED,
+                    keep.getId(),
+                    null,
+                    title,
+                    body,
+                    NotificationPriority.NORMAL,
+                    SOURCE_TYPE_SCHEDULE,
+                    schedule.getId(),
+                    actionUrl,
+                    actorUserId);
+        }
     }
 
     private NotificationScopeType notificationScopeTypeOf(ScheduleKeepScope scope) {
