@@ -165,7 +165,50 @@
         "step4": "Ejecuta 'Sincronización manual' cuando quieras que los cambios se reflejen al instante"
       }
     },
-    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí."
+    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí.",
+    "comment": {
+      "title": "Comentarios",
+      "placeholder": "Comenta sobre este evento…",
+      "submit": "Publicar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "reply": "Responder",
+      "replyTo": "Responder a {name}",
+      "showReplies": "Ver {count} respuestas más",
+      "empty": "Aún no hay comentarios",
+      "loadMore": "Cargar más",
+      "edit": "Editar",
+      "edited": "(editado)",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar este comentario?",
+      "deleted": "Este comentario fue eliminado",
+      "deletedAuthor": "Usuario eliminado",
+      "closed": "Los comentarios de este evento están cerrados",
+      "cancelled": "No puedes comentar en un evento cancelado",
+      "updateSuccess": "Comentario actualizado",
+      "deleteSuccess": "Comentario eliminado",
+      "postSuccess": "Comentario publicado",
+      "settings": {
+        "enable": "Permitir comentarios",
+        "disable": "Cerrar comentarios",
+        "updateSuccess": "Configuración de comentarios actualizada"
+      },
+      "mention": {
+        "hint": "Puedes mencionar a un miembro",
+        "empty": "No hay miembros coincidentes"
+      },
+      "count": "{count} comentarios",
+      "error": {
+        "bodyRequired": "Introduce un comentario",
+        "bodyTooLong": "El comentario no puede superar los 2000 caracteres",
+        "maxDepth": "No puedes responder a esta respuesta",
+        "closed": "Los comentarios están cerrados",
+        "forbidden": "No tienes permiso para esta acción",
+        "tooManyMentions": "Puedes mencionar hasta 20 personas",
+        "rateLimited": "Demasiadas publicaciones. Inténtalo más tarde",
+        "generic": "La operación falló"
+      }
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

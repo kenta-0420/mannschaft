@@ -1519,6 +1519,10 @@
       "description": "F03.15 Phase 5 家族チームメンバーの個人時間割閲覧（メモ・添付・リンク先は除外）"
     },
     {
+      "name": "予定コメント",
+      "description": "F03.16 予定コメントスレッド"
+    },
+    {
       "name": "備品補充リンク",
       "description": "F09.12 Amazon 備品補充リンク生成"
     },
@@ -56634,6 +56638,106 @@
         }
       }
     },
+    "/api/v1/schedules/{scheduleId}/comments": {
+      "get": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "コメント一覧",
+        "operationId": "listComments_3",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "コメント投稿",
+        "operationId": "createComment_2",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/safety-checks": {
       "get": {
         "tags": [
@@ -58277,7 +58381,7 @@
           "議決権行使・委任状"
         ],
         "summary": "議案コメント一覧",
-        "operationId": "listComments_3",
+        "operationId": "listComments_4",
         "parameters": [
           {
             "name": "motionId",
@@ -58327,7 +58431,7 @@
           "議決権行使・委任状"
         ],
         "summary": "コメント投稿",
-        "operationId": "createComment_2",
+        "operationId": "createComment_3",
         "parameters": [
           {
             "name": "motionId",
@@ -65186,7 +65290,7 @@
           "TODO（組織）"
         ],
         "summary": "組織TODOコメント一覧",
-        "operationId": "listComments_4",
+        "operationId": "listComments_5",
         "parameters": [
           {
             "name": "orgId",
@@ -75876,7 +75980,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_5",
+        "operationId": "listComments_6",
         "parameters": [
           {
             "name": "fileId",
@@ -75906,7 +76010,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント作成",
-        "operationId": "createComment_3",
+        "operationId": "createComment_4",
         "parameters": [
           {
             "name": "fileId",
@@ -78327,7 +78431,7 @@
           "回覧コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_6",
+        "operationId": "listComments_7",
         "parameters": [
           {
             "name": "documentId",
@@ -78377,7 +78481,7 @@
           "回覧コメント"
         ],
         "summary": "コメント作成",
-        "operationId": "createComment_4",
+        "operationId": "createComment_5",
         "parameters": [
           {
             "name": "documentId",
@@ -84384,7 +84488,7 @@
           "活動コメント"
         ],
         "summary": "コメント一覧",
-        "operationId": "listComments_7",
+        "operationId": "listComments_8",
         "parameters": [
           {
             "name": "activityId",
@@ -84414,7 +84518,7 @@
           "活動コメント"
         ],
         "summary": "コメント投稿",
-        "operationId": "createComment_5",
+        "operationId": "createComment_6",
         "parameters": [
           {
             "name": "activityId",
@@ -95293,6 +95397,129 @@
         ]
       }
     },
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}": {
+      "delete": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "コメント削除",
+        "operationId": "deleteComment_4",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "コメント編集",
+        "operationId": "updateComment_4",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{scheduleId}/comments/settings": {
+      "patch": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "スレッド開閉",
+        "operationId": "updateSettings_15",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseThreadSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/schedule-delegations/{delegationId}/reject": {
       "patch": {
         "tags": [
@@ -101872,7 +102099,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント削除",
-        "operationId": "deleteComment_4",
+        "operationId": "deleteComment_5",
         "parameters": [
           {
             "name": "fileId",
@@ -101904,7 +102131,7 @@
           "ファイル共有 - コメント"
         ],
         "summary": "コメント更新",
-        "operationId": "updateComment_4",
+        "operationId": "updateComment_5",
         "parameters": [
           {
             "name": "fileId",
@@ -102799,7 +103026,7 @@
           "チャットチャンネル"
         ],
         "summary": "チャンネル個人設定",
-        "operationId": "updateSettings_15",
+        "operationId": "updateSettings_16",
         "parameters": [
           {
             "name": "channelId",
@@ -105068,7 +105295,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定更新",
-        "operationId": "updateSettings_16",
+        "operationId": "updateSettings_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -121656,6 +121883,156 @@
         }
       }
     },
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}/replies": {
+      "get": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "返信一覧",
+        "operationId": "listReplies_2",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{scheduleId}/comments/meta": {
+      "get": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "スレッド状態",
+        "operationId": "getMeta",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseThreadMetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{scheduleId}/comments/mention-candidates": {
+      "get": {
+        "tags": [
+          "予定コメント"
+        ],
+        "summary": "メンション候補",
+        "operationId": "mentionCandidates",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMentionCandidateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/safety-checks/{safetyCheckId}": {
       "get": {
         "tags": [
@@ -133773,7 +134150,7 @@
         "tags": [
           "incident-controller"
         ],
-        "operationId": "listComments_8",
+        "operationId": "listComments_9",
         "parameters": [
           {
             "name": "id",
@@ -140234,7 +140611,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "コメントを論理削除する（投稿者本人＋村長/長老のみ）",
-        "operationId": "deleteComment_5",
+        "operationId": "deleteComment_6",
         "parameters": [
           {
             "name": "villageId",
@@ -141586,7 +141963,7 @@
         ],
         "summary": "公開投稿コメント削除（ログイン必須）",
         "description": "投稿者本人または ADMIN（hasRole(\u0027ADMIN\u0027) or hasRole(\u0027SYSTEM_ADMIN\u0027)）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
-        "operationId": "deleteComment_6",
+        "operationId": "deleteComment_7",
         "parameters": [
           {
             "name": "postId",
@@ -141620,7 +141997,7 @@
           "議決権行使・委任状"
         ],
         "summary": "コメント削除",
-        "operationId": "deleteComment_7",
+        "operationId": "deleteComment_8",
         "parameters": [
           {
             "name": "motionId",
@@ -142965,7 +143342,7 @@
           "回覧コメント"
         ],
         "summary": "コメント削除",
-        "operationId": "deleteComment_8",
+        "operationId": "deleteComment_9",
         "parameters": [
           {
             "name": "documentId",
@@ -201027,6 +201404,34 @@
           }
         }
       },
+      "ThreadSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "commentsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseThreadSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ThreadSettingsResponse"
+          }
+        }
+      },
+      "ThreadSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "commentsEnabled": {
+            "type": "boolean"
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "FollowupUpdateRequest": {
         "type": "object",
         "properties": {
@@ -218955,6 +219360,58 @@
           },
           "asDelegator": {
             "$ref": "#/components/schemas/ScheduleDelegationResponse"
+          }
+        }
+      },
+      "ApiResponseThreadMetaResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ThreadMetaResponse"
+          }
+        }
+      },
+      "ThreadMetaResponse": {
+        "type": "object",
+        "properties": {
+          "canPost": {
+            "type": "boolean"
+          },
+          "canPostReason": {
+            "type": "string"
+          },
+          "commentsEnabled": {
+            "type": "boolean"
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListMentionCandidateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MentionCandidateResponse"
+            }
+          }
+        }
+      },
+      "MentionCandidateResponse": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

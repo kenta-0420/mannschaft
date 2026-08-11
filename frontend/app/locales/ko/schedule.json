@@ -165,7 +165,50 @@
         "step4": "즉시 반영하려면 「수동 동기화」 실행"
       }
     },
-    "google_sync_notice": "Google 캘린더와 연동 중입니다. Google에서 변경한 내용은 다음에 여기서 저장할 때 Mannschaft의 데이터로 교체됩니다."
+    "google_sync_notice": "Google 캘린더와 연동 중입니다. Google에서 변경한 내용은 다음에 여기서 저장할 때 Mannschaft의 데이터로 교체됩니다.",
+    "comment": {
+      "title": "댓글",
+      "placeholder": "이 일정에 댓글 달기…",
+      "submit": "게시",
+      "cancel": "취소",
+      "save": "저장",
+      "reply": "답글",
+      "replyTo": "{name}님에게 답글",
+      "showReplies": "답글 {count}개 더 보기",
+      "empty": "아직 댓글이 없습니다",
+      "loadMore": "더 보기",
+      "edit": "수정",
+      "edited": "(수정됨)",
+      "delete": "삭제",
+      "deleteConfirm": "이 댓글을 삭제할까요?",
+      "deleted": "이 댓글은 삭제되었습니다",
+      "deletedAuthor": "탈퇴한 사용자",
+      "closed": "이 일정의 댓글은 마감되었습니다",
+      "cancelled": "취소된 일정에는 댓글을 달 수 없습니다",
+      "updateSuccess": "댓글이 수정되었습니다",
+      "deleteSuccess": "댓글이 삭제되었습니다",
+      "postSuccess": "댓글이 게시되었습니다",
+      "settings": {
+        "enable": "댓글 허용",
+        "disable": "댓글 마감",
+        "updateSuccess": "댓글 설정이 수정되었습니다"
+      },
+      "mention": {
+        "hint": "멤버를 멘션할 수 있습니다",
+        "empty": "일치하는 멤버가 없습니다"
+      },
+      "count": "댓글 {count}개",
+      "error": {
+        "bodyRequired": "댓글을 입력해 주세요",
+        "bodyTooLong": "댓글은 2000자 이내로 입력해 주세요",
+        "maxDepth": "이 답글에는 더 이상 답글을 달 수 없습니다",
+        "closed": "댓글이 마감되었습니다",
+        "forbidden": "이 작업을 수행할 권한이 없습니다",
+        "tooManyMentions": "멘션은 최대 20명까지 가능합니다",
+        "rateLimited": "게시가 너무 많습니다. 잠시 후 다시 시도해 주세요",
+        "generic": "작업에 실패했습니다"
+      }
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

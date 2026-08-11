@@ -37,6 +37,17 @@ mockNuxtImport('useMatchApi', () => () => ({
   resolveMatchBySchedule: mockResolveBySchedule,
   createMatch: mockCreateMatch,
 }))
+// F03.16 予定コメントスレッド。本テストの関心事ではないため、常に空のスレッドを返すスタブに固定する。
+mockNuxtImport('useScheduleComments', () => () => ({
+  listComments: vi.fn().mockResolvedValue({ data: [], meta: { total: 0, page: 0, size: 20, totalPages: 0 } }),
+  getMeta: vi.fn().mockResolvedValue({ data: { scheduleId: 123, commentsEnabled: true, canPost: false, canPostReason: 'ROLE' } }),
+  listReplies: vi.fn().mockResolvedValue({ data: [], meta: { total: 0, page: 0, size: 20, totalPages: 0 } }),
+  mentionCandidates: vi.fn().mockResolvedValue({ data: [] }),
+  createComment: vi.fn(),
+  updateComment: vi.fn(),
+  deleteComment: vi.fn(),
+  updateSettings: vi.fn(),
+}))
 
 function baseEvent() {
   return {

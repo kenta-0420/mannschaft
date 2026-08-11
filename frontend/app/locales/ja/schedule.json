@@ -165,7 +165,50 @@
         "step4": "すぐに反映したいときは「手動同期」を実行"
       }
     },
-    "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。"
+    "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。",
+    "comment": {
+      "title": "コメント",
+      "placeholder": "この予定についてコメントする…",
+      "submit": "投稿",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "reply": "返信",
+      "replyTo": "{name} さんに返信",
+      "showReplies": "他 {count} 件の返信を表示",
+      "empty": "まだコメントはありません",
+      "loadMore": "もっと見る",
+      "edit": "編集",
+      "edited": "（編集済み）",
+      "delete": "削除",
+      "deleteConfirm": "このコメントを削除しますか？",
+      "deleted": "このコメントは削除されました",
+      "deletedAuthor": "退会したユーザー",
+      "closed": "この予定のコメントは締め切られています",
+      "cancelled": "中止になった予定にはコメントできません",
+      "updateSuccess": "コメントを更新しました",
+      "deleteSuccess": "コメントを削除しました",
+      "postSuccess": "コメントを投稿しました",
+      "settings": {
+        "enable": "コメントを受け付ける",
+        "disable": "コメントを締め切る",
+        "updateSuccess": "コメント設定を更新しました"
+      },
+      "mention": {
+        "hint": "メンバーをメンションできます",
+        "empty": "該当するメンバーがいません"
+      },
+      "count": "コメント {count} 件",
+      "error": {
+        "bodyRequired": "コメントを入力してください",
+        "bodyTooLong": "コメントは2000文字以内で入力してください",
+        "maxDepth": "この返信にはこれ以上返信できません",
+        "closed": "コメントは締め切られています",
+        "forbidden": "この操作を行う権限がありません",
+        "tooManyMentions": "メンションは20人までです",
+        "rateLimited": "投稿が多すぎます。しばらくしてからお試しください",
+        "generic": "操作に失敗しました"
+      }
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

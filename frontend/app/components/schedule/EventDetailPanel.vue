@@ -297,5 +297,18 @@ onMounted(async () => {
       <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>
       <span class="text-yellow-700 dark:text-yellow-300">{{ delegationCount }}{{ $t('proxy.delegation.admin.count_suffix') }}</span>
     </div>
+
+    <!-- F03.16 予定コメントスレッド。
+         【FE隊申し送り】設計書 §1.5 は CalendarEntryResponse.scheduleId（events.schedule_id が
+         NULL のイベントを判別する専用フィールド）の新設を BE 側の作業項目として要求しているが、
+         実装時点で backend/.../dto/CalendarEntryResponse.java には未着手だった（scheduleId フィールド
+         が存在しない）。既存の AttendancePanel 等と同じく event.id を schedule_id として扱っている
+         （このパネルを開く経路では reflection 行等の event.id=null なエントリは選択されないため
+         実害は無いが、events.schedule_id が NULL のイベント〔F03.8〕についてはコメント欄を
+         非表示にすべきところ、その判別ができず常に表示してしまう。BE の scheduleId フィールド追加を
+         待って対応する・§1.5 AC-07(b)）。 -->
+    <div class="border-t border-surface-200 pt-4 dark:border-surface-700">
+      <ScheduleCommentSection :schedule-id="event.id" :can-manage-settings="canEdit" />
+    </div>
   </div>
 </template>
