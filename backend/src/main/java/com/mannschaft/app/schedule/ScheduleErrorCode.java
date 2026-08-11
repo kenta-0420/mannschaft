@@ -59,6 +59,19 @@ public enum ScheduleErrorCode implements ErrorCode {
     /** アクセス権なし */
     ACCESS_DENIED("SCHEDULE_016", "このスケジュールへのアクセス権がありません", Severity.WARN),
 
+    /**
+     * 二軸（配信 × 閲覧）の不変条件違反（400・CMP-017b）。
+     *
+     * <p>{@code include_supporters = TRUE}（応援者にも出欠を配る）でありながら
+     * {@code min_view_role} が {@code MEMBER_PLUS} / {@code ADMIN_ONLY}（応援者は閲覧不可）である
+     * 組み合わせは「応援者に出欠を配るが応援者は予定を見られない」自己矛盾であり、
+     * 書込時に拒否する。</p>
+     */
+    INCONSISTENT_SUPPORTER_AXES(
+            "SCHEDULE_017",
+            "応援者を出欠配信対象に含める設定と、応援者が閲覧できない最小閲覧ロールは同時に指定できません",
+            Severity.WARN),
+
     /** 個人リマインダー上限超過 */
     PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.WARN),
 

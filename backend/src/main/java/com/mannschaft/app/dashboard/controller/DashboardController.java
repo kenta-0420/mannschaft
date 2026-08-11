@@ -425,17 +425,45 @@ public class DashboardController {
         LocalDateTime weekEnd = todayStart.plusDays(7);
         LocalDateTime monthEnd = todayStart.plusMonths(1);
 
-        long eventsToday = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, todayEnd).size();
-        long eventsThisWeek = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, weekEnd).size();
-        long eventsThisMonth = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd).size();
+        // F00 認可基盤連携（CMP-017b 第五隊）: today ⊂ week ⊂ month の入れ子期間を
+        // 個別に 6 クエリ（personal 3 本 + team 3 本）発行していたのを、
+        // 最広範囲（todayStart〜monthEnd）を personal 1 本 + team 1 本の計 2 本で取得し、
+        // アプリ層で今日/週/月を集計する方式へ変更（AC-24）。
+        // 個人スケジュールは本人所有のため常に可視。チーム予定のみ filterAccessible で
+        // min_view_role 等の可視性判定を通す（従来はここが未判定で漏洩していた）。
+        List<ScheduleEntity> personalSchedules = scheduleRepository
+                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd);
 
-        // チーム公開イベントも加算（N+1 解消: 所属チーム ID を IN 句で一括取得し、期間ごと 1 クエリ）
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
         List<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
-        if (!teamIds.isEmpty()) {
-            eventsToday += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, todayEnd).size();
-            eventsThisWeek += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, weekEnd).size();
-            eventsThisMonth += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd).size();
+        List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
+                ? List.of()
+                : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd);
+        Set<Long> visibleTeamIds = teamSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+
+        List<ScheduleEntity> allSchedules = new ArrayList<>(personalSchedules);
+        teamSchedules.stream().filter(s -> visibleTeamIds.contains(s.getId())).forEach(allSchedules::add);
+
+        long eventsToday = 0;
+        long eventsThisWeek = 0;
+        long eventsThisMonth = 0;
+        for (ScheduleEntity s : allSchedules) {
+            LocalDateTime startAt = s.getStartAt();
+            if (startAt == null) {
+                continue;
+            }
+            eventsThisMonth++;
+            if (!startAt.isAfter(weekEnd)) {
+                eventsThisWeek++;
+            }
+            if (!startAt.isAfter(todayEnd)) {
+                eventsToday++;
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(

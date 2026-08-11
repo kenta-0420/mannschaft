@@ -170,6 +170,8 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 | 16 | `TEAM` | `TeamEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 | 17 | `ORGANIZATION` | `OrganizationEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 
+> **F03.17 連携追記（2026-08-06）**: `SCHEDULE_KEEP`（キープ＝日付未定の予定）を追加した。`schedule_keeps` は UUIDv7 主キーのため `idKind()` は `UUID_V7` であり、`ScheduleKeepVisibilityResolver`（`com.mannschaft.app.schedule.visibility`）が UUID 経路（`canViewUuid` / `filterAccessibleUuid`）を実装する。**visibility 戦略は「スコープ固定」**: キープは可視性設定列を持たず、チーム／組織スコープでは常に `MEMBERS_AND_ABOVE`（応援者・ゲストを除外。`EventVisibilityMapper` の締め直しと同じ判断）、個人スコープでは `PRIVATE`（所有者本人のみ）で評価する。**本 referenceType はコルクボード（引用・埋め込み）の対象外**であり、`corkboard_cards.reference_id_uuid` を使う用途を持たない。詳細: `F03.17_schedule_keep.md` §4.6。
+
 > **F19.1 連携追記（2026-05-18）**: `TEAM` / `ORGANIZATION` Resolver は F19.1 公開チーム・組織ページ機能で本基盤の Phase D を待たず繰り上げ実装される。`PublicTeamVisibilityResolver` / `PublicOrganizationVisibilityResolver` として `com.mannschaft.app.publicview` に配置される。詳細: `F19.1_public_pages_identity_disclosure.md` §7.2。
 
 **visibility 戦略の凡例**:
@@ -513,6 +515,8 @@ public class BlogPostVisibilityResolver
             case SUPPORTERS_AND_ABOVE ->
                 snapshot.hasRoleOrAbove(scope, "SUPPORTER");
             case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case DEPUTY_ADMINS_AND_ABOVE ->
+                snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
@@ -635,6 +639,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             case SCOPE_AFFILIATED -> snapshot.isMemberOf(scope);
             case SUPPORTERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "SUPPORTER");
             case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case DEPUTY_ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
@@ -749,9 +754,15 @@ public enum StandardVisibility {
      *  応援者(SUPPORTER)は含まない（F00.5 課題#5 の可視性軸での回答・§5.1.5）。 */
     MEMBERS_AND_ABOVE,
 
-    /** ADMIN ロールのみ（閾値レベル）
+    /** DEPUTY_ADMIN 以上（閾値レベル）
      *  包含: ADMIN/DEPUTY_ADMIN
-     *  AccessControlService.isAdminOrAbove(...) と同等。
+     *  hasRoleOrAbove("DEPUTY_ADMIN") と同等。
+     *  ※CMP-017b 追加。F03.1 の min_view_role=ADMIN_ONLY（副管理者も閲覧可）の写像先。 */
+    DEPUTY_ADMINS_AND_ABOVE,
+
+    /** ADMIN ロールのみ（閾値レベル）
+     *  包含: ADMIN のみ（DEPUTY_ADMIN は priority=3 のため実際には除外される）
+     *  hasRoleOrAbove("ADMIN") と同等。
      *  ※旧名 ADMINS_ONLY。挙動不変、_AND_ABOVE 命名規約に揃えるため改名（§5.1.5）。 */
     ADMINS_AND_ABOVE,
 
@@ -808,20 +819,28 @@ public enum StandardVisibility {
 **広→狭** の序列は以下のとおり:
 
 ```
-PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  ADMINS_AND_ABOVE
+PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  DEPUTY_ADMINS_AND_ABOVE  >  ADMINS_AND_ABOVE
 ```
 
 - `PUBLIC` … 全員（未認証含む）
 - `SUPPORTERS_AND_ABOVE` … `hasRoleOrAbove("SUPPORTER")`。ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER（GUEST 除外）。**不変**
 - `MEMBERS_AND_ABOVE` … `hasRoleOrAbove("MEMBER")`。ADMIN/DEPUTY_ADMIN/MEMBER（**SUPPORTER/GUEST 除外**）。**新設**
-- `ADMINS_AND_ABOVE` … `hasRoleOrAbove("ADMIN")`。ADMIN/DEPUTY_ADMIN。旧 `ADMINS_ONLY` を改名（挙動不変）
+- `DEPUTY_ADMINS_AND_ABOVE` … `hasRoleOrAbove("DEPUTY_ADMIN")`。ADMIN/DEPUTY_ADMIN。**CMP-017b で追加**
+- `ADMINS_AND_ABOVE` … `hasRoleOrAbove("ADMIN")`。**ADMIN のみ**。旧 `ADMINS_ONLY` を改名（挙動不変）
+
+> ⚠️ **本節の過去の記述の訂正（CMP-017b）**: `ADMINS_AND_ABOVE` の包含を長らく
+> 「ADMIN/DEPUTY_ADMIN」と記していたが誤りであった。`RolePriority` は ADMIN=2・DEPUTY_ADMIN=3 であり、
+> 「以上」判定は `priority(actual) <= priority(required)` ゆえ `hasRoleOrAbove("ADMIN")` は
+> DEPUTY_ADMIN を弾く。**実装は一貫して DEPUTY_ADMIN を除外していた**（挙動は変えていない）。
+> 「ADMIN と副管理者の両方に見せたい」意図には新設の `DEPUTY_ADMINS_AND_ABOVE` を用いること。
+> F03.1 の `min_view_role = ADMIN_ONLY`（DEPUTY_ADMIN・ADMIN のみ閲覧可）がこの新段の写像先である。
 
 **`SCOPE_AFFILIATED` は閾値ではなく「直接所属」という別軸** であり、上記序列に乗らない。
 そのスコープに直接所属していれば誰でも可視（`isMemberOf(scope)`）＝ ADMIN/DEPUTY_ADMIN/MEMBER/**SUPPORTER/GUEST**
 のロール保有者すべて（JOBBER 等の並行ロールは「直接所属」に含めず除外）。旧 `MEMBERS_ONLY` を改名・温存したもの。
 
 **GUEST の扱い**:
-- すべての**閾値レベル**（`SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE`）で GUEST は不可視
+- すべての**閾値レベル**（`SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `DEPUTY_ADMINS_AND_ABOVE` / `ADMINS_AND_ABOVE`）で GUEST は不可視
 - `SCOPE_AFFILIATED` のみ、GUEST ロールの直接所属者を可視とする（「直接所属」の定義に GUEST を含むため）
 - 未認証 (userId=null) は `PUBLIC` のみ可視（§17.Q1）。`SCOPE_AFFILIATED` も含め全レベルで fail-closed
 
@@ -1603,7 +1622,8 @@ public record UserScopeRoleSnapshot(
     boolean systemAdmin,
     Map<ScopeKey, String> roleByScope,        // direct メンバーシップ + ロール名
     Map<ScopeKey, Long> parentOrgByScope,     // TEAM → 親 ORG
-    Set<ScopeKey> orgMemberOf                 // 親 ORG での所属
+    Set<ScopeKey> orgMemberOf,                // 親 ORG での所属（真偽）
+    Map<ScopeKey, String> orgRoleByScope      // 親 ORG での直接所属ロール名（CMP-017b 追加）
 ) {
     public boolean isSystemAdmin() { return systemAdmin; }
     public boolean isMemberOf(ScopeKey s) {
@@ -1621,10 +1641,25 @@ public record UserScopeRoleSnapshot(
         return parentOrg != null
             && orgMemberOf.contains(new ScopeKey("ORGANIZATION", parentOrg));
     }
+    // CMP-017b: 親 ORG での「役職の高さ」を閾値評価する。isMemberOfParentOrg が
+    // 所属の真偽しか答えられず、F03.1「visibility=ORGANIZATION は親組織への
+    // 直接所属ロールで min_view_role を評価する」を満たせなかったため追加。
+    public boolean hasParentOrgRoleOrAbove(ScopeKey s, String required) {
+        if (systemAdmin) return true;
+        Long parentOrg = parentOrgByScope.get(s);
+        if (parentOrg == null) return false;
+        String role = orgRoleByScope.get(new ScopeKey("ORGANIZATION", parentOrg));
+        return role != null && RolePriority.isAtLeast(role, required);
+    }
     public static UserScopeRoleSnapshot empty() { /* ... */ }
     public static UserScopeRoleSnapshot systemAdmin() { /* ... */ }
 }
 ```
+
+> `orgRoleByScope` は `orgMemberOf` と**まったく同じ 2 つの取得結果**
+> （親 ORG の `user_roles` 行 ＋ `memberships.role_kind` 行）からロール名を取り出すだけであり、
+> **SQL を 1 本も追加しない**。role_id → role_name の解決も direct スコープ側と同じ IN 句へ
+> 合流させてあるため、`roles` マスタ照会は snapshot あたり 1 回のままである。
 
 #### UserRoleRepository への追加
 

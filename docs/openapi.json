@@ -99,6 +99,10 @@
       "description": "F10.X 第二陣 汎用バッチキック API"
     },
     {
+      "name": "個人キープ管理",
+      "description": "F03.17 個人スコープのキープ（日付未定の予定）CRUD"
+    },
+    {
       "name": "大会参加費",
       "description": "F08.7.1/07 大会費用支払い（F08.2 決済基盤 再利用）"
     },
@@ -1795,6 +1799,10 @@
       "description": "F10.6 Phase 10-γ-③-a システムログ参照 API"
     },
     {
+      "name": "組織キープ管理",
+      "description": "F03.17 組織スコープのキープ（日付未定の予定）CRUD"
+    },
+    {
       "name": "シフト PDF エクスポート",
       "description": "F03.5 シフト PDF ダウンロード"
     },
@@ -1997,6 +2005,10 @@
     {
       "name": "システム管理 - メール outbox",
       "description": "F09.18 Phase 18-d メール配信 outbox 管理"
+    },
+    {
+      "name": "チームキープ管理",
+      "description": "F03.17 チームスコープのキープ（日付未定の予定）CRUD"
     },
     {
       "name": "村内通報 + モデレーション (F17.1)",
@@ -35922,6 +35934,308 @@
         }
       }
     },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps": {
+      "get": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープ一覧",
+        "operationId": "list_13",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープ作成",
+        "operationId": "create_12",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/revert": {
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープの変換取消",
+        "operationId": "revert",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/restore": {
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープのアーカイブ解除",
+        "operationId": "restore",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復帰成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/convert": {
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープを予定へ変換",
+        "operationId": "convert",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "変換成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConvertScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/archive": {
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープをアーカイブ",
+        "operationId": "archive_2",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "アーカイブ成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/reorder": {
+      "post": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープの並び替え",
+        "operationId": "reorder_1",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderScheduleKeepsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "並び替え成功"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/translations": {
       "get": {
         "tags": [
@@ -36706,7 +37020,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル一覧（SYSTEM 既定 + チームスコープ）",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "parameters": [
           {
             "name": "teamId",
@@ -36735,7 +37049,7 @@
           "TODO ステータスラベル（チーム）"
         ],
         "summary": "チームステータスラベル作成（ADMIN/DEPUTY_ADMIN）",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "parameters": [
           {
             "name": "teamId",
@@ -38619,7 +38933,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット一覧",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "parameters": [
           {
             "name": "teamId",
@@ -38649,7 +38963,7 @@
           "セグメントプリセット（チーム）"
         ],
         "summary": "プリセット作成",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "parameters": [
           {
             "name": "teamId",
@@ -38893,7 +39207,7 @@
           "居住者書類（チーム）"
         ],
         "summary": "書類一覧",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "parameters": [
           {
             "name": "teamId",
@@ -40599,7 +40913,7 @@
           "F03.11 募集型予約 / サブカテゴリ"
         ],
         "summary": "サブカテゴリ一覧",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "parameters": [
           {
             "name": "teamId",
@@ -40638,7 +40952,7 @@
           "F03.11 募集型予約 / サブカテゴリ"
         ],
         "summary": "サブカテゴリ作成",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "parameters": [
           {
             "name": "teamId",
@@ -40680,7 +40994,7 @@
           "F03.11 募集型予約 / サブカテゴリ"
         ],
         "summary": "サブカテゴリ削除 (論理削除)",
-        "operationId": "archive_2",
+        "operationId": "archive_3",
         "parameters": [
           {
             "name": "teamId",
@@ -40714,7 +41028,7 @@
           "F03.11 募集型予約 / 募集枠 (チーム)"
         ],
         "summary": "チーム募集枠一覧",
-        "operationId": "list_17",
+        "operationId": "list_18",
         "parameters": [
           {
             "name": "teamId",
@@ -40772,7 +41086,7 @@
           "F03.11 募集型予約 / 募集枠 (チーム)"
         ],
         "summary": "チーム募集枠作成 (DRAFT で作成)",
-        "operationId": "create_15",
+        "operationId": "create_16",
         "parameters": [
           {
             "name": "teamId",
@@ -41341,7 +41655,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件一覧",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "parameters": [
           {
             "name": "teamId",
@@ -41407,7 +41721,7 @@
           "物件掲示板（チーム）"
         ],
         "summary": "物件掲示作成",
-        "operationId": "create_16",
+        "operationId": "create_17",
         "parameters": [
           {
             "name": "teamId",
@@ -41539,7 +41853,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション一覧",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "name": "teamId",
@@ -41597,7 +41911,7 @@
           "プロモーション管理（チーム）"
         ],
         "summary": "プロモーション作成",
-        "operationId": "create_17",
+        "operationId": "create_18",
         "parameters": [
           {
             "name": "teamId",
@@ -42510,7 +42824,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト一覧",
-        "operationId": "list_20",
+        "operationId": "list_21",
         "parameters": [
           {
             "name": "teamId",
@@ -42540,7 +42854,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト追加",
-        "operationId": "create_18",
+        "operationId": "create_19",
         "parameters": [
           {
             "name": "teamId",
@@ -42755,7 +43069,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース一覧",
-        "operationId": "list_21",
+        "operationId": "list_22",
         "parameters": [
           {
             "name": "teamId",
@@ -42813,7 +43127,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース作成",
-        "operationId": "create_19",
+        "operationId": "create_20",
         "parameters": [
           {
             "name": "teamId",
@@ -43236,7 +43550,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望一覧",
-        "operationId": "list_22",
+        "operationId": "list_23",
         "parameters": [
           {
             "name": "teamId",
@@ -43294,7 +43608,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望作成",
-        "operationId": "create_20",
+        "operationId": "create_21",
         "parameters": [
           {
             "name": "teamId",
@@ -43387,7 +43701,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請一覧",
-        "operationId": "list_23",
+        "operationId": "list_24",
         "parameters": [
           {
             "name": "teamId",
@@ -43445,7 +43759,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム区画申請",
-        "operationId": "create_21",
+        "operationId": "create_22",
         "parameters": [
           {
             "name": "teamId",
@@ -43527,7 +43841,7 @@
         "tags": [
           "team-onboarding-template-controller"
         ],
-        "operationId": "list_24",
+        "operationId": "list_25",
         "parameters": [
           {
             "name": "teamId",
@@ -43556,7 +43870,7 @@
         "tags": [
           "team-onboarding-template-controller"
         ],
-        "operationId": "create_22",
+        "operationId": "create_23",
         "parameters": [
           {
             "name": "teamId",
@@ -44566,7 +44880,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "list_25",
+        "operationId": "list_26",
         "parameters": [
           {
             "name": "teamId",
@@ -44595,7 +44909,7 @@
         "tags": [
           "gamification-point-rule-controller"
         ],
-        "operationId": "create_23",
+        "operationId": "create_24",
         "parameters": [
           {
             "name": "teamId",
@@ -44636,7 +44950,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "list_26",
+        "operationId": "list_27",
         "parameters": [
           {
             "name": "teamId",
@@ -44665,7 +44979,7 @@
         "tags": [
           "gamification-badge-controller"
         ],
-        "operationId": "create_24",
+        "operationId": "create_25",
         "parameters": [
           {
             "name": "teamId",
@@ -46287,7 +46601,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室一覧",
-        "operationId": "list_27",
+        "operationId": "list_28",
         "parameters": [
           {
             "name": "teamId",
@@ -46337,7 +46651,7 @@
           "居室管理（チーム）"
         ],
         "summary": "居室作成",
-        "operationId": "create_25",
+        "operationId": "create_26",
         "parameters": [
           {
             "name": "teamId",
@@ -46418,7 +46732,7 @@
           "居住者管理（チーム）"
         ],
         "summary": "居住者登録",
-        "operationId": "create_26",
+        "operationId": "create_27",
         "parameters": [
           {
             "name": "teamId",
@@ -47002,7 +47316,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン一覧",
-        "operationId": "list_28",
+        "operationId": "list_29",
         "parameters": [
           {
             "name": "teamId",
@@ -47052,7 +47366,7 @@
           "クーポン管理（チーム）"
         ],
         "summary": "クーポン作成",
-        "operationId": "create_27",
+        "operationId": "create_28",
         "parameters": [
           {
             "name": "teamId",
@@ -47166,7 +47480,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知一覧取得",
-        "operationId": "list_29",
+        "operationId": "list_30",
         "parameters": [
           {
             "name": "teamId",
@@ -47306,7 +47620,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート一覧取得",
-        "operationId": "list_30",
+        "operationId": "list_31",
         "parameters": [
           {
             "name": "teamId",
@@ -47336,7 +47650,7 @@
           "確認通知テンプレート"
         ],
         "summary": "確認通知テンプレート作成",
-        "operationId": "create_28",
+        "operationId": "create_29",
         "parameters": [
           {
             "name": "teamId",
@@ -48227,7 +48541,7 @@
           "F03.11 募集型予約 / キャンセルポリシー (チーム)"
         ],
         "summary": "チームのキャンセルポリシー一覧",
-        "operationId": "list_31",
+        "operationId": "list_32",
         "parameters": [
           {
             "name": "teamId",
@@ -48257,7 +48571,7 @@
           "F03.11 募集型予約 / キャンセルポリシー (チーム)"
         ],
         "summary": "キャンセルポリシー作成 (テンプレート用 or 募集用)",
-        "operationId": "create_29",
+        "operationId": "create_30",
         "parameters": [
           {
             "name": "teamId",
@@ -48298,7 +48612,7 @@
         "tags": [
           "team-budget-fiscal-year-controller"
         ],
-        "operationId": "list_32",
+        "operationId": "list_33",
         "parameters": [
           {
             "name": "teamId",
@@ -48327,7 +48641,7 @@
         "tags": [
           "team-budget-fiscal-year-controller"
         ],
-        "operationId": "create_30",
+        "operationId": "create_31",
         "parameters": [
           {
             "name": "teamId",
@@ -49415,7 +49729,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "list_33",
+        "operationId": "list_34",
         "parameters": [
           {
             "name": "teamId",
@@ -49471,7 +49785,7 @@
         "tags": [
           "team-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "create_31",
+        "operationId": "create_32",
         "parameters": [
           {
             "name": "teamId",
@@ -49852,7 +50166,7 @@
         "tags": [
           "team-advertiser-operational-ad-campaign-controller"
         ],
-        "operationId": "list_34",
+        "operationId": "list_35",
         "parameters": [
           {
             "name": "teamId",
@@ -49916,7 +50230,7 @@
         "tags": [
           "team-advertiser-operational-ad-campaign-controller"
         ],
-        "operationId": "create_32",
+        "operationId": "create_33",
         "parameters": [
           {
             "name": "teamId",
@@ -50117,7 +50431,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "list_35",
+        "operationId": "list_36",
         "parameters": [
           {
             "name": "teamId",
@@ -50155,7 +50469,7 @@
         "tags": [
           "team-advertiser-ad-creative-controller"
         ],
-        "operationId": "create_33",
+        "operationId": "create_34",
         "parameters": [
           {
             "name": "teamId",
@@ -52153,7 +52467,7 @@
         ],
         "summary": "セキュリティインシデント登録",
         "description": "新規セキュリティインシデントを登録する。",
-        "operationId": "create_34",
+        "operationId": "create_35",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52305,7 +52619,7 @@
         ],
         "summary": "ナビ項目追加",
         "description": "新しいナビ項目を追加する。key は ^[a-z0-9\\-]+$ のみ可。",
-        "operationId": "create_35",
+        "operationId": "create_36",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52449,7 +52763,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー一覧取得",
-        "operationId": "list_36",
+        "operationId": "list_37",
         "parameters": [
           {
             "name": "page",
@@ -52490,7 +52804,7 @@
           "システム管理 - 障害告知バナー"
         ],
         "summary": "障害告知バナー作成",
-        "operationId": "create_36",
+        "operationId": "create_37",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52657,7 +52971,7 @@
         ],
         "summary": "手数料パターン割当一覧",
         "description": "未削除の割当一覧（source_kind＋sub_key → policy_key）を作成順で返す。",
-        "operationId": "list_37",
+        "operationId": "list_38",
         "responses": {
           "200": {
             "description": "OK",
@@ -52677,7 +52991,7 @@
         ],
         "summary": "手数料パターン割当作成",
         "description": "割当を作成する。参照先 policy 不在は 404・無効は 422。同条件の既存割当は 409。割当変更は新規課金のみ反映（既存取引は焼き付け済みで不変）。",
-        "operationId": "create_37",
+        "operationId": "create_38",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52709,7 +53023,7 @@
         ],
         "summary": "手数料パターン一覧",
         "description": "全パターンを返す（enabled\u003dfalse 含む全件・policy_key 昇順・割当数付き）。",
-        "operationId": "list_38",
+        "operationId": "list_39",
         "responses": {
           "200": {
             "description": "OK",
@@ -52729,7 +53043,7 @@
         ],
         "summary": "手数料パターン新規",
         "description": "新しいパターンを作成する。既存キーは 409（更新は PUT）。率・固定額の業務制約あり。",
-        "operationId": "create_38",
+        "operationId": "create_39",
         "requestBody": {
           "content": {
             "application/json": {
@@ -53615,7 +53929,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "list_39",
+        "operationId": "list_40",
         "parameters": [
           {
             "name": "pageable",
@@ -53643,7 +53957,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "create_39",
+        "operationId": "create_40",
         "requestBody": {
           "content": {
             "application/json": {
@@ -56233,7 +56547,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.1: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_40",
+        "operationId": "list_41",
         "parameters": [
           {
             "name": "scheduleId",
@@ -56284,7 +56598,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.1: 委任者が代理人を指定する",
-        "operationId": "create_40",
+        "operationId": "create_41",
         "parameters": [
           {
             "name": "scheduleId",
@@ -57088,7 +57402,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠 論理削除",
-        "operationId": "archive_3",
+        "operationId": "archive_4",
         "parameters": [
           {
             "name": "id",
@@ -59489,7 +59803,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト一覧",
-        "operationId": "list_41",
+        "operationId": "list_42",
         "parameters": [
           {
             "name": "organizationId",
@@ -59519,7 +59833,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト追加",
-        "operationId": "create_41",
+        "operationId": "create_42",
         "parameters": [
           {
             "name": "organizationId",
@@ -59734,7 +60048,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース一覧",
-        "operationId": "list_42",
+        "operationId": "list_43",
         "parameters": [
           {
             "name": "organizationId",
@@ -59792,7 +60106,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース作成",
-        "operationId": "create_42",
+        "operationId": "create_43",
         "parameters": [
           {
             "name": "organizationId",
@@ -60215,7 +60529,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望一覧",
-        "operationId": "list_43",
+        "operationId": "list_44",
         "parameters": [
           {
             "name": "organizationId",
@@ -60273,7 +60587,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望作成",
-        "operationId": "create_43",
+        "operationId": "create_44",
         "parameters": [
           {
             "name": "organizationId",
@@ -60366,7 +60680,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請一覧",
-        "operationId": "list_44",
+        "operationId": "list_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -60424,7 +60738,7 @@
           "組織区画申請"
         ],
         "summary": "組織区画申請",
-        "operationId": "create_44",
+        "operationId": "create_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -60902,7 +61216,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "create_45",
+        "operationId": "create_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -60993,7 +61307,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "list_45",
+        "operationId": "list_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -61055,7 +61369,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "create_46",
+        "operationId": "create_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -61203,7 +61517,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "list_46",
+        "operationId": "list_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -61259,7 +61573,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "create_47",
+        "operationId": "create_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -61640,7 +61954,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "list_47",
+        "operationId": "list_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -61704,7 +62018,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "create_48",
+        "operationId": "create_49",
         "parameters": [
           {
             "name": "organizationId",
@@ -61905,7 +62219,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "list_48",
+        "operationId": "list_49",
         "parameters": [
           {
             "name": "organizationId",
@@ -61943,7 +62257,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "create_49",
+        "operationId": "create_50",
         "parameters": [
           {
             "name": "organizationId",
@@ -62171,6 +62485,308 @@
         "responses": {
           "204": {
             "description": "キャンセル成功"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
+      "get": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープ一覧",
+        "operationId": "list_50",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープ作成",
+        "operationId": "create_51",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/revert": {
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープの変換取消",
+        "operationId": "revert_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/restore": {
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープのアーカイブ解除",
+        "operationId": "restore_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復帰成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/convert": {
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープを予定へ変換",
+        "operationId": "convert_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "変換成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConvertScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/archive": {
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープをアーカイブ",
+        "operationId": "archive_5",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "アーカイブ成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/reorder": {
+      "post": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープの並び替え",
+        "operationId": "reorder_2",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderScheduleKeepsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "並び替え成功"
           }
         }
       }
@@ -64731,7 +65347,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ）",
-        "operationId": "list_49",
+        "operationId": "list_51",
         "parameters": [
           {
             "name": "orgId",
@@ -64761,7 +65377,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN）",
-        "operationId": "create_50",
+        "operationId": "create_52",
         "parameters": [
           {
             "name": "orgId",
@@ -65807,7 +66423,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット一覧",
-        "operationId": "list_50",
+        "operationId": "list_52",
         "parameters": [
           {
             "name": "orgId",
@@ -65837,7 +66453,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット作成",
-        "operationId": "create_51",
+        "operationId": "create_53",
         "parameters": [
           {
             "name": "orgId",
@@ -65996,7 +66612,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類一覧",
-        "operationId": "list_51",
+        "operationId": "list_53",
         "parameters": [
           {
             "name": "orgId",
@@ -66425,7 +67041,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠一覧",
-        "operationId": "list_52",
+        "operationId": "list_54",
         "parameters": [
           {
             "name": "orgId",
@@ -66483,7 +67099,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠作成 (DRAFT で作成)",
-        "operationId": "create_52",
+        "operationId": "create_54",
         "parameters": [
           {
             "name": "orgId",
@@ -66672,7 +67288,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件一覧",
-        "operationId": "list_53",
+        "operationId": "list_55",
         "parameters": [
           {
             "name": "orgId",
@@ -66738,7 +67354,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件掲示作成",
-        "operationId": "create_53",
+        "operationId": "create_55",
         "parameters": [
           {
             "name": "orgId",
@@ -66870,7 +67486,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション一覧",
-        "operationId": "list_54",
+        "operationId": "list_56",
         "parameters": [
           {
             "name": "orgId",
@@ -66928,7 +67544,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション作成",
-        "operationId": "create_54",
+        "operationId": "create_56",
         "parameters": [
           {
             "name": "orgId",
@@ -67550,7 +68166,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会の発行請求一覧（status フィルタ・ページング）",
-        "operationId": "list_55",
+        "operationId": "list_57",
         "parameters": [
           {
             "name": "orgId",
@@ -67619,7 +68235,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の発行（DRAFT）",
-        "operationId": "create_55",
+        "operationId": "create_57",
         "parameters": [
           {
             "name": "orgId",
@@ -67660,7 +68276,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "list_56",
+        "operationId": "list_58",
         "parameters": [
           {
             "name": "orgId",
@@ -67689,7 +68305,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "create_56",
+        "operationId": "create_58",
         "parameters": [
           {
             "name": "orgId",
@@ -67984,7 +68600,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真一覧（閲覧可視性・作成日時昇順）",
-        "operationId": "list_57",
+        "operationId": "list_59",
         "parameters": [
           {
             "name": "orgId",
@@ -68998,7 +69614,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室一覧",
-        "operationId": "list_58",
+        "operationId": "list_60",
         "parameters": [
           {
             "name": "orgId",
@@ -69048,7 +69664,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室作成",
-        "operationId": "create_57",
+        "operationId": "create_59",
         "parameters": [
           {
             "name": "orgId",
@@ -69129,7 +69745,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者登録",
-        "operationId": "create_58",
+        "operationId": "create_60",
         "parameters": [
           {
             "name": "orgId",
@@ -69641,7 +70257,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン一覧",
-        "operationId": "list_59",
+        "operationId": "list_61",
         "parameters": [
           {
             "name": "orgId",
@@ -69691,7 +70307,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン作成",
-        "operationId": "create_59",
+        "operationId": "create_61",
         "parameters": [
           {
             "name": "orgId",
@@ -69805,7 +70421,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知一覧取得（組織）",
-        "operationId": "list_60",
+        "operationId": "list_62",
         "parameters": [
           {
             "name": "orgId",
@@ -69945,7 +70561,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート一覧取得（組織）",
-        "operationId": "list_61",
+        "operationId": "list_63",
         "parameters": [
           {
             "name": "orgId",
@@ -69975,7 +70591,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート作成（組織）",
-        "operationId": "create_60",
+        "operationId": "create_62",
         "parameters": [
           {
             "name": "orgId",
@@ -70293,7 +70909,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "list_62",
+        "operationId": "list_64",
         "parameters": [
           {
             "name": "orgId",
@@ -70322,7 +70938,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "create_61",
+        "operationId": "create_63",
         "parameters": [
           {
             "name": "orgId",
@@ -71165,7 +71781,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "archive_4",
+        "operationId": "archive_6",
         "parameters": [
           {
             "name": "templateId",
@@ -71858,7 +72474,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目一覧",
-        "operationId": "list_63",
+        "operationId": "list_65",
         "responses": {
           "200": {
             "description": "OK",
@@ -71877,7 +72493,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目作成（最大10件）",
-        "operationId": "create_62",
+        "operationId": "create_64",
         "requestBody": {
           "content": {
             "application/json": {
@@ -72233,6 +72849,248 @@
         }
       }
     },
+    "/api/v1/me/schedule-keeps": {
+      "get": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープ一覧",
+        "operationId": "list_66",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープ作成",
+        "operationId": "create_65",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/{keepId}/revert": {
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープの変換取消",
+        "operationId": "revert_2",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/{keepId}/restore": {
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープのアーカイブ解除",
+        "operationId": "restore_2",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復帰成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/{keepId}/convert": {
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープを予定へ変換",
+        "operationId": "convert_2",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertScheduleKeepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "変換成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConvertScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/{keepId}/archive": {
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープをアーカイブ",
+        "operationId": "archive_7",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "アーカイブ成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/reorder": {
+      "post": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープの並び替え",
+        "operationId": "reorder_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderScheduleKeepsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "並び替え成功"
+          }
+        }
+      }
+    },
     "/api/v1/me/reflections/themes": {
       "get": {
         "tags": [
@@ -72436,7 +73294,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割一覧（自分）",
-        "operationId": "list_64",
+        "operationId": "list_67",
         "responses": {
           "200": {
             "description": "OK",
@@ -72455,7 +73313,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割作成（DRAFT）",
-        "operationId": "create_63",
+        "operationId": "create_66",
         "requestBody": {
           "content": {
             "application/json": {
@@ -72486,7 +73344,7 @@
           "個人時間割共有先"
         ],
         "summary": "共有先一覧（自分の個人時間割）",
-        "operationId": "list_65",
+        "operationId": "list_68",
         "parameters": [
           {
             "name": "personalTimetableId",
@@ -72721,7 +73579,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割をアーカイブ（ACTIVE → ARCHIVED）",
-        "operationId": "archive_5",
+        "operationId": "archive_8",
         "parameters": [
           {
             "name": "id",
@@ -73344,7 +74202,7 @@
         ],
         "summary": "広告を通報する",
         "description": "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。",
-        "operationId": "create_64",
+        "operationId": "create_67",
         "requestBody": {
           "content": {
             "application/json": {
@@ -74368,7 +75226,7 @@
         ],
         "summary": "アーカイブ",
         "description": "通知を保管庫へ退避する（時間復帰なし）。",
-        "operationId": "archive_6",
+        "operationId": "archive_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -76031,7 +76889,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.2: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_66",
+        "operationId": "list_69",
         "parameters": [
           {
             "name": "eventId",
@@ -76082,7 +76940,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.2: 委任者が代理人を指定する",
-        "operationId": "create_65",
+        "operationId": "create_68",
         "parameters": [
           {
             "name": "eventId",
@@ -76228,7 +77086,7 @@
           "エラーレポート"
         ],
         "summary": "エラーレポート送信",
-        "operationId": "create_66",
+        "operationId": "create_69",
         "requestBody": {
           "content": {
             "application/json": {
@@ -78669,7 +79527,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー論理削除",
-        "operationId": "archive_7",
+        "operationId": "archive_10",
         "parameters": [
           {
             "name": "id",
@@ -78937,7 +79795,7 @@
           "掲示板スレッド（グローバル）"
         ],
         "summary": "スレッドアーカイブ状態変更（グローバル）",
-        "operationId": "archive_8",
+        "operationId": "archive_11",
         "parameters": [
           {
             "name": "threadId",
@@ -79426,7 +80284,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "create_67",
+        "operationId": "create_70",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -79718,7 +80576,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "create_68",
+        "operationId": "create_71",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -82697,7 +83555,7 @@
         ],
         "summary": "同義語新規登録",
         "description": "synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。",
-        "operationId": "create_69",
+        "operationId": "create_72",
         "requestBody": {
           "content": {
             "application/json": {
@@ -82865,7 +83723,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "create_70",
+        "operationId": "create_73",
         "requestBody": {
           "content": {
             "application/json": {
@@ -86673,6 +87531,128 @@
         "responses": {
           "204": {
             "description": "更新成功"
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}": {
+      "get": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープ詳細",
+        "operationId": "get_23",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープ削除",
+        "operationId": "delete_43",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "チームキープ更新",
+        "operationId": "update_49",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -90849,7 +91829,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "get_23",
+        "operationId": "get_24",
         "parameters": [
           {
             "name": "teamId",
@@ -90878,7 +91858,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "update_49",
+        "operationId": "update_50",
         "parameters": [
           {
             "name": "teamId",
@@ -92460,7 +93440,7 @@
         ],
         "summary": "セキュリティインシデント更新",
         "description": "ステータス変更・DPA 通知記録を行う。",
-        "operationId": "update_50",
+        "operationId": "update_51",
         "parameters": [
           {
             "name": "id",
@@ -92853,7 +93833,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート詳細取得",
-        "operationId": "get_24",
+        "operationId": "get_25",
         "parameters": [
           {
             "name": "id",
@@ -92883,7 +93863,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート更新",
-        "operationId": "update_51",
+        "operationId": "update_52",
         "parameters": [
           {
             "name": "id",
@@ -94614,7 +95594,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠詳細取得",
-        "operationId": "get_25",
+        "operationId": "get_26",
         "parameters": [
           {
             "name": "id",
@@ -94644,7 +95624,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠編集 (§5.7)",
-        "operationId": "update_52",
+        "operationId": "update_53",
         "parameters": [
           {
             "name": "id",
@@ -97092,6 +98072,128 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}": {
+      "get": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープ詳細",
+        "operationId": "get_27",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープ削除",
+        "operationId": "delete_44",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "組織キープ更新",
+        "operationId": "update_54",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/translations/{id}/status": {
       "patch": {
         "tags": [
@@ -99312,7 +100414,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "get_26",
+        "operationId": "get_28",
         "parameters": [
           {
             "name": "orgId",
@@ -99341,7 +100443,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "update_53",
+        "operationId": "update_55",
         "parameters": [
           {
             "name": "orgId",
@@ -99691,7 +100793,7 @@
           "村ピン留め"
         ],
         "summary": "ピン並び替え",
-        "operationId": "reorder_1",
+        "operationId": "reorder_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -99722,7 +100824,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目削除",
-        "operationId": "delete_43",
+        "operationId": "delete_45",
         "parameters": [
           {
             "name": "fieldId",
@@ -99745,7 +100847,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目更新",
-        "operationId": "update_54",
+        "operationId": "update_56",
         "parameters": [
           {
             "name": "fieldId",
@@ -99878,6 +100980,104 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePersonalScheduleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/{keepId}": {
+      "get": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープ詳細",
+        "operationId": "get_29",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープ削除",
+        "operationId": "delete_46",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "個人キープ更新",
+        "operationId": "update_57",
+        "parameters": [
+          {
+            "name": "keepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
                 }
               }
             }
@@ -100050,7 +101250,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割詳細",
-        "operationId": "get_27",
+        "operationId": "get_30",
         "parameters": [
           {
             "name": "id",
@@ -100080,7 +101280,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割論理削除",
-        "operationId": "delete_44",
+        "operationId": "delete_47",
         "parameters": [
           {
             "name": "id",
@@ -100103,7 +101303,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割メタ情報更新",
-        "operationId": "update_55",
+        "operationId": "update_58",
         "parameters": [
           {
             "name": "id",
@@ -101879,7 +103079,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー詳細 (段階含む)",
-        "operationId": "get_28",
+        "operationId": "get_31",
         "parameters": [
           {
             "name": "id",
@@ -101909,7 +103109,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
-        "operationId": "update_56",
+        "operationId": "update_59",
         "parameters": [
           {
             "name": "id",
@@ -102105,7 +103305,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "delete_45",
+        "operationId": "delete_48",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -102127,7 +103327,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "update_57",
+        "operationId": "update_60",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -102168,7 +103368,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "delete_46",
+        "operationId": "delete_49",
         "parameters": [
           {
             "name": "categoryId",
@@ -102207,7 +103407,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "update_58",
+        "operationId": "update_61",
         "parameters": [
           {
             "name": "categoryId",
@@ -103261,7 +104461,7 @@
         ],
         "summary": "同義語削除",
         "description": "物理削除。削除後にキャッシュリビルド。",
-        "operationId": "delete_47",
+        "operationId": "delete_50",
         "parameters": [
           {
             "name": "id",
@@ -103285,7 +104485,7 @@
         ],
         "summary": "同義語編集",
         "description": "synonymDisplay 指定時は再正規化と重複チェックを行う。",
-        "operationId": "update_59",
+        "operationId": "update_62",
         "parameters": [
           {
             "name": "id",
@@ -105840,7 +107040,7 @@
           "村史 (F17.2 Wave2 ⑦)"
         ],
         "summary": "村史（行事アーカイブ）一覧を取得する（archived_at 降順・sourceType 絞り込み可）",
-        "operationId": "list_67",
+        "operationId": "list_70",
         "parameters": [
           {
             "name": "villageId",
@@ -105905,7 +107105,7 @@
           "村史 (F17.1)"
         ],
         "summary": "村の村史一覧（月次ダイジェスト）を取得する",
-        "operationId": "list_68",
+        "operationId": "list_71",
         "parameters": [
           {
             "name": "villageId",
@@ -105937,7 +107137,7 @@
           "村史 (F17.1)"
         ],
         "summary": "指定月の村史を取得する（YYYY-MM-DD 形式）",
-        "operationId": "get_29",
+        "operationId": "get_32",
         "parameters": [
           {
             "name": "villageId",
@@ -105978,7 +107178,7 @@
           "村憲章 (F17.3)"
         ],
         "summary": "村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN）",
-        "operationId": "get_30",
+        "operationId": "get_33",
         "parameters": [
           {
             "name": "villageId",
@@ -107784,7 +108984,7 @@
           "タイムラインダイジェスト"
         ],
         "summary": "ダイジェスト履歴一覧取得",
-        "operationId": "list_69",
+        "operationId": "list_72",
         "parameters": [
           {
             "name": "scopeType",
@@ -108003,6 +109203,46 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+      "get": {
+        "tags": [
+          "チームキープ管理"
+        ],
+        "summary": "予定から由来キープを逆引き",
+        "operationId": "getByConvertedSchedule",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
                 }
               }
             }
@@ -110475,7 +111715,7 @@
           "協会請求（チーム視点）"
         ],
         "summary": "受信した協会請求の一覧",
-        "operationId": "list_70",
+        "operationId": "list_73",
         "parameters": [
           {
             "name": "teamId",
@@ -110590,7 +111830,7 @@
           "立替/精算（チーム視点）"
         ],
         "summary": "立替/精算記録の一覧",
-        "operationId": "list_71",
+        "operationId": "list_74",
         "parameters": [
           {
             "name": "teamId",
@@ -110982,7 +112222,7 @@
         "tags": [
           "team-onboarding-progress-controller"
         ],
-        "operationId": "list_72",
+        "operationId": "list_75",
         "parameters": [
           {
             "name": "teamId",
@@ -113973,7 +115213,7 @@
         "tags": [
           "team-budget-transaction-controller"
         ],
-        "operationId": "list_73",
+        "operationId": "list_76",
         "parameters": [
           {
             "name": "teamId",
@@ -116320,7 +117560,7 @@
           "プロモーション課金（SYSTEM_ADMIN）"
         ],
         "summary": "課金状況一覧",
-        "operationId": "list_74",
+        "operationId": "list_77",
         "parameters": [
           {
             "name": "billingStatus",
@@ -116794,7 +118034,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート一覧取得",
-        "operationId": "list_75",
+        "operationId": "list_78",
         "parameters": [
           {
             "name": "status",
@@ -118461,7 +119701,7 @@
         ],
         "summary": "通報一覧",
         "description": "status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。",
-        "operationId": "list_76",
+        "operationId": "list_79",
         "parameters": [
           {
             "name": "status",
@@ -118630,7 +119870,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "list_77",
+        "operationId": "list_80",
         "parameters": [
           {
             "name": "status",
@@ -118710,7 +119950,7 @@
         ],
         "summary": "審査キュー一覧",
         "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
-        "operationId": "list_78",
+        "operationId": "list_81",
         "parameters": [
           {
             "name": "status",
@@ -119830,7 +121070,7 @@
           "シフト予算 失敗イベント (F08.7)"
         ],
         "summary": "失敗イベント一覧を取得 (status で絞り込み可、新しい順)",
-        "operationId": "list_79",
+        "operationId": "list_82",
         "parameters": [
           {
             "name": "X-Organization-Id",
@@ -124987,6 +126227,46 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+      "get": {
+        "tags": [
+          "組織キープ管理"
+        ],
+        "summary": "予定から由来キープを逆引き",
+        "operationId": "getByConvertedSchedule_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/users/{userId}/teams/{teamId}/match-stats": {
       "get": {
         "tags": [
@@ -127635,7 +128915,7 @@
         "tags": [
           "org-onboarding-progress-controller"
         ],
-        "operationId": "list_80",
+        "operationId": "list_83",
         "parameters": [
           {
             "name": "orgId",
@@ -128607,7 +129887,7 @@
         "tags": [
           "org-budget-transaction-controller"
         ],
-        "operationId": "list_81",
+        "operationId": "list_84",
         "parameters": [
           {
             "name": "orgId",
@@ -129085,7 +130365,7 @@
         "tags": [
           "onboarding-me-controller"
         ],
-        "operationId": "list_82",
+        "operationId": "list_85",
         "parameters": [
           {
             "name": "status",
@@ -129830,7 +131110,7 @@
           "村投稿主体 (F17.1)"
         ],
         "summary": "村でなれる投稿主体一覧を取得する（村人のみ）",
-        "operationId": "list_83",
+        "operationId": "list_86",
         "parameters": [
           {
             "name": "villageId",
@@ -129937,7 +131217,7 @@
           "個人メモ-添付"
         ],
         "summary": "メモ添付一覧",
-        "operationId": "list_84",
+        "operationId": "list_87",
         "parameters": [
           {
             "name": "noteId",
@@ -130275,6 +131555,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseScopeFolderResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/schedule-keeps/by-schedule/{scheduleId}": {
+      "get": {
+        "tags": [
+          "個人キープ管理"
+        ],
+        "summary": "予定から由来キープを逆引き",
+        "operationId": "getByConvertedSchedule_2",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScheduleKeepResponse"
                 }
               }
             }
@@ -132889,7 +134201,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_85",
+        "operationId": "list_88",
         "parameters": [
           {
             "name": "teamId",
@@ -133590,7 +134902,7 @@
         "tags": [
           "disclosure-form-template-controller"
         ],
-        "operationId": "get_31",
+        "operationId": "get_34",
         "parameters": [
           {
             "name": "templateId",
@@ -135717,7 +137029,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "delete_48",
+        "operationId": "delete_51",
         "parameters": [
           {
             "name": "transactionId",
@@ -139461,7 +140773,7 @@
           "居住者書類（チーム）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_49",
+        "operationId": "delete_52",
         "parameters": [
           {
             "name": "teamId",
@@ -139538,7 +140850,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト削除",
-        "operationId": "delete_50",
+        "operationId": "delete_53",
         "parameters": [
           {
             "name": "teamId",
@@ -140048,7 +141360,7 @@
         ],
         "summary": "手数料パターン割当解除",
         "description": "割当を解除する（論理削除）。既存課金には影響しない（焼き付け済みで不変）。",
-        "operationId": "delete_51",
+        "operationId": "delete_54",
         "parameters": [
           {
             "name": "id",
@@ -140630,7 +141942,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト削除",
-        "operationId": "delete_52",
+        "operationId": "delete_55",
         "parameters": [
           {
             "name": "organizationId",
@@ -141026,7 +142338,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_53",
+        "operationId": "delete_56",
         "parameters": [
           {
             "name": "orgId",
@@ -141069,7 +142381,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真の削除（記録権限・R2 ベストエフォート削除）",
-        "operationId": "delete_54",
+        "operationId": "delete_57",
         "parameters": [
           {
             "name": "orgId",
@@ -141213,7 +142525,7 @@
           "個人メモ"
         ],
         "summary": "個人メモ削除（論理）",
-        "operationId": "delete_55",
+        "operationId": "delete_58",
         "parameters": [
           {
             "name": "noteId",
@@ -141238,7 +142550,7 @@
           "個人メモ-添付"
         ],
         "summary": "添付削除（論理）",
-        "operationId": "delete_56",
+        "operationId": "delete_59",
         "parameters": [
           {
             "name": "attachmentId",
@@ -167678,6 +168990,166 @@
           },
           "targetType": {
             "type": "string"
+          }
+        }
+      },
+      "CreateScheduleKeepRequest": {
+        "type": "object",
+        "properties": {
+          "candidateDates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memo": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseScheduleKeepResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ScheduleKeepResponse"
+          }
+        }
+      },
+      "CreatedByDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ScheduleKeepResponse": {
+        "type": "object",
+        "properties": {
+          "candidateDates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "convertedScheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "convertedScheduleState": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/CreatedByDto"
+          },
+          "id": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          },
+          "organizationPublicId": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamPublicId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConvertScheduleKeepRequest": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseConvertScheduleKeepResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConvertScheduleKeepResponse"
+          }
+        }
+      },
+      "ConvertScheduleKeepResponse": {
+        "type": "object",
+        "properties": {
+          "keep": {
+            "$ref": "#/components/schemas/ScheduleKeepResponse"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ConvertedScheduleDto"
+          }
+        }
+      },
+      "ConvertedScheduleDto": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ReorderScheduleKeepsRequest": {
+        "type": "object",
+        "properties": {
+          "orderedIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -205633,6 +207105,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AttendanceResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListScheduleKeepResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleKeepResponse"
             }
           }
         }

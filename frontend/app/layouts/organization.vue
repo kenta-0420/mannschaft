@@ -9,6 +9,18 @@ const orgId = computed(() => {
   return slug ? String(Array.isArray(slug) ? slug[0] : slug) : null
 })
 
+const scopeId = computed(() => orgId.value ?? '')
+const { roleName, loadPermissions } = useRoleAccess('organization', scopeId)
+const canShowSidebar = computed(() =>
+  roleName.value !== null
+  && roleName.value !== 'SUPPORTER'
+  && roleName.value !== 'GUEST',
+)
+
+onMounted(() => {
+  void loadPermissions()
+})
+
 // ルート変更時にDrawerを閉じる
 watch(() => route.path, () => {
   showSidebar.value = false
@@ -28,7 +40,7 @@ watch(() => route.path, () => {
   <NuxtLayout name="default">
     <div class="flex" style="min-height: calc(100vh - var(--app-header-h))">
       <!-- 全画面用 Drawer サイドバー（固定 <aside> 撤去・ScopePageShell と同一パターン） -->
-      <Drawer v-model:visible="showSidebar" position="left" class="!w-72">
+      <Drawer v-if="canShowSidebar" v-model:visible="showSidebar" position="left" class="!w-72">
         <template #header>
           <span class="font-semibold">メニュー</span>
         </template>
@@ -38,7 +50,7 @@ watch(() => route.path, () => {
       <!-- メインコンテンツ -->
       <main class="flex-1 min-w-0">
         <!-- サイドバー開閉ボタン（全画面サイズで表示） -->
-        <div class="px-4 pt-3">
+        <div v-if="canShowSidebar" class="px-4 pt-3">
           <Button
             icon="pi pi-bars"
             text

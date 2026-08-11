@@ -24,6 +24,20 @@ import java.util.Set;
  *                                である ORG の ID 集合（フェーズ M2 / {@code ORGANIZATION_AND_DESCENDANTS}
  *                                下向き再帰判定に用いる）。{@code orgMemberOf}（直接所属）とは
  *                                <strong>別フィールド</strong>であり、組織メンバー定義（G3）には影響しない。
+ * @param orgRoleByScope          親 ORG（{@code ORGANIZATION} スコープ）への<strong>直接所属ロール名</strong>の
+ *                                マップ（CMP-017b で追加）。{@code orgMemberOf} が「所属しているか（真偽）」
+ *                                しか持たず閾値評価ができなかったため、同じ一括取得結果からロール名を
+ *                                取り出して保持する。{@code roleByScope}（direct スコープ）とは
+ *                                <strong>別フィールド</strong>であり、既存判定には一切影響しない。
+ *                                キーは常に {@code ScopeKey("ORGANIZATION", orgId)}。
+ * @param descendantRoleByOrgId   {@code descendantMemberOfOrgIds} の各根 ORG における
+ *                                viewer の<strong>実効ロール名</strong>（CMP-017b 三b で追加）。
+ *                                所属集合が「配下に属するか（真偽）」しか持たず
+ *                                {@code ORGANIZATION_AND_DESCENDANTS} 段で閲覧閾値
+ *                                （{@code schedules.min_view_role}）を評価できなかったため、
+ *                                <strong>同じ 1 クエリの結果</strong>からロール名を取り出して保持する。
+ *                                同一根に複数の所属経路がある場合は最も強いロールを採る。
+ *                                ロール名が解決できない所属は本マップに現れない（所属集合には残る）。
  */
 public record UserScopeRoleSnapshot(
         boolean systemAdmin,
@@ -31,7 +45,9 @@ public record UserScopeRoleSnapshot(
         Map<ScopeKey, Long> parentOrgByScope,
         Set<ScopeKey> orgMemberOf,
         Set<Long> suspendedOrgIds,
-        Set<Long> descendantMemberOfOrgIds) {
+        Set<Long> descendantMemberOfOrgIds,
+        Map<ScopeKey, String> orgRoleByScope,
+        Map<Long, String> descendantRoleByOrgId) {
 
     /**
      * 防御的コピーは行わない（呼び出し元が不変 Map/Set を渡す前提）。
@@ -43,6 +59,39 @@ public record UserScopeRoleSnapshot(
         orgMemberOf = orgMemberOf != null ? orgMemberOf : Set.of();
         suspendedOrgIds = suspendedOrgIds != null ? suspendedOrgIds : Set.of();
         descendantMemberOfOrgIds = descendantMemberOfOrgIds != null ? descendantMemberOfOrgIds : Set.of();
+        orgRoleByScope = orgRoleByScope != null ? orgRoleByScope : Map.of();
+        descendantRoleByOrgId = descendantRoleByOrgId != null ? descendantRoleByOrgId : Map.of();
+    }
+
+    /**
+     * CMP-017b 三b 以前の 7 引数呼び出しとの後方互換コンストラクタ。
+     * {@code descendantRoleByOrgId} を空マップで補完してカノニカルコンストラクタへ委譲する。
+     */
+    public UserScopeRoleSnapshot(
+            boolean systemAdmin,
+            Map<ScopeKey, String> roleByScope,
+            Map<ScopeKey, Long> parentOrgByScope,
+            Set<ScopeKey> orgMemberOf,
+            Set<Long> suspendedOrgIds,
+            Set<Long> descendantMemberOfOrgIds,
+            Map<ScopeKey, String> orgRoleByScope) {
+        this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds,
+                descendantMemberOfOrgIds, orgRoleByScope, Map.of());
+    }
+
+    /**
+     * CMP-017b 以前の 6 引数呼び出しとの後方互換コンストラクタ。
+     * {@code orgRoleByScope} を空マップで補完してカノニカルコンストラクタへ委譲する。
+     */
+    public UserScopeRoleSnapshot(
+            boolean systemAdmin,
+            Map<ScopeKey, String> roleByScope,
+            Map<ScopeKey, Long> parentOrgByScope,
+            Set<ScopeKey> orgMemberOf,
+            Set<Long> suspendedOrgIds,
+            Set<Long> descendantMemberOfOrgIds) {
+        this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds,
+                descendantMemberOfOrgIds, Map.of(), Map.of());
     }
 
     /**
@@ -58,14 +107,16 @@ public record UserScopeRoleSnapshot(
             Map<ScopeKey, Long> parentOrgByScope,
             Set<ScopeKey> orgMemberOf,
             Set<Long> suspendedOrgIds) {
-        this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds, Set.of());
+        this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds,
+                Set.of(), Map.of(), Map.of());
     }
 
     /**
      * 匿名ユーザー（未ログイン or userId=null）用の空スナップショット。
      */
     public static UserScopeRoleSnapshot empty() {
-        return new UserScopeRoleSnapshot(false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of());
+        return new UserScopeRoleSnapshot(
+                false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of());
     }
 
     /**
@@ -77,7 +128,8 @@ public record UserScopeRoleSnapshot(
      * {@code forSystemAdmin} という名称を採用している。</p>
      */
     public static UserScopeRoleSnapshot forSystemAdmin() {
-        return new UserScopeRoleSnapshot(true, Map.of(), Map.of(), Set.of(), Set.of(), Set.of());
+        return new UserScopeRoleSnapshot(
+                true, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of());
     }
 
     public boolean isSystemAdmin() {
@@ -137,6 +189,39 @@ public record UserScopeRoleSnapshot(
     }
 
     /**
+     * 当該スコープの「親 ORG」において、要求ロール以上の<strong>直接所属ロール</strong>を
+     * 持つかを返す（CMP-017b）。SystemAdmin は常に true。
+     *
+     * <p>{@link #isMemberOfParentOrg(ScopeKey)} が「親 ORG に所属しているか」しか答えられないのに対し、
+     * 本メソッドは親 ORG での役職の高さを閾値で評価する。設計書
+     * {@code docs/features/F03.1_schedule_shared.md}「{@code min_view_role} の評価スコープ（親子関係）」が
+     * 定める「{@code visibility='ORGANIZATION'} のときは親組織への直接所属ロールで評価する」を
+     * 実現するための土台である。</p>
+     *
+     * <p>参照するのは {@link #orgRoleByScope}（親 ORG の直接所属ロール）であり、
+     * {@link #roleByScope}（コンテンツ所有スコープの直接所属ロール）ではない。
+     * 「親グループのロールは子グループへ継承しない」という設計書の規定に従い、両者は混ぜない。</p>
+     *
+     * @param scope    コンテンツ所有スコープ（TEAM を想定。ORGANIZATION スコープは自身が親として登録される）
+     * @param required 必要ロール名
+     * @return 親 ORG で {@code required} 以上のロールを持つなら {@code true}
+     */
+    public boolean hasParentOrgRoleOrAbove(ScopeKey scope, String required) {
+        if (systemAdmin) {
+            return true;
+        }
+        if (scope == null) {
+            return false;
+        }
+        Long parentOrg = parentOrgByScope.get(scope);
+        if (parentOrg == null) {
+            return false;
+        }
+        String role = orgRoleByScope.get(new ScopeKey("ORGANIZATION", parentOrg));
+        return role != null && RolePriority.isAtLeast(role, required);
+    }
+
+    /**
      * 親 ORG が削除済 / SUSPENDED 状態かを返す。
      * 親 ORG が判定不能（マッピング無し）の場合は false。
      * 設計書 §11.6 連鎖ルール: 非アクティブ親 ORG 配下の TEAM コンテンツは
@@ -170,6 +255,37 @@ public record UserScopeRoleSnapshot(
             return false;
         }
         return descendantMemberOfOrgIds.contains(scope.scopeId());
+    }
+
+    /**
+     * 当該 ORG スコープの「再帰的配下ツリーにおける実効ロール」が要求ロール以上かを返す
+     * （CMP-017b 三b）。SystemAdmin は常に true。
+     *
+     * <p>{@link #isDescendantMemberOf(ScopeKey)} が「配下に属するか（真偽）」しか答えられないため、
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} 段では閲覧閾値
+     * （{@code schedules.min_view_role}）を評価する材料が無く、配下チームの SUPPORTER に
+     * 組織の {@code MEMBER_PLUS} 予定が見えていた。本メソッドは
+     * {@link #hasRoleOrAbove(ScopeKey, String)}（所有スコープ直接所属）・
+     * {@link #hasParentOrgRoleOrAbove(ScopeKey, String)}（上向き 1 段）に対応する
+     * <strong>下向き再帰版</strong>である。</p>
+     *
+     * <p>参照するのは {@link #descendantRoleByOrgId} のみで、
+     * {@link #roleByScope} / {@link #orgRoleByScope} は見ない（軸を混ぜない）。
+     * 配下所属が無い、あるいはロール名が解決できない場合は {@code false}（fail-closed）。</p>
+     *
+     * @param scope    コンテンツ所有スコープ（{@code ORGANIZATION} のみ有効）
+     * @param required 必要ロール名
+     * @return 当該 ORG の配下ツリーで {@code required} 以上のロールを持つなら {@code true}
+     */
+    public boolean hasDescendantRoleOrAbove(ScopeKey scope, String required) {
+        if (systemAdmin) {
+            return true;
+        }
+        if (scope == null || !"ORGANIZATION".equals(scope.scopeType())) {
+            return false;
+        }
+        String role = descendantRoleByOrgId.get(scope.scopeId());
+        return role != null && RolePriority.isAtLeast(role, required);
     }
 
     /**

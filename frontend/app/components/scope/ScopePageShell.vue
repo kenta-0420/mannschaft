@@ -29,6 +29,8 @@ const props = withDefaults(
     sidebar?: Component | null
     /** サイドバーコンポーネントへ渡す props。 */
     sidebarProps?: Record<string, unknown>
+    /** 現在のロールにサイドバーを見せるか。 */
+    showSidebar?: boolean
     /** 管理者/メンバーレンズトグルを表示するか。 */
     showLens?: boolean
     /** レンズ状態（true=管理者ビュー / false=メンバービュー）。 */
@@ -37,6 +39,8 @@ const props = withDefaults(
   {
     sidebar: null,
     sidebarProps: () => ({}),
+    // 呼び出し元を増やしても従来の表示を変えない。権限で隠すページだけ false を渡す。
+    showSidebar: true,
     showLens: false,
     lens: false,
   },
@@ -101,8 +105,8 @@ const lensModel = computed<boolean>({
           </Tabs>
         </div>
 
-        <!-- サイドバー起動ハンバーガー（sidebar 非 null のときのみ） -->
-        <div v-if="sidebar" class="shrink-0 px-1">
+        <!-- サイドバー起動ハンバーガー（閲覧可能なロールにのみ表示） -->
+        <div v-if="sidebar && showSidebar" class="shrink-0 px-1">
           <Button
             icon="pi pi-bars"
             text
@@ -128,7 +132,7 @@ const lensModel = computed<boolean>({
 
     <!-- サイドバー Drawer -->
     <Drawer
-      v-if="sidebar"
+      v-if="sidebar && showSidebar"
       v-model:visible="showSidebarDrawer"
       position="left"
       class="!w-72"

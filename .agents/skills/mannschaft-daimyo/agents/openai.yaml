@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mannschaft Daimyo"
+  short_description: "Run repository-owned Daimyo workflows by reference"
+  default_prompt: "Use $mannschaft-daimyo to run the requested Mannschaft Daimyo workflow."
