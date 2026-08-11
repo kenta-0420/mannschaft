@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ActivityErrorCode implements ErrorCode {
 
-    /** 活動記録が見つからない */
+    /** 活動記録が見つからない（DRAFT の非公開閲覧不可も同一コードに畳んで存在秘匿する） */
     ACTIVITY_NOT_FOUND("ACTIVITY_001", "活動記録が見つかりません", Severity.WARN),
 
     /** テンプレートが見つからない */
@@ -29,7 +29,7 @@ public enum ActivityErrorCode implements ErrorCode {
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("ACTIVITY_007", "この操作に必要な権限がありません", Severity.WARN),
 
-    /** 自身の投稿でない */
+    /** 自身の投稿でない（存在は秘匿せず権限拒否として扱う） */
     NOT_AUTHOR("ACTIVITY_008", "自分の投稿のみ編集できます", Severity.WARN),
 
     /** スケジュールから既に活動記録が生成済み */
@@ -50,13 +50,13 @@ public enum ActivityErrorCode implements ErrorCode {
     /** テンプレートIDの変更は不可 */
     TEMPLATE_CHANGE_NOT_ALLOWED("ACTIVITY_014", "テンプレートの変更はできません", Severity.WARN),
 
-    /** プリセットが見つからない */
+    /** プリセットが見つからない（SYSTEM_ADMIN 管理のシステム定義プリセット） */
     PRESET_NOT_FOUND("ACTIVITY_016", "プリセットテンプレートが見つかりません", Severity.WARN),
 
     /** 最低1名の参加者が必要 */
     MINIMUM_PARTICIPANT_REQUIRED("ACTIVITY_017", "最低1名の参加者が必要です", Severity.WARN),
 
-    /** フィールド型の変更は禁止 */
+    /** フィールド型の変更は禁止（既存フィールドの型との状態競合） */
     FIELD_TYPE_CHANGE_NOT_ALLOWED("ACTIVITY_018", "フィールド型の変更はできません", Severity.WARN),
 
     /** フィールドキーのリネームは禁止 */

@@ -11,22 +11,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ReservationErrorCode implements ErrorCode {
 
-    /** 予約ラインが見つからない */
+    /** 予約ラインが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     LINE_NOT_FOUND("RESERVATION_001", "予約ラインが見つかりません", Severity.WARN),
 
-    /** 予約スロットが見つからない */
+    /** 予約スロットが見つからない → 404 */
     SLOT_NOT_FOUND("RESERVATION_002", "予約スロットが見つかりません", Severity.WARN),
 
-    /** 予約が見つからない */
+    /** 予約が見つからない（本人以外の予約IDも同一コードで存在秘匿 → 404） */
     RESERVATION_NOT_FOUND("RESERVATION_003", "予約が見つかりません", Severity.WARN),
 
-    /** スロットが満席 */
+    /** スロットが満席（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_FULL("RESERVATION_004", "このスロットは満席です", Severity.WARN),
 
-    /** スロットがクローズ済み */
+    /** スロットがクローズ済み（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_CLOSED("RESERVATION_005", "このスロットは受付終了しています", Severity.WARN),
 
-    /** 予約ステータス不正 */
+    /** 予約ステータス不正（確定/キャンセル不可な状態での操作という状態遷移違反 → 409） */
     INVALID_RESERVATION_STATUS("RESERVATION_006", "この操作は現在の予約ステータスでは実行できません", Severity.WARN),
 
     /** 開始時刻と終了時刻の整合性エラー（入力不正なので 400） */
@@ -38,13 +38,13 @@ public enum ReservationErrorCode implements ErrorCode {
     /** ブロック時間帯 */
     BLOCKED_TIME_CONFLICT("RESERVATION_009", "ブロックされた時間帯と重複しています", Severity.WARN),
 
-    /** 営業時間が見つからない */
+    /** 営業時間が見つからない（未使用: 現状 throw 元なし。既定 400 のまま） */
     BUSINESS_HOURS_NOT_FOUND("RESERVATION_010", "営業時間設定が見つかりません", Severity.WARN),
 
-    /** ブロック時間が見つからない */
+    /** ブロック時間が見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     BLOCKED_TIME_NOT_FOUND("RESERVATION_011", "ブロック時間が見つかりません", Severity.WARN),
 
-    /** リマインダーが見つからない */
+    /** リマインダーが見つからない → 404 */
     REMINDER_NOT_FOUND("RESERVATION_012", "リマインダーが見つかりません", Severity.WARN),
 
     /** 予約重複 */
@@ -56,10 +56,10 @@ public enum ReservationErrorCode implements ErrorCode {
     /** リマインダー上限超過 */
     MAX_REMINDERS_EXCEEDED("RESERVATION_015", "リマインダーは最大3件です", Severity.WARN),
 
-    /** 臨時休業が見つからない */
+    /** 臨時休業が見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     CLOSURE_NOT_FOUND("RESERVATION_016", "臨時休業が見つかりません", Severity.WARN),
 
-    /** 臨時休業確認レコードが見つからない */
+    /** 臨時休業確認レコードが見つからない → 404 */
     CLOSURE_CONFIRMATION_NOT_FOUND("RESERVATION_017", "臨時休業確認レコードが見つかりません", Severity.WARN),
 
     /** 臨時休業の日付範囲が不正（入力不正なので 400） */
