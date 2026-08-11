@@ -14,7 +14,7 @@ public enum MembershipErrorCode implements ErrorCode {
     /** 会員証が見つからない */
     MEMBERSHIP_001("MEMBERSHIP_001", "会員証が見つかりません", Severity.WARN),
 
-    /** 他人の会員証へのアクセス */
+    /** 他人の会員証へのアクセス（cardId 直指定・所有者不一致を MEMBERSHIP_001 と同一コードに畳む存在秘匿 → 404） */
     MEMBERSHIP_002("MEMBERSHIP_002", "この会員証へのアクセス権限がありません", Severity.WARN),
 
     /** 会員証がACTIVEでない（QR取得・再生成時） */
