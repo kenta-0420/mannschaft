@@ -231,7 +231,7 @@ class ParentalConsentServiceTest {
             given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
 
             // when
-            parentalConsentService.approveParentalConsent(rawToken, parentUserId);
+            parentalConsentService.approveParentalConsent(rawToken, parentUserId, "127.0.0.1");
 
             // then: 子ユーザーが ACTIVE に変更されて保存されること
             verify(userRepository).save(argThat(u ->
@@ -251,7 +251,7 @@ class ParentalConsentServiceTest {
                     .willReturn(Optional.empty());
 
             // when / then
-            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("badToken", 2L))
+            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("badToken", 2L, "127.0.0.1"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(AuthErrorCode.AUTH_060);
@@ -268,7 +268,7 @@ class ParentalConsentServiceTest {
                     .willReturn(Optional.of(link));
 
             // when / then: 保護者IDが子IDと同じ
-            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", childUserId))
+            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", childUserId, "127.0.0.1"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(AuthErrorCode.AUTH_062);
@@ -300,7 +300,7 @@ class ParentalConsentServiceTest {
             given(userRepository.findById(parentUserId)).willReturn(Optional.of(minorParent));
 
             // when / then
-            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", parentUserId))
+            assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", parentUserId, "127.0.0.1"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(AuthErrorCode.AUTH_063);
@@ -334,7 +334,7 @@ class ParentalConsentServiceTest {
             given(userRepository.findById(childUserId)).willReturn(Optional.of(childUser));
 
             // when
-            parentalConsentService.rejectParentalConsent("rawToken");
+            parentalConsentService.rejectParentalConsent("rawToken", "127.0.0.1");
 
             // then: 子ユーザーの論理削除は実行されないこと
             verify(userRepository, never()).save(argThat(u -> u.getDeletedAt() != null));
@@ -362,7 +362,7 @@ class ParentalConsentServiceTest {
             given(userRepository.findById(childUserId)).willReturn(Optional.of(childUser));
 
             // when
-            parentalConsentService.rejectParentalConsent("rawToken");
+            parentalConsentService.rejectParentalConsent("rawToken", "127.0.0.1");
 
             // then: 子ユーザーが論理削除されること
             verify(userRepository).save(argThat(u -> u.getDeletedAt() != null));
