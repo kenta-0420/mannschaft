@@ -980,6 +980,11 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_013", HttpStatus.CONFLICT),               // DUPLICATE_RESERVATION
             // F03.4 予約スロット削除ガード: active 予約が紐づく枠の削除はオーファン化を招くため 409
             Map.entry("RESERVATION_020", HttpStatus.CONFLICT),               // SLOT_HAS_ACTIVE_RESERVATIONS
+            // ErrorCode ステータス写像是正ロットA: SLOT_FULL/SLOT_CLOSED は対象スロットの
+            // 現在の空き状況・受付状態という「状態」に起因する確保失敗であり、GROUP_SLOT_UNAVAILABLE
+            // （RESERVATION_039・409）と同型の意味論。入力自体の不備ではないため 409 が正しい。
+            Map.entry("RESERVATION_004", HttpStatus.CONFLICT),               // SLOT_FULL
+            Map.entry("RESERVATION_005", HttpStatus.CONFLICT),               // SLOT_CLOSED
             // F03.4 予約認可ゲート: 非所属者が一般公開OFFのチームに予約 → 403（Severity.WARN 既定の 400 を上書き）
             Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN),              // RESERVATION_PERMISSION_DENIED
             // F03.4 機能B 予約不可枠 409 ガード: overlap する active 予約が存在 → 409（Severity.WARN 既定の 400 を上書き）
@@ -1380,6 +1385,9 @@ public class GlobalExceptionHandler {
             Map.entry("RECRUITMENT_104", HttpStatus.CONFLICT),           // COMPLETED_NOT_EDITABLE
             Map.entry("RECRUITMENT_105", HttpStatus.CONFLICT),           // ALREADY_APPLIED
             Map.entry("RECRUITMENT_311", HttpStatus.CONFLICT),           // ALREADY_DISPUTED
+            // ErrorCode ステータス写像是正ロットA: 短時間の申込多発はレート制限であり 429 が正しい
+            // （他ドメインの *_RATE_LIMITED と同型。RecruitmentParticipantService.apply）。
+            Map.entry("RECRUITMENT_208", HttpStatus.TOO_MANY_REQUESTS),  // APPLY_RATE_LIMIT_EXCEEDED
             // 以下は入力値の件数上限・締切超過であり、本表冒頭の「上限超過系は既定 400 に揃える」
             // 方針（本リポジトリの圧倒的多数が 400）に従い据え置く: RECRUITMENT_101
             // （DEADLINE_EXCEEDED、RESERVATION_026 CANCEL_DEADLINE_PASSED と同型）、

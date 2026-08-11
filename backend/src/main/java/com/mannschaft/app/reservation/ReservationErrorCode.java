@@ -20,10 +20,10 @@ public enum ReservationErrorCode implements ErrorCode {
     /** 予約が見つからない（本人以外の予約IDも同一コードで存在秘匿 → 404） */
     RESERVATION_NOT_FOUND("RESERVATION_003", "予約が見つかりません", Severity.WARN),
 
-    /** スロットが満席 */
+    /** スロットが満席（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_FULL("RESERVATION_004", "このスロットは満席です", Severity.WARN),
 
-    /** スロットがクローズ済み */
+    /** スロットがクローズ済み（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_CLOSED("RESERVATION_005", "このスロットは受付終了しています", Severity.WARN),
 
     /** 予約ステータス不正（確定/キャンセル不可な状態での操作という状態遷移違反 → 409） */

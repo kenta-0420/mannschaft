@@ -70,19 +70,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       攻撃者は管理者ではなく <b>403</b>（{@code COMMON_002}）で弾かれる。</li>
  * </ol>
  *
- * <p><b>期待ステータスの根拠（AC-R8）</b>: {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に
- * 登録された {@code RECRUITMENT_*} は {@code RECRUITMENT_204}/{@code RECRUITMENT_207} の 2 件のみ。
- * それ以外は {@code resolveHttpStatus} の Severity 既定にフォールバックし、
- * {@code Severity.WARN} → <b>400</b>。よって {@code LISTING_NOT_FOUND}（{@code RECRUITMENT_001}）も
- * {@code TEMPLATE_SCOPE_MISMATCH}（{@code RECRUITMENT_314}）も {@code PENALTY_NOT_FOUND}
- * （{@code RECRUITMENT_310}）も実際に返るのは 400 である（Javadoc の「404」表記は実態と異なる）。
- * 一方 {@code CommonErrorCode.COMMON_002} のみ 403 で明示登録されている。
- * {@code RECRUITMENT_*} のステータス整理は FE 分岐・既存 E2E への波及を避けるため別課題 #2468。</p>
+ * <p><b>期待ステータスの根拠（AC-R8・2026-08-11 是正: ErrorCodeHttpStatusDeclarationGuardTest ロットA）</b>:
+ * 従来は {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に {@code RECRUITMENT_204}/{@code 207}
+ * の 2 件のみ登録され、{@code LISTING_NOT_FOUND}（{@code RECRUITMENT_001}）等は
+ * {@code Severity.WARN} 既定の 400 にフォールバックしていた（#2468 として保留）。本是正で
+ * {@code LISTING_NOT_FOUND} を含む不在系（IDOR 秘匿含む）を他ドメインと同じ 404 に統一した。
+ * {@code TEMPLATE_SCOPE_MISMATCH}（{@code RECRUITMENT_314}）は入力不正の性質のため 400 のまま。
+ * {@code CommonErrorCode.COMMON_002} は 403 で明示登録されている。</p>
  *
- * <p><b>観察事項（本 PR では挙動を変えない）</b>: エンティティ由来型の 2 EP は、
- * 「越境した実在 ID」が 403 / 「不在 ID」が 400 と<b>応答が分かれる</b>ため、ID の実在が
- * 応答差分から漏れる（実在オラクル）。URL スコープ先行型はいずれも 400 に収束しこの問題がない。
- * 統一の要否は #2468 の検討対象として最終報告に挙げる。</p>
+ * <p><b>観察事項（本 PR では変更しない）</b>: エンティティ由来型の 2 EP は、
+ * 「越境した実在 ID」が 403 / 「不在 ID」が 404 と<b>応答が分かれる</b>ため、ID の実在が
+ * 応答差分から漏れる（実在オラクル）。URL スコープ先行型はいずれも 404 に収束しこの問題がない。
+ * 統一の要否は別課題の検討対象として最終報告に挙げる。</p>
  *
  * @see RecruitmentNoShowScopeContractIT NO_SHOW 異議解決の越境穴（根治対象）
  */
@@ -220,14 +219,14 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("1. PATCH /recruitment-listings/{listingId}/participants/{participantId}/attend（出席チェック）")
     class MarkAttended {
 
-        /** AC-R7: 別募集の participantId を自募集の URL に差し込むと 400（{@code findByIdAndListingId} が空に畳み込む）。 */
+        /** AC-R7: 別募集の participantId を自募集の URL に差し込むと 404（{@code findByIdAndListingId} が空に畳み込む）。 */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別募集のparticipantIdを差し込むと400（スコープ済みクエリで遮断）")
-        void ac_r7_越境participantIdは400() throws Exception {
+        @DisplayName("AC-R7: 正当ADMINが別募集のparticipantIdを差し込むと404（スコープ済みクエリで遮断・存在秘匿）")
+        void ac_r7_越境participantIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
                             listingAId, participantBConfirmedId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
@@ -240,12 +239,12 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             String crossTenant = mockMvc.perform(
                             patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
                                     listingAId, participantBConfirmedId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
             String absent = mockMvc.perform(
                             patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
                                     listingAId, ABSENT_ID))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
 
             assertThat(crossTenant)
@@ -260,7 +259,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
                             listingAId, participantBConfirmedId))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -458,14 +457,14 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("4. POST /teams/{teamId}/recruitment-subcategories/{subcategoryId}/archive（サブカテゴリ削除）")
     class ArchiveSubcategory {
 
-        /** AC-R7: 別チームの subcategoryId を自チーム URL に差し込むと 400（スコープ済みクエリで遮断）。 */
+        /** AC-R7: 別チームの subcategoryId を自チーム URL に差し込むと 404（スコープ済みクエリで遮断・存在秘匿）。 */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別チームのsubcategoryIdを差し込むと400")
-        void ac_r7_越境subcategoryIdは400() throws Exception {
+        @DisplayName("AC-R7: 正当ADMINが別チームのsubcategoryIdを差し込むと404")
+        void ac_r7_越境subcategoryIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-subcategories/{subcategoryId}/archive",
                             teamAId, subcategoryBId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
@@ -478,12 +477,12 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             String crossTenant = mockMvc.perform(
                             post("/api/v1/teams/{teamId}/recruitment-subcategories/{subcategoryId}/archive",
                                     teamAId, subcategoryBId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
             String absent = mockMvc.perform(
                             post("/api/v1/teams/{teamId}/recruitment-subcategories/{subcategoryId}/archive",
                                     teamAId, ABSENT_ID))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
 
             assertThat(crossTenant)
@@ -498,7 +497,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-subcategories/{subcategoryId}/archive",
                             teamAId, subcategoryBId))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
