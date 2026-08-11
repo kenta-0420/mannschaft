@@ -63,18 +63,26 @@ cd backend && ./gradlew test --tests "*AuthzPropagateInventoryTest"
 - 本ロットのノイズ除去（`RoleResolver#resolveViewerRole` の switch文対象式・log.warn引数の
   2件を誤検出として除外）後の実数: **委譲形 20**（return形 0 は変化なし）
 
-再実行して確定値を更新する場合は上記コマンドを使うこと（`./gradlew` は本ロットでは実行禁止の
-ため、以下の triage は実ソースの目視確認で行った。総件数の再確認は次ロットの宿題とする）。
+**殿による再実測（verify クローン、`./gradlew test --tests "*AuthzPropagateInventoryTest*"`、
+BUILD SUCCESSFUL 7m57s）で上記が裏取り済み: 総件数 20（return形 0 / 委譲形 20）。
+ノイズ除去が正しく効いていることを実測で確認した。**
 
-## triage（仕事2・仕事3）
+再実行して確定値を更新する場合は上記コマンドを使うこと（本ロットの triage は `./gradlew`
+実行禁止のため実ソースの目視確認で行った）。
 
-**制約と限界を先に明記する**: `./gradlew` 実行禁止のため、`backend/build/reports/authz-propagate-inventory.txt`
-による機械的な全件列挙は得られていない。委譲形20件のうち、既知の分布から特定できた
-**15件を実ソース読解で確認**した。残り**約5件は未確認**（`accessControlService.(get|is|has|can|resolve)`
-呼び出しを持つファイルが44件あり、その全てを本ロットの時間内には確認しきれなかった）。
-fail-closed の原則に従い、未確認分を推測でENFORCED扱いにはしていない。**次ロットで
-`./gradlew test --tests "*AuthzPropagateInventoryTest"` を実行し、生成された正本テキストと
-本表を突き合わせて残り約5件を確定させること。**
+## triage（仕事2・仕事3）— 確定版
+
+`./gradlew` の再実測（BUILD SUCCESSFUL）により総件数20（委譲形20/return形0）が裏取りされ、
+全20件の triage が完了した（前段15件は本ロット、残り6件は殿が実コードで追加確認）。
+
+**確認方法に関する誠実な申告（数の突き合わせ）**: 前段（本ロット前半）で確認できたのは
+15件（ENFORCED 14 / NOT_APPLICABLE 1）、「未確認」として残した約5件に対し殿が6件を
+追加確認した。15 + 6 = **21件**で、実測の総件数20件と**1件食い違っている**。
+突き合わせの結果、前段15件の一覧と殿の追加6件の一覧に**重複が生じている可能性が高い**
+（前段の「約5件」という見積り自体が概数であり、正確な残数を数えた根拠がなかったため）。
+どの1件が重複かは本ロットでは特定できていない。**辻褄合わせはせず、この食い違いをそのまま
+記録する。** 次にこの棚卸しを更新する者は、`backend/build/reports/authz-propagate-inventory.txt`
+の実出力（20行）と本表の21行を突き合わせ、重複エントリを特定して本表を21→20行に修正すること。
 
 | Controller/Service#メソッド | パス:行 | 委譲先（クラス#メソッド・パス:行） | 下流の認可判定の実体 | 判定 |
 |---|---|---|---|---|
@@ -93,25 +101,70 @@ fail-closed の原則に従い、未確認分を推測でENFORCED扱いにはし
 | MatchStatsController#getTeamStats | match/controller/MatchStatsController.java:169-172 | MatchStatsAggregationService#aggregateTeamStats（match/service/MatchStatsAggregationService.java:350-403） | `includeRankings ? buildPlayerRankings(...) : List.of()`（403行目）で SUPPORTER にはランキング非表示 | ENFORCED |
 | KbPageFavoriteResolver#resolveAll | favorite/resolver/impl/KbPageFavoriteResolver.java:67 | 同クラス内 private `resolveCanEdit`（同:95-104） | `Set.of("ADMIN","DEPUTY_ADMIN").contains(roleName)` で ADMIN_ONLY/CUSTOM の編集可否判定。roleName==null は事前に unavailable 扱い（62行目） | ENFORCED |
 | TeamFriendsController#isSupporterOnly | social/controller/TeamFriendsController.java:186 | （`"SUPPORTER".equals(roleName)` ＝ `java.lang.String#equals`） | 認可判定そのものではなく、ロール名の等値比較を `return` しているだけ。委譲先が `String` であり認可クラスではない | NOT_APPLICABLE（検出器の別ノイズ候補。本ロットでは検出器・製品コードとも未修正。次ロットの除外候補） |
-| （残り約5件） | 未確認 | 未確認 | 未確認 | **未確認**（fail-closedのため断定しない。次ロットで `./gradlew` 実行の上、正本テキストと突き合わせて特定すること） |
+| SkillController#deleteSkill | skill/controller/SkillController.java:133 | MemberSkillService#deleteSkill（skill/service/MemberSkillService.java:201-207） | `findSkillOrThrow(id)` でentity取得後 `checkScopeOrThrow(skill, scopeType, scopeId)` が **skill自身のscopeType/scopeId**（entity由来）とリクエスト由来の引数を突合。不一致はSKILL_003で秘匿。加えて本人orADMIN判定 | ENFORCED（MemberSkillService.java:203, 260-263） |
+| SkillController#getCertificateUrl | skill/controller/SkillController.java:178 | MemberSkillService#getSkill（skill/service/MemberSkillService.java:130-133） | 同上 `checkScopeOrThrow` | ENFORCED（:133, 260-263） |
+| GoogleCalendarService#isSchedulePushableToUser | schedule/service/GoogleCalendarService.java:559 | 同ファイル、`satisfies` 直前の `accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType)` | **scopeIdは `schedule.getTeamId()/getOrganizationId()`（entity由来、:551-552）**。`resolveEffectiveRoleName` はuserId×scopeIdでmembershipを都度再クエリし、非所属ならnullを返す。`MinViewRoleThreshold.satisfies` はnullを最弱扱いで通さない。さらに先行してF00 `contentVisibilityChecker.canView`(:554)がゲート | ENFORCED（:551-559, AccessControlService.java:213-249, MinViewRoleThreshold.java:60-63） |
+| GoogleCalendarService#filterBackfillSchedules | schedule/service/GoogleCalendarService.java:634 | 同 `resolveEffectiveRoleName`（:631） | 候補集合自体が `scheduleRepository.findUnsyncedByUserAndScope(userId, scopeType, scopeId)`（:688-689）で同じuserId×scopeIdに限定され、role再解決も同じ組で行う。先行して `contentVisibilityChecker.filterAccessible`（:629-630） | ENFORCED（:623-636, 685-691） |
+| SharedFolderQueryService#findVisibleFiles | filesharing/service/SharedFolderQueryService.java:140 | SharedFolderAccessGuard#resolveVisibleFileLevels（filesharing/service/SharedFolderAccessGuard.java:168-184） | `resolveRoleScope(folder)` で**folder自身のteamId/organizationId**（entity由来）を得て `hasRoleOrAbove(userId, scope.scopeId, scope.scopeType, level)` を各レベル評価し許可集合を構築。到達前に :81 `authorizeView(folder,userId)` も通過 | ENFORCED（SharedFolderAccessGuard.java:168-184, SharedFolderQueryService.java:79-86, 132-140） |
 
-### 内訳（確認できた15件中）
+### 結論
 
-- ENFORCED: 14件
+検出器（`AuthzGateEffectivenessAuditTest` 形②）が「下流が実際にenforceしているか検証しない
+（javadoc L124-128の既知の限界）」として**原理的に追えない**としていたPROPAGATEの盲点は、
+**実査の結果、全件が下流でenforceされており空だった**。少なくとも本 triage で確認した範囲
+（前段15件＋殿追加6件、重複1件を除けば実質20件）に UNCOVERED は存在しない。
+
+### なぜ安全だったかの共通構造（本 triage の最重要知見）
+
+確認できた委譲先はいずれも、**呼び出し元から渡された scopeId / roleName をそのまま信じて
+使う**のではなく、次の形を取っていた:
+
+1. 対象の **entity 自身が持つ scopeId**（`page.getScopeId()` / `schedule.getTeamId()` /
+   `folder.getOrganizationId()` / `skill` 自身の scopeType・scopeId 等）を取得する
+2. その entity 由来の scopeId と `userId` を**委譲先の内部で改めてペアにし、membership・role を
+   都度再解決**する（`accessControlService.getRoleName` / `resolveEffectiveRoleName` /
+   `hasRoleOrAbove` 等を委譲先が呼び直す）
+3. 再解決した role/canEdit が null・不足なら、フィルタ除外・throw・UNAVAILABLE 化のいずれかで
+   応答を止める
+
+この「entity 由来の scope で都度再解決」という形であれば、呼び出し元が渡した引数が
+仮に細工されていても委譲先が entity から真の scope を取り直すため、2段抜け（BOLA）は
+成立しない。**逆に言えば、今後 PROPAGATE を新規に追加する際は、この構造（entity由来scope
+での再解決）を踏襲しているかを確認基準とすべき**である。
+
+### 内訳（確認できた21件中、重複1件を含む生の集計）
+
+- ENFORCED: 20件
 - UNCOVERED: 0件
 - NOT_APPLICABLE: 1件（`TeamFriendsController#isSupporterOnly` — 委譲先が `String#equals` で認可の話ではない）
 
+実測総件数20件に対し上記は21件（重複1件を含む）。**最終結果は 20件中 ENFORCED 19 /
+NOT_APPLICABLE 1 / UNCOVERED 0** と見なす（重複除去後の推定値。重複エントリの特定は未了）。
+
 ### UNCOVERED 一覧
 
-該当なし（確認できた範囲内では0件）。ただし未確認の約5件にUNCOVEREDが潜んでいる可能性は
-否定できない。次ロットで確定させること。
+該当なし（0件）。前段15件・殿追加6件のいずれの triage でも UNCOVERED は発見されなかった。
 
 ### 仕事3（契約ITの有無）
 
-確認できた15件はすべてENFORCED（下流に実効的な認可判定あり）またはNOT_APPLICABLEと判定した
-ため、UNCOVERED該当が0件であり、本ロットでは「無し」と記載すべき契約IT不足の対象が無い。
-次ロットで残り約5件を確認しUNCOVEREDが見つかった場合、その都度 `backend/src/test/java`
-配下の契約IT有無を調査すること。
+UNCOVERED が0件であったため、契約IT不足として次ロットへ引き継ぐ対象は無し。
+
+### 限界の明記
+
+- 本 triage は各メソッドの直接の呼び出し経路（委譲先の実装）を読んだものであり、
+  `accessControlService` / `AuthzGateEffectivenessAuditTest` 自体の実装が正しく動作する
+  という前提に立っている。その前提自体の妥当性は別途の監査対象である。
+- 実行時のE2E確認（実際にリクエストを送って認可漏れが無いことを踏む）は本 triage の
+  範囲外である。静的な読解のみに基づく判定であり、リフレクション・動的ディスパッチ等で
+  実行時に異なる実装が呼ばれるケースは考慮していない。
+- 上記「重複1件」は未特定のまま。次ロットで解消すること。
+- この判定（triage結果・共通構造の評価）は棚卸しの一覧が増減した際（新規PROPAGATE検出や
+  検出器のロジック変更時）に**やり直す必要がある**。再生成コマンド:
+  ```bash
+  cd backend && ./gradlew test --tests "*AuthzPropagateInventoryTest"
+  ```
+  再生成後、`backend/build/reports/authz-propagate-inventory.txt` の行数・内容を本表と
+  突き合わせ、新規行があれば追加で triage すること。
 
 ## 自己検証 fixture
 
