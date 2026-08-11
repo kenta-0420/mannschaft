@@ -266,6 +266,15 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
             Pattern.compile("^/api/v1/webhooks/stripe(/[^/]+)?$");
     private static final Pattern LINE_WEBHOOK_PATH =
             Pattern.compile("^/api/v1/line/webhook/([^/]+)$");
+    /**
+     * Incoming Webhook 受信口（{@code POST /incoming/{token}}）。
+     *
+     * <p>ハンドラは {@code IncomingWebhookController#processIncoming} に実在する
+     * （{@code @AuthorizedInService} 付与・認可根治戦役 Wave5 監査済）。パスに含まれる
+     * トークンのみで認証するため、<b>トークン総当りの抑止が要る</b>のでレート制限対象に含める。</p>
+     */
+    private static final Pattern INCOMING_WEBHOOK_PATH =
+            Pattern.compile("^/incoming/([^/]+)$");
 
     /** レート制限の種別。zone 名前空間の隔離と監査ログ種別の分岐に用いる。 */
     private enum Target {
@@ -342,7 +351,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
                 || GOOGLE_CALENDAR_WEBHOOK_PATH.matcher(path).matches()
                 || SSR_LOGS_PATH.matcher(path).matches()
                 || STRIPE_WEBHOOK_PATH.matcher(path).matches()
-                || LINE_WEBHOOK_PATH.matcher(path).matches();
+                || LINE_WEBHOOK_PATH.matcher(path).matches()
+                || INCOMING_WEBHOOK_PATH.matcher(path).matches();
     }
 
     @Override

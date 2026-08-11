@@ -458,12 +458,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/line/webhook/*").permitAll()
-                // 公開網漏れ是正: POST /incoming/* は permitAll のみが存在し、対応する @RequestMapping /
-                // @PostMapping を持つ Controller が本 BE に一つも無いことを実測確認した
-                // （IncomingWebhookService / IncomingWebhookTokenEntity は存在するが、到達可能な
-                // HTTP 入口が無い死んだルール）。ルールを残すこと自体が攻撃面を無駄に広げるため撤去する。
-                // 将来この経路を実装する場合は、実装と同時に PublicApiRateLimitFilter の WEBHOOK zone
-                // 等でレート制限してから permitAll を復活させること。
+                // Incoming Webhook 受信口。ハンドラは IncomingWebhookController#processIncoming に
+                // 実在する（@AuthorizedInService 付与・認可根治戦役 Wave5 監査済）。パス中のトークン
+                // のみで認証するため、公開網漏れ是正で PublicApiRateLimitFilter の WEBHOOK zone
+                // （120/min/IP）に登録しトークン総当りを抑止した。
+                // ⚠️ 本行を「死んだルール」と誤認して撤去しかけた事故がある（2026-08-12）。撤去すると
+                // deny-by-default に落ち、稼働中の Webhook 受信が全て 401 になる。ハンドラの実在は
+                // IncomingWebhookController の @PostMapping("/incoming/{token}") で確認できる。
+                .requestMatchers(HttpMethod.POST, "/incoming/*").permitAll()
                 // WebSocket ハンドシェイク（SockJS）。STOMP CONNECT 時に
                 // WebSocketAuthChannelInterceptor が JWT を検証するため、ハンドシェイク自体は
                 // permitAll で許容する（docs/security/01 §5）。
