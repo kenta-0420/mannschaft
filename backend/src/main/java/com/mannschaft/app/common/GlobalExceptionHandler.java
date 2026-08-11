@@ -375,7 +375,9 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_022", HttpStatus.FORBIDDEN),                // NOT_SCHEDULE_OWNER
             Map.entry("SCHEDULE_004", HttpStatus.CONFLICT),                 // ATTENDANCE_DEADLINE_PASSED
             Map.entry("SCHEDULE_007", HttpStatus.CONFLICT),                 // MAX_SURVEYS_EXCEEDED
-            Map.entry("SCHEDULE_008", HttpStatus.CONFLICT),                 // MAX_REMINDERS_EXCEEDED
+            // SCHEDULE_008（MAX_REMINDERS_EXCEEDED）は兄弟の RESERVATION_015（enum 定数名まで
+            // 同一概念）が既定 400 のままであるため、系統を割らないよう既定 400 のまま据え置く
+            // （GlobalExceptionHandlerTest の系統の割れ防止番人が固定）。
             Map.entry("SCHEDULE_011", HttpStatus.CONFLICT),                 // CROSS_INVITE_INVALID_STATUS
             Map.entry("SCHEDULE_019", HttpStatus.CONFLICT),                 // PERSONAL_REMINDER_LIMIT_EXCEEDED
             Map.entry("SCHEDULE_020", HttpStatus.CONFLICT),                 // PERSONAL_SCHEDULE_LIMIT_EXCEEDED

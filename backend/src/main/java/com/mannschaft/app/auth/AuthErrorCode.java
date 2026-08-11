@@ -63,7 +63,13 @@ public enum AuthErrorCode implements ErrorCode {
     /** TOTPコード不正 */
     AUTH_017("AUTH_017", "TOTPコードが正しくありません", Severity.WARN),
 
-    /** TOTPコード使用済み（409: 状態競合） */
+    /**
+     * TOTPコード関連エラー。{@code Auth2faService} 内で「コード不正」（verifyTotpCode 失敗）と
+     * 「コード使用済み（リプレイ検出）」という意味の異なる 2 箇所から throw されており、
+     * 定数の意味が割れている。前者は入力不備、後者は状態競合であり単一のステータスに
+     * 寄せられないため、ErrorCode ステータス写像是正ロットAでは変更を見送り、
+     * Severity.WARN 既定の 400 のままとする。
+     */
     AUTH_018("AUTH_018", "TOTPコードは既に使用済みです", Severity.WARN),
 
     /** 2段階認証未有効化 */
@@ -72,7 +78,10 @@ public enum AuthErrorCode implements ErrorCode {
     /** バックアップコード不正 */
     AUTH_020("AUTH_020", "バックアップコードが正しくありません", Severity.WARN),
 
-    /** バックアップコード全使用済み（409: 状態競合） */
+    /**
+     * バックアップコード全使用済み。throw 元が main 内に存在しない未使用定数のため、
+     * ErrorCode ステータス写像是正ロットAでは対象外とし Severity.WARN 既定の 400 のままとする。
+     */
     AUTH_021("AUTH_021", "バックアップコードが全て使用済みです", Severity.WARN),
 
     /** 2FA回復メール送信上限 */

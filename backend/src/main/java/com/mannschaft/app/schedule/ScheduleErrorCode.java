@@ -32,7 +32,12 @@ public enum ScheduleErrorCode implements ErrorCode {
     /** アンケート設問数上限超過（409: 件数上限という状態競合） */
     MAX_SURVEYS_EXCEEDED("SCHEDULE_007", "アンケート設問は最大10件です", Severity.WARN),
 
-    /** リマインダー数上限超過（409: 件数上限という状態競合） */
+    /**
+     * リマインダー数上限超過。兄弟の {@code ReservationErrorCode.MAX_REMINDERS_EXCEEDED}
+     * （RESERVATION_015・enum 定数名まで同一の概念）が既定 400 のままであるため、系統を割らないよう
+     * 本コードも Severity.WARN 既定の 400 のままとする（
+     * {@code GlobalExceptionHandlerTest#リマインダー件数上限は両ドメインで同一ステータス} が固定）。
+     */
     MAX_REMINDERS_EXCEEDED("SCHEDULE_008", "リマインダーは最大5件です", Severity.WARN),
 
     /** 同一招待先への重複招待（状態遷移違反 → 409） */
