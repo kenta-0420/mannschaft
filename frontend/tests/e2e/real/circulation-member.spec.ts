@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { waitForHydration } from '../helpers/wait'
 
 /**
  * 実機E2E: チーム回覧ページの表示（無限loading 事象の恒久リグレッション / AC-10）
@@ -14,6 +15,10 @@ import { test, expect } from '@playwright/test'
  * 対象: team-000092（数値ID=92）。e2e-user は MEMBER。
  */
 test.describe('CIRC-REAL: 回覧ページ実機（無限loading リグレッション）', () => {
+  // 権限EP待ち(20s) + 見出し可視化待ち(20s) + 一覧EP待ち(20s) + 状態poll(15s) の合算が
+  // 既定60秒を超えうるため、算術的な理由でタイムアウトを延長する（時間で殴る対処療法ではない）。
+  test.setTimeout(120_000)
+
   test('CIRC-001: 認証済みメンバーで回覧ページが一覧or空状態を表示する', async ({ page }) => {
     // --- 権限 EP が settle すること（門番解除の核心） ---
     const [permResp] = await Promise.all([
@@ -25,6 +30,7 @@ test.describe('CIRC-REAL: 回覧ページ実機（無限loading リグレッシ�
       page.goto('/teams/team-000092/circulation'),
     ])
     expect(permResp.status(), `権限取得失敗: ${await permResp.text()}`).toBe(200)
+    await waitForHydration(page)
 
     // --- ページ門番が解除され「回覧板」見出しが出ること（無限 loading でないこと） ---
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 20_000 })

@@ -23,7 +23,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test'
-import { waitForHydration } from '../helpers/wait'
+import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 const USER_EMAIL = 'e2e-user@test.mannschaft.local'
 const USER_PASSWORD = 'TestPass2026!'
@@ -96,6 +96,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     await loginIfNeeded(page)
     await page.goto('/dashboard')
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
     await expect(page).not.toHaveURL(/\/login/)
 
     // ウィジェットカードの存在を data-testid で検証
@@ -113,6 +114,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     await loginIfNeeded(page)
     await page.goto('/dashboard')
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
 
     const widget = page.locator('[data-testid="widget-favorites"]').first()
     await expect(widget).toBeVisible({ timeout: 20_000 })
@@ -276,9 +278,14 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     // FC東京U-18 (id=1) はシード済みチーム
     await page.goto('/teams/1')
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
 
     // 認証通過し、/login にリダイレクトされないこと
     await expect(page).not.toHaveURL(/\/login/)
+
+    // チームページの見出し（TeamPageHeader）が可視化されること。
+    // 「認可エラーにならず表示される」ことをテキスト長ではなく明示的な要素で検証する。
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 15_000 })
 
     // チームページ本文に何かしらコンテンツが描画されること（緩く検証）
     const body = await page.locator('body').textContent()
@@ -297,18 +304,31 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     await loginIfNeeded(page)
     await page.goto('/dashboard')
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
 
     const widget = page.locator('[data-testid="widget-favorites"]').first()
     await expect(widget).toBeVisible({ timeout: 20_000 })
 
     // DashboardWidgetCard は refreshable のとき .pi-refresh アイコンを出す。
-    // クリック後、ローディングスピナーが現れて消えるか、エラーが出ないことを確認。
+    // クリック後、WidgetFavorites.refresh() は useFavoritesApi().fetchFavorites() を呼び、
+    // 実際には GET /api/v1/me/favorites が叩かれる
+    // (frontend/app/components/widgets/WidgetFavorites.vue:128-134,
+    //  frontend/app/composables/useFavoritesApi.ts:85-99)。
+    // 固定スリープではなく、そのレスポンスを明示的に待つ。
     const refreshBtn = widget.locator('button').filter({ has: page.locator('.pi-refresh') }).first()
     const isRefreshable = (await refreshBtn.count()) > 0
     if (isRefreshable) {
-      await refreshBtn.click()
+      const [refreshResp] = await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes('/api/v1/me/favorites')
+            && r.request().method() === 'GET',
+          { timeout: 15_000 },
+        ),
+        refreshBtn.click(),
+      ])
+      expect(refreshResp.status()).toBe(200)
+
       // エラー要素が出現しないこと
-      await page.waitForTimeout(1500)
       const errorBlock = widget.locator('[data-testid="widget-favorites-error"]')
       expect(await errorBlock.count()).toBe(0)
     }
