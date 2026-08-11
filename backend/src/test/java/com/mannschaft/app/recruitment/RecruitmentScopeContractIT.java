@@ -628,6 +628,41 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 7. ErrorCode ステータス写像是正ロットA — 追加登録した 404 秘匿の契約固定
+    //    （RECRUITMENT_313 TEMPLATE_NOT_FOUND / RECRUITMENT_310 PENALTY_NOT_FOUND。
+    //     001 LISTING_NOT_FOUND は上記セクション1/4で・309 NO_SHOW_RECORD_NOT_FOUND は
+    //     RecruitmentNoShowScopeContractIT で既に固定済み）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. ロットA追加404: template / penalty")
+    class LotAAdditionalNotFound {
+
+        @Test
+        @DisplayName("TEMPLATE_NOT_FOUND(RECRUITMENT_313): 不在templateIdの取得は404")
+        void template_不在idの取得は404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/recruitment-templates/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.TEMPLATE_NOT_FOUND.getCode()));
+        }
+
+        @Test
+        @DisplayName("PENALTY_NOT_FOUND(RECRUITMENT_310): 不在penaltyIdの解除は404")
+        void penalty_不在idの解除は404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
+                            "TEAM", teamAId, 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(liftBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.PENALTY_NOT_FOUND.getCode()));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

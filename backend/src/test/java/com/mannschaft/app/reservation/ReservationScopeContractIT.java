@@ -160,6 +160,12 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long slotAId;
     /** teamA のライン ID（作成 EP のリクエストに用いる）。 */
     private Long lineAId;
+    /** teamB の未来枠 ID（越境 slotId として teamA の URL に差し込む・ロットA追加404用）。 */
+    private Long slotBId;
+    /** teamB のライン ID（越境 lineId として teamA の URL に差し込む・ロットA追加404用）。 */
+    private Long lineBId;
+    /** teamB の臨時休業 ID（越境 closureId として teamA の URL に差し込む・ロットA追加404用）。 */
+    private Long closureBId;
 
     @BeforeEach
     void setUp() {
@@ -198,6 +204,15 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
                 .build());
         slotAId = slotA.getId();
         lineAId = lineA.getId();
+        slotBId = slotB.getId();
+        lineBId = lineB.getId();
+
+        closureBId = emergencyClosureRepository.save(EmergencyClosureEntity.builder()
+                .teamId(teamBId)
+                .startDate(futureDate).endDate(futureDate)
+                .reason("研修").subject("休業のお知らせ").messageBody("休業します")
+                .createdBy(adminBId)
+                .build()).getId();
 
         reservationAId = reservationRepository.save(ReservationEntity.builder()
                 .teamId(teamAId).userId(ownerAId)
@@ -918,6 +933,52 @@ class ReservationScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post(
                             "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirm", teamAId, closureId))
                     .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 11. ErrorCode ステータス写像是正ロットA — 追加登録した 404 秘匿の契約固定
+    //     （RESERVATION_001 LINE_NOT_FOUND / 002 SLOT_NOT_FOUND / 016 CLOSURE_NOT_FOUND。
+    //      003 RESERVATION_NOT_FOUND / 017 CLOSURE_CONFIRMATION_NOT_FOUND は
+    //      上記セクション2/4/5/6/10 で既に固定済み）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("11. ロットA追加404: line / slot / closure")
+    class LotAAdditionalNotFound {
+
+        @Test
+        @DisplayName("LINE_NOT_FOUND(RESERVATION_001): 別チームのlineIdを差し込むPATCHは404")
+        void line_越境lineIdは404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/reservation-lines/{lineId}", teamAId, lineBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(ReservationErrorCode.LINE_NOT_FOUND.getCode()));
+        }
+
+        @Test
+        @DisplayName("SLOT_NOT_FOUND(RESERVATION_002): 別チームのslotIdを差し込むGET詳細は404")
+        void slot_越境slotIdは404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/reservation-slots/{slotId}", teamAId, slotBId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(ReservationErrorCode.SLOT_NOT_FOUND.getCode()));
+        }
+
+        @Test
+        @DisplayName("CLOSURE_NOT_FOUND(RESERVATION_016): 別チームのclosureIdを差し込むGET確認一覧は404")
+        void closure_越境closureIdは404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get(
+                            "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirmations",
+                            teamAId, closureBId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(ReservationErrorCode.CLOSURE_NOT_FOUND.getCode()));
         }
     }
 

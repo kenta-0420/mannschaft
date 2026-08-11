@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ScheduleErrorCode implements ErrorCode {
 
-    /** スケジュールが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
+    /** スケジュールが見つからない → 404（越境時は別途スコープ認可チェックが 403 を返す） */
     SCHEDULE_NOT_FOUND("SCHEDULE_001", "スケジュールが見つかりません", Severity.WARN),
 
     /** 開始日時と終了日時の整合性エラー */

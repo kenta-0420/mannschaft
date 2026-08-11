@@ -351,11 +351,12 @@ public class GlobalExceptionHandler {
             // 機能55 予約作成（第三陣）予約タスク取消
             Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
-            // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在（IDOR 秘匿含む）→ 404。
+            // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在 → 404。
             // ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）: throw 元
             // （ScheduleService/ScheduleRecurrenceService/ScheduleAttendanceService/
             //   PersonalScheduleService/ScheduleCrossRefService/EventSurveyService）を確認し、
-            // いずれも findById 系の解決失敗のみで throw される。
+            // いずれも findById 系の解決失敗のみで throw される（SCHEDULE_NOT_FOUND は teamId 非スコープの
+            // 単純な findById であり、越境アクセスは別途 checkScopeAdminAccess 等が 403 で弾く）。
             Map.entry("SCHEDULE_001", HttpStatus.NOT_FOUND),                // SCHEDULE_NOT_FOUND
             Map.entry("SCHEDULE_010", HttpStatus.NOT_FOUND),                // CROSS_INVITE_NOT_FOUND
             Map.entry("SCHEDULE_013", HttpStatus.NOT_FOUND),                // SURVEY_NOT_FOUND
