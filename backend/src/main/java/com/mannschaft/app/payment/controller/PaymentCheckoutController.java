@@ -3,13 +3,16 @@ package com.mannschaft.app.payment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
 import com.mannschaft.app.payment.dto.MembershipCheckoutRequest;
+import com.mannschaft.app.payment.dto.PaymentItemResponse;
 import com.mannschaft.app.payment.service.MemberPaymentService;
+import com.mannschaft.app.payment.service.PaymentItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,7 +46,7 @@ import java.util.UUID;
  *       最終防衛する（二重防御）。P1 では SELF のみ通過。</li>
  * </ul>
  *
- * <p>エンドポイント数: 1（POST checkout）</p>
+ * <p>エンドポイント数: 2（GET 支払い項目取得（Issue #2657） / POST checkout）</p>
  */
 @RestController
 @RequestMapping("/api/v1/payment-items/{itemId}")
@@ -52,6 +55,26 @@ import java.util.UUID;
 public class PaymentCheckoutController {
 
     private final MemberPaymentService memberPaymentService;
+    private final PaymentItemService paymentItemService;
+
+    /**
+     * 支払い項目を ID で取得する（Issue #2657: TERM 型の有効期間表示等・加入ページ用）。
+     *
+     * <p><b>認可方針</b>: {@code itemId} が属するチーム/組織のメンバーであることを
+     * {@code PaymentItemService#getPaymentItemById} 内部で
+     * {@code com.mannschaft.app.common.AccessControlService#checkMembership}
+     * により検証する（{@link AuthorizedInService} ではなく白名簿クラス経由の通常認可）。</p>
+     *
+     * @param itemId 支払い項目 ID
+     * @return 200 OK + {@link PaymentItemResponse}
+     */
+    @GetMapping
+    @Operation(summary = "支払い項目取得（Issue #2657）")
+    public ResponseEntity<ApiResponse<PaymentItemResponse>> getPaymentItem(@PathVariable Long itemId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        PaymentItemResponse response = paymentItemService.getPaymentItemById(itemId, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
 
     /**
      * 会費を払い手分離＋Connect 即時 charge でチェックアウトする（設計書 02 §1.1）。
