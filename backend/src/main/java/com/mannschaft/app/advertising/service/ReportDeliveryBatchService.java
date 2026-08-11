@@ -102,8 +102,12 @@ public class ReportDeliveryBatchService {
         if (schedule.getIncludeCampaigns() != null) {
             campaignIds = parseJsonLongList(schedule.getIncludeCampaigns());
         } else {
-            // 全キャンペーン（advertiserAccountId → organizationId → campaigns）
-            campaignIds = adCampaignRepository.findAll().stream()
+            // 全キャンペーン = このスケジュールが属する広告主アカウントの全キャンペーン。
+            // プラットフォーム全体を無絞り込みで取得すると、広告主数に比例して肥大化する
+            // 上に他広告主のキャンペーンまで集計対象へ混入してしまうため、
+            // advertiserAccountId で絞り込む。
+            campaignIds = adCampaignRepository.findByAdvertiserAccountId(schedule.getAdvertiserAccountId())
+                    .stream()
                     .map(c -> c.getId())
                     .toList();
         }
