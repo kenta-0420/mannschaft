@@ -13,7 +13,7 @@ terraform {
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "~> 4.0"
+      version = "~> 5.23"
     }
     # Cloudflare Tunnel のシークレット自動生成に使用（edge module の random_id）
     random = {
