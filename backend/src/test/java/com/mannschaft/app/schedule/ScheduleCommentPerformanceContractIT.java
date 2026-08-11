@@ -203,11 +203,14 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
                 .andExpect(jsonPath("$.data.length()").value(5));
         long count = stats.getPrepareStatementCount();
 
-        // 段1（定数・実測 ≦2）＋ 段3（候補数分＝5）を大きく超えない上限として、
-        // 候補者数の5倍（段1固定分の余裕を含む）を二重ループ検出の上限とする。
+        // 【殿の裁定 2026-08-12・実測に基づき是正】段3の canView 1回あたりのコストは F00 既存インフラ
+        // （AC-29 の内訳と同根）により定数1本では済まず、実測は候補5人で37本（≒1候補あたり約7本）。
+        // 「候補者数×10 + 段1固定分の余裕」を二重ループ検出の上限とする（候補5人なら55本）。
+        // 真の二重ループ（候補数の2乗で増える劣化）ならこの上限を大きく超えるため、検出力は保つ。
+        long upperBound = 5L * 10 + 5;
         assertThat(count)
-                .as("候補5人に対し %d 本の SQL。候補者数(5)の5倍を超えるなら二重ループ等の劣化が疑われる", count)
-                .isLessThanOrEqualTo(5L * 5);
+                .as("候補5人に対し %d 本の SQL。上限(%d)を超えるなら二重ループ等の劣化が疑われる", count, upperBound)
+                .isLessThanOrEqualTo(upperBound);
     }
 
     @Test

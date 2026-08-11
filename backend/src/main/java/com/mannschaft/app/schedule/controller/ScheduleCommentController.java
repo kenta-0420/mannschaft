@@ -50,7 +50,9 @@ public class ScheduleCommentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String sort) {
-        Long viewerId = SecurityUtils.getCurrentUserIdOrNull();
+        // 【裁定A・2026-08-12】全8エンドポイントが認証必須。ScheduleVisibility に公開値が無く
+        // min_view_role は絞る方向にしか働かないため、一覧 GET のみ未認証を許す特例は撤回した。
+        Long viewerId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(commentService.listComments(scheduleId, page, size, sort, viewerId));
     }
 
