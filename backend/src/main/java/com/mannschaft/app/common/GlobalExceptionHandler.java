@@ -1425,7 +1425,117 @@ public class GlobalExceptionHandler {
             Map.entry("CIRCULATION_019", HttpStatus.FORBIDDEN),          // ADMIN_REQUIRED
             Map.entry("CIRCULATION_020", HttpStatus.CONFLICT),           // ATTACHMENT_NOT_DELETABLE
             Map.entry("CIRCULATION_021", HttpStatus.CONFLICT),           // EXPORT_NOT_AVAILABLE_NON_COMPLETED
-            Map.entry("CIRCULATION_022", HttpStatus.CONFLICT)            // EXPORT_NOT_REQUESTED
+            Map.entry("CIRCULATION_022", HttpStatus.CONFLICT),           // EXPORT_NOT_REQUESTED
+
+            // ─────────────────────────────────────────────────────────────
+            // 認可監査 Wave6 ロットB（ErrorCode HTTP ステータス写像是正）
+            // F06.4 活動記録: 不在は 404、自分の投稿でない編集拒否は 403、
+            // フィールド型の変更は既存フィールドとの状態競合のため 409（Severity.WARN 既定 400 を上書き）
+            Map.entry("ACTIVITY_001", HttpStatus.NOT_FOUND),             // ACTIVITY_NOT_FOUND（DRAFT 非公開の秘匿にも使用）
+            Map.entry("ACTIVITY_002", HttpStatus.NOT_FOUND),             // TEMPLATE_NOT_FOUND
+            Map.entry("ACTIVITY_004", HttpStatus.NOT_FOUND),             // COMMENT_NOT_FOUND
+            Map.entry("ACTIVITY_008", HttpStatus.FORBIDDEN),             // NOT_AUTHOR（自分の投稿以外は編集不可）
+            Map.entry("ACTIVITY_016", HttpStatus.NOT_FOUND),             // PRESET_NOT_FOUND
+            Map.entry("ACTIVITY_018", HttpStatus.CONFLICT),              // FIELD_TYPE_CHANGE_NOT_ALLOWED（既存フィールドとの型競合）
+
+            // F02.2 ダッシュボード: チャットフォルダの不在/所有者不一致・アイテム不在は 404/403、
+            // 同名フォルダ重複は 409（Severity.WARN 既定 400 を上書き）
+            Map.entry("DASHBOARD_006", HttpStatus.NOT_FOUND),            // FOLDER_NOT_FOUND
+            Map.entry("DASHBOARD_007", HttpStatus.FORBIDDEN),            // FOLDER_NOT_OWNED（存在は隠さず権限拒否）
+            Map.entry("DASHBOARD_008", HttpStatus.CONFLICT),             // FOLDER_NAME_DUPLICATE
+            Map.entry("DASHBOARD_016", HttpStatus.NOT_FOUND),            // FOLDER_ITEM_NOT_FOUND
+
+            // F09.16 居住実態管理・見守り: 年次更新/訪問記録の不在は 404、閲覧権限拒否は 403、
+            // クローズ済み・訂正期限超過は状態競合のため 409。RESIDENCE_STATUS_004 は他居住者の
+            // residentRegistryId を指定した越境を「不在」として存在秘匿する（BOLA 対策）。
+            Map.entry("RESIDENCE_STATUS_001", HttpStatus.NOT_FOUND),     // ANNUAL_REVIEW_NOT_FOUND
+            Map.entry("RESIDENCE_STATUS_002", HttpStatus.CONFLICT),      // ANNUAL_REVIEW_ALREADY_CLOSED
+            Map.entry("RESIDENCE_STATUS_003", HttpStatus.CONFLICT),      // ANNUAL_REVIEW_YEAR_CONFLICT
+            Map.entry("RESIDENCE_STATUS_004", HttpStatus.NOT_FOUND),     // ANNUAL_REVIEW_RESPONSE_NOT_FOUND（他居住者IDの越境を存在秘匿）
+            Map.entry("RESIDENCE_STATUS_007", HttpStatus.FORBIDDEN),     // SNAPSHOT_SELF_ACCESS_FORBIDDEN
+            Map.entry("RESIDENCE_STATUS_008", HttpStatus.FORBIDDEN),     // DASHBOARD_ACCESS_FORBIDDEN
+            Map.entry("RESIDENCE_STATUS_009", HttpStatus.FORBIDDEN),     // SNAPSHOT_ACCESS_FORBIDDEN
+            Map.entry("RESIDENCE_STATUS_012", HttpStatus.NOT_FOUND),     // MONITORING_VISIT_NOT_FOUND
+            Map.entry("RESIDENCE_STATUS_013", HttpStatus.CONFLICT),      // MONITORING_VISIT_UPDATE_EXPIRED（訂正期限超過）
+
+            // F08.2 支払い管理: 二重支払い・二重返金・返金不可な状態・種別変更は状態競合のため 409
+            Map.entry("PAYMENT_004", HttpStatus.CONFLICT),               // ALREADY_PAID
+            Map.entry("PAYMENT_007", HttpStatus.CONFLICT),               // TYPE_IMMUTABLE（type 変更は既存記録との競合）
+            Map.entry("PAYMENT_009", HttpStatus.CONFLICT),               // ALREADY_REFUNDED
+            Map.entry("PAYMENT_010", HttpStatus.CONFLICT),               // MANUAL_PAYMENT_NOT_REFUNDABLE
+            Map.entry("PAYMENT_011", HttpStatus.CONFLICT),               // PENDING_PAYMENT_NOT_REFUNDABLE
+            Map.entry("PAYMENT_020", HttpStatus.CONFLICT),               // STRIPE_PAYMENT_ONLY（決済手段との不整合）
+
+            // F08.3 議決権行使・委任状: 不在は 404、コメント削除権限拒否は 403、
+            // ステータス前提違反・議案未確定・委任状態競合は 409（Severity.WARN 既定 400 を上書き）
+            Map.entry("PROXY_VOTE_003", HttpStatus.NOT_FOUND),           // COMMENT_NOT_FOUND
+            Map.entry("PROXY_VOTE_004", HttpStatus.NOT_FOUND),           // ATTACHMENT_NOT_FOUND
+            Map.entry("PROXY_VOTE_005", HttpStatus.NOT_FOUND),           // DELEGATION_NOT_FOUND
+            Map.entry("PROXY_VOTE_006", HttpStatus.NOT_FOUND),           // VOTE_NOT_FOUND
+            Map.entry("PROXY_VOTE_015", HttpStatus.FORBIDDEN),           // NOT_COMMENT_OWNER
+            Map.entry("PROXY_VOTE_020", HttpStatus.CONFLICT),            // STATUS_MUST_BE_DRAFT
+            Map.entry("PROXY_VOTE_021", HttpStatus.CONFLICT),            // STATUS_MUST_BE_OPEN
+            Map.entry("PROXY_VOTE_022", HttpStatus.CONFLICT),            // STATUS_MUST_BE_CLOSED
+            Map.entry("PROXY_VOTE_023", HttpStatus.CONFLICT),            // STATUS_MUST_BE_CLOSED_OR_FINALIZED
+            Map.entry("PROXY_VOTE_024", HttpStatus.CONFLICT),            // STATUS_MUST_BE_FINALIZED
+            Map.entry("PROXY_VOTE_025", HttpStatus.CONFLICT),            // SESSION_NOT_UPDATABLE
+            Map.entry("PROXY_VOTE_040", HttpStatus.CONFLICT),            // MEETING_MODE_ONLY
+            Map.entry("PROXY_VOTE_041", HttpStatus.CONFLICT),            // MOTION_NOT_PENDING
+            Map.entry("PROXY_VOTE_042", HttpStatus.CONFLICT),            // MOTION_NOT_VOTING
+            Map.entry("PROXY_VOTE_043", HttpStatus.CONFLICT),            // NO_PENDING_MOTIONS
+            Map.entry("PROXY_VOTE_044", HttpStatus.CONFLICT),            // NOT_ALL_MOTIONS_VOTED
+            Map.entry("PROXY_VOTE_050", HttpStatus.CONFLICT),            // INCOMPLETE_VOTES
+            Map.entry("PROXY_VOTE_051", HttpStatus.CONFLICT),            // NON_VOTING_MOTION_INCLUDED
+            Map.entry("PROXY_VOTE_052", HttpStatus.CONFLICT),            // ALREADY_VOTED
+            Map.entry("PROXY_VOTE_063", HttpStatus.CONFLICT),            // ALREADY_VOTED_CANNOT_DELEGATE
+            Map.entry("PROXY_VOTE_064", HttpStatus.CONFLICT),            // ALREADY_DELEGATED
+            Map.entry("PROXY_VOTE_065", HttpStatus.CONFLICT),            // DELEGATION_NOT_SUBMITTED
+            Map.entry("PROXY_VOTE_066", HttpStatus.CONFLICT),            // DELEGATION_ALREADY_RESOLVED
+            Map.entry("PROXY_VOTE_074", HttpStatus.CONFLICT),            // UPLOAD_NOT_ALLOWED（現在ステータスでアップロード不可）
+
+            // 広告（AD_*）: 不在は 404、過去料金テーブル削除・請求書/増額申請のステータス不整合・
+            // 終了済みクリエイティブの更新・キャンペーン不一致クリエイティブは状態競合のため 409
+            Map.entry("AD_001", HttpStatus.NOT_FOUND),                   // アフィリエイト設定不在
+            Map.entry("AD_005", HttpStatus.NOT_FOUND),                   // 広告主アカウント不在
+            Map.entry("AD_008", HttpStatus.NOT_FOUND),                   // 料金テーブル不在
+            Map.entry("AD_009", HttpStatus.CONFLICT),                    // 過去の料金テーブルは削除不可
+            Map.entry("AD_011", HttpStatus.NOT_FOUND),                   // 条件に一致する料金が見つからない
+            Map.entry("AD_013", HttpStatus.NOT_FOUND),                   // 請求書不在
+            Map.entry("AD_014", HttpStatus.CONFLICT),                    // 請求書のステータスが操作に適合しない
+            Map.entry("AD_016", HttpStatus.NOT_FOUND),                   // レポートスケジュール不在
+            Map.entry("AD_017", HttpStatus.NOT_FOUND),                   // 増額申請不在
+            Map.entry("AD_018", HttpStatus.CONFLICT),                    // 処理中の増額申請が既に存在
+            Map.entry("AD_019", HttpStatus.CONFLICT),                    // 増額申請のステータスが操作に適合しない
+            Map.entry("AD_024", HttpStatus.NOT_FOUND),                   // クリエイティブ不在
+            Map.entry("AD_025", HttpStatus.CONFLICT),                    // 削除済みクリエイティブは更新不可
+            Map.entry("AD_026", HttpStatus.NOT_FOUND),                   // キャンペーンとクリエイティブの不一致（越境の存在秘匿）
+
+            // F09.3 駐車場区画管理: 不在は既存 001〜007/024〜026 に揃え、状態競合（占有中・重複・
+            // ステータス不整合）は 409、自分の割当てでない操作は 403。SCOPE_MISMATCH は
+            // 呼び出し元スコープに属さない区画IDの指定であり、既存の TEAM_001/PAYMENT_ITEM 系と
+            // 同じ「越境は存在秘匿」の流儀で 404 に揃える。
+            Map.entry("PARKING_009", HttpStatus.CONFLICT),               // SPACE_ALREADY_OCCUPIED
+            Map.entry("PARKING_011", HttpStatus.CONFLICT),               // SPACE_NOT_VACANT
+            Map.entry("PARKING_013", HttpStatus.CONFLICT),               // NOT_ACCEPTING_APPLICATIONS
+            Map.entry("PARKING_014", HttpStatus.CONFLICT),               // APPLICATION_ALREADY_EXISTS
+            Map.entry("PARKING_015", HttpStatus.CONFLICT),               // INVALID_APPLICATION_STATUS
+            Map.entry("PARKING_018", HttpStatus.CONFLICT),               // TIME_SLOT_CONFLICT
+            Map.entry("PARKING_020", HttpStatus.NOT_FOUND),              // SCOPE_MISMATCH（越境区画IDの存在秘匿）
+            Map.entry("PARKING_021", HttpStatus.CONFLICT),               // PLATE_NUMBER_DUPLICATE
+            Map.entry("PARKING_022", HttpStatus.CONFLICT),               // INVALID_LISTING_STATUS
+            Map.entry("PARKING_023", HttpStatus.CONFLICT),               // INVALID_VISITOR_STATUS
+            Map.entry("PARKING_027", HttpStatus.CONFLICT),               // INVALID_SUBLEASE_STATUS
+            Map.entry("PARKING_028", HttpStatus.CONFLICT),               // INVALID_SUBLEASE_APPLICATION_STATUS
+            Map.entry("PARKING_031", HttpStatus.FORBIDDEN),              // NOT_OWN_ASSIGNMENT（存在は隠さず権限拒否）
+
+            // F02.5 ポイっとメモ: メモ/添付/音声同意の不在は既存 QM_010 の流儀（BOLA 秘匿）に揃え 404、
+            // 変換済み・タグ使用中・同名重複は状態競合のため 409
+            Map.entry("QM_001", HttpStatus.NOT_FOUND),                   // MEMO_NOT_FOUND（findByIdAndUserId で BOLA 秘匿）
+            Map.entry("QM_003", HttpStatus.CONFLICT),                    // MEMO_ALREADY_CONVERTED
+            Map.entry("QM_011", HttpStatus.CONFLICT),                    // TAG_NAME_DUPLICATE
+            Map.entry("QM_013", HttpStatus.CONFLICT),                    // TAG_IN_USE
+            Map.entry("QM_020", HttpStatus.NOT_FOUND),                   // ATTACHMENT_NOT_FOUND
+            Map.entry("QM_030", HttpStatus.NOT_FOUND)                    // VOICE_CONSENT_NOT_FOUND
     );
 
     /**
