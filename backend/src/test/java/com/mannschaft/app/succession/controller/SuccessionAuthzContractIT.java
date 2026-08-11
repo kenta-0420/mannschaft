@@ -414,9 +414,41 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
                     .andExpect(status().isConflict());
         }
 
+        /**
+         * resolve() は凍結中でも解決を許容する意図的な仕様
+         * （{@code DelinquencyEscalationService#resolve} のコメント「解決済みチェック
+         * （凍結中でも解決は許容する）」参照。{@code fetchEntity} のみを呼び、凍結チェックを
+         * 行う {@code getValidEscalation} を経由しない）。
+         * ESCALATION_FROZEN が実際に投げられるのは freeze() の再実行（二重凍結）のみ
+         * （{@code getValidEscalation} 経由）。ロットDでは当初 resolve に対して誤った
+         * 前提のテストを書いていたため、実コードに合わせて対象操作を freeze の再実行に是正する。
+         */
         @Test
-        @DisplayName("resolve: 凍結中のエスカレーションを解決しようとする → 409（ESCALATION_FROZEN）")
-        void resolve_凍結中は409() throws Exception {
+        @DisplayName("freeze: 既に凍結中のエスカレーションを再凍結しようとする → 409（ESCALATION_FROZEN）")
+        void freeze_凍結中の再凍結は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> freezeBody = Map.of("reason", "弁護士介入のため");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isConflict());
+        }
+
+        /**
+         * 凍結中でも resolve() は成功することを固定する（上の freeze 再実行テストと対になる仕様確認）。
+         */
+        @Test
+        @DisplayName("resolve: 凍結中のエスカレーションでも解決は許容され200（意図的な製品仕様の固定）")
+        void resolve_凍結中でも200() throws Exception {
             setAuthentication(ADMIN_A);
             Map<String, Object> freezeBody = Map.of("reason", "弁護士介入のため");
             mockMvc.perform(post(
@@ -432,7 +464,7 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
                             ORG_A, escalationA)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody)))
-                    .andExpect(status().isConflict());
+                    .andExpect(status().isOk());
         }
 
         @Test

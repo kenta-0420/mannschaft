@@ -201,13 +201,17 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("他ユーザーが同じ followedId を指定しても、他人のフォロー行は消えない")
+        @DisplayName("他ユーザーが同じ followedId を指定しても、他人のフォロー行は消えない"
+                + "（FOLLOW_NOT_FOUND・ロットDでステータスを404に是正）")
         void 他人のフォロー行は消えない() throws Exception {
+            // unfollow は findByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId で常に
+            // followerId=呼び出し元自身に束縛される自己スコープ操作（FollowService.java:81-84）。
+            // userB自身はフォローしていないため「該当のフォロー関係が存在しない」= FOLLOW_NOT_FOUND(404)。
             setAuth(userBId);
             mockMvc.perform(delete("/api/v1/social/follows")
                             .param("followedType", "USER")
                             .param("followedId", publicTargetId.toString()))
-                    .andExpect(status().isBadRequest()); // FOLLOW_NOT_FOUND（userB自身は未フォロー）
+                    .andExpect(status().isNotFound()); // FOLLOW_NOT_FOUND（userB自身は未フォロー）
 
             assertThat(followRepository.findById(userAToPublicFollowId)).isPresent();
         }
@@ -714,10 +718,13 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("既にプロフィールを持つユーザーの再作成は409（PROFILE_ALREADY_EXISTS）")
         void 既存ユーザーの再作成は409() throws Exception {
             // activeProfileUserId は setUp で既にプロフィールを持つ。
+            // handle は CreateProfileRequest#handle の @Pattern("^[a-zA-Z0-9_]+$") 制約に
+            // 適合させる（ハイフン混入は @Valid の 400 で先に落ちてしまい、
+            // SocialProfileService#createProfile の PROFILE_ALREADY_EXISTS チェックまで届かない）。
             setAuth(activeProfileUserId);
             mockMvc.perform(post("/api/v1/social/profiles")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("handle", "socialauthz-dup-handle-attempt"))))
+                            .content(json(Map.of("handle", "socialauthzduphandleattempt"))))
                     .andExpect(status().isConflict());
         }
 
