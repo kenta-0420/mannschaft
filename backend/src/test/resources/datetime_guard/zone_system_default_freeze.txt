@@ -1,0 +1,9 @@
+# 番人: DateTimeAndZoneGuardTest の凍結リスト（種別: ZoneId.systemDefault()）。
+#
+# 【重要】このリストは CMP-023（docs/task-list.md）で返済する「借金の台帳」であり、免罪符ではない。
+# 新規に同じ型（ZoneId.systemDefault()）を書いてここへ追記することは禁止する。
+# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除すること（chip-away）。
+#
+# キー形式: ZONE_SYSTEM_DEFAULT|<完全修飾クラス名>#<メソッド名またはコンストラクタ名>#<同一メソッド内の出現順>
+#
+# 2026-08-11 初期凍結（issue #2700 実装時点のスナップショット）。
