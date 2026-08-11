@@ -267,7 +267,11 @@ public class ScheduleCommentService {
             List<MembershipEntity> memberships = membershipRepository.findAllActiveByScope(scope, scopeId);
             Set<Long> ids = new LinkedHashSet<>();
             for (MembershipEntity m : memberships) {
-                ids.add(m.getUserId());
+                // 自分自身は候補から除外する（設計書 §4.4・殿の裁定 2026-08-12）。
+                // 自分をメンションする意味は薄く、AC-24「自己メンションは通知しない」とも整合する。
+                if (m.getUserId() != null && !m.getUserId().equals(viewerId)) {
+                    ids.add(m.getUserId());
+                }
             }
             populationIds = new ArrayList<>(ids);
         }
