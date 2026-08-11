@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -20,7 +21,8 @@ import java.util.UUID;
 @Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class CommentResponse {
+@Schema(name = "ScheduleCommentResponse")
+public class ScheduleCommentResponse {
 
     private final UUID id;
     private final Long scheduleId;
@@ -43,5 +45,5 @@ public class CommentResponse {
     private final LocalDateTime updatedAt;
 
     /** 返信配列（最大3件同梱）。返信行（depth=1）では常に {@code null}（無限ネスト禁止）。 */
-    private final List<CommentResponse> replies;
+    private final List<ScheduleCommentResponse> replies;
 }

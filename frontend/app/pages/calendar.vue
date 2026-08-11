@@ -30,6 +30,8 @@ const showEventPanel = ref(false)
 
 interface EventDetail {
   id: number
+  /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+  scheduleId?: number | null
   title: string
   description: string | null
   location: string | null
@@ -127,6 +129,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const d = res.data as PersonalScheduleRaw
       selectedEvent.value = {
         id: d.id,
+        scheduleId: d.id,
         title: d.content?.title ?? '',
         description: d.content?.description ?? null,
         location: d.content?.location ?? null,
@@ -149,6 +152,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
+        scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
         scopeId: ext.scopeId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
@@ -481,6 +485,7 @@ onMounted(() => {
             <EventDetailPanel
               :event="{
                 id: selectedEvent.id,
+                scheduleId: selectedEvent.scheduleId ?? null,
                 title: selectedEvent.title,
                 description: selectedEvent.description,
                 location: selectedEvent.location,

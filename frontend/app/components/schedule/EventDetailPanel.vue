@@ -2,6 +2,8 @@
 const props = defineProps<{
   event: {
     id: number
+    /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+    scheduleId?: number | null
     title: string
     description: string | null
     location: string | null
@@ -299,16 +301,10 @@ onMounted(async () => {
     </div>
 
     <!-- F03.16 予定コメントスレッド。
-         【FE隊申し送り】設計書 §1.5 は CalendarEntryResponse.scheduleId（events.schedule_id が
-         NULL のイベントを判別する専用フィールド）の新設を BE 側の作業項目として要求しているが、
-         実装時点で backend/.../dto/CalendarEntryResponse.java には未着手だった（scheduleId フィールド
-         が存在しない）。既存の AttendancePanel 等と同じく event.id を schedule_id として扱っている
-         （このパネルを開く経路では reflection 行等の event.id=null なエントリは選択されないため
-         実害は無いが、events.schedule_id が NULL のイベント〔F03.8〕についてはコメント欄を
-         非表示にすべきところ、その判別ができず常に表示してしまう。BE の scheduleId フィールド追加を
-         待って対応する・§1.5 AC-07(b)）。 -->
-    <div class="border-t border-surface-200 pt-4 dark:border-surface-700">
-      <ScheduleCommentSection :schedule-id="event.id" :can-manage-settings="canEdit" />
+         親 schedules 行が存在するときのみ表示する（events.schedule_id が NULL のイベントには
+         コメントスレッドが成立しない・設計書 §1.5・AC-07(b)）。 -->
+    <div v-if="event.scheduleId !== null && event.scheduleId !== undefined" class="border-t border-surface-200 pt-4 dark:border-surface-700">
+      <ScheduleCommentSection :schedule-id="event.scheduleId" :can-manage-settings="canEdit" />
     </div>
   </div>
 </template>

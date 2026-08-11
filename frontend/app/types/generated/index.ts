@@ -61124,6 +61124,45 @@ export interface components {
             scheduleId?: number;
             status?: string;
         };
+        CreateScheduleCommentRequest: {
+            body?: string;
+            mentionedUserIds?: number[];
+            parentId?: string;
+        };
+        ApiResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"];
+        };
+        CommentAuthorResponse: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ScheduleCommentResponse: {
+            author?: components["schemas"]["CommentAuthorResponse"];
+            body?: string;
+            canDelete?: boolean;
+            canEdit?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            depth?: number;
+            /** Format: uuid */
+            id?: string;
+            isDeleted?: boolean;
+            isEdited?: boolean;
+            /** Format: uuid */
+            parentId?: string;
+            replies?: components["schemas"]["ScheduleCommentResponse"][];
+            /** Format: int32 */
+            replyCount?: number;
+            /** Format: uuid */
+            rootId?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CreateSafetyCheckRequest: {
             isDrill?: boolean;
             message?: string;
@@ -67248,6 +67287,9 @@ export interface components {
             /** Format: int64 */
             uploaderId?: number;
             url?: string;
+        };
+        UpdateScheduleCommentRequest: {
+            body?: string;
         };
         ThreadSettingsRequest: {
             commentsEnabled?: boolean;
@@ -73922,6 +73964,10 @@ export interface components {
             asDelegate?: components["schemas"]["ScheduleDelegationResponse"];
             asDelegator?: components["schemas"]["ScheduleDelegationResponse"];
         };
+        PagedResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
         ApiResponseThreadMetaResponse: {
             data?: components["schemas"]["ThreadMetaResponse"];
         };
@@ -75931,6 +75977,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             myAttendanceStatus?: string;
+            /** Format: int64 */
+            scheduleId?: number;
             scope?: components["schemas"]["CalendarScopeDto"];
             time?: components["schemas"]["CalendarTimeDto"];
         };
@@ -111500,7 +111548,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseCommentResponse"];
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
                 };
             };
         };
@@ -111516,7 +111564,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateCommentRequest"];
+                "application/json": components["schemas"]["CreateScheduleCommentRequest"];
             };
         };
         responses: {
@@ -111526,7 +111574,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseCommentResponse"];
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
                 };
             };
         };
@@ -135155,7 +135203,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateCommentRequest"];
+                "application/json": components["schemas"]["UpdateScheduleCommentRequest"];
             };
         };
         responses: {
@@ -135165,7 +135213,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseCommentResponse"];
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
                 };
             };
         };
@@ -150317,7 +150365,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseCommentResponse"];
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
                 };
             };
         };

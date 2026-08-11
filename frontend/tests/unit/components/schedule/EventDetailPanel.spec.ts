@@ -52,6 +52,7 @@ mockNuxtImport('useScheduleComments', () => () => ({
 function baseEvent() {
   return {
     id: 123,
+    scheduleId: 123,
     title: '対 相手FC',
     description: null,
     location: '市民グラウンド',

@@ -13,13 +13,13 @@ import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleCommentErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.dto.CommentAuthorResponse;
-import com.mannschaft.app.schedule.dto.CommentResponse;
-import com.mannschaft.app.schedule.dto.CreateCommentRequest;
+import com.mannschaft.app.schedule.dto.ScheduleCommentResponse;
+import com.mannschaft.app.schedule.dto.CreateScheduleCommentRequest;
 import com.mannschaft.app.schedule.dto.MentionCandidateResponse;
 import com.mannschaft.app.schedule.dto.ThreadMetaResponse;
 import com.mannschaft.app.schedule.dto.ThreadSettingsRequest;
 import com.mannschaft.app.schedule.dto.ThreadSettingsResponse;
-import com.mannschaft.app.schedule.dto.UpdateCommentRequest;
+import com.mannschaft.app.schedule.dto.UpdateScheduleCommentRequest;
 import com.mannschaft.app.schedule.entity.ScheduleCommentEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleCommentRepository;
@@ -83,7 +83,7 @@ public class ScheduleCommentService {
     // ═════════════════════════════════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public PagedResponse<CommentResponse> listComments(
+    public PagedResponse<ScheduleCommentResponse> listComments(
             Long scheduleId, int page, int size, String sort, Long viewerId) {
         ScheduleEntity schedule = loadSchedule(scheduleId);
         accessGuard.requireScheduleViewable(viewerId, schedule);
@@ -114,7 +114,7 @@ public class ScheduleCommentService {
         ModerationContext ctx = buildModerationContext(schedule, viewerId);
         Map<Long, UserEntity> authors = loadAuthors(collectAuthorIds(topLevel, repliesByRoot));
 
-        List<CommentResponse> data = new ArrayList<>(topLevel.size());
+        List<ScheduleCommentResponse> data = new ArrayList<>(topLevel.size());
         for (ScheduleCommentEntity c : topLevel) {
             data.add(toResponse(c, viewerId, ctx, authors, repliesByRoot.get(c.getId()), true));
         }
@@ -199,7 +199,7 @@ public class ScheduleCommentService {
     // ═════════════════════════════════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public PagedResponse<CommentResponse> listReplies(
+    public PagedResponse<ScheduleCommentResponse> listReplies(
             Long scheduleId, String commentIdRaw, int page, int size, String sort, Long viewerId) {
         ScheduleEntity schedule = loadSchedule(scheduleId);
         accessGuard.requireScheduleViewable(viewerId, schedule);
@@ -236,7 +236,7 @@ public class ScheduleCommentService {
         ModerationContext ctx = buildModerationContext(schedule, viewerId);
         Map<Long, UserEntity> authors = loadAuthors(collectAuthorIds(replies, Map.of()));
 
-        List<CommentResponse> data = new ArrayList<>(replies.size());
+        List<ScheduleCommentResponse> data = new ArrayList<>(replies.size());
         for (ScheduleCommentEntity c : replies) {
             data.add(toResponse(c, viewerId, ctx, authors, null, false));
         }
@@ -338,7 +338,7 @@ public class ScheduleCommentService {
     // ═════════════════════════════════════════════════════════════════════
 
     @Transactional
-    public CommentResponse createComment(Long scheduleId, Long userId, CreateCommentRequest request) {
+    public ScheduleCommentResponse createComment(Long scheduleId, Long userId, CreateScheduleCommentRequest request) {
         ScheduleEntity schedule = loadSchedule(scheduleId);
         accessGuard.requirePostable(userId, schedule);
         rateLimiter.requireWithinLimit(userId);
@@ -413,7 +413,7 @@ public class ScheduleCommentService {
     // ═════════════════════════════════════════════════════════════════════
 
     @Transactional
-    public CommentResponse updateComment(Long scheduleId, String commentIdRaw, Long userId, UpdateCommentRequest request) {
+    public ScheduleCommentResponse updateComment(Long scheduleId, String commentIdRaw, Long userId, UpdateScheduleCommentRequest request) {
         ScheduleEntity schedule = loadSchedule(scheduleId);
         UUID commentId = parseCommentIdOrNotFound(commentIdRaw);
         ScheduleCommentEntity comment = scheduleCommentRepository.findByIdAndScheduleIdAndDeletedAtIsNull(commentId, scheduleId)
@@ -565,7 +565,7 @@ public class ScheduleCommentService {
         return new ModerationContext(moderator, deleteOthers);
     }
 
-    private CommentResponse toResponse(
+    private ScheduleCommentResponse toResponse(
             ScheduleCommentEntity c, Long viewerId, ModerationContext ctx, Map<Long, UserEntity> authors,
             List<ScheduleCommentEntity> embeddedReplies, boolean includeRepliesField) {
         boolean deleted = c.isDeleted();
@@ -591,10 +591,10 @@ public class ScheduleCommentService {
         boolean canDelete = !deleted && viewerId != null
                 && (viewerId.equals(c.getUserId()) || ctx.moderator() || ctx.deleteOthers());
 
-        List<CommentResponse> repliesOut = null;
+        List<ScheduleCommentResponse> repliesOut = null;
         if (includeRepliesField && c.isTopLevel()) {
             if (embeddedReplies != null) {
-                List<CommentResponse> list = new ArrayList<>(embeddedReplies.size());
+                List<ScheduleCommentResponse> list = new ArrayList<>(embeddedReplies.size());
                 for (ScheduleCommentEntity r : embeddedReplies) {
                     list.add(toResponse(r, viewerId, ctx, authors, null, false));
                 }
@@ -604,7 +604,7 @@ public class ScheduleCommentService {
             }
         }
 
-        return CommentResponse.builder()
+        return ScheduleCommentResponse.builder()
                 .id(c.getId())
                 .scheduleId(c.getScheduleId())
                 .parentId(c.getParentId())

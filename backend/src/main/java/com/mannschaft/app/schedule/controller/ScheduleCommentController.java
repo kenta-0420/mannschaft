@@ -3,13 +3,13 @@ package com.mannschaft.app.schedule.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.schedule.dto.CommentResponse;
-import com.mannschaft.app.schedule.dto.CreateCommentRequest;
+import com.mannschaft.app.schedule.dto.ScheduleCommentResponse;
+import com.mannschaft.app.schedule.dto.CreateScheduleCommentRequest;
 import com.mannschaft.app.schedule.dto.MentionCandidateResponse;
 import com.mannschaft.app.schedule.dto.ThreadMetaResponse;
 import com.mannschaft.app.schedule.dto.ThreadSettingsRequest;
 import com.mannschaft.app.schedule.dto.ThreadSettingsResponse;
-import com.mannschaft.app.schedule.dto.UpdateCommentRequest;
+import com.mannschaft.app.schedule.dto.UpdateScheduleCommentRequest;
 import com.mannschaft.app.schedule.service.ScheduleCommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,7 +45,7 @@ public class ScheduleCommentController {
 
     @GetMapping
     @Operation(summary = "コメント一覧")
-    public ResponseEntity<PagedResponse<CommentResponse>> listComments(
+    public ResponseEntity<PagedResponse<ScheduleCommentResponse>> listComments(
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -65,7 +65,7 @@ public class ScheduleCommentController {
 
     @GetMapping("/{commentId}/replies")
     @Operation(summary = "返信一覧")
-    public ResponseEntity<PagedResponse<CommentResponse>> listReplies(
+    public ResponseEntity<PagedResponse<ScheduleCommentResponse>> listReplies(
             @PathVariable Long scheduleId,
             @PathVariable String commentId,
             @RequestParam(defaultValue = "0") int page,
@@ -87,20 +87,20 @@ public class ScheduleCommentController {
 
     @PostMapping
     @Operation(summary = "コメント投稿")
-    public ResponseEntity<ApiResponse<CommentResponse>> createComment(
+    public ResponseEntity<ApiResponse<ScheduleCommentResponse>> createComment(
             @PathVariable Long scheduleId,
-            @RequestBody CreateCommentRequest request) {
+            @RequestBody CreateScheduleCommentRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        CommentResponse response = commentService.createComment(scheduleId, userId, request);
+        ScheduleCommentResponse response = commentService.createComment(scheduleId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     @PatchMapping("/{commentId}")
     @Operation(summary = "コメント編集")
-    public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
+    public ResponseEntity<ApiResponse<ScheduleCommentResponse>> updateComment(
             @PathVariable Long scheduleId,
             @PathVariable String commentId,
-            @RequestBody UpdateCommentRequest request) {
+            @RequestBody UpdateScheduleCommentRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(commentService.updateComment(scheduleId, commentId, userId, request)));
     }

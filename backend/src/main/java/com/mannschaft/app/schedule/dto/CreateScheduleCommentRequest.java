@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +17,8 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CreateCommentRequest {
+@Schema(name = "CreateScheduleCommentRequest")
+public class CreateScheduleCommentRequest {
     private String body;
     private String parentId;
     private List<Long> mentionedUserIds;
