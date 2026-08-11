@@ -14,15 +14,21 @@ const { t } = useI18n()
 
 const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
+const notification = useNotification()
 
 // === 組織／チーム 数値 ID の解決（slug→数値 orgId/teamId・useMatchOrgContext に集約）===
 const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
-async function loadOrganizationId(): Promise<void> {
+async function loadOrganizationId(): Promise<boolean> {
   const ctx = await resolveContext(teamSlug)
+  if (!ctx) {
+    notification.warn(t('match.org_context.resolve_failed'))
+    return false
+  }
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
+  return true
 }
 
 // === フォーム状態 ===
@@ -83,8 +89,7 @@ function selectKind(kind: MatchKind): void {
 
 async function submit(): Promise<void> {
   if (!validate()) return
-  await loadOrganizationId()
-  if (orgId.value === null || teamId.value === null || form.kind === null) return
+  if (!await loadOrganizationId() || orgId.value === null || teamId.value === null || form.kind === null) return
 
   submitting.value = true
   const body: CreateMatchRequest = {
