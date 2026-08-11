@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
 import com.mannschaft.app.payment.dto.MembershipCheckoutRequest;
 import com.mannschaft.app.payment.service.MemberPaymentService;
+import com.mannschaft.app.payment.service.PaymentItemService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,6 +66,9 @@ class PaymentCheckoutControllerTest {
     @Mock
     private MemberPaymentService memberPaymentService;
 
+    @Mock
+    private PaymentItemService paymentItemService;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -74,7 +78,7 @@ class PaymentCheckoutControllerTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        PaymentCheckoutController controller = new PaymentCheckoutController(memberPaymentService);
+        PaymentCheckoutController controller = new PaymentCheckoutController(memberPaymentService, paymentItemService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))

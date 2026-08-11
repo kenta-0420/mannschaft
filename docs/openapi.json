@@ -124538,6 +124538,38 @@
         }
       }
     },
+    "/api/v1/payment-items/{itemId}": {
+      "get": {
+        "tags": [
+          "会費 Connect チェックアウト"
+        ],
+        "summary": "支払い項目取得（Issue #2657）",
+        "operationId": "getPaymentItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePaymentItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/parental-consent/parents": {
       "get": {
         "tags": [
