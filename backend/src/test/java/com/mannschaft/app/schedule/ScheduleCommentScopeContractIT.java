@@ -399,17 +399,27 @@ class ScheduleCommentScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-15b min_view_role=ANYONE の予定を認証済み無所属ユーザーが読めるが、POST は 403 SCHEDULE_COMMENT_004（401 ではない）")
+    @DisplayName("AC-15b【再訂正・殿の裁定 2026-08-11】GUEST ロール保持者はその予定を閲覧できるが、POST は 403 SCHEDULE_COMMENT_004（401 ではない）")
     void AC15b_認証済みで投稿要件を満たさなければ403() throws Exception {
         // 「誰か分からない」が 401、「誰か分かるが許可されない」が 403（§2.1）。
+        //
+        // 【再訂正】直前版は「認証済み・完全無所属（role == null）のユーザーが min_view_role=ANYONE の
+        // 予定を閲覧できる」前提だったが、ScheduleVisibility に公開値が無く min_view_role は絞る方向
+        // にしか働かないため、完全無所属では閲覧そのものが 404 に落ちる（§4.1 再訂正）。
+        // 「閲覧できるが投稿要件を満たさない」を実在させるには、当該スコープに GUEST ロール
+        // （user_roles）で所属していることが必要（AccessControlService#resolveEffectiveRoleName の
+        // 「user_roles GUEST のみ → "GUEST"」経路。GUEST は SUPPORTER 未満のため postableRole を満たさない）。
         Long scheduleId = saveTeamSchedule(MinViewRole.ANYONE);
+        MembershipTestHelper.insertUserRole(em, unaffiliatedId, "GUEST", teamId, null);
+        em.flush();
+        em.clear();
 
         setAuthentication(unaffiliatedId);
         mockMvc.perform(get(COMMENTS, scheduleId)).andExpect(status().isOk());
 
         mockMvc.perform(post(COMMENTS, scheduleId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(postBody("無所属からの投稿", null, null)))
+                        .content(postBody("GUESTからの投稿", null, null)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("SCHEDULE_COMMENT_004"));
     }

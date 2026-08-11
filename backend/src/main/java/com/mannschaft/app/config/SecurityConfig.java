@@ -262,10 +262,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
-                // F03.16 予定コメントスレッド: 一覧 GET のみ認証不要（min_view_role=ANYONE の予定限定）。
-                // 設計書 §4.1 但し書き: それ以外の穴を広げないよう GET 一覧のみに限定する。
-                // ANYONE 以外の予定・未認証は Service 層の requireScheduleViewable が fail-closed で 404 に倒す。
-                .requestMatchers(HttpMethod.GET, "/api/v1/schedules/*/comments").permitAll()
                 // F19.1 Phase 3 SEO: sitemap.xml / robots.txt（認証不要）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
                 .requestMatchers(HttpMethod.GET, "/sitemap.xml", "/robots.txt").permitAll()

@@ -111,11 +111,11 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // AC-29: 一覧の SQL は 5 本以下、かつ件数に比例しない
+    // AC-29: 一覧の SQL は上限内、かつ件数に比例しない
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-29 一覧の SQL は 5 本以下で、トップレベル 5 件のときと 20 件のときで発行数が一致する（N+1 でないことの実証）")
+    @DisplayName("AC-29 一覧の SQL は 9 本以下で、トップレベル 5 件のときと 20 件のときで発行数が一致する（N+1 でないことの実証）")
     void AC29_一覧のSQL本数は件数に比例しない() throws Exception {
         seedComments(smallScheduleId, 5, 3);
         seedComments(largeScheduleId, 20, 3);
@@ -134,9 +134,12 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
                 .andExpect(jsonPath("$.data.length()").value(20));
         long largeCount = stats.getPrepareStatementCount();
 
+        // 【殿の裁定 2026-08-11】上限は実測値（9本）＋わずかな余裕に改める。内訳は認可ゲートが
+        // 呼ぶ F00 canView の固定コストが大半（設計書 §9.4 AC-29 参照）。
+        // 「件数を変えた2回の値が一致する」検証（N+1 を捕まえる本体）は絶対に外さない。
         assertThat(largeCount)
-                .as("トップレベル20件＋各3返信の一覧で SQL は 5 本以下でなければならない（§10.1）")
-                .isLessThanOrEqualTo(5L);
+                .as("トップレベル20件＋各3返信の一覧で SQL は 10 本以下でなければならない（§10.1・§9.4）")
+                .isLessThanOrEqualTo(10L);
         assertThat(largeCount)
                 .as("5件のとき %d 本・20件のとき %d 本。差があるなら投稿者・返信・可視性のいずれかが N+1 である",
                         smallCount, largeCount)
@@ -148,21 +151,35 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-39 メンション候補の母集団が 5 人でも 20 人でも、スコープのロール一括解決の SQL 発行数が同一（候補者数に比例しない）")
-    void AC39_ロール解決は候補者数に比例しない() throws Exception {
-        Long fiveScheduleId = saveScheduleInTeam(createTeamWithMembers("scp-five", 5), "候補5人");
-        Long twentyScheduleId = saveScheduleInTeam(createTeamWithMembers("scp-twenty", 20), "候補20人");
+    @DisplayName("AC-39【測定条件を是正・殿の裁定 2026-08-11】段1（ロール一括解決）は候補者数によらず定数。段3を切り離すため ADMIN_ONLY で候補者全員を段2で落とす")
+    void AC39_段1のロール解決は候補者数に比例しない() throws Exception {
+        // 直前版は min_view_role=MEMBER_PLUS（候補者全員が段3の canView まで進む）で HTTP
+        // エンドポイント全体を測っており、段3のコスト（候補者数に比例してよい・設計どおり）が
+        // 混入して「段1が定数」の検証になっていなかった。ADMIN_ONLY で段2にて全員を落とし、
+        // ScheduleCommentVisibilityPerformanceIT の AC-39 と同一の分離手法に揃える。
+        // ADMIN_ONLY（DEPUTY_ADMIN 以上）の予定を viewer 自身が閲覧・メンション候補取得できるよう、
+        // 両チームで viewer に ADMIN ロールを付与する（MEMBER のままでは viewer 自身が 404 になる）。
+        Long fiveTeamId = createTeamWithMembers("scp-five", 5);
+        Long twentyTeamId = createTeamWithMembers("scp-twenty", 20);
+        MembershipTestHelper.insertUserRole(em, viewerId, "ADMIN", fiveTeamId, null);
+        MembershipTestHelper.insertUserRole(em, viewerId, "ADMIN", twentyTeamId, null);
+        em.flush();
+        em.clear();
+        Long fiveScheduleId = saveScheduleInTeam(fiveTeamId, "候補5人", MinViewRole.ADMIN_ONLY);
+        Long twentyScheduleId = saveScheduleInTeam(twentyTeamId, "候補20人", MinViewRole.ADMIN_ONLY);
 
         setAuthentication(viewerId);
 
         Statistics stats = statisticsCleared();
         mockMvc.perform(get(COMMENTS + "/mention-candidates", fiveScheduleId))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
         long fiveCount = stats.getPrepareStatementCount();
 
         stats = statisticsCleared();
         mockMvc.perform(get(COMMENTS + "/mention-candidates", twentyScheduleId))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
         long twentyCount = stats.getPrepareStatementCount();
 
         assertThat(twentyCount)
@@ -170,6 +187,27 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
                         + "スコープは固定なのだから、ロール解決は候補集合の IN 句で一括して済ませられる",
                         fiveCount, twentyCount)
                 .isEqualTo(fiveCount);
+    }
+
+    @Test
+    @DisplayName("AC-39 補強【新設・殿の裁定】段3（canView）は候補者数に比例してよいが、候補者数を超えてはならない（二重ループの検出）")
+    void AC39_段3は候補者数を超えない() throws Exception {
+        // 段3は段2通過後の候補数に依存してよい設計（MEMBER_PLUS なら候補者全員が段3へ進む）。
+        // ただし「候補者数を超える」SQLが出るなら二重ループ等の劣化である。
+        Long fiveScheduleId = saveScheduleInTeam(createTeamWithMembers("scp-stage3", 5), "段3候補5人", MinViewRole.MEMBER_PLUS);
+
+        setAuthentication(viewerId);
+        Statistics stats = statisticsCleared();
+        mockMvc.perform(get(COMMENTS + "/mention-candidates", fiveScheduleId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(5));
+        long count = stats.getPrepareStatementCount();
+
+        // 段1（定数・実測 ≦2）＋ 段3（候補数分＝5）を大きく超えない上限として、
+        // 候補者数の5倍（段1固定分の余裕を含む）を二重ループ検出の上限とする。
+        assertThat(count)
+                .as("候補5人に対し %d 本の SQL。候補者数(5)の5倍を超えるなら二重ループ等の劣化が疑われる", count)
+                .isLessThanOrEqualTo(5L * 5);
     }
 
     @Test
@@ -263,6 +301,10 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
     }
 
     private Long saveScheduleInTeam(Long targetTeamId, String label) {
+        return saveScheduleInTeam(targetTeamId, label, MinViewRole.MEMBER_PLUS);
+    }
+
+    private Long saveScheduleInTeam(Long targetTeamId, String label, MinViewRole minViewRole) {
         Long id = scheduleRepository.save(ScheduleEntity.builder()
                 .teamId(targetTeamId)
                 .title("F0316 性能検証予定 " + label)
@@ -270,7 +312,7 @@ class ScheduleCommentPerformanceContractIT extends AbstractMySqlIntegrationTest 
                 .endAt(LocalDateTime.of(2026, 9, 25, 12, 0))
                 .eventType(EventType.PRACTICE)
                 .visibility(ScheduleVisibility.MEMBERS_ONLY)
-                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .minViewRole(minViewRole)
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceRequired(true)
                 .allowProxyAttendance(true)
