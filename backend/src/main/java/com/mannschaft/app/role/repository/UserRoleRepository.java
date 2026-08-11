@@ -915,17 +915,35 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.user_id = :userId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            // 所属軸（SUPPORTER を含む）の下向き再帰判定。user_roles 由来（権限ロール行）と
+            // memberships 由来（MEMBER / SUPPORTER の素所属・V60.010 移行後の本番の素メンバー）を
+            // UNION ALL した行数を数える（>0 で「配下に属する」の意。M2 と同一の所属規約）。
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.user_id FROM user_roles ur " +
+            "  JOIN users u ON u.id = ur.user_id " +
+            "  WHERE ur.user_id = :userId " +
+            "    AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "    AND ( " +
+            "      ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
             "    ) " +
-            "  )",
+            "  UNION ALL " +
+            "  SELECT m.user_id FROM memberships m " +
+            "  JOIN users u ON u.id = m.user_id " +
+            "  WHERE m.user_id = :userId " +
+            "    AND m.left_at IS NULL " +
+            "    AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "    AND ( " +
+            "      ( m.scope_type = 'ORGANIZATION' AND m.scope_id IN (SELECT id FROM org_tree) ) " +
+            "      OR ( m.scope_type = 'TEAM' AND m.scope_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) ) " +
+            "    ) " +
+            ") both_arms",
             nativeQuery = true)
     long countUserInOrganizationDescendants(
             @Param("organizationId") Long organizationId,
@@ -1180,7 +1198,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT t.root_id AS rootOrgId, r.name AS roleName FROM org_tree t " +
+            // user_roles 由来（ADMIN / DEPUTY_ADMIN / GUEST 等の権限ロール行）と
+            // memberships 由来（MEMBER / SUPPORTER の素所属。V60.010 で user_roles から
+            // 除去され memberships へ完全移行した「本番で唯一成立しうる素メンバー」）を UNION する。
+            // roleName は user_roles 側は roles.name、memberships 側は role_kind をそのまま用い、
+            // 呼び出し側（resolveDescendantRoleNames）の priority 最小畳み込みが両系統に効く。
+            "SELECT t.root_id AS rootOrgId, r.name AS roleName FROM org_tree t " +
             "JOIN user_roles ur " +
             "  ON ( ur.organization_id = t.id " +
             "       OR ur.team_id IN ( " +
@@ -1190,6 +1213,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "JOIN users u ON u.id = ur.user_id " +
             "LEFT JOIN roles r ON r.id = ur.role_id " +
             "WHERE ur.user_id = :userId " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "UNION " +
+            "SELECT t.root_id AS rootOrgId, m.role_kind AS roleName FROM org_tree t " +
+            "JOIN memberships m " +
+            "  ON ( ( m.scope_type = 'ORGANIZATION' AND m.scope_id = t.id ) " +
+            "       OR ( m.scope_type = 'TEAM' AND m.scope_id IN ( " +
+            "         SELECT tom.team_id FROM team_org_memberships tom " +
+            "         WHERE tom.organization_id = t.id AND tom.status = 'ACTIVE' " +
+            "       ) ) ) " +
+            "JOIN users u ON u.id = m.user_id " +
+            "WHERE m.user_id = :userId " +
+            "  AND m.left_at IS NULL " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     List<DescendantMembershipRoleProjection> findDescendantMembershipRolesByOrgRoots(
