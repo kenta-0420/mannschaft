@@ -364,6 +364,75 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // CMP-027（試練・先行 red）: 配下チームに memberships のみで所属する素メンバー／応援者の閾値
+    //   既存 AC-06d の teamMember/teamSupporter は setUp で user_roles と memberships の
+    //   双方を持つため、user_roles 一色の下向き再帰でも拾えてしまい欠陥が隠れる
+    //   （V60.010 後は user_roles の MEMBER/SUPPORTER 行は本番で成立しえない）。
+    //   本 Nested は memberships のみの素メンバー／応援者を新設し、下向き再帰の取りこぼしを撃つ。
+    //   実装が user_roles 一色の間、MEMBER の 200 期待は red（現状 403）になる。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("組織予定（下向き再帰）× 配下チーム memberships-only 所属の閾値（CMP-027）")
+    class OrganizationAndDescendantsMembershipOnlyThreshold {
+
+        /** 配下 ACTIVE チーム（teamId）に memberships のみで所属するユーザーを作る（user_roles は張らない）。 */
+        private Long newMembershipOnlyMember(RoleKind roleKind, String email) {
+            Long uid = insertUser(email);
+            MembershipTestHelper.insertMembership(em, uid, ScopeType.TEAM, teamId, roleKind);
+            em.flush();
+            em.clear();
+            return uid;
+        }
+
+        @Test
+        @DisplayName("ac_a6_単体GET_MEMBER_PLUSの組織予定は配下チームmembershipのみMEMBERに200_SUPPORTERに403")
+        void ac_a6_membershipのみ_memberは200_supporterは403() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.MEMBER_PLUS);
+
+            Long msMember = newMembershipOnlyMember(RoleKind.MEMBER, "c27-ms-member@example.com");
+            Long msSupporter = newMembershipOnlyMember(RoleKind.SUPPORTER, "c27-ms-supporter@example.com");
+
+            // red: memberships のみの配下チーム MEMBER は現状 user_roles 一色の判定で取りこぼされ 403 になる
+            setAuthentication(msMember);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isOk());
+
+            // 番人: 配下チーム SUPPORTER は MEMBER_PLUS を見られない
+            setAuthentication(msSupporter);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("VISIBILITY_001"));
+        }
+
+        @Test
+        @DisplayName("ac_a6_単体GET_SUPPORTER_PLUSの組織予定は配下チームmembershipのみSUPPORTERに200(塞ぎすぎない)")
+        void ac_a6_membershipのみ_supporterPlusなら配下supporterも200() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.SUPPORTER_PLUS);
+
+            Long msSupporter = newMembershipOnlyMember(RoleKind.SUPPORTER, "c27-ms-supporter2@example.com");
+
+            // red: 配下所属自体が memberships のみでは認識されないため、現状は 403 になる
+            setAuthentication(msSupporter);
+            mockMvc.perform(get("/api/v1/organizations/{slug}/schedules/{id}", orgSlug, scheduleId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("ac_a6_一覧_MEMBER_PLUSの組織予定は配下チームmembershipのみMEMBERの一覧に現れる")
+        void ac_a6_membershipのみ_一覧にmemberは現れる() throws Exception {
+            Long scheduleId = saveOrgWideSchedule(MinViewRole.MEMBER_PLUS);
+
+            Long msMember = newMembershipOnlyMember(RoleKind.MEMBER, "c27-ms-member3@example.com");
+
+            setAuthentication(msMember);
+            mockMvc.perform(listOrgSchedules())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + scheduleId + ")]").isNotEmpty());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // AC-08: 個人予定（ADMIN_ONLY 固定）の PRIVATE 経路が閾値で潰されないこと
     // ═════════════════════════════════════════════════════════════════════
 
