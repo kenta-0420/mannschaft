@@ -199,7 +199,7 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
                 .scopeId(teamAId)
                 .title("TODOAUTHZ プロジェクトA")
                 .status(com.mannschaft.app.todo.ProjectStatus.ACTIVE)
-                .visibility(com.mannschaft.app.todo.ProjectVisibility.SHARED)
+                .visibility(com.mannschaft.app.todo.ProjectVisibility.MEMBERS_ONLY)
                 .createdBy(ownerTeamAId)
                 .build());
         projectTeamAId = projectTeamA.getId();
@@ -209,7 +209,7 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
                 .scopeId(teamBId)
                 .title("TODOAUTHZ プロジェクトB")
                 .status(com.mannschaft.app.todo.ProjectStatus.ACTIVE)
-                .visibility(com.mannschaft.app.todo.ProjectVisibility.SHARED)
+                .visibility(com.mannschaft.app.todo.ProjectVisibility.MEMBERS_ONLY)
                 .createdBy(memberTeamBId)
                 .build());
         projectTeamBId = projectTeamB.getId();
