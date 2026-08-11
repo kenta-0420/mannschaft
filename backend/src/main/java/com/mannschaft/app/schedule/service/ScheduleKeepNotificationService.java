@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.schedule.ScheduleKeepScopeType;
 import com.mannschaft.app.schedule.authz.ScheduleKeepScope;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -60,6 +61,8 @@ public class ScheduleKeepNotificationService {
     private final ScheduleKeepNotificationPublisher scheduleKeepNotificationPublisher;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final TeamService teamService;
+    /** CMP-017c: TEAM スコープ MEMBER 以上 全員への耐久 fan-out 配信の enqueue 口（出陣で結線）。 */
+    private final NotificationFanoutJobService scheduleKeepFanoutJobService;
 
     /**
      * キープ作成者へ「日程が決まった」通知を送る。
