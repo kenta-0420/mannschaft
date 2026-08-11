@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 public enum QuickMemoErrorCode implements ErrorCode {
 
     // ─── メモ ───────────────────────────────────────
+    /** findByIdAndUserId で他ユーザーのメモIDを同一コードに畳んで存在秘匿する（BOLA 対策） */
     MEMO_NOT_FOUND("QM_001", "メモが見つかりません", Severity.WARN),
     MEMO_UNSORTED_LIMIT_EXCEEDED("QM_002", "未整理メモの上限（500件）に達しています", Severity.WARN),
     MEMO_ALREADY_CONVERTED("QM_003", "このメモは既にTODOへ変換済みです", Severity.WARN),
