@@ -499,8 +499,11 @@ public class ScheduleCommentService {
     }
 
     private String validateBody(String rawBody) {
-        String trimmed = rawBody == null ? "" : rawBody.trim();
-        if (trimmed.isEmpty() || rawBody == null || rawBody.length() > MAX_BODY_LENGTH) {
+        // trim() は ASCII 空白（  以下）しか除去せず、全角スペース（U+3000）を
+        // 残したまま isEmpty()=false になる（AC-21 が撃ち抜く回帰）。strip() は
+        // Character.isWhitespace() 基準で判定し、全角スペースも正しく空白として扱う。
+        String stripped = rawBody == null ? "" : rawBody.strip();
+        if (stripped.isEmpty() || rawBody == null || rawBody.length() > MAX_BODY_LENGTH) {
             throw new BusinessException(ScheduleCommentErrorCode.INVALID_BODY);
         }
         return rawBody;

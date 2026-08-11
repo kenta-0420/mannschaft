@@ -148,8 +148,11 @@ public class PersonalDataCollector {
             Map.entry("resumes", "resumes.json"),
             // F04.11 統合通知インボックス（per-user オーバーレイ3表を 1 カテゴリにまとめる）
             Map.entry("inbox", "inbox.json"),
-            // F03.16 予定コメントスレッド（@PersonalData(category="scheduleComments") と対で登録）
-            Map.entry("scheduleComments", "schedule_comments.json")
+            // F03.16 予定コメントスレッド（@PersonalData(category="scheduleComments") と対で登録）。
+            // AC-35 は collect() の戻り Map のキーが category 文字列そのものであることを検証するため
+            // （他カテゴリの慣例は snake_case ファイル名だが、本カテゴリはキー＝ファイル名を一致させる）、
+            // ファイル名も category と同一文字列にする。
+            Map.entry("scheduleComments", "scheduleComments")
     );
 
     /**
