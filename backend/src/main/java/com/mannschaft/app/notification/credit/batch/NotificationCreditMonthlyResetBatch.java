@@ -9,6 +9,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationCreditMonthlyResetBatch {
 
+    /** 1 ページあたりの抽出件数。 */
+    static final int PAGE_SIZE = 500;
+
+    /** 全件走査の暴走を防ぐ最大ページ数（500 件 × 200 ページ = 10 万件／回）。 */
+    static final int MAX_PAGES = 200;
+
     private final OrganizationNotificationBalanceRepository balanceRepository;
     private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
@@ -53,31 +60,45 @@ public class NotificationCreditMonthlyResetBatch {
         LocalDate firstOfMonth = today.withDayOfMonth(1);
         log.info("通知クレジット月次リセットバッチ開始: month={}", firstOfMonth);
 
-        List<OrganizationNotificationBalanceEntity> allBalances = balanceRepository.findAll();
-        if (allBalances.isEmpty()) {
-            log.debug("月次リセット対象なし");
-            return;
-        }
-
         int processedCount = 0;
         int negativeBalanceCount = 0;
 
-        for (OrganizationNotificationBalanceEntity balance : allBalances) {
-            try {
-                // 猶予期間負債を相殺し、負の残高をチェック
-                boolean hadDebt = balance.getGracePeriodDebt() > 0;
-                balance.monthlyReset(firstOfMonth);
-                balanceRepository.save(balance);
-                processedCount++;
+        // 絞り込み条件の無い全件走査。monthlyReset() 実行後も対象母集合は縮まないため、
+        // ページ0固定のドレインは無限ループになる。id 昇順キーセットページングでカーソルを
+        // 必ず前進させる。
+        long cursor = 0L;
+        for (int page = 0; page < MAX_PAGES; page++) {
+            List<OrganizationNotificationBalanceEntity> batch =
+                    balanceRepository.findAllAfterId(cursor, PageRequest.of(0, PAGE_SIZE));
+            if (batch.isEmpty()) {
+                break;
+            }
 
-                // 相殺後に残高がマイナスの組織へADMINアラート
-                if (hadDebt && balance.getCreditBalance() < 0) {
-                    negativeBalanceCount++;
-                    sendNegativeBalanceAlertAsync(balance.getOrganizationId(), balance.getCreditBalance());
+            for (OrganizationNotificationBalanceEntity balance : batch) {
+                try {
+                    // 猶予期間負債を相殺し、負の残高をチェック
+                    boolean hadDebt = balance.getGracePeriodDebt() > 0;
+                    balance.monthlyReset(firstOfMonth);
+                    balanceRepository.save(balance);
+                    processedCount++;
+
+                    // 相殺後に残高がマイナスの組織へADMINアラート
+                    if (hadDebt && balance.getCreditBalance() < 0) {
+                        negativeBalanceCount++;
+                        sendNegativeBalanceAlertAsync(balance.getOrganizationId(), balance.getCreditBalance());
+                    }
+                } catch (Exception e) {
+                    log.error("月次リセット処理失敗: organizationId={}, error={}",
+                            balance.getOrganizationId(), e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("月次リセット処理失敗: organizationId={}, error={}",
-                        balance.getOrganizationId(), e.getMessage(), e);
+            }
+
+            cursor = batch.get(batch.size() - 1).getId();
+            if (batch.size() < PAGE_SIZE) {
+                break;
+            }
+            if (page == MAX_PAGES - 1) {
+                log.warn("通知クレジット月次リセットバッチ: MAX_PAGES={} に到達したため打ち切り", MAX_PAGES);
             }
         }
 
