@@ -1,8 +1,13 @@
 package com.mannschaft.app.membership.controller;
 
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.membership.MembershipErrorCode;
 import com.mannschaft.app.membership.service.MemberCardService;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * （{@code MemberCardService.java} 118-119行 実測）。ERROR_CODE_STATUS_MAP に未登録のままだと
  * Severity.WARN 既定の 400 が返り、「その cardId は存在するが他人のもの」と実在を漏らしてしまう。
  * 本テストは 404 への登録が実 HTTP 経路で機能することを固定する。</p>
+ *
+ * <p>{@code @WebMvcTest} は {@code @Component} 実装の Filter（{@code JwtAuthenticationFilter}・
+ * {@code ProxyInputContextFilter} 等）をパッケージ非依存で自動検出し Bean 化するため、
+ * {@code addFilters=false} でフィルタ適用を止めても Bean 構築自体は必要になる
+ * （{@code VillageReportControllerTest}（village パッケージ）と同型のモック集合を揃える。
+ * 揃えないと ApplicationContext 起動失敗でクラス内の全テストが red になる）。</p>
  */
 @WebMvcTest(MemberCardController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -43,6 +54,24 @@ class MemberCardControllerConcealmentTest {
 
     @MockitoBean
     private MemberCardService memberCardService;
+
+    /** JwtAuthenticationFilter（@Component・自動検出）の依存解決。 */
+    @MockitoBean
+    private AuthTokenService authTokenService;
+
+    /** ProxyInputContextFilter（@Component・自動検出）の依存解決。 */
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
+
+    @MockitoBean
+    private UserLocaleCache userLocaleCache;
+
+    /** @EnableMethodSecurity 有効化後の SpEL ガード依存解決（VillageReportControllerTest と同型）。 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {

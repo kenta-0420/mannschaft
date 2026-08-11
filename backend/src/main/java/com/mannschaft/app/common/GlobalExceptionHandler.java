@@ -443,10 +443,15 @@ public class GlobalExceptionHandler {
             // 認可監査 Wave6 ロットC: F03.5 シフト管理の残り未登録分。
             //  - SHIFT_003/004/005/020 は not-found → 404
             //  - SHIFT_022（勤務制約の管理権限なし）は明確な認可拒否 → 403
-            //  - SHIFT_011/013/014/015/017/018/025/026/031/034 は状態競合（期限超過・ステータス不正・
-            //    重複・アサイン人数超過・楽観ロック競合・目視確認未了・既に手挙げ済み等）→ 409
+            //  - SHIFT_011/013/014/015/018/025/026/031/034 は状態競合（期限超過・ステータス不正・
+            //    重複・楽観ロック競合・目視確認未了・既に手挙げ済み等）→ 409
             //    （SHIFT_018 OPTIMISTIC_LOCK_CONFLICT は兄弟 SHIFT_BUDGET_014 と同流儀で揃える）
             //  - SHIFT_036（連打防止スロットリング）はレート制限 → 429
+            //  - SHIFT_017（SLOT_ASSIGNMENT_EXCEEDED）は既存番人
+            //    GlobalExceptionHandlerTest.ClientErrorMustNotBe500#入力不備系は400 の badRequestCases に
+            //    「PATCH リクエストボディの割当人数がスロット必要数を超過」という入力値検証として明示分類済み
+            //    （ShiftSlotService.java:212-213 実測: 差分パッチ後の件数チェックであり、並行処理起因の
+            //    資源競合ではない）。あえて既定の 400 のまま変更しない。
             Map.entry("SHIFT_003", HttpStatus.NOT_FOUND),
             Map.entry("SHIFT_004", HttpStatus.NOT_FOUND),
             Map.entry("SHIFT_005", HttpStatus.NOT_FOUND),
@@ -454,7 +459,6 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_013", HttpStatus.CONFLICT),
             Map.entry("SHIFT_014", HttpStatus.CONFLICT),
             Map.entry("SHIFT_015", HttpStatus.CONFLICT),
-            Map.entry("SHIFT_017", HttpStatus.CONFLICT),
             Map.entry("SHIFT_018", HttpStatus.CONFLICT),
             Map.entry("SHIFT_020", HttpStatus.NOT_FOUND),
             Map.entry("SHIFT_022", HttpStatus.FORBIDDEN),
