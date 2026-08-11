@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.schedule.ScheduleCommentErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.entity.ScheduleCommentEntity;
@@ -55,6 +56,15 @@ public class ScheduleCommentAccessGuard {
 
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String SCOPE_TYPE_TEAM = "TEAM";
+
+    /**
+     * 投稿に必要な最小ロール（§2.1）。
+     *
+     * <p><b>MEMBER ではなく SUPPORTER</b>である。§2.1 の表は SUPPORTER に投稿・返信を明示的に
+     * 許可しており、除外対象は GUEST だけだからである。ここを MEMBER に締めると、
+     * 「出欠は答えなくてよいが質問はしたい」保護者・応援者を締め出してしまう（§2.1 の既定に反する）。</p>
+     */
+    private static final String ROLE_MIN_POSTABLE = "SUPPORTER";
 
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final AccessControlService accessControlService;
@@ -116,9 +126,36 @@ public class ScheduleCommentAccessGuard {
      * 「読めない予定に対して 409 が返る」＝存在が漏れる。</p>
      *
      * <p>ロール要件は「読める人は書ける（GUEST を除く）」（§2.1 既定）。
-     * すなわち<b>当該スコープに何らかの実効ロールを持つこと</b>を要求する。
      * {@code min_response_role}（出欠回答の閾値）には結びつけない — コメントは会話であって
      * 回答ではなく、「出欠は答えないが質問はしたい」保護者・応援者を締め出すため（§2.1）。</p>
+     *
+     * <h3>投稿の下限は SUPPORTER であって MEMBER ではない</h3>
+     * <p>§2.1 の表は <b>SUPPORTER に「投稿・返信・自分のコメントの編集/削除が可能」を明示的に許可</b>
+     * しており（親予定を閲覧できる場合＝{@code min_view_role IN (ANYONE, SUPPORTER_PLUS)}）、
+     * 同節の根拠文も「読める人は書ける（<b>GUEST を除く</b>）」と、除外対象を GUEST だけに限っている。
+     * よって「MEMBER 未満は一律不可」ではなく「<b>GUEST のみ不可</b>」が正である。</p>
+     *
+     * <h3>⚠️ GUEST は「未ログイン」ではなく実在する最下位の認証済みロールである</h3>
+     * <p>設計書 §2.1 の欄外注記は「本書の GUEST は未ログインの閲覧者を指す」と定義しているが、
+     * <b>実装上の GUEST はそれとは別に実在する</b>:</p>
+     * <ul>
+     *   <li>{@code AccessControlService#resolveEffectiveRoleName} の Javadoc は
+     *       「user_roles GUEST のみ → {@code "GUEST"}」と明記しており、
+     *       <b>認証済みユーザーに対して文字列 {@code "GUEST"} を返しうる</b></li>
+     *   <li>ロール序列は {@code ... > MEMBER(4) > SUPPORTER(5) > GUEST(6)} で GUEST は最下位</li>
+     *   <li>{@code StandardVisibility} も「SUPPORTER / GUEST は不可視」と GUEST を認証済みロールとして扱う</li>
+     * </ul>
+     * <p>したがって <b>{@code userId == null} の 401 に頼っても GUEST ロール保持者は捕まらない</b>。
+     * 同じ節が「認証済みだが投稿要件を満たさないユーザーは 403 {@code SCHEDULE_COMMENT_004}」と
+     * 定めているとおり、ここで明示的に 403 で弾く。</p>
+     *
+     * <p><b>独自のロール判定を書かない</b>: {@code "GUEST".equals(roleName)} という文字列比較は
+     * 序列の写像を増やす行為であり、本戦役が一貫して禁じている形である
+     * （ロールが増減したとき、この 1 箇所だけが取り残される）。判定は既存の単一正準
+     * {@link RolePriority#isAtLeast} に委ねる。{@code priority(null)} も
+     * {@code priority(未登録ロール)} も {@code Integer.MAX_VALUE} なので、
+     * <b>ロール無し・並行ロールのみの利用者もこの 1 本の式で fail-closed に倒れる</b>
+     * （旧実装の {@code roleName == null} 判定はこの式に吸収された）。</p>
      *
      * @param userId   操作ユーザー（認証済みであること。未認証は Spring Security 側で 401）
      * @param schedule 親予定
@@ -128,14 +165,14 @@ public class ScheduleCommentAccessGuard {
         requireScheduleViewable(userId, schedule);
         requireWritable(schedule);
 
-        // 認証済みだがスコープに一切のロールが無い（role == null）→ 403（401 ではない・AC-15b）。
-        // min_view_role=ANYONE の予定は無所属でも「読める」ため、ここが唯一の書き込み側の関門になる。
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
         String roleName = accessControlService.resolveEffectiveRoleName(
                 userId, scopeIdOf(schedule), scopeTypeOf(schedule));
-        if (roleName == null) {
+        // SUPPORTER 以上のみ投稿可。GUEST(6) は SUPPORTER(5) 未満なのでここで 403 に落ちる。
+        // min_view_role=ANYONE の予定は無所属でも「読める」ため、ここが唯一の書き込み側の関門になる。
+        if (!RolePriority.isAtLeast(roleName, ROLE_MIN_POSTABLE)) {
             throw new BusinessException(ScheduleCommentErrorCode.POST_NOT_ALLOWED);
         }
     }
