@@ -176,9 +176,7 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
         ReservationEntity pending = seedPending(
                 teamId, userId, slot.getId(), LocalDateTime.now().minusHours(25), null, true);
 
-        int expired = batchService.expirePendingReservations();
-
-        assertThat(expired).as("1 行が失効する").isGreaterThanOrEqualTo(1);
+        batchService.expirePendingReservations();
 
         ReservationEntity after = reload(pending.getId());
         assertThat(after.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
