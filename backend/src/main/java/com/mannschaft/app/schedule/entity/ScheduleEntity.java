@@ -198,6 +198,13 @@ public class ScheduleEntity extends BaseEntity {
     }
 
     /**
+     * F03.16 予定コメントスレッドの開閉フラグを更新する（{@code PATCH .../comments/settings}）。
+     */
+    public void setCommentsEnabled(Boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
+    }
+
+    /**
      * リスナー側からタイトル・時刻・色などを更新するためのセッター群。
      */
     public void updateScheduleFields(String title, String description, String location,

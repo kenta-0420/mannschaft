@@ -197,6 +197,27 @@ public class ScheduleCommentAccessGuard {
         }
     }
 
+    /**
+     * メンション候補（{@code GET .../mention-candidates}）の閲覧に必要な権限を要求する。
+     *
+     * <p>{@link #requirePostable} と同じロール下限（SUPPORTER 以上・§4.4「GUEST は投稿できないため
+     * 403」）を課すが、{@link #requireWritable} は<b>呼ばない</b>——候補取得はスレッドが閉じていても
+     * 行える（開閉と閲覧候補の可否は独立の軸・設計書 §4.4）。</p>
+     *
+     * @throws BusinessException {@code SCHEDULE_COMMENT_002}（404）/ {@code _004}（403）
+     */
+    public void requirePostableRoleForMentionCandidates(Long userId, ScheduleEntity schedule) {
+        requireScheduleViewable(userId, schedule);
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        String roleName = accessControlService.resolveEffectiveRoleName(
+                userId, scopeIdOf(schedule), scopeTypeOf(schedule));
+        if (!RolePriority.isAtLeast(roleName, ROLE_MIN_POSTABLE)) {
+            throw new BusinessException(ScheduleCommentErrorCode.POST_NOT_ALLOWED);
+        }
+    }
+
     // ─── 3. 編集（本人のみ） ─────────────────────────────────────
 
     /**
@@ -244,20 +265,28 @@ public class ScheduleCommentAccessGuard {
      */
     public void requireDeletable(Long userId, ScheduleEntity schedule, ScheduleCommentEntity comment) {
         requireScheduleViewable(userId, schedule);
+        if (!canDeleteComment(userId, schedule, comment)) {
+            throw new BusinessException(ScheduleCommentErrorCode.DELETE_NOT_ALLOWED);
+        }
+    }
 
+    /**
+     * {@link #requireDeletable} の判定を例外なしで返す（一覧の {@code canDelete} フラグ算出用）。
+     *
+     * <p>閲覧可否はここでは判定しない（呼び出し側が一覧取得の時点で既に閲覧可能であることを
+     * 前提とする）。判定順・条件は {@link #requireDeletable} と完全に同一である。</p>
+     */
+    public boolean canDeleteComment(Long userId, ScheduleEntity schedule, ScheduleCommentEntity comment) {
         if (userId != null && userId.equals(comment.getUserId())) {
-            return;
+            return true;
         }
         if (isModerator(userId, schedule)) {
-            return;
+            return true;
         }
         // TEAM 予定に限り権限テーブルを引く（ORGANIZATION には行が無いので引かない）。
-        if (SCOPE_TYPE_TEAM.equals(scopeTypeOf(schedule))
+        return SCOPE_TYPE_TEAM.equals(scopeTypeOf(schedule))
                 && accessControlService.hasPermission(
-                        userId, scopeIdOf(schedule), SCOPE_TYPE_TEAM, PERMISSION_DELETE_OTHERS_CONTENT)) {
-            return;
-        }
-        throw new BusinessException(ScheduleCommentErrorCode.DELETE_NOT_ALLOWED);
+                        userId, scopeIdOf(schedule), SCOPE_TYPE_TEAM, PERMISSION_DELETE_OTHERS_CONTENT);
     }
 
     // ─── 5. スレッド開閉 ────────────────────────────────────────
@@ -294,7 +323,7 @@ public class ScheduleCommentAccessGuard {
      * 「判定は必ず<b>単一のヘルパ</b>に集約し、Controller/Service の各所で条件を書き分けない」と
      * 定めているため、条件をここ以外に複製しないこと（分岐が散ると片方だけ直る事故になる）。</p>
      */
-    private boolean isModerator(Long userId, ScheduleEntity schedule) {
+    boolean isModerator(Long userId, ScheduleEntity schedule) {
         if (userId == null) {
             return false;
         }

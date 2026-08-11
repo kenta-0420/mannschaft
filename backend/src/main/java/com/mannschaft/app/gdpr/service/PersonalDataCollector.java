@@ -52,9 +52,12 @@ import com.mannschaft.app.resume.repository.ResumeEducationRepository;
 import com.mannschaft.app.resume.repository.ResumeQualificationRepository;
 import com.mannschaft.app.resume.repository.ResumeRepository;
 import com.mannschaft.app.resume.repository.ResumeSkillRepository;
+import com.mannschaft.app.schedule.entity.ScheduleCommentEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -109,6 +112,12 @@ public class PersonalDataCollector {
     private final NotificationLabelRepository notificationLabelRepository;
     private final InboxLabelLinkRepository inboxLabelLinkRepository;
 
+    // F03.16 予定コメントスレッド: schedule_comments はドメイン専用リポジトリの declared メソッド集合が
+    // AC-34（ScheduleCommentThreadContractIT）で厳密に固定されているため、収集専用の finder をそこへ
+    // 追加しない。EntityManager 直叩きで完結させる（本 Collector オーケストレータへの局所変更に留める）。
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
@@ -138,7 +147,9 @@ public class PersonalDataCollector {
             // F01.10 履歴書・職務経歴書（Phase 5 で追加）
             Map.entry("resumes", "resumes.json"),
             // F04.11 統合通知インボックス（per-user オーバーレイ3表を 1 カテゴリにまとめる）
-            Map.entry("inbox", "inbox.json")
+            Map.entry("inbox", "inbox.json"),
+            // F03.16 予定コメントスレッド（@PersonalData(category="scheduleComments") と対で登録）
+            Map.entry("scheduleComments", "schedule_comments.json")
     );
 
     /**
@@ -195,6 +206,7 @@ public class PersonalDataCollector {
             case "point_cards" -> collectPointCards(userId);
             case "resumes" -> collectResumes(userId);
             case "inbox" -> collectInbox(userId);
+            case "scheduleComments" -> collectScheduleComments(userId);
             default -> "[]";
         };
     }
@@ -677,6 +689,34 @@ public class PersonalDataCollector {
             entry.put("targetEntityId", r.getTargetEntityId());
             entry.put("inputSource", r.getInputSource());
             entry.put("createdAt", r.getCreatedAt());
+            result.add(entry);
+        }
+        return OBJECT_MAPPER.writeValueAsString(result);
+    }
+
+    /**
+     * F03.16 予定コメントスレッドを収集する（GDPR エクスポート用）。
+     *
+     * <p>設計書: {@code docs/features/F03.16_schedule_comment_thread.md} §3.3 / AC-35。
+     * 削除済み（{@code deleted_at} 非 NULL）も本人のデータとして含める
+     * （{@code "[]"} を返すだけのスタブでは AC を満たさない）。</p>
+     */
+    private String collectScheduleComments(Long userId) throws Exception {
+        List<ScheduleCommentEntity> comments = entityManager.createQuery(
+                        "SELECT c FROM ScheduleCommentEntity c WHERE c.userId = :userId ORDER BY c.createdAt DESC",
+                        ScheduleCommentEntity.class)
+                .setParameter("userId", userId)
+                .getResultList();
+
+        List<Map<String, Object>> result = new java.util.ArrayList<>(comments.size());
+        for (ScheduleCommentEntity c : comments) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", c.getId());
+            entry.put("scheduleId", c.getScheduleId());
+            entry.put("body", c.getBody());
+            entry.put("isEdited", c.getIsEdited());
+            entry.put("createdAt", c.getCreatedAt());
+            entry.put("updatedAt", c.getUpdatedAt());
             result.add(entry);
         }
         return OBJECT_MAPPER.writeValueAsString(result);
