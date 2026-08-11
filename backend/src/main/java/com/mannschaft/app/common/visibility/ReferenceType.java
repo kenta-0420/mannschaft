@@ -222,6 +222,10 @@ public enum ReferenceType {
      */
     SCHEDULE_KEEP;
 
+    // NOTE(F03.16・骨格隊): ReferenceType.SCHEDULE_COMMENT の追加は「認可・可視性」隊（三隊）の担当
+    // （.claude/campaigns/2026-08-11-f0316-schedule-comment-thread.md 隊の分割）。
+    // idKind() へ UUID_V7 の case を明示追加する作業を含め、本隊（骨格）ではここへ手を入れない。
+
     /**
      * 本 reference_type が参照する主キー型を返す。
      *
