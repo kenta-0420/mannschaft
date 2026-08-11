@@ -338,6 +338,22 @@ public class NotificationFanoutJobService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(UUID jobId, String error, int maxRetry) {
+        recordFailure(jobId, error, maxRetry, false);
+    }
+
+    /**
+     * 配信失敗を記録する（永久失敗の即 DEAD_LETTER 短絡に対応した版・CMP-030）。
+     *
+     * <p>{@code immediateDeadLetter=false} は従来どおり「上限未満は指数バックオフで {@code FAILED}、
+     * 上限到達で {@code DEAD_LETTER}」。{@code immediateDeadLetter=true} は「リトライしても永遠に成功しない」
+     * と判っている恒久失敗（例: 未登録 {@code scope_type}＝設定不備）向けで、{@code retry_count} を 1 増やしたうえで
+     * 即 {@code DEAD_LETTER} に落とす。無駄なリトライ待ち（バックオフ×上限回）を挟まず、かつ RUNNING 残置
+     * （＝stuck リカバリによる無限ループ）を断ち切る。行は消さず {@code last_error} に理由を残す（AC-D）。</p>
+     *
+     * @param immediateDeadLetter リトライ不能な恒久失敗として即 DEAD_LETTER に落とすか
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFailure(UUID jobId, String error, int maxRetry, boolean immediateDeadLetter) {
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
         LocalDateTime now = LocalDateTime.now();
         int rc = job.getRetryCount() + 1;
@@ -345,7 +361,7 @@ public class NotificationFanoutJobService {
         job.setLastError(truncate(error));
         job.setUpdatedAt(now);
         boolean deadLettered;
-        if (rc >= maxRetry) {
+        if (immediateDeadLetter || rc >= maxRetry) {
             job.setStatus(NotificationFanoutJobStatus.DEAD_LETTER);
             deadLettered = true;
         } else {
