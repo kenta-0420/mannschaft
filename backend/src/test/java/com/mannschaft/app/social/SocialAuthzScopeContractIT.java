@@ -445,11 +445,12 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         // 未認証拒否そのものは SecurityConfig の deny-by-default で本番では成立している。
 
         @Test
-        @DisplayName("無効化済みプロフィールはハンドル指定でも400（PROFILE_INACTIVE）")
+        @DisplayName("無効化済みプロフィールはハンドル指定でも404（PROFILE_INACTIVE、"
+                + "PROFILE_NOT_FOUND と同一の存在秘匿・ロットDでステータスを404に是正）")
         void 無効化済みプロフィールは非公開() throws Exception {
             setAuth(userAId);
             mockMvc.perform(get("/api/v1/social/profiles/handle/{handle}", inactiveProfileHandle))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -480,11 +481,12 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         // deny-by-default で本番では成立している。
 
         @Test
-        @DisplayName("無効化済みプロフィールはユーザーID指定でも400（PROFILE_INACTIVE、迂回できない）")
+        @DisplayName("無効化済みプロフィールはユーザーID指定でも404（PROFILE_INACTIVE、"
+                + "PROFILE_NOT_FOUND と同一の存在秘匿・迂回できない・ロットDでステータスを404に是正）")
         void 無効化済みプロフィールは非公開() throws Exception {
             setAuth(userAId);
             mockMvc.perform(get("/api/v1/social/profiles/users/{userId}", inactiveProfileUserId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -542,11 +544,12 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("PRIVATE設定の対象ユーザーは本人以外に400（FOLLOW_LIST_NOT_PUBLIC、非公開）")
+        @DisplayName("PRIVATE設定の対象ユーザーは本人以外に403（FOLLOW_LIST_NOT_PUBLIC、"
+                + "対象ユーザーの存在自体は既知で一覧のみ非公開のため権限不足・ロットDでステータスを403に是正）")
         void PRIVATE設定は本人以外に非公開() throws Exception {
             setAuth(userAId);
             mockMvc.perform(get("/api/v1/users/{userId}/following", privateTargetId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -585,11 +588,12 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("PRIVATE設定の対象ユーザーは本人以外に400（FOLLOW_LIST_NOT_PUBLIC、非公開）")
+        @DisplayName("PRIVATE設定の対象ユーザーは本人以外に403（FOLLOW_LIST_NOT_PUBLIC、"
+                + "対象ユーザーの存在自体は既知で一覧のみ非公開のため権限不足・ロットDでステータスを403に是正）")
         void PRIVATE設定は本人以外に非公開() throws Exception {
             setAuth(userAId);
             mockMvc.perform(get("/api/v1/users/{userId}/followers", privateTargetId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -687,6 +691,45 @@ class SocialAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
             assertThat(fetchFollowListVisibility(userAId)).isEqualTo("PRIVATE");
             assertThat(fetchFollowListVisibility(publicTargetId)).isEqualTo("PUBLIC");
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 17. ロットDステータス契約（SOCIAL_001/002/003）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("17. ロットDステータス契約（PROFILE_NOT_FOUND/HANDLE_ALREADY_TAKEN/PROFILE_ALREADY_EXISTS）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("存在しないハンドルの取得は404（PROFILE_NOT_FOUND）")
+        void 存在しないハンドルは404() throws Exception {
+            setAuth(userAId);
+            mockMvc.perform(get("/api/v1/social/profiles/handle/{handle}", "socialauthz-no-such-handle"))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("既にプロフィールを持つユーザーの再作成は409（PROFILE_ALREADY_EXISTS）")
+        void 既存ユーザーの再作成は409() throws Exception {
+            // activeProfileUserId は setUp で既にプロフィールを持つ。
+            setAuth(activeProfileUserId);
+            mockMvc.perform(post("/api/v1/social/profiles")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("handle", "socialauthz-dup-handle-attempt"))))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("既に使用中のハンドルでの新規作成は409（HANDLE_ALREADY_TAKEN）")
+        void 使用中ハンドルでの新規作成は409() throws Exception {
+            // activeProfileHandle は setUp で activeProfileUserId が既に取得済み。
+            setAuth(userAId);
+            mockMvc.perform(post("/api/v1/social/profiles")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("handle", activeProfileHandle))))
+                    .andExpect(status().isConflict());
         }
     }
 

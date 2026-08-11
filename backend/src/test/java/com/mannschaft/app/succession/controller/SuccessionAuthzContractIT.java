@@ -384,6 +384,69 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // ロットDステータス契約: 状態競合系（ALREADY_RESOLVED/FROZEN/EVIDENCE_NOT_READY）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ロットDステータス契約（SUCCESSION_017/018/022）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("resolve: 既に解決済みのエスカレーションを再解決 → 409（ESCALATION_ALREADY_RESOLVED）")
+        void resolve_解決済みの再解決は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> body = Map.of("resolvedReason", "PAID");
+
+            // 1回目: 正常に解決
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+
+            // 2回目: 既に解決済み → 409
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("resolve: 凍結中のエスカレーションを解決しようとする → 409（ESCALATION_FROZEN）")
+        void resolve_凍結中は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> freezeBody = Map.of("reason", "弁護士介入のため");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isOk());
+
+            Map<String, Object> resolveBody = Map.of("resolvedReason", "PAID");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("evidence-package/download-url: 証拠パッケージ未生成のダウンロードは409（EVIDENCE_NOT_READY）")
+        void evidenceDownloadUrl_未生成は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            mockMvc.perform(get(
+                            "/api/v1/organizations/{orgId}/succession/legal-filings/{id}/evidence-package/download-url",
+                            ORG_A, legalFilingA))
+                    .andExpect(status().isConflict());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
