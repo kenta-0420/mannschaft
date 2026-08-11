@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,39 @@ import java.util.Set;
  * ユーザー−ロール割当リポジトリ。
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> {
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（TEAM）。
+     *
+     * <p>候補ユーザー ID の {@code IN} 句で 1 回だけ引く。候補者ごとに
+     * {@code AccessControlService#resolveEffectiveRoleName} を呼ぶと候補者数に比例して
+     * SQL が増え、AC-39（5 人と 20 人で段1の SQL 発行数が同一）を満たせない。</p>
+     *
+     * <p>{@code roles} を JOIN して {@code name} まで一度に返すのは、呼び出し側で
+     * {@code roleRepository.findById} を追加発行させないためである（ロール数に比例した
+     * SQL が段1に混ざると「候補者数に依存しない」という保証が読みづらくなる）。
+     * 強弱比較は {@code RolePriority} でメモリ上行う。</p>
+     *
+     * @param teamId  チーム ID
+     * @param userIds 候補ユーザー ID 集合（空で呼ばないこと。{@code IN ()} になる）
+     * @return ユーザー ID とロール名の射影
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.teamId = :teamId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByTeamIdAndUserIdIn(
+            @Param("teamId") Long teamId, @Param("userIds") Collection<Long> userIds);
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（ORGANIZATION）。
+     *
+     * @see #findScopeRolesByTeamIdAndUserIdIn(Long, Collection)
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.organizationId = :organizationId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByOrganizationIdAndUserIdIn(
+            @Param("organizationId") Long organizationId, @Param("userIds") Collection<Long> userIds);
 
     Optional<UserRoleEntity> findByUserIdAndTeamId(Long userId, Long teamId);
 

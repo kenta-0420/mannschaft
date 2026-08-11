@@ -92,6 +92,21 @@ public class GlobalExceptionHandler {
             //  - SCHEDULE_KEEP_006/007/009 状態遷移違反 → 409（設計書 §5.3・§7）
             //  - SCHEDULE_KEEP_008 revert が出欠回答に阻まれる → 409
             //  - SCHEDULE_KEEP_010 スコープあたりの件数上限超過 → 409
+            // F03.16 予定コメントスレッド: 400 以外を返すコードを宣言どおりの status に上書きする
+            // （設計書 §4 のエラー表。登録漏れは Severity.WARN の既定 400 に静かに落ちる）。
+            //  - SCHEDULE_COMMENT_002 予定不在・個人予定・閲覧権限なしを畳んで 404（存在秘匿・§2.2/§4.5）
+            //  - SCHEDULE_COMMENT_003 コメント不在・越境・削除済み → 404（IDOR 経路の遮断・§4.1）
+            //  - SCHEDULE_COMMENT_004/009/010/011 認可拒否 → 403
+            //  - SCHEDULE_COMMENT_005 writable() が false（スレッド閉／予定中止）→ 409（§5.2）
+            //  - SCHEDULE_COMMENT_012 レート制限 → 429（§10.2）
+            Map.entry("SCHEDULE_COMMENT_002", HttpStatus.NOT_FOUND),
+            Map.entry("SCHEDULE_COMMENT_003", HttpStatus.NOT_FOUND),
+            Map.entry("SCHEDULE_COMMENT_004", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_005", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_COMMENT_009", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_010", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_011", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_012", HttpStatus.TOO_MANY_REQUESTS),
             Map.entry("SCHEDULE_KEEP_001", HttpStatus.NOT_FOUND),
             Map.entry("SCHEDULE_KEEP_005", HttpStatus.FORBIDDEN),
             Map.entry("SCHEDULE_KEEP_006", HttpStatus.CONFLICT),

@@ -54,9 +54,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code setStatisticsEnabled(true)} により有効化する。</p>
  *
  * <h2>AC-30 が本クラスに無い理由</h2>
- * <p>AC-30（{@code ScheduleCommentVisibilityResolver.filterAccessible} の SQL ≦2）は
- * 対象クラスがまだ存在せず、テストを書くとコンパイルが通らない。Resolver を新設する隊が
- * 同一の計測方式で追加すること。</p>
+ * <p>AC-30（{@code ScheduleCommentVisibilityResolver.filterAccessible} の SQL ≦2）は、
+ * 試練の時点では対象クラスが存在せずテストを書けなかった。
+ * <b>認可隊が {@code ScheduleCommentVisibilityPerformanceIT} として同一の計測方式で実装済み</b>。
+ * 同クラスは Controller / Service を介さず可視性コンポーネントを直接呼ぶため、
+ * 本クラス（HTTP 経由）とは独立に緑になる。AC-39 も同クラスに部品レベルの計測がある
+ * （本クラスの AC-39 はエンドポイント経由の最終確認）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional

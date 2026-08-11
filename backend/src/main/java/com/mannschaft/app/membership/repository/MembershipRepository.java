@@ -183,6 +183,44 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("orgIds") Collection<Long> orgIds);
 
     /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の所属ロール一括取得。
+     *
+     * <p>{@link #findActiveRoleKindsByUserAndScopes} と<b>向きが逆</b>である（あちらは
+     * 「1 ユーザー × 複数スコープ」）。メンション通知フィルタ（§6.3）・{@code mention-candidates}
+     * （§4.4）は「単一スケジュールのスコープに対し候補ユーザー全員」を解決する必要があり、
+     * 候補者ごとに {@link #findActiveRoleKinds} を呼ぶと候補者数に比例して SQL が増える
+     * （AC-39 が禁じる形）。</p>
+     *
+     * <p>{@code role_kind} の名前（MEMBER / SUPPORTER）は {@code roles.name} と一致するため、
+     * 呼び出し側は {@code RolePriority} でメモリ比較でき、優先度取得の追加 SQL は不要。</p>
+     *
+     * <p>空集合に対する {@code IN ()} を避けるため、{@code userIds} が空の場合は呼ばないこと。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userIds   候補ユーザー ID 集合
+     * @return ユーザー ID × role_kind（アクティブ行のみ）
+     */
+    @Query("SELECT m.userId AS userId, m.roleKind AS roleKind FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.userId IN :userIds AND m.leftAt IS NULL")
+    List<MembershipUserRoleKindProjection> findActiveRoleKindsByScopeAndUsers(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("userIds") Collection<Long> userIds);
+
+    /**
+     * {@link #findActiveRoleKindsByScopeAndUsers} の射影（ユーザー ID × 所属ロール種別）。
+     */
+    interface MembershipUserRoleKindProjection {
+        /** ユーザー ID。 */
+        Long getUserId();
+
+        /** 所属ロール種別（MEMBER / SUPPORTER）。 */
+        RoleKind getRoleKind();
+    }
+
+    /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員総数（role_kind 横断・DISTINCT user_id 件数）を返す。
      *
      * <p>管理者レンズ「メンバー統計」の「総数」用。{@code left_at IS NULL} を在籍の真実の源とし、
