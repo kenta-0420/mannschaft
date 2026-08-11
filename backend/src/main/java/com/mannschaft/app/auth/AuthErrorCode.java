@@ -63,7 +63,7 @@ public enum AuthErrorCode implements ErrorCode {
     /** TOTPコード不正 */
     AUTH_017("AUTH_017", "TOTPコードが正しくありません", Severity.WARN),
 
-    /** TOTPコード使用済み */
+    /** TOTPコード使用済み（409: 状態競合） */
     AUTH_018("AUTH_018", "TOTPコードは既に使用済みです", Severity.WARN),
 
     /** 2段階認証未有効化 */
@@ -72,7 +72,7 @@ public enum AuthErrorCode implements ErrorCode {
     /** バックアップコード不正 */
     AUTH_020("AUTH_020", "バックアップコードが正しくありません", Severity.WARN),
 
-    /** バックアップコード全使用済み */
+    /** バックアップコード全使用済み（409: 状態競合） */
     AUTH_021("AUTH_021", "バックアップコードが全て使用済みです", Severity.WARN),
 
     /** 2FA回復メール送信上限 */
@@ -84,7 +84,7 @@ public enum AuthErrorCode implements ErrorCode {
     /** WebAuthn認証失敗 */
     AUTH_024("AUTH_024", "WebAuthn認証に失敗しました", Severity.WARN),
 
-    /** WebAuthnデバイス重複登録 */
+    /** WebAuthnデバイス重複登録（409: 登録状態との競合） */
     AUTH_025("AUTH_025", "WebAuthnデバイスが既に登録されています", Severity.WARN),
 
     /** リプレイ攻撃検出 */
@@ -96,16 +96,16 @@ public enum AuthErrorCode implements ErrorCode {
     /** 未サポートOAuthプロバイダー */
     AUTH_028("AUTH_028", "このOAuthプロバイダーはサポートされていません", Severity.WARN),
 
-    /** OAuthプロバイダー未連携 */
+    /** OAuthプロバイダー未連携（404: 解除対象の連携が存在しない） */
     AUTH_029("AUTH_029", "OAuthプロバイダーはこのアカウントに連携されていません", Severity.WARN),
 
-    /** OAuth連携解除時ログイン手段喪失 */
+    /** OAuth連携解除時ログイン手段喪失（409: 状態競合） */
     AUTH_030("AUTH_030", "OAuthプロバイダーを連携解除するとログイン手段が失われます", Severity.WARN),
 
     /** OAuth連携トークン無効 */
     AUTH_031("AUTH_031", "OAuth連携トークンが無効または期限切れです", Severity.WARN),
 
-    /** 退会申請不存在 */
+    /** 退会申請不存在（取消可能な状態が無いという状態遷移違反 → 409。自分自身の状態確認のため IDOR ではない） */
     AUTH_032("AUTH_032", "退会申請が存在しません", Severity.WARN),
 
     /** セッション不存在 */
@@ -120,13 +120,13 @@ public enum AuthErrorCode implements ErrorCode {
     /** 国コードバリデーションエラー */
     AUTH_040("AUTH_040", "国コードが無効です（ISO 3166-1 alpha-2 形式 例: JP・US・DE）", Severity.WARN),
 
-    /** アクセストークン期限切れ */
+    /** アクセストークン期限切れ（兄弟の AUTH_007/026/039 と同じく401） */
     AUTH_036("AUTH_036", "アクセストークンの有効期限が切れています", Severity.WARN),
 
-    /** アクセストークン不正（署名不一致・フォーマット異常） */
+    /** アクセストークン不正（署名不一致・フォーマット異常。401） */
     AUTH_037("AUTH_037", "アクセストークンが無効です", Severity.WARN),
 
-    /** アクセストークンがブラックリスト登録済み（個別ログアウト後） */
+    /** アクセストークンがブラックリスト登録済み（個別ログアウト後。401） */
     AUTH_038("AUTH_038", "このセッションは既にログアウトされています", Severity.WARN),
 
     /** ユーザーの全トークン無効化後のアクセス（全デバイスログアウト後） */

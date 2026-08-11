@@ -3,8 +3,14 @@ package com.mannschaft.app.todo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.todo.entity.ProjectEntity;
+import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.entity.TodoSharedMemoEntryEntity;
+import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
+import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.repository.TodoSharedMemoEntryRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -74,6 +80,15 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private TodoRepository todoRepository;
 
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private ProjectMilestoneRepository milestoneRepository;
+
+    @Autowired
+    private TodoSharedMemoEntryRepository sharedMemoRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -96,6 +111,11 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long todoTeamBId;         // team B の TODO（bulk 越境絞りの検証用）
     private Long deletedTodoTeamAId;  // team A の論理削除済み TODO（restore 検証用・createdBy = ownerTeamA）
     private Long todoOrgAId;          // org A の TODO（createdBy = ownerOrgA）
+
+    private Long projectTeamAId;      // team A のプロジェクト（createdBy = ownerTeamA）
+    private Long projectTeamBId;      // team B のプロジェクト（他プロジェクトの mid 越境検証用）
+    private Long milestoneTeamAId;    // projectTeamA のマイルストーン
+    private Long sharedMemoTeamAId;   // todoTeamA の共有メモ（createdBy = ownerTeamA）
 
     @BeforeEach
     void setUp() {
@@ -173,6 +193,41 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
                 .createdBy(ownerOrgAId)
                 .build());
         todoOrgAId = todoOrgA.getId();
+
+        ProjectEntity projectTeamA = projectRepository.save(ProjectEntity.builder()
+                .scopeType(TodoScopeType.TEAM)
+                .scopeId(teamAId)
+                .title("TODOAUTHZ プロジェクトA")
+                .status(com.mannschaft.app.todo.ProjectStatus.ACTIVE)
+                .visibility(com.mannschaft.app.todo.ProjectVisibility.SHARED)
+                .createdBy(ownerTeamAId)
+                .build());
+        projectTeamAId = projectTeamA.getId();
+
+        ProjectEntity projectTeamB = projectRepository.save(ProjectEntity.builder()
+                .scopeType(TodoScopeType.TEAM)
+                .scopeId(teamBId)
+                .title("TODOAUTHZ プロジェクトB")
+                .status(com.mannschaft.app.todo.ProjectStatus.ACTIVE)
+                .visibility(com.mannschaft.app.todo.ProjectVisibility.SHARED)
+                .createdBy(memberTeamBId)
+                .build());
+        projectTeamBId = projectTeamB.getId();
+
+        ProjectMilestoneEntity milestoneTeamA = milestoneRepository.save(ProjectMilestoneEntity.builder()
+                .projectId(projectTeamAId)
+                .title("TODOAUTHZ マイルストーンA")
+                .sortOrder((short) 0)
+                .isCompleted(false)
+                .build());
+        milestoneTeamAId = milestoneTeamA.getId();
+
+        TodoSharedMemoEntryEntity sharedMemoTeamA = sharedMemoRepository.save(TodoSharedMemoEntryEntity.builder()
+                .todoId(todoTeamAId)
+                .userId(ownerTeamAId)
+                .memo("TODOAUTHZ 共有メモA")
+                .build());
+        sharedMemoTeamAId = sharedMemoTeamA.getId();
 
         em.flush();
         em.clear();
@@ -589,6 +644,51 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
             // 他 scope（teamB）の todo は scope 絞りで対象外 → 変更されない（OPEN のまま）。
             assertThat(todoRepository.findById(todoTeamBId).orElseThrow().getStatus())
                     .isEqualTo(TodoStatus.OPEN);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. ErrorCode ステータス写像是正ロットA — 追加登録した 404 秘匿の契約固定
+    //    （TODO_007/012/015/016/050/060。TODO_016 は TodoCommentScopeContractIT で既に固定済み）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. ロットA追加404: milestone / assignee / shared-memo / personal-memo")
+    class LotAAdditionalNotFound {
+
+        @Test
+        @DisplayName("MILESTONE_NOT_FOUND(TODO_007): 他プロジェクトのmidを指定した削除は404")
+        void milestone_他プロジェクトのmidは404() throws Exception {
+            setAuth(memberTeamBId);
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/projects/{id}/milestones/{mid}",
+                            teamBSlug, projectTeamBId, milestoneTeamAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("ASSIGNEE_NOT_FOUND(TODO_015): 割り当てられていないuserIdの削除は404")
+        void assignee_未割当ユーザーの削除は404() throws Exception {
+            setAuth(ownerTeamAId);
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/todos/{id}/assignees/{userId}",
+                            teamASlug, todoTeamAId, memberTeamAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("SHARED_MEMO_NOT_FOUND(TODO_050): 存在しないmemoIdの削除は404")
+        void sharedMemo_他todoのmemoIdは404() throws Exception {
+            setAuth(memberTeamBId);
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/todos/{id}/memos/{memoId}",
+                            teamBSlug, todoTeamBId, sharedMemoTeamAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("PERSONAL_MEMO_NOT_FOUND(TODO_060): 未作成の個人メモ取得は404")
+        void personalMemo_未作成は404() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/todos/{id}/my-memo", teamASlug, todoTeamAId))
+                    .andExpect(status().isNotFound());
         }
     }
 

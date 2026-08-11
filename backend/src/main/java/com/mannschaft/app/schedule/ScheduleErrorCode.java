@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ScheduleErrorCode implements ErrorCode {
 
-    /** スケジュールが見つからない */
+    /** スケジュールが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     SCHEDULE_NOT_FOUND("SCHEDULE_001", "スケジュールが見つかりません", Severity.WARN),
 
     /** 開始日時と終了日時の整合性エラー */
@@ -20,34 +20,34 @@ public enum ScheduleErrorCode implements ErrorCode {
     /** 出欠管理対象外のスケジュール */
     ATTENDANCE_NOT_REQUIRED("SCHEDULE_003", "このスケジュールは出欠管理対象外です", Severity.WARN),
 
-    /** 出欠回答期限超過 */
+    /** 出欠回答期限超過（409: 期限経過という状態競合） */
     ATTENDANCE_DEADLINE_PASSED("SCHEDULE_004", "出欠回答期限を過ぎています", Severity.WARN),
 
-    /** 既にキャンセル済み */
+    /** 既にキャンセル済み（状態遷移違反 → 409） */
     SCHEDULE_ALREADY_CANCELLED("SCHEDULE_005", "スケジュールは既にキャンセルされています", Severity.WARN),
 
     /** 既に完了済み */
     SCHEDULE_ALREADY_COMPLETED("SCHEDULE_006", "スケジュールは既に完了しています", Severity.WARN),
 
-    /** アンケート設問数上限超過 */
+    /** アンケート設問数上限超過（409: 件数上限という状態競合） */
     MAX_SURVEYS_EXCEEDED("SCHEDULE_007", "アンケート設問は最大10件です", Severity.WARN),
 
-    /** リマインダー数上限超過 */
+    /** リマインダー数上限超過（409: 件数上限という状態競合） */
     MAX_REMINDERS_EXCEEDED("SCHEDULE_008", "リマインダーは最大5件です", Severity.WARN),
 
-    /** 同一招待先への重複招待 */
+    /** 同一招待先への重複招待（状態遷移違反 → 409） */
     CROSS_INVITE_ALREADY_EXISTS("SCHEDULE_009", "同じ招待先への招待が既に存在します", Severity.WARN),
 
-    /** 招待が見つからない */
+    /** 招待が見つからない → 404 */
     CROSS_INVITE_NOT_FOUND("SCHEDULE_010", "招待が見つかりません", Severity.WARN),
 
-    /** 招待状態不正 */
+    /** 招待状態不正（409: 状態遷移違反） */
     CROSS_INVITE_INVALID_STATUS("SCHEDULE_011", "この操作は現在の招待状態では実行できません", Severity.WARN),
 
     /** 繰り返しルール不正 */
     INVALID_RECURRENCE_RULE("SCHEDULE_012", "繰り返しルールが不正です", Severity.WARN),
 
-    /** アンケート設問が見つからない */
+    /** アンケート設問が見つからない → 404 */
     SURVEY_NOT_FOUND("SCHEDULE_013", "アンケート設問が見つかりません", Severity.WARN),
 
     /** コメント必須エラー */
@@ -72,16 +72,16 @@ public enum ScheduleErrorCode implements ErrorCode {
             "応援者を出欠配信対象に含める設定と、応援者が閲覧できない最小閲覧ロールは同時に指定できません",
             Severity.WARN),
 
-    /** 個人リマインダー上限超過 */
+    /** 個人リマインダー上限超過（409: 件数上限という状態競合） */
     PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.WARN),
 
-    /** 個人スケジュール上限超過 */
+    /** 個人スケジュール上限超過（409: 件数上限という状態競合） */
     PERSONAL_SCHEDULE_LIMIT_EXCEEDED("SCHEDULE_020", "個人スケジュールの上限（1000件）に達しています", Severity.WARN),
 
     /** 一括削除上限超過 */
     BATCH_DELETE_LIMIT_EXCEEDED("SCHEDULE_021", "一括削除は最大50件までです", Severity.WARN),
 
-    /** スケジュール所有者不一致 */
+    /** スケジュール所有者不一致（存在は隠さず本人以外を拒否 → 403） */
     NOT_SCHEDULE_OWNER("SCHEDULE_022", "このスケジュールの所有者ではありません", Severity.WARN),
 
     /** Google Calendar未連携 */
@@ -114,7 +114,7 @@ public enum ScheduleErrorCode implements ErrorCode {
     /** 連携TODOとスケジュールのスコープが一致しない */
     TODO_SCOPE_MISMATCH("SCHEDULE_050", "連携TODOとスケジュールのスコープが一致しません", Severity.WARN),
 
-    /** このTODOは既に別のスケジュールと連携されている */
+    /** このTODOは既に別のスケジュールと連携されている（TODO_032/033 と同型・状態遷移違反 → 409） */
     TODO_ALREADY_LINKED("SCHEDULE_051", "このTODOは既に別のスケジュールと連携されています", Severity.WARN),
 
     // --- F03.12 スケジュールメディア ---

@@ -82,11 +82,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code TeamReservationController} に {@code reservationService.assertReservationInTeam(teamId, reservationId)}
  * を敷設し、reservationId が当該チームに属さなければ 400（存在秘匿）に畳み込んで封じた。</p>
  *
- * <p><b>なぜ 404 でなく 400 か:</b> reservation ドメインの {@code *_NOT_FOUND} 系は
- * {@code Severity.WARN}→HTTP 400 のドメイン慣習に載っている。越境した既存予約も真に不在の
- * 予約も一律 400 に収束するため、存在秘匿（BOLA 対策）は 400 で成立する（200 で漏らさないことが
- * 要件であり、その点はここで固定する）。chat（#2465）が採った「NOT_FOUND→404」への統一は
- * 別課題 #2468 で扱う。</p>
+ * <p><b>2026-08-11 是正（ErrorCodeHttpStatusDeclarationGuardTest ロットA）:</b> 従来は
+ * reservation ドメインの {@code *_NOT_FOUND} 系（{@code RESERVATION_003}/{@code 017} 等）が
+ * {@code ERROR_CODE_STATUS_MAP} 未登録のため {@code Severity.WARN} 既定の HTTP 400 に収束していた
+ * （越境も真の不在も一律 400 で存在は秘匿できていたが、404 を使う他ドメインとステータスの流儀が
+ * 割れていた）。#2468 として保留されていたこの乖離を本是正で解消し、他ドメインの
+ * {@code *_NOT_FOUND} 系と同じ 404 に統一した（下記テストはこの是正後の実挙動を固定する）。</p>
  *
  * <p>金型: {@code MemberScopeContractIT} / {@code ChatChannelAccessScopeContractIT}
  * （{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL Testcontainers + 手動 SecurityContext）。</p>

@@ -16,13 +16,14 @@ public enum RecruitmentErrorCode implements ErrorCode {
     // 15.1 リソース・権限系 (001〜099)
     // ========================================
 
-    /** 募集が見つからない */
+    /** 募集が見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     LISTING_NOT_FOUND("RECRUITMENT_001", "募集が見つかりません", Severity.WARN),
 
-    /** 募集の作成権限なし */
+    /** 募集の作成権限なし（未使用: 現状 throw 元なし。既定 400 のまま） */
     NO_PERMISSION_TO_CREATE("RECRUITMENT_002", "募集の作成権限がありません", Severity.WARN),
 
-    /** 公開範囲による閲覧不可 */
+    /** 本人以外の NO_SHOW 記録操作を「存在秘匿」で不在と同一視 → 404
+     * （RecruitmentNoShowService.dispute()。既存レコードか否かを応答から判別できないようにする） */
     VISIBILITY_DENIED("RECRUITMENT_003", "公開範囲によりこの募集を閲覧できません", Severity.WARN),
 
     /** カテゴリ未指定 */
@@ -31,32 +32,32 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** 決済有効化時に料金未指定 */
     PRICE_REQUIRED("RECRUITMENT_015", "決済を有効化する場合は料金の指定が必要です", Severity.WARN),
 
-    /** DRAFT 募集の閲覧権限なし */
+    /** DRAFT 募集の閲覧権限なし（対象は存在確認済みで権限不足のみを理由に拒否 → 403） */
     DRAFT_VIEW_DENIED("RECRUITMENT_020", "下書き募集の閲覧権限がありません", Severity.WARN),
 
     // ========================================
     // 15.2 ステータス遷移エラー (100〜199)
     // ========================================
 
-    /** 不正な状態遷移 */
+    /** 不正な状態遷移（状態遷移違反 → 409） */
     INVALID_STATE_TRANSITION("RECRUITMENT_100", "不正な状態遷移です", Severity.WARN),
 
-    /** 既に締切を過ぎている */
+    /** 既に締切を過ぎている（RESERVATION_026 CANCEL_DEADLINE_PASSED と同型・既定 400 のまま） */
     DEADLINE_EXCEEDED("RECRUITMENT_101", "応募締切を過ぎています", Severity.WARN),
 
-    /** 既にキャンセル済み */
+    /** 既にキャンセル済み（状態遷移違反 → 409） */
     ALREADY_CANCELLED("RECRUITMENT_102", "既にキャンセル済みです", Severity.WARN),
 
-    /** DRAFT のままでは申込不可 */
+    /** DRAFT のままでは申込不可（状態遷移違反 → 409） */
     DRAFT_NOT_APPLICABLE("RECRUITMENT_103", "下書きのままでは申込できません", Severity.WARN),
 
-    /** COMPLETED 済みの編集は不可 */
+    /** COMPLETED 済みの編集は不可（状態遷移違反 → 409） */
     COMPLETED_NOT_EDITABLE("RECRUITMENT_104", "開催完了済みの編集はできません", Severity.WARN),
 
-    /** 既に申込済み */
+    /** 既に申込済み（状態遷移違反 → 409） */
     ALREADY_APPLIED("RECRUITMENT_105", "既に申込済みです", Severity.WARN),
 
-    /** キャンセル待ち上限超過 */
+    /** キャンセル待ち上限超過（RESERVATION_049 WAITLIST_LIMIT_EXCEEDED と同型・既定 400 のまま） */
     WAITLIST_LIMIT_EXCEEDED("RECRUITMENT_106", "キャンセル待ち上限を超過しました", Severity.WARN),
 
     // ========================================
@@ -119,23 +120,23 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** NO_SHOW 異議申立の期限超過 */
     NO_SHOW_DISPUTE_DEADLINE_EXCEEDED("RECRUITMENT_305", "異議申立の期限を過ぎています", Severity.WARN),
 
-    /** NO_SHOW 記録が見つからない */
+    /** NO_SHOW 記録が見つからない → 404 */
     NO_SHOW_RECORD_NOT_FOUND("RECRUITMENT_309", "NO_SHOW記録が見つかりません", Severity.WARN),
 
-    /** ペナルティが見つからない */
+    /** ペナルティが見つからない → 404 */
     PENALTY_NOT_FOUND("RECRUITMENT_310", "ペナルティが見つかりません", Severity.WARN),
 
-    /** 既に異議申立済み */
+    /** 既に異議申立済み（状態遷移違反 → 409） */
     ALREADY_DISPUTED("RECRUITMENT_311", "既に異議申立済みです", Severity.WARN),
 
-    /** ペナルティ設定が見つからない */
+    /** ペナルティ設定が見つからない（未使用: 現状 throw 元なし。既定 400 のまま） */
     PENALTY_SETTING_NOT_FOUND("RECRUITMENT_312", "ペナルティ設定が見つかりません", Severity.WARN),
 
     // ========================================
     // Phase 3: テンプレート系 (313〜)
     // ========================================
 
-    /** テンプレートが見つからない */
+    /** テンプレートが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN),
 
     /** テンプレートのスコープが一致しない */
