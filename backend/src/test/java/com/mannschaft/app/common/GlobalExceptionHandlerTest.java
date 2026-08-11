@@ -172,6 +172,134 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("正常系: RESIDENCE_STATUS_004エラーコード（他居住者IDへの越境回答を存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_RESIDENCE_STATUS_004_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.residencestatus.ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESIDENCE_STATUS_004");
+        }
+
+        @Test
+        @DisplayName("正常系: QM_001エラーコード（他ユーザーのメモIDへの越境を存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_QM001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.quickmemo.QuickMemoErrorCode.MEMO_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("QM_001");
+        }
+
+        @Test
+        @DisplayName("正常系: PARKING_020エラーコード（越境区画IDの存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_PARKING020_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.parking.ParkingErrorCode.SCOPE_MISMATCH);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PARKING_020");
+        }
+
+        @Test
+        @DisplayName("正常系: ACTIVITY_001エラーコード（DRAFT非公開の秘匿にも使用）で404 NotFoundが返る")
+        void handleBusinessException_ACTIVITY001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.activity.ActivityErrorCode.ACTIVITY_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ACTIVITY_001");
+        }
+
+        @Test
+        @DisplayName("正常系: DASHBOARD_007エラーコード（フォルダ所有者不一致）で403 Forbiddenが返る")
+        void handleBusinessException_DASHBOARD007_403Forbidden() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.dashboard.DashboardErrorCode.DASHBOARD_007);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("DASHBOARD_007");
+        }
+
+        @Test
+        @DisplayName("正常系: PROXY_VOTE_052エラーコード（既に投票済み）で409 Conflictが返る")
+        void handleBusinessException_PROXYVOTE052_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.proxyvote.ProxyVoteErrorCode.ALREADY_VOTED);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PROXY_VOTE_052");
+        }
+
+        @Test
+        @DisplayName("正常系: AD_026エラーコード（キャンペーンとクリエイティブの不一致の存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_AD026_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_026);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AD_026");
+        }
+
+        @Test
+        @DisplayName("正常系: PAYMENT_004エラーコード（二重支払い）で409 Conflictが返る")
+        void handleBusinessException_PAYMENT004_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.payment.PaymentErrorCode.ALREADY_PAID);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PAYMENT_004");
+        }
+
+        @Test
         @DisplayName("正常系: COMMON_999エラーコード（ERROR severity）で500が返る")
         void handleBusinessException_COMMON999_500InternalError() {
             // Given

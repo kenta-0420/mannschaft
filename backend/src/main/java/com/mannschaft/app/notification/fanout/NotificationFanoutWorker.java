@@ -133,27 +133,45 @@ public class NotificationFanoutWorker {
      * バルク INSERT ＋配信する。チャンクごとに {@link NotificationFanoutJobService#advanceCursor} で
      * カーソルを前進コミットし、空ページで {@code DONE}。失敗はリトライ／上限超で {@code DEAD_LETTER}。
      *
-     * <p><b>例外契約</b>: 受信者解決／配信の失敗は本メソッド内で捕捉し
+     * <p><b>例外契約（CMP-030 根治）</b>: 受信者ソース解決・シャード分割・配信ループの<b>すべて</b>を
+     * {@link #markRunning} 後の単一 {@code try} で包み、あらゆる例外を {@code catch} して
      * {@link NotificationFanoutJobService#recordFailure} に落とす（呼び出し側へ伝播しない＝耐久キューの正常動作）。
+     * かつて {@code resolve().orElseThrow()} と {@code resolveAndSplitShards} を {@code try} の<b>外</b>で呼んでいたため、
+     * 未登録 {@code scope_type} や分割失敗の例外が {@code recordFailure} に届かず、claim 済み（RUNNING）ジョブが
+     * RUNNING のまま停滞→stuck リカバリで PENDING へ戻る→再 claim→同一例外、を延々繰り返す
+     * <b>無限 RUNNING ループ</b>（DEAD_LETTER にも配信にも至らない）を招いていた。これを断つため全処理を try 内へ入れる。
      * 失敗は握り潰さず {@code last_error}／{@code status} に残して可視化する。</p>
+     *
+     * <p><b>未登録 scope_type は即 DEAD_LETTER（短絡）</b>: 未登録は「受信者ソース実装が存在しない」＝設定・デプロイ不備で
+     * あり、{@link #MAX_RETRY} 回リトライしても実装が後から生えることはない（＝永久に成功しない恒久失敗）。無駄な
+     * バックオフ×上限回を挟まず即 {@code DEAD_LETTER} に落とすのが妥当（運用者が気付いて実装を追加・手動再投入する）。
+     * 一方、シャード分割・配信の失敗は一過性（DB 一時障害等）でありうるため従来どおりリトライ→上限超で DEAD_LETTER。</p>
      */
     public void processOne(NotificationFanoutJob job) {
-        FanoutRecipientSource source = recipientSourceRegistry.resolve(job.getScopeType())
-                .orElseThrow(() -> new IllegalStateException(
-                        "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）"));
         jobService.markRunning(job.getId());
-        // 初回 claim 時のシャード確定・分割（B案・CMP-001⑤ 是正）。enqueue は O(1) のため親ジョブは
-        // shard_count=0（未評価）で作られる。ここで母集団を数えて N を確定し子シャード行を発行する
-        // （REQUIRES_NEW で原子確定・冪等）。shard_count!=0 の行（評価済 or レガシー）は現状の N を返すだけ。
-        if (job.getShardCount() == 0) {
-            int n = jobService.resolveAndSplitShards(job.getId());
-            job.setShardCount((short) n);
-        }
-        // 防御ガード: shard_count=0 を nextPage に渡すと MOD(user_id, 0) が 0 除算になる。ここで必ず >=1 を保証する。
-        if (job.getShardCount() < 1) {
-            job.setShardCount((short) 1);
-        }
         try {
+            java.util.Optional<FanoutRecipientSource> resolved =
+                    recipientSourceRegistry.resolve(job.getScopeType());
+            if (resolved.isEmpty()) {
+                // 未登録 scope_type はリトライ不能な恒久失敗。即 DEAD_LETTER へ短絡し RUNNING 残置を断つ。
+                String reason = "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）";
+                log.warn("fan-out ジョブ: {}（即 DEAD_LETTER）", reason);
+                jobService.recordFailure(job.getId(), "IllegalStateException: " + reason, MAX_RETRY, true);
+                return;
+            }
+            FanoutRecipientSource source = resolved.get();
+            // 初回 claim 時のシャード確定・分割（B案・CMP-001⑤ 是正）。enqueue は O(1) のため親ジョブは
+            // shard_count=0（未評価）で作られる。ここで母集団を数えて N を確定し子シャード行を発行する
+            // （REQUIRES_NEW で原子確定・冪等）。shard_count!=0 の行（評価済 or レガシー）は現状の N を返すだけ。
+            // 分割中の例外（母集団カウントの DB 一時障害等）も本 try で捕捉し recordFailure に落とす（CMP-030）。
+            if (job.getShardCount() == 0) {
+                int n = jobService.resolveAndSplitShards(job.getId());
+                job.setShardCount((short) n);
+            }
+            // 防御ガード: shard_count=0 を nextPage に渡すと MOD(user_id, 0) が 0 除算になる。ここで必ず >=1 を保証する。
+            if (job.getShardCount() < 1) {
+                job.setShardCount((short) 1);
+            }
             while (true) {
                 long cursor = job.getCursorSubjectId();
                 // 常に 4 引数版で受信者供給する。VILLAGE / TEAM は既定実装が include_supporters を無視して

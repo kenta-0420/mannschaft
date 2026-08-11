@@ -440,14 +440,16 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("編集 Team: 非投稿者メンバーは従来通り拒否（TODO_051→400）")
+        @DisplayName("編集 Team: 非投稿者メンバーは403（ErrorCodeステータス写像是正ロットA: TODO_051は"
+                + "兄弟のTODO_017 COMMENT_NOT_OWNERと同型。共有メモは同一チームメンバーに存在が見えている"
+                + "ため404で秘匿する意味がなく、作成者以外を拒否する403が正しい）")
         void update_team_非投稿者は拒否() throws Exception {
             setAuth(ownerTeamAId); // メンバーだが投稿者ではない
             mockMvc.perform(put("/api/v1/teams/{teamId}/todos/{id}/memos/{memoId}",
                             teamASlug, todoTeamAId, sharedMemoTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("memo", "非投稿者編集"))))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -487,12 +489,14 @@ class TodoScopePartBContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("削除 Team: 非投稿者・非ADMINメンバーは従来通り拒否（TODO_051→400）")
+        @DisplayName("削除 Team: 非投稿者・非ADMINメンバーは403（ErrorCodeステータス写像是正ロットA: TODO_051は"
+                + "兄弟のTODO_017 COMMENT_NOT_OWNERと同型。共有メモは同一チームメンバーに存在が見えている"
+                + "ため404で秘匿する意味がなく、作成者以外を拒否する403が正しい）")
         void delete_team_非投稿者非ADMINは拒否() throws Exception {
             setAuth(ownerTeamAId);
             mockMvc.perform(delete("/api/v1/teams/{teamId}/todos/{id}/memos/{memoId}",
                             teamASlug, todoTeamAId, sharedMemoTeamAId))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isForbidden());
         }
     }
 
