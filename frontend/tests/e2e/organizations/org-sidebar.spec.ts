@@ -107,11 +107,9 @@ test.describe('ORG-SB-001〜010: 組織サイドバーナビゲーション', ()
     await mockPermissions(page, MOCK_SUPPORTER_PERMISSIONS)
     await page.goto(`/organizations/${ORG_ID}/timeline`)
     await waitForHydration(page)
-    await openSidebarDrawer(page)
     // SUPPORTERはisMember=falseなのでDrawer内のnavが表示されない
     await page.waitForTimeout(2_000)
-    const navCount = await sidebarNav(page).count()
-    expect(navCount).toBe(0)
+    await expect(page.locator('[data-testid="scope-sidebar-toggle"]')).toHaveCount(0)
   })
 
   // ORG-SB-004: ホームカテゴリがデフォルトで展開されている

@@ -83,6 +83,14 @@ const effectiveViewerRole = computed<ViewerRole>(() =>
   adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
 )
 
+// SUPPORTER/GUEST/未所属は OrganizationSidebar が項目を表示しないため、
+// Drawer の起動アイコン自体を出さない。
+const showSidebar = computed(() =>
+  roleName.value !== null
+  && roleName.value !== 'SUPPORTER'
+  && roleName.value !== 'GUEST',
+)
+
 const displayName = computed(
   () => org.value?.basicInfo?.nickname1 || org.value?.basicInfo?.name || '',
 )
@@ -402,6 +410,7 @@ provideOrgShellContext({
         :active-tab="activeTab"
         :sidebar="OrganizationSidebar"
         :sidebar-props="{ orgId: orgSlug }"
+        :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
         @update:lens="adminLens = $event"
