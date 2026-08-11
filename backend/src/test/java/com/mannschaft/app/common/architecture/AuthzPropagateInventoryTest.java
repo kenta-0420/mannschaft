@@ -71,6 +71,13 @@ class AuthzPropagateInventoryTest {
     private static final Pattern DTO_SINK_CALLEE =
         Pattern.compile("^(?:of|from|builder|build|create)$");
 
+    /** ロガー呼び出しの受け口識別子（{@code log.warn(...)} 等）。認可の下流委譲ではない。 */
+    private static final Pattern LOGGER_RECEIVER = Pattern.compile("(?i)^(?:log|logger)$");
+
+    /** ロガーのレベルメソッド名。上記レシーバと組み合わせて委譲候補から除外する。 */
+    private static final Pattern LOGGER_METHOD =
+        Pattern.compile("^(?:trace|debug|info|warn|error)$");
+
     // ═══════════════════════════════════════════════════════════════════════
     // 棚卸し本体
     // ═══════════════════════════════════════════════════════════════════════
@@ -201,11 +208,25 @@ class AuthzPropagateInventoryTest {
             if (callee == null) {
                 continue; // 宣言行など
             }
+            // Java キーワード（switch/if/for 等）は委譲先メソッドではない。
+            // 例: `switch (roleName.toUpperCase()) { case "ADMIN" -> ... }` の
+            // roleName は switch 文の対象式に現れるだけで、switch という名の
+            // メソッドへ委譲しているわけではない（switch は予約語でメソッド名になり得ない）。
+            if (JAVA_KEYWORDS.contains(callee)) {
+                continue;
+            }
             boolean dtoSink = callee.startsWith("new ")
                 || Character.isUpperCase(callee.charAt(0))
                 || DTO_SINK_CALLEE.matcher(callee).matches();
             if (dtoSink) {
                 continue; // DTO_SINK は本測量の対象外（形②の担当）
+            }
+            // ロガー呼び出し（log.warn(...) 等）は認可の下流委譲ではなく、
+            // 単に判定結果／ロール名等をログへ出力しているだけ。
+            String calleeReceiver = enclosingCallReceiver(masked, pos);
+            if (calleeReceiver != null && LOGGER_RECEIVER.matcher(calleeReceiver).matches()
+                    && LOGGER_METHOD.matcher(callee).matches()) {
+                continue;
             }
             // PROPAGATE: 小文字始まりメソッドへの委譲
             int line = lineOf(s.content, pos);
@@ -291,6 +312,49 @@ class AuthzPropagateInventoryTest {
                     String name = masked.substring(st, e + 1);
                     String pre = masked.substring(Math.max(0, st - 8), st);
                     return pre.matches("(?s).*\\bnew\\s*$") ? "new " + name : name;
+                }
+                depth--;
+            } else if ((c == ';' || c == '{' || c == '}') && depth == 0) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@code pos} を囲む直近の呼び出し式のレシーバ識別子（{@code recv.method(...)} の
+     * {@code recv}）を返す。非修飾呼び出し（{@code method(...)}）やレシーバがメソッド呼び出し
+     * ・フィールドチェーン等の複雑な式の場合は null（ロガー判定にのみ使う軽量版のため）。
+     */
+    private static String enclosingCallReceiver(String masked, int pos) {
+        int depth = 0;
+        for (int i = pos - 1; i >= 0; i--) {
+            char c = masked.charAt(i);
+            if (c == ')') {
+                depth++;
+            } else if (c == '(') {
+                if (depth == 0) {
+                    int e = skipWsBack(masked, i - 1);
+                    if (e < 0 || !isIdentPart(masked.charAt(e))) {
+                        return null;
+                    }
+                    int st = e;
+                    while (st > 0 && isIdentPart(masked.charAt(st - 1))) {
+                        st--;
+                    }
+                    int dot = skipWsBack(masked, st - 1);
+                    if (dot < 0 || masked.charAt(dot) != '.') {
+                        return null; // 非修飾呼び出し
+                    }
+                    int re = skipWsBack(masked, dot - 1);
+                    if (re < 0 || !isIdentPart(masked.charAt(re))) {
+                        return null;
+                    }
+                    int rst = re;
+                    while (rst > 0 && isIdentPart(masked.charAt(rst - 1))) {
+                        rst--;
+                    }
+                    return masked.substring(rst, re + 1);
                 }
                 depth--;
             } else if ((c == ';' || c == '{' || c == '}') && depth == 0) {
@@ -564,6 +628,107 @@ class AuthzPropagateInventoryTest {
             assertTrue(entries.stream().anyMatch(e -> e.kind == Kind.RETURN_FORM
                     && "DemoPackagePrivatePropagateResolver".equals(e.className)),
                 "package-private メソッド内の PROPAGATE も検出されるべき: " + entries.size());
+        }
+
+        // ── ノイズ除去 ①: Java キーワード（switch 等）は委譲先メソッドではない ──────────
+
+        @Test
+        @DisplayName("u: switch 文の対象式に現れるだけの変数は委譲形 PROPAGATE として検出されない")
+        void u_switch文の対象式は検出されない() {
+            Src caller = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoSwitchResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoSwitchResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoSwitchResolver(DemoAccessService s) { this.accessControlService = s; }
+                    public void resolve(Long userId, Long id) {
+                        String roleName = accessControlService.getRoleName(userId, id, "TEAM");
+                        switch (roleName.toUpperCase()) {
+                            case "ADMIN" -> System.out.println("admin");
+                            default -> System.out.println("other");
+                        }
+                    }
+                }
+                """);
+            List<PropagateEntry> entries = scan(Arrays.asList(gate, caller));
+            assertTrue(entries.isEmpty(),
+                "switch(roleName.toUpperCase()) の roleName は switch という予約語への"
+                    + "委譲ではなく検出されないべき: " + entries.size());
+        }
+
+        @Test
+        @DisplayName("u2（除外しすぎ防止）: switchService への実在の委譲は除外されない")
+        void u2_switchServiceへの委譲は除外されない() {
+            Src caller = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoSwitchServiceResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoSwitchServiceResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoSwitchServiceResolver(DemoAccessService s) { this.accessControlService = s; }
+                    public Object resolve(Long userId, Long id) {
+                        String roleName = accessControlService.getRoleName(userId, id, "TEAM");
+                        return switchService.evaluate(id, userId, roleName);
+                    }
+                }
+                """);
+            List<PropagateEntry> entries = scan(Arrays.asList(gate, caller));
+            assertTrue(entries.stream().anyMatch(
+                e -> e.kind == Kind.DELEGATE_FORM && "evaluate".equals(e.calleeName)),
+                "switch は除外対象だが、名前が似ているだけの switchService.evaluate(..) への"
+                    + "実在の委譲は除外されず検出されるべき: " + entries.size());
+        }
+
+        // ── ノイズ除去 ②: ロガー呼び出しは認可の下流委譲ではない ──────────────────────
+
+        @Test
+        @DisplayName("v: log.warn(...) への引き渡しは委譲形 PROPAGATE として検出されない")
+        void v_ロガー呼び出しは検出されない() {
+            Src caller = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoLoggerResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoLoggerResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoLoggerResolver(DemoAccessService s) { this.accessControlService = s; }
+                    public void resolve(Long userId, Long id) {
+                        String roleName = accessControlService.getRoleName(userId, id, "TEAM");
+                        log.warn("RoleResolver: 未知のロール名 " + roleName);
+                    }
+                }
+                """);
+            List<PropagateEntry> entries = scan(Arrays.asList(gate, caller));
+            assertTrue(entries.isEmpty(),
+                "log.warn(...) はロール名の出力にすぎず、認可の下流委譲として"
+                    + "検出されないべき: " + entries.size());
+        }
+
+        @Test
+        @DisplayName("v2（除外しすぎ防止）: warningService.warn(...) への実在の委譲は除外されない")
+        void v2_warningServiceへの委譲は除外されない() {
+            Src caller = new Src(
+                "src/main/java/com/mannschaft/app/demo/web/DemoWarningServiceResolver.java",
+                """
+                package com.mannschaft.app.demo.web;
+                import com.mannschaft.app.demo.service.DemoAccessService;
+                public class DemoWarningServiceResolver {
+                    private final DemoAccessService accessControlService;
+                    DemoWarningServiceResolver(DemoAccessService s) { this.accessControlService = s; }
+                    public Object resolve(Long userId, Long id) {
+                        String roleName = accessControlService.getRoleName(userId, id, "TEAM");
+                        return warningService.warn(id, userId, roleName);
+                    }
+                }
+                """);
+            List<PropagateEntry> entries = scan(Arrays.asList(gate, caller));
+            assertTrue(entries.stream().anyMatch(
+                e -> e.kind == Kind.DELEGATE_FORM && "warn".equals(e.calleeName)),
+                "log/logger 以外のレシーバ（warningService）への warn(..) 委譲は"
+                    + "除外されず検出されるべき: " + entries.size());
         }
     }
 }
