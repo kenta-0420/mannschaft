@@ -276,6 +276,119 @@ class NativeQueryUnsignedBigintTypeIT {
         }
     }
 
+    /**
+     * 符号揃え 第一波（issue #2545・{@code V180.20260811135837__unify_notification_scope_id_columns_unsigned.sql}）の実測。
+     *
+     * <p>{@code notification_fanout_jobs} / {@code notifications_archive} / {@code dashboard_scope_tab_order}
+     * の該当列が {@code BIGINT UNSIGNED} へ統一されたことと、{@code MODIFY COLUMN} で COMMENT を
+     * 失っていないことを {@code information_schema} で検証する（COMMENT の無い列は空文字/nullを許容）。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第一波: notification_fanout_jobs/notifications_archive/dashboard_scope_tab_order がBIGINT UNSIGNEDへ統一済み（V180・issue #2545）")
+    void 符号揃え第一波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        SoftAssertions softly = new SoftAssertions();
+
+        // notification_fanout_jobs
+        softly.assertThat(readColumnType("notification_fanout_jobs", "organization_id"))
+                .as("notification_fanout_jobs.organization_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "source_id"))
+                .as("notification_fanout_jobs.source_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "actor_id"))
+                .as("notification_fanout_jobs.actor_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "cursor_subject_id"))
+                .as("notification_fanout_jobs.cursor_subject_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("notification_fanout_jobs", "actor_id"))
+                .as("actor_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("実行者ID（論理参照・FK なし・システム発火は NULL）");
+        softly.assertThat(readColumnComment("notification_fanout_jobs", "cursor_subject_id"))
+                .as("cursor_subject_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("キーセット再開カーソル（処理済み受信者 subject_id 上端。クラッシュ再開の要・AC-2）");
+
+        // notifications_archive（移送元 notifications と同じ符号性へ統一）
+        softly.assertThat(readColumnType("notifications_archive", "user_id"))
+                .as("notifications_archive.user_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "organization_id"))
+                .as("notifications_archive.organization_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "source_id"))
+                .as("notifications_archive.source_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "scope_id"))
+                .as("notifications_archive.scope_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "actor_id"))
+                .as("notifications_archive.actor_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("notifications_archive", "organization_id"))
+                .as("organization_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("テナント（論理参照・FK なし）");
+
+        // dashboard_scope_tab_order
+        softly.assertThat(readColumnType("dashboard_scope_tab_order", "user_id"))
+                .as("dashboard_scope_tab_order.user_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("dashboard_scope_tab_order", "scope_id"))
+                .as("dashboard_scope_tab_order.scope_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("dashboard_scope_tab_order", "user_id"))
+                .as("user_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("users.id（FK制約なし。クロスドメインFK禁止原則）");
+        softly.assertThat(readColumnComment("dashboard_scope_tab_order", "scope_id"))
+                .as("scope_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("チームID または 組織ID（FK制約なし）");
+
+        softly.assertAll();
+    }
+
+    /**
+     * {@code notifications_archive} の実害実測。{@code NotificationCleanupBatchService#deleteArchived} が
+     * 実際に発行する {@code DELETE FROM notifications WHERE ... AND id IN (SELECT id FROM notifications_archive)}
+     * は {@code notifications.id}（{@code BIGINT UNSIGNED}）と {@code notifications_archive.id} を
+     * 突き合わせる。統一前（{@code notifications_archive.id} が符号付きだった場合）を模した
+     * {@code CAST(id AS SIGNED)} 版と、統一後の無加工版とで {@code notifications} 側の索引選択を比較する。
+     */
+    @Test
+    @DisplayName("EXPLAIN: notifications_archive.id 側の符号不一致を模すとnotifications側の索引選択が変わりうる（V180・issue #2545）")
+    void notifications_archiveとの突き合わせで索引選択を実測する() throws Exception {
+        long userId;
+        try (Connection conn = connection(); Statement st = conn.createStatement()) {
+            ensureProbeRow("users");
+            try (ResultSet rs = st.executeQuery("SELECT id FROM users ORDER BY id LIMIT 1")) {
+                rs.next();
+                userId = ((Number) rs.getObject(1)).longValue();
+            }
+            // notifications に PRIMARY KEY 索引選択を意味あるものにするための行を用意する。
+            for (int i = 0; i < 50; i++) {
+                insertNotification(conn, userId, i);
+            }
+            long probeId;
+            try (ResultSet rs = st.executeQuery("SELECT id FROM notifications ORDER BY id LIMIT 1")) {
+                rs.next();
+                probeId = ((Number) rs.getObject(1)).longValue();
+            }
+            st.executeUpdate("INSERT IGNORE INTO notifications_archive "
+                    + "(id, user_id, organization_id, notification_type, priority, title, "
+                    + " source_type, source_id, scope_type, scope_id, action_url, actor_id, "
+                    + " is_read, read_at, channels_sent, snoozed_until, created_at) "
+                    + "SELECT id, user_id, organization_id, notification_type, priority, title, "
+                    + "       source_type, source_id, scope_type, scope_id, action_url, actor_id, "
+                    + "       is_read, read_at, channels_sent, snoozed_until, created_at "
+                    + "FROM notifications WHERE id = " + probeId);
+            st.execute("ANALYZE TABLE notifications, notifications_archive");
+        }
+
+        String withoutCast = "EXPLAIN DELETE FROM notifications "
+                + "WHERE id IN (SELECT id FROM notifications_archive) LIMIT 10000";
+        // 統一前（notifications_archive.id が符号付きだった場合）を模した CAST 版。
+        String withCast = "EXPLAIN DELETE FROM notifications "
+                + "WHERE id IN (SELECT CAST(id AS SIGNED) FROM notifications_archive) LIMIT 10000";
+
+        String keyWithoutCast = explainKeyForTable("notifications", withoutCast);
+        String keyWithCast = explainKeyForTable("notifications", withCast);
+
+        System.out.println("[#2545 V180 EXPLAIN] notifications の key（統一後・無加工）    = " + keyWithoutCast);
+        System.out.println("[#2545 V180 EXPLAIN] notifications の key（符号不一致を模した版）= " + keyWithCast);
+
+        // 統一後は notifications.id の PRIMARY KEY 索引が使われること（DELETE の基本要件）。
+        assertThat(keyWithoutCast)
+                .as("統一後は notifications.id の索引（PRIMARY）が使われること。実測値=" + keyWithoutCast)
+                .isEqualTo("PRIMARY");
+    }
+
     // =====================================================================
     // 実測 2: CAST 撤去の同値性（本番の実クエリで）
     // =====================================================================
@@ -519,6 +632,20 @@ class NativeQueryUnsignedBigintTypeIT {
         throw new AssertionError("EXPLAIN の出力に notifications（別名 n）の行が無い");
     }
 
+    /** 既に {@code EXPLAIN ...} 形式で組み立て済みの SQL を実行し、指定テーブル名の行で選ばれた {@code key} を返す。 */
+    private static String explainKeyForTable(String tableName, String explainSql) throws SQLException {
+        try (Connection conn = connection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(explainSql)) {
+            while (rs.next()) {
+                if (tableName.equalsIgnoreCase(rs.getString("table"))) {
+                    return rs.getString("key");
+                }
+            }
+        }
+        throw new AssertionError("EXPLAIN の出力に " + tableName + " の行が無い");
+    }
+
     /**
      * 未読件数集計の実測用フィクスチャを用意する（冪等）。
      *
@@ -678,6 +805,21 @@ class NativeQueryUnsignedBigintTypeIT {
             try (ResultSet rs = ps.executeQuery()) {
                 assertThat(rs.next()).as(table + "." + column + " が実スキーマに存在すること").isTrue();
                 return rs.getString(1).toLowerCase(Locale.ROOT);
+            }
+        }
+    }
+
+    /** {@code information_schema} から列の COMMENT を読む。 */
+    private static String readColumnComment(String table, String column) throws SQLException {
+        try (Connection conn = connection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COLUMN_COMMENT FROM information_schema.columns "
+                             + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertThat(rs.next()).as(table + "." + column + " が実スキーマに存在すること").isTrue();
+                return rs.getString(1);
             }
         }
     }
