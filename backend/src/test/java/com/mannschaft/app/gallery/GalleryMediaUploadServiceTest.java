@@ -52,6 +52,8 @@ class GalleryMediaUploadServiceTest {
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave3-B5: アップロード可否の scope 認可用モック。 */
     @Mock private AccessControlService accessControlService;
+    /** CMP-028 Phase B: PhotoAlbumService の可視レベル解決に必要なモック。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     private PhotoAlbumService albumService;
     private GalleryMediaUploadService service;
@@ -62,7 +64,7 @@ class GalleryMediaUploadServiceTest {
     @BeforeEach
     void setUp() {
         albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker,
-                accessControlService);
+                accessControlService, membershipBatchQueryService);
         service = new GalleryMediaUploadService(r2StorageService, albumService, storageQuotaService,
                 accessControlService);
         // 認可根治戦役 Wave3-B5: 本テストは「アップロード可否」以外（R2Key形式/MIME検証/クォータ）に

@@ -558,6 +558,105 @@ public class MembershipBatchQueryService {
     }
 
     /**
+     * CMP-028 Phase A: 閲覧者 × スコープから、<strong>行（コンテンツ）を見ずに</strong>判定できる
+     * {@link StandardVisibility} の集合を返す。
+     *
+     * <p>SQL の {@code WHERE visibility IN (...)} 述語へ翻訳するための土台。
+     * {@link AbstractContentVisibilityResolver#filterAccessible} が row ごとに
+     * {@code visibleByLevel(...)} で 1 値ずつ判定するのに対し、本メソッドは
+     * <strong>row を引く前に</strong>「このスコープでこの閲覧者が到達できる段」を先に求める。</p>
+     *
+     * <p><strong>同一意味論の担保</strong>: 新しい判定器を作らないため、判定は
+     * {@link UserScopeRoleSnapshot} の同一メソッド（{@code isMemberOf} /
+     * {@code hasRoleOrAbove} / {@code isMemberOfParentOrg}）を呼ぶだけで構成する。これらは
+     * {@link AbstractContentVisibilityResolver#visibleByLevel} が {@code PUBLIC} /
+     * {@code SCOPE_AFFILIATED} / {@code SUPPORTERS_AND_ABOVE} / {@code MEMBERS_AND_ABOVE} /
+     * {@code DEPUTY_ADMINS_AND_ABOVE} / {@code ADMINS_AND_ABOVE} / {@code ORGANIZATION_WIDE}
+     * を評価する際に呼ぶのと<strong>全く同じ</strong>メソッド呼び出しであるため、ラダーの意味論が
+     * 二重管理にならない（判定器は F00 のまま 1 つ）。</p>
+     *
+     * <p><strong>AC-4（最重要）</strong>: 行を見ないと決まらない値
+     * （{@link StandardVisibility#PRIVATE} / {@link StandardVisibility#FOLLOWERS_ONLY} /
+     * {@link StandardVisibility#CUSTOM_TEMPLATE} / {@link StandardVisibility#CUSTOM}）は
+     * <strong>この集合に含めない</strong>。含めると SQL 述語が誤って広がり認可の穴になる。</p>
+     *
+     * <p><strong>設計上の除外</strong>: {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}
+     * （下向き再帰）は本戦役の対象 6 経路のいずれにも使われないことが実測済みのため、対応する
+     * {@code descendantScopes} を集計しない。将来この段を必要とする経路が現れた場合は
+     * 本メソッドの拡張（{@code descendantScopes} を渡すオーバーロード追加）で対応する。</p>
+     *
+     * <p><strong>fail-closed（AC-2）</strong>: {@code viewerUserId == null}（未認証）では
+     * {@link MembershipBatchQueryService#snapshotForUser} が {@link UserScopeRoleSnapshot#empty()}
+     * を返すため、{@code isMemberOf} 等はすべて {@code false} になり、{@code PUBLIC} のみが返る。</p>
+     *
+     * <p><strong>SystemAdmin</strong>: {@link UserScopeRoleSnapshot} の各判定メソッドは
+     * {@code systemAdmin} を内部で先頭バイパスしているため、SystemAdmin では
+     * {@code ORGANIZATION_WIDE} を含む全段が自然に {@code true} になる（本メソッド側での
+     * 特別扱いは不要）。</p>
+     *
+     * <p><strong>scopeType の型（設計判断）</strong>: 引数は {@link ScopeKey#scopeType()} と同じ
+     * 生文字列を受け取る（{@code membership.domain.ScopeType} の 2 値 {@code TEAM}/{@code ORGANIZATION}
+     * には絞らない）。理由: 呼び出し元の機能スコープ列挙（例:
+     * {@code ActivityScopeType.COMMITTEE}）には F00 のメンバーシップ解決対象外の値が存在し、
+     * これを排除せず素通しすることで「対応スコープ以外は自動的に fail-closed（{@code PUBLIC} のみ）
+     * になる」という既存 Resolver の挙動（{@code ActivityResultVisibilityResolver} の
+     * javadoc「COMMITTEE はメンバーシップ解決対象外」）と完全に一致させられる。
+     * {@link MembershipBatchQueryService} 内部の {@code fetchDirectRoles} 等は
+     * {@code "TEAM"}/{@code "ORGANIZATION"} 以外の scopeType を単に無視するため、
+     * 未対応スコープでも例外を投げず自然に {@code PUBLIC} のみへ縮退する。</p>
+     *
+     * @param refType      対象の reference_type（現時点ではラダー計算に使わない。将来の
+     *                     メトリクス・監査ログ連携や、reference_type 固有の追加軸拡張のための予約引数）
+     * @param scopeType    スコープ種別文字列（{@code "TEAM"} / {@code "ORGANIZATION"} 等。
+     *                     未対応値は自動的に fail-closed）
+     * @param scopeId      スコープ ID
+     * @param viewerUserId 閲覧者 userId（{@code null} 可、未認証）
+     * @return 行に依存せず判定できる {@link StandardVisibility} の集合（常に {@code PUBLIC} を含む）
+     */
+    public Set<StandardVisibility> resolveVisibleLevels(
+            ReferenceType refType, String scopeType, Long scopeId, Long viewerUserId) {
+        ScopeKey scope = new ScopeKey(scopeType, scopeId);
+        UserScopeRoleSnapshot snapshot = snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        return resolveVisibleLevels(scope, snapshot);
+    }
+
+    /**
+     * {@link #resolveVisibleLevels(ReferenceType, String, Long, Long)} の snapshot 版。
+     *
+     * <p>呼び出し元が既に {@link UserScopeRoleSnapshot} を保持している場合
+     * （例: 同一リクエスト内で {@code isSystemAdmin()} 等を別途参照する必要がある場合）に、
+     * SQL を再発行せず同じ snapshot から可視レベル集合を導出するために公開する。
+     * 純メモリ計算のみで DB アクセスは行わない。</p>
+     *
+     * @param scope    対象スコープ
+     * @param snapshot 事前に構築済みの {@link UserScopeRoleSnapshot}
+     * @return 行に依存せず判定できる {@link StandardVisibility} の集合（常に {@code PUBLIC} を含む）
+     */
+    public Set<StandardVisibility> resolveVisibleLevels(ScopeKey scope, UserScopeRoleSnapshot snapshot) {
+        Set<StandardVisibility> result = new HashSet<>();
+        result.add(StandardVisibility.PUBLIC);
+        if (snapshot.isMemberOf(scope)) {
+            result.add(StandardVisibility.SCOPE_AFFILIATED);
+        }
+        if (snapshot.hasRoleOrAbove(scope, "SUPPORTER")) {
+            result.add(StandardVisibility.SUPPORTERS_AND_ABOVE);
+        }
+        if (snapshot.hasRoleOrAbove(scope, "MEMBER")) {
+            result.add(StandardVisibility.MEMBERS_AND_ABOVE);
+        }
+        if (snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN")) {
+            result.add(StandardVisibility.DEPUTY_ADMINS_AND_ABOVE);
+        }
+        if (snapshot.hasRoleOrAbove(scope, "ADMIN")) {
+            result.add(StandardVisibility.ADMINS_AND_ABOVE);
+        }
+        if (snapshot.isMemberOfParentOrg(scope)) {
+            result.add(StandardVisibility.ORGANIZATION_WIDE);
+        }
+        return Set.copyOf(result);
+    }
+
+    /**
      * 親 ORG マップから「非アクティブな組織 ID」集合を返す（§11.6）。
      *
      * <p>現状 {@code organizations} テーブルに SUSPENDED 列は無く、

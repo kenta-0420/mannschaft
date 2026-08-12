@@ -1719,6 +1719,35 @@ Phase B〜D で各 Service の判定ロジックを Resolver 経由に切り替�
 - 同じ enum 値を持つ複数 Service の重複コードを削減
 - Repository 側の固定値フィルタ（`findByVisibility(PUBLIC)` 等）を必要に応じて動的に書き直し
 
+### 10.5 `resolveVisibleLevels` — SQL 述語化のための可視レベル解決 API（CMP-028 Phase A / 2026-08-12 追記）
+
+`filterAccessible` は「ID 群 → 可視 ID 群」の**事後フィルタ**であり、DB から 1 ページだけ取得してからメモリ上で絞ると、非公開行が混ざった際にページ内に歯抜けが生じる（要求件数より少ない件数しか返らない）。この歯抜けを SQL の `WHERE visibility IN (...)` で根治するため、`MembershipBatchQueryService` に**行に依存しない**（ID を引かない）「閲覧者 × スコープが到達できる `StandardVisibility` 集合」を返す API を追加した。
+
+```java
+package com.mannschaft.app.common.visibility;
+
+public class MembershipBatchQueryService {
+
+    /**
+     * 閲覧者 × スコープから、行を見ずに判定できる StandardVisibility 集合を返す。
+     * PUBLIC / SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE /
+     * DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE / ORGANIZATION_WIDE が対象。
+     * 行依存値（PRIVATE / FOLLOWERS_ONLY / CUSTOM_TEMPLATE / CUSTOM）は含めない。
+     */
+    public Set<StandardVisibility> resolveVisibleLevels(
+            ReferenceType refType, String scopeType, Long scopeId, Long viewerUserId);
+
+    /** snapshot 既知の場合の SQL 再発行なし版。 */
+    public Set<StandardVisibility> resolveVisibleLevels(ScopeKey scope, UserScopeRoleSnapshot snapshot);
+}
+```
+
+**同一意味論の担保**: 新しい判定器を作らないため、判定は `UserScopeRoleSnapshot.isMemberOf` / `hasRoleOrAbove` / `isMemberOfParentOrg` を呼ぶだけで構成する。これらは `AbstractContentVisibilityResolver.visibleByLevel` が同じ段を評価する際に呼ぶのと**全く同じ**メソッド呼び出しである。
+
+**除外**: `ORGANIZATION_AND_DESCENDANTS`（下向き再帰）は Phase B 時点の対象 6 経路のいずれにも使われないため、対応する `descendantScopes` は集計しない。
+
+**利用側（Phase B）**: 呼び出し元は返ってきた `Set<StandardVisibility>` を、機能固有 visibility enum への Mapper の**逆写像**（例: `ActivityVisibilityMapper.toFunctional` / `AlbumVisibilityMapper.toFunctional`）で変換し、Repository の `visibility IN (...)` 述語に渡す。逆写像が安全なのは、既存の `toStandard` 写像が単射（機能固有 enum の値ごとに異なる `StandardVisibility` へ写像される）であるため。機能固有 enum に `PUBLIC` 相当が存在しない場合（例: `AlbumVisibility`）、逆写像結果が空集合になり得る点に注意（呼び出し元は SQL を発行せず空ページを返すこと）。
+
 ---
 
 ## 11. セキュリティ考慮事項

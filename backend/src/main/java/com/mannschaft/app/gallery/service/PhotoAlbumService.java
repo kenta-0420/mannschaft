@@ -47,67 +47,92 @@ public class PhotoAlbumService {
     private final ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave3-B5: 書込CRUD（作成/更新/削除）の scope 認可用。 */
     private final AccessControlService accessControlService;
+    /** CMP-028 Phase B: 可視レベル解決に用いる F00 メンバーシップ照会サービス。 */
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     /**
      * アルバム一覧をページング取得する。
      *
-     * <p><b>F00 Phase E-5</b>: 旧来の visibility パラメータによる直接フィルタ（未実装・対応予定扱い）を廃止し、
-     * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
-     * 経由に一本化。ログイン中ユーザーの ID を {@link SecurityUtils#getCurrentUserIdOrNull()}
-     * で取得し、未認証の場合は {@code null} を渡す（PUBLIC のみ通過）。
-     * visibility クエリパラメータは後方互換のためシグネチャに残すが、判定は Resolver に委譲する。</p>
+     * <p><b>CMP-028 Phase B: 可視性の SQL 述語化（歯抜け根治）</b>: 旧実装は 1 ページ分を
+     * 無条件取得してから {@link ContentVisibilityChecker#filterAccessible} でメモリ上
+     * フィルタしており、非公開アルバムが混ざると要求件数より少ない件数しか返らない
+     * 「ページング歯抜け」があった（AC-6）。総件数も上界近似だった（AC-7）。</p>
+     *
+     * <p>本メソッドは {@code MembershipBatchQueryService#resolveVisibleLevels} が返す
+     * 可視 {@code StandardVisibility} 集合を
+     * {@link com.mannschaft.app.common.visibility.mapping.AlbumVisibilityMapper#toFunctional}
+     * で {@link AlbumVisibility} 集合へ逆写像し、SQL の {@code WHERE visibility IN (...)}
+     * へ渡す（{@link AlbumVisibility} は 3 値のみで行依存値を持たないため歯抜けが
+     * 数学的にゼロになる）。{@link AlbumVisibility} には {@code PUBLIC} 相当が無いため、
+     * 逆写像結果が空集合になり得る（非所属・未認証）。その場合は SQL を発行せず
+     * 空ページを返す（{@code IN ()} は不正 SQL のため）。</p>
      */
     public Page<AlbumResponse> listAlbums(Long teamId, Long organizationId, String query,
                                              LocalDate from, LocalDate to, String visibility,
                                              Pageable pageable) {
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        String scopeType = teamId != null ? "TEAM" : "ORGANIZATION";
+        Long scopeId = teamId != null ? teamId : organizationId;
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey(scopeType, scopeId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<AlbumVisibility> visibleVisibilities =
+                com.mannschaft.app.common.visibility.mapping.AlbumVisibilityMapper.toFunctional(visibleLevels);
+
+        if (visibleVisibilities.isEmpty()) {
+            // 非所属・未認証: AlbumVisibility には PUBLIC 相当が無いため何も見えない（fail-closed）。
+            // SQL の IN () は不正になるため発行せず空ページを返す。
+            return Page.empty(pageable);
+        }
+
         Page<PhotoAlbumEntity> page;
         if (query != null && !query.isBlank()) {
             if (teamId != null) {
-                page = albumRepository.findByTeamIdAndTitleContainingOrderByEventDateDesc(teamId, query, pageable);
+                page = albumRepository.findByTeamIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+                        teamId, query, visibleVisibilities, pageable);
             } else {
-                page = albumRepository.findByOrganizationIdAndTitleContainingOrderByEventDateDesc(organizationId, query, pageable);
+                page = albumRepository.findByOrganizationIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+                        organizationId, query, visibleVisibilities, pageable);
             }
         } else {
             if (teamId != null) {
-                page = albumRepository.findByTeamIdOrderByEventDateDesc(teamId, pageable);
+                page = albumRepository.findByTeamIdAndVisibilityInOrderByEventDateDesc(
+                        teamId, visibleVisibilities, pageable);
             } else {
-                page = albumRepository.findByOrganizationIdOrderByEventDateDesc(organizationId, pageable);
+                page = albumRepository.findByOrganizationIdAndVisibilityInOrderByEventDateDesc(
+                        organizationId, visibleVisibilities, pageable);
             }
         }
 
-        // F00 Phase E-5: ContentVisibilityChecker 経由で可視性フィルタリング
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。通常は 1 件も落ちない。
         List<PhotoAlbumEntity> all = page.getContent();
         if (all.isEmpty()) {
             return page.map(galleryMapper::toAlbumResponse);
         }
-
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.PHOTO_ALBUM,
                 all.stream().map(PhotoAlbumEntity::getId).collect(Collectors.toSet()),
                 viewerUserId);
-
+        if (accessibleIds.size() == all.size()) {
+            return page.map(galleryMapper::toAlbumResponse);
+        }
+        List<Long> divergentIds = all.stream()
+                .map(PhotoAlbumEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("アルバム一覧: SQL 述語と F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "teamId={}, organizationId={}, viewerUserId={}, divergentIds={}",
+                teamId, organizationId, viewerUserId, divergentIds);
         List<PhotoAlbumEntity> filtered = all.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-
-        // 総件数バグ是正: 旧実装は filtered.size()（＝このページで可視だった件数）を
-        // そのまま総件数に渡しており、実際は100件あっても「3件・1ページ」に化けて
-        // FEのページャが2ページ目以降へ辿り着けなかった。DBが算出した総件数
-        // （絞り込み前）から「このページでF00が落とした件数」だけを差し引く形に改める
-        // （既存流儀: ActivityResultService#listActivities / TournamentService#listTournaments）。
-        // 【既知の残務】本メソッドは SQL で1ページ分（size=limit）を取得してからF00で
-        // メモリ上フィルタするため、他人の非公開アルバム等が混ざると要求件数より
-        // 少ない件数しか返らない「ページング歯抜け」が残る。総件数もその近似値になる。
-        // 根治には F00 側に「閲覧者の可視レベル解決API」を新設しSQL述語へ翻訳する必要があり、
-        // ActivityResultService の Javadoc と同じ理由でここでは見送る。
-        long excluded = (long) page.getNumberOfElements() - filtered.size();
-        long totalElements = Math.max(0L, page.getTotalElements() - excluded);
-
         return new PageImpl<>(
                 filtered.stream().map(galleryMapper::toAlbumResponse).collect(Collectors.toList()),
                 pageable,
-                totalElements);
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**

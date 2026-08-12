@@ -33,6 +33,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,6 +49,8 @@ class ActivityResultServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     @Mock private com.mannschaft.app.activity.service.ActivityScopeAccessGuard scopeAccessGuard;
+    /** CMP-028 Phase B: 可視レベル解決に用いる F00 メンバーシップ照会サービスのモック。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     @InjectMocks
     private ActivityResultService service;
@@ -399,6 +402,86 @@ class ActivityResultServiceTest {
 
             service.addParticipants(ACTIVITY_ID, USER_ID, request);
             // No new save since already exists
+        }
+    }
+
+    @Nested
+    @DisplayName("listActivities — CMP-028 Phase B: SQL述語化")
+    class ListActivities {
+
+        /**
+         * AC-5/AC-8: 可視レベル解決 → ActivityVisibility への逆写像 → SQL の visibility IN 述語、
+         * という新しい経路が呼ばれることを検証する。旧来の
+         * findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc（無条件取得）が
+         * 呼ばれなくなったことも合わせて確認する（メモリフィルタの完全撤去）。
+         */
+        @Test
+        @DisplayName("正常系: resolveVisibleLevelsの結果をvisibility IN述語に渡してSQLで絞る")
+        void 一覧_SQL述語で絞り込む() {
+            com.mannschaft.app.common.visibility.ScopeKey scope =
+                    new com.mannschaft.app.common.visibility.ScopeKey("TEAM", SCOPE_ID);
+            com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                    com.mannschaft.app.common.visibility.UserScopeRoleSnapshot.empty();
+            given(membershipBatchQueryService.snapshotForUser(
+                    eq(USER_ID), eq(Set.of(scope)), eq(Set.of(scope))))
+                    .willReturn(snapshot);
+            given(membershipBatchQueryService.resolveVisibleLevels(eq(scope), eq(snapshot)))
+                    .willReturn(Set.of(com.mannschaft.app.common.visibility.StandardVisibility.PUBLIC));
+
+            ActivityResultEntity activity = ActivityResultEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID)
+                    .visibility(ActivityVisibility.PUBLIC)
+                    .status(ActivityStatus.PUBLISHED)
+                    .title("活動記録").build();
+            org.springframework.test.util.ReflectionTestUtils.setField(activity, "id", ACTIVITY_ID);
+            PageRequest pageable = PageRequest.of(0, 20);
+            Page<ActivityResultEntity> page = new PageImpl<>(List.of(activity), pageable, 1);
+
+            given(resultRepository.findVisibleByScopeTypeAndScopeId(
+                    eq(ActivityScopeType.TEAM), eq(SCOPE_ID), eq(Set.of(ActivityVisibility.PUBLIC)),
+                    eq(USER_ID), eq(false), eq(pageable)))
+                    .willReturn(page);
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.ACTIVITY_RESULT), any(), eq(USER_ID)))
+                    .willReturn(Set.of(ACTIVITY_ID));
+
+            Page<ActivityResultEntity> result = service.listActivities(
+                    USER_ID, ActivityScopeType.TEAM, SCOPE_ID, null, pageable);
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getId()).isEqualTo(ACTIVITY_ID);
+            verify(resultRepository, never())
+                    .findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(any(), any(), any());
+        }
+
+        /**
+         * templateId 指定時は findVisibleByScopeTypeAndScopeIdAndTemplateId 経路が呼ばれる。
+         */
+        @Test
+        @DisplayName("templateId指定時はtemplateId絞り込み版クエリを呼ぶ")
+        void templateId指定時() {
+            Long templateId = 5L;
+            com.mannschaft.app.common.visibility.ScopeKey scope =
+                    new com.mannschaft.app.common.visibility.ScopeKey("TEAM", SCOPE_ID);
+            com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                    com.mannschaft.app.common.visibility.UserScopeRoleSnapshot.empty();
+            given(membershipBatchQueryService.snapshotForUser(
+                    eq(USER_ID), eq(Set.of(scope)), eq(Set.of(scope))))
+                    .willReturn(snapshot);
+            given(membershipBatchQueryService.resolveVisibleLevels(eq(scope), eq(snapshot)))
+                    .willReturn(Set.of(com.mannschaft.app.common.visibility.StandardVisibility.PUBLIC));
+
+            PageRequest pageable = PageRequest.of(0, 20);
+            Page<ActivityResultEntity> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+            given(resultRepository.findVisibleByScopeTypeAndScopeIdAndTemplateId(
+                    eq(ActivityScopeType.TEAM), eq(SCOPE_ID), eq(templateId),
+                    eq(Set.of(ActivityVisibility.PUBLIC)), eq(USER_ID), eq(false), eq(pageable)))
+                    .willReturn(emptyPage);
+
+            Page<ActivityResultEntity> result = service.listActivities(
+                    USER_ID, ActivityScopeType.TEAM, SCOPE_ID, templateId, pageable);
+
+            assertThat(result.getContent()).isEmpty();
         }
     }
 }
