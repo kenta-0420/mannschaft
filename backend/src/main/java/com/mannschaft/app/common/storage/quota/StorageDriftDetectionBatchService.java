@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +78,12 @@ public class StorageDriftDetectionBatchService {
     /** R2 ListObjectsV2 のページングサイズ（Class A 課金を抑えるため最大値） */
     private static final int LIST_PAGE_SIZE = 1000;
 
+    /** サブスクリプション走査 1 ページあたりの抽出件数。 */
+    private static final int SUBSCRIPTION_PAGE_SIZE = 200;
+
+    /** サブスクリプション走査の暴走を防ぐ最大ページ数。 */
+    private static final int SUBSCRIPTION_MAX_PAGES = 500;
+
     /**
      * feature_type → R2 トップレベルルートのマッピング。
      *
@@ -125,27 +132,49 @@ public class StorageDriftDetectionBatchService {
         log.info("F13 ドリフト検出バッチ 開始 (migrationMode={})", migrationModeEnabled);
         int correctedCount = 0;
         int skippedCount = 0;
+        int totalCount = 0;
 
-        List<StorageSubscriptionEntity> subscriptions = subscriptionRepository.findAll();
-        for (StorageSubscriptionEntity sub : subscriptions) {
-            try {
-                long r2Bytes = sumR2BytesForSubscription(sub);
-                log.debug("F13 R2 集計完了: subscriptionId={}, scopeType={}, scopeId={}, r2Bytes={}",
-                        sub.getId(), sub.getScopeType(), sub.getScopeId(), r2Bytes);
-                int corrected = correctSubscriptionDrift(sub, r2Bytes);
-                if (corrected > 0) {
-                    correctedCount += corrected;
-                } else {
-                    skippedCount++;
+        // 絞り込み条件の無い全件走査。ドリフト修正（used_bytes 更新）を行っても対象母集合は
+        // 縮まないため、ページ0固定のドレインは無限ループになる。id 昇順キーセットページングで
+        // カーソルを必ず前進させる。
+        long cursor = 0L;
+        for (int page = 0; page < SUBSCRIPTION_MAX_PAGES; page++) {
+            List<StorageSubscriptionEntity> batch =
+                    subscriptionRepository.findAllAfterId(cursor, PageRequest.of(0, SUBSCRIPTION_PAGE_SIZE));
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            for (StorageSubscriptionEntity sub : batch) {
+                totalCount++;
+                try {
+                    long r2Bytes = sumR2BytesForSubscription(sub);
+                    log.debug("F13 R2 集計完了: subscriptionId={}, scopeType={}, scopeId={}, r2Bytes={}",
+                            sub.getId(), sub.getScopeType(), sub.getScopeId(), r2Bytes);
+                    int corrected = correctSubscriptionDrift(sub, r2Bytes);
+                    if (corrected > 0) {
+                        correctedCount += corrected;
+                    } else {
+                        skippedCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("F13 ドリフト修正失敗: subscriptionId={}, scopeType={}, scopeId={}, error={}",
+                            sub.getId(), sub.getScopeType(), sub.getScopeId(), e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("F13 ドリフト修正失敗: subscriptionId={}, scopeType={}, scopeId={}, error={}",
-                        sub.getId(), sub.getScopeType(), sub.getScopeId(), e.getMessage(), e);
+            }
+
+            cursor = batch.get(batch.size() - 1).getId();
+            if (batch.size() < SUBSCRIPTION_PAGE_SIZE) {
+                break;
+            }
+            if (page == SUBSCRIPTION_MAX_PAGES - 1) {
+                log.warn("F13 ドリフト検出バッチ: SUBSCRIPTION_MAX_PAGES={} に到達したため打ち切り",
+                        SUBSCRIPTION_MAX_PAGES);
             }
         }
 
         log.info("F13 ドリフト検出バッチ 完了: subscriptions={}, corrected={}, skipped={}",
-                subscriptions.size(), correctedCount, skippedCount);
+                totalCount, correctedCount, skippedCount);
     }
 
     /**

@@ -254,6 +254,16 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("ロットD: 既にアーカイブ済みチームの再アーカイブは409（TEAM_002）")
+        void 既にアーカイブ済みの再アーカイブは409() throws Exception {
+            setAuthentication(adminAId);
+            mockMvc.perform(patch("/api/v1/teams/{slug}/archive", teamASlug))
+                    .andExpect(status().isOk());
+            mockMvc.perform(patch("/api/v1/teams/{slug}/archive", teamASlug))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
         @DisplayName("チームADMINであっても復元は403（SYSTEM_ADMIN 専用であることを固定）")
         void チームADMINの復元は403() throws Exception {
             setAuthentication(adminAId);
