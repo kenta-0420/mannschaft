@@ -4,9 +4,11 @@ import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
+import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.SharePostRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.publicview.dto.PublicPostCommentRequest;
 import com.mannschaft.app.publicview.service.PublicPostCommentService;
@@ -42,6 +44,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li><b>AC-12</b>: published_at が NULL の DRAFT は遷移しない</li>
  *   <li><b>AC-13</b>: 論理削除済み（deleted_at 非 NULL）は遷移しない</li>
  *   <li><b>AC-15</b>: 対象抽出が件数比例のクエリ（N+1）を出さず、取得件数に上限がある</li>
+ *   <li><b>AC-18</b>: 公開済み記事を DRAFT へ戻すと published_at が NULL になる（勝手な再公開の根治）</li>
+ *   <li><b>AC-19</b>: リビジョン復元で DRAFT に戻った記事はバッチに拾われない</li>
+ *   <li><b>AC-20</b>: 予約中（DRAFT ＋ 未来 published_at）の記事は再保存・更新しても予約が維持される</li>
  * </ul>
  *
  * <p><b>クラスに {@code @Transactional} を付けない</b> — 実処理は
@@ -58,6 +63,12 @@ class BlogScheduledPublishPersistenceIntegrationTest extends AbstractMySqlIntegr
     private BlogScheduledPublishService scheduledPublishService;
     @Autowired
     private BlogPostRepository postRepository;
+    @Autowired
+    private BlogPostService postService;
+    @Autowired
+    private BlogPostRevisionService revisionService;
+    @Autowired
+    private BlogPostRevisionRepository revisionRepository;
     @Autowired
     private BlogPostShareService shareService;
     @Autowired
@@ -143,19 +154,22 @@ class BlogScheduledPublishPersistenceIntegrationTest extends AbstractMySqlIntegr
 
         Integer published = batchService.publishScheduledPosts();
 
-        // バッチはスコープ横断（全チーム・全組織）で対象を拾うため、件数を「ちょうど 1」で
-        // 固定してはならない。本クラスは @Transactional を付けず実 DB にコミットするため、
-        // 同一 DB を共有する兄弟テスト（AC-9 が基準時刻ちょうどの予約記事を残す等）が
-        // 同じ回に拾われる。ここで検証すべきは「対象記事が公開されたこと」であり、
-        // それは直後の status / 公開一覧の assert が担う。
+        // バッチはスコープ横断（全チーム・全組織）で対象を拾うため、戻り値の件数そのものを
+        // 「ちょうど 1」で固定することはできない。本クラスは @Transactional を付けず実 DB に
+        // コミットするため、同一 DB を共有する兄弟テスト（AC-9 が基準時刻ちょうどの予約記事を
+        // 残す等）が同じ回に拾われるからである。
+        // ただし戻り値を isPositive() だけで済ませると「何か 1 件公開された」しか言えず検証が
+        // 弱い。そこで teamId をテストごとに一意採番（nextId()）している性質を使い、
+        // 「このテスト専用スコープでちょうど 1 件が公開された」という厳密な件数 assert を
+        // 別途置いて弱体化を補う。
         assertThat(published).as("バッチが公開を行った（本記事を含む）").isPositive();
         assertThat(reload(postId).getStatus()).isEqualTo(PostStatus.PUBLISHED);
         Page<BlogPostEntity> publicPosts =
                 postRepository.findPublicPostsByTeamId(teamId, PageRequest.of(0, 20));
         assertThat(publicPosts.getContent())
-                .as("遷移後は公開一覧に出現する")
+                .as("遷移後は公開一覧に出現する（本テスト専用 teamId でちょうど 1 件）")
                 .extracting(BlogPostEntity::getId)
-                .contains(postId);
+                .containsExactly(postId);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -286,5 +300,90 @@ class BlogScheduledPublishPersistenceIntegrationTest extends AbstractMySqlIntegr
         assertThat(due.size())
                 .as("取得件数は MAX_POSTS_PER_RUN で頭打ちになる")
                 .isLessThanOrEqualTo(BlogScheduledPublishService.MAX_POSTS_PER_RUN);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // AC-18 / AC-19 / AC-20: 非公開化と予約の区別（勝手な再公開の根治）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("AC-18: 公開済み記事を DRAFT へ戻すと published_at が NULL になり再公開されない")
+    void ac18_非公開化で公開日時が消える() {
+        Long teamId = nextId();
+        Long authorId = nextId();
+        LocalDateTime past = LocalDateTime.now().minusDays(3);
+        Long postId = seedPost(teamId, authorId, PostStatus.PUBLISHED, past).getId();
+
+        postService.changeStatus(postId, authorId, new PublishRequest("DRAFT", null, null));
+
+        BlogPostEntity reloaded = reload(postId);
+        assertThat(reloaded.getStatus()).isEqualTo(PostStatus.DRAFT);
+        assertThat(reloaded.getPublishedAt())
+                .as("過去の published_at が残ると『公開時刻に達した予約記事』と区別できず"
+                        + "毎分のバッチに勝手に再公開される")
+                .isNull();
+
+        assertThat(scheduledPublishService.findDuePostIds(LocalDateTime.now()))
+                .as("非公開化した記事はバッチの対象に入らない")
+                .doesNotContain(postId);
+
+        batchService.publishScheduledPosts();
+        assertThat(reload(postId).getStatus())
+                .as("バッチを回しても非公開のままでなければならない")
+                .isEqualTo(PostStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("AC-19: リビジョン復元で DRAFT に戻った記事はバッチに拾われない")
+    void ac19_リビジョン復元後の下書きは再公開されない() {
+        Long teamId = nextId();
+        Long authorId = nextId();
+        LocalDateTime past = LocalDateTime.now().minusDays(2);
+        BlogPostEntity post = seedPost(teamId, authorId, PostStatus.PUBLISHED, past);
+        Long postId = post.getId();
+
+        // 復元元のリビジョンを作る
+        revisionService.saveRevision(post, authorId);
+        Long revisionId = revisionRepository.findByBlogPostIdOrderByCreatedAtDesc(postId)
+                .get(0).getId();
+
+        revisionService.restoreRevision(postId, revisionId, authorId);
+
+        BlogPostEntity restored = reload(postId);
+        assertThat(restored.getStatus()).isEqualTo(PostStatus.DRAFT);
+        assertThat(restored.getPublishedAt())
+                .as("リビジョン復元は非公開化であり、公開日時を残してはならない")
+                .isNull();
+
+        assertThat(scheduledPublishService.findDuePostIds(LocalDateTime.now()))
+                .as("復元で下書きに戻った記事がバッチに拾われると、意図せず旧内容が再公開される")
+                .doesNotContain(postId);
+
+        batchService.publishScheduledPosts();
+        assertThat(reload(postId).getStatus())
+                .as("バッチ実行後も DRAFT のままでなければならない")
+                .isEqualTo(PostStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("AC-20: 予約中（DRAFT ＋ 未来 published_at）は再保存・更新しても予約が維持される")
+    void ac20_予約中の記事は予約が維持される() {
+        Long teamId = nextId();
+        Long authorId = nextId();
+        LocalDateTime future = LocalDateTime.now().plusDays(1).withNano(0);
+        Long postId = seedPost(teamId, authorId, PostStatus.DRAFT, future).getId();
+
+        // DRAFT のまま再度 DRAFT へ変更しても予約設定は失われない
+        postService.changeStatus(postId, authorId, new PublishRequest("DRAFT", null, null));
+
+        BlogPostEntity reloaded = reload(postId);
+        assertThat(reloaded.getStatus()).isEqualTo(PostStatus.DRAFT);
+        assertThat(reloaded.getPublishedAt())
+                .as("未来の published_at は『予約設定そのもの』であり消してはならない")
+                .isEqualTo(future);
+
+        assertThat(scheduledPublishService.findDuePostIds(LocalDateTime.now()))
+                .as("予約時刻前なのでまだバッチ対象ではない")
+                .doesNotContain(postId);
     }
 }

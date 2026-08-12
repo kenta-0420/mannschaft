@@ -2,7 +2,6 @@ package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.CmsMapper;
-import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
 import com.mannschaft.app.cms.dto.RevisionResponse;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
@@ -83,7 +82,10 @@ public class BlogPostRevisionService {
         entity.update(revision.getTitle(), entity.getSlug(), revision.getBody(),
                 entity.getExcerpt(), entity.getCoverImageUrl(), entity.getVisibility(),
                 entity.getPriority(), calculateReadingTime(revision.getBody()));
-        entity.changeStatus(PostStatus.DRAFT);
+        // 復元した内容は未公開扱いに戻す。issue #2616 の回帰対策（AC-19）として
+        // BlogPostEntity#unpublish が到来済みの published_at を破棄するため、
+        // 復元で下書きに戻った記事が予約公開バッチに再公開されることはない。
+        entity.unpublish();
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("リビジョン復元: postId={}, revisionId={}", postId, revisionId);

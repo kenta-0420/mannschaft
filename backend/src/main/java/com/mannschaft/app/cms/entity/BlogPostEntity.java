@@ -167,9 +167,48 @@ public class BlogPostEntity extends BaseEntity {
 
     /**
      * 公開ステータスを変更する。
+     *
+     * <p><b>DRAFT へ戻す遷移では公開日時（{@code published_at}）を破棄する</b>
+     * （issue #2616 の回帰対策・AC-18/19）。予約公開バッチ
+     * {@code BlogScheduledPublishBatchService} の走査条件は
+     * 「{@code status = DRAFT} かつ {@code published_at <= 現在時刻}」であり、
+     * 過去の公開日時を残したまま DRAFT へ戻すと、意図的に非公開化した記事が
+     * 「公開時刻を過ぎた予約記事」と区別できず毎分のバッチに再公開されてしまう。
+     * 仕様 {@code docs/features/F06.1_cms_blog.md} が定める
+     * 「{@code published_at} が NULL ＝ 予約なし」の意味論に揃え、
+     * 遷移そのものの中で不変条件を保証する（呼び出し側に委ねない）。</p>
+     *
+     * <p>ただし<b>未来の {@code published_at}（＝予約中）は消してはならない</b>。
+     * 予約中の記事は DRAFT のまま未来時刻を持つのが正常な状態であり、
+     * DRAFT → DRAFT の再保存やセルフレビューでの差し戻しで予約が失われては本末転倒である。
+     * したがって破棄するのは「過去または現在時刻の公開日時」だけに限定する。</p>
+     *
+     * <p>ARCHIVED など DRAFT 以外への遷移では公開日時を保持する。アーカイブは
+     * 「公開した事実を残したまま一覧から下げる」操作であり公開日時は履歴として意味を持つうえ、
+     * バッチは {@code status = DRAFT} しか走査しないため再公開の危険もない。
+     * ARCHIVED から DRAFT へ戻す場合は本メソッドの DRAFT 分岐で公開日時が破棄されるため、
+     * 経路が増えても不変条件は漏れない。</p>
      */
     public void changeStatus(PostStatus newStatus) {
+        if (newStatus == PostStatus.DRAFT) {
+            unpublish();
+            return;
+        }
         this.status = newStatus;
+    }
+
+    /**
+     * 公開状態を解除して下書きへ戻す（issue #2616 の回帰対策）。
+     *
+     * <p>過去の公開日時を残したまま DRAFT へ戻すと予約公開バッチに再公開されるため、
+     * 「既に公開時刻が到来している公開日時」は NULL に消す。
+     * 未来の公開日時は予約設定そのものなので維持する（AC-20）。</p>
+     */
+    public void unpublish() {
+        this.status = PostStatus.DRAFT;
+        if (this.publishedAt != null && !this.publishedAt.isAfter(LocalDateTime.now())) {
+            this.publishedAt = null;
+        }
     }
 
     /**
