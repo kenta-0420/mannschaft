@@ -1482,6 +1482,8 @@ public class GlobalExceptionHandler {
             Map.entry("CMS_023", HttpStatus.CONFLICT),
             Map.entry("CMS_024", HttpStatus.NOT_FOUND),
             Map.entry("CMS_025", HttpStatus.NOT_FOUND),
+            // CMS_026（予約公開待ち記事の共有不可・issue #2616）は記事の状態と操作の競合 → 409
+            Map.entry("CMS_026", HttpStatus.CONFLICT),
             // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）は notificationId↔pathスコープ
             // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。

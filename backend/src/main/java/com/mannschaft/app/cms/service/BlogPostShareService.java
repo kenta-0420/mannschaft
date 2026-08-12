@@ -49,6 +49,18 @@ public class BlogPostShareService {
         BlogPostEntity entity = findPostOrThrow(postId);
         checkWriteAccess(entity, userId);
 
+        // 予約公開待ちの記事は共有不可（issue #2616・AC-6）。
+        // 予約中の記事は「公開時刻まで DRAFT に留め置く」ことで公開系クエリから隔離しているが、
+        // 共有は記事を他スコープへ配る別経路であり、ここを塞がないと予約時刻より前に露出する
+        // （予約の意味が失われる）。共有したい場合は公開時刻の到来を待つか、予約を解除する。
+        //
+        // 素の下書き（published_at IS NULL の DRAFT）は従来どおり共有できる。こちらは
+        // 「公開前の記事を共有先スコープに見せて意見をもらう」既存の運用であり、
+        // 認可契約テスト CmsBlogPostWriteScopeContractIT が 201 を固定している既定の振る舞い。
+        if (isScheduled(entity)) {
+            throw new BusinessException(CmsErrorCode.SCHEDULED_POST_SHARE_NOT_ALLOWED);
+        }
+
         // ソーシャルプロフィール名義の記事は共有不可
         if (entity.getSocialProfileId() != null) {
             throw new BusinessException(CmsErrorCode.SOCIAL_PROFILE_SHARE_NOT_ALLOWED);
@@ -131,6 +143,18 @@ public class BlogPostShareService {
         entity.setPreviewToken(null, null);
         postRepository.save(entity);
         log.info("プレビュートークン無効化: postId={}", id);
+    }
+
+    /**
+     * 記事が「予約公開待ち」かを判定する（issue #2616）。
+     *
+     * <p>予約中は {@code status = DRAFT} のまま {@code published_at} に未来時刻を持つ
+     * （{@code PostStatus.SCHEDULED} は新設しない。{@code BlogPostEntity#publish} 参照）。</p>
+     */
+    private boolean isScheduled(BlogPostEntity entity) {
+        return entity.getStatus() == PostStatus.DRAFT
+                && entity.getPublishedAt() != null
+                && entity.getPublishedAt().isAfter(LocalDateTime.now());
     }
 
     /**

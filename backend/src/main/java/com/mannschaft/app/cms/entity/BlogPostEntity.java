@@ -173,11 +173,45 @@ public class BlogPostEntity extends BaseEntity {
     }
 
     /**
-     * 公開日時を設定する。
+     * 公開日時を設定する（予約公開の判定を含む・issue #2616 / F06.1 §2210-2226）。
+     *
+     * <p><b>公開日時が未来なら「予約」であり、即時公開してはならない。</b>
+     * 予約中の記事は {@code status = DRAFT} のまま {@code published_at} に未来時刻を持つ
+     * （{@code PostStatus.SCHEDULED} は新設しない）。公開系クエリはすべて
+     * {@code status = PUBLISHED} の等値判定であるため、予約中記事は
+     * 「まだ DRAFT だから公開系に出ない」という構造的な理由で漏れない。
+     * 公開時刻に達した記事は {@code BlogScheduledPublishBatchService} が
+     * {@link #completeScheduledPublish()} で {@code PUBLISHED} へ遷移させる。</p>
+     *
+     * <p>プレビュートークンは<b>実際に公開した場合のみ</b>破棄する。予約中の記事は
+     * まだ公開前でありレビュー用のプレビュー URL が生き続ける必要があるため、
+     * 予約設定でトークンを消してはならない。</p>
+     *
+     * @param publishedAt 公開日時（{@code null} なら現在時刻＝即時公開）
      */
     public void publish(LocalDateTime publishedAt) {
+        LocalDateTime effectiveAt = publishedAt != null ? publishedAt : LocalDateTime.now();
+        this.publishedAt = effectiveAt;
+
+        if (effectiveAt.isAfter(LocalDateTime.now())) {
+            // 予約公開: 公開時刻まで DRAFT に留め置き、バッチの遷移を待つ。
+            this.status = PostStatus.DRAFT;
+            return;
+        }
+
         this.status = PostStatus.PUBLISHED;
-        this.publishedAt = publishedAt;
+        this.previewToken = null;
+        this.previewTokenExpiresAt = null;
+    }
+
+    /**
+     * 予約公開バッチが公開時刻に達した記事を公開へ遷移させる（issue #2616）。
+     *
+     * <p>{@code published_at} は<b>ユーザーが指定した予約時刻のまま保持する</b>
+     * （バッチ実行時刻で上書きしない。最大 1 分の実行遅延が公開日時に混入するのを防ぐ）。</p>
+     */
+    public void completeScheduledPublish() {
+        this.status = PostStatus.PUBLISHED;
         this.previewToken = null;
         this.previewTokenExpiresAt = null;
     }

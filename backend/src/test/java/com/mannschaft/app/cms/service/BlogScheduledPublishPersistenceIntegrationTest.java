@@ -143,7 +143,12 @@ class BlogScheduledPublishPersistenceIntegrationTest extends AbstractMySqlIntegr
 
         Integer published = batchService.publishScheduledPosts();
 
-        assertThat(published).as("1 件が公開される").isEqualTo(1);
+        // バッチはスコープ横断（全チーム・全組織）で対象を拾うため、件数を「ちょうど 1」で
+        // 固定してはならない。本クラスは @Transactional を付けず実 DB にコミットするため、
+        // 同一 DB を共有する兄弟テスト（AC-9 が基準時刻ちょうどの予約記事を残す等）が
+        // 同じ回に拾われる。ここで検証すべきは「対象記事が公開されたこと」であり、
+        // それは直後の status / 公開一覧の assert が担う。
+        assertThat(published).as("バッチが公開を行った（本記事を含む）").isPositive();
         assertThat(reload(postId).getStatus()).isEqualTo(PostStatus.PUBLISHED);
         Page<BlogPostEntity> publicPosts =
                 postRepository.findPublicPostsByTeamId(teamId, PageRequest.of(0, 20));
