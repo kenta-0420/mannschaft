@@ -688,6 +688,41 @@ class FormsScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // ロットDステータス契約（FORM_004/008）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ロットDステータス契約（INVALID_TEMPLATE_STATUS/EDIT_AFTER_SUBMIT_NOT_ALLOWED）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("既にPUBLISHEDなテンプレートの再公開は409（INVALID_TEMPLATE_STATUS）")
+        void 公開済みテンプレートの再公開は409() throws Exception {
+            // templateAId は setUp で既に PUBLISHED 済み。
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/form-templates/{id}/publish", teamAId, templateAId))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("SUBMITTED済み提出の編集は409（EDIT_AFTER_SUBMIT_NOT_ALLOWED）")
+        void 提出後の編集は409() throws Exception {
+            // submissionAId は setUp で既に submit() 済み。
+            setAuth(memberAId);
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("fieldKey", "name");
+            value.put("fieldType", "TEXT");
+            value.put("textValue", "更新後");
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("values", List.of(value));
+            mockMvc.perform(put("/api/v1/teams/{teamId}/form-submissions/{id}", teamAId, submissionAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
