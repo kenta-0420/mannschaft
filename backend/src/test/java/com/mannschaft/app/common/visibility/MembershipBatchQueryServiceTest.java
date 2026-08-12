@@ -665,6 +665,187 @@ class MembershipBatchQueryServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("CMP-028 Phase A: resolveVisibleLevels — 行に依存しない可視レベル集合")
+    class ResolveVisibleLevels {
+
+        private static final ReferenceType REF_TYPE = ReferenceType.ACTIVITY_RESULT;
+
+        /**
+         * AC-2（fail-closed）を赤にするテスト: 未認証（userId=null）では PUBLIC のみが返ることを検証する。
+         * 実装ミスで PUBLIC 以外（例: SCOPE_AFFILIATED）が漏れて返ると red になる。
+         */
+        @Test
+        @DisplayName("AC-2: 未認証（userId=null）は PUBLIC のみ（fail-closed）")
+        void 未認証はPUBLICのみ() {
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, null);
+
+            assertThat(result).containsExactly(StandardVisibility.PUBLIC);
+            verifyNoInteractions(userRoleRepository, roleRepository, scopeAncestorResolver,
+                    organizationRepository, membershipRepository);
+        }
+
+        /**
+         * AC-3（非所属）を赤にするテスト: スコープに所属しないユーザーは PUBLIC のみ。
+         * 実装ミスでロール不在なのに SCOPE_AFFILIATED 等が漏れると red になる。
+         */
+        @Test
+        @DisplayName("AC-3: 非所属ユーザーは PUBLIC のみ")
+        void 非所属ユーザーはPUBLICのみ() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactly(StandardVisibility.PUBLIC);
+        }
+
+        /**
+         * AC-3（MEMBER）を赤にするテスト: MEMBER は SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE /
+         * MEMBERS_AND_ABOVE を含み、DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE は含まない。
+         * 実装ミスで閾値境界がずれると red になる。
+         */
+        @Test
+        @DisplayName("AC-3: MEMBER は MEMBERS_AND_ABOVE までを含み ADMIN 系は含まない")
+        void MEMBERの可視集合() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L))).thenReturn(List.of(role(50L, "MEMBER")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE);
+            assertThat(result).doesNotContain(
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE, StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3（最重要 / javadoc 是正確認）を赤にするテスト: ADMINS_AND_ABOVE は ADMIN のみで
+         * DEPUTY_ADMIN を<strong>含まない</strong>。実装が旧・誤った javadoc
+         * （「ADMIN / DEPUTY_ADMIN の両方」）通りに作られていると、DEPUTY_ADMIN でも
+         * ADMINS_AND_ABOVE が集合に入ってしまい red になる。
+         */
+        @Test
+        @DisplayName("AC-3: DEPUTY_ADMIN は DEPUTY_ADMINS_AND_ABOVE のみで ADMINS_AND_ABOVE は含まない")
+        void DEPUTY_ADMINはADMINS_AND_ABOVEを含まない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 51L)));
+            when(roleRepository.findAllById(Set.of(51L))).thenReturn(List.of(role(51L, "DEPUTY_ADMIN")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).contains(StandardVisibility.DEPUTY_ADMINS_AND_ABOVE);
+            assertThat(result).doesNotContain(StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3: ADMIN は全段（ADMINS_AND_ABOVE を含む）を得る。
+         */
+        @Test
+        @DisplayName("AC-3: ADMIN は ADMINS_AND_ABOVE を含む全段を得る")
+        void ADMINは全段() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 52L)));
+            when(roleRepository.findAllById(Set.of(52L))).thenReturn(List.of(role(52L, "ADMIN")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE,
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE,
+                    StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3: SUPPORTER は SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE のみ。MEMBERS_AND_ABOVE は含まない。
+         */
+        @Test
+        @DisplayName("AC-3: SUPPORTER は SUPPORTERS_AND_ABOVE までを含み MEMBERS_AND_ABOVE は含まない")
+        void SUPPORTERの可視集合() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 53L)));
+            when(roleRepository.findAllById(Set.of(53L))).thenReturn(List.of(role(53L, "SUPPORTER")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE);
+            assertThat(result).doesNotContain(StandardVisibility.MEMBERS_AND_ABOVE);
+        }
+
+        /**
+         * AC-4（最重要）を赤にするテスト: SystemAdmin であっても、行に依存する値
+         * （PRIVATE / FOLLOWERS_ONLY / CUSTOM_TEMPLATE / CUSTOM）は集合に含まれてはならない。
+         * これらを含めてしまう実装が混入すると red になる（SQL 述語が誤って広がる事故の検出）。
+         */
+        @Test
+        @DisplayName("AC-4: SystemAdmin でも行依存値（PRIVATE等）は集合に含まれない")
+        void SystemAdminでも行依存値は含まれない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(1L);
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).doesNotContain(
+                    StandardVisibility.PRIVATE,
+                    StandardVisibility.FOLLOWERS_ONLY,
+                    StandardVisibility.CUSTOM_TEMPLATE,
+                    StandardVisibility.CUSTOM,
+                    StandardVisibility.ORGANIZATION_AND_DESCENDANTS);
+            // SystemAdmin は snapshot の各判定メソッドが内部バイパスするため、ラダー段は全段 true になる。
+            assertThat(result).contains(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE,
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE,
+                    StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * snapshot 版オーバーロードが SQL を再発行せず同一結果を返すことの確認
+         * （ActivityResultService / PhotoAlbumService が isSystemAdmin() 取得と可視集合取得を
+         * 1 回の snapshotForUser 呼び出しに統合できることの土台）。
+         */
+        @Test
+        @DisplayName("snapshot版オーバーロードは4引数版と同一結果")
+        void snapshot版と4引数版は同一結果() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L))).thenReturn(List.of(role(50L, "MEMBER")));
+
+            UserScopeRoleSnapshot snapshot = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of(TEAM_1));
+            Set<StandardVisibility> viaSnapshot = service.resolveVisibleLevels(TEAM_1, snapshot);
+
+            assertThat(viaSnapshot).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE);
+        }
+    }
+
     private static RoleEntity role(Long id, String name) {
         // RoleEntity は Builder.toBuilder() を持つので Builder 経由で生成。
         // 必須 NotNull 列も埋める。

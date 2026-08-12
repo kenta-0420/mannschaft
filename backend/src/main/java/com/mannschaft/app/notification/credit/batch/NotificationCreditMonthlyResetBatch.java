@@ -1,19 +1,17 @@
 package com.mannschaft.app.notification.credit.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender;
+import com.mannschaft.app.notification.credit.service.NotificationCreditResetOutcome;
+import com.mannschaft.app.notification.credit.service.NotificationCreditResetRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,11 +40,15 @@ public class NotificationCreditMonthlyResetBatch {
     static final int MAX_PAGES = 200;
 
     private final OrganizationNotificationBalanceRepository balanceRepository;
-    private final NotificationHelper notificationHelper;
-    private final UserRoleRepository userRoleRepository;
+    private final NotificationCreditResetRunner resetRunner;
+    private final NotificationCreditAlertSender alertSender;
 
     /**
      * 月次リセットバッチを実行する（毎月1日 AM 2:00 JST）。
+     *
+     * <p>1 件のリセットは {@link NotificationCreditResetRunner} を {@code REQUIRES_NEW} で
+     * 経由し独立トランザクションで実行する（バッチ失敗時のリトライ安全性を確保するため）。
+     * 本メソッド自体は対象一覧の読み取りのみのため {@code @Transactional} を付けない。</p>
      */
     @BatchEndpoint(name = "notification-credit-monthly-reset", description = "通知クレジットの無料枠と猶予負債を毎月 1 日 02:00 にリセットする")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
@@ -54,7 +56,6 @@ public class NotificationCreditMonthlyResetBatch {
             name = "notificationCreditMonthlyReset",
             lockAtLeastFor = "PT10M",
             lockAtMostFor = "PT30M")
-    @Transactional
     public void runBatch() {
         LocalDate today = LocalDate.now();
         LocalDate firstOfMonth = today.withDayOfMonth(1);
@@ -76,16 +77,20 @@ public class NotificationCreditMonthlyResetBatch {
 
             for (OrganizationNotificationBalanceEntity balance : batch) {
                 try {
-                    // 猶予期間負債を相殺し、負の残高をチェック
-                    boolean hadDebt = balance.getGracePeriodDebt() > 0;
-                    balance.monthlyReset(firstOfMonth);
-                    balanceRepository.save(balance);
+                    // 別トランザクション（REQUIRES_NEW）で実行するため、このループで
+                    // 取得済みのエンティティは使わず ID で再フェッチさせる。
+                    NotificationCreditResetOutcome outcome = resetRunner.resetOne(balance.getId(), firstOfMonth);
+                    if (outcome == null) {
+                        continue;
+                    }
                     processedCount++;
 
-                    // 相殺後に残高がマイナスの組織へADMINアラート
-                    if (hadDebt && balance.getCreditBalance() < 0) {
+                    // 相殺後に残高がマイナスの組織へADMINアラート。
+                    // トランザクションのコミット後に送出するため、REQUIRES_NEW の内側ではなく
+                    // ここ（呼び出し元）から発火する。
+                    if (outcome.shouldAlertNegativeBalance()) {
                         negativeBalanceCount++;
-                        sendNegativeBalanceAlertAsync(balance.getOrganizationId(), balance.getCreditBalance());
+                        alertSender.sendNegativeBalanceAlert(outcome.organizationId(), outcome.creditBalance());
                     }
                 } catch (Exception e) {
                     log.error("月次リセット処理失敗: organizationId={}, error={}",
@@ -104,37 +109,5 @@ public class NotificationCreditMonthlyResetBatch {
 
         log.info("通知クレジット月次リセットバッチ完了: 処理={}, 残高マイナス通知={}",
                 processedCount, negativeBalanceCount);
-    }
-
-    /**
-     * 残高マイナス警告をADMINへ非同期送信する。
-     *
-     * @param organizationId 組織ID
-     * @param creditBalance  現在のクレジット残高（負の値）
-     */
-    @Async
-    protected void sendNegativeBalanceAlertAsync(Long organizationId, Long creditBalance) {
-        try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
-            if (adminUserIds.isEmpty()) {
-                return;
-            }
-            notificationHelper.notifyAll(
-                    adminUserIds,
-                    "NOTIFICATION_CREDIT_NEGATIVE",
-                    "通知クレジット残高がマイナスです",
-                    "猶予期間中の超過分が相殺された結果、クレジット残高がマイナスになりました。"
-                            + "残高: " + creditBalance + "通。クレジットを購入してください。",
-                    "NOTIFICATION_CREDIT",
-                    organizationId,
-                    NotificationScopeType.ORGANIZATION,
-                    organizationId,
-                    "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
-            );
-            log.info("残高マイナスアラート送信: organizationId={}, balance={}", organizationId, creditBalance);
-        } catch (Exception e) {
-            log.error("残高マイナスアラート送信失敗: organizationId={}", organizationId, e);
-        }
     }
 }

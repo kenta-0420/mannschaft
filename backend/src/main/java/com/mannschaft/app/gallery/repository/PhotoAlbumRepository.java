@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery.repository;
 
+import com.mannschaft.app.gallery.AlbumVisibility;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.visibility.PhotoAlbumVisibilityProjection;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,33 @@ public interface PhotoAlbumRepository extends JpaRepository<PhotoAlbumEntity, Lo
      */
     Page<PhotoAlbumEntity> findByOrganizationIdAndTitleContainingOrderByEventDateDesc(
             Long organizationId, String title, Pageable pageable);
+
+    /**
+     * CMP-028 Phase B — 認証済み一覧の可視性 SQL 述語化。
+     *
+     * <p>旧実装（{@code PhotoAlbumService#listAlbums}）は 1 ページ分を無条件取得後、
+     * {@code ContentVisibilityChecker#filterAccessible} でメモリフィルタしており、
+     * 非公開アルバムが混ざるとページ内に歯抜けが出ていた（AC-6）。本メソッドは
+     * F00 の {@code MembershipBatchQueryService#resolveVisibleLevels} が返した可視
+     * {@code StandardVisibility} 集合を {@link AlbumVisibility} へ逆写像した
+     * {@code visibilities} を SQL の {@code IN} 述語に渡す。
+     * {@code visibilities} が空になり得る（{@link AlbumVisibility} に {@code PUBLIC} 相当が
+     * 存在しないため）ため、呼び出し元は空集合のときこのメソッドを呼ばず空ページを返すこと。</p>
+     */
+    Page<PhotoAlbumEntity> findByTeamIdAndVisibilityInOrderByEventDateDesc(
+            Long teamId, Collection<AlbumVisibility> visibilities, Pageable pageable);
+
+    /** {@link #findByTeamIdAndVisibilityInOrderByEventDateDesc} の組織版。 */
+    Page<PhotoAlbumEntity> findByOrganizationIdAndVisibilityInOrderByEventDateDesc(
+            Long organizationId, Collection<AlbumVisibility> visibilities, Pageable pageable);
+
+    /** {@link #findByTeamIdAndVisibilityInOrderByEventDateDesc} のタイトル部分一致版。 */
+    Page<PhotoAlbumEntity> findByTeamIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+            Long teamId, String title, Collection<AlbumVisibility> visibilities, Pageable pageable);
+
+    /** {@link #findByOrganizationIdAndVisibilityInOrderByEventDateDesc} のタイトル部分一致版。 */
+    Page<PhotoAlbumEntity> findByOrganizationIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+            Long organizationId, String title, Collection<AlbumVisibility> visibilities, Pageable pageable);
 
     /**
      * チーム別の全アルバムを取得する（バッチ処理用）。
