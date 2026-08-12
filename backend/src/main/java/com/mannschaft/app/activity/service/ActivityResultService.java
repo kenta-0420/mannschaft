@@ -61,51 +61,52 @@ public class ActivityResultService {
     private final ObjectMapper objectMapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ActivityScopeAccessGuard scopeAccessGuard;
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     /**
      * 活動記録一覧をページング取得する（認証済み経路）。
      *
-     * <p><b>総件数の是正（契約テスト AC-33）</b>: 旧実装は
-     * {@code new PageImpl<>(filtered, pageable, filtered.size())} としており、
-     * <b>総件数がページ内件数へ化けていた</b>。DB が算出した総件数から
-     * 「このページで F00 が落とした件数」だけを差し引く形へ改めた
-     * （既存流儀: {@code TournamentService#listTournaments}）。</p>
+     * <p><b>CMP-028 Phase B: 可視性の SQL 述語化（歯抜け根治）</b>: 旧実装は 1 ページ分
+     * （{@code size=limit}）を無条件取得してから F00 {@link ContentVisibilityChecker} で
+     * メモリ上フィルタしており、他人の DRAFT 等が混ざると要求件数より少ない件数しか
+     * 返らない「ページング歯抜け」があった（AC-6）。総件数も上界近似だった（AC-7）。</p>
      *
-     * <p><b>【既知の残務】認証済み経路には「ページング歯抜け」が残っている</b>:
-     * 本メソッドは SQL で 1 ページ分（{@code size=limit}）を取得してから
-     * F00 {@link ContentVisibilityChecker} でメモリ上フィルタする。{@code pageable} は
-     * 既に切られているため落ちた分は補充されず、他人の DRAFT 等が混ざると
-     * 要求件数より少ない件数しか返らない。総件数も上界近似
-     * （実閲覧可能件数 ≦ 総件数 ≦ スコープ配下の全行数）になる。</p>
-     *
-     * <p>匿名公開一覧（{@link #listPublicActivities}）は同じ欠陥を SQL 述語で根治したが、
-     * <b>本メソッドには同じ手が使えない</b>。匿名では F00 のラダーが縮退する
-     * （{@code MembershipBatchQueryService#snapshotForUser} が userId=null で
-     * {@code UserScopeRoleSnapshot.empty()} を返し、{@code StandardVisibility.PUBLIC} が
-     * 「未認証は PUBLIC かつ PUBLISHED のみ true」と宣言している）ため SQL 述語は
-     * F00 宣言の機械的転写になるが、認証済みでは閲覧者のロールに応じて
-     * {@code MEMBERS_AND_ABOVE} 等が通るためラダーが縮退せず、SQL に書けば
-     * <b>本物の独自述語（第二の判定器）</b>になってしまい F00 一本化方針に正面から反する。</p>
-     *
-     * <p><b>後続戦役の道筋</b>: F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」
-     * （閲覧可能な {@code StandardVisibility} 集合を返すもの）を新設し、その出力を
-     * SQL の {@code IN} 述語へ翻訳すれば厳密化できる。判定器は F00 のまま 1 つで、
-     * SQL は F00 の出力を機械的に写すだけになる。設計書
-     * {@code docs/features/F06.4_activity_records.md}「認証済み一覧の既知の残務」節を参照。</p>
+     * <p>本メソッドは {@code MembershipBatchQueryService#resolveVisibleLevels} が返す
+     * 「行を見ずに判定できる可視 {@code StandardVisibility} 集合」を
+     * {@link com.mannschaft.app.common.visibility.mapping.ActivityVisibilityMapper#toFunctional}
+     * で {@link ActivityVisibility} 集合へ逆写像し、SQL の {@code WHERE visibility IN (...)}
+     * へ渡す（{@link ActivityVisibility} は 2 値のみで行依存値を持たないため歯抜けが
+     * 数学的にゼロになる）。DRAFT は F00 の status 軸と同じ意味論
+     * （作成者本人 or SystemAdmin のみ可視）を SQL 上でも同一述語として再現する。
+     * 判定器は F00 のまま 1 つ（新しい判定器を作らない）。</p>
      */
     public Page<ActivityResultEntity> listActivities(Long userId, ActivityScopeType scopeType, Long scopeId,
                                                       Long templateId, Pageable pageable) {
         // スコープメンバーシップ検証: 非メンバーは403
         scopeAccessGuard.checkMembership(userId, scopeType, scopeId);
-        Page<ActivityResultEntity> page = templateId != null
-                ? resultRepository.findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
-                        scopeType, scopeId, templateId, pageable)
-                : resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
-                        scopeType, scopeId, pageable);
 
-        // AC-10: DRAFT（下書き）は作成者・SystemAdmin のみ可視。
-        // F00 ContentVisibilityChecker 経由で status × visibility を一元評価し、
-        // 閲覧不可（他人の DRAFT 等）を一覧から除外する（可視性判定は F00 正準経由）。
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey(scopeType.name(), scopeId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(userId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<ActivityVisibility> visibleVisibilities =
+                com.mannschaft.app.common.visibility.mapping.ActivityVisibilityMapper.toFunctional(visibleLevels);
+        // StandardVisibility.PUBLIC は常に visibleLevels に含まれ、ActivityVisibility.PUBLIC へ
+        // 必ず逆写像されるため visibleVisibilities は非空（IN () の不正 SQL は起きない）。
+
+        Page<ActivityResultEntity> page = templateId != null
+                ? resultRepository.findVisibleByScopeTypeAndScopeIdAndTemplateId(
+                        scopeType, scopeId, templateId, visibleVisibilities,
+                        userId, snapshot.isSystemAdmin(), pageable)
+                : resultRepository.findVisibleByScopeTypeAndScopeId(
+                        scopeType, scopeId, visibleVisibilities,
+                        userId, snapshot.isSystemAdmin(), pageable);
+
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。
+        // 通常は 1 件も落ちない。乖離した場合は fail-closed で除外し警告を残す
+        // （listPublicActivities の「第二の門」と同じ流儀）。
         List<ActivityResultEntity> content = page.getContent();
         if (content.isEmpty()) {
             return page;
@@ -114,16 +115,21 @@ public class ActivityResultService {
                 ReferenceType.ACTIVITY_RESULT,
                 content.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
                 userId);
+        if (accessibleIds.size() == content.size()) {
+            return page;
+        }
+        List<Long> divergentIds = content.stream()
+                .map(ActivityResultEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("認証済み活動記録一覧: SQL 述語と F00 可視性判定が乖離しました"
+                        + "（fail-closed で除外）。scopeType={}, scopeId={}, userId={}, divergentIds={}",
+                scopeType, scopeId, userId, divergentIds);
         List<ActivityResultEntity> filtered = content.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-        // 総件数は「DB が算出した総件数 − このページで F00 が落とした件数」。
-        // 旧実装は filtered.size()（＝ページ内件数）を総件数に渡しており、55 件あっても
-        // ページャが「20 件・1 ページ」に見えて 2 ページ目以降へ辿り着けなかった（AC-33）。
-        // 算出式は既存流儀（TournamentService#listTournaments）と同一。
-        long excluded = (long) page.getNumberOfElements() - filtered.size();
         return new PageImpl<>(filtered, pageable,
-                Math.max(0L, page.getTotalElements() - excluded));
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**
