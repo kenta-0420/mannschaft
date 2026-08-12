@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -52,6 +53,53 @@ class UserRolesMembershipRoleInsertGuardTest {
         return RAW_USER_ROLES_MEMBERSHIP_INSERT.matcher(source).find();
     }
 
+    /**
+     * {@code INSERT INTO user_roles (...cols...) VALUES (...vals...)} の
+     * {@code role_id} カラムに<b>リテラル 4（MEMBER）または 5（SUPPORTER）</b>を与える行を検出する。
+     *
+     * <p>所属ロール名リテラル（{@code 'MEMBER'}）だけでなく、role_id の<b>数値</b>で本番不能な
+     * 所属ロールを植える抜け道（例: {@code AbstractSpotlightIT} の filler）も塞ぐ。
+     * 判定は「列リストにおける {@code role_id} の序数位置に対応する VALUES のトークンが厳密に
+     * {@code 4} か {@code 5}」に限定する。バインドパラメータ（{@code :rid} / {@code ?}）・変数・
+     * ADMIN 等の別数値（2/3/6 等）や、team_id 等の別カラムの 4/5 は対象外（誤検出しない）。</p>
+     */
+    private static final Pattern USER_ROLES_INSERT_COLS_VALS = Pattern.compile(
+            "INSERT\\s+INTO\\s+user_roles\\s*\\(([^)]*)\\)\\s*VALUES\\s*\\(([^)]*)\\)",
+            Pattern.CASE_INSENSITIVE);
+
+    static boolean containsNumericMembershipRoleIdInsert(String source) {
+        // Java 文字列連結（"..." + "..."）を畳んでから引用符を除去し、SQL を連続テキスト化する。
+        String norm = source.replaceAll("\"\\s*\\+\\s*\"", "");
+        norm = norm.replace("\"", " ");
+        norm = norm.replaceAll("\\s+", " ");
+
+        Matcher m = USER_ROLES_INSERT_COLS_VALS.matcher(norm);
+        while (m.find()) {
+            String[] cols = m.group(1).split(",");
+            String[] vals = m.group(2).split(",");
+            int idx = -1;
+            for (int i = 0; i < cols.length; i++) {
+                if (cols[i].trim().equalsIgnoreCase("role_id")) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx < 0 || idx >= vals.length) {
+                continue;
+            }
+            String v = vals[idx].trim();
+            if ("4".equals(v) || "5".equals(v)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean isViolation(String source) {
+        return containsRawUserRolesMembershipInsert(source)
+                || containsNumericMembershipRoleIdInsert(source);
+    }
+
     @Test
     @DisplayName("試験ソースに生INSERT INTO user_roles ... 'MEMBER'/'SUPPORTER' が存在しない")
     void 生user_rolesへの所属ロールINSERTが存在しない() throws IOException {
@@ -68,7 +116,7 @@ class UserRolesMembershipRoleInsertGuardTest {
                     .toList();
             for (Path p : javaFiles) {
                 String source = Files.readString(p);
-                if (containsRawUserRolesMembershipInsert(source)) {
+                if (isViolation(source)) {
                     violations.add(TEST_SOURCE_ROOT.relativize(p).toString());
                 }
             }
@@ -78,7 +126,8 @@ class UserRolesMembershipRoleInsertGuardTest {
             return;
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("所属ロール(MEMBER/SUPPORTER)を user_roles へ生 SQL で INSERT している試験ソースがあります。"
+        sb.append("所属ロール(MEMBER/SUPPORTER)を user_roles へ生 SQL で INSERT している試験ソースがあります"
+                + "（ロール名リテラル 'MEMBER'/'SUPPORTER' または role_id 数値 4/5）。"
                 + "V60.010 以降これは本番で成立しえない状態であり、死んだ機能を「永久に緑」で隠します。"
                 + "所属は memberships（MembershipTestHelper.insertMembership）で表現してください。\n違反ファイル:\n");
         for (String v : violations) {
@@ -118,5 +167,38 @@ class UserRolesMembershipRoleInsertGuardTest {
         String benignLiteral = "assertThat(role).isEqualTo(\"MEMBER\");";
         assertFalse(containsRawUserRolesMembershipInsert(benignLiteral),
                 "無関係な 'MEMBER' 文字列を誤検出している");
+    }
+
+    @Test
+    @DisplayName("数値role_id検出器の自己検証: role_idリテラル4/5を検出し、権限ロール数値/別カラム/バインドは誤検出しない")
+    void 数値role_id検出器は自身の偽陰性を晒す() {
+        // 陽性: role_id 列に数値 4（MEMBER）/ 5（SUPPORTER）を直書き
+        String posMember =
+                "\"INSERT INTO user_roles (user_id, role_id, team_id, organization_id) "
+                        + "VALUES (:uid, 4, :tid, :oid)\"";
+        String posSupporter =
+                "\"INSERT INTO user_roles (user_id, role_id) VALUES (:uid, 5)\"";
+        assertTrue(containsNumericMembershipRoleIdInsert(posMember),
+                "role_id=4(MEMBER) の数値 INSERT を検出できていない（偽陰性）");
+        assertTrue(containsNumericMembershipRoleIdInsert(posSupporter),
+                "role_id=5(SUPPORTER) の数値 INSERT を検出できていない（偽陰性）");
+
+        // 陰性1: ADMIN 等の別数値 role_id（2/3/6）は正当
+        String negAdmin =
+                "\"INSERT INTO user_roles (user_id, role_id, team_id) VALUES (:uid, 2, :tid)\"";
+        assertFalse(containsNumericMembershipRoleIdInsert(negAdmin),
+                "権限ロールの数値 role_id(2) を誤検出している");
+
+        // 陰性2: role_id はバインド、別カラム（team_id）にたまたま 4 が入る
+        String negOtherCol =
+                "\"INSERT INTO user_roles (user_id, role_id, team_id) VALUES (:uid, :rid, 4)\"";
+        assertFalse(containsNumericMembershipRoleIdInsert(negOtherCol),
+                "role_id 以外のカラムの 4 を誤検出している");
+
+        // 陰性3: role_id を変数/バインドで渡す（roleId("MEMBER") 相当の解決後の値）
+        String negBind =
+                "\"INSERT INTO user_roles (user_id, role_id, team_id) VALUES (:uid, :rid, :tid)\"";
+        assertFalse(containsNumericMembershipRoleIdInsert(negBind),
+                "バインドの role_id を誤検出している");
     }
 }
