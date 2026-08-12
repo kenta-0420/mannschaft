@@ -23,7 +23,7 @@ export interface ActivityRecordResponse {
  * 活動記録のカスタムフィールド型。
  * バックエンド {@code com.mannschaft.app.activity.FieldType} と一致させる。
  */
-export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
 
 /**
  * 活動テンプレートのフィールド定義。
