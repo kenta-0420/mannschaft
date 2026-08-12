@@ -181,44 +181,4 @@ class HolidayServiceTest {
         }
     }
 
-    // ========================================
-    // getSystemHolidaysByYear
-    // ========================================
-
-    @Nested
-    @DisplayName("getSystemHolidaysByYear")
-    class GetSystemHolidaysByYear {
-
-        @Test
-        @DisplayName("正常系: 年間のシステム祝日一覧が返る")
-        void getSystemHolidaysByYear_正常_祝日一覧が返る() {
-            // Given
-            int year = 2026;
-            HolidayMasterEntity holiday1 = createHoliday(LocalDate.of(2026, 1, 1), "元日");
-            HolidayMasterEntity holiday2 = createHoliday(LocalDate.of(2026, 2, 11), "建国記念の日");
-            given(holidayMasterRepository.findSystemHolidaysByYear(year))
-                    .willReturn(List.of(holiday1, holiday2));
-
-            // When
-            List<HolidayMasterEntity> result = holidayService.getSystemHolidaysByYear(year);
-
-            // Then
-            assertThat(result).hasSize(2);
-            verify(holidayMasterRepository).findSystemHolidaysByYear(year);
-        }
-
-        @Test
-        @DisplayName("境界値: 祝日が登録されていない年は空リスト")
-        void getSystemHolidaysByYear_祝日なし_空リスト() {
-            // Given
-            int year = 2099;
-            given(holidayMasterRepository.findSystemHolidaysByYear(year)).willReturn(List.of());
-
-            // When
-            List<HolidayMasterEntity> result = holidayService.getSystemHolidaysByYear(year);
-
-            // Then
-            assertThat(result).isEmpty();
-        }
-    }
 }

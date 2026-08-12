@@ -199,7 +199,7 @@ class PagingTotalCountSizeGuardTest {
             if (!raw.contains("PageImpl")) {
                 continue;
             }
-            String code = blankOutCommentsAndStrings(raw);
+            String code = JavaSourceScanningUtils.maskCommentsAndLiterals(raw);
             String fqcn = toFqcn(root, file);
 
             List<MethodSpan> methods = findMethodSpans(code);
@@ -350,64 +350,4 @@ class PagingTotalCountSizeGuardTest {
         }
     }
 
-    /** コメント・文字列リテラルを空白へ置換する（行番号は保つ）。 */
-    private static String blankOutCommentsAndStrings(String s) {
-        StringBuilder out = new StringBuilder(s.length());
-        int i = 0;
-        int n = s.length();
-        while (i < n) {
-            char c = s.charAt(i);
-            if (c == '"') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '"') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i);
-                continue;
-            }
-            if (c == '\'') {
-                int start = i;
-                i++;
-                while (i < n && s.charAt(i) != '\'') {
-                    if (s.charAt(i) == '\\') {
-                        i++;
-                    }
-                    i++;
-                }
-                i = Math.min(i + 1, n);
-                appendMasked(out, s, start, i);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '/') {
-                int start = i;
-                while (i < n && s.charAt(i) != '\n') {
-                    i++;
-                }
-                appendMasked(out, s, start, i);
-                continue;
-            }
-            if (c == '/' && i + 1 < n && s.charAt(i + 1) == '*') {
-                int start = i;
-                int end = s.indexOf("*/", i + 2);
-                i = (end < 0) ? n : end + 2;
-                appendMasked(out, s, start, i);
-                continue;
-            }
-            out.append(c);
-            i++;
-        }
-        return out.toString();
-    }
-
-    private static void appendMasked(StringBuilder out, String s, int start, int end) {
-        for (int k = start; k < end; k++) {
-            char ch = s.charAt(k);
-            out.append(ch == '\n' || ch == '\r' ? ch : ' ');
-        }
-    }
 }

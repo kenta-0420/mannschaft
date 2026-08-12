@@ -716,72 +716,12 @@ class ErrorCodeHttpStatusDeclarationGuardTest {
 
     /** コメントを空白へ置き換える（文字列リテラルは保持する）。 */
     private static String maskComments(String source) {
-        return mask(source, false);
+        return JavaSourceScanningUtils.maskCommentsOnly(source);
     }
 
     /** コメントを空白へ、文字列リテラルの中身を空白へ置き換える。 */
     private static String maskCommentsAndStrings(String source) {
-        return mask(source, true);
-    }
-
-    private static String mask(String source, boolean maskStrings) {
-        StringBuilder out = new StringBuilder(source.length());
-        int i = 0;
-        while (i < source.length()) {
-            char c = source.charAt(i);
-            if (c == '"') {
-                int j = i + 1;
-                while (j < source.length()) {
-                    if (source.charAt(j) == '\\') {
-                        j += 2;
-                        continue;
-                    }
-                    if (source.charAt(j) == '"') {
-                        j++;
-                        break;
-                    }
-                    j++;
-                }
-                if (maskStrings) {
-                    out.append('"');
-                    out.append(blankLike(source.substring(i + 1, Math.max(i + 1, j - 1))));
-                    out.append('"');
-                } else {
-                    out.append(source, i, j);
-                }
-                i = j;
-                continue;
-            }
-            if (source.startsWith("//", i)) {
-                int j = source.indexOf('\n', i);
-                if (j < 0) {
-                    j = source.length();
-                }
-                out.append(blankLike(source.substring(i, j)));
-                i = j;
-                continue;
-            }
-            if (source.startsWith("/*", i)) {
-                int j = source.indexOf("*/", i);
-                j = (j < 0) ? source.length() : j + 2;
-                out.append(blankLike(source.substring(i, j)));
-                i = j;
-                continue;
-            }
-            out.append(c);
-            i++;
-        }
-        return out.toString();
-    }
-
-    /** 改行だけを残して他の文字を空白に置き換える（オフセットと行番号を保つため）。 */
-    private static String blankLike(String text) {
-        StringBuilder blank = new StringBuilder(text.length());
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            blank.append(c == '\n' || c == '\r' ? c : ' ');
-        }
-        return blank.toString();
+        return JavaSourceScanningUtils.maskCommentsAndLiterals(source);
     }
 
     private static int countNewLines(String text, int from, int to) {

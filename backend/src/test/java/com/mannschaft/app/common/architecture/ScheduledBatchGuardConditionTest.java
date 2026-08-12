@@ -340,12 +340,53 @@ class ScheduledBatchGuardConditionTest {
 
         assertThat(fixture.getMethods())
             .as("fixture のメソッドが読めていなければ、全アサーションが空リスト同士の比較になる")
-            .hasSizeGreaterThanOrEqualTo(17);
+            .hasSizeGreaterThanOrEqualTo(19);
         assertThat(fixture.getMethods().stream()
                 .filter(ScheduledBatchGuardTest::isScheduled)
                 .count())
-            .as("fixture には 16 本のスケジュール済みメソッドを用意してある")
-            .isEqualTo(16);
+            .as("fixture には 18 本のスケジュール済みメソッドを用意してある")
+            .isEqualTo(18);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // ルール 5: @SchedulerLock ⇒ プリミティブ戻り値禁止
+    // ══════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("ルール5 違反: @SchedulerLock 付きで int を返すメソッドは検出される")
+    void プリミティブ戻り値は違反として検出される() {
+        List<String> violations = ScheduledBatchGuardTest
+            .findPrimitiveReturningSchedulerLock(method("primitiveReturningSchedulerLock"));
+
+        assertThat(violations)
+            .as("ここが空になるなら、ShedLock が実行のたびに必ず失敗する事故（issue #2724）を"
+                + "番人が二度と検出できない")
+            .isNotEmpty();
+        assertThat(violations.getFirst())
+            .as("違反メッセージには是正の手掛かり（対象メソッドの完全名）が含まれるべき")
+            .contains("primitiveReturningSchedulerLock");
+    }
+
+    @Test
+    @DisplayName("ルール5 正当形: void を返す @SchedulerLock は違反にならない")
+    void void戻り値は違反にならない() {
+        assertThat(ScheduledBatchGuardTest.findPrimitiveReturningSchedulerLock(method("fullyCompliant")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール5 正当形: 参照型（Integer）を返す @SchedulerLock は違反にならない")
+    void 参照型戻り値は違反にならない() {
+        assertThat(ScheduledBatchGuardTest
+                .findPrimitiveReturningSchedulerLock(method("boxedReturningSchedulerLock")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("ルール5 対象外: @SchedulerLock の無いメソッドを巻き込まない")
+    void ロック注釈の無いメソッドはルール5の対象外() {
+        assertThat(ScheduledBatchGuardTest.findPrimitiveReturningSchedulerLock(method("missingSchedulerLock")))
+            .isEmpty();
     }
 
     // ── ヘルパー ──────────────────────────────────────────────────────

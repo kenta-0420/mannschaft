@@ -458,6 +458,19 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.message").value("退会リクエストを取り消しました"));
     }
 
+    @Test
+    @DisplayName("POST /me/withdrawal/cancel — 退会申請が存在しない場合は409（ErrorCodeステータス写像是正ロットA: AUTH_032）")
+    void cancelWithdrawal_notRequested_returns409() throws Exception {
+        given(userService.cancelWithdrawal(anyLong()))
+                .willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_032));
+        given(proxyInputContext.isProxy()).willReturn(false);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/withdrawal/cancel"))
+                .andExpect(status().isConflict());
+    }
+
     // ──────────────────────────────────────────────
     // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
     // UserController#setupPassword / UserController#getConnectedProviders /
@@ -505,5 +518,16 @@ class UserControllerTest {
         mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.message").value("OAuth連携を解除しました"));
+    }
+
+    @Test
+    @DisplayName("DELETE /me/oauth/{provider} — 未連携プロバイダの解除は404（ErrorCodeステータス写像是正ロットA: AUTH_029）")
+    void disconnectProvider_notLinked_returns404() throws Exception {
+        org.mockito.Mockito.doThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_029))
+                .when(authOAuthService).disconnectProvider(eq(1L), eq("GOOGLE"));
+
+        mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
+                .andExpect(status().isNotFound());
     }
 }

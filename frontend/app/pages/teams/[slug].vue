@@ -138,6 +138,14 @@ const effectiveViewerRole = computed<ViewerRole>(() =>
   adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
 )
 
+// SUPPORTER/GUEST/未所属は TeamSidebar が項目を表示しないため、
+// Drawer の起動アイコン自体を出さない。
+const showSidebar = computed(() =>
+  roleName.value !== null
+  && roleName.value !== 'SUPPORTER'
+  && roleName.value !== 'GUEST',
+)
+
 const displayName = computed(
   () => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '',
 )
@@ -519,6 +527,7 @@ provideTeamShellContext({
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
         :sidebar-props="{ teamId: teamSlug }"
+        :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
         @update:lens="adminLens = $event"

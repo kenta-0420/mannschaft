@@ -197,7 +197,30 @@ public enum ReferenceType {
      * <p>カレンダー印（target_date / 想起予定）を F00 UUID 経路フィルタ経由で合流する保険に用いる
      * （設計書 §6.2・AC-14）。{@code ContentVisibilityChecker.canViewUuid} の経路で参照される。</p>
      */
-    REFLECTION_ENTRY;
+    REFLECTION_ENTRY,
+
+    // ---------------------------------------------------------------------
+    // F03.17 キープ（日付未定の予定） (schedule_keeps は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * キープ（日付未定の予定）(F03.17 / {@code ScheduleKeepVisibilityResolver} が実装).
+     *
+     * <p>{@code schedule_keeps} テーブル（UUIDv7 主キー・BINARY(16)）の可視性判定に用いる。
+     * 閲覧可視性は独自述語を書かず {@code ScheduleKeepVisibilityResolver} 経由で F00 正準に委譲する。
+     * 同 Resolver は可視性列を持たず、チーム／組織スコープでは常に
+     * {@code StandardVisibility.MEMBERS_AND_ABOVE} を返す
+     * （チーム内の相談段階の情報のため応援者・ゲストは不可視。F03.17 §4.6.2）。
+     * 個人スコープのキープは {@code StandardVisibility.PRIVATE} 相当（所有者本人のみ）。
+     * {@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p><b>コルクボード（引用・埋め込み）の対象外</b>: キープはチーム内の相談段階の情報であり、
+     * 他所へ引用・埋め込みされる想定が無い。よって {@code corkboard_cards.reference_id_uuid} を
+     * 使う用途は持たず、{@code ContentVisibilityChecker.canViewUuid} の単発・バッチ判定経路でのみ
+     * 参照される（対象外を明示しないと、将来 corkboard 側が全 referenceType を舐める実装を
+     * したときに巻き込まれる）。</p>
+     */
+    SCHEDULE_KEEP;
 
     /**
      * 本 reference_type が参照する主キー型を返す。
@@ -219,7 +242,8 @@ public enum ReferenceType {
                  SUCCESSION_COVENANTS,
                  RESIDENT_ACTIVITY_SNAPSHOT,
                  MATCH,
-                 REFLECTION_ENTRY -> IdKind.UUID_V7;
+                 REFLECTION_ENTRY,
+                 SCHEDULE_KEEP -> IdKind.UUID_V7;
             default -> IdKind.BIGINT;
         };
     }

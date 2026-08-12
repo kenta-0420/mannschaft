@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -299,6 +300,22 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
                     .andExpect(status().isOk());
+        }
+
+        /**
+         * ErrorCode ステータス写像是正ロットA: SCHEDULE_NOT_FOUND（SCHEDULE_001）が
+         * 実際に 404 で返ることを固定する（従来は ERROR_CODE_STATUS_MAP 未登録で 400 だった）。
+         */
+        @Test
+        @DisplayName("ロットA: 不在scheduleIdの更新は404（SCHEDULE_NOT_FOUND）")
+        void 不在scheduleIdの更新は404() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedules/{id}", teamASlug, 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(ScheduleErrorCode.SCHEDULE_NOT_FOUND.getCode()));
         }
 
         @Test
@@ -667,6 +684,28 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{id}/attendances/export",
                             orgASlug, orgScheduleAId))
                     .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 9. ErrorCode ステータス写像是正ロットA — DELETE cross-invite の 404 契約固定
+    //    （SCHEDULE_010 CROSS_INVITE_NOT_FOUND。SCHEDULE_001 は上記セクション1で固定済み）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. ロットA追加404: cross-invite")
+    class CrossInviteLotAAdditionalNotFound {
+
+        @Test
+        @DisplayName("CROSS_INVITE_NOT_FOUND(SCHEDULE_010): 不在invitationIdのキャンセルは404")
+        void 不在invitationIdのキャンセルは404() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(delete(
+                            "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/cross-invite/{invitationId}",
+                            teamASlug, teamScheduleAId, 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(ScheduleErrorCode.CROSS_INVITE_NOT_FOUND.getCode()));
         }
     }
 

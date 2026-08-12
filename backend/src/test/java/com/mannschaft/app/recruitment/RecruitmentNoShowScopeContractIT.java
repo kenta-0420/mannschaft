@@ -31,6 +31,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -52,14 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * および {@code RecruitmentSubcategoryService}（{@code findByIdAndScopeTypeAndScopeId}）の型を踏襲し、
  * Repository にスコープ済み finder を追加して封じた。</p>
  *
- * <p><b>なぜ 404 でなく 400 か（AC-R8）</b>: {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に
- * 登録された {@code RECRUITMENT_*} は {@code RECRUITMENT_204} / {@code RECRUITMENT_207} の 2 件のみで、
- * どちらも 400。未登録コードは {@code resolveHttpStatus} の Severity 既定にフォールバックし、
- * {@code NO_SHOW_RECORD_NOT_FOUND}（{@code RECRUITMENT_309}・{@code Severity.WARN}）は
- * <b>HTTP 400</b> になる。本テストは実挙動に合わせて 400 を固定する。
+ * <p><b>なぜ 404 か（AC-R8・2026-08-11 是正: ErrorCodeHttpStatusDeclarationGuardTest ロットA）</b>:
+ * 従来は {@code NO_SHOW_RECORD_NOT_FOUND}（{@code RECRUITMENT_309}）が
+ * {@code ERROR_CODE_STATUS_MAP} 未登録のため {@code Severity.WARN} 既定の HTTP 400 に収束していた
+ * （#2468 として保留）。本是正で他ドメインの {@code *_NOT_FOUND} 系と同じ 404 に統一した。
  * 一方、認可拒否は {@code CommonErrorCode.COMMON_002} が {@code ERROR_CODE_STATUS_MAP} に
- * <b>403 で明示登録</b>されているため 403。{@code RECRUITMENT_*} を 404/403 に整理し直す統一は
- * FE 分岐・既存 E2E への波及を避けるため別課題（#2468）とする。</p>
+ * 403 で明示登録されているため 403 のまま変わらない。</p>
  *
  * <p>金型: {@code ReservationScopeContractIT}（#2469）/ {@code ChatChannelAccessScopeContractIT}
  * （{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL Testcontainers + 手動 SecurityContext）。</p>
@@ -112,6 +111,8 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long noShowCId;
     /** orgD の募集に紐づく異議申立中 NO_SHOW 記録（ORGANIZATION 側の越境 ID）。 */
     private Long noShowDId;
+    /** teamA の募集ID（ロットA追加の本人申立テスト用）。 */
+    private Long listingAId;
 
     @BeforeEach
     void setUp() {
@@ -137,7 +138,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminCId, "ADMIN", null, orgCId);
         // outsiderId はどこにも所属させない。
 
-        Long listingAId = insertListing(RecruitmentScopeType.TEAM, teamAId, adminAId);
+        listingAId = insertListing(RecruitmentScopeType.TEAM, teamAId, adminAId);
         Long listingBId = insertListing(RecruitmentScopeType.TEAM, teamBId, adminBId);
         Long listingCId = insertListing(RecruitmentScopeType.ORGANIZATION, orgCId, adminCId);
         Long listingDId = insertListing(RecruitmentScopeType.ORGANIZATION, orgDId, adminCId);
@@ -166,14 +167,14 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
          * 記録側の帰属検証がなければ 200 で書き換えが成立する（根治前は red）。</p>
          */
         @Test
-        @DisplayName("AC-R1: 正当ADMINが別スコープのnoShowIdを差し込むと400（越境BOLA封鎖）")
-        void ac_r1_越境noShowIdは400() throws Exception {
+        @DisplayName("AC-R1: 正当ADMINが別スコープのnoShowIdを差し込むと404（越境BOLA封鎖・存在秘匿）")
+        void ac_r1_越境noShowIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
                             "TEAM", teamAId, noShowBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()));
         }
@@ -193,7 +194,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                             "TEAM", teamAId, noShowBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -278,7 +279,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "TEAM", teamAId, noShowBId)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()))
                     .andReturn().getResponse().getContentAsString();
@@ -288,7 +289,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "TEAM", teamAId, ABSENT_NO_SHOW_ID)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()))
                     .andReturn().getResponse().getContentAsString();
@@ -307,16 +308,16 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("2. ORGANIZATION スコープの越境封鎖")
     class ResolveDisputeOrganizationScope {
 
-        /** AC-R1（ORGANIZATION 版）: 別組織の noShowId を自組織 URL に差し込むと 400。 */
+        /** AC-R1（ORGANIZATION 版）: 別組織の noShowId を自組織 URL に差し込むと 404。 */
         @Test
-        @DisplayName("AC-R1: 組織ADMINが別組織のnoShowIdを差し込むと400")
-        void ac_r1_組織スコープの越境noShowIdは400() throws Exception {
+        @DisplayName("AC-R1: 組織ADMINが別組織のnoShowIdを差し込むと404")
+        void ac_r1_組織スコープの越境noShowIdは404() throws Exception {
             setAuth(adminCId);
             mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
                             "ORGANIZATION", orgCId, noShowDId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()));
         }
@@ -330,7 +331,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                             "ORGANIZATION", orgCId, noShowDId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -354,16 +355,47 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
 
         /** AC-R1（スコープ種別越境）: 同じ scopeId でも scopeType が異なれば遮断されること。 */
         @Test
-        @DisplayName("AC-R1: TEAMスコープのnoShowIdをORGANIZATION URLに差し込むと400")
-        void ac_r1_スコープ種別違いは400() throws Exception {
+        @DisplayName("AC-R1: TEAMスコープのnoShowIdをORGANIZATION URLに差し込むと404")
+        void ac_r1_スコープ種別違いは404() throws Exception {
             setAuth(adminCId);
             mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
                             "ORGANIZATION", orgCId, noShowAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody())))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 3. ErrorCode ステータス写像是正ロットA — 本人申立(dispute)の VISIBILITY_DENIED 契約固定
+    //    （RECRUITMENT_003。resolveDispute の NO_SHOW_RECORD_NOT_FOUND は上記1/2で固定済み）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("3. ロットA追加404: POST /recruitment/no-shows/{noShowId}/dispute（本人申立）")
+    class SelfDispute {
+
+        /**
+         * VISIBILITY_DENIED（RECRUITMENT_003）: {@code RecruitmentNoShowService#dispute} は
+         * record.getUserId().equals(userId) で本人所有を検証し、他人の記録は不在と同一の 404 に畳む
+         * （記録の実在をレスポンス差分から漏らさないための存在秘匿）。
+         */
+        @Test
+        @DisplayName("本人以外の異議申立は404（存在秘匿）")
+        void 本人以外の異議申立は404() throws Exception {
+            Long undisputed = insertUndisputedNoShow(listingAId, memberAId);
+            em.flush();
+            em.clear();
+
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", undisputed)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("reason", "裏目付テスト"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.VISIBILITY_DENIED.getCode()));
         }
     }
 
@@ -413,6 +445,18 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                 .recordedBy(userId)
                 .build();
         record.dispute();
+        return noShowRepository.save(record).getId();
+    }
+
+    /** 未申立（disputed=false）の NO_SHOW 記録を 1 件作る（本人申立EPの正常系入力用）。 */
+    private Long insertUndisputedNoShow(Long listingId, Long userId) {
+        RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
+                .participantId(listingId)
+                .listingId(listingId)
+                .userId(userId)
+                .reason(NoShowReason.ADMIN_MARKED)
+                .recordedBy(userId)
+                .build();
         return noShowRepository.save(record).getId();
     }
 

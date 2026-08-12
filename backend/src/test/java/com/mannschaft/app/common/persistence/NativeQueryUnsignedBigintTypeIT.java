@@ -238,6 +238,44 @@ class NativeQueryUnsignedBigintTypeIT {
         softly.assertAll();
     }
 
+    /**
+     * issue #2545 の根治治療そのものの実測。
+     *
+     * <p>{@code my_scope_folder_items.scope_id} はかつて同一テーブル内の {@code id} / {@code folder_id}
+     * とも符号性が食い違う符号付き {@code BIGINT}（V9.101）であり、{@code notifications.scope_id} 等
+     * 他テーブルの同名カラムとも不統一だった。
+     * {@code V177.20260809103622__unify_my_scope_folder_items_scope_id_unsigned.sql} で
+     * {@code BIGINT UNSIGNED} へ揃えたことを、Flyway 実スキーマ上で {@code information_schema} を
+     * 直接読んで検証する。COMMENT を失っていないことも合わせて確認する
+     * （{@code MODIFY COLUMN} はカラム定義を丸ごと置き換えるため、書き落とすと COMMENT が消える罠がある）。</p>
+     */
+    @Test
+    @DisplayName("my_scope_folder_items.scope_id はBIGINT UNSIGNEDへ統一済み（V177・issue #2545）")
+    void my_scope_folder_items_scope_idはUNSIGNEDへ統一済み() throws Exception {
+        assertThat(readColumnType("my_scope_folder_items", "scope_id"))
+                .as("scope_id は BIGINT UNSIGNED へ統一されていること")
+                .isEqualTo("bigint unsigned");
+        assertThat(readColumnType("my_scope_folder_items", "id"))
+                .as("同一テーブル内の id も符号なしのままであること（既存の整合を壊していないこと）")
+                .isEqualTo("bigint unsigned");
+        assertThat(readColumnType("my_scope_folder_items", "folder_id"))
+                .as("同一テーブル内の folder_id も符号なしのままであること（既存の整合を壊していないこと）")
+                .isEqualTo("bigint unsigned");
+
+        try (Connection conn = connection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COLUMN_COMMENT FROM information_schema.columns "
+                             + "WHERE table_schema = DATABASE() AND table_name = 'my_scope_folder_items' "
+                             + "AND column_name = 'scope_id'")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                assertThat(rs.next()).as("scope_id が実スキーマに存在すること").isTrue();
+                assertThat(rs.getString(1))
+                        .as("MODIFY COLUMN でも COMMENT を失っていないこと")
+                        .isEqualTo("team_id or organization_id");
+            }
+        }
+    }
+
     // =====================================================================
     // 実測 2: CAST 撤去の同値性（本番の実クエリで）
     // =====================================================================
@@ -251,23 +289,27 @@ class NativeQueryUnsignedBigintTypeIT {
      * テストにコピーを持たないことで、リポジトリを書き換えたのにテストが古い SQL を検証し続ける
      * ドリフトを構造的に排除する。</p>
      *
-     * <h2>符号性の非対称は実在する</h2>
+     * <h2>符号性の非対称はかつて実在した（V177 で解消済み）</h2>
      * <ul>
      *   <li>{@code notifications.scope_id} … {@code BIGINT UNSIGNED}（V4.019）</li>
-     *   <li>{@code my_scope_folder_items.scope_id} … 符号付き {@code BIGINT}（V9.101）</li>
+     *   <li>{@code my_scope_folder_items.scope_id} … かつて符号付き {@code BIGINT}（V9.101）だったが、
+     *       {@code V177.20260809103622__unify_my_scope_folder_items_scope_id_unsigned.sql}（issue #2545）で
+     *       {@code BIGINT UNSIGNED} へ統一済み</li>
      * </ul>
-     * <p>つまり撤去した {@code CAST(n.scope_id AS UNSIGNED)} は<b>既に符号なしの列を符号なしへ変換する
-     * no-op</b> だった。{@code ddl-auto=create} のテスト環境では両側とも符号付きになるため、
-     * 既存の {@code MyScopeFolder*} テストは全緑でも本番の符号性差を一度も踏んでいない。</p>
+     * <p>つまり撤去した {@code CAST(n.scope_id AS UNSIGNED)} は<b>符号なしの列を符号なしへ変換する
+     * no-op</b> である（統一前は非対称ゆえの no-op、統一後は両側同一ゆえの no-op と理由が変わっただけで、
+     * いずれにせよ CAST は不要）。{@code ddl-auto=create} のテスト環境では両側とも符号付きになるため、
+     * 既存の {@code MyScopeFolder*} テストは全緑でも本番の符号性を一度も踏んでいない。</p>
      */
     @Test
     @DisplayName("aggregateFolderUnreadCounts は CAST 有無で同一結果（本番の実クエリで検証）")
     void 実クエリでCAST撤去の同値性を検証する() throws Exception {
-        // given: 前提となる符号性の非対称
+        // given: 両テーブルとも符号なしへ統一済み（V177・issue #2545）
         assertThat(readColumnType("notifications", "scope_id"))
                 .as("notifications.scope_id は符号なし").isEqualTo("bigint unsigned");
         assertThat(readColumnType("my_scope_folder_items", "scope_id"))
-                .as("my_scope_folder_items.scope_id は符号付き").isEqualTo("bigint");
+                .as("my_scope_folder_items.scope_id は符号なしへ統一済み（V177）")
+                .isEqualTo("bigint unsigned");
 
         long userId = seedUnreadCountFixture();
 

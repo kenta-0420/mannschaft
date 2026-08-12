@@ -111,9 +111,11 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
      * （測定条件: MySQL 8.0 / 通知 501 件 + {@code ANALYZE TABLE} 後。
      * 行数分布が変われば optimizer の選択は変わりうるので、本記述は当該条件下の観測である）。</p>
      *
-     * <p>なお根本原因は「同じ意味の {@code scope_id} が表ごとに符号性が違う」というスキーマの不統一である。
-     * {@code my_scope_folder_items.scope_id} を {@code BIGINT UNSIGNED} へ揃える migration が
-     * 本来の根治だが、DDL 変更は別途承認が要るため本 PR では扱わない。</p>
+     * <p>根本原因は「同じ意味の {@code scope_id} が表ごとに符号性が違う」というスキーマの不統一であり、
+     * {@code V177.20260809103622__unify_my_scope_folder_items_scope_id_unsigned.sql}（issue #2545）で
+     * {@code my_scope_folder_items.scope_id} を {@code BIGINT UNSIGNED} へ統一済みである。
+     * 上記 CAST 撤去の正しさは、統一後の現行スキーマ上で {@code NativeQueryUnsignedBigintTypeIT} が
+     * 両テーブルの {@code scope_id} が揃って符号なしであることを実測して裏付けている。</p>
      *
      * <p><b>照合順序不一致（issue #2589）は是正済み</b>:
      * かつて {@code notifications} は {@code utf8mb4_unicode_ci} を明示宣言（V4.019）する一方

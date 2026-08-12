@@ -47,7 +47,14 @@ public class ReservationPendingExpireBatchService {
      * try/catch する。失敗は握り潰さず {@code log.error} で記録し、次回起動で再試行される
      * （失効条件は時刻経過なので、失敗した単位は次回も対象に残る＝自己修復する）。</p>
      *
-     * @return 失効させた予約行数（グループは構成行数を合算）
+     * <p>戻り値はプリミティブ {@code int} ではなく参照型 {@code Integer} にしている（issue #2724）。
+     * ShedLock はプリミティブ戻り値のメソッドをロックできず、{@code int} を返していた旧実装は
+     * {@code LockingNotSupportedException} で {@code @Scheduled} 実行のたびに必ず失敗していた
+     * （番人 {@code ScheduledBatchGuardTest} ルール5が再発を機械的に防ぐ）。参照型なら ShedLock は
+     * 問題なくロックできる。件数は可観測性のため {@code log.info} でも出す。
+     *
+     * @return 失効させた予約行数（グループは構成行数を合算）。ShedLock がロックを取得できず
+     *     処理をスキップした場合は {@code null} になりうる
      */
     @BatchEndpoint(name = "reservation-pending-expire",
             description = "承認されないまま期限切れになった仮押さえ(PENDING)を5分毎に自動キャンセルして枠を復帰させる")
@@ -58,7 +65,7 @@ public class ReservationPendingExpireBatchService {
     // 1 回あたりの処理量は ReservationPendingExpireService.MAX_UNITS_PER_RUN で上限化しつつ、
     // ロック保持時間にも余裕（3 倍）を持たせて窓を閉じる（殿の裁定・2026-07-29）。
     @SchedulerLock(name = "reservationPendingExpireBatch", lockAtLeastFor = "30s", lockAtMostFor = "15m")
-    public int expirePendingReservations() {
+    public Integer expirePendingReservations() {
         List<PendingExpireUnit> units = pendingExpireService.findExpirableUnits();
         if (units.isEmpty()) {
             return 0;

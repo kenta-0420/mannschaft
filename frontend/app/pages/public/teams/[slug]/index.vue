@@ -277,6 +277,10 @@ useSeoMeta({
 function detailHref(postId: number): string {
   return `/public/teams/${teamSlug}/posts/${postId}`
 }
+
+// PrimeVue Tabs は value（単方向）+ update:value であり、v-model:value で
+// 受けないとタブクリックが選択状態に反映されない（ChatCreateDialog.vue 等の作法に倣う）。
+const activeTab = ref('posts')
 </script>
 
 <template>
@@ -284,7 +288,7 @@ function detailHref(postId: number): string {
     <PublicTeamHeader :team="team" />
 
     <!-- 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を横並びの実タブで切り替える -->
-    <Tabs value="posts">
+    <Tabs v-model:value="activeTab">
       <TabList>
         <Tab value="posts">{{ t('public.tabs.posts') }}</Tab>
         <Tab v-if="team.timelinePostsPublic" value="timeline">{{ t('public.tabs.timeline') }}</Tab>
