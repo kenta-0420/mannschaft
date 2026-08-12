@@ -1864,7 +1864,9 @@ public class GlobalExceptionHandler {
             // デジタルサイネージ: 画面/スロット/トークン不在は404。アクセストークン検証失敗は
             // GCAL_009（GOOGLE_WEBHOOK_TOKEN_INVALID）と同じ流儀でアクセス拒否として403。
             Map.entry("SIGNAGE_001", HttpStatus.NOT_FOUND),                 // 画面不在
-            Map.entry("SIGNAGE_002", HttpStatus.FORBIDDEN),                 // トークン無効/IP制限によるアクセス拒否
+            // SIGNAGE_002 は「無効化済み」「有効期限切れ」「存在しない」の3意味で共用されており
+            // （SignageAccessTokenService.java:152,156）、単一ステータスに寄せられないため見送り。
+            // 既存の SignageScopeContractIT が3状況とも400を契約として固定しており、既定 WARN=400 で正しい。
             Map.entry("SIGNAGE_003", HttpStatus.NOT_FOUND),                 // スロット不在
             Map.entry("SIGNAGE_005", HttpStatus.NOT_FOUND),                 // トークン不在
 
