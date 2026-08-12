@@ -57,7 +57,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li><b>間接（変数経由）パターン</b>: {@code int total = filtered.size(); ...
  *       new PageImpl<>(content, pageable, total);} — 第3引数が単純な識別子で、
  *       同一メソッド内の直近の代入が {@code <同じ識別子> = 何か.size();} になっている形
- *       （{@code IncidentService#listIncidents} で実際に見つかった型）。</li>
+ *       （{@code IncidentService#listIncidents} で実際に見つかった型。CMP-028 Phase D で
+ *       DB Pageable + SQL WHERE 述語へ是正済み。パターンの実例として記述は残すが、
+ *       凍結リストからは既に削除されている）。</li>
  * </ol>
  *
  * <h2>本テストは ArchUnit ではない</h2>
