@@ -2,7 +2,7 @@ package com.mannschaft.app.notification.credit.service;
 
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -22,7 +22,7 @@ import java.util.List;
 public class NotificationCreditAlertSender {
 
     private final NotificationHelper notificationHelper;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
 
     /**
      * 残高マイナス警告をADMINへ非同期送信する。
@@ -33,7 +33,7 @@ public class NotificationCreditAlertSender {
     @Async
     public void sendNegativeBalanceAlert(Long organizationId, Long creditBalance) {
         try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
+            List<Long> adminUserIds = roleService.getAdminUserIdsByOrganizationId(organizationId);
             if (adminUserIds.isEmpty()) {
                 return;
             }

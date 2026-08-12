@@ -1,7 +1,7 @@
 package com.mannschaft.app.notification.credit.batch;
 
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
-import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
+import com.mannschaft.app.notification.credit.service.NotificationCreditResetRunner;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -26,8 +26,9 @@ import static org.mockito.BDDMockito.willAnswer;
  *
  * <p>1件のリセットが失敗しても他の件が独立トランザクション（{@code REQUIRES_NEW}）で
  * コミットされることを、実 DB（MySQL Testcontainers）で検証する。失敗は
- * {@link OrganizationNotificationBalanceRepository} を spy し、特定組織の {@code save} でのみ
- * 例外を投げさせることで再現する。
+ * {@link NotificationCreditResetRunner} を spy し、特定組織の {@code resetOne} でのみ
+ * 例外を投げさせることで再現する（Spring Data JPA リポジトリはインターフェース実装のプロキシで
+ * {@code callRealMethod()} が使えないため、spy 対象は具象クラスである Runner 側にする）。
  *
  * <p>クラスレベル {@code @Transactional} は付けない。1 次キャッシュにより、独立トランザクション側
  * でコミットされた更新がこのテストのコンテキストから見えなくなる事故を避けるため（既知の罠）。
@@ -44,7 +45,7 @@ class NotificationCreditMonthlyResetBatchIntegrationTest extends AbstractMySqlIn
     private NotificationCreditMonthlyResetBatch batch;
 
     @MockitoSpyBean
-    private OrganizationNotificationBalanceRepository balanceRepository;
+    private NotificationCreditResetRunner resetRunner;
 
     @PersistenceContext
     private EntityManager em;
@@ -97,15 +98,15 @@ class NotificationCreditMonthlyResetBatchIntegrationTest extends AbstractMySqlIn
         });
         em.clear();
 
-        // broken の id に対する save だけ失敗させ、他は実処理を通す
+        // broken の id に対する resetOne だけ失敗させ、他は実処理（REQUIRES_NEW）を通す
         Long brokenId = broken.getId();
         willAnswer(invocation -> {
-            OrganizationNotificationBalanceEntity arg = invocation.getArgument(0);
-            if (arg.getId() != null && arg.getId().equals(brokenId)) {
+            Long targetId = invocation.getArgument(0);
+            if (targetId.equals(brokenId)) {
                 throw new RuntimeException("模擬保存失敗（CMP-035 検証用）");
             }
             return invocation.callRealMethod();
-        }).given(balanceRepository).save(any());
+        }).given(resetRunner).resetOne(any(), any());
 
         // 本丸: バッチが例外を外に投げずに完走すること
         assertThatCode(() -> batch.runBatch()).doesNotThrowAnyException();
