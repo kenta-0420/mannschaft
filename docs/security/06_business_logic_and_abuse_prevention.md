@@ -169,6 +169,10 @@ Retry-After: 18  （429/423 の場合のみ）
 - 将来的には Gateway 層（Spring Cloud Gateway 等）への集約を検討
 - 現在の `RateLimitFilter` 実装の閾値を本テーブルに揃えるリファクタリングを推奨
 
+> 新しく `permitAll` エンドポイントを追加する際にレート制限が必要かどうかの判断基準・
+> 実装後の確認手順・落とし穴は
+> [公開 API 追加チェックリスト](public_api_addition_checklist.md) を参照すること。
+
 #### 4.3.1 実装状況（Valkey 化 全陣完了 — 2026-06-12 / PR #1470・#1471・#1472）
 
 共通基盤を `com.mannschaft.app.common.ratelimit` パッケージに実装した。

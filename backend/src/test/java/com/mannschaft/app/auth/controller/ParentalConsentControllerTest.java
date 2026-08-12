@@ -234,16 +234,20 @@ class ParentalConsentControllerTest {
         @DisplayName("正常系: 認証済みユーザーが承認すると200で返る")
         void approve_認証済み_200() {
             // Given（認証済みユーザーのセットアップは @BeforeEach で実施済み）
-            doNothing().when(parentalConsentService).approveParentalConsent(eq(TEST_TOKEN), eq(CHILD_USER_ID));
+            doNothing().when(parentalConsentService)
+                    .approveParentalConsent(eq(TEST_TOKEN), eq(CHILD_USER_ID), anyString());
             ApproveConsentRequest req = new ApproveConsentRequest(TEST_TOKEN);
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+            request.setRemoteAddr("198.51.100.1");
 
             // When
-            ResponseEntity<ApiResponse<MessageResponse>> response = controller.approve(req);
+            ResponseEntity<ApiResponse<MessageResponse>> response = controller.approve(req, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getMessage()).contains("承認");
-            verify(parentalConsentService).approveParentalConsent(TEST_TOKEN, CHILD_USER_ID);
+            verify(parentalConsentService).approveParentalConsent(TEST_TOKEN, CHILD_USER_ID, "198.51.100.1");
         }
 
         @Test
@@ -251,16 +255,20 @@ class ParentalConsentControllerTest {
         void approve_未認証_200() {
             // Given
             SecurityContextHolder.clearContext(); // 未認証状態にする
-            doNothing().when(parentalConsentService).approveParentalConsent(eq(TEST_TOKEN), eq(null));
+            doNothing().when(parentalConsentService)
+                    .approveParentalConsent(eq(TEST_TOKEN), eq(null), anyString());
             ApproveConsentRequest req = new ApproveConsentRequest(TEST_TOKEN);
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+            request.setRemoteAddr("198.51.100.2");
 
             // When
-            ResponseEntity<ApiResponse<MessageResponse>> response = controller.approve(req);
+            ResponseEntity<ApiResponse<MessageResponse>> response = controller.approve(req, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getMessage()).contains("承認");
-            verify(parentalConsentService).approveParentalConsent(TEST_TOKEN, null);
+            verify(parentalConsentService).approveParentalConsent(TEST_TOKEN, null, "198.51.100.2");
         }
     }
 
@@ -272,16 +280,19 @@ class ParentalConsentControllerTest {
         @DisplayName("正常系: 保護者同意否認が200で返る")
         void reject_正常_200() {
             // Given
-            doNothing().when(parentalConsentService).rejectParentalConsent(eq(TEST_TOKEN));
+            doNothing().when(parentalConsentService).rejectParentalConsent(eq(TEST_TOKEN), anyString());
             RejectConsentRequest req = new RejectConsentRequest(TEST_TOKEN);
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+            request.setRemoteAddr("198.51.100.3");
 
             // When
-            ResponseEntity<ApiResponse<MessageResponse>> response = controller.reject(req);
+            ResponseEntity<ApiResponse<MessageResponse>> response = controller.reject(req, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getMessage()).contains("否認");
-            verify(parentalConsentService).rejectParentalConsent(TEST_TOKEN);
+            verify(parentalConsentService).rejectParentalConsent(TEST_TOKEN, "198.51.100.3");
         }
     }
 
