@@ -78,8 +78,8 @@ public class ActivityTemplateService {
     @Transactional
     public ActivityTemplateResponse createTemplate(Long userId, ActivityScopeType scopeType,
                                                     Long scopeId, CreateTemplateRequest request) {
-        // スコープメンバーシップ検証: 非メンバーは403
-        checkScopeMembership(userId, scopeType, scopeId);
+        // 認可: 管理者（ADMIN/DEPUTY_ADMIN）のみ作成可。非管理者は403
+        checkScopeAdmin(userId, scopeType, scopeId);
         // 上限チェック
         long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
         if (count >= MAX_TEMPLATES_PER_SCOPE) {
@@ -233,13 +233,13 @@ public class ActivityTemplateService {
     @Transactional
     public ActivityTemplateResponse duplicateTemplate(Long id, Long userId, DuplicateTemplateRequest request) {
         ActivityTemplateEntity source = findTemplateOrThrow(id);
-        // 認可: コピー元スコープの会員のみ複製可。非会員は403（他スコープのテンプレ窃取=IDOR を封じる）
-        checkScopeMembership(userId, source.getScopeType(), source.getScopeId());
+        // 認可: コピー元スコープの管理者（ADMIN/DEPUTY_ADMIN）のみ複製可。非管理者は403
+        checkScopeAdmin(userId, source.getScopeType(), source.getScopeId());
         ActivityScopeType targetScopeType = ActivityScopeType.valueOf(request.getTargetScopeType());
         Long targetScopeId = request.getTargetScopeId();
-        // 認可: コピー先スコープの会員のみ書き込み可。非会員は403
+        // 認可: コピー先スコープの管理者のみ書き込み可。非管理者は403
         // （コピー元だけでなく書き込み先も検証し、任意スコープへの書き込みを封じる）
-        checkScopeMembership(userId, targetScopeType, targetScopeId);
+        checkScopeAdmin(userId, targetScopeType, targetScopeId);
 
         // コピー先の上限チェック
         long count = templateRepository.countByScopeTypeAndScopeId(targetScopeType, targetScopeId);
@@ -296,8 +296,8 @@ public class ActivityTemplateService {
         ActivityScopeType scopeType = ActivityScopeType.valueOf(request.getScopeType());
         Long scopeId = request.getScopeId();
 
-        // 認可: インポート先スコープの会員のみ実行可。非会員は403
-        checkScopeMembership(userId, scopeType, scopeId);
+        // 認可: インポート先スコープの管理者（ADMIN/DEPUTY_ADMIN）のみ実行可。非管理者は403
+        checkScopeAdmin(userId, scopeType, scopeId);
 
         // 上限チェック
         long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);

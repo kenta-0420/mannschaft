@@ -15,5 +15,6 @@ public enum PresetCategory {
     STORE,
     VOLUNTEER,
     NEIGHBORHOOD,
-    CONDO
+    CONDO,
+    COMMITTEE
 }

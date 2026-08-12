@@ -141,13 +141,14 @@ public class AdCampaignStateTransitionScheduler {
      * → {@code releaseSlot} は no-op（{@code decrementIfPositive} が absent キーを安全に無視）。
      * よって行を残したまま日次で再スキャンしても over-decrement は起きない。</p>
      *
-     * @return FreqCap 返却を試みた予約行数
+     * @return FreqCap 返却を試みた予約行数。ShedLock はプリミティブ戻り値のメソッドをロックできないため
+     *         参照型 {@code Integer} を返す（issue #2724）。ロック未取得時は ShedLock が {@code null} を返す
      */
     @Scheduled(cron = "0 15 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adBannerReservationExpiry", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @BatchEndpoint(name = "ad-banner-reservation-expire-daily",
             description = "14日超過して未表示のまま残ったバナー広告予約を毎日02:15に期限切れ扱いにし、頻度キャップの枠を返却する")
-    public int expireStaleReservations() {
+    public Integer expireStaleReservations() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(RESERVATION_EXPIRY_DAYS);
         int totalStale = 0;
         int totalReleased = 0;

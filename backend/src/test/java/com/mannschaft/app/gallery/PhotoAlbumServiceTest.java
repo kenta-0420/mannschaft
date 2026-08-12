@@ -60,6 +60,9 @@ class PhotoAlbumServiceTest {
     /** 認可根治戦役 Wave3-B5: 書込CRUD の scope 認可用モック。 */
     @Mock
     private AccessControlService accessControlService;
+    /** CMP-028 Phase B: 可視レベル解決に用いる F00 メンバーシップ照会サービスのモック。 */
+    @Mock
+    private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     @InjectMocks
     private PhotoAlbumService service;
@@ -147,28 +150,41 @@ class PhotoAlbumServiceTest {
     }
 
     @Nested
-    @DisplayName("listAlbums — F00 Phase E-5 ContentVisibilityChecker 委譲")
+    @DisplayName("listAlbums — CMP-028 Phase B: SQL述語化")
     class ListAlbums {
 
+        /**
+         * AC-5/AC-8: 可視レベル解決 → 逆写像 → SQL の visibility IN 述語、という新しい経路が
+         * 呼ばれることを検証する。旧来の findByTeamIdOrderByEventDateDesc（無条件取得）が
+         * 呼ばれなくなったことも合わせて確認する（メモリフィルタの完全撤去）。
+         */
         @Test
-        @DisplayName("正常系: アクセス可能なアルバムのみ返される")
-        void 一覧_正常_可視性フィルタ適用() {
+        @DisplayName("正常系: resolveVisibleLevelsの結果をvisibility IN述語に渡してSQLで絞る")
+        void 一覧_SQL述語で絞り込む() {
             try (MockedStatic<SecurityUtils> mock = Mockito.mockStatic(SecurityUtils.class)) {
                 mock.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-                PhotoAlbumEntity album1 = PhotoAlbumEntity.builder()
-                        .teamId(TEAM_ID).title("アルバム1").build();
-                // ReflectionTestUtils で JPA 管理フィールド id を設定
-                ReflectionTestUtils.setField(album1, "id", 100L);
-                PhotoAlbumEntity album2 = PhotoAlbumEntity.builder()
-                        .teamId(TEAM_ID).title("アルバム2").build();
-                ReflectionTestUtils.setField(album2, "id", 200L);
-                Pageable pageable = PageRequest.of(0, 20);
-                Page<PhotoAlbumEntity> page = new PageImpl<>(List.of(album1, album2), pageable, 2);
+                com.mannschaft.app.common.visibility.ScopeKey scope =
+                        new com.mannschaft.app.common.visibility.ScopeKey("TEAM", TEAM_ID);
+                com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot.empty();
+                given(membershipBatchQueryService.snapshotForUser(
+                        eq(USER_ID), eq(Set.of(scope)), eq(Set.of(scope))))
+                        .willReturn(snapshot);
+                given(membershipBatchQueryService.resolveVisibleLevels(eq(scope), eq(snapshot)))
+                        .willReturn(Set.of(
+                                com.mannschaft.app.common.visibility.StandardVisibility.PUBLIC,
+                                com.mannschaft.app.common.visibility.StandardVisibility.SCOPE_AFFILIATED));
 
-                given(albumRepository.findByTeamIdOrderByEventDateDesc(TEAM_ID, pageable))
+                PhotoAlbumEntity album1 = PhotoAlbumEntity.builder()
+                        .teamId(TEAM_ID).title("アルバム1").visibility(AlbumVisibility.ALL_MEMBERS).build();
+                ReflectionTestUtils.setField(album1, "id", 100L);
+                Pageable pageable = PageRequest.of(0, 20);
+                Page<PhotoAlbumEntity> page = new PageImpl<>(List.of(album1), pageable, 1);
+
+                given(albumRepository.findByTeamIdAndVisibilityInOrderByEventDateDesc(
+                        eq(TEAM_ID), eq(Set.of(AlbumVisibility.ALL_MEMBERS)), eq(pageable)))
                         .willReturn(page);
-                // album1 の ID のみアクセス可能（album2 は不可）
                 given(contentVisibilityChecker.filterAccessible(
                         eq(ReferenceType.PHOTO_ALBUM), any(), eq(USER_ID)))
                         .willReturn(Set.of(100L));
@@ -182,67 +198,38 @@ class PhotoAlbumServiceTest {
 
                 assertThat(result.getContent()).hasSize(1);
                 assertThat(result.getContent().get(0).getTitle()).isEqualTo("アルバム1");
-                verify(contentVisibilityChecker).filterAccessible(
-                        eq(ReferenceType.PHOTO_ALBUM), any(), eq(USER_ID));
+                Mockito.verify(albumRepository, Mockito.never())
+                        .findByTeamIdOrderByEventDateDesc(any(), any());
             }
         }
 
+        /**
+         * AC-9: 可視レベルが PUBLIC のみ（非所属・未認証相当）の場合、AlbumVisibility には
+         * PUBLIC 相当が無いため逆写像が空集合になり、SQL を発行せず空ページを返す
+         * （IN () の不正 SQL を避けつつ fail-closed を維持する）。
+         */
         @Test
-        @DisplayName("回帰: 総件数はDBの総件数からF00で落ちた件数を差し引いた値になる（PageImpl総件数バグ是正）")
-        void 一覧_総件数はDB総件数ベース_絞り込み後件数ではない() {
+        @DisplayName("AC-9: 可視レベルがPUBLICのみ（AlbumVisibilityに対応なし）ならSQLを発行せず空ページ")
+        void 非所属は空ページ() {
             try (MockedStatic<SecurityUtils> mock = Mockito.mockStatic(SecurityUtils.class)) {
-                mock.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                mock.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(null);
 
-                // ページサイズ2、DB全体では5件（=総件数5）のうち今回のページに2件取得。
-                // うち1件（album2）はF00で非公開と判定され除外される想定。
-                PhotoAlbumEntity album1 = PhotoAlbumEntity.builder()
-                        .teamId(TEAM_ID).title("アルバム1（公開）").build();
-                ReflectionTestUtils.setField(album1, "id", 100L);
-                PhotoAlbumEntity album2 = PhotoAlbumEntity.builder()
-                        .teamId(TEAM_ID).title("アルバム2（非公開・除外対象）").build();
-                ReflectionTestUtils.setField(album2, "id", 200L);
-                Pageable pageable = PageRequest.of(0, 2);
-                // DB側の総件数は5（絞り込み前）。
-                Page<PhotoAlbumEntity> page = new PageImpl<>(List.of(album1, album2), pageable, 5);
+                com.mannschaft.app.common.visibility.ScopeKey scope =
+                        new com.mannschaft.app.common.visibility.ScopeKey("TEAM", TEAM_ID);
+                com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot.empty();
+                given(membershipBatchQueryService.snapshotForUser(
+                        eq(null), eq(Set.of(scope)), eq(Set.of(scope))))
+                        .willReturn(snapshot);
+                given(membershipBatchQueryService.resolveVisibleLevels(eq(scope), eq(snapshot)))
+                        .willReturn(Set.of(com.mannschaft.app.common.visibility.StandardVisibility.PUBLIC));
 
-                given(albumRepository.findByTeamIdOrderByEventDateDesc(TEAM_ID, pageable))
-                        .willReturn(page);
-                // album1 のみアクセス可能（album2 は除外＝片方だけが残ることを検証）
-                given(contentVisibilityChecker.filterAccessible(
-                        eq(ReferenceType.PHOTO_ALBUM), any(), eq(USER_ID)))
-                        .willReturn(Set.of(100L));
-                AlbumResponse response1 = new AlbumResponse(
-                        100L, TEAM_ID, null, "アルバム1（公開）", null, null, null,
-                        null, null, null, null, null, null, null);
-                given(galleryMapper.toAlbumResponse(album1)).willReturn(response1);
-
-                Page<AlbumResponse> result = service.listAlbums(
-                        TEAM_ID, null, null, null, null, null, pageable);
-
-                // 旧実装のバグでは filtered.size()=1 が総件数になっていた。
-                // 是正後は「DB総件数5 − このページで落ちた件数1」= 4 になるはず。
-                assertThat(result.getTotalElements()).isEqualTo(4L);
-                assertThat(result.getContent()).hasSize(1);
-                assertThat(result.getContent().get(0).getTitle()).isEqualTo("アルバム1（公開）");
-            }
-        }
-
-        @Test
-        @DisplayName("正常系: アルバムが空の場合は ContentVisibilityChecker を呼ばない")
-        void 一覧_空ページ_フィルタ不要() {
-            try (MockedStatic<SecurityUtils> mock = Mockito.mockStatic(SecurityUtils.class)) {
-                mock.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
                 Pageable pageable = PageRequest.of(0, 20);
-                Page<PhotoAlbumEntity> emptyPage = new PageImpl<>(List.of(), pageable, 0);
-
-                given(albumRepository.findByTeamIdOrderByEventDateDesc(TEAM_ID, pageable))
-                        .willReturn(emptyPage);
-
                 Page<AlbumResponse> result = service.listAlbums(
                         TEAM_ID, null, null, null, null, null, pageable);
 
                 assertThat(result.getContent()).isEmpty();
-                Mockito.verifyNoInteractions(contentVisibilityChecker);
+                Mockito.verifyNoInteractions(albumRepository, contentVisibilityChecker);
             }
         }
     }

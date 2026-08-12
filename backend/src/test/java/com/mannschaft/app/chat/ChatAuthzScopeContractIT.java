@@ -90,7 +90,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li>{@code CHAT_005}（CHANNEL_ACCESS_DENIED）/ {@code CHAT_006}（MESSAGE_EDIT_DENIED）/
  *       {@code CHAT_023}（CHANNEL_ICON_PERMISSION_DENIED）/ {@code COMMON_002}（スコープ権限不足）→ 403</li>
- *   <li>{@code CHAT_003}（MEMBER_NOT_FOUND）/ {@code CHAT_017}（DM_RECEIVE_RESTRICTED）→ 400（Severity.WARN 既定）</li>
+ *   <li>{@code CHAT_003}（MEMBER_NOT_FOUND）→ 400（Severity.WARN 既定。設計書 F04.2_chat.md の
+ *       「/members/me」節が「IDOR対策で404と区別せず400に統一」と明記しているため未登録のまま）</li>
+ *   <li>{@code CHAT_017}（DM_RECEIVE_RESTRICTED）→ 403（設計書 F04.2_chat.md の
+ *       {@code POST /chat/channels/conversations} エラーレスポンス表に明記。認可監査Wave6ロットEで
+ *       {@code ERROR_CODE_STATUS_MAP} に登録した）</li>
  * </ul>
  *
  * <p>金型: {@code TodoPersonalScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL +
@@ -691,7 +695,9 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("Zimmer（2名以上）でも相手の DM 受信範囲設定で拒否される（1対1と同一判定）")
+        @DisplayName("Zimmer（2名以上）でも相手の DM 受信範囲設定で拒否される403（1対1と同一判定）"
+            + "（設計書 F04.2_chat.md 「エラーレスポンス」表: 403=相手ユーザーにブロックされている/"
+            + "DM受信制限に抵触。認可監査Wave6ロットEで CHAT_017 に 403 を登録した）")
         void Zimmerでも受信範囲設定で拒否される() throws Exception {
             setAuth(ownerId);
             int before = memberRepository.findByUserId(dmRestrictedId).size();
@@ -699,7 +705,7 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/chat/channels/conversations")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("userIds", List.of(dmRestrictedId, teamAdminId)))))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isForbidden());
 
             assertThat(memberRepository.findByUserId(dmRestrictedId)).hasSize(before);
         }

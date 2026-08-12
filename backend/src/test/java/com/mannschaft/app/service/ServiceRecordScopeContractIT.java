@@ -86,6 +86,7 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long recordAId;      // TEAM A のサービス記録（DRAFT）
     private Long confirmedRecordAId; // TEAM A のサービス記録（CONFIRMED・履歴/CSV/サマリー用）
+    private Long recordBId;      // TEAM B のサービス記録（DRAFT・設定行未作成）
 
     @BeforeEach
     void setUp() {
@@ -129,6 +130,18 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
                 .status(ServiceRecordStatus.CONFIRMED)
                 .build());
         confirmedRecordAId = confirmed.getId();
+
+        // teamB は SERVICE_RECORD_021（SETTINGS_NOT_FOUND）検証用に設定行をあえて作らない。
+        ServiceRecordEntity draftB = serviceRecordRepository.save(ServiceRecordEntity.builder()
+                .teamId(teamBId)
+                .memberUserId(adminBId)
+                .staffUserId(adminBId)
+                .serviceDate(LocalDate.now())
+                .title("SVCAUTHZ 記録（teamB・設定未作成）")
+                .durationMinutes(30)
+                .status(ServiceRecordStatus.DRAFT)
+                .build());
+        recordBId = draftB.getId();
 
         serviceRecordSettingsRepository.save(ServiceRecordSettingsEntity.builder()
                 .teamId(teamAId)
@@ -636,6 +649,79 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/service-records/export", teamAId))
                     .andExpect(status().isOk());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 12. 認可Wave6ロットD追補: SERVICE_RECORD_001/004/010/013/014/015 の
+    //     HTTP ステータス契約（GlobalExceptionHandler.ERROR_CODE_STATUS_MAP 登録の裏取り）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("12. ロットDステータス契約（RECORD_NOT_FOUND/ATTACHMENT_NOT_FOUND/ALREADY_CONFIRMED/NOT_OWN_RECORD）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("teamBのURLでteamAのrecordIdを叩く越境（BOLA）はRECORD_NOT_FOUNDで404（IDOR秘匿）")
+        void teamB越境でrecordId不一致は404() throws Exception {
+            setAuth(adminBId);
+            // teamBId のADMIN が自スコープの teamBId パスで、teamA所属の recordAId を指定する。
+            // findByIdAndTeamId(recordAId, teamBId) はヒットしないため RECORD_NOT_FOUND → 404 で秘匿する。
+            mockMvc.perform(get("/api/v1/teams/{teamId}/service-records/{id}", teamBId, recordAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("存在しないrecordIdはRECORD_NOT_FOUNDで404")
+        void 存在しないrecordIdは404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/service-records/{id}", teamAId, 9_999_999L))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("確定済み記録の再確定はALREADY_CONFIRMEDで409")
+        void 確定済み記録の再確定は409() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/service-records/{id}/confirm",
+                            teamAId, confirmedRecordAId))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("存在しない添付IDの削除はATTACHMENT_NOT_FOUNDで404")
+        void 存在しない添付IDの削除は404() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(delete("/api/v1/teams/{teamId}/service-records/{id}/attachments/{aid}",
+                            teamAId, recordAId, 999L))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("本人以外（記録のmemberUserId本人でない）のリアクションはNOT_OWN_RECORDで403")
+        void 本人以外のリアクションは403() throws Exception {
+            // recordAId の memberUserId は memberAId。adminA は同チームのADMINだが本人ではない。
+            setAuth(adminAId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("reactionType", "LIKE");
+            mockMvc.perform(post("/api/v1/teams/{teamId}/service-records/{id}/reactions", teamAId, recordAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("service_record_settings行が未作成のチームでのリアクションはSETTINGS_NOT_FOUNDで404")
+        void 設定未作成チームのリアクションは404() throws Exception {
+            // adminB は teamB の ADMIN 兼メンバー。recordBId は adminB 自身の記録だが、
+            // teamB には service_record_settings 行を作っていない（設定未作成 → 404）。
+            setAuth(adminBId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("reactionType", "LIKE");
+            mockMvc.perform(post("/api/v1/teams/{teamId}/service-records/{id}/reactions", teamBId, recordBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound());
         }
     }
 

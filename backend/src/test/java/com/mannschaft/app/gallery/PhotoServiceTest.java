@@ -56,6 +56,8 @@ class PhotoServiceTest {
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave3-B5: 書込CRUD/DL の scope 認可用モック。 */
     @Mock private AccessControlService accessControlService;
+    /** CMP-028 Phase B: PhotoAlbumService の可視レベル解決に必要なモック。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     private PhotoAlbumService albumService;
     private PhotoService service;
@@ -63,7 +65,7 @@ class PhotoServiceTest {
     @BeforeEach
     void setUp() {
         albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker,
-                accessControlService);
+                accessControlService, membershipBatchQueryService);
         service = new PhotoService(photoRepository, albumRepository, albumService,
                 galleryMapper, r2StorageService, eventPublisher, storageQuotaService, accessControlService);
     }

@@ -187,4 +187,28 @@ public class ScheduledBatchFixtureBatch {
     public void notScheduledAtAll() {
         // 本文は空でよい
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ルール 5（@SchedulerLock はプリミティブ戻り値禁止）用の fixture
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 違反: {@code @SchedulerLock} 付きで {@code int} を返す
+     * （実コードの {@code ReservationPendingExpireBatchService} がこの形で
+     * ShedLock の {@code LockingNotSupportedException} を招いていた・issue #2724）。
+     */
+    @Scheduled(fixedDelay = 300_000)
+    @SchedulerLock(name = "fixturePrimitiveReturn", lockAtMostFor = "PT15M")
+    @BatchEndpoint(name = "fixture-primitive-return")
+    public int primitiveReturningSchedulerLock() {
+        return 0;
+    }
+
+    /** 正当形: {@code @SchedulerLock} 付きで参照型（{@code Integer}）を返す（プリミティブではない）。 */
+    @Scheduled(fixedDelay = 300_000)
+    @SchedulerLock(name = "fixtureBoxedReturn", lockAtMostFor = "PT15M")
+    @BatchEndpoint(name = "fixture-boxed-return")
+    public Integer boxedReturningSchedulerLock() {
+        return 0;
+    }
 }

@@ -35,6 +35,15 @@ import java.util.List;
  * enum キーは {@code name()} で String 化する（memory {@code feedback_cacheable_enum_key_redis}）。
  * {@code entitlement:check}（60 秒）とは別キャッシュ。例外（CRITERIA_NOT_FOUND）は Spring がキャッシュしない。</p>
  *
+ * <p><b>evict が存在しない理由（issue #2544）:</b> {@link #evaluate} の判定結果は
+ * {@code activeDays}（ログイン実績）・{@code membershipTenureDays}（在籍日数）・
+ * {@code activeMembers}（アクティブ人数）という <b>連続的に変化する複数の指標</b>の合成であり、
+ * 単一の書き込みイベント（例: ログイン記録・所属変更）を起点に evict を仕込んでも、他の指標が
+ * 変化した時点の陳腐化までは防げない。全指標の変化点を網羅した evict は実装コストに見合わない。
+ * ベータ特典の付与判定は「今この瞬間」の厳密性より運用上の許容誤差の方が優先される性質のため、
+ * {@code beta_perk_criteria} 自体（マスタ定義）が更新された場合を除き、既定より短い <b>TTL 10 分</b>
+ * の自然失効で十分と判断した（{@code adNgWords} と同様の判断枠組み）。</p>
+ *
  * <p><b>Clock</b>: {@link Clock} を注入し（{@code EntitlementQueryService} と同型）、テストで固定 Clock に
  * 差し替えて評価ウィンドウ・在籍日数の境界（AC-B1/B2）を決定論的に検証できるようにする。</p>
  */

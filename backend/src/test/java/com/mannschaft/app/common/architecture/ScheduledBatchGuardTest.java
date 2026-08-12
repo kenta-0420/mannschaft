@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -47,7 +48,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *
  * <p>本番人は、その規約を CI で機械的に強制する。</p>
  *
- * <h2>本番人が固定する 4 つの不変条件</h2>
+ * <h2>本番人が固定する 5 つの不変条件</h2>
  * <ol>
  *   <li><b>{@code @Scheduled} ⇒ {@code @SchedulerLock} 必須</b>
  *       （例外は {@link PodLocalScheduled} を付けた監査済みのもののみ）。
@@ -71,6 +72,15 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       設定だけで起きる事故であり、コードを読んでも気づけないため機械的に弾く。
  *       適用範囲を高頻度（起動間隔 1 時間以下）に限る理由は
  *       {@link #HIGH_FREQUENCY_THRESHOLD} の Javadoc を参照。</li>
+ *   <li><b>{@code @SchedulerLock} 付きメソッドはプリミティブ型を返してはならない</b>
+ *       （issue #2724）。ShedLock は {@code LockingNotSupportedException:
+ *       Can not lock method returning primitive value} を投げ、当該メソッドは
+ *       {@code @Scheduled} 実行のたびに<b>必ず失敗し一度も走らない</b>（
+ *       {@code ReservationPendingExpireBatchService} が {@code int} を返して
+ *       この事故を起こしていた）。原因はコンパイルもテスト（モック経由の単体テスト）も
+ *       すり抜け、実機の {@code @Scheduled} 実行でしか露見しないため機械的に弾く。
+ *       戻り値が不要なら {@code void}、可観測性が必要なら参照型（{@code Integer} 等）
+ *       か戻り値を使わず {@code log.info} で件数を出す設計に直すこと。</li>
  * </ol>
  *
  * <h2>発足時点の状態（試練＝テスト先行のため red で始まる）</h2>
@@ -79,7 +89,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  * green 化する、というプロジェクトの開発フローに従っている。
  * ルール 2 は発足時点で違反 0 件（green 発足）であり、目的は<b>新規流入の防止</b>である。
  * ルール 4（Phase 2）も同じく試練＝ red 先行で発足し、既存 21 件の是正で green 化した
- * （除外リストは設けていない）。</p>
+ * （除外リストは設けていない）。
+ * ルール 5（issue #2724）も同じく試練先行で発足し、{@code ReservationPendingExpireBatchService}
+ * 1 件の是正（プリミティブ {@code int} から参照型 {@code Integer} への変更。ShedLock は
+ * プリミティブ戻り値だけをロックできず、参照型なら問題ないため）で green 化した。</p>
  *
  * <h2>green 発足するルールの「偽陰性ゼロ」証明</h2>
  * <p>「違反 0 件」は<b>番人が動いていることの証明にはならない</b> ——
@@ -172,6 +185,22 @@ class ScheduledBatchGuardTest {
                 + "次の周回と重なって同じ処理が並走する。設定だけで起きる事故であり"
                 + "コードを読んでも気づけないため機械的に弾く（issue #2601）")
             .as("@SchedulerLock lockAtMostFor should exceed the schedule interval for high-frequency batches");
+
+    // ------------------------------------------------------------------
+    // ルール 5: @SchedulerLock 付きメソッドはプリミティブ戻り値禁止
+    // ------------------------------------------------------------------
+
+    @ArchTest
+    static final ArchRule scheduler_lock_methods_should_not_return_primitives =
+        methods().that().areAnnotatedWith(SchedulerLock.class)
+            .should(satisfy("not return a primitive type",
+                ScheduledBatchGuardTest::findPrimitiveReturningSchedulerLock))
+            .because("ShedLock はプリミティブ戻り値のメソッドをロックできず、"
+                + "LockingNotSupportedException: Can not lock method returning primitive value を投げて"
+                + "@Scheduled 実行のたびに必ず失敗する（一度も実行されない）。"
+                + "コンパイルもモック経由の単体テストもすり抜け、実機の @Scheduled 実行でしか露見しないため"
+                + "機械的に弾く（issue #2724）")
+            .as("@SchedulerLock methods should not return a primitive type");
 
     // ══════════════════════════════════════════════════════════════════
     // 判定ロジック（メタテストと共有する単一正準）
@@ -610,6 +639,39 @@ class ScheduledBatchGuardTest {
                 + "併記してください。数秒間隔の高頻度ワーカーのように履歴が有害な場合に限り、"
                 + "@BatchEndpointExempt(\"<起動間隔と、履歴を書いた場合の害>\") で明示してください。(%s)",
             method.getFullName(), method.getSourceCodeLocation()));
+    }
+
+    /**
+     * {@code @SchedulerLock} 付きメソッドのうちプリミティブ型を返すものを違反として返す。
+     *
+     * <p>ShedLock はロック対象メソッドの戻り値をプロキシで包む都合上、プリミティブ型
+     * （{@code int}/{@code long}/{@code boolean} 等）を返すメソッドをロックできず、
+     * {@code LockingNotSupportedException} を実行のたびに投げる。<b>{@code void} は除外する</b>
+     * ——素朴な {@code void.class.isPrimitive()} は Java の仕様上 {@code true} を返すが、
+     * {@code void} は「値を返さない」だけで ShedLock のプロキシ生成を妨げない
+     * （実際、本番の {@code @SchedulerLock} 付きメソッドの大半は {@code void} で問題なく動いている）。
+     * ここを弾いてしまうと本番の大半が誤検出になる（issue #2724 是正時に実測で判明した）。
+     * 参照型（{@code Integer} 等）も問題ないため違反にしない。</p>
+     *
+     * @param method 検査対象メソッド
+     * @return 違反の説明文リスト（空なら合格）
+     */
+    static List<String> findPrimitiveReturningSchedulerLock(JavaMethod method) {
+        if (!method.isAnnotatedWith(SchedulerLock.class)) {
+            return List.of();
+        }
+        JavaClass returnType = method.getRawReturnType();
+        if (returnType.isEquivalentTo(void.class) || !returnType.isPrimitive()) {
+            return List.of();
+        }
+        return List.of(String.format(
+            "%s は @SchedulerLock 付きでありながらプリミティブ型 \"%s\" を返しています。"
+                + "ShedLock はプリミティブ戻り値のメソッドをロックできず、"
+                + "LockingNotSupportedException: Can not lock method returning primitive value を投げて"
+                + "@Scheduled 実行のたびに必ず失敗します（一度も実行されません）。"
+                + "戻り値が不要なら void に、件数などの可観測性が必要なら log.info で出すか"
+                + "参照型（Integer 等）に変更してください。(%s)",
+            method.getFullName(), returnType.getName(), method.getSourceCodeLocation()));
     }
 
     // ══════════════════════════════════════════════════════════════════

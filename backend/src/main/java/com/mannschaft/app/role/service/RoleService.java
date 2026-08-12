@@ -368,6 +368,21 @@ public class RoleService {
     }
 
     /**
+     * 指定組織の ADMIN ロールを持つユーザー ID 一覧を返す。
+     *
+     * <p>他ドメイン（例: notification.credit の残高マイナスアラート通知先解決）が
+     * {@code role} ドメインの {@code UserRoleRepository} を直接注入することを避けるための
+     * Service 経路（D-5 ArchUnit 準拠: クラスは別ドメイン Repository に直接依存しない）。
+     * プリミティブ（{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @return 当該組織の ADMIN ユーザー ID 一覧
+     */
+    public List<Long> getAdminUserIdsByOrganizationId(Long organizationId) {
+        return userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
+    }
+
+    /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *
