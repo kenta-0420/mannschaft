@@ -31,9 +31,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 画面のページャに表示される総件数が「絞り込み後の件数」という嘘になる
  * （DB の真の総件数と一致しなくなり、ページ送りが壊れる）。
  *
- * <p>正しい実装は DB が算出した {@code Page#getTotalElements()} を起点に、そのページで
- * フィルタにより除外された件数だけを差し引く（{@code activity.service.ActivityResultService}
- * や {@code tournament.service.TournamentService#listTournaments} が採用済みの金型）。</p>
+ * <p>次善の実装は DB が算出した {@code Page#getTotalElements()} を起点に、そのページで
+ * フィルタにより除外された件数だけを差し引く形
+ * （{@code tournament.service.TournamentService#listTournaments} が現在採用。
+ * ただし<b>これは近似であり、ページ内の歯抜け自体は解消しない</b>）。</p>
+ *
+ * <p><b>最善の実装は、可視性の絞り込みそのものを SQL の WHERE 述語へ降ろすこと</b>
+ * （CMP-028 Phase B）。メモリフィルタが無くなるため歯抜けが原理的に生じず、総件数も
+ * DB の COUNT で正確に出る。{@code activity.service.ActivityResultService#listActivities} と
+ * {@code gallery.service.PhotoAlbumService#listAlbums} がこの形に移行済みで、現在の金型はこちら。
+ *
+ * <p class="note">⚠️ 本 javadoc はかつて {@code ActivityResultService} を「差し引く方式の金型」と
+ * 紹介していたが、同サービスは SQL 述語化されて差し引きを行わなくなったため記述を改めた。
+ * <b>番人の説明文が実装より古くなると、後の者が捨てたはずの方式を手本として学んでしまう。</b>
+ * 引用先を変更したときは、この javadoc も併せて改めること。</p>
  *
  * <p>家老による人手の列挙では 172 ファイルに及ぶ {@code .stream().filter(} を三度数えて
  * 三度とも「漏れがある」と申告されたため、<b>構文で機械的に検出できる本パターンだけでも
