@@ -89,6 +89,8 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long consumableItemTeamAId;
     private Long assignmentTeamAId;
     private Long assignmentTeamAId2;
+    private Long itemTeamAOtherId;
+    private Long assignmentTeamAOtherId;
 
     @BeforeEach
     void setUp() {
@@ -153,6 +155,20 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
                 .quantity(1).assignedAt(LocalDateTime.now())
                 .build());
         assignmentTeamAId2 = assignmentTeamA2.getId();
+
+        // EQUIPMENT_009（SCOPE_MISMATCH・越境存在秘匿）検証用: 同一チーム内の「別備品」に対する貸出記録。
+        EquipmentItemEntity itemTeamAOther = itemRepository.save(EquipmentItemEntity.builder()
+                .teamId(teamAId).name("EQAUTHZ ビブス").category("スポーツ用品")
+                .quantity(5).assignedQuantity(1).status(EquipmentStatus.AVAILABLE)
+                .isConsumable(false).qrCode("EQAUTHZ-QR-TEAM-A-OTHER-" + System.nanoTime())
+                .build());
+        itemTeamAOtherId = itemTeamAOther.getId();
+
+        EquipmentAssignmentEntity assignmentTeamAOther = assignmentRepository.save(EquipmentAssignmentEntity.builder()
+                .equipmentItemId(itemTeamAOtherId).assignedToUserId(memberTeamAId).assignedByUserId(adminTeamAId)
+                .quantity(1).assignedAt(LocalDateTime.now())
+                .build());
+        assignmentTeamAOtherId = assignmentTeamAOther.getId();
 
         em.flush();
         em.clear();
@@ -431,6 +447,21 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(returnBody(assignmentTeamAId))))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("正当ADMINでも他備品の貸出記録IDを指定すると404（EQUIPMENT_009・越境は存在秘匿）")
+        void 正当ADMINでも他備品の貸出記録IDなら404() throws Exception {
+            setAuth(adminTeamAId);
+            // itemTeamAId・itemTeamAOtherId は同一チーム内の「別々の備品」。
+            // assignmentTeamAOtherId は itemTeamAOtherId 側の貸出記録であり、
+            // path の itemTeamAId に対して指定すると EquipmentAssignmentService.doReturn() の
+            // 「assignment.getEquipmentItemId().equals(item.getId())」検証（EQUIPMENT_009）に落ちる。
+            // ここは itemService.findTeamItemOrThrow() の ITEM_NOT_FOUND とは別経路であることが要点。
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/equipment/{id}/return", teamAId, itemTeamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(returnBody(assignmentTeamAOtherId))))
+                    .andExpect(status().isNotFound());
         }
 
         private Map<String, Object> returnBody(Long assignmentId) {

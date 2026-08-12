@@ -52,7 +52,14 @@ public enum MembershipBasisErrorCode implements ErrorCode {
     /** ブロックリストに登録あり。 */
     MEMBERSHIP_BLOCKED("MEMBERSHIP_BLOCKED", "ブロックされているため参加できません", Severity.WARN),
 
-    /** 役職割当のスコープ越境。 */
+    /**
+     * 役職割当のスコープ越境（404）。
+     *
+     * <p>指定した役職カタログが対象メンバーシップと異なるスコープに属する場合に投げる。
+     * 「見つからない」役職カタログ不在（{@link #MEMBERSHIP_POSITION_CATALOG_NOT_FOUND}）と
+     * 同じ意味合いで、越境した ID の存在を秘匿するため 404 に統一する
+     * （既存 PARKING_020 の「越境は存在秘匿」の流儀に倣う）。</p>
+     */
     MEMBERSHIP_POSITION_SCOPE_MISMATCH("MEMBERSHIP_POSITION_SCOPE_MISMATCH",
             "役職とメンバーシップのスコープが一致しません", Severity.WARN),
 
