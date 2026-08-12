@@ -335,6 +335,119 @@ class NativeQueryUnsignedBigintTypeIT {
     }
 
     /**
+     * 符号揃え 第二波（issue #2545・{@code V181.20260812030534__unify_id_columns_unsigned_wave2.sql}）の実測。
+     *
+     * <p>第一波（V180・my_scope_folder_items 系）以外に origin/main 全体へ残っていた符号付き
+     * {@code _id} 列 82 本を横断で {@code BIGINT UNSIGNED} へ統一した。本テストは
+     * {@code information_schema} を直接読み、(1) 型が統一されたこと、(2) {@code MODIFY COLUMN} で
+     * 元の COMMENT を失っていないこと（COMMENT 無し宣言は空文字のままであること）を検証する。
+     * 索引選択（EXPLAIN の key）は保証対象ではないため断言しない（第一波と同じ方針）。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第二波: 残存していた符号付きBIGINT id列82本がBIGINT UNSIGNEDへ統一済み（V181・issue #2545）")
+    void 符号揃え第二波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        // {table, column, expectedComment（無ければ空文字）}
+        String[][] expected = {
+            {"reservation_team_settings", "team_id", ""},
+            {"reservation_policies", "team_id", ""},
+            {"reservation_notification_recipients", "team_id", ""},
+            {"gdpr_s3_purge_failures", "user_id", ""},
+            {"reflection_themes", "user_id", ""},
+            {"reflection_themes", "linked_slot_id", ""},
+            {"reflection_entries", "user_id", ""},
+            {"reflection_entries", "exported_blog_post_id", ""},
+            {"recall_attempts", "user_id", ""},
+            {"reflection_spaced_reminders", "user_id", ""},
+            {"user_reflection_settings", "user_id", ""},
+            {"appearance_settings", "user_id", ""},
+            {"appearance_settings", "seasonal_theme_id", ""},
+            {"payment_beneficiary_settings", "team_id", ""},
+            {"payment_beneficiary_settings", "organization_id", ""},
+            {"google_calendar_webhook_channels", "user_id", ""},
+            {"visibility_template_rules", "rule_target_id", ""},
+            {"village_charter_drafters", "user_id", "策定者（FK非付与・退会時 NULL 化・原則1/4）"},
+            {"event_care_notification_logs", "notification_id", "FK → notifications.id（配信レコード参照）"},
+            {"attendance_location_changes", "team_id", ""},
+            {"attendance_location_changes", "student_user_id", ""},
+            {"attendance_requirement_rules", "organization_id", "組織スコープ（team_id と排他）"},
+            {"attendance_requirement_rules", "team_id", "チームスコープ（organization_id と排他）"},
+            {"attendance_requirement_rules", "term_id", "NULLなら年度通算"},
+            {"student_attendance_summaries", "team_id", "チームID"},
+            {"student_attendance_summaries", "student_user_id", "生徒ユーザーID"},
+            {"student_attendance_summaries", "term_id", "NULLなら年度通算"},
+            {"email_outbox", "user_id", "宛先ユーザー (論理参照、FK なし)"},
+            {"email_outbox", "organization_id", "所属組織 (論理参照、FK なし。認証メールは NULL)"},
+            {"public_post_comments", "post_id", "対象 BlogPost の ID"},
+            {"public_post_comments", "author_id", "投稿者ユーザー ID（users.id）"},
+            {"schedule_scheduled_tasks", "schedule_id", "親予定 schedules.id（FK制約なし・論理参照）"},
+            {"schedule_scheduled_tasks", "organization_id", "テナントキー。team予定なら所属組織のid（原則7）"},
+            {"schedule_scheduled_tasks", "scope_id", "スコープ実体ID（team_id または organization_id）"},
+            {"schedule_scheduled_tasks", "materialized_entity_id", "生成後の実体id（event_survey / schedule_attendance 等）"},
+            {"matches", "organization_id", "テナント（organization ドメインへの ID 参照・原則1/7・FK なし）"},
+            {"matches", "team_id", "記録/ホーム主体チーム（team ドメイン ID 参照・FK なし）"},
+            {"matches", "tournament_fixture_id", "大会 fixture リンク（tournament ドメインへの BIGINT ID 参照・NULL=単独試合・FK なし）"},
+            {"matches", "schedule_id", "カレンダー連携（F03.1・schedules への BIGINT ID 参照・FK なし）"},
+            {"matches", "opponent_team_id", "登録相手チーム（team ドメイン ID 参照・NULL 可・FK なし）"},
+            {"matches", "scorekeeper_user_id", "記録係ユーザー（公式戦・user ドメイン ID 参照・FK なし）"},
+            {"match_events", "player_user_id", "主体選手（user ドメイン ID 参照・未登録は NULL・FK なし）"},
+            {"match_events", "related_player_user_id", "関連選手（アシスト者/交代相手・user ドメイン ID 参照・FK なし）"},
+            {"match_events", "recorded_by_team_id", "記録したチーム（共同記録の権限判定・team ドメイン ID 参照・NULL=記録係記録・FK なし）"},
+            {"player_appearances", "player_user_id", "選手（user ドメイン ID 参照・未登録は NULL・FK なし）"},
+            {"player_appearances", "owning_team_id", "自チーム編集権限の判定（team ドメイン ID 参照・FK なし）"},
+            {"tournament_scorekeepers", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_scorekeepers", "user_id", "スコアキーパーに指名されたユーザー（users.id・FK なし／原則1）"},
+            {"match_score_entries", "competitor_user_id", "出場選手（user ドメイン ID 参照・未登録は NULL・原則1）"},
+            {"match_score_entries", "competitor_team_id", "所属チーム（team ドメイン ID 参照・団体採点時・原則1）"},
+            {"match_roster_staff", "match_id", "tournament_matches.id への ID 参照（同一 tournament ドメイン・FK なし）"},
+            {"match_roster_staff", "participant_id", "tournament_participants.id への ID 参照（自チーム分・FK なし）"},
+            {"match_roster_staff", "user_id", "紐付くユーザー（user ドメインへの ID 参照・FK なし／原則1・NULL 可）"},
+            {"tournament_entry_template_staff", "user_id", "user ドメインへの ID 参照（FK なし／原則1・NULL 可）"},
+            {"tournament_fee", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_fee", "division_id", "対象ディビジョン（tournament_divisions.id。NULL=大会全体・FK なし）"},
+            {"tournament_fee", "payment_item_id", "payment ドメインの payment_items.id（FK なし／原則1）"},
+            {"tournament_fee", "organization_id", "主催組織（入金先・テナント絞り込み）"},
+            {"tournament_fee_target", "team_id", "対象チーム（teams.id・FK なし／原則1）"},
+            {"tournament_submission_requirement", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_submission_requirement", "division_id", "対象ディビジョン（tournament_divisions.id。NULL=大会全体・FK なし）"},
+            {"tournament_submission_requirement", "form_template_id", "forms/workflow ドメインの form_templates.id（FK なし／原則1）"},
+            {"tournament_submission_requirement", "organization_id", "主催組織（テナント絞り込み・クォータ帰属）"},
+            {"tournament_submission_requirement_target", "team_id", "対象チーム（teams.id・FK なし／原則1）"},
+            {"league_transfer", "team_id", "移籍対象チーム（teams.id・FK なし／原則1）。team_id は不変"},
+            {"league_transfer", "from_organization_id", "手放す側 org（昇格時=下位県協会 / 降格時=上位協会・FK なし）"},
+            {"league_transfer", "to_organization_id", "受け入れる側 org（昇格時=上位協会 / 降格時=出身県協会・FK なし）"},
+            {"league_transfer", "source_division_id", "移籍元ディビジョン（tournament_divisions.id・FK なし）"},
+            {"league_transfer", "target_division_id", "移籍先ディビジョン（承認・配属確定時にセット・FK なし）"},
+            {"team_uniform_set", "team_id", "team ドメインへの ID 参照（teams.id・FK なし／原則1）"},
+            {"team_slug_history", "team_id", "リネーム対象チーム（teams.id・FK なし／原則1）"},
+            {"organization_slug_history", "organization_id", "リネーム対象組織（organizations.id・FK なし／原則1）"},
+            {"beta_restriction_config", "max_team_id", "このID以下のチームが招待可能（NULL=制限なし）"},
+            {"beta_restriction_config", "max_org_id", "このID以下の組織が招待可能（NULL=制限なし）"},
+            {"team_name_disclosure_change_logs", "team_id", ""},
+            {"organization_name_disclosure_change_logs", "organization_id", ""},
+            {"user_nav_settings", "user_id", "users.id（FK制約なし。クロスドメインFK禁止原則）"},
+            {"inbox_item_states", "user_id", "users.id（FK制約なし。クロスドメインFK禁止原則1）"},
+            {"inbox_item_states", "source_id", "各ソーステーブルのPK（FK制約なし・論理参照）"},
+            {"notification_labels", "user_id", "users.id（FK制約なし）"},
+            {"inbox_label_links", "user_id", "users.id（冗長保持・user絞り込み高速化／所有検証）"},
+            {"inbox_label_links", "source_id", "各ソースPK（論理参照）"},
+        };
+
+        SoftAssertions softly = new SoftAssertions();
+        for (String[] row : expected) {
+            String table = row[0];
+            String column = row[1];
+            String expectedComment = row[2];
+            softly.assertThat(readColumnType(table, column))
+                    .as(table + "." + column + " が BIGINT UNSIGNED へ統一されていること")
+                    .isEqualTo("bigint unsigned");
+            softly.assertThat(readColumnComment(table, column))
+                    .as(table + "." + column + " の COMMENT を MODIFY COLUMN で失っていないこと")
+                    .isEqualTo(expectedComment);
+        }
+        softly.assertAll();
+    }
+
+    /**
      * {@code notifications_archive} の実害実測。{@code NotificationCleanupBatchService#deleteArchived} が
      * 実際に発行する {@code DELETE FROM notifications WHERE ... AND id IN (SELECT id FROM notifications_archive)}
      * は {@code notifications.id}（{@code BIGINT UNSIGNED}）と {@code notifications_archive.id} を
