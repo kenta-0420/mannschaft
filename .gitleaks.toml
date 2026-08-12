@@ -1,0 +1,76 @@
+title = "Mannschaft gitleaks 設定"
+
+# =============================================================================
+# gitleaks 設定 — 秘密情報混入の機械的防止
+# =============================================================================
+# 既定ルールセット（gitleaks 標準の各種秘密パターン）を継承したうえで、
+# 本リポジトリ固有の既知の偽陽性のみを allowlist で除外する。
+# allowlist は必要最小限にとどめること（広げすぎると検出器が無力化する）。
+#
+# 以下は `.gitleaks.toml --no-git` によるワーキングツリー全体スキャンで実測した
+# 偽陽性 48 件（すべて generic-api-key ルール）の内訳。実際の値を確認し、
+# いずれも実秘密でない（変数名・定数名・テスト用固定値・ドキュメント例示・
+# プロトコル定型ヘッダ）ことを検証済み。
+#
+# 2026-08-12: 初版作成（PUBLIC リポジトリ運用における秘密混入の機械的防止戦役）
+# =============================================================================
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "本リポジトリ固有の既知の偽陽性（実測48件）のみを対象とする"
+
+paths = [
+  # --- テストフィクスチャ・テスト用のダミー鍵/トークン（決定性のための固定値。本番シークレットではない） ---
+  '''backend[\\/]src[\\/]test[\\/]resources[\\/]application-test\.yml''',
+  '''backend[\\/]src[\\/]test[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]common[\\/]qr[\\/]BrandedQrImageWriterTest\.java''',
+  '''backend[\\/]src[\\/]test[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]notification[\\/]PushSubscriptionServiceTest\.java''',
+  '''backend[\\/]src[\\/]test[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]payment[\\/]controller[\\/]PaymentCheckoutControllerTest\.java''',
+  '''backend[\\/]src[\\/]test[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]pointcard[\\/]controller[\\/]OrgPointCardResolveControllerTest\.java''',
+  '''backend[\\/]src[\\/]test[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]pointcard[\\/]controller[\\/]PointCardControllerTest\.java''',
+  '''backend[\\/]src[\\/]main[\\/]resources[\\/]application-ci\.yml''',
+
+  # --- FE E2E/ユニットテストのモックトークン（実APIに送られない固定文字列） ---
+  '''frontend[\\/]tests[\\/]e2e[\\/]F13\.1_job_matching[\\/]_helpers\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]helpers[\\/]action-memo-mocks\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]repair-plan[\\/]helpers\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]residence-status[\\/]helpers\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]succession[\\/]helpers\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]surveys[\\/]_helpers\.ts''',
+  '''frontend[\\/]tests[\\/]e2e[\\/]teams[\\/]milestone-gate\.spec\.ts''',
+  '''frontend[\\/]tests[\\/]unit[\\/]composables[\\/]useMarketPaymentApi\.spec\.ts''',
+
+  # --- E2E シードスクリプトの環境変数名（値そのものではなく process.env のキー名に誤反応） ---
+  '''backend[\\/]scripts[\\/]seed-e2e-data\.js''',
+  '''backend[\\/]scripts[\\/]seed-f0810-multisport-e2e\.js''',
+  '''backend[\\/]scripts[\\/]seed-f0810-turn-team-e2e\.js''',
+  '''backend[\\/]scripts[\\/]seed-f087-visibility-e2e\.js''',
+
+  # --- 本番コードの変数名・定数名への誤反応（値ではなく識別子名がエントロピー判定に引っかかる） ---
+  '''backend[\\/]src[\\/]main[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]cms[\\/]entity[\\/]BlogMediaUploadEntity\.java''',
+  '''backend[\\/]src[\\/]main[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]gallery[\\/]entity[\\/]PhotoEntity\.java''',
+  '''backend[\\/]src[\\/]main[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]schedule[\\/]entity[\\/]ScheduleMediaUploadEntity\.java''',
+  '''backend[\\/]src[\\/]main[\\/]java[\\/]com[\\/]mannschaft[\\/]app[\\/]ticket[\\/]service[\\/]TicketQrService\.java''',
+
+  # --- 設計ドキュメントのAPIレスポンス例（サンプル値。実秘密ではない） ---
+  '''docs[\\/]features[\\/]F02\.1_qr_membership\.md''',
+  '''docs[\\/]features[\\/]F03\.3_google_calendar\.md''',
+  '''docs[\\/]features[\\/]F03\.8_event_management\.md''',
+  '''docs[\\/]features[\\/]F04\.12_chat_membership_invite\.md''',
+  '''docs[\\/]features[\\/]F06\.1_cms_blog\.md''',
+  '''docs[\\/]features[\\/]F06\.2_member_gallery\.md''',
+  '''docs[\\/]features[\\/]F08\.6_budget_accounting\.md''',
+  '''docs[\\/]features[\\/]F09\.10_digital_signage\.md''',
+  '''docs[\\/]features[\\/]F09\.9_webhook_api\.md''',
+  '''docs[\\/]features[\\/]F13\.1_short_term_job_matching[\\/]02_api_design\.md''',
+
+  # --- Terraform bootstrap README のプロトコル定型ヘッダ例（Sec-WebSocket-Key はRFC6455の定型値。秘密ではない） ---
+  '''infra[\\/]terraform[\\/]bootstrap[\\/]README\.md''',
+
+  # --- docs/openapi.json は springdoc による自動生成物。サンプル値は実秘密ではない ---
+  '''docs[\\/]openapi\.json''',
+
+  # --- frontend/.env.example, frontend/.env.test.example: 変数名のみでキーの値は空/プレースホルダ ---
+  '''frontend[\\/]\.env(\.test)?\.example''',
+]
