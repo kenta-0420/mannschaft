@@ -188,19 +188,6 @@ async function createManualSlot(
   return ((await res.json()).data as { id: number }).id
 }
 
-async function createTemplate(
-  ctx: APIRequestContext,
-  token: string,
-  slug: string,
-  data: { lineId: number; dayOfWeek: DayCode; startTime: string; endTime: string; capacity: number },
-): Promise<void> {
-  const res = await ctx.post(`${BE_API}/teams/${slug}/reservation-slot-templates`, {
-    headers: authHeaders(token),
-    data,
-  })
-  if (!res.ok()) throw new Error(`テンプレ作成失敗: ${res.status()} ${await res.text()}`)
-}
-
 interface SlotRow {
   id: number
   lineId: number | null
@@ -501,30 +488,18 @@ test.describe('D群 追加E2: 予約作成レートリミット — グループ
     await setBusinessHours(ctx, tokens.admin, teamSlug)
     lineId = await createLine(ctx, tokens.admin, teamSlug, '多目的室')
 
-    // 単枠作成5回分 + グループ作成用の予備2枠、余裕をもって8枠用意する（capacity大きめ）
+    // 単枠作成5回分 + グループ作成用の予備2枠、余裕をもって8枠用意する（capacity大きめ）。
+    // 実体の枠として作る（テンプレートは週次パターンの定義であり、findSlotIdが照会する
+    // GET /reservation-slots には出てこないため、テンプレートでは前提データにならない）。
     for (const start of ['09:00:00', '09:30:00', '10:00:00', '10:30:00', '11:00:00', '11:30:00', '12:00:00', '12:30:00']) {
       const end = `${String(Number(start.slice(0, 2)) + (start.slice(3, 5) === '30' ? 1 : 0)).padStart(2, '0')}:${start.slice(3, 5) === '30' ? '00' : '30'}:00`
-      await createTemplateOrSlot(ctx, tokens.admin, teamSlug, lineId, day.dayCode, start, end)
+      await createManualSlot(ctx, tokens.admin, teamSlug, {
+        lineId, slotDate: day.iso, startTime: start, endTime: end, capacity: 5,
+      })
     }
     console.log(`[SETUP-E2] teamSlug=${teamSlug} lineId=${lineId} day=${day.iso}(${day.dayCode})`)
     await ctx.dispose()
   })
-
-  async function createTemplateOrSlot(
-    ctx: APIRequestContext,
-    token: string,
-    slug: string,
-    lineIdArg: number,
-    dayOfWeek: DayCode,
-    startTime: string,
-    endTime: string,
-  ): Promise<void> {
-    const res = await ctx.post(`${BE_API}/teams/${slug}/reservation-slot-templates`, {
-      headers: authHeaders(token),
-      data: { lineId: lineIdArg, dayOfWeek, startTime, endTime, capacity: 5 },
-    })
-    if (!res.ok()) throw new Error(`テンプレ作成失敗(${startTime}): ${res.status()} ${await res.text()}`)
-  }
 
   test('E2: 単枠5回で枠を使い切った直後、グループ作成(6回目)も429で弾かれる（同一zone実証）', async ({ tokens }) => {
     test.setTimeout(180_000)
@@ -612,9 +587,9 @@ test.describe('D群 追加E3: 強行登録でキャンセルされた予約の�
     await setBusinessHours(adminCtx, tokens.admin, teamSlug)
     lineId = await createLine(adminCtx, tokens.admin, teamSlug, '相談室')
 
-    // 09:00-10:00の2コマ(30分刻み)テンプレを用意
-    await createTemplate(adminCtx, tokens.admin, teamSlug, {
-      lineId, dayOfWeek: day.dayCode, startTime: '09:00:00', endTime: '10:00:00', capacity: 3,
+    // 09:00-10:00の実体枠を用意（テンプレートでは findSlotId が照会する実体枠一覧に出てこないため）
+    await createManualSlot(adminCtx, tokens.admin, teamSlug, {
+      lineId, slotDate: day.iso, startTime: '09:00:00', endTime: '10:00:00', capacity: 3,
     })
 
     memberRoleName = await joinAsMember(adminCtx, tokens.admin, memberCtx, memberToken, teamSlug)

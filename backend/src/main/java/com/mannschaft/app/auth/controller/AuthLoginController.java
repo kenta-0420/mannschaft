@@ -150,7 +150,8 @@ public class AuthLoginController {
      * {@link com.mannschaft.app.auth.service.AuthRegistrationService#resendVerificationEmail}
      * はユーザー不在・非対象ステータスでも同一レスポンスを返し（列挙対策）、副作用は
      * 「そのメールアドレス宛に確認メールを再送する」のみで呼出者に情報を返さない。
-     * Valkey による 60 秒クールダウン（メールアドレス単位）で濫用も抑制される。
+     * Valkey による 60 秒クールダウン（メールアドレス単位）に加え、IP 単位のレートリミット
+     * （10 回/時、register と同値）でメール爆撃・送信コスト増を抑止する（公開網漏れ是正）。
      * パスワードリセット要求と同型の設計。</p>
      *
      * <p>認可根治戦役 Wave5 監査済。email-verification/verify-email 未整合是正（2026-08-07）。</p>
@@ -160,9 +161,11 @@ public class AuthLoginController {
     @Operation(summary = "メール認証メール再送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再送信完了")
     public ResponseEntity<ApiResponse<MessageResponse>> resendVerificationEmail(
-            @Valid @RequestBody ResendVerificationRequest req) {
+            @Valid @RequestBody ResendVerificationRequest req,
+            HttpServletRequest request) {
 
-        return ResponseEntity.ok(authService.resendVerificationEmail(req.getEmail()));
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
+        return ResponseEntity.ok(authService.resendVerificationEmail(req.getEmail(), ipAddress));
     }
 
     /**
