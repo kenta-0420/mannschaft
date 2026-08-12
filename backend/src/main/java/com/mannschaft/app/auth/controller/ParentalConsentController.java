@@ -16,6 +16,7 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -173,11 +174,13 @@ public class ParentalConsentController {
     @PostMapping("/approve")
     @Operation(summary = "保護者同意承認", description = "保護者がトークンを使って同意を承認する（認証不要）")
     public ResponseEntity<ApiResponse<MessageResponse>> approve(
-            @Valid @RequestBody ApproveConsentRequest req) {
+            @Valid @RequestBody ApproveConsentRequest req,
+            HttpServletRequest request) {
         // 認証済みの場合は parentUserId を取得し自己承認チェックを行う
         // 未認証（メールリンクから直接）の場合は null（自己承認チェックはスキップ）
         Long parentUserId = SecurityUtils.getCurrentUserIdOrNull();
-        parentalConsentService.approveParentalConsent(req.getToken(), parentUserId);
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
+        parentalConsentService.approveParentalConsent(req.getToken(), parentUserId, ipAddress);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("保護者同意を承認しました")));
     }
 
@@ -196,8 +199,10 @@ public class ParentalConsentController {
     @PostMapping("/reject")
     @Operation(summary = "保護者同意否認", description = "保護者がトークンを使って同意を否認する（認証不要）")
     public ResponseEntity<ApiResponse<MessageResponse>> reject(
-            @Valid @RequestBody RejectConsentRequest req) {
-        parentalConsentService.rejectParentalConsent(req.getToken());
+            @Valid @RequestBody RejectConsentRequest req,
+            HttpServletRequest request) {
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
+        parentalConsentService.rejectParentalConsent(req.getToken(), ipAddress);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("保護者同意を否認しました")));
     }
 

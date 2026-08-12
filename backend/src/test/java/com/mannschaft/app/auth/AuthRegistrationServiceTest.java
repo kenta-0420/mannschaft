@@ -488,7 +488,7 @@ class AuthRegistrationServiceTest {
             given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -505,7 +505,7 @@ class AuthRegistrationServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.empty());
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -521,7 +521,7 @@ class AuthRegistrationServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(createActiveUser()));
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -535,7 +535,7 @@ class AuthRegistrationServiceTest {
             given(redisTemplate.hasKey(anyString())).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> authRegistrationService.resendVerificationEmail(TEST_EMAIL))
+            assertThatThrownBy(() -> authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_006"));
