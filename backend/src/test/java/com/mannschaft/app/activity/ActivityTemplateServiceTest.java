@@ -13,6 +13,7 @@ import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -371,12 +373,19 @@ class ActivityTemplateServiceTest {
         // AC-5: 対象スコープの管理者は成功する
         @Test
         @DisplayName("importPreset_対象スコープの管理者は成功する")
-        void インポート_対象管理者_成功() {
+        void インポート_対象管理者_成功() throws Exception {
             com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity preset =
                     org.mockito.Mockito.mock(
                             com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity.class);
             given(preset.getDefaultVisibility()).willReturn("MEMBERS_ONLY");
             given(preset.getFieldsJson()).willReturn("[]");
+            // ObjectMapper は @Mock のため readValue は既定で null を返す。fields_json の中身は
+            // 本テストの関心事（認可）ではないが、スタブしないと importPreset が展開処理で
+            // NPE になり「管理者でも失敗する」ように見えてしまう。空のフィールド一覧を返させる。
+            given(objectMapper.<List<Map<String, Object>>>readValue(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.<TypeReference<List<Map<String, Object>>>>any()))
+                    .willReturn(List.of());
             given(presetRepository.findById(5L)).willReturn(Optional.of(preset));
             given(templateRepository.countByScopeTypeAndScopeId(ActivityScopeType.TEAM, SCOPE_ID)).willReturn(0L);
             ActivityTemplateEntity saved = createTemplate();
