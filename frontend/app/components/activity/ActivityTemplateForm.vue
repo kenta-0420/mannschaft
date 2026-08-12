@@ -3,7 +3,7 @@ import type { ActivityTemplate } from '~/types/activity'
 
 interface FieldRow {
   label: string
-  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
   required: boolean
   isAggregatable: boolean
   optionsRaw: string
@@ -33,6 +33,7 @@ const fieldTypeOptions = computed(() => [
   { label: t('activity.template.field_type.TEXT'), value: 'TEXT' },
   { label: t('activity.template.field_type.NUMBER'), value: 'NUMBER' },
   { label: t('activity.template.field_type.DATE'), value: 'DATE' },
+  { label: t('activity.template.field_type.DATETIME'), value: 'DATETIME' },
   { label: t('activity.template.field_type.SELECT'), value: 'SELECT' },
   { label: t('activity.template.field_type.CHECKBOX'), value: 'CHECKBOX' },
   { label: t('activity.template.field_type.TEXTAREA'), value: 'TEXTAREA' },
