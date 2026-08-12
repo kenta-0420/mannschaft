@@ -11,13 +11,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum AnalyticsErrorCode implements ErrorCode {
 
-    /** アラートルールが見つからない */
+    /** アラートルールが見つからない（404） */
     ANALYTICS_001("ANALYTICS_001", "指定されたアラートルールが見つかりません", Severity.WARN),
 
-    /** スナップショットが見つからない */
+    /** スナップショットが見つからない（404） */
     ANALYTICS_002("ANALYTICS_002", "指定された月のスナップショットが見つかりません", Severity.WARN),
 
-    /** バックフィル実行中 */
+    /** バックフィル実行中（多重実行の状態競合のため409） */
     ANALYTICS_003("ANALYTICS_003", "バックフィルが既に実行中です", Severity.WARN),
 
     /** 日付範囲超過 */

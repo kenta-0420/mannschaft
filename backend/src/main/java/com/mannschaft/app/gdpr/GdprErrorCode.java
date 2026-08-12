@@ -14,10 +14,10 @@ public enum GdprErrorCode implements ErrorCode {
     /** データエクスポートは1日1回まで */
     GDPR_001("GDPR_001", "データエクスポートは1日1回まで", Severity.WARN),
 
-    /** エクスポート処理中 */
+    /** エクスポート処理中（多重実行の状態競合のため409） */
     GDPR_002("GDPR_002", "エクスポート処理中です", Severity.WARN),
 
-    /** エクスポートデータが見つかりません */
+    /** エクスポートデータが見つかりません（不在／未完了／期限切れの3意味で共用されており変更見送り） */
     GDPR_003("GDPR_003", "エクスポートデータが見つかりません", Severity.WARN),
 
     /** データエクスポートに失敗 */
@@ -26,7 +26,7 @@ public enum GdprErrorCode implements ErrorCode {
     /** パスワード認証が必要 */
     GDPR_005("GDPR_005", "パスワード認証が必要です", Severity.WARN),
 
-    /** 管理者権限の移譲が必要 */
+    /** 管理者権限の移譲が必要（唯一のSYSTEM_ADMIN退会拒否・状態競合のため409） */
     GDPR_006("GDPR_006", "管理者権限の移譲が必要です", Severity.WARN),
 
     /** OTP認証がロック */

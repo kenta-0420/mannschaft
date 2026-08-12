@@ -1792,7 +1792,95 @@ public class GlobalExceptionHandler {
             Map.entry("QM_011", HttpStatus.CONFLICT),                    // TAG_NAME_DUPLICATE
             Map.entry("QM_013", HttpStatus.CONFLICT),                    // TAG_IN_USE
             Map.entry("QM_020", HttpStatus.NOT_FOUND),                   // ATTACHMENT_NOT_FOUND
-            Map.entry("QM_030", HttpStatus.NOT_FOUND)                    // VOICE_CONSENT_NOT_FOUND
+            Map.entry("QM_030", HttpStatus.NOT_FOUND),                   // VOICE_CONSENT_NOT_FOUND
+
+            // 認可監査 Wave6 ロットF: 登録ゼロだった未着手 enum の是正。throw 元の実コードを
+            // 全て洗い、404=存在秘匿/不在、403=存在を隠さず権限拒否、409=状態競合、
+            // 401=認証失敗の観点で判定した。入力検証・上限超過系は既定 400 のまま据え置き。
+            //
+            // F12.5 エラーレポート: 不在は 404。IGNORED 状態での工程変更拒否・GitHub Issue
+            // 作成の重複ロック・二重作成防止は状態競合のため 409。
+            Map.entry("ERROR_REPORT_001", HttpStatus.NOT_FOUND),            // ERROR_REPORT_NOT_FOUND
+            Map.entry("ERROR_REPORT_005", HttpStatus.CONFLICT),             // IGNORED時の工程更新拒否
+            Map.entry("ERROR_REPORT_009", HttpStatus.CONFLICT),             // GitHub Issue作成の重複ロック
+            Map.entry("ERROR_REPORT_012", HttpStatus.CONFLICT),             // GitHub Issue二重作成防止
+
+            // Webhook/外部API連携: エンドポイント不在は404。APIキー期限切れは認証失敗のため401。
+            // WEBHOOK_005/007 はトークン/APIキーの管理系CRUD不在と受信認証失敗の両方で
+            // 使われており意味が割れているため変更を見送る。
+            Map.entry("WEBHOOK_001", HttpStatus.NOT_FOUND),                 // Webhookエンドポイント不在
+            Map.entry("WEBHOOK_011", HttpStatus.UNAUTHORIZED),              // APIキー有効期限切れ（認証失敗）
+
+            // F09.1 住民台帳: 不在は404、重複登録・退去済み・確認済み・編集不可等の状態競合は409。
+            Map.entry("RESIDENT_001", HttpStatus.NOT_FOUND),                // DWELLING_UNIT_NOT_FOUND
+            Map.entry("RESIDENT_002", HttpStatus.CONFLICT),                 // DUPLICATE_UNIT_NUMBER
+            Map.entry("RESIDENT_003", HttpStatus.NOT_FOUND),                // RESIDENT_NOT_FOUND
+            Map.entry("RESIDENT_004", HttpStatus.NOT_FOUND),                // DOCUMENT_NOT_FOUND
+            Map.entry("RESIDENT_005", HttpStatus.NOT_FOUND),                // LISTING_NOT_FOUND
+            Map.entry("RESIDENT_006", HttpStatus.CONFLICT),                 // DUPLICATE_INQUIRY
+            Map.entry("RESIDENT_008", HttpStatus.CONFLICT),                 // ALREADY_MOVED_OUT
+            Map.entry("RESIDENT_009", HttpStatus.CONFLICT),                 // ALREADY_VERIFIED
+            Map.entry("RESIDENT_010", HttpStatus.NOT_FOUND),                // MY_UNIT_NOT_FOUND
+            Map.entry("RESIDENT_011", HttpStatus.CONFLICT),                 // LISTING_NOT_EDITABLE
+
+            // ゲーミフィケーション: 設定/ルール/バッジ不在は404。システムルールの変更拒否は
+            // 存在を隠さず権限拒否のため403（サービス javadoc に既存の意図表記あり）。
+            // バージョン不一致（楽観ロック）は409。スコープ不一致は越境の存在秘匿で404。
+            Map.entry("GAMIFICATION_001", HttpStatus.NOT_FOUND),            // 設定不在
+            Map.entry("GAMIFICATION_002", HttpStatus.NOT_FOUND),            // ポイントルール不在
+            Map.entry("GAMIFICATION_003", HttpStatus.NOT_FOUND),            // バッジ不在
+            Map.entry("GAMIFICATION_004", HttpStatus.FORBIDDEN),            // システムルールの変更拒否
+            Map.entry("GAMIFICATION_006", HttpStatus.CONFLICT),             // バージョン不一致（楽観ロック）
+            Map.entry("GAMIFICATION_008", HttpStatus.NOT_FOUND),            // スコープ不一致（越境の存在秘匿）
+
+            // F05.3 電子印鑑: 印鑑/押印ログ不在は404。バリアント重複・取消済み・削除済みは409。
+            Map.entry("SEAL_001", HttpStatus.NOT_FOUND),                    // SEAL_NOT_FOUND
+            Map.entry("SEAL_002", HttpStatus.CONFLICT),                     // DUPLICATE_VARIANT
+            Map.entry("SEAL_005", HttpStatus.NOT_FOUND),                    // STAMP_LOG_NOT_FOUND
+            Map.entry("SEAL_006", HttpStatus.CONFLICT),                     // ALREADY_REVOKED
+            Map.entry("SEAL_009", HttpStatus.CONFLICT),                     // SEAL_DELETED
+
+            // F04.3 プッシュ通知: 通知/購読不在は404。購読の重複登録は409。
+            Map.entry("NOTIFICATION_001", HttpStatus.NOT_FOUND),            // NOTIFICATION_NOT_FOUND
+            Map.entry("NOTIFICATION_004", HttpStatus.NOT_FOUND),            // SUBSCRIPTION_NOT_FOUND
+            Map.entry("NOTIFICATION_005", HttpStatus.CONFLICT),             // SUBSCRIPTION_ALREADY_EXISTS
+
+            // 経営分析: アラートルール/スナップショット不在は404。バックフィル多重実行は409。
+            Map.entry("ANALYTICS_001", HttpStatus.NOT_FOUND),               // アラートルール不在
+            Map.entry("ANALYTICS_002", HttpStatus.NOT_FOUND),               // スナップショット不在
+            Map.entry("ANALYTICS_003", HttpStatus.CONFLICT),                // バックフィル実行中の多重実行
+
+            // F01.2 ロール・権限管理: ロール/権限グループ/パーミッション不在は404。招待トークンの
+            // 無効/期限切れは既存の招待トークン系（EVENT_007/FAMILY_029/CONTACT_014 等）と流儀を
+            // 揃え存在秘匿で404。最後の管理者の除名・変更拒否は状態競合で409。上位ロールの
+            // ブロック拒否は存在を隠さず権限拒否のため403。
+            Map.entry("ROLE_001", HttpStatus.NOT_FOUND),                    // ロール不在
+            Map.entry("ROLE_002", HttpStatus.NOT_FOUND),                    // 招待トークン無効/期限切れ（存在秘匿）
+            Map.entry("ROLE_004", HttpStatus.CONFLICT),                     // 最後の管理者の除名・変更拒否
+            Map.entry("ROLE_005", HttpStatus.FORBIDDEN),                    // 上位ロールのブロック拒否
+            Map.entry("ROLE_006", HttpStatus.NOT_FOUND),                    // 権限グループ不在
+            Map.entry("ROLE_007", HttpStatus.NOT_FOUND),                    // パーミッション不在
+
+            // デジタルサイネージ: 画面/スロット/トークン不在は404。アクセストークン検証失敗は
+            // GCAL_009（GOOGLE_WEBHOOK_TOKEN_INVALID）と同じ流儀でアクセス拒否として403。
+            Map.entry("SIGNAGE_001", HttpStatus.NOT_FOUND),                 // 画面不在
+            Map.entry("SIGNAGE_002", HttpStatus.FORBIDDEN),                 // トークン無効/IP制限によるアクセス拒否
+            Map.entry("SIGNAGE_003", HttpStatus.NOT_FOUND),                 // スロット不在
+            Map.entry("SIGNAGE_005", HttpStatus.NOT_FOUND),                 // トークン不在
+
+            // スキル・資格管理: 資格不在は404。重複登録・楽観ロック不一致・承認対象外ステータスは
+            // 409。SKILL_001（名称重複／非アクティブカテゴリ／カテゴリ不在で意味が割れている）・
+            // SKILL_003（スコープ不一致の存在秘匿と本人以外操作の権限拒否の両方に使われ意味が
+            // 割れている）は変更を見送る。
+            Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
+            Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録
+            Map.entry("SKILL_006", HttpStatus.CONFLICT),                    // バージョン不一致（楽観ロック）
+            Map.entry("SKILL_007", HttpStatus.CONFLICT),                    // 承認対象外ステータスでの承認操作
+
+            // F12.3 GDPR/個人情報管理: エクスポート処理中の多重実行・唯一のSYSTEM_ADMIN退会拒否は
+            // 状態競合のため409。GDPR_003（不在／未完了／期限切れの3意味で共用）は変更を見送る。
+            Map.entry("GDPR_002", HttpStatus.CONFLICT),                     // エクスポート処理中の多重実行
+            Map.entry("GDPR_006", HttpStatus.CONFLICT)                      // 唯一のSYSTEM_ADMIN退会拒否
     );
 
     /**

@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum WebhookErrorCode implements ErrorCode {
 
-    /** Webhookエンドポイントが見つかりません */
+    /** Webhookエンドポイントが見つかりません（404） */
     WEBHOOK_001("WEBHOOK_001", "Webhookエンドポイントが見つかりません", Severity.WARN),
 
     /** URLはHTTPSである必要があります */
@@ -41,7 +41,7 @@ public enum WebhookErrorCode implements ErrorCode {
     /** バージョンが一致しません */
     WEBHOOK_010("WEBHOOK_010", "バージョンが一致しません", Severity.WARN),
 
-    /** APIキーの有効期限が切れています */
+    /** APIキーの有効期限が切れています（認証失敗のため401） */
     WEBHOOK_011("WEBHOOK_011", "APIキーの有効期限が切れています", Severity.WARN),
 
     /** レートリミットを超過しました */
