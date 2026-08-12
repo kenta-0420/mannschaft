@@ -10,12 +10,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -97,18 +97,41 @@ public class ScheduleCommentEntity extends UuidV7Entity {
      * {@code UuidV7Entity} は {@code id} しか持たないため、{@code BaseEntity} と異なり
      * {@code created_at}/{@code updated_at} は本クラスで明示的に宣言する（{@code NotificationFanoutJob} の作法）。
      * ソート契約の基準列（§1.6）なので欠落させない。
+     *
+     * <h2>{@code LocalDateTime} でなく {@code Instant} を使う理由</h2>
+     * <p>{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}（PR #2698）の方針3点目
+     * 「起きた瞬間を記録する値は {@code Instant}/{@code OffsetDateTime} で持つ」に従う。{@code created_at}/
+     * {@code updated_at}/{@code deleted_at} はいずれも「投稿・更新・削除という行為が発生した1点」であり
+     * 典型的な瞬間値（同文書 §3.1 に {@code created_at}/{@code updated_at} が例示されている）。
+     * 番人 {@code DateTimeAndZoneGuardTest} は新規クラスでの {@code LocalDateTime} フィールド追加・
+     * 引数なし {@code LocalDateTime.now()} を禁止しており、Hibernate の {@code @CreationTimestamp}/
+     * {@code @UpdateTimestamp} は {@code LocalDateTime} 型で使うのが定着パターンだったため、本クラスは
+     * それらを使わず {@code @PrePersist}/{@code @PreUpdate} ＋ {@code Instant.now()} の形へ倣った
+     * （前例: {@code com.mannschaft.app.navsettings.entity.NavFeatureEntity}）。
+     * {@code Instant.now()} は番人の禁止対象外（禁止は {@code LocalDateTime}/{@code LocalDate}/
+     * {@code LocalTime} の引数なし {@code now()} のみ）。
      */
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     /** 論理削除。{@code @SQLRestriction} は付けない（クラス Javadoc 参照）。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
+
+    @PrePersist
+    void onCreate() {
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 
     /**
      * コメント本文を編集する。
@@ -124,7 +147,7 @@ public class ScheduleCommentEntity extends UuidV7Entity {
      * 論理削除を行う。
      */
     public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = Instant.now();
     }
 
     /**

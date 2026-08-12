@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,8 +41,8 @@ public class ScheduleCommentResponse {
     private final CommentAuthorResponse author;
     private final boolean canEdit;
     private final boolean canDelete;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final Instant createdAt;
+    private final Instant updatedAt;
 
     /** 返信配列（最大3件同梱）。返信行（depth=1）では常に {@code null}（無限ネスト禁止）。 */
     private final List<ScheduleCommentResponse> replies;
