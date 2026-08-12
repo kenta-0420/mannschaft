@@ -11,19 +11,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum NotificationErrorCode implements ErrorCode {
 
-    /** 通知が見つからない */
+    /** 通知が見つからない（404） */
     NOTIFICATION_NOT_FOUND("NOTIFICATION_001", "通知が見つかりません", Severity.WARN),
 
-    /** 通知設定が見つからない */
+    /** 通知設定が見つからない（throw元なし・未使用） */
     PREFERENCE_NOT_FOUND("NOTIFICATION_002", "通知設定が見つかりません", Severity.WARN),
 
-    /** 通知種別設定が見つからない */
+    /** 通知種別設定が見つからない（throw元なし・未使用） */
     TYPE_PREFERENCE_NOT_FOUND("NOTIFICATION_003", "通知種別設定が見つかりません", Severity.WARN),
 
-    /** プッシュ購読が見つからない */
+    /** プッシュ購読が見つからない（404） */
     SUBSCRIPTION_NOT_FOUND("NOTIFICATION_004", "プッシュ購読が見つかりません", Severity.WARN),
 
-    /** プッシュ購読が重複している */
+    /** プッシュ購読が重複している（状態競合のため409） */
     SUBSCRIPTION_ALREADY_EXISTS("NOTIFICATION_005", "このエンドポイントは既に登録されています", Severity.WARN),
 
     /** 通知は既に既読 */
