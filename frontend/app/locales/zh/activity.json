@@ -44,6 +44,7 @@
       "TEXT": "文本",
       "NUMBER": "数值",
       "DATE": "日期",
+      "DATETIME": "日期时间",
       "SELECT": "选择",
       "CHECKBOX": "复选框",
       "TEXTAREA": "文本区域"

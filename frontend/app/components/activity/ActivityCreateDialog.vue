@@ -409,6 +409,15 @@ async function submit() {
               date-format="yy/mm/dd"
               show-icon
             />
+            <DatePicker
+              v-else-if="field.fieldType === 'DATETIME'"
+              v-model="(fieldInputs[field.fieldKey] as Date)"
+              class="w-full"
+              date-format="yy/mm/dd"
+              show-time
+              hour-format="24"
+              show-icon
+            />
             <Select
               v-else-if="field.fieldType === 'SELECT'"
               v-model="(fieldInputs[field.fieldKey] as string)"
