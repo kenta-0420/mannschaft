@@ -86,3 +86,23 @@ export function formatLocalDateOnly(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split('-').map(Number)
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(y!, m! - 1, d!))
 }
+
+/**
+ * `Date` をローカル壁時計基準の `yyyy-MM-ddTHH:mm` 文字列へ変換する（分単位・秒は切り捨て）。
+ *
+ * {@link toLocalDateString} と同じ設計原則（ピッカー由来の `Date` はローカル壁時計成分として
+ * 取り出す。UTC 経由の `toISOString()` は使わない）を時刻付きフィールド（活動テンプレートの
+ * `DATETIME` カスタムフィールド等）向けに適用したもの。
+ *
+ * @param date 変換対象（DatePicker（show-time）が返す `Date` を想定）
+ * @throws {RangeError} `date` が Invalid Date の場合（症状を隠さず失敗させる）
+ * @example toLocalDateTimeString(new Date(2026, 6, 29, 9, 5)) // → "2026-07-29T09:05"
+ */
+export function toLocalDateTimeString(date: Date): string {
+  if (Number.isNaN(date.getTime())) {
+    throw new RangeError('toLocalDateTimeString: Invalid Date は yyyy-MM-ddTHH:mm に変換できません')
+  }
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${toLocalDateString(date)}T${h}:${min}`
+}
