@@ -501,6 +501,40 @@ class EventRegistrationTicketScopeContractIT extends AbstractMySqlIntegrationTes
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // ロットDステータス契約（EVENT_005/017）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ロットDステータス契約（ALREADY_REGISTERED/INVALID_REGISTRATION_STATUS）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("既に登録済みユーザーの再登録は409（ALREADY_REGISTERED）")
+        void 既に登録済みの再登録は409() throws Exception {
+            // memberTeamAId は setUp で registrationAId（eventA）を既に保有している。
+            setAuth(memberTeamAId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("ticketTypeId", ticketTypeAId);
+            body.put("quantity", 1);
+            mockMvc.perform(post("/api/v1/events/{eventId}/registrations", eventAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("却下済みの参加登録を再承認しようとする操作は409（INVALID_REGISTRATION_STATUS）")
+        void 却下済みの再承認は409() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/events/{eventId}/registrations/{rid}/reject", eventAId, registrationAId))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/events/{eventId}/registrations/{rid}/approve", eventAId, registrationAId))
+                    .andExpect(status().isConflict());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
