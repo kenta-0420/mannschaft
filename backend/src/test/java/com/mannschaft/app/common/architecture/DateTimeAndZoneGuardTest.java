@@ -14,7 +14,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,10 +60,26 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  * 是正し、削っていく対象である。</b> 新規に同じ型のコードを書いて凍結リストへ追記することは
  * 禁止する。新規違反は本テストを fail させ、設計方針に沿った書き方（{@code Instant} /
  * {@code OffsetDateTime} での起きた瞬間の保持、{@code LocalDate}/{@code LocalTime} + 明示 TZ
- * での壁時計の保持）へ是正すること。凍結件数が<b>増えたら</b>本テストと
- * {@link #freezeCountsDoNotExceedRecordedCeiling} が fail する。件数が<b>減った</b>場合は凍結リストから
- * 実在しなくなったキー（stale entry）を削除する形で追随させる（chip-away。
- * 認可監査戦役が {@code EXPECTED_LINES_*} で採った方式の踏襲。795→0まで返済した実績がある）。</p>
+ * での壁時計の保持）へ是正すること。</p>
+ *
+ * <h2>凍結キーは「クラス単位の件数」であり、メソッド名を含まない【必読・PR #2725 の事故から】</h2>
+ * <p>初版は凍結キーに {@code <FQCN>#<メソッド名>#<出現順>} を使っていた。ところが main が
+ * 30分おきに進むこの基盤では、<b>本 issue と無関係なリファクタでメソッド名を変えただけ</b>で
+ * そのメソッド内の既存の凍結エントリが「実在しないキー」（陳腐化）になり、<b>同時に同じ既存負債が
+ * 「新規違反」としても検出される</b>という事故が実際に起きた（PR #2725、
+ * {@code RecommendationService#getRecommendations} のリファクタで CI が赤くなった）。
+ * <b>「既存の負債を含むメソッドの名前を変えられない」番人は、是正を促すはずが是正を妨げる。</b>
+ * よって凍結キーから<b>メソッド名・出現順を完全に排除</b>し、{@code <カテゴリ>|<FQCN>|<件数>}
+ * という<b>クラス単位の件数</b>だけを凍結する形に改めた（{@link #classCountMismatches}）。
+ * メソッド名の変更・メソッドの移動・クラス内での出現順の入れ替えでは、そのクラスの検出件数
+ * そのものは変わらないため CI は落ちない。一方で「1件でも増えたら fail」という番人の本質は
+ * 完全に保たれる（{@link DateTimeAndZoneGuardScanningLogicTest} の
+ * {@code classCountMismatches_} 系回帰テストで、増加時の検出とメソッド名変更時の非検出の
+ * 両方を実証している）。<b>ここへメソッド名を書き戻すことを検討する場合は、必ずこの事故の経緯
+ * を読んでから判断すること。</b></p>
+ * <p>唯一の副作用: 同一カテゴリの違反をクラスAからクラスBへ<b>移動</b>すると、カテゴリ合計は
+ * 変わらなくても A（件数減）・B（件数増）の両方で台帳とのズレが検出される。これは意図どおりの
+ * 挙動である（クラス単位で見れば実際に構成が変わっているため、台帳の更新が必要）。</p>
  *
  * <h2>走査ロジックの正しさ</h2>
  * <p>CMP-022 の監査で、Java ソースを走査する番人群（第二波）にブロックコメント・文字列リテラル・
@@ -114,8 +130,8 @@ class DateTimeAndZoneGuardTest {
     /** ヘッダ末尾の「識別子(...)」形（メソッド／コンストラクタ／制御構文いずれも同形）からラベルを拾う。 */
     static final Pattern TRAILING_CALL_NAME =
             Pattern.compile("([A-Za-z_$][\\w$]*)\\s*\\([^()]*\\)\\s*(?:throws\\s+[\\w.,\\s]+)?\\s*$");
-    private static final java.util.Set<String> CONTROL_KEYWORDS =
-            java.util.Set.of("if", "for", "while", "switch", "catch", "synchronized", "do");
+    private static final Set<String> CONTROL_KEYWORDS =
+            Set.of("if", "for", "while", "switch", "catch", "synchronized", "do");
 
     enum Category {
         NO_ARG_NOW("引数なしの LocalDateTime/LocalDate/LocalTime.now()",
@@ -137,12 +153,9 @@ class DateTimeAndZoneGuardTest {
     }
 
     record Violation(Category category, String fqcn, String location, int seq, int line, String snippet) {
-        String key() {
-            return category.name() + "|" + fqcn + "#" + location + "#" + seq;
-        }
-
+        /** 参考情報つきの人間可読な説明（凍結キーには使わない。メソッド名は表示専用）。 */
         String describe() {
-            return key() + " (L" + line + "): " + snippet;
+            return "%s#%s (L%d): %s".formatted(fqcn, location, line, snippet);
         }
     }
 
@@ -171,16 +184,27 @@ class DateTimeAndZoneGuardTest {
                 "凍結リストが見つからない: " + relative + "（cwd=" + Paths.get("").toAbsolutePath() + "）");
     }
 
-    private static Set<String> readFreezeList(Path relative) throws IOException {
-        Set<String> keys = new LinkedHashSet<>();
-        for (String line : Files.readAllLines(resolveFreezeFile(relative), StandardCharsets.UTF_8)) {
+    /**
+     * 凍結ファイルを {@code <カテゴリ>|<FQCN>|<件数>} 形式でクラス単位に読む。
+     * メソッド名・出現順は凍結キーに含めない（理由はクラス Javadoc『凍結キーはクラス単位の件数』参照）。
+     */
+    private static Map<String, Integer> readFreezeClassCounts(Category category) throws IOException {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Path path = resolveFreezeFile(category.freezeFile);
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
             String trimmed = line.strip();
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 continue;
             }
-            keys.add(trimmed);
+            String[] parts = trimmed.split("\\|", 3);
+            if (parts.length != 3 || !parts[0].equals(category.name())) {
+                throw new IllegalStateException(
+                        "凍結ファイルの行形式が不正: " + path + " の行 \"" + trimmed + "\"。"
+                                + "期待形式: " + category.name() + "|<FQCN>|<件数>");
+            }
+            counts.merge(parts[1], Integer.parseInt(parts[2]), Integer::sum);
         }
-        return keys;
+        return counts;
     }
 
     // ────────────────────────────────────────────────────────────
@@ -188,7 +212,7 @@ class DateTimeAndZoneGuardTest {
     // ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("引数なしnow()/ZoneId.systemDefault()/ZoneIdリテラル/LocalDateTimeフィールドの新規追加は無い（既存は種別ごとの凍結リストのみ許容）")
+    @DisplayName("引数なしnow()/ZoneId.systemDefault()/ZoneIdリテラル/LocalDateTimeフィールドの新規追加は無い（既存は種別ごとの凍結リストのクラス単位件数のみ許容）")
     void noNewOldStyleDateTimeUsage() throws IOException {
         Path root = sourceRoot();
         // 破滅的バックトラック事故（線形走査への置き換え前に実測）の再発防止。全 production
@@ -200,55 +224,74 @@ class DateTimeAndZoneGuardTest {
                         + "（走査パスの前提が壊れた可能性）")
                 .isNotEmpty();
 
-        Map<Category, List<Violation>> byCategory = new HashMap<>();
-        for (Category c : Category.values()) {
-            byCategory.put(c, new ArrayList<>());
-        }
-        for (Violation v : all) {
-            byCategory.get(v.category()).add(v);
-        }
-
         StringBuilder failure = new StringBuilder();
         for (Category category : Category.values()) {
-            List<Violation> found = byCategory.get(category);
-            Set<String> frozen = readFreezeList(category.freezeFile);
-            Set<String> foundKeys = found.stream().map(Violation::key)
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            Map<String, Integer> actualByFqcn = countByFqcn(all, category);
+            Map<String, Integer> frozenByFqcn = readFreezeClassCounts(category);
 
-            List<String> newViolations = found.stream()
-                    .filter(v -> !frozen.contains(v.key()))
-                    .map(Violation::describe)
-                    .sorted()
-                    .toList();
-            if (!newViolations.isEmpty()) {
-                failure.append("【新規違反: ").append(category.description).append("】").append(System.lineSeparator())
+            List<String> mismatches = classCountMismatches(actualByFqcn, frozenByFqcn);
+            if (!mismatches.isEmpty()) {
+                failure.append("【クラス単位の凍結件数ミスマッチ: ").append(category.description).append("】")
+                        .append(System.lineSeparator())
                         .append(("『対処療法禁止・根治治療』原則により、"
                                 + "docs/architecture/datetime_policy_utc_instant_vs_wallclock.md の方針"
                                 + "（起きた瞬間はInstant/OffsetDateTime、壁時計はLocalDate/LocalTime+明示TZ）"
-                                + "へ是正すること。既存の負債として凍結する場合は %s に追記すること"
-                                + "（原則非推奨。本テストのJavadoc『凍結リストの位置づけ』を参照。"
-                                + "CMP-023 で返済する借金の台帳であり免罪符ではない）。%n")
+                                + "へ是正すること。台帳ファイル: %s"
+                                + "（クラス単位の件数。メソッド名変更では変わらないため、それだけでは"
+                                + "落ちない。本テストのJavadoc『凍結キーはクラス単位の件数』を参照）。%n")
                                 .formatted(category.freezeFile))
-                        .append(String.join(System.lineSeparator(), newViolations))
+                        .append(String.join(System.lineSeparator(), mismatches))
                         .append(System.lineSeparator()).append(System.lineSeparator());
-            }
-
-            List<String> staleFrozenEntries = frozen.stream()
-                    .filter(k -> !foundKeys.contains(k))
-                    .sorted()
-                    .toList();
-            if (!staleFrozenEntries.isEmpty()) {
-                failure.append("【凍結リストの陳腐化エントリ: ").append(category.description).append("】%n".formatted())
-                        .append(("凍結リストに、実コードにはもう存在しない古いエントリが残っている。"
-                                + "根治済みなら %s から該当行を削除すること（chip-away）。"
-                                + "根治していないのに消えた場合はメソッド名変更等で検出キーがずれた可能性があり要調査。"
-                                + "ずれたエントリ: %s%n")
-                                .formatted(category.freezeFile, staleFrozenEntries))
-                        .append(System.lineSeparator());
             }
         }
 
         assertThat(failure.toString()).as(failure.toString()).isEmpty();
+    }
+
+    private static Map<String, Integer> countByFqcn(List<Violation> all, Category category) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Violation v : all) {
+            if (v.category() == category) {
+                counts.merge(v.fqcn(), 1, Integer::sum);
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * クラス単位の凍結件数比較の判定本体。ファイルI/Oを含まないため単体テスト可能
+     * （{@link DateTimeAndZoneGuardScanningLogicTest} の {@code classCountMismatches_} 系）。
+     * <ul>
+     *   <li>実測件数 &gt; 台帳件数 → 新規違反（増加分だけ）として fail</li>
+     *   <li>実測件数 &lt; 台帳件数 → 是正が進んだ台帳更新漏れとして fail（メッセージの趣旨が異なるだけ）</li>
+     *   <li>台帳に無いクラスで実測がある → 新規クラスでの違反として fail</li>
+     *   <li>実測に無いクラスが台帳に残っている → 陳腐化エントリとして fail（chip-away 対象）</li>
+     * </ul>
+     */
+    static List<String> classCountMismatches(Map<String, Integer> actualByFqcn, Map<String, Integer> frozenByFqcn) {
+        List<String> mismatches = new ArrayList<>();
+        for (var e : actualByFqcn.entrySet()) {
+            String fqcn = e.getKey();
+            int actual = e.getValue();
+            Integer frozen = frozenByFqcn.get(fqcn);
+            if (frozen == null) {
+                mismatches.add("新規クラスでの違反: %s に %d件（台帳未登録。新規追加は禁止）".formatted(fqcn, actual));
+            } else if (actual > frozen) {
+                mismatches.add("増加: %s は実測%d件 > 台帳%d件（新規違反%d件。禁止）"
+                        .formatted(fqcn, actual, frozen, actual - frozen));
+            } else if (actual < frozen) {
+                mismatches.add(("減少: %s は実測%d件 < 台帳%d件（是正が進んだか、あるいは同一カテゴリの"
+                        + "他クラスへ違反が移動した。いずれの場合も台帳を実測%d件へ更新すること）")
+                        .formatted(fqcn, actual, frozen, actual));
+            }
+        }
+        for (var e : frozenByFqcn.entrySet()) {
+            if (!actualByFqcn.containsKey(e.getKey())) {
+                mismatches.add("陳腐化: %s は台帳に%d件あるが実コードに1件も無い（根治済みなら台帳から削除。chip-away）"
+                        .formatted(e.getKey(), e.getValue()));
+            }
+        }
+        return mismatches;
     }
 
     /**
@@ -264,7 +307,8 @@ class DateTimeAndZoneGuardTest {
     void freezeCountsMatchRecordedSnapshot() throws IOException {
         Map<Category, Integer> actualCounts = new HashMap<>();
         for (Category category : Category.values()) {
-            actualCounts.put(category, readFreezeList(category.freezeFile).size());
+            int total = readFreezeClassCounts(category).values().stream().mapToInt(Integer::intValue).sum();
+            actualCounts.put(category, total);
         }
         List<String> mismatches = freezeCountMismatches(actualCounts, expectedFrozenSnapshot());
         assertThat(mismatches)
@@ -303,7 +347,7 @@ class DateTimeAndZoneGuardTest {
      * 認可監査戦役の {@code EXPECTED_LINES_*} 方式を踏襲する。
      * 件数が減った場合はここも追随して更新し、返済の進捗を数値で残すこと。
      */
-    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1677;
+    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1676;
     private static final int EXPECTED_FROZEN_ZONE_SYSTEM_DEFAULT = 28;
     private static final int EXPECTED_FROZEN_ZONE_LITERAL = 53;
     private static final int EXPECTED_FROZEN_LOCAL_DATE_TIME_FIELD = 2658;

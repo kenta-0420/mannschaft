@@ -2,36 +2,28 @@
 #
 # 【重要】このリストは CMP-023（docs/task-list.md）で返済する「借金の台帳」であり、免罪符ではない。
 # 新規に同じ型（ZoneId.systemDefault()）を書いてここへ追記することは禁止する。
-# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除すること（chip-away）。
+# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除するか件数を減らすこと（chip-away）。
 #
-# キー形式: ZONE_SYSTEM_DEFAULT|<完全修飾クラス名>#<メソッド名またはコンストラクタ名>#<同一メソッド内の出現順>
+# 【キー形式は「クラス単位の件数」— メソッド名は含まない（PR #2725 の事故を踏まえた設計）】
+# 行形式: ZONE_SYSTEM_DEFAULT|<完全修飾クラス名>|<そのクラス内での検出件数>
+# メソッド名を含めていた初版は、本 issue と無関係なメソッド名変更だけでCIを赤くする事故を起こした
+# （DateTimeAndZoneGuardTest クラスJavadoc『凍結キーはクラス単位の件数』参照）。
 #
-# 2026-08-11 初期凍結（issue #2700 実装時点のスナップショット）。
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#2
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#3
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService#(制御ブロック:if)#4
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer#serialize#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.jobmatching.service.JobCheckInService#detectConcurrentConflict#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.mail.outbox.EmailOutboxMicrometerMetrics#registerGauges#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#applyCurrentPeriodEnd#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#computeNextCycleAnchorEpochSec#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService#skip#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService#toLocalDateOrNull#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#2
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#3
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl#(不明ブロック)#4
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicEventQueryService#toOffsetDateTime#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicPostQueryService#toOffsetDateTime#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicTimelinePostQueryService#toOffsetDateTime#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.event.ReservationReminderEventListener#(不明ブロック)#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService#(不明ブロック)#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService#doCreateGroup#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationPendingExpireService#findExpirableUnits#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationReminderService#findDueReminders#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService#isCancelDeadlinePassed#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService#listUpcomingReservations#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService#purgeExpiredWaiting#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService#register#1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.timetable.notes.service.TimetableSlotUserNoteService#(不明ブロック)#1
+# 2026-08-12 再凍結（issue #2700 実装・PR #2725 是正時点のスナップショット）。
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService|4
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.jobmatching.service.JobCheckInService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.mail.outbox.EmailOutboxMicrometerMetrics|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService|3
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl|4
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicEventQueryService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicPostQueryService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicTimelinePostQueryService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.event.ReservationReminderEventListener|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService|2
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationPendingExpireService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationReminderService|1
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService|2
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService|2
+ZONE_SYSTEM_DEFAULT|com.mannschaft.app.timetable.notes.service.TimetableSlotUserNoteService|1

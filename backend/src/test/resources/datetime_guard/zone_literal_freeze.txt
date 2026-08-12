@@ -2,61 +2,60 @@
 #
 # 【重要】このリストは CMP-023（docs/task-list.md）で返済する「借金の台帳」であり、免罪符ではない。
 # 新規に同じ型（タイムゾーンのリテラル直書き）を書いてここへ追記することは禁止する。
-# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除すること（chip-away）。
+# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除するか件数を減らすこと（chip-away）。
 #
-# キー形式: ZONE_LITERAL|<完全修飾クラス名>#<メソッド名またはコンストラクタ名>#<同一メソッド内の出現順>
+# 【キー形式は「クラス単位の件数」— メソッド名は含まない（PR #2725 の事故を踏まえた設計）】
+# 行形式: ZONE_LITERAL|<完全修飾クラス名>|<そのクラス内での検出件数>
+# メソッド名を含めていた初版は、本 issue と無関係なメソッド名変更だけでCIを赤くする事故を起こした
+# （DateTimeAndZoneGuardTest クラスJavadoc『凍結キーはクラス単位の件数』参照）。
 #
-# 2026-08-11 初期凍結（issue #2700 実装時点のスナップショット）。
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoPublishingService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#execute#1
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.admin.service.AdminBusinessAlertService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.advertising.campaign.service.AdFrequencyCapService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.advertising.controller.StripeAdInvoiceWebhookController#(不明ブロック)#1
-ZONE_LITERAL|com.mannschaft.app.advertising.controller.SystemAdminSpotlightBatchController#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.advertising.ranking.controller.EquipmentReplenishLinkController#buildReplenishLink#1
-ZONE_LITERAL|com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchService#runBatch#1
-ZONE_LITERAL|com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchService#runBatch#2
-ZONE_LITERAL|com.mannschaft.app.advertising.ranking.service.EquipmentRankingService#getTrending#1
-ZONE_LITERAL|com.mannschaft.app.advertising.service.AdDailyStatsAggregationBatchService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.DailyAggregationBatchService#execute#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.DateRangeResolver#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.MonthlyCohortBatchService#execute#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.MonthlyKpiSnapshotBatchService#execute#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.PageViewDailyAggregationBatchService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.analytics.service.PageViewRecordingService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.auth.guardianship.JapanGuardianshipAgePolicy#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.billing.beta.LoginActivityQueryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.cms.service.BlogFeedService#toDate#1
-ZONE_LITERAL|com.mannschaft.app.common.timezone.UserTimezoneFilter#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService#buildCalendarSummary#1
-ZONE_LITERAL|com.mannschaft.app.inbox.service.InboxTriageService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.incident.service.IncidentSlaBatchService#(不明ブロック)#1
-ZONE_LITERAL|com.mannschaft.app.incident.service.MaintenanceScheduleService#(不明ブロック)#1
-ZONE_LITERAL|com.mannschaft.app.membership.service.MembershipStatsQueryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCreateRequest#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.notification.service.NotificationService#snoozeNotification#1
-ZONE_LITERAL|com.mannschaft.app.onboarding.service.OnboardingReminderBatchService#processReminders#1
-ZONE_LITERAL|com.mannschaft.app.quickmemo.service.QuickMemoReminderBatchService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.quickmemo.service.QuickMemoService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.quickmemo.service.UserQuickMemoSettingsService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.reflection.service.RecallService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionEntryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#(class-level)#2
-ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionTodayService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.repairplan.batch.TeamMemberTermDemoteBatch#execute#1
-ZONE_LITERAL|com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#execute#1
-ZONE_LITERAL|com.mannschaft.app.reservation.service.ReservationAdminAlertQueryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.reservation.service.ReservationAdminQueryService#(class-level)#1
-ZONE_LITERAL|com.mannschaft.app.resume.service.ResumeExportService#exportResume#1
-ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService#runArchive#1
-ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftCleanupBatchService#runRequestCleanup#1
-ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftCleanupBatchService#runSwapExpiryCancel#1
-ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#processReminders#1
-ZONE_LITERAL|com.mannschaft.app.todo.batch.TodoDueReminderBatch#(class-level)#1
+# 2026-08-12 再凍結（issue #2700 実装・PR #2725 是正時点のスナップショット）。
+ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoPublishingService|1
+ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService|2
+ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService|1
+ZONE_LITERAL|com.mannschaft.app.admin.service.AdminBusinessAlertService|1
+ZONE_LITERAL|com.mannschaft.app.advertising.campaign.service.AdFrequencyCapService|1
+ZONE_LITERAL|com.mannschaft.app.advertising.controller.StripeAdInvoiceWebhookController|1
+ZONE_LITERAL|com.mannschaft.app.advertising.controller.SystemAdminSpotlightBatchController|1
+ZONE_LITERAL|com.mannschaft.app.advertising.ranking.controller.EquipmentReplenishLinkController|1
+ZONE_LITERAL|com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchService|2
+ZONE_LITERAL|com.mannschaft.app.advertising.ranking.service.EquipmentRankingService|1
+ZONE_LITERAL|com.mannschaft.app.advertising.service.AdDailyStatsAggregationBatchService|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.DailyAggregationBatchService|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.DateRangeResolver|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.MonthlyCohortBatchService|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.MonthlyKpiSnapshotBatchService|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.PageViewDailyAggregationBatchService|1
+ZONE_LITERAL|com.mannschaft.app.analytics.service.PageViewRecordingService|1
+ZONE_LITERAL|com.mannschaft.app.auth.guardianship.JapanGuardianshipAgePolicy|1
+ZONE_LITERAL|com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService|1
+ZONE_LITERAL|com.mannschaft.app.billing.beta.LoginActivityQueryService|1
+ZONE_LITERAL|com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService|1
+ZONE_LITERAL|com.mannschaft.app.cms.service.BlogFeedService|1
+ZONE_LITERAL|com.mannschaft.app.common.timezone.UserTimezoneFilter|1
+ZONE_LITERAL|com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser|1
+ZONE_LITERAL|com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer|1
+ZONE_LITERAL|com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService|1
+ZONE_LITERAL|com.mannschaft.app.inbox.service.InboxTriageService|1
+ZONE_LITERAL|com.mannschaft.app.incident.service.IncidentSlaBatchService|1
+ZONE_LITERAL|com.mannschaft.app.incident.service.MaintenanceScheduleService|1
+ZONE_LITERAL|com.mannschaft.app.membership.service.MembershipStatsQueryService|1
+ZONE_LITERAL|com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCreateRequest|1
+ZONE_LITERAL|com.mannschaft.app.notification.service.NotificationService|1
+ZONE_LITERAL|com.mannschaft.app.onboarding.service.OnboardingReminderBatchService|1
+ZONE_LITERAL|com.mannschaft.app.quickmemo.service.QuickMemoReminderBatchService|1
+ZONE_LITERAL|com.mannschaft.app.quickmemo.service.QuickMemoService|1
+ZONE_LITERAL|com.mannschaft.app.quickmemo.service.UserQuickMemoSettingsService|1
+ZONE_LITERAL|com.mannschaft.app.reflection.service.RecallService|1
+ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionEntryService|1
+ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionSpacedReminderService|2
+ZONE_LITERAL|com.mannschaft.app.reflection.service.ReflectionTodayService|1
+ZONE_LITERAL|com.mannschaft.app.repairplan.batch.TeamMemberTermDemoteBatch|1
+ZONE_LITERAL|com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch|1
+ZONE_LITERAL|com.mannschaft.app.reservation.service.ReservationAdminAlertQueryService|1
+ZONE_LITERAL|com.mannschaft.app.reservation.service.ReservationAdminQueryService|1
+ZONE_LITERAL|com.mannschaft.app.resume.service.ResumeExportService|1
+ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService|1
+ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftCleanupBatchService|2
+ZONE_LITERAL|com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService|1
+ZONE_LITERAL|com.mannschaft.app.todo.batch.TodoDueReminderBatch|1

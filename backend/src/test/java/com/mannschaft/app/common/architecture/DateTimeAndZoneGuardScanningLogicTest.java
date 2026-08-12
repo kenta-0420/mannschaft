@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -306,5 +307,118 @@ class DateTimeAndZoneGuardScanningLogicTest {
                 .contains("実件数=9")
                 .contains("記録スナップショット=10")
                 .contains("減少=要追随更新");
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // クラス単位の凍結件数比較（classCountMismatches）— PR #2725 の事故（メソッド名変更で
+    // CI が赤くなった）の再発防止。凍結キーがクラス単位の件数であり、メソッド名を含まないことを
+    // 直接実証する。
+    // ────────────────────────────────────────────────────────────
+
+    private static Map<String, Integer> counts(Object... fqcnAndCountPairs) {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        for (int i = 0; i < fqcnAndCountPairs.length; i += 2) {
+            m.put((String) fqcnAndCountPairs[i], (Integer) fqcnAndCountPairs[i + 1]);
+        }
+        return m;
+    }
+
+    @Test
+    @DisplayName("あるクラスの検出件数が1件増えたら新規違反として検出する（番人の本質の実証）")
+    void classCountMismatches_detectsIncreaseWithinRegisteredClass() {
+        Map<String, Integer> frozen = counts("com.example.FooService", 3);
+        Map<String, Integer> actual = counts("com.example.FooService", 4); // 新規に1件増えた
+
+        List<String> mismatches = DateTimeAndZoneGuardTest.classCountMismatches(actual, frozen);
+
+        assertThat(mismatches).hasSize(1);
+        assertThat(mismatches.get(0))
+                .contains("com.example.FooService")
+                .contains("実測4件")
+                .contains("台帳3件")
+                .contains("新規違反1件")
+                .contains("禁止");
+    }
+
+    @Test
+    @DisplayName("未登録のクラスで違反を検出したら新規クラスでの違反として検出する")
+    void classCountMismatches_detectsViolationInUnregisteredClass() {
+        Map<String, Integer> frozen = counts("com.example.FooService", 3);
+        Map<String, Integer> actual = counts("com.example.FooService", 3, "com.example.NewOffenderService", 2);
+
+        List<String> mismatches = DateTimeAndZoneGuardTest.classCountMismatches(actual, frozen);
+
+        assertThat(mismatches).hasSize(1);
+        assertThat(mismatches.get(0))
+                .contains("com.example.NewOffenderService")
+                .contains("2件")
+                .contains("台帳未登録");
+    }
+
+    @Test
+    @DisplayName("実コードから消えたクラスは陳腐化エントリとして検出する（chip-awayの促進）")
+    void classCountMismatches_detectsStaleClassEntry() {
+        Map<String, Integer> frozen = counts("com.example.FooService", 3, "com.example.RemediatedService", 1);
+        Map<String, Integer> actual = counts("com.example.FooService", 3); // RemediatedServiceは是正済みで消えた
+
+        List<String> mismatches = DateTimeAndZoneGuardTest.classCountMismatches(actual, frozen);
+
+        assertThat(mismatches).hasSize(1);
+        assertThat(mismatches.get(0))
+                .contains("com.example.RemediatedService")
+                .contains("陳腐化")
+                .contains("chip-away");
+    }
+
+    @Test
+    @DisplayName("完全一致する場合はミスマッチなし")
+    void classCountMismatches_noDiff_whenExactMatch() {
+        Map<String, Integer> counts = counts("com.example.FooService", 3, "com.example.BarService", 1);
+        assertThat(DateTimeAndZoneGuardTest.classCountMismatches(counts, counts)).isEmpty();
+    }
+
+    /**
+     * PR #2725 の事故そのものの再発防止テスト。{@code RecommendationService#getRecommendations}
+     * のメソッド名変更だけで CI が赤くなった。同種のリファクタ（メソッド名変更・メソッド分割の
+     * 名前替え）をクラス単位の件数だけで見た場合、<b>件数が変わらなければ何も検出されない</b>
+     * ことを、実際のスキャン関数（{@link DateTimeAndZoneGuardTest#collectViolationsInFile}）に
+     * 2種類の合成ソース（メソッド名だけが違う）を通して直接実証する。
+     */
+    @Test
+    @DisplayName("同一クラス内でメソッド名だけを変更してもクラス単位の検出件数は変わらない（PR #2725の事故の再発防止）")
+    void methodRenameDoesNotChangeClassLevelCount() {
+        String before = """
+                package com.mannschaft.app.example;
+                import java.time.LocalDateTime;
+                class SyntheticSample {
+                    LocalDateTime getRecommendations() {
+                        return LocalDateTime.now();
+                    }
+                }
+                """;
+        String afterRename = """
+                package com.mannschaft.app.example;
+                import java.time.LocalDateTime;
+                class SyntheticSample {
+                    LocalDateTime fetchRecommendations() {
+                        return LocalDateTime.now();
+                    }
+                }
+                """;
+
+        long countBefore = DateTimeAndZoneGuardTest.collectViolationsInFile(before, FQCN).stream()
+                .filter(v -> v.category() == DateTimeAndZoneGuardTest.Category.NO_ARG_NOW)
+                .count();
+        long countAfter = DateTimeAndZoneGuardTest.collectViolationsInFile(afterRename, FQCN).stream()
+                .filter(v -> v.category() == DateTimeAndZoneGuardTest.Category.NO_ARG_NOW)
+                .count();
+
+        assertThat(countBefore).isEqualTo(1);
+        assertThat(countAfter).isEqualTo(countBefore);
+
+        // クラス単位の凍結件数比較でも、メソッド名変更だけでは何も検出されないことを実証する。
+        Map<String, Integer> frozen = counts(FQCN, (int) countBefore);
+        Map<String, Integer> actualAfterRename = counts(FQCN, (int) countAfter);
+        assertThat(DateTimeAndZoneGuardTest.classCountMismatches(actualAfterRename, frozen)).isEmpty();
     }
 }
