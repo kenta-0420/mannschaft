@@ -100,7 +100,6 @@ class ScheduleKeepConvertFanoutFailureIT extends AbstractMySqlIntegrationTest {
             Long memberId = insertUser("keepconv-fanoutfail-" + suffix + "@example.com");
             // convert 権限（MEMBER 以上）は user_roles を見る AccessControlService が判定するため両系統を張る。
             MembershipTestHelper.insertMembership(em, memberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, memberId, "MEMBER", teamId, null);
             // 作成者=操作者（memberId）にして作成者直送はスキップさせ、fan-out enqueue 失敗の一点に絞る。
             ScheduleKeepEntity keep = scheduleKeepRepository.save(ScheduleKeepEntity.builder()
                     .teamId(teamId)

@@ -3,6 +3,8 @@ package com.mannschaft.app.visibility;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -120,11 +122,11 @@ class VisibilityPreviewOwnerScopeContractIT extends AbstractMySqlIntegrationTest
         // 主所属チームの解決は user_roles (team_id IS NOT NULL) を見る（VisibilityTemplateEvaluator）。
         // victim / victimTeammate は teamVictim、attacker / attackerTeammate は teamAttacker に配属し、
         // 両チームのメンバー集合が互いに素になるようにする（詐称検証の doesNotContain を意味あるものにする）。
-        MembershipTestHelper.insertUserRole(em, victimId, "MEMBER", teamVictimId, null);
-        MembershipTestHelper.insertUserRole(em, victimTeammateId, "MEMBER", teamVictimId, null);
-        MembershipTestHelper.insertUserRole(em, attackerId, "MEMBER", teamAttackerId, null);
-        MembershipTestHelper.insertUserRole(em, attackerTeammateId, "MEMBER", teamAttackerId, null);
-        MembershipTestHelper.insertUserRole(em, victimFriendMemberId, "MEMBER", teamVictimFriendId, null);
+        MembershipTestHelper.insertMembership(em, victimId, ScopeType.TEAM, teamVictimId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, victimTeammateId, ScopeType.TEAM, teamVictimId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, attackerId, ScopeType.TEAM, teamAttackerId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, attackerTeammateId, ScopeType.TEAM, teamAttackerId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, victimFriendMemberId, ScopeType.TEAM, teamVictimFriendId, RoleKind.MEMBER);
 
         // 被害者チーム ⇔ 被害者フレンドチーム のみフレンド関係を成立させる（攻撃者チームは孤立）。
         insertTeamFriend(teamVictimId, teamVictimFriendId);

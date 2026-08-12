@@ -126,10 +126,8 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
 
         // memberships（所属）と user_roles（権限ロール）は別系統のため双方に行を張る。
         MembershipTestHelper.insertMembership(em, teamSupporterId, ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
-        MembershipTestHelper.insertUserRole(em, teamSupporterId, "SUPPORTER", teamId, null);
 
         MembershipTestHelper.insertMembership(em, teamMemberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, teamMemberId, "MEMBER", teamId, null);
 
         MembershipTestHelper.insertMembership(em, teamDeputyId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, teamDeputyId, "DEPUTY_ADMIN", teamId, null);
@@ -138,10 +136,8 @@ class ScheduleMinViewRoleContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, teamGuestId, "GUEST", teamId, null);
 
         MembershipTestHelper.insertMembership(em, orgSupporterId, ScopeType.ORGANIZATION, orgId, RoleKind.SUPPORTER);
-        MembershipTestHelper.insertUserRole(em, orgSupporterId, "SUPPORTER", null, orgId);
 
         MembershipTestHelper.insertMembership(em, orgMemberId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, orgMemberId, "MEMBER", null, orgId);
 
         MembershipTestHelper.insertMembership(em, orgAdminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, orgAdminId, "ADMIN", null, orgId);
