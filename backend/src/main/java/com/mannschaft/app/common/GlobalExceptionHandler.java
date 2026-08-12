@@ -1807,7 +1807,11 @@ public class GlobalExceptionHandler {
             Map.entry("TIMETABLE_051", HttpStatus.CONFLICT),             // DAY_OFF_ALREADY_EXISTS
 
             // 認可監査 Wave6 ロットE: チャット（ChatErrorCode）の残り未登録分。
-            Map.entry("CHAT_003", HttpStatus.NOT_FOUND),                 // MEMBER_NOT_FOUND
+            // CHAT_003（MEMBER_NOT_FOUND）は登録しない: 設計書 F04.2_chat.md §「/members/me」
+            // が「チャンネルに参加していない（メンバー行が存在しない／IDOR対策で404と区別せず400に統一）」
+            // と明記しており、findMemberOrThrow() の唯一の呼び出し元（updateSettings/updateMySettings/
+            // markAsRead）はいずれも認証主体に束縛された自己スコープ検索のため、既定 400 が正。
+            // 一度 404 に登録して CI 赤（ChatAuthzScopeContractIT #11/#12/#16）で発覚し撤回した。
             Map.entry("CHAT_004", HttpStatus.CONFLICT),                  // ALREADY_MEMBER
             Map.entry("CHAT_008", HttpStatus.CONFLICT),                  // CHANNEL_NAME_DUPLICATE
             Map.entry("CHAT_009", HttpStatus.CONFLICT),                  // CHANNEL_ARCHIVED（アーカイブ済チャンネルへの操作は状態競合）
