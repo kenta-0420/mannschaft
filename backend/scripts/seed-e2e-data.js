@@ -264,12 +264,18 @@ function encryptForTest(plain) {
   // 4. ロール配置
   // ============================================================
   async function assignRole(userId, roleId, teamId, orgId) {
-    await conn.execute(
-      `INSERT IGNORE INTO user_roles
-        (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?)`,
-      [userId, roleId, teamId || null, orgId || null, SYS, now, now]
-    );
+    // CMP-027: 所属ロール MEMBER(role_id=4) / SUPPORTER(role_id=5) は V60.010 で user_roles から
+    // 除去され memberships へ完全移行済み。本番で成立しえないため user_roles へは書かず、
+    // 下の memberships 同期のみに委ねる。権限ロール（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/GUEST）は
+    // 従来どおり user_roles が正統なので INSERT する。
+    if (!(roleId === 4 || roleId === 5)) {
+      await conn.execute(
+        `INSERT IGNORE INTO user_roles
+          (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [userId, roleId, teamId || null, orgId || null, SYS, now, now]
+      );
+    }
 
     // F00.5 Phase 3: memberships 基盤への同期。
     // isMember() は user_roles ではなく memberships.left_at IS NULL を参照するため、
