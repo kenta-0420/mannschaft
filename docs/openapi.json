@@ -695,6 +695,10 @@
       "description": "F04.2 チャットファイルアップロード"
     },
     {
+      "name": "F03.11.1 募集キャンセル料",
+      "description": "募集キャンセル料の免除"
+    },
+    {
       "name": "管理 - アクションテンプレート",
       "description": "F10.1 アクションテンプレート管理API"
     },
@@ -57414,6 +57418,42 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/recruitment-cancellation-records/{recordId}/waive": {
+      "post": {
+        "tags": [
+          "F03.11.1 募集キャンセル料"
+        ],
+        "summary": "キャンセル料の免除",
+        "description": "受取先側の管理者または運営管理者がキャンセル料の請求を取り消す。免除は債権の放棄を必ず行うが、そのユーザーに他の未払いが残っている場合は募集への申込制限は解除されない。",
+        "operationId": "waive",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaiveCancellationFeeRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -184219,6 +184259,16 @@
           "reason": {
             "type": "string",
             "maxLength": 200,
+            "minLength": 0
+          }
+        }
+      },
+      "WaiveCancellationFeeRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
             "minLength": 0
           }
         }

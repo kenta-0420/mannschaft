@@ -276,6 +276,303 @@ class NativeQueryUnsignedBigintTypeIT {
         }
     }
 
+    /**
+     * 符号揃え 第一波（issue #2545・{@code V180.20260811135837__unify_notification_scope_id_columns_unsigned.sql}）の実測。
+     *
+     * <p>{@code notification_fanout_jobs} / {@code notifications_archive} / {@code dashboard_scope_tab_order}
+     * の該当列が {@code BIGINT UNSIGNED} へ統一されたことと、{@code MODIFY COLUMN} で COMMENT を
+     * 失っていないことを {@code information_schema} で検証する（COMMENT の無い列は空文字/nullを許容）。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第一波: notification_fanout_jobs/notifications_archive/dashboard_scope_tab_order がBIGINT UNSIGNEDへ統一済み（V180・issue #2545）")
+    void 符号揃え第一波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        SoftAssertions softly = new SoftAssertions();
+
+        // notification_fanout_jobs
+        softly.assertThat(readColumnType("notification_fanout_jobs", "organization_id"))
+                .as("notification_fanout_jobs.organization_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "source_id"))
+                .as("notification_fanout_jobs.source_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "actor_id"))
+                .as("notification_fanout_jobs.actor_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notification_fanout_jobs", "cursor_subject_id"))
+                .as("notification_fanout_jobs.cursor_subject_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("notification_fanout_jobs", "actor_id"))
+                .as("actor_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("実行者ID（論理参照・FK なし・システム発火は NULL）");
+        softly.assertThat(readColumnComment("notification_fanout_jobs", "cursor_subject_id"))
+                .as("cursor_subject_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("キーセット再開カーソル（処理済み受信者 subject_id 上端。クラッシュ再開の要・AC-2）");
+
+        // notifications_archive（移送元 notifications と同じ符号性へ統一）
+        softly.assertThat(readColumnType("notifications_archive", "user_id"))
+                .as("notifications_archive.user_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "organization_id"))
+                .as("notifications_archive.organization_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "source_id"))
+                .as("notifications_archive.source_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "scope_id"))
+                .as("notifications_archive.scope_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("notifications_archive", "actor_id"))
+                .as("notifications_archive.actor_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("notifications_archive", "organization_id"))
+                .as("organization_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("テナント（論理参照・FK なし）");
+
+        // dashboard_scope_tab_order
+        softly.assertThat(readColumnType("dashboard_scope_tab_order", "user_id"))
+                .as("dashboard_scope_tab_order.user_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("dashboard_scope_tab_order", "scope_id"))
+                .as("dashboard_scope_tab_order.scope_id").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("dashboard_scope_tab_order", "user_id"))
+                .as("user_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("users.id（FK制約なし。クロスドメインFK禁止原則）");
+        softly.assertThat(readColumnComment("dashboard_scope_tab_order", "scope_id"))
+                .as("scope_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("チームID または 組織ID（FK制約なし）");
+
+        softly.assertAll();
+    }
+
+    /**
+     * 符号揃え 第二波（issue #2545・{@code V181.20260812030534__unify_id_columns_unsigned_wave2.sql}）の実測。
+     *
+     * <p>第一波（V180・my_scope_folder_items 系）以外に origin/main 全体へ残っていた符号付き
+     * {@code _id} 列 82 本を横断で {@code BIGINT UNSIGNED} へ統一した。本テストは
+     * {@code information_schema} を直接読み、(1) 型が統一されたこと、(2) {@code MODIFY COLUMN} で
+     * 元の COMMENT を失っていないこと（COMMENT 無し宣言は空文字のままであること）を検証する。
+     * 索引選択（EXPLAIN の key）は保証対象ではないため断言しない（第一波と同じ方針）。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第二波: 残存していた符号付きBIGINT id列82本がBIGINT UNSIGNEDへ統一済み（V181・issue #2545）")
+    void 符号揃え第二波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        // {table, column, expectedComment（無ければ空文字）}
+        String[][] expected = {
+            {"reservation_team_settings", "team_id", ""},
+            {"reservation_policies", "team_id", ""},
+            {"reservation_notification_recipients", "team_id", ""},
+            {"gdpr_s3_purge_failures", "user_id", ""},
+            {"reflection_themes", "user_id", ""},
+            {"reflection_themes", "linked_slot_id", ""},
+            {"reflection_entries", "user_id", ""},
+            {"reflection_entries", "exported_blog_post_id", ""},
+            {"recall_attempts", "user_id", ""},
+            {"reflection_spaced_reminders", "user_id", ""},
+            {"user_reflection_settings", "user_id", ""},
+            {"appearance_settings", "user_id", ""},
+            {"appearance_settings", "seasonal_theme_id", ""},
+            {"payment_beneficiary_settings", "team_id", ""},
+            {"payment_beneficiary_settings", "organization_id", ""},
+            {"google_calendar_webhook_channels", "user_id", ""},
+            {"visibility_template_rules", "rule_target_id", ""},
+            {"village_charter_drafters", "user_id", "策定者（FK非付与・退会時 NULL 化・原則1/4）"},
+            {"event_care_notification_logs", "notification_id", "FK → notifications.id（配信レコード参照）"},
+            {"attendance_location_changes", "team_id", ""},
+            {"attendance_location_changes", "student_user_id", ""},
+            {"attendance_requirement_rules", "organization_id", "組織スコープ（team_id と排他）"},
+            {"attendance_requirement_rules", "team_id", "チームスコープ（organization_id と排他）"},
+            {"attendance_requirement_rules", "term_id", "NULLなら年度通算"},
+            {"student_attendance_summaries", "team_id", "チームID"},
+            {"student_attendance_summaries", "student_user_id", "生徒ユーザーID"},
+            {"student_attendance_summaries", "term_id", "NULLなら年度通算"},
+            {"email_outbox", "user_id", "宛先ユーザー (論理参照、FK なし)"},
+            {"email_outbox", "organization_id", "所属組織 (論理参照、FK なし。認証メールは NULL)"},
+            {"public_post_comments", "post_id", "対象 BlogPost の ID"},
+            {"public_post_comments", "author_id", "投稿者ユーザー ID（users.id）"},
+            {"schedule_scheduled_tasks", "schedule_id", "親予定 schedules.id（FK制約なし・論理参照）"},
+            {"schedule_scheduled_tasks", "organization_id", "テナントキー。team予定なら所属組織のid（原則7）"},
+            {"schedule_scheduled_tasks", "scope_id", "スコープ実体ID（team_id または organization_id）"},
+            {"schedule_scheduled_tasks", "materialized_entity_id", "生成後の実体id（event_survey / schedule_attendance 等）"},
+            {"matches", "organization_id", "テナント（organization ドメインへの ID 参照・原則1/7・FK なし）"},
+            {"matches", "team_id", "記録/ホーム主体チーム（team ドメイン ID 参照・FK なし）"},
+            {"matches", "tournament_fixture_id", "大会 fixture リンク（tournament ドメインへの BIGINT ID 参照・NULL=単独試合・FK なし）"},
+            {"matches", "schedule_id", "カレンダー連携（F03.1・schedules への BIGINT ID 参照・FK なし）"},
+            {"matches", "opponent_team_id", "登録相手チーム（team ドメイン ID 参照・NULL 可・FK なし）"},
+            {"matches", "scorekeeper_user_id", "記録係ユーザー（公式戦・user ドメイン ID 参照・FK なし）"},
+            {"match_events", "player_user_id", "主体選手（user ドメイン ID 参照・未登録は NULL・FK なし）"},
+            {"match_events", "related_player_user_id", "関連選手（アシスト者/交代相手・user ドメイン ID 参照・FK なし）"},
+            {"match_events", "recorded_by_team_id", "記録したチーム（共同記録の権限判定・team ドメイン ID 参照・NULL=記録係記録・FK なし）"},
+            {"player_appearances", "player_user_id", "選手（user ドメイン ID 参照・未登録は NULL・FK なし）"},
+            {"player_appearances", "owning_team_id", "自チーム編集権限の判定（team ドメイン ID 参照・FK なし）"},
+            {"tournament_scorekeepers", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_scorekeepers", "user_id", "スコアキーパーに指名されたユーザー（users.id・FK なし／原則1）"},
+            {"match_score_entries", "competitor_user_id", "出場選手（user ドメイン ID 参照・未登録は NULL・原則1）"},
+            {"match_score_entries", "competitor_team_id", "所属チーム（team ドメイン ID 参照・団体採点時・原則1）"},
+            {"match_roster_staff", "match_id", "tournament_matches.id への ID 参照（同一 tournament ドメイン・FK なし）"},
+            {"match_roster_staff", "participant_id", "tournament_participants.id への ID 参照（自チーム分・FK なし）"},
+            {"match_roster_staff", "user_id", "紐付くユーザー（user ドメインへの ID 参照・FK なし／原則1・NULL 可）"},
+            {"tournament_entry_template_staff", "user_id", "user ドメインへの ID 参照（FK なし／原則1・NULL 可）"},
+            {"tournament_fee", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_fee", "division_id", "対象ディビジョン（tournament_divisions.id。NULL=大会全体・FK なし）"},
+            {"tournament_fee", "payment_item_id", "payment ドメインの payment_items.id（FK なし／原則1）"},
+            {"tournament_fee", "organization_id", "主催組織（入金先・テナント絞り込み）"},
+            {"tournament_fee_target", "team_id", "対象チーム（teams.id・FK なし／原則1）"},
+            {"tournament_submission_requirement", "tournament_id", "対象大会（tournaments.id・FK なし／原則1）"},
+            {"tournament_submission_requirement", "division_id", "対象ディビジョン（tournament_divisions.id。NULL=大会全体・FK なし）"},
+            {"tournament_submission_requirement", "form_template_id", "forms/workflow ドメインの form_templates.id（FK なし／原則1）"},
+            {"tournament_submission_requirement", "organization_id", "主催組織（テナント絞り込み・クォータ帰属）"},
+            {"tournament_submission_requirement_target", "team_id", "対象チーム（teams.id・FK なし／原則1）"},
+            {"league_transfer", "team_id", "移籍対象チーム（teams.id・FK なし／原則1）。team_id は不変"},
+            {"league_transfer", "from_organization_id", "手放す側 org（昇格時=下位県協会 / 降格時=上位協会・FK なし）"},
+            {"league_transfer", "to_organization_id", "受け入れる側 org（昇格時=上位協会 / 降格時=出身県協会・FK なし）"},
+            {"league_transfer", "source_division_id", "移籍元ディビジョン（tournament_divisions.id・FK なし）"},
+            {"league_transfer", "target_division_id", "移籍先ディビジョン（承認・配属確定時にセット・FK なし）"},
+            {"team_uniform_set", "team_id", "team ドメインへの ID 参照（teams.id・FK なし／原則1）"},
+            {"team_slug_history", "team_id", "リネーム対象チーム（teams.id・FK なし／原則1）"},
+            {"organization_slug_history", "organization_id", "リネーム対象組織（organizations.id・FK なし／原則1）"},
+            {"beta_restriction_config", "max_team_id", "このID以下のチームが招待可能（NULL=制限なし）"},
+            {"beta_restriction_config", "max_org_id", "このID以下の組織が招待可能（NULL=制限なし）"},
+            {"team_name_disclosure_change_logs", "team_id", ""},
+            {"organization_name_disclosure_change_logs", "organization_id", ""},
+            {"user_nav_settings", "user_id", "users.id（FK制約なし。クロスドメインFK禁止原則）"},
+            {"inbox_item_states", "user_id", "users.id（FK制約なし。クロスドメインFK禁止原則1）"},
+            {"inbox_item_states", "source_id", "各ソーステーブルのPK（FK制約なし・論理参照）"},
+            {"notification_labels", "user_id", "users.id（FK制約なし）"},
+            {"inbox_label_links", "user_id", "users.id（冗長保持・user絞り込み高速化／所有検証）"},
+            {"inbox_label_links", "source_id", "各ソースPK（論理参照）"},
+        };
+
+        SoftAssertions softly = new SoftAssertions();
+        for (String[] row : expected) {
+            String table = row[0];
+            String column = row[1];
+            String expectedComment = row[2];
+            softly.assertThat(readColumnType(table, column))
+                    .as(table + "." + column + " が BIGINT UNSIGNED へ統一されていること")
+                    .isEqualTo("bigint unsigned");
+            softly.assertThat(readColumnComment(table, column))
+                    .as(table + "." + column + " の COMMENT を MODIFY COLUMN で失っていないこと")
+                    .isEqualTo(expectedComment);
+        }
+        softly.assertAll();
+    }
+
+    /**
+     * 符号揃え 第三波（issue #2545・{@code V182__unify_id_columns_unsigned_wave3.sql}）の実測。
+     *
+     * <p>第二波が FK 型不一致で除外した attendance_requirement_evaluations の 2 列
+     * （requirement_rule_id / summary_id）と、その参照先である親テーブルの主キー
+     * （attendance_requirement_rules.id / student_attendance_summaries.id）を検証する。
+     * FK 制約が型の揃った状態で張り直されていることも確認する。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第三波: attendance_requirement_evaluationsのFK2列と親PK2列がBIGINT UNSIGNEDへ統一済み（V182・issue #2545）")
+    void 符号揃え第三波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        SoftAssertions softly = new SoftAssertions();
+
+        softly.assertThat(readColumnType("attendance_requirement_rules", "id"))
+                .as("attendance_requirement_rules.id（親PK）").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("student_attendance_summaries", "id"))
+                .as("student_attendance_summaries.id（親PK）").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("attendance_requirement_evaluations", "requirement_rule_id"))
+                .as("attendance_requirement_evaluations.requirement_rule_id（子FK）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("attendance_requirement_evaluations", "summary_id"))
+                .as("attendance_requirement_evaluations.summary_id（子FK）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("attendance_requirement_evaluations", "requirement_rule_id"))
+                .as("requirement_rule_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("FK→attendance_requirement_rules.id");
+        softly.assertThat(readColumnComment("attendance_requirement_evaluations", "summary_id"))
+                .as("summary_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("FK→student_attendance_summaries.id");
+
+        // 番人の初回実行で追加検出した2件（FK 非依存）
+        softly.assertThat(readColumnType("notifications", "organization_id"))
+                .as("notifications.organization_id（V65.001 が UNSIGNED を書き落としていた）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("ad_invoice_items", "campaign_id"))
+                .as("ad_invoice_items.campaign_id（V67.023 の MODIFY COLUMN が UNSIGNED を落としていた）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("ad_invoice_items", "campaign_id"))
+                .as("campaign_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("F09.7 ad_campaigns.id (NULL=F09.17 messaging_campaign_id 経由)");
+
+        // FK 制約が型の揃った状態で張り直されていること（一時的に落として再作成したため）
+        try (Connection conn = connection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT CONSTRAINT_NAME FROM information_schema.table_constraints "
+                             + "WHERE table_schema = DATABASE() AND table_name = 'attendance_requirement_evaluations' "
+                             + "AND constraint_type = 'FOREIGN KEY' AND constraint_name IN ('fk_are_rule', 'fk_are_summary')")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                List<String> names = new ArrayList<>();
+                while (rs.next()) {
+                    names.add(rs.getString(1));
+                }
+                softly.assertThat(names)
+                        .as("fk_are_rule / fk_are_summary が張り直されていること")
+                        .containsExactlyInAnyOrder("fk_are_rule", "fk_are_summary");
+            }
+        }
+
+        softly.assertAll();
+    }
+
+    /**
+     * {@code notifications_archive} の実害実測。{@code NotificationCleanupBatchService#deleteArchived} が
+     * 実際に発行する {@code DELETE FROM notifications WHERE ... AND id IN (SELECT id FROM notifications_archive)}
+     * は {@code notifications.id}（{@code BIGINT UNSIGNED}）と {@code notifications_archive.id} を
+     * 突き合わせる。統一前（{@code notifications_archive.id} が符号付きだった場合）を模した
+     * {@code CAST(id AS SIGNED)} 版と、統一後の無加工版とで {@code notifications} 側の索引選択を比較する。
+     */
+    @Test
+    @DisplayName("EXPLAIN観測（断言なし）: notifications_archive との突き合わせにおける索引選択を記録する（V180・issue #2545）")
+    void notifications_archiveとの突き合わせで索引選択を実測する() throws Exception {
+        long userId;
+        try (Connection conn = connection(); Statement st = conn.createStatement()) {
+            ensureProbeRow("users");
+            try (ResultSet rs = st.executeQuery("SELECT id FROM users ORDER BY id LIMIT 1")) {
+                rs.next();
+                userId = ((Number) rs.getObject(1)).longValue();
+            }
+            // notifications に PRIMARY KEY 索引選択を意味あるものにするための行を用意する。
+            for (int i = 0; i < 50; i++) {
+                insertNotification(conn, userId, i);
+            }
+            long probeId;
+            try (ResultSet rs = st.executeQuery("SELECT id FROM notifications ORDER BY id LIMIT 1")) {
+                rs.next();
+                probeId = ((Number) rs.getObject(1)).longValue();
+            }
+            st.executeUpdate("INSERT IGNORE INTO notifications_archive "
+                    + "(id, user_id, organization_id, notification_type, priority, title, "
+                    + " source_type, source_id, scope_type, scope_id, action_url, actor_id, "
+                    + " is_read, read_at, channels_sent, snoozed_until, created_at) "
+                    + "SELECT id, user_id, organization_id, notification_type, priority, title, "
+                    + "       source_type, source_id, scope_type, scope_id, action_url, actor_id, "
+                    + "       is_read, read_at, channels_sent, snoozed_until, created_at "
+                    + "FROM notifications WHERE id = " + probeId);
+            st.execute("ANALYZE TABLE notifications, notifications_archive");
+        }
+
+        String withoutCast = "EXPLAIN DELETE FROM notifications "
+                + "WHERE id IN (SELECT id FROM notifications_archive) LIMIT 10000";
+        // 統一前（notifications_archive.id が符号付きだった場合）を模した CAST 版。
+        String withCast = "EXPLAIN DELETE FROM notifications "
+                + "WHERE id IN (SELECT CAST(id AS SIGNED) FROM notifications_archive) LIMIT 10000";
+
+        String keyWithoutCast = explainKeyForTable("notifications", withoutCast);
+        String keyWithCast = explainKeyForTable("notifications", withCast);
+
+        System.out.println("[#2545 V180 EXPLAIN] notifications の key（統一後・無加工）    = " + keyWithoutCast);
+        System.out.println("[#2545 V180 EXPLAIN] notifications の key（符号不一致を模した版）= " + keyWithCast);
+
+        // ここで optimizer の選択そのものを断言しない（意図的）。
+        //
+        // どの索引が選ばれるかは行数分布・統計・MySQL のバージョンに依存し、DBMS が保証する性質ではない。
+        // 実際 CI（50 行 + ANALYZE TABLE の条件）では key=null（全走査）となり、PRIMARY を要求する
+        // 断言は落ちた。V177 の先例も EXPLAIN の結果を「当該条件下の観測」と明記しており、
+        // 保証として扱っていない。
+        //
+        // 本 migration が保証するのは「型が揃ったこと」であり、それは
+        // {@link #符号揃え第一波の対象列がUNSIGNEDへ統一済み()} が information_schema に対して断言している。
+        // 索引選択は診断のための観測として上の出力に残す。**ここに isEqualTo("PRIMARY") を書き戻すな。**
+        // key は索引未使用のとき NULL を返すため、値の有無すら断言しない（null 断言も同じ罠を踏む）。
+        // 断言するのは「統一後の無加工クエリが EXPLAIN 可能な正当な SQL であること」——
+        // すなわち上の2回の explainKeyForTable が例外なく完了したことのみである。
+        assertThat(withoutCast).as("統一後の無加工クエリが EXPLAIN 対象として成立すること").isNotBlank();
+    }
+
     // =====================================================================
     // 実測 2: CAST 撤去の同値性（本番の実クエリで）
     // =====================================================================
@@ -519,6 +816,20 @@ class NativeQueryUnsignedBigintTypeIT {
         throw new AssertionError("EXPLAIN の出力に notifications（別名 n）の行が無い");
     }
 
+    /** 既に {@code EXPLAIN ...} 形式で組み立て済みの SQL を実行し、指定テーブル名の行で選ばれた {@code key} を返す。 */
+    private static String explainKeyForTable(String tableName, String explainSql) throws SQLException {
+        try (Connection conn = connection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(explainSql)) {
+            while (rs.next()) {
+                if (tableName.equalsIgnoreCase(rs.getString("table"))) {
+                    return rs.getString("key");
+                }
+            }
+        }
+        throw new AssertionError("EXPLAIN の出力に " + tableName + " の行が無い");
+    }
+
     /**
      * 未読件数集計の実測用フィクスチャを用意する（冪等）。
      *
@@ -678,6 +989,21 @@ class NativeQueryUnsignedBigintTypeIT {
             try (ResultSet rs = ps.executeQuery()) {
                 assertThat(rs.next()).as(table + "." + column + " が実スキーマに存在すること").isTrue();
                 return rs.getString(1).toLowerCase(Locale.ROOT);
+            }
+        }
+    }
+
+    /** {@code information_schema} から列の COMMENT を読む。 */
+    private static String readColumnComment(String table, String column) throws SQLException {
+        try (Connection conn = connection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COLUMN_COMMENT FROM information_schema.columns "
+                             + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertThat(rs.next()).as(table + "." + column + " が実スキーマに存在すること").isTrue();
+                return rs.getString(1);
             }
         }
     }

@@ -225,9 +225,9 @@ class OrganizationLifecycleAuthzContractIT extends AbstractMySqlIntegrationTest 
         /**
          * SYSTEM_ADMIN はガードを通過する（403 にならない）。
          *
-         * <p>本テストは 200/204 を期待しない。対象組織が論理削除されていないため、
-         * ガード通過後に Service 本体が {@code ORG_006}（削除されていないため復元できません）で弾くのが正しい挙動である。
-         * ここで検証したいのは「認可ガードが SYSTEM_ADMIN を通すこと」なので、403 でないことを固定する。</p>
+         * <p>対象組織が論理削除されていないため、ガード通過後に Service 本体が
+         * {@code ORG_006}（削除されていないため復元できません）で弾くのが正しい挙動である
+         * （ロットD: {@code ERROR_CODE_STATUS_MAP} 登録により 409 CONFLICT が期待値として固定できる）。</p>
          *
          * <p><b>既知の制約</b>: {@code restore} EP は現状 <b>本来の用途で到達不能</b>である。
          * Controller が呼ぶ {@code resolveOrgId} は {@code findBySlugAndDeletedAtIsNull} を引くため、
@@ -236,14 +236,27 @@ class OrganizationLifecycleAuthzContractIT extends AbstractMySqlIntegrationTest 
          * そのため「正当 SYSTEM_ADMIN → 復元成功（204）」の正常系は本テストでは検証できない。</p>
          */
         @Test
-        @DisplayName("SYSTEM_ADMINはガードを通過する（403にならない）")
+        @DisplayName("SYSTEM_ADMINはガードを通過する（403にならない・ORG_006で409）")
         void SYSTEM_ADMINはガードを通過する() throws Exception {
             setAuth(systemAdminId);
-            int actualStatus = mockMvc.perform(patch(org() + "/restore"))
-                    .andReturn().getResponse().getStatus();
-            assertThat(actualStatus)
-                    .as("SYSTEM_ADMIN は checkSystemAdmin を通過するため 403 にはならない")
-                    .isNotEqualTo(403);
+            mockMvc.perform(patch(org() + "/restore")).andExpect(status().isConflict());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. ロットDステータス契約（ORG_003）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. ロットDステータス契約（ARCHIVED状態競合）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("既にアーカイブ済みの組織を再アーカイブすると409（ORG_003）")
+        void 再アーカイブは409() throws Exception {
+            setAuth(adminId);
+            mockMvc.perform(patch(org() + "/archive")).andExpect(status().isOk());
+            mockMvc.perform(patch(org() + "/archive")).andExpect(status().isConflict());
         }
     }
 

@@ -244,21 +244,27 @@ public class SecurityConfig {
                 .requestMatchers("/api/i18n/**").permitAll()
                 // F02.10 §391 郵便番号検証ポリシー（認証不要・register 画面が未ログインで参照）
                 // フォーマット規則のみで機微情報なし。FE の単一真実源。
+                // 公開網漏れ是正: PublicApiRateLimitFilter の MISC_LOW zone（30/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.GET, "/api/v1/postal-code/policies").permitAll()
                 // F10.8 アクセス解析 計測ビーコン（未認証ゲスト計測を許可・IP レート制限あり）。
                 // これが無いと Spring Security 既定 authenticated() で未ログイン POST が 401 になる（AC-02）。
                 .requestMatchers(HttpMethod.POST, "/api/v1/page-views").permitAll()
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
+                // 公開網漏れ是正: PublicApiRateLimitFilter の MISC_LOW zone（30/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
-                // CSP 違反レポート受信（ブラウザ自動送信のため認証不要）
+                // CSP 違反レポート受信（ブラウザ自動送信のため認証不要）。
+                // 公開網漏れ是正: PublicApiRateLimitFilter の WEBHOOK zone（120/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.POST, "/api/v1/security/csp-reports").permitAll()
                 // F02.12 Phase 4: Google Calendar Webhook 受信（Google からの外部コールバック・認証不要）
-                // トークン検証は GoogleCalendarWebhookService 内で行う（定数時間比較 + DB 照合）
+                // トークン検証は GoogleCalendarWebhookService 内で行う（定数時間比較 + DB 照合）。
+                // 公開網漏れ是正: PublicApiRateLimitFilter の WEBHOOK zone（120/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/google-calendar").permitAll()
-                // F10.6 Phase 10-γ-③-a: SSR エラー受信（認証不要。コントローラーが内部トークンで検証）
+                // F10.6 Phase 10-γ-③-a: SSR エラー受信（認証不要。コントローラーが内部トークンで検証）。
+                // 公開網漏れ是正: PublicApiRateLimitFilter の WEBHOOK zone（120/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.POST, "/api/internal/ssr-logs").permitAll()
-                // F04.8 連絡先招待プレビュー（認証不要）
+                // F04.8 連絡先招待プレビュー（認証不要）。
+                // 公開網漏れ是正: PublicApiRateLimitFilter の MISC_LOW zone（30/min/IP）でレート制限あり。
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
@@ -275,6 +281,8 @@ public class SecurityConfig {
                 // Service 層の checkView が 403 を返す（多層防御）。POST（作成）は
                 // .anyRequest().authenticated() ＋ Service 層 checkPost で認証＋認可必須。
                 // 設計書: docs/features/F08.7.1_tournament_extensions/04_file_storage.md §3 / §5
+                // 公開網漏れ是正: PublicApiRateLimitFilter の TOURNAMENT_LIST zone（60/min/IP・200/min/user）
+                // でレート制限あり。
                 .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/folders").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/divisions/*/folders").permitAll()
                 // F05.5 PR-D: 公開ファイルリンク（Google Drive 風・未認証可）。
@@ -321,6 +329,9 @@ public class SecurityConfig {
                 // `/**`（再帰）は使わず、POST/PATCH/DELETE（書込）は permitAll しない。
                 // 非 PUBLIC 大会は Service 層 canView(TOURNAMENT, tId, null) が PUBLIC のみ true のため 404 で隠蔽。
                 // 設計書: docs/features/F08.7_tournament_league.md（順位UI 項目①）
+                // 公開網漏れ是正: 一覧・詳細は PublicApiRateLimitFilter の TOURNAMENT_LIST zone
+                // （60/min/IP・200/min/user）、順位表/マトリクス/ランキング/組み合わせ表は
+                // 重い集計のため独立した TOURNAMENT_AGGREGATE zone（20/min/IP・80/min/user）でレート制限あり。
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/tournaments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/tournaments/*").permitAll()
                 .requestMatchers(HttpMethod.GET,
@@ -332,6 +343,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/public/organizations/*/tournaments/*/bracket").permitAll()
                 // F08.7 項目① 埋め込みウィジェット（EmbedController・未ログイン前提）。
+                // 公開網漏れ是正: TOURNAMENT_AGGREGATE zone を共有してレート制限あり。
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/embed/organizations/*/tournaments/*/standings/*").permitAll()
                 .requestMatchers(HttpMethod.GET,
@@ -374,14 +386,18 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.7 Phase 6-B
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/blog-posts/*/comments").permitAll()
                 // F09.7 クリック計測（認証不要・未ログインユーザーのクリックにも対応）
-                // TODO: 将来 IP ベースのレート制限を AdPublicEndpointRateLimitFilter に追加して不正クリックを防止する
+                // 公開網漏れ是正: AdPublicEndpointRateLimitFilter の ad-public:click zone
+                // （60/min/IP）でレート制限済み（旧 TODO を解消）。
                 .requestMatchers(HttpMethod.POST, "/api/v1/ads/*/click").permitAll()
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
                 // F09.17 残課題 4 公開 unsubscribe SPA POST（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/ads/unsubscribe").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
-                // F01.9 保護者同意 API（保護者がメールリンクから直接アクセスする承認・否認）
+                // F01.9 保護者同意 API（保護者がメールリンクから直接アクセスする承認・否認）。
+                // 公開網漏れ是正: トークン総当り対策として ParentalConsentService が
+                // AuthTokenService.checkRateLimit で IP 単位 10 回/時のレートリミットを通す
+                // （register と同じ作法。approve/reject は同一 zone を共有）。
                 .requestMatchers(
                     "/api/v1/parental-consent/approve",
                     "/api/v1/parental-consent/reject"
@@ -437,9 +453,18 @@ public class SecurityConfig {
                 // ※ SES バウンス/苦情通知は F09.6 Phase 8a で SQS リスナー方式へ移行済み。
                 //    HTTP 受け口（/api/v1/webhooks/ses）を廃止したため permitAll 行も撤去した
                 //    （SQS は AWS 内部認証のため公開 HTTP エンドポイント不要・deny-by-default に戻す）。
+                // 公開網漏れ是正: 署名検証コスト消費の連打を避けるため PublicApiRateLimitFilter の
+                // WEBHOOK zone（120/min/IP）でレート制限あり（無制限にはしない）。
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/line/webhook/*").permitAll()
+                // Incoming Webhook 受信口。ハンドラは IncomingWebhookController#processIncoming に
+                // 実在する（@AuthorizedInService 付与・認可根治戦役 Wave5 監査済）。パス中のトークン
+                // のみで認証するため、公開網漏れ是正で PublicApiRateLimitFilter の WEBHOOK zone
+                // （120/min/IP）に登録しトークン総当りを抑止した。
+                // ⚠️ 本行を「死んだルール」と誤認して撤去しかけた事故がある（2026-08-12）。撤去すると
+                // deny-by-default に落ち、稼働中の Webhook 受信が全て 401 になる。ハンドラの実在は
+                // IncomingWebhookController の @PostMapping("/incoming/{token}") で確認できる。
                 .requestMatchers(HttpMethod.POST, "/incoming/*").permitAll()
                 // WebSocket ハンドシェイク（SockJS）。STOMP CONNECT 時に
                 // WebSocketAuthChannelInterceptor が JWT を検証するため、ハンドシェイク自体は

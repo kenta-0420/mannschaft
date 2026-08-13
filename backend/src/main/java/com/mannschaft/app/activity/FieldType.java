@@ -7,6 +7,7 @@ public enum FieldType {
     TEXT,
     NUMBER,
     DATE,
+    DATETIME,
     SELECT,
     CHECKBOX,
     TEXTAREA

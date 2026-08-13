@@ -35,7 +35,7 @@ public enum QueueErrorCode implements ErrorCode {
     /** QRコードが見つからない */
     QR_CODE_NOT_FOUND("QUEUE_008", "QRコードが見つかりません", Severity.WARN),
 
-    /** QRコードが無効 */
+    /** QRコードが無効（発行者による手動失効。410 Gone を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     QR_CODE_INACTIVE("QUEUE_009", "QRコードが無効です", Severity.WARN),
 
     /** 設定が見つからない */

@@ -148,7 +148,9 @@ class ModerationScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正常系(既存挙動): 同一actionIdへの重複依頼はRE_REVIEW_ALREADY_EXISTS")
+        @DisplayName("同一actionIdへの重複依頼はRE_REVIEW_ALREADY_EXISTSで409"
+            + "（WarningReReviewService#createReReview の existsByUserIdAndActionId 判定は"
+            + "状態競合のため、認可監査Wave6ロットEで ERROR_CODE_STATUS_MAP に 409 を登録した）")
         void 重複依頼はエラー() throws Exception {
             setAuthentication(ownerUserId);
 
@@ -162,7 +164,7 @@ class ModerationScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/warnings/{actionId}/re-review", ownActionId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(reReviewBody(ownReportId))))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.error.code").value("MODERATION_EXT_007"));
         }
     }

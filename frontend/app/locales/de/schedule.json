@@ -165,7 +165,11 @@
         "step4": "Führen Sie 'Manuelle Synchronisierung' aus, wenn Änderungen sofort übernommen werden sollen"
       }
     },
-    "google_sync_notice": "Mit Google Kalender verbunden. Änderungen in Google werden beim nächsten Speichern hier durch die Mannschaft-Daten ersetzt."
+    "google_sync_notice": "Mit Google Kalender verbunden. Änderungen in Google werden beim nächsten Speichern hier durch die Mannschaft-Daten ersetzt.",
+    "todo_load_error": {
+      "summary": "TODOs konnten nicht geladen werden",
+      "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

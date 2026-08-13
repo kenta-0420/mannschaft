@@ -730,6 +730,79 @@ class SurveyScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // ロットDステータス契約（SURVEY_004/006/012/020/021）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ロットDステータス契約（INVALID_SURVEY_STATUS/DUPLICATE_RESPONSE/NO_QUESTIONS/USER_RESPONSE_NOT_FOUND/SERIES_NOT_FOUND）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("設問なしアンケートの公開は409（NO_QUESTIONS）")
+        void 設問なし公開は409() throws Exception {
+            Long emptySurveyId = insertSurvey("TEAM", teamAId, "SVAUTHZ 設問なし",
+                    SurveyStatus.DRAFT, creatorTeamAId);
+            setAuth(creatorTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{slug}/surveys/{id}/publish", TEAM_A_SLUG, emptySurveyId))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("DRAFTアンケートへの回答送信は409（INVALID_SURVEY_STATUS）")
+        void DRAFTへの回答送信は409() throws Exception {
+            setAuth(memberTeamAId);
+            Map<String, Object> answer = new LinkedHashMap<>();
+            answer.put("questionId", null);
+            answer.put("textResponse", "回答");
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("answers", List.of(answer));
+
+            mockMvc.perform(post("/api/v1/surveys/{surveyId}/responses", draftSurveyTeamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("同一ユーザーの複数回答（多重回答不可設定）は409（DUPLICATE_RESPONSE）")
+        void 複数回答不可での再回答は409() throws Exception {
+            insertResponse(publishedSurveyTeamAId, publishedQuestionTeamAId, memberTeamAId, "1回目の回答");
+            em.flush();
+            em.clear();
+
+            setAuth(memberTeamAId);
+            Map<String, Object> answer = new LinkedHashMap<>();
+            answer.put("questionId", publishedQuestionTeamAId);
+            answer.put("textResponse", "2回目の回答");
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("answers", List.of(answer));
+
+            mockMvc.perform(post("/api/v1/surveys/{surveyId}/responses", publishedSurveyTeamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("未回答ユーザーの個別回答取得は404（USER_RESPONSE_NOT_FOUND）")
+        void 未回答ユーザーの個別回答取得は404() throws Exception {
+            // getResponseByUser の認可は ADMIN+/作成者/結果閲覧者のみ。作成者で取得する。
+            setAuth(creatorTeamAId);
+            mockMvc.perform(get("/api/v1/surveys/{surveyId}/responses/{userId}",
+                            publishedSurveyTeamAId, memberTeamAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("存在しないシリーズIDの比較取得は404（SERIES_NOT_FOUND）")
+        void 存在しないシリーズは404() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/surveys/series/{seriesId}/comparison", "svauthz-missing-series"))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 

@@ -165,7 +165,11 @@
         "step4": "すぐに反映したいときは「手動同期」を実行"
       }
     },
-    "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。"
+    "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。",
+    "todo_load_error": {
+      "summary": "TODOの読み込みに失敗しました",
+      "detail": "TODOをカレンダーに表示できませんでした。予定は表示されています。時間をおいて再読み込みしてください。"
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

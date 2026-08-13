@@ -109,6 +109,26 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 3. **メソッド専用** — 到達不能性はエンドポイント単位の性質であり、自己スコープ EP とリソース ID を受け取る EP は同一 Controller に併存する。クラス単位の付与は許可しない（`@Target(METHOD)`）。
 4. **濫用の禁止** — 自己スコープでない EP への付与は監査の証跡を偽る行為であり禁止する。「操作者 == 所有者」を直接比較して拒否している EP は到達可能性自体は存在するため対象外（実効的な認可を白名簿クラスへ寄せる）。対象の検索条件・DTO が変更された際は束縛が崩れていないか再評価すること。
 
+### 4.3 権限名（Permission）はカタログ登録を伴わせる **【必須】**
+
+権限名の正本は **Flyway マイグレーションの `INSERT INTO permissions`** のみであり、Java 側に集約された enum / 定数クラスは存在しない（各サービスの `static final String` に直書き）。そのため **カタログに存在しない権限名を書いてもコンパイルも起動も通ってしまう**。
+
+判定経路は 2 系統あり、カタログ未登録時の壊れ方が異なる:
+
+| 経路 | メソッド | 未登録時の挙動 |
+|---|---|---|
+| TEAM / ORGANIZATION | `AccessControlService.checkPermission` → `RoleService.hasPermission`（`role_permissions` ∪ `permission_groups`） | **誰も通れない**（全員 403）。管理者バイパスが無いため機能が丸ごと死ぬ |
+| ORGANIZATION 専用 | `AccessControlService.checkAdminOrHasPermission` | ADMIN だけ無条件バイパスで通り、**DEPUTY_ADMIN への委任が永久に成立しない**。ADMIN で手動確認する限り正常に見えるため発見が遅れる |
+
+**ルール**:
+
+1. 新しい権限名を書くときは、**同じ PR に `permissions` への登録マイグレーションを含める**。ロール別デフォルト保有は機能設計書のロール・権限マトリクスに従う。
+2. **`role_permissions` の `is_default` は経路によって意味が違う。** `checkAdminOrHasPermission` は `is_default = 1` の行のみを自動付与とみなすが、`checkPermission`（TEAM 経路）は `is_default` で絞らず全行を権限として数える。したがって **TEAM スコープで使う権限を DEPUTY_ADMIN の `role_permissions` に「天井」として登録してはならない**（個別付与していない副管理者全員に権限が渡る）。DEPUTY_ADMIN への付与は `permission_groups` 経由に一本化する。
+3. `permissions.name` は UNIQUE で `scope` は 1 値しか持てない。`scope` 列は**認可判定では参照されない**（権限一覧 UI 向けの分類列）ため、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録してよい。
+4. ユニットテストは `AccessControlService` をモックするため、この欠陥を**構造的に検出できない**。また通常の統合テスト基底は `spring.flyway.enabled=false` / `ddl-auto=create` で動くため `permissions` は空表になる。検証するには `spring.flyway.enabled=true` / `ddl-auto=none` をクラス単位で上書きした IT が要る（手本: `ManageRecruitmentsPermissionFlywayIT`）。
+
+**既知の未登録権限（別戦役で対応）**: `VIEW_ATTENDANCE`（`ClassHomeroomService`・当該経路は全ユーザー 403）、`MANAGE_COMMITTEE`（`CommitteeService`・DEPUTY_ADMIN への委任が不成立）。付与先ロールの決定を伴うため本節の新設とは分離する。あわせて「コード中の権限名がカタログに実在すること」を機械検証する横断ガードの新設もこの戦役の対象とする。
+
 **なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
 
 ---
@@ -182,6 +202,7 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 
 | 日付 | 変更 |
 |---|---|
+| 2026-08-13 | **権限カタログ規約の明文化**: §4.3「権限名（Permission）はカタログ登録を伴わせる」を新設。権限名の正本が Flyway の `INSERT INTO permissions` のみで Java 側に型が無いこと、`checkPermission` と `checkAdminOrHasPermission` でカタログ未登録時の壊れ方が異なること、`role_permissions.is_default` の意味が経路によって違うため TEAM 権限を DEPUTY_ADMIN へ天井登録してはならないこと、通常の統合テストでは構造的に検出できないことを明記。既知の未登録権限 2 件を別戦役として記録。 |
 | 2026-07-30 | **認可番人の監査済マーカー整備**: §4.2「認可番人の『監査済マーカー』4 種」を新設。自己スコープ EP 専用マーカー `@SelfScopedEndpoint`（メソッド専用・根拠必須・**契約テストの実在を番人 `SelfScopedEndpointMarkerGuardTest` が機械的に要求**・免除リストなし）を追加し、`@AuthorizedInService` からの転用を禁止。4 マーカーの主張・付与対象・必須条件を表で明示。 |
 | 2026-07-17 | **認可根治戦役 Wave4**: §4.1「認可回帰テストの層構造」を新設。一次防御（`*ScopeContractIT` 38個＋ArchUnit・required）と実機裏取り（`e2e-real-smoke` 認可スモーク・非required）の二層構造と、実機裏取りをrequired化しない理由を明記。`backend/scripts/smoke-check.sh` に非メンバー403/未認証401の実機スモーク追加、`seed-e2e-data.js` に非メンバー専用 `e2e-outsider` アカウントを追加。 |
 | 2026-06-12 | **ステータス追従**: 認可基盤根治 Phase 1〜3 完了（#1266・2026-06-02 点火）・レートリミット Valkey 化 全 18 フィルタ完了（#1470/1471/1472・2026-06-12）を反映。OWASP A01/A04 の未着手警告を根治済みに更新。文書一覧の 03 ステータス更新。§8 実装待機テーブルに「状態」列を追加し C-1 を根治済みに更新。実機コード裏取りにより ShiftPdf 負論理(#1263)・統合テスト 11 シナリオ(#1266)・CSP レポート受信 EP(#1274 `CspReportController`)も完了済みと確認し、C-1 の残課題が Phase 6（性能最適化）のみであること・C-3 実装済みを反映。 |
