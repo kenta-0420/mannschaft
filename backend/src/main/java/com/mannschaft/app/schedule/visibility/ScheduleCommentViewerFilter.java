@@ -1,12 +1,8 @@
 package com.mannschaft.app.schedule.visibility;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.common.visibility.RolePriority;
-import com.mannschaft.app.common.visibility.ScopeUserRoleProjection;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.repository.MembershipRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import lombok.RequiredArgsConstructor;
@@ -47,19 +43,20 @@ import java.util.Set;
  * {@code canView} の呼び出し回数が減る。AC-39 は「候補 5 人と 20 人で段1 の SQL 発行数が
  * 同一」を実測して、この構造が崩れていないことを機械的に固定する。</p>
  *
- * <h2>ロール解決を {@code AccessControlService#resolveEffectiveRoleName} に頼らない理由</h2>
- * <p>同メソッドは「1 ユーザー × 1 スコープ」専用で、候補者ごとに呼ぶと候補者数に比例して
+ * <h2>ロール解決を {@code AccessControlService#resolveEffectiveRoleName}（単数版）に頼らない理由</h2>
+ * <p>単数版は「1 ユーザー × 1 スコープ」専用で、候補者ごとに呼ぶと候補者数に比例して
  * SQL が増える（AC-39 が禁じる形そのもの）。<b>ロールの決め方（2 系統の UNION ＋ priority 最強）は
- * 同メソッドと完全に同一の規則</b>をここで一括版として実装している。優先度の比較は
- * {@link RolePriority}（{@code roles.priority} と一致させることが同クラスの契約）で
- * メモリ上行うため、優先度取得のための追加 SQL は発行しない。</p>
+ * 単数版と完全に同一の規則</b>で、一括版 {@link AccessControlService#resolveEffectiveRoleNames}
+ * （{@code common} 共有ドメイン）が候補者数に依らず SQL 2 本で解決する。{@code role}/
+ * {@code membership} ドメインの Repository・射影型は一切本クラスへ持ち込まない
+ * （ArchUnit D-1/D-5 準拠。{@link AccessControlService} が共有ドメインとして両 Repository を
+ * 保持し、本クラスへはロール名の {@code Map<Long, String>} のみを返す）。</p>
  */
 @Component
 @RequiredArgsConstructor
 public class ScheduleCommentViewerFilter {
 
-    private final UserRoleRepository userRoleRepository;
-    private final MembershipRepository membershipRepository;
+    private final AccessControlService accessControlService;
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
@@ -141,48 +138,17 @@ public class ScheduleCommentViewerFilter {
     /**
      * 段1 — 候補ユーザー全員の実効ロール名を <b>SQL 2 本</b>で解決する。
      *
-     * <p>規則は {@code AccessControlService#resolveEffectiveRoleName} と同一:
-     * 権限ロール（{@code user_roles}）と所属ロール（{@code memberships.role_kind}）の
-     * 両系統を集め、{@link RolePriority} が最強（priority 最小）のロール名を採る。</p>
+     * <p>{@code role}/{@code membership} ドメインの Repository を直接注入せず、
+     * {@code common} 共有ドメインの {@link AccessControlService#resolveEffectiveRoleNames}
+     * （既存の一括版・D-5 ArchUnit 準拠の公開窓口）へ委譲する。SQL 本数・ロール決定規則
+     * （権限ロールと所属ロールの priority 最強採用）は移譲元と完全に同一のまま変わらない。</p>
      */
     private Map<Long, String> resolveRoles(String scopeType, Long scopeId, Set<Long> candidates) {
-        Map<Long, String> roleByUser = new HashMap<>();
         if (scopeType == null || scopeId == null) {
             // 個人予定・スコープ不明。ロール無し（非メンバー＝最弱）として扱う。
-            return roleByUser;
+            return new HashMap<>();
         }
-
-        boolean team = "TEAM".equals(scopeType);
-
-        // SQL 1: 権限ロール（ADMIN / DEPUTY_ADMIN / GUEST 等）。
-        List<ScopeUserRoleProjection> permissionRoles = team
-                ? userRoleRepository.findScopeRolesByTeamIdAndUserIdIn(scopeId, candidates)
-                : userRoleRepository.findScopeRolesByOrganizationIdAndUserIdIn(scopeId, candidates);
-        for (ScopeUserRoleProjection row : permissionRoles) {
-            mergeStrongest(roleByUser, row.getUserId(), row.getRoleName());
-        }
-
-        // SQL 2: 所属ロール（MEMBER / SUPPORTER）。
-        ScopeType scope = team ? ScopeType.TEAM : ScopeType.ORGANIZATION;
-        List<MembershipRepository.MembershipUserRoleKindProjection> membershipRoles =
-                membershipRepository.findActiveRoleKindsByScopeAndUsers(scope, scopeId, candidates);
-        for (MembershipRepository.MembershipUserRoleKindProjection row : membershipRoles) {
-            if (row.getRoleKind() != null) {
-                mergeStrongest(roleByUser, row.getUserId(), row.getRoleKind().name());
-            }
-        }
-        return roleByUser;
-    }
-
-    /** priority が最小（＝最強）のロール名を採用する。 */
-    private void mergeStrongest(Map<Long, String> roleByUser, Long userId, String roleName) {
-        if (userId == null || roleName == null) {
-            return;
-        }
-        String current = roleByUser.get(userId);
-        if (current == null || RolePriority.priority(roleName) < RolePriority.priority(current)) {
-            roleByUser.put(userId, roleName);
-        }
+        return accessControlService.resolveEffectiveRoleNames(candidates, scopeId, scopeType);
     }
 
     /** スケジュールのスコープ種別。個人予定は {@code null}（コメント機能のスコープ外・§2.2）。 */

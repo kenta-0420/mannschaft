@@ -52,7 +52,8 @@ import com.mannschaft.app.resume.repository.ResumeEducationRepository;
 import com.mannschaft.app.resume.repository.ResumeQualificationRepository;
 import com.mannschaft.app.resume.repository.ResumeRepository;
 import com.mannschaft.app.resume.repository.ResumeSkillRepository;
-import com.mannschaft.app.schedule.entity.ScheduleCommentEntity;
+import com.mannschaft.app.schedule.dto.ScheduleCommentPersonalDataEntry;
+import com.mannschaft.app.schedule.service.ScheduleCommentService;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
@@ -114,7 +115,10 @@ public class PersonalDataCollector {
 
     // F03.16 予定コメントスレッド: schedule_comments はドメイン専用リポジトリの declared メソッド集合が
     // AC-34（ScheduleCommentThreadContractIT）で厳密に固定されているため、収集専用の finder をそこへ
-    // 追加しない。EntityManager 直叩きで完結させる（本 Collector オーケストレータへの局所変更に留める）。
+    // 追加しない。ArchUnit D-1（CrossDomainEntityImportArchTest）に抵触しないよう、
+    // ScheduleCommentEntity を直接参照せず ScheduleCommentService 経由で DTO を受け取る。
+    private final ScheduleCommentService scheduleCommentService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -705,21 +709,17 @@ public class PersonalDataCollector {
      * （{@code "[]"} を返すだけのスタブでは AC を満たさない）。</p>
      */
     private String collectScheduleComments(Long userId) throws Exception {
-        List<ScheduleCommentEntity> comments = entityManager.createQuery(
-                        "SELECT c FROM ScheduleCommentEntity c WHERE c.userId = :userId ORDER BY c.createdAt DESC",
-                        ScheduleCommentEntity.class)
-                .setParameter("userId", userId)
-                .getResultList();
+        List<ScheduleCommentPersonalDataEntry> comments = scheduleCommentService.collectPersonalDataForGdpr(userId);
 
         List<Map<String, Object>> result = new java.util.ArrayList<>(comments.size());
-        for (ScheduleCommentEntity c : comments) {
+        for (ScheduleCommentPersonalDataEntry c : comments) {
             Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("id", c.getId());
-            entry.put("scheduleId", c.getScheduleId());
-            entry.put("body", c.getBody());
-            entry.put("isEdited", c.getIsEdited());
-            entry.put("createdAt", c.getCreatedAt());
-            entry.put("updatedAt", c.getUpdatedAt());
+            entry.put("id", c.id());
+            entry.put("scheduleId", c.scheduleId());
+            entry.put("body", c.body());
+            entry.put("isEdited", c.isEdited());
+            entry.put("createdAt", c.createdAt());
+            entry.put("updatedAt", c.updatedAt());
             result.add(entry);
         }
         return OBJECT_MAPPER.writeValueAsString(result);

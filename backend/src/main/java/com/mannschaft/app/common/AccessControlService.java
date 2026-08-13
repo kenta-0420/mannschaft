@@ -259,6 +259,68 @@ public class AccessControlService {
     }
 
     /**
+     * 「単一スコープ × 複数ユーザー」向けの有効ロール名一括解決（F03.16 §4.5.0 段1）。
+     *
+     * <p>{@link #resolveEffectiveRoleName} と<b>完全に同一の規則</b>
+     * （権限ロール（{@code user_roles}）と所属ロール（{@code memberships.role_kind}）の
+     * 両系統を集め、{@link com.mannschaft.app.common.visibility.RolePriority} が最強
+     * （priority 最小）のロール名を採る）で、候補者数に依らず<b>SQL 2 本</b>で解決する。
+     * {@link #resolveEffectiveRoleName} を候補者ごとに呼ぶと候補者数に比例して SQL が増える
+     * ため、一括版が必要な呼び出し元（{@code schedule} ドメインのメンション可視性フィルタ等）
+     * 向けに本メソッドを設ける。</p>
+     *
+     * <p>本メソッドは {@code common}（共有ドメイン）に属するため、{@code role}/{@code membership}
+     * ドメインの Repository・射影型を他ドメインへ一切漏らさない
+     * （ArchUnit D-1/D-5 準拠の公開窓口。{@code schedule} ドメインの
+     * {@code ScheduleCommentViewerFilter} が本メソッド経由でロール解決する）。</p>
+     *
+     * @param userIds   候補ユーザー ID 集合
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @return Map(userId → 有効ロール名)。両系統いずれにも該当が無いユーザーは含まれない
+     */
+    public Map<Long, String> resolveEffectiveRoleNames(
+            java.util.Collection<Long> userIds, Long scopeId, String scopeType) {
+        Map<Long, String> roleByUser = new LinkedHashMap<>();
+        if (userIds == null || userIds.isEmpty() || scopeId == null || scopeType == null) {
+            return roleByUser;
+        }
+        boolean team = "TEAM".equals(scopeType);
+
+        // SQL 1: 権限ロール（ADMIN / DEPUTY_ADMIN / GUEST 等）。
+        List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> permissionRoles = team
+                ? userRoleRepository.findScopeRolesByTeamIdAndUserIdIn(scopeId, userIds)
+                : userRoleRepository.findScopeRolesByOrganizationIdAndUserIdIn(scopeId, userIds);
+        for (com.mannschaft.app.common.visibility.ScopeUserRoleProjection row : permissionRoles) {
+            mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleName());
+        }
+
+        // SQL 2: 所属ロール（MEMBER / SUPPORTER）。
+        ScopeType scope = team ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        List<MembershipRepository.MembershipUserRoleKindProjection> membershipRoles =
+                membershipRepository.findActiveRoleKindsByScopeAndUsers(scope, scopeId, userIds);
+        for (MembershipRepository.MembershipUserRoleKindProjection row : membershipRoles) {
+            if (row.getRoleKind() != null) {
+                mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleKind().name());
+            }
+        }
+        return roleByUser;
+    }
+
+    /** priority が最小（＝最強）のロール名を採用する（{@link #resolveEffectiveRoleNames} 専用）。 */
+    private void mergeStrongestRole(Map<Long, String> roleByUser, Long userId, String roleName) {
+        if (userId == null || roleName == null) {
+            return;
+        }
+        String current = roleByUser.get(userId);
+        if (current == null
+                || com.mannschaft.app.common.visibility.RolePriority.priority(roleName)
+                        < com.mannschaft.app.common.visibility.RolePriority.priority(current)) {
+            roleByUser.put(userId, roleName);
+        }
+    }
+
+    /**
      * ユーザーが指定スコープの SUPPORTER かどうかを返す。
      *
      * <p>F00.5 Phase 5: memberships.role_kind = SUPPORTER で判定する（旧 user_roles 参照から切替）。

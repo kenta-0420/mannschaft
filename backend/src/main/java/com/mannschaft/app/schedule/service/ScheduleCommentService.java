@@ -1,14 +1,11 @@
 package com.mannschaft.app.schedule.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
-import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleCommentErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -16,6 +13,7 @@ import com.mannschaft.app.schedule.dto.CommentAuthorResponse;
 import com.mannschaft.app.schedule.dto.ScheduleCommentResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleCommentRequest;
 import com.mannschaft.app.schedule.dto.MentionCandidateResponse;
+import com.mannschaft.app.schedule.dto.ScheduleCommentPersonalDataEntry;
 import com.mannschaft.app.schedule.dto.ThreadMetaResponse;
 import com.mannschaft.app.schedule.dto.ThreadSettingsRequest;
 import com.mannschaft.app.schedule.dto.ThreadSettingsResponse;
@@ -70,8 +68,8 @@ public class ScheduleCommentService {
     private final ScheduleCommentAccessGuard accessGuard;
     private final ScheduleCommentViewerFilter viewerFilter;
     private final AccessControlService accessControlService;
-    private final UserRepository userRepository;
-    private final MembershipRepository membershipRepository;
+    private final NameResolverService nameResolverService;
+    private final MembershipService membershipService;
     private final ScheduleCommentNotifier notifier;
     private final ScheduleCommentRateLimiter rateLimiter;
 
@@ -112,7 +110,7 @@ public class ScheduleCommentService {
 
         Map<UUID, List<ScheduleCommentEntity>> repliesByRoot = fetchEmbeddedReplies(topLevel);
         ModerationContext ctx = buildModerationContext(schedule, viewerId);
-        Map<Long, UserEntity> authors = loadAuthors(collectAuthorIds(topLevel, repliesByRoot));
+        Map<Long, AuthorSummary> authors = loadAuthors(collectAuthorIds(topLevel, repliesByRoot));
 
         List<ScheduleCommentResponse> data = new ArrayList<>(topLevel.size());
         for (ScheduleCommentEntity c : topLevel) {
@@ -234,7 +232,7 @@ public class ScheduleCommentService {
                 .getSingleResult();
 
         ModerationContext ctx = buildModerationContext(schedule, viewerId);
-        Map<Long, UserEntity> authors = loadAuthors(collectAuthorIds(replies, Map.of()));
+        Map<Long, AuthorSummary> authors = loadAuthors(collectAuthorIds(replies, Map.of()));
 
         List<ScheduleCommentResponse> data = new ArrayList<>(replies.size());
         for (ScheduleCommentEntity c : replies) {
@@ -264,13 +262,13 @@ public class ScheduleCommentService {
             populationIds = List.of();
         } else {
             ScopeType scope = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
-            List<MembershipEntity> memberships = membershipRepository.findAllActiveByScope(scope, scopeId);
+            List<Long> memberUserIds = membershipService.getActiveMemberUserIds(scope, scopeId);
             Set<Long> ids = new LinkedHashSet<>();
-            for (MembershipEntity m : memberships) {
+            for (Long memberUserId : memberUserIds) {
                 // 自分自身は候補から除外する（設計書 §4.4・殿の裁定 2026-08-12）。
                 // 自分をメンションする意味は薄く、AC-24「自己メンションは通知しない」とも整合する。
-                if (m.getUserId() != null && !m.getUserId().equals(viewerId)) {
-                    ids.add(m.getUserId());
+                if (memberUserId != null && !memberUserId.equals(viewerId)) {
+                    ids.add(memberUserId);
                 }
             }
             populationIds = new ArrayList<>(ids);
@@ -284,17 +282,17 @@ public class ScheduleCommentService {
         if (visible.isEmpty()) {
             return List.of();
         }
-        Map<Long, UserEntity> users = loadAuthors(visible);
+        Map<Long, AuthorSummary> users = loadAuthors(visible);
 
         String needle = (q == null) ? null : q.trim();
-        List<UserEntity> filtered = new ArrayList<>();
+        List<AuthorSummary> filtered = new ArrayList<>();
         for (Long id : visible) {
-            UserEntity user = users.get(id);
+            AuthorSummary user = users.get(id);
             if (user == null) {
                 continue;
             }
             if (needle == null || needle.isEmpty()
-                    || (user.getDisplayName() != null && user.getDisplayName().contains(needle))) {
+                    || (user.displayName() != null && user.displayName().contains(needle))) {
                 filtered.add(user);
             }
         }
@@ -302,32 +300,32 @@ public class ScheduleCommentService {
         // 4) 並び替え: 前方一致優先 → 表示名昇順 → user_id 昇順。
         String finalNeedle = (needle == null) ? "" : needle;
         filtered.sort((a, b) -> {
-            boolean aPrefix = !finalNeedle.isEmpty() && a.getDisplayName() != null
-                    && a.getDisplayName().startsWith(finalNeedle);
-            boolean bPrefix = !finalNeedle.isEmpty() && b.getDisplayName() != null
-                    && b.getDisplayName().startsWith(finalNeedle);
+            boolean aPrefix = !finalNeedle.isEmpty() && a.displayName() != null
+                    && a.displayName().startsWith(finalNeedle);
+            boolean bPrefix = !finalNeedle.isEmpty() && b.displayName() != null
+                    && b.displayName().startsWith(finalNeedle);
             if (aPrefix != bPrefix) {
                 return aPrefix ? -1 : 1;
             }
-            String an = a.getDisplayName() == null ? "" : a.getDisplayName();
-            String bn = b.getDisplayName() == null ? "" : b.getDisplayName();
+            String an = a.displayName() == null ? "" : a.displayName();
+            String bn = b.displayName() == null ? "" : b.displayName();
             int byName = an.compareTo(bn);
             if (byName != 0) {
                 return byName;
             }
-            return a.getId().compareTo(b.getId());
+            return a.userId().compareTo(b.userId());
         });
 
         // 5) size で切る。
         List<MentionCandidateResponse> result = new ArrayList<>();
-        for (UserEntity user : filtered) {
+        for (AuthorSummary user : filtered) {
             if (result.size() >= limit) {
                 break;
             }
             result.add(MentionCandidateResponse.builder()
-                    .userId(user.getId())
-                    .displayName(user.getDisplayName())
-                    .avatarUrl(user.getAvatarUrl())
+                    .userId(user.userId())
+                    .displayName(user.displayName())
+                    .avatarUrl(user.avatarUrl())
                     .build());
         }
         return result;
@@ -384,7 +382,7 @@ public class ScheduleCommentService {
         registerNotificationAfterCommit(schedule, commentId, userId, mentionedUserIds, replyRecipientId, excerpt);
 
         ModerationContext ctx = buildModerationContext(schedule, userId);
-        Map<Long, UserEntity> authors = loadAuthors(userId == null ? Set.of() : Set.of(userId));
+        Map<Long, AuthorSummary> authors = loadAuthors(userId == null ? Set.of() : Set.of(userId));
         return toResponse(saved, userId, ctx, authors, null, depth == 0);
     }
 
@@ -424,7 +422,7 @@ public class ScheduleCommentService {
         ScheduleCommentEntity saved = scheduleCommentRepository.save(comment);
 
         ModerationContext ctx = buildModerationContext(schedule, userId);
-        Map<Long, UserEntity> authors = loadAuthors(userId == null ? Set.of() : Set.of(userId));
+        Map<Long, AuthorSummary> authors = loadAuthors(userId == null ? Set.of() : Set.of(userId));
         return toResponse(saved, userId, ctx, authors, null, saved.isTopLevel());
     }
 
@@ -466,6 +464,41 @@ public class ScheduleCommentService {
         scheduleRepository.save(schedule);
 
         return ThreadSettingsResponse.builder().scheduleId(scheduleId).commentsEnabled(enabled).build();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // GDPR エクスポート（AC-35）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 指定ユーザーが投稿した予定コメントを GDPR エクスポート用に収集する（設計書 §3.3・AC-35）。
+     *
+     * <p>削除済み（{@code deleted_at} 非 NULL）も本人のデータとして含める（トゥームストーンで
+     * 消えるのは他者から見た表示のみで、本人の GDPR エクスポートからは消えない）。</p>
+     *
+     * <p>{@code gdpr} ドメインの {@code PersonalDataCollector} が {@link ScheduleCommentEntity}
+     * を直接参照する（D-1 ArchUnit 違反）のを避けるため、本メソッドが DTO
+     * （{@link ScheduleCommentPersonalDataEntry}）へ変換して返す。
+     * {@code ScheduleCommentRepository} の宣言済みメソッド集合は AC-34 で固定されているため、
+     * 新規 finder は追加せず既存の {@code em}（{@link EntityManager}）直叩きクエリのまま据え置く。</p>
+     *
+     * @param userId 対象ユーザーID
+     * @return 投稿日時降順のエクスポートエントリ一覧
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduleCommentPersonalDataEntry> collectPersonalDataForGdpr(Long userId) {
+        List<ScheduleCommentEntity> comments = em.createQuery(
+                        "SELECT c FROM ScheduleCommentEntity c WHERE c.userId = :userId ORDER BY c.createdAt DESC",
+                        ScheduleCommentEntity.class)
+                .setParameter("userId", userId)
+                .getResultList();
+
+        List<ScheduleCommentPersonalDataEntry> result = new ArrayList<>(comments.size());
+        for (ScheduleCommentEntity c : comments) {
+            result.add(new ScheduleCommentPersonalDataEntry(
+                    c.getId(), c.getScheduleId(), c.getBody(), c.getIsEdited(), c.getCreatedAt(), c.getUpdatedAt()));
+        }
+        return result;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -541,15 +574,28 @@ public class ScheduleCommentService {
         return ids;
     }
 
-    private Map<Long, UserEntity> loadAuthors(Collection<Long> ids) {
+    /**
+     * 投稿者・メンション候補の表示情報をバッチ解決する。
+     *
+     * <p>{@code auth} ドメインの {@code UserRepository} を直接注入せず、{@code common} 共有ドメインの
+     * {@link NameResolverService}（既存の cross-domain 公開窓口。D-5 ArchUnit 準拠）経由で
+     * 表示名・アバターURLを取得する。{@code auth.entity.UserEntity} は一切受け渡さない（D-1 準拠）。</p>
+     */
+    private Map<Long, AuthorSummary> loadAuthors(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
         }
-        Map<Long, UserEntity> map = new LinkedHashMap<>();
-        for (UserEntity u : userRepository.findByIdIn(ids)) {
-            map.put(u.getId(), u);
+        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(ids);
+        Map<Long, String> avatarUrls = nameResolverService.resolveUserAvatarUrls(ids);
+        Map<Long, AuthorSummary> map = new LinkedHashMap<>();
+        for (Map.Entry<Long, String> e : displayNames.entrySet()) {
+            map.put(e.getKey(), new AuthorSummary(e.getKey(), e.getValue(), avatarUrls.get(e.getKey())));
         }
         return map;
+    }
+
+    /** 投稿者・メンション候補の表示用サマリ（{@code auth.entity.UserEntity} を持ち出さないための値表現）。 */
+    private record AuthorSummary(Long userId, String displayName, String avatarUrl) {
     }
 
     private ModerationContext buildModerationContext(ScheduleEntity schedule, Long viewerId) {
@@ -566,7 +612,7 @@ public class ScheduleCommentService {
     }
 
     private ScheduleCommentResponse toResponse(
-            ScheduleCommentEntity c, Long viewerId, ModerationContext ctx, Map<Long, UserEntity> authors,
+            ScheduleCommentEntity c, Long viewerId, ModerationContext ctx, Map<Long, AuthorSummary> authors,
             List<ScheduleCommentEntity> embeddedReplies, boolean includeRepliesField) {
         boolean deleted = c.isDeleted();
         // トゥームストーン判定は「表示述語」ではなく個別行の deleted_at そのもの。
@@ -576,12 +622,12 @@ public class ScheduleCommentService {
         if (!deleted) {
             body = c.getBody();
             if (c.getUserId() != null) {
-                UserEntity user = authors.get(c.getUserId());
+                AuthorSummary user = authors.get(c.getUserId());
                 if (user != null) {
                     author = CommentAuthorResponse.builder()
-                            .userId(user.getId())
-                            .displayName(user.getDisplayName())
-                            .avatarUrl(user.getAvatarUrl())
+                            .userId(user.userId())
+                            .displayName(user.displayName())
+                            .avatarUrl(user.avatarUrl())
                             .build();
                 }
             }
