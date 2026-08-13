@@ -189,7 +189,11 @@
         "description": "Bei anonymen Umfragen kann eine Änderung der Auswertung direkt nach einer Antwort diese Antwort preisgeben. Ergebnisse werden ab {threshold} Antworten angezeigt. (Aktuell {count})"
       },
       "respondCta": "An dieser Umfrage teilnehmen",
-      "editResponseCta": "Antwort bearbeiten"
+      "editResponseCta": "Antwort bearbeiten",
+      "forbidden": {
+        "title": "Du hast keine Berechtigung, die Ergebnisse dieser Umfrage zu sehen",
+        "description": "Diese Umfrage richtet sich an einen begrenzten Empfängerkreis, zu dem du nicht gehörst. Bei Fragen wende dich bitte an die Ersteller:in."
+      }
     }
   }
 }

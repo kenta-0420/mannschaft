@@ -12,16 +12,33 @@ const { error: showError } = useNotification()
 const results = ref<SurveyResultSummary[]>([])
 const loading = ref(false)
 const fetchFailed = ref(false)
+/**
+ * サーバーが結果閲覧を拒否した（403）。
+ *
+ * BE は `ALWAYS` の閲覧範囲を配信母集団に限定しているため、`TARGETED` の名簿外や
+ * `includeSupporters=false` で除外された SUPPORTER はここで 403 になる。
+ * 呼び出し側（詳細ページ）が先にサーバー判定を仰いで本パネル自体を出さないが、
+ * 権限が途中で変わった場合に備えて多層で守る。再試行しても通らないため
+ * 「失敗＋再試行」ではなく理由を明示する（症状を握りつぶさない）。
+ */
+const forbidden = ref(false)
 
 async function loadResults() {
   loading.value = true
   fetchFailed.value = false
+  forbidden.value = false
   try {
     const res = await getResults(props.surveyId)
     results.value = res.data ?? []
-  } catch {
-    fetchFailed.value = true
-    showError(t('surveys.detail.results.loadFailedToast'))
+  } catch (e) {
+    const err = e as { statusCode?: number; response?: { status?: number } }
+    const code = err.statusCode ?? err.response?.status
+    if (code === 403) {
+      forbidden.value = true
+    } else {
+      fetchFailed.value = true
+      showError(t('surveys.detail.results.loadFailedToast'))
+    }
   } finally {
     loading.value = false
   }
@@ -48,6 +65,18 @@ onMounted(loadResults)
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-8">
       <LoadingBounce />
+    </div>
+
+    <!-- 権限なし（403）。再試行しても通らないため再試行ボタンは出さない -->
+    <div
+      v-else-if="forbidden"
+      class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-6 text-center dark:border-surface-600 dark:bg-surface-800/60"
+      data-testid="survey-results-forbidden"
+    >
+      <i class="pi pi-lock text-2xl text-surface-400" />
+      <p class="text-sm text-surface-500 dark:text-surface-300">
+        {{ t('surveys.results.forbidden.title') }}
+      </p>
     </div>
 
     <!-- 失敗時の再試行 -->

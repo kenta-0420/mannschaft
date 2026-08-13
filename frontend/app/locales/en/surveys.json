@@ -189,7 +189,11 @@
         "description": "In anonymous surveys, a change in the tally right after someone responds can reveal that person's answer. Results will be shown once there are at least {threshold} responses. (Currently {count})"
       },
       "respondCta": "Respond to this survey",
-      "editResponseCta": "Edit your response"
+      "editResponseCta": "Edit your response",
+      "forbidden": {
+        "title": "You do not have permission to view this survey's results",
+        "description": "This survey is limited to a specific audience and you are not included. If you believe this is a mistake, please contact the survey creator."
+      }
     }
   }
 }

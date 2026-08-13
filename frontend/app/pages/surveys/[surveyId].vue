@@ -24,7 +24,8 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
 const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
-const { getSurvey, publishSurvey, closeSurvey, deleteSurvey, addQuestion } = useSurveyApi()
+const { getSurvey, getResults, publishSurvey, closeSurvey, deleteSurvey, addQuestion } =
+  useSurveyApi()
 const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
@@ -182,6 +183,38 @@ const hasResponded = computed(
 )
 
 /**
+ * サーバーが結果閲覧を許すか。
+ *
+ * `canViewResults` は `ALL_MEMBERS` を無条件に真とする FE の楽観判定だが、BE は `ALWAYS` の
+ * 閲覧範囲を配信母集団に限定している（設計書 L107-112）。`TARGETED` の名簿外や
+ * `includeSupporters=false` で除外された SUPPORTER には、結果パネルと回答導線が出るのに
+ * BE が拒否する「押せるのに必ず失敗する導線」が出ていた。
+ *
+ * 詳細応答には「この閲覧者が配信対象か」を示す項目が無いため（openapi.json の
+ * SurveyDetailResponse を確認済み）、**結果取得の 403 をサーバーの判定として扱う**。
+ */
+type ResultsAccess = 'unknown' | 'allowed' | 'forbidden'
+const resultsAccess = ref<ResultsAccess>('unknown')
+/** 結果閲覧可否の問い合わせ中（初期表示で結果パネルを一瞬見せないため loading に含める） */
+const probingResultsAccess = ref(false)
+
+async function probeResultsAccess() {
+  probingResultsAccess.value = true
+  try {
+    await getResults(surveyId)
+    resultsAccess.value = 'allowed'
+  } catch (e) {
+    const err = e as { statusCode?: number; response?: { status?: number } }
+    const status = err.statusCode ?? err.response?.status
+    // 403 のときだけ「権限が無い」と断定する。通信エラー等で過剰に塞がないため、
+    // それ以外は allowed として扱い、結果パネル側の再試行 UI に委ねる。
+    resultsAccess.value = status === 403 ? 'forbidden' : 'allowed'
+  } finally {
+    probingResultsAccess.value = false
+  }
+}
+
+/**
  * 結果画面の回答導線が押されたか。
  *
  * ALL_MEMBERS は「未回答 MEMBER も結果画面に直接遷移できる」のが仕様のため、
@@ -209,6 +242,7 @@ const displayMode = computed<SurveyDisplayMode>(() => {
     hasResponded: hasResponded.value,
     allowMultipleSubmissions: s.policy?.allowMultipleSubmissions ?? false,
     responseRequested: responseRequested.value,
+    resultsForbidden: resultsAccess.value === 'forbidden',
   })
 })
 
@@ -320,13 +354,18 @@ onMounted(async () => {
       bulletinThread.value = thread
     }),
   ])
+  // 詳細と権限が揃ってから、結果を出す可能性がある場合だけサーバーの判定を仰ぐ。
+  // （FE の楽観判定で結果パネル・回答導線を出してしまわないため）
+  if (canViewResults.value) {
+    await probeResultsAccess()
+  }
 })
 </script>
 
 <template>
   <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
     <!-- ローディング -->
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="loading || probingResultsAccess" />
 
     <!-- 取得失敗 -->
     <div
@@ -534,6 +573,23 @@ onMounted(async () => {
           data-testid="survey-respond-cta"
           @click="responseRequested = true"
         />
+      </div>
+
+      <!-- 配信対象外（サーバーが結果閲覧を拒否）。
+           FE の楽観判定で結果パネルや回答導線を出すと「押せるのに必ず失敗する」ため、
+           黙って空にせず権限が無いことを明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-forbidden'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-forbidden"
+      >
+        <i class="pi pi-lock text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.forbidden.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{ t('surveys.results.forbidden.description') }}
+        </p>
       </div>
 
       <!-- 結果非公開（締切＆権限なし） -->

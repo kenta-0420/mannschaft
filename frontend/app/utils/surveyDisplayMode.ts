@@ -13,6 +13,7 @@ export type SurveyDisplayMode =
   | 'response'
   | 'results'
   | 'results-withheld-privacy'
+  | 'results-forbidden'
   | 'closed-no-permission'
   | 'draft'
 
@@ -36,6 +37,18 @@ export interface SurveyDisplayModeInput {
    * 押されている間だけ回答フォームへ切り替える。
    */
   responseRequested: boolean
+  /**
+   * サーバーが結果閲覧を拒否した（403）か。
+   *
+   * FE の `canViewResults` は `ALL_MEMBERS` を無条件に真とする**楽観判定**だが、
+   * BE は `ALWAYS` の閲覧範囲を**配信母集団に限定**している
+   * （設計書 docs/features/F05.4_survey_vote.md L107-112）。そのため
+   *   - `TARGETED` 配信の名簿外メンバー
+   *   - `includeSupporters = false` の組織配信で除外された SUPPORTER
+   * には、結果パネルも回答導線も出るのに BE が拒否する「押せるのに必ず失敗する導線」が
+   * 生じていた。判定はサーバーに委ね、その結果をここに渡すこと。
+   */
+  resultsForbidden: boolean
 }
 
 /** {@link shouldShowRespondCta} の引数。 */
@@ -100,12 +113,18 @@ export function resolveSurveyDisplayMode(input: SurveyDisplayModeInput): SurveyD
     hasResponded,
     allowMultipleSubmissions,
     responseRequested,
+    resultsForbidden,
   } = input
 
   // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
   if (status === 'DRAFT') return 'draft'
 
   if (canViewResults) {
+    // サーバーが拒否したなら、FE の楽観判定より**サーバーの判定を優先**する。
+    // 配信対象外のユーザーは結果も見られず回答もできないため、集計・回答導線・
+    // 「集計を伏せている」説明のいずれも出さず、権限が無い旨を正直に伝える。
+    if (resultsForbidden) return 'results-forbidden'
+
     // 結果画面（または集計を伏せた画面）の回答導線が押されたら回答フォームへ。
     // 導線を出せない状態（CLOSED・回答済みで複数回答不可）では効かせない。
     if (

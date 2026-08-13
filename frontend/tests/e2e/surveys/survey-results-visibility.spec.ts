@@ -707,6 +707,48 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await expect(page.locator('[data-testid="survey-respond-cta"]')).toHaveCount(0)
   })
 
+  test('配信対象外（結果 API が 403）→ 結果パネルも回答導線も出さず理由を示す', async ({
+    page,
+  }) => {
+    // TARGETED の名簿外 / includeSupporters=false で除外された SUPPORTER のケース。
+    // FE の楽観判定で結果パネルと CTA を出すと「押せるのに必ず失敗する」導線になる。
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(3, false)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsForbiddenIds: [SURVEY_ID],
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    const forbidden = page.locator('[data-testid="survey-mode-results-forbidden"]')
+    await expect(forbidden).toBeVisible()
+    // 集計も回答導線も出さない
+    await expect(page.locator('[data-testid="survey-results-panel"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toHaveCount(0)
+  })
+
+  test('配信対象なら従来どおり結果と回答導線が出る（陽性対照）', async ({ page }) => {
+    // 過剰に塞いでいないことの裏取り。403 を返さなければ従来どおり。
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(3, false)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toBeVisible()
+    await expect(
+      page.locator('[data-testid="survey-mode-results-forbidden"]'),
+    ).toHaveCount(0)
+  })
+
   test('匿名 + AFTER_CLOSE + 回答者1名 → 従来どおり（他の可視性を塞いでいない）', async ({
     page,
   }) => {

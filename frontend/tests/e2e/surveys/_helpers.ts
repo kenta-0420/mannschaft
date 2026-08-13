@@ -421,6 +421,14 @@ export interface MockSurveyApiOptions {
   detailById?: Record<number, SurveyDetailWire>
   /** 集計 API（GET /surveys/{id}/results）で返すレスポンス（id をキー） */
   resultsById?: Record<number, SurveyResultSummary[]>
+  /**
+   * 集計 API（GET /surveys/{id}/results）を 403 で返す（id をキー）。
+   *
+   * BE は `ALWAYS` の閲覧範囲を配信母集団に限定しているため、`TARGETED` の名簿外や
+   * `includeSupporters=false` で除外された SUPPORTER はここで 403 になる。
+   * 詳細ページはこの応答をサーバーの判定として扱い、結果パネルも回答導線も出さない。
+   */
+  resultsForbiddenIds?: number[]
   /** 回答者 API（GET .../respondents）で返すレスポンス（id をキー） */
   respondentsById?: Record<number, RespondentItem[]>
   /**
@@ -618,6 +626,16 @@ export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Pro
     const url = new URL(route.request().url())
     const match = url.pathname.match(/\/surveys\/(\d+)\/results$/)
     const id = match ? Number(match[1]) : NaN
+    if (opts.resultsForbiddenIds?.includes(id)) {
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'SURVEY_RESULTS_FORBIDDEN', message: 'not a distribution target' },
+        }),
+      })
+      return
+    }
     const results = opts.resultsById?.[id] ?? []
     await route.fulfill({
       status: 200,

@@ -25,6 +25,7 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
       hasResponded: false,
       allowMultipleSubmissions: false,
       responseRequested: false,
+      resultsForbidden: false,
       ...overrides,
     })
   }
@@ -44,6 +45,7 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
     canViewResults?: boolean
     allowMultipleSubmissions?: boolean
     responseRequested?: boolean
+    resultsForbidden?: boolean
   }) {
     return resolveSurveyDisplayMode({
       status: params.status,
@@ -56,6 +58,7 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
       hasResponded: params.hasResponded,
       allowMultipleSubmissions: params.allowMultipleSubmissions ?? false,
       responseRequested: params.responseRequested ?? false,
+      resultsForbidden: params.resultsForbidden ?? false,
     })
   }
 
@@ -209,6 +212,73 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
     ).toBe('results')
   })
 
+  // === 配信対象外（サーバーが 403 を返す）===
+
+  it('配信対象外 → 結果も集計を伏せた説明も出さず、権限が無い旨を示す（今回の本丸）', () => {
+    // BE は ALWAYS の閲覧範囲を配信母集団に限定している。TARGETED の名簿外や
+    // includeSupporters=false で除外された SUPPORTER に結果パネルや回答導線を出すと、
+    // 「押せるのに必ず失敗する」導線になる。
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: false,
+        resultsForbidden: true,
+      }),
+    ).toBe('results-forbidden')
+  })
+
+  it('配信対象なら従来どおり結果が出る（陽性対照・過剰に塞いでいない）', () => {
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: false,
+        resultsForbidden: false,
+      }),
+    ).toBe('results')
+  })
+
+  it('配信対象外は集計を伏せる条件でも results-forbidden が優先される', () => {
+    // 匿名＋少数回答（伏せる条件）でも、そもそも配信対象外なら
+    // 「集計を伏せている」説明ではなく権限が無い旨を出す。
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: true,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 2,
+        hasResponded: false,
+        resultsForbidden: true,
+      }),
+    ).toBe('results-forbidden')
+  })
+
+  it('配信対象外では回答要求（CTA 押下）も効かない', () => {
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: false,
+        responseRequested: true,
+        resultsForbidden: true,
+      }),
+    ).toBe('results-forbidden')
+  })
+
+  it('結果閲覧権限が無いユーザーには results-forbidden を出さない（回答は従来どおり）', () => {
+    // canViewResults=false の経路はサーバー判定を仰いでいないため巻き添えにしない
+    expect(mode({ canViewResults: false, status: 'PUBLISHED', resultsForbidden: true })).toBe(
+      'response',
+    )
+  })
+
   it('回答済み＋複数回答不可では回答要求が効かない', () => {
     expect(
       modeForSurvey({
@@ -261,6 +331,7 @@ describe('shouldShowRespondCta（結果画面の回答導線）', () => {
         hasResponded: false,
         allowMultipleSubmissions: false,
         responseRequested: false,
+        resultsForbidden: false,
       }),
     ).toBe('results')
     expect(cta({ hasResponded: false })).toBe(true)
