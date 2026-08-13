@@ -183,7 +183,8 @@ function onTimelineSelect(ev: MatchEventResponse): void {
 async function copyPreviousStarters(): Promise<void> {
   if (orgId.value === null) return
   try {
-    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, matchId))
+    if (teamId.value === null) return
+    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, teamId.value, matchId))
   } catch {
     // 通知済み
   }
@@ -197,7 +198,7 @@ onMounted(async () => {
   const ctx = await resolveContext(teamSlug)
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
-  if (orgId.value === null || teamId.value === null) {
+  if (ctx === null || teamId.value === null) {
     loading.value = false
     return
   }
@@ -286,7 +287,7 @@ onMounted(async () => {
   session.value = s
 
   try {
-    const res = await eventApi.listEvents(orgId.value, matchId)
+    const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
     s.recorder.setEvents(res.events ?? [])
     s.applyDerivedScore(res)
   } catch {

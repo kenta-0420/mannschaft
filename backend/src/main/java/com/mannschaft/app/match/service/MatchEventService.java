@@ -100,7 +100,13 @@ public class MatchEventService {
     @Transactional
     public MatchEventEntity record(UUID matchId, Long organizationId, Long actorUserId,
                                    EventCommand command) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        return record(matchId, organizationId, null, actorUserId, command);
+    }
+
+    @Transactional
+    public MatchEventEntity record(UUID matchId, Long organizationId, Long teamId,
+                                   Long actorUserId, EventCommand command) {
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
         validateEventType(match, command.getEventType());
@@ -148,7 +154,13 @@ public class MatchEventService {
     @Transactional
     public MatchEventEntity update(UUID matchId, UUID eventId, Long organizationId, Long actorUserId,
                                    EventCommand command) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        return update(matchId, eventId, organizationId, null, actorUserId, command);
+    }
+
+    @Transactional
+    public MatchEventEntity update(UUID matchId, UUID eventId, Long organizationId, Long teamId,
+                                   Long actorUserId, EventCommand command) {
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
         MatchEventEntity event = getEventInMatchOrThrow(matchId, eventId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
@@ -194,7 +206,13 @@ public class MatchEventService {
      */
     @Transactional
     public void delete(UUID matchId, UUID eventId, Long organizationId, Long actorUserId) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        delete(matchId, eventId, organizationId, null, actorUserId);
+    }
+
+    @Transactional
+    public void delete(UUID matchId, UUID eventId, Long organizationId, Long teamId,
+                       Long actorUserId) {
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
         MatchEventEntity event = getEventInMatchOrThrow(matchId, eventId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 

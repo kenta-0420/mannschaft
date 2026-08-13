@@ -45,7 +45,7 @@ import java.util.UUID;
 public class MatchEntity extends UuidV7Entity {
 
     /** テナント（organization ドメインへの ID 参照・FK なし・原則1/7） */
-    @Column(name = "organization_id", nullable = false)
+    @Column(name = "organization_id")
     private Long organizationId;
 
     /** 記録/ホーム主体チーム（team ドメイン ID 参照・FK なし） */
