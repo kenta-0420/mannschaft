@@ -2140,7 +2140,12 @@ public class GlobalExceptionHandler {
             Map.entry("SAFETY_011", HttpStatus.CONFLICT),                // REMIND_TOO_FREQUENT（クールダウン未経過）
 
             // F09.8 コルクボード（CorkboardErrorCode）の残り未登録分。
-            Map.entry("CORKBOARD_002", HttpStatus.NOT_FOUND),            // CARD_NOT_FOUND
+            // CORKBOARD_002（CARD_NOT_FOUND）はロットHで一度404に登録したが、設計書
+            // docs/features/F09.8.1_corkboard_pin_dashboard.md §エラーコード表（L162）が
+            // 明示的に「400 | CORKBOARD_002 | カードが見つからない（論理削除済み含む）」と規定しており、
+            // 既存の契約テスト MyCorkboardPinControllerIT#カード不在_400（L221-235）もこれに
+            // 準拠している（ボード不在=CORKBOARD_001 の 404 とは意図的に区別）。
+            // 設計書・既存契約が優先するため404登録を撤回し、Severity.WARN既定の400に戻す。
             Map.entry("CORKBOARD_003", HttpStatus.NOT_FOUND),            // GROUP_NOT_FOUND
             Map.entry("CORKBOARD_006", HttpStatus.CONFLICT),             // CARD_ALREADY_IN_GROUP
             Map.entry("CORKBOARD_007", HttpStatus.NOT_FOUND),            // CARD_NOT_IN_GROUP（findByCardAndGroup の解決失敗）
