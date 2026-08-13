@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyResolver;
@@ -1170,7 +1171,15 @@ public class ConnectChargeService {
         escrow.setAmount(feeMinor);
         escrow.setApplicationFeeAmount(effectiveFee);
         escrow.setStatus(EscrowStatus.CAPTURED);
-        escrow.setCapturedAt(LocalDateTime.now());
+        // 確定した「瞬間」の記録である（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md §3.1）。
+        // 本来は Instant で持つべき値だが、格納先 escrow_transactions.captured_at は LocalDateTime 列であり、
+        // 同じ列へ書く既存経路（capture / chargeDeferred 等）はいずれも壁時計として書いている。
+        // ここだけ UTC 基準で書くと同一列内に 9 時間ずれた値が混在するため、列の既存の意味論に揃える。
+        // 型そのものの是正（Instant 化）は CMP-023 の担当であり、本 PR では行わない。
+        //
+        // ゾーンは JVM 既定に暗黙依存させず、アプリ層の壁時計ゾーンの唯一の正である SERVER_ZONE を明示する
+        // （ZoneId.systemDefault() を呼ばないため番人 DateTimeAndZoneGuardTest の凍結台帳を増やさない）。
+        escrow.setCapturedAt(LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
         escrowTransactionRepository.save(escrow);
 
         // 複式記帳: 確定額 F を ESCROW に借方計上し、主催者の取り分（F − A_eff）と運営の取り分（A_eff）を貸方計上する。
