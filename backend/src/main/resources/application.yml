@@ -118,10 +118,6 @@ server:
 
 # JWT（アプリ固有設定。本番は環境変数で上書き）
 mannschaft:
-  # 業務ローカル時刻（壁時計）の基準ゾーン。TimeZoneConfig が JVM 既定ゾーンに設定し、
-  # ClockConfig#wallClock が同じ値から壁時計 Clock を組み立てる（両者の食い違いを構造的に防ぐ）。
-  # DB の LocalDateTime 列はこのゾーン基準で書かれる。変更は既存データの解釈を変えるため慎重に。
-  app-timezone: ${MANNSCHAFT_APP_TIMEZONE:Asia/Tokyo}
   # CORS / WebSocket ハンドシェイクで許可するオリジン（カンマ区切り）。
   # CorsConfig / WebSocketConfig が ${mannschaft.allowed-origins} を参照する正準宣言。
   # 未設定時は開発用デフォルト（localhost:3000 / localhost:8080）。本番は env で上書き。

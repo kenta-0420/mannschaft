@@ -1,12 +1,11 @@
 package com.mannschaft.app.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 /**
@@ -51,19 +50,26 @@ public class ClockConfig {
      * （本番・開発機ともに JST）でオフセット分（+9h）ずれ、予約公開の判定が 9 時間狂う
      * （{@code ReservationPendingExpireService#findExpirableUnits} の Javadoc に実測記録あり）。</p>
      *
-     * <p>そこで「業務ローカル時刻の基準ゾーン」を {@code mannschaft.app-timezone} として
-     * <b>設定に明示</b>し、そこから壁時計 Clock を組み立てる。{@code ZoneId.systemDefault()} を
+     * <p>そこで基準ゾーンを {@link UserZoneLocalDateTimeParser#SERVER_ZONE}
+     * （アプリ層の壁時計ゾーンの<b>唯一の正</b>）から組み立てる。{@code ZoneId.systemDefault()} を
      * 呼ばないため暗黙のゾーン依存が無く（番人 {@code DateTimeAndZoneGuardTest} / CMP-023）、
-     * 将来テナント TZ を導入する際もこの 1 箇所が差し替え地点になる。
-     * {@code TimeZoneConfig} が JVM 既定ゾーンへ設定する値と<b>同一のプロパティ</b>を読むため、
-     * 両者が食い違うことは構造的に起こらない。</p>
+     * {@code TimeZoneConfig}（JVM 既定ゾーン）・本 Bean（壁時計 Clock）・
+     * {@link UserZoneLocalDateTimeParser}（API 入力のパーサ）の三者が同一のソースを見るため、
+     * 食い違いは構造的に起こらない。</p>
+     *
+     * <p><b>ゾーンを環境変数で可変にはしない。</b> 実行時に差し替えられるようにしても、
+     * DB に既に書かれた {@code LocalDateTime} 列は旧ゾーンの壁時計のままであり、
+     * 変えた瞬間に既存データの解釈が壊れる（「設定できるように見えて変えると壊れるつまみ」）。
+     * テナント別 TZ の導入は格納形式・入力変換・判定基準を一体で設計し直す必要があり、
+     * <b>CMP-023「時刻設計の全域是正＋テナント TZ 導入」</b>が受け皿である。
+     * その際は本メソッドが差し替え地点になる。</p>
      *
      * <p>{@code @Primary} は付けない。壁時計が要るのは「JVM 既定ゾーン基準の LocalDateTime 列と
      * 突き合わせる処理」だけであり、必要な箇所が {@code @Qualifier("wallClock")} で明示的に
      * 選ぶべきだからである（取り違えは 9 時間ずれとして表面化する）。</p>
      */
     @Bean
-    public Clock wallClock(@Value("${mannschaft.app-timezone:Asia/Tokyo}") String appTimeZone) {
-        return Clock.system(ZoneId.of(appTimeZone));
+    public Clock wallClock() {
+        return Clock.system(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 }

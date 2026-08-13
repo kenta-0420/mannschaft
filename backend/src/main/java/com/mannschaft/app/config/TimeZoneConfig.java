@@ -1,7 +1,7 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.TimeZone;
@@ -9,19 +9,27 @@ import java.util.TimeZone;
 /**
  * JVM のデフォルトタイムゾーンを業務ローカル時刻の基準ゾーンに設定する（.claudecode.md §20）。
  *
- * <p>ゾーンは {@code mannschaft.app-timezone}（既定 {@code Asia/Tokyo}）から読む。
- * {@code ClockConfig#wallClock} が<b>同一のプロパティ</b>から壁時計 Clock を組み立てるため、
- * 「JVM 既定ゾーンで書かれた LocalDateTime 列」と「壁時計 Clock で作った判定基準時刻」が
- * 食い違うことは構造的に起こらない。</p>
+ * <p>基準ゾーンは {@link UserZoneLocalDateTimeParser#SERVER_ZONE}（＝アプリ層の壁時計ゾーン）を
+ * <b>唯一の正</b>として参照する。これにより</p>
+ * <ul>
+ *   <li>JVM 既定ゾーン（本クラス）</li>
+ *   <li>壁時計 Clock（{@code ClockConfig#wallClock}）</li>
+ *   <li>API 入力のパーサ（{@link UserZoneLocalDateTimeParser}）</li>
+ * </ul>
+ * <p>の三者が同一のソースを見る。片方だけ変わって判定が 9 時間ずれる事故が構造的に起こらない。</p>
+ *
+ * <p><b>なぜ環境変数で可変にしないのか:</b> ゾーンを実行時に差し替えられる「つまみ」にしても、
+ * DB に既に書かれている {@code LocalDateTime} 列は旧ゾーンの壁時計のままであり、
+ * 変更した瞬間に既存データの解釈が壊れる。ゾーンの多様化（テナント別 TZ）は
+ * 格納形式・入力変換・判定基準を一体で設計し直す必要があり、
+ * <b>CMP-023「時刻設計の全域是正＋テナント TZ 導入」</b>が受け皿である。
+ * 中途半端に設定可能に見せることは「変えると壊れる嘘のつまみ」であり、ここでは行わない。</p>
  */
 @Configuration
 public class TimeZoneConfig {
 
-    @Value("${mannschaft.app-timezone:Asia/Tokyo}")
-    private String appTimeZone;
-
     @PostConstruct
     public void initTimeZone() {
-        TimeZone.setDefault(TimeZone.getTimeZone(appTimeZone));
+        TimeZone.setDefault(TimeZone.getTimeZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
     }
 }
