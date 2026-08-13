@@ -9,21 +9,6 @@
 # メソッド名を含めていた初版は、本 issue と無関係なメソッド名変更だけでCIを赤くする事故を起こした
 # （DateTimeAndZoneGuardTest クラスJavadoc『凍結キーはクラス単位の件数』参照）。
 #
-# 2026-08-12 再凍結（issue #2700 実装・PR #2725 是正時点のスナップショット）。
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.common.excel.ExcelGeneratorService|4
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.jobmatching.service.JobCheckInService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.mail.outbox.EmailOutboxMicrometerMetrics|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionService|3
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.payment.stripe.StripePaymentProviderImpl|4
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicEventQueryService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicPostQueryService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.publicview.service.PublicTimelinePostQueryService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.event.ReservationReminderEventListener|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationGroupService|2
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationPendingExpireService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationReminderService|1
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationService|2
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.reservation.service.ReservationWaitlistService|2
-ZONE_SYSTEM_DEFAULT|com.mannschaft.app.timetable.notes.service.TimetableSlotUserNoteService|1
+# 2026-08-13 全件返済（CMP-023 第1ロット）: 実測28件（16サービス/4 payment-stripe/4 excel/4 その他）を
+# すべて UserZoneLocalDateTimeParser.SERVER_ZONE への明示参照へ置き換えたため、台帳は空になった。
+# 挙動は不変（値は変わらない。JacksonTimeTypeSymmetryGuardTest AC-9-3 で往復対称性を確認済み）。
