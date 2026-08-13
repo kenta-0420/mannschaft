@@ -14,10 +14,12 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
@@ -36,6 +38,9 @@ public class BlogPostShareService {
     private final BlogPostShareRepository shareRepository;
     private final CmsMapper cmsMapper;
     private final AccessControlService accessControlService;
+    /** 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。published_at と同一の時間基準。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 個人ブログ記事をチーム/組織に共有する。
@@ -150,11 +155,16 @@ public class BlogPostShareService {
      *
      * <p>予約中は {@code status = DRAFT} のまま {@code published_at} に未来時刻を持つ
      * （{@code PostStatus.SCHEDULED} は新設しない。{@code BlogPostEntity#publish} 参照）。</p>
+     *
+     * <p><b>時間基準:</b> {@code published_at} は JVM 既定ゾーン基準の壁時計として書かれるため、
+     * 判定にも {@code ClockConfig#wallClock}（同一プロパティ由来の壁時計）を使う。UTC 固定の
+     * {@code utcClock} を使うと JST 環境で 9 時間ずれ、予約中の記事を「公開済み扱い」に誤判定して
+     * 共有をすり抜けさせてしまう。</p>
      */
     private boolean isScheduled(BlogPostEntity entity) {
         return entity.getStatus() == PostStatus.DRAFT
                 && entity.getPublishedAt() != null
-                && entity.getPublishedAt().isAfter(LocalDateTime.now());
+                && entity.getPublishedAt().isAfter(LocalDateTime.now(wallClock));
     }
 
     /**

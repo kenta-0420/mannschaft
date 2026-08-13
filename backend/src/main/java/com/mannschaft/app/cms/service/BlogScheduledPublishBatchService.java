@@ -2,11 +2,13 @@ package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,6 +30,9 @@ import java.util.List;
 public class BlogScheduledPublishBatchService {
 
     private final BlogScheduledPublishService scheduledPublishService;
+    /** 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。published_at と同一の時間基準。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 公開時刻に達した予約記事を {@code PUBLISHED} へ遷移させる。
@@ -37,10 +42,12 @@ public class BlogScheduledPublishBatchService {
      * 失敗した記事は次回も対象に残る＝自己修復する）。</p>
      *
      * <p><b>「現在時刻」の時間基準:</b> {@code published_at} は {@code LocalDateTime.now()}
-     * （<b>JVM 既定ゾーン</b>）で書かれるため、判定も同じ基準で行う。注入 {@code Clock} Bean は
-     * UTC 固定（{@code ClockConfig#utcClock}）であり、そのまま比較するとサーバ既定ゾーンが
-     * UTC でない環境（JST 等）でオフセット分ずれ、予約時刻より 9 時間早く/遅く公開される
-     * （{@code ReservationPendingExpireService#findExpirableUnits} の Javadoc に実測記録あり）。</p>
+     * （<b>JVM 既定ゾーン基準の壁時計</b>）で書かれるため、判定も同じ基準で行う。
+     * 既定の {@code Clock} Bean は UTC 固定（{@code ClockConfig#utcClock}）であり、そのまま比較すると
+     * サーバ既定ゾーンが UTC でない環境（JST 等）でオフセット分ずれ、予約時刻より 9 時間早く/遅く
+     * 公開される（{@code ReservationPendingExpireService#findExpirableUnits} の Javadoc に実測記録あり）。
+     * そのため<b>壁時計 Bean {@code ClockConfig#wallClock} を明示的に注入</b>して用いる
+     * （{@code TimeZoneConfig} が JVM 既定ゾーンに設定するのと同一プロパティ由来なので食い違わない）。</p>
      *
      * <p>戻り値はプリミティブ {@code int} ではなく参照型 {@code Integer}（issue #2724）。
      * ShedLock はプリミティブ戻り値のメソッドをロックできず {@code LockingNotSupportedException} で
@@ -57,7 +64,7 @@ public class BlogScheduledPublishBatchService {
     // 余裕（3 倍）を持たせて窓を閉じる。
     @SchedulerLock(name = "blogScheduledPublishBatch", lockAtLeastFor = "PT30S", lockAtMostFor = "PT3M")
     public Integer publishScheduledPosts() {
-        LocalDateTime baseTime = LocalDateTime.now();
+        LocalDateTime baseTime = LocalDateTime.now(wallClock);
         List<Long> duePostIds = scheduledPublishService.findDuePostIds(baseTime);
         if (duePostIds.isEmpty()) {
             return 0;

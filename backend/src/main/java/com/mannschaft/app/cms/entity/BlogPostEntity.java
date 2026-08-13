@@ -188,10 +188,18 @@ public class BlogPostEntity extends BaseEntity {
      * バッチは {@code status = DRAFT} しか走査しないため再公開の危険もない。
      * ARCHIVED から DRAFT へ戻す場合は本メソッドの DRAFT 分岐で公開日時が破棄されるため、
      * 経路が増えても不変条件は漏れない。</p>
+     *
+     * <p><b>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。</b>
+     * 時刻の取得はアプリケーション層（Service / バッチ）の責務であり、エンティティを
+     * 実時刻から切り離すことで遷移の判定が決定的・テスト可能になる
+     * （番人 {@code DateTimeAndZoneGuardTest} / CMP-023 時刻設計の全域是正）。</p>
+     *
+     * @param newStatus 遷移先ステータス
+     * @param baseTime  「公開時刻が到来済みか」を判定する基準時刻（{@code published_at} と同じ時間基準）
      */
-    public void changeStatus(PostStatus newStatus) {
+    public void changeStatus(PostStatus newStatus, LocalDateTime baseTime) {
         if (newStatus == PostStatus.DRAFT) {
-            unpublish();
+            unpublish(baseTime);
             return;
         }
         this.status = newStatus;
@@ -203,10 +211,16 @@ public class BlogPostEntity extends BaseEntity {
      * <p>過去の公開日時を残したまま DRAFT へ戻すと予約公開バッチに再公開されるため、
      * 「既に公開時刻が到来している公開日時」は NULL に消す。
      * 未来の公開日時は予約設定そのものなので維持する（AC-20）。</p>
+     *
+     * <p>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。
+     * 呼び出し側は注入した {@code Clock} から {@code published_at} と同じ時間基準の
+     * 時刻を渡すこと。</p>
+     *
+     * @param baseTime 「公開時刻が到来済みか」を判定する基準時刻
      */
-    public void unpublish() {
+    public void unpublish(LocalDateTime baseTime) {
         this.status = PostStatus.DRAFT;
-        if (this.publishedAt != null && !this.publishedAt.isAfter(LocalDateTime.now())) {
+        if (this.publishedAt != null && !this.publishedAt.isAfter(baseTime)) {
             this.publishedAt = null;
         }
     }
@@ -226,13 +240,18 @@ public class BlogPostEntity extends BaseEntity {
      * まだ公開前でありレビュー用のプレビュー URL が生き続ける必要があるため、
      * 予約設定でトークンを消してはならない。</p>
      *
-     * @param publishedAt 公開日時（{@code null} なら現在時刻＝即時公開）
+     * <p>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。
+     * 時刻の取得はアプリケーション層の責務であり、これにより「未来なら予約」の判定が
+     * 決定的になりテストで固定できる。</p>
+     *
+     * @param publishedAt 公開日時（{@code null} なら {@code baseTime}＝即時公開）
+     * @param baseTime    予約判定の基準時刻（{@code published_at} と同じ時間基準）
      */
-    public void publish(LocalDateTime publishedAt) {
-        LocalDateTime effectiveAt = publishedAt != null ? publishedAt : LocalDateTime.now();
+    public void publish(LocalDateTime publishedAt, LocalDateTime baseTime) {
+        LocalDateTime effectiveAt = publishedAt != null ? publishedAt : baseTime;
         this.publishedAt = effectiveAt;
 
-        if (effectiveAt.isAfter(LocalDateTime.now())) {
+        if (effectiveAt.isAfter(baseTime)) {
             // 予約公開: 公開時刻まで DRAFT に留め置き、バッチの遷移を待つ。
             this.status = PostStatus.DRAFT;
             return;

@@ -156,6 +156,15 @@ reservation・schedule のように棚卸しが完了しているドメインか
 - 得: ドメインごとに車輪の再発明が起きない。棚卸し文書 D-0 が指摘する「既存の個人TZ基盤の隣に店舗TZ基盤を作る」設計判断（D-1）とも接続する。
 - 失: 基盤設計そのものが軍議・設計レビューを要する規模になりやすく、着手までの準備期間が長くなる。基盤が固まるまで各ドメインの移行が止まる。
 
+### 実装済みの部分適用: 壁時計 Clock Bean（`ClockConfig#wallClock`）
+
+選択肢Cの最小の一歩として、**業務ローカル時刻（壁時計）の基準ゾーンを設定値 `mannschaft.app-timezone`（既定 `Asia/Tokyo`）へ明示**し、そこから組み立てた `Clock` Bean `wallClock` を導入した（issue #2616 のブログ予約公開で先行適用）。
+
+- `TimeZoneConfig`（JVM 既定ゾーンの設定）と `ClockConfig#wallClock` が**同一プロパティ**を読むため、「JVM 既定ゾーンで書かれた `LocalDateTime` 列」と「判定に使う基準時刻」が食い違わない。
+- 既定の `Clock`（`utcClock`・`@Primary`）は UTC 固定のまま。`LocalDateTime` 列と突き合わせる処理だけが `@Qualifier("wallClock")` で明示的に壁時計を選ぶ（取り違えは 9 時間ずれとして表面化するため、暗黙の既定に混ぜない）。`@Qualifier` をコンストラクタ引数へ伝えるため `backend/lombok.config` に `lombok.copyableAnnotations` を追加している。
+- 呼び出し側が基準時刻を取り、**エンティティは現在時刻を自ら取得しない**（`BlogPostEntity#publish/unpublish/changeStatus` は基準時刻を引数で受け取る）。これにより状態遷移の判定が決定的になり、`Clock.fixed` でテスト可能になる。
+- `ZoneId.systemDefault()` を一切呼ばないため、番人 `DateTimeAndZoneGuardTest` の凍結台帳を増やさずに是正できる。将来テナントTZを導入する際は、この 1 箇所が差し替え地点になる。
+
 ### 選択肢D: リスクの高い箇所から優先的に着手する
 
 棚卸し文書が「含む」と確定判定した箇所（reservation 8件、schedule 1件、ticket/parking/timetable/shift のサンプル5件、計約14件、B-5参照）など、既に構造的リスクが実測されている箇所を最優先で直す。

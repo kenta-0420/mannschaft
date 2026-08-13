@@ -350,12 +350,16 @@ public class BlogPostService {
             throw new BusinessException(CmsErrorCode.REJECTION_REASON_REQUIRED);
         }
 
+        // 基準時刻は 1 回だけ取得し、公開判定と非公開化判定で同一の値を使う
+        // （エンティティ側は現在時刻を取得しない。CMP-023 / DateTimeAndZoneGuardTest）。
+        LocalDateTime baseTime = LocalDateTime.now();
+
         switch (newStatus) {
             // 予約公開（issue #2616・AC-1〜3）: publishedAt が未来なら BlogPostEntity#publish が
             // DRAFT に据え置き、published_at だけを記録する（PostStatus.SCHEDULED は新設しない）。
-            case PUBLISHED -> entity.publish(request.getPublishedAt() != null ? request.getPublishedAt() : LocalDateTime.now());
+            case PUBLISHED -> entity.publish(request.getPublishedAt(), baseTime);
             case REJECTED -> entity.reject(request.getRejectionReason());
-            default -> entity.changeStatus(newStatus);
+            default -> entity.changeStatus(newStatus, baseTime);
         }
 
         BlogPostEntity saved = postRepository.save(entity);
@@ -478,6 +482,8 @@ public class BlogPostService {
 
         List<Long> skippedIds = new ArrayList<>();
         int processedCount = 0;
+        // 一括操作は全件を同一の基準時刻で判定する（処理中に時刻が跨いで挙動が割れないように）。
+        LocalDateTime baseTime = LocalDateTime.now();
 
         for (Long id : request.getIds()) {
             BlogPostEntity entity = postRepository.findById(id).orElse(null);
@@ -493,7 +499,7 @@ public class BlogPostService {
             switch (request.getAction().toUpperCase()) {
                 case "ARCHIVE" -> {
                     if (entity.getStatus() == PostStatus.PUBLISHED) {
-                        entity.changeStatus(PostStatus.ARCHIVED);
+                        entity.changeStatus(PostStatus.ARCHIVED, baseTime);
                         postRepository.save(entity);
                         processedCount++;
                     } else {
@@ -510,8 +516,7 @@ public class BlogPostService {
                         // 予約公開（issue #2616・AC-17）: 既に未来の published_at を持つ記事は
                         // 「予約済み」であり、一括公開で予約時刻より前に公開してはならない。
                         // 予約時刻をそのまま渡すことで BlogPostEntity#publish が DRAFT に据え置く。
-                        entity.publish(entity.getPublishedAt() != null
-                                ? entity.getPublishedAt() : LocalDateTime.now());
+                        entity.publish(entity.getPublishedAt(), baseTime);
                         if (entity.getStatus() == PostStatus.PUBLISHED) {
                             postRepository.save(entity);
                             processedCount++;
@@ -588,12 +593,13 @@ public class BlogPostService {
             throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
         }
 
+        LocalDateTime baseTime = LocalDateTime.now();
+
         switch (request.getAction().toUpperCase()) {
             // 予約公開（issue #2616・AC-17）: 予約時刻を持つ記事はその時刻を尊重し、
             // 未来ならセルフレビュー承認後も DRAFT へ据え置いてバッチの公開を待つ。
-            case "PUBLISH" -> entity.publish(entity.getPublishedAt() != null
-                    ? entity.getPublishedAt() : LocalDateTime.now());
-            case "DRAFT" -> entity.changeStatus(PostStatus.DRAFT);
+            case "PUBLISH" -> entity.publish(entity.getPublishedAt(), baseTime);
+            case "DRAFT" -> entity.changeStatus(PostStatus.DRAFT, baseTime);
             case "DELETE" -> entity.softDelete();
             default -> throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
         }

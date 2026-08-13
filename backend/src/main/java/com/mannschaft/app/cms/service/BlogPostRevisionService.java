@@ -15,10 +15,13 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -38,6 +41,9 @@ public class BlogPostRevisionService {
     private final CmsMapper cmsMapper;
     private final AccessControlService accessControlService;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。published_at と同一の時間基準。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * リビジョン一覧を取得する。
@@ -85,7 +91,10 @@ public class BlogPostRevisionService {
         // 復元した内容は未公開扱いに戻す。issue #2616 の回帰対策（AC-19）として
         // BlogPostEntity#unpublish が到来済みの published_at を破棄するため、
         // 復元で下書きに戻った記事が予約公開バッチに再公開されることはない。
-        entity.unpublish();
+        // 基準時刻はエンティティではなく Service が取る。published_at は JVM 既定ゾーン基準の
+        // 壁時計で書かれるため、UTC 固定の既定 Clock ではなく wallClock を使う
+        // （取り違えると JST 環境で 9 時間ずれ、到来済みの published_at を破棄し損ねる）。
+        entity.unpublish(LocalDateTime.now(wallClock));
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("リビジョン復元: postId={}, revisionId={}", postId, revisionId);

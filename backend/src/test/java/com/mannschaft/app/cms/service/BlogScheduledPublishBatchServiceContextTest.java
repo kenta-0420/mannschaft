@@ -1,5 +1,7 @@
 package com.mannschaft.app.cms.service;
 
+import java.time.Clock;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -35,7 +37,7 @@ class BlogScheduledPublishBatchServiceContextTest {
         @Bean
         BlogScheduledPublishBatchService blogScheduledPublishBatchService(
                 BlogScheduledPublishService scheduledPublishService) {
-            return new BlogScheduledPublishBatchService(scheduledPublishService);
+            return new BlogScheduledPublishBatchService(scheduledPublishService, Clock.systemUTC());
         }
     }
 

@@ -3,11 +3,15 @@ package com.mannschaft.app.cms.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,8 +46,20 @@ class BlogScheduledPublishBatchServiceTest {
     @Mock
     private BlogScheduledPublishService scheduledPublishService;
 
-    @InjectMocks
+    /**
+     * 固定した壁時計 Clock。本番では {@code ClockConfig#wallClock}（業務ローカル時刻ゾーン）が
+     * 注入される。ここではゾーンずれを検出できるよう、あえて UTC 以外のゾーンで固定する。
+     */
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-13T01:23:45Z");
+    private static final ZoneId WALL_ZONE = ZoneId.of("Asia/Tokyo");
+    private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, WALL_ZONE);
+
     private BlogScheduledPublishBatchService batchService;
+
+    @BeforeEach
+    void setUp() {
+        batchService = new BlogScheduledPublishBatchService(scheduledPublishService, FIXED_CLOCK);
+    }
 
     // ────────────────────────────────────────────────────────────
     // AC-10: 対象 0 件で副作用ゼロ
@@ -124,5 +140,24 @@ class BlogScheduledPublishBatchServiceTest {
 
         assertThat(published).isZero();
         verify(scheduledPublishService, times(2)).publishScheduledPost(anyLong(), any());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 時間基準: 注入 Clock を JVM 既定ゾーンで読み替えた壁時計を基準時刻に使う
+    // （UTC Clock をそのまま使うと JST 環境で 9 時間ずれ、予約時刻より早く/遅く公開される）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("基準時刻は注入した壁時計 Clock のゾーンで解釈した値である（published_at と同一基準）")
+    void 基準時刻は壁時計clockのゾーンで解釈する() {
+        given(scheduledPublishService.findDuePostIds(any(LocalDateTime.class))).willReturn(List.of());
+
+        batchService.publishScheduledPosts();
+
+        ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(scheduledPublishService).findDuePostIds(captor.capture());
+        assertThat(captor.getValue())
+                .as("UTC 固定の utcClock を取り違えると JST 環境で 9 時間ずれる")
+                .isEqualTo(LocalDateTime.ofInstant(FIXED_INSTANT, WALL_ZONE));
     }
 }
