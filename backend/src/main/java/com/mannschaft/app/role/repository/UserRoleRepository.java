@@ -43,27 +43,92 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     List<UserRoleEntity> findByUserIdAndOrganizationIdIsNotNull(Long userId);
 
-    boolean existsByUserIdAndTeamId(Long userId, Long teamId);
+    /**
+     * ユーザーがチームに所属するか（CMP-027: user_roles 権限ロール ∪ memberships 素所属）。
+     *
+     * <p>V60.010 で MEMBER/SUPPORTER は user_roles から memberships へ完全移行したため、
+     * user_roles 一系統の在籍判定では素メンバー/応援者を「非所属」と誤判定する。
+     * memberships 由来（{@code left_at IS NULL} の在籍）を OR して根治する。
+     * role_kind は問わない（在籍軸。ADMIN/DEPUTY 等の権限判定は別メソッド）。</p>
+     */
+    default boolean existsByUserIdAndTeamId(Long userId, Long teamId) {
+        return countRoleOrMembershipByUserIdAndTeamId(userId, teamId) > 0;
+    }
 
-    boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
+    @Query(value =
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "  UNION ALL " +
+            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
+            "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            ") both_arms",
+            nativeQuery = true)
+    long countRoleOrMembershipByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
 
     /**
-     * F01.2 子組織一覧カーソルページングの可視性 SQL 降下用: 指定ユーザーが
-     * {@code user_roles} 上で直接所属する組織 ID 一覧を重複なく返す。
+     * ユーザーが組織に所属するか（CMP-027: user_roles 権限ロール ∪ memberships 素所属）。
+     * {@link #existsByUserIdAndTeamId} の ORGANIZATION 版。
+     */
+    default boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId) {
+        return countRoleOrMembershipByUserIdAndOrganizationId(userId, organizationId) > 0;
+    }
+
+    @Query(value =
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.organization_id = :organizationId " +
+            "  UNION ALL " +
+            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
+            "    AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            ") both_arms",
+            nativeQuery = true)
+    long countRoleOrMembershipByUserIdAndOrganizationId(
+            @Param("userId") Long userId, @Param("organizationId") Long organizationId);
+
+    /**
+     * 指定ユーザーが直接所属する組織 ID 一覧を重複なく返す（CMP-027: user_roles ∪ memberships）。
      *
-     * <p>{@code OrganizationHierarchyService#getChildren} が「呼び出し者は PRIVATE な
-     * 子組織のうち自分がメンバーのものだけ見える」という可視性条件を、子ごとの
-     * {@code existsByUserIdAndOrganizationId} 個別呼び出し（N+1・メモリ上フィルタ）ではなく
-     * SQL の {@code IN} 句へ一括で降ろすために追加した。既存の
-     * {@code existsByUserIdAndOrganizationId} と同じ {@code user_roles} テーブルを
-     * 参照するため、判定結果は完全に一致する（membership ドメインとの二重管理は生じない）。</p>
+     * <p>元は {@code OrganizationHierarchyService#getChildren} の可視性 SQL 降下用（子組織のうち
+     * 自分がメンバーのものだけ見える条件を IN 句へ一括で降ろす）。V60.010 で MEMBER/SUPPORTER は
+     * user_roles から memberships へ移行したため、memberships 由来の在籍（{@code left_at IS NULL}）を
+     * UNION して素メンバー/応援者の所属組織を取りこぼさないようにする。
+     * また {@code findByUserIdAndOrganizationIdIsNotNull(...).stream().map(getOrganizationId)} と
+     * 同義の「所属組織 ID 列挙」の共通の受け皿でもある（在籍軸・role は問わない）。</p>
      *
      * @param userId 対象ユーザー ID
      * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
      */
-    @Query("SELECT DISTINCT ur.organizationId FROM UserRoleEntity ur "
-            + "WHERE ur.userId = :userId AND ur.organizationId IS NOT NULL")
+    @Query(value =
+            "SELECT DISTINCT org_id FROM ( " +
+            "  SELECT ur.organization_id AS org_id FROM user_roles ur " +
+            "    WHERE ur.user_id = :userId AND ur.organization_id IS NOT NULL " +
+            "  UNION " +
+            "  SELECT m.scope_id AS org_id FROM memberships m " +
+            "    WHERE m.user_id = :userId AND m.scope_type = 'ORGANIZATION' AND m.left_at IS NULL " +
+            ") x",
+            nativeQuery = true)
     List<Long> findOrganizationIdsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 指定ユーザーが直接所属するチーム ID 一覧を重複なく返す（CMP-027: user_roles ∪ memberships）。
+     *
+     * <p>{@code findByUserIdAndTeamIdIsNotNull(...).stream().map(getTeamId)} の memberships 統合版。
+     * V60.010 で memberships へ移行した素メンバー/応援者の所属チームを取りこぼさない
+     * （{@code left_at IS NULL} の在籍のみ・role は問わない在籍軸）。呼出元が teamId のみを使う
+     * 箇所はこのメソッドへ載せ替えること（entity の role/createdAt 等を読む箇所は対象外）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return 直接所属するチーム ID の一覧（0件の場合は空リスト）
+     */
+    @Query(value =
+            "SELECT DISTINCT team_id FROM ( " +
+            "  SELECT ur.team_id AS team_id FROM user_roles ur " +
+            "    WHERE ur.user_id = :userId AND ur.team_id IS NOT NULL " +
+            "  UNION " +
+            "  SELECT m.scope_id AS team_id FROM memberships m " +
+            "    WHERE m.user_id = :userId AND m.scope_type = 'TEAM' AND m.left_at IS NULL " +
+            ") x",
+            nativeQuery = true)
+    List<Long> findTeamIdsByUserId(@Param("userId") Long userId);
 
     boolean existsByUserIdAndTeamIdAndRoleId(Long userId, Long teamId, Long roleId);
 
@@ -253,11 +318,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     /**
      * スコープ内メンバーのユーザーIDリストを取得する (通知一斉送信用)。
      */
-    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
-            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+    @Query(value =
+            "SELECT DISTINCT uid FROM ( " +
+            "  SELECT ur.user_id AS uid FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION " +
+            // CMP-027: V60.010 で MEMBER/SUPPORTER は user_roles から memberships へ移行した。
+            // 移行前は SUPPORTER も user_roles 行を持ち本スコープ母集団に含まれていたため、
+            // 忠実な復元として role_kind を問わず（MEMBER も SUPPORTER も）在籍者を UNION する。
+            // 在籍のみ（left_at IS NULL）＋ users ACTIVE/未削除を課す。
+            "  SELECT m.user_id AS uid FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            ") x",
             nativeQuery = true)
     List<Long> findUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
