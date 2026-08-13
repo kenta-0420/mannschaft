@@ -127,9 +127,19 @@ watch(visible, (nowVisible) => {
 const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
   { label: t('surveys.resultsVisibility.CREATOR_ONLY'), value: 'CREATOR_ONLY' },
   { label: t('surveys.resultsVisibility.RESPONDENTS'), value: 'RESPONDENTS' },
-  // NOTE: 'ALL_MEMBERS'（締切前から全員閲覧可）は BE の ResultsVisibility enum に対応値が無い。
-  // BE が表現できる 'AFTER_CLOSE'（締切後に全員閲覧可）を提示する。
+  // 'ALL_MEMBERS'（締切前から配信対象スコープの所属者が中間集計を閲覧可）は、かつて BE の
+  // ResultsVisibility enum に対応値が無く必ず弾かれるため PR #2615 で選択肢から外していた。
+  // Issue #2635 で BE に 'ALWAYS' が実装され表現できるようになったので復活させる。
+  { label: t('surveys.resultsVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
   { label: t('surveys.resultsVisibility.AFTER_CLOSE'), value: 'AFTER_CLOSE' },
+  // NOTE: 'VIEWERS_ONLY' は **意図的に選択肢へ出さない**。
+  // これは survey_result_viewers の名簿で閲覧者を個別指定する方式だが、その名簿を編集する UI が
+  // まだ無い。選択できるようにすると名簿が空のまま保存され「作成者以外の誰も結果を見られない
+  // アンケート」が作れてしまう。
+  // 一方で型・翻訳層では BE と 1:1 に対応させてある（types/survey.ts の対応表を参照）。
+  // 既存データが VIEWERS_ONLY を持つ場合に読み書きの往復で値が化けないようにするためで、
+  // 「読み書きの型としては 1:1、UI の選択肢としては出さない」が本件の線引きである（Issue #2617-2）。
+  // 名簿編集 UI が実装されたらここへ 1 行足すこと。
 ])
 
 const unrespondedVisibilityOptions = computed<Array<{ label: string; value: UnrespondedVisibility }>>(() => [

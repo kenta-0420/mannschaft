@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "초안",
       "PUBLISHED": "응답 중",
-      "CLOSED": "마감"
+      "CLOSED": "마감",
+      "ARCHIVED": "보관됨"
     },
     "questionType": {
       "SINGLE_CHOICE": "단일 선택",

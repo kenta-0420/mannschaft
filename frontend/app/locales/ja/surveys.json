@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "下書き",
       "PUBLISHED": "受付中",
-      "CLOSED": "締切"
+      "CLOSED": "締切",
+      "ARCHIVED": "アーカイブ"
     },
     "questionType": {
       "SINGLE_CHOICE": "単一選択",

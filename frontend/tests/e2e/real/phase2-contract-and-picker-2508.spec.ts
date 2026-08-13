@@ -498,11 +498,10 @@ test.describe('P2-04 アンケート作成: 締切保存+distributionMode', () =
       res.status(),
       `アンケート作成が失敗した（修正前はdistributionMode欠落で400だった）: ${await res.text()}`,
     ).toBe(201)
-    // ⚠️ 発見した既存不具合（本PRの範囲外・BEのレスポンス契約不整合）:
-    //    POST /surveys のレスポンスは {data:{survey:{id,...}, questions:[...]}} という入れ子形だが、
-    //    GET /surveys（一覧）は {data:[{id,...}]} というフラット形で返す。BE内で応答契約が非対称。
-    //    SurveyCreateDialog.vue はこの id を消費しない（一覧再取得のみ）ため実害は出ていないが、
-    //    本テストでは一覧から実IDを引く（作成レスポンスの id を信用しない）。
+    // NOTE: ここで報告していた応答契約の非対称（作成 POST だけが {data:{survey:{...}}} の入れ子で、
+    //    一覧 GET は {data:[{id,...}]} のフラット）は Issue #2635 で解消され、
+    //    作成 POST も {data:{id,...,questions:[]}} のフラット形になった。
+    //    本テストは引き続き一覧から実 ID を引く（経路をもう一段検証できるため）。
     const listRes = await api(ctx, adminToken, 'GET', `/api/v1/teams/${TEAM_SLUG}/surveys`)
     expect(listRes.ok()).toBeTruthy()
     const list = ((await listRes.json()).data ?? []) as Array<{ id: number; content?: { title?: string } }>
@@ -555,8 +554,9 @@ test.describe('P2-05 アンケート設問追加: enum翻訳+displayOrder', () =
       questions: [],
     })
     expect(res.ok(), `下書きアンケート作成に失敗: ${res.status()} ${await res.text()}`).toBeTruthy()
-    // ⚠️ POST /surveys のレスポンスは {data:{survey:{id,...}}} という入れ子形（P2-04 参照）。
-    draftSurveyId = ((await res.json()).data as { survey: { id: number } }).survey.id
+    // Issue #2635 で POST /surveys のレスポンスはフラット化され、{data:{id,...,questions:[]}} になった
+    // （かつては {data:{survey:{id,...}}} の入れ子だった。P2-04 参照）。
+    draftSurveyId = ((await res.json()).data as { id: number }).id
   })
 
   test.afterAll(async () => {

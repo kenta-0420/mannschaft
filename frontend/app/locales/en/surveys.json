@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "Draft",
       "PUBLISHED": "Open",
-      "CLOSED": "Closed"
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
     },
     "questionType": {
       "SINGLE_CHOICE": "Single choice",

@@ -1,12 +1,38 @@
 import type { Page, Route } from '@playwright/test'
 import type {
-  SurveyResponse,
+  ResultsVisibility,
+  UnrespondedVisibility,
   SurveyStatus,
   SurveyResultSummary,
   RespondentItem,
   SurveyQuestionWire,
+  SurveyResponseWire,
   SurveyDetailWire,
 } from '../../../app/types/survey'
+
+/**
+ * FE ResultsVisibility → BE wire 値（mapResultsVisibilityToBe と同等のローカル写像）。
+ * テスト専用に _helpers 内で複製しておく（プロダクション composable への結合を避ける）。
+ *
+ * spec 側は従来どおり FE 値（'ALL_MEMBERS' 等）で書けるが、モックが返す body は
+ * 実 BE と同じ enum 値になるため、翻訳層（useSurveyApi）が実走する。
+ */
+function feResultsVisibilityToWire(
+  fe: ResultsVisibility,
+): SurveyResponseWire['policy']['resultsVisibility'] {
+  switch (fe) {
+    case 'RESPONDENTS':
+      return 'AFTER_RESPONSE'
+    case 'AFTER_CLOSE':
+      return 'AFTER_CLOSE'
+    case 'ALL_MEMBERS':
+      return 'ALWAYS'
+    case 'VIEWERS_ONLY':
+      return 'VIEWERS_ONLY'
+    case 'CREATOR_ONLY':
+      return 'ADMINS_ONLY'
+  }
+}
 
 /**
  * FE QuestionType → BE wire 値（mapQuestionTypeToBe と同等のローカル写像）。
@@ -206,8 +232,9 @@ export interface BuildSurveyOptions {
   // policy
   isAnonymous?: boolean
   allowMultipleSubmissions?: boolean
-  resultsVisibility?: string
-  unrespondedVisibility?: string
+  /** FE ドメイン値で指定する（wire 形へは buildSurvey 内で写す）。 */
+  resultsVisibility?: ResultsVisibility
+  unrespondedVisibility?: UnrespondedVisibility
   // schedule
   expiresAt?: string | null
   deadline?: string | null
@@ -228,7 +255,7 @@ export interface BuildSurveyOptions {
  * 全フィールドにデフォルト値を持たせ、opts でフィールド単位に上書き可能。
  * E2E テストの利便性のため、旧フラット設計の opts を受け取り内部でネスト構造に変換する。
  */
-export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponse {
+export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponseWire {
   const createdById =
     opts.createdBy != null && typeof opts.createdBy === 'object'
       ? opts.createdBy.id
@@ -249,7 +276,7 @@ export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponse {
     policy: {
       isAnonymous: opts.isAnonymous ?? false,
       allowMultipleSubmissions: opts.allowMultipleSubmissions ?? false,
-      resultsVisibility: opts.resultsVisibility ?? 'ALL_MEMBERS',
+      resultsVisibility: feResultsVisibilityToWire(opts.resultsVisibility ?? 'ALL_MEMBERS'),
       unrespondedVisibility: opts.unrespondedVisibility ?? 'CREATOR_AND_ADMIN',
     },
     distribution: {
@@ -322,20 +349,20 @@ export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestionWire {
 }
 
 /**
- * 詳細レスポンスの wire（実 BE 入れ子）形を生成する。
- * 実 BE は `{ data: { survey, questions } }` と survey/questions を分離した入れ子で返すため、
- * fulfill 用 body をその形に組み立てる。getSurvey の翻訳層がこれをフラット形へ変換する。
+ * 詳細レスポンスの wire（実 BE）形を生成する。
  *
- * 第 1 引数 survey は従来どおり {@link buildSurvey}（フラット形）の戻り値を受け取り、
- * wire の data.survey にそのまま入れる（policy.resultsVisibility は文字列なので互換）。
+ * Issue #2635 で BE の `SurveyDetailResponse` がフラット化され、`data.survey` の入れ子が消えて
+ * `SurveyResponse` の 9 フィールドが `data` 直下に並び `questions` が加わった。
+ * fulfill 用 body もその形に組み立てる（旧・入れ子のままだと翻訳層が `wire.survey` を読めず
+ * 詳細画面が TypeError で落ちる、という本番と同じ壊れ方をテストが再現できない）。
  */
 export function buildSurveyDetail(
-  survey: SurveyResponse,
+  survey: SurveyResponseWire,
   questions: SurveyQuestionWire[],
 ): SurveyDetailWire {
   return {
     data: {
-      survey,
+      ...survey,
       questions,
     },
   }
@@ -387,9 +414,9 @@ export function buildRespondent(
 
 /** {@link mockSurveyApi} のオプション。 */
 export interface MockSurveyApiOptions {
-  /** 一覧 API（GET /surveys）で返すアンケート群 */
-  surveys?: SurveyResponse[]
-  /** 詳細 API（GET /surveys/{id}）で返すレスポンス（id をキーに分岐・実 BE 入れ子 wire 形） */
+  /** 一覧 API（GET /surveys）で返すアンケート群（実 BE と同じ wire 形） */
+  surveys?: SurveyResponseWire[]
+  /** 詳細 API（GET /surveys/{id}）で返すレスポンス（id をキーに分岐・実 BE のフラット wire 形） */
   detailById?: Record<number, SurveyDetailWire>
   /** 集計 API（GET /surveys/{id}/results）で返すレスポンス（id をキー） */
   resultsById?: Record<number, SurveyResultSummary[]>
@@ -398,7 +425,7 @@ export interface MockSurveyApiOptions {
   /** 督促 API（POST /surveys/{id}/remind）のレスポンス制御 */
   remindResponse?: { ok: boolean; status?: number; body?: unknown }
   /** 作成 API（POST /surveys）のレスポンスを動的に決めたい場合のフック */
-  onCreate?: (body: unknown) => SurveyResponse
+  onCreate?: (body: unknown) => SurveyResponseWire
 }
 
 /**

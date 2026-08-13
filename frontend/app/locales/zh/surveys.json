@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "草稿",
       "PUBLISHED": "进行中",
-      "CLOSED": "已截止"
+      "CLOSED": "已截止",
+      "ARCHIVED": "已归档"
     },
     "questionType": {
       "SINGLE_CHOICE": "单选",

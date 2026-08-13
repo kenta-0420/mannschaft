@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "Entwurf",
       "PUBLISHED": "Geöffnet",
-      "CLOSED": "Geschlossen"
+      "CLOSED": "Geschlossen",
+      "ARCHIVED": "Archiviert"
     },
     "questionType": {
       "SINGLE_CHOICE": "Einzelauswahl",
