@@ -45,6 +45,7 @@ public class ReservationReminderEntity {
 
     private LocalDateTime sentAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

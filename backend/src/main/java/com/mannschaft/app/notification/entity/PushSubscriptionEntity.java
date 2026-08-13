@@ -43,6 +43,7 @@ public class PushSubscriptionEntity {
     @Column(length = 500)
     private String userAgent;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime lastUsedAt;

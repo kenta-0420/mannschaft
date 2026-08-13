@@ -44,6 +44,7 @@ public class IncidentStatusHistoryEntity {
     @Column(length = 500)
     private String comment;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

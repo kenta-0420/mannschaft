@@ -36,6 +36,7 @@ public class TemplateModuleEntity {
     @Column(nullable = false)
     private Long moduleId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

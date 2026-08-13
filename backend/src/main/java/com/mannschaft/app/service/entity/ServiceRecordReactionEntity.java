@@ -43,6 +43,7 @@ public class ServiceRecordReactionEntity {
     @Builder.Default
     private ReactionType reactionType = ReactionType.LIKE;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

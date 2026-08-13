@@ -37,6 +37,7 @@ public class ChatMessageBookmarkEntity {
     @Column(length = 200)
     private String note;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

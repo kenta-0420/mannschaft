@@ -26,20 +26,26 @@ public class AnalyticsDailyUsersEntity extends BaseEntity {
     private LocalDate date;
 
     @Builder.Default
+    @Column(nullable = false)
     private int newUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int activeUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int payingUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int churnedUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int reactivatedUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int totalUsers = 0;
 }

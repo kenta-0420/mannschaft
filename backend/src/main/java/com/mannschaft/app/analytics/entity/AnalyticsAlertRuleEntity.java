@@ -47,6 +47,7 @@ public class AnalyticsAlertRuleEntity extends BaseEntity {
     private ComparisonPeriod comparisonPeriod;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean enabled = true;
 
     @Column(nullable = false, columnDefinition = "JSON")
@@ -57,6 +58,7 @@ public class AnalyticsAlertRuleEntity extends BaseEntity {
     private int consecutiveTriggers = 1;
 
     @Builder.Default
+    @Column(nullable = false)
     private int cooldownHours = 24;
 
     @Column(nullable = false)

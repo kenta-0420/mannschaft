@@ -48,6 +48,7 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false)
     private Long sizeBytes;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime deletedAt;

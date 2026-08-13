@@ -49,6 +49,7 @@ public class FilePermissionEntity {
     @Column(nullable = false)
     private Long permissionTargetId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
