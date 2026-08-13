@@ -178,7 +178,15 @@ test('CT-02: 返信すると親の下にネストして表示される', async (
   await parentItem.getByRole('button', { name: /返信/ }).click()
 
   const replyBody = `CT-02返信本文-${Date.now()}`
-  const replyForm = section.locator('[data-testid="schedule-comment-form"]').last()
+  // 【重要】.last() は誤り。DOM順序は [各コメントitem, (返信中のみ)その直後の返信フォーム, 返信一覧]
+  // の繰り返しの後に、末尾に常設の「メイン投稿フォーム」(ScheduleCommentForm, parentId未指定)が続く。
+  // トップレベルコメントが1件のみの状態で返信すると、.last() は返信フォームではなく
+  // この常設フォームを掴んでしまい、返信が parentId 無しのトップレベル投稿として送信されてしまう
+  // （実際に本 spec の初期版で発生し、BE の parent_id が常に NULL になる不具合として顕在化した。
+  //   curl での直接検証で BE 自体は parentId を正しく永続化することを確認済み＝FE/spec側の問題）。
+  // 返信フォームのみ「キャンセル」ボタンを持つ（ScheduleCommentForm.vue の v-if="parentId"）ため、
+  // それで一意に判別する。
+  const replyForm = section.locator('[data-testid="schedule-comment-form"]').filter({ has: page.getByRole('button', { name: 'キャンセル' }) })
   await replyForm.getByTestId('schedule-comment-input').fill(replyBody)
   await replyForm.getByTestId('schedule-comment-submit').click()
 
@@ -272,7 +280,9 @@ test('CT-05: 返信のあるコメントを削除するとトゥームストー�
   const parentItem = section.locator('[data-testid^="schedule-comment-item"]').filter({ hasText: parentBody })
   await parentItem.getByRole('button', { name: /返信/ }).click()
   const replyBody = `CT-05返信-${Date.now()}`
-  const replyForm = section.locator('[data-testid="schedule-comment-form"]').last()
+  // CT-02 と同じ理由で .last() は誤り（末尾の常設メイン投稿フォームを掴んでしまう）。
+  // 「キャンセル」ボタンを持つ方（返信中のみ表示）で一意に判別する。
+  const replyForm = section.locator('[data-testid="schedule-comment-form"]').filter({ has: page.getByRole('button', { name: 'キャンセル' }) })
   await replyForm.getByTestId('schedule-comment-input').fill(replyBody)
   await replyForm.getByTestId('schedule-comment-submit').click()
   await expect(section.getByText(replyBody)).toBeVisible({ timeout: 10_000 })
