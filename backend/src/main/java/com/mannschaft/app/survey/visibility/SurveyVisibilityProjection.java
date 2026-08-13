@@ -33,6 +33,11 @@ import java.time.LocalDateTime;
  * @param status             surveys.status（status 軸正規化に利用）
  * @param resultsVisibility  surveys.results_visibility（StandardVisibility 正規化に利用）
  * @param expiresAt          surveys.expires_at（AFTER_CLOSE 判定の閾値、{@code null} 可 → fail-closed）
+ * @param includeSupporters  surveys.include_supporters（{@code null} 可 → false 扱い）。
+ *                           {@link ResultsVisibility#ALWAYS} は「配信母集団＝中間集計の閲覧母集団」を
+ *                           不変条件とするため、配信母集団の算出（{@code OrganizationMembershipService
+ *                           #resolveOrgDistributionUserIds(Long, boolean)}）が参照するのと
+ *                           <b>同じフラグ</b>を可視性判定でも参照する必要がある。
  */
 public record SurveyVisibilityProjection(
         Long id,
@@ -41,7 +46,8 @@ public record SurveyVisibilityProjection(
         Long authorUserId,
         SurveyStatus status,
         ResultsVisibility resultsVisibility,
-        LocalDateTime expiresAt) implements VisibilityProjection {
+        LocalDateTime expiresAt,
+        Boolean includeSupporters) implements VisibilityProjection {
 
     @Override
     public Long visibilityTemplateId() {

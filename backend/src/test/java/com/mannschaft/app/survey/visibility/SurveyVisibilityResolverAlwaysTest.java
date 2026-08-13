@@ -76,6 +76,7 @@ class SurveyVisibilityResolverAlwaysTest {
     private static final Long SURVEY_ID = 1L;
     private static final Long AUTHOR_ID = 99L;
     private static final Long VIEWER_ID = 5L;
+    private static final Long ORG_ID = 700L;
 
     @BeforeEach
     void setUp() {
@@ -234,6 +235,124 @@ class SurveyVisibilityResolverAlwaysTest {
         }
     }
 
+    /**
+     * 検分指摘（P1）— ORGANIZATION × ALL 配信の「配信母集団＝閲覧母集団」不変条件。
+     *
+     * <p>設計書 {@code docs/features/F05.4_survey_vote.md} の {@code distribution_mode} 備考:
+     * 組織スコープで {@code ALL} を選ぶと母集団は「組織直属メンバー ∪ 配下参加チーム（ACTIVE）の
+     * メンバー」まで再帰展開される。可視性が直接所属（{@code SCOPE_AFFILIATED}）のままだと
+     * 「アンケートは届くのに ALWAYS の結果だけ 403」という食い違いが生じるため、
+     * 下向き再帰の既存軸 {@code ORGANIZATION_AND_DESCENDANTS} へ昇格させる。</p>
+     *
+     * <p>担保する受け入れ条件: <b>AC-18 / AC-19 / AC-20</b>。</p>
+     */
+    @Nested
+    @DisplayName("AC-18〜20: ORGANIZATION × ALL の配信母集団と可視範囲の一致")
+    class OrganizationDistributionUniverse {
+
+        /**
+         * AC-18 — 配下 ACTIVE チームのメンバー（組織には直属していない）が結果を閲覧できる。
+         * 昇格前は {@code isMemberOf} が false のため不可視となり red。
+         */
+        @Test
+        @DisplayName("AC-18: 配下ACTIVEチームのメンバーは ALWAYS の結果を閲覧できる")
+        void ac18_descendantTeamMemberCanView() {
+            stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
+            // 組織への直接所属は無い（roleByScope 空）。配下ツリーの実効ロールのみ MEMBER。
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-18: 配信されているのに結果だけ 403 になってはならない")
+                    .isTrue();
+        }
+
+        /**
+         * AC-19 — 認可が緩んでいないことの裏取り。
+         * 配下チームにも組織にも属さないユーザーは依然として不可視。
+         */
+        @Test
+        @DisplayName("AC-19: 配下でも組織でもないユーザーは依然として不可視")
+        void ac19_outsiderStillCannotView() {
+            stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-19: 下向き再帰へ開いた副作用でスコープ外に穴を開けてはならない")
+                    .isFalse();
+
+            // 別テナント（他組織）の配下メンバーであっても当該組織の結果は見えない。
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(999L), Map.of(), Map.of(999L, "ADMIN")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-19: 他組織ツリーの所属は当該組織の可視性を与えない")
+                    .isFalse();
+        }
+
+        /**
+         * AC-20 — {@code includeSupporters = false}（既定）の配信では応援者は母集団に入らないため、
+         * 中間集計も見せない。所属軸は SUPPORTER を含む（G7）ので、追加軸で MEMBER 閾値を課している。
+         */
+        @Test
+        @DisplayName("AC-20: includeSupporters=false のとき応援者は ALWAYS の結果を閲覧できない")
+        void ac20_supporterCannotViewWhenExcludedFromDistribution() {
+            stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "SUPPORTER")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-20: 配信されていない応援者に中間集計を見せてはならない")
+                    .isFalse();
+        }
+
+        /**
+         * AC-20（陽性対照）— {@code includeSupporters = true} なら応援者も配信母集団に入るため閲覧可。
+         * 「常に false」で AC-20 を通す実装を弾く。
+         */
+        @Test
+        @DisplayName("AC-20: includeSupporters=true なら応援者も閲覧できる（陽性対照）")
+        void ac20_supporterCanViewWhenIncludedInDistribution() {
+            stubOrgProjection(SurveyStatus.PUBLISHED, always(), true);
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "SUPPORTER")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-20: 配信対象に含めた応援者は閲覧できること（母集団と一致）")
+                    .isTrue();
+        }
+
+        /** AC-10 の組織版 — 昇格しても DRAFT は status 軸で弾かれ続ける。 */
+        @Test
+        @DisplayName("AC-18(境界): 組織スコープでも DRAFT は配下メンバーに不可視")
+        void ac18_draftStillInvisibleForDescendant() {
+            stubOrgProjection(SurveyStatus.DRAFT, always(), false);
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isFalse();
+        }
+
+        /** 既存 4 値は昇格の対象外（ALWAYS 固有の是正であることの裏取り）。 */
+        @Test
+        @DisplayName("AC-11(補): AFTER_CLOSE は昇格せず従来どおり（配下メンバーには不可視）")
+        void ac11_afterCloseIsNotPromoted() {
+            stubOrgProjection(SurveyStatus.PUBLISHED, ResultsVisibility.ADMINS_ONLY, false);
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("ALWAYS 以外の値の判定は一切変えない")
+                    .isFalse();
+        }
+    }
+
     // ───────────────────────── ヘルパ ─────────────────────────
 
     /** 実装前はここで {@link IllegalArgumentException} が投げられ red となる。 */
@@ -244,15 +363,37 @@ class SurveyVisibilityResolverAlwaysTest {
     private void stubProjection(SurveyStatus status, ResultsVisibility visibility, LocalDateTime expiresAt) {
         when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(new SurveyVisibilityProjection(
-                        SURVEY_ID, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, status, visibility, expiresAt)));
+                        SURVEY_ID, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, status, visibility, expiresAt, false)));
     }
 
+    /** ORGANIZATION スコープの Projection（AC-18〜20 用）。 */
+    private void stubOrgProjection(SurveyStatus status, ResultsVisibility visibility,
+                                   boolean includeSupporters) {
+        when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(new SurveyVisibilityProjection(
+                        SURVEY_ID, "ORGANIZATION", ORG_ID, AUTHOR_ID, status, visibility, null,
+                        includeSupporters)));
+    }
+
+    /**
+     * snapshot をスタブする。
+     *
+     * <p>3 引数版（direct / orgWide）と 4 引数版（＋ descendant）の<b>両方</b>を stub する。
+     * ORGANIZATION_AND_DESCENDANTS へ昇格した row があると
+     * {@code AbstractContentVisibilityResolver} は descendantScopes を伴う 4 引数版を呼ぶため、
+     * 3 引数版だけを stub すると snapshot が null になり NPE で落ちる
+     * （＝昇格が snapshot 取得<b>前</b>に効いていることの裏返しでもある）。</p>
+     */
     private void stubSnapshot(Long userId, UserScopeRoleSnapshot snapshot) {
         if (userId == null) {
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(snapshot);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet(), anySet()))
+                    .thenReturn(snapshot);
         } else {
             when(membershipBatchQueryService.snapshotForUser(eq(userId), anySet(), anySet()))
+                    .thenReturn(snapshot);
+            when(membershipBatchQueryService.snapshotForUser(eq(userId), anySet(), anySet(), anySet()))
                     .thenReturn(snapshot);
         }
     }

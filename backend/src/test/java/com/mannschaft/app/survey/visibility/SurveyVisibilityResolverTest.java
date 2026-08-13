@@ -546,7 +546,8 @@ class SurveyVisibilityResolverTest {
     private static SurveyVisibilityProjection projection(
             Long id, String scopeType, Long scopeId, Long authorUserId,
             SurveyStatus status, ResultsVisibility visibility, LocalDateTime expiresAt) {
+        // includeSupporters は ALWAYS の追加軸でのみ参照されるため、既存ケースは既定値 false でよい。
         return new SurveyVisibilityProjection(
-                id, scopeType, scopeId, authorUserId, status, visibility, expiresAt);
+                id, scopeType, scopeId, authorUserId, status, visibility, expiresAt, false);
     }
 }

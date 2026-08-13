@@ -6,6 +6,7 @@ import com.mannschaft.app.common.visibility.ContentStatus;
 import com.mannschaft.app.common.visibility.FollowBatchService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
@@ -40,8 +41,10 @@ import java.util.Objects;
  *   <li>{@link ResultsVisibility#VIEWERS_ONLY} → {@link StandardVisibility#CUSTOM}
  *       （限定リスト {@code survey_result_viewers} に登録済みのみ可視）</li>
  *   <li>{@link ResultsVisibility#ALWAYS} → {@link StandardVisibility#SCOPE_AFFILIATED}
- *       （公開後は締切前でもスコープ所属者に可視。時間条件を持たないため CUSTOM に流さない。
- *       未公開 DRAFT は status 軸で弾かれ、スコープ外は所属軸で弾かれる）</li>
+ *       （TEAM）／{@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}（ORGANIZATION・
+ *       {@link #adjustLevel} で昇格）。公開後は締切前でも<b>配信母集団と同じ範囲</b>に可視。
+ *       時間条件を持たないため CUSTOM に流さない。未公開 DRAFT は status 軸で弾かれ、
+ *       スコープ外は所属軸で弾かれる。応援者の扱いは {@link #visibleByAdditionalAxis} を参照</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>（§7.5）:</p>
@@ -125,12 +128,56 @@ public class SurveyVisibilityResolver
     @Override
     protected StandardVisibility adjustLevel(
             SurveyVisibilityProjection row, StandardVisibility level) {
-        if (level == StandardVisibility.ORGANIZATION_WIDE
-                && row.scopeType() != null
-                && "ORGANIZATION".equals(row.scopeType())) {
+        boolean organizationScope = "ORGANIZATION".equals(row.scopeType());
+        if (level == StandardVisibility.ORGANIZATION_WIDE && organizationScope) {
+            return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
+        }
+        // ALWAYS の可視範囲を配信母集団に一致させる（#2617-3 の是正）。
+        //
+        // 設計書 F05.4 の distribution_mode 備考どおり、ORGANIZATION スコープ × ALL 配信の母集団は
+        // 「組織直属メンバー ∪ 配下参加チーム（ACTIVE）のメンバー」へ再帰展開される
+        // （実装は SurveyResultService#resolveUniverseUserIds →
+        //   OrganizationMembershipService#resolveOrgDistributionUserIds）。
+        // Mapper が返す SCOPE_AFFILIATED は当該 ORG への直接所属しか見ないため、
+        // そのままでは「アンケートは届くのに ALWAYS の結果だけ 403」という食い違いが生じる。
+        // 配信 universe と評価範囲を一致させるため、下向き再帰の既存軸へ昇格する。
+        //
+        // TEAM スコープは配下展開を持たない（母集団 = user_roles の当該スコープ行）ため
+        // SCOPE_AFFILIATED のまま据え置き、従来挙動を一切変えない。
+        if (row.resultsVisibility() == ResultsVisibility.ALWAYS && organizationScope) {
             return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
         }
         return level;
+    }
+
+    /**
+     * ALWAYS の追加軸 — 応援者（SUPPORTER）の扱いを配信母集団に一致させる。
+     *
+     * <p>所属軸（{@link StandardVisibility#SCOPE_AFFILIATED} /
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}）はいずれも設計上 SUPPORTER を含む（G7）。
+     * 一方 ORGANIZATION × ALL 配信の母集団は {@code surveys.include_supporters}（既定 FALSE）で
+     * 応援者を除外する。したがって {@code includeSupporters = false} のまま所属軸だけで判定すると、
+     * <b>配信されていない応援者に中間集計が見えてしまう</b>。「配信母集団＝閲覧母集団」を不変条件として
+     * 揃えるため、その場合に限り下向き再帰ツリーでの実効ロールが MEMBER 以上であることを要求する
+     * （CMP-017b で追加された {@code hasDescendantRoleOrAbove} を再利用。独自述語は書かない）。</p>
+     *
+     * <p>TEAM スコープには適用しない。TEAM × ALL の母集団は {@code include_supporters} を参照せず
+     * {@code user_roles} の当該スコープ行すべて（応援者を含む）であり、
+     * SCOPE_AFFILIATED と既に一致しているためである（挙動を変えないことが正しい）。</p>
+     *
+     * <p>ALWAYS 以外の値は本フックでは素通しする（既存 4 値の判定は一切変えない）。</p>
+     */
+    @Override
+    protected boolean visibleByAdditionalAxis(
+            SurveyVisibilityProjection row, Long viewerUserId,
+            UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+        if (row.resultsVisibility() != ResultsVisibility.ALWAYS
+                || level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
+                || Boolean.TRUE.equals(row.includeSupporters())) {
+            return true;
+        }
+        return snapshot.hasDescendantRoleOrAbove(
+                new ScopeKey(row.scopeType(), row.scopeId()), "MEMBER");
     }
 
     @Override

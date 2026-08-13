@@ -36,11 +36,20 @@ public final class SurveyResultsVisibilityMapper {
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (限定リスト — survey_result_viewers のみ閲覧可)
             case VIEWERS_ONLY -> StandardVisibility.CUSTOM;
-            // ALWAYS は時間条件を持たない「スコープ所属者なら常時可視」であり、
-            // 標準ラダーの所属軸 SCOPE_AFFILIATED でそのまま表現できるため CUSTOM に流さない
-            // （§5.1.4「新規に初手から CUSTOM を選ばない」）。SUPPORTER を含む所属軸を採るのは
-            // 配信母集団が includeSupporters で応援者まで広がりうるためで、
-            // 「配信対象スコープの会員全員が中間集計を見られる」という設計意図と一致する。
+            // ALWAYS は時間条件を持たない「配信対象スコープの所属者なら常時可視」であり、
+            // 標準ラダーの所属軸で表現できるため CUSTOM に流さない（§5.1.4「初手から CUSTOM を選ばない」）。
+            //
+            // ここで返す SCOPE_AFFILIATED は <b>TEAM スコープの基準値</b>である。
+            // TEAM × ALL 配信の母集団は user_roles の当該スコープ行すべて
+            // （SurveyResultService#resolveUniverseUserIds → UserRoleRepository#findUserIdsByScope）であり、
+            // ロール閾値を持たない直接所属軸 = SCOPE_AFFILIATED と一致する。
+            //
+            // ORGANIZATION スコープでは配信母集団が「組織直属 ∪ 配下 ACTIVE チームのメンバー」まで
+            // 再帰展開される（設計書 F05.4 の distribution_mode 備考）ため、SCOPE_AFFILIATED（直接所属のみ）
+            // では配下チームのみ所属のユーザーに「アンケートは届くのに結果だけ 403」が生じる。
+            // その是正は scope を持つ SurveyVisibilityResolver#adjustLevel が
+            // ORGANIZATION_AND_DESCENDANTS（下向き再帰・既存軸）へ昇格させることで行う
+            // （機能側 enum は scope を持たないため、本 Mapper では表現できない）。
             case ALWAYS -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }

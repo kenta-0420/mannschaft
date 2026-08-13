@@ -101,7 +101,8 @@ public interface SurveyRepository extends JpaRepository<SurveyEntity, Long> {
                 s.createdBy,
                 s.status,
                 s.resultsVisibility,
-                s.expiresAt)
+                s.expiresAt,
+                s.includeSupporters)
             FROM SurveyEntity s
             WHERE s.id IN :ids AND s.deletedAt IS NULL
             """)
