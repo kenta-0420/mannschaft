@@ -1617,6 +1617,8 @@ public class GlobalExceptionHandler {
             Map.entry("PROPERTY_010", HttpStatus.TOO_MANY_REQUESTS),     // エクスポート頻度制限 → 429
             // F03.11 市（募集）§9.10: 表示済みキャンセル料と実額の乖離は再試算を促す 409。
             Map.entry("RECRUITMENT_308", HttpStatus.CONFLICT),           // CANCELLATION_FEE_MISMATCH → 409
+            // F03.11.1 §10.1: 徴収済み（PAID）への免除は「免除」ではなく「返金」の話であり、状態遷移違反 → 409。
+            Map.entry("RECRUITMENT_315", HttpStatus.CONFLICT),           // CANCELLATION_FEE_ALREADY_PAID → 409
             // F03.11 市（募集）ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）:
             // 募集本体・テンプレート・NO_SHOW記録・ペナルティの不在（IDOR 秘匿含む）→ 404。
             // 全 throw 元（RecruitmentListingService/RecruitmentParticipantService/
