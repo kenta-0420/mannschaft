@@ -24,8 +24,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * F00 Phase C — {@link ReferenceType#SURVEY} 用 {@link AbstractContentVisibilityResolver} 実装。
@@ -184,26 +186,75 @@ public class SurveyVisibilityResolver
      * 公開済アンケートの作成者は {@code SurveyResultService#validateResultAccess} の
      * 作成者高速パスで Resolver 自体を通らない（名簿に作成者が入らない運用でも締め出さない）。</p>
      */
+    /**
+     * 名簿判定に必要な {@code survey_targets} 所属集合を<b>バッチ 1 回につき 1 本のクエリ</b>で先読みする。
+     *
+     * <p>行ごとに {@code existsBySurveyIdAndUserId} を呼ぶと、{@code filterAccessible} に
+     * N 件渡されたとき N 本の SQL が飛び（N+1）、設計書
+     * {@code F00_content_visibility_resolver.md} §9 のバッチ SQL 本数上限・性能目標に反する。
+     * 名簿照会が必要なのは「{@code ALWAYS} かつ {@code ALL} 以外」の行だけなので、
+     * その ID を集めて 1 本の {@code WHERE survey_id IN (:ids) AND user_id = :userId} で引く。</p>
+     *
+     * <p>対象行が無ければクエリを発行しない（{@code ALL} 配信のみの一覧に本ゲートのコストを乗せない）。
+     * 未認証（{@code viewerUserId == null}）も同様にクエリ不要で、判定側が fail-closed する。</p>
+     *
+     * @return 閲覧者が配信対象である survey_id の集合（不要な場合は空集合）
+     */
     @Override
+    protected Object prepareAdditionalAxisContext(
+            List<SurveyVisibilityProjection> rows, Long viewerUserId) {
+        if (viewerUserId == null || rows == null || rows.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> rosterCheckIds = new HashSet<>();
+        for (SurveyVisibilityProjection row : rows) {
+            if (row != null && row.id() != null && requiresTargetRoster(row)) {
+                rosterCheckIds.add(row.id());
+            }
+        }
+        if (rosterCheckIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(rosterCheckIds, viewerUserId));
+    }
+
+    /**
+     * ALWAYS の追加軸判定（純メモリ。DB アクセスは
+     * {@link #prepareAdditionalAxisContext} で完了している）。
+     */
+    @Override
+    @SuppressWarnings("unchecked")
     protected boolean visibleByAdditionalAxis(
             SurveyVisibilityProjection row, Long viewerUserId,
-            UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+            UserScopeRoleSnapshot snapshot, StandardVisibility level,
+            Object additionalAxisContext) {
         if (row.resultsVisibility() != ResultsVisibility.ALWAYS) {
             return true;
         }
         // TARGETED（および distribution_mode 欠損）は名簿必須。欠損時に名簿必須へ倒すのは
         // 「母集団を確定できないなら見せない」fail-closed の徹底。
-        if (row.distributionMode() != DistributionMode.ALL) {
-            return viewerUserId != null
-                    && row.id() != null
-                    && surveyTargetRepository.existsBySurveyIdAndUserId(row.id(), viewerUserId);
+        if (requiresTargetRoster(row)) {
+            if (viewerUserId == null || row.id() == null) {
+                return false;
+            }
+            Set<Long> targetedSurveyIds = additionalAxisContext instanceof Set<?> set
+                    ? (Set<Long>) set
+                    : Set.of();
+            return targetedSurveyIds.contains(row.id());
         }
         if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
                 || Boolean.TRUE.equals(row.includeSupporters())) {
             return true;
         }
+        // 応援者除外はスナップショット上のロールで判定するため追加クエリは発生しない。
         return snapshot.hasDescendantRoleOrAbove(
                 new ScopeKey(row.scopeType(), row.scopeId()), "MEMBER");
+    }
+
+    /** 名簿照会が必要な行か（ALWAYS かつ ALL 配信以外）。 */
+    private static boolean requiresTargetRoster(SurveyVisibilityProjection row) {
+        return row.resultsVisibility() == ResultsVisibility.ALWAYS
+                && row.distributionMode() != DistributionMode.ALL;
     }
 
     @Override

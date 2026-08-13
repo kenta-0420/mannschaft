@@ -239,6 +239,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         UserScopeRoleSnapshot snapshot = buildSnapshot(
                 viewerUserId, directScopes, orgWideScopes, descendantScopes);
 
+        // 3.5) 追加軸がスナップショット外の情報を要する場合の一括取得（バッチ全体で 1 回）。
+        //      これをループ内で行うと件数比例の N+1 になり §9 の SQL 本数上限に反する。
+        Object additionalAxisContext = prepareAdditionalAxisContext(rows, viewerUserId);
+
         // 4) 各 row の判定（DB アクセスなし、純メモリ）。
         Set<Long> result = new HashSet<>();
         for (P row : rows) {
@@ -258,7 +262,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 result.add(row.id());
                 continue;
             }
-            if (!visibleByVisibility(row, viewerUserId, snapshot)) {
+            if (!visibleByVisibility(row, viewerUserId, snapshot, additionalAxisContext)) {
                 continue;
             }
             result.add(row.id());
@@ -346,7 +350,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         }
 
         // 5) visibility ガード
-        boolean allowed = visibleByVisibility(row, viewerUserId, snapshot);
+        //    単票経路でも filterAccessible と同一の追加軸コンテキストを用いる（判定の一貫性）。
+        //    rows は 1 件なので一括取得のクエリ本数は従来（行ごと 1 本）と変わらない。
+        boolean allowed = visibleByVisibility(
+                row, viewerUserId, snapshot, prepareAdditionalAxisContext(rows, viewerUserId));
         DenyReason denyReason = allowed ? null : classifyDenyReason(level, row, viewerUserId, snapshot);
         VisibilityDecision decision = decisionWithLevel(allowed, contentId, denyReason, level, null);
         recordAudit(decision, viewerUserId);
@@ -391,6 +398,12 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      * 即 true を返し、9 値の評価をスキップする。</p>
      */
     private boolean visibleByVisibility(P row, Long viewerUserId, UserScopeRoleSnapshot snapshot) {
+        return visibleByVisibility(row, viewerUserId, snapshot, null);
+    }
+
+    /** 追加軸コンテキスト付きの visibility 評価（バッチ経路から使う）。 */
+    private boolean visibleByVisibility(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
         // §15 D-13: SystemAdmin 高速パス（実存確認済の row に対して短絡）
         if (snapshot.isSystemAdmin()) {
             return true;
@@ -417,7 +430,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         }
 
         return visibleByLevel(row, viewerUserId, snapshot, level)
-                && visibleByAdditionalAxis(row, viewerUserId, snapshot, level);
+                && visibleByAdditionalAxis(row, viewerUserId, snapshot, level, additionalAxisContext);
     }
 
     /**
@@ -644,6 +657,46 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
     protected boolean visibleByAdditionalAxis(
             P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level) {
         return true;
+    }
+
+    /**
+     * 追加軸がスナップショット外の情報（名簿テーブル等）を要する場合に、
+     * <strong>バッチ 1 回につき 1 度だけ</strong>それを一括取得するためのフック。
+     *
+     * <p>設計書 §4.6 のパイプラインは「4) 各 row の判定（DB アクセスなし、純メモリ）」を要求しており、
+     * {@link #visibleByAdditionalAxis} の中で行ごとに SQL を発行すると、
+     * 件数に比例したクエリ（N+1）となり §9 のバッチ SQL 本数上限・性能目標に反する。
+     * そこで {@link #collectDirectScopes} → {@link #buildSnapshot} と同じ作法で、
+     * 判定ループに入る前に必要な集合を 1 本のクエリで引き、その結果を
+     * コンテキストオブジェクトとして {@link #visibleByAdditionalAxis(VisibilityProjection, Long,
+     * UserScopeRoleSnapshot, StandardVisibility, Object)} へ渡す。</p>
+     *
+     * <p>既定は {@code null}（追加取得なし）。スナップショットだけで判定できる追加軸
+     * （ロール閾値など）は本フックを実装する必要がない。</p>
+     *
+     * <p>戻り値は<strong>呼び出しごとのローカル値</strong>として扱われ、Resolver の
+     * インスタンスフィールドには保持されない（Resolver はシングルトンであり、
+     * フィールド保持は並行リクエスト間の汚染になる）。</p>
+     *
+     * @param rows         本バッチで判定対象となる Projection 群
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
+     * @return 追加軸判定に渡すコンテキスト（不要なら {@code null}）
+     */
+    protected Object prepareAdditionalAxisContext(List<P> rows, Long viewerUserId) {
+        return null;
+    }
+
+    /**
+     * {@link #prepareAdditionalAxisContext} が返したコンテキスト付きの追加軸評価。
+     *
+     * <p>既定実装はコンテキストを無視して 4 引数版
+     * {@link #visibleByAdditionalAxis(VisibilityProjection, Long, UserScopeRoleSnapshot, StandardVisibility)}
+     * へ委譲するため、スナップショットだけで判定する既存の実装は<strong>変更不要</strong>である。</p>
+     */
+    protected boolean visibleByAdditionalAxis(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level,
+            Object additionalAxisContext) {
+        return visibleByAdditionalAxis(row, viewerUserId, snapshot, level);
     }
 
     /** filterAccessible / decide の SQL 集計ヘルパ: 直接所属判定が必要なスコープ集合。 */

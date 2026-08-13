@@ -31,6 +31,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -377,8 +378,9 @@ class SurveyVisibilityResolverAlwaysTest {
         void ac21_nonTargetScopeMemberCannotView() {
             stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
             stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
-            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
-                    .thenReturn(false);
+            // 名簿に載っていない → 一括取得の結果に当該 survey_id が含まれない。
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-21: 配信されていない所属者に中間集計を渡してはならない")
@@ -391,8 +393,8 @@ class SurveyVisibilityResolverAlwaysTest {
         void ac22_targetUserCanView() {
             stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
             stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
-            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
-                    .thenReturn(true);
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_ID));
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-22: 配信対象者は中間集計を閲覧できること")
@@ -407,8 +409,8 @@ class SurveyVisibilityResolverAlwaysTest {
             stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
                     Map.of(), Map.of(), Set.of(), Set.of(),
                     Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
-            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
-                    .thenReturn(false);
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isFalse();
         }
@@ -433,14 +435,106 @@ class SurveyVisibilityResolverAlwaysTest {
             stubProjection(SurveyStatus.PUBLISHED, always(), LocalDateTime.now().plusDays(7));
             stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
 
-            // surveyTargetRepository は未 stub（既定 false）。ここで true になるなら
+            // surveyTargetRepository は未 stub（既定は空）。ここで true になるなら
             // ALL 経路が名簿判定へ落ちていない証拠。
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-23: ALL 配信の判定に名簿ゲートを混ぜてはならない")
                     .isTrue();
             org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
+                    .findTargetedSurveyIds(anyCollection(), org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
                     .existsBySurveyIdAndUserId(org.mockito.ArgumentMatchers.any(),
                             org.mockito.ArgumentMatchers.any());
+        }
+    }
+
+    /**
+     * 検分指摘（P2・3巡目）— 名簿判定がバッチ経路で N+1 にならないこと。
+     *
+     * <p>設計書 {@code F00_content_visibility_resolver.md} は
+     * {@code filterAccessible} の「4) 各 row の判定」を<b>DB アクセスなし・純メモリ</b>と定め、
+     * バッチ SQL の本数上限を置いている。行ごとに {@code existsBySurveyIdAndUserId} を呼ぶと
+     * 件数に比例した SQL となり本制約に反するため、
+     * {@code prepareAdditionalAxisContext} で 1 本にまとめる。</p>
+     *
+     * <p>担保する受け入れ条件: <b>AC-24</b>。</p>
+     */
+    @Nested
+    @DisplayName("AC-24: 名簿照会はバッチでも 1 本（N+1 にしない）")
+    class RosterQueryBatching {
+
+        private static final Long SURVEY_1 = 101L;
+        private static final Long SURVEY_2 = 102L;
+        private static final Long SURVEY_3 = 103L;
+
+        /** TARGETED × ALWAYS を 3 件（1 件では N+1 と一括の区別がつかない）。 */
+        private void stubThreeTargetedSurveys() {
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(
+                    targetedRow(SURVEY_1), targetedRow(SURVEY_2), targetedRow(SURVEY_3)));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+        }
+
+        private SurveyVisibilityProjection targetedRow(Long id) {
+            return new SurveyVisibilityProjection(
+                    id, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, SurveyStatus.PUBLISHED, always(), null,
+                    false, DistributionMode.TARGETED);
+        }
+
+        @Test
+        @DisplayName("AC-24: 3件を filterAccessible に渡しても名簿クエリは1本だけ")
+        void ac24_rosterQueryIsIssuedOnlyOnceForBatch() {
+            stubThreeTargetedSurveys();
+            // 名簿に載っているのは 1 件目と 3 件目。
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_1, SURVEY_3));
+
+            Set<Long> visible = resolver.filterAccessible(
+                    List.of(SURVEY_1, SURVEY_2, SURVEY_3), VIEWER_ID);
+
+            // 一括化の前後で判定結果が変わらないこと（名簿内は可視・名簿外は不可視）。
+            assertThat(visible)
+                    .as("AC-24: 一括化しても名簿判定の結果は同じであること")
+                    .containsExactlyInAnyOrder(SURVEY_1, SURVEY_3);
+
+            // 本数の固定: 一括クエリは 1 回、行ごとの exists は 0 回。
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.times(1))
+                    .findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID));
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
+                    .existsBySurveyIdAndUserId(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("AC-24: ALL 配信のみのバッチでは名簿クエリを一切発行しない")
+        void ac24_noRosterQueryWhenAllModeOnly() {
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(
+                    new SurveyVisibilityProjection(SURVEY_1, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID,
+                            SurveyStatus.PUBLISHED, always(), null, false, DistributionMode.ALL),
+                    new SurveyVisibilityProjection(SURVEY_2, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID,
+                            SurveyStatus.PUBLISHED, always(), null, false, DistributionMode.ALL)));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+
+            assertThat(resolver.filterAccessible(List.of(SURVEY_1, SURVEY_2), VIEWER_ID))
+                    .containsExactlyInAnyOrder(SURVEY_1, SURVEY_2);
+
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
+                    .findTargetedSurveyIds(anyCollection(),
+                            org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("AC-24: 単票判定（canView）でも名簿クエリは1本のまま")
+        void ac24_singleRowStillOneQuery() {
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(targetedRow(SURVEY_1)));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_1));
+
+            assertThat(resolver.canView(SURVEY_1, VIEWER_ID)).isTrue();
+
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.times(1))
+                    .findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID));
         }
     }
 
