@@ -5,11 +5,13 @@ import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
+import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +71,9 @@ class SurveyVisibilityResolverAlwaysTest {
     @Mock
     private SurveyResultViewerRepository surveyResultViewerRepository;
 
+    @Mock
+    private SurveyTargetRepository surveyTargetRepository;
+
     private SurveyVisibilityResolver resolver;
 
     private static final String SCOPE_TYPE = "TEAM";
@@ -88,7 +93,8 @@ class SurveyVisibilityResolverAlwaysTest {
                 auditLogService,
                 surveyRepository,
                 surveyResponseRepository,
-                surveyResultViewerRepository);
+                surveyResultViewerRepository,
+                surveyTargetRepository);
     }
 
     @Nested
@@ -353,6 +359,91 @@ class SurveyVisibilityResolverAlwaysTest {
         }
     }
 
+    /**
+     * 検分指摘（P1・2度目）— TARGETED 配信では対象者名簿が配信母集団そのものである。
+     *
+     * <p>{@code ALWAYS} を所属軸だけで判定すると、名簿に載っていない同一スコープの所属者にまで
+     * 中間集計が漏れる。設計書の「配信母集団＝閲覧母集団」に合わせ、名簿登録を追加軸で必須にする。</p>
+     *
+     * <p>担保する受け入れ条件: <b>AC-21 / AC-22</b>。</p>
+     */
+    @Nested
+    @DisplayName("AC-21〜22: TARGETED 配信は対象者名簿を必須にする")
+    class TargetedDistributionRoster {
+
+        /** AC-21 — スコープ所属者であっても名簿外なら不可視（漏洩の根治）。 */
+        @Test
+        @DisplayName("AC-21: 名簿外のスコープ所属者は ALWAYS の結果を閲覧できない")
+        void ac21_nonTargetScopeMemberCannotView() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
+                    .thenReturn(false);
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-21: 配信されていない所属者に中間集計を渡してはならない")
+                    .isFalse();
+        }
+
+        /** AC-22 — 名簿登録者は閲覧できる（陽性対照。「常に false」実装を弾く）。 */
+        @Test
+        @DisplayName("AC-22: 名簿登録者は ALWAYS の結果を閲覧できる（陽性対照）")
+        void ac22_targetUserCanView() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
+                    .thenReturn(true);
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-22: 配信対象者は中間集計を閲覧できること")
+                    .isTrue();
+        }
+
+        /** AC-21（組織版）— 昇格した下向き再帰軸でも名簿外は通さない。 */
+        @Test
+        @DisplayName("AC-21: 組織スコープでも名簿外の配下メンバーは不可視")
+        void ac21_orgDescendantWithoutRosterCannotView() {
+            stubTargetedProjection("ORGANIZATION", ORG_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(),
+                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+            when(surveyTargetRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
+                    .thenReturn(false);
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isFalse();
+        }
+
+        /** 未認証は名簿照合以前に fail-closed。 */
+        @Test
+        @DisplayName("AC-21: 未認証（userId=null）は TARGETED でも fail-closed")
+        void ac21_anonymousFailClosed() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(null, UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(SURVEY_ID, null)).isFalse();
+        }
+
+        /**
+         * AC-23 — ALL 配信の既存挙動が変わっていないこと。
+         * 名簿を一切引かずに（＝名簿判定へ落ちずに）所属軸だけで通ることを stub 無しで確認する。
+         */
+        @Test
+        @DisplayName("AC-23: ALL 配信は名簿を参照せず従来どおり所属者に可視")
+        void ac23_allModeUnaffectedByRosterGate() {
+            stubProjection(SurveyStatus.PUBLISHED, always(), LocalDateTime.now().plusDays(7));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+
+            // surveyTargetRepository は未 stub（既定 false）。ここで true になるなら
+            // ALL 経路が名簿判定へ落ちていない証拠。
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-23: ALL 配信の判定に名簿ゲートを混ぜてはならない")
+                    .isTrue();
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
+                    .existsBySurveyIdAndUserId(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any());
+        }
+    }
+
     // ───────────────────────── ヘルパ ─────────────────────────
 
     /** 実装前はここで {@link IllegalArgumentException} が投げられ red となる。 */
@@ -363,16 +454,26 @@ class SurveyVisibilityResolverAlwaysTest {
     private void stubProjection(SurveyStatus status, ResultsVisibility visibility, LocalDateTime expiresAt) {
         when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(new SurveyVisibilityProjection(
-                        SURVEY_ID, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, status, visibility, expiresAt, false)));
+                        SURVEY_ID, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, status, visibility, expiresAt,
+                        false, DistributionMode.ALL)));
     }
 
-    /** ORGANIZATION スコープの Projection（AC-18〜20 用）。 */
+    /** ORGANIZATION スコープ × ALL 配信の Projection（AC-18〜20 用）。 */
     private void stubOrgProjection(SurveyStatus status, ResultsVisibility visibility,
                                    boolean includeSupporters) {
         when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(new SurveyVisibilityProjection(
                         SURVEY_ID, "ORGANIZATION", ORG_ID, AUTHOR_ID, status, visibility, null,
-                        includeSupporters)));
+                        includeSupporters, DistributionMode.ALL)));
+    }
+
+    /** TARGETED 配信の Projection（AC-21/22 用）。 */
+    private void stubTargetedProjection(String scopeType, Long scopeId,
+                                        SurveyStatus status, ResultsVisibility visibility) {
+        when(surveyRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(new SurveyVisibilityProjection(
+                        SURVEY_ID, scopeType, scopeId, AUTHOR_ID, status, visibility, null,
+                        false, DistributionMode.TARGETED)));
     }
 
     /**

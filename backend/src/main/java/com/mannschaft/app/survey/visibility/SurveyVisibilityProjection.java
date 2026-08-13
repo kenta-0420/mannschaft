@@ -1,6 +1,7 @@
 package com.mannschaft.app.survey.visibility;
 
 import com.mannschaft.app.common.visibility.VisibilityProjection;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyStatus;
 
@@ -38,6 +39,10 @@ import java.time.LocalDateTime;
  *                           不変条件とするため、配信母集団の算出（{@code OrganizationMembershipService
  *                           #resolveOrgDistributionUserIds(Long, boolean)}）が参照するのと
  *                           <b>同じフラグ</b>を可視性判定でも参照する必要がある。
+ * @param distributionMode   surveys.distribution_mode（{@code null} 可 → 名簿必須の安全側で扱う）。
+ *                           {@link com.mannschaft.app.survey.DistributionMode#TARGETED} では
+ *                           配信母集団が {@code survey_targets} 名簿そのものであるため、
+ *                           {@link ResultsVisibility#ALWAYS} の可視範囲も名簿に一致させる必要がある。
  */
 public record SurveyVisibilityProjection(
         Long id,
@@ -47,7 +52,8 @@ public record SurveyVisibilityProjection(
         SurveyStatus status,
         ResultsVisibility resultsVisibility,
         LocalDateTime expiresAt,
-        Boolean includeSupporters) implements VisibilityProjection {
+        Boolean includeSupporters,
+        DistributionMode distributionMode) implements VisibilityProjection {
 
     @Override
     public Long visibilityTemplateId() {

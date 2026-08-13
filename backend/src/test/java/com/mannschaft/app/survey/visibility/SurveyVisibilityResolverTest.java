@@ -69,6 +69,9 @@ class SurveyVisibilityResolverTest {
     @Mock
     private SurveyResultViewerRepository surveyResultViewerRepository;
 
+    @Mock
+    private com.mannschaft.app.survey.repository.SurveyTargetRepository surveyTargetRepository;
+
     private VisibilityMetrics visibilityMetrics;
     private SurveyVisibilityResolver resolver;
 
@@ -83,7 +86,8 @@ class SurveyVisibilityResolverTest {
                 auditLogService,
                 surveyRepository,
                 surveyResponseRepository,
-                surveyResultViewerRepository);
+                surveyResultViewerRepository,
+                surveyTargetRepository);
     }
 
     @Test
@@ -546,8 +550,10 @@ class SurveyVisibilityResolverTest {
     private static SurveyVisibilityProjection projection(
             Long id, String scopeType, Long scopeId, Long authorUserId,
             SurveyStatus status, ResultsVisibility visibility, LocalDateTime expiresAt) {
-        // includeSupporters は ALWAYS の追加軸でのみ参照されるため、既存ケースは既定値 false でよい。
+        // includeSupporters / distributionMode は ALWAYS の追加軸でのみ参照されるため、
+        // 既存ケース（ALWAYS 以外）は既定値（false / ALL）でよい。
         return new SurveyVisibilityProjection(
-                id, scopeType, scopeId, authorUserId, status, visibility, expiresAt, false);
+                id, scopeType, scopeId, authorUserId, status, visibility, expiresAt,
+                false, com.mannschaft.app.survey.DistributionMode.ALL);
     }
 }

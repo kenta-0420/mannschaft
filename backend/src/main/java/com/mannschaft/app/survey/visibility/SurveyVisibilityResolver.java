@@ -16,6 +16,8 @@ import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
+import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -78,6 +80,7 @@ public class SurveyVisibilityResolver
     private final SurveyRepository surveyRepository;
     private final SurveyResponseRepository surveyResponseRepository;
     private final SurveyResultViewerRepository surveyResultViewerRepository;
+    private final SurveyTargetRepository surveyTargetRepository;
 
     public SurveyVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
@@ -87,12 +90,14 @@ public class SurveyVisibilityResolver
             @Autowired(required = false) AuditLogService auditLogService,
             SurveyRepository surveyRepository,
             SurveyResponseRepository surveyResponseRepository,
-            SurveyResultViewerRepository surveyResultViewerRepository) {
+            SurveyResultViewerRepository surveyResultViewerRepository,
+            SurveyTargetRepository surveyTargetRepository) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.surveyRepository = surveyRepository;
         this.surveyResponseRepository = surveyResponseRepository;
         this.surveyResultViewerRepository = surveyResultViewerRepository;
+        this.surveyTargetRepository = surveyTargetRepository;
     }
 
     @Override
@@ -151,28 +156,49 @@ public class SurveyVisibilityResolver
     }
 
     /**
-     * ALWAYS の追加軸 — 応援者（SUPPORTER）の扱いを配信母集団に一致させる。
+     * ALWAYS の追加軸 — 可視範囲を {@code distribution_mode} 別の配信母集団に厳密に一致させる。
      *
      * <p>所属軸（{@link StandardVisibility#SCOPE_AFFILIATED} /
-     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}）はいずれも設計上 SUPPORTER を含む（G7）。
-     * 一方 ORGANIZATION × ALL 配信の母集団は {@code surveys.include_supporters}（既定 FALSE）で
-     * 応援者を除外する。したがって {@code includeSupporters = false} のまま所属軸だけで判定すると、
-     * <b>配信されていない応援者に中間集計が見えてしまう</b>。「配信母集団＝閲覧母集団」を不変条件として
-     * 揃えるため、その場合に限り下向き再帰ツリーでの実効ロールが MEMBER 以上であることを要求する
-     * （CMP-017b で追加された {@code hasDescendantRoleOrAbove} を再利用。独自述語は書かない）。</p>
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}）は「スコープに居るか」しか答えられず、
+     * 配信母集団の 2 つの絞り込み（対象者名簿・応援者除外）を表現できない。そのままでは
+     * <b>配信されていない者に中間集計が見えてしまう</b>ため、本フックで母集団と揃える。
+     * 判定述語は配信母集団を算出している既存実装
+     * （{@code SurveyResultService#resolveUniverseUserIds} /
+     * {@code #isUserInUniverse}）と同一のものを再利用し、独自述語は書かない。</p>
      *
-     * <p>TEAM スコープには適用しない。TEAM × ALL の母集団は {@code include_supporters} を参照せず
-     * {@code user_roles} の当該スコープ行すべて（応援者を含む）であり、
-     * SCOPE_AFFILIATED と既に一致しているためである（挙動を変えないことが正しい）。</p>
+     * <ul>
+     *   <li><b>TARGETED</b>: 母集団は {@code survey_targets} 名簿そのもの。よって名簿登録を必須にする
+     *       （{@code SurveyTargetRepository#existsBySurveyIdAndUserId} — 回答時の関所
+     *       {@code SurveyResponseService} と同じ述語）。スコープ所属だけでは通さない。</li>
+     *   <li><b>ALL × ORGANIZATION</b>: 母集団は {@code include_supporters}（既定 FALSE）で応援者を除外する。
+     *       所属軸は G7 により SUPPORTER を含むため、除外時は下向き再帰ツリーでの実効ロールが
+     *       MEMBER 以上であることを要求する（CMP-017b の {@code hasDescendantRoleOrAbove} を再利用）。</li>
+     *   <li><b>ALL × TEAM</b>: 母集団は {@code include_supporters} を参照せず {@code user_roles} の
+     *       当該スコープ行すべて（応援者を含む）であり SCOPE_AFFILIATED と既に一致するため、
+     *       追加の条件を課さない（挙動を変えないことが正しい）。</li>
+     * </ul>
      *
-     * <p>ALWAYS 以外の値は本フックでは素通しする（既存 4 値の判定は一切変えない）。</p>
+     * <p>ALWAYS 以外の値は本フックでは素通しする（既存 4 値の判定は一切変えない）。
+     * なお SystemAdmin と DRAFT の作成者本人は本フックに到達する前に
+     * {@code AbstractContentVisibilityResolver#visibleByVisibility} で短絡され、
+     * 公開済アンケートの作成者は {@code SurveyResultService#validateResultAccess} の
+     * 作成者高速パスで Resolver 自体を通らない（名簿に作成者が入らない運用でも締め出さない）。</p>
      */
     @Override
     protected boolean visibleByAdditionalAxis(
             SurveyVisibilityProjection row, Long viewerUserId,
             UserScopeRoleSnapshot snapshot, StandardVisibility level) {
-        if (row.resultsVisibility() != ResultsVisibility.ALWAYS
-                || level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
+        if (row.resultsVisibility() != ResultsVisibility.ALWAYS) {
+            return true;
+        }
+        // TARGETED（および distribution_mode 欠損）は名簿必須。欠損時に名簿必須へ倒すのは
+        // 「母集団を確定できないなら見せない」fail-closed の徹底。
+        if (row.distributionMode() != DistributionMode.ALL) {
+            return viewerUserId != null
+                    && row.id() != null
+                    && surveyTargetRepository.existsBySurveyIdAndUserId(row.id(), viewerUserId);
+        }
+        if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
                 || Boolean.TRUE.equals(row.includeSupporters())) {
             return true;
         }
