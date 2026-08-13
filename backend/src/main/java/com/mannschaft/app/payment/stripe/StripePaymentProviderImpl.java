@@ -762,6 +762,36 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public PaymentIntentInfo captureManualPaymentIntent(
+            String paymentIntentId, long amountToCaptureMinor,
+            Long applicationFeeAmountMinor, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+
+            // amount_to_capture は与信額以下でなければならない（overcapture は使わない・設計書 F03.11.1 §4.1-3）。
+            // final_capture は既定の true のままとし、残額は Stripe に自動解放させる（§4.1-1・取消 API を別途呼ばない）。
+            PaymentIntentCaptureParams.Builder params = PaymentIntentCaptureParams.builder()
+                    .setAmountToCapture(amountToCaptureMinor);
+            if (applicationFeeAmountMinor != null) {
+                // 運営手数料はキャプチャ額に対して上書きする（A_eff = min(A, F)・§3.5.3）。
+                // Stripe 側もキャプチャ額を上限に丸めるため二重に安全である。
+                params.setApplicationFeeAmount(applicationFeeAmountMinor);
+            }
+
+            PaymentIntent captured = intent.capture(params.build(), options);
+            log.info("Stripe PaymentIntent 部分 capture 確定: id={}, status={}, amount={}, applicationFee={}",
+                    captured.getId(), captured.getStatus(), amountToCaptureMinor, applicationFeeAmountMinor);
+            return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent 部分 capture 失敗: id={}, amount={}", paymentIntentId, amountToCaptureMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
     public PaymentIntentInfo retrievePaymentIntentClientSecret(String paymentIntentId) {
         try {
             PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);

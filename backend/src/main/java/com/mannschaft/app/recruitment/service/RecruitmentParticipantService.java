@@ -24,6 +24,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRe
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.event.RecruitmentCancellationFeeChargeRequestedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -127,8 +128,12 @@ public class RecruitmentParticipantService {
         }
 
         // §5.2 step5 (Phase 5a) 未払いキャンセル料チェック
+        // UNCOLLECTIBLE（F03.11.1 §5.3）はリトライを打ち切った状態であり、未払いであることに変わりはない。
+        // これを対象から外すと「徴収の試行が尽きるまで待てば申込制限が消える」経路が残ってしまう。
+        // 判定はユーザー単位であり、1 件でも該当があれば拒否する（免除の効き方は F03.11.1 §10.0）。
         boolean hasUnpaid = cancellationRecordRepository.existsByUserIdAndPaymentStatusIn(
-                userId, List.of(CancellationPaymentStatus.PENDING, CancellationPaymentStatus.FAILED));
+                userId, List.of(CancellationPaymentStatus.PENDING, CancellationPaymentStatus.FAILED,
+                        CancellationPaymentStatus.UNCOLLECTIBLE));
         if (hasUnpaid) {
             throw new BusinessException(RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED);
         }
@@ -282,7 +287,8 @@ public class RecruitmentParticipantService {
                 .build());
 
         // §5.9 キャンセル記録 (Phase 5a)
-        cancellationRecordRepository.save(RecruitmentCancellationRecordEntity.builder()
+        RecruitmentCancellationRecordEntity cancellationRecord =
+                cancellationRecordRepository.save(RecruitmentCancellationRecordEntity.builder()
                 .participantId(participant.getId())
                 .listingId(listingId)
                 .userId(userId)
@@ -312,6 +318,21 @@ public class RecruitmentParticipantService {
         if (wasConfirmed) {
             RecruitmentListingEntity reloadedForPromotion = listingRepository.findByIdForUpdate(listingId).orElseThrow();
             promoteFromWaitlistIfPossible(reloadedForPromotion);
+        }
+
+        // F03.11.1 §3.3 ステップ 1: キャンセル料の徴収要求を発火する。
+        //
+        // 徴収そのものはここで行わない。キャンセルは利用者の意思表示であり、この時点で枠の復帰・
+        // キャンセル待ちの昇格が既に走っている。決済の失敗でそれらを巻き戻すと整合が壊れるため、
+        // 徴収は本トランザクションのコミット後（AFTER_COMMIT）に非同期で走らせる（§3.1-1 / §3.1-2）。
+        // したがってキャンセル API のレスポンスに決済の成否は乗らず、記録の paymentStatus として後から反映される。
+        //
+        // 与信は個人申込にしか立たないため（RecruitmentChargeAuthorizationListener の発火条件）、
+        // チーム申込では徴収要求も出さない（§8）。
+        boolean isUserApplication = participant.getParticipantType() == RecruitmentParticipantType.USER;
+        if (fee.feeAmount() > 0 && isUserApplication) {
+            eventPublisher.publishEvent(new RecruitmentCancellationFeeChargeRequestedEvent(
+                    cancellationRecord.getId(), listingId, participant.getId(), userId, fee.feeAmount()));
         }
 
         log.info("F03.11 本人キャンセル: listingId={}, userId={}, fee={}",

@@ -281,11 +281,9 @@ public interface StripePaymentProvider {
      * @param idempotencyKey            冪等性キー（{@code canfee-{cancellationRecordId}}・§7.1）
      * @return capture 後の PaymentIntent 情報（id / clientSecret / status）
      */
-    default PaymentIntentInfo captureManualPaymentIntent(
+    PaymentIntentInfo captureManualPaymentIntent(
             String paymentIntentId, long amountToCaptureMinor,
-            Long applicationFeeAmountMinor, String idempotencyKey) {
-        throw new UnsupportedOperationException("F03.11.1 部分キャプチャは第四陣で実装");
-    }
+            Long applicationFeeAmountMinor, String idempotencyKey);
 
     /**
      * 既存 PaymentIntent を retrieve し、支払者本人へ返すための {@code clientSecret} を取得する

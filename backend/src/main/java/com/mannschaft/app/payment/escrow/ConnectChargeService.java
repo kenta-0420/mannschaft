@@ -73,6 +73,9 @@ public class ConnectChargeService {
     /** TEAM/ORG scope ADMIN 判定に用いる権限名（Connect onboarding と同等の管理権限）。 */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
+    /** F03.11.1 キャンセル料の差額返金に用いる返金理由（設計書 §3.5 末尾）。 */
+    private static final String CANCELLATION_REFUND_REASON = "cancellation";
+
     private final EscrowTransactionRepository escrowTransactionRepository;
     private final ConnectAccountRepository connectAccountRepository;
     private final PaymentFeeCalculator paymentFeeCalculator;
@@ -1047,9 +1050,6 @@ public class ConnectChargeService {
 
     // ==========================================================================
     // F03.11.1 募集キャンセル料の徴収（設計書 F03.11.1_cancellation_fee_payment.md §3.4 / §10.2）
-    //
-    // 本節の 2 メソッドは第三陣（試練）が受け入れ条件から red テストを起こすために置いた
-    // 入口の宣言である。中身は第四陣（出陣）で実装する。
     // ==========================================================================
 
     /**
@@ -1074,7 +1074,190 @@ public class ConnectChargeService {
     public SettleCancellationFeeResult settleCancellationFee(
             EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId,
             long cancellationFeeMinor, String idempotencyRef) {
-        throw new UnsupportedOperationException("F03.11.1 settleCancellationFee は第四陣で実装");
+
+        // 三つ組で与信を引き当てる（§2.2・新しい引き当て用の列は設けない）。
+        var found = escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
+                sourceKind, sourceId, sourceParticipantId);
+        if (found.isEmpty()) {
+            // 与信レコードが無いことは異常ではなく想定内の状態である（謝礼無効の札・チーム申込等・§6.3）。
+            log.info("キャンセル料の徴収: 与信レコードが存在しないため徴収不能: sourceId={}, participantId={}",
+                    sourceId, sourceParticipantId);
+            return notCollectible(cancellationFeeMinor);
+        }
+
+        // 行ロック下で状態を再検査する（第 2 層の冪等・§7.2）。引き当て時点の状態を信用しない。
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(found.get().getId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        return switch (escrow.getStatus()) {
+            case AUTHORIZED -> capturePartialCancellationFee(escrow, cancellationFeeMinor, idempotencyRef);
+            // 部分キャプチャ済み（本メソッドの再入）も含め、確定後は差額返金経路が受け持つ。
+            case CAPTURED, PARTIALLY_REFUNDED ->
+                    refundCancellationFeeDifference(escrow, cancellationFeeMinor, idempotencyRef);
+            // DEFERRED / HELD / PENDING_CONFIRMATION / CANCELLED / REFUNDED 等はカード上のホールドが無く、
+            // 徴収の手段そのものが存在しない。500 にせず徴収不能として正直に返す（§6.3・AC-11/AC-12）。
+            default -> {
+                log.info("キャンセル料の徴収: 与信が使える状態にないため徴収不能: escrowId={}, status={}",
+                        escrow.getId(), escrow.getStatus());
+                yield notCollectible(cancellationFeeMinor);
+            }
+        };
+    }
+
+    /** 徴収不能（与信が無い／使えない）の結果を組み立てる。 */
+    private SettleCancellationFeeResult notCollectible(long cancellationFeeMinor) {
+        return new SettleCancellationFeeResult(
+                SettleCancellationFeeOutcome.NOT_COLLECTIBLE, null, cancellationFeeMinor);
+    }
+
+    /**
+     * 部分キャプチャ経路（与信のみ・§3.2 / §3.5.3）。
+     *
+     * <p>与信のうちキャンセル料 {@code F} の額だけを確定し、残額は Stripe が自動解放する（§4.1-1）。
+     * 解放のための API は呼ばない（呼ぶと二重操作になる）。運営手数料は {@code A_eff = min(A, F)} で
+     * 明示的に上書きし、主催者の取り分から差し引く（利用者へ上乗せしない・§3.5.2）。</p>
+     */
+    private SettleCancellationFeeResult capturePartialCancellationFee(
+            EscrowTransactionEntity escrow, long feeMinor, String idempotencyRef) {
+
+        if (escrow.getStripePaymentIntentId() == null) {
+            // AUTHORIZED なのに PI が無いのは整合性異常。症状を隠さず徴収不能として上へ返す。
+            log.warn("AUTHORIZED だが PaymentIntent 未設定（異常）。キャンセル料を徴収できない: escrowId={}", escrow.getId());
+            return notCollectible(feeMinor);
+        }
+
+        long applicationFee = escrow.getApplicationFeeAmount();
+        long effectiveFee = Math.min(applicationFee, feeMinor);
+
+        // 冪等キーはキャンセル記録 ID という不変な識別子から導く（§7.1）。
+        // 呼び出しのたびに変わりうる値（返金件数・retryCount・時刻）を混ぜた瞬間にこの層は無効化される。
+        StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.captureManualPaymentIntent(
+                escrow.getStripePaymentIntentId(), feeMinor, effectiveFee, "canfee-" + idempotencyRef);
+
+        // 実際に確定したのは与信額の全部ではなくキャンセル料 F であり、残額は解放されて課金されない。
+        // よって escrow が保持する「支払者の請求額」と「運営手数料」を実額（F / A_eff）へ書き換える。
+        //
+        // これは記録の正確さのためだけではない。書き換えないと escrow は「10,250 円を請求した」と言い続け、
+        // 以後この escrow に対する返金の残額計算がすべて実態とずれる。とりわけ本メソッドが再入したとき、
+        // 確定済み（CAPTURED）として差額返金経路へ入り、既に解放済みの残額を「返金すべき差額」と誤認して
+        // 二重に金を動かそうとする。実額へ寄せておけば R = C − F = 0 となり、再入は自然に no-op になる。
+        escrow.setAmount(feeMinor);
+        escrow.setApplicationFeeAmount(effectiveFee);
+        escrow.setStatus(EscrowStatus.CAPTURED);
+        escrow.setCapturedAt(LocalDateTime.now());
+        escrowTransactionRepository.save(escrow);
+
+        // 複式記帳: 確定額 F を ESCROW に借方計上し、主催者の取り分（F − A_eff）と運営の取り分（A_eff）を貸方計上する。
+        LedgerEntryBuilder builder = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
+                .debit(LedgerEntryType.CAPTURE, LedgerAccount.ESCROW, feeMinor, pi.paymentIntentId());
+        long payeeShare = feeMinor - effectiveFee;
+        if (payeeShare > 0L) {
+            builder.credit(LedgerEntryType.TRANSFER_OUT, LedgerAccount.PAYEE, payeeShare, pi.paymentIntentId());
+        }
+        if (effectiveFee > 0L) {
+            builder.credit(LedgerEntryType.FEE, LedgerAccount.PLATFORM_FEE, effectiveFee, pi.paymentIntentId());
+        }
+        ledgerEntryRepository.saveAll(builder.build());
+
+        log.info("キャンセル料を部分キャプチャで徴収: escrowId={}, piId={}, F={}, A_eff={}, 主催者={}",
+                escrow.getId(), pi.paymentIntentId(), feeMinor, effectiveFee, payeeShare);
+        return new SettleCancellationFeeResult(
+                SettleCancellationFeeOutcome.CAPTURED_PARTIAL, pi.paymentIntentId(), 0L);
+    }
+
+    /**
+     * 差額返金経路（確定済み・§3.2 / §3.5.4）。
+     *
+     * <p>参加費は既に主催者へ渡っている。<b>支払者請求額基準</b>で {@code R = C − F} を支払者へ戻すと、
+     * 利用者の負担は {@code C − R = F} となり部分キャプチャ経路と必ず一致する（AC-30）。
+     * 主催者手取り基準（{@code T − F}）では利用者が参加費全体にかかった運営手数料まで負担してしまう。</p>
+     *
+     * <p><b>配分の実現</b>: 送金の巻き戻し額を {@code min(R, T)} にすることで、{@code A_eff = min(A, F)} の
+     * 配分が {@code refund_application_fee=false} のまま両ケースで成立する（後述の検算を参照）。
+     * 運営手数料の「一部だけを返す」指定は不要である。</p>
+     *
+     * <ul>
+     *   <li>{@code F ≥ A}（通常）: {@code R = C − F ≤ T} ゆえ巻き戻しは {@code R}。
+     *       主催者 {@code T − R = F − A}、運営 {@code A + R − R = A = A_eff}。既存モードA と同一の組み立て。</li>
+     *   <li>{@code F < A}: {@code R > T} ゆえ巻き戻しは {@code T}（全額）。
+     *       主催者 {@code 0 = F − A_eff}、運営 {@code A + T − R = C − R = F = A_eff}。
+     *       運営手数料は返さないまま、差額が運営に残ることで配分が成立する。</li>
+     * </ul>
+     */
+    private SettleCancellationFeeResult refundCancellationFeeDifference(
+            EscrowTransactionEntity escrow, long feeMinor, String idempotencyRef) {
+
+        String paymentIntentId = escrow.getStripePaymentIntentId();
+        if (paymentIntentId == null) {
+            log.warn("確定済みだが PaymentIntent 未設定（異常）。キャンセル料を徴収できない: escrowId={}", escrow.getId());
+            return notCollectible(feeMinor);
+        }
+
+        long chargeAmount = escrow.getAmount();
+        long transferAmount = chargeAmount - escrow.getApplicationFeeAmount();
+        long alreadyRefunded = sumRefundedTransferAmount(escrow.getId());
+        long refundAmount = chargeAmount - feeMinor;
+
+        // R ≤ 0（キャンセル料が請求額と同額以上）は「戻す額が無い」だけであり徴収は成立している。
+        // 既存 refund() は refundAmount <= 0 を例外にするため、ここで Stripe を呼んではならない（AC-26）。
+        if (refundAmount <= 0L) {
+            log.info("キャンセル料が請求額に達しており返金不要（Stripe を呼ばない）: escrowId={}, C={}, F={}",
+                    escrow.getId(), chargeAmount, feeMinor);
+            return new SettleCancellationFeeResult(SettleCancellationFeeOutcome.NO_OP, paymentIntentId, 0L);
+        }
+
+        // 第 2 層の冪等: 既に戻し切っている分を差し引いた残額を超える返金は行わない（§7.2・AC-23(2)）。
+        long residual = chargeAmount - alreadyRefunded;
+        if (refundAmount > residual) {
+            log.info("キャンセル料の差額返金は既に済んでいる（冪等・no-op）: escrowId={}, R={}, 残額={}",
+                    escrow.getId(), refundAmount, residual);
+            return new SettleCancellationFeeResult(SettleCancellationFeeOutcome.NO_OP, paymentIntentId, 0L);
+        }
+
+        String transferId = stripePaymentProvider.resolveTransferIdFromPaymentIntent(paymentIntentId);
+        if (transferId == null) {
+            // 確定済みなのに送金が解決できないのは整合性異常。症状を隠さず 409 で拒否する（既存 refund と同じ流儀）。
+            log.warn("確定済みだが Transfer 未解決（異常）。キャンセル料を徴収できない: escrowId={}", escrow.getId());
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        // 巻き戻しと返金で冪等キーを分けるのは、同一キーを引数の異なる別々の呼び出しに使い回さないためである
+        // （既存実装が "reversal-" と "refund-" を分けているのと同じ理由・§7.1）。
+        long reversalAmount = Math.min(refundAmount, transferAmount);
+        stripePaymentProvider.reverseTransfer(transferId, reversalAmount, "canfee-reversal-" + idempotencyRef);
+
+        StripePaymentProvider.ConnectRefundInfo refundInfo = stripePaymentProvider.createConnectRefund(
+                paymentIntentId, refundAmount, CANCELLATION_REFUND_REASON, false, false,
+                "canfee-refund-" + idempotencyRef);
+
+        refundRepository.save(RefundEntity.builder()
+                .escrowTransactionId(escrow.getId())
+                .stripeRefundId(refundInfo.refundId())
+                .amount(refundAmount)
+                .currency(escrow.getCurrency())
+                .reason(CANCELLATION_REFUND_REASON)
+                .status(RefundStatus.PENDING)
+                .build());
+
+        long newTotal = alreadyRefunded + refundAmount;
+        escrow.setStatus(newTotal >= chargeAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED);
+        escrowTransactionRepository.save(escrow);
+
+        // 複式記帳: 支払者へ戻る R（C PAYER）の原資は、主催者からの巻き戻し（D PAYEE）と、
+        // 巻き戻しで足りない分を運営手数料から充てる額（D PLATFORM_FEE）である。借貸は一致する。
+        LedgerEntryBuilder builder = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
+                .debit(LedgerEntryType.REFUND, LedgerAccount.PAYEE, reversalAmount, refundInfo.refundId());
+        long platformShare = refundAmount - reversalAmount;
+        if (platformShare > 0L) {
+            builder.debit(LedgerEntryType.REFUND, LedgerAccount.PLATFORM_FEE, platformShare, refundInfo.refundId());
+        }
+        builder.credit(LedgerEntryType.REFUND, LedgerAccount.PAYER, refundAmount, refundInfo.refundId());
+        ledgerEntryRepository.saveAll(builder.build());
+
+        log.info("キャンセル料を差額返金で徴収: escrowId={}, refundId={}, C={}, F={}, R={}, 巻き戻し={}",
+                escrow.getId(), refundInfo.refundId(), chargeAmount, feeMinor, refundAmount, reversalAmount);
+        return new SettleCancellationFeeResult(
+                SettleCancellationFeeOutcome.REFUNDED_DIFFERENCE, refundInfo.refundId(), 0L);
     }
 
     /**
@@ -1092,7 +1275,41 @@ public class ConnectChargeService {
     @Transactional(readOnly = true)
     public boolean isPayeeSettlementManager(
             EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId, Long actorUserId) {
-        throw new UnsupportedOperationException("F03.11.1 isPayeeSettlementManager は第四陣で実装");
+
+        if (actorUserId == null) {
+            return false;
+        }
+        var found = escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
+                sourceKind, sourceId, sourceParticipantId);
+        if (found.isEmpty()) {
+            // 受取先が特定できない以上、受取先側の権限は誰にも与えられない（運営のみが免除できる状態）。
+            return false;
+        }
+        var payeeAccount = connectAccountRepository.findById(found.get().getPayeeConnectAccountId());
+        if (payeeAccount.isEmpty()) {
+            return false;
+        }
+        ConnectAccountEntity payee = payeeAccount.get();
+
+        // 個人受領（payeeKind=USER）は本人固定。既存 authorizePayeeAdmin が対象外にしているため本判定で新たに定義する（§10.2）。
+        if (payee.getScopeKind() == ScopeKind.USER) {
+            return actorUserId.equals(payee.getScopeId());
+        }
+        try {
+            switch (payee.getScopeKind()) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payee.getScopeKind()), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payee.getScopeKind()), PERMISSION_MANAGE_PAYMENT);
+                default -> {
+                    return false;
+                }
+            }
+            return true;
+        } catch (BusinessException e) {
+            // 権限が無いことは真偽値で返す（例外を呼び出し側へ漏らさない）。判定であって認可の実行ではない。
+            return false;
+        }
     }
 
     /**

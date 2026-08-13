@@ -36,10 +36,9 @@ import static org.mockito.Mockito.verify;
  * <p>本クラスは実装より前に書かれた red テストである。徴収の入口は宣言だけが置かれており、
  * 中身は第四陣で実装される。</p>
  *
- * <p><b>設計書内の食い違いについて</b>: §11.1 の AC-22 補足は返金額を「transferAmount − キャンセル料」と
- * 書いているが、これは R-3 時点の記述であり、後の R-2 御裁可（§3.5.4・変更履歴 2026-08-13）で
- * 「支払者請求額基準 {@code R = C − F}」へ是正されている。利用者の負担を両経路で揃える（AC-30）ためには
- * {@code R = C − F} でなければ成立しないため、本テストは §3.5.4 に従う。</p>
+ * <p><b>返金額の基準</b>: {@code R = C − F}（支払者請求額基準・§3.5.4）である。主催者手取り
+ * （{@code transferAmount}）基準ではない——その基準では利用者の負担が {@code F} にならず AC-30
+ * （両経路で利用者の負担がキャンセル料と一致する）が成立しない。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("F03.11.1 ConnectChargeService.settleCancellationFee 試練")
@@ -96,10 +95,20 @@ class ConnectChargeServiceSettleCancellationFeeTest {
 
     /** 三つ組での引き当てと行ロック取得の双方に同じ escrow を返す（実装は必ず行ロック下で状態を再検査する）。 */
     private void givenEscrow(EscrowTransactionEntity e) {
+        givenEscrowWithoutSave(e);
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+    }
+
+    /**
+     * 引き当てと行ロック取得だけを用意する（保存はスタブしない）。
+     *
+     * <p>徴収が no-op に終わるケースでは escrow の状態が変わらないため保存も起きない。
+     * そのようなケースで {@code save} をスタブすると未使用スタブになる。</p>
+     */
+    private void givenEscrowWithoutSave(EscrowTransactionEntity e) {
         given(escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
                 EscrowSourceKind.RECRUITMENT, LISTING_ID, PARTICIPANT_ID)).willReturn(Optional.of(e));
         given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(e));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
     }
 
     private SettleCancellationFeeResult settle(ConnectChargeService svc, long fee) {
@@ -258,13 +267,10 @@ class ConnectChargeServiceSettleCancellationFeeTest {
     void ac23_secondRefundRejectedByResidualCheck() {
         ConnectChargeService svc = service();
         EscrowTransactionEntity captured = escrow(EscrowStatus.CAPTURED);
-        givenEscrow(captured);
-        given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
-        given(stripePaymentProvider.resolveTransferIdFromPaymentIntent("pi_abc")).willReturn("tr_abc");
-        given(stripePaymentProvider.createConnectRefund(
-                anyString(), anyLong(), anyString(), org.mockito.ArgumentMatchers.anyBoolean(),
-                org.mockito.ArgumentMatchers.anyBoolean(), anyString()))
-                .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_abc", "pending"));
+        givenEscrowWithoutSave(captured);
+        // Stripe 側（reverseTransfer / createConnectRefund）と台帳・escrow 保存はいずれもスタブしない。
+        // 本ケースの主張は「そこへ到達しないこと」であり、到達しない呼び出しをスタブすると
+        // Mockito の strict stubs が未使用スタブとして検出する（＝主張と矛盾する）。
         // 1回目の返金行が残っている状態を返す（残額計算の第 2 層・§7.2）。
         long alreadyRefunded = CHARGE_AMOUNT - CANCELLATION_FEE;
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID))
@@ -290,7 +296,8 @@ class ConnectChargeServiceSettleCancellationFeeTest {
     @DisplayName("AC-26: キャンセル料と請求額が同額なら返金額 0 となり、返金 API を無駄に呼ばない")
     void ac26_zeroRefund_doesNotCallStripe() {
         ConnectChargeService svc = service();
-        givenEscrow(escrow(EscrowStatus.CAPTURED));
+        // 返金額 0 では escrow の状態が変わらないため保存も起きない（save はスタブしない）。
+        givenEscrowWithoutSave(escrow(EscrowStatus.CAPTURED));
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(Collections.emptyList());
 
         SettleCancellationFeeResult result = settle(svc, CHARGE_AMOUNT);
