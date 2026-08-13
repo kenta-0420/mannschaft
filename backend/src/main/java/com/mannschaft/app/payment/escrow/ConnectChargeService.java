@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1408,6 +1409,66 @@ public class ConnectChargeService {
             }
         });
         return allowed;
+    }
+
+    /**
+     * 操作者が受取先側の精算管理者である取引の {@code source_id} を<b>すべて</b>返す。
+     *
+     * <p><b>用途</b>: 一覧の事前絞り込みを<b>権威（escrow）から導出する</b>ため。呼び出し側が
+     * 自分のドメインの可変な列（例: {@code recruitment_listings.payee_kind}）で候補を絞ると、
+     * その列を後から変更した瞬間に<b>本来の債権者が自分の記録を見失う</b>
+     * （逆に、変更後の受取先へ他人の記録が漏れる）。事前絞り込みは
+     * 「権威ある集合の<b>上位集合</b>」でなければ安全ではなく、それを保証できるのは escrow 側だけである。</p>
+     *
+     * <p>返すのは {@code source_id} の集合のみで、参加者単位の最終判定は
+     * {@link #filterPayeeSettlementManaged} が行う（同一募集でも参加者ごとに escrow は別行のため）。</p>
+     *
+     * @param sourceKind  引き当ての種別
+     * @param actorUserId 操作者ユーザー ID
+     * @return 操作者が受取先側の精算管理者である取引の {@code source_id}（該当なしなら空集合）
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> findSourceIdsWithPayeeSettlementManaged(EscrowSourceKind sourceKind, Long actorUserId) {
+        if (actorUserId == null) {
+            return Set.of();
+        }
+        List<ConnectAccountEntity> managedAccounts = new ArrayList<>(
+                // 個人受領は本人固定（scopeId == actorUserId）。
+                connectAccountRepository.findByScopeKindAndScopeIdInAndDeletedAtIsNull(
+                        ScopeKind.USER, Set.of(actorUserId)));
+
+        // TEAM/ORG は操作者の所属スコープを候補にし、口座ごとの判定で絞る
+        // （判定は isActorManagerOfPayeeAccount＝1 件版・一括版と同一の実装）。
+        collectManagedAccounts(managedAccounts, ScopeKind.TEAM, actorUserId);
+        collectManagedAccounts(managedAccounts, ScopeKind.ORG, actorUserId);
+
+        if (managedAccounts.isEmpty()) {
+            return Set.of();
+        }
+        Set<UUID> accountIds = managedAccounts.stream()
+                .map(ConnectAccountEntity::getId)
+                .collect(Collectors.toSet());
+        return Set.copyOf(escrowTransactionRepository
+                .findSourceIdsBySourceKindAndPayeeConnectAccountIdIn(sourceKind, accountIds));
+    }
+
+    /**
+     * 候補スコープ（操作者の所属）の口座を引き、操作者が精算管理者であるものだけを {@code target} に足す。
+     *
+     * <p>候補件数は操作者の所属数に依存し、取引件数には依存しない。</p>
+     */
+    private void collectManagedAccounts(List<ConnectAccountEntity> target, ScopeKind scopeKind, Long actorUserId) {
+        Set<Long> candidateScopeIds = accessControlService.findAffiliatedScopeIds(
+                actorUserId, payeeScopeResolver.toAccessControlScopeType(scopeKind));
+        if (candidateScopeIds == null || candidateScopeIds.isEmpty()) {
+            return;
+        }
+        for (ConnectAccountEntity account : connectAccountRepository
+                .findByScopeKindAndScopeIdInAndDeletedAtIsNull(scopeKind, candidateScopeIds)) {
+            if (isActorManagerOfPayeeAccount(account, actorUserId)) {
+                target.add(account);
+            }
+        }
     }
 
     /**

@@ -8,7 +8,6 @@ import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowSourceRef;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
-import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSlice;
 import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
@@ -43,10 +42,12 @@ import java.util.Set;
  * 見えてしまう。判定は免除 API が使う {@code isPayeeSettlementManager} と<b>同一の実装</b>
  * （payment 側で共通化済み）を通るため、閲覧と実行で判断が割れることはない。</p>
  *
- * <p>listing ベースの絞り込みは<b>安価な事前絞り込みとして残している</b>
- * （{@code RecruitmentCancellationRecordRepository#findChunkOfPayeeCandidates}）。
- * これは権威ある判定へ渡す候補を DB 側で安く減らす<b>最適化であって権威ではない</b>。
- * 事前絞り込みを通った行も、最後は必ず escrow 基準の判定で絞られる。</p>
+ * <p>事前絞り込み（{@code findChunkOfPayeeCandidates}）は残しているが、<b>その候補集合も
+ * escrow から導出する</b>（{@code ConnectChargeService#findSourceIdsWithPayeeSettlementManaged}）。
+ * listing の可変な受取先で候補を絞ってはならない——絞ると、受取先を差し替えた瞬間に
+ * <b>本来の債権者が自分の記録を見失う</b>。事前絞り込みは「権威ある集合を必ず包含する」
+ * ことが安全の条件であり、それを満たせるのは escrow 側だけである。
+ * 事前絞り込みは<b>最適化であって権威ではない</b>ため、参加者単位の最終判定は必ず別途行う。</p>
  *
  * <h2>ドメイン境界</h2>
  *
@@ -82,9 +83,6 @@ public class RecruitmentCancellationRecordQueryService {
 
     /** JPQL の {@code IN ()} 空リストを避けるための番人値（存在しない ID）。 */
     private static final Long SENTINEL_ID = -1L;
-
-    /** {@code ConnectChargeService}/{@code ConnectAccountService} の定義（"MANAGE_RECRUITMENTS"）と同一。 */
-    private static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
     /**
      * 先頭ページのカーソル番人（どの実データよりも新しい位置）。
@@ -134,9 +132,12 @@ public class RecruitmentCancellationRecordQueryService {
         // SYSTEM_ADMIN は全件見える（AccessControlService への直接呼び出し＝認可番人シグナル）。
         boolean systemAdmin = accessControlService.isSystemAdmin(actorUserId);
 
-        // 事前絞り込み（最適化）用のスコープ集合。SYSTEM_ADMIN は事前絞り込み自体を使わない。
-        Set<Long> teamScopeIds = systemAdmin ? Set.of() : resolveManagedTeamScopeIds(actorUserId);
-        Set<Long> orgScopeIds = systemAdmin ? Set.of() : resolveManagedOrgScopeIds(actorUserId);
+        // 事前絞り込み（最適化）用の募集 ID 集合。SYSTEM_ADMIN は事前絞り込み自体を使わない。
+        // 権威（escrow）から導出するため、listing の可変な受取先を変更されても取りこぼさない。
+        Set<Long> payeeListingIds = systemAdmin
+                ? Set.of()
+                : connectChargeService.findSourceIdsWithPayeeSettlementManaged(
+                        EscrowSourceKind.RECRUITMENT, actorUserId);
 
         List<RecruitmentCancellationRecordSummaryResponse> collected = new ArrayList<>();
         boolean hasNext = false;
@@ -147,9 +148,7 @@ public class RecruitmentCancellationRecordQueryService {
                     ? cancellationRecordRepository.findChunkForSystemAdmin(
                             effectiveStatuses, position.toWallClock(), position.id(), PageRequest.of(0, limit))
                     : cancellationRecordRepository.findChunkOfPayeeCandidates(
-                            actorUserId,
-                            teamScopeIds.isEmpty() ? Set.of(SENTINEL_ID) : teamScopeIds,
-                            orgScopeIds.isEmpty() ? Set.of(SENTINEL_ID) : orgScopeIds,
+                            payeeListingIds.isEmpty() ? Set.of(SENTINEL_ID) : payeeListingIds,
                             effectiveStatuses, position.toWallClock(), position.id(), PageRequest.of(0, limit));
 
             if (chunk.isEmpty()) {
@@ -207,51 +206,6 @@ public class RecruitmentCancellationRecordQueryService {
         }
         return connectChargeService.filterPayeeSettlementManaged(
                 EscrowSourceKind.RECRUITMENT, refs, actorUserId);
-    }
-
-    /**
-     * 操作者が支払い管理権限（{@value #PERMISSION_MANAGE_PAYMENT}）を持つ TEAM の scopeId 集合を返す。
-     *
-     * <p>候補（操作者自身の所属 TEAM。件数は操作者の所属数に依存し記録数には依存しない）を
-     * {@link AccessControlService#findAffiliatedScopeIds} で絞ってから権限を検査するため、
-     * 記録件数分のクエリは発生しない。</p>
-     *
-     * <p>これは<b>事前絞り込み（最適化）のための集合</b>であり認可の権威ではない
-     * （権威は escrow 側。クラス Javadoc 参照）。</p>
-     */
-    private Set<Long> resolveManagedTeamScopeIds(Long actorUserId) {
-        Set<Long> candidates = accessControlService.findAffiliatedScopeIds(
-                actorUserId, RecruitmentScopeType.TEAM.name());
-        Set<Long> managed = new LinkedHashSet<>();
-        for (Long teamId : candidates) {
-            if (accessControlService.hasPermission(
-                    actorUserId, teamId, RecruitmentScopeType.TEAM.name(), PERMISSION_MANAGE_PAYMENT)) {
-                managed.add(teamId);
-            }
-        }
-        return managed;
-    }
-
-    /**
-     * 操作者が管理者または支払い管理権限を持つ ORG の scopeId 集合を返す。
-     *
-     * <p>これは<b>事前絞り込み（最適化）のための集合</b>であり認可の権威ではない
-     * （権威は escrow 側。クラス Javadoc 参照）。</p>
-     */
-    private Set<Long> resolveManagedOrgScopeIds(Long actorUserId) {
-        Set<Long> candidates = accessControlService.findAffiliatedScopeIds(
-                actorUserId, RecruitmentScopeType.ORGANIZATION.name());
-        Set<Long> managed = new LinkedHashSet<>();
-        for (Long orgId : candidates) {
-            try {
-                accessControlService.checkAdminOrHasPermission(
-                        actorUserId, orgId, RecruitmentScopeType.ORGANIZATION.name(), PERMISSION_MANAGE_PAYMENT);
-                managed.add(orgId);
-            } catch (BusinessException e) {
-                // 権限が無いだけであり異常ではない（判定であって認可の実行ではない）。
-            }
-        }
-        return managed;
     }
 
     /**

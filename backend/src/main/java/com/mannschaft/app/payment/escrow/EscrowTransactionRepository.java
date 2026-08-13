@@ -86,6 +86,21 @@ public interface EscrowTransactionRepository
     List<EscrowTransactionEntity> findBySourceKindAndSourceIdIn(
             EscrowSourceKind sourceKind, java.util.Collection<Long> sourceIds);
 
+    /**
+     * 受取側 Connect 口座の集合に紐づく取引の {@code source_id} を一括で取得する（重複排除済み）。
+     *
+     * <p>「操作者が受取先である募集はどれか」を escrow 側から引くための finder。
+     * 一覧の事前絞り込みを<b>権威（escrow）から導出する</b>ために使う。</p>
+     */
+    @Query("""
+            SELECT DISTINCT e.sourceId FROM EscrowTransactionEntity e
+            WHERE e.sourceKind = :sourceKind
+              AND e.payeeConnectAccountId IN :payeeConnectAccountIds
+            """)
+    List<Long> findSourceIdsBySourceKindAndPayeeConnectAccountIdIn(
+            @Param("sourceKind") EscrowSourceKind sourceKind,
+            @Param("payeeConnectAccountIds") java.util.Collection<UUID> payeeConnectAccountIds);
+
     /** テナント（organization_id）スコープの取引を取得する。 */
     List<EscrowTransactionEntity> findByOrganizationId(Long organizationId);
 

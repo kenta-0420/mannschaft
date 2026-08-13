@@ -96,25 +96,23 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
     /**
      * §12（免除 UI）一覧: <b>安価な事前絞り込み</b>としての受取先候補チャンク取得（キーセットページング）。
      *
-     * <p><b>この絞り込みは最適化であって認可の権威ではない。</b> ここで使う
-     * {@code recruitment_listings.payeeKind}/{@code payeeUserId}/{@code scopeId} は
-     * <b>募集の作成後に変更できる可変の値</b>であり、実際に金を受け取る先（escrow の payee）と
-     * 食い違いうる。したがって本クエリの結果をそのまま利用者へ返してはならない
-     * ——{@code RecruitmentCancellationRecordQueryService} が payment ドメインの
-     * {@code ConnectChargeService#filterPayeeSettlementManaged}（権威ある受取先）で
-     * <b>必ず最終的に絞り込む</b>。本クエリの役割は、その権威ある判定へ渡す候補を
-     * DB 側で安く減らすことだけである。</p>
+     * <p><b>この絞り込みは最適化であって認可の権威ではない。</b> 最終判定は payment ドメインの
+     * {@code ConnectChargeService#filterPayeeSettlementManaged}（escrow の payee）が行う
+     * ——同一募集でも参加者ごとに escrow は別行であり、募集単位の絞り込みでは参加者単位の
+     * 判定までは決まらないためである。</p>
      *
-     * <p>本クエリを「見えてよいものの集合」として単独で使うと、受取先を後から差し替えた募集で
-     * 現在の受取先に従前の記録が混じる。権威ある絞り込みを外さないこと。</p>
+     * <p><b>{@code listingIds} は escrow から導出した集合でなければならない</b>
+     * （{@code ConnectChargeService#findSourceIdsWithPayeeSettlementManaged}）。
+     * {@code recruitment_listings.payeeKind}/{@code payeeUserId}/{@code scopeId} で絞ってはならない
+     * ——これらは<b>募集の作成後に変更できる可変の値</b>であり、変更した瞬間に
+     * 本来の債権者が自分の記録を見失う（事前絞り込みが権威ある集合の上位集合でなくなる）。
+     * 事前絞り込みは「権威ある集合を必ず包含する」ことが安全の条件である。</p>
      *
      * <p>ソートキー・カーソルの扱いは {@link #findChunkForSystemAdmin} と同一
      * （{@code (cancelledAt DESC, id DESC)} の一意な複合キー）。</p>
      *
-     * @param actorUserId  操作者ユーザー ID（{@code payeeKind=USER} の一致判定に使用）
-     * @param teamScopeIds 操作者が支払い管理権限を持つ TEAM の scopeId 集合（無ければ番人値）
-     * @param orgScopeIds  操作者が管理者・支払い管理権限を持つ ORG の scopeId 集合（無ければ番人値）
-     * @param statuses     絞り込む決済ステータス
+     * @param listingIds 操作者が escrow 上の受取先である募集 ID の集合（空なら番人値を渡すこと）
+     * @param statuses   絞り込む決済ステータス
      */
     @Query("""
             SELECT new com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse(
@@ -123,19 +121,13 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
             FROM RecruitmentCancellationRecordEntity r, RecruitmentListingEntity l
             WHERE l.id = r.listingId
               AND r.paymentStatus IN :statuses
+              AND r.listingId IN :listingIds
               AND (r.cancelledAt < :cursorCancelledAt
                    OR (r.cancelledAt = :cursorCancelledAt AND r.id < :cursorId))
-              AND (
-                   (l.payeeKind = 'USER' AND l.payeeUserId = :actorUserId)
-                OR (l.payeeKind = 'TEAM' AND l.scopeId IN :teamScopeIds)
-                OR (l.payeeKind = 'ORG' AND l.scopeId IN :orgScopeIds)
-              )
             ORDER BY r.cancelledAt DESC, r.id DESC
             """)
     List<RecruitmentCancellationRecordSummaryResponse> findChunkOfPayeeCandidates(
-            @Param("actorUserId") Long actorUserId,
-            @Param("teamScopeIds") Collection<Long> teamScopeIds,
-            @Param("orgScopeIds") Collection<Long> orgScopeIds,
+            @Param("listingIds") Collection<Long> listingIds,
             @Param("statuses") Collection<CancellationPaymentStatus> statuses,
             @Param("cursorCancelledAt") LocalDateTime cursorCancelledAt,
             @Param("cursorId") Long cursorId,
