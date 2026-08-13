@@ -175,8 +175,8 @@ class ActionMemoServiceTeamTest {
         @Test
         @DisplayName("isDefault が settings.defaultPostTeamId と一致するチームに付与される")
         void getAvailableTeams_marksDefaultTeam() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(roleWith(USER_ID, 10L), roleWith(USER_ID, 20L)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(10L, 20L));
             given(settingsService.findSettings(USER_ID))
                     .willReturn(Optional.of(settingsOf(USER_ID, ActionMemoCategory.WORK, 20L)));
             given(teamRepository.findById(10L)).willReturn(Optional.of(teamWith(10L, "チームA")));
@@ -196,11 +196,8 @@ class ActionMemoServiceTeamTest {
         @DisplayName("同一 teamId が複数所属（複数ロール）でも distinct で1件にまとまる")
         void getAvailableTeams_distinctTeamIds() {
             // 同じ teamId=30 に複数ロールで所属しているケース
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(
-                            roleWith(USER_ID, 30L),
-                            roleWith(USER_ID, 30L),
-                            roleWith(USER_ID, 40L)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(30L, 30L, 40L));
             given(settingsService.findSettings(USER_ID)).willReturn(Optional.empty());
             given(teamRepository.findById(30L)).willReturn(Optional.of(teamWith(30L, "チームC")));
             given(teamRepository.findById(40L)).willReturn(Optional.of(teamWith(40L, "チームD")));
@@ -215,7 +212,7 @@ class ActionMemoServiceTeamTest {
         @Test
         @DisplayName("チーム未所属ユーザーには空リストが返る")
         void getAvailableTeams_emptyForNonMember() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
                     .willReturn(List.of());
             // findSettings は呼ばれる可能性あり（lenient）
             lenient().when(settingsService.findSettings(USER_ID)).thenReturn(Optional.empty());

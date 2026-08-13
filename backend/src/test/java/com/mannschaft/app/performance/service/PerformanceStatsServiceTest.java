@@ -320,7 +320,7 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: teamIdがnullで空リストが返る")
         void getMyPerformance_teamIdなし_空リスト() {
             // Given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID_1)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID_1)).willReturn(List.of());
             given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
 
             // When

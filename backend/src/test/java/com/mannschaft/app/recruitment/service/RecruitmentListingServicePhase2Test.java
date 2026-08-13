@@ -244,8 +244,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of());
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             List<RecruitmentFeedItemResponse> result = service.getMyFeed(USER_ID);
             assertThat(result).isEmpty();
@@ -258,8 +258,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of(TEAM_ID));
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
             given(listingRepository.findOpenByScopeIds(any(), any(Pageable.class)))
                     .willReturn(List.of());
             given(mapper.toFeedItemResponseList(any())).willReturn(List.of());
