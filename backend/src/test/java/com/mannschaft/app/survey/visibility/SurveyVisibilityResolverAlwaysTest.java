@@ -75,6 +75,10 @@ class SurveyVisibilityResolverAlwaysTest {
     @Mock
     private SurveyTargetRepository surveyTargetRepository;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService
+            organizationMembershipService;
+
     private SurveyVisibilityResolver resolver;
 
     private static final String SCOPE_TYPE = "TEAM";
@@ -95,7 +99,8 @@ class SurveyVisibilityResolverAlwaysTest {
                 surveyRepository,
                 surveyResponseRepository,
                 surveyResultViewerRepository,
-                surveyTargetRepository);
+                surveyTargetRepository,
+                organizationMembershipService);
     }
 
     @Nested
@@ -265,10 +270,9 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-18: 配下ACTIVEチームのメンバーは ALWAYS の結果を閲覧できる")
         void ac18_descendantTeamMemberCanView() {
             stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
-            // 組織への直接所属は無い（roleByScope 空）。配下ツリーの実効ロールのみ MEMBER。
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+            // 組織への直接所属は無いが、配信母集団（配下 ACTIVE チーム経由）には含まれる。
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            stubInAudience(false, true);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-18: 配信されているのに結果だけ 403 になってはならない")
@@ -284,15 +288,15 @@ class SurveyVisibilityResolverAlwaysTest {
         void ac19_outsiderStillCannotView() {
             stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
             stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            stubInAudience(false, false);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
-                    .as("AC-19: 下向き再帰へ開いた副作用でスコープ外に穴を開けてはならない")
+                    .as("AC-19: 配信母集団外に穴を開けてはならない")
                     .isFalse();
 
-            // 別テナント（他組織）の配下メンバーであっても当該組織の結果は見えない。
+            // 別テナント（他組織）の母集団に居ても当該組織の結果は見えない。
             stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(999L), Map.of(), Map.of(999L, "ADMIN")));
+                    Map.of(new ScopeKey("ORGANIZATION", 999L), "ADMIN"), Map.of(), Set.of(), Set.of()));
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-19: 他組織ツリーの所属は当該組織の可視性を与えない")
@@ -307,9 +311,9 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-20: includeSupporters=false のとき応援者は ALWAYS の結果を閲覧できない")
         void ac20_supporterCannotViewWhenExcludedFromDistribution() {
             stubOrgProjection(SurveyStatus.PUBLISHED, always(), false);
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "SUPPORTER")));
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            // includeSupporters=false の母集団には純 SUPPORTER が入らない（述語がそう判定する）。
+            stubInAudience(false, false);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-20: 配信されていない応援者に中間集計を見せてはならない")
@@ -324,9 +328,8 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-20: includeSupporters=true なら応援者も閲覧できる（陽性対照）")
         void ac20_supporterCanViewWhenIncludedInDistribution() {
             stubOrgProjection(SurveyStatus.PUBLISHED, always(), true);
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "SUPPORTER")));
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            stubInAudience(true, true);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("AC-20: 配信対象に含めた応援者は閲覧できること（母集団と一致）")
@@ -338,9 +341,8 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-18(境界): 組織スコープでも DRAFT は配下メンバーに不可視")
         void ac18_draftStillInvisibleForDescendant() {
             stubOrgProjection(SurveyStatus.DRAFT, always(), false);
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            stubInAudience(false, true);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isFalse();
         }
@@ -350,9 +352,8 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-11(補): AFTER_CLOSE は昇格せず従来どおり（配下メンバーには不可視）")
         void ac11_afterCloseIsNotPromoted() {
             stubOrgProjection(SurveyStatus.PUBLISHED, ResultsVisibility.ADMINS_ONLY, false);
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
+            stubInAudience(false, true);
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
                     .as("ALWAYS 以外の値の判定は一切変えない")
@@ -406,9 +407,7 @@ class SurveyVisibilityResolverAlwaysTest {
         @DisplayName("AC-21: 組織スコープでも名簿外の配下メンバーは不可視")
         void ac21_orgDescendantWithoutRosterCannotView() {
             stubTargetedProjection("ORGANIZATION", ORG_ID, SurveyStatus.PUBLISHED, always());
-            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
-                    Map.of(), Map.of(), Set.of(), Set.of(),
-                    Set.of(ORG_ID), Map.of(), Map.of(ORG_ID, "MEMBER")));
+            stubSnapshot(VIEWER_ID, UserScopeRoleSnapshot.empty());
             when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
                     .thenReturn(List.of());
 
@@ -665,17 +664,25 @@ class SurveyVisibilityResolverAlwaysTest {
                             org.mockito.ArgumentMatchers.any());
         }
 
-        /** AC-29 — ALL 配信のみのバッチでは結果閲覧者名簿も引かない（挙動を変えない）。 */
+        /**
+         * AC-29 — ALL 配信では<b>配信対象名簿</b>を引かない。
+         *
+         * <p>結果閲覧者名簿は上位条件（{@code results_visibility} を無視して閲覧可）の判定に使うため
+         * 配信方式によらず 1 本引く。これは ALL 配信でも「母集団に居ないが結果閲覧者に指名された者」を
+         * 締め出さないために必要であり、かつ<b>件数によらず 1 本</b>なので N+1 にはならない。</p>
+         */
         @Test
-        @DisplayName("AC-29: ALL 配信のみなら結果閲覧者名簿も照会しない")
-        void ac29_noViewerLookupForAllMode() {
+        @DisplayName("AC-29: ALL 配信では配信対象名簿を引かず、閲覧者名簿は1本に留まる")
+        void ac29_allModeSkipsTargetRosterAndBatchesViewerLookup() {
             stubProjection(SurveyStatus.PUBLISHED, always(), LocalDateTime.now().plusDays(7));
             stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
 
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isTrue();
 
-            org.mockito.Mockito.verify(surveyResultViewerRepository, org.mockito.Mockito.never())
-                    .findResultViewerSurveyIds(anyCollection(), org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.never())
+                    .findTargetedSurveyIds(anyCollection(), org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(surveyResultViewerRepository, org.mockito.Mockito.times(1))
+                    .findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID));
         }
     }
 
@@ -732,6 +739,12 @@ class SurveyVisibilityResolverAlwaysTest {
             when(membershipBatchQueryService.snapshotForUser(eq(userId), anySet(), anySet(), anySet()))
                     .thenReturn(snapshot);
         }
+    }
+
+    /** 組織配信母集団の述語（配信と同一の述語）をスタブする。 */
+    private void stubInAudience(boolean includeSupporters, boolean result) {
+        when(organizationMembershipService.isInOrgDistributionAudience(
+                eq(ORG_ID), eq(VIEWER_ID), eq(includeSupporters))).thenReturn(result);
     }
 
     private static UserScopeRoleSnapshot roleInScope(String role) {

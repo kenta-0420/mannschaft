@@ -17,6 +17,7 @@ import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,6 +84,7 @@ public class SurveyVisibilityResolver
     private final SurveyResponseRepository surveyResponseRepository;
     private final SurveyResultViewerRepository surveyResultViewerRepository;
     private final SurveyTargetRepository surveyTargetRepository;
+    private final OrganizationMembershipService organizationMembershipService;
 
     public SurveyVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
@@ -93,13 +95,15 @@ public class SurveyVisibilityResolver
             SurveyRepository surveyRepository,
             SurveyResponseRepository surveyResponseRepository,
             SurveyResultViewerRepository surveyResultViewerRepository,
-            SurveyTargetRepository surveyTargetRepository) {
+            SurveyTargetRepository surveyTargetRepository,
+            OrganizationMembershipService organizationMembershipService) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.surveyRepository = surveyRepository;
         this.surveyResponseRepository = surveyResponseRepository;
         this.surveyResultViewerRepository = surveyResultViewerRepository;
         this.surveyTargetRepository = surveyTargetRepository;
+        this.organizationMembershipService = organizationMembershipService;
     }
 
     @Override
@@ -139,21 +143,10 @@ public class SurveyVisibilityResolver
         if (level == StandardVisibility.ORGANIZATION_WIDE && organizationScope) {
             return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
         }
-        // ALWAYS の可視範囲を配信母集団に一致させる（#2617-3 の是正）。
-        //
-        // 設計書 F05.4 の distribution_mode 備考どおり、ORGANIZATION スコープ × ALL 配信の母集団は
-        // 「組織直属メンバー ∪ 配下参加チーム（ACTIVE）のメンバー」へ再帰展開される
-        // （実装は SurveyResultService#resolveUniverseUserIds →
-        //   OrganizationMembershipService#resolveOrgDistributionUserIds）。
-        // Mapper が返す SCOPE_AFFILIATED は当該 ORG への直接所属しか見ないため、
-        // そのままでは「アンケートは届くのに ALWAYS の結果だけ 403」という食い違いが生じる。
-        // 配信 universe と評価範囲を一致させるため、下向き再帰の既存軸へ昇格する。
-        //
-        // TEAM スコープは配下展開を持たない（母集団 = user_roles の当該スコープ行）ため
-        // SCOPE_AFFILIATED のまま据え置き、従来挙動を一切変えない。
-        if (row.resultsVisibility() == ResultsVisibility.ALWAYS && organizationScope) {
-            return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
-        }
+        // ALWAYS は Mapper が CUSTOM を返し、配信母集団の述語そのもので判定する（#2617-3）。
+        // 所属軸（SCOPE_AFFILIATED / ORGANIZATION_AND_DESCENDANTS）へ昇格させる旧実装は、
+        // 下向き再帰の判定が user_roles のみを見る共有クエリに依存しており、
+        // memberships へ移行済みの MEMBER / SUPPORTER を構造的に取りこぼしていたため撤去した。
         return level;
     }
 
@@ -206,75 +199,109 @@ public class SurveyVisibilityResolver
     protected Object prepareAdditionalAxisContext(
             List<SurveyVisibilityProjection> rows, Long viewerUserId) {
         if (viewerUserId == null || rows == null || rows.isEmpty()) {
-            return TargetedRosterContext.EMPTY;
+            return AlwaysAudienceContext.EMPTY;
         }
-        Set<Long> rosterCheckIds = new HashSet<>();
+        Set<Long> alwaysIds = new HashSet<>();
+        Set<Long> targetedIds = new HashSet<>();
+        Set<OrgAudienceKey> orgAudienceKeys = new HashSet<>();
         for (SurveyVisibilityProjection row : rows) {
-            if (row != null && row.id() != null && requiresTargetRoster(row)) {
-                rosterCheckIds.add(row.id());
+            if (row == null || row.id() == null || row.resultsVisibility() != ResultsVisibility.ALWAYS) {
+                continue;
+            }
+            alwaysIds.add(row.id());
+            if (row.distributionMode() != DistributionMode.ALL) {
+                targetedIds.add(row.id());
+            } else if ("ORGANIZATION".equals(row.scopeType()) && row.scopeId() != null) {
+                orgAudienceKeys.add(new OrgAudienceKey(
+                        row.scopeId(), Boolean.TRUE.equals(row.includeSupporters())));
             }
         }
-        if (rosterCheckIds.isEmpty()) {
-            return TargetedRosterContext.EMPTY;
+        if (alwaysIds.isEmpty()) {
+            // ALWAYS の行が無ければ SQL を一切増やさない（他 4 値の経路は従来どおり）。
+            return AlwaysAudienceContext.EMPTY;
         }
-        // 配信対象名簿と結果閲覧者名簿を、それぞれ 1 本ずつ・件数非依存で引く（合計 2 本固定）。
-        return new TargetedRosterContext(
-                Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(rosterCheckIds, viewerUserId)),
-                Set.copyOf(surveyResultViewerRepository
-                        .findResultViewerSurveyIds(rosterCheckIds, viewerUserId)));
+
+        // 結果閲覧者名簿（上位条件）は ALWAYS 全行に対して 1 本。
+        Set<Long> resultViewerIds = Set.copyOf(
+                surveyResultViewerRepository.findResultViewerSurveyIds(alwaysIds, viewerUserId));
+        // 配信対象名簿は TARGETED 行がある場合のみ 1 本。
+        Set<Long> targetedSurveyIds = targetedIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(targetedIds, viewerUserId));
+        // 組織配信の母集団判定は「行数」ではなく「(組織, トグル) の種類数」に比例する
+        // （通常は 1 種）。全件取得ではなく単発 EXISTS の軽い述語を使う。
+        Set<OrgAudienceKey> inAudience = new HashSet<>();
+        for (OrgAudienceKey key : orgAudienceKeys) {
+            if (organizationMembershipService.isInOrgDistributionAudience(
+                    key.orgId(), viewerUserId, key.includeSupporters())) {
+                inAudience.add(key);
+            }
+        }
+        return new AlwaysAudienceContext(targetedSurveyIds, resultViewerIds, inAudience);
     }
 
+    /** 組織配信母集団の判定キー（同一組織・同一トグルの行はまとめて 1 回だけ判定する）。 */
+    private record OrgAudienceKey(Long orgId, boolean includeSupporters) {}
+
     /**
-     * TARGETED × ALWAYS の判定に必要な 2 つの名簿所属集合（バッチ 1 回分）。
+     * ALWAYS の判定に必要な情報（バッチ 1 回分・すべて先読み済み）。
      *
-     * @param targetedSurveyIds     閲覧者が配信対象である survey_id
-     * @param resultViewerSurveyIds 閲覧者が結果閲覧者名簿に登録されている survey_id
+     * @param targetedSurveyIds     閲覧者が配信対象名簿に載っている survey_id
+     * @param resultViewerSurveyIds 閲覧者が結果閲覧者名簿に載っている survey_id
+     * @param inOrgAudience         閲覧者が配信母集団に含まれる (組織, トグル) の組
      */
-    private record TargetedRosterContext(Set<Long> targetedSurveyIds, Set<Long> resultViewerSurveyIds) {
+    private record AlwaysAudienceContext(
+            Set<Long> targetedSurveyIds,
+            Set<Long> resultViewerSurveyIds,
+            Set<OrgAudienceKey> inOrgAudience) {
 
-        private static final TargetedRosterContext EMPTY =
-                new TargetedRosterContext(Set.of(), Set.of());
+        private static final AlwaysAudienceContext EMPTY =
+                new AlwaysAudienceContext(Set.of(), Set.of(), Set.of());
     }
 
     /**
-     * ALWAYS の追加軸判定（純メモリ。DB アクセスは
-     * {@link #prepareAdditionalAxisContext} で完了している）。
+     * ALWAYS の判定（純メモリ。DB アクセスは {@link #prepareAdditionalAxisContext} で完了済み）。
+     *
+     * <p>「配信母集団に居るなら見える」という一本の規則で評価する。所属軸で近似すると、
+     * 配信されていない者に見えたり（漏洩）、配信された者が 403 になったり（機能不全）するため、
+     * <b>配信母集団を算出しているのと同一の述語</b>を用いる:</p>
+     * <ul>
+     *   <li><b>TARGETED</b>: {@code survey_targets} 名簿（回答時の関所と同じ述語の一括版）。</li>
+     *   <li><b>ALL × ORGANIZATION</b>:
+     *       {@code OrganizationMembershipService#isInOrgDistributionAudience}
+     *       — 配信母集団と同一（{@code include_supporters} トグル準拠・配下 ACTIVE チーム再帰）。
+     *       これにより下向き再帰の有無も応援者の要否も自動的に整合する。</li>
+     *   <li><b>ALL × TEAM</b>: 当該チームへの直接所属（{@code SCOPE_AFFILIATED} と同一述語）。
+     *       TEAM の母集団は配下展開もトグルも持たないため従来挙動を変えない。</li>
+     * </ul>
+     *
+     * <p>設計書 §「結果閲覧権限の判定」の優先順位に従い、<b>当該スコープの ADMIN+ と
+     * 結果閲覧者名簿の登録者は上記に関わらず閲覧可</b>（他スコープ・他テナントの ADMIN は通らない）。
+     * SystemAdmin と DRAFT の作成者本人は本メソッド到達前に基底クラスで短絡され、
+     * 公開済アンケートの作成者は {@code SurveyResultService#validateResultAccess} の
+     * 作成者高速パスで Resolver 自体を通らない。</p>
      */
-    @Override
-    protected boolean visibleByAdditionalAxis(
+    private boolean evaluateAlways(
             SurveyVisibilityProjection row, Long viewerUserId,
-            UserScopeRoleSnapshot snapshot, StandardVisibility level,
-            Object additionalAxisContext) {
-        if (row.resultsVisibility() != ResultsVisibility.ALWAYS) {
+            UserScopeRoleSnapshot snapshot, AlwaysAudienceContext context) {
+        if (viewerUserId == null || row.id() == null) {
+            return false;
+        }
+        // 上位条件（results_visibility を無視して常に閲覧可）。
+        if (isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id())) {
             return true;
         }
-        // TARGETED（および distribution_mode 欠損）は名簿必須。欠損時に名簿必須へ倒すのは
-        // 「母集団を確定できないなら見せない」fail-closed の徹底。
-        if (requiresTargetRoster(row)) {
-            if (viewerUserId == null || row.id() == null) {
-                return false;
-            }
-            TargetedRosterContext context =
-                    additionalAxisContext instanceof TargetedRosterContext ctx
-                            ? ctx
-                            : TargetedRosterContext.EMPTY;
-            if (context.targetedSurveyIds().contains(row.id())) {
-                return true;
-            }
-            // 設計書 §「結果閲覧権限の判定」の優先順位: 上位条件（ADMIN+ / 結果閲覧者名簿）は
-            // results_visibility を無視して常に閲覧可能。名簿ゲートでこれらを締め出さない。
-            // 迂回は「当該スコープの ADMIN+」と「当該アンケートの結果閲覧者」に限る
-            // （他スコープ・他テナントの ADMIN は roleByScope が当該スコープを持たないため通らない）。
-            return isScopeAdmin(row, snapshot)
-                    || context.resultViewerSurveyIds().contains(row.id());
+        // TARGETED（および distribution_mode 欠損）は名簿がそのまま母集団。
+        // 欠損時に名簿必須へ倒すのは「母集団を確定できないなら見せない」fail-closed の徹底。
+        if (row.distributionMode() != DistributionMode.ALL) {
+            return context.targetedSurveyIds().contains(row.id());
         }
-        if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
-                || Boolean.TRUE.equals(row.includeSupporters())) {
-            return true;
+        if ("ORGANIZATION".equals(row.scopeType()) && row.scopeId() != null) {
+            return context.inOrgAudience().contains(new OrgAudienceKey(
+                    row.scopeId(), Boolean.TRUE.equals(row.includeSupporters())));
         }
-        // 応援者除外はスナップショット上のロールで判定するため追加クエリは発生しない。
-        return snapshot.hasDescendantRoleOrAbove(
-                new ScopeKey(row.scopeType(), row.scopeId()), "MEMBER");
+        return row.scopeType() != null && row.scopeId() != null
+                && snapshot.isMemberOf(new ScopeKey(row.scopeType(), row.scopeId()));
     }
 
     /**
@@ -320,7 +347,8 @@ public class SurveyVisibilityResolver
 
     @Override
     protected boolean evaluateCustom(
-            SurveyVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot) {
+            SurveyVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
+            Object additionalAxisContext) {
         ResultsVisibility v = row.resultsVisibility();
         if (v == null) {
             return false;
@@ -329,9 +357,13 @@ public class SurveyVisibilityResolver
             case AFTER_RESPONSE -> evaluateAfterResponse(row, viewerUserId);
             case AFTER_CLOSE -> evaluateAfterClose(row);
             case VIEWERS_ONLY -> evaluateViewersOnly(row, viewerUserId);
-            // ADMINS_ONLY / ALWAYS は CUSTOM ではないため本来到達しない
+            case ALWAYS -> evaluateAlways(row, viewerUserId, snapshot,
+                    additionalAxisContext instanceof AlwaysAudienceContext ctx
+                            ? ctx
+                            : AlwaysAudienceContext.EMPTY);
+            // ADMINS_ONLY は CUSTOM ではないため本来到達しない
             // （Mapper で StandardVisibility へ正規化済）。万一到達した場合は fail-closed。
-            case ADMINS_ONLY, ALWAYS -> false;
+            case ADMINS_ONLY -> false;
         };
     }
 

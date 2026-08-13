@@ -429,7 +429,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return false;
         }
 
-        return visibleByLevel(row, viewerUserId, snapshot, level)
+        return visibleByLevel(row, viewerUserId, snapshot, level, additionalAxisContext)
                 && visibleByAdditionalAxis(row, viewerUserId, snapshot, level, additionalAxisContext);
     }
 
@@ -437,7 +437,8 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      * 解決済み {@link StandardVisibility} 1 値による scope 軸の評価（本体）。
      */
     private boolean visibleByLevel(
-            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level,
+            Object additionalAxisContext) {
         ScopeKey scope = scopeOf(row);
         return switch (level) {
             case PUBLIC -> true;
@@ -476,7 +477,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 // decide 経路ではすでに記録済みのため二重記録を避けるための分岐は持たない
                 // （Counter は単調増加で許容、ホットパスではないため）。
                 visibilityMetrics.recordCustomDispatch(referenceType(), customSubType(row));
-                yield evaluateCustom(row, viewerUserId, snapshot);
+                yield evaluateCustom(row, viewerUserId, snapshot, additionalAxisContext);
             }
         };
     }
@@ -684,6 +685,20 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     protected Object prepareAdditionalAxisContext(List<P> rows, Long viewerUserId) {
         return null;
+    }
+
+    /**
+     * {@link #prepareAdditionalAxisContext} が返したコンテキスト付きの CUSTOM 評価。
+     *
+     * <p>既定実装はコンテキストを無視して 3 引数版
+     * {@link #evaluateCustom(VisibilityProjection, Long, UserScopeRoleSnapshot)} へ委譲するため、
+     * 行ごとの判定だけで足りる既存の実装は<strong>変更不要</strong>である。
+     * CUSTOM 判定がスナップショット外の情報（名簿・母集団など）を要する場合に、
+     * 行ごとの SQL（N+1）を避けるために本オーバーロードを実装する。</p>
+     */
+    protected boolean evaluateCustom(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
+        return evaluateCustom(row, viewerUserId, snapshot);
     }
 
     /**

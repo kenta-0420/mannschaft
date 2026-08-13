@@ -72,6 +72,10 @@ class SurveyVisibilityResolverTest {
     @Mock
     private com.mannschaft.app.survey.repository.SurveyTargetRepository surveyTargetRepository;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService
+            organizationMembershipService;
+
     private VisibilityMetrics visibilityMetrics;
     private SurveyVisibilityResolver resolver;
 
@@ -87,7 +91,8 @@ class SurveyVisibilityResolverTest {
                 surveyRepository,
                 surveyResponseRepository,
                 surveyResultViewerRepository,
-                surveyTargetRepository);
+                surveyTargetRepository,
+                organizationMembershipService);
     }
 
     @Test
