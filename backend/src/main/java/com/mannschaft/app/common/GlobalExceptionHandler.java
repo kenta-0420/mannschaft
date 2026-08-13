@@ -2170,7 +2170,13 @@ public class GlobalExceptionHandler {
             // F03.10 年間行事計画（ScheduleEventCategoryErrorCode、コード文字列は EVTCAT_xxx）。
             Map.entry("EVTCAT_001", HttpStatus.NOT_FOUND),               // CATEGORY_NOT_FOUND
             Map.entry("EVTCAT_002", HttpStatus.CONFLICT),                // DUPLICATE_CATEGORY_NAME
-            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿）
+            // EVTCAT_010（CATEGORY_SCOPE_MISMATCH）はロットHで一度 404（存在秘匿）に登録したが、
+            // throw元（ScheduleEventCategoryService#validateCategoryScope 297/301/307行）は
+            // クライアントが指定した categoryId が自スコープ外という入力不備であり、IDOR秘匿対象の
+            // 越境参照ではない（IDOR懸念なら EVTCAT_001 の 404 で既に秘匿されている）。
+            // 番人 GlobalExceptionHandlerTest$ClientErrorMustNotBe500#badRequestCases が
+            // 400 固定として明示的に列挙しているとおりが正しいため、404 登録を撤回し
+            // Severity.WARN の既定（400）に戻す。
             Map.entry("EVTCAT_021", HttpStatus.NOT_FOUND),               // ANNUAL_COPY_SOURCE_NOT_FOUND
             Map.entry("EVTCAT_022", HttpStatus.CONFLICT),                // ANNUAL_COPY_CONFLICT
 
@@ -2190,7 +2196,12 @@ public class GlobalExceptionHandler {
             Map.entry("ADMIN_006", HttpStatus.NOT_FOUND),                // BATCH_JOB_LOG_NOT_FOUND
 
             // F05.1 掲示板（BulletinErrorCode）の残り未登録分。
-            Map.entry("BULLETIN_012", HttpStatus.CONFLICT),              // PARENT_REPLY_MISMATCH（兄弟 BULLETIN_020 と同流儀）
+            // BULLETIN_012（PARENT_REPLY_MISMATCH）はロットHで一度 409 に登録したが、
+            // throw元（BulletinReplyService#createReply/updateReply等）はクライアントが送った
+            // parentId が同一スレッド内に存在しない/一致しないという入力不備であり、状態競合ではない。
+            // 番人 GlobalExceptionHandlerTest$ClientErrorMustNotBe500#badRequestCases が
+            // 400 固定として明示的に列挙しているとおりが正しいため、409 登録を撤回し
+            // Severity.WARN の既定（400）に戻す。
             Map.entry("BULLETIN_025", HttpStatus.NOT_FOUND),             // ATTACHMENT_TARGET_NOT_FOUND
 
             // 会員台帳カスタムフィールド（MemberInfoErrorCode）の残り未登録分。
