@@ -704,10 +704,21 @@ class RecruitmentCancellationRecordListContractIT extends AbstractMySqlIntegrati
                 .getSingleResult()).longValue();
     }
 
+    /**
+     * 組織を 1 件作る。
+     *
+     * <p>test プロファイルはスキーマを Entity 定義から作る（{@code ddl-auto=create}）ため、
+     * 本番の Flyway DDL が持つデフォルト値（{@code supporter_enabled DEFAULT 1} 等）を持たない。
+     * {@code OrganizationEntity} の {@code nullable=false} かつ既定値を持たない列
+     * （{@code name} / {@code org_type} / {@code visibility} / {@code hierarchy_visibility} /
+     * {@code supporter_enabled} / {@code version} / {@code slug}）を<b>すべて</b>明示的に埋める。
+     * 列の並びは他ドメインの契約 IT（{@code ActionMemoScopeContractIT} 等）の流儀に揃えている。</p>
+     */
     private Long insertOrganization(String name) {
         em.createNativeQuery(
-                        "INSERT INTO organizations (name, visibility, version, slug, created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 0, "
+                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                                + "supporter_enabled, version, slug, created_at, updated_at) "
+                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
                                 + "CONCAT('canfeelist-org-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();

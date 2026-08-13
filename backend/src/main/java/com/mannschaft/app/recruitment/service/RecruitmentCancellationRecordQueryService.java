@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowSourceRef;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -84,8 +86,16 @@ public class RecruitmentCancellationRecordQueryService {
     /** {@code ConnectChargeService}/{@code ConnectAccountService} の定義（"MANAGE_RECRUITMENTS"）と同一。 */
     private static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
-    /** 先頭ページのカーソル番人（どの実データよりも新しい位置）。 */
-    private static final LocalDateTime CURSOR_HEAD_CANCELLED_AT = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+    /**
+     * 先頭ページのカーソル番人（どの実データよりも新しい位置）。
+     *
+     * <p>型は瞬間（{@link OffsetDateTime}）で扱う。DTO の {@code cancelledAt} と同じ土俵に
+     * 揃えるためであり、DB へ渡すときだけサーバの業務ゾーンで壁時計へ落とす。</p>
+     */
+    private static final OffsetDateTime CURSOR_HEAD_CANCELLED_AT =
+            LocalDateTime.of(9999, 12, 31, 23, 59, 59)
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                    .toOffsetDateTime();
 
     /** 先頭ページのカーソル番人（{@code cancelledAt} 同値時の id 比較用）。 */
     private static final Long CURSOR_HEAD_ID = Long.MAX_VALUE;
@@ -135,12 +145,12 @@ public class RecruitmentCancellationRecordQueryService {
         for (int chunkNo = 0; chunkNo < MAX_CHUNKS_PER_PAGE; chunkNo++) {
             List<RecruitmentCancellationRecordSummaryResponse> chunk = systemAdmin
                     ? cancellationRecordRepository.findChunkForSystemAdmin(
-                            effectiveStatuses, position.cancelledAt(), position.id(), PageRequest.of(0, limit))
+                            effectiveStatuses, position.toWallClock(), position.id(), PageRequest.of(0, limit))
                     : cancellationRecordRepository.findChunkOfPayeeCandidates(
                             actorUserId,
                             teamScopeIds.isEmpty() ? Set.of(SENTINEL_ID) : teamScopeIds,
                             orgScopeIds.isEmpty() ? Set.of(SENTINEL_ID) : orgScopeIds,
-                            effectiveStatuses, position.cancelledAt(), position.id(), PageRequest.of(0, limit));
+                            effectiveStatuses, position.toWallClock(), position.id(), PageRequest.of(0, limit));
 
             if (chunk.isEmpty()) {
                 break;
@@ -259,7 +269,7 @@ public class RecruitmentCancellationRecordQueryService {
         }
         try {
             return new Cursor(
-                    LocalDateTime.parse(cursor.substring(0, separator)),
+                    OffsetDateTime.parse(cursor.substring(0, separator)),
                     Long.valueOf(cursor.substring(separator + 1)));
         } catch (DateTimeParseException | NumberFormatException e) {
             throw new BusinessException(CommonErrorCode.COMMON_001);
@@ -269,12 +279,21 @@ public class RecruitmentCancellationRecordQueryService {
     /**
      * キーセットページングの位置（{@code (cancelledAt, id)} の複合・一意）。
      *
+     * <p>位置は瞬間（{@link OffsetDateTime}）で保持し、DB へ渡すときだけ
+     * {@link #toWallClock()} でサーバの業務ゾーンの壁時計へ落とす（列が壁時計型のため）。
+     * 往復の変換をこの型に閉じ込め、呼び出し側にゾーンの判断を持ち出さない。</p>
+     *
      * @param cancelledAt 直前に検査し終えた行の {@code cancelledAt}
      * @param id          直前に検査し終えた行の {@code id}（{@code cancelledAt} 同値時の決着に使う）
      */
-    private record Cursor(LocalDateTime cancelledAt, Long id) {
+    private record Cursor(OffsetDateTime cancelledAt, Long id) {
         String encode() {
             return cancelledAt + "_" + id;
+        }
+
+        /** DB の {@code cancelled_at}（壁時計型）と比較するための値へ落とす。 */
+        java.time.LocalDateTime toWallClock() {
+            return cancelledAt.atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDateTime();
         }
     }
 }

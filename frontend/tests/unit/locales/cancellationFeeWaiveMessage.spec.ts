@@ -97,10 +97,13 @@ function extractMessage(locale: string): string {
   const block = source.slice(blockStart)
 
   const match = block.match(/"message":\s*"((?:[^"\\]|\\.)*)"/)
-  if (!match) {
+  // 捕獲グループが取れない＝文言が存在しないということであり、テストは失敗すべき。
+  // 非 null アサーション（!）で黙らせると「文言が消えた」事故を緑のまま見逃す。
+  const captured = match?.[1]
+  if (captured === undefined) {
     throw new Error(`confirmDialog.message が ${locale}/recruitment.ts に見つからない`)
   }
-  return match[1]!.replace(/\\n/g, '\n')
+  return captured.replace(/\\n/g, '\n')
 }
 
 describe('recruitment.cancellationFeeWaive.confirmDialog.message の文言方針（6言語）', () => {
@@ -113,7 +116,12 @@ describe('recruitment.cancellationFeeWaive.confirmDialog.message の文言方針
   })
 
   describe.each(locales)('%s', (locale) => {
-    const policy = POLICIES[locale]!
+    const policy = POLICIES[locale]
+    if (policy === undefined) {
+      // locales は POLICIES のキーから作っているため理論上到達しないが、
+      // 到達したら検査条件が欠けているということなので、黙って素通りさせない。
+      throw new Error(`${locale} の検査条件が POLICIES に無い`)
+    }
     const message = extractMessage(locale)
 
     it('メッセージが実際に抽出できている（前提条件）', () => {
