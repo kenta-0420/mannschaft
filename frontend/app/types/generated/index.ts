@@ -36757,6 +36757,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recruitment-cancellation-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * キャンセル料記録の一覧
+         * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。
+         */
+        get: operations["list_83"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quick-memos/trash": {
         parameters: {
             query?: never;
@@ -39328,7 +39348,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_83"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39706,7 +39726,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_84"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39877,7 +39897,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_85"];
+        get: operations["list_86"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40241,7 +40261,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_86"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40309,7 +40329,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_87"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41715,7 +41735,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_88"];
+        get: operations["list_89"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53310,7 +53330,8 @@ export interface components {
             maxSelections?: number;
             options?: components["schemas"]["CreateOptionRequest"][];
             questionText?: string;
-            questionType?: string;
+            /** @enum {string} */
+            questionType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             /** Format: int32 */
             scaleMax?: number;
             scaleMaxLabel?: string;
@@ -53322,7 +53343,8 @@ export interface components {
             allowMultipleSubmissions: boolean;
             autoPostToTimeline?: boolean;
             description?: string;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode: "ALL" | "TARGETED";
             /** Format: date-time */
             expiresAt?: string;
             includeSupporters?: boolean;
@@ -53330,14 +53352,16 @@ export interface components {
             questions?: components["schemas"]["CreateQuestionRequest"][];
             remindBeforeHours?: number[];
             resultViewerUserIds?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             seriesId?: string;
             /** Format: date-time */
             startsAt?: string;
             targetUserIds?: number[];
             teamBreakdownEnabled?: boolean;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         ApiResponseSurveyDetailResponse: {
             data?: components["schemas"]["SurveyDetailResponse"];
@@ -53366,7 +53390,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             options?: components["schemas"]["OptionResponse"][];
-            questionType?: string;
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             scaleConfig?: components["schemas"]["QuestionScaleConfigDto"];
             /** Format: int64 */
             surveyId?: number;
@@ -53394,12 +53419,23 @@ export interface components {
             title?: string;
         };
         SurveyDetailResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
             questions?: components["schemas"]["QuestionResponse"][];
-            survey?: components["schemas"]["SurveyResponse"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
         };
         SurveyDistributionDto: {
             autoPostToTimeline?: boolean;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode?: "ALL" | "TARGETED";
             includeSupporters?: boolean;
             /** Format: int32 */
             manualRemindCount?: number;
@@ -53409,20 +53445,10 @@ export interface components {
         SurveyPolicyDto: {
             allowMultipleSubmissions?: boolean;
             isAnonymous?: boolean;
-            resultsVisibility?: string;
-            unrespondedVisibility?: string;
-        };
-        SurveyResponse: {
-            audit?: components["schemas"]["SurveyAuditDto"];
-            content?: components["schemas"]["SurveyContentDto"];
-            distribution?: components["schemas"]["SurveyDistributionDto"];
-            /** Format: int64 */
-            id?: number;
-            policy?: components["schemas"]["SurveyPolicyDto"];
-            schedule?: components["schemas"]["SurveyScheduleDto"];
-            scope?: components["schemas"]["SurveyScopeDto"];
-            stats?: components["schemas"]["SurveyStatsDto"];
-            status?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         SurveyScheduleDto: {
             /** Format: date-time */
@@ -53450,6 +53476,19 @@ export interface components {
         };
         ApiResponseSurveyResponse: {
             data?: components["schemas"]["SurveyResponse"];
+        };
+        SurveyResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
         };
         ExtendDeadlineRequest: {
             /** Format: date-time */
@@ -65662,11 +65701,13 @@ export interface components {
             includeSupporters?: boolean;
             isAnonymous?: boolean;
             remindBeforeHours?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             /** Format: date-time */
             startsAt?: string;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         UpdateKanbanRequest: {
             /** Format: date-time */
@@ -73942,6 +73983,28 @@ export interface components {
             id?: number;
             isActive?: boolean;
             nameI18nKey?: string;
+        };
+        CursorPagedResponseRecruitmentCancellationRecordSummaryResponse: {
+            data?: components["schemas"]["RecruitmentCancellationRecordSummaryResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RecruitmentCancellationRecordSummaryResponse: {
+            /** Format: date-time */
+            cancelledAt?: string;
+            /** Format: int32 */
+            feeAmount?: number;
+            /** Format: int32 */
+            hoursBeforeStart?: number;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            listingId?: number;
+            listingTitle?: string;
+            /** Format: int64 */
+            participantId?: number;
+            paymentStatus?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         PagedResponseQuickMemoResponse: {
             data?: components["schemas"]["QuickMemoResponse"][];
@@ -150414,6 +150477,30 @@ export interface operations {
             };
         };
     };
+    list_83: {
+        parameters: {
+            query?: {
+                status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRecruitmentCancellationRecordSummaryResponse"];
+                };
+            };
+        };
+    };
     listTrash: {
         parameters: {
             query?: {
@@ -153990,7 +154077,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_84: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -154514,7 +154601,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_85: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -154753,7 +154840,7 @@ export interface operations {
             };
         };
     };
-    list_85: {
+    list_86: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -155235,7 +155322,7 @@ export interface operations {
             };
         };
     };
-    list_86: {
+    list_87: {
         parameters: {
             query?: never;
             header?: never;
@@ -155319,7 +155406,7 @@ export interface operations {
             };
         };
     };
-    list_87: {
+    list_88: {
         parameters: {
             query?: never;
             header?: never;
@@ -157225,7 +157312,7 @@ export interface operations {
             };
         };
     };
-    list_88: {
+    list_89: {
         parameters: {
             query?: never;
             header?: never;

@@ -145,7 +145,7 @@ public class ScheduleScheduledTaskBatchService {
                     current.getPayloadJson(), CreateSurveyRequest.class);
             SurveyDetailResponse detail = surveyService.createSurvey(
                     scopeType, current.getScopeId(), current.getCreatedBy(), request);
-            Long surveyId = detail.getSurvey().getId();
+            Long surveyId = detail.getId();
             surveyService.publishSurvey(scopeType, current.getScopeId(), surveyId);
             current.markCreated(surveyId);
             scheduledTaskRepository.save(current);

@@ -1,5 +1,7 @@
 package com.mannschaft.app.survey.dto;
 
+import com.mannschaft.app.survey.ResultsVisibility;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +26,13 @@ public class UpdateSurveyRequest {
 
     private final Boolean allowMultipleSubmissions;
 
-    private final String resultsVisibility;
+    /** 結果公開設定。null=変更なし。未知値は束縛段階で 400（#2617-1）。 */
+    private final ResultsVisibility resultsVisibility;
 
     /**
-     * 未回答者一覧の公開範囲。HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS。
+     * 未回答者一覧の公開範囲。HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS。null=変更なし。
      */
-    private final String unrespondedVisibility;
+    private final UnrespondedVisibility unrespondedVisibility;
 
     private final Boolean autoPostToTimeline;
 
