@@ -14,10 +14,12 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
@@ -36,6 +38,9 @@ public class BlogPostShareService {
     private final BlogPostShareRepository shareRepository;
     private final CmsMapper cmsMapper;
     private final AccessControlService accessControlService;
+    /** 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。published_at と同一の時間基準。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 個人ブログ記事をチーム/組織に共有する。
@@ -48,6 +53,18 @@ public class BlogPostShareService {
     public SharePostResponse sharePost(Long postId, Long userId, SharePostRequest request) {
         BlogPostEntity entity = findPostOrThrow(postId);
         checkWriteAccess(entity, userId);
+
+        // 予約公開待ちの記事は共有不可（issue #2616・AC-6）。
+        // 予約中の記事は「公開時刻まで DRAFT に留め置く」ことで公開系クエリから隔離しているが、
+        // 共有は記事を他スコープへ配る別経路であり、ここを塞がないと予約時刻より前に露出する
+        // （予約の意味が失われる）。共有したい場合は公開時刻の到来を待つか、予約を解除する。
+        //
+        // 素の下書き（published_at IS NULL の DRAFT）は従来どおり共有できる。こちらは
+        // 「公開前の記事を共有先スコープに見せて意見をもらう」既存の運用であり、
+        // 認可契約テスト CmsBlogPostWriteScopeContractIT が 201 を固定している既定の振る舞い。
+        if (isScheduled(entity)) {
+            throw new BusinessException(CmsErrorCode.SCHEDULED_POST_SHARE_NOT_ALLOWED);
+        }
 
         // ソーシャルプロフィール名義の記事は共有不可
         if (entity.getSocialProfileId() != null) {
@@ -131,6 +148,23 @@ public class BlogPostShareService {
         entity.setPreviewToken(null, null);
         postRepository.save(entity);
         log.info("プレビュートークン無効化: postId={}", id);
+    }
+
+    /**
+     * 記事が「予約公開待ち」かを判定する（issue #2616）。
+     *
+     * <p>予約中は {@code status = DRAFT} のまま {@code published_at} に未来時刻を持つ
+     * （{@code PostStatus.SCHEDULED} は新設しない。{@code BlogPostEntity#publish} 参照）。</p>
+     *
+     * <p><b>時間基準:</b> {@code published_at} は JVM 既定ゾーン基準の壁時計として書かれるため、
+     * 判定にも {@code ClockConfig#wallClock}（同一プロパティ由来の壁時計）を使う。UTC 固定の
+     * {@code utcClock} を使うと JST 環境で 9 時間ずれ、予約中の記事を「公開済み扱い」に誤判定して
+     * 共有をすり抜けさせてしまう。</p>
+     */
+    private boolean isScheduled(BlogPostEntity entity) {
+        return entity.getStatus() == PostStatus.DRAFT
+                && entity.getPublishedAt() != null
+                && entity.getPublishedAt().isAfter(LocalDateTime.now(wallClock));
     }
 
     /**

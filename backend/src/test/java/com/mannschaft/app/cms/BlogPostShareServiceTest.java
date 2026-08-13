@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -44,6 +45,10 @@ class BlogPostShareServiceTest {
     private CmsMapper cmsMapper;
     @Mock
     private AccessControlService accessControlService;
+
+    /** 本番の {@code ClockConfig#utcClock} と同じ UTC 固定 Clock を実インスタンスで注入する。 */
+    @Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
 
     @InjectMocks
     private BlogPostShareService service;

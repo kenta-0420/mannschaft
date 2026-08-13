@@ -165,7 +165,11 @@
         "step4": "需要立即反映时，执行「手动同步」"
       }
     },
-    "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。"
+    "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。",
+    "todo_load_error": {
+      "summary": "TODO 加载失败",
+      "detail": "无法在日历上显示 TODO。日程仍然显示。请稍后重新加载。"
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

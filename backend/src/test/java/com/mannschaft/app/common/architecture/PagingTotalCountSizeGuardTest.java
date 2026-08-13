@@ -57,7 +57,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li><b>間接（変数経由）パターン</b>: {@code int total = filtered.size(); ...
  *       new PageImpl<>(content, pageable, total);} — 第3引数が単純な識別子で、
  *       同一メソッド内の直近の代入が {@code <同じ識別子> = 何か.size();} になっている形
- *       （{@code IncidentService#listIncidents} で実際に見つかった型）。</li>
+ *       （{@code IncidentService#listIncidents} で実際に見つかった型。CMP-028 Phase D で
+ *       DB Pageable + SQL WHERE 述語へ是正済み。パターンの実例として記述は残すが、
+ *       凍結リストからは既に削除されている）。</li>
  * </ol>
  *
  * <h2>本テストは ArchUnit ではない</h2>
@@ -136,10 +138,19 @@ class PagingTotalCountSizeGuardTest {
 
         List<Violation> found = collectViolations(root);
 
-        assertThat(found)
-                .as("production コードから PageImpl 呼び出しを 1 件も検出できなかった"
-                        + "（走査パスの前提が壊れた可能性）")
-                .isNotEmpty();
+        // 走査経路が生きていることの自己検証。
+        //
+        // ⚠️ かつてここは `found`（＝**違反**の一覧）が空でないことを要求していた。これは
+        // 「違反は常に存在する」という前提に立った書き方であり、**負債を完済した瞬間に番人が
+        // 自壊する**（CMP-028 Phase D で最後の2件を返済した際に実際に発生）。
+        // 「違反が見つからない」と「そもそも探せていない」は別事象であり、後者だけを検出せねば
+        // ならない。よって違反の有無とは独立に、**PageImpl の出現そのもの**を数えて走査経路の
+        // 健全性を確かめる（PageImpl は正当な用途でも多数使われるため、0 件なら走査が壊れている）。
+        long pageImplOccurrences = countPageImplOccurrences(root);
+        assertThat(pageImplOccurrences)
+                .as("production コードから PageImpl の出現を 1 件も検出できなかった"
+                        + "（走査パスの前提が壊れた可能性。違反ゼロとは別事象である）")
+                .isPositive();
 
         Set<String> foundKeys = found.stream().map(Violation::key).collect(Collectors.toCollection(LinkedHashSet::new));
 
@@ -201,6 +212,28 @@ class PagingTotalCountSizeGuardTest {
         String describe() {
             return classAndMethod + " — " + kind;
         }
+    }
+
+    /**
+     * production コード中の {@code new PageImpl<>(} の出現数を数える（走査経路の自己検証用）。
+     *
+     * <p>違反判定は一切行わない。**走査そのものが機能しているか**だけを見るための計数であり、
+     * 違反ゼロ（＝負債完済）と走査断絶を区別するために存在する。</p>
+     */
+    private static long countPageImplOccurrences(Path root) {
+        long count = 0;
+        for (Path file : javaFiles(root)) {
+            String raw = read(file);
+            if (!raw.contains("PageImpl")) {
+                continue;
+            }
+            String code = JavaSourceScanningUtils.maskCommentsAndLiterals(raw);
+            Matcher ctor = PAGE_IMPL_CTOR.matcher(code);
+            while (ctor.find()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static List<Violation> collectViolations(Path root) {

@@ -75,7 +75,15 @@ import java.util.Optional;
 @Order(Ordered.LOWEST_PRECEDENCE - 9)
 public class UserTimezoneFilter extends OncePerRequestFilter {
 
-    private static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * サーバーがローカル日時を保持する基準ゾーン。
+     *
+     * <p>かつては本クラスでも {@code ZoneId.of("Asia/Tokyo")} を重複定義していたが、
+     * 基準ゾーンの定義が複数箇所に散ると「片方だけ変わる」事故（判定が 9 時間ずれる）を招くため、
+     * <b>唯一の正</b>である {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照する形へ寄せた
+     * （値は従来と同一。CMP-023）。</p>
+     */
+    private static final ZoneId SERVER_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     /**
      * ユーザー TZ を解決できなかった場合に印なしで積む ZoneId。

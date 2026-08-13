@@ -217,8 +217,11 @@ class AuthzGateEffectivenessAuditTest {
         "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:303:teamId",
         // 門番は各 *ProfileMediaController の checkAdminOrAbove / 自己スコープ突合。
         "src/main/java/com/mannschaft/app/profile/service/ProfileMediaService.java:232:requestUserId",
-        // 認可をキャッシュの外側へ出した設計。userId はキャッシュキー専用と javadoc に明記済み。
-        "src/main/java/com/mannschaft/app/social/service/TeamFriendQueryService.java:167:userId",
+        // 門番は listFriends の accessControlService.checkMembership(userId, teamId, SCOPE_TEAM)。
+        // キャッシュの外側で必ず実行されるため、listFriendViews の userId はキャッシュキー専用でよい。
+        // ⚠️ 本 baseline は「パス:行番号:引数名」で照合するため、当該ファイルへの行挿入で機械的に腐る。
+        // CMP-028 Phase D の SQL 述語化で 167 → 193 へずれた（登録の追加ではなく行番号の追随）。
+        "src/main/java/com/mannschaft/app/social/service/TeamFriendQueryService.java:193:userId",
         // 現在どこからも呼ばれていない（呼び出し箇所ゼロ）。呼び出しを追加する際は
         // organizationId でのテナント絞り込みを実装すること。
         "src/main/java/com/mannschaft/app/succession/service/UnsealAuditViewService.java"

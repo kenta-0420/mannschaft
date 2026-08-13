@@ -54,13 +54,13 @@ public enum SchoolErrorCode implements ErrorCode {
     /** 有効期限の開始日が終了日より後 */
     REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN),
 
-    /** 出席集計が見つからない */
+    /** 出席集計が見つからない（not-found → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     SUMMARY_NOT_FOUND("S033", "出席集計が見つかりません", Severity.WARN),
 
     /** 出席要件評価が見つからない */
     EVALUATION_NOT_FOUND("S034", "出席要件評価が見つかりません", Severity.WARN),
 
-    /** 評価は既に解消済み */
+    /** 評価は既に解消済み（兄弟 SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED と同じ状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     EVALUATION_ALREADY_RESOLVED("S035", "この評価は既に解消済みです", Severity.WARN),
 
     /** 開示対象の評価が見つからない */

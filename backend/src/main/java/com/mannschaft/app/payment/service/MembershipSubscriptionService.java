@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.BillingInterval;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
@@ -34,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -525,7 +525,7 @@ public class MembershipSubscriptionService {
             throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_ACTIVE);
         }
         LocalDate resumesAt = addOneCycle(currentPeriodEnd, subscription.getBillingInterval());
-        long resumesAtEpochSec = resumesAt.atStartOfDay(ZoneId.systemDefault()).toEpochSecond();
+        long resumesAtEpochSec = resumesAt.atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE).toEpochSecond();
 
         // Stripe 先（pause_collection）・DB 後（症状を隠さない・Stripe 失敗は例外を再 throw）。
         stripePaymentProvider.pauseSubscriptionCollection(
@@ -682,7 +682,7 @@ public class MembershipSubscriptionService {
     private MembershipSubscriptionEntity applyCurrentPeriodEnd(MembershipSubscriptionEntity subscription,
                                                                long currentPeriodEndEpochSec) {
         LocalDate periodEnd = java.time.Instant.ofEpochSecond(currentPeriodEndEpochSec)
-                .atZone(ZoneId.systemDefault()).toLocalDate();
+                .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDate();
         subscription.applyCurrentPeriod(null, periodEnd);
         return subscription;
     }
@@ -717,7 +717,7 @@ public class MembershipSubscriptionService {
         java.time.LocalDateTime next = (interval == BillingInterval.YEARLY)
                 ? java.time.LocalDateTime.now().plusYears(1)
                 : java.time.LocalDateTime.now().plusMonths(1);
-        return next.atZone(ZoneId.systemDefault()).toEpochSecond();
+        return next.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toEpochSecond();
     }
 
     /**

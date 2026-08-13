@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.excel;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.BorderStyle;
@@ -25,7 +26,6 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -154,13 +154,13 @@ public class ExcelGeneratorService {
             return;
         }
         if (value instanceof LocalDate ld) {
-            Date date = Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Date date = Date.from(ld.atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
             cell.setCellValue(date);
             cell.setCellStyle(styles.date());
             return;
         }
         if (value instanceof LocalDateTime ldt) {
-            Date date = Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
+            Date date = Date.from(ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
             cell.setCellValue(date);
             cell.setCellStyle(styles.dateTime());
             return;
@@ -339,10 +339,10 @@ public class ExcelGeneratorService {
                 cell.setCellValue(num.doubleValue());
                 cell.setCellStyle(numberStyle);
             } else if (value instanceof LocalDate ld) {
-                cell.setCellValue(Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                cell.setCellValue(Date.from(ld.atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
                 cell.setCellStyle(dateStyle);
             } else if (value instanceof LocalDateTime ldt) {
-                cell.setCellValue(Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant()));
+                cell.setCellValue(Date.from(ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
                 cell.setCellStyle(dateTimeStyle);
             } else {
                 cell.setCellValue(value.toString());

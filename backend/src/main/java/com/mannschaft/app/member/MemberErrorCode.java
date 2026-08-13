@@ -23,16 +23,16 @@ public enum MemberErrorCode implements ErrorCode {
     /** フィールド定義が見つからない */
     FIELD_NOT_FOUND("MEMBER_004", "フィールド定義が見つかりません", Severity.WARN),
 
-    /** スラッグ重複 */
+    /** スラッグ重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     DUPLICATE_SLUG("MEMBER_005", "同じスラッグのページが既に存在します", Severity.WARN),
 
-    /** 年度重複 */
+    /** 年度重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     DUPLICATE_YEAR("MEMBER_006", "同じ年度のページが既に存在します", Severity.WARN),
 
-    /** メインページ重複 */
+    /** メインページ重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     DUPLICATE_MAIN_PAGE("MEMBER_007", "メインページは既に存在します", Severity.WARN),
 
-    /** ユーザー重複 */
+    /** ユーザー重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     DUPLICATE_USER("MEMBER_008", "同一ページに既に登録されているユーザーです", Severity.WARN),
 
     /** セルフ編集不許可 */
