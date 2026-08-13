@@ -209,6 +209,10 @@
         "generic": "操作に失敗しました",
         "notFound": "コメントが見つかりません"
       }
+    },
+    "todo_load_error": {
+      "summary": "TODOの読み込みに失敗しました",
+      "detail": "TODOをカレンダーに表示できませんでした。予定は表示されています。時間をおいて再読み込みしてください。"
     }
   },
   "scheduleKeep": {

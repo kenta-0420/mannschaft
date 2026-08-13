@@ -88,7 +88,8 @@ async function createAndPublishOrgSurvey(
     },
   })
   expect(create.status(), `アンケート作成(includeSupporters=${includeSupporters})`).toBe(201)
-  const surveyId = (await create.json())?.data?.survey?.id
+  // Issue #2635 で作成 POST のレスポンスがフラット化され data.survey の入れ子が消えた。
+  const surveyId = (await create.json())?.data?.id
   expect(surveyId, 'surveyId').toBeTruthy()
 
   const pub = await request.post(

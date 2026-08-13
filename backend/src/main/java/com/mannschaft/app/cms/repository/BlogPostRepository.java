@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,32 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     String SEARCH_BY_TEAM = "SELECT * FROM blog_posts WHERE team_id = :teamId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
     String SEARCH_BY_ORG = "SELECT * FROM blog_posts WHERE organization_id = :orgId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
+
+    /**
+     * 予約公開バッチ用: 公開時刻に達した予約記事の ID を取得する（issue #2616・F06.1 §2210-2226）。
+     *
+     * <p>対象条件は {@code status = DRAFT AND published_at IS NOT NULL AND published_at <= :baseTime}。
+     * 論理削除済みは {@code @SQLRestriction("deleted_at IS NULL")} が自動除外する
+     * （削除済み記事が復活公開されると事故になる）。</p>
+     *
+     * <p><b>エンティティではなく ID だけを返す</b>: 実処理は 1 件ごとに
+     * {@code REQUIRES_NEW} の別トランザクションで最新状態を取り直すため、抽出トランザクションの
+     * managed エンティティを跨いで渡す意味がない。抽出は<b>常に 1 本のクエリ</b>で完結し、
+     * 対象件数に比例したクエリ（N+1）を出さない（AC-15）。</p>
+     *
+     * <p>並びは {@code published_at ASC}（予約が古い順＝待たせている記事から公開する）。
+     * 取得件数は呼び出し側が {@code Pageable} で上限化する。</p>
+     *
+     * @param baseTime 判定基準時刻
+     * @param pageable 取得上限（{@code BlogScheduledPublishService.MAX_POSTS_PER_RUN}）
+     * @return 公開時刻に達した予約記事の ID
+     */
+    @Query("SELECT bp.id FROM BlogPostEntity bp "
+            + "WHERE bp.status = com.mannschaft.app.cms.PostStatus.DRAFT "
+            + "AND bp.publishedAt IS NOT NULL "
+            + "AND bp.publishedAt <= :baseTime "
+            + "ORDER BY bp.publishedAt ASC, bp.id ASC")
+    List<Long> findDueScheduledPostIds(@Param("baseTime") LocalDateTime baseTime, Pageable pageable);
 
     Page<BlogPostEntity> findByTeamIdAndStatusOrderByPinnedDescPublishedAtDesc(
             Long teamId, PostStatus status, Pageable pageable);

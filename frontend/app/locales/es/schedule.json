@@ -209,6 +209,10 @@
         "generic": "La operación falló",
         "notFound": "No se encontró el comentario"
       }
+    },
+    "todo_load_error": {
+      "summary": "No se pudieron cargar las tareas (TODO)",
+      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar mas tarde."
     }
   },
   "scheduleKeep": {

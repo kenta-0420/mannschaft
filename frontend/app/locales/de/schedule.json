@@ -209,6 +209,10 @@
         "generic": "Der Vorgang ist fehlgeschlagen",
         "notFound": "Kommentar nicht gefunden"
       }
+    },
+    "todo_load_error": {
+      "summary": "TODOs konnten nicht geladen werden",
+      "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."
     }
   },
   "scheduleKeep": {

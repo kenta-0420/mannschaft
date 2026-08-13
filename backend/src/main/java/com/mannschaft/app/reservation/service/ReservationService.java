@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
@@ -42,7 +43,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -430,7 +430,7 @@ public class ReservationService {
         // Issue #2526: deadline は slot_date/start_time（業務ローカル時刻）由来のため、
         // Clock（UTC固定）の瞬間を JVM 既定ゾーンで解釈し直してから比較する
         // （ReservationPendingExpireService#findExpirableUnits と同型）。
-        return LocalDateTime.now(clock.withZone(ZoneId.systemDefault())).isAfter(deadline);
+        return LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)).isAfter(deadline);
     }
 
     /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
@@ -794,7 +794,7 @@ public class ReservationService {
         // 直近予約は「申込時刻（booked_at）」ではなく「来店日時（枠の日付＋開始時刻）」で判定する。
         // Issue #2526（表に無い同型バグとして監査で発見）: 来店日時は業務ローカル時刻のため、
         // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（cancel_deadline 等と同様）。
-        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
+        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
         List<ReservationEntity> reservations =
                 reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
         return enrichList(reservations);

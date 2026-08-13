@@ -209,6 +209,10 @@
         "generic": "操作失败",
         "notFound": "未找到该评论"
       }
+    },
+    "todo_load_error": {
+      "summary": "TODO 加载失败",
+      "detail": "无法在日历上显示 TODO。日程仍然显示。请稍后重新加载。"
     }
   },
   "scheduleKeep": {

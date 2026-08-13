@@ -113,6 +113,9 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** 表示されたキャンセル料と実際の料金が乖離 (§9.10 409 用、新設) */
     CANCELLATION_FEE_MISMATCH("RECRUITMENT_308", "表示されたキャンセル料と実際の料金が異なります。再試算してください", Severity.WARN),
 
+    /** 徴収済みのキャンセル料に対する免除要求（免除ではなく返金の話・F03.11.1 §3.9 → 409） */
+    CANCELLATION_FEE_ALREADY_PAID("RECRUITMENT_315", "既に徴収済みのキャンセル料は免除できません", Severity.WARN),
+
     // ========================================
     // Phase 5b: NO_SHOW・ペナルティ系 (305, 309〜312)
     // ========================================

@@ -448,6 +448,67 @@ class NativeQueryUnsignedBigintTypeIT {
     }
 
     /**
+     * 符号揃え 第三波（issue #2545・{@code V182__unify_id_columns_unsigned_wave3.sql}）の実測。
+     *
+     * <p>第二波が FK 型不一致で除外した attendance_requirement_evaluations の 2 列
+     * （requirement_rule_id / summary_id）と、その参照先である親テーブルの主キー
+     * （attendance_requirement_rules.id / student_attendance_summaries.id）を検証する。
+     * FK 制約が型の揃った状態で張り直されていることも確認する。</p>
+     */
+    @Test
+    @DisplayName("符号揃え第三波: attendance_requirement_evaluationsのFK2列と親PK2列がBIGINT UNSIGNEDへ統一済み（V182・issue #2545）")
+    void 符号揃え第三波の対象列がUNSIGNEDへ統一済み() throws Exception {
+        SoftAssertions softly = new SoftAssertions();
+
+        softly.assertThat(readColumnType("attendance_requirement_rules", "id"))
+                .as("attendance_requirement_rules.id（親PK）").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("student_attendance_summaries", "id"))
+                .as("student_attendance_summaries.id（親PK）").isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("attendance_requirement_evaluations", "requirement_rule_id"))
+                .as("attendance_requirement_evaluations.requirement_rule_id（子FK）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("attendance_requirement_evaluations", "summary_id"))
+                .as("attendance_requirement_evaluations.summary_id（子FK）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("attendance_requirement_evaluations", "requirement_rule_id"))
+                .as("requirement_rule_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("FK→attendance_requirement_rules.id");
+        softly.assertThat(readColumnComment("attendance_requirement_evaluations", "summary_id"))
+                .as("summary_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("FK→student_attendance_summaries.id");
+
+        // 番人の初回実行で追加検出した2件（FK 非依存）
+        softly.assertThat(readColumnType("notifications", "organization_id"))
+                .as("notifications.organization_id（V65.001 が UNSIGNED を書き落としていた）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnType("ad_invoice_items", "campaign_id"))
+                .as("ad_invoice_items.campaign_id（V67.023 の MODIFY COLUMN が UNSIGNED を落としていた）")
+                .isEqualTo("bigint unsigned");
+        softly.assertThat(readColumnComment("ad_invoice_items", "campaign_id"))
+                .as("campaign_id の COMMENT を MODIFY COLUMN で失っていないこと")
+                .isEqualTo("F09.7 ad_campaigns.id (NULL=F09.17 messaging_campaign_id 経由)");
+
+        // FK 制約が型の揃った状態で張り直されていること（一時的に落として再作成したため）
+        try (Connection conn = connection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT CONSTRAINT_NAME FROM information_schema.table_constraints "
+                             + "WHERE table_schema = DATABASE() AND table_name = 'attendance_requirement_evaluations' "
+                             + "AND constraint_type = 'FOREIGN KEY' AND constraint_name IN ('fk_are_rule', 'fk_are_summary')")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                List<String> names = new ArrayList<>();
+                while (rs.next()) {
+                    names.add(rs.getString(1));
+                }
+                softly.assertThat(names)
+                        .as("fk_are_rule / fk_are_summary が張り直されていること")
+                        .containsExactlyInAnyOrder("fk_are_rule", "fk_are_summary");
+            }
+        }
+
+        softly.assertAll();
+    }
+
+    /**
      * {@code notifications_archive} の実害実測。{@code NotificationCleanupBatchService#deleteArchived} が
      * 実際に発行する {@code DELETE FROM notifications WHERE ... AND id IN (SELECT id FROM notifications_archive)}
      * は {@code notifications.id}（{@code BIGINT UNSIGNED}）と {@code notifications_archive.id} を

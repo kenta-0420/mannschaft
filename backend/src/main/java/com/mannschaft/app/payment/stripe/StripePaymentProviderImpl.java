@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.stripe;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
@@ -55,7 +56,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -239,7 +239,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("Stripe Checkout Session 作成: sessionId={}, memberPaymentId={}",
                     session.getId(), memberPaymentId);
@@ -273,7 +273,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("通知クレジット Checkout Session 作成: sessionId={}, notificationCreditPurchaseId={}",
                     session.getId(), notificationCreditPurchaseId);
@@ -317,7 +317,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("F20.1 サブスク Checkout Session 作成: sessionId={}, billingContractId={}, priceJpy={}",
                     session.getId(), billingContractId, priceJpy);
@@ -563,7 +563,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .build();
             AccountLink link = AccountLink.create(params);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochSecond(link.getExpiresAt()), ZoneId.systemDefault());
+                    Instant.ofEpochSecond(link.getExpiresAt()), UserZoneLocalDateTimeParser.SERVER_ZONE);
             log.info("Stripe AccountLink 作成: account={}", stripeAccountId);
             return new AccountLinkInfo(link.getUrl(), expiresAt);
         } catch (StripeException e) {
@@ -757,6 +757,36 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
         } catch (StripeException e) {
             log.error("Stripe PaymentIntent capture 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo captureManualPaymentIntent(
+            String paymentIntentId, long amountToCaptureMinor,
+            Long applicationFeeAmountMinor, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+
+            // amount_to_capture は与信額以下でなければならない（overcapture は使わない・設計書 F03.11.1 §4.1-3）。
+            // final_capture は既定の true のままとし、残額は Stripe に自動解放させる（§4.1-1・取消 API を別途呼ばない）。
+            PaymentIntentCaptureParams.Builder params = PaymentIntentCaptureParams.builder()
+                    .setAmountToCapture(amountToCaptureMinor);
+            if (applicationFeeAmountMinor != null) {
+                // 運営手数料はキャプチャ額に対して上書きする（A_eff = min(A, F)・§3.5.3）。
+                // Stripe 側もキャプチャ額を上限に丸めるため二重に安全である。
+                params.setApplicationFeeAmount(applicationFeeAmountMinor);
+            }
+
+            PaymentIntent captured = intent.capture(params.build(), options);
+            log.info("Stripe PaymentIntent 部分 capture 確定: id={}, status={}, amount={}, applicationFee={}",
+                    captured.getId(), captured.getStatus(), amountToCaptureMinor, applicationFeeAmountMinor);
+            return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent 部分 capture 失敗: id={}, amount={}", paymentIntentId, amountToCaptureMinor, e);
             throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
         }
     }

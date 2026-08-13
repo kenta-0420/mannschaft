@@ -9,7 +9,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -32,9 +31,21 @@ import java.util.List;
  * <p>これに伴いソート順を {@code cancelledAt}（一意でない）から {@code id}（一意）へ
  * 意図的に変更している。{@code cancelledAt} はキーセットのカーソルとして使えない
  * （同一値の行が複数存在し得るため、カーソル前進の一意性を保証できない）。
- * リトライ処理は {@link #processRetry} で1件ごとに独立しており（他レコードの状態を
- * 参照せず、決済APIとの連携もレコード単位のスタブ実装）、処理順序に依存する
- * ロジックは無いことをコードレビューで確認済み。</p>
+ * リトライ処理は1件ごとに独立しており（他レコードの状態を参照しない）、
+ * 処理順序に依存するロジックは無いことをコードレビューで確認済み。</p>
+ *
+ * <h2>徴収の実体（F03.11.1）</h2>
+ * <p>1 件分の徴収は {@link RecruitmentCancellationFeeRetryProcessor} へ委譲する。
+ * 1 件の失敗が他件のコミットを巻き込まないよう、1 件 = 独立トランザクション
+ * （{@code REQUIRES_NEW}）である必要があり、そのためには別 Bean であることが要る
+ * （同一 Bean 内の自己呼び出しは Spring プロキシを経由せず伝播設定が効かない）。</p>
+ *
+ * <p>初回徴収とリトライで別ロジックを持たない。どちらも payment ドメインの単一入口
+ * {@code ConnectChargeService#settleCancellationFee} を同じ引数で呼ぶ（設計書 §3.4 / §5.5）。
+ * escrow の引き当てと経路判定は payment ドメインの内部で完結するため、
+ * <b>本バッチ（recruitment ドメイン）は escrow を読まない</b>。1 件につき Stripe 呼び出しが
+ * 1 回必要である以上、件数分のラウンドトリップは構造的に不可避であり、これは N+1 問題ではなく
+ * 仕事の量そのものである（一括取得しても Stripe 呼び出しは減らない）。</p>
  */
 @Slf4j
 @Component
@@ -48,6 +59,7 @@ public class RecruitmentPaymentRetryBatch {
     static final int MAX_PAGES = 200;
 
     private final RecruitmentCancellationRecordRepository cancellationRecordRepository;
+    private final RecruitmentCancellationFeeRetryProcessor retryProcessor;
 
     /**
      * 1時間ごとに実行。ShedLock で重複実行を防止。
@@ -75,11 +87,10 @@ public class RecruitmentPaymentRetryBatch {
                 break;
             }
 
-            for (RecruitmentCancellationRecordEntity record : chunk) {
-                boolean success = processRetry(record);
-                totalProcessed++;
-                if (success) totalSuccess++; else totalFailed++;
-            }
+            int success = retryProcessor.processChunk(chunk);
+            totalProcessed += chunk.size();
+            totalSuccess += success;
+            totalFailed += chunk.size() - success;
 
             // カーソルを直前チャンクの最終 id まで前進させる（キーセットページング）
             cursor = chunk.get(chunk.size() - 1).getId();
@@ -98,34 +109,4 @@ public class RecruitmentPaymentRetryBatch {
                 totalProcessed, totalSuccess, totalFailed);
     }
 
-    /**
-     * 1件のキャンセル記録に対してリトライを実行する。
-     * 決済API統合は F03.4 決済システムとの別途調整が必要なため、
-     * 現フェーズではリトライカウントのみインクリメントし、ログに記録する（スタブ）。
-     *
-     * @return true: 決済成功（将来実装）/ false: 失敗またはスタブ
-     */
-    @Transactional
-    public boolean processRetry(RecruitmentCancellationRecordEntity record) {
-        try {
-            log.info("F03.11 決済リトライ: recordId={}, retryCount={}/{}",
-                    record.getId(), record.getPaymentRetryCount() + 1, MAX_RETRY_COUNT);
-
-            // TODO: F03.4 決済APIとの統合実装
-            // 現フェーズではスタブ: リトライカウントをインクリメントして記録
-            record.incrementRetryCount();
-            cancellationRecordRepository.save(record);
-
-            // MAX到達時は管理者通知（TODO: 通知API統合）
-            if (record.getPaymentRetryCount() >= MAX_RETRY_COUNT) {
-                log.warn("F03.11 決済リトライ上限到達: recordId={}, userId={}, feeAmount={}",
-                        record.getId(), record.getUserId(), record.getFeeAmount());
-            }
-
-            return false; // スタブのため常にfalse
-        } catch (Exception e) {
-            log.error("F03.11 決済リトライ エラー: recordId={}", record.getId(), e);
-            return false;
-        }
-    }
 }

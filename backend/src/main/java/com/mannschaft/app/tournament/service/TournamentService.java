@@ -66,6 +66,8 @@ public class TournamentService {
     private final ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave7: 大会一覧/詳細で主催組織 ADMIN/DEPUTY_ADMIN を判定するため。 */
     private final com.mannschaft.app.common.AccessControlService accessControlService;
+    /** CMP-028 Phase C: 大会一覧の可視レベル解決（SQL 述語化）のため。 */
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
     /**
      * F08.7.1 連絡機能: 大会作成・シーズン継続時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -85,47 +87,91 @@ public class TournamentService {
     private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     /**
-     * 大会一覧を取得する（閲覧者の可視性でフィルタする）。
+     * 大会一覧を取得する（閲覧者の可視性を SQL の WHERE 句で絞り込む）。
      *
-     * <p>認可根治戦役 Wave7: {@link StandingsQueryService} の per-tournament 可視性フィルタ（B-2b）と
-     * 同方針で、取得したページの各大会を F00 共通可視性 Resolver で判定し、閲覧者に見えない大会
-     * （DRAFT / 非公開等）をレスポンスから除外する。</p>
-     *
-     * <p><b>主催組織 ADMIN/DEPUTY_ADMIN は自組織の全大会を閲覧できる</b>（DRAFT 含む）。
-     * {@code TournamentVisibilityResolver} は DRAFT を「作成者と SystemAdmin のみ可視」と判定するため、
-     * 可視性フィルタだけだと「別の管理者が作成した DRAFT 大会が管理画面から消える」機能退行が起きる。
-     * 本メソッドの結果集合は {@code organization_id = orgId} で構成されるため、
+     * <p>認可根治戦役 Wave7 由来の <b>主催組織 ADMIN/DEPUTY_ADMIN 全件閲覧</b>方針は維持する
+     * （DRAFT 含む）。本メソッドの結果集合は {@code organization_id = orgId} で構成されるため、
      * パス {@code orgId} を管理者判定の scope に用いても BOLA にはならない。</p>
      *
-     * <p>可視性フィルタはページ取得後に適用するため、{@code totalElements} は当該ページで
-     * 除外した件数ぶんを差し引いた近似値になる（全件走査を避けるための意図的な割り切り）。</p>
+     * <h2>CMP-028 Phase C: SQL 述語化によるページング歯抜けの根治</h2>
+     * <p>旧実装は SQL で 1 ページ分を取得してから F00 {@link ContentVisibilityChecker} で
+     * メモリ上フィルタしており、非公開大会が混ざると {@code size} を要求してもちょうどの件数が
+     * 返らない歯抜けが起きていた（{@code ActivityResultService} と同種の欠陥）。
+     * {@link com.mannschaft.app.common.visibility.MembershipBatchQueryService#resolveVisibleLevels}
+     * が返す「行に依存せず判定できる可視 {@code StandardVisibility} ラダー集合」を
+     * {@link com.mannschaft.app.common.visibility.mapping.TournamentVisibilityMapper#toFunctional}
+     * で機能 enum へ逆写像し、SQL の {@code WHERE visibility IN (...)} へ渡す。判定器は F00 の
+     * ままであり、SQL はその出力の機械的な転写に過ぎない（二つ目の判定器を作らない）。</p>
+     *
+     * <p><b>{@code PARTICIPANTS_ONLY}（{@code StandardVisibility.CUSTOM}）の翻訳</b>:
+     * {@code resolveVisibleLevels} は行依存の CUSTOM 軸をラダー集合に含めないため、
+     * {@link TournamentParticipantRepository#countActiveMemberOfAnyParticipantTeam} と同一の
+     * 判定を {@code EXISTS} サブクエリとして OR で組み合わせる
+     * （{@link TournamentRepository#findVisibleByOrganizationId} 参照）。</p>
+     *
+     * <p><b>第二の門（保険）</b>: SQL が通した行を F00 {@link ContentVisibilityChecker} で
+     * 再確認する。通常は 1 件も落ちない。乖離した場合は fail-closed で除外し {@code log.warn} に
+     * 記録する（{@code ActivityResultService#listActivities} と同じ流儀）。</p>
      *
      * @param viewerUserId 閲覧者 user_id（未認証は {@code null}）
      */
     public Page<TournamentResponse> listTournaments(Long orgId, String status, Pageable pageable,
                                                     Long viewerUserId) {
-        Page<TournamentEntity> page = status != null
-                ? tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
-                        orgId, TournamentStatus.valueOf(status), pageable)
-                : tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
-
         boolean orgManager = viewerUserId != null
                 && (accessControlService.isSystemAdmin(viewerUserId)
                     || accessControlService.isAdminOrAbove(viewerUserId, orgId, "ORGANIZATION"));
         if (orgManager) {
+            Page<TournamentEntity> page = status != null
+                    ? tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
+                            orgId, TournamentStatus.valueOf(status), pageable)
+                    : tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
             return page.map(mapper::toTournamentSummaryResponse);
         }
 
-        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey("ORGANIZATION", orgId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<TournamentVisibility> visibleVisibilities =
+                com.mannschaft.app.common.visibility.mapping.TournamentVisibilityMapper
+                        .toFunctional(visibleLevels);
+        Set<String> visibilityNames = visibleVisibilities.stream()
+                .map(TournamentVisibility::name)
+                .collect(java.util.stream.Collectors.toSet());
+        // StandardVisibility.PUBLIC は resolveVisibleLevels が常に含めるため
+        // visibilityNames は非空（IN () の不正 SQL は起きない）。
+
+        Page<TournamentEntity> page = tournamentRepository.findVisibleByOrganizationId(
+                orgId, status, visibilityNames, viewerUserId, snapshot.isSystemAdmin(), pageable);
+
+        List<TournamentEntity> content = page.getContent();
+        if (content.isEmpty()) {
+            return page.map(mapper::toTournamentSummaryResponse);
+        }
+
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.TOURNAMENT,
-                page.getContent().stream().map(TournamentEntity::getId).toList(),
+                content.stream().map(TournamentEntity::getId).toList(),
                 viewerUserId);
-        List<TournamentResponse> visible = page.getContent().stream()
-                .filter(t -> visibleIds.contains(t.getId()))
+        if (accessibleIds.size() == content.size()) {
+            return page.map(mapper::toTournamentSummaryResponse);
+        }
+        List<Long> divergentIds = content.stream()
+                .map(TournamentEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("大会一覧: SQL 述語と F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "orgId={}, viewerUserId={}, divergentIds={}",
+                orgId, viewerUserId, divergentIds);
+        List<TournamentResponse> filtered = content.stream()
+                .filter(t -> accessibleIds.contains(t.getId()))
                 .map(mapper::toTournamentSummaryResponse)
                 .toList();
-        long excluded = (long) page.getNumberOfElements() - visible.size();
-        return new PageImpl<>(visible, pageable, page.getTotalElements() - excluded);
+        return new PageImpl<>(filtered, pageable,
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**

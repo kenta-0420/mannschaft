@@ -310,6 +310,42 @@ export default {
         "expired": "期限切れ",
         "lifted": "解除済み"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "キャンセル料の免除",
+      "pageDescription": "受け取るべきキャンセル料の免除",
+      "unknownUser": "不明なユーザー",
+      "loadMore": "もっと見る",
+      "reasonTooLong": "免除理由は{max}文字以内で入力してください",
+      "columns": {
+        "listing": "募集",
+        "user": "対象ユーザー",
+        "feeAmount": "キャンセル料",
+        "status": "状態",
+        "cancelledAt": "キャンセル日時"
+      },
+      "status": {
+        "pending": "未払い",
+        "failed": "決済失敗",
+        "uncollectible": "回収不能",
+        "paid": "支払済み",
+        "waived": "免除済み",
+        "notRequired": "対象外"
+      },
+      "waiveButton": "免除する",
+      "reasonLabel": "免除理由",
+      "reasonPlaceholder": "免除する理由を入力してください（必須）",
+      "reasonRequired": "免除理由は必須です",
+      "confirmDialog": {
+        "title": "キャンセル料の免除",
+        "message": "キャンセル料 {amount} 円の請求を取り消します。この操作は取り消せません。\nこのユーザーに他の未払いのキャンセル料が残っている場合、募集への申込制限は解除されません。",
+        "confirmButton": "免除する",
+        "cancelButton": "戻る"
+      },
+      "emptyMessage": "免除可能なキャンセル料の記録はありません",
+      "loadError": "一覧の取得に失敗しました",
+      "waiveSuccess": "キャンセル料を免除しました",
+      "waiveError": "免除に失敗しました"
     }
   }
 }
