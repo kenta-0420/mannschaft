@@ -44,7 +44,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -158,14 +160,53 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.save(any())).willReturn(savedListing);
             given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
             given(mapper.toListingResponse(any())).willReturn(null);
-            // Issue #2715: sendPublishedNotifications が受信者ごとに locale を解決するためのスタブ。
-            given(userLocaleCache.getLocale(any())).willReturn("ja");
-            given(messageSource.getMessage(any(), any(), any(), any()))
-                    .willAnswer(invocation -> invocation.getArgument(2));
+            // Issue #2715 / 検分是正: sendPublishedNotifications は notificationHelper.notifyAllLocalized(...)
+            // に委譲するのみで、locale 解決 (userLocaleCache) や本文組み立て (messageSource) は
+            // NotificationHelper 側 or bodyBuilder ラムダ内で行われる。notificationHelper 自体を
+            // @Mock にしているためラムダは呼ばれず、ここでのスタブは不要（UnnecessaryStubbingException）。
 
             service.publish(LISTING_ID, ADMIN_ID);
 
             verify(listingRepository).save(any());
+        }
+
+        /**
+         * PR #2764 検分是正（欠陥1）の回帰テスト。
+         *
+         * <p>過去の実装は notifyAllLocalized（F00 Phase F 可視性フィルタ経由）ではなく
+         * {@code notify} を受信者数分ループ直呼びしており、非公開募集の存在・タイトルが
+         * 閲覧不可ユーザーへ漏洩する退行を招いた。本テストは publish() が
+         * {@code notificationHelper.notify(...)} を一度も直接呼ばず、必ず可視性フィルタ経由の
+         * {@code notifyAllLocalized(...)} を通ることを検証する（配線レベルの回帰防止）。
+         * 可視性フィルタそのものの単体動作は {@code NotificationHelperTest#NotifyAllLocalized} で検証する。</p>
+         */
+        @Test
+        @DisplayName("欠陥1回帰防止: publish は notify を直接ループせず notifyAllLocalized（可視性フィルタ経由）を呼ぶ")
+        void publish_通知はnotifyAllLocalized経由でありnotify直呼びしない() throws Exception {
+            RecruitmentListingEntity listing = buildDraftListing();
+            RecruitmentListingEntity savedListing = buildOpenListing();
+
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(distributionTargetRepository.countByListingId(LISTING_ID)).willReturn(1);
+            given(distributionTargetRepository.findByListingId(LISTING_ID))
+                    .willReturn(List.of(buildTarget(RecruitmentDistributionTargetType.MEMBERS)));
+            given(listingRepository.save(any())).willReturn(savedListing);
+            given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
+            given(mapper.toListingResponse(any())).willReturn(null);
+
+            service.publish(LISTING_ID, ADMIN_ID);
+
+            // notifyAllLocalized が sourceType=RECRUITMENT_LISTING で呼ばれること（可視性フィルタが
+            // このソース種別で ReferenceType 解決できる前提の配線を検証する）。
+            verify(notificationHelper).notifyAllLocalized(
+                    eq(List.of(5L, 6L)),
+                    eq("RECRUITMENT_PUBLISHED"),
+                    eq("RECRUITMENT_LISTING"), eq(LISTING_ID),
+                    any(), any(), any(), any(),
+                    any());
+            // notify の受信者ループ直呼び（可視性フィルタを迂回する旧実装）が復活していないこと。
+            verify(notificationHelper, never()).notify(
+                    any(), eq("RECRUITMENT_PUBLISHED"), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 

@@ -759,31 +759,28 @@ public class RecruitmentListingService {
 
         String actionUrl = "/recruitment-listings/" + listing.getId();
 
-        // Issue #2715 ロットA: 受信者ごとに locale を解決して本文を組み立てるため、notifyAll（単一文面の
-        // 一括配信）ではなく notify を受信者数分呼ぶ（reservation ドメインの先行実装と同じ方式）。
-        for (Long userId : notifiedUserIds) {
-            try {
-                Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(userId));
-                String title = messageSource.getMessage(
-                        "notification.recruitment.published.title", new Object[]{listing.getTitle()},
-                        "新着募集: " + listing.getTitle(), locale);
-                String body = messageSource.getMessage(
-                        "notification.recruitment.published.body", new Object[]{listing.getTitle()},
-                        listing.getTitle() + " の募集が公開されました。", locale);
-                notificationHelper.notify(
-                        userId,
-                        "RECRUITMENT_PUBLISHED",
-                        title, body,
-                        "RECRUITMENT_LISTING", listing.getId(),
-                        scopeType, scopeId,
-                        actionUrl, listing.getCreatedBy()
-                );
-            } catch (Exception e) {
-                // 1 件の失敗が他の宛先を巻き込まないよう行単位で握らず記録する。
-                log.warn("F03.11 RECRUITMENT_PUBLISHED 通知送信失敗（継続）: listingId={}, userId={}, error={}",
-                        listing.getId(), userId, e.getMessage());
-            }
-        }
+        // Issue #2715 ロットA / 検分是正(PR #2764): 受信者ごとに locale を解決して本文を組み立てる必要が
+        // あるため、単一文面固定の notifyAll ではなく NotificationHelper#notifyAllLocalized を用いる。
+        // 過去に「notify を受信者数分ループで直呼びする」形に置換したことがあったが、notify は
+        // notifyAll と異なり F00 Phase F の受信者可視性フィルタ（filterAccessibleRecipients）を
+        // 一切通らない素通しのため、非公開募集の存在・タイトルが閲覧不可ユーザーへ漏洩する退行を招いた。
+        // notifyAllLocalized は「可視性フィルタ＋locale 一括解決」の両方を NotificationHelper 側で
+        // 一元的に担保するため、ここではそれを呼ぶだけでよい（ロットB・C の同種要求にも同じ経路を使う）。
+        notificationHelper.notifyAllLocalized(
+                new ArrayList<>(notifiedUserIds),
+                "RECRUITMENT_PUBLISHED",
+                "RECRUITMENT_LISTING", listing.getId(),
+                scopeType, scopeId,
+                actionUrl, listing.getCreatedBy(),
+                (userId, locale) -> {
+                    String title = messageSource.getMessage(
+                            "notification.recruitment.published.title", new Object[]{listing.getTitle()},
+                            "新着募集: " + listing.getTitle(), locale);
+                    String body = messageSource.getMessage(
+                            "notification.recruitment.published.body", new Object[]{listing.getTitle()},
+                            listing.getTitle() + " の募集が公開されました。", locale);
+                    return new NotificationHelper.LocalizedMessage(title, body);
+                });
         log.info("F03.11 RECRUITMENT_PUBLISHED 通知送信: listingId={}, targetUsers={}",
                 listing.getId(), notifiedUserIds.size());
     }

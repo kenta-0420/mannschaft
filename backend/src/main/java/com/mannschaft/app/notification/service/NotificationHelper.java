@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -58,6 +61,12 @@ public class NotificationHelper {
 
     /** F09.13 通知クレジットサービス（課金対象通知のカウント用） */
     private final NotificationCreditService notificationCreditService;
+
+    /**
+     * Issue #2715 検分是正: {@link #notifyAllLocalized} が受信者ごとの locale を
+     * <b>一括</b>解決するために用いる（受信者数に比例した DB 往復＝N+1 を防ぐ）。
+     */
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * fan-out 抜本改修 P1: 一括通知のチャンク失敗を「静かに消さず数える」ための Micrometer レジストリ。
@@ -341,6 +350,79 @@ public class NotificationHelper {
                                        String actionUrl, Long actorId) {
         notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
                 sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+    }
+
+    /**
+     * 受信者ごとに locale の異なる本文で一括通知を作成・配信する。
+     *
+     * <p>Issue #2715 ロットA 検分是正: 「notifyAll（単一文面の一括配信）を受信者別 locale で本文を
+     * 変えたいがために notify の逐次ループへ置換する」というロットB・C でも繰り返される要求に対し、
+     * <b>呼び出し側で個別対応させず本メソッドへ一本化する</b>。これにより以下 2 点を必ず担保する。</p>
+     * <ol>
+     *   <li><b>F00 Phase F 可視性フィルタ (§11.1)</b>: 先頭で必ず {@link #filterAccessibleRecipients}
+     *       を通す。呼び出し側がフィルタを素通しの {@link #notify} 直呼びへ置換した結果、
+     *       閲覧不可ユーザーにも通知本文（＝非公開コンテンツの存在・名称）が漏洩する退行が
+     *       過去に実際に発生した（PR #2764 検分で発覚）。</li>
+     *   <li><b>locale の一括解決</b>: {@link UserLocaleCache#getLocales} で 1 クエリにまとめる。
+     *       受信者ごとに {@link UserLocaleCache#getLocale} を呼ぶと、大量受信者配信
+     *       （例: FOLLOWERS 配信の {@code PageRequest.of(0, 10000)}）でキャッシュコールド時に
+     *       最大受信者数分の DB 往復が公開トランザクション内に発生する（N+1）。</li>
+     * </ol>
+     *
+     * <p>絞り込み・locale 解決後の受信者ごとに {@code bodyBuilder} で本文を組み立てて {@link #notify}
+     * を呼ぶ。1 件の失敗が他の宛先を巻き込まないよう try/catch + {@code log.warn} する
+     * （既存 {@link #notifyAll} と同じ作法）。</p>
+     *
+     * @param userIds          候補受信者リスト（visibility 絞込前）
+     * @param notificationType 通知種別
+     * @param sourceType       ソース種別（visibility フィルタの解決キーにもなる）
+     * @param sourceId         ソースID
+     * @param scopeType        通知スコープ種別
+     * @param scopeId          通知スコープID
+     * @param actionUrl        アクションURL
+     * @param actorId          実行者ID
+     * @param bodyBuilder      (userId, locale) → タイトル・本文 を組み立てる関数（呼び出し側で
+     *                         {@code MessageSource} を用いて i18n 解決したものを返す）
+     */
+    public void notifyAllLocalized(List<Long> userIds, String notificationType,
+                                   String sourceType, Long sourceId,
+                                   NotificationScopeType scopeType, Long scopeId,
+                                   String actionUrl, Long actorId,
+                                   LocalizedMessageBuilder bodyBuilder) {
+        List<Long> filtered = filterAccessibleRecipients(userIds, sourceType, sourceId);
+        if (filtered.isEmpty()) {
+            log.info("一括通知送信(locale別): type={}, userCount=0（visibility絞込後）", notificationType);
+            return;
+        }
+
+        // locale を一括解決（N+1 防止）。
+        Map<Long, String> locales = userLocaleCache.getLocales(filtered);
+
+        int successCount = 0;
+        for (Long userId : filtered) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                LocalizedMessage message = bodyBuilder.build(userId, locale);
+                notify(userId, notificationType, message.title(), message.body(),
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+                successCount++;
+            } catch (Exception e) {
+                log.warn("通知送信失敗（継続）: userId={}, type={}, error={}",
+                        userId, notificationType, e.getMessage());
+            }
+        }
+        log.info("一括通知送信(locale別): type={}, userCount={}（visibility絞込後）, successCount={}",
+                notificationType, filtered.size(), successCount);
+    }
+
+    /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */
+    public record LocalizedMessage(String title, String body) {
+    }
+
+    /** {@link #notifyAllLocalized} の本文組み立て関数（呼び出し側が i18n 解決を担う）。 */
+    @FunctionalInterface
+    public interface LocalizedMessageBuilder {
+        LocalizedMessage build(Long userId, Locale locale);
     }
 
     /**

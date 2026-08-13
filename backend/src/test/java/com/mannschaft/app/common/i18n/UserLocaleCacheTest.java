@@ -8,9 +8,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
@@ -112,5 +115,68 @@ class UserLocaleCacheTest {
         assertThat(cache.size())
                 .as("上限 %d を超えて常駐しない", MAX_ENTRIES)
                 .isLessThanOrEqualTo(MAX_ENTRIES);
+    }
+
+    // ========================================
+    // getLocales (bulk・N+1防止・欠陥3の根治確認)
+    // ========================================
+
+    @Test
+    @DisplayName("getLocales: 全件キャッシュミスでも bulk クエリは1回のみ（N+1防止）")
+    void getLocales_全件キャッシュミス_bulkクエリ1回() {
+        // Given: 3人ともキャッシュ未保持。findLocalesByIdIn が1クエリで返す。
+        given(userRepository.findLocalesByIdIn(any()))
+                .willReturn(List.of(
+                        new Object[]{1L, "en"},
+                        new Object[]{2L, "ja"},
+                        new Object[]{3L, "zh"}));
+
+        // When
+        Map<Long, String> result = cache.getLocales(List.of(1L, 2L, 3L));
+
+        // Then: 戻り値は全件分・bulk クエリは1回だけ（受信者数に比例しない）
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(
+                1L, "en", 2L, "ja", 3L, "zh"));
+        verify(userRepository, times(1)).findLocalesByIdIn(any());
+        verify(userRepository, times(0)).findLocaleById(anyLong());
+    }
+
+    @Test
+    @DisplayName("getLocales: 一部キャッシュ済みなら未解決分のみ bulk クエリの対象になる")
+    void getLocales_一部キャッシュ済み_未解決分のみ問い合わせ() {
+        // Given: userId=1 は事前に単発取得でキャッシュ済み
+        given(userRepository.findLocaleById(1L)).willReturn(Optional.of("en"));
+        cache.getLocale(1L);
+
+        given(userRepository.findLocalesByIdIn(any()))
+                .willReturn(List.<Object[]>of(new Object[]{2L, "ja"}));
+
+        // When
+        Map<Long, String> result = cache.getLocales(List.of(1L, 2L));
+
+        // Then
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(1L, "en", 2L, "ja"));
+        verify(userRepository, times(1)).findLocalesByIdIn(any());
+    }
+
+    @Test
+    @DisplayName("getLocales: DBに行が無いユーザーは ja で埋める（欠損させない）")
+    void getLocales_DB行なし_jaで埋める() {
+        // Given: userId=99 は未存在・論理削除済み想定で行が返らない
+        given(userRepository.findLocalesByIdIn(any())).willReturn(List.of());
+
+        // When
+        Map<Long, String> result = cache.getLocales(List.of(99L));
+
+        // Then
+        assertThat(result).containsEntry(99L, "ja");
+    }
+
+    @Test
+    @DisplayName("getLocales: 空/null リストは空 Map を返し DB を呼ばない")
+    void getLocales_空リスト_DB呼び出しなし() {
+        assertThat(cache.getLocales(List.of())).isEmpty();
+        assertThat(cache.getLocales(null)).isEmpty();
+        verify(userRepository, times(0)).findLocalesByIdIn(any());
     }
 }
