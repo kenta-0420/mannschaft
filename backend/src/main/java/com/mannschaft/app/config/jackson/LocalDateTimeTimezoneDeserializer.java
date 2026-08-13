@@ -80,9 +80,8 @@ public class LocalDateTimeTimezoneDeserializer extends JsonDeserializer<LocalDat
      * <p>{@code .claudecode.md} §20「格納基準 UTC の二層モデル」のうち<b>アプリ層</b>側の壁時計であり、
      * DB 格納値の壁時計（UTC・{@code hibernate.jdbc.time_zone}）とは別物である。混同しないこと。</p>
      *
-     * <p><b>対になる {@link LocalDateTimeTimezoneSerializer} は {@code ZoneId.systemDefault()} を見ている。</b>
-     * 現在は {@link com.mannschaft.app.config.TimeZoneConfig} が JVM 既定を {@code Asia/Tokyo} に固定するため
-     * 両者は一致するが、そこが動くと<b>シリアライザだけが追従して往復の対称性が静かに壊れる</b>。
+     * <p><b>対になる {@link LocalDateTimeTimezoneSerializer} も同じ {@link UserZoneLocalDateTimeParser#SERVER_ZONE}
+     * を見ている</b>（CMP-023 第1ロットで {@code ZoneId.systemDefault()} 参照を解消し、この定数参照へ揃えた）。
      * この一致は番人テスト {@code JacksonTimeTypeSymmetryGuardTest} が機械的に固定している。</p>
      *
      * <p>番人テストが「同じリテラルを再宣言して比べる」同語反復に陥らないよう、

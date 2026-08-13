@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.ReminderStatus;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
@@ -15,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -143,6 +143,6 @@ public class ReservationReminderService {
         // （slot_date/start_time 由来の slotStartAt）から生成するため、消費側も同じ基準
         // （Clock の瞬間を JVM 既定ゾーンで解釈し直したもの）で比較する必要がある。
         return reminderRepository.findByStatusAndRemindAtBefore(
-                ReminderStatus.PENDING, LocalDateTime.now(clock.withZone(ZoneId.systemDefault())));
+                ReminderStatus.PENDING, LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)));
     }
 }
