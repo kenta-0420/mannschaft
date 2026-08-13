@@ -2242,10 +2242,10 @@ public class GlobalExceptionHandler {
             Map.entry("NC_003", HttpStatus.NOT_FOUND),                   // PURCHASE_NOT_FOUND
             // NC_004（Stripe Checkout Session 作成失敗）は Severity.ERROR 既定の 500 のため変更なし。
 
-            // 村コミュニティ機能（VillageErrorCode）の残り未登録分（名称重複のみ）。
-            Map.entry("VILLAGE_003", HttpStatus.CONFLICT),               // VILLAGE_NAME_TAKEN
-            Map.entry("VILLAGE_005", HttpStatus.CONFLICT),               // VILLAGE_SLUG_TAKEN
-            // VILLAGE_004/029 は入力形式バリデーションのため変更なし（既定 400 のまま）。
+            // 村コミュニティ機能（VillageErrorCode）: VILLAGE_003/005（名称重複）は
+            // 設計書 F17.1_village_community.md §10 が 400 と明記しているため登録を撤回
+            // （CIの ErrorCodeHttpStatusDeclarationGuardTest で乖離検出・是正）。
+            // VILLAGE_004/029 も入力形式バリデーションのため変更なし（既定 400 のまま）。
 
             // ユーザーブロック機能（UserErrorCode）。
             Map.entry("USER_001", HttpStatus.CONFLICT),                  // 既にブロック済み
