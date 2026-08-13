@@ -7,6 +7,7 @@ import {
   isResultWithheldForAnonymityPrivacy,
   MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
 } from '~/utils/surveyResultPrivacy'
+import { resolveSurveyDisplayMode, type SurveyDisplayMode } from '~/utils/surveyDisplayMode'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -165,30 +166,27 @@ const resultsWithheldForPrivacy = computed(() =>
   }),
 )
 
-/** 表示モード判定 */
-type DisplayMode =
-  | 'response'
-  | 'results'
-  | 'results-withheld-privacy'
-  | 'closed-no-permission'
-  | 'draft'
-const displayMode = computed<DisplayMode>(() => {
+/**
+ * 自分が回答済みか。
+ *
+ * SurveyResponseForm へ `already-responded` として渡している既存の判定をそのまま使う
+ * （新しい仕組みを作らない）。実 BE は hasResponded を返さないため、useSurveyApi が
+ * 「自分の回答」の有無から導出して詰めている。
+ */
+const hasResponded = computed(
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.hasResponded ?? false,
+)
+
+/** 表示モード判定（優先順位は utils/surveyDisplayMode.ts の純関数に集約） */
+const displayMode = computed<SurveyDisplayMode>(() => {
   const s = survey.value
   if (!s) return 'response'
-  // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
-  if (s.status === 'DRAFT') return 'draft'
-  // 結果を見る権限があっても、匿名＋リアルタイム＋少数回答なら集計を伏せる。
-  // 黙って空にせず専用モードで「なぜ見えないのか」を説明する（症状を隠さない）。
-  if (canViewResults.value && resultsWithheldForPrivacy.value) return 'results-withheld-privacy'
-  // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
-  // 結果閲覧権限 (canViewResults) を持つユーザーは、回答可否より優先して結果画面を表示する。
-  // ALL_MEMBERS（誰でも閲覧可）の場合、未回答 MEMBER も結果画面に直接遷移できる。
-  if (canViewResults.value) return 'results'
-  // 結果閲覧不可の場合のフォールバック分岐。
-  // PUBLISHED: 未回答も回答済みも 'response'（SurveyResponseForm 側で「回答済み」表示へ）。
-  if (s.status === 'PUBLISHED') return 'response'
-  // CLOSED かつ結果閲覧権限なし → 非公開メッセージ。
-  return 'closed-no-permission'
+  return resolveSurveyDisplayMode({
+    status: s.status,
+    canViewResults: canViewResults.value,
+    resultsWithheldForPrivacy: resultsWithheldForPrivacy.value,
+    hasResponded: hasResponded.value,
+  })
 })
 
 function statusClass(status: string): string {
@@ -445,7 +443,7 @@ onMounted(async () => {
       <SurveyResponseForm
         v-else-if="displayMode === 'response'"
         :survey="survey"
-        :already-responded="(survey as SurveyDetailResponse['data']).hasResponded ?? false"
+        :already-responded="hasResponded"
         :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
         data-testid="survey-mode-response"
         @submitted="onSubmitted"

@@ -506,7 +506,22 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await mockSideApis(page)
   })
 
-  /** 匿名 + ALL_MEMBERS のアンケートを回答者数だけ変えて組み立てる。 */
+  /** 「自分の回答」1 行（これが返ると詳細画面の hasResponded が true になる）。 */
+  const MY_RESPONSE_ROW = {
+    id: 9001,
+    surveyId: SURVEY_ID,
+    questionId: 1,
+    userId: MEMBER_ID,
+    optionId: 1,
+    textResponse: null,
+  }
+
+  /**
+   * 匿名 + ALL_MEMBERS のアンケートを回答者数だけ変えて組み立てる。
+   *
+   * 「自分が回答済みか」はここでは指定しない。詳細画面の hasResponded は
+   * 「自分の回答」API から導出されるため、mockSurveyApi の myResponseById で与える。
+   */
   function buildAnonymousRealtimeSurvey(responseCount: number, isAnonymous = true) {
     return buildSurvey({
       id: SURVEY_ID,
@@ -515,7 +530,6 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
       isAnonymous,
       responseCount,
       allowMultipleSubmissions: false,
-      hasResponded: true,
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
   }
@@ -531,12 +545,37 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await mockMePermissions(page, 'MEMBER')
   }
 
-  test('匿名 + ALL_MEMBERS + 回答者4名 → 結果を伏せ、理由を表示する', async ({ page }) => {
+  test('匿名 + ALL_MEMBERS + 回答0件 + 未回答 → 回答フォームに到達できる（詰みの再発防止）', async ({
+    page,
+  }) => {
+    // 公開直後の匿名リアルタイムアンケートは必ず回答0件。ここで説明画面を先に出すと
+    // 誰も回答できず、回答数が閾値に達しないためガードが永久に解除されない。
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(0)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-response"]')).toBeVisible()
+    await expect(
+      page.locator('[data-testid="survey-mode-results-withheld-privacy"]'),
+    ).toHaveCount(0)
+  })
+
+  test('匿名 + ALL_MEMBERS + 回答者4名 + 回答済み → 結果を伏せ、理由を表示する', async ({
+    page,
+  }) => {
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(4)
     await mockSurveyApi(page, {
       detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+      // hasResponded は「自分の回答」API から導出されるため、ここで回答済みにする
+      myResponseById: { [SURVEY_ID]: [MY_RESPONSE_ROW] },
     })
 
     await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)

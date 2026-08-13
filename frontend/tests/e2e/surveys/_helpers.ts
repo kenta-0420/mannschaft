@@ -7,6 +7,7 @@ import type {
   RespondentItem,
   SurveyQuestionWire,
   SurveyResponseWire,
+  SurveyResponseRowWire,
   SurveyDetailWire,
 } from '../../../app/types/survey'
 
@@ -422,6 +423,16 @@ export interface MockSurveyApiOptions {
   resultsById?: Record<number, SurveyResultSummary[]>
   /** 回答者 API（GET .../respondents）で返すレスポンス（id をキー） */
   respondentsById?: Record<number, RespondentItem[]>
+  /**
+   * 「自分の回答」API（GET /api/v1/surveys/{id}/responses/me）で返す行配列（id をキー）。
+   *
+   * ⚠️ 詳細画面の `hasResponded` は **この API の結果から導出される**（実 BE が
+   * hasResponded を返さないため useSurveyApi が補っている）。
+   * したがって {@link buildSurvey} の `hasResponded` は詳細経路では上書きされて効かない。
+   * E2E で「回答済み」の状態を作るには、ここに 1 行以上を渡すこと。
+   * 未指定なら空配列（＝未回答）を 200 で返す。
+   */
+  myResponseById?: Record<number, SurveyResponseRowWire[]>
   /** 督促 API（POST /surveys/{id}/remind）のレスポンス制御 */
   remindResponse?: { ok: boolean; status?: number; body?: unknown }
   /** 作成 API（POST /surveys）のレスポンスを動的に決めたい場合のフック */
@@ -612,6 +623,25 @@ export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Pro
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: results }),
+    })
+  })
+
+  // ----- 自分の回答（GET /api/v1/surveys/{id}/responses/me）-----
+  // 詳細画面の hasResponded はこの API の結果から導出される。未モックだとリクエストが
+  // 失敗し、useSurveyApi の catch で常に未回答扱いになる（＝「回答済み」の状態を
+  // E2E で作れない）ため、常に 200 で明示的に返して決定的にする。
+  await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const match = url.pathname.match(/\/surveys\/(\d+)\/responses\/me$/)
+    const id = match ? Number(match[1]) : NaN
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: opts.myResponseById?.[id] ?? [] }),
     })
   })
 
