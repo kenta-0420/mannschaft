@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.stripe;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
@@ -55,7 +56,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -239,7 +239,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("Stripe Checkout Session 作成: sessionId={}, memberPaymentId={}",
                     session.getId(), memberPaymentId);
@@ -273,7 +273,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("通知クレジット Checkout Session 作成: sessionId={}, notificationCreditPurchaseId={}",
                     session.getId(), notificationCreditPurchaseId);
@@ -317,7 +317,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("F20.1 サブスク Checkout Session 作成: sessionId={}, billingContractId={}, priceJpy={}",
                     session.getId(), billingContractId, priceJpy);
@@ -563,7 +563,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .build();
             AccountLink link = AccountLink.create(params);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochSecond(link.getExpiresAt()), ZoneId.systemDefault());
+                    Instant.ofEpochSecond(link.getExpiresAt()), UserZoneLocalDateTimeParser.SERVER_ZONE);
             log.info("Stripe AccountLink 作成: account={}", stripeAccountId);
             return new AccountLinkInfo(link.getUrl(), expiresAt);
         } catch (StripeException e) {

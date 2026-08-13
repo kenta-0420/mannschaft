@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyEntity;
@@ -35,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -492,7 +492,7 @@ public class MembershipSubscriptionWebhookService {
 
     private LocalDate toLocalDateOrNull(Long epochSec) {
         return epochSec == null ? null
-                : Instant.ofEpochSecond(epochSec).atZone(ZoneId.systemDefault()).toLocalDate();
+                : Instant.ofEpochSecond(epochSec).atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDate();
     }
 
     private LocalDate addOneCycle(LocalDate from, MembershipSubscriptionEntity subscription) {
