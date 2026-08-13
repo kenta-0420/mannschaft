@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SurveyDetailResponse } from '~/types/survey'
+import type { SurveyDetailResponse, SurveyResultSummary } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
@@ -197,21 +197,39 @@ type ResultsAccess = 'unknown' | 'allowed' | 'forbidden'
 const resultsAccess = ref<ResultsAccess>('unknown')
 /** 結果閲覧可否の問い合わせ中（初期表示で結果パネルを一瞬見せないため loading に含める） */
 const probingResultsAccess = ref(false)
+/**
+ * 権限確認で得た集計結果。SurveyResultsPanel へ渡して**二重取得を避ける**。
+ *
+ * 捨ててしまうと、結果を閲覧できる全ユーザーの全表示で高コストな集計と転送が
+ * 必ず 2 回走る（プローブ＋パネルの mount）。
+ * 内容が古くなる場面（回答送信後・回答フォームへ移動）では null に戻し、
+ * パネルに取り直させる。
+ */
+const probedResults = ref<SurveyResultSummary[] | null>(null)
 
 async function probeResultsAccess() {
   probingResultsAccess.value = true
   try {
-    await getResults(surveyId)
+    const res = await getResults(surveyId)
+    probedResults.value = res.data ?? []
     resultsAccess.value = 'allowed'
   } catch (e) {
     const err = e as { statusCode?: number; response?: { status?: number } }
     const status = err.statusCode ?? err.response?.status
     // 403 のときだけ「権限が無い」と断定する。通信エラー等で過剰に塞がないため、
-    // それ以外は allowed として扱い、結果パネル側の再試行 UI に委ねる。
+    // それ以外は allowed として扱い、結果パネル側の再試行 UI に委ねる
+    // （このとき probedResults は null のままなのでパネルが自分で取りに行く）。
+    probedResults.value = null
     resultsAccess.value = status === 403 ? 'forbidden' : 'allowed'
   } finally {
     probingResultsAccess.value = false
   }
+}
+
+/** 回答フォームへ移る。集計は古くなるためプローブ結果を捨てる。 */
+function goToResponseForm() {
+  probedResults.value = null
+  responseRequested.value = true
 }
 
 /**
@@ -342,6 +360,8 @@ function onDelete() {
 async function onSubmitted() {
   // 回答送信成功 → 結果画面へ戻し、詳細を再取得して表示モードを更新
   responseRequested.value = false
+  // 回答で集計が変わったのでプローブ結果は捨て、パネルに取り直させる
+  probedResults.value = null
   await fetchDetail()
 }
 
@@ -537,10 +557,10 @@ onMounted(async () => {
             "
             icon="pi pi-pencil"
             data-testid="survey-respond-cta"
-            @click="responseRequested = true"
+            @click="goToResponseForm"
           />
         </div>
-        <SurveyResultsPanel :survey-id="survey.id" />
+        <SurveyResultsPanel :survey-id="survey.id" :initial-results="probedResults" />
       </div>
 
       <!-- 匿名＋リアルタイム＋少数回答のプライバシーガード（設計書 §6）。
@@ -571,7 +591,7 @@ onMounted(async () => {
           icon="pi pi-pencil"
           class="mt-2"
           data-testid="survey-respond-cta"
-          @click="responseRequested = true"
+          @click="goToResponseForm"
         />
       </div>
 

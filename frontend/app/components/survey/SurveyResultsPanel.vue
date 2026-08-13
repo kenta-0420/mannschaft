@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import type { SurveyResultSummary } from '~/types/survey'
+import { shouldFetchResultsOnMount } from '~/utils/surveyResults'
 
 const props = defineProps<{
   surveyId: number
+  /**
+   * 呼び出し側が既に取得済みの集計。
+   *
+   * 渡された場合は初回取得を省いてこれを使う。詳細ページは配信対象かどうかを確かめるため
+   * 結果取得を1回行っており（403 をサーバーの判定として扱う）、それを捨てて本パネルが
+   * もう一度取りに行くと、**結果を閲覧できる全ユーザーの全表示で高コストな集計と転送が
+   * 必ず2回**走ってしまうため。
+   *
+   * 省略時（および null）は従来どおり自分で取得する。他画面からの利用を壊さないよう
+   * 「渡されなければ自分で取りに行く」を既定に保つこと。
+   */
+  initialResults?: SurveyResultSummary[] | null
 }>()
 
 const { t } = useI18n()
@@ -44,7 +57,16 @@ async function loadResults() {
   }
 }
 
-onMounted(loadResults)
+onMounted(() => {
+  // 既に取得済みの集計を渡されていればそれを使い、二重取得を避ける。
+  // 判定は utils/surveyResults.ts に切り出してある（空配列＝回答ゼロを falsy 扱いして
+  // 二重取得が復活する罠を、画面をマウントせずに固定するため）。
+  if (!shouldFetchResultsOnMount(props.initialResults)) {
+    results.value = props.initialResults ?? []
+    return
+  }
+  return loadResults()
+})
 </script>
 
 <template>

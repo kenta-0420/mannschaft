@@ -1,3 +1,10 @@
+// @vitest-environment happy-dom
+//
+// 検査対象は純関数だけで、Nuxt ランタイム（app context）を必要としない。
+// 既定の environment: 'nuxt' は beforeAll で setupNuxt() を走らせるため遅く、
+// 負荷が高いと 120 秒の hook timeout でファイルごと落ちる（テスト内容とは無関係の偽赤）。
+// ただし setup ファイル経由で読み込まれるモジュールが document を触るので、
+// 素の node ではなく DOM のある happy-dom を使う（requestBodySchemaConformance.spec.ts と同方針）。
 import { describe, it, expect } from 'vitest'
 import {
   isResultWithheldForAnonymityPrivacy,
