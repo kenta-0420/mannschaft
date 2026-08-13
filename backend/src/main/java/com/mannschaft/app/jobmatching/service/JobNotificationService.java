@@ -1,5 +1,6 @@
 package com.mannschaft.app.jobmatching.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
@@ -10,8 +11,10 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -51,6 +54,10 @@ public class JobNotificationService {
     private final NotificationHelper notificationHelper;
     private final JobContractRepository contractRepository;
     private final JobPostingRepository postingRepository;
+    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
+    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * 応募発生を Requester（求人投稿者）へ通知する。
@@ -60,8 +67,12 @@ public class JobNotificationService {
      */
     public void notifyApplied(JobApplicationEntity application, JobPostingEntity posting) {
         Long requesterId = posting.getCreatedByUserId();
-        String title = "求人に応募がありました";
-        String body = String.format("「%s」に応募がありました。採否を判定してください。", posting.getTitle());
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(requesterId));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.applied.title", null, "求人に応募がありました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.applied.body", new Object[]{posting.getTitle()},
+                "「" + posting.getTitle() + "」に応募がありました。採否を判定してください。", locale);
         String actionUrl = "/jobs/postings/" + posting.getId() + "/applications";
 
         notificationHelper.notify(
@@ -85,8 +96,12 @@ public class JobNotificationService {
      * @param posting  対象求人（タイトル表示のため）
      */
     public void notifyMatched(JobContractEntity contract, JobPostingEntity posting) {
-        String title = "求人に採用されました";
-        String body = String.format("「%s」への応募が採用されました。チャットで詳細をご確認ください。", posting.getTitle());
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(contract.getWorkerUserId()));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.matched.title", null, "求人に採用されました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.matched.body", new Object[]{posting.getTitle()},
+                "「" + posting.getTitle() + "」への応募が採用されました。チャットで詳細をご確認ください。", locale);
         String actionUrl = "/jobs/contracts/" + contract.getId();
 
         notificationHelper.notify(
@@ -110,9 +125,12 @@ public class JobNotificationService {
      * @param posting  対象求人（タイトル表示のため）
      */
     public void notifyCompletionReported(JobContractEntity contract, JobPostingEntity posting) {
-        String title = "業務完了報告が届きました";
-        String body = String.format("「%s」について Worker から完了報告が届きました。内容を確認してください。",
-                posting.getTitle());
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(contract.getRequesterUserId()));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.completionReported.title", null, "業務完了報告が届きました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.completionReported.body", new Object[]{posting.getTitle()},
+                "「" + posting.getTitle() + "」について Worker から完了報告が届きました。内容を確認してください。", locale);
         String actionUrl = "/jobs/contracts/" + contract.getId();
 
         notificationHelper.notify(
@@ -156,8 +174,12 @@ public class JobNotificationService {
         }
         JobPostingEntity posting = postingOpt.get();
 
-        String title = "Worker がチェックインしました";
-        String body = String.format("「%s」で Worker の業務開始が記録されました。", posting.getTitle());
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(contract.getRequesterUserId()));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.checkedIn.title", null, "Worker がチェックインしました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.checkedIn.body", new Object[]{posting.getTitle()},
+                "「" + posting.getTitle() + "」で Worker の業務開始が記録されました。", locale);
         String actionUrl = "/jobs/contracts/" + contractId;
 
         notificationHelper.notify(
@@ -197,9 +219,12 @@ public class JobNotificationService {
         }
         JobPostingEntity posting = postingOpt.get();
 
-        String title = "Worker がチェックアウトしました";
-        String body = String.format("「%s」で Worker の業務終了が記録されました。完了報告を待機してください。",
-                posting.getTitle());
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(contract.getRequesterUserId()));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.checkedOut.title", null, "Worker がチェックアウトしました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.checkedOut.body", new Object[]{posting.getTitle()},
+                "「" + posting.getTitle() + "」で Worker の業務終了が記録されました。完了報告を待機してください。", locale);
         String actionUrl = "/jobs/contracts/" + contractId;
 
         notificationHelper.notify(
@@ -242,13 +267,20 @@ public class JobNotificationService {
         }
         JobPostingEntity posting = postingOpt.get();
 
-        String title = "業務場所からの乖離が検知されました";
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(contract.getRequesterUserId()));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.geoAnomaly.title", null, "業務場所からの乖離が検知されました", locale);
         String distanceLabel = distanceMeters >= 0
-                ? String.format("約 %.0f m", distanceMeters)
-                : "距離不明";
-        String body = String.format(
-                "「%s」でチェックイン位置が業務場所から %s 離れています。内容を確認してください。",
-                posting.getTitle(), distanceLabel);
+                ? messageSource.getMessage("notification.jobmatching.geoAnomaly.distanceLabel",
+                        new Object[]{String.format("%.0f", distanceMeters)},
+                        String.format("約 %.0f m", distanceMeters), locale)
+                : messageSource.getMessage(
+                        "notification.jobmatching.geoAnomaly.distanceUnknown", null, "距離不明", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.geoAnomaly.body",
+                new Object[]{posting.getTitle(), distanceLabel},
+                "「" + posting.getTitle() + "」でチェックイン位置が業務場所から " + distanceLabel + " 離れています。内容を確認してください。",
+                locale);
         String actionUrl = "/jobs/contracts/" + contractId;
 
         notificationHelper.notify(
@@ -278,11 +310,16 @@ public class JobNotificationService {
      * @param postingId   関連求人 ID（URL 生成のため）
      */
     public void notifyApplied(JobApplicationEntity application, Long requesterId, Long teamId, Long postingId) {
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(requesterId));
+        String title = messageSource.getMessage(
+                "notification.jobmatching.applied.title", null, "求人に応募がありました", locale);
+        String body = messageSource.getMessage(
+                "notification.jobmatching.appliedSimple.body", null, "求人への応募が届きました。採否を判定してください。", locale);
         notificationHelper.notify(
                 requesterId,
                 TYPE_JOB_APPLIED,
-                "求人に応募がありました",
-                "求人への応募が届きました。採否を判定してください。",
+                title,
+                body,
                 SOURCE_TYPE_JOB_APPLICATION,
                 application.getId(),
                 NotificationScopeType.TEAM,
