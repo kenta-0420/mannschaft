@@ -71,7 +71,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
-  extendedEvents, availableScopes, allScopeOptions, selectedScopes,
+  extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
 
@@ -379,6 +379,11 @@ onMounted(() => {
         </div>
       </template>
     </PageHeader>
+
+    <!-- Issue #2637: TODO レイヤの取得失敗を明示（カレンダー本体は継続表示） -->
+    <Message v-if="todosFailed" severity="warn" :closable="false" class="mb-4">
+      {{ t('schedule.todo_load_error.detail') }}
+    </Message>
 
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">

@@ -44,14 +44,37 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const scheduleApi = useScheduleApi()
   const ganttApi = useTodoGantt()
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
+  const notification = useNotification()
+  const { t } = useI18n()
 
   const extendedEvents = ref<CalEvent[]>([])
+  /** TODO レイヤの取得に失敗したか（Issue #2637: 部分失敗をユーザーと利用側に見せる） */
+  const todosFailed = ref(false)
 
   const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
+    // TODO 取得だけは部分失敗として扱う（カレンダー本体＝個人予定・共有予定・reflection は描画を続ける）。
+    // ただし失敗は握りつぶさず、console と通知の双方に必ず残す（Issue #2637）。
+    const fetchTodos = async (): Promise<{ data: GanttTodo[] }> => {
+      try {
+        const res = await ganttApi.getPersonalGanttTodos(from, to)
+        todosFailed.value = false
+        return res as { data: GanttTodo[] }
+      }
+      catch (e) {
+        console.error('[useMyCalendarData] TODO の取得に失敗しました（カレンダー本体は継続描画）', { from, to, error: e })
+        // 同一の失敗状態が続く間はトーストを重ねない（月移動のたびに鳴らさない）
+        if (!todosFailed.value) {
+          notification.error(t('schedule.todo_load_error.summary'), t('schedule.todo_load_error.detail'))
+        }
+        todosFailed.value = true
+        return { data: [] }
+      }
+    }
+
     const [personal, shared, todosRes] = await Promise.all([
       scheduleApi.listPersonalSchedules({ from, to }),
       scheduleApi.getCalendarRange(from, to),
-      ganttApi.getPersonalGanttTodos(from, to).catch(() => ({ data: [] as GanttTodo[] })),
+      fetchTodos(),
     ])
 
     const personalEvents = ((personal.data ?? []) as unknown as PersonalScheduleRaw[]).map((e): CalEvent => ({
@@ -215,7 +238,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
 
   return {
     currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
-    extendedEvents, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
+    extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
   }
 }

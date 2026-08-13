@@ -165,7 +165,11 @@
         "step4": "즉시 반영하려면 「수동 동기화」 실행"
       }
     },
-    "google_sync_notice": "Google 캘린더와 연동 중입니다. Google에서 변경한 내용은 다음에 여기서 저장할 때 Mannschaft의 데이터로 교체됩니다."
+    "google_sync_notice": "Google 캘린더와 연동 중입니다. Google에서 변경한 내용은 다음에 여기서 저장할 때 Mannschaft의 데이터로 교체됩니다.",
+    "todo_load_error": {
+      "summary": "TODO 불러오기에 실패했습니다",
+      "detail": "TODO를 캘린더에 표시할 수 없습니다. 일정은 표시되어 있습니다. 잠시 후 다시 불러오세요."
+    }
   },
   "scheduleKeep": {
     "title": "キープ",
