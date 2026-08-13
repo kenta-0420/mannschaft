@@ -386,12 +386,21 @@ class BlogPostServiceAdditionalTest {
             assertThat(result).isNotNull();
         }
 
+        /**
+         * AC-2（issue #2616）: <b>過去</b>の publishedAt を指定した場合のみ即時公開される。
+         *
+         * <p>従来この試験は固定日 {@code 2026-04-01} を渡しており、書かれた時点では
+         * 「未来日時でも即 PUBLISHED」という<b>予約公開が無い時代の仕様</b>を固定していた
+         * （日付の経過に伴い意味が変わる時限爆弾でもあった）。予約公開の導入に伴い、
+         * 相対時刻に置き換えて「過去なら即公開」であることを明示的に固定する。
+         * 未来日時の挙動は {@code BlogPostScheduledPublishServiceTest} の AC-1 が担う。</p>
+         */
         @Test
-        @DisplayName("正常系: publishedAt を指定して公開する")
-        void ステータス変更_公開日時指定_正常() {
+        @DisplayName("AC-2: 過去の publishedAt を指定すると即 PUBLISHED になる")
+        void ステータス変更_公開日時指定_過去は即公開() {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            LocalDateTime publishAt = LocalDateTime.of(2026, 4, 1, 9, 0);
+            LocalDateTime publishAt = LocalDateTime.now().minusDays(1);
             PublishRequest request = new PublishRequest("PUBLISHED", publishAt, null);
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
@@ -399,6 +408,28 @@ class BlogPostServiceAdditionalTest {
             service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
+            assertThat(entity.getStatus()).isEqualTo(PostStatus.PUBLISHED);
+        }
+
+        /**
+         * AC-1（issue #2616）: <b>未来</b>の publishedAt は予約であり、即時公開してはならない。
+         */
+        @Test
+        @DisplayName("AC-1: 未来の publishedAt を指定しても即 PUBLISHED にはならない")
+        void ステータス変更_公開日時指定_未来は予約() {
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            LocalDateTime publishAt = LocalDateTime.now().plusDays(7);
+            PublishRequest request = new PublishRequest("PUBLISHED", publishAt, null);
+            given(postRepository.save(entity)).willReturn(entity);
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            service.changeStatus(POST_ID, USER_ID, request);
+
+            assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
+            assertThat(entity.getStatus())
+                    .as("予約中は DRAFT のまま（PostStatus.SCHEDULED は新設しない）")
+                    .isEqualTo(PostStatus.DRAFT);
         }
     }
 

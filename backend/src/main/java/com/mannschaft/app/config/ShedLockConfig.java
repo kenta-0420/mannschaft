@@ -37,6 +37,7 @@ import javax.sql.DataSource;
  *   <li>{@code reservationReminderDispatchBatch} — F03.4 予約リマインド送出（1分間隔）</li>
  *   <li>{@code reservationWaitlistCleanupBatch} — F03.4.5 §6.1 キャンセル待ち失効クリーンアップ（毎日 0:45）</li>
  *   <li>{@code reservationPendingExpireBatch} — F03.4.5 §6.3 仮押さえ(PENDING)自動失効（5分間隔）</li>
+ *   <li>{@code blogScheduledPublishBatch} — F06.1 ブログ予約公開（DRAFT＋公開時刻到達を PUBLISHED へ・1分間隔）</li>
  * </ul>
  *
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。
