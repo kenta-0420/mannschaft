@@ -1268,7 +1268,16 @@ class GlobalExceptionHandlerTest {
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_RESPONSE_STATUS,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_SCOPE_TYPE,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED,
-                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH,
+                // ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH（EVTCAT_010）はここに
+                // 含めない（400を要求しない）。Codexによる独立検分で指摘・殿が実コードで裏取りして
+                // 確定した理由: throw元 ScheduleEventCategoryService#validateCategoryScope
+                // （ScheduleEventCategoryService.java:296-301）は「実在するが他チーム/他組織の
+                // categoryId」に対して投げられる。兄弟の CATEGORY_NOT_FOUND（EVTCAT_001、
+                // getById＝ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+                // 404を返すため、CATEGORY_SCOPE_MISMATCHを400のままにすると「404=不在／400=実在す
+                // るがスコープ外」という応答差から実在IDを連番探索で列挙できる存在オラクルになる。
+                // docs/security/README.md の越境404方針（越境はNOT_FOUNDに畳み不在と区別不能にする）
+                // に従い、GlobalExceptionHandler側でEVTCAT_001と同一の404へ畳んでいる。
                 com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ANNUAL_COPY_SAME_YEAR,
                 com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH,
                 com.mannschaft.app.shift.ShiftErrorCode.INVALID_DATE_RANGE,

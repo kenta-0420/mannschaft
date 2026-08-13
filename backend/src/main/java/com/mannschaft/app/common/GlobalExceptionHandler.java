@@ -2175,13 +2175,17 @@ public class GlobalExceptionHandler {
             // F03.10 年間行事計画（ScheduleEventCategoryErrorCode、コード文字列は EVTCAT_xxx）。
             Map.entry("EVTCAT_001", HttpStatus.NOT_FOUND),               // CATEGORY_NOT_FOUND
             Map.entry("EVTCAT_002", HttpStatus.CONFLICT),                // DUPLICATE_CATEGORY_NAME
-            // EVTCAT_010（CATEGORY_SCOPE_MISMATCH）はロットHで一度 404（存在秘匿）に登録したが、
-            // throw元（ScheduleEventCategoryService#validateCategoryScope 297/301/307行）は
-            // クライアントが指定した categoryId が自スコープ外という入力不備であり、IDOR秘匿対象の
-            // 越境参照ではない（IDOR懸念なら EVTCAT_001 の 404 で既に秘匿されている）。
-            // 番人 GlobalExceptionHandlerTest$ClientErrorMustNotBe500#badRequestCases が
-            // 400 固定として明示的に列挙しているとおりが正しいため、404 登録を撤回し
-            // Severity.WARN の既定（400）に戻す。
+            // EVTCAT_010（CATEGORY_SCOPE_MISMATCH）は一度400へ撤回したが、これは誤りだった
+            // （Codexによる独立検分で指摘・殿が実コードで裏取りして確定）。
+            // getById（ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+            // EVTCAT_001（CATEGORY_NOT_FOUND）を投げ404を返す。一方 validateCategoryScope
+            // （同ファイル296-301行）は「実在するが他チーム/他組織のcategoryId」に対し
+            // CATEGORY_SCOPE_MISMATCH を投げる。ここを400のままにすると「404=不在」
+            // 「400=実在するがスコープ外」という応答の違いから、IDを連番で試すだけで
+            // 実在するcategoryIdを列挙できる存在オラクルになる。docs/security/README.md の
+            // 越境404方針（越境はNOT_FOUNDに畳んで不在と区別不能にする）にも反する。
+            // 兄弟のEVTCAT_001と同一の404に畳み、存在の有無を判別不能にする。
+            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿。EVTCAT_001と同一応答に畳む）
             Map.entry("EVTCAT_021", HttpStatus.NOT_FOUND),               // ANNUAL_COPY_SOURCE_NOT_FOUND
             Map.entry("EVTCAT_022", HttpStatus.CONFLICT),                // ANNUAL_COPY_CONFLICT
 
