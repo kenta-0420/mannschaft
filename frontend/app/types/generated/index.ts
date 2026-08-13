@@ -36757,6 +36757,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recruitment-cancellation-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * キャンセル料記録の一覧
+         * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。
+         */
+        get: operations["list_83"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quick-memos/trash": {
         parameters: {
             query?: never;
@@ -39328,7 +39348,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_83"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39706,7 +39726,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_84"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39877,7 +39897,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_85"];
+        get: operations["list_86"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40241,7 +40261,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_86"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40309,7 +40329,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_87"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41715,7 +41735,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_88"];
+        get: operations["list_89"];
         put?: never;
         post?: never;
         delete?: never;
@@ -73942,6 +73962,28 @@ export interface components {
             id?: number;
             isActive?: boolean;
             nameI18nKey?: string;
+        };
+        PagedResponseRecruitmentCancellationRecordSummaryResponse: {
+            data?: components["schemas"]["RecruitmentCancellationRecordSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        RecruitmentCancellationRecordSummaryResponse: {
+            /** Format: date-time */
+            cancelledAt?: string;
+            /** Format: int32 */
+            feeAmount?: number;
+            /** Format: int32 */
+            hoursBeforeStart?: number;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            listingId?: number;
+            listingTitle?: string;
+            /** Format: int64 */
+            participantId?: number;
+            paymentStatus?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         PagedResponseQuickMemoResponse: {
             data?: components["schemas"]["QuickMemoResponse"][];
@@ -150414,6 +150456,30 @@ export interface operations {
             };
         };
     };
+    list_83: {
+        parameters: {
+            query?: {
+                status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseRecruitmentCancellationRecordSummaryResponse"];
+                };
+            };
+        };
+    };
     listTrash: {
         parameters: {
             query?: {
@@ -153990,7 +154056,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_84: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -154514,7 +154580,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_85: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -154753,7 +154819,7 @@ export interface operations {
             };
         };
     };
-    list_85: {
+    list_86: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -155235,7 +155301,7 @@ export interface operations {
             };
         };
     };
-    list_86: {
+    list_87: {
         parameters: {
             query?: never;
             header?: never;
@@ -155319,7 +155385,7 @@ export interface operations {
             };
         };
     };
-    list_87: {
+    list_88: {
         parameters: {
             query?: never;
             header?: never;
@@ -157225,7 +157291,7 @@ export interface operations {
             };
         };
     };
-    list_88: {
+    list_89: {
         parameters: {
             query?: never;
             header?: never;
