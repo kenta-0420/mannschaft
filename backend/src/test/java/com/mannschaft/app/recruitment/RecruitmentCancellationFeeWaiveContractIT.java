@@ -133,6 +133,8 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
         MembershipTestHelper.insertUserRole(em, otherAdminBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, debtorId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
+        grantManageRecruitmentsToAdmin();
+
         UUID teamAccountId = insertConnectAccount(ScopeKind.TEAM, teamAId);
         UUID userAccountId = insertConnectAccount(ScopeKind.USER, individualPayeeId);
 
@@ -348,6 +350,38 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
         assertThat(cancellationRecordRepository.findById(recordId).orElseThrow().getPaymentStatus())
                 .as("遮断された免除でキャンセル記録が書き換えられてはならない")
                 .isEqualTo(expected);
+    }
+
+    /**
+     * {@code MANAGE_RECRUITMENTS} を権限カタログへ登録し ADMIN へ自動付与する（本番マイグレーションの写し）。
+     *
+     * <p><b>なぜ手で詰める必要があるか</b>: 本 IT の基底 {@code AbstractMySqlIntegrationTest} は
+     * {@code spring.flyway.enabled=false} / {@code ddl-auto=create} で動く。スキーマは Entity から
+     * 生成されるため {@code permissions} / {@code role_permissions} は<b>空の表</b>として作られ、
+     * {@code V183…__add_manage_recruitments_permission.sql} のシードは適用されない。
+     * よってフィクスチャ側で同じ行を作らないと、TEAM 受取の権限判定は誰に対しても成立しない。</p>
+     *
+     * <p>ここで作る行は<b>本番マイグレーションが作る行と同一</b>である（カタログ 1 行＋ADMIN への
+     * {@code is_default=1} 付与のみ）。本番で成立しえない状態を捏造してはいない——それをやると
+     * 死んだ機能が永久に緑になる。</p>
+     *
+     * <p><b>役割分担</b>: 「マイグレーションが権限を登録し忘れていないか」を守るのは実 Flyway を適用する
+     * {@code ManageRecruitmentsPermissionFlywayIT} の責務である。本 IT が守るのは
+     * 「権限が在るという前提のもとで、免除 EP の認可が受取先ごとに正しく効くか」である。</p>
+     */
+    private void grantManageRecruitmentsToAdmin() {
+        em.createNativeQuery(
+                        "INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                                + "SELECT 'MANAGE_RECRUITMENTS', '募集（札）管理', 'TEAM', NOW(), NOW() FROM DUAL "
+                                + "WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'MANAGE_RECRUITMENTS')")
+                .executeUpdate();
+        em.createNativeQuery(
+                        "INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
+                                + "SELECT r.id, p.id, 1, NOW() FROM roles r CROSS JOIN permissions p "
+                                + "WHERE r.name = 'ADMIN' AND p.name = 'MANAGE_RECRUITMENTS' "
+                                + "AND NOT EXISTS (SELECT 1 FROM role_permissions rp "
+                                + "  WHERE rp.role_id = r.id AND rp.permission_id = p.id)")
+                .executeUpdate();
     }
 
     private void setAuth(Long userId) {
