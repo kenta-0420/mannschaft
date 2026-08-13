@@ -538,6 +538,147 @@ class SurveyVisibilityResolverAlwaysTest {
         }
     }
 
+    /**
+     * 検分指摘（P2・4巡目）— 名簿ゲートが上位条件の閲覧者まで締め出さないこと。
+     *
+     * <p>設計書 {@code docs/features/F05.4_survey_vote.md} の「結果閲覧権限の判定」は
+     * <b>上位条件（作成者 / ADMIN+ / 結果閲覧者名簿）は {@code results_visibility} を無視して
+     * 常に閲覧可能</b>という優先順位を定める。名簿ゲートは本 PR で新設したものであり、
+     * それ以前は所属軸で ADMIN も閲覧できていたため、迂回を設けないと
+     * 「閲覧できていた者を締め出す」回帰になる。</p>
+     *
+     * <p>担保する受け入れ条件: <b>AC-26 / AC-27 / AC-28 / AC-29</b>。</p>
+     */
+    @Nested
+    @DisplayName("AC-26〜29: TARGETED 名簿ゲートは上位条件を締め出さない")
+    class TargetedRosterBypass {
+
+        private static final Long SURVEY_A = 201L;
+        private static final Long SURVEY_B = 202L;
+        private static final Long SURVEY_C = 203L;
+
+        private SurveyVisibilityProjection targetedRow(Long id) {
+            return new SurveyVisibilityProjection(
+                    id, SCOPE_TYPE, SCOPE_ID, AUTHOR_ID, SurveyStatus.PUBLISHED, always(), null,
+                    false, DistributionMode.TARGETED);
+        }
+
+        /** AC-26 — 名簿外でも当該スコープの ADMIN は閲覧できる。 */
+        @Test
+        @DisplayName("AC-26: 名簿外でも当該スコープの ADMIN は閲覧できる")
+        void ac26_scopeAdminBypassesRoster() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, roleInScope("ADMIN"));
+            // 配信名簿にも結果閲覧者名簿にも載っていない。
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+            when(surveyResultViewerRepository.findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-26: 上位条件の ADMIN+ を名簿ゲートで締め出してはならない")
+                    .isTrue();
+        }
+
+        /** AC-27 — 名簿外でも結果閲覧者名簿の登録者は閲覧できる。 */
+        @Test
+        @DisplayName("AC-27: 名簿外でも survey_result_viewers 登録者は閲覧できる")
+        void ac27_resultViewerBypassesRoster() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+            when(surveyResultViewerRepository.findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_ID));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-27: 結果閲覧者は results_visibility の制約を受けない")
+                    .isTrue();
+        }
+
+        /** AC-28 — 迂回を広げすぎていないこと（他スコープ・他テナントの ADMIN）。 */
+        @Test
+        @DisplayName("AC-28: 他スコープ／他テナントの ADMIN は依然として閲覧できない")
+        void ac28_foreignScopeAdminStillDenied() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+            when(surveyResultViewerRepository.findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+
+            // 別スコープ（別チーム）の ADMIN。
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(new ScopeKey(SCOPE_TYPE, 999L), "ADMIN"),
+                    Map.of(), Set.of(), Set.of()));
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-28: 他スコープの ADMIN に迂回を与えてはならない")
+                    .isFalse();
+
+            // 別テナント（別種スコープ）の ADMIN。
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(new ScopeKey("ORGANIZATION", SCOPE_ID), "ADMIN"),
+                    Map.of(), Set.of(), Set.of()));
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-28: スコープ種別が異なる ADMIN にも迂回を与えてはならない")
+                    .isFalse();
+        }
+
+        /** AC-28 — 一般メンバーは迂回対象外（AC-21 の再確認。迂回で穴を開けていない）。 */
+        @Test
+        @DisplayName("AC-28: 名簿外の一般メンバーは引き続き閲覧できない")
+        void ac28_plainMemberStillDenied() {
+            stubTargetedProjection(SCOPE_TYPE, SCOPE_ID, SurveyStatus.PUBLISHED, always());
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+            when(surveyResultViewerRepository.findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of());
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isFalse();
+        }
+
+        /** AC-29 — 迂回判定もバッチで N+1 にならない（3 件で 1 本ずつ）。 */
+        @Test
+        @DisplayName("AC-29: 3件のバッチでも各名簿の照会は1本ずつ（N+1にしない）")
+        void ac29_bypassLookupIsBatched() {
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(
+                    targetedRow(SURVEY_A), targetedRow(SURVEY_B), targetedRow(SURVEY_C)));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+            when(surveyTargetRepository.findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_A));
+            when(surveyResultViewerRepository.findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID)))
+                    .thenReturn(List.of(SURVEY_C));
+
+            Set<Long> visible = resolver.filterAccessible(
+                    List.of(SURVEY_A, SURVEY_B, SURVEY_C), VIEWER_ID);
+
+            assertThat(visible)
+                    .as("AC-29: 配信対象(A)と結果閲覧者(C)が可視・どちらでもない B は不可視")
+                    .containsExactlyInAnyOrder(SURVEY_A, SURVEY_C);
+
+            org.mockito.Mockito.verify(surveyTargetRepository, org.mockito.Mockito.times(1))
+                    .findTargetedSurveyIds(anyCollection(), eq(VIEWER_ID));
+            org.mockito.Mockito.verify(surveyResultViewerRepository, org.mockito.Mockito.times(1))
+                    .findResultViewerSurveyIds(anyCollection(), eq(VIEWER_ID));
+            org.mockito.Mockito.verify(surveyResultViewerRepository, org.mockito.Mockito.never())
+                    .existsBySurveyIdAndUserId(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any());
+        }
+
+        /** AC-29 — ALL 配信のみのバッチでは結果閲覧者名簿も引かない（挙動を変えない）。 */
+        @Test
+        @DisplayName("AC-29: ALL 配信のみなら結果閲覧者名簿も照会しない")
+        void ac29_noViewerLookupForAllMode() {
+            stubProjection(SurveyStatus.PUBLISHED, always(), LocalDateTime.now().plusDays(7));
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isTrue();
+
+            org.mockito.Mockito.verify(surveyResultViewerRepository, org.mockito.Mockito.never())
+                    .findResultViewerSurveyIds(anyCollection(), org.mockito.ArgumentMatchers.any());
+        }
+    }
+
     // ───────────────────────── ヘルパ ─────────────────────────
 
     /** 実装前はここで {@link IllegalArgumentException} が投げられ red となる。 */

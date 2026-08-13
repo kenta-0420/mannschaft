@@ -170,8 +170,10 @@ public class SurveyVisibilityResolver
      *
      * <ul>
      *   <li><b>TARGETED</b>: 母集団は {@code survey_targets} 名簿そのもの。よって名簿登録を必須にする
-     *       （{@code SurveyTargetRepository#existsBySurveyIdAndUserId} — 回答時の関所
-     *       {@code SurveyResponseService} と同じ述語）。スコープ所属だけでは通さない。</li>
+     *       （回答時の関所 {@code SurveyResponseService} と同じ述語の一括版）。
+     *       スコープ所属だけでは通さない。ただし設計書の優先順位規定に従い、
+     *       <b>当該スコープの ADMIN+ と結果閲覧者名簿（{@code survey_result_viewers}）登録者は迂回</b>する
+     *       （名簿ゲート導入前は所属軸でこれらが閲覧できていたため、締める方向の回帰を作らない）。</li>
      *   <li><b>ALL × ORGANIZATION</b>: 母集団は {@code include_supporters}（既定 FALSE）で応援者を除外する。
      *       所属軸は G7 により SUPPORTER を含むため、除外時は下向き再帰ツリーでの実効ロールが
      *       MEMBER 以上であることを要求する（CMP-017b の {@code hasDescendantRoleOrAbove} を再利用）。</li>
@@ -204,7 +206,7 @@ public class SurveyVisibilityResolver
     protected Object prepareAdditionalAxisContext(
             List<SurveyVisibilityProjection> rows, Long viewerUserId) {
         if (viewerUserId == null || rows == null || rows.isEmpty()) {
-            return Set.of();
+            return TargetedRosterContext.EMPTY;
         }
         Set<Long> rosterCheckIds = new HashSet<>();
         for (SurveyVisibilityProjection row : rows) {
@@ -213,9 +215,25 @@ public class SurveyVisibilityResolver
             }
         }
         if (rosterCheckIds.isEmpty()) {
-            return Set.of();
+            return TargetedRosterContext.EMPTY;
         }
-        return Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(rosterCheckIds, viewerUserId));
+        // 配信対象名簿と結果閲覧者名簿を、それぞれ 1 本ずつ・件数非依存で引く（合計 2 本固定）。
+        return new TargetedRosterContext(
+                Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(rosterCheckIds, viewerUserId)),
+                Set.copyOf(surveyResultViewerRepository
+                        .findResultViewerSurveyIds(rosterCheckIds, viewerUserId)));
+    }
+
+    /**
+     * TARGETED × ALWAYS の判定に必要な 2 つの名簿所属集合（バッチ 1 回分）。
+     *
+     * @param targetedSurveyIds     閲覧者が配信対象である survey_id
+     * @param resultViewerSurveyIds 閲覧者が結果閲覧者名簿に登録されている survey_id
+     */
+    private record TargetedRosterContext(Set<Long> targetedSurveyIds, Set<Long> resultViewerSurveyIds) {
+
+        private static final TargetedRosterContext EMPTY =
+                new TargetedRosterContext(Set.of(), Set.of());
     }
 
     /**
@@ -223,7 +241,6 @@ public class SurveyVisibilityResolver
      * {@link #prepareAdditionalAxisContext} で完了している）。
      */
     @Override
-    @SuppressWarnings("unchecked")
     protected boolean visibleByAdditionalAxis(
             SurveyVisibilityProjection row, Long viewerUserId,
             UserScopeRoleSnapshot snapshot, StandardVisibility level,
@@ -237,10 +254,19 @@ public class SurveyVisibilityResolver
             if (viewerUserId == null || row.id() == null) {
                 return false;
             }
-            Set<Long> targetedSurveyIds = additionalAxisContext instanceof Set<?> set
-                    ? (Set<Long>) set
-                    : Set.of();
-            return targetedSurveyIds.contains(row.id());
+            TargetedRosterContext context =
+                    additionalAxisContext instanceof TargetedRosterContext ctx
+                            ? ctx
+                            : TargetedRosterContext.EMPTY;
+            if (context.targetedSurveyIds().contains(row.id())) {
+                return true;
+            }
+            // 設計書 §「結果閲覧権限の判定」の優先順位: 上位条件（ADMIN+ / 結果閲覧者名簿）は
+            // results_visibility を無視して常に閲覧可能。名簿ゲートでこれらを締め出さない。
+            // 迂回は「当該スコープの ADMIN+」と「当該アンケートの結果閲覧者」に限る
+            // （他スコープ・他テナントの ADMIN は roleByScope が当該スコープを持たないため通らない）。
+            return isScopeAdmin(row, snapshot)
+                    || context.resultViewerSurveyIds().contains(row.id());
         }
         if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS
                 || Boolean.TRUE.equals(row.includeSupporters())) {
@@ -249,6 +275,21 @@ public class SurveyVisibilityResolver
         // 応援者除外はスナップショット上のロールで判定するため追加クエリは発生しない。
         return snapshot.hasDescendantRoleOrAbove(
                 new ScopeKey(row.scopeType(), row.scopeId()), "MEMBER");
+    }
+
+    /**
+     * 当該アンケートのスコープにおいて ADMIN 以上か。
+     *
+     * <p>{@link StandardVisibility#ADMINS_AND_ABOVE} の評価
+     * （{@code snapshot.hasRoleOrAbove(scope, "ADMIN")}）と<b>同一の述語</b>を用いる。
+     * 参照するのは当該スコープへの直接ロールのみのため、他スコープ・他テナントの ADMIN は通らない。</p>
+     */
+    private static boolean isScopeAdmin(
+            SurveyVisibilityProjection row, UserScopeRoleSnapshot snapshot) {
+        if (row.scopeType() == null || row.scopeId() == null) {
+            return false;
+        }
+        return snapshot.hasRoleOrAbove(new ScopeKey(row.scopeType(), row.scopeId()), "ADMIN");
     }
 
     /** 名簿照会が必要な行か（ALWAYS かつ ALL 配信以外）。 */
