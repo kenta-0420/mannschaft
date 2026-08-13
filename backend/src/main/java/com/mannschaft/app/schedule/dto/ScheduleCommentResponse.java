@@ -26,9 +26,16 @@ public class ScheduleCommentResponse {
 
     private final UUID id;
     private final Long scheduleId;
+
+    @Schema(nullable = true, description = "返信先コメントID。トップレベルコメントは null")
     private final UUID parentId;
+
+    @Schema(nullable = true, description = "スレッド根のコメントID。トップレベルコメントは null")
     private final UUID rootId;
+
     private final int depth;
+
+    @Schema(nullable = true, description = "本文。削除済み（isDeleted=true）は null（本文を送らない・§5.3）")
     private final String body;
 
     @JsonProperty("isEdited")
@@ -38,12 +45,16 @@ public class ScheduleCommentResponse {
     private final boolean deleted;
 
     private final int replyCount;
+
+    @Schema(nullable = true, description = "投稿者。削除済み・退会/匿名化済みユーザーは null")
     private final CommentAuthorResponse author;
+
     private final boolean canEdit;
     private final boolean canDelete;
     private final Instant createdAt;
     private final Instant updatedAt;
 
     /** 返信配列（最大3件同梱）。返信行（depth=1）では常に {@code null}（無限ネスト禁止）。 */
+    @Schema(nullable = true, description = "同梱される返信（最大3件）。返信自体（depth=1）は常に null")
     private final List<ScheduleCommentResponse> replies;
 }

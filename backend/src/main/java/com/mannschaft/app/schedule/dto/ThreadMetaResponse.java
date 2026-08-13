@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -17,5 +18,7 @@ public class ThreadMetaResponse {
     private final Long scheduleId;
     private final boolean commentsEnabled;
     private final boolean canPost;
+
+    @Schema(nullable = true, description = "canPost=false の理由（CLOSED/CANCELLED/ROLE）。canPost=true は null")
     private final String canPostReason;
 }

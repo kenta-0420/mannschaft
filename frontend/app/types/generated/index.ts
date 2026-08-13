@@ -61133,13 +61133,16 @@ export interface components {
             data?: components["schemas"]["ScheduleCommentResponse"];
         };
         CommentAuthorResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
             avatarUrl?: string;
             displayName?: string;
             /** Format: int64 */
             userId?: number;
         };
         ScheduleCommentResponse: {
+            /** @description 投稿者。削除済み・退会/匿名化済みユーザーは null */
             author?: components["schemas"]["CommentAuthorResponse"];
+            /** @description 本文。削除済み（isDeleted=true）は null（本文を送らない・§5.3） */
             body?: string;
             canDelete?: boolean;
             canEdit?: boolean;
@@ -61151,12 +61154,19 @@ export interface components {
             id?: string;
             isDeleted?: boolean;
             isEdited?: boolean;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description 返信先コメントID。トップレベルコメントは null
+             */
             parentId?: string;
+            /** @description 同梱される返信（最大3件）。返信自体（depth=1）は常に null */
             replies?: components["schemas"]["ScheduleCommentResponse"][];
             /** Format: int32 */
             replyCount?: number;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description スレッド根のコメントID。トップレベルコメントは null
+             */
             rootId?: string;
             /** Format: int64 */
             scheduleId?: number;
@@ -73973,6 +73983,7 @@ export interface components {
         };
         ThreadMetaResponse: {
             canPost?: boolean;
+            /** @description canPost=false の理由（CLOSED/CANCELLED/ROLE）。canPost=true は null */
             canPostReason?: string;
             commentsEnabled?: boolean;
             /** Format: int64 */
@@ -73982,6 +73993,7 @@ export interface components {
             data?: components["schemas"]["MentionCandidateResponse"][];
         };
         MentionCandidateResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
             avatarUrl?: string;
             displayName?: string;
             /** Format: int64 */
