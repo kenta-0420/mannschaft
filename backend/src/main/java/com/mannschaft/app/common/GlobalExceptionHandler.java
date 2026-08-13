@@ -2140,7 +2140,12 @@ public class GlobalExceptionHandler {
             Map.entry("SAFETY_011", HttpStatus.CONFLICT),                // REMIND_TOO_FREQUENT（クールダウン未経過）
 
             // F09.8 コルクボード（CorkboardErrorCode）の残り未登録分。
-            Map.entry("CORKBOARD_002", HttpStatus.NOT_FOUND),            // CARD_NOT_FOUND
+            // CORKBOARD_002（CARD_NOT_FOUND）はロットHで一度404に登録したが、設計書
+            // docs/features/F09.8.1_corkboard_pin_dashboard.md §エラーコード表（L162）が
+            // 明示的に「400 | CORKBOARD_002 | カードが見つからない（論理削除済み含む）」と規定しており、
+            // 既存の契約テスト MyCorkboardPinControllerIT#カード不在_400（L221-235）もこれに
+            // 準拠している（ボード不在=CORKBOARD_001 の 404 とは意図的に区別）。
+            // 設計書・既存契約が優先するため404登録を撤回し、Severity.WARN既定の400に戻す。
             Map.entry("CORKBOARD_003", HttpStatus.NOT_FOUND),            // GROUP_NOT_FOUND
             Map.entry("CORKBOARD_006", HttpStatus.CONFLICT),             // CARD_ALREADY_IN_GROUP
             Map.entry("CORKBOARD_007", HttpStatus.NOT_FOUND),            // CARD_NOT_IN_GROUP（findByCardAndGroup の解決失敗）
@@ -2170,7 +2175,17 @@ public class GlobalExceptionHandler {
             // F03.10 年間行事計画（ScheduleEventCategoryErrorCode、コード文字列は EVTCAT_xxx）。
             Map.entry("EVTCAT_001", HttpStatus.NOT_FOUND),               // CATEGORY_NOT_FOUND
             Map.entry("EVTCAT_002", HttpStatus.CONFLICT),                // DUPLICATE_CATEGORY_NAME
-            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿）
+            // EVTCAT_010（CATEGORY_SCOPE_MISMATCH）は一度400へ撤回したが、これは誤りだった
+            // （Codexによる独立検分で指摘・殿が実コードで裏取りして確定）。
+            // getById（ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+            // EVTCAT_001（CATEGORY_NOT_FOUND）を投げ404を返す。一方 validateCategoryScope
+            // （同ファイル296-301行）は「実在するが他チーム/他組織のcategoryId」に対し
+            // CATEGORY_SCOPE_MISMATCH を投げる。ここを400のままにすると「404=不在」
+            // 「400=実在するがスコープ外」という応答の違いから、IDを連番で試すだけで
+            // 実在するcategoryIdを列挙できる存在オラクルになる。docs/security/README.md の
+            // 越境404方針（越境はNOT_FOUNDに畳んで不在と区別不能にする）にも反する。
+            // 兄弟のEVTCAT_001と同一の404に畳み、存在の有無を判別不能にする。
+            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿。EVTCAT_001と同一応答に畳む）
             Map.entry("EVTCAT_021", HttpStatus.NOT_FOUND),               // ANNUAL_COPY_SOURCE_NOT_FOUND
             Map.entry("EVTCAT_022", HttpStatus.CONFLICT),                // ANNUAL_COPY_CONFLICT
 
@@ -2190,7 +2205,12 @@ public class GlobalExceptionHandler {
             Map.entry("ADMIN_006", HttpStatus.NOT_FOUND),                // BATCH_JOB_LOG_NOT_FOUND
 
             // F05.1 掲示板（BulletinErrorCode）の残り未登録分。
-            Map.entry("BULLETIN_012", HttpStatus.CONFLICT),              // PARENT_REPLY_MISMATCH（兄弟 BULLETIN_020 と同流儀）
+            // BULLETIN_012（PARENT_REPLY_MISMATCH）はロットHで一度 409 に登録したが、
+            // throw元（BulletinReplyService#createReply/updateReply等）はクライアントが送った
+            // parentId が同一スレッド内に存在しない/一致しないという入力不備であり、状態競合ではない。
+            // 番人 GlobalExceptionHandlerTest$ClientErrorMustNotBe500#badRequestCases が
+            // 400 固定として明示的に列挙しているとおりが正しいため、409 登録を撤回し
+            // Severity.WARN の既定（400）に戻す。
             Map.entry("BULLETIN_025", HttpStatus.NOT_FOUND),             // ATTACHMENT_TARGET_NOT_FOUND
 
             // 会員台帳カスタムフィールド（MemberInfoErrorCode）の残り未登録分。
