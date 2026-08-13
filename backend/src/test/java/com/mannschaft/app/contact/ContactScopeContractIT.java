@@ -824,6 +824,78 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 11. POST /contact-invite/{token}/accept（招待URLから連絡先追加）
+    //
+    // 認可監査(Wave6 ロットG): CONTACT_012（トークン不在・無効化済み・期限切れ）は
+    // 既存の招待トークン系（EVENT_007/FAMILY_029/CONTACT_014 等）と同じ存在秘匿で 404。
+    // 陽性対照（有効なトークンでは成功する）を併せて固定する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("11. POST /contact-invite/{token}/accept（招待URLから連絡先追加）")
+    class AcceptInvite {
+
+        @Test
+        @DisplayName("陽性対照: 有効なトークンでは連絡先追加に成功する")
+        void 有効なトークンは成功する() throws Exception {
+            String uniq = Long.toString(System.nanoTime(), 36);
+            Long issuerId = insertUser("contactauthz-accept-issuer-" + uniq + "@example.test",
+                    "accept-issuer-" + uniq, true);
+            Long accepterId = insertUser("contactauthz-accept-user-" + uniq + "@example.test",
+                    "accept-user-" + uniq, true);
+            ContactInviteTokenEntity validToken = contactInviteTokenRepository.save(
+                    ContactInviteTokenEntity.builder()
+                            .userId(issuerId)
+                            .token("contactauthz-accept-valid-" + uniq)
+                            .label("CONTACTAUTHZ 受諾用")
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build());
+            em.flush();
+            em.clear();
+
+            setAuth(accepterId);
+            mockMvc.perform(post("/api/v1/contact-invite/{token}/accept", validToken.getToken()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("不存在トークンは 404（存在秘匿）")
+        void 不存在トークンは404() throws Exception {
+            String uniq = Long.toString(System.nanoTime(), 36);
+            Long accepterId = insertUser("contactauthz-accept-user2-" + uniq + "@example.test",
+                    "accept-user2-" + uniq, true);
+
+            setAuth(accepterId);
+            mockMvc.perform(post("/api/v1/contact-invite/{token}/accept",
+                            "contactauthz-nonexistent-accept-token-" + uniq))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("期限切れトークンは 404（不存在と区別しない存在秘匿）")
+        void 期限切れトークンは404() throws Exception {
+            String uniq = Long.toString(System.nanoTime(), 36);
+            Long issuerId = insertUser("contactauthz-accept-issuer2-" + uniq + "@example.test",
+                    "accept-issuer2-" + uniq, true);
+            Long accepterId = insertUser("contactauthz-accept-user3-" + uniq + "@example.test",
+                    "accept-user3-" + uniq, true);
+            ContactInviteTokenEntity expiredToken = contactInviteTokenRepository.save(
+                    ContactInviteTokenEntity.builder()
+                            .userId(issuerId)
+                            .token("contactauthz-accept-expired-" + uniq)
+                            .label("CONTACTAUTHZ 期限切れ用")
+                            .expiresAt(LocalDateTime.now().minusDays(1))
+                            .build());
+            em.flush();
+            em.clear();
+
+            setAuth(accepterId);
+            mockMvc.perform(post("/api/v1/contact-invite/{token}/accept", expiredToken.getToken()))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー（金型 TodoPersonalScopeContractIT より写経）
     // ═════════════════════════════════════════════════════════════════════
 
