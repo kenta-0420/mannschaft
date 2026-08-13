@@ -310,6 +310,38 @@ export default {
         "expired": "Expirado",
         "lifted": "Levantado"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Exención de tarifa de cancelación",
+      "columns": {
+        "listing": "Convocatoria",
+        "user": "Usuario objetivo",
+        "feeAmount": "Tarifa de cancelación",
+        "status": "Estado",
+        "cancelledAt": "Fecha de cancelación"
+      },
+      "status": {
+        "pending": "Pendiente de pago",
+        "failed": "Pago fallido",
+        "uncollectible": "Incobrable",
+        "paid": "Pagado",
+        "waived": "Exonerado",
+        "notRequired": "No aplicable"
+      },
+      "waiveButton": "Exonerar",
+      "reasonLabel": "Motivo de la exención",
+      "reasonPlaceholder": "Introduzca el motivo de la exención (obligatorio)",
+      "reasonRequired": "El motivo es obligatorio",
+      "confirmDialog": {
+        "title": "Exención de tarifa de cancelación",
+        "message": "Se cancelará el cobro de la tarifa de cancelación de {amount} yenes. Esta acción no se puede deshacer.\nSi este usuario tiene otras tarifas de cancelación pendientes de pago, la restricción de inscripción no se levantará.",
+        "confirmButton": "Exonerar",
+        "cancelButton": "Volver"
+      },
+      "emptyMessage": "No hay registros de tarifas de cancelación exonerables",
+      "loadError": "No se pudo cargar la lista",
+      "waiveSuccess": "Tarifa de cancelación exonerada",
+      "waiveError": "No se pudo exonerar la tarifa"
     }
   }
 }

@@ -420,3 +420,29 @@ export interface LiftPenaltyRequest {
   liftReason: 'AUTO_EXPIRED' | 'ADMIN_MANUAL' | 'DISPUTE_REVOKED'
   liftNote?: string
 }
+
+// F03.11.1 キャンセル料の免除
+
+export type CancellationPaymentStatus =
+  | 'NOT_REQUIRED'
+  | 'PENDING'
+  | 'PAID'
+  | 'WAIVED'
+  | 'FAILED'
+  | 'UNCOLLECTIBLE'
+
+export interface RecruitmentCancellationRecordSummary {
+  id: number
+  listingId: number
+  listingTitle: string
+  participantId: number
+  userId: number
+  feeAmount: number
+  paymentStatus: CancellationPaymentStatus
+  cancelledAt: string
+  hoursBeforeStart: number
+}
+
+export interface WaiveCancellationFeeRequest {
+  reason: string
+}
