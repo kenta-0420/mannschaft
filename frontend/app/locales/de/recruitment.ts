@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "Stornogebühr erlassen",
+      "pageDescription": "Erlass der Ihnen zustehenden Stornogebühren",
+      "unknownUser": "Unbekannter Benutzer",
+      "loadMore": "Mehr anzeigen",
+      "reasonTooLong": "Der Grund darf höchstens {max} Zeichen lang sein",
       "columns": {
         "listing": "Ausschreibung",
         "user": "Betroffener Nutzer",

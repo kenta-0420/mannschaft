@@ -435,12 +435,28 @@ export interface RecruitmentCancellationRecordSummary {
   id: number
   listingId: number
   listingTitle: string
-  participantId: number
-  userId: number
+  /**
+   * 参加者 ID。DB 上 nullable（参加者行が消えると ON DELETE SET NULL で NULL になる）ため
+   * null を取りうる。必須の number と宣言すると型の嘘になり、画面が null を弾かなくなる。
+   */
+  participantId: number | null
+  /** 対象ユーザー ID。participantId と同じ理由で null を取りうる。 */
+  userId: number | null
   feeAmount: number
   paymentStatus: CancellationPaymentStatus
   cancelledAt: string
   hoursBeforeStart: number
+}
+
+/** キャンセル料記録一覧のレスポンス（キーセットページング）。 */
+export interface RecruitmentCancellationRecordSlice {
+  data: RecruitmentCancellationRecordSummary[]
+  meta: {
+    /** 続きを取るためのカーソル。続きが無ければ null。 */
+    nextCursor: string | null
+    hasNext: boolean
+    limit: number
+  }
 }
 
 export interface WaiveCancellationFeeRequest {

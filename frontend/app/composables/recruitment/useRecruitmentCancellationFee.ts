@@ -1,18 +1,8 @@
 import type {
   CancellationPaymentStatus,
-  RecruitmentCancellationRecordSummary,
+  RecruitmentCancellationRecordSlice,
   WaiveCancellationFeeRequest,
 } from '~/types/recruitment'
-
-interface PagedResponse<T> {
-  data: T[]
-  meta: {
-    total: number
-    page: number
-    size: number
-    totalPages: number
-  }
-}
 
 /**
  * F03.11.1 募集キャンセル料の免除 API クライアント（設計書 §12・免除 UI）。
@@ -24,18 +14,27 @@ export function useRecruitmentCancellationFee() {
   const api = useApi()
 
   /**
-   * キャンセル料記録の一覧を取得する。
+   * キャンセル料記録の一覧を取得する（キーセットページング）。
+   *
+   * BE 側は母集合が免除で縮むうえ、権威ある受取先（escrow）による絞り込みをアプリ層で行うため、
+   * ページ番号送りではなくカーソル方式である。続きは前回の `meta.nextCursor` をそのまま渡す。
    *
    * @param statuses 絞り込む決済ステータス（未指定なら免除可能な既定 3 状態を BE 側が適用）
+   * @param cursor   続きの位置（先頭ページは未指定）
+   * @param size     1 ページの件数（BE 側は 1〜100 のみ受け付ける）
    */
-  async function listCancellationRecords(statuses?: CancellationPaymentStatus[], page = 0, size = 20) {
+  async function listCancellationRecords(
+    statuses?: CancellationPaymentStatus[],
+    cursor?: string | null,
+    size = 20,
+  ) {
     const params = new URLSearchParams()
     if (statuses && statuses.length > 0) {
       for (const s of statuses) params.append('status', s)
     }
-    params.append('page', String(page))
+    if (cursor) params.append('cursor', cursor)
     params.append('size', String(size))
-    return api<PagedResponse<RecruitmentCancellationRecordSummary>>(
+    return api<RecruitmentCancellationRecordSlice>(
       `/api/v1/recruitment-cancellation-records?${params.toString()}`,
     )
   }

@@ -44,11 +44,21 @@ const confirmMessage = computed(() => {
   })
 })
 
-const reasonInvalid = computed(() => reason.value.trim().length === 0)
+/**
+ * 免除理由の最大長。BE の `RecruitmentCancellationFeeWaiveService.MAX_REASON_LENGTH`（500・
+ * `notes VARCHAR(500)` に収まる長さ）と同じ値。UI 側で弾かないと、501 文字以上でも送信でき
+ * BE で 400 になってから初めて気づく（入力を失う）。
+ */
+const MAX_REASON_LENGTH = 500
+
+const trimmedReason = computed(() => reason.value.trim())
+const reasonEmpty = computed(() => trimmedReason.value.length === 0)
+const reasonTooLong = computed(() => trimmedReason.value.length > MAX_REASON_LENGTH)
+const reasonInvalid = computed(() => reasonEmpty.value || reasonTooLong.value)
 
 function onConfirm() {
   if (reasonInvalid.value) return
-  emit('confirm', reason.value.trim())
+  emit('confirm', trimmedReason.value)
 }
 
 function onCancel() {
@@ -82,9 +92,26 @@ function onCancel() {
           :disabled="loading"
           data-testid="waive-reason-input"
         />
-        <span v-if="reasonInvalid" class="text-sm text-red-600" data-testid="waive-reason-error">
-          {{ t('recruitment.cancellationFeeWaive.reasonRequired') }}
-        </span>
+        <div class="flex items-start justify-between gap-2">
+          <span v-if="reasonEmpty" class="text-sm text-red-600" data-testid="waive-reason-error">
+            {{ t('recruitment.cancellationFeeWaive.reasonRequired') }}
+          </span>
+          <span
+            v-else-if="reasonTooLong"
+            class="text-sm text-red-600"
+            data-testid="waive-reason-too-long"
+          >
+            {{ t('recruitment.cancellationFeeWaive.reasonTooLong', { max: MAX_REASON_LENGTH }) }}
+          </span>
+          <span v-else />
+          <span
+            class="text-xs whitespace-nowrap"
+            :class="reasonTooLong ? 'text-red-600' : 'text-surface-500'"
+            data-testid="waive-reason-counter"
+          >
+            {{ trimmedReason.length }} / {{ MAX_REASON_LENGTH }}
+          </span>
+        </div>
       </div>
     </div>
 

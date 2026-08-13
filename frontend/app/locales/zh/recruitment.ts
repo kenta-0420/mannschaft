@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "取消费减免",
+      "pageDescription": "减免应由您收取的取消费",
+      "unknownUser": "未知用户",
+      "loadMore": "查看更多",
+      "reasonTooLong": "减免理由请控制在{max}个字符以内",
       "columns": {
         "listing": "招募",
         "user": "对象用户",

@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "Exención de tarifa de cancelación",
+      "pageDescription": "Exime las tarifas de cancelación que te corresponde cobrar",
+      "unknownUser": "Usuario desconocido",
+      "loadMore": "Ver más",
+      "reasonTooLong": "El motivo debe tener como máximo {max} caracteres",
       "columns": {
         "listing": "Convocatoria",
         "user": "Usuario objetivo",

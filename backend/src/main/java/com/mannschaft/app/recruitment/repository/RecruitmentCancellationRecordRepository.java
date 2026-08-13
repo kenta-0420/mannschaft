@@ -3,12 +3,12 @@ package com.mannschaft.app.recruitment.repository;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -58,10 +58,23 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
             Pageable pageable);
 
     /**
-     * §12（免除 UI）一覧: {@code SYSTEM_ADMIN} 向け全件一覧。
+     * §12（免除 UI）一覧: {@code SYSTEM_ADMIN} 向け全件一覧のチャンク取得（キーセットページング）。
      *
      * <p>受取先による絞り込みは行わない（呼び出し元が {@code SYSTEM_ADMIN} であることは
      * Service 層で検証済みの前提）。</p>
+     *
+     * <p><b>ソートキーは {@code (cancelledAt DESC, id DESC)} の複合であり一意である。</b>
+     * {@code cancelledAt} 単独では同一時刻の行の順序が不定になり、ページ境界で行が重複・欠落する。
+     * 一意でない列だけでキーセットのカーソルを進めることはできないため、末尾に主キーを足している。</p>
+     *
+     * <p>カーソルは「この位置より後（＝より古い側）」を意味する。先頭ページは呼び出し側が
+     * 番人値（{@code cancelledAt} に遠未来・{@code id} に {@code Long.MAX_VALUE}）を渡す
+     * ——{@code :param IS NULL} を JPQL に書かずに済ませ、条件式を 1 本に保つため。</p>
+     *
+     * @param statuses         絞り込む決済ステータス
+     * @param cursorCancelledAt カーソル位置の {@code cancelledAt}（先頭は遠未来の番人値）
+     * @param cursorId         カーソル位置の {@code id}（先頭は {@code Long.MAX_VALUE}）
+     * @param pageable         取得件数のみ使用（ソートは本クエリで固定）
      */
     @Query("""
             SELECT new com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse(
@@ -70,29 +83,37 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
             FROM RecruitmentCancellationRecordEntity r, RecruitmentListingEntity l
             WHERE l.id = r.listingId
               AND r.paymentStatus IN :statuses
-            ORDER BY r.cancelledAt DESC
+              AND (r.cancelledAt < :cursorCancelledAt
+                   OR (r.cancelledAt = :cursorCancelledAt AND r.id < :cursorId))
+            ORDER BY r.cancelledAt DESC, r.id DESC
             """)
-    Page<RecruitmentCancellationRecordSummaryResponse> findAllForSystemAdmin(
+    List<RecruitmentCancellationRecordSummaryResponse> findChunkForSystemAdmin(
             @Param("statuses") Collection<CancellationPaymentStatus> statuses,
+            @Param("cursorCancelledAt") LocalDateTime cursorCancelledAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable);
 
     /**
-     * §12（免除 UI）一覧: 受取先側の管理者・受取先本人向けの絞り込み一覧。
+     * §12（免除 UI）一覧: <b>安価な事前絞り込み</b>としての受取先候補チャンク取得（キーセットページング）。
      *
-     * <p><b>この絞り込みは payment ドメイン（escrow）を一切読まない。</b> 受取先の判定は
-     * recruitment 自身が持つ {@code recruitment_listings.payeeKind}/{@code payeeUserId}/
-     * {@code scopeId} だけで行う（listingId で JOIN。§3.4 のクロスドメイン禁止に抵触しない
-     * ——recruitment が読むのは recruitment 自身のテーブルである）。</p>
+     * <p><b>この絞り込みは最適化であって認可の権威ではない。</b> ここで使う
+     * {@code recruitment_listings.payeeKind}/{@code payeeUserId}/{@code scopeId} は
+     * <b>募集の作成後に変更できる可変の値</b>であり、実際に金を受け取る先（escrow の payee）と
+     * 食い違いうる。したがって本クエリの結果をそのまま利用者へ返してはならない
+     * ——{@code RecruitmentCancellationRecordQueryService} が payment ドメインの
+     * {@code ConnectChargeService#filterPayeeSettlementManaged}（権威ある受取先）で
+     * <b>必ず最終的に絞り込む</b>。本クエリの役割は、その権威ある判定へ渡す候補を
+     * DB 側で安く減らすことだけである。</p>
      *
-     * <p><b>これは「絞り込まれた閲覧」に過ぎず、認可の最終的な権威ではない。</b> listing の
-     * 受取先情報と escrow（実際に金を受け取る Connect account）の受取先が万が一食い違っても、
-     * ここで見えるだけでは免除できない——免除の実行は {@code RecruitmentCancellationFeeWaiveService}
-     * が payment ドメインの {@code ConnectChargeService#isPayeeSettlementManager} で必ず再検証する。
-     * 逆（一覧で絞ったから免除側の検証を省略する）は禁止。</p>
+     * <p>本クエリを「見えてよいものの集合」として単独で使うと、受取先を後から差し替えた募集で
+     * 現在の受取先に従前の記録が混じる。権威ある絞り込みを外さないこと。</p>
+     *
+     * <p>ソートキー・カーソルの扱いは {@link #findChunkForSystemAdmin} と同一
+     * （{@code (cancelledAt DESC, id DESC)} の一意な複合キー）。</p>
      *
      * @param actorUserId  操作者ユーザー ID（{@code payeeKind=USER} の一致判定に使用）
-     * @param teamScopeIds 操作者が精算管理者である TEAM の scopeId 集合（無ければ空集合可）
-     * @param orgScopeIds  操作者が精算管理者である ORG の scopeId 集合（無ければ空集合可）
+     * @param teamScopeIds 操作者が支払い管理権限を持つ TEAM の scopeId 集合（無ければ番人値）
+     * @param orgScopeIds  操作者が管理者・支払い管理権限を持つ ORG の scopeId 集合（無ければ番人値）
      * @param statuses     絞り込む決済ステータス
      */
     @Query("""
@@ -102,17 +123,21 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
             FROM RecruitmentCancellationRecordEntity r, RecruitmentListingEntity l
             WHERE l.id = r.listingId
               AND r.paymentStatus IN :statuses
+              AND (r.cancelledAt < :cursorCancelledAt
+                   OR (r.cancelledAt = :cursorCancelledAt AND r.id < :cursorId))
               AND (
                    (l.payeeKind = 'USER' AND l.payeeUserId = :actorUserId)
                 OR (l.payeeKind = 'TEAM' AND l.scopeId IN :teamScopeIds)
                 OR (l.payeeKind = 'ORG' AND l.scopeId IN :orgScopeIds)
               )
-            ORDER BY r.cancelledAt DESC
+            ORDER BY r.cancelledAt DESC, r.id DESC
             """)
-    Page<RecruitmentCancellationRecordSummaryResponse> findVisibleToPayee(
+    List<RecruitmentCancellationRecordSummaryResponse> findChunkOfPayeeCandidates(
             @Param("actorUserId") Long actorUserId,
             @Param("teamScopeIds") Collection<Long> teamScopeIds,
             @Param("orgScopeIds") Collection<Long> orgScopeIds,
             @Param("statuses") Collection<CancellationPaymentStatus> statuses,
+            @Param("cursorCancelledAt") LocalDateTime cursorCancelledAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable);
 }

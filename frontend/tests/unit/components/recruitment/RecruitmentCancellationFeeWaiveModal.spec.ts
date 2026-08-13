@@ -87,6 +87,53 @@ describe('RecruitmentCancellationFeeWaiveModal.vue', () => {
     expect(emitted?.[0]?.[0]).toBe('主催者都合のため')
   })
 
+  // BE の上限（MAX_REASON_LENGTH=500・notes VARCHAR(500)）を UI 側でも弾く。
+  // 弾かないと 501 文字以上でも送信でき、BE で 400 になってから初めて気づく（入力を失う）。
+  it('免除理由が上限500文字ちょうどなら確定できる（境界の内側）', async () => {
+    const wrapper = await mountSuspended(RecruitmentCancellationFeeWaiveModal, {
+      props: { visible: true, record: buildRecord() },
+    })
+
+    const textarea = findByTestId<HTMLTextAreaElement>('waive-reason-input')
+    textarea!.value = 'あ'.repeat(500)
+    textarea!.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+
+    expect(findByTestId('waive-reason-too-long')).toBeNull()
+    const confirmBtn = findByTestId<HTMLButtonElement>('waive-confirm-button')
+    expect(confirmBtn!.disabled).toBe(false)
+  })
+
+  it('免除理由が501文字なら確定ボタンが disabled になり超過エラーが出る（境界の外側）', async () => {
+    const wrapper = await mountSuspended(RecruitmentCancellationFeeWaiveModal, {
+      props: { visible: true, record: buildRecord() },
+    })
+
+    const textarea = findByTestId<HTMLTextAreaElement>('waive-reason-input')
+    textarea!.value = 'あ'.repeat(501)
+    textarea!.dispatchEvent(new Event('input'))
+    await wrapper.vm.$nextTick()
+
+    expect(findByTestId('waive-reason-too-long')).not.toBeNull()
+    const confirmBtn = findByTestId<HTMLButtonElement>('waive-confirm-button')
+    expect(confirmBtn!.disabled).toBe(true)
+
+    // disabled を無視してクリックされても confirm を emit しない（二重の番人）。
+    confirmBtn!.click()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('confirm')).toBeFalsy()
+  })
+
+  it('participantId / userId が null の記録でもモーダルが壊れない（型の実態は nullable）', async () => {
+    await mountSuspended(RecruitmentCancellationFeeWaiveModal, {
+      props: { visible: true, record: buildRecord({ participantId: null, userId: null }) },
+    })
+
+    const messageEl = findByTestId('waive-confirm-message')
+    expect(messageEl).not.toBeNull()
+    expect(messageEl!.textContent).toContain('3,000')
+  })
+
   it('キャンセルボタンで update:visible(false) が emit される', async () => {
     const wrapper = await mountSuspended(RecruitmentCancellationFeeWaiveModal, {
       props: { visible: true, record: buildRecord() },

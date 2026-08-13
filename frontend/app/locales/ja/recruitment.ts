@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "キャンセル料の免除",
+      "pageDescription": "受け取るべきキャンセル料の免除",
+      "unknownUser": "不明なユーザー",
+      "loadMore": "もっと見る",
+      "reasonTooLong": "免除理由は{max}文字以内で入力してください",
       "columns": {
         "listing": "募集",
         "user": "対象ユーザー",

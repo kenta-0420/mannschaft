@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "Waive Cancellation Fee",
+      "pageDescription": "Waive cancellation fees you are due to receive",
+      "unknownUser": "Unknown user",
+      "loadMore": "Load more",
+      "reasonTooLong": "The reason must be {max} characters or fewer",
       "columns": {
         "listing": "Listing",
         "user": "Target User",

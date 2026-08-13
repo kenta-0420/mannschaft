@@ -26,8 +26,15 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * F22.1 統一決済 P2-b: 共通送金サービス（与信＝authorize の中核・設計書 02 §0 / §5.1）。
@@ -1324,8 +1331,92 @@ public class ConnectChargeService {
         if (payeeAccount.isEmpty()) {
             return false;
         }
-        ConnectAccountEntity payee = payeeAccount.get();
+        return isActorManagerOfPayeeAccount(payeeAccount.get(), actorUserId);
+    }
 
+    /**
+     * 複数の引き当ての三つ組について、操作者が受取先側の精算管理者である<b>ものだけ</b>を返す（一括判定）。
+     *
+     * <p><b>これは {@link #isPayeeSettlementManager} と完全に同一の判断基準である。</b> 受取先の解決は
+     * escrow の {@code payee_connect_account_id} → {@code connect_accounts} で行い、
+     * TEAM/ORG/個人（USER）の判定は両者とも {@link #isActorManagerOfPayeeAccount} という
+     * <b>ただ一つの実装</b>を通る。判断が二か所に分かれると片方だけ直した穴が残るため、
+     * 分岐を複製してはならない。</p>
+     *
+     * <p><b>なぜ一括なのか（性能）</b>: 一覧画面が行ごとに {@link #isPayeeSettlementManager} を呼ぶと、
+     * ページ内の件数 N に対し「escrow 1 回 + connect_account 1 回 + 権限判定 1 回」× N の
+     * ラウンドトリップになる。本メソッドは escrow を {@code source_id IN (...)} の 1 回、
+     * connect_account を {@code findAllById} の 1 回にまとめ、権限判定は<b>受取先口座ごとに
+     * 一度だけ</b>行って結果を使い回す（同一チームの募集が並ぶ一覧では判定はほぼ 1 回で済む）。
+     * 結果として問い合わせ回数は N に比例せず、ページ内の相異なる受取先の数にしか比例しない。</p>
+     *
+     * @param sourceKind  引き当ての種別（全要素に共通）
+     * @param refs        判定したい {@code (sourceId, sourceParticipantId)} の集合
+     * @param actorUserId 操作者ユーザー ID
+     * @return 操作者が受取先側の精算管理者である三つ組のみを含む集合（該当なしなら空集合）
+     */
+    @Transactional(readOnly = true)
+    public Set<EscrowSourceRef> filterPayeeSettlementManaged(
+            EscrowSourceKind sourceKind, Collection<EscrowSourceRef> refs, Long actorUserId) {
+
+        if (actorUserId == null || refs == null || refs.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> sourceIds = refs.stream()
+                .map(EscrowSourceRef::sourceId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (sourceIds.isEmpty()) {
+            return Set.of();
+        }
+
+        // ① escrow をまとめて 1 往復で引く。
+        List<EscrowTransactionEntity> escrows =
+                escrowTransactionRepository.findBySourceKindAndSourceIdIn(sourceKind, sourceIds);
+        if (escrows.isEmpty()) {
+            // 受取先が特定できない以上、受取先側の権限は誰にも与えられない（運営のみが免除できる状態）。
+            return Set.of();
+        }
+
+        Set<EscrowSourceRef> requested = new HashSet<>(refs);
+        Map<EscrowSourceRef, UUID> payeeAccountByRef = new HashMap<>();
+        for (EscrowTransactionEntity escrow : escrows) {
+            EscrowSourceRef ref = new EscrowSourceRef(escrow.getSourceId(), escrow.getSourceParticipantId());
+            if (requested.contains(ref)) {
+                payeeAccountByRef.put(ref, escrow.getPayeeConnectAccountId());
+            }
+        }
+        if (payeeAccountByRef.isEmpty()) {
+            return Set.of();
+        }
+
+        // ② 受取先口座をまとめて 1 往復で引く。
+        Map<UUID, ConnectAccountEntity> accounts = new HashMap<>();
+        connectAccountRepository.findAllById(new HashSet<>(payeeAccountByRef.values()))
+                .forEach(a -> accounts.put(a.getId(), a));
+
+        // ③ 権限判定は口座ごとに一度だけ行い、同じ受取先の行では使い回す。
+        Map<UUID, Boolean> managedByAccount = new HashMap<>();
+        Set<EscrowSourceRef> allowed = new HashSet<>();
+        payeeAccountByRef.forEach((ref, accountId) -> {
+            Boolean managed = managedByAccount.computeIfAbsent(accountId, id -> {
+                ConnectAccountEntity account = accounts.get(id);
+                return account != null && isActorManagerOfPayeeAccount(account, actorUserId);
+            });
+            if (Boolean.TRUE.equals(managed)) {
+                allowed.add(ref);
+            }
+        });
+        return allowed;
+    }
+
+    /**
+     * 受取先口座に対して操作者が精算管理者かどうかを判定する（§10.2 の 3 種の分岐そのもの）。
+     *
+     * <p>{@link #isPayeeSettlementManager}（1 件）と {@link #filterPayeeSettlementManaged}（一括）の
+     * <b>唯一の判断基準</b>。ここを分岐の複製で増やすと、片方だけ直した穴が残る。</p>
+     */
+    private boolean isActorManagerOfPayeeAccount(ConnectAccountEntity payee, Long actorUserId) {
         // 個人受領（payeeKind=USER）は本人固定。既存 authorizePayeeAdmin が対象外にしているため本判定で新たに定義する（§10.2）。
         if (payee.getScopeKind() == ScopeKind.USER) {
             return actorUserId.equals(payee.getScopeId());

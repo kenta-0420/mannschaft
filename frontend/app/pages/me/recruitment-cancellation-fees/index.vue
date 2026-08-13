@@ -3,14 +3,19 @@
  * F03.11.1 キャンセル料の免除（設計書 §12）。
  *
  * 受取先側の管理者・受取先本人・SYSTEM_ADMIN が、自分が受け取るべきキャンセル料の
- * 記録を一覧し、理由を添えて免除できる画面。免除は BE 側で受取先の再検証を必ず行うため
- * （§10.2・二段構え）、本画面での一覧表示は「見えるかどうか」に過ぎない。
+ * 記録を一覧し、理由を添えて免除できる画面。一覧に出る記録は BE 側で escrow（権威ある受取先）
+ * によって絞られており、免除の実行時にも同じ判定で再検証される（§10.2）。
  *
  * 債務者（キャンセル料を負っている本人）向けの一覧は本画面のスコープ外
  * （設計書 §12 マスター裁定・別途起票予定）。
+ *
+ * ページングはカーソル方式（キーセット）である。免除すると母集合が縮むため、ページ番号送りだと
+ * 行が読み飛ばされる。「もっと見る」で nextCursor を辿って積み増す形にしている。
  */
 import { onMounted, ref } from 'vue'
 import type { RecruitmentCancellationRecordSummary } from '~/types/recruitment'
+
+definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const api = useRecruitmentApi()
@@ -18,16 +23,22 @@ const { success, error } = useNotification()
 
 const records = ref<RecruitmentCancellationRecordSummary[]>([])
 const loading = ref(false)
+const loadingMore = ref(false)
+const nextCursor = ref<string | null>(null)
+const hasNext = ref(false)
 
 const waiveModalVisible = ref(false)
 const waiveTarget = ref<RecruitmentCancellationRecordSummary | null>(null)
 const waiving = ref(false)
 
+/** 先頭から読み直す（初回表示・免除後のリフレッシュ）。 */
 async function load() {
   loading.value = true
   try {
-    const result = await api.listCancellationRecords()
+    const result = await api.listCancellationRecords(undefined, null)
     records.value = result.data
+    nextCursor.value = result.meta.nextCursor
+    hasNext.value = result.meta.hasNext
   }
   catch {
     error(t('recruitment.cancellationFeeWaive.loadError'))
@@ -37,11 +48,39 @@ async function load() {
   }
 }
 
+/** 続きを読み込んで末尾に積む。 */
+async function loadMore() {
+  if (!hasNext.value || !nextCursor.value) return
+  loadingMore.value = true
+  try {
+    const result = await api.listCancellationRecords(undefined, nextCursor.value)
+    records.value = [...records.value, ...result.data]
+    nextCursor.value = result.meta.nextCursor
+    hasNext.value = result.meta.hasNext
+  }
+  catch {
+    error(t('recruitment.cancellationFeeWaive.loadError'))
+  }
+  finally {
+    loadingMore.value = false
+  }
+}
+
 function statusLabel(status: string): string {
   const key = status
     .toLowerCase()
     .replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
   return t(`recruitment.cancellationFeeWaive.status.${key}`)
+}
+
+/**
+ * 対象ユーザーの表示。userId は DB 上 nullable（退会等で NULL になる）ため、
+ * null のときは ID を出さず「不明」と表示する（画面を壊さない）。
+ */
+function userLabel(record: RecruitmentCancellationRecordSummary): string {
+  return record.userId === null
+    ? t('recruitment.cancellationFeeWaive.unknownUser')
+    : `#${record.userId}`
 }
 
 function openWaiveModal(record: RecruitmentCancellationRecordSummary) {
@@ -57,6 +96,7 @@ async function onWaiveConfirm(reason: string) {
     success(t('recruitment.cancellationFeeWaive.waiveSuccess'))
     waiveModalVisible.value = false
     waiveTarget.value = null
+    // 免除した行は既定の絞り込みから外れる。先頭から読み直して一覧を整合させる。
     await load()
   }
   catch {
@@ -97,7 +137,7 @@ onMounted(() => load())
             {{ record.listingTitle }}
           </div>
           <div class="text-sm text-surface-500">
-            {{ t('recruitment.cancellationFeeWaive.columns.user') }}: #{{ record.userId }}
+            {{ t('recruitment.cancellationFeeWaive.columns.user') }}: {{ userLabel(record) }}
             /
             {{ t('recruitment.cancellationFeeWaive.columns.cancelledAt') }}: {{ record.cancelledAt }}
           </div>
@@ -115,6 +155,17 @@ onMounted(() => load())
           @click="openWaiveModal(record)"
         />
       </SectionCard>
+
+      <div v-if="hasNext" class="flex justify-center pt-2">
+        <Button
+          :label="t('recruitment.cancellationFeeWaive.loadMore')"
+          severity="secondary"
+          outlined
+          :loading="loadingMore"
+          data-testid="waive-load-more"
+          @click="loadMore"
+        />
+      </div>
     </div>
 
     <RecruitmentCancellationFeeWaiveModal

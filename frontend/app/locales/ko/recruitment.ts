@@ -313,6 +313,10 @@ export default {
     },
     "cancellationFeeWaive": {
       "pageTitle": "취소 수수료 면제",
+      "pageDescription": "수령해야 할 취소 수수료의 면제",
+      "unknownUser": "알 수 없는 사용자",
+      "loadMore": "더 보기",
+      "reasonTooLong": "면제 사유는 {max}자 이내로 입력해 주세요",
       "columns": {
         "listing": "모집",
         "user": "대상 사용자",
