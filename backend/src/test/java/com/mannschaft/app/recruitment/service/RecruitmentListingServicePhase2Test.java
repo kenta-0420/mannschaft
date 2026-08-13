@@ -91,6 +91,15 @@ class RecruitmentListingServicePhase2Test {
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
 
+    // Issue #2715 ロットA: 通知本文の i18n 化で RecruitmentListingService に追加した依存。
+    // confirmApplication / publish(→sendPublishedNotifications) が受信者 locale 解決のため呼び出すので、
+    // スタブしないと Locale.forLanguageTag(null) の NPE になる（行単位 try/catch に飲まれて
+    // 「通知が飛ばない」という一見無関係な失敗に化ける罠があるため、削除せず必ず維持すること）。
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
+
     @InjectMocks
     private RecruitmentListingService service;
 
@@ -149,6 +158,10 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.save(any())).willReturn(savedListing);
             given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
             given(mapper.toListingResponse(any())).willReturn(null);
+            // Issue #2715: sendPublishedNotifications が受信者ごとに locale を解決するためのスタブ。
+            given(userLocaleCache.getLocale(any())).willReturn("ja");
+            given(messageSource.getMessage(any(), any(), any(), any()))
+                    .willAnswer(invocation -> invocation.getArgument(2));
 
             service.publish(LISTING_ID, ADMIN_ID);
 
@@ -176,6 +189,10 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
             given(reminderRepository.save(any())).willReturn(null);
             given(mapper.toParticipantResponse(any())).willReturn(null);
+            // Issue #2715: RECRUITMENT_CONFIRMED 通知の受信者 locale 解決のためのスタブ。
+            given(userLocaleCache.getLocale(any())).willReturn("ja");
+            given(messageSource.getMessage(any(), any(), any(), any()))
+                    .willAnswer(invocation -> invocation.getArgument(2));
 
             service.confirmApplication(PARTICIPANT_ID, ADMIN_ID);
 
