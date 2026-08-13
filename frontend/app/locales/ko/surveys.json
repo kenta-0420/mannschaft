@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "응답자가 적어 집계 결과를 숨기고 있습니다",
         "description": "익명 설문에서는 응답 직후 집계 변화로 개인의 응답이 추측될 수 있습니다. 응답자가 {threshold}명 이상이 되면 집계 결과를 표시합니다. (현재 {count}명)"
-      }
+      },
+      "respondCta": "이 설문에 응답하기",
+      "editResponseCta": "응답 수정하기"
     }
   }
 }

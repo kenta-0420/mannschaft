@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "Results are hidden while there are only a few responses",
         "description": "In anonymous surveys, a change in the tally right after someone responds can reveal that person's answer. Results will be shown once there are at least {threshold} responses. (Currently {count})"
-      }
+      },
+      "respondCta": "Respond to this survey",
+      "editResponseCta": "Edit your response"
     }
   }
 }

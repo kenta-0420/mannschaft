@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "Los resultados están ocultos mientras haya pocas respuestas",
         "description": "En las encuestas anónimas, un cambio en el recuento justo después de que alguien responde puede revelar su respuesta. Los resultados se mostrarán cuando haya al menos {threshold} respuestas. (Actualmente {count})"
-      }
+      },
+      "respondCta": "Responder a esta encuesta",
+      "editResponseCta": "Editar tu respuesta"
     }
   }
 }

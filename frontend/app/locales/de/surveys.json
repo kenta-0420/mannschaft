@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "Ergebnisse sind ausgeblendet, solange es nur wenige Antworten gibt",
         "description": "Bei anonymen Umfragen kann eine Änderung der Auswertung direkt nach einer Antwort diese Antwort preisgeben. Ergebnisse werden ab {threshold} Antworten angezeigt. (Aktuell {count})"
-      }
+      },
+      "respondCta": "An dieser Umfrage teilnehmen",
+      "editResponseCta": "Antwort bearbeiten"
     }
   }
 }

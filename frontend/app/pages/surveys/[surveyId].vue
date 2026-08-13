@@ -7,7 +7,11 @@ import {
   isResultWithheldForAnonymityPrivacy,
   MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
 } from '~/utils/surveyResultPrivacy'
-import { resolveSurveyDisplayMode, type SurveyDisplayMode } from '~/utils/surveyDisplayMode'
+import {
+  resolveSurveyDisplayMode,
+  shouldShowRespondCta,
+  type SurveyDisplayMode,
+} from '~/utils/surveyDisplayMode'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -177,6 +181,23 @@ const hasResponded = computed(
   () => (survey.value as SurveyDetailResponse['data'] | null)?.hasResponded ?? false,
 )
 
+/**
+ * 結果画面の回答導線が押されたか。
+ *
+ * ALL_MEMBERS は「未回答 MEMBER も結果画面に直接遷移できる」のが仕様のため、
+ * 結果画面を出したうえで、そこから回答フォームへ移れるようにする。
+ */
+const responseRequested = ref(false)
+
+/** 結果画面に回答導線を出すか（未回答、または複数回答可で回答済み）。 */
+const showRespondCta = computed(() =>
+  shouldShowRespondCta({
+    status: survey.value?.status,
+    hasResponded: hasResponded.value,
+    allowMultipleSubmissions: survey.value?.policy?.allowMultipleSubmissions ?? false,
+  }),
+)
+
 /** 表示モード判定（優先順位は utils/surveyDisplayMode.ts の純関数に集約） */
 const displayMode = computed<SurveyDisplayMode>(() => {
   const s = survey.value
@@ -186,6 +207,8 @@ const displayMode = computed<SurveyDisplayMode>(() => {
     canViewResults: canViewResults.value,
     resultsWithheldForPrivacy: resultsWithheldForPrivacy.value,
     hasResponded: hasResponded.value,
+    allowMultipleSubmissions: s.policy?.allowMultipleSubmissions ?? false,
+    responseRequested: responseRequested.value,
   })
 })
 
@@ -283,7 +306,8 @@ function onDelete() {
 }
 
 async function onSubmitted() {
-  // 回答送信成功 → 詳細を再取得して表示モードを更新
+  // 回答送信成功 → 結果画面へ戻し、詳細を再取得して表示モードを更新
+  responseRequested.value = false
   await fetchDetail()
 }
 
@@ -460,6 +484,23 @@ onMounted(async () => {
         v-else-if="displayMode === 'results'"
         data-testid="survey-mode-results"
       >
+        <!-- ALL_MEMBERS は未回答者も結果画面に直接来るため、ここから回答できる導線が要る。
+             これが無いと未回答者が結果画面に固定され、UI から回答を集めきれない。 -->
+        <div
+          v-if="showRespondCta"
+          class="mb-4 flex justify-end"
+        >
+          <Button
+            :label="
+              hasResponded
+                ? t('surveys.results.editResponseCta')
+                : t('surveys.results.respondCta')
+            "
+            icon="pi pi-pencil"
+            data-testid="survey-respond-cta"
+            @click="responseRequested = true"
+          />
+        </div>
         <SurveyResultsPanel :survey-id="survey.id" />
       </div>
 
@@ -482,6 +523,17 @@ onMounted(async () => {
             })
           }}
         </p>
+        <!-- 集計は伏せていても回答（および複数回答可なら修正）はできる -->
+        <Button
+          v-if="showRespondCta"
+          :label="
+            hasResponded ? t('surveys.results.editResponseCta') : t('surveys.results.respondCta')
+          "
+          icon="pi pi-pencil"
+          class="mt-2"
+          data-testid="survey-respond-cta"
+          @click="responseRequested = true"
+        />
       </div>
 
       <!-- 結果非公開（締切＆権限なし） -->

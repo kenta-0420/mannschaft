@@ -627,6 +627,86 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     ).toHaveCount(0)
   })
 
+  test('非匿名 + ALL_MEMBERS + PUBLISHED + 未回答 → 結果画面に回答導線がある（詰みの再発防止）', async ({
+    page,
+  }) => {
+    // 非匿名の ALWAYS は公開直後から全員が結果画面へ落ちる。ここに回答導線が無いと
+    // 未回答者が結果画面に固定され、UI から回答を一件も集められない。
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(3, false)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    const cta = page.locator('[data-testid="survey-respond-cta"]')
+    await expect(cta).toBeVisible()
+
+    // 押すと回答フォームへ移れること（導線が実際に機能する）
+    await cta.click()
+    await expect(page.locator('[data-testid="survey-mode-response"]')).toBeVisible()
+  })
+
+  test('匿名 + ALL_MEMBERS + 回答5件 + 未回答 → 結果画面に回答導線がある（ガード解除後も詰まない）', async ({
+    page,
+  }) => {
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(5)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toBeVisible()
+  })
+
+  test('回答済み + 複数回答不可 → 結果画面に回答導線は出ない', async ({ page }) => {
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(6, false)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+      myResponseById: { [SURVEY_ID]: [MY_RESPONSE_ROW] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toHaveCount(0)
+  })
+
+  test('CLOSED では結果画面に回答導線が出ない（境界）', async ({ page }) => {
+    await loginAsMember(page)
+    const survey = buildSurvey({
+      id: SURVEY_ID,
+      status: 'CLOSED',
+      resultsVisibility: 'ALL_MEMBERS',
+      isAnonymous: false,
+      responseCount: 3,
+      allowMultipleSubmissions: false,
+      createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+    })
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toHaveCount(0)
+  })
+
   test('匿名 + AFTER_CLOSE + 回答者1名 → 従来どおり（他の可視性を塞いでいない）', async ({
     page,
   }) => {

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolveSurveyDisplayMode,
+  shouldShowRespondCta,
   type SurveyDisplayModeInput,
+  type RespondCtaInput,
 } from '~/utils/surveyDisplayMode'
 import { isResultWithheldForAnonymityPrivacy } from '~/utils/surveyResultPrivacy'
 import type { ResultsVisibility, SurveyStatus } from '~/types/survey'
@@ -21,6 +23,8 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
       canViewResults: false,
       resultsWithheldForPrivacy: false,
       hasResponded: false,
+      allowMultipleSubmissions: false,
+      responseRequested: false,
       ...overrides,
     })
   }
@@ -38,6 +42,8 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
     hasResponded: boolean
     /** ALL_MEMBERS は全メンバーが閲覧権限を持つ。 */
     canViewResults?: boolean
+    allowMultipleSubmissions?: boolean
+    responseRequested?: boolean
   }) {
     return resolveSurveyDisplayMode({
       status: params.status,
@@ -48,6 +54,8 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
         responseCount: params.responseCount,
       }),
       hasResponded: params.hasResponded,
+      allowMultipleSubmissions: params.allowMultipleSubmissions ?? false,
+      responseRequested: params.responseRequested ?? false,
     })
   }
 
@@ -171,5 +179,109 @@ describe('resolveSurveyDisplayMode（表示モードの優先順位）', () => {
   it('結果閲覧権限が無ければ PUBLISHED は response・CLOSED は closed-no-permission', () => {
     expect(mode({ canViewResults: false, status: 'PUBLISHED' })).toBe('response')
     expect(mode({ canViewResults: false, status: 'CLOSED' })).toBe('closed-no-permission')
+  })
+
+  // === 結果画面から回答フォームへ移れること ===
+
+  it('結果画面で回答導線が押されたら回答フォームへ移る', () => {
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: false,
+        responseRequested: true,
+      }),
+    ).toBe('response')
+  })
+
+  it('導線を出せない状態（CLOSED）では回答要求が効かない', () => {
+    expect(
+      modeForSurvey({
+        status: 'CLOSED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: false,
+        responseRequested: true,
+      }),
+    ).toBe('results')
+  })
+
+  it('回答済み＋複数回答不可では回答要求が効かない', () => {
+    expect(
+      modeForSurvey({
+        status: 'PUBLISHED',
+        isAnonymous: false,
+        resultsVisibility: 'ALL_MEMBERS',
+        responseCount: 3,
+        hasResponded: true,
+        allowMultipleSubmissions: false,
+        responseRequested: true,
+      }),
+    ).toBe('results')
+  })
+})
+
+/**
+ * 結果画面の回答導線（CTA）の出し分け。
+ *
+ * `ALL_MEMBERS`（BE の `ALWAYS`）は未回答者も結果画面に直接来る仕様のため、
+ * ここに導線が無いと**未回答者が結果画面に固定され、UI から回答を集めきれない**。
+ * 非匿名なら公開直後から、匿名でもガードが外れた瞬間から詰む。
+ */
+describe('shouldShowRespondCta（結果画面の回答導線）', () => {
+  function cta(overrides: Partial<RespondCtaInput> = {}) {
+    return shouldShowRespondCta({
+      status: 'PUBLISHED',
+      hasResponded: false,
+      allowMultipleSubmissions: false,
+      ...overrides,
+    })
+  }
+
+  it('非匿名＋ALL_MEMBERS＋PUBLISHED＋未回答 → 回答導線が出る（今回の本丸）', () => {
+    // 非匿名の ALWAYS は公開直後から全員が results に落ちる。導線が無いと誰も回答できない。
+    expect(cta({ hasResponded: false })).toBe(true)
+  })
+
+  it('匿名＋ALL_MEMBERS＋回答5件以上＋未回答 → 回答導線が出る（ガードが外れた後も詰まない）', () => {
+    // プライバシーガードが外れた瞬間に残りの未回答者が results へ落ちるため、
+    // ここに導線が無いと「5件目以降は誰も回答できない」という詰みになる。
+    expect(
+      resolveSurveyDisplayMode({
+        status: 'PUBLISHED',
+        canViewResults: true,
+        resultsWithheldForPrivacy: isResultWithheldForAnonymityPrivacy({
+          isAnonymous: true,
+          resultsVisibility: 'ALL_MEMBERS',
+          responseCount: 5,
+        }),
+        hasResponded: false,
+        allowMultipleSubmissions: false,
+        responseRequested: false,
+      }),
+    ).toBe('results')
+    expect(cta({ hasResponded: false })).toBe(true)
+  })
+
+  it('回答済み＋複数回答不可 → 回答導線は出ない', () => {
+    expect(cta({ hasResponded: true, allowMultipleSubmissions: false })).toBe(false)
+  })
+
+  it('回答済み＋複数回答可 → 回答導線が出る（回答を修正できる）', () => {
+    expect(cta({ hasResponded: true, allowMultipleSubmissions: true })).toBe(true)
+  })
+
+  it('CLOSED では回答導線が出ない（境界）', () => {
+    expect(cta({ status: 'CLOSED', hasResponded: false })).toBe(false)
+    expect(cta({ status: 'CLOSED', hasResponded: true, allowMultipleSubmissions: true })).toBe(
+      false,
+    )
+  })
+
+  it('DRAFT では回答導線が出ない', () => {
+    expect(cta({ status: 'DRAFT' })).toBe(false)
   })
 })

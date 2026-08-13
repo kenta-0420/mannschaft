@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "回答人数较少，暂不显示统计结果",
         "description": "在匿名问卷中，回答后统计结果的变化可能会泄露个人的回答。回答人数达到 {threshold} 人后才会显示统计结果。（当前 {count} 人）"
-      }
+      },
+      "respondCta": "回答此问卷",
+      "editResponseCta": "修改我的回答"
     }
   }
 }

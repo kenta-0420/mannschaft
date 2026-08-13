@@ -29,6 +29,48 @@ export interface SurveyDisplayModeInput {
   resultsWithheldForPrivacy: boolean
   /** 自分が既に回答済みか。詳細レスポンスの `hasResponded` をそのまま渡す。 */
   hasResponded: boolean
+  /** 複数回答が許可されているか（BE `allow_multiple_submissions`）。 */
+  allowMultipleSubmissions: boolean
+  /**
+   * 結果画面の回答導線（「このアンケートに回答する」）が押されたか。
+   * 押されている間だけ回答フォームへ切り替える。
+   */
+  responseRequested: boolean
+}
+
+/** {@link shouldShowRespondCta} の引数。 */
+export interface RespondCtaInput {
+  status: SurveyStatus | undefined
+  hasResponded: boolean
+  allowMultipleSubmissions: boolean
+}
+
+/**
+ * 結果画面に回答導線（CTA）を出すべきか。
+ *
+ * ## なぜ結果画面に回答導線が要るのか
+ *
+ * `ALL_MEMBERS`（BE の `ALWAYS`）は「未回答 MEMBER も結果画面に直接遷移できる」のが仕様である
+ * （設計書 docs/features/F05.4_survey_vote.md L1377 付近「結果閲覧権限の判定」）。
+ * つまり結果画面が出ること自体は正しい。**欠けていたのは「そこから回答できないこと」**だった。
+ *
+ * `SurveyResultsPanel` には回答導線が無いため、`ALWAYS` のアンケートは
+ *   - 非匿名なら公開直後から、
+ *   - 匿名でもプライバシーガードが外れた（回答が閾値に達した）瞬間から、
+ * 未回答者が結果画面に固定され、UI から回答を集めきれなくなっていた。
+ *
+ * 分岐を引っくり返して `response` を優先させると上記の仕様に反するため、
+ * **結果画面側に回答導線を置く**ことで解く。
+ *
+ * 条件:
+ *   - `PUBLISHED` である（`DRAFT`/`CLOSED` は回答を受け付けない）
+ *   - 未回答である、または複数回答が許可されている（回答の修正が可能）
+ */
+export function shouldShowRespondCta(input: RespondCtaInput): boolean {
+  if (input.status !== 'PUBLISHED') return false
+  if (!input.hasResponded) return true
+  // 回答済みでも、複数回答が許可されていれば回答し直せる
+  return input.allowMultipleSubmissions
 }
 
 /**
@@ -51,14 +93,32 @@ export interface SurveyDisplayModeInput {
  *   - 回答済み、または締切済みで回答手段が無い → `results-withheld-privacy`（理由と再開条件を説明）
  */
 export function resolveSurveyDisplayMode(input: SurveyDisplayModeInput): SurveyDisplayMode {
-  const { status, canViewResults, resultsWithheldForPrivacy, hasResponded } = input
+  const {
+    status,
+    canViewResults,
+    resultsWithheldForPrivacy,
+    hasResponded,
+    allowMultipleSubmissions,
+    responseRequested,
+  } = input
 
   // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
   if (status === 'DRAFT') return 'draft'
 
   if (canViewResults) {
+    // 結果画面（または集計を伏せた画面）の回答導線が押されたら回答フォームへ。
+    // 導線を出せない状態（CLOSED・回答済みで複数回答不可）では効かせない。
+    if (
+      responseRequested &&
+      shouldShowRespondCta({ status, hasResponded, allowMultipleSubmissions })
+    ) {
+      return 'response'
+    }
+
     // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
     // 結果閲覧権限を持つユーザーは、回答可否より優先して結果画面を表示する。
+    // （未回答者が結果画面に固定されないよう、結果画面には回答導線を置くこと。
+    //   shouldShowRespondCta の説明を参照）
     if (!resultsWithheldForPrivacy) return 'results'
 
     // 集計は伏せる。ただし回答導線までは消さない（上の「詰み」を作らないため）。

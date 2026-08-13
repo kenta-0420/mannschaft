@@ -187,7 +187,9 @@
       "withheldForPrivacy": {
         "title": "回答者が少ないため集計結果を伏せています",
         "description": "匿名アンケートでは、回答直後の集計の変化から個人の回答が推測されるおそれがあります。回答者が{threshold}名以上になると集計結果を表示します。（現在 {count} 名）"
-      }
+      },
+      "respondCta": "このアンケートに回答する",
+      "editResponseCta": "回答を修正する"
     }
   }
 }
