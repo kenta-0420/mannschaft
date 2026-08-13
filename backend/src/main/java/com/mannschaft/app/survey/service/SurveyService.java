@@ -10,7 +10,6 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
-import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
@@ -179,7 +178,7 @@ public class SurveyService {
     private SurveyDetailResponse toDetailResponse(SurveyEntity entity) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
-        return new SurveyDetailResponse(surveyResponse, questions);
+        return SurveyDetailResponse.of(surveyResponse, questions);
     }
 
     /**
@@ -206,22 +205,14 @@ public class SurveyService {
 
         String remindJson = serializeRemindHours(request.getRemindBeforeHours());
 
-        // enum 文字列フィールドは save 前にまとめて検証する（不正値は 400・DB へ半端に書かない）。
-        // 同梱設問の questionType も含めて先に弾くことで、save 後に IllegalArgumentException で
-        // 500 に落ちる（=半端な survey が残る）退行を防ぐ。
-        ResultsVisibility resultsVisibility =
-                parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(), "resultsVisibility");
-        DistributionMode distributionMode =
-                parseEnumOrThrow(DistributionMode.class, request.getDistributionMode(), "distributionMode");
+        // enum 項目は DTO が enum 型で受けるため（#2617-1）、未知値は Jackson の束縛段階で
+        // 400 として弾かれ、ここに到達する時点で正当値であることが保証される。
+        // Service 側での再パースは不要（二重の正本を作らない）。
+        ResultsVisibility resultsVisibility = request.getResultsVisibility();
+        DistributionMode distributionMode = request.getDistributionMode();
         UnrespondedVisibility unrespondedVisibility = request.getUnrespondedVisibility() != null
-                ? parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                        "unrespondedVisibility")
+                ? request.getUnrespondedVisibility()
                 : UnrespondedVisibility.CREATOR_AND_ADMIN;
-        if (request.getQuestions() != null) {
-            for (CreateQuestionRequest q : request.getQuestions()) {
-                parseEnumOrThrow(QuestionType.class, q.getQuestionType(), "questionType");
-            }
-        }
 
         SurveyEntity entity = SurveyEntity.builder()
                 .scopeType(scopeType)
@@ -301,8 +292,7 @@ public class SurveyService {
                     request.getAllowMultipleSubmissions() != null
                             ? request.getAllowMultipleSubmissions() : entity.getAllowMultipleSubmissions(),
                     request.getResultsVisibility() != null
-                            ? parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(),
-                                    "resultsVisibility")
+                            ? request.getResultsVisibility()
                             : entity.getResultsVisibility(),
                     request.getAutoPostToTimeline() != null
                             ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline(),
@@ -311,9 +301,7 @@ public class SurveyService {
             );
         }
         if (request.getUnrespondedVisibility() != null) {
-            entity.updateUnrespondedVisibility(
-                    parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                            "unrespondedVisibility"));
+            entity.updateUnrespondedVisibility(request.getUnrespondedVisibility());
         }
         if (request.getStartsAt() != null || request.getExpiresAt() != null) {
             validateTimeRange(
@@ -429,7 +417,7 @@ public class SurveyService {
 
         SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                 .surveyId(surveyId)
-                .questionType(parseEnumOrThrow(QuestionType.class, request.getQuestionType(), "questionType"))
+                .questionType(request.getQuestionType())
                 .questionText(request.getQuestionText())
                 .isRequired(request.getIsRequired())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
@@ -792,7 +780,7 @@ public class SurveyService {
             CreateQuestionRequest qReq = questionRequests.get(i);
             SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                     .surveyId(surveyId)
-                    .questionType(parseEnumOrThrow(QuestionType.class, qReq.getQuestionType(), "questionType"))
+                    .questionType(qReq.getQuestionType())
                     .questionText(qReq.getQuestionText())
                     .isRequired(qReq.getIsRequired())
                     .displayOrder(qReq.getDisplayOrder() != null ? qReq.getDisplayOrder() : i)

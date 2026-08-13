@@ -162910,7 +162910,12 @@
           },
           "questionType": {
             "type": "string",
-            "minLength": 1
+            "enum": [
+              "SINGLE_CHOICE",
+              "MULTIPLE_CHOICE",
+              "FREE_TEXT",
+              "SCALE"
+            ]
           },
           "scaleMax": {
             "type": "integer",
@@ -162932,7 +162937,8 @@
           }
         },
         "required": [
-          "isRequired"
+          "isRequired",
+          "questionType"
         ]
       },
       "CreateSurveyRequest": {
@@ -162951,7 +162957,10 @@
           },
           "distributionMode": {
             "type": "string",
-            "minLength": 1
+            "enum": [
+              "ALL",
+              "TARGETED"
+            ]
           },
           "expiresAt": {
             "type": "string",
@@ -162985,7 +162994,13 @@
           },
           "resultsVisibility": {
             "type": "string",
-            "minLength": 1
+            "enum": [
+              "AFTER_RESPONSE",
+              "AFTER_CLOSE",
+              "ADMINS_ONLY",
+              "VIEWERS_ONLY",
+              "ALWAYS"
+            ]
           },
           "seriesId": {
             "type": "string",
@@ -163012,12 +163027,19 @@
             "minLength": 0
           },
           "unrespondedVisibility": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "HIDDEN",
+              "CREATOR_AND_ADMIN",
+              "ALL_MEMBERS"
+            ]
           }
         },
         "required": [
           "allowMultipleSubmissions",
-          "isAnonymous"
+          "distributionMode",
+          "isAnonymous",
+          "resultsVisibility"
         ]
       },
       "ApiResponseSurveyDetailResponse": {
@@ -163088,7 +163110,13 @@
             }
           },
           "questionType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SINGLE_CHOICE",
+              "MULTIPLE_CHOICE",
+              "FREE_TEXT",
+              "SCALE"
+            ]
           },
           "scaleConfig": {
             "$ref": "#/components/schemas/QuestionScaleConfigDto"
@@ -163153,14 +163181,45 @@
       "SurveyDetailResponse": {
         "type": "object",
         "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/SurveyAuditDto"
+          },
+          "content": {
+            "$ref": "#/components/schemas/SurveyContentDto"
+          },
+          "distribution": {
+            "$ref": "#/components/schemas/SurveyDistributionDto"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/SurveyPolicyDto"
+          },
           "questions": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/QuestionResponse"
             }
           },
-          "survey": {
-            "$ref": "#/components/schemas/SurveyResponse"
+          "schedule": {
+            "$ref": "#/components/schemas/SurveyScheduleDto"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SurveyScopeDto"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/SurveyStatsDto"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CLOSED",
+              "ARCHIVED"
+            ]
           }
         }
       },
@@ -163171,7 +163230,11 @@
             "type": "boolean"
           },
           "distributionMode": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ALL",
+              "TARGETED"
+            ]
           },
           "includeSupporters": {
             "type": "boolean"
@@ -163198,43 +163261,22 @@
             "type": "boolean"
           },
           "resultsVisibility": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "AFTER_RESPONSE",
+              "AFTER_CLOSE",
+              "ADMINS_ONLY",
+              "VIEWERS_ONLY",
+              "ALWAYS"
+            ]
           },
           "unrespondedVisibility": {
-            "type": "string"
-          }
-        }
-      },
-      "SurveyResponse": {
-        "type": "object",
-        "properties": {
-          "audit": {
-            "$ref": "#/components/schemas/SurveyAuditDto"
-          },
-          "content": {
-            "$ref": "#/components/schemas/SurveyContentDto"
-          },
-          "distribution": {
-            "$ref": "#/components/schemas/SurveyDistributionDto"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "policy": {
-            "$ref": "#/components/schemas/SurveyPolicyDto"
-          },
-          "schedule": {
-            "$ref": "#/components/schemas/SurveyScheduleDto"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/SurveyScopeDto"
-          },
-          "stats": {
-            "$ref": "#/components/schemas/SurveyStatsDto"
-          },
-          "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "HIDDEN",
+              "CREATOR_AND_ADMIN",
+              "ALL_MEMBERS"
+            ]
           }
         }
       },
@@ -163297,6 +163339,45 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/SurveyResponse"
+          }
+        }
+      },
+      "SurveyResponse": {
+        "type": "object",
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/SurveyAuditDto"
+          },
+          "content": {
+            "$ref": "#/components/schemas/SurveyContentDto"
+          },
+          "distribution": {
+            "$ref": "#/components/schemas/SurveyDistributionDto"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/SurveyPolicyDto"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/SurveyScheduleDto"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SurveyScopeDto"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/SurveyStatsDto"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CLOSED",
+              "ARCHIVED"
+            ]
           }
         }
       },
@@ -197044,7 +197125,14 @@
             }
           },
           "resultsVisibility": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "AFTER_RESPONSE",
+              "AFTER_CLOSE",
+              "ADMINS_ONLY",
+              "VIEWERS_ONLY",
+              "ALWAYS"
+            ]
           },
           "startsAt": {
             "type": "string",
@@ -197056,7 +197144,12 @@
             "minLength": 0
           },
           "unrespondedVisibility": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "HIDDEN",
+              "CREATOR_AND_ADMIN",
+              "ALL_MEMBERS"
+            ]
           }
         }
       },

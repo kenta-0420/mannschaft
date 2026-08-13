@@ -9,6 +9,10 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.survey.DistributionMode;
+import com.mannschaft.app.survey.QuestionType;
+import com.mannschaft.app.survey.ResultsVisibility;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
@@ -195,16 +199,16 @@ class SurveyDateTimeTimezoneHttpRoundTripIntegrationTest extends AbstractMySqlIn
                 "非JSTユーザーのLocalDateTime往復検証",   // description
                 false,                                  // isAnonymous
                 false,                                  // allowMultipleSubmissions
-                "AFTER_RESPONSE",                       // resultsVisibility
-                "ALL",                                  // distributionMode
-                "CREATOR_AND_ADMIN",                    // unrespondedVisibility
+                ResultsVisibility.AFTER_RESPONSE,       // resultsVisibility
+                DistributionMode.ALL,                   // distributionMode
+                UnrespondedVisibility.CREATOR_AND_ADMIN, // unrespondedVisibility
                 false,                                  // autoPostToTimeline
                 null,                                   // seriesId
                 null,                                   // remindBeforeHours
                 null,                                   // startsAt（後で raw 差し替え）
                 null,                                   // expiresAt（後で raw 差し替え）
                 List.of(new CreateQuestionRequest(
-                        "SINGLE_CHOICE", "参加しますか？", true, 0, null, null, null, null, null,
+                        QuestionType.SINGLE_CHOICE, "参加しますか？", true, 0, null, null, null, null, null,
                         List.of(new CreateOptionRequest("参加", 0),
                                 new CreateOptionRequest("不参加", 1)))),
                 null,                                   // targetUserIds
@@ -227,7 +231,7 @@ class SurveyDateTimeTimezoneHttpRoundTripIntegrationTest extends AbstractMySqlIn
     }
 
     /**
-     * 実 HTTP で POST → GET を1往復し、GET 応答の {@code data.survey.schedule} ノードを返す。
+     * 実 HTTP で POST → GET を1往復し、GET 応答の {@code data.schedule} ノードを返す。
      *
      * <p>認証は実 JWT（{@link AuthTokenService#issueAccessToken}）で確立し、
      * {@code UserTimezoneFilter} が実際に {@code users.timezone} を解決した状態で
@@ -245,18 +249,17 @@ class SurveyDateTimeTimezoneHttpRoundTripIntegrationTest extends AbstractMySqlIn
                 .as("AC-10: アンケート作成が201で成功すること（本文=%s）".formatted(postResponse.getBody()))
                 .isEqualTo(201);
         JsonNode postJson = plainMapper.readTree(postResponse.getBody());
-        long surveyId = postJson.get("data").get("survey").get("id").asLong();
+        long surveyId = postJson.get("data").get("id").asLong();
 
         ResponseEntity<String> getResponse = restTemplate.exchange(
                 baseUrl + "/" + surveyId, HttpMethod.GET, new HttpEntity<>(headers), String.class);
         assertThat(getResponse.getStatusCode().value())
                 .as("AC-10: アンケート詳細取得が200で成功すること（本文=%s）".formatted(getResponse.getBody()))
                 .isEqualTo(200);
-        // レスポンス構造: ApiResponse{data: SurveyDetailResponse{survey: SurveyResponse{schedule: SurveyScheduleDto}}}
-        // SurveyDetailResponse#getSurvey() → SurveyResponse#getSchedule() の実物どおりのパスを辿る
-        // （SurveyDetailResponse.java / SurveyResponse.java で確認済み）。
+        // レスポンス構造: ApiResponse{data: SurveyDetailResponse{schedule: SurveyScheduleDto, ...}}
+        // #2635 のフラット化により data 直下に schedule が並ぶ（旧 data.survey.schedule）。
         JsonNode getJson = plainMapper.readTree(getResponse.getBody());
-        return getJson.get("data").get("survey").get("schedule");
+        return getJson.get("data").get("schedule");
     }
 
     @Test

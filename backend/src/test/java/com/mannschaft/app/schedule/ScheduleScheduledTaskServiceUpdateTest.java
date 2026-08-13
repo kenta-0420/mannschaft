@@ -87,7 +87,8 @@ class ScheduleScheduledTaskServiceUpdateTest {
         return new CreateSurveyRequest(
                 "テストアンケート", "説明",
                 false, false,
-                "AFTER_CLOSE", "ALL",
+                com.mannschaft.app.survey.ResultsVisibility.AFTER_CLOSE,
+                com.mannschaft.app.survey.DistributionMode.ALL,
                 null, null, null, null, null, null,
                 null, null, null, null, null);
     }

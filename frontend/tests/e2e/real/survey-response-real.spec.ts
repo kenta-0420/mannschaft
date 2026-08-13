@@ -67,7 +67,8 @@ test.describe('SURVEY-REAL: アンケート回答フロー実機一気通貫', (
       },
     })
     expect(create.status(), 'アンケート作成').toBe(201)
-    surveyId = (await create.json())?.data?.survey?.id
+    // Issue #2635 で作成 POST のレスポンスがフラット化され data.survey の入れ子が消えた。
+    surveyId = (await create.json())?.data?.id
     expect(surveyId, 'surveyId').toBeTruthy()
     const pub = await request.post(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys/${surveyId}/publish`, {
       headers: { Authorization: `Bearer ${adminToken}` },
