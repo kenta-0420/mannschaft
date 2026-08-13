@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.CancelledBy;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -118,7 +118,7 @@ public class ReservationPendingExpireService {
      */
     @Transactional(readOnly = true)
     public List<PendingExpireUnit> findExpirableUnits() {
-        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
+        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
 
         // 1 本目: slot・policy を join して代表行のみ抽出する（グループは代表行基準で判定）。
         // 1 回あたり MAX_UNITS_PER_RUN 単位で打ち切り、初回デプロイ時の一斉失効を平滑化する。

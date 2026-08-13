@@ -32,7 +32,6 @@ ZONE_LITERAL|com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService|
 ZONE_LITERAL|com.mannschaft.app.billing.beta.LoginActivityQueryService|1
 ZONE_LITERAL|com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService|1
 ZONE_LITERAL|com.mannschaft.app.cms.service.BlogFeedService|1
-ZONE_LITERAL|com.mannschaft.app.common.timezone.UserTimezoneFilter|1
 ZONE_LITERAL|com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser|1
 ZONE_LITERAL|com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer|1
 ZONE_LITERAL|com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService|1
