@@ -1,5 +1,7 @@
 package com.mannschaft.app.jobmatching;
 
+import com.mannschaft.app.common.visibility.StandardVisibility;
+import com.mannschaft.app.common.visibility.mapping.JobMatchingVisibilityMapper;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
 import com.mannschaft.app.jobmatching.service.JobPostingService;
 import org.junit.jupiter.api.Test;
@@ -56,17 +58,40 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JobPostingVisibilityScopeSqlSupportGuardTest {
 
     /**
-     * SQL 述語（{@code JobPostingRepository#findVisibleByTeamId} +
-     * {@code JobMatchingVisibilityMapper}）が対応済みの {@link VisibilityScope} 集合。
-     * 新しい値を SQL 側で対応させたら、ここに追記すること。
+     * ラダー経由で SQL 述語（{@code visibilityScope IN :scopes}）に載る値。
+     *
+     * <p><b>手書きせず {@link JobMatchingVisibilityMapper#toFunctional} から機械的に導出する。</b>
+     * 全 {@link StandardVisibility} を与えたときに逆写像が返す集合が、そのままラダー経由で
+     * SQL に載り得る値の全体である。Mapper を変更すればこの集合も自動で追随するため、
+     * 「実装を触らずテストの列挙だけ増やして緑にする」という抜け道を塞げる。</p>
      */
-    private static final Set<VisibilityScope> SQL_PREDICATE_SUPPORTED_SCOPES = EnumSet.of(
-            VisibilityScope.TEAM_MEMBERS,
-            VisibilityScope.TEAM_MEMBERS_SUPPORTERS,
-            VisibilityScope.ORGANIZATION_SCOPE,
-            VisibilityScope.JOBBER_PUBLIC_BOARD,
-            VisibilityScope.JOBBER_INTERNAL
-    );
+    private static final Set<VisibilityScope> LADDER_SUPPORTED_SCOPES =
+            JobMatchingVisibilityMapper.toFunctional(EnumSet.allOf(StandardVisibility.class));
+
+    /**
+     * ラダーに載らないが、Repository が<b>個別の SQL 述語</b>で対応している値。
+     *
+     * <p>ここだけは機械的に導出できない（{@code @Query} の本文と値の対応は静的解析でしか
+     * 追えない）ため手書きである。追記する際は、**必ず対応する述語を実装してから**にすること。
+     * 実装せずにここへ足せば番人は緑になるが、その値の求人は一覧から静かに消える。</p>
+     *
+     * <p>現在の唯一の該当値 {@link VisibilityScope#JOBBER_INTERNAL} は
+     * {@code JobPostingRepository#findVisibleByTeamId} の {@code user_roles × roles} への
+     * {@code EXISTS} サブクエリで対応済み。</p>
+     */
+    private static final Set<VisibilityScope> INDIVIDUALLY_SQL_SUPPORTED_SCOPES =
+            EnumSet.of(VisibilityScope.JOBBER_INTERNAL);
+
+    /** SQL 述語が対応済みの {@link VisibilityScope} 全体（ラダー由来 ∪ 個別述語）。 */
+    private static final Set<VisibilityScope> SQL_PREDICATE_SUPPORTED_SCOPES =
+            EnumSet.copyOf(concat(LADDER_SUPPORTED_SCOPES, INDIVIDUALLY_SQL_SUPPORTED_SCOPES));
+
+    private static Set<VisibilityScope> concat(Set<VisibilityScope> a, Set<VisibilityScope> b) {
+        Set<VisibilityScope> merged = EnumSet.noneOf(VisibilityScope.class);
+        merged.addAll(a);
+        merged.addAll(b);
+        return merged;
+    }
 
     @Test
     void mvpAllowedScopesMustBeSubsetOfSqlPredicateSupportedScopes() throws Exception {
@@ -82,6 +107,12 @@ class JobPostingVisibilityScopeSqlSupportGuardTest {
         assertThat(SQL_PREDICATE_SUPPORTED_SCOPES).isNotEmpty();
         // VisibilityScope 側にも値があるはずで、両集合が enum 全体を network out していないか確認。
         assertThat(VisibilityScope.values()).isNotEmpty();
+        // ラダー集合は Mapper から機械的に導出しているため、Mapper の壊れ（全 case 削除など）で
+        // 空になると「対応済みが何も無い」状態で誤検知する。前提の崩壊として先に捕まえる。
+        assertThat(LADDER_SUPPORTED_SCOPES)
+                .as("JobMatchingVisibilityMapper.toFunctional が 1 値も返さない"
+                        + "（Mapper の実装が壊れている可能性。SQL 対応値ゼロとは別事象である）")
+                .isNotEmpty();
 
         Set<VisibilityScope> unsupported = EnumSet.copyOf(mvpAllowedScopes);
         unsupported.removeAll(SQL_PREDICATE_SUPPORTED_SCOPES);
@@ -96,16 +127,23 @@ class JobPostingVisibilityScopeSqlSupportGuardTest {
                         作成された求人は一覧 API から誰にも見えなくなります（エラーも警告も出ない \
                         fail-closed の静かな破綻）。
 
-                        [どう直すか]
+                        [どう直すか] ※ 順序が重要。3 を先にやると番人は緑になるが破綻は残る。
                           1. JobPostingRepository#findVisibleByTeamId に、この値を対象にする \
-                        SQL 述語（JobMatchingVisibilityMapper#toFunctional への追加、または \
-                        JOBBER_INTERNAL と同様の EXISTS サブクエリの追加）を実装する。
-                          2. CUSTOM_TEMPLATE の場合は、docs/features/F00_content_visibility_resolver.md \
-                        の CMP-028 Phase C 節に記載した解法（閲覧可能テンプレートID集合を \
-                        resolveVisibleLevels と同じ手で先に求め、\
-                        visibility_template_id IN (...) に落とす）を参照して実装する。
-                          3. 実装後、本テストの SQL_PREDICATE_SUPPORTED_SCOPES にその値を追加する。
-                          4. その上で MVP_ALLOWED_SCOPES を拡張する。
+                        SQL 述語を実装する。ラダーに載る値なら \
+                        JobMatchingVisibilityMapper#toFunctional に追加すれば \
+                        LADDER_SUPPORTED_SCOPES が自動で追随する（本テストの変更は不要）。\
+                        ラダーに載らない値なら JOBBER_INTERNAL と同様の EXISTS サブクエリを実装し、\
+                        INDIVIDUALLY_SQL_SUPPORTED_SCOPES に追加する。
+                          2. CUSTOM_TEMPLATE の場合は F00 設計書 §10.6 を必ず読むこと。\
+                        評価は「閲覧者 × テンプレートID × 行の作者」の 3 項関数であり \
+                        （AbstractContentVisibilityResolver が row.authorUserId() を渡している）、\
+                        visibility_template_id IN (...) だけでは過剰許可／誤拒否になる。\
+                        さらに job_postings には visibility_template_id 列自体が存在しないため \
+                        migration・Entity・作成更新経路の追加が前提作業として要る。
+                          3. 実装を伴わずに本テストの集合だけを増やさないこと。\
+                        それは番人を黙らせるだけで、この値の求人は依然として一覧から消える。
+                          4. 実装と検証（許可側・拒否側の両方を実 DB で）を済ませてから \
+                        MVP_ALLOWED_SCOPES を拡張する。
                         """.formatted(unsupported))
                 .isEmpty();
     }

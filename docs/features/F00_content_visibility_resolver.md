@@ -1760,22 +1760,34 @@ public class MembershipBatchQueryService {
 一覧 API から**誰にも見えなくなる**（fail-closed の静かな破綻）。再発防止の番人:
 `JobPostingVisibilityScopeSqlSupportGuardTest`（`backend/src/test/java/com/mannschaft/app/jobmatching/`）。
 
-**解法の要点（殿の実測。着手時はこれを起点にすること）**:
+**解法の見通し（着手時はこれを起点にすること）**:
 
-`VisibilityTemplateEvaluator#evaluateRule` が扱うルール種別（`EXPLICIT_USER` / `EXPLICIT_TEAM` /
-`TEAM_MEMBER_OF` / `ORGANIZATION_MEMBER_OF` / `TEAM_FRIEND_OF` / `EXPLICIT_SOCIAL_PROFILE` /
-`REGION_MATCH` 等）は、いずれも **「閲覧者 × テンプレート」の関数であって、対象行の中身には依存しない**
-（`ownerUserId` 等はテンプレート側の属性として保持される）。
+> ⚠️ **訂正（2026-08-13・Codex による検分で判明）**: 本節は当初「テンプレート評価は
+> 『閲覧者 × テンプレート』の関数であり行に依存しない」と記していたが、**これは誤りである**。
+> `AbstractContentVisibilityResolver` の `CUSTOM_TEMPLATE` 分岐は
+> `templateEvaluator.canView(viewerUserId, row.visibilityTemplateId(), row.authorUserId())` と
+> **行の作者 `row.authorUserId()` を渡している**。`evaluateRule` の `ownerUserId` はテンプレートの
+> 属性ではなく**この行の作者**であり、`@USER_PRIMARY_TEAM` プレースホルダはこの値から所属チームを
+> 解決する。したがって評価は **「閲覧者 × テンプレート ID × 行の作者」の3項関数**である。
+> 同一テンプレートを複数の作者が使い得る以上、`visibility_template_id IN (:ids)` だけで絞ると
+> **過剰許可または誤拒否**になる。以下は訂正後の見通しである。
 
-つまり `resolveVisibleLevels`（§10.5, Phase A）と**同じ手**が使える:
+`resolveVisibleLevels`（§10.5, Phase A）と同じ「行ごとの判定を集合へ持ち上げる」構図自体は使えるが、
+**持ち上げる単位が `templateId` ではなく `(templateId, authorUserId)` の組**になる:
 
-1. 「この閲覧者が閲覧可能なテンプレート ID の集合」を、行を引かずに先に求める
-   （`VisibilityTemplateEvaluator` のルール評価を「閲覧者 × テンプレート」単位でバッチ実行する）。
-2. SQL 側は `visibility = 'CUSTOM_TEMPLATE' AND visibility_template_id IN (:visibleTemplateIds)` を
-   他スコープの述語と OR で組み合わせるだけで済む。
-3. これは「行ごとの判定を、閲覧者ごとの集合へ持ち上げる」という、`resolveVisibleLevels` が
-   `StandardVisibility` のラダー段に対して行っているのと**同一の構図**である
-   （`JOBBER_INTERNAL` の `EXISTS` サブクエリ化とも同型）。
+1. 対象ページの候補行から `(visibility_template_id, author_user_id)` の組を集め、
+   閲覧者に対して可視な組の集合を求める。
+2. SQL 側は `(visibility_template_id, author_user_id) IN (:visiblePairs)` 相当で絞る。
+3. ただしこれは**候補行を先に引く必要がある**ため、他スコープのような「一発の WHERE」にはならない。
+   歯抜けを完全に消すには、可視判定の結果を事前計算して列／表に持たせる方向も併せて検討すること。
+
+**着手前に必要な前提作業**:
+
+- **求人テーブルには `visibility_template_id` 列がそもそも存在しない**（Entity にもフィールドが無い）。
+  この値を書き込めるようにするには migration・Entity・作成/更新経路の追加が先に要る。
+- 作者依存を消せる不変条件（例: テンプレートをスコープ単位で持たせ作者非依存にする）を設計として
+  導入できるなら、上記の3項関数が2項に縮退し `templateId IN (:ids)` で済むようになる。
+  **この選択肢を軍議で先に検討する価値がある。**
 
 **未解決の論点（正直に記録する）**: テンプレートの母集合をどう限定するか。閲覧者に紐づく全テンプレートを
 毎回評価するのは重い。対象スコープ（例: 求人ならその TEAM/ORG 配下）に属するテンプレートに絞る等の
