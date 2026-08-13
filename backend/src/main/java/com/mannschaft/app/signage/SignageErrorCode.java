@@ -11,28 +11,29 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum SignageErrorCode implements ErrorCode {
 
-    /** 画面が見つかりません */
+    /** 画面が見つかりません（404） */
     SIGNAGE_001("SIGNAGE_001", "画面が見つかりません", Severity.WARN),
 
-    /** アクセスが拒否されました（トークン無効/IP制限） */
+    /** アクセスが拒否されました（トークン無効/IP制限。無効化済み・期限切れ・不在の3意味で共用され
+     * 単一ステータスに寄せられないため変更見送り。既定どおり400） */
     SIGNAGE_002("SIGNAGE_002", "アクセスが拒否されました（トークン無効/IP制限）", Severity.WARN),
 
-    /** スロットが見つかりません */
+    /** スロットが見つかりません（404） */
     SIGNAGE_003("SIGNAGE_003", "スロットが見つかりません", Severity.WARN),
 
-    /** スケジュールが見つかりません */
+    /** スケジュールが見つかりません（throw元なし・未使用） */
     SIGNAGE_004("SIGNAGE_004", "スケジュールが見つかりません", Severity.WARN),
 
-    /** トークンが見つかりません */
+    /** トークンが見つかりません（404） */
     SIGNAGE_005("SIGNAGE_005", "トークンが見つかりません", Severity.WARN),
 
-    /** バージョンが一致しません */
+    /** バージョンが一致しません（throw元なし・未使用） */
     SIGNAGE_006("SIGNAGE_006", "バージョンが一致しません", Severity.WARN),
 
-    /** アクティブな緊急メッセージが既に存在します */
+    /** アクティブな緊急メッセージが既に存在します（throw元なし・未使用） */
     SIGNAGE_007("SIGNAGE_007", "アクティブな緊急メッセージが既に存在します", Severity.WARN),
 
-    /** slot_orderの重複があります */
+    /** slot_orderの重複があります（throw元なし・未使用） */
     SIGNAGE_008("SIGNAGE_008", "slot_orderの重複があります", Severity.WARN);
 
     private final String code;

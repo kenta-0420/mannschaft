@@ -11,34 +11,34 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum SealErrorCode implements ErrorCode {
 
-    /** 印鑑が見つからない */
+    /** 印鑑が見つからない（404） */
     SEAL_NOT_FOUND("SEAL_001", "電子印鑑が見つかりません", Severity.WARN),
 
-    /** 印鑑バリアントが重複 */
+    /** 印鑑バリアントが重複（状態競合のため409） */
     DUPLICATE_VARIANT("SEAL_002", "同じバリアントの印鑑が既に存在します", Severity.WARN),
 
-    /** スコープデフォルトが見つからない */
+    /** スコープデフォルトが見つからない（throw元なし・未使用） */
     SCOPE_DEFAULT_NOT_FOUND("SEAL_003", "スコープデフォルト設定が見つかりません", Severity.WARN),
 
-    /** スコープデフォルトが重複 */
+    /** スコープデフォルトが重複（throw元なし・未使用） */
     DUPLICATE_SCOPE_DEFAULT("SEAL_004", "同じスコープのデフォルト設定が既に存在します", Severity.WARN),
 
-    /** 押印ログが見つからない */
+    /** 押印ログが見つからない（404） */
     STAMP_LOG_NOT_FOUND("SEAL_005", "押印ログが見つかりません", Severity.WARN),
 
-    /** 既に取り消し済み */
+    /** 既に取り消し済み（状態競合のため409） */
     ALREADY_REVOKED("SEAL_006", "この押印は既に取り消されています", Severity.WARN),
 
-    /** 印鑑ハッシュ不一致（改ざん検出） */
+    /** 印鑑ハッシュ不一致（改ざん検出。throw元なし・未使用） */
     HASH_MISMATCH("SEAL_007", "印鑑のハッシュが一致しません（改ざんの可能性があります）", Severity.ERROR),
 
-    /** SVG生成エラー */
+    /** SVG生成エラー（throw元なし・未使用） */
     SVG_GENERATION_FAILED("SEAL_008", "SVGの生成に失敗しました", Severity.ERROR),
 
-    /** 印鑑が削除済み */
+    /** 印鑑が削除済み（状態競合のため409） */
     SEAL_DELETED("SEAL_009", "この電子印鑑は削除されています", Severity.WARN),
 
-    /** 不正な対象種別 */
+    /** 不正な対象種別（throw元なし・未使用） */
     INVALID_TARGET_TYPE("SEAL_010", "不正な押印対象種別です", Severity.ERROR);
 
     private final String code;

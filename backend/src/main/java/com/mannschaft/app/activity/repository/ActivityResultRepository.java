@@ -30,6 +30,66 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
     Optional<ActivityResultEntity> findByScheduleId(Long scheduleId);
 
     /**
+     * CMP-028 Phase B — 認証済み一覧の可視性 SQL 述語化。
+     *
+     * <p>旧実装（{@code ActivityResultService#listActivities}）は 1 ページ分を無条件取得後、
+     * {@code ContentVisibilityChecker#filterAccessible} でメモリフィルタしており、
+     * 非公開行が混ざるとページ内に歯抜けが出ていた（AC-6）。本メソッドは
+     * F00 の {@code MembershipBatchQueryService#resolveVisibleLevels} が返した可視
+     * {@code StandardVisibility} 集合を {@link com.mannschaft.app.activity.ActivityVisibility}
+     * へ逆写像した {@code visibilities} を SQL の {@code IN} 述語に渡し、
+     * PUBLISHED 行はここで絞り込む。</p>
+     *
+     * <p>DRAFT 行は F00 の status 軸（作成者本人 or SystemAdmin のみ可視）と同じ意味論を
+     * SQL 上でも再現するため、{@code visibility} 述語とは独立に
+     * {@code createdBy = :viewerUserId OR :viewerIsSystemAdmin = true} で絞る。
+     * {@code viewerUserId} が {@code null}（匿名）の場合は {@code ar.createdBy = NULL} が
+     * 常に偽になるため自然に DRAFT が除外される（fail-closed）。</p>
+     *
+     * @param scopeType           スコープ種別
+     * @param scopeId             スコープ ID
+     * @param visibilities        SQL の {@code IN} に渡す可視 {@link ActivityVisibility} 集合
+     *                            （呼び出し元で必ず非空にすること。{@code PUBLIC} が常に含まれる）
+     * @param viewerUserId        閲覧者 userId（{@code null} 可、未認証）
+     * @param viewerIsSystemAdmin 閲覧者が SystemAdmin なら {@code true}
+     * @param pageable            ページネーション
+     * @return 可視な活動記録のページ（総件数は DB の COUNT による正確値）
+     */
+    @Query("SELECT ar FROM ActivityResultEntity ar "
+            + "WHERE ar.scopeType = :scopeType AND ar.scopeId = :scopeId "
+            + "AND ((ar.status = com.mannschaft.app.activity.ActivityStatus.PUBLISHED "
+            + "        AND ar.visibility IN :visibilities) "
+            + "  OR (ar.status = com.mannschaft.app.activity.ActivityStatus.DRAFT "
+            + "        AND (ar.createdBy = :viewerUserId OR :viewerIsSystemAdmin = true))) "
+            + "ORDER BY ar.activityDate DESC, ar.id DESC")
+    Page<ActivityResultEntity> findVisibleByScopeTypeAndScopeId(
+            @Param("scopeType") ActivityScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("visibilities") Collection<ActivityVisibility> visibilities,
+            @Param("viewerUserId") Long viewerUserId,
+            @Param("viewerIsSystemAdmin") boolean viewerIsSystemAdmin,
+            Pageable pageable);
+
+    /**
+     * {@link #findVisibleByScopeTypeAndScopeId} の templateId 絞り込み版。述語は同一。
+     */
+    @Query("SELECT ar FROM ActivityResultEntity ar "
+            + "WHERE ar.scopeType = :scopeType AND ar.scopeId = :scopeId AND ar.templateId = :templateId "
+            + "AND ((ar.status = com.mannschaft.app.activity.ActivityStatus.PUBLISHED "
+            + "        AND ar.visibility IN :visibilities) "
+            + "  OR (ar.status = com.mannschaft.app.activity.ActivityStatus.DRAFT "
+            + "        AND (ar.createdBy = :viewerUserId OR :viewerIsSystemAdmin = true))) "
+            + "ORDER BY ar.activityDate DESC, ar.id DESC")
+    Page<ActivityResultEntity> findVisibleByScopeTypeAndScopeIdAndTemplateId(
+            @Param("scopeType") ActivityScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("templateId") Long templateId,
+            @Param("visibilities") Collection<ActivityVisibility> visibilities,
+            @Param("viewerUserId") Long viewerUserId,
+            @Param("viewerIsSystemAdmin") boolean viewerIsSystemAdmin,
+            Pageable pageable);
+
+    /**
      * F06.4 匿名公開一覧の正準クエリ — スコープ配下の<b>公開済み</b>活動記録をページング取得する。
      *
      * <p>{@code visibility = PUBLIC} かつ {@code status = PUBLISHED} を <b>SQL の WHERE 句で</b>

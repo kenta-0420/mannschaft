@@ -1794,7 +1794,210 @@ public class GlobalExceptionHandler {
             Map.entry("QM_011", HttpStatus.CONFLICT),                    // TAG_NAME_DUPLICATE
             Map.entry("QM_013", HttpStatus.CONFLICT),                    // TAG_IN_USE
             Map.entry("QM_020", HttpStatus.NOT_FOUND),                   // ATTACHMENT_NOT_FOUND
-            Map.entry("QM_030", HttpStatus.NOT_FOUND)                    // VOICE_CONSENT_NOT_FOUND
+            Map.entry("QM_030", HttpStatus.NOT_FOUND),                   // VOICE_CONSENT_NOT_FOUND
+
+            // 認可監査 Wave6 ロットF: 登録ゼロだった未着手 enum の是正。throw 元の実コードを
+            // 全て洗い、404=存在秘匿/不在、403=存在を隠さず権限拒否、409=状態競合、
+            // 401=認証失敗の観点で判定した。入力検証・上限超過系は既定 400 のまま据え置き。
+            //
+            // F12.5 エラーレポート: 不在は 404。IGNORED 状態での工程変更拒否・GitHub Issue
+            // 作成の重複ロック・二重作成防止は状態競合のため 409。
+            Map.entry("ERROR_REPORT_001", HttpStatus.NOT_FOUND),            // ERROR_REPORT_NOT_FOUND
+            Map.entry("ERROR_REPORT_005", HttpStatus.CONFLICT),             // IGNORED時の工程更新拒否
+            Map.entry("ERROR_REPORT_009", HttpStatus.CONFLICT),             // GitHub Issue作成の重複ロック
+            Map.entry("ERROR_REPORT_012", HttpStatus.CONFLICT),             // GitHub Issue二重作成防止
+
+            // Webhook/外部API連携: エンドポイント不在は404。APIキー期限切れは認証失敗のため401。
+            // WEBHOOK_005/007 はトークン/APIキーの管理系CRUD不在と受信認証失敗の両方で
+            // 使われており意味が割れているため変更を見送る。
+            Map.entry("WEBHOOK_001", HttpStatus.NOT_FOUND),                 // Webhookエンドポイント不在
+            Map.entry("WEBHOOK_011", HttpStatus.UNAUTHORIZED),              // APIキー有効期限切れ（認証失敗）
+
+            // F09.1 住民台帳: 不在は404、重複登録・退去済み・確認済み・編集不可等の状態競合は409。
+            Map.entry("RESIDENT_001", HttpStatus.NOT_FOUND),                // DWELLING_UNIT_NOT_FOUND
+            Map.entry("RESIDENT_002", HttpStatus.CONFLICT),                 // DUPLICATE_UNIT_NUMBER
+            Map.entry("RESIDENT_003", HttpStatus.NOT_FOUND),                // RESIDENT_NOT_FOUND
+            Map.entry("RESIDENT_004", HttpStatus.NOT_FOUND),                // DOCUMENT_NOT_FOUND
+            Map.entry("RESIDENT_005", HttpStatus.NOT_FOUND),                // LISTING_NOT_FOUND
+            Map.entry("RESIDENT_006", HttpStatus.CONFLICT),                 // DUPLICATE_INQUIRY
+            Map.entry("RESIDENT_008", HttpStatus.CONFLICT),                 // ALREADY_MOVED_OUT
+            Map.entry("RESIDENT_009", HttpStatus.CONFLICT),                 // ALREADY_VERIFIED
+            Map.entry("RESIDENT_010", HttpStatus.NOT_FOUND),                // MY_UNIT_NOT_FOUND
+            Map.entry("RESIDENT_011", HttpStatus.CONFLICT),                 // LISTING_NOT_EDITABLE
+
+            // ゲーミフィケーション: 設定/ルール/バッジ不在は404。システムルールの変更拒否は
+            // 存在を隠さず権限拒否のため403（サービス javadoc に既存の意図表記あり）。
+            // バージョン不一致（楽観ロック）は409。スコープ不一致は越境の存在秘匿で404。
+            Map.entry("GAMIFICATION_001", HttpStatus.NOT_FOUND),            // 設定不在
+            Map.entry("GAMIFICATION_002", HttpStatus.NOT_FOUND),            // ポイントルール不在
+            Map.entry("GAMIFICATION_003", HttpStatus.NOT_FOUND),            // バッジ不在
+            Map.entry("GAMIFICATION_004", HttpStatus.FORBIDDEN),            // システムルールの変更拒否
+            Map.entry("GAMIFICATION_006", HttpStatus.CONFLICT),             // バージョン不一致（楽観ロック）
+            Map.entry("GAMIFICATION_008", HttpStatus.NOT_FOUND),            // スコープ不一致（越境の存在秘匿）
+
+            // F05.3 電子印鑑: 印鑑/押印ログ不在は404。バリアント重複・取消済み・削除済みは409。
+            Map.entry("SEAL_001", HttpStatus.NOT_FOUND),                    // SEAL_NOT_FOUND
+            Map.entry("SEAL_002", HttpStatus.CONFLICT),                     // DUPLICATE_VARIANT
+            Map.entry("SEAL_005", HttpStatus.NOT_FOUND),                    // STAMP_LOG_NOT_FOUND
+            Map.entry("SEAL_006", HttpStatus.CONFLICT),                     // ALREADY_REVOKED
+            Map.entry("SEAL_009", HttpStatus.CONFLICT),                     // SEAL_DELETED
+
+            // F04.3 プッシュ通知: 通知/購読不在は404。購読の重複登録は409。
+            Map.entry("NOTIFICATION_001", HttpStatus.NOT_FOUND),            // NOTIFICATION_NOT_FOUND
+            Map.entry("NOTIFICATION_004", HttpStatus.NOT_FOUND),            // SUBSCRIPTION_NOT_FOUND
+            Map.entry("NOTIFICATION_005", HttpStatus.CONFLICT),             // SUBSCRIPTION_ALREADY_EXISTS
+
+            // 経営分析: アラートルール/スナップショット不在は404。バックフィル多重実行は409。
+            Map.entry("ANALYTICS_001", HttpStatus.NOT_FOUND),               // アラートルール不在
+            Map.entry("ANALYTICS_002", HttpStatus.NOT_FOUND),               // スナップショット不在
+            Map.entry("ANALYTICS_003", HttpStatus.CONFLICT),                // バックフィル実行中の多重実行
+
+            // F01.2 ロール・権限管理: ロール/権限グループ/パーミッション不在は404。招待トークンの
+            // 無効/期限切れは既存の招待トークン系（EVENT_007/FAMILY_029/CONTACT_014 等）と流儀を
+            // 揃え存在秘匿で404。最後の管理者の除名・変更拒否は状態競合で409。上位ロールの
+            // ブロック拒否は存在を隠さず権限拒否のため403。
+            Map.entry("ROLE_001", HttpStatus.NOT_FOUND),                    // ロール不在
+            Map.entry("ROLE_002", HttpStatus.NOT_FOUND),                    // 招待トークン無効/期限切れ（存在秘匿）
+            Map.entry("ROLE_004", HttpStatus.CONFLICT),                     // 最後の管理者の除名・変更拒否
+            Map.entry("ROLE_005", HttpStatus.FORBIDDEN),                    // 上位ロールのブロック拒否
+            Map.entry("ROLE_006", HttpStatus.NOT_FOUND),                    // 権限グループ不在
+            Map.entry("ROLE_007", HttpStatus.NOT_FOUND),                    // パーミッション不在
+
+            // デジタルサイネージ: 画面/スロット/トークン不在は404。アクセストークン検証失敗は
+            // GCAL_009（GOOGLE_WEBHOOK_TOKEN_INVALID）と同じ流儀でアクセス拒否として403。
+            Map.entry("SIGNAGE_001", HttpStatus.NOT_FOUND),                 // 画面不在
+            // SIGNAGE_002 は「無効化済み」「有効期限切れ」「存在しない」の3意味で共用されており
+            // （SignageAccessTokenService.java:152,156）、単一ステータスに寄せられないため見送り。
+            // 既存の SignageScopeContractIT が3状況とも400を契約として固定しており、既定 WARN=400 で正しい。
+            Map.entry("SIGNAGE_003", HttpStatus.NOT_FOUND),                 // スロット不在
+            Map.entry("SIGNAGE_005", HttpStatus.NOT_FOUND),                 // トークン不在
+
+            // スキル・資格管理: 資格不在は404。重複登録・楽観ロック不一致・承認対象外ステータスは
+            // 409。SKILL_001（名称重複／非アクティブカテゴリ／カテゴリ不在で意味が割れている）・
+            // SKILL_003（スコープ不一致の存在秘匿と本人以外操作の権限拒否の両方に使われ意味が
+            // 割れている）は変更を見送る。
+            Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
+            Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録
+            Map.entry("SKILL_006", HttpStatus.CONFLICT),                    // バージョン不一致（楽観ロック）
+            Map.entry("SKILL_007", HttpStatus.CONFLICT),                    // 承認対象外ステータスでの承認操作
+
+            // F12.3 GDPR/個人情報管理: エクスポート処理中の多重実行・唯一のSYSTEM_ADMIN退会拒否は
+            // 状態競合のため409。GDPR_003 は不在／未完了／期限切れの3経路から投げられ、設計書
+            // F12.3_gdpr_personal_data.md L667 のエラー表は404を挙げているが、既存の
+            // GdprControllerTest#異常_GDPR003_未存在_400（400を契約として固定）と矛盾するため、
+            // 「宣言（設計書）と実装のどちらが正しいか」を機械的に決めず変更を見送る
+            //（既定 WARN=400 のまま。CHAT_003/SIGNAGE_002 と同じ既存契約優先の判断）。
+            Map.entry("GDPR_002", HttpStatus.CONFLICT),                     // エクスポート処理中の多重実行
+            Map.entry("GDPR_006", HttpStatus.CONFLICT),                     // 唯一のSYSTEM_ADMIN退会拒否
+
+            // 認可監査 Wave6 ロットE: 時間割管理（TimetableErrorCode）の残り未登録分。
+            // NOT_FOUND 系は既存登録済み。ステータス遷移ガード・学期期間重複・
+            // 学期名重複・週パターン競合・休日重複はすべて既存リソースとの状態競合 → 409
+            Map.entry("TIMETABLE_011", HttpStatus.CONFLICT),             // TIMETABLE_NOT_DRAFT
+            Map.entry("TIMETABLE_012", HttpStatus.CONFLICT),             // TIMETABLE_NOT_ACTIVE
+            Map.entry("TIMETABLE_013", HttpStatus.CONFLICT),             // TIMETABLE_NOT_ARCHIVED
+            Map.entry("TIMETABLE_020", HttpStatus.CONFLICT),             // DUPLICATE_TERM_NAME
+            Map.entry("TIMETABLE_021", HttpStatus.CONFLICT),             // TERM_DATE_OVERLAP
+            Map.entry("TIMETABLE_022", HttpStatus.CONFLICT),             // TERM_HAS_TIMETABLES
+            Map.entry("TIMETABLE_050", HttpStatus.CONFLICT),             // SLOT_WEEK_PATTERN_CONFLICT
+            Map.entry("TIMETABLE_051", HttpStatus.CONFLICT),             // DAY_OFF_ALREADY_EXISTS
+
+            // 認可監査 Wave6 ロットE: チャット（ChatErrorCode）の残り未登録分。
+            // CHAT_003（MEMBER_NOT_FOUND）は登録しない: 設計書 F04.2_chat.md §「/members/me」
+            // が「チャンネルに参加していない（メンバー行が存在しない／IDOR対策で404と区別せず400に統一）」
+            // と明記しており、findMemberOrThrow() の唯一の呼び出し元（updateSettings/updateMySettings/
+            // markAsRead）はいずれも認証主体に束縛された自己スコープ検索のため、既定 400 が正。
+            // 一度 404 に登録して CI 赤（ChatAuthzScopeContractIT #11/#12/#16）で発覚し撤回した。
+            Map.entry("CHAT_004", HttpStatus.CONFLICT),                  // ALREADY_MEMBER
+            Map.entry("CHAT_008", HttpStatus.CONFLICT),                  // CHANNEL_NAME_DUPLICATE
+            Map.entry("CHAT_009", HttpStatus.CONFLICT),                  // CHANNEL_ARCHIVED（アーカイブ済チャンネルへの操作は状態競合）
+            Map.entry("CHAT_010", HttpStatus.CONFLICT),                  // BOOKMARK_ALREADY_EXISTS
+            Map.entry("CHAT_011", HttpStatus.CONFLICT),                  // REACTION_ALREADY_EXISTS
+            Map.entry("CHAT_012", HttpStatus.NOT_FOUND),                 // REACTION_NOT_FOUND
+            Map.entry("CHAT_014", HttpStatus.CONFLICT),                  // OWNER_CANNOT_LEAVE
+            Map.entry("CHAT_016", HttpStatus.CONFLICT),                  // CHANNEL_NOT_DM（チャンネル種別と操作の不整合）
+            Map.entry("CHAT_017", HttpStatus.FORBIDDEN),                 // DM_RECEIVE_RESTRICTED（相手の受信設定による拒否）
+            Map.entry("CHAT_020", HttpStatus.CONFLICT),                  // CHANNEL_NOT_ARCHIVED（CHAT_009 の対称）
+            Map.entry("CHAT_024", HttpStatus.CONFLICT),                  // INQUIRY_CHANNEL_TEAM_ONLY
+            Map.entry("CHAT_025", HttpStatus.CONFLICT),                  // INQUIRY_CHANNEL_ARCHIVED
+            Map.entry("CHAT_026", HttpStatus.CONFLICT),                  // INQUIRY_CHANNEL_ALREADY_EXISTS
+
+            // 認可監査 Wave6 ロットE: 予算・会計（BudgetErrorCode）の残り未登録分。
+            Map.entry("BUDGET_001", HttpStatus.NOT_FOUND),               // 予算年度が見つからない
+            Map.entry("BUDGET_002", HttpStatus.NOT_FOUND),               // 予算費目が見つからない
+            Map.entry("BUDGET_004", HttpStatus.CONFLICT),                // 年度がCLOSED状態（操作不可の状態競合）
+            Map.entry("BUDGET_008", HttpStatus.CONFLICT),                // 取引が承認待ち状態（操作不可の状態競合）
+            Map.entry("BUDGET_011", HttpStatus.NOT_FOUND),               // 予算報告書が見つからない
+            Map.entry("BUDGET_012", HttpStatus.NOT_FOUND),               // 予算設定が見つからない
+
+            // 認可監査 Wave6 ロットE: 大会・リーグ管理（TournamentErrorCode）の残り未登録分。
+            Map.entry("TOUR_004", HttpStatus.CONFLICT),                  // INVALID_TOURNAMENT_STATUS
+            Map.entry("TOUR_009", HttpStatus.CONFLICT),                  // MATCHES_NOT_COMPLETED
+            Map.entry("TOUR_011", HttpStatus.CONFLICT),                  // PROMOTION_ALREADY_EXECUTED
+            Map.entry("TOUR_030", HttpStatus.FORBIDDEN),                 // CONTACT_SPACE_VIEW_FORBIDDEN（存在は隠さず権限拒否）
+            Map.entry("TOUR_031", HttpStatus.FORBIDDEN),                 // CONTACT_SPACE_POST_FORBIDDEN
+            Map.entry("TOUR_032", HttpStatus.FORBIDDEN),                 // CONTACT_SPACE_VISIBILITY_FORBIDDEN
+
+            // 認可監査 Wave6 ロットE: タイムライン（TimelineErrorCode）の残り未登録分。
+            // TIMELINE_004/005/016 は GlobalExceptionHandlerTest#badRequestCases で 400 固定済みのため対象外。
+            Map.entry("TIMELINE_002", HttpStatus.FORBIDDEN),             // NOT_POST_OWNER（存在は隠さず権限拒否）
+            Map.entry("TIMELINE_006", HttpStatus.CONFLICT),              // REACTION_ALREADY_EXISTS
+            Map.entry("TIMELINE_007", HttpStatus.NOT_FOUND),             // REACTION_NOT_FOUND
+            Map.entry("TIMELINE_008", HttpStatus.CONFLICT),              // BOOKMARK_ALREADY_EXISTS
+            Map.entry("TIMELINE_009", HttpStatus.NOT_FOUND),             // BOOKMARK_NOT_FOUND
+            Map.entry("TIMELINE_010", HttpStatus.NOT_FOUND),             // POLL_NOT_FOUND
+            Map.entry("TIMELINE_011", HttpStatus.CONFLICT),              // POLL_ALREADY_VOTED
+            Map.entry("TIMELINE_012", HttpStatus.CONFLICT),              // POLL_EXPIRED
+            Map.entry("TIMELINE_013", HttpStatus.CONFLICT),              // POLL_CLOSED
+            Map.entry("TIMELINE_014", HttpStatus.CONFLICT),              // MUTE_ALREADY_EXISTS
+            Map.entry("TIMELINE_015", HttpStatus.NOT_FOUND),             // MUTE_NOT_FOUND
+
+            // 認可監査 Wave6 ロットE: モデレーション拡張（ModerationExtErrorCode）の残り未登録分。
+            Map.entry("MODERATION_EXT_002", HttpStatus.NOT_FOUND),       // APPEAL_NOT_FOUND
+            Map.entry("MODERATION_EXT_004", HttpStatus.CONFLICT),        // APPEAL_ALREADY_SUBMITTED
+            Map.entry("MODERATION_EXT_005", HttpStatus.CONFLICT),        // APPEAL_INVALID_STATUS
+            Map.entry("MODERATION_EXT_006", HttpStatus.NOT_FOUND),       // RE_REVIEW_NOT_FOUND
+            Map.entry("MODERATION_EXT_007", HttpStatus.CONFLICT),        // RE_REVIEW_ALREADY_EXISTS
+            Map.entry("MODERATION_EXT_008", HttpStatus.CONFLICT),        // RE_REVIEW_INVALID_STATUS
+            Map.entry("MODERATION_EXT_009", HttpStatus.NOT_FOUND),       // UNFLAG_REQUEST_NOT_FOUND
+            Map.entry("MODERATION_EXT_010", HttpStatus.FORBIDDEN),       // UNFLAG_NOT_ELIGIBLE（資格なしは権限拒否）
+            Map.entry("MODERATION_EXT_011", HttpStatus.CONFLICT),        // UNFLAG_INVALID_STATUS
+            Map.entry("MODERATION_EXT_012", HttpStatus.NOT_FOUND),       // SETTING_NOT_FOUND
+            Map.entry("MODERATION_EXT_013", HttpStatus.NOT_FOUND),       // TEMPLATE_NOT_FOUND
+            Map.entry("MODERATION_EXT_014", HttpStatus.CONFLICT),        // SELF_CORRECT_EXPIRED（期限超過の状態競合）
+            Map.entry("MODERATION_EXT_016", HttpStatus.CONFLICT),        // PENDING_REQUEST_EXISTS
+
+            // 認可監査 Wave6 ロットE: オンボーディング（OnboardingErrorCode）の残り未登録分。
+            Map.entry("ONBOARDING_001", HttpStatus.NOT_FOUND),           // テンプレートが見つからない
+            Map.entry("ONBOARDING_002", HttpStatus.NOT_FOUND),           // ステップが見つからない
+            Map.entry("ONBOARDING_004", HttpStatus.CONFLICT),            // テンプレートはDRAFT状態でない
+            Map.entry("ONBOARDING_005", HttpStatus.CONFLICT),            // テンプレートはACTIVE状態でない
+            Map.entry("ONBOARDING_008", HttpStatus.CONFLICT),            // 進捗はIN_PROGRESS状態でない
+            Map.entry("ONBOARDING_009", HttpStatus.CONFLICT),            // ステップは既に完了済み
+            Map.entry("ONBOARDING_010", HttpStatus.CONFLICT),            // 前のステップが未完了（順序制約違反）
+            Map.entry("ONBOARDING_012", HttpStatus.NOT_FOUND),           // プリセットが見つからない
+            Map.entry("ONBOARDING_014", HttpStatus.NOT_FOUND),           // ACTIVEテンプレートが存在しない
+            Map.entry("ONBOARDING_015", HttpStatus.CONFLICT),            // 進行中の進捗がありテンプレート削除不可
+
+            // 認可監査 Wave6 ロットE: メンバーシップ基盤（MembershipBasisErrorCode・F00.5）の残り未登録分。
+            // MEMBERSHIP_POSITION_SCOPE_MISMATCH は既存 PARKING_020 と同じ「越境は存在秘匿」の流儀で 404。
+            Map.entry("MEMBERSHIP_LAST_ADMIN_BLOCKED", HttpStatus.CONFLICT),
+            Map.entry("MEMBERSHIP_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("MEMBERSHIP_ACTIVE_EXISTS", HttpStatus.CONFLICT),
+            Map.entry("MEMBERSHIP_ALREADY_LEFT", HttpStatus.CONFLICT),
+            Map.entry("MEMBERSHIP_POSITION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
+            Map.entry("MEMBERSHIP_POSITION_ACTIVE_EXISTS", HttpStatus.CONFLICT),
+            Map.entry("MEMBERSHIP_POSITION_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("MEMBERSHIP_POSITION_CATALOG_NOT_FOUND", HttpStatus.NOT_FOUND),
+
+            // 認可監査 Wave6 ロットE: 備品管理（EquipmentErrorCode）の残り未登録分。
+            // EQUIPMENT_009（SCOPE_MISMATCH）は既存 PARKING_020 と同じ「越境は存在秘匿」の流儀で 404。
+            Map.entry("EQUIPMENT_003", HttpStatus.CONFLICT),             // INSUFFICIENT_STOCK
+            Map.entry("EQUIPMENT_004", HttpStatus.CONFLICT),             // ALREADY_RETURNED
+            Map.entry("EQUIPMENT_005", HttpStatus.CONFLICT),             // NOT_CONSUMABLE（備品種別と操作の不整合）
+            Map.entry("EQUIPMENT_008", HttpStatus.CONFLICT),             // HAS_ACTIVE_ASSIGNMENTS
+            Map.entry("EQUIPMENT_009", HttpStatus.NOT_FOUND),            // SCOPE_MISMATCH（越境は存在秘匿）
+            Map.entry("EQUIPMENT_014", HttpStatus.CONFLICT)              // ITEM_NOT_AVAILABLE
     );
 
     /**
