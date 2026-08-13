@@ -14744,6 +14744,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recruitment-cancellation-records/{recordId}/waive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * キャンセル料の免除
+         * @description 受取先側の管理者または運営管理者がキャンセル料の請求を取り消す。免除は債権の放棄を必ず行うが、そのユーザーに他の未払いが残っている場合は募集への申込制限は解除されない。
+         */
+        post: operations["waive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quick-memos": {
         parameters: {
             query?: never;
@@ -61169,6 +61189,9 @@ export interface components {
             teamId?: number;
         };
         CancelRecruitmentListingRequest: {
+            reason?: string;
+        };
+        WaiveCancellationFeeRequest: {
             reason?: string;
         };
         CreateQuickMemoRequest: {
@@ -111877,6 +111900,30 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    waive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WaiveCancellationFeeRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

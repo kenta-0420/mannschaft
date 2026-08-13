@@ -122,10 +122,28 @@ public class TeamFriendQueryService {
                 : PageRequest.of(0, DEFAULT_PAGE_SIZE);
 
         // 2. キャッシュ層は自己プロキシ経由で呼ぶ（this.listFriendViews だとキャッシュが効かない）
-        List<TeamFriendView> views = self().listFriendViews(teamId, userId, effectivePageable, publicOnly);
+        CachedFriendPage cached = self().listFriendViews(teamId, userId, effectivePageable, publicOnly);
 
-        // Phase 1 は Pageable ベースで件数概算を返す（将来 count クエリを追加）。
-        return new PageImpl<>(views, effectivePageable, views.size());
+        // CMP-028 Phase D: is_public 絞り込みは SQL の WHERE で済んでいるため、
+        // 総件数は DB の COUNT（cached.totalElements()）をそのまま用いる
+        // （「フィルタ後件数」という虚偽表示ではない）。
+        return new PageImpl<>(cached.content(), effectivePageable, cached.totalElements());
+    }
+
+    /**
+     * {@link #listFriendViews} のキャッシュ値。
+     *
+     * <p>
+     * {@code Page}/{@code PageImpl} は {@code GenericJackson2JsonRedisSerializer} で
+     * 復元できないためキャッシュしない（従来どおりの制約）。本レコードは総件数
+     * （{@code totalElements}、SQL の WHERE で絞り込み済みの正確な DB COUNT）を
+     * {@code content} と一緒に持ち運ぶための最小限のラッパーである。
+     * </p>
+     *
+     * @param content        ページ内容（{@link TeamFriendView}）
+     * @param totalElements  絞り込み後の総件数（DB COUNT。フィルタ後件数の近似ではない）
+     */
+    public record CachedFriendPage(List<TeamFriendView> content, long totalElements) {
     }
 
     /**
@@ -148,28 +166,36 @@ public class TeamFriendQueryService {
      * </p>
      *
      * <p>
-     * 戻り値を {@code Page} ではなく {@code List} にしているのは、{@code PageImpl} が
+     * 戻り値を {@code Page} ではなく {@link CachedFriendPage} にしているのは、{@code PageImpl} が
      * {@code GenericJackson2JsonRedisSerializer} でデシリアライズできず、Valkey 経由の
      * キャッシュヒットが毎回失敗する（fail-open で握り潰され「効かないキャッシュ」に戻る）ためである。
+     * {@link CachedFriendPage} は通常のフィールドのみを持つレコードなので同シリアライザで
+     * 問題なく往復できる。
+     * </p>
+     *
+     * <p>
+     * {@code is_public} 絞り込みは {@link TeamFriendRepository#findVisibleByTeamAIdOrTeamBId}
+     * の SQL の WHERE で行われる（CMP-028 Phase D 以降。取得後のメモリフィルタは撤去済み）。
+     * 総件数も同クエリの COUNT 派生クエリが DB 側で正確に算出する。
      * </p>
      *
      * @param teamId     自チーム ID
      * @param userId     閲覧者ユーザー ID（キャッシュキー専用。本体では使用しない）
      * @param pageable   ページング（{@code null} 不可。{@link #listFriends} で正規化済み）
      * @param publicOnly {@code true} の場合 {@code is_public = TRUE} のみ返却（SUPPORTER 向け）
-     * @return フレンドチームビューのリスト
+     * @return フレンドチームビューと総件数
      */
     @Cacheable(
             value = "teamFriendList",
             key = "#teamId + ':' + #userId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
                     + " + ':' + #publicOnly"
     )
-    public List<TeamFriendView> listFriendViews(Long teamId, Long userId,
-                                                Pageable pageable, boolean publicOnly) {
-        List<TeamFriendEntity> rows = teamFriendRepository
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(teamId, teamId, pageable);
+    public CachedFriendPage listFriendViews(Long teamId, Long userId,
+                                            Pageable pageable, boolean publicOnly) {
+        Page<TeamFriendEntity> page = teamFriendRepository
+                .findVisibleByTeamAIdOrTeamBId(teamId, teamId, publicOnly, pageable);
 
-        // View へ変換。publicOnly のときは is_public=true のみ残す。
+        // View へ変換。
         //
         // 【重要】Stream#toList() ではなく可変の ArrayList に集めること。
         // RedisConfig は activateDefaultTyping(..., DefaultTyping.EVERYTHING) を有効にしており、
@@ -187,10 +213,11 @@ public class TeamFriendQueryService {
         // toList() を override している（SharedSecrets 経由で ImmutableCollections.ListN を生成）。
         // JDK21(Temurin 21.0.10) で実測した実行時の型は ImmutableCollections$ListN である。
         // どちらにせよ既定コンストラクタは無く復元不能なので、本修正の必要性は変わらない。
-        return rows.stream()
-                .filter(e -> !publicOnly || Boolean.TRUE.equals(e.getIsPublic()))
+        List<TeamFriendView> views = page.getContent().stream()
                 .map(e -> toView(e, teamId))
                 .collect(Collectors.toCollection(ArrayList::new));
+
+        return new CachedFriendPage(views, page.getTotalElements());
     }
 
     /**

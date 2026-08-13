@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -76,9 +77,9 @@ class TeamFriendQueryServiceTest {
         TeamEntity friendTeamB = TeamEntity.builder().name("非公開チーム").build();
         Pageable pageable = PageRequest.of(0, 20);
 
-        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                TEAM_ID, TEAM_ID, pageable))
-                .willReturn(List.of(publicFriend, privateFriend));
+        given(teamFriendRepository.findVisibleByTeamAIdOrTeamBId(
+                TEAM_ID, TEAM_ID, false, pageable))
+                .willReturn(new PageImpl<>(List.of(publicFriend, privateFriend), pageable, 2));
         given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeamA));
         given(teamRepository.findById(30L)).willReturn(Optional.of(friendTeamB));
 
@@ -87,21 +88,28 @@ class TeamFriendQueryServiceTest {
 
         // then
         assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(2);
         verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
     }
 
+    /**
+     * SUPPORTER 向けの is_public 絞り込みは CMP-028 Phase D で SQL の WHERE に降りた。
+     * 単体テストでは「publicOnly=true が正しく Repository の引数へ渡ること」を検証する
+     * （行の除外そのものはメモリフィルタではなく実 DB が担保するため、単体で行数を検証しても
+     * 同語反復にしかならない。実データでの検証は
+     * {@code TeamFriendRepositoryVisibilityInTest} が担う）。
+     */
     @Test
-    @DisplayName("正常系: SUPPORTER(publicOnly=true) には isPublic=true のみ返る")
-    void SUPPORTER_には公開のみ返る() {
-        // given
+    @DisplayName("正常系: SUPPORTER(publicOnly=true) は Repository へ publicOnly=true が渡る")
+    void SUPPORTER_はpublicOnly引数がSQLへ渡る() {
+        // given: publicOnly=true で呼んだ場合、SQL 側で絞り込み済みの1件のみが返る想定
         TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
-        TeamFriendEntity privateFriend = buildTeamFriendWithPublic(TEAM_ID, 30L, 2L, false);
         TeamEntity friendTeam = TeamEntity.builder().name("公開チーム").build();
         Pageable pageable = PageRequest.of(0, 20);
 
-        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                TEAM_ID, TEAM_ID, pageable))
-                .willReturn(List.of(publicFriend, privateFriend));
+        given(teamFriendRepository.findVisibleByTeamAIdOrTeamBId(
+                TEAM_ID, TEAM_ID, true, pageable))
+                .willReturn(new PageImpl<>(List.of(publicFriend), pageable, 1));
         given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeam));
 
         // when
@@ -110,6 +118,9 @@ class TeamFriendQueryServiceTest {
         // then
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getFriendTeamId()).isEqualTo(TARGET_TEAM_ID);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        // publicOnly=true が Repository へそのまま渡っていることの実証
+        verify(teamFriendRepository).findVisibleByTeamAIdOrTeamBId(TEAM_ID, TEAM_ID, true, pageable);
     }
 
     @Test
@@ -120,9 +131,9 @@ class TeamFriendQueryServiceTest {
         TeamEntity friendTeam = TeamEntity.builder().name("公開チーム").build();
         Pageable pageable = PageRequest.of(0, 20);
 
-        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                TEAM_ID, TEAM_ID, pageable))
-                .willReturn(List.of(publicFriend));
+        given(teamFriendRepository.findVisibleByTeamAIdOrTeamBId(
+                TEAM_ID, TEAM_ID, false, pageable))
+                .willReturn(new PageImpl<>(List.of(publicFriend), pageable, 1));
         given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeam));
 
         // when

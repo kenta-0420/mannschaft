@@ -413,6 +413,13 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
     FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION),
 
+    // ─── RECRUITMENT_CANCELLATION_FEE (F03.11.1 募集キャンセル料の徴収) ─────────────
+    /**
+     * F03.11.1 募集キャンセル料が免除された（受取先側の管理者または SYSTEM_ADMIN による）。
+     * 免除は金銭債権を消す操作であり、誰がいつ何円を消したかを後から追える記録が唯一の手がかりになる。
+     */
+    RECRUITMENT_CANCELLATION_FEE_WAIVED(AuditEventCategory.ADMIN_ACTION),
+
     // ─── GUARDIANSHIP_SWITCH (F08.9 P3c 後見切替セッション) ─────────────
     /**
      * 保護者が子として後見切替セッションを開始した（acting-as 開始・03_security §3.2 二重記録）。
