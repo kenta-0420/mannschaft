@@ -1045,6 +1045,56 @@ public class ConnectChargeService {
         return new RefundResult(escrowId, escrow.getStatus(), refundAmount, transferAmount - newTotal);
     }
 
+    // ==========================================================================
+    // F03.11.1 募集キャンセル料の徴収（設計書 F03.11.1_cancellation_fee_payment.md §3.4 / §10.2）
+    //
+    // 本節の 2 メソッドは第三陣（試練）が受け入れ条件から red テストを起こすために置いた
+    // 入口の宣言である。中身は第四陣（出陣）で実装する。
+    // ==========================================================================
+
+    /**
+     * 募集キャンセル料を徴収する（設計書 §3.4・経路判定の単一入口）。
+     *
+     * <p>三つ組 {@code (sourceKind, sourceId, sourceParticipantId)} で escrow を引き当て、その状態に応じて
+     * 「与信のみ → 部分キャプチャ」「確定済み → 差額返金」「与信なし → 徴収不能」へ分岐する。
+     * どう徴収するかは payment ドメインの内部事情であり、呼び出し側は
+     * {@link SettleCancellationFeeResult#outcome()} だけを見る（{@link EscrowStatus} を越境させない）。</p>
+     *
+     * <p>利用者の負担はどちらの経路でも「キャンセル料ちょうど」に揃える。運営手数料は主催者の取り分から
+     * 差し引く（§3.5・{@code A_eff = min(A, F)}）。</p>
+     *
+     * @param sourceKind           引き当ての三つ組（種別）
+     * @param sourceId             引き当ての三つ組（募集 ID）
+     * @param sourceParticipantId  引き当ての三つ組（参加者 ID）
+     * @param cancellationFeeMinor キャンセル料（最小通貨単位・丸め後・§6.1）
+     * @param idempotencyRef       冪等キーの素（キャンセル記録 ID・§7.1）
+     * @return 徴収結果
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public SettleCancellationFeeResult settleCancellationFee(
+            EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId,
+            long cancellationFeeMinor, String idempotencyRef) {
+        throw new UnsupportedOperationException("F03.11.1 settleCancellationFee は第四陣で実装");
+    }
+
+    /**
+     * 操作者が受取先側の精算管理者かどうかを返す（設計書 §10.2）。
+     *
+     * <p>受取先の判定は escrow の payee に基づかせる（募集の作成者では判定しない）。
+     * {@code TEAM} / {@code ORG} / 個人（{@code USER}）の 3 種すべてを扱い、recruitment 側へは真偽値だけを返す。</p>
+     *
+     * @param sourceKind          引き当ての三つ組（種別）
+     * @param sourceId            引き当ての三つ組（募集 ID）
+     * @param sourceParticipantId 引き当ての三つ組（参加者 ID）
+     * @param actorUserId         操作者ユーザー ID
+     * @return 受取先側の精算管理者なら true
+     */
+    @Transactional(readOnly = true)
+    public boolean isPayeeSettlementManager(
+            EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId, Long actorUserId) {
+        throw new UnsupportedOperationException("F03.11.1 isPayeeSettlementManager は第四陣で実装");
+    }
+
     /**
      * モードB（受取側負担）で支払者へ戻すグロス返金額（chargeAmount 相当）を求める。
      *

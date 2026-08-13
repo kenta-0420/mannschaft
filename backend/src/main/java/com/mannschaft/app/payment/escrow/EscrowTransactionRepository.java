@@ -28,6 +28,15 @@ public interface EscrowTransactionRepository
     Optional<EscrowTransactionEntity> findByStripePaymentIntentId(String stripePaymentIntentId);
 
     /**
+     * 参加者 ID の集合で escrow をまとめて引き当てる
+     * （F03.11.1 キャンセル料リトライバッチの N+1 回避・設計書 §5.5・§12-14）。
+     *
+     * <p>1 チャンク分のキャンセル記録に対し、レコード 1 件ごとに個別クエリを撃たないための一括取得である。</p>
+     */
+    List<EscrowTransactionEntity> findBySourceKindAndSourceParticipantIdIn(
+            EscrowSourceKind sourceKind, java.util.Collection<Long> sourceParticipantIds);
+
+    /**
      * 主キーで escrow 行を {@code PESSIMISTIC_WRITE} ロックして取得する（capture/webhook の read-then-write 直列化）。
      *
      * <p>capture（同期フック・AFTER_COMMIT 後）と {@code payment_intent.succeeded} webhook はどちらも
