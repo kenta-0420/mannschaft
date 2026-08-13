@@ -165,7 +165,11 @@
         "step4": "Run 'Manual sync' when you want changes reflected immediately"
       }
     },
-    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here."
+    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here.",
+    "todo_load_error": {
+      "summary": "Failed to load TODOs",
+      "detail": "TODOs could not be shown on the calendar. Schedules are still displayed. Please reload after a while."
+    }
   },
   "scheduleKeep": {
     "title": "Keep",
