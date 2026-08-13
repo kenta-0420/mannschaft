@@ -310,6 +310,42 @@ export default {
         "expired": "Expired",
         "lifted": "Lifted"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Waive Cancellation Fee",
+      "pageDescription": "Waive cancellation fees you are due to receive",
+      "unknownUser": "Unknown user",
+      "loadMore": "Load more",
+      "reasonTooLong": "The reason must be {max} characters or fewer",
+      "columns": {
+        "listing": "Listing",
+        "user": "Target User",
+        "feeAmount": "Cancellation Fee",
+        "status": "Status",
+        "cancelledAt": "Cancelled At"
+      },
+      "status": {
+        "pending": "Unpaid",
+        "failed": "Payment Failed",
+        "uncollectible": "Uncollectible",
+        "paid": "Paid",
+        "waived": "Waived",
+        "notRequired": "Not Applicable"
+      },
+      "waiveButton": "Waive",
+      "reasonLabel": "Reason for Waiver",
+      "reasonPlaceholder": "Enter the reason for waiving (required)",
+      "reasonRequired": "A reason is required",
+      "confirmDialog": {
+        "title": "Waive Cancellation Fee",
+        "message": "This will cancel the {amount} yen cancellation fee charge. This action cannot be undone.\nIf this user has other unpaid cancellation fees, the application restriction will not be lifted.",
+        "confirmButton": "Waive",
+        "cancelButton": "Back"
+      },
+      "emptyMessage": "No waivable cancellation fee records",
+      "loadError": "Failed to load the list",
+      "waiveSuccess": "Cancellation fee waived",
+      "waiveError": "Failed to waive the fee"
     }
   }
 }
