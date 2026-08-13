@@ -46,7 +46,10 @@ const canSubmit = computed(
 watch(body, (val) => {
   const match = /(?:^|\s)@([^\s@]*)$/.exec(val)
   if (match) {
-    mentionQuery.value = match[1]
+    // キャプチャグループは正規表現上必ず一致する（`[^\s@]*` は 0 文字にもマッチするため
+    // 常に string を返すが、TypeScript の型上は string | undefined になる）。
+    // 未定義時は空文字列（「@」直後で何も入力していない状態）として扱う。
+    mentionQuery.value = match[1] ?? ''
   } else {
     mentionQuery.value = null
     mentionResults.value = []
@@ -88,7 +91,6 @@ function submit() {
   if (!canSubmit.value) return
   const mentionedUserIds = selectedMentions.value
     .map((c) => c.userId)
-    .filter((id): id is number => id !== undefined)
     .slice(0, MAX_MENTIONS)
   emit('submit', body.value.trim(), mentionedUserIds)
   body.value = ''
