@@ -382,7 +382,8 @@ onMounted(() => {
 
     <!-- Issue #2637: TODO レイヤの取得失敗を明示（カレンダー本体は継続表示） -->
     <Message v-if="todosFailed" severity="warn" :closable="false" class="mb-4">
-      {{ t('schedule.todo_load_error.detail') }}
+      <span class="font-medium">{{ t('schedule.todo_load_error.summary') }}</span>
+      <span class="ml-2">{{ t('schedule.todo_load_error.detail') }}</span>
     </Message>
 
     <!-- タブ切替 -->

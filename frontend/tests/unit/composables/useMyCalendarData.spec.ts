@@ -10,16 +10,29 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
  * BE の 500・認可拒否・タイムアウトのいずれでも画面にもコンソールにも痕跡が残らず、
  * 「TODO を登録したのにカレンダーに出ない」を再現も原因特定もできなかった。
  *
+ * さらに検分の指摘（二重トースト）を受け、通知は「useApi の共通ハンドラが
+ * トーストを出さない失敗」に限る契約とした。共通ハンドラ（onResponseError）は
+ * 実コード上、429（warn・即時）と 5xx（error・500ms 集約）でトーストを出す。
+ *
  * 検証観点:
  *   MCD-001: TODO 取得が失敗してもカレンダー本体（個人予定・共有予定）は描画される
- *   MCD-002: TODO 取得失敗時に console.error と通知（トースト）の双方に痕跡が残り todosFailed が真になる
- *   MCD-003: TODO 取得が成功していれば todosFailed は偽・通知は出ない
+ *   MCD-002: 4xx（403）は共通ハンドラへ委譲してユーザー提示され todosFailed が真になる
+ *   MCD-003: TODO 取得が成功していれば todosFailed は偽・提示も報告も無い
+ *   MCD-004: 5xx は共通ハンドラが既にトーストを出すため追加提示しない（静かに報告のみ）
+ *   MCD-005: 429 も同様に追加提示しない（静かに報告のみ）
+ *   MCD-006: 応答なし（ネットワーク断）は共通ハンドラが何も出さないためユーザー提示する
+ *   MCD-007: shouldNotifyTodoLoadFailure の判定表（共通ハンドラの担当 status を固定）
  */
 
 const mockListPersonalSchedules = vi.fn()
 const mockGetCalendarRange = vi.fn()
 const mockGetPersonalGanttTodos = vi.fn()
-const mockError = vi.fn()
+const mockHandleApiError = vi.fn()
+const mockCaptureQuiet = vi.fn()
+// この層が（共通ハンドラを迂回して）直接トーストを出していないことを見張るための番人。
+// 二重トーストは「共通ハンドラが出す status で、この層も出す」ことで起きるため、
+// handleApiError だけでなく直接通知の経路も塞いだうえで固定する。
+const mockNotifyError = vi.fn()
 
 // useCalendarEvents は fetcher を受け取るだけのスタブにし、テストから fetcher を直接叩く。
 let capturedFetcher: ((from: string, to: string) => Promise<CalendarEventItem[]>) | null = null
@@ -33,8 +46,19 @@ vi.mock('~/composables/useScheduleApi', () => ({
 vi.mock('~/composables/useTodoGantt', () => ({
   useTodoGantt: () => ({ getPersonalGanttTodos: mockGetPersonalGanttTodos }),
 }))
+vi.mock('~/composables/useErrorHandler', () => ({
+  useErrorHandler: () => ({
+    handleApiError: mockHandleApiError,
+    handleError: mockHandleApiError,
+    resolveMessage: (code: string) => code,
+    getFieldErrors: () => ({}),
+  }),
+}))
 vi.mock('~/composables/useNotification', () => ({
-  useNotification: () => ({ error: mockError, warn: vi.fn(), success: vi.fn(), info: vi.fn() }),
+  useNotification: () => ({ error: mockNotifyError, warn: vi.fn(), success: vi.fn(), info: vi.fn() }),
+}))
+vi.mock('~/composables/useErrorReport', () => ({
+  useErrorReport: () => ({ captureQuiet: mockCaptureQuiet, capture: vi.fn() }),
 }))
 vi.mock('~/composables/useCalendarEvents', () => ({
   useCalendarEvents: (fetcher: (from: string, to: string) => Promise<CalendarEventItem[]>) => {
@@ -59,7 +83,7 @@ mockNuxtImport('useDatetime', () => () => ({
 }))
 
 // eslint-disable-next-line import/first
-import { useMyCalendarData } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, shouldNotifyTodoLoadFailure, extractHttpStatus } from '~/composables/useMyCalendarData'
 
 const PERSONAL_ROW = {
   id: 1,
@@ -74,20 +98,29 @@ const SHARED_ROW = {
   myAttendanceStatus: 'PENDING',
 }
 
+/** ofetch の FetchError を模したエラー（statusCode と response.status の双方を持つ） */
+function fetchError(status: number): Error & { statusCode: number; response: { status: number } } {
+  const err = new Error(`HTTP ${status}`) as Error & { statusCode: number; response: { status: number } }
+  err.statusCode = status
+  err.response = { status }
+  return err
+}
+
 describe('useMyCalendarData', () => {
   beforeEach(() => {
     capturedFetcher = null
     mockListPersonalSchedules.mockReset()
     mockGetCalendarRange.mockReset()
     mockGetPersonalGanttTodos.mockReset()
-    mockError.mockReset()
+    mockHandleApiError.mockReset()
+    mockCaptureQuiet.mockReset()
+    mockNotifyError.mockReset()
     mockListPersonalSchedules.mockResolvedValue({ data: [PERSONAL_ROW] })
     mockGetCalendarRange.mockResolvedValue({ data: [SHARED_ROW] })
   })
 
-  it('MCD-001/002: TODO取得が失敗しても他2本は描画され、console.error・通知・todosFailedで表面化する', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const boom = new Error('500 Internal Server Error')
+  it('MCD-001/002: 403 でもカレンダー本体は描画され、共通エラーハンドラへ委譲して todosFailed が立つ', async () => {
+    const boom = fetchError(403)
     mockGetPersonalGanttTodos.mockRejectedValue(boom)
 
     const cal = useMyCalendarData()
@@ -96,19 +129,15 @@ describe('useMyCalendarData', () => {
 
     // カレンダー本体は継続描画される（部分失敗）
     expect(merged.map((e) => e.uniqueKey)).toEqual(['personal:1', 'shared:2'])
-    // 失敗は握りつぶされず、実際のエラーオブジェクトごと console に残る
-    expect(consoleSpy).toHaveBeenCalledTimes(1)
-    expect(JSON.stringify(consoleSpy.mock.calls[0])).toContain('TODO')
-    expect(consoleSpy.mock.calls[0]?.[1]).toMatchObject({ error: boom })
-    // ユーザーにもトーストで見える
-    expect(mockError).toHaveBeenCalledTimes(1)
+    // 共通エラーハンドラ（errorReport.captureQuiet + 通知）へ委譲されている
+    expect(mockHandleApiError).toHaveBeenCalledTimes(1)
+    expect(mockHandleApiError.mock.calls[0]?.[0]).toBe(boom)
+    expect(String(mockHandleApiError.mock.calls[0]?.[1])).toContain('getPersonalGanttTodos')
     // 利用側が扱える失敗状態
     expect(cal.todosFailed.value).toBe(true)
-
-    consoleSpy.mockRestore()
   })
 
-  it('MCD-003: TODO取得が成功すれば todosFailed は偽で通知も出ない', async () => {
+  it('MCD-003: TODO取得が成功すれば todosFailed は偽で提示も報告も無い', async () => {
     mockGetPersonalGanttTodos.mockResolvedValue({
       data: [{ id: 7, title: 'TODO', dueDate: '2026-08-10', startDate: null, status: 'OPEN', priority: 'HIGH' }],
     })
@@ -118,6 +147,62 @@ describe('useMyCalendarData', () => {
 
     expect(merged.map((e) => e.uniqueKey)).toContain('todo:7')
     expect(cal.todosFailed.value).toBe(false)
-    expect(mockError).not.toHaveBeenCalled()
+    expect(mockHandleApiError).not.toHaveBeenCalled()
+    expect(mockCaptureQuiet).not.toHaveBeenCalled()
+  })
+
+  it('MCD-004: 5xx は useApi の共通ハンドラが既にトーストを出すため追加提示しない（報告のみ）', async () => {
+    mockGetPersonalGanttTodos.mockRejectedValue(fetchError(500))
+
+    const cal = useMyCalendarData()
+    const merged = await capturedFetcher!('2026-08-01', '2026-08-31')
+
+    expect(merged.map((e) => e.uniqueKey)).toEqual(['personal:1', 'shared:2'])
+    expect(mockHandleApiError).not.toHaveBeenCalled() // 二重トースト防止
+    expect(mockNotifyError).not.toHaveBeenCalled() // 直接トーストも出さない
+    expect(mockCaptureQuiet).toHaveBeenCalledTimes(1) // ただし握りつぶさない
+    expect(cal.todosFailed.value).toBe(true) // 常設注記は出る
+  })
+
+  it('MCD-005: 429 も追加提示しない（共通ハンドラがレート制限トーストを出す）', async () => {
+    mockGetPersonalGanttTodos.mockRejectedValue(fetchError(429))
+
+    const cal = useMyCalendarData()
+    await capturedFetcher!('2026-08-01', '2026-08-31')
+
+    expect(mockHandleApiError).not.toHaveBeenCalled()
+    expect(mockNotifyError).not.toHaveBeenCalled()
+    expect(mockCaptureQuiet).toHaveBeenCalledTimes(1)
+    expect(cal.todosFailed.value).toBe(true)
+  })
+
+  it('MCD-006: 応答なし（ネットワーク断）は共通ハンドラが何も出さないためユーザーへ提示する', async () => {
+    mockGetPersonalGanttTodos.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const cal = useMyCalendarData()
+    await capturedFetcher!('2026-08-01', '2026-08-31')
+
+    expect(mockHandleApiError).toHaveBeenCalledTimes(1)
+    expect(cal.todosFailed.value).toBe(true)
+  })
+
+  it('MCD-007: shouldNotifyTodoLoadFailure — 共通ハンドラの担当 status（429/5xx）では出さない', () => {
+    // useApi.onResponseError がトーストを出す status
+    expect(shouldNotifyTodoLoadFailure(429)).toBe(false)
+    expect(shouldNotifyTodoLoadFailure(500)).toBe(false)
+    expect(shouldNotifyTodoLoadFailure(502)).toBe(false)
+    expect(shouldNotifyTodoLoadFailure(503)).toBe(false)
+    // 共通ハンドラがトーストを出さない status（提示はこの層の責務）
+    expect(shouldNotifyTodoLoadFailure(400)).toBe(true)
+    expect(shouldNotifyTodoLoadFailure(403)).toBe(true)
+    expect(shouldNotifyTodoLoadFailure(404)).toBe(true)
+    expect(shouldNotifyTodoLoadFailure(undefined)).toBe(true)
+  })
+
+  it('MCD-007b: extractHttpStatus — statusCode / response.status / 応答なしを解決する', () => {
+    expect(extractHttpStatus(fetchError(403))).toBe(403)
+    expect(extractHttpStatus({ response: { status: 500 } })).toBe(500)
+    expect(extractHttpStatus(new Error('boom'))).toBeUndefined()
+    expect(extractHttpStatus(null)).toBeUndefined()
   })
 })
