@@ -171,17 +171,24 @@ class RecruitmentListingServicePhase2Test {
         }
 
         /**
-         * PR #2764 検分是正（欠陥1）の回帰テスト。
+         * PR #2764 検分是正の配線確認テスト。
          *
-         * <p>過去の実装は notifyAllLocalized（F00 Phase F 可視性フィルタ経由）ではなく
-         * {@code notify} を受信者数分ループ直呼びしており、非公開募集の存在・タイトルが
-         * 閲覧不可ユーザーへ漏洩する退行を招いた。本テストは publish() が
-         * {@code notificationHelper.notify(...)} を一度も直接呼ばず、必ず可視性フィルタ経由の
-         * {@code notifyAllLocalized(...)} を通ることを検証する（配線レベルの回帰防止）。
-         * 可視性フィルタそのものの単体動作は {@code NotificationHelperTest#NotifyAllLocalized} で検証する。</p>
+         * <p>訂正（2026-08-14）: 当初は「notify を受信者数分ループ直呼びすると F00 Phase F の
+         * 可視性フィルタを迂回し情報漏洩する退行」だと判断していたが、これは誤りだった。
+         * {@code NotificationService#createNotification} が単発経路でも {@code canView} による
+         * 可視性ガードを担保しているため、notify 直呼びループでも漏洩は発生しない。</p>
+         *
+         * <p>本テストが検証しているのは漏洩の有無ではなく、publish() が
+         * {@code notificationHelper.notify(...)} を直接ループ呼び出しせず、必ず
+         * {@code notifyAllLocalized(...)} を経由して配線されていることである。
+         * {@code notifyAllLocalized} は「受信者別 locale の一括本文組み立て」「locale の一括解決
+         * による N+1 回避」「前段フィルタで閲覧不可ユーザー分の無駄な本文組み立て・
+         * createNotification 呼び出しを省くこと」を目的として導入したものであり、本テストは
+         * その配線が保たれていることを確認する。前段フィルタの単体動作は
+         * {@code NotificationHelperTest#NotifyAllLocalized} で検証する。</p>
          */
         @Test
-        @DisplayName("欠陥1回帰防止: publish は notify を直接ループせず notifyAllLocalized（可視性フィルタ経由）を呼ぶ")
+        @DisplayName("配線確認: publish は notify を直接ループせず notifyAllLocalized を経由する")
         void publish_通知はnotifyAllLocalized経由でありnotify直呼びしない() throws Exception {
             RecruitmentListingEntity listing = buildDraftListing();
             RecruitmentListingEntity savedListing = buildOpenListing();
@@ -196,7 +203,7 @@ class RecruitmentListingServicePhase2Test {
 
             service.publish(LISTING_ID, ADMIN_ID);
 
-            // notifyAllLocalized が sourceType=RECRUITMENT_LISTING で呼ばれること（可視性フィルタが
+            // notifyAllLocalized が sourceType=RECRUITMENT_LISTING で呼ばれること（前段フィルタが
             // このソース種別で ReferenceType 解決できる前提の配線を検証する）。
             verify(notificationHelper).notifyAllLocalized(
                     eq(List.of(5L, 6L)),
@@ -204,7 +211,7 @@ class RecruitmentListingServicePhase2Test {
                     eq("RECRUITMENT_LISTING"), eq(LISTING_ID),
                     any(), any(), any(), any(),
                     any());
-            // notify の受信者ループ直呼び（可視性フィルタを迂回する旧実装）が復活していないこと。
+            // notify の受信者ループ直呼び（notifyAllLocalized 経由に一本化する前の形）が復活していないこと。
             verify(notificationHelper, never()).notify(
                     any(), eq("RECRUITMENT_PUBLISHED"), any(), any(), any(), any(), any(), any(), any(), any());
         }

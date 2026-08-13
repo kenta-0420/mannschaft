@@ -355,18 +355,31 @@ public class NotificationHelper {
     /**
      * 受信者ごとに locale の異なる本文で一括通知を作成・配信する。
      *
-     * <p>Issue #2715 ロットA 検分是正: 「notifyAll（単一文面の一括配信）を受信者別 locale で本文を
-     * 変えたいがために notify の逐次ループへ置換する」というロットB・C でも繰り返される要求に対し、
-     * <b>呼び出し側で個別対応させず本メソッドへ一本化する</b>。これにより以下 2 点を必ず担保する。</p>
+     * <p>Issue #2715 ロットA 検分是正（PR #2764）: 「notifyAll（単一文面の一括配信）を受信者別
+     * locale で本文を変えたいがために notify の逐次ループへ置換する」というロットB・C でも
+     * 繰り返される要求に対し、<b>呼び出し側で個別対応させず本メソッドへ一本化する</b>。</p>
+     *
+     * <p><b>訂正（2026-08-14）</b>: 当初の検分では「notify の逐次ループは F00 Phase F の可視性
+     * フィルタを迂回し情報漏洩を招く退行である」としていたが、これは誤りだった。
+     * {@link NotificationService#createNotification} 自身が単発経路でも
+     * {@code isAccessible}（canView）による可視性ガードを既に担保しており（
+     * {@code NotificationService.java:314} 付近）、{@link #notify} をループで直呼びしても
+     * 閲覧不可ユーザーへ通知が作られることは無かった。本メソッドの本当の意義は以下の 3 点であり、
+     * 「これが無いと漏洩する」という主張はしない（可視性ガードは
+     * {@code createNotification} と {@link #filterAccessibleRecipients} の多層防御であり、
+     * 本メソッドはそのうちの前段の一層を提供するに過ぎない）。</p>
      * <ol>
-     *   <li><b>F00 Phase F 可視性フィルタ (§11.1)</b>: 先頭で必ず {@link #filterAccessibleRecipients}
-     *       を通す。呼び出し側がフィルタを素通しの {@link #notify} 直呼びへ置換した結果、
-     *       閲覧不可ユーザーにも通知本文（＝非公開コンテンツの存在・名称）が漏洩する退行が
-     *       過去に実際に発生した（PR #2764 検分で発覚）。</li>
-     *   <li><b>locale の一括解決</b>: {@link UserLocaleCache#getLocales} で 1 クエリにまとめる。
-     *       受信者ごとに {@link UserLocaleCache#getLocale} を呼ぶと、大量受信者配信
-     *       （例: FOLLOWERS 配信の {@code PageRequest.of(0, 10000)}）でキャッシュコールド時に
-     *       最大受信者数分の DB 往復が公開トランザクション内に発生する（N+1）。</li>
+     *   <li><b>一括経路でも受信者別 locale を扱えるようにすること</b>: 既存 {@link #notifyAll}
+     *       は単一文面固定のため、受信者ごとに異なる locale で本文を組み立てるユースケースに
+     *       対応できなかった。</li>
+     *   <li><b>locale の一括解決による N+1 回避</b>: {@link UserLocaleCache#getLocales} で
+     *       1 クエリにまとめる。受信者ごとに {@link UserLocaleCache#getLocale} を呼ぶと、
+     *       大量受信者配信（例: FOLLOWERS 配信の {@code PageRequest.of(0, 10000)}）で
+     *       キャッシュコールド時に最大受信者数分の DB 往復が公開トランザクション内に発生する。</li>
+     *   <li><b>前段フィルタによる無駄な処理の削減</b>: 先頭で {@link #filterAccessibleRecipients}
+     *       を通して閲覧不可ユーザーをあらかじめ除外することで、どのみち {@code createNotification}
+     *       内の可視性ガードで捨てられるユーザー分の本文組み立て・{@code notify} 呼び出しを
+     *       無駄に行わずに済む。</li>
      * </ol>
      *
      * <p>絞り込み・locale 解決後の受信者ごとに {@code bodyBuilder} で本文を組み立てて {@link #notify}

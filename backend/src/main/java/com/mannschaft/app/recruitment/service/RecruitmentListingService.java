@@ -761,11 +761,14 @@ public class RecruitmentListingService {
 
         // Issue #2715 ロットA / 検分是正(PR #2764): 受信者ごとに locale を解決して本文を組み立てる必要が
         // あるため、単一文面固定の notifyAll ではなく NotificationHelper#notifyAllLocalized を用いる。
-        // 過去に「notify を受信者数分ループで直呼びする」形に置換したことがあったが、notify は
-        // notifyAll と異なり F00 Phase F の受信者可視性フィルタ（filterAccessibleRecipients）を
-        // 一切通らない素通しのため、非公開募集の存在・タイトルが閲覧不可ユーザーへ漏洩する退行を招いた。
-        // notifyAllLocalized は「可視性フィルタ＋locale 一括解決」の両方を NotificationHelper 側で
-        // 一元的に担保するため、ここではそれを呼ぶだけでよい（ロットB・C の同種要求にも同じ経路を使う）。
+        // 訂正(2026-08-14): 当初「notify を受信者数分ループで直呼びすると可視性フィルタを迂回し
+        // 情報漏洩する」としていたが、これは誤り。NotificationService#createNotification は単発経路
+        // でも canView による可視性ガードを既に担保しており、notify 直呼びループでも漏洩は無かった。
+        // notifyAllLocalized を使う本当の理由は (1) 一括経路でも受信者別 locale の本文を組み立てられる
+        // ようにすること、(2) locale をまとめて解決し N+1 を避けること、(3) 前段の
+        // filterAccessibleRecipients で閲覧不可ユーザーを先に除外し、どのみち createNotification 側の
+        // 可視性ガードで捨てられる分の本文組み立て・notify 呼び出しを無駄に行わないこと、の 3 点。
+        // ロットB・C の同種要求にも同じ経路を使う。
         notificationHelper.notifyAllLocalized(
                 new ArrayList<>(notifiedUserIds),
                 "RECRUITMENT_PUBLISHED",
