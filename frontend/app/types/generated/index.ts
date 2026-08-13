@@ -53290,7 +53290,8 @@ export interface components {
             maxSelections?: number;
             options?: components["schemas"]["CreateOptionRequest"][];
             questionText?: string;
-            questionType?: string;
+            /** @enum {string} */
+            questionType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             /** Format: int32 */
             scaleMax?: number;
             scaleMaxLabel?: string;
@@ -53302,7 +53303,8 @@ export interface components {
             allowMultipleSubmissions: boolean;
             autoPostToTimeline?: boolean;
             description?: string;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode: "ALL" | "TARGETED";
             /** Format: date-time */
             expiresAt?: string;
             includeSupporters?: boolean;
@@ -53310,14 +53312,16 @@ export interface components {
             questions?: components["schemas"]["CreateQuestionRequest"][];
             remindBeforeHours?: number[];
             resultViewerUserIds?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             seriesId?: string;
             /** Format: date-time */
             startsAt?: string;
             targetUserIds?: number[];
             teamBreakdownEnabled?: boolean;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         ApiResponseSurveyDetailResponse: {
             data?: components["schemas"]["SurveyDetailResponse"];
@@ -53346,7 +53350,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             options?: components["schemas"]["OptionResponse"][];
-            questionType?: string;
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             scaleConfig?: components["schemas"]["QuestionScaleConfigDto"];
             /** Format: int64 */
             surveyId?: number;
@@ -53374,12 +53379,23 @@ export interface components {
             title?: string;
         };
         SurveyDetailResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
             questions?: components["schemas"]["QuestionResponse"][];
-            survey?: components["schemas"]["SurveyResponse"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
         };
         SurveyDistributionDto: {
             autoPostToTimeline?: boolean;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode?: "ALL" | "TARGETED";
             includeSupporters?: boolean;
             /** Format: int32 */
             manualRemindCount?: number;
@@ -53389,20 +53405,10 @@ export interface components {
         SurveyPolicyDto: {
             allowMultipleSubmissions?: boolean;
             isAnonymous?: boolean;
-            resultsVisibility?: string;
-            unrespondedVisibility?: string;
-        };
-        SurveyResponse: {
-            audit?: components["schemas"]["SurveyAuditDto"];
-            content?: components["schemas"]["SurveyContentDto"];
-            distribution?: components["schemas"]["SurveyDistributionDto"];
-            /** Format: int64 */
-            id?: number;
-            policy?: components["schemas"]["SurveyPolicyDto"];
-            schedule?: components["schemas"]["SurveyScheduleDto"];
-            scope?: components["schemas"]["SurveyScopeDto"];
-            stats?: components["schemas"]["SurveyStatsDto"];
-            status?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         SurveyScheduleDto: {
             /** Format: date-time */
@@ -53430,6 +53436,19 @@ export interface components {
         };
         ApiResponseSurveyResponse: {
             data?: components["schemas"]["SurveyResponse"];
+        };
+        SurveyResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
         };
         ExtendDeadlineRequest: {
             /** Format: date-time */
@@ -65639,11 +65658,13 @@ export interface components {
             includeSupporters?: boolean;
             isAnonymous?: boolean;
             remindBeforeHours?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             /** Format: date-time */
             startsAt?: string;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         UpdateKanbanRequest: {
             /** Format: date-time */

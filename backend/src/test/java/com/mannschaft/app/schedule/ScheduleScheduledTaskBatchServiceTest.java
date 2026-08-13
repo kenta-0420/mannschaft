@@ -78,7 +78,8 @@ class ScheduleScheduledTaskBatchServiceTest {
     private String surveyPayloadJson() throws Exception {
         CreateSurveyRequest req = new CreateSurveyRequest(
                 "出欠アンケート", null, false, false,
-                "AFTER_CLOSE", "ALL",
+                com.mannschaft.app.survey.ResultsVisibility.AFTER_CLOSE,
+                com.mannschaft.app.survey.DistributionMode.ALL,
                 null, null, null, null, null, null, null, null, null, null, null);
         return objectMapper.writeValueAsString(req);
     }
@@ -123,7 +124,7 @@ class ScheduleScheduledTaskBatchServiceTest {
             given(scheduledTaskRepository.findById(task.getId())).willReturn(Optional.of(task));
 
             SurveyResponse surveyResponse = SurveyResponse.builder().id(555L).build();
-            SurveyDetailResponse detail = new SurveyDetailResponse(surveyResponse, List.of());
+            SurveyDetailResponse detail = SurveyDetailResponse.of(surveyResponse, List.of());
             given(surveyService.createSurvey(eq("TEAM"), eq(SCOPE_ID), eq(CREATED_BY), any()))
                     .willReturn(detail);
 

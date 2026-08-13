@@ -213,7 +213,9 @@ class SurveyDetailShapeContractIT extends AbstractMySqlIntegrationTest {
         void ac5_extendUnchanged() throws Exception {
             setAuth(adminTeamAId);
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("newDeadline", LocalDateTime.now().plusDays(30).toString());
+            // API 契約上のフィールド名は snake_case の new_deadline
+            // （ExtendDeadlineRequest の @JsonProperty("new_deadline")・設計書 §4.7・生成型と一致）。
+            body.put("new_deadline", LocalDateTime.now().plusDays(30).toString());
 
             mockMvc.perform(post("/api/v1/teams/{slug}/surveys/{id}/extend", TEAM_A_SLUG, publishedSurveyTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)

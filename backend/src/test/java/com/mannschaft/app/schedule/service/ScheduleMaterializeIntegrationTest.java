@@ -467,9 +467,9 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             "統合テスト説明",                // description
                             false,                          // isAnonymous
                             false,                          // allowMultipleSubmissions
-                            "AFTER_RESPONSE",               // resultsVisibility (ResultsVisibility enum)
-                            "ALL",                          // distributionMode (DistributionMode enum)
-                            "CREATOR_AND_ADMIN",            // unrespondedVisibility
+                            com.mannschaft.app.survey.ResultsVisibility.AFTER_RESPONSE,               // resultsVisibility (ResultsVisibility enum)
+                            com.mannschaft.app.survey.DistributionMode.ALL,                          // distributionMode (DistributionMode enum)
+                            com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN,            // unrespondedVisibility
                             false,                          // autoPostToTimeline
                             null,                           // seriesId
                             null,                           // remindBeforeHours
@@ -477,7 +477,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             null,                           // expiresAt
                             List.of(                        // questions (最低1件必要)
                                     new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                                            "SINGLE_CHOICE",
+                                            com.mannschaft.app.survey.QuestionType.SINGLE_CHOICE,
                                             "参加しますか？",
                                             true, 0, null, null, null, null, null,
                                             List.of(
@@ -531,9 +531,9 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             "startsAt/expiresAt 往復検証",         // description
                             false,                                // isAnonymous
                             false,                                // allowMultipleSubmissions
-                            "AFTER_RESPONSE",                     // resultsVisibility
-                            "ALL",                                // distributionMode
-                            "CREATOR_AND_ADMIN",                  // unrespondedVisibility
+                            com.mannschaft.app.survey.ResultsVisibility.AFTER_RESPONSE,                     // resultsVisibility
+                            com.mannschaft.app.survey.DistributionMode.ALL,                                // distributionMode
+                            com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN,                  // unrespondedVisibility
                             false,                                // autoPostToTimeline
                             null,                                 // seriesId
                             null,                                 // remindBeforeHours
@@ -541,7 +541,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             null,                                 // expiresAt（後で raw 差し替え）
                             List.of(
                                     new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                                            "SINGLE_CHOICE",
+                                            com.mannschaft.app.survey.QuestionType.SINGLE_CHOICE,
                                             "参加しますか？",
                                             true, 0, null, null, null, null, null,
                                             List.of(

@@ -39,6 +39,9 @@ import java.util.Objects;
  *       （締切後のみ可視。{@code expiresAt} 未設定は fail-closed）</li>
  *   <li>{@link ResultsVisibility#VIEWERS_ONLY} → {@link StandardVisibility#CUSTOM}
  *       （限定リスト {@code survey_result_viewers} に登録済みのみ可視）</li>
+ *   <li>{@link ResultsVisibility#ALWAYS} → {@link StandardVisibility#SCOPE_AFFILIATED}
+ *       （公開後は締切前でもスコープ所属者に可視。時間条件を持たないため CUSTOM に流さない。
+ *       未公開 DRAFT は status 軸で弾かれ、スコープ外は所属軸で弾かれる）</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>（§7.5）:</p>
@@ -161,9 +164,9 @@ public class SurveyVisibilityResolver
             case AFTER_RESPONSE -> evaluateAfterResponse(row, viewerUserId);
             case AFTER_CLOSE -> evaluateAfterClose(row);
             case VIEWERS_ONLY -> evaluateViewersOnly(row, viewerUserId);
-            // ADMINS_ONLY は CUSTOM ではないため本来到達しない（Mapper で StandardVisibility へ正規化済）。
-            // 万一到達した場合は fail-closed。
-            case ADMINS_ONLY -> false;
+            // ADMINS_ONLY / ALWAYS は CUSTOM ではないため本来到達しない
+            // （Mapper で StandardVisibility へ正規化済）。万一到達した場合は fail-closed。
+            case ADMINS_ONLY, ALWAYS -> false;
         };
     }
 
