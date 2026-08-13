@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReminderStatus;
@@ -41,7 +42,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -185,7 +185,7 @@ public class ReservationGroupService {
         // Issue #2526: slot_date/start_time は業務ローカル時刻のため、Clock（UTC固定）の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する（ReservationPendingExpireService と同型）。
         LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-        if (!firstStartAt.isAfter(LocalDateTime.now(clock.withZone(ZoneId.systemDefault())))) {
+        if (!firstStartAt.isAfter(LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)))) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
 
@@ -366,7 +366,7 @@ public class ReservationGroupService {
             int deadlineHours = reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours();
             LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
             LocalDateTime deadline = firstStartAt.minusHours(deadlineHours);
-            if (LocalDateTime.now(clock.withZone(ZoneId.systemDefault())).isAfter(deadline)) {
+            if (LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)).isAfter(deadline)) {
                 throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
             }
             cancelledBy = CancelledBy.USER;

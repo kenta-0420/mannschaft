@@ -165,7 +165,11 @@
         "step4": "Ejecuta 'Sincronización manual' cuando quieras que los cambios se reflejen al instante"
       }
     },
-    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí."
+    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí.",
+    "todo_load_error": {
+      "summary": "No se pudieron cargar las tareas (TODO)",
+      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar mas tarde."
+    }
   },
   "scheduleKeep": {
     "title": "キープ",

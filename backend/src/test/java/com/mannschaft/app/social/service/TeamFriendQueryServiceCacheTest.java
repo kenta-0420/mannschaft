@@ -4,7 +4,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.config.RedisConfig;
-import com.mannschaft.app.social.dto.TeamFriendView;
 import com.mannschaft.app.social.entity.TeamFriendEntity;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -20,6 +19,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
@@ -32,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -124,8 +125,10 @@ class TeamFriendQueryServiceCacheTest {
         cacheManager = ctx.getBean(CacheManager.class);
 
         TeamFriendEntity friend = buildFriend(TEAM_ID, FRIEND_TEAM_ID, 1L, true);
-        when(CacheSliceConfig.FRIEND_REPO.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                anyLong(), anyLong(), any(Pageable.class))).thenReturn(List.of(friend));
+        when(CacheSliceConfig.FRIEND_REPO.findVisibleByTeamAIdOrTeamBId(
+                anyLong(), anyLong(), anyBoolean(), any(Pageable.class)))
+                .thenAnswer(inv -> new PageImpl<>(
+                        List.of(friend), inv.getArgument(3, Pageable.class), 1));
         when(CacheSliceConfig.TEAM_REPO.findById(anyLong()))
                 .thenReturn(Optional.of(TeamEntity.builder().name("フレンドチーム").build()));
     }
@@ -150,7 +153,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(TEAM_ID, USER_ID, pageable, false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(1))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     @Test
@@ -164,7 +167,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriendsResponse(TEAM_ID, USER_ID, pageable, false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(1))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     @Test
@@ -195,7 +198,7 @@ class TeamFriendQueryServiceCacheTest {
 
         // DB は 1 回（＝確かにキャッシュHITしている）
         verify(CacheSliceConfig.FRIEND_REPO, times(1))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
         // 認可は 2 回（＝キャッシュHITでも飛ばされていない）
         verify(CacheSliceConfig.ACCESS_CONTROL, times(2))
                 .checkMembership(USER_ID, TEAM_ID, SCOPE_TEAM);
@@ -230,7 +233,7 @@ class TeamFriendQueryServiceCacheTest {
                 .isInstanceOf(BusinessException.class);
 
         verify(CacheSliceConfig.FRIEND_REPO, never())
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     // ------------------------------------------------------------------
@@ -246,7 +249,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(TEAM_ID, OTHER_USER_ID, pageable, false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(2))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
         verify(CacheSliceConfig.ACCESS_CONTROL, times(1)).checkMembership(USER_ID, TEAM_ID, SCOPE_TEAM);
         verify(CacheSliceConfig.ACCESS_CONTROL, times(1)).checkMembership(OTHER_USER_ID, TEAM_ID, SCOPE_TEAM);
     }
@@ -260,7 +263,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(TEAM_ID, USER_ID, pageable, true);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(2))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     @Test
@@ -271,7 +274,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(TEAM_ID, USER_ID, PageRequest.of(0, 50), false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(3))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     @Test
@@ -283,7 +286,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(FRIEND_TEAM_ID, USER_ID, pageable, false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(2))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     // ------------------------------------------------------------------
@@ -297,23 +300,24 @@ class TeamFriendQueryServiceCacheTest {
         // 「プロセス内キャッシュでは動くが Valkey では毎回復元に失敗する」事故を検知できない。
         // そこで実際にサービスが生成したキャッシュ値を、本番の RedisConfig が組み立てた
         // シリアライザ（GenericJackson2JsonRedisSerializer + DefaultTyping.EVERYTHING）で往復させる。
-        List<TeamFriendView> cachedValue =
+        TeamFriendQueryService.CachedFriendPage cachedValue =
                 service.listFriendViews(TEAM_ID, USER_ID, PageRequest.of(0, 20), false);
 
         SerializationPair<Object> serializer =
                 new RedisConfig().redisCacheConfiguration().getValueSerializationPair();
 
         @SuppressWarnings("unchecked")
-        List<TeamFriendView> restored =
-                (List<TeamFriendView>) serializer.read(serializer.write(cachedValue));
+        TeamFriendQueryService.CachedFriendPage restored =
+                (TeamFriendQueryService.CachedFriendPage) serializer.read(serializer.write(cachedValue));
 
-        assertThat(restored)
+        assertThat(restored.content())
                 .as("戻り値のコレクション実装が復元不能だと（例: Stream#toList() の "
                         + "ImmutableCollections$ListN）、Valkey ではヒットのたびに復元が失敗し "
                         + "fail-open で握り潰されて『効かないキャッシュ』に戻る")
                 .hasSize(1);
-        assertThat(restored.get(0).getFriendTeamId()).isEqualTo(FRIEND_TEAM_ID);
-        assertThat(restored.get(0).isPublic()).isTrue();
+        assertThat(restored.content().get(0).getFriendTeamId()).isEqualTo(FRIEND_TEAM_ID);
+        assertThat(restored.content().get(0).isPublic()).isTrue();
+        assertThat(restored.totalElements()).isEqualTo(1L);
     }
 
     // ------------------------------------------------------------------
@@ -332,7 +336,7 @@ class TeamFriendQueryServiceCacheTest {
         service.listFriends(TEAM_ID, USER_ID, pageable, false);
 
         verify(CacheSliceConfig.FRIEND_REPO, times(2))
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(anyLong(), anyLong(), any(Pageable.class));
+                .findVisibleByTeamAIdOrTeamBId(anyLong(), anyLong(), anyBoolean(), any(Pageable.class));
     }
 
     @Test
@@ -344,8 +348,9 @@ class TeamFriendQueryServiceCacheTest {
         assertThat(before.getContent()).hasSize(1);
 
         // フレンド解除相当（DB からフレンドが消える）
-        when(CacheSliceConfig.FRIEND_REPO.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                anyLong(), anyLong(), any(Pageable.class))).thenReturn(List.of());
+        when(CacheSliceConfig.FRIEND_REPO.findVisibleByTeamAIdOrTeamBId(
+                anyLong(), anyLong(), anyBoolean(), any(Pageable.class)))
+                .thenAnswer(inv -> new PageImpl<>(List.of(), inv.getArgument(3, Pageable.class), 0));
 
         // 失効していなければ古い 1 件が返り続ける
         cacheManager.getCache("teamFriendList").clear();
@@ -360,8 +365,9 @@ class TeamFriendQueryServiceCacheTest {
         Pageable pageable = PageRequest.of(0, 20);
 
         service.listFriends(TEAM_ID, USER_ID, pageable, false);
-        when(CacheSliceConfig.FRIEND_REPO.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                anyLong(), anyLong(), any(Pageable.class))).thenReturn(List.of());
+        when(CacheSliceConfig.FRIEND_REPO.findVisibleByTeamAIdOrTeamBId(
+                anyLong(), anyLong(), anyBoolean(), any(Pageable.class)))
+                .thenAnswer(inv -> new PageImpl<>(List.of(), inv.getArgument(3, Pageable.class), 0));
 
         // clear() しない → キャッシュされた古い 1 件が返る
         var after = service.listFriends(TEAM_ID, USER_ID, pageable, false);

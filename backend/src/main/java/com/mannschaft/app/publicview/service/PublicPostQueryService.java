@@ -8,6 +8,7 @@ import com.mannschaft.app.cms.media.BlogMediaScope;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -37,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -403,6 +403,6 @@ public class PublicPostQueryService {
         if (ldt == null) {
             return null;
         }
-        return ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
     }
 }

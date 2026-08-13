@@ -29,13 +29,21 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_002: UNLISTED 村に非村人がアクセス（403） */
     VILLAGE_UNLISTED("VILLAGE_002", "この村は非公開です", Severity.WARN),
 
-    /** VILLAGE_003: 村名重複（400） */
+    /**
+     * VILLAGE_003: 村名重複（400）。設計書 {@code docs/features/F17.1_village_community.md} §10
+     * （L1369）に明記。兄弟の VILLAGE_008（NICKNAME_TAKEN）・VILLAGE_035
+     * （CREATION_REQUEST_SLUG_TAKEN）は 409 だが、村名重複はこの設計書で明示的に 400 と
+     * 宣言されているため、ErrorCode ステータス写像是正ロットHでは登録を見送り（既定 400 のまま）。
+     */
     VILLAGE_NAME_TAKEN("VILLAGE_003", "その村名はすでに使われています", Severity.WARN),
 
     /** VILLAGE_004: スラッグ形式不正（400） */
     VILLAGE_SLUG_INVALID("VILLAGE_004", "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）", Severity.WARN),
 
-    /** VILLAGE_005: スラッグ重複（400） */
+    /**
+     * VILLAGE_005: スラッグ重複（400）。設計書 {@code docs/features/F17.1_village_community.md} §10
+     * （L1371）に明記。同上の理由で登録を見送り（既定 400 のまま）。
+     */
     VILLAGE_SLUG_TAKEN("VILLAGE_005", "そのスラッグはすでに使われています", Severity.WARN),
 
     /** VILLAGE_006: すでに村人（409） */

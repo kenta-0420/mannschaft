@@ -74,6 +74,33 @@ public interface EscrowTransactionRepository
     Optional<EscrowTransactionEntity> findBySourceKindAndSourceIdAndSourceParticipantId(
             EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId);
 
+    /**
+     * 出所（source_kind）と複数の source_id に紐づく取引を<b>一括で</b>取得する。
+     *
+     * <p>一覧画面が「この行の受取先は誰か」を行ごとに問い合わせると、ページ内の件数ぶんの
+     * ラウンドトリップになる。本 finder は 1 往復で解決するためにある
+     * （{@link ConnectChargeService#filterPayeeSettlementManaged} が利用）。
+     * {@code source_participant_id} での絞り込みは呼び出し側がメモリ上で行う
+     * （組の数だけ OR 条件を並べるより、source_id の IN 一発の方が索引が効く）。</p>
+     */
+    List<EscrowTransactionEntity> findBySourceKindAndSourceIdIn(
+            EscrowSourceKind sourceKind, java.util.Collection<Long> sourceIds);
+
+    /**
+     * 受取側 Connect 口座の集合に紐づく取引の {@code source_id} を一括で取得する（重複排除済み）。
+     *
+     * <p>「操作者が受取先である募集はどれか」を escrow 側から引くための finder。
+     * 一覧の事前絞り込みを<b>権威（escrow）から導出する</b>ために使う。</p>
+     */
+    @Query("""
+            SELECT DISTINCT e.sourceId FROM EscrowTransactionEntity e
+            WHERE e.sourceKind = :sourceKind
+              AND e.payeeConnectAccountId IN :payeeConnectAccountIds
+            """)
+    List<Long> findSourceIdsBySourceKindAndPayeeConnectAccountIdIn(
+            @Param("sourceKind") EscrowSourceKind sourceKind,
+            @Param("payeeConnectAccountIds") java.util.Collection<UUID> payeeConnectAccountIds);
+
     /** テナント（organization_id）スコープの取引を取得する。 */
     List<EscrowTransactionEntity> findByOrganizationId(Long organizationId);
 

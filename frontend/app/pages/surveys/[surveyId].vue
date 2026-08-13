@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import type { SurveyDetailResponse } from '~/types/survey'
+import type { SurveyDetailResponse, SurveyResultSummary } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
+import {
+  isResultWithheldForAnonymityPrivacy,
+  MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+} from '~/utils/surveyResultPrivacy'
+import {
+  resolveSurveyDisplayMode,
+  shouldShowRespondCta,
+  type SurveyDisplayMode,
+} from '~/utils/surveyDisplayMode'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -15,7 +24,8 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
 const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
-const { getSurvey, publishSurvey, closeSurvey, deleteSurvey, addQuestion } = useSurveyApi()
+const { getSurvey, getResults, publishSurvey, closeSurvey, deleteSurvey, addQuestion } =
+  useSurveyApi()
 const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
@@ -143,22 +153,115 @@ const canViewResults = computed(() => {
   }
 })
 
-/** 表示モード判定 */
-type DisplayMode = 'response' | 'results' | 'closed-no-permission' | 'draft'
-const displayMode = computed<DisplayMode>(() => {
+/**
+ * 匿名＋リアルタイム公開かつ少数回答のとき、集計結果を伏せるか。
+ *
+ * 設計書 docs/features/F05.4_survey_vote.md §6 セキュリティ考慮事項の
+ * 「匿名 + リアルタイム結果のプライバシー制限」に準拠（判定と閾値は
+ * utils/surveyResultPrivacy.ts に集約。閾値は将来調整可能）。
+ *
+ * 権限（canViewResults）とは別軸のガードである。権限があっても、少数回答の匿名アンケートでは
+ * 「自分が回答した直後の集計の動き」から他人の回答が推測できてしまうため伏せる。
+ */
+const resultsWithheldForPrivacy = computed(() =>
+  isResultWithheldForAnonymityPrivacy({
+    isAnonymous: survey.value?.policy?.isAnonymous ?? false,
+    resultsVisibility: survey.value?.policy?.resultsVisibility,
+    responseCount: survey.value?.stats?.responseCount ?? 0,
+  }),
+)
+
+/**
+ * 自分が回答済みか。
+ *
+ * SurveyResponseForm へ `already-responded` として渡している既存の判定をそのまま使う
+ * （新しい仕組みを作らない）。実 BE は hasResponded を返さないため、useSurveyApi が
+ * 「自分の回答」の有無から導出して詰めている。
+ */
+const hasResponded = computed(
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.hasResponded ?? false,
+)
+
+/**
+ * サーバーが結果閲覧を許すか。
+ *
+ * `canViewResults` は `ALL_MEMBERS` を無条件に真とする FE の楽観判定だが、BE は `ALWAYS` の
+ * 閲覧範囲を配信母集団に限定している（設計書 L107-112）。`TARGETED` の名簿外や
+ * `includeSupporters=false` で除外された SUPPORTER には、結果パネルと回答導線が出るのに
+ * BE が拒否する「押せるのに必ず失敗する導線」が出ていた。
+ *
+ * 詳細応答には「この閲覧者が配信対象か」を示す項目が無いため（openapi.json の
+ * SurveyDetailResponse を確認済み）、**結果取得の 403 をサーバーの判定として扱う**。
+ */
+type ResultsAccess = 'unknown' | 'allowed' | 'forbidden'
+const resultsAccess = ref<ResultsAccess>('unknown')
+/** 結果閲覧可否の問い合わせ中（初期表示で結果パネルを一瞬見せないため loading に含める） */
+const probingResultsAccess = ref(false)
+/**
+ * 権限確認で得た集計結果。SurveyResultsPanel へ渡して**二重取得を避ける**。
+ *
+ * 捨ててしまうと、結果を閲覧できる全ユーザーの全表示で高コストな集計と転送が
+ * 必ず 2 回走る（プローブ＋パネルの mount）。
+ * 内容が古くなる場面（回答送信後・回答フォームへ移動）では null に戻し、
+ * パネルに取り直させる。
+ */
+const probedResults = ref<SurveyResultSummary[] | null>(null)
+
+async function probeResultsAccess() {
+  probingResultsAccess.value = true
+  try {
+    const res = await getResults(surveyId)
+    probedResults.value = res.data ?? []
+    resultsAccess.value = 'allowed'
+  } catch (e) {
+    const err = e as { statusCode?: number; response?: { status?: number } }
+    const status = err.statusCode ?? err.response?.status
+    // 403 のときだけ「権限が無い」と断定する。通信エラー等で過剰に塞がないため、
+    // それ以外は allowed として扱い、結果パネル側の再試行 UI に委ねる
+    // （このとき probedResults は null のままなのでパネルが自分で取りに行く）。
+    probedResults.value = null
+    resultsAccess.value = status === 403 ? 'forbidden' : 'allowed'
+  } finally {
+    probingResultsAccess.value = false
+  }
+}
+
+/** 回答フォームへ移る。集計は古くなるためプローブ結果を捨てる。 */
+function goToResponseForm() {
+  probedResults.value = null
+  responseRequested.value = true
+}
+
+/**
+ * 結果画面の回答導線が押されたか。
+ *
+ * ALL_MEMBERS は「未回答 MEMBER も結果画面に直接遷移できる」のが仕様のため、
+ * 結果画面を出したうえで、そこから回答フォームへ移れるようにする。
+ */
+const responseRequested = ref(false)
+
+/** 結果画面に回答導線を出すか（未回答、または複数回答可で回答済み）。 */
+const showRespondCta = computed(() =>
+  shouldShowRespondCta({
+    status: survey.value?.status,
+    hasResponded: hasResponded.value,
+    allowMultipleSubmissions: survey.value?.policy?.allowMultipleSubmissions ?? false,
+  }),
+)
+
+/** 表示モード判定（優先順位は utils/surveyDisplayMode.ts の純関数に集約） */
+const displayMode = computed<SurveyDisplayMode>(() => {
   const s = survey.value
   if (!s) return 'response'
-  // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
-  if (s.status === 'DRAFT') return 'draft'
-  // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
-  // 結果閲覧権限 (canViewResults) を持つユーザーは、回答可否より優先して結果画面を表示する。
-  // ALL_MEMBERS（誰でも閲覧可）の場合、未回答 MEMBER も結果画面に直接遷移できる。
-  if (canViewResults.value) return 'results'
-  // 結果閲覧不可の場合のフォールバック分岐。
-  // PUBLISHED: 未回答も回答済みも 'response'（SurveyResponseForm 側で「回答済み」表示へ）。
-  if (s.status === 'PUBLISHED') return 'response'
-  // CLOSED かつ結果閲覧権限なし → 非公開メッセージ。
-  return 'closed-no-permission'
+  return resolveSurveyDisplayMode({
+    status: s.status,
+    canViewResults: canViewResults.value,
+    resultsWithheldForPrivacy: resultsWithheldForPrivacy.value,
+    hasResponded: hasResponded.value,
+    allowMultipleSubmissions: s.policy?.allowMultipleSubmissions ?? false,
+    responseRequested: responseRequested.value,
+    resultsForbidden: resultsAccess.value === 'forbidden',
+  })
 })
 
 function statusClass(status: string): string {
@@ -255,7 +358,10 @@ function onDelete() {
 }
 
 async function onSubmitted() {
-  // 回答送信成功 → 詳細を再取得して表示モードを更新
+  // 回答送信成功 → 結果画面へ戻し、詳細を再取得して表示モードを更新
+  responseRequested.value = false
+  // 回答で集計が変わったのでプローブ結果は捨て、パネルに取り直させる
+  probedResults.value = null
   await fetchDetail()
 }
 
@@ -268,13 +374,18 @@ onMounted(async () => {
       bulletinThread.value = thread
     }),
   ])
+  // 詳細と権限が揃ってから、結果を出す可能性がある場合だけサーバーの判定を仰ぐ。
+  // （FE の楽観判定で結果パネル・回答導線を出してしまわないため）
+  if (canViewResults.value) {
+    await probeResultsAccess()
+  }
 })
 </script>
 
 <template>
   <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
     <!-- ローディング -->
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="loading || probingResultsAccess" />
 
     <!-- 取得失敗 -->
     <div
@@ -415,7 +526,7 @@ onMounted(async () => {
       <SurveyResponseForm
         v-else-if="displayMode === 'response'"
         :survey="survey"
-        :already-responded="(survey as SurveyDetailResponse['data']).hasResponded ?? false"
+        :already-responded="hasResponded"
         :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
         data-testid="survey-mode-response"
         @submitted="onSubmitted"
@@ -432,7 +543,73 @@ onMounted(async () => {
         v-else-if="displayMode === 'results'"
         data-testid="survey-mode-results"
       >
-        <SurveyResultsPanel :survey-id="survey.id" />
+        <!-- ALL_MEMBERS は未回答者も結果画面に直接来るため、ここから回答できる導線が要る。
+             これが無いと未回答者が結果画面に固定され、UI から回答を集めきれない。 -->
+        <div
+          v-if="showRespondCta"
+          class="mb-4 flex justify-end"
+        >
+          <Button
+            :label="
+              hasResponded
+                ? t('surveys.results.editResponseCta')
+                : t('surveys.results.respondCta')
+            "
+            icon="pi pi-pencil"
+            data-testid="survey-respond-cta"
+            @click="goToResponseForm"
+          />
+        </div>
+        <SurveyResultsPanel :survey-id="survey.id" :initial-results="probedResults" />
+      </div>
+
+      <!-- 匿名＋リアルタイム＋少数回答のプライバシーガード（設計書 §6）。
+           権限はあるが集計を伏せる状態。黙って空にせず理由を明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-withheld-privacy'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-withheld-privacy"
+      >
+        <i class="pi pi-shield text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.withheldForPrivacy.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{
+            t('surveys.results.withheldForPrivacy.description', {
+              threshold: MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+              count: survey.stats?.responseCount ?? 0,
+            })
+          }}
+        </p>
+        <!-- 集計は伏せていても回答（および複数回答可なら修正）はできる -->
+        <Button
+          v-if="showRespondCta"
+          :label="
+            hasResponded ? t('surveys.results.editResponseCta') : t('surveys.results.respondCta')
+          "
+          icon="pi pi-pencil"
+          class="mt-2"
+          data-testid="survey-respond-cta"
+          @click="goToResponseForm"
+        />
+      </div>
+
+      <!-- 配信対象外（サーバーが結果閲覧を拒否）。
+           FE の楽観判定で結果パネルや回答導線を出すと「押せるのに必ず失敗する」ため、
+           黙って空にせず権限が無いことを明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-forbidden'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-forbidden"
+      >
+        <i class="pi pi-lock text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.forbidden.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{ t('surveys.results.forbidden.description') }}
+        </p>
       </div>
 
       <!-- 結果非公開（締切＆権限なし） -->

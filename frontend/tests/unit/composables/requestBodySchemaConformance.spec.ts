@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createPinia, setActivePinia } from 'pinia'
+import type { ResultsVisibility } from '~/types/survey'
 
 /**
  * 送信ボディ ↔ BE スキーマ 整合性テスト（再発防止の番人）。
@@ -35,6 +36,11 @@ interface SchemaProperty {
   type?: string
   format?: string
   minLength?: number
+  /**
+   * 許可値。BE の DTO が enum 型になった（Issue #2635）ことで openapi.json に出るようになった。
+   * FE 独自の値をそのまま送ると 400 になるため、送信値がこの中にあることを検査する。
+   */
+  enum?: string[]
   $ref?: string
   items?: SchemaProperty
 }
@@ -127,6 +133,17 @@ function assertConformsToSchema(schemaName: string, body: unknown, path = schema
       ).toBe(false)
     }
 
+    // enum は BE の許可値そのもの。FE ドメイン値（'TEXT' / 'ALL_MEMBERS' 等）を
+    // 翻訳し忘れて送ると 400 になるため、翻訳漏れをここで捕まえる。
+    if (prop?.enum && prop.enum.length > 0) {
+      expect(
+        prop.enum.includes(String(value)),
+        `${path}.${key} ('${String(value)}') は BE の enum に無い値。400 になる。` +
+          ` FE ドメイン値を BE 値へ翻訳し忘れていないか確認すること。` +
+          ` （許可: ${prop.enum.join(', ')}）`,
+      ).toBe(true)
+    }
+
     const nested = refName(prop)
     if (nested) {
       if (Array.isArray(value)) {
@@ -141,9 +158,13 @@ function assertConformsToSchema(schemaName: string, body: unknown, path = schema
 // --- 本番コードの読み込み（いずれも実物。spec 内に複製は作らない） ---
 // dayjs の utc / timezone プラグインは本番と同じくプラグインモジュールの副作用で適用する。
 await import('~/plugins/dayjs')
-const { toWireCreateBody, toWireUpdateBody, toWireQuestion } = await import(
-  '~/composables/useSurveyApi'
-)
+const {
+  toWireCreateBody,
+  toWireUpdateBody,
+  toWireQuestion,
+  mapResultsVisibilityToBe,
+  isQuestionTypeSupportedByBackend,
+} = await import('~/composables/useSurveyApi')
 const { buildBlogPublishBody } = await import('~/composables/useBlogApi')
 const { buildDigestPeriod } = await import('~/composables/useTimelineDigestApi')
 const { useDatetime } = await import('~/composables/useDatetime')
@@ -209,15 +230,34 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
       expect(qs[1]?.questionType).toBe('SCALE')
     })
 
-    it('結果公開範囲は BE の enum 値へ翻訳される', () => {
-      const be = (fe: 'RESPONDENTS' | 'AFTER_CLOSE' | 'CREATOR_ONLY' | 'ALL_MEMBERS') =>
+    it('結果公開範囲は BE の enum 値へ 1:1 で翻訳される', () => {
+      const be = (fe: ResultsVisibility) =>
         (toWireCreateBody({ title: 't', resultsVisibility: fe }) as Record<string, unknown>)
           .resultsVisibility
       expect(be('RESPONDENTS')).toBe('AFTER_RESPONSE')
       expect(be('AFTER_CLOSE')).toBe('AFTER_CLOSE')
       expect(be('CREATOR_ONLY')).toBe('ADMINS_ONLY')
-      // BE に対応値が無い ALL_MEMBERS（旧下書きの復元経路）は最も閉じた値へ倒す
-      expect(be('ALL_MEMBERS')).toBe('ADMINS_ONLY')
+      // Issue #2635 で BE に ALWAYS が実装されたため、ALL_MEMBERS を ADMINS_ONLY へ
+      // 潰していた旧写像を改めた（潰していた頃は「常時公開」の結果が誰にも見えなかった）。
+      expect(be('ALL_MEMBERS')).toBe('ALWAYS')
+      expect(be('VIEWERS_ONLY')).toBe('VIEWERS_ONLY')
+    })
+
+    it('FE→BE→FE の往復で値が化けない（Issue #2617-2 の往復損失）', () => {
+      // 2 対 1 の畳み込みがあると、読み込んで更新しただけで公開範囲が別物になる。
+      const all: ResultsVisibility[] = [
+        'CREATOR_ONLY',
+        'RESPONDENTS',
+        'ALL_MEMBERS',
+        'AFTER_CLOSE',
+        'VIEWERS_ONLY',
+      ]
+      const beValues = all.map((fe) => mapResultsVisibilityToBe(fe))
+      // 単射（どの 2 つの FE 値も同じ BE 値に潰れない）
+      expect(new Set(beValues).size).toBe(all.length)
+      // BE が実際に受け付ける値だけを使っている
+      const allowed = schemaOf('CreateSurveyRequest').properties?.resultsVisibility?.enum ?? []
+      for (const v of beValues) expect(allowed).toContain(v)
     })
   })
 
@@ -339,6 +379,33 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
       )
     })
 
+    /**
+     * 旧下書き（localStorage）の復元で 'DATE' が復活しうる経路の回帰テスト。
+     *
+     * かつて 'DATE' を黙って 'FREE_TEXT' へ寄せていたため、日付設問が「自由記述」として
+     * **正常に保存されてしまい**、ユーザーは種別が書き換わったことに気づけなかった。
+     * （それ以前は BE が 400 で弾いたので「保存できなかった」と分かった。）
+     * 黙って別物にせず、明示的に拒否すること。
+     */
+    it('DATE は黙って FREE_TEXT に化けず、明示的に拒否される', () => {
+      expect(isQuestionTypeSupportedByBackend('DATE')).toBe(false)
+      // 他の種別は当然サポートされている（巻き添えで塞いでいないこと）
+      expect(isQuestionTypeSupportedByBackend('TEXT')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('RATING')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('SINGLE_CHOICE')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('MULTIPLE_CHOICE')).toBe(true)
+
+      // 検証をすり抜けて送信経路に入った場合は例外で止まる（黙って変換しない）
+      expect(() =>
+        toWireQuestion({
+          questionText: '日付を選んでください',
+          questionType: 'DATE',
+          isRequired: true,
+          sortOrder: 1,
+        }),
+      ).toThrow(/DATE/)
+    })
+
     it('作成経路と同じ翻訳を通る（FREE_TEXT / displayOrder）', () => {
       const wire = toWireQuestion({
         questionText: 'q',
@@ -398,6 +465,34 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
           periodEnd: '2026-07-31',
         }),
       ).toThrow(/日付のみ/)
+    })
+
+    it('enum に無い値を検出する（FE 値 ALL_MEMBERS の翻訳漏れ）', () => {
+      // BE の ResultsVisibility に 'ALL_MEMBERS' は無い（対応するのは 'ALWAYS'）。
+      // FE ドメイン値をそのまま送ってしまう事故を捕まえる。
+      expect(() =>
+        assertConformsToSchema('CreateSurveyRequest', {
+          title: 't',
+          isAnonymous: false,
+          allowMultipleSubmissions: false,
+          distributionMode: 'ALL',
+          resultsVisibility: 'ALL_MEMBERS',
+        }),
+      ).toThrow(/enum に無い値/)
+    })
+
+    it('入れ子（questions[]）の中の enum 違反も検出する（FE 値 TEXT の翻訳漏れ）', () => {
+      // BE の QuestionType は 'FREE_TEXT'。FE ドメイン値 'TEXT' のまま送ると 400。
+      expect(() =>
+        assertConformsToSchema('CreateSurveyRequest', {
+          title: 't',
+          isAnonymous: false,
+          allowMultipleSubmissions: false,
+          distributionMode: 'ALL',
+          resultsVisibility: 'AFTER_RESPONSE',
+          questions: [{ questionText: 'q', questionType: 'TEXT', isRequired: true, displayOrder: 1 }],
+        }),
+      ).toThrow(/questions\[0\]\.questionType.*enum に無い値/)
     })
 
     it('入れ子（questions[]）の中の不正も検出する', () => {
