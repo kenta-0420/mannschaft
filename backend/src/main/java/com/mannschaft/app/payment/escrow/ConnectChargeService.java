@@ -70,7 +70,33 @@ public class ConnectChargeService {
     // 第一陣 status 意味論の根治: AUTHORIZED の hold 失効基準（最大7日）は、与信が真に立つ webhook
     // （amount_capturable_updated）昇格時に刻むため EscrowWebhookService 側へ移設した（authorize 時には立てない）。
 
-    /** TEAM/ORG scope ADMIN 判定に用いる権限名（Connect onboarding と同等の管理権限）。 */
+    /**
+     * TEAM/ORG scope の受取管理者判定に用いる権限名（Connect onboarding と同等の管理権限）。
+     *
+     * <p><b>カタログ登録:</b> 本権限は {@code V183.20260813045816__add_manage_recruitments_permission.sql}
+     * で {@code permissions} へ登録し、{@code role_permissions} で ADMIN へ {@code is_default=1} 付与する
+     * （F03.11 §13「ADMIN: 自動付与 / DEPUTY_ADMIN: 手動付与」）。カタログに行が無いと
+     * TEAM 経路（{@link AccessControlService#checkPermission}）の判定が成立しないため、
+     * 本定数の値を変更する場合は必ず対応するマイグレーションを伴わせること。</p>
+     *
+     * <p><b>TEAM と ORG で呼び分けている理由（非対称の根拠）:</b>
+     * {@link AccessControlService#checkAdminOrHasPermission} は ORGANIZATION スコープ専用で、
+     * TEAM を渡すと {@link IllegalArgumentException} を投げる契約である（同メソッド javadoc・
+     * {@code docs/features/F22.1_market/04_security.md} §1.1）。そのため TEAM は
+     * {@link AccessControlService#checkPermission} を用いるが、<b>両者の判定結果は一致する</b>:</p>
+     * <ul>
+     *   <li>ORG: ADMIN は無条件許可、DEPUTY_ADMIN は {@code is_default=1} の role_permissions または
+     *       permission_groups 付与がある場合のみ許可。</li>
+     *   <li>TEAM: {@code RoleService.hasPermission}（role_permissions ∪ permission_groups）。
+     *       ADMIN は上記マイグレーションの {@code is_default=1} 行で許可され、DEPUTY_ADMIN は
+     *       permission_groups で個別付与された場合のみ許可される。</li>
+     * </ul>
+     *
+     * <p><b>不変条件:</b> 本権限を DEPUTY_ADMIN の {@code role_permissions} へ（{@code is_default} の値に
+     * かかわらず）登録してはならない。TEAM 経路の {@code hasPermission} は {@code is_default} で絞らないため、
+     * 個別付与されていない DEPUTY_ADMIN 全員へ黙って権限が渡ってしまう。
+     * この不変条件は {@code ManageRecruitmentsPermissionFlywayIT} で機械的に検証している。</p>
+     */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
     private final EscrowTransactionRepository escrowTransactionRepository;
@@ -1353,6 +1379,10 @@ public class ConnectChargeService {
      * に対して {@link AccessControlService} を適用する。口座が解決できない（無関係 escrow）場合は 404 秘匿。
      * USER 受領（個人）は scope 認可の対象外（本人固定）であり、本波の返金 API では USER 受領の明示返金は
      * 提供しないため拒否する（IDOR 秘匿のため 404）。認可エラーは {@link ConnectPaymentErrorCode#PAYMENT_FORBIDDEN}。</p>
+     *
+     * <p><b>TEAM と ORG で {@link AccessControlService} の呼び分けが異なる点について:</b>
+     * 呼ぶメソッドは違うが判定結果は「当該 scope の ADMIN、または {@link #PERMISSION_MANAGE_PAYMENT} を
+     * 個別付与された DEPUTY_ADMIN」で一致する。理由と根拠は {@link #PERMISSION_MANAGE_PAYMENT} の javadoc を参照。</p>
      */
     private void authorizePayeeAdmin(EscrowTransactionEntity escrow, Long actorUserId) {
         ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())

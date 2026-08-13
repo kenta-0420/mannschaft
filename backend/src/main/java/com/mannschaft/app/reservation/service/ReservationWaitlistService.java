@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -27,7 +28,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,7 +111,7 @@ public class ReservationWaitlistService {
         // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する。
         LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(ZoneId.systemDefault())))) {
+        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)))) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。
@@ -344,7 +344,7 @@ public class ReservationWaitlistService {
     public int purgeExpiredWaiting() {
         // Issue #2526: 枠開始（slot_date/start_time・業務ローカル時刻）と比較するため、
         // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（register と同型）。
-        LocalDateTime now = LocalDateTime.now(clock.withZone(ZoneId.systemDefault()));
+        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
         List<ReservationWaitlistEntryEntity> expired = waitlistRepository.findExpiredWaiting(
                 WaitlistStatus.WAITING, now.toLocalDate(), now.toLocalTime());
         if (expired.isEmpty()) {
