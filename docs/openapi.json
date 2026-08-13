@@ -122206,7 +122206,7 @@
           "F03.11.1 募集キャンセル料"
         ],
         "summary": "キャンセル料記録の一覧",
-        "description": "受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。",
+        "description": "受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。",
         "operationId": "list_83",
         "parameters": [
           {
@@ -122229,13 +122229,11 @@
             }
           },
           {
-            "name": "page",
+            "name": "cursor",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
+              "type": "string"
             }
           },
           {
@@ -122245,7 +122243,9 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
             }
           }
         ],
@@ -122255,7 +122255,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseRecruitmentCancellationRecordSummaryResponse"
+                  "$ref": "#/components/schemas/CursorPagedResponseRecruitmentCancellationRecordSummaryResponse"
                 }
               }
             }
@@ -219380,7 +219380,7 @@
           }
         }
       },
-      "PagedResponseRecruitmentCancellationRecordSummaryResponse": {
+      "CursorPagedResponseRecruitmentCancellationRecordSummaryResponse": {
         "type": "object",
         "properties": {
           "data": {
@@ -219390,7 +219390,7 @@
             }
           },
           "meta": {
-            "$ref": "#/components/schemas/PageMeta"
+            "$ref": "#/components/schemas/CursorMeta"
           }
         }
       },

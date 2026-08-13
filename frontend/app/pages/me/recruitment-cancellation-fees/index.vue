@@ -13,6 +13,7 @@
  * 行が読み飛ばされる。「もっと見る」で nextCursor を辿って積み増す形にしている。
  */
 import { onMounted, ref } from 'vue'
+import { formatDateTime } from '~/utils/eventFormat'
 import type { RecruitmentCancellationRecordSummary } from '~/types/recruitment'
 
 definePageMeta({ middleware: 'auth' })
@@ -139,7 +140,8 @@ onMounted(() => load())
           <div class="text-sm text-surface-500">
             {{ t('recruitment.cancellationFeeWaive.columns.user') }}: {{ userLabel(record) }}
             /
-            {{ t('recruitment.cancellationFeeWaive.columns.cancelledAt') }}: {{ record.cancelledAt }}
+            {{ t('recruitment.cancellationFeeWaive.columns.cancelledAt') }}:
+            {{ formatDateTime(record.cancelledAt) }}
           </div>
           <div class="mt-1 flex items-center gap-2">
             <Tag :value="statusLabel(record.paymentStatus)" />

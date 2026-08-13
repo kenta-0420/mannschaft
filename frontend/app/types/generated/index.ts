@@ -36766,7 +36766,7 @@ export interface paths {
         };
         /**
          * キャンセル料記録の一覧
-         * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。
+         * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。
          */
         get: operations["list_83"];
         put?: never;
@@ -73963,9 +73963,9 @@ export interface components {
             isActive?: boolean;
             nameI18nKey?: string;
         };
-        PagedResponseRecruitmentCancellationRecordSummaryResponse: {
+        CursorPagedResponseRecruitmentCancellationRecordSummaryResponse: {
             data?: components["schemas"]["RecruitmentCancellationRecordSummaryResponse"][];
-            meta?: components["schemas"]["PageMeta"];
+            meta?: components["schemas"]["CursorMeta"];
         };
         RecruitmentCancellationRecordSummaryResponse: {
             /** Format: date-time */
@@ -150460,7 +150460,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
-                page?: number;
+                cursor?: string;
                 size?: number;
             };
             header?: never;
@@ -150475,7 +150475,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseRecruitmentCancellationRecordSummaryResponse"];
+                    "*/*": components["schemas"]["CursorPagedResponseRecruitmentCancellationRecordSummaryResponse"];
                 };
             };
         };
