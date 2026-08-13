@@ -1995,7 +1995,168 @@ public class GlobalExceptionHandler {
             Map.entry("EQUIPMENT_005", HttpStatus.CONFLICT),             // NOT_CONSUMABLE（備品種別と操作の不整合）
             Map.entry("EQUIPMENT_008", HttpStatus.CONFLICT),             // HAS_ACTIVE_ASSIGNMENTS
             Map.entry("EQUIPMENT_009", HttpStatus.NOT_FOUND),            // SCOPE_MISMATCH（越境は存在秘匿）
-            Map.entry("EQUIPMENT_014", HttpStatus.CONFLICT)              // ITEM_NOT_AVAILABLE
+            Map.entry("EQUIPMENT_014", HttpStatus.CONFLICT),             // ITEM_NOT_AVAILABLE
+
+            // ErrorCode ステータス写像是正ロットH: 残り未登録 enum の一括是正。
+            // throw 元の実コードを確認し、not-found/存在秘匿は 404、状態競合は 409、
+            // 認可拒否は 403 に個別上書きする（既定 400 が妥当な入力検証・上限超過はそのまま）。
+
+            // F04.4 LINE/SNS 連携（LineErrorCode）: 重複登録・連携不在の残り。
+            Map.entry("LINE_002", HttpStatus.CONFLICT),                  // BOT_CONFIG_ALREADY_EXISTS
+            Map.entry("LINE_005", HttpStatus.NOT_FOUND),                 // USER_LINE_CONNECTION_NOT_FOUND
+            Map.entry("LINE_006", HttpStatus.CONFLICT),                  // USER_LINE_ALREADY_CONNECTED
+            Map.entry("LINE_008", HttpStatus.CONFLICT),                  // SNS_FEED_CONFIG_DUPLICATE
+
+            // F08.8 修繕計画（RepairPlanErrorCode）カンバン/申し送りパックの状態競合。
+            Map.entry("REPAIR_PLAN_015", HttpStatus.CONFLICT),           // COMPLIANCE_EXPIRED（反社チェック期限切れ）
+            Map.entry("REPAIR_PLAN_016", HttpStatus.CONFLICT),           // INVALID_STAGE_TRANSITION
+            Map.entry("REPAIR_PLAN_023", HttpStatus.CONFLICT),           // PACK_NOT_READY（生成中）
+            // REPAIR_PLAN_CSV_001 は import token 未入力（400 相当）とプレビュー期限切れ（404 相当）の
+            // 異なる意味で同一コードから投げられているため変更を見送る
+            // （RepairPlanItemCsvService.java:195-196 / 201-202 実測）。
+
+            // F03.6 緊急安否確認（SafetyCheckErrorCode）の残り未登録分。
+            Map.entry("SAFETY_002", HttpStatus.CONFLICT),                // SAFETY_CHECK_ALREADY_CLOSED
+            Map.entry("SAFETY_003", HttpStatus.CONFLICT),                // ALREADY_RESPONDED
+            Map.entry("SAFETY_007", HttpStatus.NOT_FOUND),               // PRESET_NOT_FOUND（兄弟 TEMPLATE_NOT_FOUND=SAFETY_006 と同流儀）
+            Map.entry("SAFETY_009", HttpStatus.NOT_FOUND),               // RESPONSE_NOT_FOUND
+            Map.entry("SAFETY_011", HttpStatus.CONFLICT),                // REMIND_TOO_FREQUENT（クールダウン未経過）
+
+            // F09.8 コルクボード（CorkboardErrorCode）の残り未登録分。
+            Map.entry("CORKBOARD_002", HttpStatus.NOT_FOUND),            // CARD_NOT_FOUND
+            Map.entry("CORKBOARD_003", HttpStatus.NOT_FOUND),            // GROUP_NOT_FOUND
+            Map.entry("CORKBOARD_006", HttpStatus.CONFLICT),             // CARD_ALREADY_IN_GROUP
+            Map.entry("CORKBOARD_007", HttpStatus.NOT_FOUND),            // CARD_NOT_IN_GROUP（findByCardAndGroup の解決失敗）
+
+            // インシデント・メンテナンス管理（IncidentErrorCode）の残り未登録分。
+            Map.entry("INCIDENT_003", HttpStatus.FORBIDDEN),             // アクセス権限がありません
+            Map.entry("INCIDENT_004", HttpStatus.CONFLICT),              // ステータス遷移不許可
+            Map.entry("INCIDENT_005", HttpStatus.CONFLICT),              // バージョン不一致（楽観ロック）
+            Map.entry("INCIDENT_007", HttpStatus.NOT_FOUND),             // コメントが見つからない
+            Map.entry("INCIDENT_008", HttpStatus.NOT_FOUND),             // 担当者が見つからない
+
+            // F13.1 求人マッチング（JobmatchingErrorCode）の残り未登録分（状態競合のみ）。
+            Map.entry("JOB_NOT_OPEN", HttpStatus.CONFLICT),
+            Map.entry("JOB_DEADLINE_PASSED", HttpStatus.CONFLICT),
+            Map.entry("JOB_APPLICATION_NOT_PENDING", HttpStatus.CONFLICT),
+            // JOB_CANNOT_APPLY_SELF は入力制約寄りか認可寄りか判断が割れるため見送り（既定 400 のまま）。
+
+            // F03.3 Google Calendar同期・iCal配信（GoogleCalendarErrorCode）の残り未登録分。
+            // GCAL_010（CALENDAR_SYNC_SCOPE_NOT_FOUND）と同じ IDOR 対策方針で未連携/不在は 404 に揃える。
+            Map.entry("GCAL_001", HttpStatus.NOT_FOUND),                 // GOOGLE_CALENDAR_NOT_CONNECTED（兄弟 AUTH_029 と同流儀）
+            Map.entry("GCAL_002", HttpStatus.CONFLICT),                  // GOOGLE_CALENDAR_INACTIVE
+            Map.entry("GCAL_005", HttpStatus.NOT_FOUND),                 // ICAL_TOKEN_NOT_FOUND
+            Map.entry("GCAL_006", HttpStatus.NOT_FOUND),                 // ICAL_TOKEN_INVALID（公開iCalフィードの秘匿）
+            Map.entry("GCAL_007", HttpStatus.NOT_FOUND),                 // SYNC_SETTING_NOT_FOUND
+            // GCAL_003/004 は外部API呼び出し失敗（Severity.ERROR 既定の 500 が妥当）のため変更なし。
+
+            // F03.10 年間行事計画（ScheduleEventCategoryErrorCode、コード文字列は EVTCAT_xxx）。
+            Map.entry("EVTCAT_001", HttpStatus.NOT_FOUND),               // CATEGORY_NOT_FOUND
+            Map.entry("EVTCAT_002", HttpStatus.CONFLICT),                // DUPLICATE_CATEGORY_NAME
+            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿）
+            Map.entry("EVTCAT_021", HttpStatus.NOT_FOUND),               // ANNUAL_COPY_SOURCE_NOT_FOUND
+            Map.entry("EVTCAT_022", HttpStatus.CONFLICT),                // ANNUAL_COPY_CONFLICT
+
+            // 多言語翻訳機能（TranslationErrorCode）の残り未登録分。
+            Map.entry("TRANSLATION_001", HttpStatus.NOT_FOUND),          // 翻訳設定が見つからない
+            Map.entry("TRANSLATION_004", HttpStatus.CONFLICT),           // 同一原文・同一言語の翻訳が既に存在
+            Map.entry("TRANSLATION_005", HttpStatus.CONFLICT),           // ステータス遷移不許可
+            Map.entry("TRANSLATION_006", HttpStatus.FORBIDDEN),          // アクセス権限がありません
+            Map.entry("TRANSLATION_007", HttpStatus.CONFLICT),           // バージョン不一致（楽観ロック）
+            Map.entry("TRANSLATION_008", HttpStatus.NOT_FOUND),          // 言語のアサインがない
+
+            // F10.1 管理基盤機能（AdminErrorCode）。SYSTEM_ADMIN 限定コンソールだが not-found/状態競合は素直に是正。
+            Map.entry("ADMIN_001", HttpStatus.NOT_FOUND),                // FEATURE_FLAG_NOT_FOUND
+            Map.entry("ADMIN_002", HttpStatus.CONFLICT),                 // FEATURE_FLAG_KEY_DUPLICATE
+            Map.entry("ADMIN_003", HttpStatus.NOT_FOUND),                // MAINTENANCE_NOT_FOUND
+            Map.entry("ADMIN_004", HttpStatus.CONFLICT),                 // INVALID_MAINTENANCE_STATUS（状態遷移）
+            Map.entry("ADMIN_006", HttpStatus.NOT_FOUND),                // BATCH_JOB_LOG_NOT_FOUND
+
+            // F05.1 掲示板（BulletinErrorCode）の残り未登録分。
+            Map.entry("BULLETIN_012", HttpStatus.CONFLICT),              // PARENT_REPLY_MISMATCH（兄弟 BULLETIN_020 と同流儀）
+            Map.entry("BULLETIN_025", HttpStatus.NOT_FOUND),             // ATTACHMENT_TARGET_NOT_FOUND
+
+            // 会員台帳カスタムフィールド（MemberInfoErrorCode）の残り未登録分。
+            Map.entry("MEMBER_INFO_001", HttpStatus.NOT_FOUND),          // FIELD_NOT_FOUND
+            Map.entry("MEMBER_INFO_006", HttpStatus.CONFLICT),           // INACTIVE_FIELD_UPDATE
+
+            // F04.5 通報・モデレーション機能（ModerationErrorCode）。
+            Map.entry("MODERATION_001", HttpStatus.NOT_FOUND),           // REPORT_NOT_FOUND
+            Map.entry("MODERATION_002", HttpStatus.CONFLICT),            // REPORT_ALREADY_EXISTS
+            Map.entry("MODERATION_004", HttpStatus.CONFLICT),            // INVALID_REPORT_STATUS
+            Map.entry("MODERATION_005", HttpStatus.NOT_FOUND),           // REPORT_TARGET_NOT_FOUND
+            // MODERATION_003（自分のコンテンツは通報不可）は入力制約寄りのため見送り（既定 400 のまま）。
+
+            // F04.9 確認通知システム（ConfirmableNotificationErrorCode）の残り未登録分。
+            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENT_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CANCELLED", HttpStatus.CONFLICT),
+            Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
+            Map.entry("CONFIRMABLE_NOTIFICATION_INVALID_TOKEN", HttpStatus.NOT_FOUND), // 確認トークンの秘匿
+            // CONFIRMABLE_NOTIFICATION_SEND_FAILED は外部送信失敗（Severity.ERROR 既定の 500）のため変更なし。
+
+            // F04.6 グローバル検索（SearchErrorCode）の残り未登録分。
+            Map.entry("SEARCH_003", HttpStatus.NOT_FOUND),               // SAVED_QUERY_NOT_FOUND
+            Map.entry("SEARCH_004", HttpStatus.NOT_FOUND),               // HISTORY_NOT_FOUND
+
+            // F01.5 サポーター申請・管理機能（SupporterErrorCode）の残り未登録分。
+            Map.entry("SUPPORTER_001", HttpStatus.CONFLICT),             // 既にサポーター申請済み
+            Map.entry("SUPPORTER_002", HttpStatus.CONFLICT),             // 既にサポーターとして登録済み
+            Map.entry("SUPPORTER_004", HttpStatus.CONFLICT),             // 申請は既に処理済み
+            Map.entry("SUPPORTER_005", HttpStatus.FORBIDDEN),            // ブロックされているため申請不可
+            Map.entry("SUPPORTER_006", HttpStatus.FORBIDDEN),            // サポーター機能が無効（兄弟 MEMBERSHIP_SUPPORTER_DISABLED と同流儀）
+
+            // F01.3 テンプレート・モジュール管理機能（TemplateErrorCode）の残り未登録分。
+            Map.entry("TMPL_001", HttpStatus.NOT_FOUND),                 // テンプレートが見つからない（兄弟 TMPL_002 と同流儀）
+            Map.entry("TMPL_006", HttpStatus.CONFLICT),                  // DEFAULTモジュールは設定変更不可
+            // TMPL_004/005（プラン/レベル制限）は課金ゲートの意味づけが割れるため見送り（既定 400 のまま）。
+
+            // F05.2 回覧板（CirculationErrorCode）: 兄弟 EVENT_033/SCHEDULE_073（自己代理禁止）と同流儀で 422。
+            Map.entry("CIRCULATION_017", HttpStatus.UNPROCESSABLE_ENTITY), // SELF_DELEGATION_NOT_ALLOWED
+
+            // ナビゲーション設定（NavSettingsErrorCode）。
+            Map.entry("NAV_SETTINGS_001", HttpStatus.CONFLICT),          // 固定ナビ項目は変更・削除不可
+            Map.entry("NAV_SETTINGS_002", HttpStatus.CONFLICT),          // 固定ナビ項目は非表示不可
+            Map.entry("NAV_SETTINGS_003", HttpStatus.CONFLICT),          // キー重複
+            Map.entry("NAV_SETTINGS_004", HttpStatus.NOT_FOUND),         // ナビ項目が見つからない
+
+            // F09.13 通知プリペイドクレジット機能（NotificationCreditErrorCode）。
+            Map.entry("NC_001", HttpStatus.NOT_FOUND),                   // CREDIT_PACKAGE_NOT_FOUND
+            Map.entry("NC_002", HttpStatus.PAYMENT_REQUIRED),            // CREDIT_INSUFFICIENT（残高不足・課金ゲート）
+            Map.entry("NC_003", HttpStatus.NOT_FOUND),                   // PURCHASE_NOT_FOUND
+            // NC_004（Stripe Checkout Session 作成失敗）は Severity.ERROR 既定の 500 のため変更なし。
+
+            // 村コミュニティ機能（VillageErrorCode）の残り未登録分（名称重複のみ）。
+            Map.entry("VILLAGE_003", HttpStatus.CONFLICT),               // VILLAGE_NAME_TAKEN
+            Map.entry("VILLAGE_005", HttpStatus.CONFLICT),               // VILLAGE_SLUG_TAKEN
+            // VILLAGE_004/029 は入力形式バリデーションのため変更なし（既定 400 のまま）。
+
+            // ユーザーブロック機能（UserErrorCode）。
+            Map.entry("USER_001", HttpStatus.CONFLICT),                  // 既にブロック済み
+            Map.entry("USER_002", HttpStatus.NOT_FOUND),                 // ブロックが見つからない
+            // USER_003（自分自身はブロック不可）は入力制約寄りのため見送り（既定 400 のまま）。
+
+            // 施設機能（VenueErrorCode）。
+            Map.entry("VENUE_001", HttpStatus.NOT_FOUND),                // 指定された施設が見つからない
+            // VENUE_002 は外部API（Google Places）呼び出し失敗（Severity.ERROR 既定の 500）のため変更なし。
+
+            // F15.2 マイスコープフォルダ機能（ScopeFolderErrorCode）の残り未登録分。
+            Map.entry("SCOPE_FOLDER_TYPE_MISMATCH", HttpStatus.CONFLICT),
+            Map.entry("SCOPE_FOLDER_DEFAULT_IMMUTABLE", HttpStatus.CONFLICT),
+
+            // F12.5 障害告知バナー（IncidentBannerErrorCode）。
+            Map.entry("INCIDENT_BANNER_001", HttpStatus.NOT_FOUND),
+
+            // メンション機能（MentionErrorCode）。
+            Map.entry("MENTION_001", HttpStatus.NOT_FOUND),
+
+            // F09.17 メッセージ型キャンペーン（AdCampaignErrorCode）の残り未登録分。
+            Map.entry("AD_REPORT_RATE_LIMITED", HttpStatus.TOO_MANY_REQUESTS)
+            // AD_PREFERENCES_BLOCKED_LIMIT は上限超過のため変更なし（既定 400 のまま）。
+            // 備品ランキング機能 ERANK_001（RANKING_NOT_READY）は登録しない。javadoc は 503 を明記するが、
+            // ErrorCodeHttpStatusDeclarationGuardTest.DECLARATION_EXCEPTIONS に既存の判断が記録済み:
+            // 5xx 登録は GlobalExceptionHandler の error_reports 記録 + Slack エスカレーション経路に乗るため、
+            // 「初回バッチ未実行」という平常状態を障害として通知してよいかは別途運用判断が必要（暫定・要再判断）。
+            // 本ロットではこの既存の意図的な保留を尊重し、変更しない。
     );
 
     /**
