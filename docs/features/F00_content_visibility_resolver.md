@@ -1750,6 +1750,37 @@ public class MembershipBatchQueryService {
 
 **利用側（Phase B）**: 呼び出し元は返ってきた `Set<StandardVisibility>` を、機能固有 visibility enum への Mapper の**逆写像**（例: `ActivityVisibilityMapper.toFunctional` / `AlbumVisibilityMapper.toFunctional`）で変換し、Repository の `visibility IN (...)` 述語に渡す。逆写像が安全なのは、既存の `toStandard` 写像が単射（機能固有 enum の値ごとに異なる `StandardVisibility` へ写像される）であるため。機能固有 enum に `PUBLIC` 相当が存在しない場合（例: `AlbumVisibility`）、逆写像結果が空集合になり得る点に注意（呼び出し元は SQL を発行せず空ページを返すこと）。
 
+### 10.6 `CUSTOM_TEMPLATE` の SQL 述語化 — 未解決だが解法の見通しはある（CMP-028 Phase C / 2026-08-13 追記）
+
+**現状（fail-closed）**: `VisibilityScope.CUSTOM_TEMPLATE`（求人 `F13.1` に限らず、機能固有 enum が
+`StandardVisibility.CUSTOM_TEMPLATE` に写像する値全般）は、`resolveVisibleLevels` が返す可視ラダー集合に
+含まれない（§10.5 の行依存値リスト参照）。求人 (`JobPostingRepository#findVisibleByTeamId`) は現状
+`CUSTOM_TEMPLATE` を SQL から**意図的に除外**している。書き込み側 (`JobPostingService.MVP_ALLOWED_SCOPES`)
+がこの値の作成を禁止しているため今は到達しないが、将来この制限を解いた瞬間、`CUSTOM_TEMPLATE` の求人は
+一覧 API から**誰にも見えなくなる**（fail-closed の静かな破綻）。再発防止の番人:
+`JobPostingVisibilityScopeSqlSupportGuardTest`（`backend/src/test/java/com/mannschaft/app/jobmatching/`）。
+
+**解法の要点（殿の実測。着手時はこれを起点にすること）**:
+
+`VisibilityTemplateEvaluator#evaluateRule` が扱うルール種別（`EXPLICIT_USER` / `EXPLICIT_TEAM` /
+`TEAM_MEMBER_OF` / `ORGANIZATION_MEMBER_OF` / `TEAM_FRIEND_OF` / `EXPLICIT_SOCIAL_PROFILE` /
+`REGION_MATCH` 等）は、いずれも **「閲覧者 × テンプレート」の関数であって、対象行の中身には依存しない**
+（`ownerUserId` 等はテンプレート側の属性として保持される）。
+
+つまり `resolveVisibleLevels`（§10.5, Phase A）と**同じ手**が使える:
+
+1. 「この閲覧者が閲覧可能なテンプレート ID の集合」を、行を引かずに先に求める
+   （`VisibilityTemplateEvaluator` のルール評価を「閲覧者 × テンプレート」単位でバッチ実行する）。
+2. SQL 側は `visibility = 'CUSTOM_TEMPLATE' AND visibility_template_id IN (:visibleTemplateIds)` を
+   他スコープの述語と OR で組み合わせるだけで済む。
+3. これは「行ごとの判定を、閲覧者ごとの集合へ持ち上げる」という、`resolveVisibleLevels` が
+   `StandardVisibility` のラダー段に対して行っているのと**同一の構図**である
+   （`JOBBER_INTERNAL` の `EXISTS` サブクエリ化とも同型）。
+
+**未解決の論点（正直に記録する）**: テンプレートの母集合をどう限定するか。閲覧者に紐づく全テンプレートを
+毎回評価するのは重い。対象スコープ（例: 求人ならその TEAM/ORG 配下）に属するテンプレートに絞る等の
+設計が要るが、これは解放時の要件次第であり**未決**。着手する際は軍議で母集団の絞り込み方針を先に固めること。
+
 ---
 
 ## 11. セキュリティ考慮事項

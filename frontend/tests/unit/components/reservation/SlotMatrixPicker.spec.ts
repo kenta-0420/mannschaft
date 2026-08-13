@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { ref } from 'vue'
 import dayjs from 'dayjs'
@@ -20,6 +20,13 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
  *
  * 注: テスト環境の既定ロケールは en。日付依存の flaky を避けるため、返す日は常に「明日」にする
  *     （isPastCell の過去判定に一切かからない・実行時刻に依存しない）。
+ *
+ * 時計固定について（TEST_CONVENTION.md §2.4.1）: コンポーネントは
+ * `dayjs().tz(userTimezone.value)`（Asia/Tokyo 明示変換）で isPastCell を判定する一方、
+ * 素の `dayjs()` はプロセス TZ で評価される。CI は TZ=UTC で走るため、両者は
+ * UTC 15:00〜24:00（= JST 翌日 00:00〜09:00）の窓で暦日がずれ得る
+ * （ScheduleExceptionPanel.spec.ts が実際に踏んだ構図と同一）。相対化だけでは解決しないため、
+ * 時計そのものを固定する。
  */
 const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
@@ -36,6 +43,12 @@ vi.mock('~/composables/useReservationApi', () => ({
 }))
 
 mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo') }))
+
+// 時計固定（TEST_CONVENTION.md §2.4.1）: UTC 03:00 = JST 12:00。
+// どちらの TZ で評価しても同じ暦日になる「安全な昼間」を選ぶ（境界近くは無意味）。
+// `tomorrow` を計算する前に固定する必要があるため、モジュール読み込み時点（トップレベル）で設定する。
+vi.useFakeTimers({ toFake: ['Date'] })
+vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
 
 const activeLine = { id: 1, meta: { name: 'Seat1', isActive: true } }
 const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD')
@@ -110,6 +123,11 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.querySelectorAll('.p-dialog').forEach(el => el.remove())
+})
+
+afterAll(() => {
+  // 他スペックへの汚染を防ぐため、必ず実時計に戻す（TEST_CONVENTION.md §2.4.1）。
+  vi.useRealTimers()
 })
 
 describe('SlotMatrixPicker.vue', () => {
