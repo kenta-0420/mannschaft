@@ -206,7 +206,8 @@
         "forbidden": "You do not have permission for this action",
         "tooManyMentions": "You can mention up to 20 people",
         "rateLimited": "Too many posts. Please try again later",
-        "generic": "The operation failed"
+        "generic": "The operation failed",
+        "notFound": "Comment not found"
       }
     }
   },

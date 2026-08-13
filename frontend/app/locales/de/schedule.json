@@ -206,7 +206,8 @@
         "forbidden": "Sie haben keine Berechtigung für diese Aktion",
         "tooManyMentions": "Sie können höchstens 20 Personen erwähnen",
         "rateLimited": "Zu viele Beiträge. Bitte später erneut versuchen",
-        "generic": "Der Vorgang ist fehlgeschlagen"
+        "generic": "Der Vorgang ist fehlgeschlagen",
+        "notFound": "Kommentar nicht gefunden"
       }
     }
   },

@@ -6,6 +6,7 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleCommentErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
@@ -70,6 +71,7 @@ public class ScheduleCommentService {
     private final AccessControlService accessControlService;
     private final NameResolverService nameResolverService;
     private final MembershipService membershipService;
+    private final OrganizationMembershipService organizationMembershipService;
     private final ScheduleCommentNotifier notifier;
     private final ScheduleCommentRateLimiter rateLimiter;
 
@@ -261,8 +263,15 @@ public class ScheduleCommentService {
         if (scopeType == null || scopeId == null) {
             populationIds = List.of();
         } else {
-            ScopeType scope = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
-            List<Long> memberUserIds = membershipService.getActiveMemberUserIds(scope, scopeId);
+            // 是正3【P2】: ORGANIZATION スコープは直属メンバーだけでなく配下チーム経由の所属も
+            // 含める（設計書 §772「配下チーム経由の所属を含める解決規則は既存の出欠配信母集団と
+            // 同じものを使う」）。自作せず OrganizationMembershipService#resolveOrgDistributionUserIds
+            // （出欠配信・通知 fan-out が共有する既存の窓口。1 SQL・候補者数に依らず定数）へ委譲する。
+            // includeSupporters=true はチーム母集団（membershipService.getActiveMemberUserIds、
+            // ロール不問で全メンバーを返す）と広さを揃えるため（絞り込みは後段の可視性フィルタが担う）。
+            List<Long> memberUserIds = "TEAM".equals(scopeType)
+                    ? membershipService.getActiveMemberUserIds(ScopeType.TEAM, scopeId)
+                    : organizationMembershipService.resolveOrgDistributionUserIds(scopeId, true);
             Set<Long> ids = new LinkedHashSet<>();
             for (Long memberUserId : memberUserIds) {
                 // 自分自身は候補から除外する（設計書 §4.4・殿の裁定 2026-08-12）。
@@ -370,8 +379,9 @@ public class ScheduleCommentService {
                 .build());
 
         if (parent != null) {
-            parent.incrementReplyCount();
-            scheduleCommentRepository.save(parent);
+            // 是正2【P1】: 読み取り→加算→書き込みではなく原子的な UPDATE を使う（同時返信でのロスト
+            // アップデート防止。ScheduleCommentRepository#incrementReplyCount の Javadoc 参照）。
+            scheduleCommentRepository.incrementReplyCount(parent.getId());
         }
 
         Long replyRecipientId = (parent != null && parent.getUserId() != null && !parent.getUserId().equals(userId))
@@ -442,11 +452,12 @@ public class ScheduleCommentService {
         scheduleCommentRepository.save(comment);
 
         if (!comment.isTopLevel() && comment.getRootId() != null) {
-            scheduleCommentRepository.findByIdAndScheduleId(comment.getRootId(), scheduleId)
-                    .ifPresent(root -> {
-                        root.decrementReplyCount();
-                        scheduleCommentRepository.save(root);
-                    });
+            // 是正2【P1】: 増加側と対称に原子的な UPDATE でデクリメントする（0 下限ガードは
+            // ScheduleCommentRepository#decrementReplyCount の SQL 側 CASE 式が担う）。
+            // 存在確認（scheduleId 込み・IDOR 防御）は従来どおり findByIdAndScheduleId を通す。
+            if (scheduleCommentRepository.findByIdAndScheduleId(comment.getRootId(), scheduleId).isPresent()) {
+                scheduleCommentRepository.decrementReplyCount(comment.getRootId());
+            }
         }
     }
 

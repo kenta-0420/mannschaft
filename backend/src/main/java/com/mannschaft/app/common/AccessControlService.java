@@ -51,6 +51,9 @@ public class AccessControlService {
 
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN");
 
+    /** ORG 再帰展開のサイクル防止上限（{@code OrgFanoutRecipientSource.MAX_ORG_DESCENDANT_DEPTH} と同値）。 */
+    private static final int ORG_DESCENDANT_MAX_DEPTH = 32;
+
     // ========================================
     // メンバーシップ検証
     // ========================================
@@ -302,6 +305,38 @@ public class AccessControlService {
         for (MembershipRepository.MembershipUserRoleKindProjection row : membershipRoles) {
             if (row.getRoleKind() != null) {
                 mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleKind().name());
+            }
+        }
+        return roleByUser;
+    }
+
+    /**
+     * F03.16 是正3【P2】: {@link #resolveEffectiveRoleNames} の ORGANIZATION 版に、配下チーム経由の
+     * 所属ロールを合成した版。
+     *
+     * <p>{@link #resolveEffectiveRoleNames} は {@code memberships.scope_type = 'ORGANIZATION' AND
+     * scope_id = :organizationId} の<b>直接所属のみ</b>を見るため、配下チームのみに所属するメンバーは
+     * ロールが解決できず {@code null} になる（{@code MinViewRoleThreshold.satisfies} が既定閾値
+     * {@code MEMBER_PLUS} で一律 fail-closed になる欠陥）。本メソッドは既存の2 SQLに加えて
+     * {@link UserRoleRepository#findMembershipRoleKindsForOrganizationDescendants} を追加で1回呼び、
+     * 配下チーム所属のロール（MEMBER/SUPPORTER）を合成する。候補者数に依らず定数（SQL 3本）のまま。</p>
+     *
+     * @param userIds        候補ユーザー ID 集合
+     * @param organizationId 組織 ID（母集団の根）
+     * @return ユーザー ID → 実効ロール名（直接所属 ∪ 配下チーム所属の最強ロール）
+     */
+    public Map<Long, String> resolveEffectiveRoleNamesIncludingOrgDescendants(
+            java.util.Collection<Long> userIds, Long organizationId) {
+        Map<Long, String> roleByUser = resolveEffectiveRoleNames(userIds, organizationId, "ORGANIZATION");
+        if (userIds == null || userIds.isEmpty() || organizationId == null) {
+            return roleByUser;
+        }
+        List<UserRoleRepository.OrgDescendantMembershipRoleRow> descendantRoles =
+                userRoleRepository.findMembershipRoleKindsForOrganizationDescendants(
+                        organizationId, userIds, ORG_DESCENDANT_MAX_DEPTH);
+        for (UserRoleRepository.OrgDescendantMembershipRoleRow row : descendantRoles) {
+            if (row.getRoleKind() != null) {
+                mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleKind());
             }
         }
         return roleByUser;

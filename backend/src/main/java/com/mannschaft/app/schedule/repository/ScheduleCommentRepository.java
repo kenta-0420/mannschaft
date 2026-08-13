@@ -3,6 +3,9 @@ package com.mannschaft.app.schedule.repository;
 import com.mannschaft.app.schedule.entity.ScheduleCommentEntity;
 import com.mannschaft.app.schedule.visibility.ScheduleCommentVisibilityProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -47,4 +50,27 @@ public interface ScheduleCommentRepository extends JpaRepository<ScheduleComment
      * @return 実在する予定コメントの射影（削除済みも含む。可視性判定に削除有無は不要なため）
      */
     List<ScheduleCommentVisibilityProjection> findVisibilityProjectionsByIdIn(Collection<UUID> ids);
+
+    /**
+     * 是正2【P1】: {@code reply_count} を<b>原子的な UPDATE</b>でインクリメントする（読み取り→加算→書き込み
+     * のレース是正）。{@code parent.incrementReplyCount()} → {@code save()} だった旧実装は、同じ親へ
+     * 同時に返信されると両者が同じ値を読み、片方の加算が消えていた（設計書は {@code replyCount} と
+     * 実データの一致を不変条件として明示）。
+     *
+     * <p>{@code @Modifying(clearAutomatically = true)} で 1次キャッシュ上の古い {@code ScheduleCommentEntity}
+     * を破棄する（本メソッド呼び出し後に同一トランザクション内で親を再読込する場合、DB の最新値を返す）。</p>
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE ScheduleCommentEntity c SET c.replyCount = c.replyCount + 1 WHERE c.id = :id")
+    void incrementReplyCount(@Param("id") UUID id);
+
+    /**
+     * 是正2【P1】: {@code reply_count} を<b>原子的な UPDATE</b>でデクリメントする（増加側と対称）。
+     * {@code GREATEST(reply_count - 1, 0)} で 0 下限ガードを SQL 側に持たせる
+     * （{@link ScheduleCommentEntity#decrementReplyCount()} のメモリ上のガードと同じ規律を
+     * 原子的 UPDATE でも維持する。二重削除・並行削除でカウンタが負に落ちるとトゥームストーン表示が破綻するため必須）。
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE ScheduleCommentEntity c SET c.replyCount = CASE WHEN c.replyCount > 0 THEN c.replyCount - 1 ELSE 0 END WHERE c.id = :id")
+    void decrementReplyCount(@Param("id") UUID id);
 }

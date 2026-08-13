@@ -1552,4 +1552,52 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         String getScopeType();
         Long getScopeId();
     }
+
+    /**
+     * F03.16 是正3【P2】: ORGANIZATION スコープの候補ユーザー群について、組織を根とした
+     * 再帰的配下ツリー（直属 ∪ 配下 {@code ACTIVE} チーム）における所属ロール種別（{@code role_kind}）を
+     * <b>1 SQL</b>で一括解決する（{@code ScheduleCommentViewerFilter} 段1 専用の拡張）。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と同一の
+     * org_tree 再帰展開（直属組織 ∪ 配下 ACTIVE チーム）を候補ユーザー ID の {@code IN} 句で絞って
+     * 使う。既存の {@code AccessControlService#resolveEffectiveRoleNames} は
+     * {@code memberships.scope_type = 'ORGANIZATION' AND scope_id = :organizationId} の<b>直接所属のみ</b>
+     * を見るため、配下チームのみに所属するメンバーはロールが解決できず（{@code null}）、
+     * {@code MinViewRoleThreshold.satisfies} が既定閾値 {@code MEMBER_PLUS} で一律 fail-closed になっていた
+     * （§4.5.0 の段3 {@code canView} には正しい判定があるのに、その手前の段2 で誤って落とされる）。
+     * 本メソッドはその欠落を補う<b>追加 1 本</b>のクエリで、候補者数に依らず定数のまま
+     * （AC-39 の「定数 SQL」は本数が候補者数に比例しないことを求めており、本数そのものの増減は禁じていない）。</p>
+     *
+     * @param organizationId 母集団の根となる組織 ID
+     * @param userIds        候補ユーザー ID 集合（空で呼ばないこと）
+     * @param maxDepth       再帰展開の最大深さ（サイクル防止上限。{@code OrgFanoutRecipientSource} と同値の 32 を渡す）
+     * @return 配下ツリーに所属する候補ユーザーの {@code role_kind}（同一ユーザーが複数所属を持つ場合は複数行）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( "
+            + "    SELECT :organizationId, 0 "
+            + "  UNION ALL "
+            + "    SELECT c.id, p.depth + 1 FROM organizations c JOIN org_tree p ON c.parent_organization_id = p.id "
+            + "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth "
+            + ") "
+            + "SELECT ms.user_id AS userId, ms.role_kind AS roleKind FROM memberships ms "
+            + "WHERE ms.left_at IS NULL AND ms.user_id IN (:userIds) "
+            + "  AND ( "
+            + "    (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) "
+            + "    OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( "
+            + "      SELECT tom.team_id FROM team_org_memberships tom "
+            + "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' "
+            + "    )) "
+            + "  )",
+            nativeQuery = true)
+    List<OrgDescendantMembershipRoleRow> findMembershipRoleKindsForOrganizationDescendants(
+            @Param("organizationId") Long organizationId,
+            @Param("userIds") Collection<Long> userIds,
+            @Param("maxDepth") int maxDepth);
+
+    /** {@link #findMembershipRoleKindsForOrganizationDescendants} の射影。 */
+    interface OrgDescendantMembershipRoleRow {
+        Long getUserId();
+        String getRoleKind();
+    }
 }

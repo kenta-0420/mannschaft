@@ -148,6 +148,12 @@ public class ScheduleCommentViewerFilter {
             // 個人予定・スコープ不明。ロール無し（非メンバー＝最弱）として扱う。
             return new HashMap<>();
         }
+        // 是正3【P2】: ORGANIZATION は配下チーム経由の所属ロールも合成する（直接所属のみだと
+        // 配下チームのみに所属する候補者が段2 の閾値足切りで誤って fail-closed になる）。
+        // AccessControlService#resolveEffectiveRoleNamesIncludingOrgDescendants の Javadoc 参照。
+        if ("ORGANIZATION".equals(scopeType)) {
+            return accessControlService.resolveEffectiveRoleNamesIncludingOrgDescendants(candidates, scopeId);
+        }
         return accessControlService.resolveEffectiveRoleNames(candidates, scopeId, scopeType);
     }
 

@@ -778,13 +778,31 @@ class ScheduleCommentThreadContractIT extends AbstractMySqlIntegrationTest {
                         + "落とすとトゥームストーンが可視性判定を通れなくなる）")
                 .hasSize(2);
 
+        // 是正2【P1】: incrementReplyCount / decrementReplyCount は id 単体で無条件 UPDATE する
+        // （deleted_at を一切見ない・呼び出し側が対象行の生存を別途確認してから呼ぶ契約）。
+        // 「削除済みを含む／含まない」の軸で言えば «deleted_at を条件にしない» に分類される。
+        scheduleCommentRepository.incrementReplyCount(deleted);
+        em.flush();
+        em.clear();
+        assertThat(scheduleCommentRepository.findByIdAndScheduleId(deleted, scheduleId).orElseThrow().getReplyCount())
+                .as("incrementReplyCount は deleted_at を条件にしない（呼び出し側が生存確認を別途行う契約）")
+                .isEqualTo(1);
+        scheduleCommentRepository.decrementReplyCount(deleted);
+        em.flush();
+        em.clear();
+        assertThat(scheduleCommentRepository.findByIdAndScheduleId(deleted, scheduleId).orElseThrow().getReplyCount())
+                .as("decrementReplyCount も同様に deleted_at を条件にしない")
+                .isEqualTo(0);
+
         assertThat(declaredRepositoryMethodNames())
                 .as("ScheduleCommentRepository にメソッドを足したら、本テストにも "
                         + "«削除済みを含む／含まない» の期待を必ず1行足すこと")
                 .containsExactlyInAnyOrder(
                         "findByIdAndScheduleId",
                         "findByIdAndScheduleIdAndDeletedAtIsNull",
-                        "findVisibilityProjectionsByIdIn");
+                        "findVisibilityProjectionsByIdIn",
+                        "incrementReplyCount",
+                        "decrementReplyCount");
     }
 
     // ═════════════════════════════════════════════════════════════════════

@@ -206,7 +206,8 @@
         "forbidden": "您没有执行此操作的权限",
         "tooManyMentions": "最多只能提及 20 人",
         "rateLimited": "发布过于频繁，请稍后再试",
-        "generic": "操作失败"
+        "generic": "操作失败",
+        "notFound": "未找到该评论"
       }
     }
   },

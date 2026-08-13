@@ -206,7 +206,8 @@
         "forbidden": "No tienes permiso para esta acción",
         "tooManyMentions": "Puedes mencionar hasta 20 personas",
         "rateLimited": "Demasiadas publicaciones. Inténtalo más tarde",
-        "generic": "La operación falló"
+        "generic": "La operación falló",
+        "notFound": "No se encontró el comentario"
       }
     }
   },
