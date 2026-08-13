@@ -1,12 +1,14 @@
 package com.mannschaft.app.recruitment.repository;
 
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
+import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -53,5 +55,81 @@ public interface RecruitmentCancellationRecordRepository extends JpaRepository<R
     List<RecruitmentCancellationRecordEntity> findFailedForRetryAfterId(
             @Param("maxRetries") int maxRetries,
             @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
+     * §12（免除 UI）一覧: {@code SYSTEM_ADMIN} 向け全件一覧のチャンク取得（キーセットページング）。
+     *
+     * <p>受取先による絞り込みは行わない（呼び出し元が {@code SYSTEM_ADMIN} であることは
+     * Service 層で検証済みの前提）。</p>
+     *
+     * <p><b>ソートキーは {@code (cancelledAt DESC, id DESC)} の複合であり一意である。</b>
+     * {@code cancelledAt} 単独では同一時刻の行の順序が不定になり、ページ境界で行が重複・欠落する。
+     * 一意でない列だけでキーセットのカーソルを進めることはできないため、末尾に主キーを足している。</p>
+     *
+     * <p>カーソルは「この位置より後（＝より古い側）」を意味する。先頭ページは呼び出し側が
+     * 番人値（{@code cancelledAt} に遠未来・{@code id} に {@code Long.MAX_VALUE}）を渡す
+     * ——{@code :param IS NULL} を JPQL に書かずに済ませ、条件式を 1 本に保つため。</p>
+     *
+     * @param statuses         絞り込む決済ステータス
+     * @param cursorCancelledAt カーソル位置の {@code cancelledAt}（先頭は遠未来の番人値）
+     * @param cursorId         カーソル位置の {@code id}（先頭は {@code Long.MAX_VALUE}）
+     * @param pageable         取得件数のみ使用（ソートは本クエリで固定）
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse(
+                r.id, r.listingId, l.title, r.participantId, r.userId,
+                r.feeAmount, CAST(r.paymentStatus AS string), r.cancelledAt, r.hoursBeforeStart)
+            FROM RecruitmentCancellationRecordEntity r, RecruitmentListingEntity l
+            WHERE l.id = r.listingId
+              AND r.paymentStatus IN :statuses
+              AND (r.cancelledAt < :cursorCancelledAt
+                   OR (r.cancelledAt = :cursorCancelledAt AND r.id < :cursorId))
+            ORDER BY r.cancelledAt DESC, r.id DESC
+            """)
+    List<RecruitmentCancellationRecordSummaryResponse> findChunkForSystemAdmin(
+            @Param("statuses") Collection<CancellationPaymentStatus> statuses,
+            @Param("cursorCancelledAt") LocalDateTime cursorCancelledAt,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
+
+    /**
+     * §12（免除 UI）一覧: <b>安価な事前絞り込み</b>としての受取先候補チャンク取得（キーセットページング）。
+     *
+     * <p><b>この絞り込みは最適化であって認可の権威ではない。</b> 最終判定は payment ドメインの
+     * {@code ConnectChargeService#filterPayeeSettlementManaged}（escrow の payee）が行う
+     * ——同一募集でも参加者ごとに escrow は別行であり、募集単位の絞り込みでは参加者単位の
+     * 判定までは決まらないためである。</p>
+     *
+     * <p><b>{@code listingIds} は escrow から導出した集合でなければならない</b>
+     * （{@code ConnectChargeService#findSourceIdsWithPayeeSettlementManaged}）。
+     * {@code recruitment_listings.payeeKind}/{@code payeeUserId}/{@code scopeId} で絞ってはならない
+     * ——これらは<b>募集の作成後に変更できる可変の値</b>であり、変更した瞬間に
+     * 本来の債権者が自分の記録を見失う（事前絞り込みが権威ある集合の上位集合でなくなる）。
+     * 事前絞り込みは「権威ある集合を必ず包含する」ことが安全の条件である。</p>
+     *
+     * <p>ソートキー・カーソルの扱いは {@link #findChunkForSystemAdmin} と同一
+     * （{@code (cancelledAt DESC, id DESC)} の一意な複合キー）。</p>
+     *
+     * @param listingIds 操作者が escrow 上の受取先である募集 ID の集合（空なら番人値を渡すこと）
+     * @param statuses   絞り込む決済ステータス
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse(
+                r.id, r.listingId, l.title, r.participantId, r.userId,
+                r.feeAmount, CAST(r.paymentStatus AS string), r.cancelledAt, r.hoursBeforeStart)
+            FROM RecruitmentCancellationRecordEntity r, RecruitmentListingEntity l
+            WHERE l.id = r.listingId
+              AND r.paymentStatus IN :statuses
+              AND r.listingId IN :listingIds
+              AND (r.cancelledAt < :cursorCancelledAt
+                   OR (r.cancelledAt = :cursorCancelledAt AND r.id < :cursorId))
+            ORDER BY r.cancelledAt DESC, r.id DESC
+            """)
+    List<RecruitmentCancellationRecordSummaryResponse> findChunkOfPayeeCandidates(
+            @Param("listingIds") Collection<Long> listingIds,
+            @Param("statuses") Collection<CancellationPaymentStatus> statuses,
+            @Param("cursorCancelledAt") LocalDateTime cursorCancelledAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable);
 }

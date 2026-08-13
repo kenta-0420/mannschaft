@@ -11,7 +11,7 @@
  */
 
 import { test, expect } from '@playwright/test'
-import { waitForHydration } from '../helpers/wait'
+import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 // ---------------------------------------------------------------------------
 // DASH-001〜008: ダッシュボード基本表示
@@ -24,7 +24,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/my/', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    await waitForSpinnerGone(page)
   })
 
   test('DASH-001: /my/ が表示される（主要UIエリアの存在確認）', async ({ page }) => {
