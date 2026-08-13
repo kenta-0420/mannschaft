@@ -558,13 +558,9 @@ public class RecruitmentListingService {
         allScopeIds.addAll(followedTeamIds);
         allScopeIds.addAll(followedOrgIds);
 
-        // 自身のロール所属チーム・組織IDも追加（サポーターを含む）
-        userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId).stream()
-                .map(ur -> ur.getTeamId())
-                .forEach(allScopeIds::add);
-        userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId).stream()
-                .map(ur -> ur.getOrganizationId())
-                .forEach(allScopeIds::add);
+        // 自身の所属チーム・組織IDも追加（CMP-027: user_roles ∪ memberships の在籍。SUPPORTER 含む）
+        allScopeIds.addAll(userRoleRepository.findTeamIdsByUserId(userId));
+        allScopeIds.addAll(userRoleRepository.findOrganizationIdsByUserId(userId));
 
         if (allScopeIds.isEmpty()) {
             return List.of();
