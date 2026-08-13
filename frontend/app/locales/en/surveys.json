@@ -67,7 +67,8 @@
         "questionsRequired": "Please add at least one question",
         "questionTextRequired": "Please enter text for question {index}",
         "optionsTooFew": "Question {index} requires at least two options",
-        "optionEmpty": "Question {index} has empty option(s)"
+        "optionEmpty": "Question {index} has empty option(s)",
+        "questionTypeUnsupported": "Question {index}: Date questions are not supported yet. Please choose another type."
       },
       "questionEditor": {
         "empty": "No questions yet",
@@ -181,6 +182,12 @@
       "optionCount": "{count} ({percentage}%)",
       "noOptionData": "No data.",
       "noQuestionData": "No questions to aggregate."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Results are hidden while there are only a few responses",
+        "description": "In anonymous surveys, a change in the tally right after someone responds can reveal that person's answer. Results will be shown once there are at least {threshold} responses. (Currently {count})"
+      }
     }
   }
 }

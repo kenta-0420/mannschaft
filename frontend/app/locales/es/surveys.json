@@ -67,7 +67,8 @@
         "questionsRequired": "Añade al menos una pregunta",
         "questionTextRequired": "Introduce el texto de la pregunta {index}",
         "optionsTooFew": "La pregunta {index} requiere al menos dos opciones",
-        "optionEmpty": "La pregunta {index} tiene opciones vacías"
+        "optionEmpty": "La pregunta {index} tiene opciones vacías",
+        "questionTypeUnsupported": "Pregunta {index}: las preguntas de fecha aún no son compatibles. Elige otro tipo."
       },
       "questionEditor": {
         "empty": "Aún no hay preguntas",
@@ -181,6 +182,12 @@
       "optionCount": "{count} ({percentage}%)",
       "noOptionData": "Sin datos.",
       "noQuestionData": "No hay preguntas que agregar."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Los resultados están ocultos mientras haya pocas respuestas",
+        "description": "En las encuestas anónimas, un cambio en el recuento justo después de que alguien responde puede revelar su respuesta. Los resultados se mostrarán cuando haya al menos {threshold} respuestas. (Actualmente {count})"
+      }
     }
   }
 }

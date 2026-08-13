@@ -3,6 +3,10 @@ import type { SurveyDetailResponse } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
+import {
+  isResultWithheldForAnonymityPrivacy,
+  MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+} from '~/utils/surveyResultPrivacy'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -143,13 +147,39 @@ const canViewResults = computed(() => {
   }
 })
 
+/**
+ * 匿名＋リアルタイム公開かつ少数回答のとき、集計結果を伏せるか。
+ *
+ * 設計書 docs/features/F05.4_survey_vote.md §6 セキュリティ考慮事項の
+ * 「匿名 + リアルタイム結果のプライバシー制限」に準拠（判定と閾値は
+ * utils/surveyResultPrivacy.ts に集約。閾値は将来調整可能）。
+ *
+ * 権限（canViewResults）とは別軸のガードである。権限があっても、少数回答の匿名アンケートでは
+ * 「自分が回答した直後の集計の動き」から他人の回答が推測できてしまうため伏せる。
+ */
+const resultsWithheldForPrivacy = computed(() =>
+  isResultWithheldForAnonymityPrivacy({
+    isAnonymous: survey.value?.policy?.isAnonymous ?? false,
+    resultsVisibility: survey.value?.policy?.resultsVisibility,
+    responseCount: survey.value?.stats?.responseCount ?? 0,
+  }),
+)
+
 /** 表示モード判定 */
-type DisplayMode = 'response' | 'results' | 'closed-no-permission' | 'draft'
+type DisplayMode =
+  | 'response'
+  | 'results'
+  | 'results-withheld-privacy'
+  | 'closed-no-permission'
+  | 'draft'
 const displayMode = computed<DisplayMode>(() => {
   const s = survey.value
   if (!s) return 'response'
   // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
   if (s.status === 'DRAFT') return 'draft'
+  // 結果を見る権限があっても、匿名＋リアルタイム＋少数回答なら集計を伏せる。
+  // 黙って空にせず専用モードで「なぜ見えないのか」を説明する（症状を隠さない）。
+  if (canViewResults.value && resultsWithheldForPrivacy.value) return 'results-withheld-privacy'
   // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
   // 結果閲覧権限 (canViewResults) を持つユーザーは、回答可否より優先して結果画面を表示する。
   // ALL_MEMBERS（誰でも閲覧可）の場合、未回答 MEMBER も結果画面に直接遷移できる。
@@ -433,6 +463,27 @@ onMounted(async () => {
         data-testid="survey-mode-results"
       >
         <SurveyResultsPanel :survey-id="survey.id" />
+      </div>
+
+      <!-- 匿名＋リアルタイム＋少数回答のプライバシーガード（設計書 §6）。
+           権限はあるが集計を伏せる状態。黙って空にせず理由を明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-withheld-privacy'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-withheld-privacy"
+      >
+        <i class="pi pi-shield text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.withheldForPrivacy.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{
+            t('surveys.results.withheldForPrivacy.description', {
+              threshold: MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+              count: survey.stats?.responseCount ?? 0,
+            })
+          }}
+        </p>
       </div>
 
       <!-- 結果非公開（締切＆権限なし） -->

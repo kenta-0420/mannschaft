@@ -158,8 +158,13 @@ function assertConformsToSchema(schemaName: string, body: unknown, path = schema
 // --- 本番コードの読み込み（いずれも実物。spec 内に複製は作らない） ---
 // dayjs の utc / timezone プラグインは本番と同じくプラグインモジュールの副作用で適用する。
 await import('~/plugins/dayjs')
-const { toWireCreateBody, toWireUpdateBody, toWireQuestion, mapResultsVisibilityToBe } =
-  await import('~/composables/useSurveyApi')
+const {
+  toWireCreateBody,
+  toWireUpdateBody,
+  toWireQuestion,
+  mapResultsVisibilityToBe,
+  isQuestionTypeSupportedByBackend,
+} = await import('~/composables/useSurveyApi')
 const { buildBlogPublishBody } = await import('~/composables/useBlogApi')
 const { buildDigestPeriod } = await import('~/composables/useTimelineDigestApi')
 const { useDatetime } = await import('~/composables/useDatetime')
@@ -372,6 +377,33 @@ describe('送信ボディ ↔ BE スキーマ 整合性', () => {
           sortOrder: 1,
         }),
       )
+    })
+
+    /**
+     * 旧下書き（localStorage）の復元で 'DATE' が復活しうる経路の回帰テスト。
+     *
+     * かつて 'DATE' を黙って 'FREE_TEXT' へ寄せていたため、日付設問が「自由記述」として
+     * **正常に保存されてしまい**、ユーザーは種別が書き換わったことに気づけなかった。
+     * （それ以前は BE が 400 で弾いたので「保存できなかった」と分かった。）
+     * 黙って別物にせず、明示的に拒否すること。
+     */
+    it('DATE は黙って FREE_TEXT に化けず、明示的に拒否される', () => {
+      expect(isQuestionTypeSupportedByBackend('DATE')).toBe(false)
+      // 他の種別は当然サポートされている（巻き添えで塞いでいないこと）
+      expect(isQuestionTypeSupportedByBackend('TEXT')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('RATING')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('SINGLE_CHOICE')).toBe(true)
+      expect(isQuestionTypeSupportedByBackend('MULTIPLE_CHOICE')).toBe(true)
+
+      // 検証をすり抜けて送信経路に入った場合は例外で止まる（黙って変換しない）
+      expect(() =>
+        toWireQuestion({
+          questionText: '日付を選んでください',
+          questionType: 'DATE',
+          isRequired: true,
+          sortOrder: 1,
+        }),
+      ).toThrow(/DATE/)
     })
 
     it('作成経路と同じ翻訳を通る（FREE_TEXT / displayOrder）', () => {

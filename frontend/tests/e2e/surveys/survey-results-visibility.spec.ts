@@ -490,3 +490,129 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
     await expect(page.locator('[data-testid="survey-mode-closed-no-permission"]')).toHaveCount(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// SURVEY-005d: 匿名 + リアルタイム結果のプライバシーガード
+//
+// 設計書 docs/features/F05.4_survey_vote.md §6 セキュリティ考慮事項:
+//   is_anonymous = TRUE かつ results_visibility = ALWAYS（FE の ALL_MEMBERS）のとき、
+//   回答者数が5名未満の間は集計結果を表示しない（回答直後の集計の変化から個人の回答が
+//   推測されるのを防ぐ）。API は結果を返すが FE で伏せる。
+//
+// 権限（canViewResults）とは別軸のガードであることに注意。権限があっても伏せる。
+// ---------------------------------------------------------------------------
+test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシーガード', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSideApis(page)
+  })
+
+  /** 匿名 + ALL_MEMBERS のアンケートを回答者数だけ変えて組み立てる。 */
+  function buildAnonymousRealtimeSurvey(responseCount: number, isAnonymous = true) {
+    return buildSurvey({
+      id: SURVEY_ID,
+      status: 'PUBLISHED',
+      resultsVisibility: 'ALL_MEMBERS',
+      isAnonymous,
+      responseCount,
+      allowMultipleSubmissions: false,
+      hasResponded: true,
+      createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+    })
+  }
+
+  async function loginAsMember(page: Parameters<typeof mockSideApis>[0]) {
+    await setupAuth(page, {
+      userId: MEMBER_ID,
+      displayName: 'member-user',
+      role: 'MEMBER',
+      scopeType: 'TEAM',
+      scopeId: TEAM_ID,
+    })
+    await mockMePermissions(page, 'MEMBER')
+  }
+
+  test('匿名 + ALL_MEMBERS + 回答者4名 → 結果を伏せ、理由を表示する', async ({ page }) => {
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(4)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    const withheld = page.locator('[data-testid="survey-mode-results-withheld-privacy"]')
+    await expect(withheld).toBeVisible()
+    // 集計そのものは出さない
+    await expect(page.locator('[data-testid="survey-results-panel"]')).toHaveCount(0)
+    // 黙って空にせず、なぜ見えないのかを説明していること
+    await expect(withheld).toContainText('5')
+  })
+
+  test('匿名 + ALL_MEMBERS + 回答者5名 → 結果を表示する（境界値・ちょうど5で開く）', async ({
+    page,
+  }) => {
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(5)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(
+      page.locator('[data-testid="survey-mode-results-withheld-privacy"]'),
+    ).toHaveCount(0)
+  })
+
+  test('非匿名 + ALL_MEMBERS + 回答者1名 → 結果を表示する（巻き添えで塞いでいない）', async ({
+    page,
+  }) => {
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(1, false)
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(
+      page.locator('[data-testid="survey-mode-results-withheld-privacy"]'),
+    ).toHaveCount(0)
+  })
+
+  test('匿名 + AFTER_CLOSE + 回答者1名 → 従来どおり（他の可視性を塞いでいない）', async ({
+    page,
+  }) => {
+    await loginAsMember(page)
+    const survey = buildSurvey({
+      id: SURVEY_ID,
+      status: 'CLOSED',
+      resultsVisibility: 'AFTER_CLOSE',
+      isAnonymous: true,
+      responseCount: 1,
+      allowMultipleSubmissions: false,
+      hasResponded: true,
+      createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+    })
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(
+      page.locator('[data-testid="survey-mode-results-withheld-privacy"]'),
+    ).toHaveCount(0)
+  })
+})

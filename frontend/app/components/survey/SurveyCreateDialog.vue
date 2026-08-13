@@ -12,6 +12,7 @@ import type {
   UnrespondedVisibility,
 } from '~/types/survey'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
+import { isQuestionTypeSupportedByBackend } from '~/composables/useSurveyApi'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -186,6 +187,12 @@ function validate(mode: 'draft' | 'publish'): string | null {
     if (!q) continue
     if (!q.questionText.trim()) {
       return t('surveys.create.validation.questionTextRequired', { index: i + 1 })
+    }
+    // 'DATE' は BE に対応値が無い。選択肢からは外してあるが、外れる前に localStorage へ
+    // 保存された下書きを復元すると復活しうる。黙って自由記述へ変換すると設問種別が
+    // ユーザーの知らないうちに書き換わるため、明示的に拒否して選び直してもらう。
+    if (!isQuestionTypeSupportedByBackend(q.questionType)) {
+      return t('surveys.create.validation.questionTypeUnsupported', { index: i + 1 })
     }
     if (q.questionType === 'SINGLE_CHOICE' || q.questionType === 'MULTIPLE_CHOICE') {
       const opts = q.options ?? []

@@ -67,7 +67,8 @@
         "questionsRequired": "Bitte mindestens eine Frage hinzufügen",
         "questionTextRequired": "Bitte Text für Frage {index} eingeben",
         "optionsTooFew": "Frage {index} benötigt mindestens zwei Optionen",
-        "optionEmpty": "Frage {index} hat leere Option(en)"
+        "optionEmpty": "Frage {index} hat leere Option(en)",
+        "questionTypeUnsupported": "Frage {index}: Datumsfragen werden derzeit nicht unterstützt. Bitte einen anderen Typ wählen."
       },
       "questionEditor": {
         "empty": "Noch keine Fragen",
@@ -181,6 +182,12 @@
       "optionCount": "{count} ({percentage}%)",
       "noOptionData": "Keine Daten.",
       "noQuestionData": "Keine auswertbaren Fragen."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Ergebnisse sind ausgeblendet, solange es nur wenige Antworten gibt",
+        "description": "Bei anonymen Umfragen kann eine Änderung der Auswertung direkt nach einer Antwort diese Antwort preisgeben. Ergebnisse werden ab {threshold} Antworten angezeigt. (Aktuell {count})"
+      }
     }
   }
 }

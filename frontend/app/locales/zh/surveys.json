@@ -67,7 +67,8 @@
         "questionsRequired": "请至少添加一道题目",
         "questionTextRequired": "请输入第{index}题的题目内容",
         "optionsTooFew": "第{index}题需要至少两个选项",
-        "optionEmpty": "第{index}题存在空选项"
+        "optionEmpty": "第{index}题存在空选项",
+        "questionTypeUnsupported": "问题 {index}：目前不支持日期题型，请重新选择题型。"
       },
       "questionEditor": {
         "empty": "暂无题目",
@@ -181,6 +182,12 @@
       "optionCount": "{count}（{percentage}%）",
       "noOptionData": "暂无数据。",
       "noQuestionData": "没有可汇总的题目。"
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "回答人数较少，暂不显示统计结果",
+        "description": "在匿名问卷中，回答后统计结果的变化可能会泄露个人的回答。回答人数达到 {threshold} 人后才会显示统计结果。（当前 {count} 人）"
+      }
     }
   }
 }

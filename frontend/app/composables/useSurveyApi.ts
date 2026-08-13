@@ -47,21 +47,40 @@ function mapQuestionTypeToFe(be: BeQuestionType): QuestionType {
 }
 
 /**
+ * BE の QuestionType enum に対応値がある設問種別か。
+ *
+ * 'DATE' だけが対応値を持たない。SurveyQuestionEditor は 'DATE' を選択肢から外しているが、
+ * **選択肢から外れる前に localStorage へ保存された下書き**を復元すると 'DATE' が復活しうる。
+ * その経路を呼び出し側（SurveyCreateDialog の validate）で弾くための述語。
+ */
+export function isQuestionTypeSupportedByBackend(fe: QuestionType): boolean {
+  return fe !== 'DATE'
+}
+
+/**
  * FE QuestionType → BE 値（TEXT→FREE_TEXT / RATING→SCALE、他は恒等）。
  * テスト用ビルダ（_helpers.ts）で FE 値を wire 形へ寄せるために export する。
  *
- * 'DATE' は BE の QuestionType enum に対応値が無い。そのまま送ると必ず 400 になるため
- * SurveyQuestionEditor は 'DATE' を選択肢から外してあり（同ファイルの NOTE 参照）、
- * この分岐は実質到達しない。写像を全域関数に保つため、日付を文字列で受ける
- * 'FREE_TEXT' に寄せる。BE に DATE 相当が入ったらここも 1:1 に戻すこと。
+ * 'DATE' は BE に対応値が無いため **黙って別の種別へ寄せず、例外を投げる**。
+ *
+ * かつて 'DATE' を 'FREE_TEXT' に寄せていたが、これは対処療法だった。旧下書きを復元すると
+ * 日付設問が「自由記述」として**正常に保存されてしまい**、ユーザーは種別が書き換わったことに
+ * 気づけない（それ以前は BE が 400 で弾いたので「保存できなかった」と分かった）。
+ * 黙って別物にするより、できないと正直に伝えるほうがよい。
+ * 通常は {@link isQuestionTypeSupportedByBackend} で事前に弾かれるため、この例外は
+ * 「検証を通さずに送信経路へ入った」ことを示す最後の番人である。
  */
 export function mapQuestionTypeToBe(fe: QuestionType): BeQuestionType {
   switch (fe) {
     case 'TEXT':
-    case 'DATE':
       return 'FREE_TEXT'
     case 'RATING':
       return 'SCALE'
+    case 'DATE':
+      throw new Error(
+        'QuestionType "DATE" は Backend の QuestionType enum に対応値が無いため送信できない。' +
+          ' 送信前に isQuestionTypeSupportedByBackend で弾くこと。',
+      )
     default:
       return fe
   }
