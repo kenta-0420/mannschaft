@@ -14,7 +14,7 @@ import java.time.Instant;
 public class UserNavSettingsEntity {
 
     @Id
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
     // JSON配列を文字列として保持: ["todo","my-shift"]

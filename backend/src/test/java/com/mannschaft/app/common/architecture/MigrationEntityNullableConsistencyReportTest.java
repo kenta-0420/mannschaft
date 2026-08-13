@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * migration の最終状態（NULL 許容・NOT NULL）と Entity 側 {@code @Column(nullable=...)} /
- * {@code @JoinColumn(nullable=...)} の食い違いを実測する<b>探索的な報告テスト</b>
+ * {@code @JoinColumn(nullable=...)} の食い違いを検出する<b>番人テスト</b>
  * （符号揃え 第三波・issue #2545 で見つかった同型の盲点、マスター承認済みの新規要件）。
  *
  * <h2>なぜこの検出が必要か</h2>
@@ -33,13 +33,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * （CMP-021 の実例）。符号性の盲点とまったく同じ構造 —— 「本番 DDL の実際の制約」と
  * 「テストが使う Entity 由来の制約」が食い違ったまま気付かれない —— である。</p>
  *
- * <h2>本テストが「fail」ではなく「報告」である理由</h2>
- * <p>本テストは <b>まだ是正されていない食い違いの実測件数が不明</b>な段階で新設した。
- * 件数次第で「即座に是正する」か「別 issue へ送って段階的に潰す」かが変わるため、
- * 実測結果を確定させるまでは CI を赤くしない。件数を見て判断した後、
- * 是正が完了した時点で本テストを {@code fail} に切り替える（またはゼロ件を固定する
- * 番人へ格上げする）べきである。<b>大量に出た場合に勝手に allowlist で黙らせてはならない</b>
- * ——それは本テストの存在理由そのものを損なう。</p>
+ * <h2>番人への昇格（第四波・2026-08-13）</h2>
+ * <p>本テストは当初「まだ是正されていない食い違いの実測件数が不明」な段階で報告専用
+ * （fail しない）として新設された。第四波でマスター承認済み新規要件として実測した結果、
+ * 25 件の食い違い（うち 24 件は危険な向き＝migration NOT NULL・Entity nullable、
+ * 1 件は逆向き＝migration が意図的に NULL 許容へ緩和した設計＝{@code match_events.period}）
+ * を <b>すべて是正しゼロ件にした</b>ため、以後の再発を機械的に防ぐ番人へ昇格させた
+ * （{@code assertThat(mismatches).isEmpty()}）。<b>allowlist による免罪符化は行っていない
+ * ——ゼロ件になったから昇格した</b>のであり、残件を黙らせて昇格させたのではない。</p>
  *
  * <h2>対応づけできない Entity・列（判定不能）</h2>
  * <p>次のいずれかに該当する Entity・列は「判定不能」として一覧に出す。黙って無視しない:</p>
@@ -68,8 +69,8 @@ class MigrationEntityNullableConsistencyReportTest {
     private static final Pattern FILE_VERSION = Pattern.compile("^V(\\d+)\\.(\\d+)__");
 
     @Test
-    @DisplayName("報告: migration最終状態とEntity @Column(nullable=)の食い違いを実測する（fail しない・探索用）")
-    void migrationとEntityのNULL許容の食い違いを実測して報告する() throws IOException {
+    @DisplayName("番人: migration最終状態とEntity @Column(nullable=)の食い違いはゼロ件であること")
+    void migrationとEntityのNULL許容の食い違いはゼロ件であること() throws IOException {
         Map<String, Boolean> migrationNullable = buildMigrationNullableMap();
         EntityScanResult entityResult = scanEntities();
 
@@ -103,8 +104,11 @@ class MigrationEntityNullableConsistencyReportTest {
         System.out.println("--- 食い違い一覧（先頭200件） ---");
         mismatches.stream().limit(200).forEach(s -> System.out.println("  ✗ " + s));
 
-        // 本テストは意図的に fail しない（javadoc 参照）。件数はマスターの判断待ち。
-        assertThat(mismatches).isNotNull();
+        // 番人（第四波で 25 件をゼロ件まで是正して昇格・javadoc 参照）。
+        // 再発時はここで fail する（allowlist での黙らせは禁止）。
+        assertThat(mismatches)
+                .as("migration最終状態とEntity @Column(nullable=)の食い違い一覧")
+                .isEmpty();
     }
 
     // =====================================================================
@@ -271,7 +275,11 @@ class MigrationEntityNullableConsistencyReportTest {
     }
 
     private static boolean isNullable(String typeDecl) {
-        String upper = typeDecl.toUpperCase(Locale.ROOT);
+        // COMMENT '...' 等の引用符内テキストに「NOT NULL」という文言が含まれる列
+        // （例: entitlements.revoked_at の COMMENT '取消日時。NOT NULL なら期間内でも無効'）を
+        // 型宣言の NOT NULL 制約と誤認しないよう、判定前に引用符内を空白へ潰す。
+        String blanked = blankQuotedLiterals(typeDecl);
+        String upper = blanked.toUpperCase(Locale.ROOT);
         if (upper.contains("NOT NULL")) {
             return false;
         }
@@ -279,6 +287,25 @@ class MigrationEntityNullableConsistencyReportTest {
             return false;
         }
         return true;
+    }
+
+    /** 引用符（{@code '} {@code "} {@code `}）で囲まれた部分を同じ長さの空白へ置換する。 */
+    private static String blankQuotedLiterals(String text) {
+        StringBuilder sb = new StringBuilder(text);
+        int n = sb.length();
+        for (int i = 0; i < n; i++) {
+            char c = sb.charAt(i);
+            if (c == '\'' || c == '"' || c == '`') {
+                int end = SqlTextScanningUtils.skipQuoted(sb, i, c);
+                for (int j = i; j <= end && j < sb.length(); j++) {
+                    if (sb.charAt(j) != '\n') {
+                        sb.setCharAt(j, ' ');
+                    }
+                }
+                i = end;
+            }
+        }
+        return sb.toString();
     }
 
     private static boolean isTableLevelClause(String def) {
@@ -393,7 +420,10 @@ class MigrationEntityNullableConsistencyReportTest {
         }
 
         for (Path file : files) {
-            String content = Files.readString(file, StandardCharsets.UTF_8);
+            // Javadoc/行コメント中の文言（例: 「archive 用 @Entity を持たず」）を実際の
+            // @Entity アノテーションと誤認しないよう、判定前にコメントを空白へ潰す
+            // （NotificationAnonymizationEventListener で実際に誤検出した実例）。
+            String content = stripJavaComments(Files.readString(file, StandardCharsets.UTF_8));
             if (!ENTITY_ANN.matcher(content).find()) {
                 continue;
             }
@@ -425,6 +455,50 @@ class MigrationEntityNullableConsistencyReportTest {
             }
         }
         return result;
+    }
+
+    /**
+     * Java ソースの行コメント（{@code //}）・ブロックコメント（{@code /* *}{@code /}）を
+     * 空白へ置換する（文字数・改行位置は保つ）。文字列リテラル（{@code "..."}）・文字リテラル
+     * （{@code '...'}）内の {@code //} {@code /*} はコメント開始と誤認しないよう読み飛ばす。
+     * Javadoc/コメント中の文言（例:「archive 用 @Entity を持たず」）を実アノテーションと
+     * 誤検出しないための前処理。
+     */
+    private static String stripJavaComments(String src) {
+        StringBuilder sb = new StringBuilder(src);
+        int n = sb.length();
+        for (int i = 0; i < n; i++) {
+            char c = sb.charAt(i);
+            if (c == '"' || c == '\'') {
+                int j = i + 1;
+                while (j < n) {
+                    char cj = sb.charAt(j);
+                    if (cj == '\\') {
+                        j += 2;
+                        continue;
+                    }
+                    if (cj == c) {
+                        break;
+                    }
+                    j++;
+                }
+                i = Math.min(j, n - 1);
+            } else if (c == '/' && i + 1 < n && sb.charAt(i + 1) == '/') {
+                while (i < n && sb.charAt(i) != '\n') {
+                    sb.setCharAt(i++, ' ');
+                }
+            } else if (c == '/' && i + 1 < n && sb.charAt(i + 1) == '*') {
+                int end = sb.indexOf("*/", i + 2);
+                end = (end < 0) ? n : end + 2;
+                for (int j = i; j < end; j++) {
+                    if (sb.charAt(j) != '\n') {
+                        sb.setCharAt(j, ' ');
+                    }
+                }
+                i = end - 1;
+            }
+        }
+        return sb.toString();
     }
 
     /** Hibernate 既定物理命名規則と同じキャメル→スネークケース変換。 */

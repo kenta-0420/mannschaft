@@ -52,7 +52,7 @@ public class AnalyticsAlertRuleEntity extends BaseEntity {
     @Column(nullable = false, columnDefinition = "JSON")
     private String notifyChannels;
 
-    @Column(columnDefinition = "TINYINT UNSIGNED")
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private int consecutiveTriggers = 1;
 

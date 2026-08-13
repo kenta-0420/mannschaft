@@ -75,7 +75,7 @@ public class RecruitmentParticipantEntity {
     private LocalDateTime deletedAt;
 
     /** active_subject_key は DB 生成カラム。Java からは読み取り専用。 */
-    @Column(name = "active_subject_key", insertable = false, updatable = false, length = 100)
+    @Column(name = "active_subject_key", nullable = false, insertable = false, updatable = false, length = 100)
     private String activeSubjectKey;
 
     @PrePersist

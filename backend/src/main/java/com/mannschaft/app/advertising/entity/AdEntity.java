@@ -43,7 +43,7 @@ public class AdEntity extends BaseEntity {
 
     /** 掲載面（AdPlacement）。クリエイティブはサイズが placement 依存のため ads 単位。 */
     @Enumerated(EnumType.STRING)
-    @Column(length = 30)
+    @Column(nullable = false, length = 30)
     private com.mannschaft.app.advertising.AdPlacement placement;
 
     /** バナー幅 px（NULL: FE の placement 既定サイズ）。 */

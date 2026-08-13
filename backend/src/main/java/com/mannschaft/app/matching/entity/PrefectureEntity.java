@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 public class PrefectureEntity {
 
     @Id
-    @Column(length = 2)
+    @Column(nullable = false, length = 2)
     private String code;
 
     @Column(nullable = false, length = 10)
