@@ -145,7 +145,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedTeamMember(team, uTeam, "ACTIVE", false);
 
         List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                rootOrg, true, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                rootOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
 
         log.info("[AC-2] 供給={}（期待 昇順 [{},{},{}]）", page, uDirect, uChild, uTeam);
         assertThat(page)
@@ -173,9 +173,9 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedMembership(mixed, ScopeType.ORGANIZATION, org, RoleKind.MEMBER);
 
         List<Long> excluded = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, false, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                org, false, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
         List<Long> included = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
 
         log.info("[AC-3] false={} true={}", excluded, included);
         assertThat(excluded)
@@ -205,7 +205,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(org, active2, "ACTIVE", false);
 
         List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
 
         log.info("[AC-4] 供給={}（期待 ACTIVE未削除のみ [{},{}]）", page, active1, active2);
         assertThat(page)
@@ -316,11 +316,11 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long u4 = members.get(3);
 
         List<Long> firstPage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, PageRequest.of(0, 2));
+                org, true, MAX_DEPTH, 0L, 2, PageRequest.of(0, 2));
         List<Long> secondPage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, u2, PageRequest.of(0, 2));
+                org, true, MAX_DEPTH, u2, 2, PageRequest.of(0, 2));
         List<Long> afterLast = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, u4, PageRequest.of(0, 2));
+                org, true, MAX_DEPTH, u4, 2, PageRequest.of(0, 2));
 
         log.info("[AC-9] page1={} page2={} afterLast={}", firstPage, secondPage, afterLast);
         assertThat(firstPage).as("AC-9: limit=2 ちょうどで先頭2件").containsExactly(members.get(0), members.get(1));
@@ -426,7 +426,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         int firstChunkSize = -1;
         while (true) {
             List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                    org, true, MAX_DEPTH, cursor, PageRequest.of(0, chunk));
+                    org, true, MAX_DEPTH, cursor, chunk, PageRequest.of(0, chunk));
             if (firstChunkSize < 0) {
                 firstChunkSize = page.size();
             }
@@ -460,7 +460,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(selfCycleOrg, cycleMember, "ACTIVE", false);
 
         List<Long> cyclePage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                selfCycleOrg, true, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                selfCycleOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
         log.info("[AC-14①] self-cycle 供給={}", cyclePage);
         assertThat(cyclePage)
                 .as("AC-14①: 自己参照サイクルでも maxDepth で停止し、メンバーを重複なく1件返す（無限ループしない）")
@@ -478,7 +478,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(c2, uC2, "ACTIVE", false);
 
         List<Long> depth1 = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                root, true, 1, 0L, PageRequest.of(0, LARGE_LIMIT));
+                root, true, 1, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
         log.info("[AC-14②] maxDepth=1 供給={}（c2 メンバー {} は非展開の想定）", depth1, uC2);
         assertThat(depth1)
                 .as("AC-14②: maxDepth=1 は root と直下 c1 のみ展開し、深い c2 メンバーは含めない")
@@ -505,7 +505,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedTeamMember(pendingTeam, uPending, "ACTIVE", false);
 
         List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, PageRequest.of(0, LARGE_LIMIT));
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
 
         log.info("[AC-15] 供給={}（uActive={} のみ・uPending={} は除外の想定）", page, uActive, uPending);
         assertThat(page)
