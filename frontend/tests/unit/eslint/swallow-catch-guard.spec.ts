@@ -71,6 +71,16 @@ describe('エラー握りつぶし禁止ガード', () => {
       '外側 as で包んだ空配列そのもの': 'foo().catch(() => ([] as string[]))',
       '外側 as で包んだ空配列（try/catch）': 'function f() { try { g() } catch { return [] as string[] } }',
       '外側 as で包んだ null': 'foo().catch(() => (null as unknown as ApiResponse))',
+
+      // --- 再差し戻し分: プロパティ値そのものを型アサーションで包む迂回 ---
+      'プロパティ値 null as': 'foo().catch(() => ({ data: null as Foo | null }))',
+      'プロパティ値 satisfies': 'foo().catch(() => ({ data: [] satisfies Foo[] }))',
+      'プロパティ値 undefined as': 'foo().catch(() => ({ data: undefined as Foo | undefined }))',
+      'プロパティ値 空オブジェクト as': 'foo().catch(() => ({ data: {} as Foo }))',
+      'プロパティ値 非null表明': 'foo().catch(() => ({ data: ([] as Foo[])! }))',
+      'プロパティ値 多重の包み': 'foo().catch(() => ({ data: ([] as Foo[]) as Bar[] }))',
+      '外側とプロパティ値の両方に包み': 'foo().catch(() => ({ data: [] as Foo[] } as ApiResponse))',
+      '付き添いも含めて全部包む': 'foo().catch(() => ({ items: [] as Foo[], total: 0 as number }))',
     }
 
     for (const [name, code] of Object.entries(detected)) {
@@ -107,6 +117,14 @@ describe('エラー握りつぶし禁止ガード', () => {
       '外側 as だが空値を含まない': 'foo().catch(() => ({ ok: false } as ApiResponse))',
       '通常の変数初期化を as で包む': 'const state = { data: [] } as ApiResponse',
       '.then を as で包む': 'foo().then(() => ({ data: [] } as ApiResponse))',
+
+      // --- 再差し戻し分: プロパティ値を包んでも過剰検出しないこと ---
+      // 「実のある値だから対象外」の除外判定も透過するため、包みの有無で結論がぶれない
+      'プロパティ値 as だが非空配列': 'foo().catch(() => ({ data: [1] as Foo[] }))',
+      'プロパティ値 as だが変数参照': 'foo().catch(() => ({ data: items as Foo[] }))',
+      'プロパティ値 as ＋ エラー保持': 'foo().catch(e => ({ data: [] as Foo[], error: e }))',
+      'プロパティ値 as だが空値なし': 'foo().catch(() => ({ ok: false as boolean }))',
+      'プロパティ値 as で包んだ非空オブジェクト': 'foo().catch(() => ({ data: { id: 1 } as Foo }))',
     }
 
     for (const [name, code] of Object.entries(allowed)) {
