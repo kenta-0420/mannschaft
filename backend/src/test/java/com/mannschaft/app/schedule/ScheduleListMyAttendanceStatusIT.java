@@ -105,6 +105,18 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, userBId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userAId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userBId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        // 検分差し戻し是正（2026-08-15）: schedules.min_response_role は DDL NOT NULL DEFAULT
+        // 'MEMBER_PLUS' であり ScheduleEntity 側も @Builder.Default で揃えたため、
+        // respondAttendance は実際に ScheduleAttendanceService#validateMinResponseRole →
+        // AccessControlService#hasRoleOrAbove(...,"MEMBER") を通る。insertMembership だけでは
+        // memberships 行しか作らず roles テーブルに "MEMBER" が無いため
+        // （flyway.enabled=false でシード未投入・MembershipTestHelper.insertUserRole が
+        // オンデマンドseedを兼ねる）hasRoleOrAbove が false 固定になり 403 で落ちていた
+        // （EventCategoryAndIcalScopeContractIT と同じ確立済みパターンに揃える）。
+        MembershipTestHelper.insertUserRole(em, userAId, "MEMBER", teamId, null);
+        MembershipTestHelper.insertUserRole(em, userBId, "MEMBER", teamId, null);
+        MembershipTestHelper.insertUserRole(em, userAId, "MEMBER", null, orgId);
+        MembershipTestHelper.insertUserRole(em, userBId, "MEMBER", null, orgId);
 
         em.flush();
         em.clear();

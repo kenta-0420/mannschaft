@@ -41,10 +41,20 @@ public class AdEntity extends BaseEntity {
 
     // ─── F09.19.1 placement + バナー表示属性（V144.001。骨格 — 業務ロジックは出陣で実装） ───
 
-    /** 掲載面（AdPlacement）。クリエイティブはサイズが placement 依存のため ads 単位。 */
+    /**
+     * 掲載面（AdPlacement）。クリエイティブはサイズが placement 依存のため ads 単位。
+     *
+     * <p>検分是正（2026-08-15）: DDL（{@code V144.20260707124155__add_placement_to_ads.sql}）が
+     * {@code NOT NULL DEFAULT 'DASHBOARD_TILE'} のため、Java 側も同じ既定値を
+     * {@code @Builder.Default} で揃える（未指定で {@code build()} すると DB DEFAULT に
+     * 頼れず NULL が明示 INSERT され NOT NULL 制約違反になる既知パターンの再発防止。
+     * 実際に {@code AdCreativeServiceTest} が placement 未指定で builder を呼んでいた）。</p>
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private com.mannschaft.app.advertising.AdPlacement placement;
+    @Builder.Default
+    private com.mannschaft.app.advertising.AdPlacement placement =
+            com.mannschaft.app.advertising.AdPlacement.DASHBOARD_TILE;
 
     /** バナー幅 px（NULL: FE の placement 既定サイズ）。 */
     private Integer width;
