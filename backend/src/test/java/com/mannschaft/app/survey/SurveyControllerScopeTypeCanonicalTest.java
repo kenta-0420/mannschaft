@@ -83,7 +83,7 @@ class SurveyControllerScopeTypeCanonicalTest {
                 given(teamService.resolveTeamId("my-team-slug")).willReturn(SCOPE_ID_LONG);
 
                 CreateSurveyRequest request = mock(CreateSurveyRequest.class);
-                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of());
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
                 // Service は正準値 "TEAM" で呼ばれる（URLパス語 "teams" ではない）
                 given(surveyService.createSurvey(eq("TEAM"), eq(SCOPE_ID_LONG), eq(USER_ID), any()))
                         .willReturn(detail);
@@ -110,7 +110,7 @@ class SurveyControllerScopeTypeCanonicalTest {
                 given(organizationService.resolveOrgId("my-org-slug")).willReturn(SCOPE_ID_LONG);
 
                 CreateSurveyRequest request = mock(CreateSurveyRequest.class);
-                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of());
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
                 // Service は正準値 "ORGANIZATION" で呼ばれる
                 given(surveyService.createSurvey(eq("ORGANIZATION"), eq(SCOPE_ID_LONG), eq(USER_ID), any()))
                         .willReturn(detail);

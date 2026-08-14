@@ -86,8 +86,9 @@ class SurveyViewerCanViewResultsConsistencyIT extends AbstractMySqlIntegrationTe
 
         MembershipTestHelper.insertMembership(em, creatorId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, creatorId, "ADMIN", teamId, null);
+        // 所属ロール（MEMBER/SUPPORTER）は memberships のみで表現する。
+        // user_roles へ張るのは V60.010 移行後の本番で成立しえないため MembershipTestHelper が拒否する。
         MembershipTestHelper.insertMembership(em, memberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberId, "MEMBER", teamId, null);
 
         em.flush();
         em.clear();

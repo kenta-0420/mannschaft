@@ -30,17 +30,35 @@ public class SurveyDetailResponse {
     private final List<QuestionResponse> questions;
 
     /**
+     * この応答を受け取る閲覧者が、当該アンケートの結果を閲覧できるか。
+     *
+     * <p>Issue #2779: これが無かった頃、フロントエンドは結果取得 API を 1 回余分に叩き
+     * 403 が返るかどうかで可否を判定していた。値は結果取得 API が 403 を投げるのと
+     * <b>同じ判定点</b>（{@code SurveyResultAccessPolicy}）から得ているため、
+     * {@code true} なら結果取得は必ず 200、{@code false} なら必ず 403 になる。</p>
+     */
+    @io.swagger.v3.oas.annotations.media.Schema(
+            description = "この閲覧者がアンケート結果を閲覧できるか。true なら結果取得 API は 200、"
+                    + "false なら 403 を返す（結果取得の 403 プローブは不要）",
+            example = "true")
+    private final Boolean viewerCanViewResults;
+
+    /**
      * フラットな {@link SurveyResponse} と設問一覧から詳細レスポンスを組み立てる。
      *
      * <p>一覧・更新等が返す {@link SurveyResponse} と本 DTO のフィールドを 1 箇所で対応付けるため、
      * 呼び出し側では本ファクトリを使う（フィールドの取りこぼしを 1 箇所に閉じ込める）。</p>
      *
-     * @param survey    アンケート本体（null 不可でない場合は全フィールド null で構築される）
-     * @param questions 設問一覧（null 可）
+     * @param survey               アンケート本体（null 不可でない場合は全フィールド null で構築される）
+     * @param questions            設問一覧（null 可）
+     * @param viewerCanViewResults 閲覧者が結果を閲覧できるか
      * @return フラット形の詳細レスポンス
      */
-    public static SurveyDetailResponse of(SurveyResponse survey, List<QuestionResponse> questions) {
-        SurveyDetailResponseBuilder builder = SurveyDetailResponse.builder().questions(questions);
+    public static SurveyDetailResponse of(SurveyResponse survey, List<QuestionResponse> questions,
+                                          boolean viewerCanViewResults) {
+        SurveyDetailResponseBuilder builder = SurveyDetailResponse.builder()
+                .questions(questions)
+                .viewerCanViewResults(viewerCanViewResults);
         if (survey == null) {
             return builder.build();
         }

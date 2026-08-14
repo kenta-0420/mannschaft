@@ -106,6 +106,16 @@ export interface SurveyDetailResponse {
   data: SurveyResponse & {
     questions: SurveyQuestion[]
     hasResponded?: boolean
+    /**
+     * この閲覧者がアンケート結果を閲覧できるか（Issue #2779）。
+     *
+     * Backend の結果取得 API が 403 を投げるのと同じ判定点から得ているため、
+     * `true` なら結果取得は必ず 200、`false` なら必ず 403 になる。
+     * これが入るまで詳細画面は結果取得を 1 回余分に叩いて 403 で判定していた。
+     *
+     * optionality は生成型（`app/types/generated/index.ts`）に合わせて任意にしてある。
+     */
+    viewerCanViewResults?: boolean
   }
 }
 
