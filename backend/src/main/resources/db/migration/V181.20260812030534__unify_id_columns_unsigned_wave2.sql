@@ -20,11 +20,30 @@
 -- 本マイグレーションは新規ファイルであり、Flyway チェックサム不一致は起きない。
 
 -- ---------------------------------------------------------------------
--- 番人 — 負値が存在すると UNSIGNED 変換で値が破壊されるため、変換前に検査して中断する
+-- 番人 — 変換前の前提を検査して中断する
+--   (1) 負値が存在すると UNSIGNED 変換で値が破壊される
+--   (2) NOT NULL で再宣言する列に NULL 行があると MODIFY COLUMN が失敗する
+--       …このとき MySQL が返すのは `Data truncated for column 'X'` であり、
+--         原因（NULL 行の存在）にたどり着けない。番人が名指しで中断する。
 -- （SIGNAL / IF は stored program の外では使えないため、手続きを一時的に作って CALL し直ちに破棄する。
 --  V177.20260809103622 / V180.20260811135837 の先例に倣う。SIGNAL MESSAGE_TEXT は128文字上限）
 -- ---------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS w2_assert_no_negative_id_columns;
+DROP PROCEDURE IF EXISTS w2_assert_not_null;
+
+-- NOT NULL へ再宣言する列に NULL 行が無いことを検査する（列名を名指ししたメッセージで中断）
+CREATE PROCEDURE w2_assert_not_null(IN tbl VARCHAR(64), IN col VARCHAR(64))
+BEGIN
+    SET @w2_null_count = 0;
+    SET @w2_sql = CONCAT('SELECT COUNT(*) INTO @w2_null_count FROM `', tbl, '` WHERE `', col, '` IS NULL');
+    PREPARE w2_null_stmt FROM @w2_sql;
+    EXECUTE w2_null_stmt;
+    DEALLOCATE PREPARE w2_null_stmt;
+    IF @w2_null_count > 0 THEN
+        SET @w2_msg = CONCAT(tbl, '.', col, ' に NULL 行あり。NOT NULL 化できない（列定義かデータの是正が必要）');
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @w2_msg;
+    END IF;
+END;
 
 CREATE PROCEDURE w2_assert_no_negative_id_columns()
 BEGIN
@@ -173,7 +192,58 @@ END;
 
 CALL w2_assert_no_negative_id_columns();
 
+-- 本マイグレーションが NOT NULL で再宣言する列の一覧（下の本体変更と1対1で対応させること）
+CALL w2_assert_not_null('reservation_team_settings', 'team_id');
+CALL w2_assert_not_null('reservation_policies', 'team_id');
+CALL w2_assert_not_null('reservation_notification_recipients', 'team_id');
+CALL w2_assert_not_null('gdpr_s3_purge_failures', 'user_id');
+CALL w2_assert_not_null('reflection_themes', 'user_id');
+CALL w2_assert_not_null('reflection_entries', 'user_id');
+CALL w2_assert_not_null('recall_attempts', 'user_id');
+CALL w2_assert_not_null('reflection_spaced_reminders', 'user_id');
+CALL w2_assert_not_null('user_reflection_settings', 'user_id');
+CALL w2_assert_not_null('appearance_settings', 'user_id');
+CALL w2_assert_not_null('google_calendar_webhook_channels', 'user_id');
+CALL w2_assert_not_null('attendance_location_changes', 'team_id');
+CALL w2_assert_not_null('attendance_location_changes', 'student_user_id');
+CALL w2_assert_not_null('student_attendance_summaries', 'team_id');
+CALL w2_assert_not_null('student_attendance_summaries', 'student_user_id');
+CALL w2_assert_not_null('public_post_comments', 'post_id');
+CALL w2_assert_not_null('public_post_comments', 'author_id');
+CALL w2_assert_not_null('schedule_scheduled_tasks', 'schedule_id');
+CALL w2_assert_not_null('schedule_scheduled_tasks', 'organization_id');
+CALL w2_assert_not_null('schedule_scheduled_tasks', 'scope_id');
+CALL w2_assert_not_null('matches', 'team_id');
+CALL w2_assert_not_null('player_appearances', 'owning_team_id');
+CALL w2_assert_not_null('tournament_scorekeepers', 'tournament_id');
+CALL w2_assert_not_null('tournament_scorekeepers', 'user_id');
+CALL w2_assert_not_null('match_roster_staff', 'match_id');
+CALL w2_assert_not_null('match_roster_staff', 'participant_id');
+CALL w2_assert_not_null('tournament_fee', 'tournament_id');
+CALL w2_assert_not_null('tournament_fee', 'payment_item_id');
+CALL w2_assert_not_null('tournament_fee', 'organization_id');
+CALL w2_assert_not_null('tournament_fee_target', 'team_id');
+CALL w2_assert_not_null('tournament_submission_requirement', 'tournament_id');
+CALL w2_assert_not_null('tournament_submission_requirement', 'form_template_id');
+CALL w2_assert_not_null('tournament_submission_requirement', 'organization_id');
+CALL w2_assert_not_null('tournament_submission_requirement_target', 'team_id');
+CALL w2_assert_not_null('league_transfer', 'team_id');
+CALL w2_assert_not_null('league_transfer', 'from_organization_id');
+CALL w2_assert_not_null('league_transfer', 'to_organization_id');
+CALL w2_assert_not_null('team_uniform_set', 'team_id');
+CALL w2_assert_not_null('team_slug_history', 'team_id');
+CALL w2_assert_not_null('organization_slug_history', 'organization_id');
+CALL w2_assert_not_null('team_name_disclosure_change_logs', 'team_id');
+CALL w2_assert_not_null('organization_name_disclosure_change_logs', 'organization_id');
+CALL w2_assert_not_null('user_nav_settings', 'user_id');
+CALL w2_assert_not_null('inbox_item_states', 'user_id');
+CALL w2_assert_not_null('inbox_item_states', 'source_id');
+CALL w2_assert_not_null('notification_labels', 'user_id');
+CALL w2_assert_not_null('inbox_label_links', 'user_id');
+CALL w2_assert_not_null('inbox_label_links', 'source_id');
+
 DROP PROCEDURE w2_assert_no_negative_id_columns;
+DROP PROCEDURE w2_assert_not_null;
 
 -- ---------------------------------------------------------------------
 -- 本体変更 — MODIFY COLUMN は定義を丸ごと置き換えるため、NULL 許容・DEFAULT・COMMENT を
@@ -274,8 +344,11 @@ ALTER TABLE schedule_scheduled_tasks
     MODIFY COLUMN materialized_entity_id BIGINT UNSIGNED NULL     COMMENT '生成後の実体id（event_survey / schedule_attendance 等）';
 
 -- ===== match/tournament ドメイン =====
+-- matches.organization_id は現実のスキーマが NULL 許容であり、NOT NULL 行が存在しうる。
+-- 本マイグレーションの目的は符号統一（signed → UNSIGNED）のみであって NULL 許容の変更ではないため、
+-- 現行の NULL 許容をそのまま保つ（NOT NULL 化の是非は設計判断として別途扱う）。
 ALTER TABLE matches
-    MODIFY COLUMN organization_id       BIGINT UNSIGNED NOT NULL COMMENT 'テナント（organization ドメインへの ID 参照・原則1/7・FK なし）',
+    MODIFY COLUMN organization_id       BIGINT UNSIGNED NULL     COMMENT 'テナント（organization ドメインへの ID 参照・原則1/7・FK なし）',
     MODIFY COLUMN team_id               BIGINT UNSIGNED NOT NULL COMMENT '記録/ホーム主体チーム（team ドメイン ID 参照・FK なし）',
     MODIFY COLUMN tournament_fixture_id BIGINT UNSIGNED NULL     COMMENT '大会 fixture リンク（tournament ドメインへの BIGINT ID 参照・NULL=単独試合・FK なし）',
     MODIFY COLUMN schedule_id           BIGINT UNSIGNED NULL     COMMENT 'カレンダー連携（F03.1・schedules への BIGINT ID 参照・FK なし）',
