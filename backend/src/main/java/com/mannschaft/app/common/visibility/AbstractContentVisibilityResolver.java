@@ -765,7 +765,40 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 scopes.add(scope);
             }
         }
+        for (ScopeKey extra : additionalDescendantScopes(rows)) {
+            if (extra != null && "ORGANIZATION".equals(extra.scopeType())) {
+                scopes.add(extra);
+            }
+        }
         return scopes;
+    }
+
+    /**
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} 段<strong>以外</strong>の判定でも
+     * 下向き再帰の所属（{@link UserScopeRoleSnapshot#isDescendantMemberOf}）を使いたい Resolver が、
+     * その対象 ORG スコープを申告するフック（既定: 申告なし＝空集合）。
+     *
+     * <p>{@link #collectDescendantScopes} は「解決済みレベルが新段である行」しか集めない。
+     * しかし {@link StandardVisibility#CUSTOM} へ流れる機能固有の値が「配下ツリーに所属しているか」を
+     * 判定したい場合（survey の {@code AFTER_CLOSE} など）、レベルが新段ではないため
+     * snapshot に下向き再帰の情報が載らず、Resolver 側で ORG ごとに個別 SQL を撃つほかなくなる。
+     * それは行数比例ではないものの<strong>組織数に比例</strong>し、
+     * 「追加軸はバッチ 1 回で先読みする」という {@link #prepareAdditionalAxisContext} の契約に反する。</p>
+     *
+     * <p>本フックで ORG スコープを申告すると、それらは既存の新段スコープと<strong>合流して同一の
+     * バルククエリ 1 本</strong>（{@code MembershipBatchQueryService} が発行）で解決される。
+     * 組織が何件混ざっても SQL は増えない。</p>
+     *
+     * <p>申告しても<strong>判定レベルは変わらない</strong>（{@link #resolveLevelSafely} は不変）。
+     * 変わるのは snapshot に下向き再帰の所属情報が載るかどうかだけであり、
+     * 既存 Resolver は本フックを実装しないため挙動は完全に従来どおりである。
+     * ORGANIZATION 以外のスコープは無視される。</p>
+     *
+     * @param rows 本バッチで判定対象となる Projection 群
+     * @return 下向き再帰の所属解決を要する ORG スコープ集合（不要なら空集合）
+     */
+    protected Set<ScopeKey> additionalDescendantScopes(List<P> rows) {
+        return Set.of();
     }
 
     /**

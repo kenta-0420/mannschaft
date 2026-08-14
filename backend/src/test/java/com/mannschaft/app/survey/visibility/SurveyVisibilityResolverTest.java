@@ -255,20 +255,35 @@ class SurveyVisibilityResolverTest {
     @DisplayName("CUSTOM — AFTER_CLOSE")
     class AfterClose {
 
+        /**
+         * <p><b>期待値の是正（Issue #2774）</b>: 本テストは元々「締切後なら<b>非所属者でも匿名でも</b>可視」
+         * を固定していたが、これは所属確認が判定に入っていないという欠陥をそのまま仕様として
+         * 写し取ったものであった。締切を過ぎていることは可視の<b>必要条件であって十分条件ではない</b>
+         * という不変条件に合わせ、「所属者は可視・非所属者と匿名は不可視」へ改めた。</p>
+         */
         @Test
-        @DisplayName("expiresAt が過去なら可視")
+        @DisplayName("expiresAt が過去なら所属者に可視（非所属・匿名は不可視）")
         void expired_visible() {
             SurveyVisibilityProjection p = projection(
                     1L, "TEAM", 100L, 99L, SurveyStatus.CLOSED,
                     ResultsVisibility.AFTER_CLOSE,
                     LocalDateTime.now().minusHours(1));
             when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(p));
-            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", 100L), "MEMBER"),
+                            Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            when(membershipBatchQueryService.snapshotForUser(eq(null), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
 
+            // 当該チームの所属者は締切後に可視
             assertThat(resolver.canView(1L, 5L)).isTrue();
-            // 匿名でも締切後なら可視
-            assertThat(resolver.canView(1L, null)).isTrue();
+            // 非所属者は締切後でも不可視
+            assertThat(resolver.canView(1L, 6L)).isFalse();
+            // 匿名は所属を確認できないため fail-closed
+            assertThat(resolver.canView(1L, null)).isFalse();
         }
 
         @Test
