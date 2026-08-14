@@ -1,8 +1,15 @@
 # =============================================================================
-# Frontend CI — pull_request to main
+# Frontend CI — pull_request to main / push to main
 # =============================================================================
 # Runs install, lint, and typecheck on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
+#
+# main への push でも実行する理由:
+# 本ワークフローは元々 pull_request のみで main では一度も走らなかった。
+# そのため main に壊れた状態（例: eslint-suppressions.json のカウント乖離で
+# lint が exit 2）が紛れ込んでも誰も気づけず、次に frontend を触った
+# 無関係な PR が赤くなって初めて露見していた。push トリガを追加し main を
+# 常時監視することで、壊れた main を早期検知する。
 # =============================================================================
 
 name: Frontend — CI (PR Check)
@@ -15,10 +22,21 @@ on:
       - "frontend/**"
       - "docs/openapi.json"
       - ".github/workflows/frontend-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "docs/openapi.json"
+      - ".github/workflows/frontend-ci.yml"
 
 concurrency:
-  group: frontend-ci-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # push イベントでは github.event.pull_request.number が空になるため、
+  # PR番号だけだと main への全 push が単一グループに落ちて次々キャンセルされ、
+  # main 監視の実績が一度も残らない。push は github.sha で個別グループにする。
+  group: frontend-ci-${{ github.event.pull_request.number || github.sha }}
+  # cancel-in-progress は PR の再実行のみに適用する（main の検証を打ち切らないため）。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: "22"

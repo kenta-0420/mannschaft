@@ -6,6 +6,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * ユーザーの locale をキャッシュするサービス。
@@ -59,6 +64,63 @@ public class UserLocaleCache {
         String locale = userRepository.findLocaleById(userId).orElse(DEFAULT_LOCALE);
         cache.put(userId, locale);
         return locale;
+    }
+
+    /**
+     * 複数ユーザーの locale をまとめて解決する（{@link #getLocale} の bulk 版）。
+     *
+     * <p>Issue #2715 ロットA 検分是正: {@link com.mannschaft.app.notification.service.NotificationHelper}
+     * の一括通知（{@code notifyAllLocalized}）が受信者ごとに {@link #getLocale} を呼ぶと、受信者数（最大
+     * 1万人規模の FOLLOWERS 配信等）に比例した DB 往復が発生する。{@link UserTimezoneCache#getTimezones}
+     * と同一パターンで、TTL 5 分の既存キャッシュを活かしつつ<b>キャッシュミス分だけを 1 クエリ</b>
+     * （{@code UserRepository#findLocalesByIdIn}）で取得する。</p>
+     *
+     * <p><b>戻り値は必ず全 userId 分のエントリを含む</b>。DB に行が無い（未存在・論理削除済み）・{@code locale} が
+     * NULL/空文字のユーザーは既定の {@code ja} で埋める（呼び出し側に欠損判定を強いない）。</p>
+     *
+     * @param userIds 対象ユーザーID群（null/空なら空 Map）
+     * @return userId → locale 文字列（全 userId 分・欠損なし）
+     */
+    public Map<Long, String> getLocales(Collection<Long> userIds) {
+        Map<Long, String> resolved = new LinkedHashMap<>();
+        if (userIds == null || userIds.isEmpty()) {
+            return resolved;
+        }
+
+        // 1. キャッシュヒット分を先に確定し、ミス分だけを bulk クエリの対象にする。
+        Set<Long> missing = new LinkedHashSet<>();
+        for (Long userId : userIds) {
+            if (userId == null || resolved.containsKey(userId)) {
+                continue;
+            }
+            String cached = cache.get(userId);
+            if (cached != null) {
+                resolved.put(userId, cached);
+            } else {
+                missing.add(userId);
+            }
+        }
+
+        // 2. ミス分を 1 クエリで取得しキャッシュへ載せる（未存在・論理削除済みは行が返らない）。
+        if (!missing.isEmpty()) {
+            for (Object[] row : userRepository.findLocalesByIdIn(missing)) {
+                Long userId = ((Number) row[0]).longValue();
+                String locale = normalize((String) row[1]);
+                cache.put(userId, locale);
+                resolved.put(userId, locale);
+            }
+            // 3. 行が返らなかった userId は既定値で埋める（Map から欠損させない）。
+            //    ※ 存在しないユーザーの既定値はキャッシュしない（後から作成された場合に 5 分間誤った値を返さないため）。
+            for (Long userId : missing) {
+                resolved.putIfAbsent(userId, DEFAULT_LOCALE);
+            }
+        }
+        return resolved;
+    }
+
+    /** DB 由来の locale を正規化する（NULL / 空文字は既定値）。 */
+    private static String normalize(String locale) {
+        return (locale == null || locale.isBlank()) ? DEFAULT_LOCALE : locale;
     }
 
     /**

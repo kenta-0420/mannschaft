@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
@@ -37,6 +38,7 @@ import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -66,6 +69,10 @@ public class MemberPaymentService {
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
     private final NotificationHelper notificationHelper;
+    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
+    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     // === F08.9 P1 Wave4: 払い手分離・Connect 即時 charge 連携 ===
     private final PaymentAuthorizationService paymentAuthorizationService;
@@ -693,9 +700,15 @@ public class MemberPaymentService {
         Long scopeId = paymentItem.getTeamId() != null
                 ? paymentItem.getTeamId() : paymentItem.getOrganizationId();
         for (Long userId : unpaidUserIds) {
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(userId));
+            String title = messageSource.getMessage(
+                    "notification.payment.remind.title", null, "支払いリマインド", locale);
+            String body = messageSource.getMessage(
+                    "notification.payment.remind.body", new Object[]{paymentItem.getName()},
+                    paymentItem.getName() + "の支払いが未完了です", locale);
             notificationHelper.notify(
                     userId, "PAYMENT_REMIND",
-                    "支払いリマインド", paymentItem.getName() + "の支払いが未完了です",
+                    title, body,
                     "PAYMENT", paymentItemId,
                     scopeType, scopeId,
                     "/payments/" + paymentItemId, null);

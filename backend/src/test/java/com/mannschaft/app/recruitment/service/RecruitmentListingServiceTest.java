@@ -85,6 +85,25 @@ class RecruitmentListingServiceTest {
     @Mock
     private RecruitmentNoShowService noShowService;
 
+    // Issue #2715 ロットA: confirmApplication の通知 i18n 化検証に必要な依存。
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository participantRepository;
+
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository participantHistoryRepository;
+
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository reminderRepository;
+
+    @Mock
+    private com.mannschaft.app.notification.service.NotificationHelper notificationHelper;
+
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
+
     @InjectMocks
     private RecruitmentListingService service;
 
@@ -399,6 +418,50 @@ class RecruitmentListingServiceTest {
                     .isInstanceOf(BusinessException.class);
 
             verifyNoInteractions(noShowService);
+        }
+    }
+
+    // ========================================
+    // confirmApplication - Issue #2715 ロットA: 通知 i18n 化
+    // ========================================
+
+    @Nested
+    @DisplayName("confirmApplication - 受信者locale対応通知（Issue #2715）")
+    class ConfirmApplication {
+
+        @Test
+        @DisplayName("正常系: 受信者localeに従って RECRUITMENT_CONFIRMED 通知の件名・本文が切り替わる")
+        void confirmApplication_localeAware_buildsMessageInRecipientLocale() throws Exception {
+            Long participantId = 900L;
+            Long applicantUserId = 5L;
+            RecruitmentListingEntity listing = buildListingWithConfirmed(0);
+
+            com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity participant =
+                    com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity.builder()
+                            .listingId(LISTING_ID)
+                            .participantType(com.mannschaft.app.recruitment.RecruitmentParticipantType.USER)
+                            .userId(applicantUserId)
+                            .appliedBy(applicantUserId)
+                            .status(com.mannschaft.app.recruitment.RecruitmentParticipantStatus.APPLIED)
+                            .build();
+            setField(participant, "id", participantId);
+
+            given(participantRepository.findByIdForUpdate(participantId)).willReturn(Optional.of(participant));
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(userLocaleCache.getLocale(applicantUserId)).willReturn("en");
+            given(messageSource.getMessage(eq("notification.recruitment.confirmed.title"), any(), any(),
+                    eq(java.util.Locale.forLanguageTag("en"))))
+                    .willReturn("Participation confirmed");
+            given(messageSource.getMessage(eq("notification.recruitment.confirmed.body"), any(), any(),
+                    eq(java.util.Locale.forLanguageTag("en"))))
+                    .willReturn("Your participation in test has been confirmed.");
+
+            service.confirmApplication(participantId, USER_ID);
+
+            verify(notificationHelper).notify(
+                    eq(applicantUserId), eq("RECRUITMENT_CONFIRMED"),
+                    eq("Participation confirmed"), eq("Your participation in test has been confirmed."),
+                    any(), any(), any(), any(), any(), any());
         }
     }
 
