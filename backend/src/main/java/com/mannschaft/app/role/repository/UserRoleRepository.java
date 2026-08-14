@@ -128,6 +128,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * また {@code findByUserIdAndOrganizationIdIsNotNull(...).stream().map(getOrganizationId)} と
      * 同義の「所属組織 ID 列挙」の共通の受け皿でもある（在籍軸・role は問わない）。</p>
      *
+     * <p><b>Issue #2786 丙層 AC-23</b>: 本メソッドは PRIVATE 子組織一覧の可視性 SQL に降ろされるため、
+     * 取りこぼすと一般メンバーが自分の所属する PRIVATE 子組織を見失う。導入当初の javadoc にあった
+     * 「membership ドメインとの二重管理は生じない」という前提は {@code V60.010} 以後は成立せず、
+     * CMP-027 の本改修で 2 系統の {@code UNION}（{@code UNION ALL} ではない）へ是正済みである。
+     * 退会済（{@code left_at} 非 NULL）の membership 由来の組織は所属に含めない。</p>
+     *
      * @param userId 対象ユーザー ID
      * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
      */
@@ -225,23 +231,41 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     /**
      * スコープに所属するメンバーのメールアドレス一覧を取得する。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は
+     * {@link #findUserIdsByScope(String, Long)} の javadoc を参照。</p>
      */
-    @Query(value = "SELECT DISTINCT u.email FROM users u " +
-            "JOIN user_roles ur ON u.id = ur.user_id " +
-            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
-            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+    @Query(value = "SELECT DISTINCT u.email FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "  UNION " +
+            "  SELECT ms.user_id AS user_id FROM memberships ms " +
+            "    WHERE ms.scope_type = :scopeType AND ms.scope_id = :scopeId " +
+            "      AND ms.scope_type IN ('TEAM', 'ORGANIZATION') AND ms.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     List<String> findEmailsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
     /**
      * スコープに所属するメンバー数を取得する。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は
+     * {@link #findUserIdsByScope(String, Long)} の javadoc を参照。</p>
      */
-    @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
-            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+    @Query(value = "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "  UNION " +
+            "  SELECT ms.user_id AS user_id FROM memberships ms " +
+            "    WHERE ms.scope_type = :scopeType AND ms.scope_id = :scopeId " +
+            "      AND ms.scope_type IN ('TEAM', 'ORGANIZATION') AND ms.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     int countMembersByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
@@ -277,12 +301,21 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     /**
      * スコープ内のユーザーID・メールアドレスのペアを取得する。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は
+     * {@link #findUserIdsByScope(String, Long)} の javadoc を参照。</p>
      */
-    @Query(value = "SELECT DISTINCT ur.user_id, u.email FROM users u " +
-            "JOIN user_roles ur ON u.id = ur.user_id " +
-            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
-            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+    @Query(value = "SELECT DISTINCT cand.user_id, u.email FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "  UNION " +
+            "  SELECT ms.user_id AS user_id FROM memberships ms " +
+            "    WHERE ms.scope_type = :scopeType AND ms.scope_id = :scopeId " +
+            "      AND ms.scope_type IN ('TEAM', 'ORGANIZATION') AND ms.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     List<Object[]> findUserIdAndEmailByScope(@Param("scopeType") String scopeType,
                                               @Param("scopeId") Long scopeId);
@@ -351,6 +384,22 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     /**
      * スコープ内メンバーのユーザーIDリストを取得する (通知一斉送信用)。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以後、
+     * 一般メンバー（MEMBER / SUPPORTER）の在籍行は {@code memberships} にしか無く、
+     * {@code user_roles} に残るのは SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / GUEST / JOBBER のみである。
+     * 候補集合を {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）へ広げないと、
+     * 一斉通知が役職者にしか届かない。{@code UNION ALL} ではなく {@code UNION} を使い、
+     * 両系統に在籍行を持つ利用者を 1 件に畳む。</p>
+     *
+     * <p>{@code memberships} 側の枝は索引 {@code (scope_type, scope_id, left_at)} に載せるため
+     * 必ず {@code scope_type} の等値条件を伴う（{@code scope_id} 単独の索引は無い）。
+     * また TEAM / ORGANIZATION 以外の {@code scope_type}（PERSONAL 等）を渡されたときに
+     * 母集団が広がらないよう、{@code user_roles} 側の CASE と同じ 2 値へ明示的に限定する。</p>
+     *
+     * <p>本メソッドはロール名による限定を持たない「在籍者全員」の照会である。
+     * 管理者宛の通知は {@code findAdminUserIdsByOrganizationId} など
+     * {@code roles.name} で限定する別系統のクエリを使うこと（一般メンバーを混ぜてはならない）。</p>
      */
     @Query(value =
             "SELECT DISTINCT uid FROM ( " +
@@ -366,7 +415,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             // 在籍のみ（left_at IS NULL）＋ users ACTIVE/未削除を課す。
             "  SELECT m.user_id AS uid FROM memberships m " +
             "    JOIN users u ON u.id = m.user_id " +
+            // Issue #2786 丙層: scope_type は TEAM / ORGANIZATION の 2 値へ明示的に限定する。
+            // user_roles 側の CASE はこの 2 値以外で NULL となり 1 行も返さないため、
+            // memberships 枝だけを無条件に :scopeType へ一致させると PERSONAL 等を
+            // 渡されたときに本メソッドだけ母集団が広がる非対称が生まれる。
             "    WHERE m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL " +
+            "      AND m.scope_type IN ('TEAM', 'ORGANIZATION') " +
             "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") x",
             nativeQuery = true)
@@ -395,6 +449,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * </ul>
      *
      * <p>退会・非アクティブユーザーは除外する。SYSTEM_ADMIN は別途 {@link #findSystemAdminUserIds} で取得する想定。</p>
+     *
+     * <p><b>本メソッドは Issue #2786 丙層の修正対象から外してある（Issue #2797 へ切り出し）</b>:
+     * 個別付与の枝が参照する列名が実スキーマと一致しておらず、呼び出すと SQL 例外になる。
+     * 是正には「権限グループを組織ごとに持たせる」方式変更（スキーマ変更を伴う）が必要であり、
+     * {@code memberships} への候補集合拡張だけでは片付かない。受け入れ条件・テストとも
+     * Issue #2797 側に移してあるため、本メソッドは #2797 で一括して直すこと。</p>
      */
     @Query(value =
             "SELECT DISTINCT ur.user_id FROM user_roles ur " +
@@ -496,14 +556,33 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * <p>組織告知で {@code target_team_ids} を指定する際に、各 team_id が確かに
      * その組織の配下チームであることを検証するために使用する。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以後、
+     * 一般メンバーの在籍行は {@code memberships} にしか無いため、{@code user_roles} を
+     * 唯一の起点にすると「一般メンバーだけで構成される配下チーム」が返らず、
+     * そのチームを宛先に指定した正当な組織告知が拒否される。ACTIVE な
+     * {@code team_org_memberships} で当該組織に参加しており、かつ生存している在籍者を
+     * {@code memberships}（{@code left_at IS NULL}）に持つチームを {@code UNION} で加える
+     * （{@code UNION ALL} ではなく {@code UNION}）。</p>
+     *
      * @param organizationId 組織 ID
      * @return 組織配下のチーム ID リスト（重複なし）
      */
-    @Query(value = "SELECT DISTINCT ur.team_id FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.organization_id = :organizationId " +
-            "AND ur.team_id IS NOT NULL " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+    @Query(value = "SELECT DISTINCT cand.team_id FROM ( " +
+            "  SELECT ur.team_id AS team_id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE ur.organization_id = :organizationId " +
+            "      AND ur.team_id IS NOT NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION " +
+            "  SELECT tom.team_id AS team_id FROM team_org_memberships tom " +
+            "    WHERE tom.organization_id = :organizationId AND tom.status = 'ACTIVE' " +
+            "      AND EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        JOIN users u2 ON u2.id = ms.user_id " +
+            "        WHERE ms.scope_type = 'TEAM' AND ms.scope_id = tom.team_id AND ms.left_at IS NULL " +
+            "          AND u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
+            "      ) " +
+            ") cand",
             nativeQuery = true)
     List<Long> findTeamIdsByOrganizationId(@Param("organizationId") Long organizationId);
 
@@ -1576,11 +1655,33 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * これを {@code Long} にマッピングする。メソッドの戻り値を {@code boolean} と宣言すると
      * 代入時に {@code ClassCastException}（Long → Boolean）となり、呼び出し経路が
      * 実行時に落ちる。真偽への変換は {@link #existsSharedTeam} で Java 側が行う。</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以後、
+     * 一般メンバーのチーム在籍行は {@code memberships} にしか無いため、
+     * {@code user_roles} だけを突き合わせると一般メンバー同士の「共通チーム」が
+     * 常に 0 件となり、DM 受信制限が実勢と食い違う。両者のチーム ID 集合を
+     * それぞれ {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）で
+     * 組み立ててから突き合わせる。各集合の内側は {@code UNION} で重複を畳んであるため、
+     * 両系統に行を持つ利用者でも件数が水増しされない。</p>
+     *
+     * <p>退会済（{@code left_at} 非 NULL）の在籍行は共通チームの根拠にならない。
+     * {@code memberships} 側は索引 {@code (user_id, left_at)} に載せるため
+     * {@code scope_type = 'TEAM'} の等値条件を伴う。</p>
      */
-    @Query(value = "SELECT COUNT(*) FROM user_roles ur1 " +
-            "JOIN user_roles ur2 ON ur1.team_id = ur2.team_id " +
-            "WHERE ur1.user_id = :userId1 AND ur2.user_id = :userId2 " +
-            "AND ur1.team_id IS NOT NULL",
+    @Query(value = "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur1.team_id AS team_id FROM user_roles ur1 " +
+            "    WHERE ur1.user_id = :userId1 AND ur1.team_id IS NOT NULL " +
+            "  UNION " +
+            "  SELECT ms1.scope_id AS team_id FROM memberships ms1 " +
+            "    WHERE ms1.user_id = :userId1 AND ms1.scope_type = 'TEAM' AND ms1.left_at IS NULL " +
+            ") t1 " +
+            "JOIN ( " +
+            "  SELECT ur2.team_id AS team_id FROM user_roles ur2 " +
+            "    WHERE ur2.user_id = :userId2 AND ur2.team_id IS NOT NULL " +
+            "  UNION " +
+            "  SELECT ms2.scope_id AS team_id FROM memberships ms2 " +
+            "    WHERE ms2.user_id = :userId2 AND ms2.scope_type = 'TEAM' AND ms2.left_at IS NULL " +
+            ") t2 ON t1.team_id = t2.team_id",
             nativeQuery = true)
     long countSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 
@@ -1593,12 +1694,22 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は
+     * {@link #findUserIdsByScope(String, Long)} の javadoc を参照。
+     * {@code last_login_at} による絞り込みは従来どおり維持する。</p>
      */
-    @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
-            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
-            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+    @Query(value = "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "  UNION " +
+            "  SELECT ms.user_id AS user_id FROM memberships ms " +
+            "    WHERE ms.scope_type = :scopeType AND ms.scope_id = :scopeId " +
+            "      AND ms.scope_type IN ('TEAM', 'ORGANIZATION') AND ms.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "AND u.last_login_at >= :since",
             nativeQuery = true)
     int countActiveMembers(@Param("scopeType") String scopeType,

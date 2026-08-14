@@ -159,20 +159,51 @@ public interface TeamRepository
     int decrementMemberCount(@Param("teamId") Long teamId);
 
     /**
-     * F15.4 Phase 4: 全 teams の member_count を user_roles から再集計する（夜次バッチ用）。
+     * F15.4 Phase 4: 全 teams の member_count を在籍実勢から再集計する（夜次バッチ用）。
      *
      * <p>リスナー（足軽16）による同期更新がエラーや @Transactional 境界外で漏れた場合の
      * ドリフト補正を目的とする。論理削除済みの team は更新対象外。
      * 設計書: docs/features/F15.4_team_store_search_within_org.md §3.3 / §11.4</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以後、
+     * 一般メンバー（MEMBER / SUPPORTER）の在籍行は {@code memberships} にしか無く、
+     * {@code user_roles} に残るのは SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / GUEST / JOBBER のみである。
+     * 候補集合を {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）へ広げる。
+     * {@code UNION ALL} ではなく {@code UNION} を使い、両系統に在籍行を持つ利用者を
+     * 1 名に畳む（移行期の二重計上を防ぐ）。</p>
+     *
+     * <p><b>同時に是正した逆向きの誤差</b>: 従来は {@code users} と一切結合しておらず、
+     * 論理削除済みユーザー・非 ACTIVE ユーザーまで数え込んで {@code member_count} を
+     * 過大に書き込んでいた。候補集合を広げると同時に
+     * {@code users.deleted_at IS NULL AND users.status = 'ACTIVE'} の生存確認を課す。</p>
+     *
+     * <p><b>相関副問い合わせではなく非相関の派生表を JOIN する理由</b>: MySQL は
+     * 派生表の内側から外側の列（{@code t.id}）を参照できないため、スカラー副問い合わせの
+     * 中で 2 系統を {@code UNION} する形は書けない。全チーム分の集計を 1 回で作る
+     * 非相関の派生表へ寄せることで、この制約を避けつつ夜次バッチとして 1 パスで済ませる。
+     * 在籍者が 1 人もいないチームは {@code LEFT JOIN} + {@code COALESCE} で 0 に落とす。</p>
      *
      * @return 更新件数
      */
     @Modifying
     @Query(value = """
             UPDATE teams t
-            SET t.member_count = (
-                SELECT COUNT(*) FROM user_roles ur WHERE ur.team_id = t.id
-            )
+            LEFT JOIN (
+                SELECT cand.team_id AS team_id, COUNT(*) AS member_count
+                FROM (
+                    SELECT ur.team_id AS team_id, ur.user_id AS user_id
+                      FROM user_roles ur
+                      WHERE ur.team_id IS NOT NULL
+                    UNION
+                    SELECT ms.scope_id AS team_id, ms.user_id AS user_id
+                      FROM memberships ms
+                      WHERE ms.scope_type = 'TEAM' AND ms.left_at IS NULL
+                ) cand
+                JOIN users u ON u.id = cand.user_id
+                WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'
+                GROUP BY cand.team_id
+            ) live ON live.team_id = t.id
+            SET t.member_count = COALESCE(live.member_count, 0)
             WHERE t.deleted_at IS NULL
             """, nativeQuery = true)
     int recalculateMemberCounts();
