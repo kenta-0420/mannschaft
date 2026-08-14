@@ -1752,6 +1752,49 @@ public class MembershipBatchQueryService {
 
 **利用側（Phase B）**: 呼び出し元は返ってきた `Set<StandardVisibility>` を、機能固有 visibility enum への Mapper の**逆写像**（例: `ActivityVisibilityMapper.toFunctional` / `AlbumVisibilityMapper.toFunctional`）で変換し、Repository の `visibility IN (...)` 述語に渡す。逆写像が安全なのは、既存の `toStandard` 写像が単射（機能固有 enum の値ごとに異なる `StandardVisibility` へ写像される）であるため。機能固有 enum に `PUBLIC` 相当が存在しない場合（例: `AlbumVisibility`）、逆写像結果が空集合になり得る点に注意（呼び出し元は SQL を発行せず空ページを返すこと）。
 
+### 10.6 `CUSTOM_TEMPLATE` の SQL 述語化 — 未解決だが解法の見通しはある（CMP-028 Phase C / 2026-08-13 追記）
+
+**現状（fail-closed）**: `VisibilityScope.CUSTOM_TEMPLATE`（求人 `F13.1` に限らず、機能固有 enum が
+`StandardVisibility.CUSTOM_TEMPLATE` に写像する値全般）は、`resolveVisibleLevels` が返す可視ラダー集合に
+含まれない（§10.5 の行依存値リスト参照）。求人 (`JobPostingRepository#findVisibleByTeamId`) は現状
+`CUSTOM_TEMPLATE` を SQL から**意図的に除外**している。書き込み側 (`JobPostingService.MVP_ALLOWED_SCOPES`)
+がこの値の作成を禁止しているため今は到達しないが、将来この制限を解いた瞬間、`CUSTOM_TEMPLATE` の求人は
+一覧 API から**誰にも見えなくなる**（fail-closed の静かな破綻）。再発防止の番人:
+`JobPostingVisibilityScopeSqlSupportGuardTest`（`backend/src/test/java/com/mannschaft/app/jobmatching/`）。
+
+**解法の見通し（着手時はこれを起点にすること）**:
+
+> ⚠️ **訂正（2026-08-13・Codex による検分で判明）**: 本節は当初「テンプレート評価は
+> 『閲覧者 × テンプレート』の関数であり行に依存しない」と記していたが、**これは誤りである**。
+> `AbstractContentVisibilityResolver` の `CUSTOM_TEMPLATE` 分岐は
+> `templateEvaluator.canView(viewerUserId, row.visibilityTemplateId(), row.authorUserId())` と
+> **行の作者 `row.authorUserId()` を渡している**。`evaluateRule` の `ownerUserId` はテンプレートの
+> 属性ではなく**この行の作者**であり、`@USER_PRIMARY_TEAM` プレースホルダはこの値から所属チームを
+> 解決する。したがって評価は **「閲覧者 × テンプレート ID × 行の作者」の3項関数**である。
+> 同一テンプレートを複数の作者が使い得る以上、`visibility_template_id IN (:ids)` だけで絞ると
+> **過剰許可または誤拒否**になる。以下は訂正後の見通しである。
+
+`resolveVisibleLevels`（§10.5, Phase A）と同じ「行ごとの判定を集合へ持ち上げる」構図自体は使えるが、
+**持ち上げる単位が `templateId` ではなく `(templateId, authorUserId)` の組**になる:
+
+1. 対象ページの候補行から `(visibility_template_id, author_user_id)` の組を集め、
+   閲覧者に対して可視な組の集合を求める。
+2. SQL 側は `(visibility_template_id, author_user_id) IN (:visiblePairs)` 相当で絞る。
+3. ただしこれは**候補行を先に引く必要がある**ため、他スコープのような「一発の WHERE」にはならない。
+   歯抜けを完全に消すには、可視判定の結果を事前計算して列／表に持たせる方向も併せて検討すること。
+
+**着手前に必要な前提作業**:
+
+- **求人テーブルには `visibility_template_id` 列がそもそも存在しない**（Entity にもフィールドが無い）。
+  この値を書き込めるようにするには migration・Entity・作成/更新経路の追加が先に要る。
+- 作者依存を消せる不変条件（例: テンプレートをスコープ単位で持たせ作者非依存にする）を設計として
+  導入できるなら、上記の3項関数が2項に縮退し `templateId IN (:ids)` で済むようになる。
+  **この選択肢を軍議で先に検討する価値がある。**
+
+**未解決の論点（正直に記録する）**: テンプレートの母集合をどう限定するか。閲覧者に紐づく全テンプレートを
+毎回評価するのは重い。対象スコープ（例: 求人ならその TEAM/ORG 配下）に属するテンプレートに絞る等の
+設計が要るが、これは解放時の要件次第であり**未決**。着手する際は軍議で母集団の絞り込み方針を先に固めること。
+
 ---
 
 ## 11. セキュリティ考慮事項
