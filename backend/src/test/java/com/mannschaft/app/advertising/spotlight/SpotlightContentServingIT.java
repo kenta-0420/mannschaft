@@ -59,6 +59,10 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
     void setUp() {
         setUpCommon();
         insertRole("MEMBER", "メンバー", 5, false);
+        // CMP-027: findTeamIdsByOrganizationId の filler 用（結合クエリは role を見ない）。
+        // MEMBER(role_id=4/5) は V60.010 で user_roles から除去され本番不能ゆえ、
+        // 本番で user_roles に正当に存在しうる GUEST を filler に使う。
+        insertRole("GUEST", "ゲスト", 6, false);
         viewerId = insertUser("spotlight-viewer@example.com");
         creatorId = insertUser("spotlight-adv-owner@example.com");
         advOrgId = insertOrganization("F09192 広告主組織");
@@ -271,8 +275,9 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
             insertServableHouseCandidate(advOrgId, advAccountId, TILE, UNIT_PRICE, "ORGゲート候補");
             Long viewerOrg = insertOrganization("閲覧組織");
             Long childTeam = insertTeam("組織配下チーム");
-            // findTeamIdsByOrganizationId: user_roles(active user, organization_id=viewerOrg, team_id=childTeam)
-            insertUserRole(viewerId, roleId("MEMBER"), childTeam, viewerOrg);
+            // findTeamIdsByOrganizationId: user_roles(active user, organization_id=viewerOrg, team_id=childTeam)。
+            // 結合クエリは role_id 値を見ないため、本番不能な MEMBER ではなく本番成立可の GUEST を filler に使う。
+            insertUserRole(viewerId, roleId("GUEST"), childTeam, viewerOrg);
             insertTeamSubscription(childTeam, "ORGANIZATION", "ACTIVE");
             em.flush();
 

@@ -4,6 +4,13 @@ spring:
       ddl-auto: create
     properties:
       hibernate:
+        # F00 §13.4: 性能テスト用 SQL 意図カウンタ。テーブル名ベースで発行 SQL 数を集計する。
+        # src/main/resources/application-test.yml にも同じ登録があるが、gradle test では
+        # 本ファイル（src/test/resources）が main 側を完全に隠蔽するため、そちらの登録は効かない。
+        # 登録が無いと SqlIntentCounter は 1 件も捕捉せず、SQL 本数を測るテストが
+        # totalCount()=0 で「上限以下」と判定され、N+1 を素通しする偽 green になる（Issue #2782）。
+        session_factory:
+          statement_inspector: com.mannschaft.app.common.visibility.perf.SqlIntentCounter
         jdbc:
           # Issue #2486 で共有 application.yml にも同じ UTC 指定が入ったため、この行は現在は冗長。
           # ただし本ファイルは「テストの格納基準は UTC である」という前提を明示する場所として意味があり、

@@ -61,12 +61,8 @@ public class GamificationPointListener {
         Long userId = event.getUserId();
         log.debug("デイリーログインイベント受信: userId={}", userId);
 
-        // ユーザーが所属する全チームにポイント付与
-        List<Long> teamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)
-                .stream()
-                .map(r -> r.getTeamId())
-                .distinct()
-                .toList();
+        // ユーザーが所属する全チームにポイント付与（CMP-027: user_roles ∪ memberships の在籍チーム）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
 
         for (Long teamId : teamIds) {
             gamificationPointService.addPoint(
@@ -75,12 +71,8 @@ public class GamificationPointListener {
             );
         }
 
-        // ユーザーが所属する全組織にポイント付与
-        List<Long> orgIds = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)
-                .stream()
-                .map(r -> r.getOrganizationId())
-                .distinct()
-                .toList();
+        // ユーザーが所属する全組織にポイント付与（CMP-027: user_roles ∪ memberships の在籍組織）
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
 
         for (Long orgId : orgIds) {
             gamificationPointService.addPoint(

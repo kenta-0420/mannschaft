@@ -10,7 +10,6 @@ import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
@@ -146,12 +145,8 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
     private Map<ScopeKey, String> resolveAccessibleScopes(Long userId) {
         Map<ScopeKey, String> result = new LinkedHashMap<>();
 
-        // チームスコープ
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)) {
-            Long teamId = role.getTeamId();
-            if (teamId == null) {
-                continue;
-            }
+        // チームスコープ（CMP-027: user_roles ∪ memberships の在籍チーム）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.TEAM, teamId);
             if (result.containsKey(key)) {
                 continue;
@@ -160,12 +155,8 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             result.put(key, viewerRole == null ? null : viewerRole.name());
         }
 
-        // 組織スコープ
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)) {
-            Long orgId = role.getOrganizationId();
-            if (orgId == null) {
-                continue;
-            }
+        // 組織スコープ（CMP-027: user_roles ∪ memberships の在籍組織）
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.ORGANIZATION, orgId);
             if (result.containsKey(key)) {
                 continue;

@@ -3,7 +3,6 @@ package com.mannschaft.app.performance.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.performance.AggregationType;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.performance.dto.MemberPerformanceResponse;
 import com.mannschaft.app.performance.dto.MyPerformanceResponse;
@@ -227,10 +226,8 @@ public class PerformanceStatsService {
         if (teamId != null) {
             teamIds = List.of(teamId);
         } else {
-            teamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(currentUserId).stream()
-                    .map(UserRoleEntity::getTeamId)
-                    .distinct()
-                    .toList();
+            // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            teamIds = userRoleRepository.findTeamIdsByUserId(currentUserId);
         }
 
         // チーム名を一括解決

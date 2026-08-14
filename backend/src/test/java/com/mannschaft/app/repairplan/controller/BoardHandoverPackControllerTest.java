@@ -108,7 +108,6 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
         MembershipTestHelper.insertUserRole(em, adminUserId, "ADMIN", null, ORG_ID);
         // memberUserId: メンバーシップ登録のみ（MEMBER 権限）
         MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberUserId, "MEMBER", null, ORG_ID);
 
         insertOrganization(ORG_ID, "申し送りテスト組合");
 

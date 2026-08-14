@@ -12,7 +12,6 @@ import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.WidgetKey;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
@@ -160,12 +159,12 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Test
     @DisplayName("AC-1: 同一組織の org ロール行が 2 件でも、同一 feedId の組織告知は 1 件だけ表示される")
     void AC1_多重orgロール_同一feedIdは1件に重複排除() {
-        // 同一 organizationId の org ロール行を 2 件返す（将来の複数ロール許容を模擬）
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                .willReturn(List.of(
-                        UserRoleEntity.builder().organizationId(ORG_ID).build(),
-                        UserRoleEntity.builder().organizationId(ORG_ID).build()));
-        // 各 org ロールにつき同一 feedId(=FEED_ID) の告知が返る → flatMap で 2 回集約される
+        // 同一 organizationId を 2 件返す（flatMap で同一 feedId が 2 回集約される状況を模擬）。
+        // 本番の findOrganizationIdsByUserId は DISTINCT だが、ここでは feedId 重複排除ロジックの
+        // 検証のため意図的に重複 orgId を与える。
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                .willReturn(List.of(ORG_ID, ORG_ID));
+        // 各 org スコープにつき同一 feedId(=FEED_ID) の告知が返る → flatMap で 2 回集約される
         given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
                 eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));
@@ -189,8 +188,8 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Test
     @DisplayName("AC-2: org ロール 1 件・feed 1 件なら従来通り 1 件表示される（非回帰）")
     void AC2_単一orgロール単一feed_1件表示() {
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                .willReturn(List.of(UserRoleEntity.builder().organizationId(ORG_ID).build()));
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                .willReturn(List.of(ORG_ID));
         given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
                 eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));
