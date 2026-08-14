@@ -160,9 +160,13 @@ onMounted(async () => {
     await loadPermissions()
     const [, divRes] = await Promise.all([
       loadTournamentSpaces(),
-      getDivisions(orgSlug, tId).catch(() => ({ data: [] as TournamentDivision[] })),
+      // 取得失敗を空配列に偽装せず、失敗として表面化させる（Issue #2770）
+      getDivisions(orgSlug, tId),
     ])
     divisions.value = divRes.data
+  }
+  catch {
+    showError(t('tournament.communication.divisions_load_failed'))
   }
   finally {
     loading.value = false

@@ -154,7 +154,8 @@
     "no_chat": "チャットスペースがありません",
     "visibility_saved": "公開設定を変更しました",
     "visibility_failed": "公開設定の変更に失敗しました",
-    "load_failed": "連絡スペースの取得に失敗しました"
+    "load_failed": "連絡スペースの取得に失敗しました",
+    "divisions_load_failed": "ディビジョン一覧の取得に失敗しました"
   },
   "submission": {
     "title": "書類提出受付",

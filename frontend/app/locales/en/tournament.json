@@ -154,7 +154,8 @@
     "no_chat": "No chat space",
     "visibility_saved": "Visibility updated",
     "visibility_failed": "Failed to update visibility",
-    "load_failed": "Failed to load communication spaces"
+    "load_failed": "Failed to load communication spaces",
+    "divisions_load_failed": "Failed to load divisions"
   },
   "submission": {
     "title": "Document Submission",

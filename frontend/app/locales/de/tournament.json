@@ -154,7 +154,8 @@
     "no_chat": "Kein Chatbereich vorhanden",
     "visibility_saved": "Sichtbarkeit aktualisiert",
     "visibility_failed": "Fehler beim Aktualisieren der Sichtbarkeit",
-    "load_failed": "Kontaktbereiche konnten nicht geladen werden"
+    "load_failed": "Kontaktbereiche konnten nicht geladen werden",
+    "divisions_load_failed": "Divisionen konnten nicht geladen werden"
   },
   "submission": {
     "title": "Dokumenteneinreichung",
