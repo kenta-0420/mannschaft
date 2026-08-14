@@ -143,7 +143,7 @@ class SurveyVisibilityResolverAlwaysAudienceBatchIT extends AbstractMySqlIntegra
         markMembershipLeft(leftUserId, teamIds[0]);
         MembershipTestHelper.insertMembership(
                 em, inactiveUserId, ScopeType.TEAM, teamIds[0], RoleKind.MEMBER);
-        markUserStatus(inactiveUserId, "SUSPENDED");
+        markUserStatus(inactiveUserId, "FROZEN");
         MembershipTestHelper.insertMembership(
                 em, deletedUserId, ScopeType.TEAM, teamIds[0], RoleKind.MEMBER);
         markUserDeleted(deletedUserId);
