@@ -637,9 +637,22 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p><b>候補集合は 2 系統の和集合（Issue #2785 乙層）</b>: 候補集合を派生表 {@code cand} で
      * {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）へ広げ、後段の除外サブクエリ・
-     * カーソル条件・{@code ORDER BY} はすべて {@code cand.user_id} を参照する。
-     * <b>カーソル条件は派生表の外側に置く</b>こと（内側の片枝だけに置くとページ境界で行が飛ぶ）。
+     * {@code ORDER BY} はすべて {@code cand.user_id} を参照する。
      * {@code cand} は {@code UNION} で重複排除済みのため、両系統に行を持つ者もページ内で重複しない。</p>
+     *
+     * <p><b>カーソル条件は「両枝の内側」にも置く — 冗長に見えるが消してはならない（#2785 検分差し戻し）</b>:
+     * {@code UNION} を含む派生表は重複排除のためマージ不能でマテリアライズされる。カーソル条件を外側だけに
+     * 置くと、<b>各ページで候補集合を丸ごと再構築・再重複排除してからカーソルで絞る</b>ことになり、
+     * その費用がページ数に比例して積み上がる（50 万規模の fan-out が実質的な反復全件走査へ退行する）。
+     * そこで {@code ur.user_id > :cursor} / {@code ms0.user_id > :cursor} を両枝の内側にも適用し、
+     * 各枝が {@code (organization_id, user_id)} / {@code (team_id, user_id)} /
+     * {@code (scope_type, scope_id, left_at, user_id)} の索引レンジで絞られるようにする。
+     * これによりマテリアライズされる中間結果が「カーソル以降」に限定される。</p>
+     *
+     * <p><b>両枝に等しく置くのは安全である</b>: 同一列に対する同一の絞り込みであり外側の条件と論理的に等価で、
+     * {@code UNION} の重複排除は行を減らす方向にしか働かないため母集団は変わらない。
+     * 危険なのは<b>片枝だけ</b>に置くことで、その場合ページ境界で行が飛ぶ（AC-13 が番人）。
+     * 外側の {@code cand.user_id > :cursor} も保険として残してある。</p>
      *
      * <p>{@code CAST(... AS SIGNED)} で戻り値を確実に {@code Long} にマップする
      * （{@link com.mannschaft.app.membership.repository.MembershipRepository#findActiveUserIdsByScopeKeyset}
@@ -663,15 +676,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
             "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            // カーソル条件は両枝の内側にも置く（外側だけだと候補集合を毎ページ丸ごと再構築する）
             "  SELECT ur.user_id AS user_id FROM user_roles ur " +
-            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
-            "      OR ur.team_id IN ( " +
-            "        SELECT tom.team_id FROM team_org_memberships tom " +
-            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "      ) " +
+            "    WHERE ur.user_id > :cursor " +
+            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "            OR ur.team_id IN ( " +
+            "              SELECT tom.team_id FROM team_org_memberships tom " +
+            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "            ) ) " +
             "  UNION " +
             "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
-            "    WHERE ms0.left_at IS NULL " +
+            "    WHERE ms0.left_at IS NULL AND ms0.user_id > :cursor " +
             "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
             "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
@@ -731,8 +746,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * <b>MOD も候補集合の派生表 {@code cand} を参照させる</b>こと（ここだけ {@code ur} が残ると
      * {@code memberships} 専属メンバーが全シャードから漏れる）。
      *
-     * <p><b>インデックス影響</b>: {@code MOD(cand.user_id, N)} は関数適用のため user_id インデックスの range scan には
-     * 効かない（keyset 側 {@code cand.user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
+     * <p><b>カーソル条件・シャード述語は「両枝の内側」にも置く — 冗長に見えるが消してはならない
+     * （#2785 検分差し戻し）</b>: 本家キーセット版と同じ理由で、{@code UNION} 派生表は毎ページ
+     * マテリアライズされる。外側だけに置くと候補集合を丸ごと再構築してから絞ることになり、費用が
+     * ページ数に比例して積み上がる。そこで {@code user_id > :cursor} と
+     * {@code MOD(user_id, :shardCount) = :shardIndex} を両枝の内側にも適用し、マテリアライズされる
+     * 中間結果を「カーソル以降かつ当該シャード分」に限定する。両枝に等しく置く限り母集団は変わらない
+     * （片枝だけに置くとページ境界で行が飛ぶ。AC-13 / AC-14 が番人）。</p>
+     *
+     * <p><b>インデックス影響</b>: {@code MOD(user_id, N)} は関数適用のため user_id インデックスの range scan には
+     * 効かない（{@code user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
+     * ただし枝の内側に押し込むことでマテリアライズされる行数自体は当該シャード分まで削減される。
      * 50 万規模でもチャンク境界の keyset 走査が支配的でありシャードフィルタの追加コストは限定的。</p>
      *
      * @param shardIndex 担当シャード番号（0..shardCount-1）
@@ -748,15 +772,19 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
             "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            // カーソル条件・シャード述語は両枝の内側にも置く（外側だけだと候補集合を毎ページ丸ごと再構築する）
             "  SELECT ur.user_id AS user_id FROM user_roles ur " +
-            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
-            "      OR ur.team_id IN ( " +
-            "        SELECT tom.team_id FROM team_org_memberships tom " +
-            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "      ) " +
+            "    WHERE ur.user_id > :cursor " +
+            "      AND MOD(ur.user_id, :shardCount) = :shardIndex " +
+            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "            OR ur.team_id IN ( " +
+            "              SELECT tom.team_id FROM team_org_memberships tom " +
+            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "            ) ) " +
             "  UNION " +
             "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
-            "    WHERE ms0.left_at IS NULL " +
+            "    WHERE ms0.left_at IS NULL AND ms0.user_id > :cursor " +
+            "      AND MOD(ms0.user_id, :shardCount) = :shardIndex " +
             "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
             "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
