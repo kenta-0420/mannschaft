@@ -62,11 +62,15 @@ class TaskListCmpIdDuplicateGuardTest {
     private static final Pattern CMP_ID_ROW = Pattern.compile("(?m)^\\|\\s*(CMP-\\d+)\\s*\\|");
 
     /**
-     * 走査経路の自己検証しきい値。2026-08-14 時点で main には34件のユニークなCMP-IDが実在する
-     * （このうち33件が本文表、archive節は現時点で空）。将来増える一方の想定のため、
-     * 大幅な減少（＝抽出ロジックの破損）だけを検知できればよい下限値として30を採る。
+     * 走査経路の自己検証用。「CMP-ID を含む表の行」を、ID 抽出用より<b>緩い</b>条件で数える。
+     *
+     * <p>{@link #CMP_ID_ROW} が取りこぼしなく抽出できているかを、この緩い計数との一致で確かめる。
+     * <b>件数のしきい値を持たない</b>のが要点である。当初は「30件以上あること」で自己検証していたが、
+     * それは<b>現在の状態を数字で焼き付ける</b>形であり、行のアーカイブ等で件数が減れば重複が無くても
+     * 誤って落ちる（本日 {@code PagingTotalCountSizeGuardTest} が「違反ゼロ＝走査断絶」と誤断じて
+     * 自壊した事例と同型の罠）。件数ではなく<b>抽出の網羅性</b>を見れば、母数が何件でも成立する。</p>
      */
-    private static final int MIN_EXPECTED_CMP_IDS = 30;
+    private static final Pattern CMP_ID_ROW_LOOSE = Pattern.compile("(?m)^\\|.*?(CMP-\\d+)");
 
     @Test
     @DisplayName("CMP-IDに重複が無く、かつ走査自体が機能していること")
@@ -95,13 +99,31 @@ class TaskListCmpIdDuplicateGuardTest {
         // 解決ミスや table 形式の変更で走査が壊れていても気づけない偽の緑になる。よって
         // 抽出総数がしきい値を下回っていないかを、重複判定とは独立に検証する。
         int totalIds = occurrences.values().stream().mapToInt(Integer::intValue).sum();
+
+        int looseCount = 0;
+        Matcher loose = CMP_ID_ROW_LOOSE.matcher(content);
+        while (loose.find()) {
+            looseCount++;
+        }
+
+        // 走査そのものが成立しているか（ファイルが空・パス誤りで 0 件になっていないか）。
+        assertThat(looseCount)
+                .as("docs/task-list.md から CMP-ID を含む行を 1 件も見つけられなかった"
+                        + "（読んだファイル: " + taskList.toAbsolutePath() + "）。"
+                        + "ファイルパスの解決ミス、または台帳の表形式そのものが変わった可能性がある。"
+                        + "『重複なし』という判定自体が信用できない状態であり、重複ゼロとは別事象である。")
+                .isPositive();
+
+        // 抽出が網羅的か（厳密パターンが緩いパターンの取りこぼしを生んでいないか）。
+        // 件数のしきい値を置かないため、行がアーカイブされて減っても誤検知しない。
         assertThat(totalIds)
-                .as("docs/task-list.md から CMP-ID を " + totalIds + " 件しか抽出できなかった"
-                        + "（期待下限 " + MIN_EXPECTED_CMP_IDS + " 件）。"
-                        + "走査パス（表の行頭 \"| CMP-N |\" 形式）の前提が崩れた可能性があり、"
-                        + "『重複なし』という判定自体が信用できない状態。CMP_ID_ROW の正規表現と"
-                        + "docs/task-list.md の実際の表フォーマットを突き合わせて修正すること。")
-                .isGreaterThanOrEqualTo(MIN_EXPECTED_CMP_IDS);
+                .as("CMP-ID を含む行は " + looseCount + " 件見つかったが、"
+                        + "厳密パターンで抽出できたのは " + totalIds + " 件だった。"
+                        + "CMP_ID_ROW（\"| CMP-N |\" 形式）が実際の表フォーマットを取りこぼしており、"
+                        + "取りこぼした行の重複を見逃す。CMP_ID_ROW と docs/task-list.md の"
+                        + "実際の行を突き合わせて正規表現を修正すること。"
+                        + "（検出を緩めて通すのではなく、抽出を正しくすること）")
+                .isEqualTo(looseCount);
 
         List<Map.Entry<String, Integer>> duplicates = occurrences.entrySet().stream()
                 .filter(e -> e.getValue() > 1)
