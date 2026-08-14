@@ -14464,6 +14464,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** コメント一覧 */
+        get: operations["listComments_3"];
+        put?: never;
+        /** コメント投稿 */
+        post: operations["createComment_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/safety-checks": {
         parameters: {
             query?: never;
@@ -15091,10 +15109,10 @@ export interface paths {
             cookie?: never;
         };
         /** 議案コメント一覧 */
-        get: operations["listComments_3"];
+        get: operations["listComments_4"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_2"];
+        post: operations["createComment_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17045,7 +17063,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織TODOコメント一覧 */
-        get: operations["listComments_4"];
+        get: operations["listComments_5"];
         put?: never;
         /** 組織TODOコメント追加 */
         post: operations["addComment_2"];
@@ -20502,10 +20520,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_5"];
+        get: operations["listComments_6"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_3"];
+        post: operations["createComment_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21402,10 +21420,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_6"];
+        get: operations["listComments_7"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_4"];
+        post: operations["createComment_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23631,10 +23649,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_7"];
+        get: operations["listComments_8"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_5"];
+        post: operations["createComment_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -27096,6 +27114,41 @@ export interface paths {
         patch: operations["updateMedia"];
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** コメント削除 */
+        delete: operations["deleteComment_4"];
+        options?: never;
+        head?: never;
+        /** コメント編集 */
+        patch: operations["updateComment_4"];
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** スレッド開閉 */
+        patch: operations["updateSettings_15"];
+        trace?: never;
+    };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
         parameters: {
             query?: never;
@@ -29002,11 +29055,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_4"];
+        delete: operations["deleteComment_5"];
         options?: never;
         head?: never;
         /** コメント更新 */
-        patch: operations["updateComment_4"];
+        patch: operations["updateComment_5"];
         trace?: never;
     };
     "/api/v1/events/{eventId}/timetable/{itemId}": {
@@ -29261,7 +29314,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -30049,7 +30102,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -36691,6 +36744,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 返信一覧 */
+        get: operations["listReplies_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スレッド状態 */
+        get: operations["getMeta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/mention-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** メンション候補 */
+        get: operations["mentionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/safety-checks/{safetyCheckId}": {
         parameters: {
             query?: never;
@@ -41733,7 +41837,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listComments_8"];
+        get: operations["listComments_9"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44543,7 +44647,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメントを論理削除する（投稿者本人＋村長/長老のみ） */
-        delete: operations["deleteComment_5"];
+        delete: operations["deleteComment_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45226,7 +45330,7 @@ export interface paths {
          * 公開投稿コメント削除（ログイン必須）
          * @description 投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。
          */
-        delete: operations["deleteComment_6"];
+        delete: operations["deleteComment_7"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45243,7 +45347,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_7"];
+        delete: operations["deleteComment_8"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45943,7 +46047,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_8"];
+        delete: operations["deleteComment_9"];
         options?: never;
         head?: never;
         patch?: never;
@@ -61279,6 +61383,55 @@ export interface components {
             scheduleId?: number;
             status?: string;
         };
+        CreateScheduleCommentRequest: {
+            body?: string;
+            mentionedUserIds?: number[];
+            parentId?: string;
+        };
+        ApiResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"];
+        };
+        CommentAuthorResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ScheduleCommentResponse: {
+            /** @description 投稿者。削除済み・退会/匿名化済みユーザーは null */
+            author?: components["schemas"]["CommentAuthorResponse"];
+            /** @description 本文。削除済み（isDeleted=true）は null（本文を送らない・§5.3） */
+            body?: string;
+            canDelete?: boolean;
+            canEdit?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            depth?: number;
+            /** Format: uuid */
+            id?: string;
+            isDeleted?: boolean;
+            isEdited?: boolean;
+            /**
+             * Format: uuid
+             * @description 返信先コメントID。トップレベルコメントは null
+             */
+            parentId?: string;
+            /** @description 同梱される返信（最大3件）。返信自体（depth=1）は常に null */
+            replies?: components["schemas"]["ScheduleCommentResponse"][];
+            /** Format: int32 */
+            replyCount?: number;
+            /**
+             * Format: uuid
+             * @description スレッド根のコメントID。トップレベルコメントは null
+             */
+            rootId?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CreateSafetyCheckRequest: {
             isDrill?: boolean;
             message?: string;
@@ -67416,6 +67569,20 @@ export interface components {
             /** Format: int64 */
             uploaderId?: number;
             url?: string;
+        };
+        UpdateScheduleCommentRequest: {
+            body?: string;
+        };
+        ThreadSettingsRequest: {
+            commentsEnabled?: boolean;
+        };
+        ApiResponseThreadSettingsResponse: {
+            data?: components["schemas"]["ThreadSettingsResponse"];
+        };
+        ThreadSettingsResponse: {
+            commentsEnabled?: boolean;
+            /** Format: int64 */
+            scheduleId?: number;
         };
         FollowupUpdateRequest: {
             /** Format: int64 */
@@ -74081,6 +74248,31 @@ export interface components {
             asDelegate?: components["schemas"]["ScheduleDelegationResponse"];
             asDelegator?: components["schemas"]["ScheduleDelegationResponse"];
         };
+        PagedResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseThreadMetaResponse: {
+            data?: components["schemas"]["ThreadMetaResponse"];
+        };
+        ThreadMetaResponse: {
+            canPost?: boolean;
+            /** @description canPost=false の理由（CLOSED/CANCELLED/ROLE）。canPost=true は null */
+            canPostReason?: string;
+            commentsEnabled?: boolean;
+            /** Format: int64 */
+            scheduleId?: number;
+        };
+        ApiResponseListMentionCandidateResponse: {
+            data?: components["schemas"]["MentionCandidateResponse"][];
+        };
+        MentionCandidateResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
         PagedResponseSafetyCheckResponse: {
             data?: components["schemas"]["SafetyCheckResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -76058,6 +76250,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             myAttendanceStatus?: string;
+            /** Format: int64 */
+            scheduleId?: number;
             scope?: components["schemas"]["CalendarScopeDto"];
             time?: components["schemas"]["CalendarTimeDto"];
         };
@@ -111720,6 +111914,58 @@ export interface operations {
             };
         };
     };
+    listComments_3: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    createComment_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
     listSafetyChecks: {
         parameters: {
             query: {
@@ -112794,7 +113040,7 @@ export interface operations {
             };
         };
     };
-    listComments_3: {
+    listComments_4: {
         parameters: {
             query?: {
                 page?: number;
@@ -112819,7 +113065,7 @@ export interface operations {
             };
         };
     };
-    createComment_2: {
+    createComment_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -116688,7 +116934,7 @@ export interface operations {
             };
         };
     };
-    listComments_4: {
+    listComments_5: {
         parameters: {
             query?: {
                 page?: number;
@@ -123217,7 +123463,7 @@ export interface operations {
             };
         };
     };
-    listComments_5: {
+    listComments_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -123239,7 +123485,7 @@ export interface operations {
             };
         };
     };
-    createComment_3: {
+    createComment_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -124825,7 +125071,7 @@ export interface operations {
             };
         };
     };
-    listComments_6: {
+    listComments_7: {
         parameters: {
             query?: {
                 page?: number;
@@ -124850,7 +125096,7 @@ export interface operations {
             };
         };
     };
-    createComment_4: {
+    createComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -128745,7 +128991,7 @@ export interface operations {
             };
         };
     };
-    listComments_7: {
+    listComments_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -128767,7 +129013,7 @@ export interface operations {
             };
         };
     };
-    createComment_5: {
+    createComment_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -135637,6 +135883,80 @@ export interface operations {
             };
         };
     };
+    deleteComment_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateComment_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduleCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_15: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseThreadSettingsResponse"];
+                };
+            };
+        };
+    };
     reject_7: {
         parameters: {
             query?: never;
@@ -139483,7 +139803,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_4: {
+    deleteComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -139504,7 +139824,7 @@ export interface operations {
             };
         };
     };
-    updateComment_4: {
+    updateComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -140066,7 +140386,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -141491,7 +141811,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -150722,6 +151042,80 @@ export interface operations {
             };
         };
     };
+    listReplies_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    getMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseThreadMetaResponse"];
+                };
+            };
+        };
+    };
+    mentionCandidates: {
+        parameters: {
+            query?: {
+                q?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMentionCandidateResponse"];
+                };
+            };
+        };
+    };
     getSafetyCheck: {
         parameters: {
             query?: never;
@@ -157617,7 +158011,7 @@ export interface operations {
             };
         };
     };
-    listComments_8: {
+    listComments_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -161432,7 +161826,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_5: {
+    deleteComment_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -162267,7 +162661,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_6: {
+    deleteComment_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -162288,7 +162682,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_7: {
+    deleteComment_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -163139,7 +163533,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_8: {
+    deleteComment_9: {
         parameters: {
             query?: never;
             header?: never;

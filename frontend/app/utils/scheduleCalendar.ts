@@ -50,6 +50,8 @@ export interface NestedScheduleResponse {
 /** EventDetailPanel.vue が期待する平坦な予定詳細型。 */
 export interface FlatScheduleEvent {
   id: number
+  /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。 */
+  scheduleId: number | null
   title: string
   description: string | null
   location: string | null
@@ -84,6 +86,7 @@ export function toCalendarEventItem(
 
   return {
     id: raw.id,
+    scheduleId: raw.id,
     uniqueKey: `${scopeType.toLowerCase()}:${raw.id}`,
     title: content.title ?? '',
     startAt: time.startAt ?? '',
@@ -126,6 +129,7 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
 
   return {
     id: raw.id,
+    scheduleId: raw.id,
     title: content.title ?? '',
     description: null,
     location: content.location ?? null,
