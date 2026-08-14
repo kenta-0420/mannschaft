@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
@@ -10,6 +11,7 @@ import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * シフトクリーンアップバッチサービス。
@@ -35,6 +38,9 @@ public class ShiftCleanupBatchService {
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftRequestRepository requestRepository;
     private final NotificationHelper notificationHelper;
+    /** Issue #2715 ロットB: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * 毎日 AM 3:00（JST）に実行。48h 経過した PENDING スワップ申請を自動キャンセルする。
@@ -101,11 +107,18 @@ public class ShiftCleanupBatchService {
 
     private void notifySwapExpired(Long userId, ShiftSwapRequestEntity swap) {
         try {
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(userId));
+            String title = messageSource.getMessage(
+                    "notification.shift.swapExpired.title", null,
+                    "シフト交代申請が期限切れになりました", locale);
+            String body = messageSource.getMessage(
+                    "notification.shift.swapExpired.body", null,
+                    "申請から 48 時間が経過したため、シフト交代申請が自動キャンセルされました。", locale);
             notificationHelper.notify(
                     userId,
                     "SHIFT_SWAP_EXPIRED",
-                    "シフト交代申請が期限切れになりました",
-                    "申請から 48 時間が経過したため、シフト交代申請が自動キャンセルされました。",
+                    title,
+                    body,
                     "SHIFT_SWAP_REQUEST", swap.getId(),
                     NotificationScopeType.PERSONAL, userId,
                     "/shifts/swap-requests/" + swap.getId(), null);

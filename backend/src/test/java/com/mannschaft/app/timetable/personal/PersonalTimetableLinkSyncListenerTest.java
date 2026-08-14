@@ -34,6 +34,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -222,6 +223,60 @@ class PersonalTimetableLinkSyncListenerTest {
                 CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
 
         verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Issue #2715 ロットB: 受信者 locale が en の場合、同期通知の件名・本文が英語で組み立てられプレースホルダが残らない")
+    void 受信者ロケールがenなら英語件名本文になる() throws ReflectiveOperationException {
+        var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
+        realMessageSource.setBasename("messages");
+        realMessageSource.setDefaultEncoding("UTF-8");
+
+        com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
+                org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
+        given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
+        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
+                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
+
+        setPrivateField(listener, "userLocaleCache", userLocaleCache);
+        setPrivateField(listener, "messageSource", realMessageSource);
+        setPrivateField(listener, "notificationHelper", notificationHelper);
+
+        LocalDate target = LocalDate.of(2026, 5, 4);
+        TimetableChangeEntity change = buildChange(TimetableChangeType.CANCEL, target, 3);
+
+        given(timetableChangeRepository.findById(CHANGE_ID)).willReturn(Optional.of(change));
+        given(timetableChangeRepository
+                .findByTimetableIdAndTargetDateAndPeriodNumberIsNull(TT_ID, target))
+                .willReturn(Optional.empty());
+        given(personalSlotRepository.findByLinkedTimetableId(TT_ID))
+                .willReturn(List.of(buildSlot("MON", 3)));
+        given(personalTimetableRepository.findById(PT_ID))
+                .willReturn(Optional.of(buildPersonal()));
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.empty());
+        given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(PT_ID))
+                .willReturn(List.of(buildPeriod(3)));
+        given(scheduleRepository.findByExternalRef(any())).willReturn(Optional.empty());
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        listener.onChangeCreated(new TimetableChangeCreatedEvent(
+                CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
+
+        org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(notificationHelper).notify(
+                any(), eq("TIMETABLE_CHANGE_SYNCED"), titleCaptor.capture(), bodyCaptor.capture(),
+                any(), any(), any(), any(), any(), any());
+        assertThat(titleCaptor.getValue()).contains("Cancelled").doesNotContain("{0}");
+        assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}");
+    }
+
+    private static void setPrivateField(Object target, String fieldName, Object value)
+            throws ReflectiveOperationException {
+        Field f = target.getClass().getDeclaredField(fieldName);
+        f.setAccessible(true);
+        f.set(target, value);
     }
 
     @Test
