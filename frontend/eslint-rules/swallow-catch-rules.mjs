@@ -35,14 +35,26 @@
  * 値としては素通しで、型だけを付け替える式ノード。
  * これらは判定対象の値を包んで検出器を迂回できてしまうため、中身まで辿る必要がある。
  *
- * 3種とも中身を `expression` プロパティに持つため、剥がす操作は
+ * いずれも中身を `expression` プロパティに持つため、剥がす操作は
  * 「`.expression` を1段辿る」で統一できる。新しい同種のノードが増えたら
- * ここに足すだけでよい（`expression` に中身を持つことが条件）。
+ * **ここに1語足すだけでよい**（`expression` に中身を持つことが条件）。
+ * 返り値位置・プロパティ値位置・付き添い判定・除外判定のすべてが
+ * この配列から生成されるため、追加漏れの箇所が生じない。
+ *
+ * `TSTypeAssertion` は山括弧形式（`<Foo>value`）。`.ts` では有効な構文で、
+ * `as` 形式と同じ意味を持つため同様に透過する必要がある
+ * （`.vue` の SFC や `.tsx` では JSX と曖昧になるため成立しないが、
+ * `.ts` ファイルを通じて紛れ込みうる）。
  *
  * なお TS-ESTree では括弧はノードにならない（`({ ... })` は追加ノードを生まない）ため、
- * 括弧に伴う包みもこの3種の連なりとして現れる。
+ * 括弧に伴う包みもこれらの連なりとして現れる。
  */
-const TYPE_WRAPPER_TYPES = ['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression']
+const TYPE_WRAPPER_TYPES = [
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+]
 
 /**
  * 透過する包みの最大段数。`({ data: [] } as A) as B` のような多重の包みに備える。
@@ -61,7 +73,7 @@ function unwrapPath(path, depth) {
 
 /**
  * `path` の先に `depth` 段の包みが実際に存在することを要求する属性述語を返す。
- * 各段について「3種のいずれかである」ことを課す。
+ * 各段について「TYPE_WRAPPER_TYPES のいずれかである」ことを課す。
  * すべて同一ノード上の属性チェックなので、単純連結で AND になる（組合せ爆発しない）。
  */
 function wrapperGuards(path, depth) {

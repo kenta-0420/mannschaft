@@ -18,16 +18,26 @@ import { swallowCatchRestrictions } from '../../../eslint-rules/swallow-catch-ru
 
 const linter = new Linter()
 
-/** 検体を lint して違反件数を返す。 */
-function countViolations(code: string): number {
+/**
+ * 検体を lint して違反件数を返す。
+ *
+ * 検体は必ず `.ts` として食わせる。山括弧形式の型アサーション（`<Foo>[]`）は
+ * `.tsx` では JSX と曖昧になりパースエラーになるため、拡張子を誤ると
+ * 「違反0件」＝健全と誤読してしまう。
+ */
+function countViolations(code: string, filename = 'fixture.ts'): number {
   const messages = linter.verify(code, [{
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tsParser,
-      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: filename.endsWith('.tsx') },
+      },
     },
     rules: { 'no-restricted-syntax': ['error', ...swallowCatchRestrictions] },
-  }], 'fixture.ts')
+  }], filename)
   // パースエラーが検体側の書き間違いで紛れ込むと「0件＝健全」と誤読するため明示的に弾く
   const fatal = messages.find(m => m.fatal)
   if (fatal) throw new Error(`検体のパースに失敗: ${fatal.message}`)
@@ -81,6 +91,14 @@ describe('エラー握りつぶし禁止ガード', () => {
       'プロパティ値 多重の包み': 'foo().catch(() => ({ data: ([] as Foo[]) as Bar[] }))',
       '外側とプロパティ値の両方に包み': 'foo().catch(() => ({ data: [] as Foo[] } as ApiResponse))',
       '付き添いも含めて全部包む': 'foo().catch(() => ({ items: [] as Foo[], total: 0 as number }))',
+
+      // --- 4巡目: 山括弧形式の型アサーション（TSTypeAssertion） ---
+      // `.vue` / `.tsx` では JSX と曖昧になり成立しないが、`.ts` では有効な構文。
+      '山括弧で返り値を包む': 'foo().catch(() => (<ApiResponse>{ data: [] }))',
+      '山括弧でプロパティ値を包む': 'foo().catch(() => ({ data: <Foo[]>[] }))',
+      '山括弧で null を包む': 'foo().catch(() => ({ data: <Foo | null>null }))',
+      '山括弧と as の混在': 'foo().catch(() => (<ApiResponse>{ data: [] as Foo[] }))',
+      '山括弧で空配列そのものを包む': 'foo().catch(() => (<Foo[]>[]))',
     }
 
     for (const [name, code] of Object.entries(detected)) {
@@ -125,6 +143,10 @@ describe('エラー握りつぶし禁止ガード', () => {
       'プロパティ値 as ＋ エラー保持': 'foo().catch(e => ({ data: [] as Foo[], error: e }))',
       'プロパティ値 as だが空値なし': 'foo().catch(() => ({ ok: false as boolean }))',
       'プロパティ値 as で包んだ非空オブジェクト': 'foo().catch(() => ({ data: { id: 1 } as Foo }))',
+
+      // --- 4巡目: 山括弧形式でも過剰検出しないこと ---
+      '山括弧だが非空配列': 'foo().catch(() => (<ApiResponse>{ data: [1] }))',
+      '山括弧だが変数参照': 'foo().catch(() => ({ data: <Foo[]>items }))',
     }
 
     for (const [name, code] of Object.entries(allowed)) {
@@ -132,5 +154,22 @@ describe('エラー握りつぶし禁止ガード', () => {
         expect(countViolations(code)).toBe(0)
       })
     }
+  })
+
+  // このフィクスチャ自身が「0件＝健全」と誤読しない仕組みを持つことの検証。
+  // 検体がパースできていないのに違反0件で通ってしまうと、ガードの検証全体が
+  // 静かに無意味になる（偽の緑）。
+  describe('検体のパース失敗を握りつぶさないこと', () => {
+    it('構文エラーの検体は 0件 ではなく例外になる', () => {
+      expect(() => countViolations('foo().catch(() => ({ data: [ }))')).toThrow(/検体のパースに失敗/)
+    })
+
+    it('山括弧形式を .tsx として食わせるとパースエラーになり、0件と誤読しない', () => {
+      const code = 'foo().catch(() => (<ApiResponse>{ data: [] }))'
+      // .ts なら握りつぶしとして検出される
+      expect(countViolations(code, 'fixture.ts')).toBeGreaterThan(0)
+      // .tsx では JSX と曖昧になり成立しない。黙って 0 件にせず例外にする
+      expect(() => countViolations(code, 'fixture.tsx')).toThrow(/検体のパースに失敗/)
+    })
   })
 })
