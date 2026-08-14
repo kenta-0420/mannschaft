@@ -119,10 +119,10 @@ class MatchRecordEventControllerContractTest {
     @Test
     @DisplayName("記録: recorded_by_team_id は DTO ではなく principal の所属チームからサーバー導出される")
     void record_derivesRecordedByTeamId_fromPrincipal() throws Exception {
-        given(matchService.getMatchOrThrow(MATCH_ID, ORG)).willReturn(coopMatch());
+        given(matchService.getMatchOrThrow(MATCH_ID, ORG, null)).willReturn(coopMatch());
         // principal は HOME チーム(200)の ADMIN
         given(accessControlService.isAdminOrAbove(ACTOR, HOME_TEAM, "TEAM")).willReturn(true);
-        given(matchEventService.record(eq(MATCH_ID), eq(ORG), eq(ACTOR), any()))
+        given(matchEventService.record(eq(MATCH_ID), eq(ORG), eq(null), eq(ACTOR), any()))
                 .willReturn(MatchEventEntity.builder().matchId(MATCH_ID).build());
 
         mockMvc.perform(post("/api/v1/organizations/{orgId}/matches/{matchId}/events", ORG, MATCH_ID)
@@ -132,7 +132,7 @@ class MatchRecordEventControllerContractTest {
 
         ArgumentCaptor<MatchEventService.EventCommand> captor =
                 ArgumentCaptor.forClass(MatchEventService.EventCommand.class);
-        verify(matchEventService).record(eq(MATCH_ID), eq(ORG), eq(ACTOR), captor.capture());
+        verify(matchEventService).record(eq(MATCH_ID), eq(ORG), eq(null), eq(ACTOR), captor.capture());
         // DTO 由来ではなく、principal が ADMIN の HOME_TEAM がサーバー導出された
         assertThat(captor.getValue().getRecordedByTeamId()).isEqualTo(HOME_TEAM);
     }
@@ -140,7 +140,7 @@ class MatchRecordEventControllerContractTest {
     @Test
     @DisplayName("記録: principal がいずれのチームの ADMIN でもない（非記録係）なら 403（名義導出不可）")
     void record_noAdminTeam_403() throws Exception {
-        given(matchService.getMatchOrThrow(MATCH_ID, ORG)).willReturn(coopMatch());
+        given(matchService.getMatchOrThrow(MATCH_ID, ORG, null)).willReturn(coopMatch());
         given(accessControlService.isAdminOrAbove(ACTOR, HOME_TEAM, "TEAM")).willReturn(false);
         given(accessControlService.isAdminOrAbove(ACTOR, AWAY_TEAM, "TEAM")).willReturn(false);
 
@@ -153,7 +153,7 @@ class MatchRecordEventControllerContractTest {
     @Test
     @DisplayName("記録: assertCanRecordTimeline が 403 を投げれば 403（Service 二重防御）")
     void record_cannotRecord_403() throws Exception {
-        given(matchService.getMatchOrThrow(MATCH_ID, ORG)).willReturn(coopMatch());
+        given(matchService.getMatchOrThrow(MATCH_ID, ORG, null)).willReturn(coopMatch());
         doThrow(new BusinessException(MatchErrorCode.MATCH_010))
                 .when(matchAccessService).assertCanRecordTimeline(eq(ACTOR), any());
 
@@ -166,7 +166,7 @@ class MatchRecordEventControllerContractTest {
     @Test
     @DisplayName("記録: 親 match がテナント越境/不在なら 404（MATCH_001・IDOR 秘匿）")
     void record_matchNotFound_404() throws Exception {
-        given(matchService.getMatchOrThrow(MATCH_ID, ORG))
+        given(matchService.getMatchOrThrow(MATCH_ID, ORG, null))
                 .willThrow(new BusinessException(MatchErrorCode.MATCH_001));
 
         mockMvc.perform(post("/api/v1/organizations/{orgId}/matches/{matchId}/events", ORG, MATCH_ID)
