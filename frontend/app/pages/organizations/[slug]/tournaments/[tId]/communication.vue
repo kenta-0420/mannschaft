@@ -168,7 +168,11 @@ onMounted(async () => {
       getDivisions(orgSlug, tId),
     ])
 
-    if (permResult.status === 'rejected') {
+    // loadPermissions は失敗を throw ではなく戻り値（{ ok: false }）で返す契約のため、
+    // allSettled の rejected だけを見ていると取得失敗を取りこぼし、
+    // 通知が出ないまま管理操作だけが無言で無効化される。両方を失敗として扱う。
+    const permissionsFailed = permResult.status === 'rejected' || !permResult.value.ok
+    if (permissionsFailed) {
       showError(t('tournament.communication.permissions_load_failed'))
     }
 
