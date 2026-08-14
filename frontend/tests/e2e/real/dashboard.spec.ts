@@ -2,16 +2,62 @@
  * このテストはAPIモックを使わない実機テストです。
  * バックエンド http://localhost:8080 / フロントエンド http://localhost:3000 が起動済みの状態で実行してください。
  *
- * 認証: tests/e2e/.auth/real-user.json の storageState を使用します。
- * 未生成の場合は loginIfNeeded() でフォールバックログインします。
+ * 認証: tests/e2e/.auth/real-user.json の storageState を使用します（単一セッション設計。
+ * ファイル冒頭の describe をまたいだトップレベルの beforeAll で 1 つの BrowserContext を
+ * 作成し、DASH-* / PROF-* / TEAM-NAV-* / NOTIF-* の全 describe で使い回す）。
+ *
+ * なぜ単一セッション設計にするか（villages.spec.ts と同じ理由）:
+ *   アクセストークンはリフレッシュのたびにサーバ側で「回転」する（旧トークンを revoke し
+ *   後継を発行）。後継トークンは Cookie 経由でその場の BrowserContext にしか残らない。
+ *   テストが新しい storageState スナップショットや新規ログインから始まると、既に revoke
+ *   済みのトークンを再提示することになり、grace window（60秒）超過後は「リプレイ攻撃」
+ *   として検出されセッションごと失効する（AuthTokenRotationService）。本ファイルは
+ *   DASH/PROF/TEAM-NAV/NOTIF 合計 20 件超のテストを持ち、実行時間がアクセストークンの
+ *   TTL（900秒）を超えうるため、1 スペックファイル = 1 セッション（1 context）に揃える。
+ *
+ * なぜ describe ごとに context を分けないか:
+ *   同一ファイル内で複数の describe がそれぞれ BrowserContext を beforeAll/afterAll で
+ *   開閉すると、片方の後始末がもう片方に干渉する現象が villages.spec.ts で実測されている。
+ *   そのため本ファイルはトップレベルの beforeAll/afterAll で 1 つだけ context を作り、
+ *   全 describe（DASH-* / PROF-* / TEAM-NAV-* / NOTIF-*）で共有する。
+ *
+ * page はテストごとに beforeEach で newPage() → afterEach で close() する。回転後トークンの
+ * 継続性に必要なのは Cookie ジャー（= context）であって page 自体の使い回しではなく、
+ * page を使い回すと前のテストが張った WebSocket 接続や DOM 状態が次のテストに漏れ、
+ * ERR_ABORTED 等の干渉を起こすため。
  *
  * テストユーザー: e2e-user@test.mannschaft.local / TestPass2026!
  * - FC東京U-18（テスト）チームのメンバー
  * - 通知7件がシードされている
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
+
+test.describe.configure({ mode: 'serial' })
+
+// ファイル全体で 1 つの BrowserContext（Cookie ジャー）を共有する（単一セッション設計）。
+// page はテストごとに beforeEach/afterEach で作り直す（前テストの WS 接続等を持ち越さない）。
+let context: BrowserContext
+let page: Page
+
+test.beforeAll(async ({ browser }) => {
+  context = await browser.newContext({ storageState: 'tests/e2e/.auth/real-user.json' })
+})
+
+test.beforeEach(async () => {
+  page = await context.newPage()
+})
+
+test.afterEach(async () => {
+  await page.close()
+})
+
+// 本ファイル自前の context は自前の afterAll でのみ閉じる
+// （他ファイルの describe と混じらないよう、1 スペックファイル = 1 セッションで完結させる）。
+test.afterAll(async () => {
+  await context.close()
+})
 
 // ---------------------------------------------------------------------------
 // DASH-001〜008: ダッシュボード基本表示
@@ -21,33 +67,33 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   // 並列実行時にサーバーが高負荷になることがあるためタイムアウトを延長する
   test.setTimeout(120_000)
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     await page.goto('/my/', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await waitForSpinnerGone(page)
   })
 
-  test('DASH-001: /my/ が表示される（主要UIエリアの存在確認）', async ({ page }) => {
+  test('DASH-001: /my/ が表示される（主要UIエリアの存在確認）', async () => {
     // マイページハブのカードグリッドが存在する
     await expect(page.locator('.grid')).toBeVisible({ timeout: 15_000 })
     // URL が /my に留まることを確認
     expect(page.url()).toContain('/my')
   })
 
-  test('DASH-002: ナビゲーションサイドバーまたはヘッダーが表示される', async ({ page }) => {
+  test('DASH-002: ナビゲーションサイドバーまたはヘッダーが表示される', async () => {
     // ナビゲーション要素（nav / header / sidebar 相当）のいずれかが存在する
     const navLocator = page.locator('nav, header, [role="navigation"], aside').first()
     await expect(navLocator).toBeVisible({ timeout: 15_000 })
   })
 
-  test('DASH-003: ページタイトルまたは見出しが表示される', async ({ page }) => {
+  test('DASH-003: ページタイトルまたは見出しが表示される', async () => {
     // /my/index.vue は PageHeader title="マイページ" を持つ
     await expect(
       page.getByRole('heading', { name: 'マイページ' }),
     ).toBeVisible({ timeout: 15_000 })
   })
 
-  test('DASH-004: 認証済みページがレンダリングされている（ページテキスト確認）', async ({ page }) => {
+  test('DASH-004: 認証済みページがレンダリングされている（ページテキスト確認）', async () => {
     // /my/ ページがレンダリングされていることをページ本文テキストで確認する
     // セレクタ指定の textContent() はタイムアウト待機が発生するため body テキストで確認
     const bodyText = await page.locator('body').textContent()
@@ -55,7 +101,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
     expect(bodyText!.length).toBeGreaterThan(10)
   })
 
-  test('DASH-005: 通知アイコンが表示される', async ({ page }) => {
+  test('DASH-005: 通知アイコンが表示される', async () => {
     // NotificationBell コンポーネント: ベルアイコンボタンが存在する
     const bellButton = page
       .locator('button')
@@ -67,7 +113,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
     void bellButton
   })
 
-  test('DASH-006: /notifications ページに通知一覧が表示される', async ({ page }) => {
+  test('DASH-006: /notifications ページに通知一覧が表示される', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '通知' })).toBeVisible({ timeout: 15_000 })
@@ -75,7 +121,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
     await expect(page.locator('.mx-auto.max-w-2xl')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('DASH-007: 未読通知バッジが表示される（seed で7件未読通知を投入済み）', async ({ page }) => {
+  test('DASH-007: 未読通知バッジが表示される（seed で7件未読通知を投入済み）', async () => {
     // NotificationBell: totalCount > 0 のとき PrimeVue Badge が表示される
     // PrimeVue Badge は data-pc-name="badge" または class="p-badge" で描画される
     const anyBadge = page.locator(
@@ -86,7 +132,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
     await expect(anyBadge).toBeVisible({ timeout: 20_000 })
   })
 
-  test('DASH-008: 通知をクリックして既読にできる（1件の既読操作）', async ({ page }) => {
+  test('DASH-008: 通知をクリックして既読にできる（1件の既読操作）', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
@@ -114,7 +160,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   // 並列実行時にサーバーが高負荷になることがあるためタイムアウトを延長する
   test.setTimeout(120_000)
 
-  test('PROF-001: /settings/account が表示される', async ({ page }) => {
+  test('PROF-001: /settings/account が表示される', async () => {
     await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // PageLoading が消えてからコンテンツが表示される
@@ -124,7 +170,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     ).toBeVisible({ timeout: 20_000 })
   })
 
-  test('PROF-002: メールアドレスが設定ページに表示される', async ({ page }) => {
+  test('PROF-002: メールアドレスが設定ページに表示される', async () => {
     await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -133,7 +179,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     await expect(emailLabel).toBeVisible({ timeout: 20_000 })
   })
 
-  test('PROF-003: 表示名入力フィールドが存在する', async ({ page }) => {
+  test('PROF-003: 表示名入力フィールドが存在する', async () => {
     await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -146,7 +192,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     await expect(inputField).toBeVisible({ timeout: 10_000 })
   })
 
-  test('PROF-004: プロフィール画像のアップロードUIが存在する', async ({ page }) => {
+  test('PROF-004: プロフィール画像のアップロードUIが存在する', async () => {
     await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -155,7 +201,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     await expect(uploadButton).toBeVisible({ timeout: 20_000 })
   })
 
-  test('PROF-005: 保存ボタンが存在する', async ({ page }) => {
+  test('PROF-005: 保存ボタンが存在する', async () => {
     await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -164,7 +210,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     await expect(saveButton).toBeVisible({ timeout: 20_000 })
   })
 
-  test('PROF-006: /settings が表示される（設定トップページ）', async ({ page }) => {
+  test('PROF-006: /settings が表示される（設定トップページ）', async () => {
     await page.goto('/settings', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // 設定トップの何らかの見出しまたはリンクが存在すること
@@ -182,7 +228,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
   // チームページは追加APIコールがあり遅いためタイムアウトを延長する
   test.setTimeout(120_000)
 
-  test('TEAM-NAV-001: /teams ページが表示される（マイチームページ）', async ({ page }) => {
+  test('TEAM-NAV-001: /teams ページが表示される（マイチームページ）', async () => {
     // /teams ページが正常に表示されること（チームカードは @click navigateTo のため <a> ではない）
     await page.goto('/teams')
     await waitForHydration(page)
@@ -191,7 +237,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await expect(page.getByRole('heading', { name: 'マイチーム' })).toBeVisible({ timeout: 20_000 })
   })
 
-  test('TEAM-NAV-002: FC東京U-18（テスト）チームへのリンクが存在する', async ({ page }) => {
+  test('TEAM-NAV-002: FC東京U-18（テスト）チームへのリンクが存在する', async () => {
     // teams 一覧ページに遷移して確認
     await page.goto('/teams')
     await waitForHydration(page)
@@ -201,7 +247,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await expect(teamLink).toBeVisible({ timeout: 20_000 })
   })
 
-  test('TEAM-NAV-003: チームページに遷移できる', async ({ page }) => {
+  test('TEAM-NAV-003: チームページに遷移できる', async () => {
     await page.goto('/teams')
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -214,7 +260,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     expect(page.url()).toMatch(/\/teams\/\d+/)
   })
 
-  test('TEAM-NAV-004: チームホームページが表示される', async ({ page }) => {
+  test('TEAM-NAV-004: チームホームページが表示される', async () => {
     await page.goto('/teams')
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -228,7 +274,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await expect(heading).toBeVisible({ timeout: 20_000 })
   })
 
-  test('TEAM-NAV-005: チームメンバー一覧ページが表示される', async ({ page }) => {
+  test('TEAM-NAV-005: チームメンバー一覧ページが表示される', async () => {
     await page.goto('/teams')
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -246,7 +292,7 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await expect(heading).toBeVisible({ timeout: 15_000 })
   })
 
-  test('TEAM-NAV-006: e2e-user がチームメンバーとして表示される', async ({ page }) => {
+  test('TEAM-NAV-006: e2e-user がチームメンバーとして表示される', async () => {
     await page.goto('/teams', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -280,7 +326,7 @@ test.describe('NOTIF-001〜005: 通知', () => {
   // 並列実行時にサーバーが高負荷になることがあるためタイムアウトを延長する
   test.setTimeout(120_000)
 
-  test('NOTIF-001: /notifications が表示される', async ({ page }) => {
+  test('NOTIF-001: /notifications が表示される', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(
@@ -288,7 +334,7 @@ test.describe('NOTIF-001〜005: 通知', () => {
     ).toBeVisible({ timeout: 30_000 })
   })
 
-  test('NOTIF-002: 通知一覧に少なくとも1件表示される（seed で7件投入）', async ({ page }) => {
+  test('NOTIF-002: 通知一覧に少なくとも1件表示される（seed で7件投入）', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // ローディングスピナーが消えるまで待つ
@@ -302,7 +348,7 @@ test.describe('NOTIF-001〜005: 通知', () => {
     expect(bodyText!.length).toBeGreaterThan(10)
   })
 
-  test('NOTIF-003: 通知タイトルが表示される', async ({ page }) => {
+  test('NOTIF-003: 通知タイトルが表示される', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
@@ -311,7 +357,7 @@ test.describe('NOTIF-001〜005: 通知', () => {
     await expect(notifTitle).toBeVisible({ timeout: 30_000 })
   })
 
-  test('NOTIF-004: 既読操作UIが存在する（「すべて既読」ボタンなど）', async ({ page }) => {
+  test('NOTIF-004: 既読操作UIが存在する（「すべて既読」ボタンなど）', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
@@ -323,7 +369,7 @@ test.describe('NOTIF-001〜005: 通知', () => {
     await expect(allReadButton).toBeVisible({ timeout: 30_000 })
   })
 
-  test('NOTIF-005: 通知クリックで対象ページに遷移しようとする', async ({ page }) => {
+  test('NOTIF-005: 通知クリックで対象ページに遷移しようとする', async () => {
     await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
