@@ -166,6 +166,50 @@
       }
     },
     "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here.",
+    "comment": {
+      "title": "Comments",
+      "placeholder": "Comment on this event…",
+      "submit": "Post",
+      "cancel": "Cancel",
+      "save": "Save",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "showReplies": "Show {count} more replies",
+      "empty": "No comments yet",
+      "loadMore": "Load more",
+      "edit": "Edit",
+      "edited": "(edited)",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this comment?",
+      "deleted": "This comment was deleted",
+      "deletedAuthor": "Deleted user",
+      "closed": "Comments are closed for this event",
+      "cancelled": "You cannot comment on a cancelled event",
+      "updateSuccess": "Comment updated",
+      "deleteSuccess": "Comment deleted",
+      "postSuccess": "Comment posted",
+      "settings": {
+        "enable": "Allow comments",
+        "disable": "Close comments",
+        "updateSuccess": "Comment settings updated"
+      },
+      "mention": {
+        "hint": "You can mention a member",
+        "empty": "No matching members"
+      },
+      "count": "{count} comments",
+      "error": {
+        "bodyRequired": "Please enter a comment",
+        "bodyTooLong": "Comments must be 2000 characters or fewer",
+        "maxDepth": "You cannot reply to this reply",
+        "closed": "Comments are closed",
+        "forbidden": "You do not have permission for this action",
+        "tooManyMentions": "You can mention up to 20 people",
+        "rateLimited": "Too many posts. Please try again later",
+        "generic": "The operation failed",
+        "notFound": "Comment not found"
+      }
+    },
     "todo_load_error": {
       "summary": "Failed to load TODOs",
       "detail": "TODOs could not be shown on the calendar. Schedules are still displayed. Please reload after a while."
