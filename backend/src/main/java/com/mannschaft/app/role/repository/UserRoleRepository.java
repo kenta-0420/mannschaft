@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,39 @@ import java.util.Set;
  * ユーザー−ロール割当リポジトリ。
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> {
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（TEAM）。
+     *
+     * <p>候補ユーザー ID の {@code IN} 句で 1 回だけ引く。候補者ごとに
+     * {@code AccessControlService#resolveEffectiveRoleName} を呼ぶと候補者数に比例して
+     * SQL が増え、AC-39（5 人と 20 人で段1の SQL 発行数が同一）を満たせない。</p>
+     *
+     * <p>{@code roles} を JOIN して {@code name} まで一度に返すのは、呼び出し側で
+     * {@code roleRepository.findById} を追加発行させないためである（ロール数に比例した
+     * SQL が段1に混ざると「候補者数に依存しない」という保証が読みづらくなる）。
+     * 強弱比較は {@code RolePriority} でメモリ上行う。</p>
+     *
+     * @param teamId  チーム ID
+     * @param userIds 候補ユーザー ID 集合（空で呼ばないこと。{@code IN ()} になる）
+     * @return ユーザー ID とロール名の射影
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.teamId = :teamId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByTeamIdAndUserIdIn(
+            @Param("teamId") Long teamId, @Param("userIds") Collection<Long> userIds);
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（ORGANIZATION）。
+     *
+     * @see #findScopeRolesByTeamIdAndUserIdIn(Long, Collection)
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.organizationId = :organizationId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByOrganizationIdAndUserIdIn(
+            @Param("organizationId") Long organizationId, @Param("userIds") Collection<Long> userIds);
 
     Optional<UserRoleEntity> findByUserIdAndTeamId(Long userId, Long teamId);
 
@@ -1672,5 +1706,53 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         Long getUserId();
         String getScopeType();
         Long getScopeId();
+    }
+
+    /**
+     * F03.16 是正3【P2】: ORGANIZATION スコープの候補ユーザー群について、組織を根とした
+     * 再帰的配下ツリー（直属 ∪ 配下 {@code ACTIVE} チーム）における所属ロール種別（{@code role_kind}）を
+     * <b>1 SQL</b>で一括解決する（{@code ScheduleCommentViewerFilter} 段1 専用の拡張）。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と同一の
+     * org_tree 再帰展開（直属組織 ∪ 配下 ACTIVE チーム）を候補ユーザー ID の {@code IN} 句で絞って
+     * 使う。既存の {@code AccessControlService#resolveEffectiveRoleNames} は
+     * {@code memberships.scope_type = 'ORGANIZATION' AND scope_id = :organizationId} の<b>直接所属のみ</b>
+     * を見るため、配下チームのみに所属するメンバーはロールが解決できず（{@code null}）、
+     * {@code MinViewRoleThreshold.satisfies} が既定閾値 {@code MEMBER_PLUS} で一律 fail-closed になっていた
+     * （§4.5.0 の段3 {@code canView} には正しい判定があるのに、その手前の段2 で誤って落とされる）。
+     * 本メソッドはその欠落を補う<b>追加 1 本</b>のクエリで、候補者数に依らず定数のまま
+     * （AC-39 の「定数 SQL」は本数が候補者数に比例しないことを求めており、本数そのものの増減は禁じていない）。</p>
+     *
+     * @param organizationId 母集団の根となる組織 ID
+     * @param userIds        候補ユーザー ID 集合（空で呼ばないこと）
+     * @param maxDepth       再帰展開の最大深さ（サイクル防止上限。{@code OrgFanoutRecipientSource} と同値の 32 を渡す）
+     * @return 配下ツリーに所属する候補ユーザーの {@code role_kind}（同一ユーザーが複数所属を持つ場合は複数行）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( "
+            + "    SELECT :organizationId, 0 "
+            + "  UNION ALL "
+            + "    SELECT c.id, p.depth + 1 FROM organizations c JOIN org_tree p ON c.parent_organization_id = p.id "
+            + "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth "
+            + ") "
+            + "SELECT ms.user_id AS userId, ms.role_kind AS roleKind FROM memberships ms "
+            + "WHERE ms.left_at IS NULL AND ms.user_id IN (:userIds) "
+            + "  AND ( "
+            + "    (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) "
+            + "    OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( "
+            + "      SELECT tom.team_id FROM team_org_memberships tom "
+            + "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' "
+            + "    )) "
+            + "  )",
+            nativeQuery = true)
+    List<OrgDescendantMembershipRoleRow> findMembershipRoleKindsForOrganizationDescendants(
+            @Param("organizationId") Long organizationId,
+            @Param("userIds") Collection<Long> userIds,
+            @Param("maxDepth") int maxDepth);
+
+    /** {@link #findMembershipRoleKindsForOrganizationDescendants} の射影。 */
+    interface OrgDescendantMembershipRoleRow {
+        Long getUserId();
+        String getRoleKind();
     }
 }

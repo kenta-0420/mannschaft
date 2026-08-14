@@ -8,6 +8,7 @@ const { t } = useI18n()
 const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
+const notification = useNotification()
 
 type CalendarTab = 'calendar' | 'gantt'
 const route = useRoute()
@@ -28,8 +29,13 @@ const selectedEventIsPersonal = ref(false)
 const showDayPanel = ref(false)
 const showEventPanel = ref(false)
 
+// 是正1: 通知リンク（?scheduleId=&commentId=）からの遷移先ハイライト対象（設計書 §6.4）。
+const linkedCommentId = ref<string | null>(null)
+
 interface EventDetail {
   id: number
+  /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+  scheduleId?: number | null
   title: string
   description: string | null
   location: string | null
@@ -127,6 +133,9 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const d = res.data as PersonalScheduleRaw
       selectedEvent.value = {
         id: d.id,
+        // 個人予定はコメント機能の対象外（設計書 §AC-17。本人からの全 API も 404）。
+        // scheduleId を渡すとコメント欄の表示ガードを通過し、空のコメント欄とエラー通知が出る。
+        scheduleId: null,
         title: d.content?.title ?? '',
         description: d.content?.description ?? null,
         location: d.content?.location ?? null,
@@ -149,6 +158,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
+        scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
         scopeId: ext.scopeId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
@@ -349,13 +359,57 @@ function onNextMonth() {
   if (activeTab.value === 'gantt') loadGantt()
 }
 
-onMounted(() => {
+/**
+ * 是正1【P1】: 通知リンク（`/calendar?scheduleId=<id>&commentId=<uuid>`・
+ * {@link ScheduleCommentNotifier#actionUrl} 生成、設計書 §6.4）から遷移した際、該当予定を選択状態にして
+ * サイドパネルを開く。既存の {@link onEventClick}（selectedEvent まわり）の流れに倣う（新規の仕組みを作らない）。
+ *
+ * 対象は現在ロード済みの月（当月）の中から探す。見つからない場合は §6.4 の3項目目に従い、
+ * 黙って無視せずトーストで知らせる（症状を隠さない）。ハイライト自体・commentId クエリの除去は
+ * {@link ScheduleCommentSection}（`highlighted` イベント）に委譲する（4項目目）。
+ */
+async function openLinkedScheduleFromQuery() {
+  const rawScheduleId = route.query.scheduleId
+  if (!rawScheduleId) return
+  const targetScheduleId = Number(Array.isArray(rawScheduleId) ? rawScheduleId[0] : rawScheduleId)
+  if (!Number.isFinite(targetScheduleId)) return
+
+  const rawCommentId = route.query.commentId
+  const targetCommentId = Array.isArray(rawCommentId) ? (rawCommentId[0] ?? null) : (rawCommentId ?? null)
+
+  const ext = extendedEvents.value.find(e => !e.isPersonal && e.scheduleId === targetScheduleId)
+  if (!ext) {
+    // 当月に無い（別月・削除済み・権限なし）場合の解決手段が今のところ無いため、
+    // 見つからない旨をそのまま通知する（黙って通常のカレンダーを開くだけにしない）。
+    notification.error(t('schedule.comment.error.notFound'))
+    await clearLinkedQuery()
+    return
+  }
+
+  linkedCommentId.value = targetCommentId
+  await onEventClick(ext.id, false)
+  if (!targetCommentId) {
+    await clearLinkedQuery()
+  }
+}
+
+/** ハイライト完了後（見つかった／見つからなかった双方）に commentId クエリを除去する（設計書 §6.4 の4項目目）。 */
+async function clearLinkedQuery() {
+  linkedCommentId.value = null
+  const rest = { ...route.query }
+  delete rest.scheduleId
+  delete rest.commentId
+  await router.replace({ query: rest })
+}
+
+onMounted(async () => {
   initStorage()
-  loadEvents()
+  await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
     loadGantt()
   }
+  await openLinkedScheduleFromQuery()
 })
 </script>
 
@@ -487,6 +541,7 @@ onMounted(() => {
             <EventDetailPanel
               :event="{
                 id: selectedEvent.id,
+                scheduleId: selectedEvent.scheduleId ?? null,
                 title: selectedEvent.title,
                 description: selectedEvent.description,
                 location: selectedEvent.location,
@@ -507,9 +562,11 @@ onMounted(() => {
               :skip-delegations="selectedEventIsPersonal"
               :scope-name="selectedEvent.scopeName ?? null"
               :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+              :highlight-comment-id="linkedCommentId"
               @edit="onEditEvent"
               @delete="onDeleteEvent"
               @responded="refresh"
+              @comment-highlighted="clearLinkedQuery"
             />
           </SectionCard>
 

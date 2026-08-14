@@ -37,10 +37,22 @@ mockNuxtImport('useMatchApi', () => () => ({
   resolveMatchBySchedule: mockResolveBySchedule,
   createMatch: mockCreateMatch,
 }))
+// F03.16 予定コメントスレッド。本テストの関心事ではないため、常に空のスレッドを返すスタブに固定する。
+mockNuxtImport('useScheduleComments', () => () => ({
+  listComments: vi.fn().mockResolvedValue({ data: [], meta: { total: 0, page: 0, size: 20, totalPages: 0 } }),
+  getMeta: vi.fn().mockResolvedValue({ data: { scheduleId: 123, commentsEnabled: true, canPost: false, canPostReason: 'ROLE' } }),
+  listReplies: vi.fn().mockResolvedValue({ data: [], meta: { total: 0, page: 0, size: 20, totalPages: 0 } }),
+  mentionCandidates: vi.fn().mockResolvedValue({ data: [] }),
+  createComment: vi.fn(),
+  updateComment: vi.fn(),
+  deleteComment: vi.fn(),
+  updateSettings: vi.fn(),
+}))
 
 function baseEvent() {
   return {
     id: 123,
+    scheduleId: 123,
     title: '対 相手FC',
     description: null,
     location: '市民グラウンド',
@@ -123,5 +135,26 @@ describe('EventDetailPanel.vue（入口④）', () => {
       venue: '市民グラウンド',
     })
     expect(mockNavigate).toHaveBeenCalledWith('/teams/team-uuid/matches/m-new/live')
+  })
+
+  // 是正4【P2】: 個人予定は scheduleId=null で渡され、コメント欄自体が描画されないこと（設計書 §AC-17。
+  // 個人予定は本人からの全 API も 404 のため、コメント欄を出すと空表示＋エラー通知が出てしまう）。
+  it('是正4 scheduleId=null（個人予定）ではコメント欄を描画しない', async () => {
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: {
+        event: { ...baseEvent(), scheduleId: null },
+        scopeType: 'team',
+        scopeId: 'team-uuid',
+        canEdit: false,
+      },
+    })
+    expect(wrapper.find('[data-testid="schedule-comment-section"]').exists()).toBe(false)
+  })
+
+  it('是正4 scheduleId が数値（共有予定）ではコメント欄を描画する', async () => {
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
+    })
+    expect(wrapper.find('[data-testid="schedule-comment-section"]').exists()).toBe(true)
   })
 })
