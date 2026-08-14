@@ -607,6 +607,14 @@ class UserRolePeripheralScopeMembershipsTest extends AbstractMySqlIntegrationTes
      *
      * <p>MEMBER ロールに既定付与された権限を持つ一般メンバーは、
      * {@code user_roles} に行が無いという理由だけで警告通知の宛先から落ちてはならない。</p>
+     *
+     * <p><b>本テストが暴いた別の欠陥</b>: 現状の実装は取りこぼす以前に、実在しない列を
+     * 参照しており全呼び出しで {@code SQLGrammarException} となる。
+     * {@code permission_groups} 系の関連表が持つ列は {@code group_id} であって
+     * {@code permission_group_id} ではなく、{@code user_permission_groups} には
+     * {@code organization_id} 列自体が存在しない（{@code V2.008} / {@code V2.009}、
+     * 以降の migration でも追加されていない）。memberships 対応と併せて
+     * 実スキーマに合わせた修正が必要である。</p>
      */
     @Test
     @DisplayName("AC-19派生: findUserIdsByOrganizationIdAndPermissionNameがmemberships専属メンバーの権限を評価する")
@@ -628,6 +636,10 @@ class UserRolePeripheralScopeMembershipsTest extends AbstractMySqlIntegrationTes
 
     /**
      * AC-19 派生【陽性対照】: {@code user_roles} 由来の役職者の権限評価が変わらないこと。
+     *
+     * <p>本来は現時点で green であるべき陽性対照だが、上記の実在しない列参照により
+     * 現状は例外で赤になる。実スキーマへ合わせた修正後、この対照が green を保つことで
+     * 「一般メンバーへ権限が拡散していない」ことを締める。</p>
      */
     @Test
     @DisplayName("AC-19派生【陽性対照】: user_roles由来の役職者の権限評価は従来どおり")

@@ -69,7 +69,7 @@ class TeamMemberCountRecalculationMembershipsTest extends AbstractMySqlIntegrati
         TeamEntity team = TeamEntity.builder()
                 .slug("i2786-team-" + n)
                 .name("2786テストチーム" + n)
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                 .supporterEnabled(true)
                 .memberCount(0L)
                 .build();
