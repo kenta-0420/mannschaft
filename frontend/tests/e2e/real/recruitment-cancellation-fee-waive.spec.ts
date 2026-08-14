@@ -278,8 +278,10 @@ test('CMP024-002: ADMIN が一覧を開き、但し書きを確認し、理由�
   await expect(targetCard, '一覧に未払いの記録が見える').toBeVisible({ timeout: 20_000 })
 
   // 免除ボタン → 確認モーダル
-  const row = page.locator('div').filter({ hasText: 'E2E CMP024 キャンセル料免除テスト枠' }).last()
-  const waiveButton = row.getByRole('button', { name: '免除する' })
+  // （このテストが作った記録は本 spec 内で一意なので、祖先 div の filter/last() のような
+  //   壊れやすい絞り込みは使わず、ボタンをロールで直接特定する）
+  const waiveButton = page.getByRole('button', { name: '免除する' }).first()
+  await expect(waiveButton, '免除ボタンが見える').toBeVisible({ timeout: 10_000 })
   await waiveButton.click()
 
   const dialog = page.getByTestId('waive-confirm-dialog')
