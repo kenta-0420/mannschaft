@@ -62,6 +62,10 @@
 
 戦役をまたぐ横断の課題正本は [`docs/task-list.md`](docs/task-list.md)（git追跡・永続、行の粒度は戦役単位）。1戦役内の詳細な進捗地図は `.claude/campaigns/*.md`（`.gitignore` 済・揮発、完了後削除）。
 
+**`docs/task-list.md` はコードと同じく worktree + PR で扱うこと。本陣の作業木で直接編集してはならない**（下記「例外」節の対象外）。本陣の作業木は全セッションで共有されており、そこでの編集は隔離されない。別セッションが自分の版を先に commit すると、**git の競合すら起こさずに自分の編集が消える**（2026-08-14、CMP-028 の完了記録が実際にこの経路で消失した）。
+
+**採番手順**: 新しい行を追加する際は `git fetch origin main` してから、`origin/main` 上の `docs/task-list.md` の最大 CMP 番号 +1 を採ること。並行セッションと同時に採番して重複する可能性はゼロにできないが、重複したまま静かに main へ入ることは番人 `TaskListCmpIdDuplicateGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で検出する。重複が検出された場合は、後から merge された側が採番し直す。
+
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
 `/出陣`・`/検分` は Dynamic Workflows で足軽の並列起動を表現できる（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
@@ -70,7 +74,7 @@
 
 - ユーザーとの軽い対話・質問への回答
 - 1〜2ファイル限定の即時的な修正で、コミットせず確認だけする場合
-- ドキュメントの軽微な追記
+- ドキュメントの軽微な追記（**ただし `docs/task-list.md` は対象外**。正本であり並行編集の的になるため、軽微に見えてもコミットする場合は必ず worktree + PR で扱う。詳細は上記「大名システム活用ルール」節参照）
 - worktree のクリーンアップなど git 管理操作そのもの
 
 > worktree 隔離が必須な理由・起動すべき場面・並列セッションの作法の詳しい解説は [`docs/development/worktree_operations.md`](docs/development/worktree_operations.md) を参照（大名システムの運用に疑問が生じたら読む）。
